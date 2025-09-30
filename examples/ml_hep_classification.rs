@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::hep::{HEPQuantumClassifier, HEPEncodingMethod, ParticleFeatures, ParticleType};
 use std::time::Instant;
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make some predictions
     println!("\nExample predictions:");
     for i in 0..5 {
-        let features = test_data.slice(ndarray::s![i, ..]).to_owned();
+        let features = test_data.slice(scirs2_core::ndarray::s![i, ..]).to_owned();
         let (prediction, confidence) = classifier.predict(&features)?;
         let true_label = test_labels[i];
 

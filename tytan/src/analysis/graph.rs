@@ -3,8 +3,8 @@
 //! This module provides tools for generating various types of graphs
 //! for testing optimization algorithms.
 
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use scirs2_core::random::rngs::StdRng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashSet;
 
 /// Generate a random graph with specified edge probability
@@ -22,7 +22,7 @@ pub fn generate_graph(
     // Generate edges with given probability
     for i in 0..n_nodes {
         for j in (i + 1)..n_nodes {
-            if rng.random::<f64>() < edge_probability {
+            if rng.gen::<f64>() < edge_probability {
                 edges.push((i, j));
             }
         }
@@ -100,7 +100,7 @@ pub fn generate_bipartite_graph(
     // Connect left nodes to right nodes with given probability
     for i in 0..left_nodes {
         for j in 0..right_nodes {
-            if rng.random::<f64>() < edge_probability {
+            if rng.gen::<f64>() < edge_probability {
                 edges.push((i, left_nodes + j));
             }
         }
@@ -141,8 +141,8 @@ pub fn generate_regular_graph(
         }
 
         // Pick two random nodes that need connections
-        let i = available[rng.random_range(0..available.len())];
-        let j = available[rng.random_range(0..available.len())];
+        let i = available[rng.gen_range(0..available.len())];
+        let j = available[rng.gen_range(0..available.len())];
 
         if i != j && !edges.contains(&(i.min(j), i.max(j))) {
             edges.insert((i.min(j), i.max(j)));
@@ -170,7 +170,7 @@ pub fn generate_tree_graph(n_nodes: usize) -> Vec<(usize, usize)> {
     // Use Prüfer sequence to generate random tree
     // For now, simple approach: connect each new node to a random existing node
     for i in 1..n_nodes {
-        let parent = rng.random_range(0..i);
+        let parent = rng.gen_range(0..i);
         edges.push((parent, i));
     }
 

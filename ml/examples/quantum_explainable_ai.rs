@@ -4,7 +4,7 @@
 //! for quantum neural networks, including feature attribution, circuit analysis,
 //! quantum state analysis, and concept activation vectors.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
 use std::collections::HashMap;

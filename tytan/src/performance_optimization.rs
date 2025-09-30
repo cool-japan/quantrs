@@ -5,7 +5,7 @@
 
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use quantrs2_core::platform::PlatformCapabilities;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -267,7 +267,7 @@ impl OptimizedSA {
         &self,
         initial: Array1<u8>,
         iterations: usize,
-        rng: &mut impl rand::Rng,
+        rng: &mut impl scirs2_core::random::Rng,
     ) -> (Array1<u8>, f64) {
         let n = initial.len();
         let mut current = initial;
@@ -293,10 +293,10 @@ impl OptimizedSA {
             } else {
                 // Sequential moves
                 for _ in 0..n {
-                    let bit = rng.random_range(0..n);
+                    let bit = rng.gen_range(0..n);
                     let delta = self.evaluator.delta_energy(&current.view(), bit);
 
-                    if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
+                    if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
                         current[bit] = 1 - current[bit];
                         current_energy += delta;
 
@@ -337,7 +337,7 @@ impl OptimizedSA {
         best: &mut Array1<u8>,
         best_energy: &mut f64,
         temp: f64,
-        rng: &mut impl rand::Rng,
+        rng: &mut impl scirs2_core::random::Rng,
     ) {
         let n = current.len();
 
@@ -368,7 +368,7 @@ impl OptimizedSA {
         // Select moves to accept
         let mut accepted = Vec::new();
         for (bit, delta) in deltas {
-            if delta < 0.0 || rng.random::<f64>() < (-delta / temp).exp() {
+            if delta < 0.0 || rng.gen::<f64>() < (-delta / temp).exp() {
                 accepted.push((bit, delta));
             }
         }
@@ -504,7 +504,8 @@ impl<T: Clone + Default> MemoryPool<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
+    use scirs2_core::random::prelude::*;
 
     #[test]
     #[ignore]
@@ -534,7 +535,7 @@ mod tests {
         });
 
         let initial = array![0, 0];
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
 
         let (solution, energy) = sa.anneal(initial, 100, &mut rng);
 

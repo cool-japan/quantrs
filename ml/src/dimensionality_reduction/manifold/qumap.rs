@@ -1,7 +1,7 @@
 //! Quantum UMAP implementation
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::super::config::{DRTrainedState, QUMAPConfig};
@@ -23,7 +23,7 @@ impl QUMAP {
 
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         let n_components = self.config.n_components;
-        let mean = data.mean_axis(ndarray::Axis(0)).unwrap();
+        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
         let components = Array2::zeros((n_components, data.ncols()));
         let explained_variance_ratio = Array1::ones(n_components) / n_components as f64;
 

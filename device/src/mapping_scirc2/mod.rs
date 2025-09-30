@@ -34,7 +34,7 @@ pub use std::time::{Duration, Instant, SystemTime};
 pub use serde::{Deserialize, Serialize};
 #[cfg(feature = "scheduling")]
 pub use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock};
-pub use rand::prelude::*;
+pub use scirs2_core::random::prelude::*;
 
 pub use quantrs2_circuit::prelude::*;
 pub use quantrs2_core::{
@@ -60,7 +60,7 @@ pub use scirs2_optimize::{minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
 pub use scirs2_stats::{corrcoef, mean, pearsonr, std};
 
-pub use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
+pub use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 pub use petgraph::graph::{NodeIndex, UnGraph};
 pub use petgraph::Graph as PetGraph;
 

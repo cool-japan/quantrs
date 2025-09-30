@@ -20,7 +20,7 @@ use quantrs2_device::{DeviceResult, DeviceError};
 use quantrs2_core::prelude::*;
 use std::collections::HashMap;
 use std::time::Duration;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 
 /// Test helper functions and configurations
 mod test_helpers {

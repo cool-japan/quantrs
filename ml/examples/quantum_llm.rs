@@ -4,9 +4,10 @@
 //! features like quantum memory, quantum reasoning, and quantum-classical hybrid
 //! processing for improved language understanding and generation.
 
-use ndarray::{Array1, Array2, Array3};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Large Language Model Demo ===\n");

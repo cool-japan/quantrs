@@ -36,7 +36,7 @@ pub fn initialize_stable_optimizations() -> crate::error::QuantRS2Result<()> {
 
 /// Precompute and cache common quantum gate matrices
 fn precompute_common_gates() -> crate::error::QuantRS2Result<()> {
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::f64::consts::{FRAC_1_SQRT_2, PI};
 
     let cache = get_global_cache();

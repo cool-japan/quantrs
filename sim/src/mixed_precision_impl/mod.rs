@@ -91,8 +91,8 @@ pub fn benchmark_precisions() -> Result<analysis::PrecisionAnalysis> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array1;
-    use num_complex::Complex64;
+    use scirs2_core::ndarray::Array1;
+    use scirs2_core::Complex64;
 
     #[test]
     fn test_precision_initialization() {

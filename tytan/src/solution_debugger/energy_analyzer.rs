@@ -1,6 +1,6 @@
 //! Energy analysis functionality for the solution debugger.
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use serde::Serialize;
 use std::collections::HashMap;
 

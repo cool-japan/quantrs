@@ -4,10 +4,11 @@
 //! implementing algorithms like DDPG, TD3, and SAC adapted for quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -84,10 +85,10 @@ impl ReplayBuffer {
         }
 
         let mut batch = Vec::new();
-        let mut rng = fastrand::Rng::new();
+        let mut rng = thread_rng();
 
         for _ in 0..batch_size {
-            let idx = rng.usize(0..self.buffer.len());
+            let idx = rng.gen_range(0..self.buffer.len());
             batch.push(self.buffer[idx].clone());
         }
 
@@ -166,7 +167,7 @@ impl QuantumActor {
 
             // Add exploration noise if requested
             if add_noise {
-                let noise = 0.1 * (max_val - min_val) * (2.0 * rand::random::<f64>() - 1.0);
+                let noise = 0.1 * (max_val - min_val) * (2.0 * thread_rng().gen::<f64>() - 1.0);
                 actions[i] = (actions[i] + noise).clamp(min_val, max_val);
             }
         }
@@ -181,7 +182,7 @@ impl QuantumActor {
 
         for i in 0..self.action_dim {
             // Simulate measurement of Pauli-Z on different qubits
-            actions[i] = 2.0 * rand::random::<f64>() - 1.0; // [-1, 1]
+            actions[i] = 2.0 * thread_rng().gen::<f64>() - 1.0; // [-1, 1]
         }
 
         Ok(actions)
@@ -239,7 +240,7 @@ impl QuantumCritic {
         }
 
         // Placeholder - would use quantum circuit to estimate Q-value
-        Ok(0.5 + 0.5 * (2.0 * rand::random::<f64>() - 1.0))
+        Ok(0.5 + 0.5 * (2.0 * thread_rng().gen::<f64>() - 1.0))
     }
 }
 
@@ -573,8 +574,8 @@ impl ContinuousEnvironment for PendulumEnvironment {
     }
 
     fn reset(&mut self) -> Array1<f64> {
-        self.theta = PI * (2.0 * rand::random::<f64>() - 1.0);
-        self.theta_dot = 2.0 * rand::random::<f64>() - 1.0;
+        self.theta = PI * (2.0 * thread_rng().gen::<f64>() - 1.0);
+        self.theta_dot = 2.0 * thread_rng().gen::<f64>() - 1.0;
         self.current_step = 0;
         self.state()
     }

@@ -16,7 +16,7 @@ use crate::pytorch_api::{
 };
 use crate::qsvm::{FeatureMapType, QSVMParams, QSVM};
 use crate::vae::{ClassicalAutoencoder, QVAE};
-use ndarray::{s, Array1, Array2, ArrayD, IxDyn};
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayD, IxDyn};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use serde::{Deserialize, Serialize};

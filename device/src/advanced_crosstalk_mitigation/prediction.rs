@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime};
-use ndarray::{Array1, Array2, Array3};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 
 use super::*;
 use crate::DeviceResult;

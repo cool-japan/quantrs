@@ -5,7 +5,7 @@
 //! fit on quantum annealing hardware.
 
 use crate::ising::{IsingError, IsingResult};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Represents a partition of variables into groups

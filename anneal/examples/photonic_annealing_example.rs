@@ -9,6 +9,7 @@
 
 use quantrs2_anneal::{ising::IsingModel, photonic_annealing::*};
 use std::time::Instant;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Photonic Annealing Systems Demo ===\n");
@@ -431,9 +432,7 @@ fn realistic_experimental_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut ising = IsingModel::new(16);
 
     // Random spin glass instance
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha8Rng;
-    let mut rng = ChaCha8Rng::seed_from_u64(123);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(123);
 
     for i in 0..16 {
         ising.set_bias(i, rng.gen_range(-1.0..1.0))?;

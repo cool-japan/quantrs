@@ -8,7 +8,7 @@ use crate::circuit_integration::QuantumMLExecutor;
 use crate::error::{MLError, Result};
 use crate::scirs2_integration::{SciRS2Array, SciRS2Optimizer};
 use crate::simulator_backends::{Observable, SimulatorBackend};
-use ndarray::{Array1, Array2, ArrayD, Axis, Dimension, IxDyn};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis, Dimension, IxDyn};
 use quantrs2_circuit::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

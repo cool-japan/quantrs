@@ -8,8 +8,8 @@
 //! - Quantum Phase Estimation (QPE)
 
 use crate::{PyCircuit, PySimulationResult};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;

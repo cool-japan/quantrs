@@ -8,7 +8,7 @@ use crate::autodiff::optimizers::Optimizer;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{s, Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Axis};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},

@@ -1,7 +1,8 @@
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::hep::{CollisionEvent, HEPQuantumClassifier, ParticleFeatures, ParticleType};
 use quantrs2_ml::prelude::*;
 use std::time::Instant;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("Quantum High-Energy Physics Classification Example");
@@ -122,15 +123,15 @@ fn generate_synthetic_data(num_samples: usize) -> (Vec<ParticleFeatures>, Vec<us
         // Generate synthetic four-momentum
         // Higgs particles have higher energy
         let energy_base = if is_higgs { 125.0 } else { 50.0 };
-        let energy = energy_base + rand::random::<f64>() * 10.0;
-        let px = (rand::random::<f64>() - 0.5) * 20.0;
-        let py = (rand::random::<f64>() - 0.5) * 20.0;
-        let pz = (rand::random::<f64>() - 0.5) * 50.0;
+        let energy = energy_base + thread_rng().gen::<f64>() * 10.0;
+        let px = (thread_rng().gen::<f64>() - 0.5) * 20.0;
+        let py = (thread_rng().gen::<f64>() - 0.5) * 20.0;
+        let pz = (thread_rng().gen::<f64>() - 0.5) * 50.0;
 
         // Create additional features
         let mut additional_features = Vec::with_capacity(3);
         for _ in 0..3 {
-            additional_features.push(rand::random::<f64>());
+            additional_features.push(thread_rng().gen::<f64>());
         }
 
         // Create particle features

@@ -4,7 +4,7 @@
 mod tests {
     use quantrs2_tytan::advanced_performance_analysis::*;
     // Note: Sampler types not needed for performance analysis tests
-    use ndarray::{Array1, Array2, Array3, ArrayD};
+    use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD};
     use std::collections::HashMap;
     use std::time::Duration;
 

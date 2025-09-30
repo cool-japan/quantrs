@@ -1,8 +1,8 @@
 //! Genetic Algorithm Sampler Implementation
 
-use ndarray::{Array, Dimension, Ix2};
-use rand::prelude::*;
-use rand::rngs::StdRng;
+use scirs2_core::ndarray::{Array, Dimension, Ix2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
 use super::{SampleResult, Sampler, SamplerResult};
@@ -135,7 +135,7 @@ impl GASampler {
             CrossoverStrategy::Uniform => {
                 // Uniform crossover
                 for i in 0..n_vars {
-                    if rng.random_bool(0.5) {
+                    if rng.gen_bool(0.5) {
                         child1[i] = parent1[i];
                         child2[i] = parent2[i];
                     } else {
@@ -146,7 +146,7 @@ impl GASampler {
             }
             CrossoverStrategy::SinglePoint => {
                 // Single-point crossover
-                let crossover_point = rng.random_range(1..n_vars);
+                let crossover_point = rng.gen_range(1..n_vars);
 
                 for i in 0..n_vars {
                     if i < crossover_point {
@@ -160,8 +160,8 @@ impl GASampler {
             }
             CrossoverStrategy::TwoPoint => {
                 // Two-point crossover
-                let point1 = rng.random_range(1..(n_vars - 1));
-                let point2 = rng.random_range((point1 + 1)..n_vars);
+                let point1 = rng.gen_range(1..(n_vars - 1));
+                let point2 = rng.gen_range((point1 + 1)..n_vars);
 
                 for i in 0..n_vars {
                     if i < point1 || i >= point2 {
@@ -188,7 +188,7 @@ impl GASampler {
                 if similarity > 0.8 {
                     // Parents are very similar - use uniform with high mixing
                     for i in 0..n_vars {
-                        if rng.random_bool(0.5) {
+                        if rng.gen_bool(0.5) {
                             child1[i] = parent1[i];
                             child2[i] = parent2[i];
                         } else {
@@ -198,8 +198,8 @@ impl GASampler {
                     }
                 } else if similarity > 0.4 {
                     // Moderate similarity - use two-point
-                    let point1 = rng.random_range(1..(n_vars - 1));
-                    let point2 = rng.random_range((point1 + 1)..n_vars);
+                    let point1 = rng.gen_range(1..(n_vars - 1));
+                    let point2 = rng.gen_range((point1 + 1)..n_vars);
 
                     for i in 0..n_vars {
                         if i < point1 || i >= point2 {
@@ -212,7 +212,7 @@ impl GASampler {
                     }
                 } else {
                     // Low similarity - use single point
-                    let crossover_point = rng.random_range(1..n_vars);
+                    let crossover_point = rng.gen_range(1..n_vars);
 
                     for i in 0..n_vars {
                         if i < crossover_point {
@@ -244,7 +244,7 @@ impl GASampler {
             MutationStrategy::FixedRate(rate) => {
                 // Simple fixed mutation rate
                 for bit in individual.iter_mut() {
-                    if rng.random_bool(rate) {
+                    if rng.gen_bool(rate) {
                         *bit = !*bit;
                     }
                 }
@@ -255,7 +255,7 @@ impl GASampler {
                 let current_rate = initial_rate + (final_rate - initial_rate) * progress;
 
                 for bit in individual.iter_mut() {
-                    if rng.random_bool(current_rate) {
+                    if rng.gen_bool(current_rate) {
                         *bit = !*bit;
                     }
                 }
@@ -267,7 +267,7 @@ impl GASampler {
                     let rate = min_rate + (max_rate - min_rate) * (1.0 - diversity);
 
                     for bit in individual.iter_mut() {
-                        if rng.random_bool(rate) {
+                        if rng.gen_bool(rate) {
                             *bit = !*bit;
                         }
                     }
@@ -275,7 +275,7 @@ impl GASampler {
                     // Default to average if no diversity metric available
                     let rate = (min_rate + max_rate) / 2.0;
                     for bit in individual.iter_mut() {
-                        if rng.random_bool(rate) {
+                        if rng.gen_bool(rate) {
                             *bit = !*bit;
                         }
                     }
@@ -320,7 +320,7 @@ impl GASampler {
 impl Sampler for GASampler {
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Extract matrix and variable mapping
@@ -342,7 +342,7 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::rng().random();
+                let seed: u64 = thread_rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -367,7 +367,7 @@ impl Sampler for GASampler {
             // Create a view as a 2D matrix and convert to owned matrix
             let matrix = tensor
                 .clone()
-                .into_dimensionality::<ndarray::Ix2>()
+                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                 .unwrap();
             let qubo = (matrix, var_map.clone());
 
@@ -422,7 +422,7 @@ impl Sampler for GASampler {
 
         // Initialize random population
         let mut population: Vec<Vec<bool>> = (0..pop_size)
-            .map(|_| (0..n_vars).map(|_| rng.random_bool(0.5)).collect())
+            .map(|_| (0..n_vars).map(|_| rng.gen_bool(0.5)).collect())
             .collect();
 
         // Evaluate initial population
@@ -531,7 +531,7 @@ impl Sampler for GASampler {
 
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Extract matrix and variable mapping
@@ -553,7 +553,7 @@ impl Sampler for GASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::rng().random();
+                let seed: u64 = thread_rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -580,7 +580,7 @@ impl Sampler for GASampler {
 
         // Initialize population with random bitstrings
         let mut population: Vec<Vec<bool>> = (0..self.population_size)
-            .map(|_| (0..n_vars).map(|_| rng.random_bool(0.5)).collect())
+            .map(|_| (0..n_vars).map(|_| rng.gen_bool(0.5)).collect())
             .collect();
 
         // Initialize fitness scores (energy values)
@@ -772,7 +772,7 @@ fn simple_crossover(
 
     // Use single-point crossover
     let crossover_point = if n_vars > 1 {
-        rng.random_range(1..n_vars)
+        rng.gen_range(1..n_vars)
     } else {
         0 // Special case for one-variable problems
     };
@@ -793,7 +793,7 @@ fn simple_crossover(
 // Helper function for mutation
 fn mutate(individual: &mut [bool], rate: f64, rng: &mut impl Rng) {
     for bit in individual.iter_mut() {
-        if rng.random_bool(rate) {
+        if rng.gen_bool(rate) {
             *bit = !*bit;
         }
     }
@@ -814,11 +814,11 @@ fn tournament_selection(fitness: &[f64], tournament_size: usize, rng: &mut impl 
     // Ensure tournament_size is not larger than the population
     let effective_tournament_size = std::cmp::min(tournament_size, fitness.len());
 
-    let mut best_idx = rng.random_range(0..fitness.len());
+    let mut best_idx = rng.gen_range(0..fitness.len());
     let mut best_fitness = fitness[best_idx];
 
     for _ in 1..(effective_tournament_size) {
-        let candidate_idx = rng.random_range(0..fitness.len());
+        let candidate_idx = rng.gen_range(0..fitness.len());
         let candidate_fitness = fitness[candidate_idx];
 
         // Lower fitness is better (minimization problem)

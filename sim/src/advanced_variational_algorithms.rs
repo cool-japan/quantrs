@@ -4,14 +4,15 @@
 //! quantum algorithms including VQE, QAOA, VQA with advanced optimizers, and novel
 //! variational approaches for quantum machine learning and optimization.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
+use scirs2_core::random::prelude::*;
 
 /// Advanced VQA optimizer types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1133,7 +1134,7 @@ impl AdvancedVQATrainer {
 
         // SPSA uses simultaneous perturbation
         for i in 0..self.state.parameters.len() {
-            let perturbation = if rand::random::<f64>() > 0.5 {
+            let perturbation = if thread_rng().gen::<f64>() > 0.5 {
                 1.0
             } else {
                 -1.0
@@ -1333,7 +1334,7 @@ impl AdvancedVQATrainer {
             .state
             .parameters
             .iter()
-            .map(|p| p + (rand::random::<f64>() - 0.5) * 0.1)
+            .map(|p| p + (thread_rng().gen::<f64>() - 0.5) * 0.1)
             .collect::<Vec<_>>();
 
         let updates = next_parameters
@@ -1376,7 +1377,7 @@ impl AdvancedVQATrainer {
         for _ in 0..population_size {
             let mut candidate = self.state.parameters.clone();
             for param in &mut candidate {
-                *param += sigma * (rand::random::<f64>() - 0.5) * 2.0;
+                *param += sigma * (thread_rng().gen::<f64>() - 0.5) * 2.0;
             }
             population.push(candidate);
         }
@@ -1429,7 +1430,7 @@ impl AdvancedVQATrainer {
 
         // Update velocity with quantum enhancement
         for i in 0..self.state.parameters.len() {
-            let quantum_factor = (2.0 * std::f64::consts::PI * rand::random::<f64>())
+            let quantum_factor = (2.0 * std::f64::consts::PI * thread_rng().gen::<f64>())
                 .cos()
                 .abs();
 
@@ -1437,11 +1438,11 @@ impl AdvancedVQATrainer {
             self.state.optimizer_state.momentum[i] = inertia
                 * self.state.optimizer_state.momentum[i]
                 + cognitive
-                    * rand::random::<f64>()
+                    * thread_rng().gen::<f64>()
                     * (self.state.best_parameters[i] - self.state.parameters[i])
                     * quantum_factor
                 + social
-                    * rand::random::<f64>()
+                    * thread_rng().gen::<f64>()
                     * (self.state.best_parameters[i] - self.state.parameters[i]);
         }
 
@@ -1520,9 +1521,9 @@ impl AdvancedVQATrainer {
 
         for _ in 0..num_parameters {
             let param = if let Some((min, max)) = config.parameter_bounds {
-                min + (max - min) * rand::random::<f64>()
+                min + (max - min) * thread_rng().gen::<f64>()
             } else {
-                (rand::random::<f64>() - 0.5) * 2.0 * std::f64::consts::PI
+                (thread_rng().gen::<f64>() - 0.5) * 2.0 * std::f64::consts::PI
             };
             parameters.push(param);
         }

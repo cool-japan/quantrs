@@ -2,7 +2,7 @@
 
 use super::super::results::*;
 use crate::DeviceResult;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 
 /// Time series analyzer for measurement data
 pub struct TimeSeriesAnalyzer {

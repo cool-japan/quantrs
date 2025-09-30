@@ -37,8 +37,8 @@ pub mod utils;
 
 // Common imports for all submodules
 pub use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-pub use ndarray::{Array1, Array2, Array3, ArrayD};
-pub use rand::prelude::*;
+pub use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD};
+pub use scirs2_core::random::prelude::*;
 pub use serde::{Deserialize, Serialize};
 pub use std::collections::HashMap;
 pub use std::sync::{Arc, Mutex};

@@ -6,8 +6,8 @@ use crate::{
     gate::{single::*, GateOp},
     qubit::QubitId,
 };
-use ndarray::{s, Array1, Array2, Array3, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Axis};
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::simd_ops::SimdUnifiedOps;
@@ -151,7 +151,7 @@ fn apply_single_qubit_batch_simd(
     n_qubits: usize,
 ) -> QuantRS2Result<()> {
     // use scirs2_core::simd_ops::SimdUnifiedOps;
-    use ndarray::ArrayView1;
+    use scirs2_core::ndarray::ArrayView1;
 
     let batch_size = batch.batch_size();
     let state_size = 1 << n_qubits;
@@ -496,7 +496,7 @@ fn compute_expectation_value(state: &Array1<Complex64>, observable: &Array2<Comp
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_batch_hadamard() {

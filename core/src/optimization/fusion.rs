@@ -6,7 +6,7 @@
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::{multi::*, single::*, GateOp};
 use crate::synthesis::{identify_gate, synthesize_unitary};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 
 use super::OptimizationPass;
 

@@ -10,6 +10,7 @@ use std::time::Duration;
 use thiserror::Error;
 
 use crate::{CircuitExecutor, DeviceError, DeviceResult, QuantumDevice};
+use scirs2_core::random::prelude::*;
 
 pub mod anyons;
 pub mod braiding;
@@ -718,7 +719,7 @@ impl TopologicalDevice {
         } else if prob_zero <= 0.0001 {
             false // Definitely |1⟩
         } else {
-            rand::random::<f64>() < prob_zero
+            thread_rng().gen::<f64>() < prob_zero
         };
 
         // Apply measurement backaction
@@ -734,7 +735,7 @@ impl TopologicalDevice {
         } else {
             // Measurement in topological systems has very high fidelity
             let measurement_fidelity = 0.999;
-            if rand::random::<f64>() < measurement_fidelity {
+            if thread_rng().gen::<f64>() < measurement_fidelity {
                 measured_zero
             } else {
                 !measured_zero

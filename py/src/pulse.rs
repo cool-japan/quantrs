@@ -2,7 +2,7 @@
 //!
 //! This module provides Python access to low-level pulse control for quantum operations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};

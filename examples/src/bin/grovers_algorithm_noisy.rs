@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::{
@@ -8,7 +8,7 @@ use quantrs2_sim::noise_advanced::{
     AdvancedNoiseModel, CrosstalkChannel, RealisticNoiseModelBuilder,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 use std::time::Duration;
 
 /// Grover's Algorithm with Realistic Noise Models
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Pick a random item to search for (the marked element)
-        let marked_item = rand::thread_rng().gen_range(0..db_size);
+        let marked_item = thread_rng().gen_range(0..db_size);
         println!(
             "Searching for marked item: {} (binary: {:0width$b})",
             marked_item,

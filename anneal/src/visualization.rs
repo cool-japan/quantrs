@@ -4,8 +4,9 @@
 //! of Ising models and QUBO problems to understand problem difficulty
 //! and solution quality.
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -114,7 +115,7 @@ impl LandscapeAnalyzer {
 
         let mut rng = match self.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let mut points = Vec::new();

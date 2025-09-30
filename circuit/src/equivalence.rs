@@ -6,8 +6,8 @@
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, SciRS2CircuitAnalyzer};
-use ndarray::{array, Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{array, Array2, ArrayView2};
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,

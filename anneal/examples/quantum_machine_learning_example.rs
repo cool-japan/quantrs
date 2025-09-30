@@ -11,8 +11,7 @@
 //! 8. Compare quantum vs classical performance
 
 use quantrs2_anneal::{ising::IsingModel, quantum_machine_learning::*};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,7 +56,7 @@ fn variational_quantum_classifier_example() -> Result<(), Box<dyn std::error::Er
     println!("  Training a VQC for binary classification...");
 
     // Create synthetic dataset for binary classification
-    let mut rng = ChaCha8Rng::seed_from_u64(42);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(42);
     let mut training_data = Vec::new();
 
     // Generate training samples
@@ -129,7 +128,7 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Training a Quantum Neural Network...");
 
     // Create synthetic regression dataset
-    let mut rng = ChaCha8Rng::seed_from_u64(123);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(123);
     let mut training_data = Vec::new();
 
     for _ in 0..30 {
@@ -272,7 +271,7 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Training Quantum Kernel Methods...");
 
     // Create synthetic classification dataset
-    let mut rng = ChaCha8Rng::seed_from_u64(456);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(456);
     let mut training_data = Vec::new();
 
     for _ in 0..60 {
@@ -322,7 +321,7 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
 
         for (features, true_label) in test_samples {
             let prediction = kernel_method.predict(features)?;
-            let predicted_label = if prediction > 0.0 { 1.0 } else { -1.0 };
+            let predicted_label: f64 = if prediction > 0.0 { 1.0 } else { -1.0 };
 
             if (predicted_label - *true_label).abs() < 0.1 {
                 correct += 1;
@@ -352,7 +351,7 @@ fn quantum_gan_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Training a Quantum Generative Adversarial Network...");
 
     // Create real data samples (2D Gaussian distribution)
-    let mut rng = ChaCha8Rng::seed_from_u64(789);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(789);
     let mut real_data = Vec::new();
 
     for _ in 0..100 {
@@ -383,7 +382,7 @@ fn quantum_gan_example() -> Result<(), Box<dyn std::error::Error>> {
     let training_time = start.elapsed();
 
     // Generate samples
-    let mut gen_rng = ChaCha8Rng::seed_from_u64(999);
+    let mut gen_rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(999);
     let generated_samples = qgan.generate_samples(10, &mut gen_rng)?;
 
     println!("    Training completed in {:.2?}", training_time);
@@ -456,7 +455,7 @@ fn quantum_reinforcement_learning_example() -> Result<(), Box<dyn std::error::Er
     };
 
     let mut agent = QuantumRLAgent::new(config)?;
-    let mut rng = ChaCha8Rng::seed_from_u64(42);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(42);
 
     println!("    Training agent on simplified CartPole environment...");
 
@@ -550,7 +549,7 @@ fn quantum_autoencoder_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Training a Quantum Autoencoder for dimensionality reduction...");
 
     // Create high-dimensional data with intrinsic low-dimensional structure
-    let mut rng = ChaCha8Rng::seed_from_u64(321);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(321);
     let mut training_data = Vec::new();
 
     for _ in 0..80 {
@@ -659,7 +658,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
     println!("  Comparing Quantum vs Classical ML Performance...");
 
     // Create benchmark dataset
-    let mut rng = ChaCha8Rng::seed_from_u64(555);
+    let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(555);
     let mut dataset = Vec::new();
 
     for _ in 0..100 {
@@ -798,7 +797,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
 
 // Helper functions
 
-fn simulate_cartpole_step(state: &[f64], action: usize, rng: &mut ChaCha8Rng) -> Vec<f64> {
+fn simulate_cartpole_step(state: &[f64], action: usize, rng: &mut scirs2_core::random::ChaCha8Rng) -> Vec<f64> {
     let pos = state[0];
     let vel = state[1];
     let angle = state[2];

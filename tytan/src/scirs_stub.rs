@@ -6,7 +6,8 @@
 
 #![allow(dead_code)]
 
-use ndarray::{Array2, ArrayD};
+use ::scirs2_core::ndarray::{Array2, ArrayD};
+use ::scirs2_core::random::prelude::*;
 
 /// Placeholder for enhanced QUBO operations
 pub fn enhance_qubo_matrix(matrix: &Array2<f64>) -> Array2<f64> {
@@ -32,11 +33,11 @@ pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Ve
     let n = matrix.shape()[0];
     let mut results = Vec::with_capacity(num_samples);
 
-    use rand::{rng, Rng};
-    let mut rng = rng();
+    // use rand::{rng, Rng}; // Replaced by scirs2_core::random::prelude::*
+    let mut rng = thread_rng();
 
     for _ in 0..num_samples {
-        let solution: Vec<bool> = (0..n).map(|_| rng.random()).collect();
+        let solution: Vec<bool> = (0..n).map(|_| rng.gen()).collect();
         let energy = evaluate_qubo(&solution, matrix);
         results.push((solution, energy));
     }
@@ -265,12 +266,12 @@ mod scirs2_core_stub {
         impl<T> GpuArray<T> {
             pub fn from_ndarray(
                 _device: GpuDevice,
-                _array: &ndarray::Array2<T>,
+                _array: &scirs2_core::ndarray::Array2<T>,
             ) -> Result<Self, Box<dyn Error>> {
                 Err("GPU not available".into())
             }
 
-            pub fn to_ndarray(&self) -> Result<ndarray::Array2<T>, Box<dyn Error>>
+            pub fn to_ndarray(&self) -> Result<scirs2_core::ndarray::Array2<T>, Box<dyn Error>>
             where
                 T: Clone + Default,
             {
@@ -283,7 +284,7 @@ mod scirs2_core_stub {
 mod scirs2_linalg_stub {
 
     pub mod sparse {
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
 
         pub struct SparseMatrix;
 
@@ -299,7 +300,7 @@ mod scirs2_linalg_stub {
     }
 
     pub mod pca {
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
         use std::error::Error;
 
         pub struct PCA {
@@ -329,7 +330,7 @@ mod scirs2_linalg_stub {
     }
 
     pub mod norm {
-        use ndarray::Array1;
+        use scirs2_core::ndarray::Array1;
 
         pub trait Norm {
             fn norm(&self) -> f64;
@@ -344,7 +345,7 @@ mod scirs2_linalg_stub {
 
     pub mod gpu {
         use super::*;
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
         use std::error::Error;
 
         pub struct GpuMatrix;
@@ -612,7 +613,7 @@ mod scirs2_statistics_stub {
     }
 
     pub mod clustering {
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
         use std::error::Error;
 
         pub struct KMeans {
@@ -677,7 +678,7 @@ mod scirs2_statistics_stub {
 }
 
 mod scirs2_optimization_stub {
-    use ndarray::Array1;
+    use scirs2_core::ndarray::Array1;
     use std::error::Error;
 
     pub trait Optimizer: Send {
@@ -802,7 +803,7 @@ mod scirs2_optimization_stub {
 }
 
 mod scirs2_ml_stub {
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
     use std::error::Error;
 
     pub struct RandomForest {

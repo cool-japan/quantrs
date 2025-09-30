@@ -3,7 +3,7 @@
 //! This module implements quantum versions of LSTM and other recurrent neural networks
 //! for processing sequential data with quantum advantages.
 
-use ndarray::{s, Array1, Array2, Array3};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3};
 use std::collections::HashMap;
 
 use crate::error::{MLError, Result};
@@ -558,7 +558,7 @@ pub mod training {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_qlstm_cell() {

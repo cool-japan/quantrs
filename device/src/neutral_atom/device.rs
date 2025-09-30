@@ -7,6 +7,7 @@ use crate::{Circuit, CircuitExecutor, CircuitResult, DeviceError, DeviceResult, 
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::time::Duration;
+use scirs2_core::random::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct NeutralAtomDevice {
@@ -238,7 +239,7 @@ impl NeutralAtomQuantumDevice for NeutralAtomDevice {
         // Simplified implementation - would normally control optical tweezers
         let success_rate = self.config.loading_efficiency.unwrap_or(0.95);
         let loading_results = (0..self.config.atom_count)
-            .map(|_| rand::random::<f64>() < success_rate)
+            .map(|_| thread_rng().gen::<f64>() < success_rate)
             .collect();
         Ok(loading_results)
     }
@@ -273,7 +274,7 @@ impl NeutralAtomQuantumDevice for NeutralAtomDevice {
         let success_rate = 0.99;
         let excitation_results = atom_indices
             .iter()
-            .map(|_| rand::random::<f64>() < success_rate)
+            .map(|_| thread_rng().gen::<f64>() < success_rate)
             .collect();
         Ok(excitation_results)
     }
@@ -297,7 +298,7 @@ impl NeutralAtomQuantumDevice for NeutralAtomDevice {
         let states = atom_indices
             .iter()
             .map(|_| {
-                if rand::random::<f64>() < 0.5 {
+                if thread_rng().gen::<f64>() < 0.5 {
                     "ground".to_string()
                 } else {
                     "excited".to_string()
@@ -316,7 +317,7 @@ impl NeutralAtomQuantumDevice for NeutralAtomDevice {
         let mut correlations = HashMap::new();
         for (i, (atom1, atom2)) in atom_pairs.iter().enumerate() {
             let correlation_key = format!("{}_{}", atom1, atom2);
-            correlations.insert(correlation_key, rand::random::<f64>() * 2.0 - 1.0);
+            correlations.insert(correlation_key, thread_rng().gen::<f64>() * 2.0 - 1.0);
         }
         Ok(correlations)
     }

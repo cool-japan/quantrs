@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Array1, Array2, Array3, Array4};
+    use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
     use quantrs2_tytan::quantum_state_tomography::*;
     use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
     use std::collections::HashMap;

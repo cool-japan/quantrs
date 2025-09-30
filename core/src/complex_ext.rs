@@ -3,7 +3,7 @@
 //! This module provides enhanced complex number operations by leveraging
 //! SciRS2's type conversion and complex number utilities.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 
 /// Extension trait for Complex64 that adds quantum-specific operations
 pub trait QuantumComplexExt {

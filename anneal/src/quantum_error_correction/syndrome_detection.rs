@@ -7,9 +7,10 @@
 //! - Correction protocol execution
 //! - Integration with annealing schedules
 
-use ndarray::{Array1, Array2};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -559,7 +560,7 @@ impl SyndromeDetector {
         let mut syndrome = vec![0u8; num_stabilizers];
 
         // Simulate syndrome measurements
-        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
+        let mut rng = ChaCha8Rng::from_rng(&mut thread_rng());
 
         for i in 0..num_stabilizers {
             // In a real implementation, this would measure the stabilizer

@@ -8,7 +8,7 @@ use crate::error::{MLError, Result};
 use crate::simulator_backends::{
     BackendCapabilities, DynamicCircuit, Observable, SimulatorBackend, StatevectorBackend,
 };
-use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis, IxDyn};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use std::collections::HashMap;
@@ -145,11 +145,11 @@ impl KerasLayer for Dense {
                 // Convert to 2D arrays for explicit dot product
                 let inputs_2d = inputs
                     .clone()
-                    .into_dimensionality::<ndarray::Ix2>()
+                    .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                     .map_err(|_| MLError::InvalidConfiguration("Input must be 2D".to_string()))?;
                 let kernel_2d = kernel
                     .clone()
-                    .into_dimensionality::<ndarray::Ix2>()
+                    .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                     .map_err(|_| MLError::InvalidConfiguration("Kernel must be 2D".to_string()))?;
                 inputs_2d.dot(&kernel_2d).into_dyn()
             }
@@ -1308,7 +1308,7 @@ pub mod utils {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array;
+    use scirs2_core::ndarray::Array;
 
     #[test]
     fn test_dense_layer() {

@@ -388,7 +388,7 @@ impl PyChimeraGraph {
 
         // Convert to numpy array
         let flat_coords: Vec<f64> = coords.into_iter().flatten().collect();
-        let array = numpy::ndarray::Array2::from_shape_vec((n_qubits, 2), flat_coords)
+        let array = scirs2_core::ndarray::Array2::from_shape_vec((n_qubits, 2), flat_coords)
             .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
 
         Ok(array.into_pyarray(py).into())

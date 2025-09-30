@@ -1,7 +1,7 @@
 //! Utility functions and synthetic data generation for time series
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 

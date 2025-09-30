@@ -7,7 +7,7 @@ use crate::error::QuantRS2Error;
 use crate::quantum_internet::{QuantumInternet, QuantumInternetNode, QuantumLink};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};

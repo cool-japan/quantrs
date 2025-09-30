@@ -5,8 +5,8 @@
 //! fault-tolerant quantum computation using topological protection. This framework
 //! enables simulation of exotic quantum states and robust quantum computation.
 
-use ndarray::{Array1, Array2, Array3, Array4, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, Axis};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;

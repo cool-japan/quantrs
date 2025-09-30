@@ -2,9 +2,9 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Device module.
 
-## Version 0.1.0-beta.1 Status
+## Version 0.1.0-beta.2 Status
 
-This beta release includes:
+This release includes:
 - ✅ Enhanced transpilation using SciRS2's graph algorithms for optimal qubit routing
 - ✅ SciRS2 integration for performance benchmarking and noise characterization
 - ✅ Parallel optimization using `scirs2_core::parallel_ops` where applicable

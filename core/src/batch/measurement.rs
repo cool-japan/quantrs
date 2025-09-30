@@ -5,10 +5,9 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-use rand::prelude::*;
-use rand::{rng, SeedableRng};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 use std::collections::HashMap;
@@ -115,7 +114,7 @@ fn measure_single_state(
     let mut rng = if let Some(seed) = config.seed {
         StdRng::seed_from_u64(seed)
     } else {
-        StdRng::from_seed(rng().random())
+        StdRng::from_seed(thread_rng().gen())
     };
 
     let mut outcomes = Vec::with_capacity(qubits_to_measure.len());
@@ -219,7 +218,7 @@ fn compute_measurement_statistics(
     qubits_to_measure: &[QubitId],
     shots: usize,
 ) -> MeasurementStatistics {
-    let mut rng = StdRng::from_seed(rng().random());
+    let mut rng = StdRng::from_seed(thread_rng().gen());
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // Perform measurements
@@ -395,7 +394,7 @@ pub struct BatchTomographyResult {
 
 /// Get Pauli basis measurements
 fn get_pauli_measurements(qubits: &[QubitId]) -> Vec<(String, Vec<(QubitId, Array2<Complex64>)>)> {
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     let pauli_x = array![
         [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
@@ -427,7 +426,7 @@ fn get_pauli_measurements(qubits: &[QubitId]) -> Vec<(String, Vec<(QubitId, Arra
 fn get_computational_measurements(
     qubits: &[QubitId],
 ) -> Vec<(String, Vec<(QubitId, Array2<Complex64>)>)> {
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     let proj_0 = array![
         [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
@@ -452,7 +451,7 @@ fn get_computational_measurements(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_batch_measurement() {

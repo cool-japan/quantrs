@@ -2,7 +2,7 @@
 
 use super::{DecompositionStrategy, PerformanceRecord};
 use crate::ising::IsingModel;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

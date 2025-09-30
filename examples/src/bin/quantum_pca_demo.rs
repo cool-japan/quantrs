@@ -1,8 +1,8 @@
 //! Quantum Principal Component Analysis demonstration
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::prelude::*;
-use rand::Rng;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Principal Component Analysis Demo ===\n");
@@ -39,16 +39,16 @@ fn generate_synthetic_data() -> Array2<f64> {
         let t = i as f64 / n_samples as f64;
 
         // First principal component (strong)
-        data[[i, 0]] = 5.0 * t + 0.1 * rand::thread_rng().gen::<f64>();
-        data[[i, 1]] = 5.0 * t + 0.1 * rand::thread_rng().gen::<f64>();
+        data[[i, 0]] = 5.0 * t + 0.1 * thread_rng().gen::<f64>();
+        data[[i, 1]] = 5.0 * t + 0.1 * thread_rng().gen::<f64>();
 
         // Second principal component (medium)
-        data[[i, 2]] = 3.0 * (1.0 - t) + 0.1 * rand::thread_rng().gen::<f64>();
-        data[[i, 3]] = 3.0 * (1.0 - t) + 0.1 * rand::thread_rng().gen::<f64>();
+        data[[i, 2]] = 3.0 * (1.0 - t) + 0.1 * thread_rng().gen::<f64>();
+        data[[i, 3]] = 3.0 * (1.0 - t) + 0.1 * thread_rng().gen::<f64>();
 
         // Noise dimensions (weak)
-        data[[i, 4]] = 0.5 * rand::thread_rng().gen::<f64>();
-        data[[i, 5]] = 0.5 * rand::thread_rng().gen::<f64>();
+        data[[i, 4]] = 0.5 * thread_rng().gen::<f64>();
+        data[[i, 5]] = 0.5 * thread_rng().gen::<f64>();
     }
 
     data
@@ -186,12 +186,12 @@ fn quantum_state_pca_demo() -> Result<(), Box<dyn std::error::Error>> {
         let mut state = Array1::zeros(dim);
 
         // Bias towards certain basis states
-        if rand::thread_rng().gen::<f64>() < 0.7 {
-            state[0] = 0.8 + 0.2 * rand::thread_rng().gen::<f64>();
-            state[1] = 0.2 * rand::thread_rng().gen::<f64>();
+        if thread_rng().gen::<f64>() < 0.7 {
+            state[0] = 0.8 + 0.2 * thread_rng().gen::<f64>();
+            state[1] = 0.2 * thread_rng().gen::<f64>();
         } else {
-            state[6] = 0.6 + 0.4 * rand::thread_rng().gen::<f64>();
-            state[7] = 0.4 * rand::thread_rng().gen::<f64>();
+            state[6] = 0.6 + 0.4 * thread_rng().gen::<f64>();
+            state[7] = 0.4 * thread_rng().gen::<f64>();
         }
 
         // Normalize

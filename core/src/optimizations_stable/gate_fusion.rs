@@ -4,7 +4,7 @@
 //! reducing the total number of matrix multiplications and improving performance.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 

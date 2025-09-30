@@ -3,7 +3,7 @@
 //! This module provides various constraint types and propagation algorithms
 //! to enhance the expressiveness and efficiency of optimization problems.
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "dwave")]

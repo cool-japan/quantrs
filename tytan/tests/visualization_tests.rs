@@ -1,6 +1,7 @@
 //! Tests and examples for advanced visualization functionality
 
-use ndarray::Array;
+use scirs2_core::ndarray::Array;
+use scirs2_core::random::prelude::*;
 use quantrs2_tytan::analysis::visualization::*;
 use quantrs2_tytan::sampler::{SASampler, SampleResult, Sampler};
 use std::collections::HashMap;
@@ -162,7 +163,7 @@ fn test_convergence_analysis() {
         let mut iter_samples = Vec::new();
 
         for j in 0..20 {
-            let energy = -1.0 * (i as f64) - 0.1 * (j as f64) + rand::random::<f64>();
+            let energy = -1.0 * (i as f64) - 0.1 * (j as f64) + thread_rng().gen::<f64>();
 
             iter_samples.push(SampleResult {
                 assignments: HashMap::new(),

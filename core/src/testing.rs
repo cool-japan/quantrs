@@ -5,8 +5,8 @@
 
 use crate::complex_ext::QuantumComplexExt;
 use crate::error::QuantRS2Error;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::fmt;
 
 /// Tolerance for quantum state comparisons
@@ -403,7 +403,7 @@ macro_rules! assert_unitary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_assert_states_equal() {

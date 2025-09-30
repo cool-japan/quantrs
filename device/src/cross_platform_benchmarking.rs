@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::{Duration, Instant, SystemTime};
 
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
 
@@ -32,7 +32,7 @@ use scirs2_stats::{
 #[cfg(not(feature = "scirs2"))]
 use crate::ml_optimization::fallback_scirs2::{mean, minimize, pearsonr, std, var, OptimizeResult};
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 use crate::{
     aws::AWSBraketClient,
@@ -1073,7 +1073,7 @@ impl CrossPlatformBenchmarker {
         let mut circuits = Vec::new();
 
         // Generate random circuits within the complexity constraints
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         let num_circuits = 5; // Generate 5 circuits per complexity level
@@ -1141,8 +1141,8 @@ impl CrossPlatformBenchmarker {
 
         // Simulate circuit execution (in practice, would use actual platform APIs)
         let shots = 1000;
-        let execution_time = Duration::from_millis(rand::thread_rng().gen_range(100..2000));
-        let queue_time = Duration::from_millis(rand::thread_rng().gen_range(10..5000));
+        let execution_time = Duration::from_millis(thread_rng().gen_range(100..2000));
+        let queue_time = Duration::from_millis(thread_rng().gen_range(10..5000));
 
         // Simulate measurement results
         let mut measurement_counts = HashMap::new();
@@ -1158,7 +1158,7 @@ impl CrossPlatformBenchmarker {
         let num_outcomes = 2_usize.pow(num_qubits.min(8) as u32); // Limit for simulation
         for i in 0..num_outcomes.min(8) {
             let outcome = format!("{:0width$b}", i, width = num_qubits.min(8));
-            let count = rand::thread_rng().gen_range(0..shots / num_outcomes * 2);
+            let count = thread_rng().gen_range(0..shots / num_outcomes * 2);
             if count > 0 {
                 measurement_counts.insert(outcome, count);
             }
@@ -1198,7 +1198,7 @@ impl CrossPlatformBenchmarker {
         _circuit: &Circuit<16>,
     ) -> DeviceResult<f64> {
         // Simplified fidelity calculation
-        Ok(rand::thread_rng().gen_range(0.8..0.99))
+        Ok(thread_rng().gen_range(0.8..0.99))
     }
 
     fn calculate_execution_cost(

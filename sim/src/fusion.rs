@@ -4,8 +4,8 @@
 //! by combining consecutive gates that act on the same qubits into single
 //! multi-qubit gates, reducing the number of matrix multiplications needed.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 
 use crate::error::{Result, SimulatorError};

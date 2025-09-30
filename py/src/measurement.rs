@@ -7,13 +7,13 @@
 //! - Measurement error mitigation
 
 use crate::{PyCircuit, PySimulationResult};
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
-use rand::Rng;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Measurement outcomes from repeated circuit executions
@@ -436,7 +436,7 @@ impl PyMeasurementSampler {
         result: &PySimulationResult,
         shots: usize,
     ) -> PyResult<Py<PyMeasurementResult>> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let mut counts = HashMap::new();
 
         // Get probabilities
@@ -475,7 +475,7 @@ impl PyMeasurementSampler {
         shots: usize,
         error_rate: f64,
     ) -> PyResult<Py<PyMeasurementResult>> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let mut counts = HashMap::new();
 
         // Get probabilities

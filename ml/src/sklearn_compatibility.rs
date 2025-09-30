@@ -12,7 +12,8 @@ use crate::qsvm::{FeatureMapType, QSVMParams, QSVM};
 use crate::simulator_backends::{
     Backend, BackendCapabilities, SimulatorBackend, StatevectorBackend,
 };
-use ndarray::{Array1, Array2, ArrayD, Axis};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -824,7 +825,7 @@ impl SklearnClusterer for QuantumKMeans {
 /// Model selection utilities (sklearn-compatible)
 pub mod model_selection {
     use super::*;
-    use rand::seq::SliceRandom;
+    use scirs2_core::random::prelude::*;
 
     /// Cross-validation score
     pub fn cross_val_score<E>(
@@ -842,7 +843,7 @@ pub mod model_selection {
 
         // Create fold indices
         let mut indices: Vec<usize> = (0..n_samples).collect();
-        indices.shuffle(&mut rand::thread_rng());
+        indices.shuffle(&mut thread_rng());
 
         for fold in 0..cv {
             let start_test = fold * fold_size;
@@ -893,11 +894,11 @@ pub mod model_selection {
         let mut indices: Vec<usize> = (0..n_samples).collect();
 
         if let Some(seed) = random_state {
-            use rand::{Rng, SeedableRng};
-            let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+            use scirs2_core::random::prelude::*;
+            let mut rng = StdRng::seed_from_u64(seed);
             indices.shuffle(&mut rng);
         } else {
-            indices.shuffle(&mut rand::thread_rng());
+            indices.shuffle(&mut thread_rng());
         }
 
         let test_indices = &indices[..n_test];
@@ -1034,8 +1035,8 @@ impl StandardScaler {
 
 impl SklearnEstimator for StandardScaler {
     fn fit(&mut self, X: &Array2<f64>, _y: Option<&Array1<f64>>) -> Result<()> {
-        let mean = X.mean_axis(ndarray::Axis(0)).unwrap();
-        let std = X.std_axis(ndarray::Axis(0), 0.0);
+        let mean = X.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let std = X.std_axis(scirs2_core::ndarray::Axis(0), 0.0);
 
         self.mean_ = Some(mean);
         self.scale_ = Some(std);
@@ -1501,7 +1502,7 @@ pub mod metrics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array;
+    use scirs2_core::ndarray::Array;
 
     #[test]
     #[ignore]

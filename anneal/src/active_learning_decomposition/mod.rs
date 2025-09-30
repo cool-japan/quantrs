@@ -35,7 +35,7 @@ pub use utils::*;
 
 use crate::ising::IsingModel;
 use crate::simulator::AnnealingResult;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use std::time::{Duration, Instant};
 
 /// Decomposition strategies

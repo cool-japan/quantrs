@@ -476,12 +476,12 @@ impl StabilityAnalyzer {
         Ok(delay_samples * sampling_period)
     }
 
-    fn calculate_lyapunov_exponents(&self, system_response: &[f64]) -> DeviceResult<ndarray::Array1<f64>> {
+    fn calculate_lyapunov_exponents(&self, system_response: &[f64]) -> DeviceResult<scirs2_core::ndarray::Array1<f64>> {
         // Calculate Lyapunov exponents for stability analysis
         // Simplified implementation
 
         if system_response.len() < 10 {
-            return Ok(ndarray::Array1::zeros(1));
+            return Ok(scirs2_core::ndarray::Array1::zeros(1));
         }
 
         // Estimate largest Lyapunov exponent using finite difference method
@@ -502,7 +502,7 @@ impl StabilityAnalyzer {
             -1.0 // Stable system
         };
 
-        Ok(ndarray::Array1::from_vec(vec![lyapunov_exponent]))
+        Ok(scirs2_core::ndarray::Array1::from_vec(vec![lyapunov_exponent]))
     }
 
     fn identify_stability_regions(&self) -> DeviceResult<Vec<StabilityRegion>> {
@@ -510,7 +510,7 @@ impl StabilityAnalyzer {
         // Simplified implementation
 
         let region = StabilityRegion {
-            bounds: ndarray::Array2::from_shape_vec((2, 2), vec![0.0, 1.0, 0.0, 1.0]).unwrap(),
+            bounds: scirs2_core::ndarray::Array2::from_shape_vec((2, 2), vec![0.0, 1.0, 0.0, 1.0]).unwrap(),
             stability_measure: 0.9,
             region_type: "nominal".to_string(),
         };

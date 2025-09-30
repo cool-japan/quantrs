@@ -12,8 +12,8 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -213,9 +213,9 @@ impl OpticalTweezer {
         }
 
         // Simulate probabilistic loading
-        use rand::Rng;
-        let mut rng = rand::rng();
-        let success = rng.random::<f64>() < atom.loading_probability;
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let success = rng.gen::<f64>() < atom.loading_probability;
 
         if success {
             atom.position = self.position;
@@ -529,11 +529,11 @@ impl NeutralAtomQC {
         // - Spontaneous emission
         // - AC Stark shifts
 
-        use rand::Rng;
-        let mut rng = rand::rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         // Add small random phase error
-        let phase_error = rng.random_range(-0.01..0.01);
+        let phase_error = rng.gen_range(-0.01..0.01);
         self.global_phase += phase_error;
 
         Ok(())
@@ -542,11 +542,11 @@ impl NeutralAtomQC {
     /// Apply two-qubit error models
     fn apply_two_qubit_errors(&mut self, _qubit1: usize, _qubit2: usize) -> QuantRS2Result<()> {
         // Simplified error model for Rydberg gates
-        use rand::Rng;
-        let mut rng = rand::rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         // Rydberg gate errors are typically higher
-        let phase_error = rng.random_range(-0.05..0.05);
+        let phase_error = rng.gen_range(-0.05..0.05);
         self.global_phase += phase_error;
 
         Ok(())
@@ -575,9 +575,9 @@ impl NeutralAtomQC {
         }
 
         // Sample measurement result
-        use rand::Rng;
-        let mut rng = rand::rng();
-        let result: usize = if rng.random::<f64>() < prob_0 / (prob_0 + prob_1) {
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let result: usize = if rng.gen::<f64>() < prob_0 / (prob_0 + prob_1) {
             0
         } else {
             1

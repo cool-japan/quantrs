@@ -7,8 +7,8 @@
 
 use crate::gpu_performance::GpuProfiler;
 use crate::sampler::Sampler;
-use ndarray::Array2;
-use rand::Rng;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::random::Rng;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -566,8 +566,8 @@ impl<S: Sampler> GpuBenchmark<S> {
 
 /// Generate random QUBO problem for benchmarking
 fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
-    use rand::prelude::*;
-    let mut rng = rand::thread_rng();
+    use scirs2_core::random::prelude::*;
+    let mut rng = thread_rng();
 
     let mut qubo = Array2::zeros((size, size));
 

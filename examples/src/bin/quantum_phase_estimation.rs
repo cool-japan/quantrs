@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::{Circuit, Simulator};
 use quantrs2_core::{gate::multi::CRZ, qubit::QubitId, register::Register};
 use quantrs2_sim::noise_advanced::{RealisticNoiseModelBuilder, ThermalRelaxationChannel};

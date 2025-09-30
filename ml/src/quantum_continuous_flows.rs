@@ -9,10 +9,11 @@
 //! - Quantum posterior inference and sampling
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -842,7 +843,7 @@ impl QuantumContinuousFlow {
 
     /// Create Pauli-Z observable
     fn create_pauli_z_observable(qubit: usize) -> Observable {
-        let pauli_z = ndarray::array![
+        let pauli_z = scirs2_core::ndarray::array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
@@ -1076,8 +1077,8 @@ impl QuantumContinuousFlow {
         coupling_type: &QuantumCouplingType,
     ) -> Result<LayerOutput> {
         // Split input
-        let x1 = x.slice(ndarray::s![..split_dim]).to_owned();
-        let x2 = x.slice(ndarray::s![split_dim..]).to_owned();
+        let x1 = x.slice(scirs2_core::ndarray::s![..split_dim]).to_owned();
+        let x2 = x.slice(scirs2_core::ndarray::s![split_dim..]).to_owned();
 
         // Apply quantum coupling network to first half
         let coupling_output = self.apply_quantum_coupling_network(&layer.coupling_network, &x1)?;
@@ -1111,8 +1112,8 @@ impl QuantumContinuousFlow {
 
         // Combine outputs
         let mut z = Array1::zeros(x.len());
-        z.slice_mut(ndarray::s![..split_dim]).assign(&x1); // First half unchanged
-        z.slice_mut(ndarray::s![split_dim..]).assign(&z2); // Second half transformed
+        z.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&x1); // First half unchanged
+        z.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&z2); // Second half transformed
 
         Ok(LayerOutput {
             transformed_data: z,
@@ -1519,8 +1520,8 @@ impl QuantumContinuousFlow {
     ) -> Result<LayerOutput> {
         // Split input
         let split_dim = x.len() / 2;
-        let x1 = x.slice(ndarray::s![..split_dim]).to_owned();
-        let x2 = x.slice(ndarray::s![split_dim..]).to_owned();
+        let x1 = x.slice(scirs2_core::ndarray::s![..split_dim]).to_owned();
+        let x2 = x.slice(scirs2_core::ndarray::s![split_dim..]).to_owned();
 
         // Apply networks to first half
         let scale_output = self.apply_quantum_network(scale_network, &x1)?;
@@ -1532,8 +1533,8 @@ impl QuantumContinuousFlow {
 
         // Combine
         let mut z = Array1::zeros(x.len());
-        z.slice_mut(ndarray::s![..split_dim]).assign(&x1);
-        z.slice_mut(ndarray::s![split_dim..]).assign(&z2);
+        z.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&x1);
+        z.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&z2);
 
         Ok(LayerOutput {
             transformed_data: z,
@@ -1563,7 +1564,7 @@ impl QuantumContinuousFlow {
             .mapv(|amp| amp.re * network.quantum_enhancement);
 
         let output = if full_output.len() > x.len() {
-            full_output.slice(ndarray::s![..x.len()]).to_owned()
+            full_output.slice(scirs2_core::ndarray::s![..x.len()]).to_owned()
         } else {
             full_output
         };
@@ -1704,8 +1705,8 @@ impl QuantumContinuousFlow {
         let split_dim = mask.iter().filter(|&&m| m).count();
 
         // Split according to mask
-        let z1 = z.slice(ndarray::s![..split_dim]).to_owned();
-        let z2 = z.slice(ndarray::s![split_dim..]).to_owned();
+        let z1 = z.slice(scirs2_core::ndarray::s![..split_dim]).to_owned();
+        let z2 = z.slice(scirs2_core::ndarray::s![split_dim..]).to_owned();
 
         // Apply inverse coupling (z1 unchanged, invert transformation on z2)
         let scale_output = self.apply_quantum_network(&coupling_function.scale_function, &z1)?;
@@ -1718,8 +1719,8 @@ impl QuantumContinuousFlow {
 
         // Combine
         let mut x = Array1::zeros(z.len());
-        x.slice_mut(ndarray::s![..split_dim]).assign(&z1);
-        x.slice_mut(ndarray::s![split_dim..]).assign(&x2);
+        x.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&z1);
+        x.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&x2);
 
         Ok(LayerOutput {
             transformed_data: x,
@@ -1786,7 +1787,7 @@ impl QuantumContinuousFlow {
                 covariance,
                 quantum_enhancement,
             } => {
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
 
                 // Sample from standard Gaussian
                 let mut z = Array1::zeros(mean.len());
@@ -1887,7 +1888,7 @@ impl QuantumContinuousFlow {
 
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
-            let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
+            let batch_data = data.slice(scirs2_core::ndarray::s![batch_start..batch_end, ..]);
 
             let batch_metrics = self.train_batch(&batch_data, config)?;
 
@@ -1918,7 +1919,7 @@ impl QuantumContinuousFlow {
     /// Train single batch
     fn train_batch(
         &mut self,
-        batch_data: &ndarray::ArrayView2<f64>,
+        batch_data: &scirs2_core::ndarray::ArrayView2<f64>,
         config: &FlowTrainingConfig,
     ) -> Result<FlowTrainingMetrics> {
         let mut batch_nll = 0.0;

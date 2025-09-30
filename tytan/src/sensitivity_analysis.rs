@@ -9,7 +9,8 @@
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::Sampler;
-use rand::rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -763,8 +764,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         num_samples: usize,
     ) -> Result<(Vec<HashMap<String, f64>>, Vec<HashMap<String, f64>>), Box<dyn Error>> {
         // Simplified implementation using random sampling
-        use rand::prelude::*;
-        let mut rng = rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let mut sample_a = Vec::new();
         let mut sample_b = Vec::new();
@@ -777,8 +778,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let name = self.get_parameter_name(&param);
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
-                params_a.insert(name.clone(), rng.random_range(min_val..max_val));
-                params_b.insert(name, rng.random_range(min_val..max_val));
+                params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
+                params_b.insert(name, rng.gen_range(min_val..max_val));
             }
 
             sample_a.push(params_a);
@@ -858,8 +859,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         num_samples: usize,
     ) -> Result<Vec<HashMap<String, f64>>, Box<dyn Error>> {
         // Simplified LHS implementation
-        use rand::prelude::*;
-        let mut rng = rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let mut samples = Vec::new();
         let n_params = self.parameters.len();
@@ -882,7 +883,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
                 let level = permutations[j][i];
                 let value = min_val
-                    + (level as f64 + rng.random::<f64>()) / num_samples as f64
+                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64
                         * (max_val - min_val);
 
                 sample.insert(name, value);

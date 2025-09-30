@@ -158,7 +158,7 @@ mod tests {
                 },
                 confidence: 0.9,
             },
-            problem_features: ndarray::Array1::ones(20),
+            problem_features: scirs2_core::ndarray::Array1::ones(20),
         };
 
         let strategy = learner.recommend_strategy(&problem, &analysis).unwrap();

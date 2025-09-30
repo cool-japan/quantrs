@@ -54,7 +54,7 @@ fn check_static_lib_exists() -> bool {
 
     // Also check if SYMENGINE_DIR is set and has static library
     if let Ok(dir) = env::var("SYMENGINE_DIR") {
-        let static_lib_path = format!("{}/lib/libsymengine.a", dir);
+        let static_lib_path = format!("{dir}/lib/libsymengine.a");
         if std::path::Path::new(&static_lib_path).exists() {
             return true;
         }
@@ -126,20 +126,20 @@ fn setup_manual_linking() {
 
     // Custom symengine directory if specified
     if let Ok(dir) = env::var("SYMENGINE_DIR") {
-        println!("cargo:rustc-link-search=native={}/lib", dir);
-        println!("cargo:include={}/include", dir);
+        println!("cargo:rustc-link-search=native={dir}/lib");
+        println!("cargo:include={dir}/include");
     }
 
     // Custom GMP directory
     if let Ok(dir) = env::var("GMP_DIR") {
-        println!("cargo:rustc-link-search=native={}/lib", dir);
-        println!("cargo:include={}/include", dir);
+        println!("cargo:rustc-link-search=native={dir}/lib");
+        println!("cargo:include={dir}/include");
     }
 
     // Custom MPFR directory
     if let Ok(dir) = env::var("MPFR_DIR") {
-        println!("cargo:rustc-link-search=native={}/lib", dir);
-        println!("cargo:include={}/include", dir);
+        println!("cargo:rustc-link-search=native={dir}/lib");
+        println!("cargo:include={dir}/include");
     }
 }
 
@@ -153,37 +153,36 @@ fn setup_platform_specific() {
         ];
 
         for base_path in &homebrew_paths {
-            let lib_path = format!("{}/lib", base_path);
-            let include_path = format!("{}/include", base_path);
+            let lib_path = format!("{base_path}/lib");
+            let include_path = format!("{base_path}/include");
 
             if std::path::Path::new(&lib_path).exists() {
-                println!("cargo:rustc-link-search=native={}", lib_path);
-                println!("cargo:include={}", include_path);
+                println!("cargo:rustc-link-search=native={lib_path}");
+                println!("cargo:include={include_path}");
 
                 // Add specific paths for SymEngine
-                let symengine_opt_path = format!("{}/opt/symengine", base_path);
+                let symengine_opt_path = format!("{base_path}/opt/symengine");
                 if std::path::Path::new(&symengine_opt_path).exists() {
-                    let symengine_lib = format!("{}/lib", symengine_opt_path);
-                    let symengine_include = format!("{}/include", symengine_opt_path);
+                    let symengine_lib = format!("{symengine_opt_path}/lib");
+                    let symengine_include = format!("{symengine_opt_path}/include");
                     if std::path::Path::new(&symengine_lib).exists() {
-                        println!("cargo:rustc-link-search=native={}", symengine_lib);
-                        println!("cargo:include={}", symengine_include);
+                        println!("cargo:rustc-link-search=native={symengine_lib}");
+                        println!("cargo:include={symengine_include}");
                         println!(
-                            "cargo:rerun-if-changed={}/include/symengine/cwrapper.h",
-                            symengine_opt_path
+                            "cargo:rerun-if-changed={symengine_opt_path}/include/symengine/cwrapper.h"
                         );
                     }
                 }
 
                 // Add specific paths for dependencies
                 for dep in &["gmp", "mpfr", "symengine"] {
-                    let dep_lib = format!("{}/lib/{}", base_path, dep);
-                    let dep_include = format!("{}/include/{}", base_path, dep);
+                    let dep_lib = format!("{base_path}/lib/{dep}");
+                    let dep_include = format!("{base_path}/include/{dep}");
                     if std::path::Path::new(&dep_lib).exists() {
-                        println!("cargo:rustc-link-search=native={}", dep_lib);
+                        println!("cargo:rustc-link-search=native={dep_lib}");
                     }
                     if std::path::Path::new(&dep_include).exists() {
-                        println!("cargo:include={}", dep_include);
+                        println!("cargo:include={dep_include}");
                     }
                 }
                 break;
@@ -287,7 +286,7 @@ fn generate_bindings() {
 
     let bindings = builder.generate().expect("Unable to generate bindings");
 
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let out_path = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings");

@@ -4,10 +4,11 @@
 //! manages precision levels for optimal performance and accuracy.
 
 use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
+use scirs2_core::random::prelude::*;
 use crate::error::{Result, SimulatorError};
 use crate::prelude::SciRS2Backend;
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -133,7 +134,6 @@ impl MixedPrecisionSimulator {
         // Calculate probability of measuring |1⟩
         let mut prob_one = 0.0;
         let mask = 1 << qubit;
-
         for i in 0..state.len() {
             if i & mask != 0 {
                 prob_one += state.probability(i)?;
@@ -141,7 +141,7 @@ impl MixedPrecisionSimulator {
         }
 
         // Simulate random measurement
-        let result = fastrand::f64() < prob_one;
+        let result = thread_rng().gen::<f64>() < prob_one;
 
         // Collapse the state vector
         self.collapse_state(qubit, result)?;
@@ -189,8 +189,6 @@ impl MixedPrecisionSimulator {
                     }
                     'Y' => {
                         // Flip bit and apply phase
-                        let flipped = i ^ (1 << qubit);
-                        amplitude = state.amplitude(flipped)?;
                         if i & (1 << qubit) != 0 {
                             sign *= -1.0;
                         }
@@ -422,22 +420,18 @@ pub mod utils {
         precision: QuantumPrecision,
     ) -> Result<MixedPrecisionStateVector> {
         let mut mp_state = MixedPrecisionStateVector::new(state.len(), precision);
-
         for (i, &amplitude) in state.iter().enumerate() {
             mp_state.set_amplitude(i, amplitude)?;
         }
-
         Ok(mp_state)
     }
 
     /// Extract a regular state vector from mixed precision
     pub fn extract_state_vector(mp_state: &MixedPrecisionStateVector) -> Result<Array1<Complex64>> {
         let mut state = Array1::zeros(mp_state.len());
-
         for i in 0..mp_state.len() {
             state[i] = mp_state.amplitude(i)?;
         }
-
         Ok(state)
     }
 
@@ -445,7 +439,6 @@ pub mod utils {
     pub fn memory_savings(config: &MixedPrecisionConfig, num_qubits: usize) -> f64 {
         let double_precision_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
         let mixed_precision_size = config.estimate_memory_usage(num_qubits);
-
         1.0 - (mixed_precision_size as f64 / double_precision_size as f64)
     }
 

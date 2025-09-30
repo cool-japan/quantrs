@@ -2,7 +2,7 @@
 
 use super::types::*;
 use crate::sampler::{SampleResult, Sampler};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 /// Hierarchical solver with multi-level approach
@@ -503,7 +503,7 @@ impl SampleResult {
 mod tests {
     use super::*;
     use crate::sampler::simulated_annealing::SASampler;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
     use std::collections::HashMap;
 
     #[test]

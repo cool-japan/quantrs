@@ -5,9 +5,9 @@
 //! techniques while running on classical computers. These algorithms often provide advantages
 //! over traditional classical algorithms by incorporating quantum-inspired heuristics.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
+use scirs2_core::random::prelude::*;
 
 /// Quantum-inspired classical algorithms configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -724,7 +725,7 @@ pub struct QuantumInspiredFramework {
     /// Performance statistics
     stats: QuantumInspiredStats,
     /// Random number generator
-    rng: Arc<Mutex<rand::rngs::ThreadRng>>,
+    rng: Arc<Mutex<scirs2_core::random::CoreRandom>>,
 }
 
 /// Framework state

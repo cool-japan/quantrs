@@ -2,11 +2,12 @@
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
-use ndarray::{Array1, Array2};
-use rand::Rng;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::Rng;
 
 use super::*;
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Comprehensive test suite for advanced crosstalk mitigation
 pub struct CrosstalkMitigationTestSuite {
@@ -326,7 +327,7 @@ impl CrosstalkMitigationTestSuite {
     }
 
     fn generate_test_characterization(&self, params: &TestParameters) -> DeviceResult<CrosstalkCharacterization> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let n = params.n_qubits;
         let mut crosstalk_matrix = Array2::zeros((n, n));
 
@@ -533,7 +534,7 @@ pub mod data_utils {
         base_strength: f64,
         noise_level: f64,
     ) -> Array3<f64> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let mut data = Array3::zeros((n_timesteps, n_qubits, n_qubits));
 
         for t in 0..n_timesteps {

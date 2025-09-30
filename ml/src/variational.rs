@@ -1,6 +1,7 @@
 use crate::error::{MLError, Result};
+use scirs2_core::random::prelude::*;
 use crate::optimization::{ObjectiveFunction, Optimizer};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
 
@@ -69,7 +70,7 @@ impl VariationalCircuit {
         // Initialize random parameters
         let parameters = Array1::from_vec(
             (0..num_params)
-                .map(|_| rand::random::<f64>() * 2.0 * std::f64::consts::PI)
+                .map(|_| thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI)
                 .collect(),
         );
 
@@ -176,7 +177,7 @@ impl VariationalCircuit {
         for _ in 0..max_iterations {
             // Update parameters (dummy)
             for i in 0..self.parameters.len() {
-                self.parameters[i] += (rand::random::<f64>() - 0.5) * 0.01;
+                self.parameters[i] += (thread_rng().gen::<f64>() - 0.5) * 0.01;
             }
 
             let new_value = self.evaluate(objective)?;

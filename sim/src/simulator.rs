@@ -1,6 +1,6 @@
 //! Common simulator interface and results for quantum circuit simulations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 
 /// Result of a quantum circuit simulation
 #[derive(Debug, Clone)]

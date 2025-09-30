@@ -9,8 +9,8 @@ use crate::{
     sampler::{SampleResult, Sampler, SamplerError, SamplerResult},
     QuboModel,
 };
-use ndarray::{Array, Array1, Array2};
-use rand::prelude::*;
+use scirs2_core::ndarray::{Array, Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -20,11 +20,11 @@ use scirs2_linalg;
 // Stub for missing quantum functionality
 #[cfg(feature = "scirs")]
 mod quantum_stub {
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     pub fn pauli_matrices() -> (Array2<f64>, Array2<f64>, Array2<f64>) {
         // Placeholder implementation
-        use ndarray::array;
+        use scirs2_core::ndarray::array;
         let x = array![[0.0, 1.0], [1.0, 0.0]];
         let y = array![[0.0, -1.0], [1.0, 0.0]]; // Simplified
         let z = array![[1.0, 0.0], [0.0, -1.0]];
@@ -241,7 +241,7 @@ impl QuantumAnnealingSampler {
     /// Build the problem Hamiltonian from matrix
     fn build_problem_hamiltonian_from_matrix(
         &self,
-        matrix: &Array<f64, ndarray::Ix2>,
+        matrix: &Array<f64, scirs2_core::ndarray::Ix2>,
     ) -> Array2<f64> {
         let n = matrix.nrows();
         let mut h_problem = Array2::zeros((1 << n, 1 << n));
@@ -339,7 +339,7 @@ impl QuantumAnnealingSampler {
             if noise.dephasing_rate > 0.0 {
                 for amp in state.amplitudes.iter_mut() {
                     let phase_noise =
-                        rng.random_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
+                        rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
                     let phase = Complex64::new(phase_noise.cos(), phase_noise.sin());
                     let new_amp = Complex64::new(
                         amp.re * phase.re - amp.im * phase.im,
@@ -353,12 +353,12 @@ impl QuantumAnnealingSampler {
             if noise.temperature > 0.0 {
                 // Simplified thermal noise model
                 let thermal_prob = (noise.temperature * dt).min(0.1);
-                if rng.random::<f64>() < thermal_prob {
-                    let i = rng.random_range(0..n);
-                    let j = rng.random_range(0..n);
+                if rng.gen::<f64>() < thermal_prob {
+                    let i = rng.gen_range(0..n);
+                    let j = rng.gen_range(0..n);
                     if i != j {
                         // Mix states i and j
-                        let mix_angle: f64 = rng.random_range(0.0..0.1);
+                        let mix_angle: f64 = rng.gen_range(0.0..0.1);
                         let cos_a = mix_angle.cos();
                         let sin_a = mix_angle.sin();
 
@@ -416,7 +416,7 @@ impl QuantumAnnealingSampler {
 
         // Sample according to probability distribution
         let mut rng = StdRng::from_seed([42; 32]); // Create local RNG
-        let r = rng.random::<f64>();
+        let r = rng.gen::<f64>();
         let mut measured_state = 0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
@@ -434,7 +434,7 @@ impl QuantumAnnealingSampler {
 impl Sampler for QuantumAnnealingSampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
         num_reads: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix, var_map) = qubo;
@@ -504,7 +504,7 @@ impl Sampler for QuantumAnnealingSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix_dyn, var_map) = hobo;
@@ -517,7 +517,7 @@ impl Sampler for QuantumAnnealingSampler {
 
         let matrix_2d = matrix_dyn
             .clone()
-            .into_dimensionality::<ndarray::Ix2>()
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
             .map_err(|_| SamplerError::InvalidParameter("Failed to convert matrix to 2D".into()))?;
 
         self.run_qubo(&(matrix_2d, var_map.clone()), shots)
@@ -599,7 +599,7 @@ pub mod advanced {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array;
+    use scirs2_core::ndarray::Array;
     use std::collections::HashMap;
 
     #[test]

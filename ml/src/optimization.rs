@@ -1,5 +1,5 @@
 use crate::error::{MLError, Result};
-use ndarray::{Array1, ArrayView1};
+use scirs2_core::ndarray::{Array1, ArrayView1};
 use std::collections::HashMap;
 use std::fmt;
 

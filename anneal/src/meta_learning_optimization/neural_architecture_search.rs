@@ -124,7 +124,7 @@ impl NeuralArchitectureSearch {
     }
 
     fn generate_random_architecture(&self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         // Determine architecture size based on problem features
@@ -199,7 +199,7 @@ impl NeuralArchitectureSearch {
         }
 
         // Simple tournament selection
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         let mut parents = Vec::new();
 
@@ -214,7 +214,7 @@ impl NeuralArchitectureSearch {
     }
 
     fn crossover(&self, parent1: &ArchitectureCandidate, parent2: &ArchitectureCandidate) -> Result<ArchitectureCandidate, String> {
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         // Simple layer-wise crossover
@@ -247,7 +247,7 @@ impl NeuralArchitectureSearch {
     }
 
     fn mutate(&self, mut candidate: ArchitectureCandidate) -> Result<ArchitectureCandidate, String> {
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         // Mutate with probability

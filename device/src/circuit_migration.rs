@@ -28,7 +28,7 @@ use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, Array2};
+    use scirs2_core::ndarray::{Array1, Array2};
 
     pub fn mean(_data: &Array1<f64>) -> Result<f64, String> {
         Ok(0.0)
@@ -61,7 +61,7 @@ mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 use fallback_scirs2::*;
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 use crate::{

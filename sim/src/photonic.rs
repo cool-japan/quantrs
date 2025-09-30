@@ -6,8 +6,8 @@
 //! for large photon number cutoffs.
 
 use crate::prelude::SimulatorError;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

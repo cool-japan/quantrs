@@ -1,7 +1,7 @@
 //! Metrics and results for quantum anomaly detection
 
 use super::config::TimeSeriesAnomalyType;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Anomaly detection results

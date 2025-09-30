@@ -9,8 +9,8 @@
 //! - Custom Metal compute shaders for quantum-specific operations
 
 use crate::error::{Result, SimulatorError};
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 /// Metal-accelerated linear algebra backend for macOS

@@ -3,13 +3,14 @@
 //! This example demonstrates the scikit-learn compatibility layer, showing how to use
 //! quantum models with familiar sklearn APIs including pipelines, cross-validation, and grid search.
 
-use ndarray::{s, Array1, Array2, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::sklearn_compatibility::{
     metrics, model_selection, Pipeline, QuantumFeatureEncoder, SelectKBest, SklearnFit,
     StandardScaler,
 };
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 #[allow(non_snake_case)]
 fn main() -> Result<()> {

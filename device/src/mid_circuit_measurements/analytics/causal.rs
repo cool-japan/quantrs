@@ -2,7 +2,7 @@
 
 use super::super::results::*;
 use crate::DeviceResult;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Causal analyzer for measurement data

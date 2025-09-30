@@ -19,8 +19,8 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 
 // SciRS2 integration for advanced ML optimization
 #[cfg(feature = "scirs2")]
@@ -33,7 +33,7 @@ use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, Array2};
+    use scirs2_core::ndarray::{Array1, Array2};
 
     pub fn mean(_data: &Array1<f64>) -> Result<f64, String> {
         Ok(0.0)

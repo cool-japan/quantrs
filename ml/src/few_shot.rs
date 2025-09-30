@@ -9,7 +9,9 @@ use crate::error::{MLError, Result};
 use crate::kernels::QuantumKernel;
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -420,9 +422,9 @@ impl FewShotLearner {
             }
 
             // Sample support and query examples
-            let mut rng = fastrand::Rng::new();
+            let mut rng = thread_rng();
             let mut shuffled = class_indices.clone();
-            rng.shuffle(&mut shuffled);
+            shuffled.shuffle(&mut rng);
 
             // Support set
             for i in 0..k_shot {

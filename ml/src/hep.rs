@@ -1,7 +1,8 @@
 use crate::classification::{ClassificationMetrics, Classifier};
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
 use std::fmt;
@@ -393,8 +394,8 @@ impl HEPQuantumClassifier {
         // This is a dummy implementation
         // In a real system, this would use the QNN to make predictions
 
-        let label_idx = if rand::random::<f64>() > 0.5 { 0 } else { 1 };
-        let confidence = 0.7 + 0.3 * rand::random::<f64>();
+        let label_idx = if thread_rng().gen::<f64>() > 0.5 { 0 } else { 1 };
+        let confidence = 0.7 + 0.3 * thread_rng().gen::<f64>();
 
         if label_idx < self.class_labels.len() {
             Ok((self.class_labels[label_idx].clone(), confidence))
@@ -413,7 +414,7 @@ impl HEPQuantumClassifier {
         let mut importance = Array1::zeros(self.feature_dimension);
 
         for i in 0..self.feature_dimension {
-            importance[i] = rand::random::<f64>();
+            importance[i] = thread_rng().gen::<f64>();
         }
 
         // Normalize
@@ -481,8 +482,8 @@ impl HiggsDetector {
     pub fn score_particle(&self, particle: &ParticleFeatures) -> Result<f64> {
         // Dummy implementation
         match particle.particle_type {
-            ParticleType::Higgs => Ok(0.85 + 0.15 * rand::random::<f64>()),
-            _ => Ok(0.2 * rand::random::<f64>()),
+            ParticleType::Higgs => Ok(0.85 + 0.15 * thread_rng().gen::<f64>()),
+            _ => Ok(0.2 * thread_rng().gen::<f64>()),
         }
     }
 }

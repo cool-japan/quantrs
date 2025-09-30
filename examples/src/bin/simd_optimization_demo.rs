@@ -3,7 +3,7 @@
 //! This example demonstrates the performance improvements achieved by using
 //! SIMD-accelerated quantum operations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_core::simd_ops::{
     apply_phase_simd, expectation_z_simd, hadamard_simd, inner_product, normalize_simd,
 };

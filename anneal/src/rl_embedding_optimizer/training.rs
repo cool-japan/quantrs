@@ -1,7 +1,8 @@
 //! RL training logic and experience replay
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::time::Instant;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
@@ -18,7 +19,7 @@ impl TrainingManager {
         experience_buffer: &[EmbeddingExperience],
         batch_size: usize,
     ) -> RLEmbeddingResult<Vec<EmbeddingExperience>> {
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
         let mut batch = Vec::new();
 
         for _ in 0..batch_size {
@@ -137,7 +138,7 @@ impl TrainingManager {
         epsilon: f64,
     ) -> RLEmbeddingResult<EmbeddingAction> {
         // Use epsilon-greedy for DQN
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
 
         if rng.gen::<f64>() < epsilon {
             // Random exploration

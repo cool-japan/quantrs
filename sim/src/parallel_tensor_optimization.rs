@@ -4,8 +4,8 @@
 //! contractions, optimizing for modern multi-core and distributed architectures.
 
 use crate::prelude::SimulatorError;
-use ndarray::{ArrayD, Dimension, IxDyn};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{ArrayD, Dimension, IxDyn};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
@@ -577,7 +577,7 @@ impl Default for NumaTopology {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array;
+    use scirs2_core::ndarray::Array;
 
     #[test]
     fn test_parallel_tensor_engine() {

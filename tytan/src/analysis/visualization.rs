@@ -7,7 +7,7 @@
 //! The module prepares data that can be used with external plotting libraries
 //! or exported for visualization in other tools.
 
-use ndarray::{Array2, Axis};
+use scirs2_core::ndarray::{Array2, Axis};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -622,14 +622,14 @@ fn moving_average(values: &[f64], window: usize) -> Vec<f64> {
 
 /// Simple spring layout for graph visualization
 pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)> {
-    use rand::rng;
-    use rand::Rng;
+    // use rand::rng; // Replaced by scirs2_core::random::prelude::*
+    use scirs2_core::random::prelude::*;
 
-    let mut rng = rng();
+    let mut rng = thread_rng();
 
     // Initialize random positions
     let mut positions: Vec<(f64, f64)> = (0..n_nodes)
-        .map(|_| (rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0)))
+        .map(|_| (rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0)))
         .collect();
 
     // Simple force-directed layout

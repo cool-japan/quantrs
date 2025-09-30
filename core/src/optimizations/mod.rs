@@ -1,7 +1,7 @@
-//! Quantum Computing Optimizations using SciRS2 Beta.1 Features
+//! Quantum Computing Optimizations using SciRS2 Beta.3 Features
 //!
 //! This module contains optimizations that leverage the advanced features
-//! available in scirs2-core beta.1, including:
+//! available in scirs2-core beta.3, including:
 //!
 //! - Advanced caching and memoization
 //! - Memory pool management

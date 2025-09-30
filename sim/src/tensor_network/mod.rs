@@ -12,8 +12,8 @@ use quantrs2_core::{
     register::Register,
 };
 
-use ndarray::{Array, ArrayD, IxDyn};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
+use scirs2_core::Complex64;
 use scirs2_core::ndarray_ext::manipulation;
 use scirs2_core::parallel_ops::*;
 use std::collections::HashMap;

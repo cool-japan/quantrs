@@ -3,7 +3,7 @@
 //! This module provides comprehensive bindings for all gate operations from the core module,
 //! including standard gates, parameterized gates, multi-qubit gates, and custom gate creation.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -59,7 +59,7 @@ impl Gate {
 
         let size = (matrix_vec.len() as f64).sqrt() as usize;
         // Convert to ndarray first, then to PyArray
-        let arr = ndarray::Array2::from_shape_vec((size, size), matrix_vec)
+        let arr = scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix_vec)
             .map_err(|e| PyValueError::new_err(format!("Invalid matrix shape: {}", e)))?;
         Ok(PyArray2::from_array(py, &arr))
     }

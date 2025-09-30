@@ -3,8 +3,8 @@
 //! This module provides Python bindings for SciRS2 numerical operations,
 //! including linear algebra, optimization, and statistical functions.
 
-use ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -351,8 +351,8 @@ impl PySciRS2Stats {
         let (u, s, _) = SciRS2LinearAlgebra::svd(&cov);
 
         // Return principal components and explained variance
-        let components = u.slice(ndarray::s![.., ..k]).to_owned();
-        let variance = s.slice(ndarray::s![..k]).to_owned();
+        let components = u.slice(scirs2_core::ndarray::s![.., ..k]).to_owned();
+        let variance = s.slice(scirs2_core::ndarray::s![..k]).to_owned();
 
         Ok((
             components.into_pyarray(py).into(),

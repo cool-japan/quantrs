@@ -1,7 +1,7 @@
 //! Utility functions for problem decomposition
 
 use super::types::*;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 /// Integration utilities for combining solutions from subproblems
@@ -294,9 +294,9 @@ impl SolutionIntegrator {
                 Ok(true_count > values.len() / 2)
             }
             ConflictResolution::Random => {
-                use rand::Rng;
-                let mut rng = rand::rng();
-                let index = rng.random_range(0..values.len());
+                use scirs2_core::random::prelude::*;
+                let mut rng = thread_rng();
+                let index = rng.gen_range(0..values.len());
                 Ok(values[index])
             }
             ConflictResolution::HighestQuality => {

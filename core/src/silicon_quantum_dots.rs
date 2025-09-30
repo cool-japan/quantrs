@@ -4,8 +4,8 @@
 //! including spin qubits, charge qubits, and exchange interactions.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Types of silicon quantum dots
@@ -204,9 +204,9 @@ impl SiliconQuantumDot {
         let probabilities = self.get_probabilities();
 
         // Sample outcome
-        let mut rng = rand::rng();
-        use rand::Rng;
-        let random_value: f64 = rng.random();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let random_value: f64 = rng.gen();
         let mut cumulative = 0.0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
@@ -472,9 +472,9 @@ impl SiliconQuantumDotSystem {
 
             if dephasing_prob > 0.01 {
                 // Add random phase noise
-                let mut rng = rand::rng();
-                use rand::Rng;
-                let phase_noise = rng.random_range(-dephasing_prob..dephasing_prob);
+                use scirs2_core::random::prelude::*;
+                let mut rng = thread_rng();
+                let phase_noise = rng.gen_range(-dephasing_prob..dephasing_prob);
 
                 let noise_factor = Complex64::new(0.0, phase_noise).exp();
                 dot.state[1] *= noise_factor;

@@ -12,6 +12,7 @@ use super::continuous_variable::{Complex, GaussianState};
 use super::gate_based::{PhotonicCircuitImplementation, PhotonicGateImpl};
 use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Photonic optimization errors
 #[derive(Error, Debug)]
@@ -390,7 +391,7 @@ impl PhotonicOptimizer {
         for gate in &mut optimized.gates {
             if !gate.optical_elements.is_empty() {
                 // Small random perturbation
-                let perturbation = (rand::random::<f64>() - 0.5) * learning_rate * 0.1;
+                let perturbation = (thread_rng().gen::<f64>() - 0.5) * learning_rate * 0.1;
                 // Apply perturbation to gate parameters (simplified)
                 optimized.total_fidelity *= 1.0 + perturbation * 0.01;
             }
@@ -414,7 +415,7 @@ impl PhotonicOptimizer {
             // Random mutation
             if !candidate.gates.is_empty() {
                 let mutation_strength = 0.1;
-                candidate.total_fidelity *= 1.0 + (rand::random::<f64>() - 0.5) * mutation_strength;
+                candidate.total_fidelity *= 1.0 + (thread_rng().gen::<f64>() - 0.5) * mutation_strength;
                 candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
             }
 
@@ -437,7 +438,7 @@ impl PhotonicOptimizer {
 
         // Random perturbation
         let perturbation_strength = temperature * 0.01;
-        candidate.total_fidelity *= 1.0 + (rand::random::<f64>() - 0.5) * perturbation_strength;
+        candidate.total_fidelity *= 1.0 + (thread_rng().gen::<f64>() - 0.5) * perturbation_strength;
         candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
 
         // Accept or reject based on temperature
@@ -448,7 +449,7 @@ impl PhotonicOptimizer {
             Ok(candidate)
         } else {
             let acceptance_prob = (-(current_obj - candidate_obj) / temperature).exp();
-            if rand::random::<f64>() < acceptance_prob {
+            if thread_rng().gen::<f64>() < acceptance_prob {
                 Ok(candidate)
             } else {
                 Ok(circuit.clone())
@@ -469,7 +470,7 @@ impl PhotonicOptimizer {
             let mut particle = circuit.clone();
 
             // Update particle position (simplified)
-            let velocity = 0.1 * (rand::random::<f64>() - 0.5);
+            let velocity = 0.1 * (thread_rng().gen::<f64>() - 0.5);
             particle.total_fidelity += velocity;
             particle.total_fidelity = particle.total_fidelity.max(0.0).min(1.0);
 
@@ -493,8 +494,8 @@ impl PhotonicOptimizer {
 
         for _ in 0..layers {
             // Apply variational parameters (simplified)
-            let gamma = rand::random::<f64>() * std::f64::consts::PI;
-            let beta = rand::random::<f64>() * std::f64::consts::PI;
+            let gamma = thread_rng().gen::<f64>() * std::f64::consts::PI;
+            let beta = thread_rng().gen::<f64>() * std::f64::consts::PI;
 
             // Update fidelity based on variational parameters
             optimized.total_fidelity *= 1.0 + 0.01 * (gamma + beta).cos();

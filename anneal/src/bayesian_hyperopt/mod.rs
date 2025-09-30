@@ -15,9 +15,9 @@
 //! - Parallel and batch optimization
 //! - Uncertainty quantification and confidence intervals
 
-use rand::seq::SliceRandom;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::seq::SliceRandom;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

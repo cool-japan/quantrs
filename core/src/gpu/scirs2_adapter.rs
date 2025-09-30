@@ -7,7 +7,7 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gpu::large_scale_simulation::GpuBackend;
 use crate::gpu::{GpuBackend as QuantumGpuBackend, GpuBuffer, GpuKernel};
 use crate::gpu_stubs::SciRS2GpuConfig;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -436,7 +436,7 @@ impl GpuKernel for SciRS2KernelAdapter {
     fn apply_multi_qubit_gate(
         &self,
         state: &mut dyn GpuBuffer,
-        gate_matrix: &ndarray::Array2<Complex64>,
+        gate_matrix: &scirs2_core::ndarray::Array2<Complex64>,
         qubits: &[crate::qubit::QubitId],
         n_qubits: usize,
     ) -> QuantRS2Result<()> {
@@ -525,8 +525,8 @@ impl GpuKernel for SciRS2KernelAdapter {
         }
 
         // Simulate measurement outcome
-        use rand::Rng;
-        let outcome = rand::rng().random::<f64>() < prob_one;
+        use scirs2_core::random::prelude::*;
+        let outcome = thread_rng().gen::<f64>() < prob_one;
 
         Ok((outcome, if outcome { prob_one } else { 1.0 - prob_one }))
     }
@@ -534,7 +534,7 @@ impl GpuKernel for SciRS2KernelAdapter {
     fn expectation_value(
         &self,
         state: &dyn GpuBuffer,
-        observable: &ndarray::Array2<Complex64>,
+        observable: &scirs2_core::ndarray::Array2<Complex64>,
         qubits: &[crate::qubit::QubitId],
         n_qubits: usize,
     ) -> QuantRS2Result<f64> {

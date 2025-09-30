@@ -1,6 +1,6 @@
 //! Fallback implementations when SciRS2 is not available
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 /// Fallback statistical mean calculation
 pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
@@ -58,22 +58,22 @@ pub fn eig(
     _matrix: &ArrayView2<f64>,
 ) -> Result<
     (
-        Array1<num_complex::Complex64>,
-        Array2<num_complex::Complex64>,
+        Array1<scirs2_core::Complex64>,
+        Array2<scirs2_core::Complex64>,
     ),
     String,
 > {
     let eigenvalues = Array1::from_vec(vec![
-        num_complex::Complex64::new(1.0, 0.0),
-        num_complex::Complex64::new(0.0, 0.0),
+        scirs2_core::Complex64::new(1.0, 0.0),
+        scirs2_core::Complex64::new(0.0, 0.0),
     ]);
     let eigenvectors = Array2::from_shape_vec(
         (2, 2),
         vec![
-            num_complex::Complex64::new(1.0, 0.0),
-            num_complex::Complex64::new(0.0, 0.0),
-            num_complex::Complex64::new(0.0, 0.0),
-            num_complex::Complex64::new(1.0, 0.0),
+            scirs2_core::Complex64::new(1.0, 0.0),
+            scirs2_core::Complex64::new(0.0, 0.0),
+            scirs2_core::Complex64::new(0.0, 0.0),
+            scirs2_core::Complex64::new(1.0, 0.0),
         ],
     )
     .map_err(|e| format!("Array creation error: {}", e))?;

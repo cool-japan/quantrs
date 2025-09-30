@@ -3,10 +3,11 @@
 //! This example demonstrates quantum adversarial attacks and defenses,
 //! including FGSM, PGD, parameter shift attacks, and various defense strategies.
 
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Adversarial Training Demo ===\n");

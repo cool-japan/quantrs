@@ -10,10 +10,11 @@
 //! - Quantum attention mechanisms for 3D spatial reasoning
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1059,7 +1060,7 @@ impl QuantumNeRF {
 
         // Generate uniform sphere sampling
         let mut light_directions = Array2::zeros((num_directions, 3));
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for i in 0..num_directions {
             let theta = rng.gen::<f64>() * 2.0 * PI;
@@ -1290,7 +1291,7 @@ impl QuantumNeRF {
                     let t = ray.near + (ray.far - ray.near) * i as f64 / (num_samples - 1) as f64;
 
                     // Add quantum jitter
-                    let mut rng = rand::thread_rng();
+                    let mut rng = thread_rng();
                     let jitter = (rng.gen::<f64>() - 0.5) * quantum_jitter;
                     let t_jittered = t + jitter;
 
@@ -1332,7 +1333,7 @@ impl QuantumNeRF {
                 entanglement_radius,
             } => {
                 // Generate correlated sampling points using quantum entanglement
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
 
                 for i in 0..*base_samples {
                     let base_t =
@@ -1705,7 +1706,7 @@ impl QuantumNeRF {
         let output_dim = current_features.len();
         if output_dim >= 4 {
             Ok(MLPOutput {
-                color: Array1::from_vec(current_features.slice(ndarray::s![0..3]).to_vec()),
+                color: Array1::from_vec(current_features.slice(scirs2_core::ndarray::s![0..3]).to_vec()),
                 density: current_features[3],
                 quantum_state,
             })
@@ -2090,7 +2091,7 @@ impl QuantumNeRF {
         image: &TrainingImage,
         num_rays: usize,
     ) -> Result<Vec<RaySample>> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let mut ray_samples = Vec::new();
 
         let height = image.image.shape()[0];

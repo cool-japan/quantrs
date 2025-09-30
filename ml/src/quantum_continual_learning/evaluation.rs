@@ -1,7 +1,8 @@
 //! Evaluation framework for quantum continual learning
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::config::{ContinualTask, EvaluationConfig};
@@ -40,11 +41,11 @@ impl ContinualLearningEvaluator {
         model_parameters: &HashMap<String, Array1<f64>>,
     ) -> Result<TaskPerformance> {
         // Placeholder evaluation
-        let accuracy = 0.8 + rand::random::<f64>() * 0.2;
-        let loss = rand::random::<f64>() * 0.5;
-        let forgetting_measure = rand::random::<f64>() * 0.1;
-        let learning_time = rand::random::<f64>() * 10.0;
-        let memory_usage = rand::random::<f64>() * 100.0;
+        let accuracy = 0.8 + thread_rng().gen::<f64>() * 0.2;
+        let loss = thread_rng().gen::<f64>() * 0.5;
+        let forgetting_measure = thread_rng().gen::<f64>() * 0.1;
+        let learning_time = thread_rng().gen::<f64>() * 10.0;
+        let memory_usage = thread_rng().gen::<f64>() * 100.0;
 
         self.baseline_performances.insert(task.task_id, accuracy);
 
@@ -68,11 +69,11 @@ impl ContinualLearningEvaluator {
 
     pub fn compute_backward_transfer(&self, performances: &[TaskPerformance]) -> f64 {
         // Placeholder backward transfer calculation
-        rand::random::<f64>() * 0.1 - 0.05 // -5% to +5%
+        thread_rng().gen::<f64>() * 0.1 - 0.05 // -5% to +5%
     }
 
     pub fn compute_forward_transfer(&self, performances: &[TaskPerformance]) -> f64 {
         // Placeholder forward transfer calculation
-        rand::random::<f64>() * 0.1 // 0% to +10%
+        thread_rng().gen::<f64>() * 0.1 // 0% to +10%
     }
 }

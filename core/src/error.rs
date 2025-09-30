@@ -130,8 +130,8 @@ pub enum QuantRS2Error {
 /// Result type for quantum operations
 pub type QuantRS2Result<T> = Result<T, QuantRS2Error>;
 
-impl From<ndarray::ShapeError> for QuantRS2Error {
-    fn from(err: ndarray::ShapeError) -> Self {
+impl From<scirs2_core::ndarray::ShapeError> for QuantRS2Error {
+    fn from(err: scirs2_core::ndarray::ShapeError) -> Self {
         QuantRS2Error::InvalidInput(format!("Shape error: {}", err))
     }
 }
@@ -149,9 +149,15 @@ impl From<std::io::Error> for QuantRS2Error {
     }
 }
 
-impl From<Box<bincode::ErrorKind>> for QuantRS2Error {
-    fn from(err: Box<bincode::ErrorKind>) -> Self {
-        QuantRS2Error::RuntimeError(format!("Serialization error: {:?}", err))
+impl From<bincode::error::EncodeError> for QuantRS2Error {
+    fn from(err: bincode::error::EncodeError) -> Self {
+        QuantRS2Error::RuntimeError(format!("Serialization encode error: {:?}", err))
+    }
+}
+
+impl From<bincode::error::DecodeError> for QuantRS2Error {
+    fn from(err: bincode::error::DecodeError) -> Self {
+        QuantRS2Error::RuntimeError(format!("Serialization decode error: {:?}", err))
     }
 }
 

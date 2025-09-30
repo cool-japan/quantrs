@@ -8,7 +8,7 @@
 
 use crate::measurement::PyMeasurementResult;
 use crate::PyCircuit;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

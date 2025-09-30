@@ -1,6 +1,6 @@
 //! Tests for the compile module.
 
-use ndarray::Array;
+use scirs2_core::ndarray::Array;
 use quantrs2_tytan::*;
 
 #[cfg(feature = "dwave")]
@@ -156,7 +156,7 @@ fn test_compile_cubic_expression() {
     sorted_indices.sort();
 
     // Check that the tensor has a 1.0 at the expected position
-    assert_eq!(tensor[ndarray::IxDyn(&sorted_indices)], 1.0);
+    assert_eq!(tensor[scirs2_core::ndarray::IxDyn(&sorted_indices)], 1.0);
 }
 
 // TODO: This test needs to be rewritten to use expressions instead of raw matrix

@@ -6,8 +6,8 @@
 //! analysis with classical algorithms.
 
 use crate::prelude::SimulatorError;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::Result;
+use scirs2_core::random::prelude::*;
 
 /// Types of quantum advantage demonstrations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -823,21 +824,21 @@ impl QuantumAdvantageDemonstrator {
             }
             ProblemDomain::GraphProblems => {
                 let adjacency_matrix = Array2::from_shape_fn((size, size), |(i, j)| {
-                    if i != j && rand::random::<f64>() < 0.3 {
-                        rand::random::<f64>()
+                    if i != j && thread_rng().gen::<f64>() < 0.3 {
+                        thread_rng().gen::<f64>()
                     } else {
                         0.0
                     }
                 });
                 ProblemData::Graph {
                     adjacency_matrix,
-                    vertex_weights: (0..size).map(|_| rand::random::<f64>()).collect(),
+                    vertex_weights: (0..size).map(|_| thread_rng().gen::<f64>()).collect(),
                     edge_weights: HashMap::new(),
                 }
             }
             ProblemDomain::Optimization => {
                 ProblemData::Optimization {
-                    objective_function: (0..size).map(|_| rand::random::<f64>()).collect(),
+                    objective_function: (0..size).map(|_| thread_rng().gen::<f64>()).collect(),
                     constraints: vec![vec![1.0; size]], // Sum constraint
                     bounds: vec![(0.0, 1.0); size],
                 }
@@ -845,9 +846,9 @@ impl QuantumAdvantageDemonstrator {
             ProblemDomain::QuantumSimulation => {
                 let hamiltonian = Array2::from_shape_fn((1 << size, 1 << size), |(i, j)| {
                     if i == j {
-                        Complex64::new(rand::random::<f64>(), 0.0)
+                        Complex64::new(thread_rng().gen::<f64>(), 0.0)
                     } else if (i ^ j).count_ones() == 1 {
-                        Complex64::new(rand::random::<f64>() * 0.1, 0.0)
+                        Complex64::new(thread_rng().gen::<f64>() * 0.1, 0.0)
                     } else {
                         Complex64::new(0.0, 0.0)
                     }
@@ -890,9 +891,9 @@ impl QuantumAdvantageDemonstrator {
             // Single-qubit gates
             for qubit in 0..num_qubits {
                 let gate_type = match layer % 3 {
-                    0 => InterfaceGateType::RX(rand::random::<f64>() * 2.0 * std::f64::consts::PI),
-                    1 => InterfaceGateType::RY(rand::random::<f64>() * 2.0 * std::f64::consts::PI),
-                    _ => InterfaceGateType::RZ(rand::random::<f64>() * 2.0 * std::f64::consts::PI),
+                    0 => InterfaceGateType::RX(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
+                    1 => InterfaceGateType::RY(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
+                    _ => InterfaceGateType::RZ(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
                 };
                 circuit.add_gate(InterfaceGate::new(gate_type, vec![qubit]));
             }
@@ -900,7 +901,7 @@ impl QuantumAdvantageDemonstrator {
             // Two-qubit gates
             if layer % 2 == 1 {
                 for qubit in 0..num_qubits - 1 {
-                    if rand::random::<f64>() < 0.5 {
+                    if thread_rng().gen::<f64>() < 0.5 {
                         circuit.add_gate(InterfaceGate::new(
                             InterfaceGateType::CNOT,
                             vec![qubit, qubit + 1],

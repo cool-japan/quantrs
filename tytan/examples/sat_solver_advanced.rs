@@ -6,7 +6,7 @@
 //! - Various SAT problem instances (3-SAT, k-SAT)
 //! - Performance comparison with classical SAT solvers
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -19,8 +19,8 @@ use quantrs2_tytan::{
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use scirs2_core::random::rngs::StdRng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -265,7 +265,7 @@ fn run_sat_experiment(
 
     // Convert QUBO to matrix format for sampler
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let mut matrix = scirs2_core::ndarray::Array2::zeros((n_vars, n_vars));
     let mut var_map = HashMap::new();
 
     // Create variable mapping and fill matrix

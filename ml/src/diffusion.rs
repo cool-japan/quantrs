@@ -5,10 +5,11 @@
 //! to quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{s, Array1, Array2, Array3, ArrayView1};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -195,8 +196,8 @@ impl QuantumDiffusionModel {
         // Sample noise
         let noise = Array1::from_shape_fn(self.data_dim, |_| {
             // Box-Muller transform for Gaussian noise
-            let u1 = rand::random::<f64>();
-            let u2 = rand::random::<f64>();
+            let u1 = thread_rng().gen::<f64>();
+            let u2 = thread_rng().gen::<f64>();
             (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos()
         });
 
@@ -227,7 +228,7 @@ impl QuantumDiffusionModel {
     /// Extract noise prediction from quantum state (placeholder)
     fn extract_noise_prediction_placeholder(&self) -> Result<Array1<f64>> {
         // Placeholder - would measure expectation values
-        let noise = Array1::from_shape_fn(self.data_dim, |_| 2.0 * rand::random::<f64>() - 1.0);
+        let noise = Array1::from_shape_fn(self.data_dim, |_| 2.0 * thread_rng().gen::<f64>() - 1.0);
         Ok(noise)
     }
 
@@ -253,8 +254,8 @@ impl QuantumDiffusionModel {
         let xt_prev = if t > 1 {
             let noise_scale = beta_t.sqrt();
             let noise = Array1::from_shape_fn(self.data_dim, |_| {
-                let u1 = rand::random::<f64>();
-                let u2 = rand::random::<f64>();
+                let u1 = thread_rng().gen::<f64>();
+                let u2 = thread_rng().gen::<f64>();
                 (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos()
             });
             mean + noise_scale * noise
@@ -272,8 +273,8 @@ impl QuantumDiffusionModel {
         for sample_idx in 0..num_samples {
             // Start from pure noise
             let mut xt = Array1::from_shape_fn(self.data_dim, |_| {
-                let u1 = rand::random::<f64>();
-                let u2 = rand::random::<f64>();
+                let u1 = thread_rng().gen::<f64>();
+                let u2 = thread_rng().gen::<f64>();
                 (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos()
             });
 
@@ -441,7 +442,7 @@ impl QuantumScoreDiffusion {
         // Placeholder - would use quantum circuit to estimate score
 
         // Placeholder - would extract gradient estimate
-        let score = Array1::from_shape_fn(self.data_dim, |_| 2.0 * rand::random::<f64>() - 1.0);
+        let score = Array1::from_shape_fn(self.data_dim, |_| 2.0 * thread_rng().gen::<f64>() - 1.0);
 
         Ok(score)
     }
@@ -462,8 +463,8 @@ impl QuantumScoreDiffusion {
 
             // Langevin update
             let noise = Array1::from_shape_fn(self.data_dim, |_| {
-                let u1 = rand::random::<f64>();
-                let u2 = rand::random::<f64>();
+                let u1 = thread_rng().gen::<f64>();
+                let u2 = thread_rng().gen::<f64>();
                 (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos()
             });
 

@@ -6,15 +6,16 @@
 //! duality. This framework enables exploration of quantum spacetime dynamics and
 //! gravitational quantum effects at the Planck scale.
 
-use ndarray::{s, Array1, Array2, Array3, Array4};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
+use scirs2_core::random::prelude::*;
 
 /// Quantum gravity simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -705,12 +706,12 @@ impl QuantumGravitySimulator {
 
             // Create nodes
             for i in 0..lqg_config.num_nodes {
-                let valence = (rand::random::<f64>() * 6.0) as usize + 3; // 3-8 valence
+                let valence = (thread_rng().gen::<f64>() * 6.0) as usize + 3; // 3-8 valence
                 let position = (0..self.config.spatial_dimensions)
-                    .map(|_| rand::random::<f64>() * 10.0)
+                    .map(|_| thread_rng().gen::<f64>() * 10.0)
                     .collect();
                 let quantum_numbers = (0..valence)
-                    .map(|_| rand::random::<f64>() * lqg_config.max_spin)
+                    .map(|_| thread_rng().gen::<f64>() * lqg_config.max_spin)
                     .collect();
 
                 nodes.push(SpinNetworkNode {
@@ -726,7 +727,7 @@ impl QuantumGravitySimulator {
                 let source = thread_rng().gen_range(0..lqg_config.num_nodes);
                 let target = thread_rng().gen_range(0..lqg_config.num_nodes);
                 if source != target {
-                    let spin = rand::random::<f64>() * lqg_config.max_spin;
+                    let spin = thread_rng().gen::<f64>() * lqg_config.max_spin;
                     let length = (spin * (spin + 1.0)).sqrt() * self.config.planck_length;
 
                     edges.push(SpinNetworkEdge {
@@ -745,7 +746,7 @@ impl QuantumGravitySimulator {
                 let output_spin = input_spins.iter().sum::<f64>() / input_spins.len() as f64;
                 let dim = input_spins.len();
                 let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(_i, _j)| {
-                    Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5)
+                    Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5)
                 });
 
                 intertwiners.insert(
@@ -786,8 +787,8 @@ impl QuantumGravitySimulator {
 
     /// Generate random SU(2) element
     fn generate_su2_element(&self) -> Result<Array2<Complex64>> {
-        let a = Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5);
-        let b = Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5);
+        let a = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
+        let b = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
 
         // Normalize to ensure det = 1
         let norm = (a.norm_sqr() + b.norm_sqr()).sqrt();
@@ -837,7 +838,7 @@ impl QuantumGravitySimulator {
                 for _i in 0..vertices_per_slice {
                     let id = vertices.len();
                     let spatial_coords: Vec<f64> = (0..self.config.spatial_dimensions)
-                        .map(|_| rand::random::<f64>() * 10.0)
+                        .map(|_| thread_rng().gen::<f64>() * 10.0)
                         .collect();
                     let mut coordinates = vec![time]; // Time coordinate first
                     coordinates.extend(spatial_coords);
@@ -851,7 +852,7 @@ impl QuantumGravitySimulator {
                 }
 
                 let spatial_volume = vertices_per_slice as f64 * self.config.planck_length.powi(3);
-                let curvature = rand::random::<f64>() * 0.1 - 0.05; // Small curvature
+                let curvature = thread_rng().gen::<f64>() * 0.1 - 0.05; // Small curvature
 
                 time_slices.push(TimeSlice {
                     time,
@@ -868,13 +869,13 @@ impl QuantumGravitySimulator {
                     .map(|_| thread_rng().gen_range(0..vertices.len()))
                     .collect();
 
-                let simplex_type = if rand::random::<f64>() > 0.5 {
+                let simplex_type = if thread_rng().gen::<f64>() > 0.5 {
                     SimplexType::Spacelike
                 } else {
                     SimplexType::Timelike
                 };
 
-                let volume = rand::random::<f64>() * self.config.planck_length.powi(4);
+                let volume = thread_rng().gen::<f64>() * self.config.planck_length.powi(4);
                 let action =
                     self.calculate_simplex_action(&vertices, &simplex_vertices, simplex_type)?;
 

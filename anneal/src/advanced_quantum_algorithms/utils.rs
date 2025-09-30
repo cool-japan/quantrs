@@ -1,6 +1,6 @@
 //! Utility functions and helper types for advanced quantum algorithms
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Helper function for complex phase calculation

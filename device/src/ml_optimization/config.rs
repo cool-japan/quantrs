@@ -1,6 +1,6 @@
 //! ML Optimization Configuration Types
 
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

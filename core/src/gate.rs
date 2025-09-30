@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::any::Any;
 use std::f64::consts::PI;
 use std::fmt::Debug;

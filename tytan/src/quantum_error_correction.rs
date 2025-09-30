@@ -6,9 +6,9 @@
 
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2, Array3};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Quantum error correction system for optimization
@@ -1132,9 +1132,9 @@ impl QuantumErrorCorrection {
         let output_size = self.num_physical_qubits;
 
         // Random weights for demonstration
-        let mut rng = rng();
-        let w1 = Array2::from_shape_fn((hidden_size, input_size), |_| rng.random_range(-1.0..1.0));
-        let w2 = Array2::from_shape_fn((output_size, hidden_size), |_| rng.random_range(-1.0..1.0));
+        let mut rng = thread_rng();
+        let w1 = Array2::from_shape_fn((hidden_size, input_size), |_| rng.gen_range(-1.0..1.0));
+        let w2 = Array2::from_shape_fn((output_size, hidden_size), |_| rng.gen_range(-1.0..1.0));
 
         // Convert syndrome to float
         let syndrome_float = syndrome.mapv(|x| x as f64);

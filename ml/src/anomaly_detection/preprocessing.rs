@@ -1,8 +1,9 @@
 //! Data preprocessing for quantum anomaly detection
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Axis};
-use rand::Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Axis};
+use scirs2_core::random::Rng;
 
 use super::config::{
     DimensionalityReduction, FeatureSelection, MissingValueStrategy, NoiseFiltering,
@@ -311,7 +312,7 @@ impl DataPreprocessor {
         let n_features = data.ncols();
         Array1::from_vec(
             (0..n_features)
-                .map(|_| rand::thread_rng().gen::<f64>())
+                .map(|_| thread_rng().gen::<f64>())
                 .collect(),
         )
     }
@@ -321,7 +322,7 @@ impl DataPreprocessor {
         let n_features = data.ncols();
         Array1::from_vec(
             (0..n_features)
-                .map(|_| rand::thread_rng().gen::<f64>())
+                .map(|_| thread_rng().gen::<f64>())
                 .collect(),
         )
     }
@@ -331,7 +332,7 @@ impl DataPreprocessor {
         let n_features = data.ncols();
         Array1::from_vec(
             (0..n_features)
-                .map(|_| rand::thread_rng().gen::<f64>())
+                .map(|_| thread_rng().gen::<f64>())
                 .collect(),
         )
     }

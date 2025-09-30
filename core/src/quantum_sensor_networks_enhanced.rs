@@ -10,7 +10,7 @@ use crate::realtime_monitoring::{RealtimeMonitor, MetricMeasurement};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, BTreeMap, HashSet};
 use std::sync::{Arc, Mutex, RwLock};

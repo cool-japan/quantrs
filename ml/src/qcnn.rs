@@ -4,7 +4,7 @@
 //! quantum data processing and feature extraction.
 
 use crate::error::MLError;
-use num_complex::Complex64 as Complex;
+use scirs2_core::Complex64 as Complex;
 use quantrs2_circuit::prelude::*;
 use std::f64::consts::PI;
 

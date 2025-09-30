@@ -532,8 +532,8 @@ impl QuboModel {
     }
 
     /// Convert to dense QUBO matrix for sampler compatibility
-    pub fn to_dense_matrix(&self) -> ndarray::Array2<f64> {
-        let mut matrix = ndarray::Array2::zeros((self.num_variables, self.num_variables));
+    pub fn to_dense_matrix(&self) -> scirs2_core::ndarray::Array2<f64> {
+        let mut matrix = scirs2_core::ndarray::Array2::zeros((self.num_variables, self.num_variables));
 
         // Set linear terms on diagonal
         for (var, value) in self.linear_terms.iter() {

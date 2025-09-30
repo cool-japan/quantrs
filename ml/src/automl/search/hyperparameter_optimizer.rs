@@ -5,7 +5,7 @@
 use crate::automl::config::{HyperparameterSearchSpace, QuantumHyperparameterSpace};
 use crate::automl::pipeline::QuantumMLPipeline;
 use crate::error::Result;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Quantum hyperparameter optimizer
@@ -267,10 +267,10 @@ impl QuantumHyperparameterOptimizer {
         // Simple holdout evaluation
         let split_point = (X.nrows() as f64 * 0.8) as usize;
 
-        let X_train = X.slice(ndarray::s![0..split_point, ..]).to_owned();
-        let y_train = y.slice(ndarray::s![0..split_point]).to_owned();
-        let X_val = X.slice(ndarray::s![split_point.., ..]).to_owned();
-        let y_val = y.slice(ndarray::s![split_point..]).to_owned();
+        let X_train = X.slice(scirs2_core::ndarray::s![0..split_point, ..]).to_owned();
+        let y_train = y.slice(scirs2_core::ndarray::s![0..split_point]).to_owned();
+        let X_val = X.slice(scirs2_core::ndarray::s![split_point.., ..]).to_owned();
+        let y_val = y.slice(scirs2_core::ndarray::s![split_point..]).to_owned();
 
         let mut pipeline_copy = pipeline.clone();
         pipeline_copy.fit(&X_train, &y_train)?;

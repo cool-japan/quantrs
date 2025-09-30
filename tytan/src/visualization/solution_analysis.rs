@@ -4,7 +4,7 @@
 //! including diversity metrics, clustering analysis, and quality distribution.
 
 use crate::sampler::SampleResult;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -473,11 +473,11 @@ impl SolutionDistribution {
         #[cfg(not(feature = "scirs"))]
         {
             // Simple random assignment as fallback
-            use rand::rngs::StdRng;
-            use rand::{Rng, SeedableRng};
+            
+            use scirs2_core::random::prelude::*;
             let mut rng = StdRng::seed_from_u64(42);
 
-            Ok((0..data.nrows()).map(|_| rng.random_range(0..k)).collect())
+            Ok((0..data.nrows()).map(|_| rng.gen_range(0..k)).collect())
         }
     }
 

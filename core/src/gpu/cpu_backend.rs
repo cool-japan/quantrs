@@ -10,8 +10,8 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::sync::{Arc, Mutex};
 
 /// CPU-based buffer implementation
@@ -290,7 +290,8 @@ impl GpuKernel for CpuKernel {
         }
 
         // Simulate measurement
-        let outcome = rand::random::<f64>() < prob_one;
+        use scirs2_core::random::prelude::*;
+        let outcome = thread_rng().gen::<f64>() < prob_one;
 
         Ok((outcome, if outcome { prob_one } else { 1.0 - prob_one }))
     }

@@ -6,7 +6,7 @@
 
 #![allow(clippy::needless_range_loop)]
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::fmt::Debug;
 
 use quantrs2_core::error::QuantRS2Result;

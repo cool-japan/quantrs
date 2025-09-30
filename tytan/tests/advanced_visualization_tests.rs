@@ -1,6 +1,6 @@
 //! Comprehensive tests for advanced visualization and analysis.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::advanced_visualization::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;

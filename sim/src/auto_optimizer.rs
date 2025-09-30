@@ -23,7 +23,7 @@ use quantrs2_core::{
 
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::SciRS2GpuStateVectorSimulator;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;

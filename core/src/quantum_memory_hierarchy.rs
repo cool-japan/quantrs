@@ -7,8 +7,8 @@
 
 use crate::error::QuantRS2Error;
 
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::hash::{Hash, Hasher};

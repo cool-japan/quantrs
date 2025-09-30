@@ -7,8 +7,8 @@ use crate::{
     gpu::GpuBackendFactory,
     qubit::QubitId,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 use std::sync::Arc;

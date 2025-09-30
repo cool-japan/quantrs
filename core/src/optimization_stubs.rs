@@ -2,7 +2,7 @@
 //! TODO: Replace with scirs2_optimize when regex dependency issue is fixed
 
 use crate::error::QuantRS2Result;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 
 /// Optimization method enum
 #[derive(Debug, Clone, Copy)]
@@ -61,7 +61,7 @@ pub fn minimize<F>(
     options: Option<Options>,
 ) -> QuantRS2Result<OptimizeResult<f64>>
 where
-    F: Fn(&ndarray::ArrayView1<f64>) -> f64,
+    F: Fn(&scirs2_core::ndarray::ArrayView1<f64>) -> f64,
 {
     // Simple stub implementation - do a basic gradient descent step
     let _opts = options.unwrap_or_default();
@@ -117,7 +117,7 @@ pub fn differential_evolution<F>(
     random_state: Option<u64>,
 ) -> QuantRS2Result<OptimizeResult<f64>>
 where
-    F: Fn(&ndarray::ArrayView1<f64>) -> f64,
+    F: Fn(&scirs2_core::ndarray::ArrayView1<f64>) -> f64,
 {
     // Simple stub implementation
     let _opts = options.unwrap_or_default();

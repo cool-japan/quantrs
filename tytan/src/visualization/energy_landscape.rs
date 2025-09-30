@@ -4,7 +4,7 @@
 //! of optimization problems including 2D/3D projections and heatmaps.
 
 use crate::sampler::SampleResult;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "scirs")]
@@ -215,7 +215,7 @@ impl EnergyLandscape {
             let mut result = Array2::zeros((n_samples, n_components));
 
             // Center the data
-            let means = data.mean_axis(ndarray::Axis(0)).unwrap();
+            let means = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
             for i in 0..n_samples {
                 for j in 0..n_features {
                     result[[i, j]] = data[[i, j]] - means[j];
@@ -232,8 +232,8 @@ impl EnergyLandscape {
         data: &Array2<f64>,
         n_components: usize,
     ) -> Result<Array2<f64>, Box<dyn std::error::Error>> {
-        use rand::rngs::StdRng;
-        use rand::{Rng, SeedableRng};
+        
+        use scirs2_core::random::prelude::*;
 
         let n_features = data.ncols();
         let mut rng = StdRng::seed_from_u64(42);
@@ -242,7 +242,7 @@ impl EnergyLandscape {
         let mut proj_matrix = Array2::<f64>::zeros((n_features, n_components));
         for i in 0..n_features {
             for j in 0..n_components {
-                proj_matrix[[i, j]] = rng.random_range(-1.0..1.0);
+                proj_matrix[[i, j]] = rng.gen_range(-1.0..1.0);
             }
         }
 

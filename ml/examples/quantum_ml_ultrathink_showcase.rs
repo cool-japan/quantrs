@@ -4,7 +4,7 @@
 //! algorithms available in QuantRS2-ML, including cutting-edge techniques that push the
 //! boundaries of quantum advantage in machine learning.
 
-use ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::prelude::{DataEncodingType, FeatureMapType};
 use quantrs2_ml::quantum_graph_attention::benchmark_qgat_vs_classical;
@@ -20,6 +20,7 @@ use quantrs2_ml::quantum_reservoir_computing::{
     TemporalConfig,
 };
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("🚀 === Quantum ML UltraThink Showcase === 🚀\n");

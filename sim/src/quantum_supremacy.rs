@@ -4,10 +4,11 @@
 //! quantum supremacy claims, including cross-entropy benchmarking, Porter-Thomas
 //! distribution analysis, and linear cross-entropy benchmarking (Linear XEB).
 
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -151,7 +152,7 @@ impl QuantumSupremacyVerifier {
     pub fn new(num_qubits: usize, params: VerificationParams) -> Result<Self> {
         Ok(Self {
             num_qubits,
-            rng: ChaCha8Rng::from_rng(&mut rand::thread_rng()),
+            rng: ChaCha8Rng::from_rng(&mut thread_rng()),
             backend: None,
             params,
         })

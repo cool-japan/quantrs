@@ -11,8 +11,8 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Enhanced equivalence checker with simulator support

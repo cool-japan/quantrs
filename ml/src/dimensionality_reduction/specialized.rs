@@ -1,7 +1,7 @@
 //! Specialized dimensionality reduction methods
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 /// Time series dimensionality reduction
 pub struct QuantumTimeSeriesDR {

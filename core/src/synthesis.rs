@@ -12,8 +12,8 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::{single::*, GateOp};
 use crate::matrix_ops::{matrices_approx_equal, DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Result of single-qubit decomposition

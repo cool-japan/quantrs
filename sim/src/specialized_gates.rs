@@ -5,7 +5,7 @@
 //! These implementations avoid general matrix multiplication and directly
 //! manipulate state vector amplitudes.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
@@ -1304,7 +1304,7 @@ use std::any::Any;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     #[test]
     fn test_hadamard_specialized() {

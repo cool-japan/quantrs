@@ -6,8 +6,8 @@
 
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2, Array4};
-use rand::{prelude::*, rng};
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -875,7 +875,7 @@ impl QuantumStateTomography {
         num_shadows: usize,
     ) -> Result<Vec<MeasurementBasis>, TomographyError> {
         let mut measurements = Vec::new();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for shadow_idx in 0..num_shadows {
             let mut operators = Vec::new();
@@ -883,7 +883,7 @@ impl QuantumStateTomography {
 
             for _ in 0..self.num_qubits {
                 // Random Pauli measurement
-                let pauli_choice: usize = rng.random_range(0..3);
+                let pauli_choice: usize = rng.gen_range(0..3);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::X,
                     1 => PauliOperator::Y,
@@ -891,7 +891,7 @@ impl QuantumStateTomography {
                 });
 
                 // Random angle for measurement
-                angles.push(rng.random_range(0.0..2.0 * PI));
+                angles.push(rng.gen_range(0.0..2.0 * PI));
             }
 
             measurements.push(MeasurementBasis {
@@ -912,13 +912,13 @@ impl QuantumStateTomography {
         // Use random Pauli measurements optimized for sparse reconstruction
         let num_measurements = self.num_qubits * self.num_qubits * 2; // Reduced measurement count
         let mut measurements = Vec::new();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for measurement_idx in 0..num_measurements {
             let mut operators = Vec::new();
 
             for _ in 0..self.num_qubits {
-                let pauli_choice: usize = rng.random_range(0..4);
+                let pauli_choice: usize = rng.gen_range(0..4);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::I,
                     1 => PauliOperator::X,
@@ -965,7 +965,7 @@ impl QuantumStateTomography {
         &mut self,
         measurement_settings: &[MeasurementBasis],
     ) -> Result<(), TomographyError> {
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for setting in measurement_settings {
             let mut outcomes = Vec::new();
@@ -976,7 +976,7 @@ impl QuantumStateTomography {
                 // Simulate measurement outcomes
                 for _qubit in 0..self.num_qubits {
                     // Random outcome for simulation
-                    outcome.push(if rng.random::<f64>() < 0.5 { 0 } else { 1 });
+                    outcome.push(if rng.gen::<f64>() < 0.5 { 0 } else { 1 });
                 }
 
                 outcomes.push(outcome);

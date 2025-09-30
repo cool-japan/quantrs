@@ -126,8 +126,8 @@ mod test_helpers {
                     normality_tests: HashMap::new(),
                 },
                 correlation_analysis: CorrelationAnalysis {
-                    pearson_correlations: ndarray::Array2::eye(3),
-                    spearman_correlations: ndarray::Array2::eye(3),
+                    pearson_correlations: scirs2_core::ndarray::Array2::eye(3),
+                    spearman_correlations: scirs2_core::ndarray::Array2::eye(3),
                     significant_correlations: Vec::new(),
                 },
                 distribution_analysis: DistributionAnalysis {

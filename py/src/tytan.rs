@@ -191,7 +191,7 @@ impl PySolutionAnalyzer {
             // Solution matrix
             let (rows, cols) = dist_data.solution_matrix.dim();
             let flat_data: Vec<f64> = dist_data.solution_matrix.into_raw_vec();
-            let array = numpy::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
+            let array = scirs2_core::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
                 .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
             let py_array = array.into_pyarray(py);
             dict.set_item("solution_matrix", py_array)?;
@@ -200,7 +200,7 @@ impl PySolutionAnalyzer {
             if let Some(components) = dist_data.pca_components {
                 let (rows, cols) = components.dim();
                 let flat_data: Vec<f64> = components.into_raw_vec();
-                let array = numpy::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
+                let array = scirs2_core::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
                     .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
                 let py_array = array.into_pyarray(py);
                 dict.set_item("pca_components", py_array)?;
@@ -282,7 +282,7 @@ impl PyProblemVisualizer {
                 .flat_map(|(x, y)| vec![x, y])
                 .collect();
 
-            let array = numpy::ndarray::Array2::from_shape_vec((n_nodes, 2), flat_coords)
+            let array = scirs2_core::ndarray::Array2::from_shape_vec((n_nodes, 2), flat_coords)
                 .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
 
             Ok(array.into_pyarray(py).into())

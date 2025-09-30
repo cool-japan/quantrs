@@ -388,8 +388,8 @@ impl QMLModel {
         match format {
             ModelExportFormat::JSON => serde_json::to_vec(self)
                 .map_err(|e| DeviceError::InvalidInput(format!("JSON export error: {}", e))),
-            ModelExportFormat::Binary => bincode::serialize(self)
-                .map_err(|e| DeviceError::InvalidInput(format!("Binary export error: {}", e))),
+            ModelExportFormat::Binary => bincode::serde::encode_to_vec(self, bincode::config::standard())
+                .map_err(|e| DeviceError::InvalidInput(format!("Binary export error: {:?}", e))),
             ModelExportFormat::ONNX => {
                 // Placeholder for ONNX export
                 Err(DeviceError::InvalidInput(
@@ -403,8 +403,9 @@ impl QMLModel {
         match format {
             ModelExportFormat::JSON => serde_json::from_slice(&data)
                 .map_err(|e| DeviceError::InvalidInput(format!("JSON import error: {}", e))),
-            ModelExportFormat::Binary => bincode::deserialize(&data)
-                .map_err(|e| DeviceError::InvalidInput(format!("Binary import error: {}", e))),
+            ModelExportFormat::Binary => bincode::serde::decode_from_slice(&data, bincode::config::standard())
+                .map(|(v, _consumed)| v)
+                .map_err(|e| DeviceError::InvalidInput(format!("Binary import error: {:?}", e))),
             ModelExportFormat::ONNX => Err(DeviceError::InvalidInput(
                 "ONNX import not yet implemented".to_string(),
             )),

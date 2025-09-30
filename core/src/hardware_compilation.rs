@@ -12,7 +12,7 @@ use crate::{
     qubit::QubitId,
     synthesis::decompose_two_qubit_kak,
 };
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
@@ -1554,7 +1554,7 @@ fn create_trapped_ion_gate_set() -> NativeGateSet {
 mod tests {
     use super::*;
     use crate::qubit::QubitId;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::collections::{HashMap, HashSet};
 
     fn create_test_topology() -> HardwareTopology {

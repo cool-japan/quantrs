@@ -7,7 +7,7 @@ use crate::error::QuantRS2Error;
 use crate::gate_translation::GateType;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashSet;
 
 /// SciRS2-enhanced quantum gate representation for verification

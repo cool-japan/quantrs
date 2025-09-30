@@ -3,9 +3,10 @@
 //! This example demonstrates the full ecosystem of QuantRS2-ML integrations,
 //! showcasing how all components work together in a real-world workflow.
 
-use ndarray::{Array1, Array2, ArrayD, Axis};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use quantrs2_ml::prelude::*;
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== QuantRS2-ML Complete Integration Showcase ===\n");
@@ -72,7 +73,7 @@ fn main() -> Result<()> {
     // Preprocess data - convert to dynamic dimensions first
     let raw_returns_dyn = raw_returns.clone().into_dyn();
     let processed_data_dyn = preprocessing_pipeline.transform(&raw_returns_dyn)?;
-    let processed_data = processed_data_dyn.into_dimensionality::<ndarray::Ix2>()?;
+    let processed_data = processed_data_dyn.into_dimensionality::<scirs2_core::ndarray::Ix2>()?;
     println!("   - Data preprocessed with hybrid pipeline");
 
     // Step 4: Train using multiple framework APIs
@@ -755,7 +756,7 @@ impl QuantumModel for PyTorchQuantumModel {
 
     fn predict(&self, _input: &ArrayD<f64>) -> Result<ArrayD<f64>> {
         // Mock prediction
-        Ok(ArrayD::zeros(ndarray::IxDyn(&[1])))
+        Ok(ArrayD::zeros(scirs2_core::ndarray::IxDyn(&[1])))
     }
 
     fn metadata(&self) -> &ModelMetadata {

@@ -1,6 +1,6 @@
 //! Configuration structures for quantum time series forecasting
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

@@ -3,9 +3,9 @@
 //! This example demonstrates how to use the quantum anomaly detection module
 //! for various types of anomaly detection tasks.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
-use rand::Rng;
+use scirs2_core::random::prelude::*;
 
 fn main() -> quantrs2_ml::Result<()> {
     println!("Quantum Anomaly Detection Demo");
@@ -27,7 +27,7 @@ fn main() -> quantrs2_ml::Result<()> {
 
     for i in 0..n_samples {
         for j in 0..n_features {
-            normal_data[[i, j]] = rand::thread_rng().gen::<f64>() * 2.0 - 1.0; // Normal range [-1, 1]
+            normal_data[[i, j]] = thread_rng().gen::<f64>() * 2.0 - 1.0; // Normal range [-1, 1]
         }
     }
 
@@ -52,14 +52,14 @@ fn main() -> quantrs2_ml::Result<()> {
     // Normal samples (first 80)
     for i in 0..80 {
         for j in 0..n_features {
-            test_data[[i, j]] = rand::thread_rng().gen::<f64>() * 2.0 - 1.0;
+            test_data[[i, j]] = thread_rng().gen::<f64>() * 2.0 - 1.0;
         }
     }
 
     // Anomalous samples (last 20) - outliers with larger values
     for i in 80..n_test {
         for j in 0..n_features {
-            test_data[[i, j]] = rand::thread_rng().gen::<f64>() * 6.0 + 5.0; // Anomalous range [5, 11]
+            test_data[[i, j]] = thread_rng().gen::<f64>() * 6.0 + 5.0; // Anomalous range [5, 11]
         }
     }
 
@@ -180,7 +180,7 @@ fn main() -> quantrs2_ml::Result<()> {
     println!("Testing real-time streaming detection...");
     for i in 0..10 {
         let sample = test_data.row(i).to_owned();
-        let sample_2d = sample.clone().insert_axis(ndarray::Axis(0));
+        let sample_2d = sample.clone().insert_axis(scirs2_core::ndarray::Axis(0));
         let result = streaming_detector.detect(&sample_2d)?;
         let anomaly_score = result.anomaly_scores[0];
         let is_anomaly = if anomaly_score > 0.5 {

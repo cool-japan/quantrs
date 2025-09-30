@@ -9,13 +9,13 @@ use crate::gate_translation::GateType;
 use crate::resource_estimator::{
     ErrorCorrectionCode, EstimationMode, HardwarePlatform, QuantumGate, ResourceEstimationConfig,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 use crate::platform::PlatformCapabilities;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;

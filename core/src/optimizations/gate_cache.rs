@@ -1,9 +1,9 @@
-//! Quantum Gate Matrix Caching using SciRS2 Beta.1 Features
+//! Quantum Gate Matrix Caching using SciRS2 Beta.3 Features
 //!
-//! This module demonstrates how to leverage scirs2-core beta.1 caching capabilities
+//! This module demonstrates how to leverage scirs2-core beta.3 caching capabilities
 //! to optimize quantum gate matrix computations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::cache::{CacheConfig, TTLSizedCache};
 use scirs2_core::profiling::{Profiler, Timer};
 use scirs2_core::memory::{BufferPool, global_buffer_pool};
@@ -49,7 +49,7 @@ pub struct CachedGateMatrix {
     pub computation_time_us: u64,
 }
 
-/// High-performance quantum gate cache using SciRS2 beta.1 features
+/// High-performance quantum gate cache using SciRS2 beta.3 features
 pub struct QuantumGateCache {
     /// Gate matrix cache with TTL
     matrix_cache: Arc<Mutex<TTLSizedCache<GateKey, CachedGateMatrix>>>,

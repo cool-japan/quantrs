@@ -5,7 +5,7 @@ mod tests {
     use quantrs2_tytan::quantum_neural_networks::*;
     use quantrs2_tytan::sampler::{SampleResult, SamplerError, SamplerResult};
     // Note: Symbol type doesn't exist, use symbols function instead
-    use ndarray::{Array1, Array2};
+    use scirs2_core::ndarray::{Array1, Array2};
     use std::collections::HashMap;
 
     /// Test basic QNN architecture creation

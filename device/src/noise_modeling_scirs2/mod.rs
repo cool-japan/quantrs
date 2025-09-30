@@ -30,7 +30,7 @@ use crate::{
     noise_model::{CalibrationNoiseModel, CrosstalkNoise},
     DeviceError, DeviceResult,
 };
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
 use std::collections::HashMap;
 
@@ -96,7 +96,7 @@ impl SciRS2NoiseModeler {
         calibration: &DeviceCalibration,
     ) -> DeviceResult<CalibrationNoiseModel> {
         use crate::noise_model::{GateNoiseParams, QubitNoiseParams, ReadoutNoiseParams};
-        use ndarray::Array1;
+        use scirs2_core::ndarray::Array1;
         use std::collections::HashMap;
 
         // Step 1: Extract noise data from calibration
@@ -118,7 +118,7 @@ impl SciRS2NoiseModeler {
         &self,
         calibration: &DeviceCalibration,
     ) -> DeviceResult<HashMap<String, Array1<f64>>> {
-        use ndarray::Array1;
+        use scirs2_core::ndarray::Array1;
         let mut noise_data = HashMap::new();
 
         // Extract single-qubit gate noise
@@ -214,7 +214,7 @@ impl SciRS2NoiseModeler {
         Ok(StatisticalNoiseAnalysis {
             noise_statistics: analysis_results,
             correlation_analysis: CorrelationAnalysis {
-                correlationmatrix: ndarray::Array2::eye(noise_data.len()),
+                correlationmatrix: scirs2_core::ndarray::Array2::eye(noise_data.len()),
                 correlation_strength: 0.1,
             },
             temporal_analysis: None,
@@ -226,7 +226,7 @@ impl SciRS2NoiseModeler {
         &self,
         noise_data: &HashMap<String, Array1<f64>>,
     ) -> DeviceResult<CorrelationAnalysis> {
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
 
         let n_sources = noise_data.len();
         let mut correlationmatrix = Array2::eye(n_sources);

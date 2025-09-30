@@ -6,7 +6,7 @@
 // Sampler types available for finance applications
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

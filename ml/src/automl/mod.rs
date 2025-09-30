@@ -25,7 +25,7 @@ use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
 use crate::quantum_nas::{ArchitectureCandidate, QuantumNAS, SearchStrategy};
 use crate::time_series::QuantumTimeSeriesForecaster;
 use fastrand;
-use ndarray::{s, Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Axis};
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
 

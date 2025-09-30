@@ -15,15 +15,15 @@ For more detailed development plans for each module, see the individual TODO fil
 - [quantrs2-tytan](tytan/TODO.md): High-level quantum annealing
 - [quantrs2-py](py/TODO.md): Python bindings
 
-## Current Development Status (v0.1.0-beta.1)
+## Current Development Status (v0.1.0-beta.2)
 
-**🎉 QuantRS2 v0.1.0-beta.1 Ready for Release!**
+**🎉 QuantRS2 v0.1.0-beta.2 Released!**
 
-The QuantRS2 framework has successfully completed all planned development milestones for the beta.1 release. This represents a major achievement in quantum computing framework development with comprehensive SciRS2 integration, advanced developer experience tools, and production-ready features.
+The QuantRS2 framework has successfully completed policy refinement and documentation updates for the beta.2 release. This release focuses on refined SciRS2 integration patterns and comprehensive developer documentation.
 
-### Beta.1 Release Highlights ✅
+### Beta.2 Release Highlights ✅
 
-- **✅ Complete SciRS2 v0.1.0-beta.2 Integration**
+- **✅ Refined SciRS2 v0.1.0-beta.3 Integration**
   - ✅ All modules use `scirs2_core::parallel_ops` for parallelization
   - ✅ SIMD operations migrated to `scirs2_core::simd_ops` (where possible)
   - ✅ Platform capabilities detection via `PlatformCapabilities` (completed)

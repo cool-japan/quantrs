@@ -5,7 +5,7 @@
 //! error correction protocols, and adaptive mitigation strategies.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, Axis};
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -1,7 +1,7 @@
 //! Experience replay for quantum continual learning
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 /// Experience replay buffer
 #[derive(Debug)]

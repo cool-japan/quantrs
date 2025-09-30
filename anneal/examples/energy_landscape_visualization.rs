@@ -15,6 +15,7 @@ use quantrs2_anneal::{
     },
 };
 use std::fs;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Energy Landscape Visualization Demo ===\n");
@@ -189,8 +190,8 @@ fn create_random_problem(n: usize, density: f64) -> Result<IsingModel, Box<dyn s
 
     for i in 0..n {
         for j in (i + 1)..n {
-            if rand::random::<f64>() < density {
-                let coupling = (rand::random::<f64>() - 0.5) * 2.0; // Range [-1, 1]
+            if thread_rng().gen::<f64>() < density {
+                let coupling = (thread_rng().gen::<f64>() - 0.5) * 2.0; // Range [-1, 1]
                 model.set_coupling(i, j, coupling)?;
             }
         }
@@ -206,7 +207,7 @@ fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Err
     // Create a random graph with negative couplings for MaxCut
     for i in 0..n {
         for j in (i + 1)..n {
-            if rand::random::<f64>() < 0.4 {
+            if thread_rng().gen::<f64>() < 0.4 {
                 // 40% edge probability
                 model.set_coupling(i, j, -1.0)?;
             }

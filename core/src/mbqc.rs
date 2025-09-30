@@ -4,8 +4,8 @@
 //! cluster states, graph states, and measurement patterns.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 
@@ -483,7 +483,8 @@ impl ClusterState {
         }
 
         // Randomly choose outcome
-        let outcome = if rand::random::<f64>() < prob_0 / (prob_0 + prob_1) {
+        use scirs2_core::random::prelude::*;
+        let outcome = if thread_rng().gen::<f64>() < prob_0 / (prob_0 + prob_1) {
             false
         } else {
             true

@@ -3,9 +3,10 @@
 //! This module provides comprehensive statistical characterization of quantum noise,
 //! including distributional analysis, moment analysis, correlation analysis, and outlier detection.
 
+use scirs2_core::random::prelude::*;
 use super::config::DistributionType;
 use crate::{DeviceError, DeviceResult};
-use ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
 use scirs2_stats::{corrcoef, kurtosis, mean, median, skew, spearmanr, std, var};
 use std::collections::HashMap;
 
@@ -538,8 +539,8 @@ impl StatisticalAnalyzer {
         data: &Array1<f64>,
     ) -> DeviceResult<HashMap<String, (f64, f64)>> {
         let mut confidence_intervals = HashMap::new();
-        let mut rng = rand::thread_rng();
-        use rand::prelude::*;
+        let mut rng = thread_rng();
+        use scirs2_core::random::prelude::*;
 
         // Bootstrap for mean
         let mut bootstrap_means = Vec::new();

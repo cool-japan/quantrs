@@ -6,7 +6,7 @@
 // Sampler types available for drug discovery applications
 #![allow(dead_code)]
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 
 /// Molecular design optimizer

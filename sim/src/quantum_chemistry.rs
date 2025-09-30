@@ -15,9 +15,10 @@
 //! - Basis set optimization for quantum hardware
 //! - Active space selection and orbital optimization
 
-use ndarray::{Array1, Array2, Array4};
+use scirs2_core::ndarray::{Array1, Array2, Array4};
 use ndarray_linalg::Norm;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -799,7 +800,7 @@ impl QuantumChemistrySimulator {
         if let Some(ref _backend) = self.backend {
             // Use SciRS2 for optimized eigenvalue decomposition
             use crate::scirs2_integration::{Matrix, MemoryPool, LAPACK};
-            use num_complex::Complex64;
+            use scirs2_core::Complex64;
 
             // Convert real Fock matrix to complex for SciRS2
             let complex_fock: Array2<Complex64> = fock.mapv(|x| Complex64::new(x, 0.0));
@@ -1088,7 +1089,7 @@ impl QuantumChemistrySimulator {
                 let theta = if param_idx < self.vqe_optimizer.parameters.len() {
                     self.vqe_optimizer.parameters[param_idx]
                 } else {
-                    (rand::random::<f64>() - 0.5) * 0.1
+                    (thread_rng().gen::<f64>() - 0.5) * 0.1
                 };
 
                 circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(theta), vec![i]));
@@ -1424,7 +1425,7 @@ impl QuantumChemistrySimulator {
     /// Random perturbation update for non-gradient optimizers
     fn random_perturbation_update(&mut self) -> Result<()> {
         for i in 0..self.vqe_optimizer.parameters.len() {
-            let perturbation = (rand::random::<f64>() - 0.5) * 0.1;
+            let perturbation = (thread_rng().gen::<f64>() - 0.5) * 0.1;
             self.vqe_optimizer.parameters[i] += perturbation;
         }
         Ok(())
@@ -1866,7 +1867,7 @@ impl VQEOptimizer {
     fn initialize_parameters(&mut self, num_parameters: usize) {
         self.parameters = Array1::from_vec(
             (0..num_parameters)
-                .map(|_| (rand::random::<f64>() - 0.5) * 0.1)
+                .map(|_| (thread_rng().gen::<f64>() - 0.5) * 0.1)
                 .collect(),
         );
         self.bounds = vec![(-PI, PI); num_parameters];

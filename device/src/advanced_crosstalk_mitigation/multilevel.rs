@@ -599,7 +599,7 @@ impl MitigationCoordinator {
         levels
     }
 
-    fn apply_level_mitigation(&self, level_name: &str, crosstalk_matrix: &ndarray::Array2<f64>) -> DeviceResult<f64> {
+    fn apply_level_mitigation(&self, level_name: &str, crosstalk_matrix: &scirs2_core::ndarray::Array2<f64>) -> DeviceResult<f64> {
         // Apply mitigation for a specific level
         let level = self.config.mitigation_levels.iter()
             .find(|level| level.name == level_name);

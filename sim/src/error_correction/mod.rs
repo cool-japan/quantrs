@@ -223,9 +223,9 @@ pub mod utils {
     ///
     /// A Result containing a tuple with (fidelity before correction, fidelity after correction)
     pub fn analyze_correction_quality(
-        ideal_state: &[num_complex::Complex64],
-        noisy_state: &[num_complex::Complex64],
-        corrected_state: &[num_complex::Complex64],
+        ideal_state: &[scirs2_core::Complex64],
+        noisy_state: &[scirs2_core::Complex64],
+        corrected_state: &[scirs2_core::Complex64],
     ) -> Result<(f64, f64)> {
         let fidelity_before = calculate_fidelity(ideal_state, noisy_state)?;
         let fidelity_after = calculate_fidelity(ideal_state, corrected_state)?;
@@ -247,10 +247,10 @@ pub mod utils {
     ///
     /// The fidelity between the states (0.0 to 1.0)
     pub fn calculate_fidelity(
-        state1: &[num_complex::Complex64],
-        state2: &[num_complex::Complex64],
+        state1: &[scirs2_core::Complex64],
+        state2: &[scirs2_core::Complex64],
     ) -> Result<f64> {
-        use num_complex::Complex64;
+        use scirs2_core::Complex64;
 
         if state1.len() != state2.len() {
             return Err(SimulatorError::DimensionMismatch(format!(

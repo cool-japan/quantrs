@@ -5,7 +5,7 @@
 //! the derivative function in continuous-depth neural networks.
 
 use crate::error::Result;
-use ndarray::{Array1, Array2, Array3, ArrayD, IxDyn};
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, IxDyn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

@@ -2,8 +2,8 @@
 //! TODO: Replace with scirs2_linalg when regex dependency issue is fixed
 
 use crate::error::QuantRS2Result;
-use ndarray::{Array1, Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::Complex64;
 
 /// Sparse CSR matrix stub
 #[derive(Debug, Clone)]
@@ -114,9 +114,9 @@ pub fn randomized_svd(
     let k = rank.min(s.len());
 
     Ok((
-        u.slice(ndarray::s![.., ..k]).to_owned(),
-        s.slice(ndarray::s![..k]).to_owned(),
-        vt.slice(ndarray::s![..k, ..]).to_owned(),
+        u.slice(scirs2_core::ndarray::s![.., ..k]).to_owned(),
+        s.slice(scirs2_core::ndarray::s![..k]).to_owned(),
+        vt.slice(scirs2_core::ndarray::s![..k, ..]).to_owned(),
     ))
 }
 

@@ -2,7 +2,7 @@
 
 use super::{config::*, models::TimeSeriesModelTrait};
 use crate::error::{MLError, Result};
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;

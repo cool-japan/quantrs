@@ -15,7 +15,7 @@
 //! - Error handling and retry mechanisms
 //! - Result caching and persistence
 
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

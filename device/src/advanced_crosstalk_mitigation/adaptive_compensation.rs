@@ -2,10 +2,11 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 use super::*;
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 impl AdaptiveCompensator {
     pub fn new(config: &AdaptiveCompensationConfig) -> Self {
@@ -543,7 +544,7 @@ impl OptimizationEngine {
         let mut optimized_state = current_state.clone();
         for i in 0..optimized_state.nrows() {
             for j in 0..optimized_state.ncols() {
-                let perturbation = (rand::random::<f64>() - 0.5) * 0.1;
+                let perturbation = (thread_rng().gen::<f64>() - 0.5) * 0.1;
                 optimized_state[[i, j]] += perturbation;
             }
         }

@@ -14,10 +14,11 @@
 //! - Virtual Z-gate error mitigation
 //! - Composite pulse sequences
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -969,7 +970,7 @@ impl ErrorMitigationManager {
         num_shots: usize,
     ) -> QECResult<AnnealingResult> {
         // Simplified noise scaling simulation
-        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
+        let mut rng = ChaCha8Rng::from_rng(&mut thread_rng());
         let base_error_rate = 0.01; // Base error rate
         let scaled_error_rate = base_error_rate * scaling_factor;
 

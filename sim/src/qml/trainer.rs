@@ -4,7 +4,7 @@
 //! algorithms with hardware-aware optimization and adaptive training strategies.
 
 use crate::prelude::HardwareOptimizations;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 

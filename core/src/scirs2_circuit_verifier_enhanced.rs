@@ -7,13 +7,13 @@
 use crate::error::QuantRS2Error;
 use crate::gate_translation::GateType;
 use crate::scirs2_circuit_verifier::{QuantumGate, VerificationConfig, VerificationVerdict};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 use crate::platform::PlatformCapabilities;
-use ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
 use ndarray_linalg::{Eigh, Norm, SVD};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -584,8 +584,8 @@ impl EnhancedCircuitVerifier {
         circuit: &[QuantumGate],
         num_qubits: usize,
     ) -> Result<VerificationVerdict, QuantRS2Error> {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         for _ in 0..self.config.base_config.num_probabilistic_tests {
             // Generate random state

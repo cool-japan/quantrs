@@ -8,7 +8,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
@@ -388,7 +388,11 @@ impl CompilationCache {
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
 
-        let compiled = bincode::deserialize_from(reader)?;
+        // bincode v2: use serde helper API with an explicit config
+        let compiled: CompiledGate = bincode::serde::decode_from_reader(
+            reader,
+            bincode::config::standard(),
+        )?;
 
         Ok(Some(compiled))
     }
@@ -403,9 +407,12 @@ impl CompilationCache {
         }
 
         let file = File::create(&file_path)?;
-        let writer = BufWriter::new(file);
-
-        bincode::serialize_into(writer, compiled)?;
+        let mut writer = BufWriter::new(file);
+        bincode::serde::encode_into_std_write(
+            compiled,
+            &mut writer,
+            bincode::config::standard(),
+        )?;
 
         Ok(())
     }
@@ -455,9 +462,12 @@ impl CompilationCache {
         }
 
         let file = File::create(file_path)?;
-        let writer = BufWriter::new(file);
-
-        bincode::serialize_into(writer, compiled)?;
+        let mut writer = BufWriter::new(file);
+        bincode::serde::encode_into_std_write(
+            compiled,
+            &mut writer,
+            bincode::config::standard(),
+        )?;
 
         Ok(())
     }

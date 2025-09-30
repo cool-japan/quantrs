@@ -3,7 +3,7 @@
 //! This module provides an enhanced state vector simulator that leverages
 //! SciRS2's advanced features for better performance and memory efficiency.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
@@ -97,7 +97,7 @@ impl EnhancedStateVectorSimulator {
             let matrix = gate.matrix()?;
             if gate.num_qubits() == 1 {
                 // Single-qubit gate: create a 2x2 matrix and apply
-                use ndarray::arr2;
+                use scirs2_core::ndarray::arr2;
                 let gate_matrix = arr2(&[[matrix[0], matrix[1]], [matrix[2], matrix[3]]]);
 
                 // Apply to each affected amplitude pair

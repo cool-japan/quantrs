@@ -1,5 +1,6 @@
 //! Stress testing coordinator
 
+use scirs2_core::random::prelude::*;
 use super::*;
 
 /// Stress testing coordinator
@@ -478,7 +479,7 @@ impl StressTestCoordinator {
         // Simulate success/failure based on size and load
         let stress_factor = (size as f64 * load) / 10000.0;
         let success_probability = (1.0 - stress_factor * 0.1).max(0.1);
-        let success = rand::random::<f64>() < success_probability;
+        let success = thread_rng().gen::<f64>() < success_probability;
 
         // Calculate throughput (problems per second)
         let throughput = if success {

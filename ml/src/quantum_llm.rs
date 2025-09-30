@@ -12,7 +12,7 @@ use crate::quantum_transformer::{
     create_causal_mask, PositionEncodingType, QuantumAttentionType, QuantumTransformer,
     QuantumTransformerConfig,
 };
-use ndarray::{s, Array1, Array2, Array3, Array4, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4, Axis};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{multi::*, single::*, GateOp};
 use quantrs2_sim::statevector::StateVectorSimulator;

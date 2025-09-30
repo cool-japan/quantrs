@@ -8,7 +8,7 @@
 pub use quantrs2_symengine::{Expression as SymEngine, SymEngineError, SymEngineResult};
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use num_traits::{One, Zero};
 use std::collections::HashMap;
 use std::fmt;
@@ -689,7 +689,7 @@ pub mod calculus {
 /// Symbolic matrix operations for quantum gates
 pub mod matrix {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     /// A symbolic matrix for representing quantum gates
     #[derive(Debug, Clone)]

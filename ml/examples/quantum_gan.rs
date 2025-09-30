@@ -1,7 +1,8 @@
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::gan::{DiscriminatorType, GANEvaluationMetrics, GeneratorType, QuantumGAN};
 use quantrs2_ml::prelude::*;
 use std::time::Instant;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("Quantum Generative Adversarial Network Example");
@@ -69,7 +70,7 @@ fn main() -> Result<()> {
 
     println!("Generated {} samples", num_samples);
     println!("First sample:");
-    print_sample(&generated_samples.slice(ndarray::s![0, ..]).to_owned());
+    print_sample(&generated_samples.slice(scirs2_core::ndarray::s![0, ..]).to_owned());
 
     // Evaluate GAN
     println!("\nEvaluating GAN quality...");
@@ -113,7 +114,7 @@ fn generate_sine_wave_data(num_samples: usize, data_dim: usize) -> Array2<f64> {
 
         for j in 0..data_dim {
             let freq = (j as f64 + 1.0) * 0.5;
-            data[[i, j]] = (x * freq).sin() + 0.1 * rand::random::<f64>();
+            data[[i, j]] = (x * freq).sin() + 0.1 * thread_rng().gen::<f64>();
         }
     }
 

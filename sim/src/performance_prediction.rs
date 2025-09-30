@@ -9,7 +9,7 @@ use crate::{
     error::{Result, SimulatorError},
     scirs2_integration::{Matrix, SciRS2Backend, Vector},
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},

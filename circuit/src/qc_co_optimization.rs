@@ -4,7 +4,7 @@
 //! where quantum circuits and classical processing are interleaved and optimized together.
 
 use crate::builder::Circuit;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,

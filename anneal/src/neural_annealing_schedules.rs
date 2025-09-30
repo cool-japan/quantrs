@@ -13,9 +13,10 @@
 //! - Multi-objective schedule optimization
 //! - Hardware-aware schedule generation
 
-use ndarray::{Array1, Array2, Array3};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -932,7 +933,7 @@ impl NeuralAnnealingScheduler {
 
     /// Initialize network weights
     fn initialize_weights(input_dim: usize, output_dim: usize) -> Array2<f64> {
-        let mut rng = ChaCha8Rng::from_rng(&mut rand::thread_rng());
+        let mut rng = ChaCha8Rng::from_rng(&mut thread_rng());
         let std_dev = (2.0 / input_dim as f64).sqrt(); // Xavier initialization
 
         Array2::from_shape_fn((output_dim, input_dim), |_| {
@@ -1223,7 +1224,7 @@ impl NeuralAnnealingScheduler {
         // Split output into transverse field and problem Hamiltonian
         let (tf_output, ph_output) = schedule_output
             .view()
-            .split_at(ndarray::Axis(0), num_points);
+            .split_at(scirs2_core::ndarray::Axis(0), num_points);
 
         let transverse_field = Array1::from_iter(tf_output.iter().cloned());
         let problem_hamiltonian = Array1::from_iter(ph_output.iter().cloned());

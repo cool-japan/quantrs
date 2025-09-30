@@ -5,8 +5,8 @@
 //! quantum computation in the photonic platform.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Photonic quantum gate types
@@ -284,9 +284,9 @@ impl PhotonicSystem {
             .collect();
 
         // Sample outcome
-        let mut rng = rand::rng();
-        use rand::Rng;
-        let random_value: f64 = rng.random();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let random_value: f64 = rng.gen();
         let mut cumulative = 0.0;
 
         for (n, &prob) in probabilities.iter().enumerate() {
@@ -319,9 +319,9 @@ impl PhotonicSystem {
         let expectation = self.quadrature_expectation(mode, phase)?;
 
         // Add measurement noise (simplified)
-        let mut rng = rand::rng();
-        use rand::Rng;
-        let noise = rng.random_range(-0.1..0.1); // Simplified noise model
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let noise = rng.gen_range(-0.1..0.1); // Simplified noise model
 
         Ok(expectation + noise)
     }

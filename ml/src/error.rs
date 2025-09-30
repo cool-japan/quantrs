@@ -82,7 +82,7 @@ pub enum MLError {
 
     /// Shape error from ndarray
     #[error("Shape error: {0}")]
-    ShapeError(#[from] ndarray::ShapeError),
+    ShapeError(#[from] scirs2_core::ndarray::ShapeError),
 
     /// JSON serialization error
     #[error("JSON error: {0}")]

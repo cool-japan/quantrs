@@ -3,7 +3,7 @@
 //! This is a simplified version of the ultimate integration demo that focuses
 //! on core functionality and ensures compilation.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
 

@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Sub};
 

@@ -4,9 +4,10 @@
 //! quantum circuit simulation, including advanced contraction optimization,
 //! bond dimension management, and SciRS2-accelerated tensor operations.
 
-use ndarray::{Array, Array2, ArrayD, IxDyn};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array, Array2, ArrayD, IxDyn};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -890,7 +891,7 @@ impl EnhancedTensorNetworkSimulator {
         // Extract a block of the tensor for blocked contraction
         let block_data = tensor
             .data
-            .slice(ndarray::s![start_idx..end_idx])
+            .slice(scirs2_core::ndarray::s![start_idx..end_idx])
             .to_owned();
 
         Ok(EnhancedTensor {
@@ -1207,7 +1208,7 @@ impl EnhancedTensorNetworkSimulator {
             // Accept or reject based on cost difference and temperature
             let cost_diff = neighbor_path.total_flops - current_path.total_flops;
 
-            if cost_diff < 0.0 || fastrand::f64() < (-cost_diff / temperature).exp() {
+            if cost_diff < 0.0 || thread_rng().gen::<f64>() < (-cost_diff / temperature).exp() {
                 current_path = neighbor_path;
 
                 if current_path.total_flops < best_path.total_flops {
@@ -1379,8 +1380,8 @@ impl EnhancedTensorNetworkSimulator {
         let mut new_path = path.clone();
 
         if new_path.steps.len() >= 2 {
-            let i = fastrand::usize(0..new_path.steps.len());
-            let j = fastrand::usize(0..new_path.steps.len());
+            let i = thread_rng().gen_range(0..new_path.steps.len());
+            let j = thread_rng().gen_range(0..new_path.steps.len());
 
             if i != j {
                 new_path.steps.swap(i, j);

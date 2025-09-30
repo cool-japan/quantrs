@@ -4,8 +4,8 @@
 //! including ion-specific gates, motional modes, and laser-driven operations.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Ion species for trapped ion quantum computing
@@ -657,9 +657,9 @@ impl TrappedIonSystem {
         let prob_excited = ion.electronic_state[1].norm_sqr();
 
         // Sample measurement outcome
-        let mut rng = rand::rng();
-        use rand::Rng;
-        let random_value: f64 = rng.random();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        let random_value: f64 = rng.gen();
 
         let result = random_value < prob_excited;
 

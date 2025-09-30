@@ -3,7 +3,7 @@
 //! This simulator automatically detects and uses specialized gate implementations
 //! for improved performance compared to general matrix multiplication.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use std::sync::Arc;
 
@@ -406,10 +406,10 @@ pub fn benchmark_specialization(
     n_gates: usize,
 ) -> (f64, f64, SpecializationStats) {
     use quantrs2_circuit::builder::Circuit;
-    use rand::Rng;
+    use scirs2_core::random::prelude::*;
     use std::time::Instant;
 
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     // For benchmark purposes, we'll use a fixed-size circuit
     // In practice, you'd want to handle different sizes more elegantly

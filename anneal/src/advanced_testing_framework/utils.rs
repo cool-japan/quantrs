@@ -1,5 +1,6 @@
 //! Utility functions and test helpers for advanced testing framework
 
+use scirs2_core::random::prelude::*;
 use super::*;
 
 /// Create standard test configuration
@@ -62,7 +63,7 @@ pub fn create_test_problem(
     let mut problem = IsingModel::new(size);
 
     // Set random seed if provided
-    let mut rng_seed = seed.unwrap_or_else(|| rand::random());
+    let mut rng_seed = seed.unwrap_or_else(|| thread_rng().gen());
 
     match problem_type {
         ProblemType::RandomIsing => create_random_ising_problem(&mut problem, density, rng_seed)?,

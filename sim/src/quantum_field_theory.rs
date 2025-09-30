@@ -5,15 +5,16 @@
 //! group flows, and scattering process calculations. This framework enables simulation
 //! of relativistic quantum field dynamics and many-body quantum systems.
 
-use ndarray::{Array1, Array4};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array1, Array4};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
+use scirs2_core::random::prelude::*;
 
 /// Quantum field theory simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

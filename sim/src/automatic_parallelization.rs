@@ -15,8 +15,8 @@ use quantrs2_core::{
 // use scirs2_core::parallel_ops::*;
 // use scirs2_core::scheduling::{Scheduler, TaskGraph, ParallelExecutor};
 // use scirs2_core::optimization::{CostModel, ResourceOptimizer};
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};

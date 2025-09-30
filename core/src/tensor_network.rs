@@ -9,8 +9,8 @@ use crate::{
     linalg_stubs::svd,
     register::Register,
 };
-use ndarray::{Array, Array2, ArrayD, IxDyn};
-use num_complex::Complex;
+use scirs2_core::ndarray::{Array, Array2, ArrayD, IxDyn};
+use scirs2_core::Complex;
 // use scirs2_linalg::svd;
 use std::collections::{HashMap, HashSet};
 
@@ -85,11 +85,11 @@ impl Tensor {
 
     /// Create a tensor from an ndarray with specified indices
     pub fn from_array<D>(
-        array: ndarray::ArrayBase<ndarray::OwnedRepr<Complex64>, D>,
+        array: scirs2_core::ndarray::ArrayBase<scirs2_core::ndarray::OwnedRepr<Complex64>, D>,
         indices: Vec<usize>,
     ) -> Self
     where
-        D: ndarray::Dimension,
+        D: scirs2_core::ndarray::Dimension,
     {
         let shape = array.shape().to_vec();
         let data = array.into_dyn();
@@ -310,9 +310,9 @@ impl Tensor {
         };
 
         // Truncate based on rank
-        let u_trunc = u.slice(ndarray::s![.., ..rank]).to_owned();
-        let s_trunc = s.slice(ndarray::s![..rank]).to_owned();
-        let vt_trunc = vt.slice(ndarray::s![..rank, ..]).to_owned();
+        let u_trunc = u.slice(scirs2_core::ndarray::s![.., ..rank]).to_owned();
+        let s_trunc = s.slice(scirs2_core::ndarray::s![..rank]).to_owned();
+        let vt_trunc = vt.slice(scirs2_core::ndarray::s![..rank, ..]).to_owned();
 
         // Create S matrix
         let mut s_mat = Array2::zeros((rank, rank));

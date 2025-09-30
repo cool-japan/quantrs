@@ -28,8 +28,8 @@ use scirs2_stats::{corrcoef, distributions, mean, pearsonr, spearmanr, std, var}
 //     SignalError, SignalResult,
 // };
 
-use ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
 
 use crate::{
     calibration::DeviceCalibration,

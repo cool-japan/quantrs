@@ -9,7 +9,7 @@
 //! 6. Examine quantum advantages in non-stoquastic systems
 //! 7. Convert between different Hamiltonian representations
 
-use num_complex::Complex as NComplex;
+use scirs2_core::Complex as NComplex;
 use quantrs2_anneal::{
     ising::IsingModel,
     non_stoquastic::*,

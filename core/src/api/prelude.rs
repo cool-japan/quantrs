@@ -17,7 +17,7 @@ pub mod essentials {
     pub use crate::api::synthesis::{synthesize_unitary, SingleQubitDecomposition};
 
     // Re-export num_complex for convenience
-    pub use num_complex::Complex64;
+    pub use scirs2_core::Complex64;
 }
 
 /// Complete API for quantum algorithm development

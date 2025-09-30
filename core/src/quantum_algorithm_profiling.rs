@@ -7,7 +7,7 @@
 
 use crate::error::QuantRS2Error;
 use crate::qubit::QubitId;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant, SystemTime};

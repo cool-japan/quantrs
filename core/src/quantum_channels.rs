@@ -7,8 +7,8 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     matrix_ops::{DenseMatrix, QuantumMatrix},
 };
-use ndarray::{s, Array2};
-use num_complex::Complex;
+use scirs2_core::ndarray::{s, Array2};
+use scirs2_core::Complex;
 
 /// A quantum channel represented in various forms
 #[derive(Debug, Clone)]
@@ -691,7 +691,7 @@ impl ProcessTomography {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_complex::Complex;
+    use scirs2_core::Complex;
 
     #[test]
     fn test_depolarizing_channel() {

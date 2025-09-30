@@ -2,7 +2,7 @@
 //!
 //! This module provides basic parametric gates for variational algorithms.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

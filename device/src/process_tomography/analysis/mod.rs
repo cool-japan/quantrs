@@ -4,8 +4,8 @@ pub mod monitoring;
 pub mod statistical;
 pub mod structural;
 
-use ndarray::{Array1, Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use super::core::SciRS2ProcessTomographer;
@@ -77,7 +77,7 @@ impl SciRS2ProcessTomographer {
         // Normality tests
         #[cfg(feature = "scirs2")]
         {
-            let real_array = ndarray::Array1::from_vec(real_parts.clone());
+            let real_array = scirs2_core::ndarray::Array1::from_vec(real_parts.clone());
             if let Ok((statistic, pvalue)) = shapiro_wilk(&real_array.view()) {
                 tests.insert(
                     "shapiro_wilk_real".to_string(),
@@ -91,7 +91,7 @@ impl SciRS2ProcessTomographer {
                 );
             }
 
-            let imag_array = ndarray::Array1::from_vec(imag_parts.clone());
+            let imag_array = scirs2_core::ndarray::Array1::from_vec(imag_parts.clone());
             if let Ok((statistic, pvalue)) = shapiro_wilk(&imag_array.view()) {
                 tests.insert(
                     "shapiro_wilk_imag".to_string(),
@@ -123,8 +123,8 @@ impl SciRS2ProcessTomographer {
         // T-tests comparing real and imaginary parts
         #[cfg(feature = "scirs2")]
         {
-            let real_array = ndarray::Array1::from_vec(real_parts);
-            let imag_array = ndarray::Array1::from_vec(imag_parts);
+            let real_array = scirs2_core::ndarray::Array1::from_vec(real_parts);
+            let imag_array = scirs2_core::ndarray::Array1::from_vec(imag_parts);
 
             if let Ok(ttest_result) = ttest_ind(
                 &real_array.view(),
@@ -254,9 +254,9 @@ impl SciRS2ProcessTomographer {
         // Calculate correlations
         #[cfg(feature = "scirs2")]
         {
-            let real_array = ndarray::Array1::from_vec(real_parts);
-            let imag_array = ndarray::Array1::from_vec(imag_parts);
-            let mag_array = ndarray::Array1::from_vec(magnitudes);
+            let real_array = scirs2_core::ndarray::Array1::from_vec(real_parts);
+            let imag_array = scirs2_core::ndarray::Array1::from_vec(imag_parts);
+            let mag_array = scirs2_core::ndarray::Array1::from_vec(magnitudes);
 
             if let Ok((corr, p_val)) = pearsonr(&real_array.view(), &imag_array.view(), "two-sided")
             {

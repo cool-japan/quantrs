@@ -2,7 +2,7 @@
 
 use super::super::results::*;
 use crate::DeviceResult;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use std::collections::HashMap;
 
 /// Distribution analyzer for measurement data

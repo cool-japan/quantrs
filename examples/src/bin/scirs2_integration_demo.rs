@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn demonstrate_complex_operations() -> Result<(), Box<dyn std::error::Error>> {
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use quantrs2_core::complex_ext::QuantumComplexExt;
 
     // Create quantum amplitudes
@@ -78,7 +78,7 @@ fn demonstrate_memory_efficient_storage() -> Result<(), Box<dyn std::error::Erro
 }
 
 fn demonstrate_simd_operations() -> Result<(), Box<dyn std::error::Error>> {
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     // Create a quantum state
     let mut state = vec![

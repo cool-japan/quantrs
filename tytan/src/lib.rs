@@ -13,6 +13,13 @@
 //! - **Multiple Samplers**: Choose from various solvers
 //! - **Auto Result Processing**: Automatically convert solutions to multi-dimensional arrays
 //!
+//! ## Recent Updates (v0.1.0-beta.2)
+//!
+//! - Refined SciRS2 v0.1.0-beta.3 integration for enhanced performance
+//! - High-performance sparse matrix operations via SciRS2
+//! - Parallel optimization using `scirs2_core::parallel_ops`
+//! - SIMD-accelerated energy calculations
+//!
 //! # Example
 //!
 //! Example with the `dwave` feature enabled:
@@ -54,7 +61,7 @@
 //! ```rust,no_run
 //! use quantrs2_tytan::sampler::{SASampler, Sampler};
 //! use std::collections::HashMap;
-//! use ndarray::Array;
+//! use scirs2_core::ndarray::Array;
 //!
 //! // Create a simple QUBO matrix manually
 //! let mut matrix = Array::<f64, _>::zeros((2, 2));

@@ -7,8 +7,9 @@
 #![allow(dead_code)]
 
 use crate::sampler::SamplerError;
-use ndarray::{s, Array1, Array2};
-use rand::{prelude::*, rng};
+use scirs2_core::ndarray::{s, Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -574,7 +575,7 @@ impl QuantumNeuralNetwork {
 
             // Shuffle training data
             let mut shuffled_data = training_data.to_vec();
-            shuffled_data.shuffle(&mut rng());
+            shuffled_data.shuffle(&mut thread_rng());
 
             let mut epoch_loss = 0.0;
             let mut epoch_accuracy = 0.0;
@@ -1299,22 +1300,22 @@ impl QuantumNeuralNetwork {
     fn initialize_parameters(&mut self) -> Result<(), SamplerError> {
         match &self.parameters.initialization_scheme {
             ParameterInitializationScheme::RandomUniform { min, max } => {
-                let mut rng = rng();
+                let mut rng = thread_rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.random_range(*min..*max);
+                    *param = rng.gen_range(*min..*max);
                 }
             }
             ParameterInitializationScheme::RandomNormal { mean, std } => {
-                let mut rng = rng();
+                let mut rng = thread_rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.random::<f64>() * std + mean;
+                    *param = rng.gen::<f64>() * std + mean;
                 }
             }
             _ => {
                 // Default to random uniform [-π, π]
-                let mut rng = rng();
+                let mut rng = thread_rng();
                 for param in self.parameters.quantum_params.iter_mut() {
-                    *param = rng.random_range(-PI..PI);
+                    *param = rng.gen_range(-PI..PI);
                 }
             }
         }

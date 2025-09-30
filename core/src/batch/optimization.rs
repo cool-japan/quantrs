@@ -3,8 +3,8 @@
 use super::execution::{BatchCircuit, BatchCircuitExecutor};
 use super::BatchStateVector;
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::optimization_stubs::{minimize, Method, OptimizeResult, Options};
 use crate::parallel_ops_stubs::*;
@@ -108,7 +108,7 @@ impl BatchParameterOptimizer {
             let circuit_fn = circuit_fn.clone();
             let cost_fn = cost_fn.clone();
 
-            move |params: &ndarray::ArrayView1<f64>| -> f64 {
+            move |params: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
                 let params_slice = params.as_slice().unwrap();
                 let circuit = match (*circuit_fn)(params_slice) {
                     Ok(c) => c,
@@ -513,7 +513,7 @@ mod tests {
     use super::*;
     use crate::gate::single::Hadamard;
     use crate::qubit::QubitId;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_gradient_computation() {

@@ -19,8 +19,8 @@ use crate::scirs2_ir_tools::{
     CodeEmitter, CompilationPass, IRBuilder, IROptimizer, IRTransform, IRValidator,
     IntermediateRepresentation, TargetGenerator,
 };
-use ndarray::{Array1, Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};

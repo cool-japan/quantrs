@@ -4,7 +4,7 @@
 //! operations for maximum computational throughput on modern CPUs.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::sync::{Arc, OnceLock, RwLock};
 
 #[cfg(target_arch = "x86_64")]

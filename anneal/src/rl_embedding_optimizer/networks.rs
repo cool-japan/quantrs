@@ -1,7 +1,8 @@
 //! Neural network implementations for RL embedding optimization
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -347,7 +348,7 @@ impl EmbeddingNetwork {
 
         let mut rng = match seed {
             Some(s) => ChaCha8Rng::seed_from_u64(s),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let mut layers = Vec::new();

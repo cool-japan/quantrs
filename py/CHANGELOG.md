@@ -5,6 +5,29 @@ All notable changes to QuantRS2-Py will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta.2] - 2025-09-30
+
+### 🎯 Policy Refinement & Documentation Release
+
+QuantRS2-Py v0.1.0-beta.2 focuses on refined SciRS2 integration patterns and improved developer experience through comprehensive documentation.
+
+### Updated
+
+#### 🔧 SciRS2 v0.1.0-beta.3 Integration
+- **Refined Integration**: Updated to SciRS2 v0.1.0-beta.3 with unified import patterns
+- **Enhanced Distributions**: Improved random number generation with `UnifiedNormal`, `UnifiedBeta`
+- **Consistent API**: Standardized SciRS2 usage across all Python bindings
+
+#### 📚 Documentation Improvements
+- **Comprehensive Policy Documentation**: Added SCIRS2_INTEGRATION_POLICY.md reference
+- **Development Guidelines**: Added CLAUDE.md for AI-assisted development
+- **Updated Examples**: Refreshed all examples with refined patterns
+
+### Notes
+- **No Breaking Changes**: API remains fully compatible with beta.1
+- **Migration**: No code changes required from beta.1
+- **Performance**: Maintained exceptional performance with refined patterns
+
 ## [0.1.0-beta.1] - 2025-09-21
 
 ### 🎉 Beta Release - Production Ready!

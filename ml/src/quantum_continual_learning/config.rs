@@ -1,6 +1,6 @@
 //! Configuration types for quantum continual learning
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Continual learning strategies

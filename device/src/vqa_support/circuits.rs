@@ -3,6 +3,7 @@
 //! This module provides parametric quantum circuits commonly used
 //! in variational quantum algorithms.
 
+use scirs2_core::random::prelude::*;
 use crate::DeviceResult;
 use quantrs2_core::qubit::QubitId;
 use std::collections::HashMap;
@@ -385,8 +386,8 @@ impl ParametricCircuit {
 
     /// Generate random initial parameters
     pub fn random_parameters(&self) -> Vec<f64> {
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         self.bounds
             .iter()

@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use std::time::Instant;
 
@@ -169,7 +169,7 @@ fn run_gan_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Generated {} samples:", num_samples);
     for i in 0..num_samples {
-        let sample = generated_samples.slice(ndarray::s![i, ..]);
+        let sample = generated_samples.slice(scirs2_core::ndarray::s![i, ..]);
 
         print!("  Sample {}: [", i);
         for (j, &val) in sample.iter().enumerate() {

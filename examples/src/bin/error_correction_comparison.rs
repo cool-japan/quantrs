@@ -387,8 +387,8 @@ fn test_code_with_noise<T: ErrorCorrection>(
 // Simplified function to extract logical state from encoded state
 fn extract_logical_state(
     state: &quantrs2_core::register::Register<16>,
-) -> Vec<num_complex::Complex64> {
-    use num_complex::Complex64;
+) -> Vec<scirs2_core::Complex64> {
+    use scirs2_core::Complex64;
 
     let amplitudes = state.amplitudes();
     let mut logical_state = vec![Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)];

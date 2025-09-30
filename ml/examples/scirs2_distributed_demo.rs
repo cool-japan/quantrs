@@ -3,7 +3,7 @@
 //! This example demonstrates the SciRS2 integration capabilities including
 //! distributed training, tensor operations, and scientific computing features.
 
-use ndarray::{Array1, Array2, Array3, ArrayD, Axis, IxDyn};
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::scirs2_integration::{
     SciRS2Array, SciRS2DataLoader, SciRS2Dataset, SciRS2Device, SciRS2DistributedTrainer,
@@ -339,7 +339,7 @@ fn compute_quantum_loss(
     let diff = &outputs_array.data - &targets_array.data;
     let mse_data = &diff * &diff;
     let mse_loss = SciRS2Array::new(
-        mse_data.mean_axis(ndarray::Axis(0)).unwrap().into_dyn(),
+        mse_data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap().into_dyn(),
         false,
     );
     Ok(mse_loss)

@@ -5,8 +5,8 @@
 //! - Python functions for parametric gates
 //! - Symbolic expressions for gate decompositions
 
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray2, PyReadonlyArray2};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;

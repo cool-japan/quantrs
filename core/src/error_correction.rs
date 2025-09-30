@@ -5,8 +5,8 @@
 //! efficient decoder algorithms.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -1281,6 +1281,8 @@ impl MLDecoder {
         let hidden_size = 2 * input_size;
         let output_size = code.n * 3; // 3 Pauli operators per qubit
 
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let mut weights = Vec::new();
 
         // Input to hidden layer
@@ -1288,7 +1290,7 @@ impl MLDecoder {
         for _ in 0..hidden_size {
             let mut row = Vec::new();
             for _ in 0..input_size {
-                row.push((rand::random::<f64>() - 0.5) * 0.1);
+                row.push((rng.gen::<f64>() - 0.5) * 0.1);
             }
             w1.push(row);
         }
@@ -1299,7 +1301,7 @@ impl MLDecoder {
         for _ in 0..output_size {
             let mut row = Vec::new();
             for _ in 0..hidden_size {
-                row.push((rand::random::<f64>() - 0.5) * 0.1);
+                row.push((rng.gen::<f64>() - 0.5) * 0.1);
             }
             w2.push(row);
         }
@@ -1828,9 +1830,11 @@ pub mod real_time {
             thread::sleep(self.latency);
 
             // Simulate random syndrome measurements
+            use scirs2_core::random::prelude::*;
+            let mut rng = thread_rng();
             let mut syndrome = vec![false; self.syndrome_length];
             for i in 0..self.syndrome_length {
-                if rand::random::<f64>() < self.error_rate {
+                if rng.gen::<f64>() < self.error_rate {
                     syndrome[i] = true;
                 }
             }

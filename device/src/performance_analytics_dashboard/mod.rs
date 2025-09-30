@@ -65,7 +65,7 @@ use scirs2_stats::{
 // Fallback implementations when SciRS2 is not available
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+    use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
     pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
         Ok(0.0)
@@ -115,9 +115,9 @@ mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 use fallback_scirs2::*;
 
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
-use rand::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{broadcast, mpsc};
 

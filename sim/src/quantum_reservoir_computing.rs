@@ -24,8 +24,9 @@
 //! - **Advanced Quantum Dynamics**: Unitary evolution, open system dynamics, NISQ simulation,
 //!   adiabatic processes, and quantum error correction integration
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
@@ -1121,7 +1122,7 @@ impl QuantumReservoirComputer {
         // Xavier initialization
         let scale = (2.0 / (output_size + feature_size) as f64).sqrt();
         for elem in output_weights.iter_mut() {
-            *elem = (fastrand::f64() - 0.5) * 2.0 * scale;
+            *elem = (thread_rng().gen::<f64>() - 0.5) * 2.0 * scale;
         }
 
         Ok(Self {
@@ -1195,8 +1196,8 @@ impl QuantumReservoirComputer {
         for _ in 0..depth {
             // Add random single-qubit gates
             for qubit in 0..config.num_qubits {
-                let angle = fastrand::f64() * 2.0 * std::f64::consts::PI;
-                let gate_type = match fastrand::usize(0..3) {
+                let angle = thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI;
+                let gate_type = match thread_rng().gen_range(0..3) {
                     0 => InterfaceGateType::RX(angle),
                     1 => InterfaceGateType::RY(angle),
                     _ => InterfaceGateType::RZ(angle),
@@ -1206,8 +1207,8 @@ impl QuantumReservoirComputer {
 
             // Add random two-qubit gates
             for _ in 0..(config.num_qubits / 2) {
-                let qubit1 = fastrand::usize(0..config.num_qubits);
-                let qubit2 = fastrand::usize(0..config.num_qubits);
+                let qubit1 = thread_rng().gen_range(0..config.num_qubits);
+                let qubit2 = thread_rng().gen_range(0..config.num_qubits);
                 if qubit1 != qubit2 {
                     circuit.add_gate(InterfaceGate::new(
                         InterfaceGateType::CNOT,
@@ -1300,8 +1301,8 @@ impl QuantumReservoirComputer {
                 let next = (i + 1) % config.num_qubits;
 
                 // Random rewiring
-                let target = if fastrand::f64() < rewiring_prob {
-                    fastrand::usize(0..config.num_qubits)
+                let target = if thread_rng().gen::<f64>() < rewiring_prob {
+                    thread_rng().gen_range(0..config.num_qubits)
                 } else {
                     next
                 };
@@ -1616,7 +1617,7 @@ impl QuantumReservoirComputer {
         for amplitude in self.reservoir_state.state_vector.iter_mut() {
             // Apply phase decoherence
             let phase_noise =
-                (fastrand::f64() - 0.5) * decoherence_rate * 2.0 * std::f64::consts::PI;
+                (thread_rng().gen::<f64>() - 0.5) * decoherence_rate * 2.0 * std::f64::consts::PI;
             *amplitude *= Complex64::new(0.0, phase_noise).exp();
 
             // Apply amplitude damping
@@ -1645,8 +1646,8 @@ impl QuantumReservoirComputer {
         let error_rate = self.config.noise_level;
 
         for qubit in 0..self.config.num_qubits {
-            if fastrand::f64() < error_rate {
-                let error_type = fastrand::usize(0..3);
+            if thread_rng().gen::<f64>() < error_rate {
+                let error_type = thread_rng().gen_range(0..3);
                 let gate_type = match error_type {
                     0 => InterfaceGateType::X,
                     1 => InterfaceGateType::PauliY,
@@ -1664,9 +1665,9 @@ impl QuantumReservoirComputer {
         // Simplified measurement error model
         let error_rate = self.config.noise_level * 0.1; // Lower rate for measurement errors
 
-        if fastrand::f64() < error_rate {
+        if thread_rng().gen::<f64>() < error_rate {
             // Randomly flip a qubit
-            let qubit = fastrand::usize(0..self.config.num_qubits);
+            let qubit = thread_rng().gen_range(0..self.config.num_qubits);
             self.apply_single_qubit_gate(qubit, InterfaceGateType::X)?;
         }
 
@@ -1772,7 +1773,7 @@ impl QuantumReservoirComputer {
             // Sample random subset
             let mut sampled = Vec::with_capacity(max_size);
             for _ in 0..max_size {
-                let idx = fastrand::usize(0..probabilities.len());
+                let idx = thread_rng().gen_range(0..probabilities.len());
                 sampled.push(probabilities[idx]);
             }
             Ok(Array1::from_vec(sampled))

@@ -5,10 +5,13 @@
 
 use super::{CVDeviceConfig, Complex, GaussianState};
 use crate::{DeviceError, DeviceResult};
-use rand::{random, rngs::StdRng, Rng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal, Poisson};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
+
+// Alias for backward compatibility
+type Normal<T> = RandNormal<T>;
 
 /// Types of CV measurements
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -159,9 +162,9 @@ impl CVMeasurementEngine {
 
         // Update calibration factors
         for i in 0..self.config.calibration.efficiency.len() {
-            self.config.calibration.efficiency[i] = 0.95 + 0.03 * rand::random::<f64>();
-            self.config.calibration.gain_factors[i] = 1.0 + 0.1 * (rand::random::<f64>() - 0.5);
-            self.config.calibration.phase_offsets[i] = 0.1 * (rand::random::<f64>() - 0.5);
+            self.config.calibration.efficiency[i] = 0.95 + 0.03 * thread_rng().gen::<f64>();
+            self.config.calibration.gain_factors[i] = 1.0 + 0.1 * (thread_rng().gen::<f64>() - 0.5);
+            self.config.calibration.phase_offsets[i] = 0.1 * (thread_rng().gen::<f64>() - 0.5);
         }
 
         self.is_calibrated = true;
@@ -235,7 +238,7 @@ impl CVMeasurementEngine {
         let distribution = Normal::new(theoretical_mean, total_variance.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
 
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         for _ in 0..self.config.num_samples {
             let sample = distribution.sample(&mut rng) * gain;
             samples.push(sample);
@@ -324,7 +327,7 @@ impl CVMeasurementEngine {
             Normal::new(mean_p, (var_p / efficiency + noise_variance / 2.0).sqrt())
                 .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
 
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         for _ in 0..self.config.num_samples {
             x_samples.push(x_distribution.sample(&mut rng) * gain);
             p_samples.push(p_distribution.sample(&mut rng) * gain);
@@ -416,10 +419,10 @@ impl CVMeasurementEngine {
 
         // Sample from Poisson-like distribution
         let mut samples = Vec::new();
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         for _ in 0..self.config.num_samples {
             let sample = if detected_n > 0.0 {
-                let poisson = rand_distr::Poisson::new(detected_n)
+                let poisson = Poisson::new(detected_n)
                     .map_err(|e| DeviceError::InvalidInput(format!("Poisson error: {}", e)))?;
                 poisson.sample(&mut rng) as f64
             } else {

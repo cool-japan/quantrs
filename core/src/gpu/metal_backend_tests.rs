@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
     use crate::qubit::QubitId;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     #[cfg(feature = "metal")]
     use crate::gpu::metal_backend_scirs2_ready::{MetalQuantumState, *};

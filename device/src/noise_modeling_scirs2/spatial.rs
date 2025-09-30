@@ -1,8 +1,8 @@
 //! Spatial correlation and geographical analysis for noise modeling
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use crate::DeviceResult;
 use super::types::*;
 use super::config::*;
@@ -454,7 +454,7 @@ impl SpatialAnalyzer {
 
         let mut cluster_statistics = HashMap::new();
         cluster_statistics.insert(0, ClusterStatistics {
-            centroid: qubit_positions.mean_axis(ndarray::Axis(0)).unwrap(),
+            centroid: qubit_positions.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
             size: num_qubits,
             within_cluster_variance: 1.0,
             separation_distance: 0.0,

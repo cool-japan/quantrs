@@ -15,8 +15,8 @@
 //! - Variational quantum algorithm optimization
 //! - Cloud TPU integration and resource management
 
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};

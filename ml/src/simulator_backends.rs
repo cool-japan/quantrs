@@ -5,8 +5,8 @@
 //! switching for quantum ML algorithms.
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 // GpuStateVectorSimulator import removed - not used in this file

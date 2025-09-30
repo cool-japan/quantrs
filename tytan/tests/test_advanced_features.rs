@@ -1,7 +1,8 @@
 //! Comprehensive tests for advanced features.
 
-use ndarray::{array, Array, Array1, Array2};
-use ndarray_rand::RandomExt;
+use scirs2_core::ndarray::{array, Array, Array1, Array2};
+use scirs2_core::RandomExt;
+use scirs2_core::ndarray::distributions::Uniform;
 use quantrs2_tytan::applications::finance::*;
 use quantrs2_tytan::applications::logistics::*;
 use quantrs2_tytan::coherent_ising_machine::*;
@@ -148,7 +149,7 @@ mod decomposition_tests {
         let size = 12;
         let mut qubo = Array2::random(
             (size, size),
-            ndarray_rand::rand_distr::Uniform::new(-1.0, 1.0),
+            Uniform::new(-1.0, 1.0),
         );
 
         let mut sampler = SASampler::new(None);

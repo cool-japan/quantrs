@@ -28,8 +28,8 @@ pub use fallback as scirs2_fallback;
 #[cfg(not(feature = "scirs2"))]
 pub use fallback::*;
 
-use ndarray::{Array1, Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::Complex64;
 // Import specific types to avoid naming conflicts
 use quantrs2_circuit::prelude::{
     Circuit,

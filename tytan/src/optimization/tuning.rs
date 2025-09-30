@@ -7,7 +7,7 @@ use crate::{
     optimization::penalty::CompiledModel,
     sampler::{SampleResult, Sampler},
 };
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -256,8 +256,8 @@ impl ParameterTuner {
 
     /// Sample random parameters
     fn sample_random_parameters(&self, seed: u64) -> HashMap<String, f64> {
-        use rand::rngs::StdRng;
-        use rand::{Rng, SeedableRng};
+        
+        use scirs2_core::random::prelude::*;
 
         let mut rng = StdRng::seed_from_u64(seed + self.config.seed.unwrap_or(42));
 
@@ -265,14 +265,14 @@ impl ParameterTuner {
             .iter()
             .map(|b| {
                 let value = match b.scale {
-                    ParameterScale::Linear => rng.random_range(b.min..b.max),
+                    ParameterScale::Linear => rng.gen_range(b.min..b.max),
                     ParameterScale::Logarithmic => {
                         let log_min = b.min.ln();
                         let log_max = b.max.ln();
-                        rng.random_range(log_min..log_max).exp()
+                        rng.gen_range(log_min..log_max).exp()
                     }
                     ParameterScale::Sigmoid => {
-                        let u: f64 = rng.random();
+                        let u: f64 = rng.gen();
                         b.min + (b.max - b.min) / (1.0 + (-4.0 * (u - 0.5)).exp())
                     }
                 };

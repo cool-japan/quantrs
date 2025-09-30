@@ -10,13 +10,13 @@ use crate::scirs2_quantum_profiler::{
     CircuitProfilingResult, GateProfilingResult, MemoryAnalysis, OptimizationRecommendation,
     ProfilingPrecision, QuantumGate, SimdAnalysis,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 use crate::platform::PlatformCapabilities;
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::Write;
@@ -781,7 +781,8 @@ impl EnhancedQuantumProfiler {
         }
 
         // Simulate cache behavior
-        let cache_hit = rand::random::<f64>() > 0.2; // 80% hit rate simulation
+        use scirs2_core::random::prelude::*;
+        let cache_hit = thread_rng().gen::<f64>() > 0.2; // 80% hit rate simulation
         self.metrics_collector.record_cache_access(cache_hit);
 
         Ok(())

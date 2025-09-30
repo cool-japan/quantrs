@@ -8,7 +8,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gpu::GpuBackendFactory,
 };
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use std::collections::HashMap;
 // Note: scirs2_optimize functions would be used here if available
 

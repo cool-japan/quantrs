@@ -5,8 +5,8 @@
 //! sim module. It includes optimized gate translation, circuit analysis, and
 //! execution pipelines for maximum performance.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;

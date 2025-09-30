@@ -4,7 +4,7 @@
 //! to verify correctness and performance for different circuit types.
 
 #[cfg(feature = "advanced_math")]
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 #[cfg(feature = "advanced_math")]
 use std::f64::consts::FRAC_1_SQRT_2;
 

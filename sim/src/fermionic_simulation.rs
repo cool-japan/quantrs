@@ -4,8 +4,8 @@
 //! including Jordan-Wigner transformations, fermionic operators, and specialized
 //! algorithms for electronic structure and many-body fermionic systems.
 
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};

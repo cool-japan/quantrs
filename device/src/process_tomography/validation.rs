@@ -1,7 +1,8 @@
 //! Validation methods for process tomography
 
-use ndarray::{Array1, Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use super::core::SciRS2ProcessTomographer;
@@ -292,8 +293,8 @@ impl SciRS2ProcessTomographer {
 
     /// Create bootstrap sample
     fn create_bootstrap_sample(&self, data: &ExperimentalData) -> DeviceResult<ExperimentalData> {
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let data_size = data.measurement_results.len();
         let mut bootstrap_results = Vec::new();

@@ -1,7 +1,8 @@
 //! Core quantum continual learning functionality
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::config::*;
@@ -113,7 +114,7 @@ impl QuantumContinualLearner {
 
         for (task_id, _) in self.task_sequence.get_all_tasks() {
             // Placeholder forgetting calculation
-            let forgetting_score = rand::random::<f64>() * 0.2; // 0-20% forgetting
+            let forgetting_score = thread_rng().gen::<f64>() * 0.2; // 0-20% forgetting
             forgetting_scores.insert(task_id, forgetting_score);
         }
 

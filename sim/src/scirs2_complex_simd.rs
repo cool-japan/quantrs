@@ -4,8 +4,8 @@
 //! for complex number arithmetic in quantum state vector operations.
 //! It leverages SciRS2's SimdUnifiedOps for maximum performance.
 
-use ndarray::{Array1, ArrayView1, ArrayViewMut1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
+use scirs2_core::Complex64;
 use quantrs2_core::platform::PlatformCapabilities;
 use scirs2_core::simd_ops::SimdUnifiedOps;
 

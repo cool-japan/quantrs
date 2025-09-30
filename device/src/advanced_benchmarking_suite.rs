@@ -7,8 +7,8 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::{Duration, Instant, SystemTime};
 
-use ndarray::{s, Array1, Array2};
-use rand::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2};
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Mutex, RwLock};
 
@@ -58,7 +58,7 @@ use scirs2_graph::{
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 // Note: ML optimization types are conditionally available based on scirs2 feature
-use ndarray::{Array3, ArrayView1, ArrayView2, Axis};
+use scirs2_core::ndarray::{Array3, ArrayView1, ArrayView2, Axis};
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
@@ -1327,7 +1327,7 @@ impl AdvancedHardwareBenchmarkSuite {
         // Simple synthetic relationship: target = sum of features with noise
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
-            let noise = (rand::random::<f64>() - 0.5) * 0.1;
+            let noise = (thread_rng().gen::<f64>() - 0.5) * 0.1;
             targets[i] = feature_sum + noise;
         }
 
@@ -1455,7 +1455,7 @@ impl AdvancedHardwareBenchmarkSuite {
 
         // Simple cross-validation (in practice, would use proper CV)
         for _ in 0..cv_folds {
-            let score = 0.80 + (rand::random::<f64>() - 0.5) * 0.1;
+            let score = 0.80 + (thread_rng().gen::<f64>() - 0.5) * 0.1;
             scores.push(score);
         }
 
@@ -1474,7 +1474,7 @@ impl AdvancedHardwareBenchmarkSuite {
 
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
-            predictions[i] = feature_sum + (rand::random::<f64>() - 0.5) * 0.1;
+            predictions[i] = feature_sum + (thread_rng().gen::<f64>() - 0.5) * 0.1;
         }
 
         Ok(predictions)
@@ -1594,11 +1594,11 @@ impl AdvancedHardwareBenchmarkSuite {
     ) -> DeviceResult<PredictionResult> {
         // Simplified predictive modeling implementation
         let horizon = self.config.prediction_config.prediction_horizon;
-        let predictions = Array1::from_iter((0..horizon).map(|_| rand::random::<f64>()));
+        let predictions = Array1::from_iter((0..horizon).map(|_| thread_rng().gen::<f64>()));
         let prediction_intervals = Array2::zeros((horizon, 2));
         let confidence_intervals = Array2::zeros((horizon, 2));
         let timestamps = (0..horizon).map(|_| SystemTime::now()).collect();
-        let uncertainty = Array1::from_iter((0..horizon).map(|_| rand::random::<f64>() * 0.1));
+        let uncertainty = Array1::from_iter((0..horizon).map(|_| thread_rng().gen::<f64>() * 0.1));
 
         let trend_analysis = TrendAnalysis {
             trend_direction: TrendDirection::Stable,
@@ -1737,7 +1737,7 @@ impl AnomalyDetector {
 
     fn detect_anomalies(&mut self, features: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let n_samples = features.nrows();
-        let anomaly_scores = Array1::from_iter((0..n_samples).map(|_| rand::random::<f64>()));
+        let anomaly_scores = Array1::from_iter((0..n_samples).map(|_| thread_rng().gen::<f64>()));
 
         // Simplified anomaly detection
         let threshold = 0.8;

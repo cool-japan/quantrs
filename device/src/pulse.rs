@@ -4,7 +4,7 @@
 //! enabling fine-grained control over quantum gates and measurements.
 
 use crate::{DeviceError, DeviceResult};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

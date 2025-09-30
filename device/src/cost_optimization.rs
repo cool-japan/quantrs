@@ -23,7 +23,7 @@ use scirs2_stats::{mean, std, pearsonr, spearmanr, corrcoef};
 #[cfg(feature = "scirs2")]
 use scirs2_graph::{Graph, dijkstra_path, minimum_spanning_tree};
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock};
 

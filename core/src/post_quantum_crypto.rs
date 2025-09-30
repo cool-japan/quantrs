@@ -5,14 +5,14 @@
 use crate::error::QuantRS2Error;
 // use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 // use crate::qubit::QubitId;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_linalg::{matrix_exp, qr_decompose};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 // use std::collections::HashMap;
 use std::f64::consts::PI;
 // use sha3::{Digest, Sha3_256, Sha3_512};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 
 /// Quantum hash function implementations
 #[derive(Debug, Clone)]
@@ -361,7 +361,7 @@ impl QuantumHashFunction {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(-sin_half, 0.0)
@@ -371,7 +371,7 @@ impl QuantumHashFunction {
     }
 
     fn cnot_gate() -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -401,7 +401,7 @@ impl QuantumHashFunction {
 
     fn hadamard_gate() -> Array2<Complex64> {
         let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(inv_sqrt2, 0.0),
                 Complex64::new(inv_sqrt2, 0.0)
@@ -415,7 +415,7 @@ impl QuantumHashFunction {
 
     fn create_measurement_basis(phase: f64) -> Array2<Complex64> {
         let exp_phase = Complex64::from_polar(1.0, phase);
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), exp_phase]
         ]
@@ -854,19 +854,19 @@ impl QuantumKeyDistribution {
         basis: bool,
     ) -> Result<Array1<Complex64>, QuantRS2Error> {
         match (bit, basis) {
-            (false, false) => Ok(ndarray::array![
+            (false, false) => Ok(scirs2_core::ndarray::array![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0)
             ]), // |0⟩
-            (true, false) => Ok(ndarray::array![
+            (true, false) => Ok(scirs2_core::ndarray::array![
                 Complex64::new(0.0, 0.0),
                 Complex64::new(1.0, 0.0)
             ]), // |1⟩
-            (false, true) => Ok(ndarray::array![
+            (false, true) => Ok(scirs2_core::ndarray::array![
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0)
             ]), // |+⟩
-            (true, true) => Ok(ndarray::array![
+            (true, true) => Ok(scirs2_core::ndarray::array![
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0)
             ]), // |-⟩
@@ -972,7 +972,7 @@ impl QuantumKeyDistribution {
     /// Create Bell state for E91
     fn create_bell_state(&self) -> Result<Array1<Complex64>, QuantRS2Error> {
         // |Φ+⟩ = (|00⟩ + |11⟩)/√2
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
@@ -996,7 +996,7 @@ impl QuantumKeyDistribution {
         let alpha: f64 = if bit { 1.0 } else { -1.0 };
 
         // Simplified coherent state |α⟩
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             Complex64::new((-alpha.powi(2) / 2.0).exp() * alpha, 0.0),
             Complex64::new((-alpha.powi(2) / 2.0).exp(), 0.0)
         ])
@@ -1019,7 +1019,7 @@ impl QuantumKeyDistribution {
         let mut noisy_state = state.clone();
         if rng.random::<f64>() < noise_level {
             // Apply bit flip
-            noisy_state = ndarray::array![state[1], state[0]];
+            noisy_state = scirs2_core::ndarray::array![state[1], state[0]];
         }
 
         Ok(noisy_state)
@@ -1103,7 +1103,7 @@ mod tests {
         assert!(signature_scheme.is_ok());
 
         let qds = signature_scheme.unwrap();
-        let message = ndarray::array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0)];
+        let message = scirs2_core::ndarray::array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0)];
 
         let signature = qds.sign(&message);
         assert!(signature.is_ok());

@@ -3,7 +3,7 @@
 //! This module provides optimized implementations of quantum gate operations,
 //! focusing on correctness and simplicity while still offering performance benefits.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 
 use crate::utils::flip_bit;
 

@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::parametric::*;
 use quantrs2_core::prelude::*;

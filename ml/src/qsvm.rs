@@ -3,8 +3,8 @@
 //! This module implements quantum-enhanced support vector machines for
 //! classification tasks using quantum feature maps and kernel methods.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -562,7 +562,7 @@ impl QuantumKernelRidge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_kernel_computation() {

@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -164,7 +164,7 @@ use scirs2_stats::{
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+    use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
     pub fn mean(_data: &ArrayView1<f64>) -> f64 {
         0.0

@@ -3,7 +3,7 @@
 //! This module provides basic implementations of SciRS2 functions that are used
 //! in the quantum algorithm marketplace module when the scirs2 feature is not enabled.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Fallback error type for optimization

@@ -8,8 +8,8 @@ use crate::{
     },
     sampler::SASampler,
 };
-use ndarray::Array2;
-use rand::Rng;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -325,14 +325,14 @@ impl BenchmarkRunner {
 
     /// Generate random QUBO problem
     fn generate_qubo_problem(&self, size: usize, density: f64) -> Array2<f64> {
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
         let mut matrix = Array2::zeros((size, size));
 
         // Generate symmetric matrix with given density
         for i in 0..size {
             for j in i..size {
-                if rng.random::<f64>() < density {
-                    let value = rng.random_range(-10.0..10.0);
+                if rng.gen::<f64>() < density {
+                    let value = rng.gen_range(-10.0..10.0);
                     matrix[[i, j]] = value;
                     if i != j {
                         matrix[[j, i]] = value;

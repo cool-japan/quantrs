@@ -6,19 +6,19 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["quantum", "computing", "annealing", "tytan", "optimization"]
+categories = ["science", "algorithms"]
 description = "High-level quantum annealing interface inspired by Tytan for the QuantRS2 framework"
 
 [dependencies]
 quantrs2-core.workspace = true
 quantrs2-anneal.workspace = true
-num-complex.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 thiserror.workspace = true
-rand.workspace = true
-rand_chacha.workspace = true
-rand_distr.workspace = true
-ndarray.workspace = true
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 num-bigint.workspace = true
 num-integer.workspace = true
 num.workspace = true
@@ -33,10 +33,13 @@ num_cpus.workspace = true
 plotters = { workspace = true, optional = true }
 colored.workspace = true
 
-# SciRS2 dependencies for performance optimization
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2.workspace = true
 scirs2-core = { workspace = true, default-features = false, features = ["gpu", "parallel", "simd"] }
+scirs2-autograd.workspace = true
+scirs2-optimize.workspace = true
+scirs2-stats.workspace = true
 scirs2-linalg = { workspace = true, optional = true }
-scirs2-optimize = { workspace = true, optional = true }
 scirs2-cluster = { workspace = true, optional = true }
 
 # Optional dependencies
@@ -49,8 +52,8 @@ parallel = ["dep:rayon"]
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
 dwave = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys", "dep:regex"]
-scirs = ["dep:scirs2-linalg", "dep:scirs2-optimize", "dep:scirs2-cluster"]
-advanced_optimization = ["scirs", "dep:scirs2-optimize"]
+scirs = ["dep:scirs2-linalg", "dep:scirs2-cluster"]
+advanced_optimization = ["scirs"]
 clustering = ["dep:scirs2-cluster"]
 # Combined accelerated features
 gpu_accelerated = ["gpu", "scirs", "parallel"]
@@ -58,8 +61,8 @@ plotters = ["dep:plotters"]
 
 [dev-dependencies]
 criterion.workspace = true
-ndarray-rand.workspace = true
-rand_chacha.workspace = true
+# ndarray-rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 colored.workspace = true
 
 # [[bench]]

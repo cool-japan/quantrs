@@ -1,7 +1,8 @@
 //! Core active learning decomposer implementation
 
-use ndarray::Array1;
-use rand::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -217,7 +218,7 @@ impl ActiveLearningDecomposer {
         let uncertainty_threshold = 0.5; // High uncertainty threshold
 
         Ok(uncertainty > uncertainty_threshold
-            || rand::thread_rng().gen::<f64>() < explore_threshold)
+            || thread_rng().gen::<f64>() < explore_threshold)
     }
 
     /// Explore strategy selection
@@ -333,7 +334,7 @@ impl ActiveLearningDecomposer {
         base_strategy: &DecompositionStrategy,
     ) -> Result<DecompositionStrategy, String> {
         let strategies = &self.knowledge_base.strategy_database.strategies;
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         // Select a random strategy with some probability
         if rng.gen::<f64>() < 0.3 {

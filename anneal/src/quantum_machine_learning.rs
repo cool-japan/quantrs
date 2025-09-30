@@ -15,9 +15,10 @@
 //! - Quantum Autoencoders for dimensionality reduction
 //! - Integration with Ising/QUBO optimization
 
-use num_complex::Complex as NComplex;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex as NComplex;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};
@@ -556,7 +557,7 @@ impl VariationalQuantumClassifier {
         // Initialize parameters randomly
         let mut rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let parameters: Vec<f64> = (0..ansatz.num_parameters)
@@ -1298,7 +1299,7 @@ impl QuantumGAN {
 
         let mut rng = match self.config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         for epoch in 0..self.config.epochs {

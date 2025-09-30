@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use std::sync::Mutex;
 
@@ -274,7 +274,7 @@ impl StateVectorSimulator {
     ) -> QuantRS2Result<()> {
         if self.scirs2_backend.is_available() && matrix.len() >= 64 && vector.len() >= 8 {
             // Use SciRS2 for larger operations where the overhead is worthwhile
-            use ndarray::{Array1, Array2};
+            use scirs2_core::ndarray::{Array1, Array2};
 
             let rows = result.len();
             let cols = vector.len();

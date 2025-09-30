@@ -9,7 +9,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 // Placeholder for future SciRS2 Metal types

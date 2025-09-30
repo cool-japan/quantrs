@@ -21,7 +21,7 @@ pub use solution_debugger::*;
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     fn create_test_problem_info() -> types::ProblemInfo {
         let mut var_map = HashMap::new();

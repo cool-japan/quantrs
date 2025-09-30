@@ -159,7 +159,7 @@ fn demo_large_circuit() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut circuit = Circuit::new(n_qubits)?;
     use rand::Rng;
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     // Create layers of gates
     for layer in 0..depth {

@@ -6,8 +6,8 @@
 
 use crate::buffer_manager::{BufferManager, ManagedComplexBuffer, ManagedF64Buffer};
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
 use quantrs2_core::buffer_pool::BufferPool;
 use quantrs2_core::platform::PlatformCapabilities;
 use quantrs2_core::{

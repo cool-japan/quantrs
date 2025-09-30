@@ -4,8 +4,10 @@
 //! and other Boltzmann machine variants that leverage quantum annealing for
 //! sampling and training, enabling quantum machine learning applications.
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -290,7 +292,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
         let rng = match training_config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let mut rbm = Self {
@@ -383,7 +385,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
             // Shuffle dataset
             let mut shuffled_indices: Vec<usize> = (0..dataset.len()).collect();
-            use rand::seq::SliceRandom;
+            use scirs2_core::random::prelude::*;
             shuffled_indices.shuffle(&mut self.rng);
 
             // Process batches

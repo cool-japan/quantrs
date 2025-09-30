@@ -1415,7 +1415,7 @@ impl QuantumJobScheduler {
 
             if performance_data.len() > 1 {
                 // Calculate optimization metrics
-                use ndarray::Array1;
+                use scirs2_core::ndarray::Array1;
                 let data_array = Array1::from_vec(performance_data);
                 let avg_utilization = mean(&data_array.view());
                 let utilization_std = std(&data_array.view(), 1, None);

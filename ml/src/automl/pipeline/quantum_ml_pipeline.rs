@@ -6,7 +6,7 @@ use crate::automl::config::QuantumAutoMLConfig;
 use crate::automl::pipeline::constructor::{AlgorithmCandidate, PreprocessorConfig};
 use crate::automl::search::hyperparameter_optimizer::HyperparameterConfiguration;
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Quantum ML Pipeline

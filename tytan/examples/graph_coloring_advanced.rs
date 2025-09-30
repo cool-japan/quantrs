@@ -6,7 +6,7 @@
 //! - Advanced visualization and analysis
 //! - Performance comparison across different samplers
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     analysis::graph::generate_graph,
     auto_array,
@@ -176,7 +176,7 @@ fn run_graph_coloring_experiment(
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let mut matrix = scirs2_core::ndarray::Array2::zeros((n_vars, n_vars));
     let mut var_map = HashMap::new();
 
     for i in 0..n_vars {
@@ -363,8 +363,8 @@ fn verify_coloring(
 }
 
 /// Convert edge list to adjacency matrix
-fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> ndarray::Array2<bool> {
-    use ndarray::Array2;
+fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> scirs2_core::ndarray::Array2<bool> {
+    use scirs2_core::ndarray::Array2;
     let mut adjacency = Array2::from_elem((n_nodes, n_nodes), false);
 
     for (i, j) in edges {

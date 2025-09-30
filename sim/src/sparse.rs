@@ -3,8 +3,8 @@
 //! This module provides sparse matrix representations and operations
 //! optimized for quantum gates, especially for circuits with limited connectivity.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use crate::error::{Result, SimulatorError};

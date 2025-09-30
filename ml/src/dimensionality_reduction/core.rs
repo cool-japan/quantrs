@@ -1,7 +1,7 @@
 //! Core quantum dimensionality reduction functionality
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 use super::config::*;
 use super::metrics::*;
@@ -293,7 +293,7 @@ impl QuantumDimensionalityReducer {
         let components = Array2::eye(n_components);
         let explained_variance_ratio =
             Array1::from_vec((0..n_components).map(|i| 1.0 / (i + 1) as f64).collect());
-        let mean = data.mean_axis(ndarray::Axis(0)).unwrap();
+        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
 
         self.trained_state = Some(DRTrainedState {
             components,

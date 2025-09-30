@@ -8,7 +8,7 @@ use crate::{
     adaptive_precision::AdaptivePrecisionSimulator, error::QuantRS2Result,
     quantum_autodiff::QuantumAutoDiff,
 };
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -370,11 +370,11 @@ impl HybridNeuralNetwork {
             // Adjust prediction dimensions to match target if needed
             if prediction.len() != target.len() {
                 let min_len = prediction.len().min(target.len());
-                prediction = prediction.slice(ndarray::s![..min_len]).to_owned();
+                prediction = prediction.slice(scirs2_core::ndarray::s![..min_len]).to_owned();
             }
 
             let adjusted_target = if target.len() > prediction.len() {
-                target.slice(ndarray::s![..prediction.len()]).to_owned()
+                target.slice(scirs2_core::ndarray::s![..prediction.len()]).to_owned()
             } else {
                 target
             };
@@ -620,21 +620,25 @@ impl HybridNeuralNetwork {
     fn update_quantum_parameters(&mut self, _gradient: &Array1<f64>) -> QuantRS2Result<()> {
         // Simplified quantum parameter update
         // In a full implementation, this would use the quantum autodiff engine
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         for param in &mut self.quantum_circuit.parameters {
-            *param += self.config.quantum_learning_rate * (rand::random::<f64>() - 0.5) * 0.1;
+            *param += self.config.quantum_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
         }
         Ok(())
     }
 
     fn update_classical_parameters(&mut self, _gradient: &Array1<f64>) -> QuantRS2Result<()> {
         // Simplified classical parameter update
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         for layer in &mut self.classical_layers {
             for weight in layer.weights.iter_mut() {
                 *weight +=
-                    self.config.classical_learning_rate * (rand::random::<f64>() - 0.5) * 0.1;
+                    self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
             for bias in layer.biases.iter_mut() {
-                *bias += self.config.classical_learning_rate * (rand::random::<f64>() - 0.5) * 0.1;
+                *bias += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
         }
         Ok(())
@@ -690,9 +694,11 @@ impl DenseLayer {
         activation: ActivationFunction,
     ) -> QuantRS2Result<Self> {
         // Xavier initialization
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let limit = (6.0 / (input_size + output_size) as f64).sqrt();
         let weights = Array2::from_shape_fn((output_size, input_size), |_| {
-            (rand::random::<f64>() - 0.5) * 2.0 * limit
+            (rng.gen::<f64>() - 0.5) * 2.0 * limit
         });
         let biases = Array1::zeros(output_size);
 
@@ -821,6 +827,8 @@ impl FusionLayer {
         classical_size: usize,
         quantum_size: usize,
     ) -> QuantRS2Result<Self> {
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let fusion_weights = match fusion_type {
             FusionType::Concatenation => Array2::eye(classical_size + quantum_size),
             FusionType::WeightedSum => Array2::from_shape_fn(
@@ -828,7 +836,7 @@ impl FusionLayer {
                     classical_size.max(quantum_size),
                     classical_size + quantum_size,
                 ),
-                |_| rand::random::<f64>() - 0.5,
+                |_| rng.gen::<f64>() - 0.5,
             ),
             _ => Array2::eye(classical_size.max(quantum_size)),
         };

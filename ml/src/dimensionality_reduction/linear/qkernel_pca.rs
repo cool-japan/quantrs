@@ -1,7 +1,7 @@
 //! Quantum Kernel Principal Component Analysis
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::super::config::{DRTrainedState, QKernelPCAConfig};
@@ -23,7 +23,7 @@ impl QKernelPCA {
 
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         let n_components = self.config.n_components.min(data.ncols());
-        let mean = data.mean_axis(ndarray::Axis(0)).unwrap();
+        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
         let components = Array2::eye(n_components);
         let explained_variance_ratio = Array1::ones(n_components) / n_components as f64;
 

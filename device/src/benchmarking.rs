@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use rand::prelude::*;
-use rand::thread_rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::thread_rng;
 use serde::{Deserialize, Serialize};
 
 use quantrs2_circuit::prelude::*;
@@ -29,7 +29,7 @@ use scirs2_stats::{
     TTestResult,
 };
 
-use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, ArrayView2};
 
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
@@ -940,17 +940,18 @@ impl HardwareBenchmarkSuite {
         num_qubits: usize,
         depth: usize,
     ) -> DeviceResult<Circuit<N>> {
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         let mut circuit = Circuit::<N>::new();
 
         let gates = ["H", "X", "Y", "Z", "CNOT", "RZ"];
 
         for _ in 0..depth {
-            let gate = gates.choose(&mut rng).unwrap();
+            let gate_idx = rng.gen_range(0..gates.len());
+            let gate = gates[gate_idx];
             let qubit = rng.gen_range(0..num_qubits) as u32;
 
-            match *gate {
+            match gate {
                 "H" => {
                     let _ = circuit.h(QubitId(qubit));
                 }

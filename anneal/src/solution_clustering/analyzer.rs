@@ -1,7 +1,8 @@
 //! Main solution clustering analyzer implementation
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
@@ -307,7 +308,7 @@ impl SolutionClusteringAnalyzer {
         // Initialize centroids randomly
         let mut rng = match self.config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let mut centroids = Vec::new();

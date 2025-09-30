@@ -1,6 +1,6 @@
 //! Knowledge base components for decomposition
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -86,7 +86,7 @@ pub struct KnownPattern {
     /// Pattern description
     pub description: String,
     /// Pattern features
-    pub features: ndarray::Array1<f64>,
+    pub features: scirs2_core::ndarray::Array1<f64>,
     /// Optimal strategies for this pattern
     pub optimal_strategies: Vec<DecompositionStrategy>,
     /// Pattern frequency
@@ -135,7 +135,7 @@ pub struct ProblemCharacteristics {
     /// Problem type
     pub problem_type: String,
     /// Structural features
-    pub structural_features: ndarray::Array1<f64>,
+    pub structural_features: scirs2_core::ndarray::Array1<f64>,
     /// Complexity indicators
     pub complexity_indicators: HashMap<String, f64>,
 }

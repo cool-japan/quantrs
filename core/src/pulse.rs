@@ -8,8 +8,8 @@ use crate::{
     gate::GateOp,
     qubit::QubitId,
 };
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
@@ -713,20 +713,20 @@ impl PulseNoiseModel {
     pub fn apply_noise(
         &self,
         pulse: &mut Pulse,
-        rng: &mut dyn rand::RngCore,
+        rng: &mut dyn scirs2_core::random::RngCore,
     ) -> QuantRS2Result<()> {
-        use rand::Rng;
+        use scirs2_core::random::prelude::*;
 
         // Apply amplitude noise
-        let amplitude_factor = 1.0 + rng.random_range(0.0..1.0) * self.amplitude_noise;
+        let amplitude_factor = 1.0 + rng.gen_range(0.0..1.0) * self.amplitude_noise;
         pulse.amplitude *= amplitude_factor;
 
         // Apply phase noise
-        let phase_shift = rng.random_range(0.0..1.0) * self.phase_noise;
+        let phase_shift = rng.gen_range(0.0..1.0) * self.phase_noise;
         pulse.phase += phase_shift;
 
         // Apply frequency noise
-        let freq_shift = rng.random_range(0.0..1.0) * self.flux_noise / 1000.0; // Convert MHz to GHz
+        let freq_shift = rng.gen_range(0.0..1.0) * self.flux_noise / 1000.0; // Convert MHz to GHz
         pulse.frequency += freq_shift;
 
         Ok(())
@@ -736,12 +736,12 @@ impl PulseNoiseModel {
     pub fn apply_timing_jitter(
         &self,
         sequence: &mut PulseSequence,
-        rng: &mut dyn rand::RngCore,
+        rng: &mut dyn scirs2_core::random::RngCore,
     ) -> QuantRS2Result<()> {
-        use rand::Rng;
+        use scirs2_core::random::prelude::*;
 
         for (start_time, _, _) in &mut sequence.pulses {
-            let jitter = rng.random_range(0.0..1.0) * self.timing_jitter;
+            let jitter = rng.gen_range(0.0..1.0) * self.timing_jitter;
             *start_time += jitter;
         }
 

@@ -6,8 +6,8 @@
 #![allow(dead_code)]
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, ArrayD, Ix2, IxDyn};
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array, ArrayD, Ix2, IxDyn};
+use scirs2_core::random::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -608,7 +608,7 @@ impl MIKASAmpler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Stub tensor contraction functionality
-        use ndarray::{Array, IxDyn};
+        use scirs2_core::ndarray::{Array, IxDyn};
         let cp_decomposition = |_: &ArrayD<f64>| -> Result<
             (Vec<usize>, Vec<Array<f64, IxDyn>>, f64),
             Box<dyn std::error::Error>,
@@ -731,7 +731,7 @@ mod tests {
     use super::EnhancedArminSampler;
     use crate::sampler::Sampler;
     #[cfg(feature = "scirs")]
-    use ndarray::Array;
+    use scirs2_core::ndarray::Array;
     #[cfg(feature = "scirs")]
     use std::collections::HashMap;
 

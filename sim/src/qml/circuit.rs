@@ -3,7 +3,7 @@
 //! This module provides parameterized quantum circuit structures with
 //! hardware-aware optimizations for different quantum computing architectures.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::config::HardwareArchitecture;

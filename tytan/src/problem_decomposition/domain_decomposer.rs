@@ -2,7 +2,7 @@
 
 use super::types::*;
 use crate::sampler::{SampleResult, Sampler};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 #[cfg(feature = "parallel")]
 use scirs2_core::parallel_ops::*;
 use std::collections::HashMap;
@@ -578,7 +578,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
 mod tests {
     use super::*;
     use crate::sampler::simulated_annealing::SASampler;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
     use std::collections::HashMap;
 
     #[test]

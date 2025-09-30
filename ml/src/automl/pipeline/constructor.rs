@@ -5,7 +5,7 @@
 use crate::automl::config::QuantumAutoMLConfig;
 use crate::automl::pipeline::QuantumMLPipeline;
 use crate::error::Result;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 /// Automated pipeline constructor
 #[derive(Debug, Clone)]

@@ -5,7 +5,7 @@
 //! distributed training capabilities, and serialization formats.
 
 use crate::error::{MLError, Result};
-use ndarray::{Array, Array1, Array2, Array3, ArrayD, ArrayViewD, Dimension, IxDyn};
+use scirs2_core::ndarray::{Array, Array1, Array2, Array3, ArrayD, ArrayViewD, Dimension, IxDyn};
 use std::collections::HashMap;
 
 /// Trait for tensor operations compatible with SciRS2
@@ -120,12 +120,12 @@ impl SciRS2Array {
             let self_2d = self
                 .data
                 .view()
-                .into_dimensionality::<ndarray::Ix2>()
+                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                 .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
             let other_2d = other
                 .data
                 .view()
-                .into_dimensionality::<ndarray::Ix2>()
+                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                 .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
             self_2d.dot(&other_2d).into_dyn()
         } else {
@@ -179,7 +179,7 @@ impl SciRS2Array {
     /// Reduction sum
     pub fn sum(&self, axis: Option<usize>) -> Result<SciRS2Array> {
         let result_data = match axis {
-            Some(ax) => self.data.sum_axis(ndarray::Axis(ax)).into_dyn(),
+            Some(ax) => self.data.sum_axis(scirs2_core::ndarray::Axis(ax)).into_dyn(),
             None => {
                 let sum_val = self.data.sum();
                 ArrayD::from_elem(IxDyn(&[]), sum_val)
@@ -237,7 +237,7 @@ impl SciRS2Tensor for SciRS2Array {
 
     fn mean(&self, axis: Option<usize>) -> Result<SciRS2Array> {
         let result_data = match axis {
-            Some(ax) => self.data.mean_axis(ndarray::Axis(ax)).unwrap().into_dyn(),
+            Some(ax) => self.data.mean_axis(scirs2_core::ndarray::Axis(ax)).unwrap().into_dyn(),
             None => {
                 let mean_val = self.data.mean().unwrap();
                 ArrayD::from_elem(IxDyn(&[]), mean_val)
@@ -250,7 +250,7 @@ impl SciRS2Tensor for SciRS2Array {
         let result_data = match axis {
             Some(ax) => self
                 .data
-                .map_axis(ndarray::Axis(ax), |view| {
+                .map_axis(scirs2_core::ndarray::Axis(ax), |view| {
                     *view
                         .iter()
                         .max_by(|a, b| a.partial_cmp(b).unwrap())
@@ -273,7 +273,7 @@ impl SciRS2Tensor for SciRS2Array {
         let result_data = match axis {
             Some(ax) => self
                 .data
-                .map_axis(ndarray::Axis(ax), |view| {
+                .map_axis(scirs2_core::ndarray::Axis(ax), |view| {
                     *view
                         .iter()
                         .min_by(|a, b| a.partial_cmp(b).unwrap())
@@ -631,13 +631,13 @@ impl<'a> Iterator for DataLoaderIterator<'a> {
             .loader
             .dataset
             .data
-            .slice(ndarray::s![start..end, ..])
+            .slice(scirs2_core::ndarray::s![start..end, ..])
             .to_owned();
         let batch_labels = self
             .loader
             .dataset
             .labels
-            .slice(ndarray::s![start..end, ..])
+            .slice(scirs2_core::ndarray::s![start..end, ..])
             .to_owned();
 
         let data_array = SciRS2Array::from_array(batch_data);
@@ -663,9 +663,9 @@ pub enum SciRS2Device {
 impl SciRS2Array {
     /// Create array with specified device
     pub fn randn(shape: Vec<usize>, device: SciRS2Device) -> Result<Self> {
-        use rand::Rng;
+        use scirs2_core::random::prelude::*;
         let total_size = shape.iter().product();
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let data: Vec<f64> = (0..total_size).map(|_| rng.gen_range(-1.0..1.0)).collect();
         let array = ArrayD::from_shape_vec(IxDyn(&shape), data)
             .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
@@ -680,9 +680,9 @@ impl SciRS2Array {
 
     /// Create random integers
     pub fn randint(low: i32, high: i32, shape: Vec<usize>, device: SciRS2Device) -> Result<Self> {
-        use rand::Rng;
+        use scirs2_core::random::prelude::*;
         let total_size = shape.iter().product();
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let data: Vec<f64> = (0..total_size)
             .map(|_| rng.gen_range(low..high) as f64)
             .collect();
@@ -747,7 +747,7 @@ pub mod integration {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_scirs2_array_creation() {

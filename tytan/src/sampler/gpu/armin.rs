@@ -1,8 +1,8 @@
 //! GPU-accelerated Armin Sampler Implementation
 
-use ndarray::{Array, Ix2};
+use scirs2_core::ndarray::{Array, Ix2};
 #[cfg(all(feature = "gpu", feature = "dwave"))]
-use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
+use scirs2_core::random::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 use std::collections::HashMap;
 
 #[cfg(all(feature = "gpu", feature = "dwave"))]
@@ -288,7 +288,7 @@ impl ArminSampler {
         for _ in 0..num_shots {
             let mut solution = Vec::with_capacity(n_vars);
             for _ in 0..n_vars {
-                solution.push(rng.random_bool(0.5));
+                solution.push(rng.gen_bool(0.5));
             }
             solutions.push(solution);
         }
@@ -642,7 +642,7 @@ impl Sampler for ArminSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Handle QUBO case directly
@@ -650,7 +650,7 @@ impl Sampler for ArminSampler {
             let mut qubo = (
                 hobo.0
                     .clone()
-                    .into_dimensionality::<ndarray::Ix2>()
+                    .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                     .unwrap(),
                 hobo.1.clone(),
             );
@@ -698,7 +698,7 @@ impl Sampler for ArminSampler {
 
     fn run_hobo(
         &self,
-        _hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        _hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         Err(SamplerError::GpuError(

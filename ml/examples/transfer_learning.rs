@@ -3,7 +3,7 @@
 //! This example demonstrates how to use pre-trained quantum models
 //! and fine-tune them for new tasks with transfer learning.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;

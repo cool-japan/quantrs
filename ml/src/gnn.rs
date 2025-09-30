@@ -3,8 +3,8 @@
 //! This module provides quantum versions of graph neural networks including
 //! graph convolutional networks, graph attention networks, and message passing.
 
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1154,7 +1154,7 @@ impl QuantumGNN {
     /// Apply readout operation
     fn apply_readout(&self, node_features: &Array2<f64>) -> Result<Array1<f64>> {
         let readout_features = match self.readout {
-            ReadoutType::Mean => node_features.mean_axis(ndarray::Axis(0)).unwrap(),
+            ReadoutType::Mean => node_features.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
             ReadoutType::Max => {
                 let mut max_features = Array1::from_elem(node_features.ncols(), f64::NEG_INFINITY);
                 for row in node_features.rows() {
@@ -1164,7 +1164,7 @@ impl QuantumGNN {
                 }
                 max_features
             }
-            ReadoutType::Sum => node_features.sum_axis(ndarray::Axis(0)),
+            ReadoutType::Sum => node_features.sum_axis(scirs2_core::ndarray::Axis(0)),
             ReadoutType::Attention => {
                 // Compute attention weights
                 let mut weights = Array1::zeros(node_features.nrows());

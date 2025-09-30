@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use crate::error::QuantRS2Error;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2-core-extension"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "Python bindings for QuantRS2-Core quantum computing framework"
 authors = [
     {name = "QuantRS2 Contributors (Team KitaSan)", email = "info@kitasan.io"},
@@ -13,7 +13,7 @@ readme = "README.md"
 license = {text = "MIT OR Apache-2.0"}
 requires-python = ">=3.8"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",

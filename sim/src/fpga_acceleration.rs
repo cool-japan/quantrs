@@ -15,8 +15,8 @@
 //! - Integration with Intel/Xilinx FPGA platforms
 //! - OpenCL and Verilog/SystemVerilog code generation
 
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

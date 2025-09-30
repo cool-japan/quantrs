@@ -5,6 +5,7 @@
 
 use crate::error::MLError;
 use quantrs2_circuit::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::f64::consts::PI;
 
 /// Variance threshold below which we consider a gradient to be in a barren plateau
@@ -58,14 +59,14 @@ impl BarrenPlateauDetector {
         num_params: usize,
         num_layers: usize,
     ) -> Result<BarrenPlateauAnalysis, MLError> {
-        let mut rng = fastrand::Rng::with_seed(self.seed);
+        let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(self.seed);
         let mut layer_variances = vec![0.0; num_layers];
         let mut all_gradients = Vec::new();
 
         // Sample random parameter configurations
         for _ in 0..self.num_samples {
             // Generate random parameters
-            let params: Vec<f64> = (0..num_params).map(|_| rng.f64() * 2.0 * PI).collect();
+            let params: Vec<f64> = (0..num_params).map(|_| rng.gen::<f64>() * 2.0 * PI).collect();
 
             // Compute gradients for this configuration
             let gradients = self.compute_gradients(&circuit_builder, &params)?;
@@ -153,8 +154,8 @@ impl BarrenPlateauDetector {
         // 3. Return the expectation value
 
         // For demo purposes, return a small random value
-        let mut rng = fastrand::Rng::with_seed(self.seed);
-        Ok(rng.f64() * 0.1)
+        let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(self.seed);
+        Ok(rng.gen::<f64>() * 0.1)
     }
 
     /// Suggest mitigation strategies based on analysis
@@ -285,10 +286,10 @@ impl BarrenPlateauMitigation {
 
     /// Initialize parameters to avoid barren plateaus
     pub fn smart_initialization(&self, num_params: usize) -> Vec<f64> {
-        let mut rng = fastrand::Rng::with_seed(42);
+        let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(42);
 
         // Initialize with small random values
-        (0..num_params).map(|_| (rng.f64() - 0.5) * 0.1).collect()
+        (0..num_params).map(|_| (rng.gen::<f64>() - 0.5) * 0.1).collect()
     }
 
     /// Layer-wise pre-training strategy

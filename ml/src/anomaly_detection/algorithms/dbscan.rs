@@ -1,7 +1,8 @@
 //! Quantum DBSCAN implementation
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::super::config::*;
@@ -29,7 +30,7 @@ impl AnomalyDetectorTrait for QuantumDBSCAN {
         let n_samples = data.nrows();
         let n_features = data.ncols();
 
-        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| rand::random::<f64>());
+        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<f64>());
         let anomaly_labels = anomaly_scores.mapv(|score| if score > 0.5 { 1 } else { 0 });
         let confidence_scores = anomaly_scores.clone();
         let feature_importance =
@@ -39,7 +40,7 @@ impl AnomalyDetectorTrait for QuantumDBSCAN {
         method_results.insert(
             "dbscan".to_string(),
             MethodSpecificResult::DBSCAN {
-                cluster_labels: Array1::from_shape_fn(n_samples, |_| rand::random::<i32>() % 3 - 1),
+                cluster_labels: Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<i32>() % 3 - 1),
                 core_sample_indices: vec![0, 2, 4],
             },
         );

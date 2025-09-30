@@ -5,8 +5,8 @@
 //! quantum operations.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 // use scirs2_sparse::csr::CsrMatrix;
 use crate::linalg_stubs::CsrMatrix;
 use std::fmt::Debug;
@@ -364,7 +364,7 @@ pub fn matrices_approx_equal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     #[test]
     fn test_dense_matrix_creation() {

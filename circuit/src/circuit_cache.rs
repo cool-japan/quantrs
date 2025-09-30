@@ -488,15 +488,21 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
     /// Evict random entries
     fn evict_random(&self, needed_space: usize) -> QuantRS2Result<()> {
-        use rand::seq::IteratorRandom;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let mut freed_space = 0;
         let mut evicted_count = 0;
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
                 let entries = self.entries.read().unwrap();
-                entries.keys().choose(&mut rng).copied()
+                let keys: Vec<u64> = entries.keys().copied().collect();
+                if keys.is_empty() {
+                    None
+                } else {
+                    let idx = rng.gen_range(0..keys.len());
+                    Some(keys[idx])
+                }
             };
 
             if let Some(key) = key_to_evict {

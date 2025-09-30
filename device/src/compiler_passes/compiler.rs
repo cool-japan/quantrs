@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use quantrs2_circuit::prelude::Circuit;
 
 use crate::{

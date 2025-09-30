@@ -7,10 +7,17 @@
 #![allow(unexpected_cfgs)]
 #![allow(deprecated)]
 
-/// Quantum circuit representation and DSL for the QuantRS2 framework.
-///
-/// This crate provides types for constructing and manipulating
-/// quantum circuits with a fluent API.
+//! Quantum circuit representation and DSL for the QuantRS2 framework.
+//!
+//! This crate provides types for constructing and manipulating
+//! quantum circuits with a fluent API.
+//!
+//! ## Recent Updates (v0.1.0-beta.2)
+//!
+//! - Refined SciRS2 v0.1.0-beta.3 integration with unified patterns
+//! - Enhanced graph-based circuit optimization algorithms
+//! - Improved hardware-aware compilation with SciRS2 graph algorithms
+//! - Comprehensive policy documentation for quantum circuit development
 pub mod buffer_manager;
 pub mod builder;
 pub mod circuit_cache;

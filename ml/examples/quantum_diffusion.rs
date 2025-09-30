@@ -3,9 +3,10 @@
 //! This example demonstrates quantum diffusion models for generative modeling,
 //! including DDPM-style models and score-based diffusion.
 
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Diffusion Model Demo ===\n");
@@ -153,8 +154,8 @@ fn generate_samples() -> Result<()> {
     }
 
     // Compute statistics
-    let mean = samples.mean_axis(ndarray::Axis(0)).unwrap();
-    let std = samples.std_axis(ndarray::Axis(0), 0.0);
+    let mean = samples.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+    let std = samples.std_axis(scirs2_core::ndarray::Axis(0), 0.0);
 
     println!("\n   Sample statistics:");
     println!("   - Mean: [{:.3}, {:.3}]", mean[0], mean[1]);
@@ -238,8 +239,8 @@ fn visualize_diffusion_process() -> Result<()> {
 
     // Start from noise
     let mut xt = Array1::from_vec(vec![
-        2.0 * rand::random::<f64>() - 1.0,
-        2.0 * rand::random::<f64>() - 1.0,
+        2.0 * thread_rng().gen::<f64>() - 1.0,
+        2.0 * thread_rng().gen::<f64>() - 1.0,
     ]);
 
     println!("   t=19 (pure noise): [{:.3}, {:.3}]", xt[0], xt[1]);
@@ -266,16 +267,16 @@ fn generate_two_moons(n_samples: usize) -> Array2<f64> {
     // First moon
     for i in 0..n_samples_per_moon {
         let angle = std::f64::consts::PI * i as f64 / n_samples_per_moon as f64;
-        data[[i, 0]] = angle.cos() + 0.1 * (2.0 * rand::random::<f64>() - 1.0);
-        data[[i, 1]] = angle.sin() + 0.1 * (2.0 * rand::random::<f64>() - 1.0);
+        data[[i, 0]] = angle.cos() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+        data[[i, 1]] = angle.sin() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
     }
 
     // Second moon (shifted and flipped)
     for i in 0..n_samples_per_moon {
         let idx = n_samples_per_moon + i;
         let angle = std::f64::consts::PI * i as f64 / n_samples_per_moon as f64;
-        data[[idx, 0]] = 1.0 - angle.cos() + 0.1 * (2.0 * rand::random::<f64>() - 1.0);
-        data[[idx, 1]] = 0.5 - angle.sin() + 0.1 * (2.0 * rand::random::<f64>() - 1.0);
+        data[[idx, 0]] = 1.0 - angle.cos() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+        data[[idx, 1]] = 0.5 - angle.sin() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
     }
 
     data

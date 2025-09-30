@@ -4,8 +4,8 @@
 //! efficient dimensionality reduction and eigenvalue estimation.
 
 use crate::error::QuantRS2Error;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Parameters for quantum PCA
@@ -60,7 +60,7 @@ impl QuantumPCA {
         // Center the data
         let mean = self
             .data_matrix
-            .mean_axis(ndarray::Axis(0))
+            .mean_axis(scirs2_core::ndarray::Axis(0))
             .ok_or_else(|| {
                 QuantRS2Error::UnsupportedOperation("Failed to compute mean".to_string())
             })?;
@@ -258,7 +258,7 @@ impl QuantumPCA {
         // Center the data
         let mean = self
             .data_matrix
-            .mean_axis(ndarray::Axis(0))
+            .mean_axis(scirs2_core::ndarray::Axis(0))
             .ok_or_else(|| {
                 QuantRS2Error::UnsupportedOperation("Failed to compute mean".to_string())
             })?;
@@ -362,10 +362,10 @@ impl DensityMatrixPCA {
 
         // Return only the retained components
         let retained_transform = transformed
-            .slice(ndarray::s![.., ..n_components_retain])
+            .slice(scirs2_core::ndarray::s![.., ..n_components_retain])
             .to_owned();
         let retained_variance = explained_variance
-            .slice(ndarray::s![..n_components_retain])
+            .slice(scirs2_core::ndarray::s![..n_components_retain])
             .to_owned();
 
         Ok((retained_transform, retained_variance))
@@ -375,7 +375,7 @@ impl DensityMatrixPCA {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_qpca_basic() {

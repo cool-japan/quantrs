@@ -4,8 +4,8 @@
 //! including energy spectrum calculations, quantum phase transition detection,
 //! entanglement spectrum analysis, and spectral density computations.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

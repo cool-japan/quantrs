@@ -7,8 +7,8 @@
 
 use crate::ising::{IsingError, IsingModel, IsingResult};
 use crate::simulator::{AnnealingError, AnnealingResult, AnnealingSolution};
-use rand::{thread_rng, Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::{thread_rng, Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::time::{Duration, Instant};
 
 /// Reverse annealing schedule configuration

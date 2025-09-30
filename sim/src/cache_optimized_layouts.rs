@@ -4,8 +4,8 @@
 //! state vector operations, including cache-aware data structures, memory
 //! access patterns, and cache-conscious algorithms for quantum gates.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 use std::collections::{HashMap, VecDeque};
@@ -927,7 +927,7 @@ pub struct CacheOperationStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_cache_optimized_state_vector_creation() {

@@ -6,28 +6,32 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["quantum", "computing", "device", "hardware", "connectivity"]
+categories = ["science", "simulation", "hardware-support"]
 description = "Quantum device connectors for the QuantRS2 framework"
 
 [dependencies]
 quantrs2-core.workspace = true
 quantrs2-circuit.workspace = true
-num-complex.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 thiserror.workspace = true
-petgraph = "0.6"
+petgraph.workspace = true
 fastrand.workspace = true
-rand.workspace = true
-rand_distr.workspace = true
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 bincode.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-ndarray.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 rayon.workspace = true
 num_cpus.workspace = true
 
-# SciRS2 dependencies for advanced algorithms
-scirs2-stats = { workspace = true, optional = true }
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2.workspace = true
+scirs2-core.workspace = true
+scirs2-autograd.workspace = true
+scirs2-stats.workspace = true
+scirs2-metrics.workspace = true
 scirs2-graph = { workspace = true, optional = true }
 scirs2-linalg = { workspace = true, optional = true }
 scirs2-optimize = { workspace = true, optional = true }
@@ -40,7 +44,7 @@ broadcast = "0.1"
 chrono = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true }
-url = { version = "2.5.4", features = ["serde"] }
+url = { version = "2.5.7", features = ["serde"] }
 
 # For AWS authentication
 hmac = { workspace = true, optional = true }
@@ -71,7 +75,7 @@ aws = [
 ]
 neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "dep:uuid", "dep:futures", "ibm"]
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
-scirs2 = ["dep:scirs2-stats", "dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
+scirs2 = ["dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
 
 [lints]

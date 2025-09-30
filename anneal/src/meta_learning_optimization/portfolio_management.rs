@@ -246,7 +246,7 @@ impl AlgorithmPortfolio {
     }
 
     fn epsilon_greedy_selection(&self, problem_features: &ProblemFeatures, epsilon: f64) -> Result<String, String> {
-        use rand::prelude::*;
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);

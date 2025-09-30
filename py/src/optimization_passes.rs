@@ -3,8 +3,8 @@
 //! This module provides various optimization passes for quantum circuits,
 //! including gate cancellation, commutation, synthesis, and depth reduction.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

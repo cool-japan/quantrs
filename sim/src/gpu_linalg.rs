@@ -5,8 +5,8 @@
 //! The implementation automatically selects the best available GPU backend.
 
 use crate::linalg_ops;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use quantrs2_core::gpu::{GpuConfig, SciRS2GpuBackend};
 use quantrs2_core::prelude::*;
@@ -30,7 +30,7 @@ pub struct GpuLinearAlgebra {
 impl GpuLinearAlgebra {
     /// Create a new GPU linear algebra instance using SciRS2
     pub async fn new() -> Result<Self, QuantRS2Error> {
-        // TODO: Update to use scirs2_core beta.1 GPU API
+        // TODO: Update to use scirs2_core beta.3 GPU API
         // let platform = GpuPlatform::detect_best_platform()?;
         // let device = Arc::new(platform.create_device(0)?);
         // let backend = Arc::new(GpuBackendFactory::create_backend(platform)?);
@@ -52,7 +52,7 @@ impl GpuLinearAlgebra {
 
     /// Create a new instance with custom SciRS2 configuration
     pub fn with_config(_config: GpuConfig) -> Result<Self, QuantRS2Error> {
-        // TODO: Update to use scirs2_core beta.1 GPU API
+        // TODO: Update to use scirs2_core beta.3 GPU API
         return Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
                 .to_string(),

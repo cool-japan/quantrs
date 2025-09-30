@@ -7,7 +7,7 @@
 use crate::circuit_integration::{QuantumLayer, QuantumMLExecutor};
 use crate::error::{MLError, Result};
 use crate::simulator_backends::{DynamicCircuit, Observable, SimulationResult, SimulatorBackend};
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayD, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4, ArrayD, Axis};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use std::collections::HashMap;

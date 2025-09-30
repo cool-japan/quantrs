@@ -4,8 +4,8 @@
 //! switch between different numerical precisions based on accuracy requirements
 //! and performance constraints.
 
-use ndarray::Array1;
-use num_complex::{Complex32, Complex64};
+use scirs2_core::ndarray::Array1;
+use scirs2_core::{Complex32, Complex64};
 
 use super::config::QuantumPrecision;
 use crate::error::{Result, SimulatorError};

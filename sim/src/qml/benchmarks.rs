@@ -3,7 +3,7 @@
 //! This module provides performance benchmarking capabilities for different
 //! QML algorithms across various hardware architectures.
 
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use std::collections::HashMap;
 
 use super::circuit::ParameterizedQuantumCircuit;

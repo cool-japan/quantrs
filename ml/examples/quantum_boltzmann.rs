@@ -3,8 +3,9 @@
 //! This example demonstrates quantum Boltzmann machines for unsupervised learning,
 //! including RBMs and deep Boltzmann machines.
 
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Boltzmann Machine Demo ===\n");
@@ -257,7 +258,7 @@ fn pattern_completion_demo() -> Result<()> {
 /// Generate binary patterns
 fn generate_binary_patterns(n_samples: usize, n_features: usize) -> Array2<f64> {
     Array2::from_shape_fn((n_samples, n_features), |(_, _)| {
-        if rand::random::<f64>() > 0.5 {
+        if thread_rng().gen::<f64>() > 0.5 {
             1.0
         } else {
             0.0
@@ -271,7 +272,7 @@ fn generate_correlated_data(n_samples: usize, n_features: usize) -> Array2<f64> 
 
     for i in 0..n_samples {
         // Generate correlated features
-        let base = if rand::random::<f64>() > 0.5 {
+        let base = if thread_rng().gen::<f64>() > 0.5 {
             1.0
         } else {
             0.0
@@ -282,7 +283,7 @@ fn generate_correlated_data(n_samples: usize, n_features: usize) -> Array2<f64> 
                 data[[i, j]] = base;
             } else {
                 // Correlate with previous feature
-                data[[i, j]] = if rand::random::<f64>() > 0.2 {
+                data[[i, j]] = if thread_rng().gen::<f64>() > 0.2 {
                     base
                 } else {
                     1.0 - base
@@ -317,7 +318,7 @@ fn generate_hierarchical_data(n_samples: usize, n_features: usize) -> Array2<f64
             }
             _ => {
                 // Pattern C: random with structure
-                let shift = (rand::random::<f64>() * 4.0) as usize;
+                let shift = (thread_rng().gen::<f64>() * 4.0) as usize;
                 for j in 0..n_features {
                     data[[i, j]] = if (j + shift) % 3 == 0 { 1.0 } else { 0.0 };
                 }
@@ -326,7 +327,7 @@ fn generate_hierarchical_data(n_samples: usize, n_features: usize) -> Array2<f64
 
         // Add noise
         for j in 0..n_features {
-            if rand::random::<f64>() < 0.1 {
+            if thread_rng().gen::<f64>() < 0.1 {
                 data[[i, j]] = 1.0 - data[[i, j]];
             }
         }

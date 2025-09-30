@@ -3,8 +3,8 @@
 //! This module implements privacy-preserving distributed training of quantum models
 //! with secure aggregation and differential privacy guarantees.
 
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -662,7 +662,7 @@ pub mod privacy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_fl_client() {

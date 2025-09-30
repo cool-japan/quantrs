@@ -15,10 +15,10 @@
 //! - Quantum load balancing and fairness
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1361,8 +1361,8 @@ impl QuantumMixtureOfExperts {
 
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
-            let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
-            let batch_targets = targets.slice(ndarray::s![batch_start..batch_end, ..]);
+            let batch_data = data.slice(scirs2_core::ndarray::s![batch_start..batch_end, ..]);
+            let batch_targets = targets.slice(scirs2_core::ndarray::s![batch_start..batch_end, ..]);
 
             let batch_metrics = self.train_batch(&batch_data, &batch_targets, config)?;
 
@@ -1392,8 +1392,8 @@ impl QuantumMixtureOfExperts {
     /// Train single batch
     fn train_batch(
         &mut self,
-        batch_data: &ndarray::ArrayView2<f64>,
-        batch_targets: &ndarray::ArrayView2<f64>,
+        batch_data: &scirs2_core::ndarray::ArrayView2<f64>,
+        batch_targets: &scirs2_core::ndarray::ArrayView2<f64>,
         config: &MoETrainingConfig,
     ) -> Result<MoETrainingMetrics> {
         let mut batch_loss = 0.0;

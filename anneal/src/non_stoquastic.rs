@@ -14,9 +14,10 @@
 //! - Integration with stoquastic Hamiltonians
 //! - Quantum advantage detection and analysis
 
-use num_complex::Complex as NComplex;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex as NComplex;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};
@@ -531,7 +532,7 @@ impl NonStoquasticSimulator {
     ) -> NonStoquasticResult<Self> {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let current_state = QuantumState::new(hamiltonian.num_qubits, config.num_time_slices);

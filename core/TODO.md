@@ -2,9 +2,9 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Core module.
 
-## Version 0.1.0-beta.1 Status
+## Version 0.1.0-beta.2 Status
 
-This beta release includes comprehensive SciRS2 v0.1.0-alpha.5 integration:
+This release includes refined SciRS2 v0.1.0-beta.3 integration:
 - ✅ All parallel operations now use `scirs2_core::parallel_ops`
 - ✅ SIMD operations migration to `scirs2_core::simd_ops` (completed)
 - ✅ Platform capabilities detection via `PlatformCapabilities` (implemented)

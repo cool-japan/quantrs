@@ -5,7 +5,7 @@
 //! and adaptive memory optimization.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 // use scirs2_core::parallel_ops::*;

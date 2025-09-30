@@ -1,8 +1,8 @@
 //! Simulated Annealing Sampler Implementation
 
-use ndarray::{Array, Ix2};
-use rand::prelude::*;
-use rand::rngs::StdRng;
+use scirs2_core::ndarray::{Array, Ix2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::rngs::StdRng;
 use std::collections::HashMap;
 
 use quantrs2_anneal::{
@@ -102,7 +102,7 @@ impl SASampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>>
     where
-        D: ndarray::Dimension + 'static,
+        D: scirs2_core::ndarray::Dimension + 'static,
     {
         // Make sure shots is reasonable
         let shots = std::cmp::max(shots, 1);
@@ -215,7 +215,7 @@ impl SASampler {
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>>
     where
-        D: ndarray::Dimension + 'static,
+        D: scirs2_core::ndarray::Dimension + 'static,
     {
         // Get the problem dimension (number of variables)
         let n_vars = var_map.len();
@@ -230,7 +230,7 @@ impl SASampler {
         let mut rng = match self.seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => {
-                let seed: u64 = rand::rng().random();
+                let seed: u64 = thread_rng().random();
                 StdRng::seed_from_u64(seed)
             }
         };
@@ -260,7 +260,7 @@ impl SASampler {
             // We'll match based on tensor dimension to handle differently
             // Handle the tensor processing based on its dimensions
             if tensor.ndim() == 3 {
-                let tensor3d = tensor.to_owned().into_dimensionality::<ndarray::Ix3>().ok();
+                let tensor3d = tensor.to_owned().into_dimensionality::<scirs2_core::ndarray::Ix3>().ok();
                 if let Some(t) = tensor3d {
                     // Calculate energy for 3D tensor
                     for i in 0..std::cmp::min(n_vars, t.dim().0) {
@@ -286,7 +286,7 @@ impl SASampler {
                     // Handle 2D specifically
                     let tensor2d = tensor
                         .to_owned()
-                        .into_dimensionality::<ndarray::Ix2>()
+                        .into_dimensionality::<scirs2_core::ndarray::Ix2>()
                         .unwrap();
                     for i in 0..std::cmp::min(n_vars, tensor2d.dim().0) {
                         if !state[i] {
@@ -324,7 +324,7 @@ impl SASampler {
             let seeds: Vec<u64> = (0..total_runs)
                 .map(|i| match self.seed {
                     Some(seed) => seed.wrapping_add(i as u64),
-                    None => rand::rng().random(),
+                    None => thread_rng().random(),
                 })
                 .collect();
 
@@ -337,7 +337,7 @@ impl SASampler {
                     // Initialize random state
                     let mut state = vec![false; n_vars];
                     for bit in &mut state {
-                        *bit = thread_rng.random_bool(0.5);
+                        *bit = thread_rng.gen_bool(0.5);
                     }
 
                     // Evaluate initial energy
@@ -354,7 +354,7 @@ impl SASampler {
                         // Perform n_vars updates per sweep
                         for _ in 0..n_vars {
                             // Select random bit to flip
-                            let idx = thread_rng.random_range(0..n_vars);
+                            let idx = thread_rng.gen_range(0..n_vars);
 
                             // Flip the bit
                             state[idx] = !state[idx];
@@ -365,7 +365,7 @@ impl SASampler {
 
                             // Metropolis acceptance criterion
                             let accept = delta_e <= 0.0
-                                || thread_rng.random_range(0.0..1.0) < (-delta_e / temp).exp();
+                                || thread_rng.gen_range(0.0..1.0) < (-delta_e / temp).exp();
 
                             if accept {
                                 energy = new_energy;
@@ -391,7 +391,7 @@ impl SASampler {
                 // Initialize random state
                 let mut state = vec![false; n_vars];
                 for bit in &mut state {
-                    *bit = rng.random_bool(0.5);
+                    *bit = rng.gen_bool(0.5);
                 }
 
                 // Evaluate initial energy
@@ -408,7 +408,7 @@ impl SASampler {
                     // Perform n_vars updates per sweep
                     for _ in 0..n_vars {
                         // Select random bit to flip
-                        let mut idx = rng.random_range(0..n_vars);
+                        let mut idx = rng.gen_range(0..n_vars);
 
                         // Flip the bit
                         state[idx] = !state[idx];
@@ -419,7 +419,7 @@ impl SASampler {
 
                         // Metropolis acceptance criterion
                         let accept = delta_e <= 0.0
-                            || rng.random_range(0.0..1.0) < f64::exp(-delta_e / temp);
+                            || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
 
                         if accept {
                             energy = new_energy;
@@ -481,7 +481,7 @@ impl SASampler {
 impl Sampler for SASampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&qubo.0, &qubo.1, shots)
@@ -489,7 +489,7 @@ impl Sampler for SASampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&hobo.0, &hobo.1, shots)

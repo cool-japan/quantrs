@@ -17,7 +17,7 @@ pub mod types;
 
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 // Re-export main types

@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::random::prelude::*;
 
 /// Errors for gate-based photonic operations
 #[derive(Error, Debug)]
@@ -392,7 +393,7 @@ impl PhotonicGateImpl {
         }
 
         // Determine if gate succeeded (for probabilistic gates)
-        let success = rand::random::<f64>() < self.success_probability;
+        let success = thread_rng().gen::<f64>() < self.success_probability;
 
         Ok(success)
     }
@@ -467,7 +468,7 @@ impl PhotonicGateImpl {
             }
             OpticalElement::PhotonDetector { efficiency, .. } => {
                 // Detection success depends on efficiency
-                if rand::random::<f64>() > *efficiency {
+                if thread_rng().gen::<f64>() > *efficiency {
                     return Err(PhotonicGateError::InsufficientPhotons(
                         "Photon detection failed".to_string(),
                     ));

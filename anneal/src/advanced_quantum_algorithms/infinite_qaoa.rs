@@ -3,9 +3,10 @@
 //! This module implements the infinite-depth Quantum Approximate Optimization Algorithm
 //! with adaptive depth selection, parameter optimization, and convergence detection.
 
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};
@@ -630,7 +631,7 @@ impl InfiniteDepthQAOA {
 
         match self.config.initialization_method {
             ParameterInitializationMethod::Random => {
-                let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+                let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
                 Ok((0..num_params)
                     .map(|_| rng.gen_range(0.0..2.0 * PI))
                     .collect())
@@ -722,7 +723,7 @@ impl InfiniteDepthQAOA {
         let mut best_params = current_params.clone();
 
         // Simple gradient-free optimization (in practice would use sophisticated methods)
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
 
         for iteration in 0..self.config.max_iterations_per_depth {
             // Evaluate current parameters

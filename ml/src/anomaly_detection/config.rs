@@ -1,6 +1,6 @@
 //! Configuration types for quantum anomaly detection
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Configuration for quantum anomaly detection

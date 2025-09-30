@@ -6,7 +6,7 @@
 //! entanglement, enabling enhanced learning capabilities and long-term memory.
 
 use crate::error::Result;
-use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

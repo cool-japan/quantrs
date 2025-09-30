@@ -5,7 +5,7 @@
 
 use crate::builder::Circuit;
 use crate::scirs2_matrices::SparseMatrix;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -682,8 +682,8 @@ impl QuantumCircuitOptimizer {
         cooling_rate: f64,
         min_temperature: f64,
     ) -> QuantRS2Result<(Vec<f64>, f64, usize, bool)> {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let mut current_params = initial_params.to_vec();
         let mut current_value = objective.evaluate(&current_params);

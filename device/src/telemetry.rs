@@ -35,7 +35,7 @@ use scirs2_optimize::{differential_evolution, least_squares, minimize, OptimizeR
 // Fallback implementations
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, ArrayView1};
+    use scirs2_core::ndarray::{Array1, ArrayView1};
 
     pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
         Ok(0.0)
@@ -54,7 +54,7 @@ mod fallback_scirs2 {
 #[cfg(not(feature = "scirs2"))]
 use fallback_scirs2::*;
 
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 
 use crate::{
     backend_traits::BackendCapabilities, calibration::DeviceCalibration,

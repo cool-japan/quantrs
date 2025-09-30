@@ -44,7 +44,7 @@ impl QuantumGate {
 use crate::error::QuantRS2Error;
 use std::collections::{HashMap, VecDeque};
 // Serde imports would go here if needed
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 
 /// Performance tracking for enhanced debugging with SciRS2
 #[derive(Debug, Clone)]

@@ -1,9 +1,9 @@
 //! Unit tests for quantum anomaly detection module
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::anomaly_detection::*;
 use quantrs2_ml::error::Result;
-use rand::Rng;
+use scirs2_core::random::prelude::*;
 
 /// Create default anomaly detection configuration
 fn create_default_anomaly_config() -> QuantumAnomalyConfig {
@@ -112,7 +112,7 @@ fn test_comprehensive_configs() -> Result<()> {
 /// Create synthetic data for testing
 fn create_synthetic_data(n_samples: usize, n_features: usize, noise_level: f64) -> Array2<f64> {
     let mut data = Array2::zeros((n_samples, n_features));
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     for i in 0..n_samples {
         for j in 0..n_features {
@@ -194,7 +194,7 @@ fn test_streaming_detection() -> Result<()> {
     // Test streaming samples
     for i in 0..10 {
         let sample = Array1::from_vec(vec![0.1 * i as f64; 4]);
-        let sample_2d = sample.insert_axis(ndarray::Axis(0));
+        let sample_2d = sample.insert_axis(scirs2_core::ndarray::Axis(0));
         let result = detector.detect(&sample_2d)?;
         let score = result.anomaly_scores[0]; // Extract first score from batch
         assert!(score >= 0.0);

@@ -2,7 +2,7 @@
 
 use super::super::results::*;
 use crate::DeviceResult;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 
 /// Correlation analyzer for measurement data
 pub struct CorrelationAnalyzer {

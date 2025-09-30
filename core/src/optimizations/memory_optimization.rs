@@ -3,9 +3,9 @@
 //! This module provides memory-efficient algorithms and buffer management
 //! for large-scale quantum state simulations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::memory::{BufferPool, ChunkProcessor2D, metrics};
-use ndarray::{Array1, Array2, ArrayViewMut1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayViewMut1};
 use std::sync::{Arc, Mutex, OnceLock};
 use crate::error::QuantRS2Result;
 

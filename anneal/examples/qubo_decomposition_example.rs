@@ -11,7 +11,7 @@ use quantrs2_anneal::{
     qubo_decomposition::{DecompositionConfig, DecompositionStrategy, QuboDecomposer},
     simulator::{AnnealingParams, QuantumAnnealingSimulator},
 };
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

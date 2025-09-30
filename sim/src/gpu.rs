@@ -5,7 +5,7 @@
 //! automatically selects the best available GPU backend (CUDA, Metal, OpenCL)
 //! and provides optimal performance for quantum circuit simulation.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
@@ -35,7 +35,7 @@ pub struct SciRS2GpuStateVectorSimulator {
 impl SciRS2GpuStateVectorSimulator {
     /// Create a new SciRS2-powered GPU state vector simulator
     pub fn new() -> QuantRS2Result<Self> {
-        // TODO: Update to use scirs2_core beta.1 GPU API
+        // TODO: Update to use scirs2_core beta.3 GPU API
         return Err(QuantRS2Error::BackendExecutionFailed(
             "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
         ));
@@ -209,7 +209,7 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
                         .matrix()
                         .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
                     let size = 1 << qubits.len();
-                    let matrix_array = ndarray::Array2::from_shape_vec((size, size), matrix)
+                    let matrix_array = scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
                         .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
                     kernel

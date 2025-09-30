@@ -9,7 +9,7 @@ use super::data::{
     TrendAnalysisResults, TrendDirection,
 };
 use crate::DeviceResult;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime};

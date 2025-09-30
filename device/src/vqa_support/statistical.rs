@@ -3,7 +3,7 @@
 //! This module provides statistical methods for analyzing VQA convergence,
 //! parameter distributions, and optimization landscapes.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Statistical analysis results for VQA optimization

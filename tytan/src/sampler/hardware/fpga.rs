@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -401,7 +401,7 @@ impl Sampler for FPGASampler {
 
     fn run_hobo(
         &self,
-        _hobo: &(ndarray::ArrayD<f64>, HashMap<String, usize>),
+        _hobo: &(scirs2_core::ndarray::ArrayD<f64>, HashMap<String, usize>),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         Err(SamplerError::NotImplemented(

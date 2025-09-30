@@ -7,8 +7,8 @@
 #![allow(dead_code)]
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array1, Array2, ArrayD};
-use rand::{prelude::*, rng};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Tensor network sampler for quantum annealing
@@ -842,8 +842,8 @@ impl TensorNetworkSampler {
             let physical_dim = 2; // Assuming spin-1/2
 
             let shape = vec![left_dim, physical_dim, right_dim];
-            let mut rng = rng();
-            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
+            let mut rng = thread_rng();
+            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
 
             let tensor = Tensor {
                 id: i,
@@ -910,8 +910,8 @@ impl TensorNetworkSampler {
                 let right_dim = if j == cols - 1 { 1 } else { bond_dimension };
 
                 let shape = vec![up_dim, down_dim, left_dim, right_dim, physical_dim];
-                let mut rng = rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
+                let mut rng = thread_rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -986,8 +986,8 @@ impl TensorNetworkSampler {
             for i in (0..current_sites).step_by(2) {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2, 2]; // 2 inputs, 2 outputs
-                let mut rng = rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
+                let mut rng = thread_rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -1036,8 +1036,8 @@ impl TensorNetworkSampler {
             for i in 0..current_sites {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2]; // 2 inputs, 1 output (coarse-grained)
-                let mut rng = rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
+                let mut rng = thread_rng();
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
 
                 let tensor = Tensor {
                     id: tensor_id,
@@ -1158,15 +1158,15 @@ impl TensorNetworkSampler {
         }
 
         // Add small random perturbation
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let perturbation_strength = 0.01;
 
         for value in self.tensor_network.tensors[site].data.iter_mut() {
-            *value += rng.random_range(-perturbation_strength..perturbation_strength);
+            *value += rng.gen_range(-perturbation_strength..perturbation_strength);
         }
 
         // Return mock energy
-        Ok(rng.random_range(-1.0..0.0))
+        Ok(rng.gen_range(-1.0..0.0))
     }
 
     /// Sweep optimization for PEPS
@@ -1191,8 +1191,8 @@ impl TensorNetworkSampler {
         }
 
         // Mock optimization
-        let mut rng = rng();
-        Ok(rng.random_range(-1.0..0.0))
+        let mut rng = thread_rng();
+        Ok(rng.gen_range(-1.0..0.0))
     }
 
     /// Sweep optimization for MERA
@@ -1217,8 +1217,8 @@ impl TensorNetworkSampler {
         }
 
         // Mock optimization
-        let mut rng = rng();
-        Ok(rng.random_range(-1.0..0.0))
+        let mut rng = thread_rng();
+        Ok(rng.gen_range(-1.0..0.0))
     }
 
     /// Compress tensor network
@@ -1288,7 +1288,7 @@ impl TensorNetworkSampler {
         num_samples: usize,
     ) -> Result<Vec<SampleResult>, TensorNetworkError> {
         let mut samples = Vec::new();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for _ in 0..num_samples {
             let sample = self.generate_single_sample(&mut rng)?;
@@ -1318,7 +1318,7 @@ impl TensorNetworkSampler {
 
         // Sequential sampling for MPS
         for _i in 0..num_sites {
-            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1342,7 +1342,7 @@ impl TensorNetworkSampler {
 
         // Parallel sampling for PEPS (simplified)
         for _ in 0..num_tensors {
-            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1366,7 +1366,7 @@ impl TensorNetworkSampler {
         let mut sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1389,7 +1389,7 @@ impl TensorNetworkSampler {
         let mut sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
             sample.push(local_sample);
         }
 
@@ -1722,7 +1722,7 @@ impl Sampler for TensorNetworkSampler {
     fn run_qubo(
         &self,
         _qubo: &(
-            ndarray::Array2<f64>,
+            scirs2_core::ndarray::Array2<f64>,
             std::collections::HashMap<String, usize>,
         ),
         _num_reads: usize,
@@ -1735,7 +1735,7 @@ impl Sampler for TensorNetworkSampler {
     fn run_hobo(
         &self,
         problem: &(
-            ndarray::ArrayD<f64>,
+            scirs2_core::ndarray::ArrayD<f64>,
             std::collections::HashMap<String, usize>,
         ),
         num_reads: usize,

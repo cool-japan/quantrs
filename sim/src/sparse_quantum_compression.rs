@@ -4,7 +4,7 @@
 //! for sparse quantum states, enabling simulation of 40+ qubits on standard hardware
 //! through intelligent compression, deduplication, and memory mapping strategies.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, BTreeMap, HashSet};
 use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant};

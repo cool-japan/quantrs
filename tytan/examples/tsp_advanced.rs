@@ -6,7 +6,7 @@
 //! - Subtour elimination constraints
 //! - Route visualization and analysis
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -336,7 +336,7 @@ fn solve_tsp(
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let mut matrix = scirs2_core::ndarray::Array2::zeros((n_vars, n_vars));
     let mut var_map = HashMap::new();
 
     for i in 0..n_vars {

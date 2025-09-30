@@ -1,6 +1,7 @@
 use crate::error::{MLError, Result};
+use scirs2_core::random::prelude::*;
 use crate::qnn::QuantumNeuralNetwork;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;
 
@@ -179,7 +180,7 @@ impl ReinforcementLearning {
         let mut q_values = Array1::zeros(self.action_dim);
 
         for i in 0..self.action_dim {
-            q_values[i] = 0.5 + 0.5 * rand::random::<f64>();
+            q_values[i] = 0.5 + 0.5 * thread_rng().gen::<f64>();
         }
 
         Ok(q_values)
@@ -189,7 +190,7 @@ impl ReinforcementLearning {
 impl QuantumAgent for ReinforcementLearning {
     fn get_action(&self, state: &Array1<f64>) -> Result<usize> {
         // Epsilon-greedy action selection
-        if rand::random::<f64>() < self.exploration_rate {
+        if thread_rng().gen::<f64>() < self.exploration_rate {
             // Explore: random action
             Ok(fastrand::usize(0..self.action_dim))
         } else {

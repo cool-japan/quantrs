@@ -2,7 +2,7 @@
 //!
 //! This example showcases the full capabilities of the quantum optimization framework.
 
-use ndarray::{array, Array1, Array2};
+use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_tytan::applications::finance::*;
 use quantrs2_tytan::coherent_ising_machine::*;
 use quantrs2_tytan::performance_profiler::*;
@@ -142,7 +142,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_problem_decomposition() -> Result<(), Box<dyn std::error::Error>> {
     // Create a larger problem for decomposition
     let size = 20;
-    let mut large_qubo = ndarray::Array2::zeros((size, size));
+    let mut large_qubo = scirs2_core::ndarray::Array2::zeros((size, size));
 
     // Add some structure
     for i in 0..size {
@@ -352,7 +352,7 @@ fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
     {
         use crate::gpu_samplers::*;
         use crate::sampler::genetic_algorithm::GASampler;
-        use ndarray_rand::RandomExt;
+        use scirs2_core::RandomExt;
 
         println!("  a. GPU Availability");
         if is_gpu_available() {
@@ -366,9 +366,9 @@ fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
             // Benchmark
             let sizes = vec![10, 50, 100];
             for size in sizes {
-                let qubo = ndarray::Array2::random(
+                let qubo = scirs2_core::ndarray::Array2::random(
                     (size, size),
-                    ndarray_rand::rand_distr::Uniform::new(-1.0, 1.0),
+                    scirs2_core::ndarray::distributions::Uniform::new(-1.0, 1.0),
                 );
 
                 let start = std::time::Instant::now();

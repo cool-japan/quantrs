@@ -4,7 +4,7 @@
 //! using only stable Rust features and standard library components.
 
 use crate::error::QuantRS2Result;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, OnceLock, RwLock};

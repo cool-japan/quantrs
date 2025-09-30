@@ -1,7 +1,7 @@
 //! Feature selection methods for dimensionality reduction
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 /// Feature selection methods
 pub struct QuantumFeatureSelector {
@@ -17,6 +17,6 @@ impl QuantumFeatureSelector {
     pub fn fit_transform(&mut self, data: &Array2<f64>) -> Result<Array2<f64>> {
         // Placeholder: select first n_features
         let selected_cols = (0..self.n_features.min(data.ncols())).collect::<Vec<_>>();
-        Ok(data.select(ndarray::Axis(1), &selected_cols))
+        Ok(data.select(scirs2_core::ndarray::Axis(1), &selected_cols))
     }
 }

@@ -1,10 +1,11 @@
 //! Machine learning model integration for noise modeling
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use crate::DeviceResult;
 use super::types::*;
 use super::config::*;
+use scirs2_core::random::prelude::*;
 
 /// Machine learning integration coordinator
 #[derive(Debug, Clone)]
@@ -65,7 +66,7 @@ impl MLIntegrator {
         let num_features = training_data.ncols() - 1; // Last column is target
 
         // Extract features and targets
-        let features_matrix = training_data.slice(ndarray::s![.., ..num_features]).to_owned();
+        let features_matrix = training_data.slice(scirs2_core::ndarray::s![.., ..num_features]).to_owned();
         let targets = training_data.column(num_features).to_owned();
 
         // Choose kernel type based on feature characteristics
@@ -354,7 +355,7 @@ impl MLIntegrator {
             // Xavier initialization
             let scale = (2.0 / (input_size + output_size) as f64).sqrt();
             let weight_matrix = Array2::from_shape_fn((output_size, input_size), |_| {
-                scale * (rand::random::<f64>() - 0.5) * 2.0
+                scale * (thread_rng().gen::<f64>() - 0.5) * 2.0
             });
 
             let bias_vector = Array1::zeros(output_size);
@@ -375,7 +376,7 @@ impl MLIntegrator {
         mut biases: Vec<Array1<f64>>,
     ) -> DeviceResult<(Vec<Array2<f64>>, Vec<Array1<f64>>, f64, f64)> {
         let num_features = training_data.ncols() - 1;
-        let features = training_data.slice(ndarray::s![.., ..num_features]);
+        let features = training_data.slice(scirs2_core::ndarray::s![.., ..num_features]);
         let targets = training_data.column(num_features);
 
         // Simplified training (would use proper backpropagation in practice)
@@ -399,7 +400,7 @@ impl MLIntegrator {
             // Simplified weight update (gradient descent approximation)
             for weight_matrix in &mut weights {
                 for w in weight_matrix.iter_mut() {
-                    *w += learning_rate * (rand::random::<f64>() - 0.5) * 0.01;
+                    *w += learning_rate * (thread_rng().gen::<f64>() - 0.5) * 0.01;
                 }
             }
         }
@@ -539,7 +540,7 @@ impl MLIntegrator {
     /// Compute feature correlations as importance proxy
     fn compute_feature_correlations(&self, data: &Array2<f64>) -> DeviceResult<Array1<f64>> {
         let num_features = data.ncols() - 1;
-        let features = data.slice(ndarray::s![.., ..num_features]);
+        let features = data.slice(scirs2_core::ndarray::s![.., ..num_features]);
         let targets = data.column(num_features);
 
         let mut correlations = Array1::zeros(num_features);

@@ -6,9 +6,9 @@
 use crate::error::QuantRS2Error;
 use crate::gate::GateOp;
 use crate::qubit::QubitId;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_linalg::{decompose_svd, matrix_exp, matrix_log};
-use ndarray::{array, Array1, Array2};
+use scirs2_core::ndarray::{array, Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -547,7 +547,7 @@ impl HolonomicQuantumComputer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_wilson_loop_computation() {

@@ -13,8 +13,8 @@
 //! - Temporal pattern analysis for correlated noise
 //! - Hardware-aware correction optimization
 
-use ndarray::{Array1, Array2, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Axis};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};

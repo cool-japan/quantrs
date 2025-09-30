@@ -3,9 +3,10 @@
 //! This example demonstrates quantum reinforcement learning algorithms
 //! for continuous action spaces, including QDDPG and QSAC.
 
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Continuous RL Demo ===\n");
@@ -167,7 +168,7 @@ fn compare_policies() -> Result<()> {
 
         while !done {
             // Random action in bounds
-            let action = Array1::from_vec(vec![4.0 * rand::random::<f64>() - 2.0]);
+            let action = Array1::from_vec(vec![4.0 * thread_rng().gen::<f64>() - 2.0]);
 
             let (next_state, reward, is_done) = env.step(action)?;
             state = next_state;
@@ -271,8 +272,8 @@ fn custom_environment_demo() -> Result<()> {
 
         fn reset(&mut self) -> Array1<f64> {
             self.position = Array1::from_vec(vec![
-                10.0 * rand::random::<f64>() - 5.0,
-                10.0 * rand::random::<f64>() - 5.0,
+                10.0 * thread_rng().gen::<f64>() - 5.0,
+                10.0 * thread_rng().gen::<f64>() - 5.0,
             ]);
             self.current_step = 0;
             self.state()
@@ -299,8 +300,8 @@ fn custom_environment_demo() -> Result<()> {
     println!("\n   Taking some steps:");
     for i in 0..3 {
         let action = Array1::from_vec(vec![
-            0.5 * (2.0 * rand::random::<f64>() - 1.0),
-            0.5 * (2.0 * rand::random::<f64>() - 1.0),
+            0.5 * (2.0 * thread_rng().gen::<f64>() - 1.0),
+            0.5 * (2.0 * thread_rng().gen::<f64>() - 1.0),
         ]);
 
         let (next_state, reward, done) = nav_env.step(action.clone())?;

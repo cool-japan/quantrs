@@ -8,9 +8,9 @@
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array2, IxDyn};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array, Array2, IxDyn};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -230,7 +230,7 @@ impl HyperparameterOptimizer {
     where
         F: Fn(&HashMap<String, f64>) -> Box<dyn Sampler>,
     {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut best_params = HashMap::new();
         let mut best_score = f64::INFINITY;
         let mut history = Vec::new();
@@ -320,7 +320,7 @@ impl HyperparameterOptimizer {
     where
         F: Fn(&HashMap<String, f64>) -> Box<dyn Sampler>,
     {
-        use ndarray::Array1;
+        use scirs2_core::ndarray::Array1;
 
         let dim = self.search_space.len();
         let mut optimizer = BayesianOptimizer::new(dim, kernel, acquisition, exploration)
@@ -331,7 +331,7 @@ impl HyperparameterOptimizer {
         let mut y_data = Vec::new();
 
         // Initial random samples
-        let mut rng = rng();
+        let mut rng = thread_rng();
         for _ in 0..std::cmp::min(10, self.num_trials / 4) {
             let mut params = self.sample_parameters(&mut rng)?;
             let sampler = objective(&params);
@@ -425,16 +425,16 @@ impl HyperparameterOptimizer {
                     if *log_scale {
                         let log_min = min.ln();
                         let log_max = max.ln();
-                        let log_val = rng.random_range(log_min..log_max);
+                        let log_val = rng.gen_range(log_min..log_max);
                         log_val.exp()
                     } else {
-                        rng.random_range(*min..*max)
+                        rng.gen_range(*min..*max)
                     }
                 }
-                ParameterSpace::Discrete { values } => values[rng.random_range(0..values.len())],
+                ParameterSpace::Discrete { values } => values[rng.gen_range(0..values.len())],
                 ParameterSpace::Categorical { options } => {
                     // Return index for categorical
-                    rng.random_range(0..options.len()) as f64
+                    rng.gen_range(0..options.len()) as f64
                 }
             };
 
@@ -452,7 +452,7 @@ impl HyperparameterOptimizer {
         // This would need proper multi-dimensional grid generation
         // For now, just sample uniformly
         let total_points = resolution.pow(self.search_space.len() as u32);
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for _ in 0..total_points.min(self.num_trials) {
             grid_points.push(self.sample_parameters(&mut rng)?);
@@ -466,7 +466,7 @@ impl HyperparameterOptimizer {
     fn params_to_array(
         &self,
         params: &HashMap<String, f64>,
-    ) -> Result<ndarray::Array1<f64>, String> {
+    ) -> Result<scirs2_core::ndarray::Array1<f64>, String> {
         let mut values = Vec::new();
 
         // Ensure consistent ordering
@@ -477,14 +477,14 @@ impl HyperparameterOptimizer {
             values.push(params.get(name).copied().unwrap_or(0.0));
         }
 
-        Ok(ndarray::Array1::from_vec(values))
+        Ok(scirs2_core::ndarray::Array1::from_vec(values))
     }
 
     /// Convert array to parameters
     #[cfg(feature = "scirs")]
     fn array_to_params(
         &self,
-        array: &ndarray::Array1<f64>,
+        array: &scirs2_core::ndarray::Array1<f64>,
     ) -> Result<HashMap<String, f64>, String> {
         let mut params = HashMap::new();
 

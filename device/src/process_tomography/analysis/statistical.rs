@@ -1,7 +1,7 @@
 //! Statistical analysis components
 
-use ndarray::{Array1, Array2, Array4, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array4, ArrayView1};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use super::super::core::SciRS2ProcessTomographer;

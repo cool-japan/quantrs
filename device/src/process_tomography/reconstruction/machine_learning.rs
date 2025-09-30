@@ -1,7 +1,7 @@
 //! Machine learning based reconstruction method
 
-use ndarray::{Array1, Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::Complex64;
 
 use super::super::core::SciRS2ProcessTomographer;
 use super::super::results::{ExperimentalData, ReconstructionQuality};

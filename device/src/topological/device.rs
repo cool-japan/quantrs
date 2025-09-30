@@ -13,6 +13,7 @@ use crate::{Circuit, CircuitExecutor, CircuitResult, DeviceError, DeviceResult, 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
+use scirs2_core::random::prelude::*;
 
 /// Enhanced topological quantum device with full anyon manipulation
 pub struct EnhancedTopologicalDevice {
@@ -295,7 +296,7 @@ impl EnhancedTopologicalDevice {
         let result = self.core_device.measure_qubit(qubit_id)?;
 
         // Apply measurement fidelity
-        let actual_fidelity = rand::random::<f64>();
+        let actual_fidelity = thread_rng().gen::<f64>();
         if actual_fidelity < self.config.measurement_fidelity {
             Ok(result)
         } else {

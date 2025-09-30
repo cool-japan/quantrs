@@ -3,7 +3,7 @@
 //! This module provides tests for the simplified optimized simulator implementation
 //! to ensure correctness and compatibility.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::f64::consts::FRAC_1_SQRT_2;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -42,8 +42,7 @@ fn create_ghz_circuit<const N: usize>() -> Circuit<N> {
 
 /// Create a random circuit with the specified number of gates
 fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use scirs2_core::random::prelude::*;
     use std::f64::consts::PI;
 
     let mut circuit = Circuit::new();

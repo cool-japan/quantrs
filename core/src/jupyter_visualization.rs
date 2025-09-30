@@ -4,8 +4,8 @@
 //! enabling interactive quantum circuit visualization, quantum state plotting, and
 //! real-time quantum computation monitoring within Jupyter environments.
 
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use numpy::{PyArray1, PyArrayMethods};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};

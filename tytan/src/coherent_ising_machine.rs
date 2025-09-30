@@ -6,12 +6,13 @@
 #![allow(dead_code)]
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
-use ndarray::{Array, Array1, Array2, IxDyn};
-use num_complex::Complex64;
-use rand::prelude::*;
-use rand::{Rng, SeedableRng};
-use rand_distr::Normal;
+use scirs2_core::ndarray::{Array, Array1, Array2, IxDyn};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng, Distribution, RandNormal};
 use std::collections::HashMap;
+
+type Normal<T> = RandNormal<T>;
 use std::f64::consts::PI;
 
 /// Coherent Ising Machine simulator
@@ -117,8 +118,8 @@ impl CIMSimulator {
         // Initialize oscillator amplitudes (complex)
         let mut amplitudes: Vec<Complex64> = (0..n)
             .map(|_| {
-                let r = rng.random_range(0.0..0.1);
-                let theta = rng.random_range(0.0..2.0 * PI);
+                let r = rng.gen_range(0.0..0.1);
+                let theta = rng.gen_range(0.0..2.0 * PI);
                 Complex64::new(r * theta.cos(), r * theta.sin())
             })
             .collect();

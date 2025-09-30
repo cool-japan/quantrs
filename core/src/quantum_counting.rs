@@ -11,8 +11,8 @@
 //! - Better phase extraction from measurement results
 //! - Integration with circuit builder for more complex operations
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Quantum Phase Estimation (QPE) algorithm

@@ -4,7 +4,7 @@
 //! SABRE, lookahead heuristics, and machine learning-guided routing.
 
 use petgraph::visit::EdgeRef;
-use rand::prelude::*;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
@@ -961,7 +961,7 @@ impl AdvancedQubitRouter {
 
         for (strategy, weight) in strategies {
             let mut temp_router =
-                AdvancedQubitRouter::new(self.topology.clone(), strategy, rand::random());
+                AdvancedQubitRouter::new(self.topology.clone(), strategy, thread_rng().gen());
 
             if let Ok(result) = match strategy {
                 AdvancedRoutingStrategy::SABRE { heuristic_weight } => temp_router.route_sabre(

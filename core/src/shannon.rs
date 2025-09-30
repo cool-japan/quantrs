@@ -13,8 +13,8 @@ use crate::{
     qubit::QubitId,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
-use ndarray::{s, Array2};
-use num_complex::Complex;
+use scirs2_core::ndarray::{s, Array2};
+use scirs2_core::Complex;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
@@ -565,8 +565,8 @@ pub fn shannon_decompose(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
-    use num_complex::Complex;
+    use scirs2_core::ndarray::Array2;
+    use scirs2_core::Complex;
 
     #[test]
     fn test_shannon_single_qubit() {

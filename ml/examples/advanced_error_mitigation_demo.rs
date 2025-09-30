@@ -4,7 +4,7 @@
 //! for quantum machine learning, showcasing various mitigation strategies
 //! and their adaptive application.
 
-use ndarray::{Array1, Array2, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use quantrs2_ml::error_mitigation::{
     CDRModel, CliffordCircuit, CorrectionNetwork, CorrelationFunction, EntanglementProtocol,
     FidelityModel, NoisePredictorModel, NoiseSpectrum, QuantumCircuit, QuantumGate,
@@ -13,6 +13,7 @@ use quantrs2_ml::error_mitigation::{
 };
 use quantrs2_ml::prelude::*;
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Advanced Quantum ML Error Mitigation Demo ===\n");

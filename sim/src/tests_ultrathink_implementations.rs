@@ -7,8 +7,8 @@
 
 #[cfg(test)]
 mod tests {
-    use ndarray::{Array1, Array2, Array4};
-    use num_complex::Complex64;
+    use scirs2_core::ndarray::{Array1, Array2, Array4};
+    use scirs2_core::Complex64;
     use std::collections::HashMap;
 
     use crate::advanced_ml_error_mitigation::*;

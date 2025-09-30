@@ -1,10 +1,11 @@
 //! Utility functions and helpers for noise modeling
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use crate::DeviceResult;
 use super::types::*;
 use super::config::*;
+use scirs2_core::random::prelude::*;
 
 /// Utility functions for noise modeling operations
 pub struct NoiseModelingUtils;
@@ -162,15 +163,15 @@ impl NoiseModelingUtils {
 
         // Simplified feature selection scoring
         for feature in temporal_features {
-            selection_results.insert(feature.clone(), rand::random::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
         }
 
         for feature in spectral_features {
-            selection_results.insert(feature.clone(), rand::random::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
         }
 
         for feature in spatial_features {
-            selection_results.insert(feature.clone(), rand::random::<f64>());
+            selection_results.insert(feature.clone(), thread_rng().gen::<f64>());
         }
 
         Ok(selection_results)

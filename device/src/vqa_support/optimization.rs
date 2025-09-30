@@ -1,8 +1,10 @@
 //! Optimization algorithms and strategies for VQA
 
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use super::config::*;
 use crate::DeviceResult;
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -333,8 +335,8 @@ impl OptimizationStrategy {
 
     /// Generate random initial parameters
     fn generate_random_initial(&self, num_params: usize) -> DeviceResult<Array1<f64>> {
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let params = Array1::from_shape_fn(num_params, |_| {
             rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI)
@@ -345,8 +347,8 @@ impl OptimizationStrategy {
 
     /// Generate Latin Hypercube sampling initial parameters
     fn generate_latin_hypercube(&self, num_params: usize) -> DeviceResult<Array1<f64>> {
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         // Simplified Latin Hypercube sampling
         let mut indices: Vec<usize> = (0..num_params).collect();
@@ -367,8 +369,8 @@ impl OptimizationStrategy {
     /// Generate Sobol sequence initial parameters
     fn generate_sobol_sequence(&self, num_params: usize) -> DeviceResult<Array1<f64>> {
         // Simplified Sobol sequence (in practice would use proper implementation)
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let params = Array1::from_shape_fn(num_params, |i| {
             let sobol_val = (i as f64 + 0.5) / num_params as f64;
@@ -395,8 +397,8 @@ impl OptimizationStrategy {
     /// Generate initial parameters from previous best results
     fn generate_from_previous_best(&self, num_params: usize) -> DeviceResult<Array1<f64>> {
         // Placeholder: would use stored best parameters with perturbation
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let params = Array1::from_shape_fn(num_params, |_| {
             rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI)
@@ -490,7 +492,7 @@ impl OptimizationStrategy {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
 
             // Define objective function closure
-            let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
+            let mut objective = |x: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
                 let owned_array = Array1::from_vec(x.to_vec());
                 problem
                     .evaluate_objective(&owned_array)
@@ -592,7 +594,7 @@ impl OptimizationStrategy {
             use super::scirs2_optimize::{minimize, unconstrained::Method};
 
             // Define objective function closure
-            let mut objective = |x: &ndarray::ArrayView1<f64>| -> f64 {
+            let mut objective = |x: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
                 let owned_array = Array1::from_vec(x.to_vec());
                 problem
                     .evaluate_objective(&owned_array)
@@ -646,8 +648,8 @@ impl OptimizationStrategy {
                 }
 
                 // Simple random perturbation with constraint projection
-                use rand::prelude::*;
-                let mut rng = rand::thread_rng();
+                use scirs2_core::random::prelude::*;
+                let mut rng = thread_rng();
 
                 for param in params.iter_mut() {
                     *param += rng.gen_range(-0.1..0.1);
@@ -766,8 +768,8 @@ impl OptimizationStrategy {
             let crossover_prob = 0.7;
 
             // Initialize population
-            use rand::prelude::*;
-            let mut rng = rand::thread_rng();
+            use scirs2_core::random::prelude::*;
+            let mut rng = thread_rng();
             let mut population = Vec::new();
             let mut fitness = Vec::new();
 

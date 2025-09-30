@@ -15,10 +15,10 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 # Enable all features
-quantrs2 = { version = "0.1.0-beta.1", features = ["full"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["full"] }
 
 # Or select specific features
-quantrs2 = { version = "0.1.0-beta.1", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["circuit", "sim"] }
 ```
 
 Then use it in your code:
@@ -116,27 +116,27 @@ Some features automatically enable others for convenience:
 
 ### Minimal quantum programming:
 ```toml
-quantrs2 = { version = "0.1.0-beta.1", features = ["circuit"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["circuit"] }
 ```
 
 ### Circuit simulation:
 ```toml
-quantrs2 = { version = "0.1.0-beta.1", features = ["sim"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["sim"] }
 ```
 
 ### Quantum machine learning:
 ```toml
-quantrs2 = { version = "0.1.0-beta.1", features = ["ml"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["ml"] }
 ```
 
 ### Hardware interaction:
 ```toml
-quantrs2 = { version = "0.1.0-beta.1", features = ["device", "sim"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["device", "sim"] }
 ```
 
 ### Everything:
 ```toml
-quantrs2 = { version = "0.1.0-beta.1", features = ["full"] }
+quantrs2 = { version = "0.1.0-beta.2", features = ["full"] }
 ```
 
 ## Alternative: Individual Crates
@@ -145,9 +145,9 @@ If you prefer to use individual crates instead of the facade:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-beta.1"
-quantrs2-circuit = "0.1.0-beta.1"
-quantrs2-sim = "0.1.0-beta.1"
+quantrs2-core = "0.1.0-beta.2"
+quantrs2-circuit = "0.1.0-beta.2"
+quantrs2-sim = "0.1.0-beta.2"
 # etc.
 ```
 

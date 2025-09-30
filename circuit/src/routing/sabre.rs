@@ -12,7 +12,7 @@ use quantrs2_core::{
     gate::{multi::SWAP, GateOp},
     qubit::QubitId,
 };
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use scirs2_core::random::{seq::SliceRandom, thread_rng, Rng};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Configuration for the SABRE router

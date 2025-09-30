@@ -11,12 +11,13 @@
 //! - **GPU Support**: CUDA, OpenCL, and Metal (macOS) backends with forward-compatible SciRS2 integration
 //! - **Adaptive Algorithms**: Runtime selection of optimal implementations based on hardware capabilities
 //!
-//! ## Recent Updates (v0.1.0-beta.1)
+//! ## Recent Updates (v0.1.0-beta.2)
 //!
-//! - Complete SIMD migration to SciRS2 abstractions
-//! - Platform capabilities detection with `PlatformCapabilities::detect()`
-//! - Metal GPU backend ready for SciRS2 v0.1.0-alpha.6 integration
-//! - Zero-warning compilation across all modules
+//! - Refined SciRS2 v0.1.0-beta.3 integration with unified import patterns
+//! - Comprehensive policy documentation (SCIRS2_INTEGRATION_POLICY.md)
+//! - Enhanced random number generation with `UnifiedNormal`, `UnifiedBeta`
+//! - Consistent SciRS2 usage: `scirs2_core::ndarray::*`, `scirs2_core::random::prelude::*`
+//! - Improved developer experience with CLAUDE.md development guidelines
 
 #![allow(clippy::fn_address_comparisons)]
 #![allow(clippy::elided_lifetimes_in_paths)]

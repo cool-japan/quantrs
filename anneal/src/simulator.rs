@@ -3,8 +3,9 @@
 //! This module provides a simulator for quantum annealing, which can be used
 //! to solve optimization problems formulated as Ising models or QUBO problems.
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -275,7 +276,7 @@ impl QuantumAnnealingSimulator {
         // Create random number generator
         let mut rng = match self.params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         // Initialize best result
@@ -472,7 +473,7 @@ impl ClassicalAnnealingSimulator {
         // Create random number generator
         let mut rng = match self.params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         // Initialize best result

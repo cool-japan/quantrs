@@ -6,7 +6,7 @@
 
 // We don't use these imports directly in the non-dwave version
 #[cfg(feature = "dwave")]
-use ndarray::{Array, ArrayD, IxDyn};
+use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
 #[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
@@ -171,7 +171,7 @@ impl<'a> AutoArray<'a> {
     pub fn get_dframe(
         &self,
         format: &str,
-    ) -> AutoArrayResult<(Array<i32, ndarray::Ix2>, Vec<Vec<String>>)> {
+    ) -> AutoArrayResult<(Array<i32, scirs2_core::ndarray::Ix2>, Vec<Vec<String>>)> {
         // Count the number of dimensions from format placeholders
         let dim_count = format.matches("{}").count();
 
@@ -220,7 +220,7 @@ impl<'a> AutoArray<'a> {
     pub fn get_image(
         &self,
         format: &str,
-    ) -> AutoArrayResult<(Array<u8, ndarray::Ix2>, Vec<Vec<String>>)> {
+    ) -> AutoArrayResult<(Array<u8, scirs2_core::ndarray::Ix2>, Vec<Vec<String>>)> {
         // Count the number of dimensions from format placeholders
         let dim_count = format.matches("{}").count();
 

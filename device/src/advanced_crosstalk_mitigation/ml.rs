@@ -1,10 +1,11 @@
 //! Machine learning components for crosstalk analysis
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 
 use super::*;
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 impl FeatureExtractor {
     pub fn new(config: &CrosstalkFeatureConfig) -> Self {
@@ -79,13 +80,13 @@ impl FeatureExtractor {
     fn univariate_selection(&self, features: &Array2<f64>, k: usize) -> DeviceResult<Array2<f64>> {
         // Select k best features using univariate statistical tests
         let selected_cols = std::cmp::min(k, features.ncols());
-        Ok(features.slice(ndarray::s![.., ..selected_cols]).to_owned())
+        Ok(features.slice(scirs2_core::ndarray::s![.., ..selected_cols]).to_owned())
     }
 
     fn recursive_feature_elimination(&self, features: &Array2<f64>, n_features: usize) -> DeviceResult<Array2<f64>> {
         // Recursive feature elimination with cross-validation
         let selected_cols = std::cmp::min(n_features, features.ncols());
-        Ok(features.slice(ndarray::s![.., ..selected_cols]).to_owned())
+        Ok(features.slice(scirs2_core::ndarray::s![.., ..selected_cols]).to_owned())
     }
 
     fn lasso_selection(&self, features: &Array2<f64>, alpha: f64) -> DeviceResult<Array2<f64>> {
@@ -96,7 +97,7 @@ impl FeatureExtractor {
     fn mutual_information_selection(&self, features: &Array2<f64>, k: usize) -> DeviceResult<Array2<f64>> {
         // Mutual information-based feature selection
         let selected_cols = std::cmp::min(k, features.ncols());
-        Ok(features.slice(ndarray::s![.., ..selected_cols]).to_owned())
+        Ok(features.slice(scirs2_core::ndarray::s![.., ..selected_cols]).to_owned())
     }
 
     /// Scale features using configured scaler
@@ -329,7 +330,7 @@ impl MLModelTrainer {
 
         for _ in 0..n_folds {
             // Simplified CV implementation
-            scores.push(0.85 + (rand::random::<f64>() - 0.5) * 0.1);
+            scores.push(0.85 + (thread_rng().gen::<f64>() - 0.5) * 0.1);
         }
 
         Ok(scores)
@@ -392,7 +393,7 @@ impl AnomalyDetector {
     pub fn detect_anomalies(&self, data: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let n_samples = data.nrows();
         let anomaly_scores = Array1::from_vec(
-            (0..n_samples).map(|_| rand::random::<f64>()).collect()
+            (0..n_samples).map(|_| thread_rng().gen::<f64>()).collect()
         );
 
         let anomalies: Vec<usize> = anomaly_scores

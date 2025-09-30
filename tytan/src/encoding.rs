@@ -3,7 +3,7 @@
 //! This module provides various encoding schemes to represent different types
 //! of variables and constraints as binary optimization problems.
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]

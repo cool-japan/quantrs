@@ -1,7 +1,8 @@
 //! State and action representations and feature extraction
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
@@ -255,7 +256,7 @@ impl StateActionProcessor {
     pub fn sample_random_action(
         state: &EmbeddingState,
     ) -> RLEmbeddingResult<DiscreteEmbeddingAction> {
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
 
         // Randomly select action type
         match rng.gen_range(0..8) {

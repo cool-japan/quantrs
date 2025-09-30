@@ -3,7 +3,7 @@
 use super::config::*;
 use crate::error::{MLError, Result};
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -485,7 +485,7 @@ impl QuantumFourierFeatures {
     }
 
     /// Estimate dominant frequency in a signal
-    fn estimate_dominant_frequency(&self, signal: &ndarray::ArrayView1<f64>) -> Result<f64> {
+    fn estimate_dominant_frequency(&self, signal: &scirs2_core::ndarray::ArrayView1<f64>) -> Result<f64> {
         // Simplified frequency estimation (in practice would use FFT)
         let n = signal.len();
         let mut max_power = 0.0;
@@ -808,7 +808,7 @@ impl QuantumFeatureSelector {
     /// Compute quantum mutual information between feature and target
     fn compute_quantum_mutual_information(
         &self,
-        feature: &ndarray::ArrayView1<f64>,
+        feature: &scirs2_core::ndarray::ArrayView1<f64>,
         target: &Array1<f64>,
     ) -> Result<f64> {
         // Simplified quantum mutual information calculation
@@ -855,7 +855,7 @@ impl QuantumFeatureSelector {
     /// Discretize continuous values into bins
     fn discretize_values(
         &self,
-        values: &ndarray::ArrayView1<f64>,
+        values: &scirs2_core::ndarray::ArrayView1<f64>,
         n_bins: usize,
     ) -> Result<Vec<usize>> {
         let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));

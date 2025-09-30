@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::gan::{QuantumGAN, GeneratorType, DiscriminatorType, GANTrainingHistory};
 use std::time::Instant;
@@ -35,8 +35,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (real_data, x_values) = generate_multifrequency_sine_data(200, data_dim)?;
 
     // Display some statistics about our dataset
-    let mean = real_data.mean_axis(ndarray::Axis(0))?;
-    let std_dev = real_data.std_axis(ndarray::Axis(0), 0.0);
+    let mean = real_data.mean_axis(scirs2_core::ndarray::Axis(0))?;
+    let std_dev = real_data.std_axis(scirs2_core::ndarray::Axis(0), 0.0);
 
     println!("Dataset statistics:");
     println!("  Samples: {}", real_data.shape()[0]);
@@ -72,10 +72,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     for i in 0..3.min(num_samples) {
         // Take a real data point
         let real_idx = i * real_data.shape()[0] / num_samples;
-        let real_sample = real_data.slice(ndarray::s![real_idx, ..]);
+        let real_sample = real_data.slice(scirs2_core::ndarray::s![real_idx, ..]);
 
         // Get a generated sample
-        let gen_sample = generated_samples.slice(ndarray::s![i, ..]);
+        let gen_sample = generated_samples.slice(scirs2_core::ndarray::s![i, ..]);
 
         println!("Sample {}:", i);
         println!("  Real:       [{}]", format_sample(&real_sample));
@@ -95,7 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Samples conditioned on feature 0 ≈ 0.8:");
     for i in 0..3.min(conditional_samples.shape()[0]) {
-        let sample = conditional_samples.slice(ndarray::s![i, ..]);
+        let sample = conditional_samples.slice(scirs2_core::ndarray::s![i, ..]);
         println!("  Sample {}: [{}]", i, format_sample(&sample));
     }
 
@@ -148,7 +148,7 @@ fn print_training_progress(history: &GANTrainingHistory) {
 }
 
 // Helper function to format a sample for display
-fn format_sample(sample: &ndarray::ArrayView1<f64>) -> String {
+fn format_sample(sample: &scirs2_core::ndarray::ArrayView1<f64>) -> String {
     let mut result = String::new();
 
     for (i, &value) in sample.iter().enumerate() {
@@ -175,8 +175,8 @@ fn format_sample(sample: &ndarray::ArrayView1<f64>) -> String {
 // Helper function to calculate similarity between distributions
 fn calculate_similarity(real: &Array2<f64>, generated: &Array2<f64>) -> Result<f64, Box<dyn Error>> {
     // Calculate means
-    let real_mean = real.mean_axis(ndarray::Axis(0))?;
-    let gen_mean = generated.mean_axis(ndarray::Axis(0))?;
+    let real_mean = real.mean_axis(scirs2_core::ndarray::Axis(0))?;
+    let gen_mean = generated.mean_axis(scirs2_core::ndarray::Axis(0))?;
 
     // Calculate mean difference
     let mut mean_diff = 0.0;

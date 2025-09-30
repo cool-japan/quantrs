@@ -6,7 +6,7 @@
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::GateOp;
 use crate::qubit::QubitId;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::any::Any;
 use std::fmt::Debug;
 

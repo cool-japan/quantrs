@@ -1,5 +1,5 @@
 use crate::simulator::Simulator; // Local simulator trait
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use quantrs2_circuit::builder::Circuit;

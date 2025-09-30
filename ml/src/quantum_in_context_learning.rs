@@ -13,10 +13,10 @@
 //! - Adaptive quantum context length and compression
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

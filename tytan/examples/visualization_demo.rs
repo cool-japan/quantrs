@@ -4,7 +4,7 @@
 //! visualize quantum annealing results including energy landscapes,
 //! solution distributions, and convergence plots.
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     sampler::{SASampler, SampleResult, Sampler},
     visualization::{

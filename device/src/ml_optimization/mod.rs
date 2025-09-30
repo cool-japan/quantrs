@@ -22,9 +22,9 @@ use quantrs2_core::{
 pub mod fallback_scirs2;
 pub use fallback_scirs2::*;
 
-use ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
-use rand::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
 use crate::{

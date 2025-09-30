@@ -363,11 +363,11 @@ pub struct AdvancedOptimizationResult {
     /// Number of iterations
     pub iterations: usize,
     /// Parameter evolution
-    pub parameter_evolution: Vec<ndarray::Array1<f64>>,
+    pub parameter_evolution: Vec<scirs2_core::ndarray::Array1<f64>>,
     /// Whether optimization was successful
     pub success: bool,
     /// Optimized parameters
-    pub x: ndarray::Array1<f64>,
+    pub x: scirs2_core::ndarray::Array1<f64>,
     /// Improvement achieved
     pub improvement: f64,
 }
@@ -398,7 +398,7 @@ pub struct NumericalStabilityMetrics {
 #[derive(Debug, Clone)]
 pub struct EigenvalueAnalysis {
     /// Eigenvalue distribution
-    pub eigenvalue_distribution: Vec<num_complex::Complex64>,
+    pub eigenvalue_distribution: Vec<scirs2_core::Complex64>,
     /// Spectral gap
     pub spectral_gap: f64,
     /// Entanglement spectrum

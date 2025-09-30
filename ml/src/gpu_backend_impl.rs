@@ -8,8 +8,8 @@ use crate::simulator_backends::{
     BackendCapabilities, DynamicCircuit, GradientMethod, Observable, SimulationResult,
     SimulatorBackend,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

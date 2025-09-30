@@ -16,8 +16,8 @@ use scirs2_core::parallel_ops::*;
 // TODO: Fix scirs2_optimize imports - module not found
 // use scirs2_optimize::parsing::{Parser, ParserConfig, Grammar, AST};
 // use scirs2_optimize::compilation::{Compiler, CompilerPass, IRBuilder};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use pest::Parser as PestParser;
 use pest_derive::Parser;
 use serde::{Deserialize, Serialize};
@@ -752,7 +752,8 @@ impl EnhancedQASMCompiler {
     }
 
     fn export_binary(&self, ast: &AST) -> QuantRS2Result<Vec<u8>> {
-        Ok(bincode::serialize(&ast)?)
+        let bytes = bincode::serde::encode_to_vec(ast, bincode::config::standard())?;
+        Ok(bytes)
     }
 
     // Visualization helpers

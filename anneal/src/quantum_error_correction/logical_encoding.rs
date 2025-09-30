@@ -7,9 +7,9 @@
 //! - Constructing stabilizer codes optimized for annealing hardware constraints
 //! - Managing logical operations during annealing evolution
 
-use ndarray::{Array1, Array2};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

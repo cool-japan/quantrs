@@ -5,8 +5,10 @@
 
 use super::{CVDeviceConfig, CVEntanglementMeasures, CVModeState, Complex};
 use crate::{DeviceError, DeviceResult};
-use rand::{random, rngs::StdRng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal};
+// Alias for backward compatibility
+type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -403,7 +405,7 @@ impl GaussianState {
         let total_variance = variance + noise_variance;
 
         // Sample from Gaussian distribution
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let noise: f64 = Normal::new(0.0, total_variance.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?
             .sample(&mut rng);
@@ -438,7 +440,7 @@ impl GaussianState {
 
         // Add noise
         let noise_variance = self.calculate_measurement_noise(config);
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
 
         let noise_x: f64 = Normal::new(0.0, (var_x + noise_variance / 2.0).sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?

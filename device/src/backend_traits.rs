@@ -39,7 +39,7 @@ pub trait HardwareGate: GateOp {
 /// IBM-specific gate implementations
 pub mod ibm_gates {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::any::Any;
 
     /// IBM's SX gate (√X gate)
@@ -94,7 +94,7 @@ pub mod ibm_gates {
 /// Google-specific gate implementations
 pub mod google_gates {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::any::Any;
     use std::f64::consts::PI;
 
@@ -231,7 +231,7 @@ pub mod google_gates {
 /// IonQ-specific gate implementations
 pub mod ionq_gates {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::any::Any;
 
     /// IonQ's XX gate (Mølmer-Sørensen gate)
@@ -305,7 +305,7 @@ pub mod ionq_gates {
 /// Rigetti-specific gate implementations
 pub mod rigetti_gates {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::any::Any;
 
     /// Rigetti's parametrized XY gate
@@ -362,7 +362,7 @@ pub mod rigetti_gates {
 /// Honeywell-specific gate implementations
 pub mod honeywell_gates {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
     use std::any::Any;
 
     /// Honeywell's native ZZ interaction

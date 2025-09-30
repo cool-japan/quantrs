@@ -1,6 +1,7 @@
 use crate::error::{MLError, Result};
+use scirs2_core::random::prelude::*;
 use crate::optimization::Optimizer;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
@@ -109,7 +110,7 @@ impl QuantumNeuralNetwork {
         // Create random initial parameters
         let parameters = Array1::from_vec(
             (0..num_params)
-                .map(|_| rand::random::<f64>() * 2.0 * std::f64::consts::PI)
+                .map(|_| thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI)
                 .collect(),
         );
 
@@ -193,7 +194,7 @@ impl QuantumNeuralNetwork {
         let batch_size = inputs.nrows();
         let mut outputs = Array2::zeros((batch_size, self.output_dim));
 
-        for (i, row) in inputs.axis_iter(ndarray::Axis(0)).enumerate() {
+        for (i, row) in inputs.axis_iter(scirs2_core::ndarray::Axis(0)).enumerate() {
             let input = row.to_owned();
             let output = self.predict(&input)?;
             outputs.row_mut(i).assign(&output);

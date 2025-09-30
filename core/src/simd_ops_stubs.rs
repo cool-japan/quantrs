@@ -1,8 +1,8 @@
 //! Temporary SIMD operations stubs to replace scirs2_core::simd_ops
 //! TODO: Replace with scirs2_core when regex dependency issue is fixed
 
-use ndarray::{Array1, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, ArrayView1};
+use scirs2_core::Complex64;
 
 /// Trait for SIMD operations on f64
 pub trait SimdF64 {

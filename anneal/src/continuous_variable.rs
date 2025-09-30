@@ -4,8 +4,9 @@
 //! the solution of optimization problems with real-valued decision variables
 //! using discretization and approximation techniques.
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -396,7 +397,7 @@ impl ContinuousVariableAnnealer {
     pub fn new(config: ContinuousAnnealingConfig) -> Self {
         let rng = match config.annealing_params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         Self { config, rng }

@@ -3,6 +3,7 @@
 //! This module provides the main execution engine for variational
 //! quantum algorithms with comprehensive orchestration capabilities.
 
+use scirs2_core::random::prelude::*;
 use super::{
     circuits::ParametricCircuit,
     hardware::HardwareConfig,
@@ -11,7 +12,7 @@ use super::{
     statistical::VQAStatistics,
 };
 use crate::DeviceResult;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -173,8 +174,8 @@ impl VQAExecutor {
         _result: &ObjectiveResult,
     ) -> DeviceResult<()> {
         // Simple random perturbation for demonstration
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         for param in &mut circuit.parameters {
             *param += rng.gen_range(-0.1..0.1) * self.config.optimizer.learning_rate;

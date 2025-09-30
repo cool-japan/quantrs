@@ -363,7 +363,7 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
 // Helper function to analyze the logical state
 // Returns (probability of |0⟩, probability of |1⟩, phase relationship)
 fn analyze_logical_state(state: &quantrs2_core::register::Register<9>) -> (f64, f64, f64) {
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     // This is a simplified analysis - in a real implementation, we would
     // need to carefully extract the logical qubit state from the encoded state

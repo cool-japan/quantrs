@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::continuous_variable::{CVError, CVResult, Complex, GaussianState};
 use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Squeezed state operation errors
 #[derive(Error, Debug)]
@@ -435,7 +436,7 @@ impl SqueezedStateGenerator {
         self.performance.efficiency_percent = (efficiency * 100.0).min(100.0);
 
         // Simulate stability fluctuations
-        let stability_noise = (rand::random::<f64>() - 0.5) * 0.1;
+        let stability_noise = (thread_rng().gen::<f64>() - 0.5) * 0.1;
         self.performance.stability_percent = (95.0 + stability_noise).max(90.0).min(99.0);
     }
 
@@ -658,8 +659,8 @@ impl SqueezedStateMeasurement {
 
         for _ in 0..num_samples {
             // Add dark counts
-            let dark_noise = if rand::random::<f64>() < self.dark_count_rate / self.bandwidth_hz {
-                (rand::random::<f64>() - 0.5) * 0.1
+            let dark_noise = if thread_rng().gen::<f64>() < self.dark_count_rate / self.bandwidth_hz {
+                (thread_rng().gen::<f64>() - 0.5) * 0.1
             } else {
                 0.0
             };
@@ -676,8 +677,8 @@ impl SqueezedStateMeasurement {
     /// Generate Gaussian random sample
     fn generate_gaussian_sample(&self, mean: f64, variance: f64) -> f64 {
         // Box-Muller transform
-        let u1 = rand::random::<f64>();
-        let u2 = rand::random::<f64>();
+        let u1 = thread_rng().gen::<f64>();
+        let u2 = thread_rng().gen::<f64>();
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
         mean + variance.sqrt() * z
     }

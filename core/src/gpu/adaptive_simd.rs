@@ -5,11 +5,11 @@
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::platform::PlatformCapabilities;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::sync::{Mutex, OnceLock};
 // use scirs2_core::simd_ops::SimdUnifiedOps;
 use crate::simd_ops_stubs::SimdF64;
-use ndarray::ArrayView1;
+use scirs2_core::ndarray::ArrayView1;
 
 /// CPU feature detection results
 #[derive(Debug, Clone, Copy)]
@@ -575,7 +575,7 @@ pub fn get_adaptive_performance_report() -> QuantRS2Result<AdaptivePerformanceRe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     #[test]
     fn test_cpu_feature_detection() {

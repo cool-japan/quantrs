@@ -11,8 +11,9 @@
 #![allow(clippy::fn_address_comparisons)]
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
 use std::f64::consts::PI;
 
 /// Types of optimization problems for adiabatic quantum computing
@@ -421,11 +422,10 @@ impl AdiabaticQuantumComputer {
 
     /// Sample a measurement result
     pub fn measure(&self) -> usize {
-        use rand::Rng;
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
         let probs = self.measurement_probabilities();
 
-        let random_value: f64 = rng.random();
+        let random_value: f64 = rng.gen();
         let mut cumulative = 0.0;
 
         for (state, prob) in probs.iter().enumerate() {
@@ -653,15 +653,14 @@ pub struct ProblemGenerator;
 impl ProblemGenerator {
     /// Generate random QUBO problem
     pub fn random_qubo(num_vars: usize, density: f64) -> QUBOProblem {
-        use rand::Rng;
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
 
         let mut q_matrix = Array2::zeros((num_vars, num_vars));
 
         for i in 0..num_vars {
             for j in i..num_vars {
-                if rng.random::<f64>() < density {
-                    let value = rng.random_range(-1.0..=1.0);
+                if rng.gen::<f64>() < density {
+                    let value = rng.gen_range(-1.0..=1.0);
                     q_matrix[[i, j]] = value;
                     if i != j {
                         q_matrix[[j, i]] = value; // Symmetric
@@ -675,8 +674,7 @@ impl ProblemGenerator {
 
     /// Generate MaxCut problem on a random graph
     pub fn max_cut(num_vertices: usize, edge_probability: f64) -> IsingProblem {
-        use rand::Rng;
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
 
         let h_fields = Array1::zeros(num_vertices);
         let mut j_couplings = Array2::zeros((num_vertices, num_vertices));
@@ -684,7 +682,7 @@ impl ProblemGenerator {
         // Generate random edges with positive coupling (ferromagnetic)
         for i in 0..num_vertices {
             for j in i + 1..num_vertices {
-                if rng.random::<f64>() < edge_probability {
+                if rng.gen::<f64>() < edge_probability {
                     let coupling = 1.0; // Unit weight edges
                     j_couplings[[i, j]] = coupling;
                     j_couplings[[j, i]] = coupling;

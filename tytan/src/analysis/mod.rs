@@ -4,7 +4,7 @@
 //! results from quantum annealing, including clustering and visualization.
 
 #[cfg(feature = "clustering")]
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use thiserror::Error;
 

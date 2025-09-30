@@ -4,8 +4,8 @@
 //! representation, which is particularly effective for simulating quantum systems with
 //! limited entanglement.
 
-use ndarray::{s, Array1, Array2, Array3, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView2};
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -376,7 +376,7 @@ impl MPS {
 
     /// Sample from the MPS
     pub fn sample(&self) -> Vec<bool> {
-        use rand::{thread_rng, Rng};
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         let mut result = vec![false; self.num_qubits];
         let mut accumulated_matrix = Array2::eye(1);

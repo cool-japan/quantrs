@@ -6,18 +6,25 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["quantum", "computing", "annealing", "optimization", "ising"]
+categories = ["science", "algorithms"]
 description = "Quantum annealing support for the QuantRS2 framework"
 
 [dependencies]
 quantrs2-core.workspace = true
 quantrs2-circuit.workspace = true
-num-complex.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 thiserror.workspace = true
-rand.workspace = true
-rand_chacha.workspace = true
-ndarray.workspace = true
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
+
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2.workspace = true
+scirs2-core.workspace = true
+scirs2-autograd.workspace = true
+scirs2-optimize.workspace = true
+scirs2-stats.workspace = true
 
 # For serialization and networking (required for unified interface)
 serde.workspace = true

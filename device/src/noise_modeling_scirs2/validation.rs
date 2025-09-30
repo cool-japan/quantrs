@@ -1,10 +1,11 @@
 //! Model validation and testing frameworks for noise modeling
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use crate::DeviceResult;
 use super::types::*;
 use super::config::*;
+use scirs2_core::random::prelude::*;
 
 /// Model validation coordinator
 #[derive(Debug, Clone)]
@@ -92,17 +93,17 @@ impl ModelValidator {
         let end_idx = ((fold + 1) * fold_size).min(data.nrows());
 
         // Validation set is the current fold
-        let val_data = data.slice(ndarray::s![start_idx..end_idx, ..]).to_owned();
+        let val_data = data.slice(scirs2_core::ndarray::s![start_idx..end_idx, ..]).to_owned();
 
         // Training set is everything else
         let train_part1 = if start_idx > 0 {
-            Some(data.slice(ndarray::s![..start_idx, ..]).to_owned())
+            Some(data.slice(scirs2_core::ndarray::s![..start_idx, ..]).to_owned())
         } else {
             None
         };
 
         let train_part2 = if end_idx < data.nrows() {
-            Some(data.slice(ndarray::s![end_idx.., ..]).to_owned())
+            Some(data.slice(scirs2_core::ndarray::s![end_idx.., ..]).to_owned())
         } else {
             None
         };
@@ -111,8 +112,8 @@ impl ModelValidator {
             (Some(p1), Some(p2)) => {
                 // Concatenate parts
                 let mut combined = Array2::zeros((p1.nrows() + p2.nrows(), data.ncols()));
-                combined.slice_mut(ndarray::s![..p1.nrows(), ..]).assign(&p1);
-                combined.slice_mut(ndarray::s![p1.nrows().., ..]).assign(&p2);
+                combined.slice_mut(scirs2_core::ndarray::s![..p1.nrows(), ..]).assign(&p1);
+                combined.slice_mut(scirs2_core::ndarray::s![p1.nrows().., ..]).assign(&p2);
                 combined
             },
             (Some(p1), None) => p1,
@@ -224,7 +225,7 @@ impl ModelValidator {
         let mut bootstrap_sample = Array2::zeros((n_samples, n_features));
 
         for i in 0..n_samples {
-            let random_idx = rand::random::<usize>() % n_samples;
+            let random_idx = thread_rng().gen::<usize>() % n_samples;
             bootstrap_sample.row_mut(i).assign(&data.row(random_idx));
         }
 
@@ -242,8 +243,8 @@ impl ModelValidator {
         let n_test = (bootstrap_data.nrows() as f64 * test_ratio) as usize;
         let n_train = bootstrap_data.nrows() - n_test;
 
-        let train_data = bootstrap_data.slice(ndarray::s![..n_train, ..]).to_owned();
-        let test_data = bootstrap_data.slice(ndarray::s![n_train.., ..]).to_owned();
+        let train_data = bootstrap_data.slice(scirs2_core::ndarray::s![..n_train, ..]).to_owned();
+        let test_data = bootstrap_data.slice(scirs2_core::ndarray::s![n_train.., ..]).to_owned();
 
         // Make predictions and compute score
         let predictions = self.predict_on_fold(&train_data, &test_data, models)?;

@@ -1,7 +1,7 @@
 //! Utility functions for process tomography
 
-use ndarray::{Array1, Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array4};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use super::core::SciRS2ProcessTomographer;

@@ -844,7 +844,7 @@ pub struct ExpectedOutcomes {
     /// Expected measurement probabilities
     pub measurement_probabilities: Option<HashMap<String, f64>>,
     /// Expected final state
-    pub final_state: Option<Vec<num_complex::Complex64>>,
+    pub final_state: Option<Vec<scirs2_core::Complex64>>,
     /// Expected observables
     pub observables: Option<HashMap<String, f64>>,
     /// Tolerance for comparisons

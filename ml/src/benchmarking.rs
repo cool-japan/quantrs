@@ -7,7 +7,7 @@
 use crate::circuit_integration::QuantumMLExecutor;
 use crate::error::{MLError, Result};
 use crate::simulator_backends::{Backend, BackendCapabilities, SimulatorBackend};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

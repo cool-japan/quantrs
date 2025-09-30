@@ -1,7 +1,7 @@
 //! Real-time streaming anomaly detection
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use std::collections::VecDeque;
 
 use super::config::*;

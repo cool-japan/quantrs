@@ -5,15 +5,16 @@
 //! electronic structure calculations, correlation energy analysis, and support for both ground
 //! state and excited state calculations in strongly correlated molecular systems.
 
-use ndarray::{Array1, Array2, Array3, Array4};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
+use scirs2_core::random::prelude::*;
 
 /// Quantum chemistry DMRG simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -18,8 +18,8 @@ use quantrs2_core::{
 // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use memmap2::{MmapMut, MmapOptions};
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};

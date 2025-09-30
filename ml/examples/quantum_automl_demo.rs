@@ -4,7 +4,7 @@
 //! framework capabilities, including automated model selection, hyperparameter
 //! optimization, preprocessing pipelines, and ensemble construction.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 
 fn main() -> Result<()> {

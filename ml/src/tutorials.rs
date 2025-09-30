@@ -18,7 +18,7 @@ use crate::pytorch_api::{
 use crate::qnn::{QNNBuilder, QuantumNeuralNetwork};
 use crate::qsvm::{FeatureMapType, QSVMParams, QSVM};
 use crate::variational::{VariationalAlgorithm, VariationalCircuit};
-use ndarray::{Array1, Array2, ArrayD, Axis};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use serde::{Deserialize, Serialize};

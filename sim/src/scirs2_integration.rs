@@ -11,11 +11,11 @@
 //! - Memory-optimized data structures with SciRS2 allocators
 //! - GPU-ready abstractions for heterogeneous computing
 
-use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
 use ndarray_linalg::Norm;
 #[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
@@ -29,6 +29,7 @@ use scirs2_core::simd_ops::SimdUnifiedOps;
 use rayon::prelude::*;
 
 use crate::error::{Result, SimulatorError};
+use scirs2_core::random::prelude::*;
 
 /// High-performance matrix optimized for SciRS2 SIMD operations
 #[derive(Debug, Clone)]
@@ -886,7 +887,7 @@ impl Matrix {
         self.data.view()
     }
 
-    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut2<'_, Complex64> {
+    pub fn view_mut(&mut self) -> scirs2_core::ndarray::ArrayViewMut2<'_, Complex64> {
         self.data.view_mut()
     }
 }
@@ -961,7 +962,7 @@ impl Vector {
         self.data.view()
     }
 
-    pub fn view_mut(&mut self) -> ndarray::ArrayViewMut1<'_, Complex64> {
+    pub fn view_mut(&mut self) -> scirs2_core::ndarray::ArrayViewMut1<'_, Complex64> {
         self.data.view_mut()
     }
 }
@@ -1827,7 +1828,7 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5))
+                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
@@ -1922,7 +1923,7 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5))
+                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));

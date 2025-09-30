@@ -6,8 +6,8 @@
 
 use crate::prelude::SimulatorError;
 use half::f16;
-use ndarray::Array1;
-use num_complex::{Complex32, Complex64};
+use scirs2_core::ndarray::Array1;
+use scirs2_core::{Complex32, Complex64};
 use std::fmt;
 
 use crate::error::Result;

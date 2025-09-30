@@ -3,8 +3,9 @@
 //! This module implements quantum annealing using the Zeno effect to control
 //! quantum evolution and enhance optimization performance.
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::time::{Duration, Instant};
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
@@ -699,7 +700,7 @@ impl QuantumZenoAnnealer {
         measurement_time: f64,
     ) -> AdvancedQuantumResult<ZenoMeasurement> {
         // Simple Z-basis measurement (in practice would be more sophisticated)
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
 
         // Calculate measurement probabilities
         let mut outcome_probabilities = Vec::new();

@@ -14,7 +14,7 @@
 //! - Cross-device QML model portability and optimization
 //! - Real-time device performance monitoring and adaptation
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;

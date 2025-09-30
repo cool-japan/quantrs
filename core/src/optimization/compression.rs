@@ -9,8 +9,8 @@ use crate::{
     matrix_ops::matrices_approx_equal,
     qubit::QubitId,
 };
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 // use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
 // use scirs2_optimize::prelude::DifferentialEvolutionOptions;
 // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
@@ -309,7 +309,7 @@ impl GateSequenceCompressor {
         let _tolerance = self.config.tolerance;
 
         // Create objective function
-        let objective = move |x: &ndarray::ArrayView1<f64>| -> f64 {
+        let objective = move |x: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
             let params: Vec<f64> = x.iter().cloned().collect();
 
             // Inline the evaluation logic since we can't access self
@@ -455,8 +455,8 @@ impl GateSequenceCompressor {
     /// Find effective rank based on singular values
     fn find_effective_rank(
         &self,
-        s_real: &ndarray::Array1<f64>,
-        s_imag: &ndarray::Array1<f64>,
+        s_real: &scirs2_core::ndarray::Array1<f64>,
+        s_imag: &scirs2_core::ndarray::Array1<f64>,
     ) -> QuantRS2Result<usize> {
         let max_singular = s_real
             .iter()
@@ -494,8 +494,8 @@ impl GateSequenceCompressor {
         &self,
         vt_real: &Array2<f64>,
         vt_imag: &Array2<f64>,
-        s_real: &ndarray::Array1<f64>,
-        s_imag: &ndarray::Array1<f64>,
+        s_real: &scirs2_core::ndarray::Array1<f64>,
+        s_imag: &scirs2_core::ndarray::Array1<f64>,
         rank: usize,
     ) -> QuantRS2Result<Array2<Complex64>> {
         let (_, cols) = vt_real.dim();
@@ -528,7 +528,7 @@ impl GateSequenceCompressor {
     #[allow(dead_code)]
     fn tensor_to_complex_matrix_from_array(
         &self,
-        tensor: &ndarray::ArrayD<f64>,
+        tensor: &scirs2_core::ndarray::ArrayD<f64>,
     ) -> QuantRS2Result<Array2<Complex64>> {
         // For now, just flatten the tensor and reshape to square matrix
         let elements: Vec<f64> = tensor.iter().cloned().collect();

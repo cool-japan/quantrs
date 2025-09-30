@@ -4,9 +4,10 @@
 //! including power spectral density, peak detection, noise coloring analysis, and coherence analysis.
 
 use crate::{DeviceError, DeviceResult};
-use ndarray::{Array1, Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 /// Spectral noise analysis result
 #[derive(Debug, Clone)]
@@ -105,7 +106,7 @@ impl SpectralAnalyzer {
         // Generate a realistic 1/f-like spectrum for demonstration
         for i in 1..n_freqs {
             let freq = (i as f64) * self.sampling_frequency / (self.window_size as f64);
-            psd[i] = 1.0 / freq.powf(0.5) + 0.1 * rand::random::<f64>();
+            psd[i] = 1.0 / freq.powf(0.5) + 0.1 * thread_rng().gen::<f64>();
         }
 
         Ok(psd)
@@ -154,7 +155,7 @@ impl SpectralAnalyzer {
         // Fit 1/f^β model using log-log linear regression
         let log_freqs: Vec<f64> = frequencies.iter().map(|&f| f.ln()).collect();
         let log_psd: Vec<f64> = psd
-            .slice(ndarray::s![1..])
+            .slice(scirs2_core::ndarray::s![1..])
             .iter()
             .map(|&p| (p.max(1e-10)).ln())
             .collect();
@@ -429,7 +430,7 @@ impl SpectralAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_spectral_analyzer_creation() {

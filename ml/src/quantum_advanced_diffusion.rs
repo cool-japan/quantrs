@@ -7,10 +7,11 @@
 //! - Quantum-Enhanced Stochastic Differential Equations
 
 use crate::error::{MLError, Result};
-use ndarray::{s, Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -574,7 +575,7 @@ impl QuantumAdvancedDiffusionModel {
 
     /// Generate quantum-correlated noise with proper entanglement structure
     fn generate_quantum_noise(&self, t: usize) -> Result<Array1<Complex64>> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let data_dim = self.config.data_dim;
         let mut noise = Array1::<Complex64>::zeros(data_dim);
 
@@ -694,7 +695,7 @@ impl QuantumAdvancedDiffusionModel {
         let mut features = Array1::zeros(num_features);
 
         // Generate random Fourier features with quantum correlations
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
 
         for i in 0..num_features {
             let frequency = rng.gen_range(0.1..10.0);
@@ -1170,7 +1171,7 @@ impl QuantumAdvancedDiffusionModel {
 
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
-            let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
+            let batch_data = data.slice(scirs2_core::ndarray::s![batch_start..batch_end, ..]);
 
             let batch_metrics = self.train_batch(&batch_data, config)?;
 
@@ -1196,7 +1197,7 @@ impl QuantumAdvancedDiffusionModel {
     /// Train single batch with quantum loss computation
     fn train_batch(
         &mut self,
-        batch_data: &ndarray::ArrayView2<f64>,
+        batch_data: &scirs2_core::ndarray::ArrayView2<f64>,
         config: &QuantumTrainingConfig,
     ) -> Result<TrainingMetrics> {
         let mut batch_loss = 0.0;
@@ -1206,7 +1207,7 @@ impl QuantumAdvancedDiffusionModel {
             let x0 = batch_data.row(sample_idx).to_owned();
 
             // Random timestep
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
             let t = rng.gen_range(0..self.config.num_timesteps);
 
             // Forward diffusion with quantum noise
@@ -1336,7 +1337,7 @@ impl QuantumAdvancedDiffusionModel {
         for sample_idx in 0..validation_data.nrows() {
             let x0 = validation_data.row(sample_idx).to_owned();
 
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
             let t = rng.gen_range(0..self.config.num_timesteps);
 
             let (xt, quantum_noise, quantum_state) = self.quantum_forward_diffusion(&x0, t)?;

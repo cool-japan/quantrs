@@ -12,8 +12,9 @@
 //! - Various mixer strategies and problem encodings
 //! - Integration with classical optimizers for parameter optimization
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -625,7 +626,7 @@ impl QaoaOptimizer {
     pub fn new(config: QaoaConfig) -> QaoaResult<Self> {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         // Initialize with placeholder state (will be set when solving)

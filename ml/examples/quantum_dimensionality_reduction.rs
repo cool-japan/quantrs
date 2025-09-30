@@ -3,7 +3,7 @@
 //! This example demonstrates various quantum dimensionality reduction algorithms
 //! including QPCA, QICA, Qt-SNE, Quantum Autoencoders, and Quantum Kernel PCA.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::dimensionality_reduction::config::QuantumEnhancementLevel;
 use quantrs2_ml::dimensionality_reduction::{
     AutoencoderArchitecture, DimensionalityReductionAlgorithm, QAutoencoderConfig, QICAConfig,
@@ -12,6 +12,7 @@ use quantrs2_ml::dimensionality_reduction::{
 };
 use quantrs2_ml::prelude::*;
 use std::collections::HashMap;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Dimensionality Reduction Examples ===\n");

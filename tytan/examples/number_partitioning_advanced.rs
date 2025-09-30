@@ -6,7 +6,7 @@
 //! - Constraint formulations for different objectives
 //! - Performance analysis on various problem instances
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -23,8 +23,8 @@ use quantrs2_tytan::{
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use scirs2_core::random::rngs::StdRng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -364,7 +364,7 @@ fn run_partition_experiment(
 
     // Convert QUBO to matrix format
     let n_vars = qubo.num_variables;
-    let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+    let mut matrix = scirs2_core::ndarray::Array2::zeros((n_vars, n_vars));
     let mut var_map = HashMap::new();
 
     // Create variable mapping and fill matrix
@@ -563,7 +563,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Convert QUBO to matrix format
         let n_vars = qubo.num_variables;
-        let mut matrix = ndarray::Array2::zeros((n_vars, n_vars));
+        let mut matrix = scirs2_core::ndarray::Array2::zeros((n_vars, n_vars));
         let mut var_map = HashMap::new();
 
         for i in 0..n_vars {

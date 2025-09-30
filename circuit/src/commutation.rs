@@ -3,8 +3,8 @@
 //! This module provides functionality to analyze which quantum gates commute
 //! with each other, enabling optimizations like gate reordering and parallelization.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 
 use quantrs2_core::gate::GateOp;

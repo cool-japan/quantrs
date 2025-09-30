@@ -15,7 +15,7 @@
 //! - Adaptive code distance selection
 //! - Logical measurement and state preparation protocols
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};

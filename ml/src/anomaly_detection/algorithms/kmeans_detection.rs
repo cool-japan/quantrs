@@ -1,7 +1,8 @@
 //! Quantum K-Means Detection implementation
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 use super::super::config::*;
@@ -29,7 +30,7 @@ impl AnomalyDetectorTrait for QuantumKMeansDetection {
         let n_samples = data.nrows();
         let n_features = data.ncols();
 
-        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| rand::random::<f64>());
+        let anomaly_scores = Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<f64>());
         let anomaly_labels = anomaly_scores.mapv(|score| if score > 0.5 { 1 } else { 0 });
         let confidence_scores = anomaly_scores.clone();
         let feature_importance =
@@ -40,8 +41,8 @@ impl AnomalyDetectorTrait for QuantumKMeansDetection {
             "kmeans_detection".to_string(),
             MethodSpecificResult::Clustering {
                 cluster_assignments: Array1::from_shape_fn(n_samples, |_| {
-                    use rand::Rng;
-                    rand::thread_rng().gen_range(0..3)
+                    use scirs2_core::random::prelude::*;
+                    thread_rng().gen_range(0..3)
                 }),
                 cluster_distances: anomaly_scores.clone(),
             },

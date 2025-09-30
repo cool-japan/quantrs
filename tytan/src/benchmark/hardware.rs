@@ -1,7 +1,7 @@
 //! Hardware backend definitions for benchmarking
 
 use crate::sampler::{SampleResult, Sampler};
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use std::time::Duration;
 

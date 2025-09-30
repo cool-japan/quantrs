@@ -8,9 +8,9 @@
 #[cfg(feature = "dwave")]
 use crate::compile::{Compile, CompiledModel};
 use crate::sampler::Sampler;
-use ndarray::Array2;
-use rand::prelude::*;
-use rand::{rng, SeedableRng};
+use scirs2_core::ndarray::Array2;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::SeedableRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
@@ -1923,14 +1923,14 @@ impl Validator for ObjectiveValidator {
 impl ObjectiveValidator {
     fn estimate_random_objective(&self, qubo: &Array2<f64>) -> f64 {
         let n = qubo.shape()[0];
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut total = 0.0;
         let samples = 100;
 
         for _ in 0..samples {
             let mut x = vec![0.0; n];
             for x_item in x.iter_mut().take(n) {
-                *x_item = if rng.random::<bool>() { 1.0 } else { 0.0 };
+                *x_item = if rng.gen::<bool>() { 1.0 } else { 0.0 };
             }
 
             let mut value = 0.0;
@@ -2042,7 +2042,7 @@ impl TestGenerator for MaxCutGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2068,8 +2068,8 @@ impl TestGenerator for MaxCutGenerator {
         // Generate edges
         for i in 0..n {
             for j in i + 1..n {
-                if rng.random::<f64>() < edge_probability {
-                    let weight = rng.random_range(1.0..10.0);
+                if rng.gen::<f64>() < edge_probability {
+                    let weight = rng.gen_range(1.0..10.0);
                     // Max-cut: minimize -w_ij * (x_i + x_j - 2*x_i*x_j)
                     qubo[[i, i]] -= weight;
                     qubo[[j, j]] -= weight;
@@ -2117,7 +2117,7 @@ impl TestGenerator for TSPGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2127,7 +2127,7 @@ impl TestGenerator for TSPGenerator {
         // Generate random city locations
         let mut cities = Vec::new();
         for _ in 0..n_cities {
-            cities.push((rng.random_range(0.0..100.0), rng.random_range(0.0..100.0)));
+            cities.push((rng.gen_range(0.0..100.0), rng.gen_range(0.0..100.0)));
         }
 
         // Calculate distances
@@ -2271,7 +2271,7 @@ impl TestGenerator for GraphColoringGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2290,7 +2290,7 @@ impl TestGenerator for GraphColoringGenerator {
 
         for i in 0..n_vertices {
             for j in i + 1..n_vertices {
-                if rng.random::<f64>() < edge_prob {
+                if rng.gen::<f64>() < edge_prob {
                     edges.push((i, j));
                 }
             }
@@ -2392,7 +2392,7 @@ impl TestGenerator for KnapsackGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2404,8 +2404,8 @@ impl TestGenerator for KnapsackGenerator {
         let mut weights = Vec::new();
 
         for _ in 0..n_items {
-            values.push(rng.random_range(1.0..100.0));
-            weights.push(rng.random_range(1.0..50.0));
+            values.push(rng.gen_range(1.0..100.0));
+            weights.push(rng.gen_range(1.0..50.0));
         }
 
         let capacity = weights.iter().sum::<f64>() * 0.5; // 50% of total weight
@@ -2465,7 +2465,7 @@ impl TestGenerator for RandomQuboGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2484,8 +2484,8 @@ impl TestGenerator for RandomQuboGenerator {
 
         for i in 0..n {
             for j in i..n {
-                if rng.random::<f64>() < density {
-                    let value = rng.random_range(-10.0..10.0);
+                if rng.gen::<f64>() < density {
+                    let value = rng.gen_range(-10.0..10.0);
                     qubo[[i, j]] = value;
                     if i != j {
                         qubo[[j, i]] = value;
@@ -2544,7 +2544,7 @@ impl TestGenerator for FinanceTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2559,7 +2559,7 @@ impl TestGenerator for FinanceTestGenerator {
             var_map.insert(format!("asset_{}", i), i);
 
             // Expected return (negative for minimization)
-            let expected_return = rng.random_range(0.05..0.15);
+            let expected_return = rng.gen_range(0.05..0.15);
             qubo[[i, i]] -= expected_return;
         }
 
@@ -2567,9 +2567,9 @@ impl TestGenerator for FinanceTestGenerator {
         for i in 0..n_assets {
             for j in 0..n_assets {
                 let covariance = if i == j {
-                    rng.random_range(0.01..0.04) // Variance
+                    rng.gen_range(0.01..0.04) // Variance
                 } else {
-                    rng.random_range(-0.01..0.01) // Covariance
+                    rng.gen_range(-0.01..0.01) // Covariance
                 };
                 qubo[[i, j]] += covariance;
             }
@@ -2618,7 +2618,7 @@ impl TestGenerator for LogisticsTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2647,7 +2647,7 @@ impl TestGenerator for LogisticsTestGenerator {
                 for j in 0..n_locations {
                     if i != j {
                         let idx = v * n_locations * n_locations + i * n_locations + j;
-                        let distance = rng.random_range(1.0..20.0);
+                        let distance = rng.gen_range(1.0..20.0);
                         qubo[[idx, idx]] += distance;
                     }
                 }
@@ -2692,7 +2692,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         let mut rng = if let Some(seed) = config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            let mut thread_rng = rng();
+            let mut thread_rng = thread_rng();
             StdRng::from_rng(&mut thread_rng)
         };
 
@@ -2717,7 +2717,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         for j in 0..n_jobs {
             for m in 0..n_machines {
                 let idx = j * n_machines + m;
-                let processing_time = rng.random_range(1.0..10.0);
+                let processing_time = rng.gen_range(1.0..10.0);
                 qubo[[idx, idx]] += processing_time;
             }
         }

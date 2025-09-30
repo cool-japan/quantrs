@@ -4,8 +4,8 @@
 //! including anyons, braiding operations, fusion rules, and topological gates.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::fmt;

@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::continuous_variable::{Complex, GaussianState};
 use super::{PhotonicMode, PhotonicSystemType};
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Errors for measurement-based quantum computing
 #[derive(Error, Debug)]
@@ -330,7 +331,7 @@ impl ClusterState {
             _ => 0.5,                                // General case
         };
 
-        Ok(rand::random::<f64>() < probability)
+        Ok(thread_rng().gen::<f64>() < probability)
     }
 
     /// Get all unmeasured neighbors of a node

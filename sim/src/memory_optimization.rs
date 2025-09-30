@@ -3,7 +3,7 @@
 //! This module provides sophisticated memory management strategies to optimize
 //! memory usage patterns for large quantum state vector simulations.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};

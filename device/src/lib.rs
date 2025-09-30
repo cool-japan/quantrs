@@ -1,8 +1,15 @@
-//! Quantum device connectors for the quantrs framework.
+//! Quantum device connectors for the QuantRS2 framework.
 //!
 //! This crate provides connectivity to quantum hardware providers like IBM Quantum,
 //! Azure Quantum, and AWS Braket. It enables users to run quantum circuits on real
 //! quantum hardware or cloud-based simulators.
+//!
+//! ## Recent Updates (v0.1.0-beta.2)
+//!
+//! - Enhanced transpilation using SciRS2 v0.1.0-beta.3's graph algorithms
+//! - Improved qubit routing with refined SciRS2 integration patterns
+//! - Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket
+//! - Advanced error handling and asynchronous execution
 
 use quantrs2_circuit::prelude::Circuit;
 use std::collections::HashMap;

@@ -14,6 +14,7 @@ use quantrs2_core::{
 
 use super::config::{DDSequenceType, NoiseType};
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Dynamical decoupling sequence representation
 #[derive(Debug, Clone)]
@@ -844,7 +845,7 @@ impl MultiQubitDDCoordinator {
         // Apply random phase shifts to reduce coherent crosstalk
         use std::f64::consts::PI;
         for phase in &mut coordinated.pulse_phases {
-            let random_phase = rand::random::<f64>() * 2.0 * PI;
+            let random_phase = thread_rng().gen::<f64>() * 2.0 * PI;
             *phase += random_phase;
         }
 

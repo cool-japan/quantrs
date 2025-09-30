@@ -3,7 +3,7 @@
 //! This example demonstrates advanced quantum GAN implementations including
 //! Wasserstein QGAN and Conditional QGAN.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::enhanced_gan::{
     ConditionalQGAN, EnhancedQuantumDiscriminator, EnhancedQuantumGenerator, WassersteinQGAN,
 };

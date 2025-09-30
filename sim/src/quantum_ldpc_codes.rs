@@ -14,7 +14,7 @@
 //! - Performance analysis and threshold estimation
 //! - Hardware-aware optimization for different architectures
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 

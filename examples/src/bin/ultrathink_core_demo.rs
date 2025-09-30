@@ -1,8 +1,8 @@
 //! UltraThink Core Demonstration
 //! This demonstrates the quantum advantage capabilities using only the core module
 
-use ndarray::Array1;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use quantrs2_core::qubit::QubitId;
 use quantrs2_core::ultrathink_core::UltraThinkQuantumComputer;
 use std::time::Duration;

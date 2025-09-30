@@ -1,6 +1,7 @@
 use crate::error::{MLError, Result};
+use scirs2_core::random::prelude::*;
 use crate::qnn::QuantumNeuralNetwork;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -210,7 +211,7 @@ impl WordEmbedding {
         for word in &self.vocabulary {
             let embedding = Array1::from_vec(
                 (0..self.dimension)
-                    .map(|_| rand::random::<f64>() * 2.0 - 1.0)
+                    .map(|_| thread_rng().gen::<f64>() * 2.0 - 1.0)
                     .collect(),
             );
 

@@ -4,7 +4,7 @@
 //! multiple quantum devices, simulators, or cloud services in a distributed manner.
 
 use crate::builder::Circuit;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,

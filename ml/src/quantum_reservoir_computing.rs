@@ -6,7 +6,7 @@
 //! with quantum advantages in memory capacity and computational complexity.
 
 use crate::error::{MLError, Result};
-use ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

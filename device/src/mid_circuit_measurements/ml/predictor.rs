@@ -3,7 +3,7 @@
 use super::super::config::{MLOptimizationConfig, PredictionConfig};
 use super::super::results::*;
 use crate::DeviceResult;
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::VecDeque;
 
 /// ML-powered measurement predictor

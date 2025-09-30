@@ -2,16 +2,17 @@
 //!
 //! This provides a simplified MPS implementation that doesn't require ndarray-linalg
 
-use ndarray::{array, s, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{array, s, Array2, Array3};
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
 };
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 use std::f64::consts::SQRT_2;
+use scirs2_core::random::prelude::*;
 
 /// Configuration for basic MPS simulator
 #[derive(Debug, Clone)]

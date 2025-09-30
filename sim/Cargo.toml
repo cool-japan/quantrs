@@ -6,20 +6,24 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 license.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["quantum", "computing", "simulator", "state-vector", "gates"]
+categories = ["science", "simulation"]
 description = "Quantum circuit simulators for the QuantRS2 framework"
 
 [dependencies]
 quantrs2-core.workspace = true
 quantrs2-circuit.workspace = true
-num-complex.workspace = true
-ndarray.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 rayon.workspace = true
 thiserror.workspace = true
-# Optional dependencies disabled by default to avoid OpenBLAS issues on macOS ARM
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2.workspace = true
 scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg"] }
-scirs2-linalg = { workspace = true, default-features = false, optional = true }
+scirs2-autograd.workspace = true
+scirs2-linalg.workspace = true
+scirs2-sparse.workspace = true
+scirs2-fft.workspace = true
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
 pyo3.workspace = true
 
@@ -28,10 +32,10 @@ wgpu = { workspace = true, optional = true }
 bytemuck = { workspace = true, features = ["derive"], optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = true }
 futures = { workspace = true, optional = true }
-rand.workspace = true
-rand_distr.workspace = true
-rand_chacha.workspace = true
-rand_xoshiro.workspace = true
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_xoshiro.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 wide.workspace = true
 fastrand.workspace = true
 nalgebra-sparse.workspace = true
@@ -48,9 +52,9 @@ nalgebra = { workspace = true, optional = true }
 md5.workspace = true
 regex.workspace = true
 tempfile.workspace = true
-flate2 = "1.0"
-uuid = { version = "1.0", features = ["v4"] }
-memmap2 = "0.9"
+flate2.workspace = true
+uuid.workspace = true
+memmap2.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
@@ -61,7 +65,7 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-linalg", "dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math using external libs
+advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math using external libs
 mps = [] # Enable MPS simulator
 
 [[bin]]

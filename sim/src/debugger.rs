@@ -3,8 +3,8 @@
 //! This module provides comprehensive debugging capabilities for quantum algorithms,
 //! including step-by-step execution, state inspection, breakpoints, and analysis tools.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;

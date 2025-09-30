@@ -8,7 +8,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     tensor_network::Tensor,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},
@@ -547,8 +547,8 @@ impl LargeScaleTensorContractor {
         monitor.contraction_stats.total_contraction_time_ms += duration;
 
         // Create mock result tensor
-        let result_data = ndarray::Array::from_shape_vec(
-            ndarray::IxDyn(&[2, 2]),
+        let result_data = scirs2_core::ndarray::Array::from_shape_vec(
+            scirs2_core::ndarray::IxDyn(&[2, 2]),
             vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -832,8 +832,8 @@ mod tests {
         let mut contractor = contractor.unwrap();
 
         // Create test tensor
-        let data = ndarray::Array::from_shape_vec(
-            ndarray::IxDyn(&[2, 2]),
+        let data = scirs2_core::ndarray::Array::from_shape_vec(
+            scirs2_core::ndarray::IxDyn(&[2, 2]),
             vec![
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),

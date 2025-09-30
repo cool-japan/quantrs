@@ -6,8 +6,8 @@
 //! quantum computation and many-body quantum dynamics.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 
 /// Types of quantum cellular automata
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -258,12 +258,12 @@ impl QuantumCellularAutomaton1D {
     }
 
     /// Initialize with a random state
-    pub fn initialize_random(&mut self, rng: &mut dyn rand::RngCore) -> QuantRS2Result<()> {
-        use rand::Rng;
+    pub fn initialize_random(&mut self, rng: &mut dyn scirs2_core::random::RngCore) -> QuantRS2Result<()> {
+        use scirs2_core::random::prelude::*;
 
         for i in 0..self.num_sites {
-            let theta = rng.random_range(0.0..std::f64::consts::PI);
-            let phi = rng.random_range(0.0..2.0 * std::f64::consts::PI);
+            let theta = rng.gen_range(0.0..std::f64::consts::PI);
+            let phi = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
 
             let amp0 = Complex64::new(theta.cos(), 0.0);
             let amp1 = Complex64::new(theta.sin() * phi.cos(), theta.sin() * phi.sin());

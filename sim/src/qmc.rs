@@ -5,8 +5,8 @@
 
 use crate::prelude::SimulatorError;
 use fastrand;
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 
 use crate::error::Result;
 use crate::trotter::{Hamiltonian, HamiltonianTerm};

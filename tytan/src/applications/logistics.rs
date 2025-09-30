@@ -6,9 +6,9 @@
 // Sampler types available for logistics applications
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 /// Vehicle Routing Problem (VRP) optimizer
@@ -623,10 +623,10 @@ impl BinaryVehicleRoutingProblem {
 
     /// Create random binary solution
     pub fn random_solution(&self) -> Vec<i8> {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let n_vars = self.num_variables();
         (0..n_vars)
-            .map(|_| if rng.random::<f64>() > 0.8 { 1 } else { 0 })
+            .map(|_| if rng.gen::<f64>() > 0.8 { 1 } else { 0 })
             .collect()
     }
 

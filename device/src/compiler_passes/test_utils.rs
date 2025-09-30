@@ -193,9 +193,9 @@ pub trait MockResults {
             converged: true,
             objective_value: 0.95,
             iterations: 50,
-            parameter_evolution: vec![ndarray::Array1::zeros(4)],
+            parameter_evolution: vec![scirs2_core::ndarray::Array1::zeros(4)],
             success: true,
-            x: ndarray::Array1::zeros(4),
+            x: scirs2_core::ndarray::Array1::zeros(4),
             improvement: 0.15,
         }
     }

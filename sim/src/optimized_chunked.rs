@@ -3,7 +3,7 @@
 //! This module provides a memory-efficient implementation for large qubit counts (30+)
 //! by processing the state vector in manageable chunks to reduce memory pressure.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::cmp::min;
 
 // Use standard memory management since scirs2 memory module is not available

@@ -3,8 +3,8 @@
 //! This module implements various Trotter-Suzuki formulas for approximating
 //! the time evolution operator exp(-iHt) where H = H1 + H2 + ... + Hn.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};

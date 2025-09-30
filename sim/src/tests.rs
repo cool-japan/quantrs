@@ -3,7 +3,7 @@
 //! This module provides tests for the various simulator implementations
 //! to ensure correctness and compatibility.
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::f64::consts::FRAC_1_SQRT_2;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -15,7 +15,7 @@ use crate::quantum_reservoir_computing::{
     QuantumReservoirConfig, ReservoirDynamics,
 };
 use crate::statevector::StateVectorSimulator;
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 
 /// Create a bell state circuit
 fn create_bell_circuit<const N: usize>() -> Circuit<N> {
@@ -47,48 +47,47 @@ fn create_ghz_circuit<const N: usize>() -> Circuit<N> {
 
 /// Create a random circuit with the specified number of gates
 fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use scirs2_core::random::prelude::*;
     use std::f64::consts::PI;
 
     let mut circuit = Circuit::new();
     let mut rng = StdRng::seed_from_u64(42); // Use fixed seed for reproducibility
 
     for _ in 0..num_gates {
-        let gate_type = rng.random_range(0..5);
+        let gate_type = rng.gen_range(0..5);
 
         match gate_type {
             0 => {
                 // Hadamard gate
-                let target = rng.random_range(0..N);
+                let target = rng.gen_range(0..N);
                 circuit.h(target).unwrap();
             }
             1 => {
                 // Pauli-X gate
-                let target = rng.random_range(0..N);
+                let target = rng.gen_range(0..N);
                 circuit.x(target).unwrap();
             }
             2 => {
                 // Rotation-Z gate
-                let target = rng.random_range(0..N);
-                let angle = rng.random_range(0.0..2.0 * PI);
+                let target = rng.gen_range(0..N);
+                let angle = rng.gen_range(0.0..2.0 * PI);
                 circuit.rz(target, angle).unwrap();
             }
             3 => {
                 // CNOT gate
-                let control = rng.random_range(0..N);
-                let mut target = rng.random_range(0..N);
+                let control = rng.gen_range(0..N);
+                let mut target = rng.gen_range(0..N);
                 while target == control {
-                    target = rng.random_range(0..N);
+                    target = rng.gen_range(0..N);
                 }
                 circuit.cnot(control, target).unwrap();
             }
             4 => {
                 // CZ gate
-                let control = rng.random_range(0..N);
-                let mut target = rng.random_range(0..N);
+                let control = rng.gen_range(0..N);
+                let mut target = rng.gen_range(0..N);
                 while target == control {
-                    target = rng.random_range(0..N);
+                    target = rng.gen_range(0..N);
                 }
                 circuit.cz(control, target).unwrap();
             }
@@ -304,8 +303,8 @@ mod ultrathink_tests {
     use crate::mixed_precision_impl::{
         MixedPrecisionConfig, MixedPrecisionSimulator, QuantumPrecision,
     };
-    use ndarray::Array2;
-    use num_complex::Complex64;
+    use scirs2_core::ndarray::Array2;
+    use scirs2_core::Complex64;
 
     #[test]
     #[cfg(all(feature = "gpu", not(target_os = "macos")))]

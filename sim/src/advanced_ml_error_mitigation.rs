@@ -15,13 +15,14 @@
 //! - Graph neural networks for circuit structure-aware mitigation
 //! - Attention mechanisms for long-range error correlations
 
-use ndarray::{Array1, Array2, Array3};
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::{Result, SimulatorError};
+use scirs2_core::random::prelude::*;
 
 /// Advanced ML error mitigation configuration
 #[derive(Debug, Clone)]
@@ -534,7 +535,7 @@ impl AdvancedMLErrorMitigator {
             let state_key = Self::features_to_state_key(features);
 
             // Epsilon-greedy action selection
-            if rand::random::<f64>() < agent.exploration_rate {
+            if thread_rng().gen::<f64>() < agent.exploration_rate {
                 // Random exploration
                 let actions = [
                     MitigationAction::ZeroNoiseExtrapolation,

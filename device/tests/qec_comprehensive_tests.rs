@@ -3,8 +3,8 @@
 //! This module provides extensive test coverage for all QEC components including
 //! error codes, detection strategies, correction algorithms, and adaptive systems.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use quantrs2_core::prelude::*;
 use quantrs2_device::ml_optimization::{
     CircuitFeatureConfig, DimensionalityReductionConfig, FeatureExtractionConfig,
@@ -62,7 +62,7 @@ use quantrs2_device::qec::{
     ZNEConfig as QECZNEConfig,
 };
 use quantrs2_device::unified_benchmarking::config::{MLModelType, OptimizationAlgorithm};
-use rand::Rng;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -1007,7 +1007,7 @@ mod test_helpers {
             measurements: &HashMap<String, Vec<i32>>,
             _stabilizers: &[StabilizerGroup],
         ) -> QECResult<Vec<SyndromePattern>> {
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
             let mut syndromes = Vec::new();
 
             // Generate mock syndromes based on detection rate
@@ -1100,7 +1100,7 @@ mod test_helpers {
             _code: &dyn QuantumErrorCode,
         ) -> QECResult<Vec<CorrectionOperation>> {
             let mut corrections = Vec::new();
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
 
             for syndrome in syndromes {
                 if rng.gen::<f64>() < self.success_rate {

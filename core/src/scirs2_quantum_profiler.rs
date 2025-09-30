@@ -10,7 +10,7 @@ use crate::gate_translation::GateType;
 use crate::buffer_pool::BufferPool;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
 

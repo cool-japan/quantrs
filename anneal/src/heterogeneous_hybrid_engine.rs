@@ -15,6 +15,7 @@
 //! - Cost optimization for cloud quantum services
 //! - Quality-aware result aggregation and consensus
 
+use scirs2_core::random::prelude::*;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -1139,7 +1140,7 @@ impl HeterogeneousHybridEngine {
         // Generate solution (simplified)
         let solution = self.generate_simulated_solution(task, resource)?;
         let energy = self.calculate_energy(&task.problem, &solution)?;
-        let quality = resource.performance.quality_score * (0.8 + rand::random::<f64>() * 0.4);
+        let quality = resource.performance.quality_score * (0.8 + thread_rng().gen::<f64>() * 0.4);
         let cost =
             resource.cost.fixed_cost + resource.cost.variable_cost * task.problem.num_qubits as f64;
 
@@ -1165,7 +1166,7 @@ impl HeterogeneousHybridEngine {
 
         // Add some randomness based on resource type
         for i in 0..num_vars {
-            if rand::random::<f64>() < 0.5 {
+            if thread_rng().gen::<f64>() < 0.5 {
                 solution[i] = -1;
             }
         }

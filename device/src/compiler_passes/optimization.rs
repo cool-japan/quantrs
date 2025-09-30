@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ndarray::Array1;
+use scirs2_core::ndarray::Array1;
 use scirs2_graph::Graph;
 use scirs2_optimize::OptimizeResult;
 
@@ -100,7 +100,7 @@ impl SciRS2OptimizationEngine {
     /// Perform linear algebra optimization
     pub async fn optimize_linear_algebra(
         &self,
-        _matrices: &[ndarray::Array2<f64>],
+        _matrices: &[scirs2_core::ndarray::Array2<f64>],
     ) -> DeviceResult<LinalgOptimizationResult> {
         // Mock implementation for compilation
         Ok(LinalgOptimizationResult {
@@ -127,7 +127,7 @@ impl SciRS2OptimizationEngine {
         // Mock implementation for compilation
         Ok(CrosstalkAnalysisResult {
             significant_interactions: Vec::new(),
-            interaction_matrix: ndarray::Array2::zeros((4, 4)),
+            interaction_matrix: scirs2_core::ndarray::Array2::zeros((4, 4)),
             mitigation_recommendations: Vec::new(),
             confidence_scores: HashMap::new(),
         })
@@ -263,7 +263,7 @@ pub struct CrosstalkModel {
     /// Temporal correlations
     pub temporal_correlations: Vec<f64>,
     /// Spatial correlations
-    pub spatial_correlations: ndarray::Array2<f64>,
+    pub spatial_correlations: scirs2_core::ndarray::Array2<f64>,
     /// Model parameters
     pub parameters: HashMap<String, f64>,
 }
@@ -274,7 +274,7 @@ pub struct CrosstalkAnalysisResult {
     /// Significant interactions
     pub significant_interactions: Vec<(usize, usize)>,
     /// Interaction strength matrix
-    pub interaction_matrix: ndarray::Array2<f64>,
+    pub interaction_matrix: scirs2_core::ndarray::Array2<f64>,
     /// Mitigation recommendations
     pub mitigation_recommendations: Vec<MitigationRecommendation>,
     /// Confidence scores

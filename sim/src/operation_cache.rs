@@ -3,8 +3,8 @@
 //! This module provides sophisticated caching mechanisms for frequently computed
 //! quantum operations, gate matrices, and intermediate results to optimize performance.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::hash::{Hash, Hasher};
@@ -625,7 +625,7 @@ impl GateMatrixCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_operation_cache() {

@@ -17,7 +17,7 @@ use crate::qnn::{QNNLayer, QuantumNeuralNetwork};
 use crate::qsvm::{FeatureMapType, QSVMParams, QSVM};
 use crate::transfer::{PretrainedModel, QuantumTransferLearning, TransferStrategy};
 use crate::vae::{ClassicalAutoencoder, QVAE};
-use ndarray::{s, Array1, Array2, ArrayD};
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayD};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -606,7 +606,7 @@ impl QuantumModel for IrisQuantumSVM {
         // Convert dynamic array to 2D array for QSVM
         let input_2d = input
             .clone()
-            .into_dimensionality::<ndarray::Ix2>()
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
             .map_err(|_| MLError::InvalidConfiguration("Input must be 2D".to_string()))?;
 
         // Get predictions as i32

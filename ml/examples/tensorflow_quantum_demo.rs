@@ -3,12 +3,13 @@
 //! This example demonstrates the TensorFlow Quantum (TFQ) compatibility layer,
 //! showing how to use TFQ-style APIs, PQC layers, and quantum datasets.
 
-use ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_circuit::prelude::{Circuit, CircuitBuilder};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::simulator_backends::DynamicCircuit;
 use std::collections::HashMap;
 use std::sync::Arc;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== TensorFlow Quantum Compatibility Demo ===\n");

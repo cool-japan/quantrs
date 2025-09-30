@@ -1,12 +1,13 @@
 //! Adaptive dynamical decoupling system with real-time optimization
 
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use rand::Rng;
+use scirs2_core::random::Rng;
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
 
@@ -686,9 +687,9 @@ impl AdaptiveDDSystem {
         // Apply exploration
         match agent.exploration_strategy {
             ExplorationStrategy::EpsilonGreedy(epsilon) => {
-                if rand::random::<f64>() < epsilon {
+                if thread_rng().gen::<f64>() < epsilon {
                     // Random exploration
-                    let random_idx = rand::thread_rng().gen_range(0..available_sequences.len());
+                    let random_idx = thread_rng().gen_range(0..available_sequences.len());
                     best_sequence = available_sequences[random_idx].clone();
                 }
             }
@@ -742,7 +743,7 @@ impl AdaptiveDDSystem {
 
                 // Sample from distribution
                 let mut cumsum = 0.0;
-                let rand_val = rand::random::<f64>();
+                let rand_val = thread_rng().gen::<f64>();
                 for (i, prob) in probabilities.iter().enumerate() {
                     cumsum += prob;
                     if rand_val <= cumsum {
@@ -754,8 +755,8 @@ impl AdaptiveDDSystem {
             ExplorationStrategy::ThompsonSampling => {
                 // Thompson sampling exploration (simplified implementation)
                 // For now, use epsilon-greedy with a fixed epsilon as fallback
-                if rand::random::<f64>() < 0.1 {
-                    let random_idx = rand::thread_rng().gen_range(0..available_sequences.len());
+                if thread_rng().gen::<f64>() < 0.1 {
+                    let random_idx = thread_rng().gen_range(0..available_sequences.len());
                     best_sequence = available_sequences[random_idx].clone();
                 }
             }
@@ -791,10 +792,10 @@ impl AdaptiveDDSystem {
         // Apply exploration
         match agent.exploration_strategy {
             ExplorationStrategy::EpsilonGreedy(epsilon) => {
-                if rand::random::<f64>() < epsilon {
+                if thread_rng().gen::<f64>() < epsilon {
                     // Explore: select random sequence
                     let random_idx =
-                        rand::thread_rng().gen_range(0..self.available_sequences.len());
+                        thread_rng().gen_range(0..self.available_sequences.len());
                     best_sequence = self.available_sequences[random_idx].clone();
                 }
             }

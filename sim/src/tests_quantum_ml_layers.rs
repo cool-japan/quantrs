@@ -8,8 +8,8 @@
 mod tests {
     use super::*;
     use crate::quantum_machine_learning_layers::*;
-    use ndarray::Array1;
-    use num_complex::Complex64;
+    use scirs2_core::ndarray::Array1;
+    use scirs2_core::Complex64;
     use std::f64::consts::PI;
 
     #[test]

@@ -5,8 +5,10 @@
 
 use super::{CVDeviceConfig, Complex, GaussianState};
 use crate::{DeviceError, DeviceResult};
-use rand::{random, rngs::StdRng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal};
+// Alias for backward compatibility
+type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -269,17 +271,17 @@ impl HeterodyneDetector {
 
         // Measure DC offsets
         self.calibration.dc_offsets = (
-            self.config.iq_demod_config.dc_offset_i + 0.0005 * (rand::random::<f64>() - 0.5),
-            self.config.iq_demod_config.dc_offset_q + 0.0005 * (rand::random::<f64>() - 0.5),
+            self.config.iq_demod_config.dc_offset_i + 0.0005 * (thread_rng().gen::<f64>() - 0.5),
+            self.config.iq_demod_config.dc_offset_q + 0.0005 * (thread_rng().gen::<f64>() - 0.5),
         );
 
         // Measure relative phase between LOs
-        self.calibration.relative_phase_offset = 0.02 * (rand::random::<f64>() - 0.5);
+        self.calibration.relative_phase_offset = 0.02 * (thread_rng().gen::<f64>() - 0.5);
 
         // Measure amplitude factors
         self.calibration.amplitude_factors = (
-            1.0 + 0.01 * (rand::random::<f64>() - 0.5),
-            1.0 + 0.01 * (rand::random::<f64>() - 0.5),
+            1.0 + 0.01 * (thread_rng().gen::<f64>() - 0.5),
+            1.0 + 0.01 * (thread_rng().gen::<f64>() - 0.5),
         );
 
         println!("Calibration complete");
@@ -358,7 +360,7 @@ impl HeterodyneDetector {
         let dist_p = Normal::new(mean_p, noise_var_p.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
 
-        let mut rng = StdRng::seed_from_u64(random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let raw_i = dist_x.sample(&mut rng);
         let raw_q = dist_p.sample(&mut rng);
 

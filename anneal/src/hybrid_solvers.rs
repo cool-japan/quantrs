@@ -4,6 +4,7 @@
 //! both quantum annealing hardware and classical optimization techniques
 //! for solving large-scale optimization problems.
 
+use scirs2_core::random::prelude::*;
 use crate::embedding::Embedding;
 use crate::ising::{IsingError, IsingModel, IsingResult, QuboModel};
 use crate::partitioning::{Partition, SpectralPartitioner};
@@ -11,7 +12,7 @@ use crate::qubo::QuboFormulation;
 use crate::simulator::{
     AnnealingParams, AnnealingSolution, ClassicalAnnealingSimulator, QuantumAnnealingSimulator,
 };
-use rand::Rng;
+use scirs2_core::random::Rng;
 use std::collections::HashMap;
 
 /// Configuration for hybrid quantum-classical solver
@@ -103,7 +104,7 @@ impl HybridQuantumClassicalSolver {
 
         // Initialize with random solution
         for i in 0..model.num_qubits {
-            result.best_solution[i] = if rand::random::<bool>() { 1 } else { -1 };
+            result.best_solution[i] = if thread_rng().gen::<bool>() { 1 } else { -1 };
         }
         result.best_energy = model.energy(&result.best_solution)?;
 
@@ -306,7 +307,7 @@ impl HybridQuantumClassicalSolver {
                 combined[i] = if combined[i] >= 0 { 1 } else { -1 };
             } else {
                 // No vote, random assignment
-                combined[i] = if rand::random::<bool>() { 1 } else { -1 };
+                combined[i] = if thread_rng().gen::<bool>() { 1 } else { -1 };
             }
         }
 
@@ -462,7 +463,7 @@ impl VariationalHybridSolver {
         for i in 0..n {
             let param_idx = i % parameters.len();
             let prob = parameters[param_idx];
-            solution[i] = if rand::random::<f64>() < prob { 1 } else { -1 };
+            solution[i] = if thread_rng().gen::<f64>() < prob { 1 } else { -1 };
         }
 
         Ok(solution)

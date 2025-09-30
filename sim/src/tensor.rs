@@ -7,8 +7,8 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
 
 use crate::adaptive_gate_fusion::QuantumGate;
 use crate::error::{Result, SimulatorError};

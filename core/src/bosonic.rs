@@ -7,8 +7,8 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
 };
-use ndarray::Array2;
-use num_complex::Complex;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex;
 
 /// Type alias for complex numbers
 type Complex64 = Complex<f64>;
@@ -598,7 +598,7 @@ pub struct GaussianState {
 impl GaussianState {
     /// Create a vacuum state
     pub fn vacuum(n_modes: usize) -> Self {
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
 
         Self {
             n_modes,

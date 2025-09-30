@@ -10,7 +10,7 @@ use crate::{
     parametric::{ParametricRotationY, ParametricRotationZ},
     qubit::QubitId,
 };
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 // Type aliases for convenience

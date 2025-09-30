@@ -4,9 +4,10 @@
 //! attention mechanisms, position encodings, and applications to different tasks
 //! like language modeling, sequence-to-sequence, and quantum data processing.
 
-use ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Transformer Architecture Demo ===\n");
@@ -226,8 +227,8 @@ fn position_encoding_demo() -> Result<()> {
         println!("   Value range: {:.4}", encoding_range);
 
         // Check position distinguishability
-        let pos1 = encodings.slice(ndarray::s![0, 0, ..]).to_owned();
-        let pos2 = encodings.slice(ndarray::s![0, seq_len - 1, ..]).to_owned();
+        let pos1 = encodings.slice(scirs2_core::ndarray::s![0, 0, ..]).to_owned();
+        let pos2 = encodings.slice(scirs2_core::ndarray::s![0, seq_len - 1, ..]).to_owned();
         let position_distance = (&pos1 - &pos2).mapv(|x| x * x).sum().sqrt();
 
         println!(
@@ -402,7 +403,7 @@ fn language_modeling_demo() -> Result<()> {
         let mut valid_predictions = 0;
 
         for pos in 0..seq_len - 1 {
-            let current_logits = logits.slice(ndarray::s![batch_idx, pos, ..]);
+            let current_logits = logits.slice(scirs2_core::ndarray::s![batch_idx, pos, ..]);
 
             // Convert to probabilities (simplified softmax)
             let max_logit = current_logits
@@ -414,7 +415,7 @@ fn language_modeling_demo() -> Result<()> {
             let probs = exp_logits / sum_exp;
 
             // Simulate target token (next position embedding)
-            let target_embedding = input_tokens.slice(ndarray::s![batch_idx, pos + 1, ..]);
+            let target_embedding = input_tokens.slice(scirs2_core::ndarray::s![batch_idx, pos + 1, ..]);
             let target_prob = compute_token_probability(&probs, &target_embedding.to_owned())?;
 
             if target_prob > 1e-10 {
@@ -446,7 +447,7 @@ fn language_modeling_demo() -> Result<()> {
         );
 
         // Information flow analysis
-        let first_layer_norm = logits.slice(ndarray::s![0, .., ..]).var(0.0).sqrt();
+        let first_layer_norm = logits.slice(scirs2_core::ndarray::s![0, .., ..]).var(0.0).sqrt();
         println!(
             "   - Output layer standard deviation: {:.4}",
             first_layer_norm
@@ -862,8 +863,8 @@ fn compute_cross_attention(
     for b in 0..batch_size {
         for i in 0..dec_len {
             for j in 0..enc_len {
-                let dec_vec = decoder_output.slice(ndarray::s![b, i, ..]);
-                let enc_vec = encoder_output.slice(ndarray::s![b, j, ..]);
+                let dec_vec = decoder_output.slice(scirs2_core::ndarray::s![b, i, ..]);
+                let enc_vec = encoder_output.slice(scirs2_core::ndarray::s![b, j, ..]);
                 let dot_product = dec_vec.dot(&enc_vec);
                 attention_scores[[b, i, j]] = dot_product;
             }
@@ -935,7 +936,7 @@ fn detect_decoherence_pattern(data: &Array3<f64>) -> Result<DecoherencePattern> 
     let mut decay_factors = Vec::new();
     for t in 0..seq_len {
         let slice_norm = data
-            .slice(ndarray::s![.., t, ..])
+            .slice(scirs2_core::ndarray::s![.., t, ..])
             .mapv(|x| x * x)
             .sum()
             .sqrt();
@@ -967,7 +968,7 @@ fn classify_quantum_states(data: &Array3<f64>) -> Result<Vec<StateClassification
     let mut classifications = Vec::new();
 
     for b in 0..batch_size {
-        let sequence = data.slice(ndarray::s![b, .., ..]);
+        let sequence = data.slice(scirs2_core::ndarray::s![b, .., ..]);
 
         let entanglement_measure =
             sequence.var(0.0) / (sequence.mean().unwrap_or(1.0).abs() + 1e-10);
@@ -1024,8 +1025,8 @@ fn analyze_scale_patterns(data: &Array3<f64>) -> Result<PatternAnalysis> {
     // Local pattern strength (adjacent correlations)
     let mut local_correlations = Vec::new();
     for s in 0..seq_len - 1 {
-        let current = data.slice(ndarray::s![0, s, ..]);
-        let next = data.slice(ndarray::s![0, s + 1, ..]);
+        let current = data.slice(scirs2_core::ndarray::s![0, s, ..]);
+        let next = data.slice(scirs2_core::ndarray::s![0, s + 1, ..]);
         let correlation = {
             let next_1d = next.iter().collect::<Vec<_>>();
             let current_1d = current.iter().collect::<Vec<_>>();
@@ -1044,8 +1045,8 @@ fn analyze_scale_patterns(data: &Array3<f64>) -> Result<PatternAnalysis> {
     let mut global_correlations = Vec::new();
     let step = seq_len / 4;
     for s in 0..seq_len - step {
-        let current = data.slice(ndarray::s![0, s, ..]);
-        let distant = data.slice(ndarray::s![0, s + step, ..]);
+        let current = data.slice(scirs2_core::ndarray::s![0, s, ..]);
+        let distant = data.slice(scirs2_core::ndarray::s![0, s + step, ..]);
         let correlation = {
             let distant_1d = distant.iter().collect::<Vec<_>>();
             let current_1d = current.iter().collect::<Vec<_>>();

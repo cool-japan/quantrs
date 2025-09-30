@@ -12,8 +12,8 @@ use crate::scirs2_integration::{
     AnalyzerConfig, GraphMetrics, GraphMotif,
     OptimizationSuggestion as SciRS2OptimizationSuggestion, SciRS2CircuitAnalyzer,
 };
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use petgraph::algo::{astar, dijkstra, kosaraju_scc};
 use petgraph::graph::{Graph, NodeIndex};
 use quantrs2_core::platform::PlatformCapabilities;

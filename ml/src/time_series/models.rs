@@ -6,7 +6,7 @@ use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
 use crate::quantum_transformer::{
     PositionEncodingType, QuantumAttentionType, QuantumTransformer, QuantumTransformerConfig,
 };
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 /// Trait for time series models

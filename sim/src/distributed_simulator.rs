@@ -19,8 +19,8 @@ use quantrs2_core::{
 // use scirs2_core::distributed::*;
 // use scirs2_core::communication::{MessagePassing, NetworkTopology};
 // use scirs2_core::load_balancing::{LoadBalancer, WorkDistribution};
-use ndarray::{Array1, Array2, ArrayView1, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
+use scirs2_core::Complex64;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};

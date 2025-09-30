@@ -15,6 +15,7 @@
 //! - Quantum error effects on advantage
 //! - Benchmark suite standardization for reproducibility
 
+use scirs2_core::random::prelude::*;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -2027,7 +2028,7 @@ impl QuantumAdvantageDemonstrator {
             for problem in problems {
                 // Simulate classical optimization
                 let execution_time = Duration::from_millis(100 + problem.size as u64);
-                let quality = 0.8 + rand::random::<f64>() * 0.15; // 80-95% quality
+                let quality = 0.8 + thread_rng().gen::<f64>() * 0.15; // 80-95% quality
 
                 total_time += execution_time;
                 total_quality += quality;
@@ -2077,8 +2078,8 @@ impl QuantumAdvantageDemonstrator {
             for problem in problems {
                 // Simulate quantum optimization with advantage
                 let base_time = Duration::from_millis(10 + problem.size as u64 / 10);
-                let quality = 0.85 + rand::random::<f64>() * 0.1; // 85-95% quality
-                let advantage_factor = 1.5 + rand::random::<f64>() * 2.0; // 1.5x-3.5x advantage
+                let quality = 0.85 + thread_rng().gen::<f64>() * 0.1; // 85-95% quality
+                let advantage_factor = 1.5 + thread_rng().gen::<f64>() * 2.0; // 1.5x-3.5x advantage
 
                 total_time += base_time;
                 total_quality += quality;

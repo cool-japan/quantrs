@@ -9,9 +9,9 @@ use crate::matrix_ops::{DenseMatrix, QuantumMatrix};
 // use crate::qubit::QubitId;
 use crate::tensor_network::{Tensor, TensorNetwork};
 // use crate::variational::{VariationalGate, VariationalOptimizer};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_linalg::{decompose_svd, matrix_exp, qr_decompose};
-use ndarray::{Array1, Array2, Axis};
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 
 // Fallback optimization types when scirs2_optimize is not available
 #[derive(Debug, Clone)]
@@ -312,8 +312,8 @@ impl QuantumKernelOptimizer {
     /// Compute a single kernel element
     fn compute_kernel_element(
         &self,
-        x_i: &ndarray::ArrayView1<f64>,
-        x_j: &ndarray::ArrayView1<f64>,
+        x_i: &scirs2_core::ndarray::ArrayView1<f64>,
+        x_j: &scirs2_core::ndarray::ArrayView1<f64>,
     ) -> Result<f64, QuantRS2Error> {
         let circuit_i = self.create_feature_circuit(&x_i.to_owned())?;
         let circuit_j = self.create_feature_circuit(&x_j.to_owned())?;
@@ -400,7 +400,7 @@ impl QuantumKernelOptimizer {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(-sin_half, 0.0)
@@ -413,7 +413,7 @@ impl QuantumKernelOptimizer {
     fn zz_gate(&self, angle: f64) -> Array2<Complex64> {
         let exp_factor = Complex64::from_polar(1.0, angle / 2.0);
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 exp_factor.conj(),
                 Complex64::new(0.0, 0.0),
@@ -451,7 +451,7 @@ impl QuantumKernelOptimizer {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
         match pauli_string {
-            "X" => Ok(ndarray::array![
+            "X" => Ok(scirs2_core::ndarray::array![
                 [
                     Complex64::new(cos_half, 0.0),
                     Complex64::new(0.0, -sin_half)
@@ -461,14 +461,14 @@ impl QuantumKernelOptimizer {
                     Complex64::new(cos_half, 0.0)
                 ]
             ]),
-            "Y" => Ok(ndarray::array![
+            "Y" => Ok(scirs2_core::ndarray::array![
                 [
                     Complex64::new(cos_half, 0.0),
                     Complex64::new(-sin_half, 0.0)
                 ],
                 [Complex64::new(sin_half, 0.0), Complex64::new(cos_half, 0.0)]
             ]),
-            "Z" => Ok(ndarray::array![
+            "Z" => Ok(scirs2_core::ndarray::array![
                 [
                     Complex64::new(cos_half, -sin_half),
                     Complex64::new(0.0, 0.0)
@@ -484,21 +484,21 @@ impl QuantumKernelOptimizer {
 
     /// Helper: Pauli matrices
     fn pauli_x(&self) -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
         ]
     }
 
     fn pauli_y(&self) -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
             [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)]
         ]
     }
 
     fn pauli_z(&self) -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ]
@@ -633,9 +633,10 @@ impl HardwareEfficientMLLayer {
     }
 
     /// Initialize parameters randomly
-    pub fn initialize_parameters(&mut self, rng: &mut impl rand::Rng) {
+    pub fn initialize_parameters(&mut self, rng: &mut impl scirs2_core::random::Rng) {
+        use scirs2_core::random::prelude::*;
         for param in self.parameters.iter_mut() {
-            *param = rng.random_range(-PI..PI);
+            *param = rng.gen_range(-PI..PI);
         }
     }
 
@@ -677,7 +678,7 @@ impl HardwareEfficientMLLayer {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(0.0, -sin_half)
@@ -694,7 +695,7 @@ impl HardwareEfficientMLLayer {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(-sin_half, 0.0)
@@ -707,7 +708,7 @@ impl HardwareEfficientMLLayer {
     fn rz_gate(&self, angle: f64) -> Array2<Complex64> {
         let exp_factor = Complex64::from_polar(1.0, angle / 2.0);
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [exp_factor.conj(), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), exp_factor]
         ]
@@ -798,7 +799,7 @@ impl HardwareEfficientMLLayer {
 
     /// CNOT gate
     fn cnot_gate(&self) -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -953,7 +954,8 @@ impl TensorNetworkMLAccelerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
+    use scirs2_core::random::prelude::*;
 
     #[test]
     fn test_quantum_natural_gradient() {
@@ -1001,7 +1003,7 @@ mod tests {
     fn test_hardware_efficient_ml_layer() {
         let mut layer = HardwareEfficientMLLayer::new(2, 2, EntanglementPattern::Linear);
 
-        let mut rng = rand::rng();
+        let mut rng = thread_rng();
         layer.initialize_parameters(&mut rng);
 
         let circuit = layer.build_circuit();

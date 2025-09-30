@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "dwave")]
-use ndarray::Array;
+use scirs2_core::ndarray::Array;
 #[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
 use std::fmt::Write;
@@ -88,7 +88,7 @@ pub fn symbols<T: AsRef<str>>(_name: T) {
 pub fn symbols_list<T>(
     shape: T,
     format_txt: &str,
-) -> SymbolResult<Array<SymEngineExpression, ndarray::IxDyn>>
+) -> SymbolResult<Array<SymEngineExpression, scirs2_core::ndarray::IxDyn>>
 where
     T: Into<Vec<usize>>,
 {
@@ -109,7 +109,7 @@ where
     }
 
     // Create the array
-    let shape_dim = ndarray::IxDyn(&shape);
+    let shape_dim = scirs2_core::ndarray::IxDyn(&shape);
     let mut array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
 
     // Fill the array with symbols
@@ -122,7 +122,7 @@ where
 // Helper function to recursively fill the symbol array
 #[cfg(feature = "dwave")]
 fn fill_symbol_array(
-    array: &mut Array<SymEngineExpression, ndarray::IxDyn>,
+    array: &mut Array<SymEngineExpression, scirs2_core::ndarray::IxDyn>,
     indices: &mut Vec<usize>,
     level: usize,
     max_level: usize,
@@ -140,7 +140,7 @@ fn fill_symbol_array(
 
         // Create the symbol and store it in the array
         let sym = SymEngineExpression::symbol(symbol_name.clone());
-        let mut idx = ndarray::IxDyn(indices);
+        let mut idx = scirs2_core::ndarray::IxDyn(indices);
         array[idx] = sym;
 
         Ok(())

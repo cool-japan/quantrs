@@ -511,8 +511,8 @@ mod tests {
                 },
                 correlation_analysis:
                     crate::dynamical_decoupling::performance::CorrelationAnalysis {
-                        pearson_correlations: ndarray::Array2::eye(2),
-                        spearman_correlations: ndarray::Array2::eye(2),
+                        pearson_correlations: scirs2_core::ndarray::Array2::eye(2),
+                        spearman_correlations: scirs2_core::ndarray::Array2::eye(2),
                         significant_correlations: Vec::new(),
                     },
                 distribution_analysis:

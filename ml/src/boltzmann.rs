@@ -5,10 +5,11 @@
 //! using quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{s, Array1, Array2, ArrayView1, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, Axis};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -56,7 +57,7 @@ impl QuantumBoltzmannMachine {
         let mut couplings = Array2::zeros((num_qubits, num_qubits));
         for i in 0..num_qubits {
             for j in i + 1..num_qubits {
-                let coupling = 0.1 * (2.0 * rand::random::<f64>() - 1.0);
+                let coupling = 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
                 couplings[[i, j]] = coupling;
                 couplings[[j, i]] = coupling;
             }
@@ -64,7 +65,7 @@ impl QuantumBoltzmannMachine {
 
         // Initialize biases
         let biases =
-            Array1::from_shape_fn(num_qubits, |_| 0.1 * (2.0 * rand::random::<f64>() - 1.0));
+            Array1::from_shape_fn(num_qubits, |_| 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0));
 
         Ok(Self {
             num_visible,
@@ -111,7 +112,7 @@ impl QuantumBoltzmannMachine {
             // Placeholder sampling - would use quantum circuit
             for i in 0..self.num_visible {
                 // Simplified measurement simulation
-                samples[[sample_idx, i]] = if rand::random::<f64>() > 0.5 {
+                samples[[sample_idx, i]] = if thread_rng().gen::<f64>() > 0.5 {
                     1.0
                 } else {
                     0.0
@@ -203,7 +204,7 @@ impl QuantumBoltzmannMachine {
 
             // Sigmoid probability
             let prob = 1.0 / (1.0 + (-activation / self.temperature).exp());
-            hidden[h] = if rand::random::<f64>() < prob {
+            hidden[h] = if thread_rng().gen::<f64>() < prob {
                 1.0
             } else {
                 0.0
@@ -289,7 +290,7 @@ impl QuantumBoltzmannMachine {
 
             // Sigmoid probability
             let prob = 1.0 / (1.0 + (-activation / self.temperature).exp());
-            visible[v] = if rand::random::<f64>() < prob {
+            visible[v] = if thread_rng().gen::<f64>() < prob {
                 1.0
             } else {
                 0.0

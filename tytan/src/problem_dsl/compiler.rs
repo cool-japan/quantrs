@@ -5,7 +5,7 @@ use super::ast::{
     Expression, Objective, ObjectiveType, Value, AST,
 };
 use super::error::CompileError;
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 /// Compiler options

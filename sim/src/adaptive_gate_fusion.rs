@@ -5,8 +5,8 @@
 //! gates for optimal performance. It leverages SciRS2's optimization
 //! capabilities for efficient matrix operations and circuit transformations.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};

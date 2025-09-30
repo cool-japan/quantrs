@@ -4,8 +4,8 @@
 //! leveraging SciRS2's GPU capabilities to scale computations across
 //! multiple GPUs for large-scale quantum circuit simulation.
 
-use ndarray::{s, Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{s, Array1, Array2};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

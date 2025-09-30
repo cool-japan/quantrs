@@ -5,6 +5,74 @@ All notable changes to the QuantRS2 project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta.2] - 2025-09-30
+
+### 🎯 Policy Refinement & Documentation Release
+
+QuantRS2 v0.1.0-beta.2 focuses on comprehensive policy documentation, SciRS2 integration refinement, and dependency updates for improved stability and developer experience.
+
+### Added
+
+#### 📚 Comprehensive Documentation
+- **SCIRS2_INTEGRATION_POLICY.md**: Complete SciRS2 integration guidelines (540 lines)
+  - Detailed quantum computing patterns with SciRS2
+  - Complex number operations for quantum amplitudes
+  - Array operations for state vectors and operators
+  - Random number generation for quantum measurements
+  - SIMD operations for performance-critical code
+  - Memory management for large quantum systems
+  - Module-specific SciRS2 usage guidelines
+  - Migration checklist with anti-patterns to avoid
+
+- **CLAUDE.md**: AI-assisted development guidelines (390 lines)
+  - Comprehensive QuantRS2 project overview
+  - Architecture and module structure documentation
+  - Common development commands and workflows
+  - Critical SciRS2 policy requirements
+  - Quick reference for quantum computing patterns
+  - Development best practices and testing guidelines
+
+#### 🔧 SciRS2 Integration Improvements
+- **Unified Import Patterns**: Standardized SciRS2 usage across all modules
+  - `scirs2_core::ndarray::*` for complete array operations
+  - `scirs2_core::random::prelude::*` for RNG and distributions
+  - `scirs2_core::{Complex64, Complex32}` for complex numbers
+- **Enhanced Distribution Support**: Added unified distribution interfaces
+  - `UnifiedNormal`, `UnifiedBeta` for consistent API
+  - Improved quantum measurement sampling
+- **Deprecation Cleanup**: Removed fragmented import patterns
+  - Eliminated deprecated `scirs2_autograd::ndarray` usage
+  - Removed incomplete `scirs2_core::ndarray_ext` patterns
+
+### Updated
+
+- **Dependency Upgrades**: Updated to latest stable versions
+  - SciRS2 v0.1.0-beta.3 for enhanced scientific computing
+  - NumRS2 v0.1.0-beta.2 for improved numerical operations
+  - PandRS v0.1.0-beta.2 for data processing capabilities
+
+- **Code Quality**: Comprehensive refactoring for SciRS2 policy compliance
+  - All modules now use unified SciRS2 import patterns
+  - Consistent random number generation across codebase
+  - Improved code maintainability and readability
+
+### Fixed
+
+- **Import Inconsistencies**: Resolved fragmented SciRS2 usage patterns
+- **Documentation Gaps**: Added comprehensive policy documentation
+- **Pattern Anti-patterns**: Eliminated deprecated and incomplete patterns
+
+### Removed
+
+- **MIGRATION_GUIDE_ALPHA_TO_BETA.md**: Consolidated into SCIRS2_INTEGRATION_POLICY.md
+
+### Notes
+
+- **No Breaking Changes**: API remains stable from beta.1
+- **Developer Experience**: Significantly improved with comprehensive documentation
+- **SciRS2 Policy**: All code now follows unified SciRS2 integration patterns
+- **Migration**: No migration required from beta.1; documentation updates only
+
 ## [0.1.0-beta.1] - 2025-09-16
 
 ### 🎉 Major Release - Production Ready!

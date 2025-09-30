@@ -22,8 +22,8 @@ use quantrs2_device::{
     DeviceResult, DeviceError,
 };
 use quantrs2_circuit::prelude::*;
-use ndarray::{Array2, Array4};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, Array4};
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 /// Mock executor for demonstration purposes

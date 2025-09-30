@@ -11,7 +11,7 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     variational::VariationalCircuit,
 };
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 // use scirs2_core::parallel_ops::*;
 use crate::optimization_stubs::{minimize, Method, OptimizeResult, Options};
 use crate::parallel_ops_stubs::*;
@@ -240,7 +240,7 @@ impl VariationalQuantumOptimizer {
         let param_names_clone = param_names.clone();
 
         // Create objective function for SciRS2
-        let objective = move |params: &ndarray::ArrayView1<f64>| -> f64 {
+        let objective = move |params: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
             let params_slice = params.as_slice().unwrap();
             let mut param_map = FxHashMap::default();
             for (name, &value) in param_names_clone.iter().zip(params_slice) {
@@ -279,7 +279,7 @@ impl VariationalQuantumOptimizer {
 
         // Run optimization
         let start_time = std::time::Instant::now();
-        let initial_array = ndarray::Array1::from_vec(initial_params.clone());
+        let initial_array = scirs2_core::ndarray::Array1::from_vec(initial_params.clone());
         let result = minimize(objective, &initial_array, method, Some(options))
             .map_err(|e| QuantRS2Error::InvalidInput(format!("Optimization failed: {:?}", e)))?;
 
@@ -497,16 +497,16 @@ impl VariationalQuantumOptimizer {
         cost_fn: &Arc<dyn Fn(&VariationalCircuit) -> QuantRS2Result<f64> + Send + Sync>,
         epsilon: f64,
     ) -> QuantRS2Result<f64> {
-        use rand::{rngs::StdRng, Rng, SeedableRng};
+        use scirs2_core::random::prelude::*;
 
         let mut rng = if let Some(seed) = self.config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_seed(rand::rng().random())
+            StdRng::from_seed(thread_rng().gen())
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.random::<bool>() {
+        let perturbation = if rng.gen::<bool>() {
             epsilon
         } else {
             -epsilon
@@ -1003,9 +1003,9 @@ impl HyperparameterOptimizer {
         circuit_builder: impl Fn(&FxHashMap<String, f64>) -> VariationalCircuit + Send + Sync,
         cost_fn: impl Fn(&VariationalCircuit) -> QuantRS2Result<f64> + Send + Sync + Clone + 'static,
     ) -> QuantRS2Result<HyperparameterResult> {
-        use rand::{rngs::StdRng, Rng, SeedableRng};
+        use scirs2_core::random::prelude::*;
 
-        let mut rng = StdRng::from_seed(rand::rng().random());
+        let mut rng = StdRng::from_seed(thread_rng().gen());
         let mut best_hyperparams = FxHashMap::default();
         let mut best_loss = f64::INFINITY;
         let mut all_trials = Vec::new();
@@ -1014,7 +1014,7 @@ impl HyperparameterOptimizer {
             // Sample hyperparameters
             let mut hyperparams = FxHashMap::default();
             for (name, &(min_val, max_val)) in &self.search_space {
-                let value = rng.random_range(min_val..max_val);
+                let value = rng.gen_range(min_val..max_val);
                 hyperparams.insert(name.clone(), value);
             }
 

@@ -3,10 +3,11 @@
 //! This example demonstrates how to use quantum few-shot learning algorithms
 //! to learn from very limited training examples.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Few-Shot Learning Demo ===\n");
@@ -30,7 +31,7 @@ fn main() -> Result<()> {
             for feat in 0..num_features {
                 data[[idx, feat]] =
                     (class_id as f64 * 0.5 + feat as f64 * 0.3 + sample_idx as f64 * 0.1).sin()
-                        + 0.1 * (2.0 * rand::random::<f64>() - 1.0);
+                        + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
             }
             labels[idx] = class_id;
         }

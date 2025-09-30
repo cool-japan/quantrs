@@ -14,6 +14,7 @@ use super::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use scirs2_core::random::prelude::*;
 
 /// Topological error correction manager
 pub struct TopologicalErrorCorrector {
@@ -193,7 +194,7 @@ impl TopologicalErrorCorrector {
 
                 for (idx, stabilizer) in all_stabilizers.iter().enumerate() {
                     // Simulate syndrome measurement
-                    let outcome = if rand::random::<f64>() < 0.05 {
+                    let outcome = if thread_rng().gen::<f64>() < 0.05 {
                         -1 // Error detected
                     } else {
                         1 // No error
@@ -210,7 +211,7 @@ impl TopologicalErrorCorrector {
             None => {
                 // For other code types, create mock measurements
                 for i in 0..10 {
-                    let outcome = if rand::random::<f64>() < 0.05 { -1 } else { 1 };
+                    let outcome = if thread_rng().gen::<f64>() < 0.05 { -1 } else { 1 };
                     measurements.push(SyndromeMeasurement {
                         stabilizer_id: i,
                         outcome,

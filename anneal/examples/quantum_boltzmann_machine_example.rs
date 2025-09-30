@@ -15,8 +15,9 @@ use quantrs2_anneal::{
     },
     simulator::AnnealingParams,
 };
-use rand::Rng;
+use scirs2_core::random::Rng;
 use std::time::Instant;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Boltzmann Machine Demo ===\n");
@@ -473,9 +474,9 @@ fn generative_modeling_example() -> Result<(), Box<dyn std::error::Error>> {
 
             // Add noisy version
             let mut noisy_pattern = pattern.clone();
-            if rand::random::<f64>() < 0.3 {
+            if thread_rng().gen::<f64>() < 0.3 {
                 // 30% chance to flip one bit
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
                 let flip_idx = rng.gen_range(0..noisy_pattern.len());
                 noisy_pattern[flip_idx] = 1.0 - noisy_pattern[flip_idx];
                 training_data.push(TrainingSample::new(noisy_pattern));

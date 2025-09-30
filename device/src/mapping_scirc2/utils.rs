@@ -1,6 +1,7 @@
 //! Utility functions and test helpers for SciRS2 mapping
 
 use super::*;
+use scirs2_core::random::prelude::*;
 
 /// Create a standard hardware topology for testing
 pub fn create_standard_topology(topology_type: &str, num_qubits: usize) -> DeviceResult<HardwareTopology> {
@@ -152,7 +153,7 @@ pub fn generate_random_circuit<const N: usize>(
     two_qubit_ratio: f64,
 ) -> Circuit<N> {
     let mut circuit = Circuit::<N>::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     for _ in 0..gate_count {
         if rng.gen::<f64>() < two_qubit_ratio {

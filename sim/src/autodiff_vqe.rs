@@ -4,10 +4,10 @@
 //! for variational quantum algorithms, including parameter-shift rule, finite differences,
 //! and optimization strategies for VQE.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
-
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::statevector::StateVectorSimulator;
@@ -130,7 +130,6 @@ pub trait ParametricGate: Send + Sync {
 }
 
 /// Parametric rotation gates
-#[derive(Debug, Clone)]
 pub struct ParametricRX {
     pub qubit: usize,
     pub param_idx: usize,
@@ -154,7 +153,7 @@ impl ParametricGate for ParametricRX {
         let cos_half = (theta / 2.0).cos();
         let sin_half = (theta / 2.0).sin();
 
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [Complex64::new(cos_half, 0.), Complex64::new(0., -sin_half)],
             [Complex64::new(0., -sin_half), Complex64::new(cos_half, 0.)]
         ])
@@ -170,7 +169,7 @@ impl ParametricGate for ParametricRX {
         let sin_half = (theta / 2.0).sin();
 
         // d/dθ RX(θ) = -i/2 * X * RX(θ)
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [
                 Complex64::new(-sin_half / 2.0, 0.),
                 Complex64::new(0., -cos_half / 2.0)
@@ -183,7 +182,6 @@ impl ParametricGate for ParametricRX {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct ParametricRY {
     pub qubit: usize,
     pub param_idx: usize,
@@ -207,7 +205,7 @@ impl ParametricGate for ParametricRY {
         let cos_half = (theta / 2.0).cos();
         let sin_half = (theta / 2.0).sin();
 
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [Complex64::new(cos_half, 0.), Complex64::new(-sin_half, 0.)],
             [Complex64::new(sin_half, 0.), Complex64::new(cos_half, 0.)]
         ])
@@ -222,7 +220,7 @@ impl ParametricGate for ParametricRY {
         let cos_half = (theta / 2.0).cos();
         let sin_half = (theta / 2.0).sin();
 
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [
                 Complex64::new(-sin_half / 2.0, 0.),
                 Complex64::new(-cos_half / 2.0, 0.)
@@ -235,7 +233,6 @@ impl ParametricGate for ParametricRY {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct ParametricRZ {
     pub qubit: usize,
     pub param_idx: usize,
@@ -259,7 +256,7 @@ impl ParametricGate for ParametricRZ {
         let exp_pos = Complex64::from_polar(1.0, theta / 2.0);
         let exp_neg = Complex64::from_polar(1.0, -theta / 2.0);
 
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [exp_neg, Complex64::new(0., 0.)],
             [Complex64::new(0., 0.), exp_pos]
         ])
@@ -274,7 +271,7 @@ impl ParametricGate for ParametricRZ {
         let exp_pos = Complex64::from_polar(1.0, theta / 2.0);
         let exp_neg = Complex64::from_polar(1.0, -theta / 2.0);
 
-        Ok(ndarray::array![
+        Ok(scirs2_core::ndarray::array![
             [exp_neg * Complex64::new(0., -0.5), Complex64::new(0., 0.)],
             [Complex64::new(0., 0.), exp_pos * Complex64::new(0., 0.5)]
         ])
@@ -348,7 +345,6 @@ impl ParametricCircuit {
                 // For now, this is a placeholder
             } else if qubits.len() == 2 {
                 // Two-qubit gate - would need proper simulator integration
-                // For now, this is a placeholder
             }
         }
 
@@ -384,7 +380,6 @@ impl ParametricCircuit {
 
         // Use parameter-shift rule: ∂⟨H⟩/∂θᵢ = (⟨H⟩₊ - ⟨H⟩₋) / 2
         // where ±π/2 shifts are applied to parameter θᵢ
-
         for param_idx in 0..self.num_parameters {
             let shift = PI / 2.0;
 
@@ -427,7 +422,6 @@ impl ParametricCircuit {
             let state = self.evaluate(params)?;
             let expectation = compute_expectation_value(&state, observable)?;
 
-            // Gradient
             gradients[param_idx] = (expectation_plus - expectation) / step_size;
         }
 
@@ -441,16 +435,17 @@ impl ParametricCircuit {
         params: &[f64],
         step_size: f64,
     ) -> Result<Vec<f64>> {
+        let mut rng = thread_rng();
+
         // Generate random perturbation vector
         let mut perturbation = vec![0.0; self.num_parameters];
         for p in &mut perturbation {
-            *p = if fastrand::bool() { 1.0 } else { -1.0 };
+            *p = if rng.gen::<bool>() { 1.0 } else { -1.0 };
         }
 
         // Two evaluations with opposite perturbations
         let mut params_plus = params.to_vec();
         let mut params_minus = params.to_vec();
-
         for i in 0..self.num_parameters {
             params_plus[i] += step_size * perturbation[i];
             params_minus[i] -= step_size * perturbation[i];
@@ -458,7 +453,6 @@ impl ParametricCircuit {
 
         let state_plus = self.evaluate(&params_plus)?;
         let state_minus = self.evaluate(&params_minus)?;
-
         let expectation_plus = compute_expectation_value(&state_plus, observable)?;
         let expectation_minus = compute_expectation_value(&state_minus, observable)?;
 
@@ -485,11 +479,11 @@ pub struct VQEWithAutodiff {
 }
 
 /// Single VQE iteration data
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct VQEIteration {
     /// Iteration number
     pub iteration: usize,
-    /// Parameter values
+    /// Parameters at this iteration
     pub parameters: Vec<f64>,
     /// Energy expectation value
     pub energy: f64,
@@ -502,7 +496,6 @@ pub struct VQEIteration {
 }
 
 /// Convergence criteria for VQE
-#[derive(Debug, Clone)]
 pub struct ConvergenceCriteria {
     /// Maximum iterations
     pub max_iterations: usize,
@@ -534,7 +527,6 @@ impl VQEWithAutodiff {
         gradient_method: GradientMethod,
     ) -> Self {
         let context = AutoDiffContext::new(initial_params, gradient_method);
-
         Self {
             ansatz,
             hamiltonian,
@@ -603,14 +595,12 @@ impl VQEWithAutodiff {
             if iteration.iteration >= self.convergence.max_iterations {
                 break;
             }
-
             if iteration.func_evals >= self.convergence.max_func_evals {
                 break;
             }
         }
 
         let final_iteration = self.history.last().unwrap();
-
         Ok(VQEResult {
             optimal_parameters: final_iteration.parameters.clone(),
             optimal_energy: final_iteration.energy,
@@ -638,7 +628,6 @@ impl VQEWithAutodiff {
 }
 
 /// VQE optimization result
-#[derive(Debug, Clone)]
 pub struct VQEResult {
     /// Optimal parameters found
     pub optimal_parameters: Vec<f64>,
@@ -690,8 +679,8 @@ fn compute_pauli_expectation_from_state(
 
         for (qubit, &pauli_op) in pauli_string.operators.iter().enumerate() {
             let bit = (i >> qubit) & 1;
-
             use crate::pauli::PauliOperator;
+
             match pauli_op {
                 PauliOperator::I => {} // Identity does nothing
                 PauliOperator::X => {
@@ -733,12 +722,12 @@ pub mod ansatze {
         let mut circuit = ParametricCircuit::new(num_qubits);
         let mut param_idx = 0;
 
-        for layer in 0..num_layers {
+        for _layer in 0..num_layers {
             // Single-qubit rotations
             for qubit in 0..num_qubits {
-                let _ = circuit.ry(qubit, param_idx);
+                circuit.ry(qubit, param_idx);
                 param_idx += 1;
-                let _ = circuit.rz(qubit, param_idx);
+                circuit.rz(qubit, param_idx);
                 param_idx += 1;
             }
 
@@ -760,7 +749,7 @@ pub mod ansatze {
 
         // Initial superposition
         for qubit in 0..num_qubits {
-            let _ = circuit.ry(qubit, param_idx); // RY(π/2) for H gate equivalent
+            circuit.ry(qubit, param_idx); // RY(π/2) for H gate equivalent
         }
 
         for _layer in 0..num_layers {
@@ -768,14 +757,14 @@ pub mod ansatze {
             for &(i, j) in edges {
                 // Would implement ZZ rotation here
                 // For now, approximate with RZ gates
-                let _ = circuit.rz(i, param_idx);
-                let _ = circuit.rz(j, param_idx);
+                circuit.rz(i, param_idx);
+                circuit.rz(j, param_idx);
                 param_idx += 1;
             }
 
             // Mixer Hamiltonian evolution (X terms)
             for qubit in 0..num_qubits {
-                let _ = circuit.rx(qubit, param_idx);
+                circuit.rx(qubit, param_idx);
                 param_idx += 1;
             }
         }
@@ -795,7 +784,6 @@ mod tests {
             param_idx: 0,
         };
         let params = vec![PI / 2.0];
-
         let matrix = rx_gate.matrix(&params).unwrap();
 
         // RX(π/2) should be approximately [[1/√2, -i/√2], [-i/√2, 1/√2]]
@@ -819,8 +807,8 @@ mod tests {
     #[test]
     fn test_parametric_circuit_creation() {
         let mut circuit = ParametricCircuit::new(2);
-        let _ = circuit.rx(0, 0);
-        let _ = circuit.ry(1, 1);
+        circuit.rx(0, 0);
+        circuit.ry(1, 1);
 
         assert_eq!(circuit.gates.len(), 2);
         assert_eq!(circuit.num_parameters, 2);

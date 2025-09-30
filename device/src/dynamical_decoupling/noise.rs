@@ -1,6 +1,6 @@
 //! Noise characterization and analysis for dynamical decoupling
 
-use ndarray::{Array1, Array2, Array3};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 use std::collections::HashMap;
 use std::time::Duration;
 

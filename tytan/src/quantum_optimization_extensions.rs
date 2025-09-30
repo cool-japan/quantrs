@@ -6,8 +6,8 @@
 #![allow(dead_code)]
 
 use crate::hybrid_algorithms::{ClassicalOptimizer, Hamiltonian};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -190,7 +190,7 @@ impl AdaptQAOA {
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
-        let random_gradient = rand::rng().random_range(-1.0..1.0);
+        let random_gradient = thread_rng().gen_range(-1.0..1.0);
         Ok(random_gradient * operator.coefficient)
     }
 
@@ -201,10 +201,10 @@ impl AdaptQAOA {
         _hamiltonian: &Hamiltonian,
     ) -> Result<(), String> {
         // Simplified: random parameter updates
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for param in circuit.parameters_mut() {
-            *param += rng.random_range(-0.1..0.1);
+            *param += rng.gen_range(-0.1..0.1);
         }
 
         Ok(())

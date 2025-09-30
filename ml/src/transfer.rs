@@ -5,10 +5,11 @@
 //! efficient learning with limited data and quantum resources.
 
 use crate::autodiff::optimizers::Optimizer;
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork, TrainingResult};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -301,7 +302,7 @@ impl QuantumTransferLearning {
             if !config.frozen {
                 for &idx in &config.parameter_indices {
                     if idx < gradients.len() {
-                        gradients[idx] = 0.1 * (2.0 * rand::random::<f64>() - 1.0);
+                        gradients[idx] = 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
                     }
                 }
             }

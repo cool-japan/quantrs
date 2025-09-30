@@ -1,6 +1,6 @@
 //! Tests for the sampler module.
 
-use ndarray::{ArrayD, IxDyn};
+use scirs2_core::ndarray::{ArrayD, IxDyn};
 use quantrs2_tytan::sampler::{GASampler, SASampler, Sampler};
 use quantrs2_tytan::*;
 use std::collections::HashMap;
@@ -14,7 +14,7 @@ use quantrs2_tytan::symbol::symbols;
 fn test_sa_sampler_simple() {
     // Test SASampler on a simple QUBO problem
     // Create a simple QUBO matrix for testing
-    let mut matrix = ndarray::Array::<f64, _>::zeros((2, 2));
+    let mut matrix = scirs2_core::ndarray::Array::<f64, _>::zeros((2, 2));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[0, 1]] = 2.0; // Penalty for x and y both being 1
@@ -67,7 +67,7 @@ fn test_sa_sampler_simple() {
 fn test_ga_sampler_simple() {
     // Test GASampler using a different approach to avoid empty range error
     // Create a simple problem with 3 variables
-    let mut matrix = ndarray::Array::<f64, _>::zeros((3, 3));
+    let mut matrix = scirs2_core::ndarray::Array::<f64, _>::zeros((3, 3));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[2, 2]] = -1.0; // Minimize z
@@ -112,7 +112,7 @@ fn test_ga_sampler_simple() {
 fn test_optimize_qubo() {
     // Test optimize_qubo function
     // Create a simple QUBO matrix for testing
-    let mut matrix = ndarray::Array::<f64, _>::zeros((2, 2));
+    let mut matrix = scirs2_core::ndarray::Array::<f64, _>::zeros((2, 2));
     matrix[[0, 0]] = -1.0; // Minimize x
     matrix[[1, 1]] = -1.0; // Minimize y
     matrix[[0, 1]] = 2.0; // Penalty for x and y both being 1

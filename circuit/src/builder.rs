@@ -25,7 +25,7 @@ use quantrs2_core::{
     register::Register,
 };
 
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::any::Any;
 use std::collections::HashSet;
 

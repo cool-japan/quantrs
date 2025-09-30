@@ -3,8 +3,8 @@
 //! This module implements quantum versions of attention mechanisms including
 //! multi-head attention, cross-attention, and quantum transformer blocks.
 
-use ndarray::{s, Array1, Array2, Array3, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Axis};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -709,7 +709,7 @@ impl QuantumTransformer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_projection() {

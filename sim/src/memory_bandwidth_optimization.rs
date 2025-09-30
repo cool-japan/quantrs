@@ -4,8 +4,8 @@
 //! state vector simulations, including cache-optimized layouts, prefetching
 //! strategies, data locality optimizations, and NUMA-aware memory management.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
@@ -847,7 +847,7 @@ pub struct MemoryOptimizationReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_optimized_state_vector_creation() {

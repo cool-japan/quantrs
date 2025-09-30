@@ -6,8 +6,8 @@
 #![allow(dead_code)]
 
 use crate::hybrid_algorithms::{AnsatzType, ClassicalOptimizer, Hamiltonian, PauliTerm, VQE};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 
 /// Variational Quantum Factoring solver
 pub struct VQF {
@@ -211,7 +211,7 @@ impl VQF {
     /// Extract factors from VQE solution
     fn extract_factors(&self, params: &[f64]) -> Result<FactorizationResult, String> {
         // Simulate measurement (simplified)
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut best_p = 0u64;
         let mut best_q = 0u64;
         let mut best_error = self.n as f64;
@@ -223,14 +223,14 @@ impl VQF {
 
             // Extract p
             for (i, &param) in params.iter().enumerate().take(self.n_qubits_p) {
-                if rng.random_bool(0.5 + 0.4 * param.sin()) {
+                if rng.gen_bool(0.5 + 0.4 * param.sin()) {
                     p |= 1u64 << i;
                 }
             }
 
             // Extract q
             for j in 0..self.n_qubits_q {
-                if rng.random_bool(0.5 + 0.4 * params[self.n_qubits_p + j].sin()) {
+                if rng.gen_bool(0.5 + 0.4 * params[self.n_qubits_p + j].sin()) {
                     q |= 1u64 << j;
                 }
             }
@@ -522,12 +522,12 @@ impl ShorsAlgorithm {
             });
         }
 
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         // Try random bases
         for attempt in 0..10 {
             // Choose random a coprime to n
-            let a = rng.random_range(2..self.n);
+            let a = rng.gen_range(2..self.n);
             if gcd(a, self.n) != 1 {
                 let factor = gcd(a, self.n);
                 return Ok(ShorsResult {

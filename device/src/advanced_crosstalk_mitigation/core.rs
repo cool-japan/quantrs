@@ -4,7 +4,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::{RwLock as TokioRwLock, Mutex as TokioMutex};
-use ndarray::{Array1, Array2, Array3};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},

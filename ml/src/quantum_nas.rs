@@ -5,10 +5,11 @@
 //! search, and gradient-based methods adapted for quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
+use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use ndarray::{s, Array1, Array2, Array3, Axis};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, Axis};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
@@ -363,14 +364,14 @@ impl QuantumNAS {
                 let parent2 = self.tournament_selection(&population, 3)?;
 
                 // Crossover
-                let mut offspring = if rand::random::<f64>() < crossover_rate {
+                let mut offspring = if thread_rng().gen::<f64>() < crossover_rate {
                     self.crossover(&parent1, &parent2)?
                 } else {
                     parent1.clone()
                 };
 
                 // Mutation
-                if rand::random::<f64>() < mutation_rate {
+                if thread_rng().gen::<f64>() < mutation_rate {
                     self.mutate(&mut offspring)?;
                 }
 
@@ -410,7 +411,7 @@ impl QuantumNAS {
                 let state = self.architecture_to_state(&current_architecture)?;
 
                 // Choose action (epsilon-greedy)
-                let action = if rand::random::<f64>() < exploration_rate {
+                let action = if thread_rng().gen::<f64>() < exploration_rate {
                     self.sample_random_action(&current_architecture)?
                 } else {
                     self.choose_best_action(&state)?
@@ -656,8 +657,8 @@ impl QuantumNAS {
             candidate.metrics.loss = Some(loss);
         } else {
             // Synthetic evaluation
-            candidate.metrics.accuracy = Some(0.5 + 0.4 * rand::random::<f64>());
-            candidate.metrics.loss = Some(0.5 + 0.5 * rand::random::<f64>());
+            candidate.metrics.accuracy = Some(0.5 + 0.4 * thread_rng().gen::<f64>());
+            candidate.metrics.loss = Some(0.5 + 0.5 * thread_rng().gen::<f64>());
         }
 
         // Compute architecture properties
@@ -710,7 +711,7 @@ impl QuantumNAS {
         let max_len = parent1.layers.len().max(parent2.layers.len());
 
         for i in 0..max_len {
-            if rand::random::<bool>() {
+            if thread_rng().gen::<bool>() {
                 if i < parent1.layers.len() {
                     child_layers.push(parent1.layers[i].clone());
                 }
@@ -721,7 +722,7 @@ impl QuantumNAS {
             }
         }
 
-        let num_qubits = if rand::random::<bool>() {
+        let num_qubits = if thread_rng().gen::<bool>() {
             parent1.num_qubits
         } else {
             parent2.num_qubits
@@ -886,8 +887,8 @@ impl QuantumNAS {
         labels: &Array1<usize>,
     ) -> Result<(f64, f64)> {
         // Simplified evaluation - would use actual training/validation
-        let accuracy = 0.6 + 0.3 * rand::random::<f64>();
-        let loss = 0.2 + 0.8 * rand::random::<f64>();
+        let accuracy = 0.6 + 0.3 * thread_rng().gen::<f64>();
+        let loss = 0.2 + 0.8 * thread_rng().gen::<f64>();
         Ok((accuracy, loss))
     }
 
@@ -909,9 +910,9 @@ impl QuantumNAS {
             Some((entanglement_layers as f64 / candidate.layers.len() as f64).min(1.0));
 
         // Placeholder values for other properties
-        candidate.properties.gradient_variance = Some(0.1 + 0.3 * rand::random::<f64>());
-        candidate.properties.barren_plateau_score = Some(0.2 + 0.6 * rand::random::<f64>());
-        candidate.properties.noise_resilience = Some(0.3 + 0.4 * rand::random::<f64>());
+        candidate.properties.gradient_variance = Some(0.1 + 0.3 * thread_rng().gen::<f64>());
+        candidate.properties.barren_plateau_score = Some(0.2 + 0.6 * thread_rng().gen::<f64>());
+        candidate.properties.noise_resilience = Some(0.3 + 0.4 * thread_rng().gen::<f64>());
 
         Ok(())
     }

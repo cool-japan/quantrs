@@ -1,6 +1,6 @@
 //! Analysis utilities for dynamical decoupling
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 use super::{config::NoiseType, performance::DDPerformanceAnalysis, sequences::DDSequence};
@@ -12,6 +12,7 @@ use scirs2_stats::{mean, std};
 
 #[cfg(not(feature = "scirs2"))]
 use super::fallback_scirs2::{inv, mean, std, trace};
+use scirs2_core::random::prelude::*;
 
 /// Statistical analysis results for DD sequences
 #[derive(Debug, Clone)]
@@ -536,7 +537,7 @@ impl DDStatisticalAnalyzer {
         // Fill with simulated data
         for i in 0..n_samples {
             for j in 0..n_features {
-                data[[i, j]] = rand::random::<f64>();
+                data[[i, j]] = thread_rng().gen::<f64>();
             }
         }
 

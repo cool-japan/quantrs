@@ -7,7 +7,7 @@
 use crate::error::{MLError, Result};
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
 use crate::optimization::OptimizationMethod;
-use ndarray::{Array1, Array2, Array3, Axis, s};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis, s};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use serde::{Serialize, Deserialize};

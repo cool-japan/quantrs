@@ -6,12 +6,12 @@
 
 use crate::error::QuantRS2Error;
 use crate::gate_translation::GateType;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
-use ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
 use ndarray_linalg::{Eigh, Norm, SVD};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

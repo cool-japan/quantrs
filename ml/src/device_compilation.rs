@@ -5,7 +5,7 @@
 
 use crate::circuit_integration::{DeviceTopology, QubitProperties};
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};

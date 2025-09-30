@@ -4,7 +4,7 @@
 //! including autoregressive models, long-term memory analysis, and change point detection.
 
 use crate::{DeviceError, DeviceResult};
-use ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
 use std::collections::HashMap;
 
 /// Temporal correlation model
@@ -734,7 +734,7 @@ impl TemporalAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use scirs2_core::ndarray::Array2;
 
     #[test]
     fn test_temporal_analyzer_creation() {

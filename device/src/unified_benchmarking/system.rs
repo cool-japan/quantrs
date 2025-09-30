@@ -30,7 +30,7 @@ use crate::{
 };
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 
-use ndarray::Array2;
+use scirs2_core::ndarray::Array2;
 
 /// Main unified benchmarking system
 pub struct UnifiedQuantumBenchmarkSystem {

@@ -1,9 +1,9 @@
 //! Graph partitioning algorithms for QUBO problems
 
 use super::types::*;
-use ndarray::{Array1, Array2};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 
 /// Automatic graph partitioner for QUBO problems
@@ -160,7 +160,7 @@ impl GraphPartitioner {
         let mut partition = vec![0; n];
 
         // Initialize random bisection
-        let mut rng = rng();
+        let mut rng = thread_rng();
         for i in 0..n / 2 {
             partition[i] = 1;
         }

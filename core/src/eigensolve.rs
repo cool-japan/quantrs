@@ -5,8 +5,8 @@
 //! shifts for efficient computation.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64 as Complex;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64 as Complex;
 use std::f64::EPSILON;
 
 /// Result of eigenvalue decomposition

@@ -24,9 +24,9 @@
 //! - **Advanced Quantum Dynamics**: Unitary evolution, open system dynamics, NISQ simulation,
 //!   adiabatic processes, and quantum error correction integration
 
-use ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -39,6 +39,7 @@ use crate::circuit_interfaces::{
 use crate::error::Result;
 use crate::scirs2_integration::SciRS2Backend;
 use crate::statevector::StateVectorSimulator;
+use scirs2_core::random::prelude::*;
 
 /// Advanced quantum reservoir architecture types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -824,7 +825,7 @@ pub struct QuantumReservoirComputerEnhanced {
     /// SciRS2 backend for advanced computations
     backend: Option<SciRS2Backend>,
     /// Random number generator
-    rng: Arc<Mutex<rand::rngs::ThreadRng>>,
+    rng: Arc<Mutex<scirs2_core::random::CoreRandom>>,
 }
 
 /// Time series prediction models
@@ -943,7 +944,7 @@ impl QuantumReservoirComputerEnhanced {
             metrics: ReservoirMetrics::default(),
             training_history: VecDeque::with_capacity(10000),
             backend: None,
-            rng: Arc::new(Mutex::new(rand::thread_rng())),
+            rng: Arc::new(Mutex::new(thread_rng())),
         })
     }
 

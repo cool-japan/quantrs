@@ -6,6 +6,13 @@
 //! It includes both standard and optimized implementations, with the optimized
 //! versions leveraging SIMD, memory-efficient algorithms, and parallel processing
 //! to enable simulation of larger qubit counts (30+).
+//!
+//! ## Recent Updates (v0.1.0-beta.2)
+//!
+//! - Refined SciRS2 v0.1.0-beta.3 integration for enhanced performance
+//! - All simulators use `scirs2_core::parallel_ops` for automatic parallelization
+//! - SIMD-accelerated quantum operations via SciRS2 abstractions
+//! - Advanced linear algebra leveraging SciRS2's optimized BLAS/LAPACK bindings
 
 pub mod adaptive_gate_fusion;
 pub mod adaptive_ml_error_correction;
@@ -568,7 +575,7 @@ pub mod prelude {
     pub use crate::statevector::*;
     pub use crate::tensor::*;
     pub use crate::utils::*;
-    pub use num_complex::Complex64;
+    pub use scirs2_core::Complex64;
 }
 
 /// A placeholder for future error correction code implementations

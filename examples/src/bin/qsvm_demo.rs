@@ -1,8 +1,8 @@
 //! Quantum Support Vector Machine demonstration
 
-use ndarray::{array, Array1, Array2};
+use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_ml::prelude::*;
-use rand::Rng;
+use scirs2_core::random::{Rng, thread_rng};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Support Vector Machine Demo ===\n");
@@ -225,7 +225,7 @@ fn quantum_advantage_demo() -> std::result::Result<(), Box<dyn std::error::Error
 
 /// Generate XOR-like dataset
 fn generate_xor_dataset(n_samples: usize) -> (Array2<f64>, Array1<i32>) {
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut x = Array2::zeros((n_samples, 2));
     let mut y = Array1::zeros(n_samples);
 
@@ -274,7 +274,7 @@ fn quantum_kernel_ridge_demo() -> std::result::Result<(), Box<dyn std::error::Er
     for i in 0..n_samples {
         let xi = i as f64 / n_samples as f64 * 2.0 * std::f64::consts::PI;
         x[[i, 0]] = xi;
-        y[i] = xi.sin() + 0.1 * rand::thread_rng().gen::<f64>();
+        y[i] = xi.sin() + 0.1 * thread_rng().gen::<f64>();
     }
 
     // Train quantum kernel ridge regression

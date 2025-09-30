@@ -5,8 +5,8 @@
 //! and approximate QFT implementations with fallback routines when SciRS2 is
 //! not available.
 
-use ndarray::{Array1, Array2, ArrayView1, Axis};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -370,7 +370,7 @@ impl SciRS2QFT {
             if backend.is_available() {
                 // Use actual SciRS2 FFT implementation
                 use crate::scirs2_integration::{SciRS2MemoryAllocator, SciRS2Vector};
-                use ndarray::Array1;
+                use scirs2_core::ndarray::Array1;
 
                 let _allocator = SciRS2MemoryAllocator::new();
                 let input_array = Array1::from_vec(data.to_vec());
@@ -418,7 +418,7 @@ impl SciRS2QFT {
             if backend.is_available() {
                 // Use actual SciRS2 inverse FFT implementation
                 use crate::scirs2_integration::{SciRS2MemoryAllocator, SciRS2Vector};
-                use ndarray::Array1;
+                use scirs2_core::ndarray::Array1;
 
                 let _allocator = SciRS2MemoryAllocator::new();
                 let input_array = Array1::from_vec(data.to_vec());

@@ -4,10 +4,10 @@
 //! machine learning-optimized gate sequences.
 
 use crate::error::QuantRS2Error;
-use ndarray::Array2;
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -669,7 +669,7 @@ impl ErrorSuppressionSynthesis {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(0.0, -sin_half)
@@ -685,7 +685,7 @@ impl ErrorSuppressionSynthesis {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(cos_half, 0.0),
                 Complex64::new(-sin_half, 0.0)
@@ -697,7 +697,7 @@ impl ErrorSuppressionSynthesis {
     fn rz_matrix(&self, angle: f64) -> Array2<Complex64> {
         let exp_factor = Complex64::from_polar(1.0, angle / 2.0);
 
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [exp_factor.conj(), Complex64::new(0.0, 0.0)],
             [Complex64::new(0.0, 0.0), exp_factor]
         ]
@@ -705,27 +705,27 @@ impl ErrorSuppressionSynthesis {
 
     fn pauli_matrix(&self, index: usize) -> Array2<Complex64> {
         match index {
-            0 => ndarray::array![
+            0 => scirs2_core::ndarray::array![
                 // I
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
             ],
-            1 => ndarray::array![
+            1 => scirs2_core::ndarray::array![
                 // X
                 [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
             ],
-            2 => ndarray::array![
+            2 => scirs2_core::ndarray::array![
                 // Y
                 [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
                 [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)]
             ],
-            3 => ndarray::array![
+            3 => scirs2_core::ndarray::array![
                 // Z
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
             ],
-            _ => ndarray::array![
+            _ => scirs2_core::ndarray::array![
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
             ],
@@ -734,7 +734,7 @@ impl ErrorSuppressionSynthesis {
 
     fn hadamard_matrix(&self) -> Array2<Complex64> {
         let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(inv_sqrt2, 0.0),
                 Complex64::new(inv_sqrt2, 0.0)
@@ -747,7 +747,7 @@ impl ErrorSuppressionSynthesis {
     }
 
     fn cnot_matrix(&self) -> Array2<Complex64> {
-        ndarray::array![
+        scirs2_core::ndarray::array![
             [
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
@@ -845,16 +845,16 @@ impl UltraHighFidelitySynthesis {
         let grape_optimizer = if config.use_grape {
             // Simplified control Hamiltonians for demonstration
             let control_h = vec![
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
                     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
                 ],
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
                     [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)]
                 ],
             ];
-            let drift_h = ndarray::array![
+            let drift_h = scirs2_core::ndarray::array![
                 [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0)]
             ];
@@ -872,19 +872,19 @@ impl UltraHighFidelitySynthesis {
 
         let rl_optimizer = if config.use_rl {
             let gate_library = vec![
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                     [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
                 ], // I
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
                     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]
                 ], // X
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(0.0, 0.0), Complex64::new(0.0, -1.0)],
                     [Complex64::new(0.0, 1.0), Complex64::new(0.0, 0.0)]
                 ], // Y
-                ndarray::array![
+                scirs2_core::ndarray::array![
                     [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                     [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
                 ], // Z
@@ -1011,7 +1011,7 @@ pub struct UltraFidelityResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_grape_optimizer() {

@@ -15,7 +15,7 @@ mod tests {
         },
         qubit::QubitId,
     };
-    use num_complex::Complex64;
+    use scirs2_core::Complex64;
 
     /// Test adaptive SIMD CPU feature detection
     #[test]

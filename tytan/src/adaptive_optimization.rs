@@ -4,8 +4,8 @@
 //! and solution history to improve performance over time.
 
 use crate::sampler::{SampleResult, Sampler};
-use ndarray::Array2;
-use rand::{rng, Rng};
+use scirs2_core::ndarray::Array2;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -384,7 +384,7 @@ impl AdaptiveOptimizer {
             SelectionStrategy::ThompsonSampling => self.thompson_sampling_select(features),
             SelectionStrategy::UCB { c } => self.ucb_select(features, *c),
             SelectionStrategy::EpsilonGreedy { epsilon } => {
-                if rand::random::<f64>() < *epsilon {
+                if thread_rng().gen::<f64>() < *epsilon {
                     self.random_select()
                 } else {
                     self.greedy_select(features)
@@ -613,7 +613,7 @@ impl AdaptiveOptimizer {
         &self,
         _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = rng().random_range(0..self.samplers.len());
+        let idx = thread_rng().gen_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -637,7 +637,7 @@ impl AdaptiveOptimizer {
     }
 
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = rng().random_range(0..self.samplers.len());
+        let idx = thread_rng().gen_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -850,7 +850,7 @@ pub struct OptimizationResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_adaptive_optimizer() {

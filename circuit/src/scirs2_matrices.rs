@@ -26,7 +26,7 @@ use std::time::Instant;
 // Enhanced SciRS2 imports using available features
 use scirs2_core::{parallel_ops::*, simd_ops::*};
 // Re-export Complex64 for public use
-pub use num_complex::Complex64;
+pub use scirs2_core::Complex64;
 
 // Placeholder types for SciRS2 features that will be available in future versions
 #[derive(Debug, Clone)]

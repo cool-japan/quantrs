@@ -4,18 +4,19 @@
 //! with proper SVD decomposition, comprehensive gate support, and performance optimizations.
 
 use crate::scirs2_integration::SciRS2Backend;
-use ndarray::{array, s, Array1, Array2, Array3, Array4};
+use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
 use ndarray_linalg::{qr::QR, svd::SVD};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
 };
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
 use std::f64::consts::{PI, SQRT_2};
+use scirs2_core::random::prelude::*;
 
 /// Configuration for MPS simulator
 #[derive(Debug, Clone)]
@@ -127,7 +128,7 @@ pub struct EnhancedMPS {
     /// Current orthogonality center (-1 if not in canonical form)
     orthogonality_center: i32,
     /// Random number generator
-    rng: rand::rngs::ThreadRng,
+    rng: scirs2_core::CoreRandom,
 }
 
 impl EnhancedMPS {
@@ -272,7 +273,7 @@ impl EnhancedMPS {
     /// Apply two-qubit gate and decompose using SVD
     fn apply_and_decompose_two_qubit_gate(
         &mut self,
-        gate_array: &ndarray::ArrayBase<ndarray::OwnedRepr<Complex64>, ndarray::Dim<[usize; 4]>>,
+        gate_array: &scirs2_core::ndarray::ArrayBase<scirs2_core::ndarray::OwnedRepr<Complex64>, scirs2_core::ndarray::Dim<[usize; 4]>>,
         left_qubit: usize,
         right_qubit: usize,
     ) -> QuantRS2Result<()> {

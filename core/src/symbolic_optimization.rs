@@ -6,7 +6,7 @@
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::symbolic_hamiltonian::SymbolicHamiltonian;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Symbolic optimization configuration

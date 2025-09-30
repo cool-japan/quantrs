@@ -1,6 +1,6 @@
 //! Fallback implementations when SciRS2 is not available
 
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 
 /// Fallback mean calculation
 pub fn mean(data: &ArrayView1<f64>) -> Result<f64, String> {

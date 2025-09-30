@@ -5,9 +5,9 @@
 //! entanglement. This framework enables error correction through holographic principles,
 //! where quantum information in a boundary theory is protected by geometry in the bulk.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -18,6 +18,7 @@ use crate::quantum_gravity_simulation::{
     HolographicDuality, QuantumGravitySimulator, RTSurface,
 };
 use crate::scirs2_integration::SciRS2Backend;
+use scirs2_core::random::prelude::*;
 
 /// Holographic quantum error correction configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -820,7 +821,7 @@ impl HolographicQECSimulator {
     /// Setup holographic duality
     fn setup_holographic_duality(&mut self) -> Result<()> {
         // Create bulk geometry
-        use ndarray::Array2;
+        use scirs2_core::ndarray::Array2;
         let bulk_geometry = BulkGeometry {
             metric_tensor: Array2::eye(4), // Minkowski/AdS metric
             ads_radius: self.config.ads_radius,

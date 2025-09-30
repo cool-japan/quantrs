@@ -4,9 +4,10 @@
 //! optimization problems, including advanced problem encodings, multi-level QAOA,
 //! and hardware-aware optimizations.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -1018,7 +1019,7 @@ impl QAOAOptimizer {
         for i in 0..config.num_layers {
             let gamma = match config.initialization {
                 QAOAInitializationStrategy::Random => {
-                    (rand::random::<f64>() - 0.5) * std::f64::consts::PI
+                    (thread_rng().gen::<f64>() - 0.5) * std::f64::consts::PI
                 }
                 QAOAInitializationStrategy::AdiabaticStart => {
                     // Start with small values for adiabatic evolution
@@ -1042,7 +1043,7 @@ impl QAOAOptimizer {
         for i in 0..config.num_layers {
             let beta = match config.initialization {
                 QAOAInitializationStrategy::Random => {
-                    (rand::random::<f64>() - 0.5) * std::f64::consts::PI
+                    (thread_rng().gen::<f64>() - 0.5) * std::f64::consts::PI
                 }
                 QAOAInitializationStrategy::AdiabaticStart => {
                     // Start with large values for mixer
@@ -1270,7 +1271,7 @@ impl QAOAOptimizer {
         for _ in 0..10 {
             // Random starting assignment
             for i in 0..num_vertices {
-                assignment[i] = rand::random();
+                assignment[i] = thread_rng().gen();
             }
 
             // Local optimization
@@ -1757,7 +1758,7 @@ impl QAOAOptimizer {
 
     fn prepare_random_state(&self, circuit: &mut InterfaceCircuit) -> Result<()> {
         for qubit in 0..circuit.num_qubits {
-            let angle = (rand::random::<f64>() - 0.5) * std::f64::consts::PI;
+            let angle = (thread_rng().gen::<f64>() - 0.5) * std::f64::consts::PI;
             circuit.add_gate(InterfaceGate::new(
                 InterfaceGateType::RY(angle),
                 vec![qubit],
@@ -1806,7 +1807,7 @@ impl QAOAOptimizer {
         // For now, return a random valid solution
         let mut solution = String::new();
         for _ in 0..self.graph.num_vertices {
-            solution.push(if rand::random() { '1' } else { '0' });
+            solution.push(if thread_rng().gen() { '1' } else { '0' });
         }
         Ok(solution)
     }

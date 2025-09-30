@@ -4,8 +4,8 @@
 //! including process tomography, state tomography, randomized benchmarking, and advanced
 //! SciRS2-powered noise analysis for comprehensive hardware understanding.
 
-use ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -292,7 +292,7 @@ impl RandomizedBenchmarking {
 
     /// Generate random Clifford sequence of given length
     pub fn generate_clifford_sequence(&self, length: usize) -> Vec<Box<dyn GateOp>> {
-        use rand::{thread_rng, Rng};
+        use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         let mut sequence = Vec::new();
 

@@ -3,8 +3,8 @@
 //! This module provides optimization utilities and algorithms for
 //! solving QUBO and HOBO problems, with optional SciRS2 integration.
 
-use ndarray::{Array, ArrayD, Ix2};
-use rand::Rng;
+use scirs2_core::ndarray::{Array, ArrayD, Ix2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 use crate::sampler::SampleResult;
@@ -82,9 +82,9 @@ pub fn optimize_qubo(
     let mut solution: Vec<bool> = match initial_guess {
         Some(guess) => guess,
         None => {
-            use rand::Rng;
-            let mut rng = rand::rng();
-            (0..n_vars).map(|_| rng.random_bool(0.5)).collect()
+            use scirs2_core::random::prelude::*;
+            let mut rng = thread_rng();
+            (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
         }
     };
 
@@ -96,11 +96,11 @@ pub fn optimize_qubo(
     let cooling_rate = 0.99;
 
     // Simulated annealing loop
-    let mut rng = rand::rng();
+    let mut rng = thread_rng();
 
     for _ in 0..max_iterations {
         // Generate a neighbor by flipping a random bit
-        let flip_idx = rng.random_range(0..n_vars);
+        let flip_idx = rng.gen_range(0..n_vars);
         solution[flip_idx] = !solution[flip_idx];
 
         // Calculate new energy
@@ -111,7 +111,7 @@ pub fn optimize_qubo(
             true
         } else {
             let p = ((energy - new_energy) / temperature).exp();
-            rng.random::<f64>() < p
+            rng.gen::<f64>() < p
         };
 
         if !accept {

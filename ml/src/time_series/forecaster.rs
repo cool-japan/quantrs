@@ -10,7 +10,7 @@ use super::{
 };
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
-use ndarray::{s, Array1, Array2};
+use scirs2_core::ndarray::{s, Array1, Array2};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;

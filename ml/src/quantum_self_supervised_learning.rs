@@ -10,10 +10,11 @@
 //! - Advanced quantum representation learning frameworks
 
 use crate::error::{MLError, Result};
-use ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha20Rng;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1213,7 +1214,7 @@ impl QuantumSelfSupervisedLearner {
 
         for batch_start in (0..num_samples).step_by(config.batch_size) {
             let batch_end = (batch_start + config.batch_size).min(num_samples);
-            let batch_data = data.slice(ndarray::s![batch_start..batch_end, ..]);
+            let batch_data = data.slice(scirs2_core::ndarray::s![batch_start..batch_end, ..]);
 
             let batch_metrics = self.train_batch(&batch_data, config)?;
 
@@ -1242,7 +1243,7 @@ impl QuantumSelfSupervisedLearner {
     /// Train single batch
     fn train_batch(
         &mut self,
-        batch_data: &ndarray::ArrayView2<f64>,
+        batch_data: &scirs2_core::ndarray::ArrayView2<f64>,
         config: &SSLTrainingConfig,
     ) -> Result<SSLTrainingMetrics> {
         let mut batch_loss = 0.0;
@@ -1658,11 +1659,11 @@ impl QuantumAugmenter {
                 noise_type: _,
                 strength,
             } => {
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
                 Ok(data.mapv(|x| x + rng.gen::<f64>() * strength))
             }
             QuantumAugmentationStrategy::PhaseShift { phase_range } => {
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
                 let phase = rng.gen::<f64>() * phase_range;
                 Ok(data.mapv(|x| x * phase.cos() - x * phase.sin()))
             }

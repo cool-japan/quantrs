@@ -5,9 +5,9 @@
 //! networks, and hybrid classical-quantum training algorithms. This framework enables
 //! quantum advantage in machine learning applications with hardware-aware optimization.
 
-use ndarray::Array1;
-use num_complex::Complex64;
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
+use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,6 +16,7 @@ use std::f64::consts::PI;
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
 use crate::statevector::StateVectorSimulator;
+use scirs2_core::random::prelude::*;
 
 /// Quantum machine learning configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]

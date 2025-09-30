@@ -6,10 +6,10 @@
 
 #![allow(dead_code)]
 
-use ndarray::{Array2, Array3};
-use num_complex::Complex64;
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array2, Array3};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -144,7 +144,7 @@ impl TopologicalOptimizer {
 
     /// Generate braiding sequence
     fn generate_braid_sequence(&self, iteration: usize) -> Vec<BraidOperation> {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut sequence = Vec::new();
 
         // Deterministic part based on iteration
@@ -156,13 +156,13 @@ impl TopologicalOptimizer {
 
         // Random exploration
         for _ in 0..3 {
-            let i = rng.random_range(0..self.n_anyons - 1);
+            let i = rng.gen_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Exchange(i, i + 1));
         }
 
         // Fusion operations
-        if self.n_anyons > 2 && rng.random_bool(0.3) {
-            let i = rng.random_range(0..self.n_anyons - 1);
+        if self.n_anyons > 2 && rng.gen_bool(0.3) {
+            let i = rng.gen_range(0..self.n_anyons - 1);
             sequence.push(BraidOperation::Fusion(i, i + 1));
         }
 
@@ -310,7 +310,7 @@ impl FibonacciState {
     }
 
     fn measure(&self) -> Result<Vec<bool>, String> {
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         // Sample from amplitude distribution
         let probabilities: Vec<f64> = self.amplitudes.iter().map(|a| a.norm_sqr()).collect();
@@ -320,7 +320,7 @@ impl FibonacciState {
 
         // Sample basis state
         let mut cumsum = 0.0;
-        let r = rng.random::<f64>();
+        let r = rng.gen::<f64>();
 
         for (idx, &prob) in normalized.iter().enumerate() {
             cumsum += prob;
@@ -349,10 +349,10 @@ impl IsingAnyonState {
         let mut majorana_matrix = Array2::zeros((n, n));
 
         // Initialize with random couplings
-        let mut rng = rng();
+        let mut rng = thread_rng();
         for i in 0..n {
             for j in i + 1..n {
-                let coupling = rng.random_range(-1.0..1.0);
+                let coupling = rng.gen_range(-1.0..1.0);
                 majorana_matrix[[i, j]] = coupling;
                 majorana_matrix[[j, i]] = -coupling;
             }
@@ -410,8 +410,8 @@ impl IsingAnyonState {
 
         if total_parity != 0 {
             // Flip a random parity sector to restore conservation
-            let mut rng = rng();
-            let idx = rng.random_range(0..self.parity_sectors.len());
+            let mut rng = thread_rng();
+            let idx = rng.gen_range(0..self.parity_sectors.len());
             corrected.parity_sectors[idx] = !corrected.parity_sectors[idx];
         }
 
@@ -924,7 +924,7 @@ fn hamming_distance(a: &[bool], b: &[bool]) -> usize {
 fn weighted_sample(weights: &[f64], rng: &mut StdRng) -> usize {
     let total: f64 = weights.iter().sum();
     let mut cumsum = 0.0;
-    let r = rng.random::<f64>() * total;
+    let r = rng.gen::<f64>() * total;
 
     for (idx, &weight) in weights.iter().enumerate() {
         cumsum += weight;

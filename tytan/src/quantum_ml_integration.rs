@@ -7,11 +7,12 @@
 
 #[cfg(feature = "dwave")]
 use crate::compile::CompiledModel;
-use ndarray::{Array1, Array2, Array3};
-use rand::prelude::*;
-use rand::{rng, Rng};
-use rand_distr::{Distribution, Normal};
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal};
 use std::f64::consts::PI;
+
+type Normal<T> = RandNormal<T>;
 
 /// Quantum Boltzmann Machine for optimization
 pub struct QuantumBoltzmannMachine {
@@ -38,14 +39,14 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new Quantum Boltzmann Machine
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        use rand::rngs::StdRng;
-        use rand::{Rng, SeedableRng};
+        
+        use scirs2_core::random::prelude::*;
         let mut rng = StdRng::seed_from_u64(42);
 
         // Initialize weights and biases with simple random values
-        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.random_range(-0.1..0.1));
-        let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.random_range(-0.1..0.1));
-        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.random_range(-0.1..0.1));
+        let weights = Array2::from_shape_fn((n_visible, n_hidden), |_| rng.gen_range(-0.1..0.1));
+        let visible_bias = Array1::from_shape_fn(n_visible, |_| rng.gen_range(-0.1..0.1));
+        let hidden_bias = Array1::from_shape_fn(n_hidden, |_| rng.gen_range(-0.1..0.1));
 
         Self {
             n_visible,
@@ -144,8 +145,8 @@ impl QuantumBoltzmannMachine {
 
     /// Sample units from probabilities
     fn sample_units(&self, probs: &Array1<f64>) -> Array1<bool> {
-        let mut rng = rng();
-        probs.mapv(|p| rng.random_bool(p))
+        let mut rng = thread_rng();
+        probs.mapv(|p| rng.gen_bool(p))
     }
 
     /// Classical Gibbs sampling
@@ -174,7 +175,7 @@ impl QuantumBoltzmannMachine {
         initial_visible: &Array1<bool>,
     ) -> Result<(Array1<bool>, Array1<bool>), String> {
         // Simulate quantum tunneling effects
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let tunneling_prob = (-2.0 / self.transverse_field).exp();
 
         let mut visible = initial_visible.clone();
@@ -187,9 +188,9 @@ impl QuantumBoltzmannMachine {
             hidden = self.sample_units(&hidden_probs);
 
             // Quantum tunneling
-            if rng.random_bool(tunneling_prob) {
+            if rng.gen_bool(tunneling_prob) {
                 // Flip random spins
-                let flip_idx = rng.random_range(0..self.n_visible);
+                let flip_idx = rng.gen_range(0..self.n_visible);
                 visible[flip_idx] = !visible[flip_idx];
             }
 
@@ -197,8 +198,8 @@ impl QuantumBoltzmannMachine {
             visible = self.sample_units(&visible_probs);
 
             // Hidden unit tunneling
-            if rng.random_bool(tunneling_prob) {
-                let flip_idx = rng.random_range(0..self.n_hidden);
+            if rng.gen_bool(tunneling_prob) {
+                let flip_idx = rng.gen_range(0..self.n_hidden);
                 hidden[flip_idx] = !hidden[flip_idx];
             }
         }
@@ -250,11 +251,11 @@ impl QuantumBoltzmannMachine {
     /// Generate samples for optimization
     pub fn generate_samples(&self, num_samples: usize) -> Vec<Array1<bool>> {
         let mut samples = Vec::new();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for _ in 0..num_samples {
             // Start from random visible state
-            let initial_visible = Array1::from_shape_fn(self.n_visible, |_| rng.random_bool(0.5));
+            let initial_visible = Array1::from_shape_fn(self.n_visible, |_| rng.gen_bool(0.5));
 
             let (sample, _) = self.classical_gibbs_sampling(&initial_visible, 100);
             samples.push(sample);
@@ -292,13 +293,14 @@ pub struct QuantumVAE {
 impl QuantumVAE {
     /// Create new Quantum VAE
     pub fn new(input_dim: usize, latent_dim: usize, n_layers: usize) -> Self {
-        use rand::Rng;
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let encoder_params =
-            Array2::from_shape_fn((n_layers, input_dim), |_| rng().random_range(-0.1..0.1));
+            Array2::from_shape_fn((n_layers, input_dim), |_| rng.gen_range(-0.1..0.1));
 
         let decoder_params =
-            Array2::from_shape_fn((n_layers, latent_dim), |_| rng().random_range(-0.1..0.1));
+            Array2::from_shape_fn((n_layers, latent_dim), |_| rng.gen_range(-0.1..0.1));
 
         Self {
             input_dim,
@@ -342,9 +344,9 @@ impl QuantumVAE {
         }
 
         // Extract mean and variance for latent distribution
-        let mean = state.slice(ndarray::s![..self.latent_dim]).to_owned();
+        let mean = state.slice(scirs2_core::ndarray::s![..self.latent_dim]).to_owned();
         let log_var = state
-            .slice(ndarray::s![
+            .slice(scirs2_core::ndarray::s![
                 self.latent_dim..2 * self.latent_dim.min(self.input_dim)
             ])
             .to_owned();
@@ -394,19 +396,23 @@ impl QuantumVAE {
 
     /// Reparameterization trick
     fn reparameterize(&self, mean: &Array1<f64>, log_var: &Array1<f64>) -> Array1<f64> {
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let std = log_var.mapv(|x| (x / 2.0).exp());
-        let eps = Array1::from_shape_fn(mean.len(), |_| rng().random_range(-1.0..1.0));
+        let eps = Array1::from_shape_fn(mean.len(), |_| rng.gen_range(-1.0..1.0));
 
         mean + eps * std
     }
 
     /// Generate new samples
     pub fn generate(&self, num_samples: usize) -> Vec<Array1<bool>> {
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
         let mut samples = Vec::new();
 
         for _ in 0..num_samples {
             // Sample from prior
-            let z = Array1::from_shape_fn(self.latent_dim, |_| rng().random_range(-1.0..1.0));
+            let z = Array1::from_shape_fn(self.latent_dim, |_| rng.gen_range(-1.0..1.0));
 
             // Decode
             let decoded = self.decode(&z);
@@ -495,7 +501,7 @@ impl QuantumGAN {
     ) -> Result<QGANTrainingResult, String> {
         let mut gen_losses = Vec::new();
         let mut disc_losses = Vec::new();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         for _epoch in 0..epochs {
             let mut epoch_gen_loss = 0.0;
@@ -504,7 +510,7 @@ impl QuantumGAN {
             // Train discriminator
             for _ in 0..self.config.disc_steps {
                 // Sample real data
-                let real_idx = rng.random_range(0..real_data.len());
+                let real_idx = rng.gen_range(0..real_data.len());
                 let real_sample = &real_data[real_idx];
 
                 // Generate fake data
@@ -563,7 +569,7 @@ impl QuantumGAN {
 
     /// Generate optimized samples
     pub fn generate_optimized(&self, num_samples: usize) -> Vec<Array1<bool>> {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut samples = Vec::new();
 
         for _ in 0..num_samples {
@@ -577,11 +583,11 @@ impl QuantumGAN {
 
 impl QuantumGenerator {
     fn new(latent_dim: usize, output_dim: usize, depth: usize) -> Self {
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
         let params = Array2::from_shape_fn(
             (depth, latent_dim + output_dim),
-            |_| rng.random::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
+            |_| rng.gen::<f64>() * PI / 2.0 - PI / 4.0, // Sample from [-PI/4, PI/4]
         );
 
         Self {
@@ -596,7 +602,7 @@ impl QuantumGenerator {
         // Sample latent vector using simple approach
         let latent = Array1::from_shape_fn(
             self.latent_dim,
-            |_| rng.random::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
+            |_| rng.gen::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
         );
 
         // Initialize quantum state
@@ -632,7 +638,7 @@ impl QuantumGenerator {
 
 impl QuantumDiscriminator {
     fn new(input_dim: usize, depth: usize) -> Self {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let normal = Normal::new(0.0, PI / 4.0).unwrap();
 
         let params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
@@ -755,9 +761,9 @@ impl QuantumRL {
 
     /// Select action using epsilon-greedy policy
     pub fn select_action(&self, state: &Array1<f64>, rng: &mut StdRng) -> usize {
-        if rng.random_bool(self.epsilon) {
+        if rng.gen_bool(self.epsilon) {
             // Explore
-            rng.random_range(0..self.action_dim)
+            rng.gen_range(0..self.action_dim)
         } else {
             // Exploit
             let q_values = self.q_network.forward(state);
@@ -786,12 +792,12 @@ impl QuantumRL {
             return Ok(0.0);
         }
 
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let mut total_loss = 0.0;
 
         // Sample batch
         for _ in 0..batch_size {
-            let idx = rng.random_range(0..self.replay_buffer.len());
+            let idx = rng.gen_range(0..self.replay_buffer.len());
             let experience = &self.replay_buffer[idx];
 
             // Compute target
@@ -828,7 +834,7 @@ impl QuantumRL {
 
 impl QuantumQNetwork {
     fn new(input_dim: usize, output_dim: usize, n_layers: usize) -> Self {
-        let mut rng = rng();
+        let mut rng = thread_rng();
         let normal = Normal::new(0.0, 0.1).unwrap();
 
         let params = Array3::from_shape_fn(
@@ -848,7 +854,7 @@ impl QuantumQNetwork {
         // Encode state into quantum circuit
         let mut quantum_state = Array1::zeros(self.input_dim + self.output_dim);
         quantum_state
-            .slice_mut(ndarray::s![..self.input_dim])
+            .slice_mut(scirs2_core::ndarray::s![..self.input_dim])
             .assign(state);
 
         // Apply quantum layers
@@ -868,7 +874,7 @@ impl QuantumQNetwork {
 
         // Extract Q-values
         quantum_state
-            .slice(ndarray::s![self.input_dim..])
+            .slice(scirs2_core::ndarray::s![self.input_dim..])
             .to_owned()
     }
 

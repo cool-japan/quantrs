@@ -1,6 +1,6 @@
 //! Quantum Convolutional Neural Network demonstration
 
-use num_complex::Complex64 as Complex;
+use scirs2_core::Complex64 as Complex;
 use quantrs2_ml::error::MLError;
 use quantrs2_ml::qcnn::{QuantumImageEncoder, QCNN};
 

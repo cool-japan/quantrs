@@ -3,7 +3,7 @@
 //! This example demonstrates basic quantum clustering functionality
 //! with the working APIs in the quantum ML module.
 
-use ndarray::{array, Array2};
+use scirs2_core::ndarray::{array, Array2};
 use quantrs2_ml::clustering::*;
 use quantrs2_ml::dimensionality_reduction::{QuantumDistanceMetric, QuantumEnhancementLevel};
 use quantrs2_ml::prelude::*;

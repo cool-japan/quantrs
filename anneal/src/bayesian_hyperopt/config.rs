@@ -2,8 +2,8 @@
 
 use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
 use crate::ising::IsingError;
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::Rng;
+use scirs2_core::random::ChaCha8Rng;
 use thiserror::Error;
 
 /// Errors that can occur in Bayesian optimization
@@ -183,13 +183,13 @@ impl BayesianHyperoptimizer {
     where
         F: Fn(&[f64]) -> f64,
     {
-        use rand::{Rng, SeedableRng};
-        use rand_chacha::ChaCha8Rng;
+        use scirs2_core::random::prelude::*;
+        use scirs2_core::random::ChaCha8Rng;
 
         let mut rng = if let Some(seed) = self.config.seed {
             ChaCha8Rng::seed_from_u64(seed)
         } else {
-            ChaCha8Rng::from_rng(&mut rand::thread_rng())
+            ChaCha8Rng::from_rng(&mut thread_rng())
         };
 
         let start_time = std::time::Instant::now();

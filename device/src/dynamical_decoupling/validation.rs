@@ -1,6 +1,6 @@
 //! Validation and testing for dynamical decoupling sequences
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -10,6 +10,7 @@ use super::{
     DDCircuitExecutor,
 };
 use crate::DeviceResult;
+use scirs2_core::random::prelude::*;
 
 /// Validation results for DD sequences
 #[derive(Debug, Clone)]
@@ -526,7 +527,7 @@ impl DDValidator {
 
         // Generate synthetic prediction errors
         for i in 0..n_samples {
-            prediction_errors[i] = (rand::random::<f64>() - 0.5) * 0.1;
+            prediction_errors[i] = (thread_rng().gen::<f64>() - 0.5) * 0.1;
         }
 
         let oos_score = 0.88;

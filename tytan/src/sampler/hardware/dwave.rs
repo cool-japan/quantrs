@@ -1,7 +1,7 @@
 //! D-Wave Quantum Annealer Sampler Implementation
 
-use ndarray::{Array, Ix2};
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array, Ix2};
+use scirs2_core::random::{thread_rng, Rng};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -116,7 +116,7 @@ impl Sampler for DWaveSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // For HOBO problems, we need to first convert to QUBO if possible

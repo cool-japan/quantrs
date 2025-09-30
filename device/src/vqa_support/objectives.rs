@@ -6,8 +6,8 @@
 use super::circuits::{GateType, ParametricCircuit};
 use super::config::{GradientMethod, VQAAlgorithmType};
 use crate::DeviceResult;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -22,8 +22,8 @@ use std::sync::Arc;
 
 #[cfg(not(feature = "scirs2"))]
 mod fallback_scirs2 {
-    use ndarray::{Array1, Array2};
-    use num_complex::Complex64;
+    use scirs2_core::ndarray::{Array1, Array2};
+    use scirs2_core::Complex64;
 
     pub struct Matrix(pub Array2<Complex64>);
     pub struct Vector(pub Array1<Complex64>);
@@ -737,8 +737,8 @@ impl ObjectiveEvaluator {
         hamiltonian: &HamiltonianSpec,
     ) -> DeviceResult<ObjectiveResult> {
         // Simple mock that returns sum of squares with noise
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let energy = hamiltonian
             .pauli_terms
@@ -913,8 +913,8 @@ impl ObjectiveEvaluator {
     ) -> DeviceResult<(f64, f64)> {
         // Simulate measurement of Pauli term
         // For now, return random values as placeholder
-        use rand::prelude::*;
-        let mut rng = rand::thread_rng();
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
 
         let expectation: f64 = rng.gen_range(-1.0..1.0);
         let variance = 1.0 - expectation.powi(2); // Var = 1 - ⟨P⟩² for Pauli operators
@@ -995,14 +995,14 @@ impl ObjectiveEvaluator {
 
     fn get_classification_prediction(&self, _circuit: &ParametricCircuit) -> DeviceResult<f64> {
         // Placeholder prediction
-        use rand::prelude::*;
-        Ok(rand::thread_rng().gen_range(0.0..1.0))
+        use scirs2_core::random::prelude::*;
+        Ok(thread_rng().gen_range(0.0..1.0))
     }
 
     fn get_regression_prediction(&self, _circuit: &ParametricCircuit) -> DeviceResult<f64> {
         // Placeholder prediction
-        use rand::prelude::*;
-        Ok(rand::thread_rng().gen_range(-1.0..1.0))
+        use scirs2_core::random::prelude::*;
+        Ok(thread_rng().gen_range(-1.0..1.0))
     }
 
     /// Missing method implementations

@@ -2,7 +2,7 @@
 
 use super::ast::*;
 use crate::builder::Circuit;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
@@ -68,7 +68,7 @@ struct GateInfo {
     name: String,
     num_qubits: usize,
     num_params: usize,
-    matrix: Option<ndarray::Array2<Complex64>>,
+    matrix: Option<scirs2_core::ndarray::Array2<Complex64>>,
 }
 
 impl QasmExporter {

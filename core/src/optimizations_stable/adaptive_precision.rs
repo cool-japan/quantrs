@@ -5,7 +5,7 @@
 //! performance while maintaining accuracy.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Available precision levels for quantum computations
@@ -487,7 +487,7 @@ impl PrecisionAwareOps {
 }
 
 // Import Complex for single precision operations
-use num_complex::Complex;
+use scirs2_core::Complex;
 
 #[cfg(test)]
 mod tests {

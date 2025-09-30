@@ -5,8 +5,10 @@
 
 use super::{CVDeviceConfig, Complex, GaussianState};
 use crate::{DeviceError, DeviceResult};
-use rand::{rngs::StdRng, SeedableRng};
-use rand_distr::{Distribution, Normal};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal};
+// Alias for backward compatibility
+type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -205,16 +207,16 @@ impl HomodyneDetector {
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         // Measure visibility with known coherent state
-        self.calibration.visibility = 0.99 - 0.02 * rand::random::<f64>();
+        self.calibration.visibility = 0.99 - 0.02 * thread_rng().gen::<f64>();
 
         // Measure DC offsets
-        self.calibration.dc_offset = 0.001 * (rand::random::<f64>() - 0.5);
+        self.calibration.dc_offset = 0.001 * (thread_rng().gen::<f64>() - 0.5);
 
         // Measure gain imbalance
-        self.calibration.gain_imbalance = 0.01 * (rand::random::<f64>() - 0.5);
+        self.calibration.gain_imbalance = 0.01 * (thread_rng().gen::<f64>() - 0.5);
 
         // Measure phase offset
-        self.calibration.phase_offset = 0.05 * (rand::random::<f64>() - 0.5);
+        self.calibration.phase_offset = 0.05 * (thread_rng().gen::<f64>() - 0.5);
 
         println!(
             "Calibration complete: visibility = {:.3}",
@@ -307,7 +309,7 @@ impl HomodyneDetector {
         let distribution = Normal::new(theoretical_mean, total_noise_variance.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
 
-        let mut rng = StdRng::seed_from_u64(rand::random::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let measured_value = distribution.sample(&mut rng);
 
         // Calculate detector currents

@@ -4,7 +4,8 @@
 //! quantum data compression and feature extraction.
 
 use crate::error::MLError;
-use num_complex::Complex64 as Complex;
+use scirs2_core::Complex64 as Complex;
+use scirs2_core::random::prelude::*;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
@@ -283,15 +284,15 @@ pub struct ClassicalAutoencoder {
 impl ClassicalAutoencoder {
     /// Create a new classical autoencoder
     pub fn new(input_dim: usize, latent_dim: usize) -> Self {
-        let mut rng = fastrand::Rng::with_seed(42);
+        let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(42);
 
         // Initialize weights with small random values
         let encoder_weights = (0..latent_dim)
-            .map(|_| (0..input_dim).map(|_| rng.f64() * 0.1 - 0.05).collect())
+            .map(|_| (0..input_dim).map(|_| rng.gen::<f64>() * 0.1 - 0.05).collect())
             .collect();
 
         let decoder_weights = (0..input_dim)
-            .map(|_| (0..latent_dim).map(|_| rng.f64() * 0.1 - 0.05).collect())
+            .map(|_| (0..latent_dim).map(|_| rng.gen::<f64>() * 0.1 - 0.05).collect())
             .collect();
 
         Self {

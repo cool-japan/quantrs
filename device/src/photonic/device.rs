@@ -17,6 +17,7 @@ use super::{
     PhotonicExecutionMetadata, PhotonicMeasurementData, PhotonicQuantumDevice, PhotonicSystemType,
 };
 use crate::{CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
+use scirs2_core::random::prelude::*;
 
 /// Photonic quantum device implementation
 #[derive(Debug, Clone)]
@@ -590,24 +591,24 @@ impl PhotonicQuantumDeviceImpl {
         for _ in 0..shots.min(100) {
             // Limit for demonstration
             // Random quadrature values
-            quadratures.push((rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5));
+            quadratures.push((thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5));
 
             // Random photon numbers (small numbers typical for CV systems)
-            photon_numbers.push((rand::random::<f64>() * 5.0) as usize);
+            photon_numbers.push((thread_rng().gen::<f64>() * 5.0) as usize);
 
             // Homodyne detection results
-            homodyne_results.push(rand::random::<f64>() - 0.5);
+            homodyne_results.push(thread_rng().gen::<f64>() - 0.5);
 
             // Heterodyne detection results
-            heterodyne_results.push((rand::random::<f64>() - 0.5, rand::random::<f64>() - 0.5));
+            heterodyne_results.push((thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5));
         }
 
         // Calculate correlations
-        correlations.insert("g2".to_string(), 1.0 + rand::random::<f64>() * 0.1);
-        correlations.insert("visibility".to_string(), 0.9 + rand::random::<f64>() * 0.09);
+        correlations.insert("g2".to_string(), 1.0 + thread_rng().gen::<f64>() * 0.1);
+        correlations.insert("visibility".to_string(), 0.9 + thread_rng().gen::<f64>() * 0.09);
 
         // Estimate fidelities
-        fidelities.insert("overall".to_string(), 0.95 + rand::random::<f64>() * 0.04);
+        fidelities.insert("overall".to_string(), 0.95 + thread_rng().gen::<f64>() * 0.04);
         fidelities.insert(
             "gate_fidelity".to_string(),
             self.config.gate_fidelity.unwrap_or(0.99),

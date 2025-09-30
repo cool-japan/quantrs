@@ -4,8 +4,8 @@
 //! Zero-Noise Extrapolation (ZNE), Virtual Distillation, Symmetry Verification,
 //! and other methods to extrapolate quantum results to the zero-noise limit.
 
-use ndarray::Array2;
-use num_complex::Complex64;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 

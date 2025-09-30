@@ -4,9 +4,10 @@
 //! various tasks including classification, object detection, segmentation,
 //! and feature extraction using quantum circuits and quantum machine learning.
 
-use ndarray::{Array2, Array3, Array4};
+use scirs2_core::ndarray::{Array2, Array3, Array4};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qcnn::PoolingType;
+use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== Quantum Computer Vision Demo ===\n");
@@ -387,7 +388,7 @@ fn object_detection_demo() -> Result<()> {
 
                     if score > threshold {
                         let class_id = classes[[batch_idx, det_idx]];
-                        let bbox = boxes.slice(ndarray::s![batch_idx, det_idx, ..]);
+                        let bbox = boxes.slice(scirs2_core::ndarray::s![batch_idx, det_idx, ..]);
 
                         println!("   - Object {}: Class {}, Score {:.3}, Box [{:.1}, {:.1}, {:.1}, {:.1}]",
                             num_detections + 1, class_id, score,
@@ -904,8 +905,8 @@ fn compute_cosine_similarities(features: &Array2<f64>) -> Result<Array2<f64>> {
 
     for i in 0..num_samples {
         for j in 0..num_samples {
-            let feat_i = features.slice(ndarray::s![i, ..]);
-            let feat_j = features.slice(ndarray::s![j, ..]);
+            let feat_i = features.slice(scirs2_core::ndarray::s![i, ..]);
+            let feat_j = features.slice(scirs2_core::ndarray::s![j, ..]);
 
             let dot_product = feat_i.dot(&feat_j);
             let norm_i = feat_i.mapv(|x| x * x).sum().sqrt();

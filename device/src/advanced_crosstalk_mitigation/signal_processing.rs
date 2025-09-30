@@ -1,8 +1,8 @@
 //! Signal processing components for crosstalk analysis
 
 use std::collections::HashMap;
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 
 use super::*;
 use crate::DeviceResult;
@@ -457,7 +457,7 @@ impl NoiseReducer {
         // Use delayed version as reference (simplified)
         let delayed_signal = if signal.len() > 1 {
             let mut delayed = Array1::zeros(signal.len());
-            delayed.slice_mut(ndarray::s![1..]).assign(&signal.slice(ndarray::s![..signal.len()-1]));
+            delayed.slice_mut(scirs2_core::ndarray::s![1..]).assign(&signal.slice(scirs2_core::ndarray::s![..signal.len()-1]));
             delayed
         } else {
             signal.clone()
@@ -504,7 +504,7 @@ impl NoiseEstimator {
         // Voice Activity Detection based noise estimation
         // Simplified: assume first 10% of signal is noise
         let noise_samples = signal.len() / 10;
-        let noise_portion = signal.slice(ndarray::s![..noise_samples]);
+        let noise_portion = signal.slice(scirs2_core::ndarray::s![..noise_samples]);
         Ok(noise_portion.var(0.0))
     }
 
@@ -515,7 +515,7 @@ impl NoiseEstimator {
 
         for i in (0..signal.len()).step_by(window_size) {
             let end_idx = std::cmp::min(i + window_size, signal.len());
-            let window = signal.slice(ndarray::s![i..end_idx]);
+            let window = signal.slice(scirs2_core::ndarray::s![i..end_idx]);
             let power = window.mapv(|x| x * x).mean().unwrap_or(0.0);
             min_powers.push(power);
         }
@@ -629,14 +629,14 @@ impl SpectralAnalyzer {
                 break;
             }
 
-            let segment = signal.slice(ndarray::s![start..end]).to_owned();
+            let segment = signal.slice(scirs2_core::ndarray::s![start..end]).to_owned();
             let windowed_segment = self.apply_window(&segment)?;
             let fft_result = self.compute_fft(&windowed_segment)?;
             let segment_psd = fft_result.mapv(|x| x.norm_sqr());
 
             // Take only positive frequencies
             let half_length = segment_psd.len() / 2 + 1;
-            psd_accumulator = psd_accumulator + segment_psd.slice(ndarray::s![..half_length]);
+            psd_accumulator = psd_accumulator + segment_psd.slice(scirs2_core::ndarray::s![..half_length]);
             num_segments += 1;
         }
 

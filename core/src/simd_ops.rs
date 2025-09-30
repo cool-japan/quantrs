@@ -4,10 +4,10 @@
 //! operations using SciRS2's unified SIMD operations.
 
 use crate::error::QuantRS2Result;
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 // use scirs2_core::simd_ops::SimdUnifiedOps;
 use crate::simd_ops_stubs::{SimdComplex64, SimdF64};
-use ndarray::{ArrayView1, ArrayViewMut1};
+use scirs2_core::ndarray::{ArrayView1, ArrayViewMut1};
 
 // All SIMD operations now use SciRS2's unified trait
 

@@ -6,8 +6,8 @@
 //! for multi-player games.
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Types of quantum games
@@ -473,8 +473,8 @@ impl QuantumGame {
 
     /// Sample an outcome based on probability distribution
     fn sample_outcome(&self, probabilities: &Array1<f64>) -> QuantRS2Result<usize> {
-        let mut rng = rand::rng();
-        use rand::Rng;
+        let mut rng = thread_rng();
+        use scirs2_core::random::prelude::*;
 
         let random_value: f64 = rng.random();
         let mut cumulative = 0.0;

@@ -8,8 +8,8 @@ use crate::{
     error::QuantRS2Result, gate::multi::*, gate::single::*, gate::GateOp, qubit::QubitId,
     variational::VariationalOptimizer,
 };
-use ndarray::{Array1, Array2};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 

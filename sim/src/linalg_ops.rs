@@ -6,8 +6,8 @@
 // Note: NdArrayExt would be used here if it was available in scirs2_core
 // For now, we'll use standard ndarray operations
 
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 
 /// Matrix-vector multiplication for quantum state evolution
 ///
@@ -178,7 +178,7 @@ pub fn is_unitary(matrix: &ArrayView2<Complex64>, tolerance: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::arr2;
+    use scirs2_core::ndarray::arr2;
 
     #[test]
     fn test_apply_unitary() {

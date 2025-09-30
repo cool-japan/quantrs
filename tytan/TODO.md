@@ -2,9 +2,9 @@
 
 **Last Updated: 2025-06-15**
 
-## Version 0.1.0-beta.1 Status
+## Version 0.1.0-beta.2 Status
 
-This beta release features enhanced SciRS2 v0.1.0-alpha.5 integration:
+This release features refined SciRS2 v0.1.0-beta.3 integration:
 - ✅ High-performance sparse matrix operations via SciRS2
 - ✅ Parallel optimization using `scirs2_core::parallel_ops`
 - ✅ SIMD-accelerated energy calculations

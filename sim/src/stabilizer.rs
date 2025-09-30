@@ -6,12 +6,12 @@
 //! for efficient data structures and operations.
 
 use crate::simulator::{Simulator, SimulatorResult};
-use ndarray::{Array2, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::GateOp;
 use quantrs2_core::prelude::*;
-use rand::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -249,7 +249,7 @@ impl StabilizerTableau {
                 }
 
                 // Random measurement outcome
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
                 let outcome = rng.gen_bool(0.5);
                 self.phase[p] = outcome;
 

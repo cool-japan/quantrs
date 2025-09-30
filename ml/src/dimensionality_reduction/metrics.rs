@@ -1,6 +1,7 @@
 //! Metrics for dimensionality reduction evaluation
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 
 /// Dimensionality reduction evaluation metrics
 #[derive(Debug, Clone)]
@@ -89,7 +90,7 @@ impl DimensionalityReductionMetrics {
         k: usize,
     ) -> f64 {
         // Placeholder implementation
-        0.8 + rand::random::<f64>() * 0.2
+        0.8 + thread_rng().gen::<f64>() * 0.2
     }
 
     /// Compute continuity
@@ -99,7 +100,7 @@ impl DimensionalityReductionMetrics {
         k: usize,
     ) -> f64 {
         // Placeholder implementation
-        0.7 + rand::random::<f64>() * 0.3
+        0.7 + thread_rng().gen::<f64>() * 0.3
     }
 }
 
@@ -117,7 +118,7 @@ impl ReconstructionMetrics {
         let r2_score = 1.0 - ss_res / ss_tot;
 
         // Placeholder correlation
-        let correlation = 0.8 + rand::random::<f64>() * 0.2;
+        let correlation = 0.8 + thread_rng().gen::<f64>() * 0.2;
 
         Self {
             mse,
@@ -133,10 +134,10 @@ impl ManifoldMetrics {
     pub fn compute(original_data: &Array2<f64>, embedded_data: &Array2<f64>, k: usize) -> Self {
         // Placeholder implementations
         Self {
-            lcmc: 0.75 + rand::random::<f64>() * 0.25,
-            trustworthiness: 0.8 + rand::random::<f64>() * 0.2,
-            continuity: 0.7 + rand::random::<f64>() * 0.3,
-            mrre: rand::random::<f64>() * 0.1,
+            lcmc: 0.75 + thread_rng().gen::<f64>() * 0.25,
+            trustworthiness: 0.8 + thread_rng().gen::<f64>() * 0.2,
+            continuity: 0.7 + thread_rng().gen::<f64>() * 0.3,
+            mrre: thread_rng().gen::<f64>() * 0.1,
         }
     }
 }

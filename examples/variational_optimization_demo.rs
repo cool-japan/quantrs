@@ -10,8 +10,8 @@ use quantrs2_core::{
     },
     gate::single::{Hadamard, PauliX},
 };
-use num_complex::Complex64;
-use ndarray::Array2;
+use scirs2_core::Complex64;
+use scirs2_core::ndarray::Array2;
 use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 

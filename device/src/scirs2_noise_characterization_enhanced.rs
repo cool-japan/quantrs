@@ -21,13 +21,13 @@ use crate::scirs2_hardware_benchmarks_enhanced::StatisticalAnalysis;
 // };
 // use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
 // use scirs2_sparse::CSRMatrix;
-use ndarray::{Array1, Array2, Array3, Array4, ArrayView2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
 use std::fmt;
-use rand_distr::{Distribution, Normal, Exp as Exponential};
+use scirs2_core::random::{Distribution, Normal, Exp as Exponential};
 // use statrs::statistics::{Statistics, OrderStatistics};
 // use statrs::distribution::{Beta, Gamma, Weibull};
 

@@ -4,8 +4,8 @@
 //! Ax = b, where A is a Hermitian matrix. The algorithm outputs a quantum state |x⟩
 //! proportional to the solution vector x.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Parameters for the HHL algorithm

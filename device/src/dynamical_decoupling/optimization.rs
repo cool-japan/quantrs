@@ -1,6 +1,6 @@
 //! DD sequence optimization using SciRS2
 
-use ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use std::collections::HashMap;
 
 use super::{

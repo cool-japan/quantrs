@@ -23,6 +23,7 @@
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use scirs2_core::random::prelude::*;
 
 // Core framework imports
 use quantrs2_anneal::{
@@ -187,8 +188,7 @@ fn demo_problem_formulations() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_classical_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     // Create a test problem (random spin glass)
     let mut model = IsingModel::new(20);
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     for i in 0..20 {
         for j in (i + 1)..20 {
@@ -250,8 +250,7 @@ fn demo_classical_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     // Create a larger sparse problem for CIM
     let mut large_model = IsingModel::new(100);
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
 
     // Create sparse connectivity (each node connected to ~5 others)
     for i in 0..100 {
@@ -651,8 +650,7 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
         // Create random problem
         let mut model = IsingModel::new(size);
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
 
         for i in 0..size {
             for j in (i + 1)..size {
@@ -735,7 +733,7 @@ fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Objective terms
     for i in 0..5 {
-        let _ = qubo.add_bias(i, rand::random::<f64>() - 0.5);
+        let _ = qubo.add_bias(i, thread_rng().gen::<f64>() - 0.5);
     }
 
     // Hard constraint: exactly 2 variables should be 1 (simplified implementation)
@@ -826,7 +824,7 @@ fn demo_visualization_analysis() -> Result<(), Box<dyn std::error::Error>> {
         let target = energies[0].2; // Ground state energy
         let decay = 0.95;
         current_energy =
-            target + (current_energy - target) * decay + (rand::random::<f64>() - 0.5) * 0.1;
+            target + (current_energy - target) * decay + (thread_rng().gen::<f64>() - 0.5) * 0.1;
         trace.push((step, current_energy));
     }
 

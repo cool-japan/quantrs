@@ -14,8 +14,8 @@
 //! - Fault-tolerant annealing procedures
 //! - Active error correction during annealing evolution
 
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

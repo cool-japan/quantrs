@@ -4,10 +4,11 @@
 //! computers, including random circuit generation, ideal simulation, heavy output
 //! probability calculation, and quantum volume determination.
 
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -137,7 +138,7 @@ impl QuantumVolumeCalculator {
         let rng = if let Some(seed) = params.seed {
             ChaCha8Rng::seed_from_u64(seed)
         } else {
-            ChaCha8Rng::from_rng(&mut rand::thread_rng())
+            ChaCha8Rng::from_rng(&mut thread_rng())
         };
 
         Self {

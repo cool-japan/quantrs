@@ -285,8 +285,8 @@ impl AdaptiveMeasurementManager {
                 crate::mid_circuit_measurements::results::SeasonalityAnalysis {
                     periods: vec![sp.period_length],
                     seasonal_strength: sp.seasonal_strength,
-                    seasonal_components: ndarray::Array1::zeros(sp.period_length),
-                    residual_components: ndarray::Array1::zeros(sp.period_length),
+                    seasonal_components: scirs2_core::ndarray::Array1::zeros(sp.period_length),
+                    residual_components: scirs2_core::ndarray::Array1::zeros(sp.period_length),
                 }
             }),
             volatility,
@@ -607,12 +607,12 @@ impl LearningState {
         }
     }
 
-    fn get_loss_history(&self) -> ndarray::Array1<f64> {
-        ndarray::Array1::from_vec(self.loss_history.iter().cloned().collect())
+    fn get_loss_history(&self) -> scirs2_core::ndarray::Array1<f64> {
+        scirs2_core::ndarray::Array1::from_vec(self.loss_history.iter().cloned().collect())
     }
 
-    fn get_accuracy_history(&self) -> ndarray::Array1<f64> {
-        ndarray::Array1::from_vec(self.accuracy_history.iter().cloned().collect())
+    fn get_accuracy_history(&self) -> scirs2_core::ndarray::Array1<f64> {
+        scirs2_core::ndarray::Array1::from_vec(self.accuracy_history.iter().cloned().collect())
     }
 }
 
@@ -698,10 +698,10 @@ impl TransferLearningEngine {
     fn analyze_feature_transferability(
         &self,
         measurement_history: &[MeasurementEvent],
-    ) -> DeviceResult<ndarray::Array1<f64>> {
+    ) -> DeviceResult<scirs2_core::ndarray::Array1<f64>> {
         // Simplified feature transferability analysis
         let n_features = 5; // latency, confidence, timestamp, success_rate, error_rate
-        Ok(ndarray::Array1::from_vec(vec![0.8, 0.7, 0.6, 0.9, 0.8]))
+        Ok(scirs2_core::ndarray::Array1::from_vec(vec![0.8, 0.7, 0.6, 0.9, 0.8]))
     }
 }
 

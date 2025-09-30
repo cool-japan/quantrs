@@ -587,7 +587,7 @@ impl MidCircuitExecutor {
             measurement_errors,
             classical_errors: Vec::new(),
             timing_violations: Vec::new(),
-            error_correlations: ndarray::Array2::zeros((0, 0)),
+            error_correlations: scirs2_core::ndarray::Array2::zeros((0, 0)),
         })
     }
 
@@ -812,11 +812,11 @@ impl Default for EffectSizeAnalysis {
 impl Default for CorrelationAnalysisResults {
     fn default() -> Self {
         Self {
-            pearson_correlations: ndarray::Array2::zeros((0, 0)),
-            spearman_correlations: ndarray::Array2::zeros((0, 0)),
-            kendall_correlations: ndarray::Array2::zeros((0, 0)),
+            pearson_correlations: scirs2_core::ndarray::Array2::zeros((0, 0)),
+            spearman_correlations: scirs2_core::ndarray::Array2::zeros((0, 0)),
+            kendall_correlations: scirs2_core::ndarray::Array2::zeros((0, 0)),
             significant_correlations: vec![],
-            partial_correlations: ndarray::Array2::zeros((0, 0)),
+            partial_correlations: scirs2_core::ndarray::Array2::zeros((0, 0)),
             network_analysis: CorrelationNetworkAnalysis::default(),
         }
     }
@@ -825,7 +825,7 @@ impl Default for CorrelationAnalysisResults {
 impl Default for CorrelationNetworkAnalysis {
     fn default() -> Self {
         Self {
-            adjacency_matrix: ndarray::Array2::zeros((0, 0)),
+            adjacency_matrix: scirs2_core::ndarray::Array2::zeros((0, 0)),
             centrality_measures: NodeCentralityMeasures::default(),
             communities: vec![],
             network_density: 0.0,
@@ -871,8 +871,8 @@ impl Default for NormalityAssessment {
 impl Default for MeasurementPredictionResults {
     fn default() -> Self {
         Self {
-            predictions: ndarray::Array1::zeros(0),
-            confidence_intervals: ndarray::Array2::zeros((0, 0)),
+            predictions: scirs2_core::ndarray::Array1::zeros(0),
+            confidence_intervals: scirs2_core::ndarray::Array2::zeros((0, 0)),
             timestamps: vec![],
             model_performance: PredictionModelPerformance::default(),
             uncertainty: PredictionUncertainty::default(),
@@ -896,10 +896,10 @@ impl Default for PredictionModelPerformance {
 impl Default for PredictionUncertainty {
     fn default() -> Self {
         Self {
-            aleatoric_uncertainty: ndarray::Array1::zeros(0),
-            epistemic_uncertainty: ndarray::Array1::zeros(0),
-            total_uncertainty: ndarray::Array1::zeros(0),
-            uncertainty_bounds: ndarray::Array2::zeros((0, 0)),
+            aleatoric_uncertainty: scirs2_core::ndarray::Array1::zeros(0),
+            epistemic_uncertainty: scirs2_core::ndarray::Array1::zeros(0),
+            total_uncertainty: scirs2_core::ndarray::Array1::zeros(0),
+            uncertainty_bounds: scirs2_core::ndarray::Array2::zeros((0, 0)),
         }
     }
 }
@@ -932,8 +932,8 @@ impl Default for LearningProgress {
         Self {
             iterations_completed: 0,
             current_learning_rate: 0.001,
-            loss_history: ndarray::Array1::zeros(0),
-            accuracy_history: ndarray::Array1::zeros(0),
+            loss_history: scirs2_core::ndarray::Array1::zeros(0),
+            accuracy_history: scirs2_core::ndarray::Array1::zeros(0),
             convergence_status: ConvergenceStatus::NotStarted,
         }
     }
@@ -968,7 +968,7 @@ impl Default for TransferLearningInsights {
         Self {
             transfer_effectiveness: 0.8,
             domain_similarity: 0.9,
-            feature_transferability: ndarray::Array1::zeros(0),
+            feature_transferability: scirs2_core::ndarray::Array1::zeros(0),
             adaptation_requirements: vec![],
             recommendations: vec![],
         }

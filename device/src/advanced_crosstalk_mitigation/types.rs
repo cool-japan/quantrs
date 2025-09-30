@@ -3,8 +3,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, SystemTime};
 use serde::{Deserialize, Serialize};
-use ndarray::{Array1, Array2, Array3};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::Complex64;
 
 use super::config::*;
 use crate::crosstalk::CrosstalkCharacterization;

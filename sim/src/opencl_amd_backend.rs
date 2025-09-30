@@ -16,7 +16,7 @@
 //! - Fallback to CPU when GPU is unavailable
 
 use crate::prelude::{SimulatorError, StateVectorSimulator};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

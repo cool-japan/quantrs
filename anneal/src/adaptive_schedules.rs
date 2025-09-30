@@ -16,8 +16,8 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::ChaCha8Rng;
 
 use crate::ising::{IsingModel, IsingError};
 use crate::simulator::{AnnealingParams, AnnealingSolution, TemperatureSchedule};
@@ -839,7 +839,7 @@ impl SchedulePredictionNetwork {
 
         let mut rng = match seed {
             Some(s) => ChaCha8Rng::seed_from_u64(s),
-            None => ChaCha8Rng::seed_from_u64(rand::random()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
         };
 
         let mut layers = Vec::new();
@@ -981,7 +981,7 @@ impl ScheduleRLAgent {
 
     /// Select action using epsilon-greedy policy
     pub fn select_action(&self, state: &[f64]) -> AdaptiveScheduleResult<usize> {
-        let mut rng = ChaCha8Rng::seed_from_u64(rand::random());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
 
         if rng.gen::<f64>() < self.config.min_epsilon {
             // Random exploration

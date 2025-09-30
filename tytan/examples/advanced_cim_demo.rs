@@ -1,6 +1,6 @@
 //! Advanced CIM demonstration with quantum noise and adaptive pumping.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::coherent_ising_machine::*;
 use quantrs2_tytan::sampler::Sampler;
 use std::collections::HashMap;

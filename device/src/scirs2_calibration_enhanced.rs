@@ -16,9 +16,12 @@ use rayon::prelude::*;
 // use scirs2_optimize::system_identification::{SystemIdentifier, ModelType, EstimationMethod};
 // use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
 // use scirs2_sparse::CSRMatrix;
-use ndarray::{Array1, Array2, Array3, ArrayView2};
-use num_complex::Complex64;
-use rand_distr::{Distribution, Normal};
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView2};
+use scirs2_core::Complex64;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{Distribution, RandNormal};
+// Alias for backward compatibility
+type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt;

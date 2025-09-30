@@ -5,8 +5,8 @@
 //! It includes real-time monitoring, alerting, data export, and integration
 //! with external monitoring systems.
 
-use ndarray::{Array1, Array2};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;

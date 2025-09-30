@@ -5,7 +5,7 @@
 //! It leverages tensor cores, optimized memory access patterns, and gate fusion for maximum performance.
 
 use crate::{error::QuantRS2Result, gate::GateOp, qubit::QubitId};
-use num_complex::Complex64;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

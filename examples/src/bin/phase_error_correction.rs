@@ -188,8 +188,8 @@ fn main() {
 // Helper function to extract the logical qubit state from the encoded state
 fn extract_logical_state(
     register: &quantrs2_core::register::Register<5>,
-) -> [num_complex::Complex64; 2] {
-    use num_complex::Complex64;
+) -> [scirs2_core::Complex64; 2] {
+    use scirs2_core::Complex64;
 
     // Get the amplitudes
     let amplitudes = register.amplitudes();

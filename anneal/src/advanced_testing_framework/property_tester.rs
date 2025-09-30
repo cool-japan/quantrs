@@ -1,7 +1,7 @@
 //! Property-based testing system
 
 use super::*;
-use rand::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng};
 
 /// Property-based testing system
 #[derive(Debug)]
@@ -414,14 +414,14 @@ impl PropertyBasedTester {
         &self,
         generator: &TestCaseGenerator,
     ) -> ApplicationResult<PropertyTestCase> {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
 
         let density = generator.parameters.get("density").unwrap_or(&0.3);
         let bias_range = generator.parameters.get("bias_range").unwrap_or(&1.0);
 
         Ok(PropertyTestCase {
-            id: format!("random_case_{}", rand::random::<u32>()),
+            id: format!("random_case_{}", thread_rng().gen::<u32>()),
             problem_spec: ProblemSpecification {
                 problem_type: ProblemType::RandomIsing,
                 size_range: (size, size),
@@ -460,7 +460,7 @@ impl PropertyBasedTester {
             generator.size_bounds.1,
         ];
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let size = boundary_sizes[rng.gen_range(0..boundary_sizes.len())];
 
         Ok(PropertyTestCase {
@@ -499,7 +499,7 @@ impl PropertyBasedTester {
         generator: &TestCaseGenerator,
     ) -> ApplicationResult<PropertyTestCase> {
         let num_classes = *generator.parameters.get("num_classes").unwrap_or(&5.0) as usize;
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let class_id = rng.gen_range(0..num_classes);
 
         // Define equivalence classes based on problem characteristics
@@ -511,7 +511,7 @@ impl PropertyBasedTester {
             _ => (ProblemType::RandomIsing, 0.3), // Default class
         };
 
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
 
         Ok(PropertyTestCase {
@@ -628,7 +628,7 @@ impl PropertyBasedTester {
         };
 
         // Simulate execution with some variability
-        let quality = 0.8 + (rand::random::<f64>() * 0.2);
+        let quality = 0.8 + (thread_rng().gen::<f64>() * 0.2);
         let execution_time = Duration::from_millis((size as u64 * 10).min(1000));
 
         Ok(TestExecutionResult {

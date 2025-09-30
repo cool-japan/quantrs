@@ -8,8 +8,8 @@ use crate::{
     matrix_ops::QuantumMatrix,
     tensor_network::{Tensor, TensorNetwork},
 };
-use ndarray::{Array1, Array2, ArrayD, Axis, IxDyn};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis, IxDyn};
+use scirs2_core::Complex64;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},
@@ -779,7 +779,7 @@ mod tests {
         let mut contractor = GpuTensorNetworkContractor::new(context).unwrap();
 
         // Create a simple tensor
-        let data = ndarray::Array::from_shape_vec(
+        let data = scirs2_core::ndarray::Array::from_shape_vec(
             IxDyn(&[2, 2]),
             vec![
                 Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),

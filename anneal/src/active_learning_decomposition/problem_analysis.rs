@@ -331,9 +331,9 @@ pub struct StructureTemplate {
 #[derive(Debug, Clone)]
 pub struct TemplateGraph {
     /// Template adjacency matrix
-    pub adjacency_matrix: ndarray::Array2<u8>,
+    pub adjacency_matrix: scirs2_core::ndarray::Array2<u8>,
     /// Template features
-    pub features: ndarray::Array1<f64>,
+    pub features: scirs2_core::ndarray::Array1<f64>,
     /// Template constraints
     pub constraints: Vec<TemplateConstraint>,
 }
@@ -399,7 +399,7 @@ pub struct ComplexityModel {
     /// Model type
     pub model_type: ComplexityModelType,
     /// Model parameters
-    pub parameters: ndarray::Array1<f64>,
+    pub parameters: scirs2_core::ndarray::Array1<f64>,
     /// Prediction accuracy
     pub accuracy: f64,
 }
@@ -410,7 +410,7 @@ pub struct DecomposabilityScorer {
     /// Scoring functions
     pub scoring_functions: Vec<ScoringFunction>,
     /// Score weights
-    pub score_weights: ndarray::Array1<f64>,
+    pub score_weights: scirs2_core::ndarray::Array1<f64>,
     /// Scoring cache
     pub scoring_cache: HashMap<String, DecomposabilityScore>,
 }
@@ -435,7 +435,7 @@ impl DecomposabilityScorer {
                     weight: 0.3,
                 },
             ],
-            score_weights: ndarray::Array1::from_vec(vec![0.4, 0.3, 0.3]),
+            score_weights: scirs2_core::ndarray::Array1::from_vec(vec![0.4, 0.3, 0.3]),
             scoring_cache: HashMap::new(),
         }
     }

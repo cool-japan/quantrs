@@ -6,9 +6,9 @@
 // Sampler types available for ML applications
 #![allow(dead_code)]
 
-use ndarray::{Array1, Array2};
-use rand::prelude::*;
-use rand::rng;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Feature selector using quantum optimization
@@ -421,8 +421,8 @@ impl QuantumFeatureSelector {
         }
 
         let joint_probs = &joint_counts / feature.len() as f64;
-        let feature_probs = joint_probs.sum_axis(ndarray::Axis(1));
-        let target_probs = joint_probs.sum_axis(ndarray::Axis(0));
+        let feature_probs = joint_probs.sum_axis(scirs2_core::ndarray::Axis(1));
+        let target_probs = joint_probs.sum_axis(scirs2_core::ndarray::Axis(0));
 
         // Compute MI
         let mut mi = 0.0;
@@ -501,9 +501,9 @@ impl QuantumFeatureSelector {
         // In practice, would train model and extract importances
 
         let n_features = self.features.feature_names.len();
-        let mut rng = rng();
+        let mut rng = thread_rng();
 
-        Ok(Array1::from_shape_fn(n_features, |_| rng.random::<f64>()))
+        Ok(Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()))
     }
 
     /// Add feature interaction terms
@@ -1057,8 +1057,8 @@ impl HyperparameterOptimizer {
         // In practice, would use Gaussian process or similar
 
         // Random performance for demonstration
-        let mut rng = rng();
-        Ok(rng.random::<f64>())
+        let mut rng = thread_rng();
+        Ok(rng.gen::<f64>())
     }
 
     /// Add tunneling terms
@@ -1244,23 +1244,23 @@ mod tests {
         let n_samples = 100;
         let n_features = 10;
 
-        let mut rng = rng();
-        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.random::<f64>());
-        let target = Array1::from_shape_fn(n_samples, |_| rng.random::<f64>());
+        let mut rng = thread_rng();
+        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.gen::<f64>());
+        let target = Array1::from_shape_fn(n_samples, |_| rng.gen::<f64>());
 
         let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{}", i)).collect();
 
         let mut feature_types = vec![FeatureType::Continuous; n_features];
 
         let statistics = FeatureStatistics {
-            means: data.mean_axis(ndarray::Axis(0)).unwrap(),
-            stds: data.std_axis(ndarray::Axis(0), 0.0),
-            target_correlations: Array1::from_shape_fn(n_features, |_| rng.random::<f64>()),
+            means: data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
+            stds: data.std_axis(scirs2_core::ndarray::Axis(0), 0.0),
+            target_correlations: Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()),
             feature_correlations: Array2::from_shape_fn((n_features, n_features), |(i, j)| {
                 if i == j {
                     1.0
                 } else {
-                    rng.random::<f64>() * 0.5
+                    rng.gen::<f64>() * 0.5
                 }
             }),
             missing_counts: Array1::zeros(n_features),

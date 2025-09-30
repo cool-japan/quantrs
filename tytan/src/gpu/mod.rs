@@ -3,8 +3,8 @@
 //! This module provides GPU-accelerated implementations for
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
-use ndarray::{Array, ArrayD, Ix2};
-use rand::{thread_rng, Rng};
+use scirs2_core::ndarray::{Array, ArrayD, Ix2};
+use scirs2_core::random::{thread_rng, Rng};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -120,7 +120,7 @@ pub fn gpu_solve_qubo(
         let mut results = Vec::new();
 
         for i in 0..shots {
-            let mut state = binary_states.slice(ndarray::s![i, ..]);
+            let mut state = binary_states.slice(scirs2_core::ndarray::s![i, ..]);
             let mut energy = energies[[i, 0]];
 
             // Create variable assignment dictionary

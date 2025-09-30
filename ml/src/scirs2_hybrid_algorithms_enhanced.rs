@@ -5,6 +5,7 @@
 //! tuning, and comprehensive benchmarking powered by SciRS2's optimization tools.
 
 use quantrs2_core::{
+use scirs2_core::random::prelude::*;
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
@@ -17,8 +18,8 @@ use scirs2_core::platform::PlatformCapabilities;
 use scirs2_optimize::optimization::{Optimizer, OptimizationAlgorithm, ConvergenceCriteria};
 use scirs2_optimize::gradient::{GradientCalculator, FiniteDifference, ParameterShift};
 use scirs2_linalg::{Matrix, Vector, Eigendecomposition};
-use ndarray::{Array1, Array2, ArrayView1};
-use num_complex::Complex64;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, BTreeMap};
 use std::sync::{Arc, Mutex};
@@ -657,7 +658,7 @@ impl EnhancedHybridExecutor {
 
     fn initialize_parameters(&self, num_params: usize) -> Array1<f64> {
         Array1::from_shape_fn(num_params, |_| {
-            rand::random::<f64>() * 2.0 * std::f64::consts::PI
+            thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI
         })
     }
 
@@ -666,10 +667,10 @@ impl EnhancedHybridExecutor {
         Array1::from_shape_fn(2 * num_layers, |i| {
             if i < num_layers {
                 // Beta parameters
-                rand::random::<f64>() * std::f64::consts::PI
+                thread_rng().gen::<f64>() * std::f64::consts::PI
             } else {
                 // Gamma parameters
-                rand::random::<f64>() * 2.0 * std::f64::consts::PI
+                thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI
             }
         })
     }
@@ -950,7 +951,7 @@ impl EnhancedHybridExecutor {
                 if i < params.len() {
                     params[i]
                 } else {
-                    rand::random::<f64>() * std::f64::consts::PI
+                    thread_rng().gen::<f64>() * std::f64::consts::PI
                 }
             });
 
@@ -1274,7 +1275,7 @@ impl EnhancedHybridExecutor {
 
         for _ in 0..samples {
             let perturbation = Array1::from_shape_fn(optimal_params.len(), |_| {
-                (rand::random::<f64>() - 0.5) * 2.0 * radius
+                (thread_rng().gen::<f64>() - 0.5) * 2.0 * radius
             });
             let point = optimal_params + &perturbation;
             let cost = cost_function(&point)?;
@@ -2108,7 +2109,7 @@ trait OptimizationModel: Send + Sync {
 }
 
 // Macro imports
-use ndarray::s;
+use scirs2_core::ndarray::s;
 
 impl fmt::Display for VQEResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

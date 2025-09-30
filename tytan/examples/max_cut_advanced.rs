@@ -6,7 +6,7 @@
 //! - Performance benchmarking across different graph types
 //! - Cut quality analysis and visualization
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::{
     analysis::graph::{
         analyze_graph, generate_complete_graph, generate_graph, generate_grid_graph,

@@ -3,7 +3,7 @@
 //! This module provides SciRS2-style automatic differentiation capabilities
 //! for computing gradients of quantum circuits and variational algorithms.
 
-use ndarray::{Array1, Array2};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
