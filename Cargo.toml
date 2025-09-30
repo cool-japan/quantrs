@@ -81,7 +81,7 @@ quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-bet
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray = { version = "0.16.1", features = ["rayon", "serde"] }  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-nalgebra = "0.33.2"
+nalgebra = "0.34.1"
 ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
 ndarray-rand = "0.15"
 ndarray-stats = "0.6"
@@ -160,7 +160,7 @@ futures = "0.3"
 async-trait = "0.1"
 
 # Python bindings and FFI
-pyo3 = { version = "0.25.1", features = ["extension-module"] }
+pyo3 = { version = "0.26.0", features = ["extension-module"] }
 numpy = "0.25"
 
 # Utility libraries
