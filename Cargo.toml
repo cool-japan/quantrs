@@ -161,7 +161,7 @@ async-trait = "0.1"
 
 # Python bindings and FFI
 pyo3 = { version = "0.25.1", features = ["extension-module"] }
-numpy = "0.25"
+numpy = "0.26"
 
 # Utility libraries
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
