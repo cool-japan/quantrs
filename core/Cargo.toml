@@ -26,8 +26,8 @@ smallvec.workspace = true
 rustc-hash.workspace = true
 # rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 # rand_chacha.workspace = true          # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
-rayon.workspace = true
-ndarray-linalg.workspace = true
+# rayon.workspace = true                # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+# ndarray-linalg.workspace = true       # REMOVED: Use scirs2_core (SciRS2 POLICY)
 serde.workspace = true
 tokio.workspace = true
 uuid.workspace = true
@@ -41,7 +41,7 @@ regex.workspace = true
 # Symbolic computation with SymEngine
 quantrs2-symengine = { workspace = true, optional = true }
 quantrs2-symengine-sys = { workspace = true, optional = true }
-num-traits.workspace = true
+# num-traits.workspace = true           # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
 numpy = { workspace = true, optional = true }
 chrono.workspace = true

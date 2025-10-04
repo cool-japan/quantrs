@@ -14,8 +14,8 @@ description = "Quantum circuit simulators for the QuantRS2 framework"
 quantrs2-core.workspace = true
 quantrs2-circuit.workspace = true
 # num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
-# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-rayon.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 thiserror.workspace = true
 # SciRS2 dependencies (SCIRS2 POLICY)
 scirs2.workspace = true
@@ -38,17 +38,17 @@ futures = { workspace = true, optional = true }
 # rand_xoshiro.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 wide.workspace = true
 fastrand.workspace = true
-nalgebra-sparse.workspace = true
+# nalgebra-sparse.workspace = true  # REMOVED: Use scirs2_sparse (SciRS2 POLICY)
 dashmap.workspace = true
 half.workspace = true
-ndarray-linalg.workspace = true
+# ndarray-linalg.workspace = true  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
 num_cpus.workspace = true
 ndrustfft = { workspace = true, optional = true }
 sprs = { workspace = true, optional = true }
-nalgebra = { workspace = true, optional = true }
+# nalgebra = { workspace = true, optional = true }  # REMOVED: Use scirs2_linalg (SciRS2 POLICY)
 md5.workspace = true
 regex.workspace = true
 tempfile.workspace = true
@@ -65,7 +65,7 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math using external libs
+advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs"] # Enable advanced math using external libs (nalgebra removed per SciRS2 POLICY)
 mps = [] # Enable MPS simulator
 
 [[bin]]

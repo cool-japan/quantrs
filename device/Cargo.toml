@@ -22,8 +22,8 @@ fastrand.workspace = true
 bincode.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-rayon.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 num_cpus.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
