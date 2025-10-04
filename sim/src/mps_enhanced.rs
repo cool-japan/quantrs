@@ -5,7 +5,7 @@
 
 use crate::scirs2_integration::SciRS2Backend;
 use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
-use ndarray_linalg::{qr::QR, svd::SVD};
+use scirs2_core::ndarray::ndarray_linalg::{QR, SVD};  // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
@@ -1008,8 +1008,8 @@ impl EnhancedMPS {
             eprintln!("DEBUG: Reduced density matrix: {:?}", rho);
 
             // Compute eigenvalues
-            use ndarray_linalg::Eigh;
-            let (eigenvalues, _) = rho.eigh(ndarray_linalg::UPLO::Lower).map_err(|e| {
+            use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO};  // SciRS2 POLICY compliant
+            let (eigenvalues, _) = rho.eigh(UPLO::Lower).map_err(|e| {
                 QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {}", e))
             })?;
 
@@ -1037,6 +1037,7 @@ impl EnhancedMPS {
         let tensor = &self.tensors[cut_position];
 
         // Reshape and compute SVD
+        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
         let mut matrix = Array2::<Complex64>::zeros((tensor.left_dim * 2, tensor.right_dim));
         for l in 0..tensor.left_dim {
             for p in 0..2 {
@@ -1283,7 +1284,7 @@ impl EnhancedMPS {
         &self,
         matrix: &Array2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
-        use ndarray_linalg::SVD;
+        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
 
         // Perform SVD using ndarray-linalg
         let (u, s, vt) = matrix

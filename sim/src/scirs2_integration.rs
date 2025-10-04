@@ -12,7 +12,7 @@
 //! - GPU-ready abstractions for heterogeneous computing
 
 use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
-use ndarray_linalg::Norm;
+use scirs2_core::ndarray::ndarray_linalg::Norm;  // SciRS2 POLICY compliant
 #[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
 use scirs2_core::Complex64;
@@ -22,11 +22,8 @@ use std::sync::{Arc, Mutex};
 
 // Core SciRS2 integration imports
 use quantrs2_core::prelude::QuantRS2Error as SciRS2Error;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
 use scirs2_core::simd_ops::SimdUnifiedOps;
-
-// Import rayon for parallel processing
-use rayon::prelude::*;
 
 use crate::error::{Result, SimulatorError};
 use scirs2_core::random::prelude::*;
@@ -399,18 +396,18 @@ pub struct SciRS2ParallelContext {
     /// Number of worker threads
     pub num_threads: usize,
     /// Thread pool for parallel execution
-    pub thread_pool: rayon::ThreadPool,
+    pub thread_pool: ThreadPool,  // SciRS2 POLICY compliant
     /// NUMA topology awareness
     pub numa_aware: bool,
 }
 
 impl Default for SciRS2ParallelContext {
     fn default() -> Self {
-        let num_threads = rayon::current_num_threads();
-        let thread_pool = rayon::ThreadPoolBuilder::new()
+        let num_threads = current_num_threads();  // SciRS2 POLICY compliant
+        let thread_pool = ThreadPoolBuilder::new()  // SciRS2 POLICY compliant
             .num_threads(num_threads)
             .build()
-            .unwrap_or_else(|_| rayon::ThreadPoolBuilder::new().build().unwrap());
+            .unwrap_or_else(|_| ThreadPoolBuilder::new().build().unwrap());
 
         Self {
             num_threads,
@@ -1033,6 +1030,7 @@ impl SparseMatrix {
     }
 
     pub fn matvec(&self, vector: &Vector, result: &mut Vector) -> Result<()> {
+        // TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
 
         // Convert our Vector to nalgebra DVector
@@ -1063,7 +1061,7 @@ impl SparseMatrix {
     }
 
     pub fn solve(&self, rhs: &Vector) -> Result<Vector> {
-        // Improved sparse solver using nalgebra-sparse capabilities
+        // TEMPORARY: Using nalgebra-sparse until refactored to scirs2_sparse (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
         use nalgebra_sparse::SparseEntry;
         use sprs::CsMat;
@@ -1227,7 +1225,7 @@ pub struct LAPACK;
 impl LAPACK {
     pub fn svd(matrix: &Matrix) -> Result<SvdResult> {
         // Use ndarray-linalg SVD for complex matrices
-        use ndarray_linalg::SVD;
+        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
 
         let svd_result = matrix
             .data
@@ -1256,7 +1254,7 @@ impl LAPACK {
 
     pub fn eig(matrix: &Matrix) -> Result<EigResult> {
         // Eigenvalue decomposition using SciRS2
-        use ndarray_linalg::Eig;
+        use scirs2_core::ndarray::ndarray_linalg::Eig;  // SciRS2 POLICY compliant
 
         let eig_result = matrix.data.eig().map_err(|_| {
             SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string())
@@ -1323,7 +1321,7 @@ impl LAPACK {
 
     pub fn qr(matrix: &Matrix) -> Result<(Matrix, Matrix)> {
         // QR decomposition using ndarray-linalg
-        use ndarray_linalg::QR;
+        use scirs2_core::ndarray::ndarray_linalg::QR;  // SciRS2 POLICY compliant
 
         let (q, r) = matrix
             .data
@@ -1569,6 +1567,7 @@ impl SparseSolvers {
         tolerance: f64,
         max_iterations: usize,
     ) -> Result<Vector> {
+        // TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
 
         let b_array = b.to_array1()?;
@@ -1994,7 +1993,7 @@ pub struct AdvancedLinearAlgebra;
 impl AdvancedLinearAlgebra {
     /// QR decomposition with pivoting
     pub fn qr_decomposition(matrix: &Matrix) -> Result<QRResult> {
-        use ndarray_linalg::QR;
+        use scirs2_core::ndarray::ndarray_linalg::QR;  // SciRS2 POLICY compliant
 
         let qr_result = matrix
             .data
@@ -2010,11 +2009,11 @@ impl AdvancedLinearAlgebra {
 
     /// Cholesky decomposition for positive definite matrices
     pub fn cholesky_decomposition(matrix: &Matrix) -> Result<Matrix> {
-        use ndarray_linalg::Cholesky;
+        use scirs2_core::ndarray::ndarray_linalg::{Cholesky, UPLO};  // SciRS2 POLICY compliant
 
         let chol_result = matrix
             .data
-            .cholesky(ndarray_linalg::UPLO::Lower)
+            .cholesky(UPLO::Lower)
             .map_err(|_| {
                 SimulatorError::ComputationError("Cholesky decomposition failed".to_string())
             })?;

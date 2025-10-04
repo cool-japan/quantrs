@@ -167,6 +167,32 @@ if PlatformCapabilities::current().has_avx2() {
 }
 ```
 
+### 🚨 NO DIRECT EXTERNAL DEPENDENCIES POLICY
+
+**CRITICAL**: QuantRS2 crates MUST NOT use external dependencies directly. All external dependencies MUST go through SciRS2-Core abstractions.
+
+#### ❌ FORBIDDEN in Cargo.toml (POLICY VIOLATIONS)
+```toml
+[dependencies]
+rand = { workspace = true }              # ❌ Use scirs2_core::random
+rand_distr = { workspace = true }        # ❌ Use scirs2_core::random
+ndarray = { workspace = true }           # ❌ Use scirs2_core::ndarray
+num-complex = { workspace = true }       # ❌ Use scirs2_core
+num-traits = { workspace = true }        # ❌ Use scirs2_core::numeric
+rayon = { workspace = true }             # ❌ Use scirs2_core::parallel_ops
+nalgebra = { workspace = true }          # ❌ Use scirs2_linalg
+ndarray-linalg = { workspace = true }    # ❌ Use scirs2_linalg
+```
+
+#### ✅ REQUIRED in Cargo.toml
+```toml
+[dependencies]
+scirs2-core = { workspace = true, features = ["array", "random", "parallel"] }
+scirs2-linalg = { workspace = true }  # For linear algebra operations
+scirs2-sparse = { workspace = true }  # For sparse matrices
+# Other SciRS2 crates as needed
+```
+
 ### FULL USE OF SciRS2-Core for Quantum Computing
 
 QuantRS2 must make **FULL USE** of scirs2-core's quantum-relevant capabilities:
@@ -238,6 +264,12 @@ use scirs2_core::memory_efficient::AdaptiveChunking;
 - Use `scirs2_stats` for measurement statistics
 - Use `scirs2_metrics` for fidelity calculations
 - Use `scirs2_core::random` for noise modeling
+
+### Current SciRS2 Version
+
+**QuantRS2 uses SciRS2 v0.1.0-rc.1** (Release Candidate)
+- NumRS2: v0.1.0-beta.3
+- All dependencies MUST be compatible with this version
 
 ### Migration Checklist - Ensure Full SciRS2 Usage
 

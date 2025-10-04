@@ -172,9 +172,10 @@ impl GateSequenceCompressor {
         &mut self,
         gates: &[Box<dyn GateOp>],
     ) -> QuantRS2Result<Vec<CompressedGate>> {
-        // Set up parallel execution if configured
+        // Set up parallel execution if configured (SciRS2 POLICY compliant)
         if let Some(threads) = self.config.num_threads {
-            rayon::ThreadPoolBuilder::new()
+            use scirs2_core::parallel_ops::ThreadPoolBuilder;
+            ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .build_global()
                 .map_err(|e| QuantRS2Error::InvalidInput(e.to_string()))?;

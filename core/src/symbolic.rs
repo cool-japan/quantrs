@@ -9,7 +9,7 @@ pub use quantrs2_symengine::{Expression as SymEngine, SymEngineError, SymEngineR
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::Complex64;
-use num_traits::{One, Zero};
+use scirs2_core::num_traits::{One, Zero};  // SciRS2 POLICY compliant
 use std::collections::HashMap;
 use std::fmt;
 

@@ -4,7 +4,10 @@
 //! simulation of large Clifford circuits, providing better memory usage and
 //! performance for circuits with many qubits.
 
-use nalgebra_sparse::{CooMatrix, CsrMatrix};
+// TEMPORARY: Using nalgebra_sparse until refactored to scirs2_sparse (VIOLATES SciRS2 POLICY)
+// TODO: Refactor to use scirs2_sparse API (different from nalgebra_sparse)
+// See: https://github.com/cool-japan/quantrs/issues/XXX
+use nalgebra_sparse::{CooMatrix, CsrMatrix};  // TEMPORARY - awaiting refactoring
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 

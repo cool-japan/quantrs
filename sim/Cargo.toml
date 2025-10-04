@@ -18,14 +18,13 @@ quantrs2-circuit.workspace = true
 # rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 thiserror.workspace = true
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg"] }
 scirs2-autograd.workspace = true
 scirs2-linalg.workspace = true
 scirs2-sparse.workspace = true
 scirs2-fft.workspace = true
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
-pyo3.workspace = true
+pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
 
 # For GPU support (optional)
 wgpu = { workspace = true, optional = true }
@@ -38,7 +37,12 @@ futures = { workspace = true, optional = true }
 # rand_xoshiro.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 wide.workspace = true
 fastrand.workspace = true
-# nalgebra-sparse.workspace = true  # REMOVED: Use scirs2_sparse (SciRS2 POLICY)
+# TEMPORARY: nalgebra-sparse for clifford_sparse.rs features (VIOLATES SciRS2 POLICY)
+# TODO: Refactor clifford_sparse.rs to use scirs2_sparse (different API)
+nalgebra-sparse.workspace = true  # TEMPORARY - awaiting refactoring
+# TEMPORARY: nalgebra for scirs2_integration.rs SparseMatrix (VIOLATES SciRS2 POLICY)
+# TODO: Refactor SparseMatrix to use scirs2_linalg (different API)
+nalgebra = { workspace = true, optional = true }  # TEMPORARY - awaiting refactoring
 dashmap.workspace = true
 half.workspace = true
 # ndarray-linalg.workspace = true  # REMOVED: Use scirs2_core (SciRS2 POLICY)
@@ -65,8 +69,9 @@ gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
 simd = []
 optimize = ["simd"] # Enable optimized implementations
 memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
-advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs"] # Enable advanced math using external libs (nalgebra removed per SciRS2 POLICY)
+advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math (TEMPORARY nalgebra for SparseMatrix)
 mps = [] # Enable MPS simulator
+python = ["dep:pyo3"]  # Enable Python interop features
 
 [[bin]]
 name = "test_stabilizer"

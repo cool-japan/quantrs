@@ -7,8 +7,7 @@
 use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
-use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng as RngTrait, SeedableRng, ChaCha8Rng};  // Rename to avoid conflict
 use scirs2_core::parallel_ops::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -583,20 +582,6 @@ impl QuantumVolumeCalculator {
         }
 
         Ok(results)
-    }
-}
-
-/// Utility trait for shuffling
-trait SliceMutExt<T> {
-    fn shuffle(&mut self, rng: &mut impl Rng);
-}
-
-impl<T> SliceMutExt<T> for [T] {
-    fn shuffle(&mut self, rng: &mut impl Rng) {
-        for i in (1..self.len()).rev() {
-            let j = rng.gen_range(0..=i);
-            self.swap(i, j);
-        }
     }
 }
 

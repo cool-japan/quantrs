@@ -20,7 +20,6 @@ thiserror.workspace = true
 # ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-optimize.workspace = true

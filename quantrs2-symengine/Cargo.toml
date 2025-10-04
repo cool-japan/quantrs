@@ -19,7 +19,6 @@ thiserror.workspace = true
 # num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 
 [dev-dependencies]

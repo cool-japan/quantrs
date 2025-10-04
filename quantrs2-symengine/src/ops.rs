@@ -1,7 +1,7 @@
 //! Additional mathematical operations for SymEngine expressions.
 
 use crate::Expression;
-use num_traits::{One, Zero};
+use scirs2_core::num_traits::{One, Zero};  // SciRS2 POLICY compliant
 
 /// Mathematical constants
 pub mod constants {

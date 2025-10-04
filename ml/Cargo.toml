@@ -20,7 +20,6 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-neural.workspace = true

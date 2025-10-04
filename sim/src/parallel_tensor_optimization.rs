@@ -36,7 +36,7 @@ pub struct ParallelTensorConfig {
 impl Default for ParallelTensorConfig {
     fn default() -> Self {
         Self {
-            num_threads: rayon::current_num_threads(),
+            num_threads: current_num_threads(),  // SciRS2 POLICY compliant
             chunk_size: 1024,
             enable_work_stealing: true,
             parallel_threshold_bytes: 1024 * 1024, // 1MB
@@ -198,7 +198,7 @@ pub struct ParallelTensorEngine {
     /// Configuration
     config: ParallelTensorConfig,
     /// Worker thread pool
-    thread_pool: rayon::ThreadPool,
+    thread_pool: ThreadPool,  // SciRS2 POLICY compliant
     /// Performance statistics
     stats: Arc<Mutex<ParallelTensorStats>>,
 }
@@ -225,7 +225,7 @@ pub struct ParallelTensorStats {
 impl ParallelTensorEngine {
     /// Create new parallel tensor engine
     pub fn new(config: ParallelTensorConfig) -> Result<Self> {
-        let thread_pool = rayon::ThreadPoolBuilder::new()
+        let thread_pool = ThreadPoolBuilder::new()  // SciRS2 POLICY compliant
             .num_threads(config.num_threads)
             .build()
             .map_err(|e| {
@@ -565,7 +565,7 @@ pub struct NumaTopology {
 
 impl Default for NumaTopology {
     fn default() -> Self {
-        let num_cores = rayon::current_num_threads();
+        let num_cores = current_num_threads();  // SciRS2 POLICY compliant
         Self {
             num_nodes: 1,
             cores_per_node: vec![num_cores],

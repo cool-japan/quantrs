@@ -5,6 +5,8 @@
 
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag, DagNode};
+// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
+// TODO: Refactor to use scirs2_core::Complex64 and scirs2_core::ndarray::Array2
 use nalgebra::{Complex, DMatrix};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},

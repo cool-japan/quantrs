@@ -4,6 +4,8 @@
 //! allowing fine-grained optimization and hardware-specific calibration.
 
 use crate::builder::Circuit;
+// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
+// TODO: Refactor to use scirs2_core::Complex64
 use nalgebra::Complex;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},

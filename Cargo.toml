@@ -50,7 +50,7 @@ cast_possible_wrap = "warn"
 dbg_macro = "warn"
 missing_docs_in_private_items = "allow"
 ambiguous_glob_reexports = "allow"
-fn_address_comparisons = "allow"
+unpredictable_function_pointer_comparisons = "allow"  # Renamed from fn_address_comparisons
 elided_lifetimes_in_paths = "allow"
 ptr_eq = "allow"
 
@@ -81,7 +81,9 @@ quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-bet
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray = { version = "0.16.1", features = ["rayon", "serde"] }  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
-# nalgebra = "0.33.2"            # REMOVED: Use scirs2_linalg (SciRS2 POLICY)
+# TEMPORARY: nalgebra for quantrs2-circuit synthesis features (VIOLATES SciRS2 POLICY)
+# TODO: Remove after refactoring synthesis.rs, tensor_network.rs, pulse.rs
+nalgebra = "0.33.2"            # TEMPORARY - awaiting refactoring
 # ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 # ndarray-rand = "0.15"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # ndarray-stats = "0.6"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
@@ -94,7 +96,6 @@ wide = "0.7.33"
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-scirs2 = { version = "0.1.0-rc.1", features = ["standard", "linalg"], default-features = false }
 scirs2-core = { version = "0.1.0-rc.1", default-features = false }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
@@ -107,16 +108,10 @@ scirs2-fft = { version = "0.1.0-rc.1", default-features = false }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
 scirs2-neural = { version = "0.1.0-rc.1", default-features = false }
-scirs2-signal = { version = "0.1.0-rc.1", default-features = false }
 scirs2-metrics = { version = "0.1.0-rc.1", default-features = false }
 scirs2-stats = { version = "0.1.0-rc.1", default-features = false }
 scirs2-cluster = { version = "0.1.0-rc.1", default-features = false }
 scirs2-graph = { version = "0.1.0-rc.1", default-features = false }
-scirs2-spatial = { version = "0.1.0-rc.1", default-features = false }
-
-# DOMAIN-SPECIFIC (Optional)
-scirs2-series = { version = "0.1.0-rc.1", default-features = false }
-scirs2-datasets = { version = "0.1.0-rc.1", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) - TEMPORARILY DISABLED DUE TO COMPILATION ISSUES
 # optirs = { path = "../optirs/optirs", default-features = false }

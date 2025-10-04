@@ -15,7 +15,6 @@ description = "Core types and traits for the QuantRS2 quantum computing framewor
 thiserror.workspace = true
 # ndarray.workspace = true              # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 # SciRS2 foundation dependencies
-scirs2.workspace = true
 scirs2-core = { workspace = true, features = ["simd", "parallel"] }
 scirs2-autograd.workspace = true
 scirs2-linalg.workspace = true

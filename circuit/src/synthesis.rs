@@ -4,6 +4,8 @@
 //! descriptions. It includes various decomposition strategies for different gate sets.
 
 use crate::builder::Circuit;
+// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
+// TODO: Refactor to use scirs2_core::Complex64 and scirs2_core::ndarray::Array2
 use nalgebra::{Complex, DMatrix, Matrix2, Matrix4};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -139,16 +141,16 @@ impl SingleQubitSynthesizer {
         let su11 = su[(1, 1)];
 
         // Calculate ZYZ angles
-        let gamma = 2.0 * (su01.norm()).atan2(su00.norm());
+        let gamma: f64 = 2.0 * (su01.norm()).atan2(su00.norm());
 
-        let beta = if gamma.abs() < self.config.tolerance {
+        let beta: f64 = if gamma.abs() < self.config.tolerance {
             // Special case: no Y rotation needed
             0.0
         } else {
             (su01.im).atan2(su01.re) - (su00.im).atan2(su00.re)
         };
 
-        let delta = if gamma.abs() < self.config.tolerance {
+        let delta: f64 = if gamma.abs() < self.config.tolerance {
             // Special case: just a Z rotation
             (su11.im).atan2(su11.re) - (su00.im).atan2(su00.re)
         } else {

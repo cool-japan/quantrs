@@ -372,7 +372,9 @@ impl GpuBackend for CpuBackend {
     }
 
     fn device_info(&self) -> String {
-        format!("CPU backend with {} threads", rayon::current_num_threads())
+        // Use scirs2_core::parallel_ops (SciRS2 POLICY compliant)
+        use scirs2_core::parallel_ops::current_num_threads;
+        format!("CPU backend with {} threads", current_num_threads())
     }
 
     fn allocate_state_vector(&self, n_qubits: usize) -> QuantRS2Result<Box<dyn GpuBuffer>> {

@@ -1,6 +1,8 @@
 use crate::simulator::Simulator; // Local simulator trait
 use scirs2_core::Complex64;
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
 use pyo3::PyResult;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator; // Circuit simulator trait
@@ -191,6 +193,7 @@ impl DynamicCircuit {
     }
 
     /// Get the qubit for single-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> PyResult<u32> {
         // Placeholder for visualization - in a real implementation, we would track this information
         let gate_name = gate_type.to_string();
@@ -225,6 +228,7 @@ impl DynamicCircuit {
     }
 
     /// Get the parameters for a rotation gate
+    #[cfg(feature = "python")]
     pub fn get_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -253,6 +257,7 @@ impl DynamicCircuit {
     }
 
     /// Get the parameters for a two-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_two_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -281,6 +286,7 @@ impl DynamicCircuit {
     }
 
     /// Get the parameters for a controlled rotation gate
+    #[cfg(feature = "python")]
     pub fn get_controlled_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -309,6 +315,7 @@ impl DynamicCircuit {
     }
 
     /// Get the parameters for a three-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_three_qubit_params_for_gate(
         &self,
         gate_type: &str,

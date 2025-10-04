@@ -14,13 +14,15 @@ description = "Quantum circuit representation and DSL for the QuantRS2 framework
 quantrs2-core.workspace = true
 # num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray.workspace = true              # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
-# nalgebra.workspace = true             # REMOVED: Use scirs2_linalg (SciRS2 POLICY)
+# TEMPORARY: nalgebra for synthesis/tensor_network features (VIOLATES SciRS2 POLICY)
+# TODO: Refactor synthesis.rs and tensor_network.rs to use scirs2_linalg/ndarray
+# See: https://github.com/cool-japan/quantrs/issues/XXX
+nalgebra.workspace = true  # TEMPORARY - awaiting refactoring (SciRS2 POLICY VIOLATION)
 thiserror.workspace = true
-pyo3.workspace = true
+pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
 # rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 serde.workspace = true
 # SciRS2 foundation dependencies
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-graph.workspace = true
@@ -37,5 +39,10 @@ uuid.workspace = true
 
 [dev-dependencies]
 # num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+
+[features]
+default = []
+python = ["dep:pyo3"]  # Enable Python interop features
+
 [lints]
 workspace = true

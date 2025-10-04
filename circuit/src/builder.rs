@@ -410,6 +410,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get a qubit for a specific single-qubit gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> pyo3::PyResult<u32> {
         self.find_gate_by_type_and_index(gate_type, index)
             .and_then(|gate| {
@@ -428,6 +429,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get rotation parameters (qubit, angle) for a specific gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -453,6 +455,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get two-qubit parameters (control, target) for a specific gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_two_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -475,6 +478,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get controlled rotation parameters (control, target, angle) for a specific gate
+    #[cfg(feature = "python")]
     pub fn get_controlled_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -500,6 +504,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get three-qubit parameters for gates like Toffoli or Fredkin
+    #[cfg(feature = "python")]
     pub fn get_three_qubit_params_for_gate(
         &self,
         gate_type: &str,

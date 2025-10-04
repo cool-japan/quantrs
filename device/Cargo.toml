@@ -27,7 +27,6 @@ serde_json.workspace = true
 num_cpus.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-stats.workspace = true

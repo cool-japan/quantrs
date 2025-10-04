@@ -11,7 +11,7 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-// use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
 // use quantrs2_core::platform::PlatformCapabilities;
 // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
 // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
@@ -20,7 +20,6 @@ use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use memmap2::{MmapMut, MmapOptions};
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
 use scirs2_core::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;
