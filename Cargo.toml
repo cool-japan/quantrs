@@ -55,7 +55,7 @@ elided_lifetimes_in_paths = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 authors = ["QuantRS2 Contributors"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -66,17 +66,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.0-beta.2" }
-quantrs2-circuit = { path = "circuit", version = "0.1.0-beta.2" }
-quantrs2-sim = { path = "sim", version = "0.1.0-beta.2" }
-quantrs2-anneal = { path = "anneal", version = "0.1.0-beta.2" }
-quantrs2-device = { path = "device", version = "0.1.0-beta.2" }
-quantrs2-ml = { path = "ml", version = "0.1.0-beta.2" }
-quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.2" }
+quantrs2-core = { path = "core", version = "0.1.0-beta.3" }
+quantrs2-circuit = { path = "circuit", version = "0.1.0-beta.3" }
+quantrs2-sim = { path = "sim", version = "0.1.0-beta.3" }
+quantrs2-anneal = { path = "anneal", version = "0.1.0-beta.3" }
+quantrs2-device = { path = "device", version = "0.1.0-beta.3" }
+quantrs2-ml = { path = "ml", version = "0.1.0-beta.3" }
+quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.3" }
 
 # Symbolic computation (local workspace versions)
-quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-beta.2" }
-quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-beta.2" }
+quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-beta.3" }
+quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-beta.3" }
 
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)

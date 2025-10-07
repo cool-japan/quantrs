@@ -5,9 +5,8 @@
 
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag, DagNode};
-// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
-// TODO: Refactor to use scirs2_core::Complex64 and scirs2_core::ndarray::Array2
-use nalgebra::{Complex, DMatrix};
+// SciRS2 POLICY compliant - using scirs2_core::Complex64
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -17,7 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 
 /// Complex number type
-type C64 = Complex<f64>;
+type C64 = Complex64;
 
 /// Tensor representing a quantum gate or state
 #[derive(Debug, Clone)]

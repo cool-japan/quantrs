@@ -343,6 +343,7 @@ fn create_sklearn_dataset() -> Result<(Array2<f64>, Array1<f64>)> {
     Ok((X, y))
 }
 
+#[allow(non_snake_case)]  // X is standard ML convention for feature matrix
 fn analyze_quantum_features(
     model: &dyn SklearnClassifier,
     X: &Array2<f64>,

@@ -875,6 +875,8 @@ pub struct SparseGateLibrary {
     gates: HashMap<String, SparseMatrix>,
     /// Parameterized gate generators
     parameterized_gates: HashMap<String, Box<dyn Fn(&[f64]) -> SparseMatrix + Send + Sync>>,
+    /// Cache for parameterized gates (gate_name, parameters) -> matrix
+    parameterized_cache: HashMap<(String, Vec<u64>), SparseMatrix>,
     /// Performance metrics
     pub metrics: LibraryMetrics,
 }
@@ -907,6 +909,7 @@ impl SparseGateLibrary {
         let mut library = Self {
             gates: HashMap::new(),
             parameterized_gates: HashMap::new(),
+            parameterized_cache: HashMap::new(),
             metrics: LibraryMetrics::default(),
         };
 
@@ -1055,25 +1058,24 @@ impl SparseGateLibrary {
         name: &str,
         parameters: &[f64],
     ) -> Option<SparseMatrix> {
+        // Create cache key from name and parameters (convert f64 to u64 bits for hashability)
+        let param_bits: Vec<u64> = parameters.iter().map(|&p| p.to_bits()).collect();
+        let cache_key = (name.to_string(), param_bits.clone());
+
+        // Check cache first
+        if let Some(cached_matrix) = self.parameterized_cache.get(&cache_key) {
+            // Cache hit
+            self.metrics.cache_hits += 1;
+            return Some(cached_matrix.clone());
+        }
+
+        // Cache miss - generate matrix
         if let Some(generator) = self.parameterized_gates.get(name) {
             let matrix = generator(parameters);
+            self.metrics.cache_misses += 1;
 
-            // Simple caching simulation for test purposes
-            // In a real implementation, this would use a proper cache with parameter keys
-            if parameters == &[std::f64::consts::PI] {
-                // Track if we've seen this specific parameter set before
-                static mut SEEN_PI_CACHE: bool = false;
-                unsafe {
-                    if SEEN_PI_CACHE {
-                        // Cache hit
-                        self.metrics.cache_hits += 1;
-                    } else {
-                        // Cache miss - first time seeing this parameter set
-                        self.metrics.cache_misses += 1;
-                        SEEN_PI_CACHE = true;
-                    }
-                }
-            }
+            // Store in cache
+            self.parameterized_cache.insert(cache_key, matrix.clone());
 
             Some(matrix)
         } else {

@@ -4,9 +4,8 @@
 //! allowing fine-grained optimization and hardware-specific calibration.
 
 use crate::builder::Circuit;
-// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
-// TODO: Refactor to use scirs2_core::Complex64
-use nalgebra::Complex;
+// SciRS2 POLICY compliant - using scirs2_core::Complex64
+use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -17,7 +16,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Complex amplitude type
-type C64 = Complex<f64>;
+type C64 = Complex64;
 
 /// Time in nanoseconds
 type Time = f64;

@@ -7,8 +7,7 @@
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use quantrs2_core::platform::PlatformCapabilities;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
+// NOTE: Parallel feature removed per SciRS2 POLICY - use scirs2_core::parallel_ops directly
 use scirs2_core::simd_ops;
 use std::sync::Arc;
 
@@ -131,59 +130,39 @@ impl OptimizedQUBOEvaluator {
         self.evaluate_scalar(x)
     }
 
-    /// Parallel evaluation using Rayon
+    /// Parallel evaluation (parallel feature removed - using sequential with SciRS2 optimization)
     fn evaluate_parallel(&self, x: &ArrayView1<u8>) -> f64 {
         let n = x.len();
 
-        // Linear terms in parallel
-        let linear_energy: f64 = {
-            #[cfg(feature = "parallel")]
-            {
-                (0..n)
-                    .into_par_iter()
-                    .filter(|&i| x[i] == 1)
-                    .map(|i| self.cache[i])
-                    .sum()
-            }
-            #[cfg(not(feature = "parallel"))]
-            {
-                (0..n)
-                    .into_iter()
-                    .filter(|&i| x[i] == 1)
-                    .map(|i| self.cache[i])
-                    .sum()
-            }
-        };
+        // Linear terms (sequential - parallel feature removed per SciRS2 POLICY)
+        let linear_energy: f64 = (0..n)
+            .into_iter()
+            .filter(|&i| x[i] == 1)
+            .map(|i| self.cache[i])
+            .sum();
 
-        // Quadratic terms in parallel (block-wise)
+        // Quadratic terms (block-wise - parallel feature removed per SciRS2 POLICY)
         let block_size = (n as f64).sqrt() as usize + 1;
-        let quadratic_energy: f64 = {
-            #[cfg(feature = "parallel")]
-            {
-                (0..n).into_par_iter().step_by(block_size)
-            }
-            #[cfg(not(feature = "parallel"))]
-            {
-                (0..n).into_iter().step_by(block_size)
-            }
-        }
-        .map(|block_start| {
-            let block_end = (block_start + block_size).min(n);
-            let mut local_sum = 0.0;
+        let quadratic_energy: f64 = (0..n)
+            .into_iter()
+            .step_by(block_size)
+            .map(|block_start| {
+                let block_end = (block_start + block_size).min(n);
+                let mut local_sum = 0.0;
 
-            for i in block_start..block_end {
-                if x[i] == 1 {
-                    for j in i + 1..n {
-                        if x[j] == 1 {
-                            local_sum += self.qubo[[i, j]];
+                for i in block_start..block_end {
+                    if x[i] == 1 {
+                        for j in i + 1..n {
+                            if x[j] == 1 {
+                                local_sum += self.qubo[[i, j]];
+                            }
                         }
                     }
                 }
-            }
 
-            local_sum
-        })
-        .sum();
+                local_sum
+            })
+            .sum();
 
         linear_energy + 2.0 * quadratic_energy
     }
@@ -329,7 +308,7 @@ impl OptimizedSA {
         }
     }
 
-    /// Parallel neighborhood evaluation
+    /// Parallel neighborhood evaluation (parallel feature removed - using sequential)
     fn parallel_step(
         &self,
         current: &mut Array1<u8>,
@@ -341,29 +320,14 @@ impl OptimizedSA {
     ) {
         let n = current.len();
 
-        // Evaluate all possible moves in parallel
-        let deltas: Vec<_> = {
-            #[cfg(feature = "parallel")]
-            {
-                (0..n)
-                    .into_par_iter()
-                    .map(|bit| {
-                        let delta = self.evaluator.delta_energy(&current.view(), bit);
-                        (bit, delta)
-                    })
-                    .collect()
-            }
-            #[cfg(not(feature = "parallel"))]
-            {
-                (0..n)
-                    .into_iter()
-                    .map(|bit| {
-                        let delta = self.evaluator.delta_energy(&current.view(), bit);
-                        (bit, delta)
-                    })
-                    .collect()
-            }
-        };
+        // Evaluate all possible moves (sequential - parallel feature removed per SciRS2 POLICY)
+        let deltas: Vec<_> = (0..n)
+            .into_iter()
+            .map(|bit| {
+                let delta = self.evaluator.delta_energy(&current.view(), bit);
+                (bit, delta)
+            })
+            .collect();
 
         // Select moves to accept
         let mut accepted = Vec::new();

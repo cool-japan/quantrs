@@ -4,9 +4,9 @@
 //! descriptions. It includes various decomposition strategies for different gate sets.
 
 use crate::builder::Circuit;
-// TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
-// TODO: Refactor to use scirs2_core::Complex64 and scirs2_core::ndarray::Array2
-use nalgebra::{Complex, DMatrix, Matrix2, Matrix4};
+// Now using SciRS2 for all matrix operations (SciRS2 POLICY COMPLIANT)
+use scirs2_core::Complex64;
+use scirs2_core::ndarray::{arr2, Array2, Axis, s};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{
@@ -19,13 +19,23 @@ use quantrs2_core::{
 use std::f64::consts::PI;
 
 /// Complex number type for quantum computations
-type C64 = Complex<f64>;
+type C64 = Complex64;
 
 /// 2x2 complex matrix representing a single-qubit unitary
-type Unitary2 = Matrix2<C64>;
+type Unitary2 = Array2<C64>;
 
 /// 4x4 complex matrix representing a two-qubit unitary
-type Unitary4 = Matrix4<C64>;
+type Unitary4 = Array2<C64>;
+
+/// Helper function to compute adjoint (Hermitian conjugate) of a matrix
+fn adjoint(matrix: &Array2<C64>) -> Array2<C64> {
+    matrix.t().mapv(|x| x.conj())
+}
+
+/// Helper function to compute Frobenius norm of a matrix
+fn frobenius_norm(matrix: &Array2<C64>) -> f64 {
+    matrix.mapv(|x| x.norm_sqr()).sum().sqrt()
+}
 
 /// Configuration for unitary synthesis
 #[derive(Debug, Clone)]
@@ -122,10 +132,10 @@ impl SingleQubitSynthesizer {
         let u = unitary;
 
         // Extract elements
-        let u00 = u[(0, 0)];
-        let u01 = u[(0, 1)];
-        let u10 = u[(1, 0)];
-        let u11 = u[(1, 1)];
+        let u00 = u[[0, 0]];
+        let u01 = u[[0, 1]];
+        let u10 = u[[1, 0]];
+        let u11 = u[[1, 1]];
 
         // Calculate angles for ZYZ decomposition
         // Based on Nielsen & Chuang Chapter 4
@@ -134,11 +144,11 @@ impl SingleQubitSynthesizer {
         let global_phase = det.arg() / 2.0;
 
         // Normalize by global phase
-        let su = unitary / (det.sqrt());
-        let su00 = su[(0, 0)];
-        let su01 = su[(0, 1)];
-        let su10 = su[(1, 0)];
-        let su11 = su[(1, 1)];
+        let su = unitary.mapv(|x| x / det.sqrt());
+        let su00 = su[[0, 0]];
+        let su01 = su[[0, 1]];
+        let su10 = su[[1, 0]];
+        let su11 = su[[1, 1]];
 
         // Calculate ZYZ angles
         let gamma: f64 = 2.0 * (su01.norm()).atan2(su00.norm());
@@ -204,47 +214,35 @@ impl SingleQubitSynthesizer {
     fn get_basic_universal_gates(&self) -> Vec<Unitary2> {
         vec![
             // Identity
-            Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(1.0, 0.0),
-            ),
+            arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(1.0, 0.0)],
+            ]),
             // Hadamard
-            Unitary2::new(
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
-            ),
+            arr2(&[
+                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
+                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+            ]),
             // T gate
-            Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
-            ),
+            arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+            ]),
             // T† gate
-            Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), -1.0 / 2.0_f64.sqrt()),
-            ),
+            arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), -1.0 / 2.0_f64.sqrt())],
+            ]),
             // S gate
-            Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 1.0),
-            ),
+            arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(0.0, 1.0)],
+            ]),
             // S† gate
-            Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, -1.0),
-            ),
+            arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(0.0, -1.0)],
+            ]),
         ]
     }
 
@@ -253,7 +251,10 @@ impl SingleQubitSynthesizer {
         // Use operator norm (max singular value of the difference)
         let diff = u1 - u2;
         // Simplified: use Frobenius norm instead of operator norm for efficiency
-        ((diff.adjoint() * diff).trace().re).sqrt()
+        let adj_diff = adjoint(&diff);
+        let product = adj_diff.dot(&diff);
+        let trace = product.diag().sum();
+        (trace.re).sqrt()
     }
 
     /// Approximate unitary with the closest basic gate
@@ -323,7 +324,8 @@ impl SingleQubitSynthesizer {
         let u0_matrix = self.circuit_to_matrix(&u0_circuit)?;
 
         // Calculate the error: V = U * U₀†
-        let v = unitary * u0_matrix.adjoint();
+        let u0_adj = adjoint(&u0_matrix);
+        let v = unitary.dot(&u0_adj);
 
         // Find V = W * X * W† * X† where W, X are "close" to group elements
         if let Some((w, x)) = self.find_balanced_group_commutator(&v) {
@@ -362,29 +364,25 @@ impl SingleQubitSynthesizer {
     fn find_balanced_group_commutator(&self, _v: &Unitary2) -> Option<(Unitary2, Unitary2)> {
         // Simplified implementation: return two basic gates
         // In full implementation, this would use more sophisticated search
-        let h_matrix = Unitary2::new(
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
-        );
-        let t_matrix = Unitary2::new(
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
-        );
+        let h_matrix = arr2(&[
+            [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
+            [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+        ]);
+        let t_matrix = arr2(&[
+            [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+            [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+        ]);
 
         Some((h_matrix, t_matrix))
     }
 
     /// Convert a circuit to its unitary matrix representation
     fn circuit_to_matrix<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<Unitary2> {
-        let mut result = Unitary2::identity();
+        let mut result = Array2::<C64>::eye(2);
 
         for gate in circuit.gates() {
             let gate_matrix = self.gate_to_matrix(&**gate)?;
-            result = gate_matrix * result;
+            result = gate_matrix.dot(&result);
         }
 
         Ok(result)
@@ -393,25 +391,19 @@ impl SingleQubitSynthesizer {
     /// Convert a gate to its matrix representation
     fn gate_to_matrix(&self, gate: &dyn GateOp) -> QuantRS2Result<Unitary2> {
         match gate.name() {
-            "H" => Ok(Unitary2::new(
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
-            )),
-            "T" => Ok(Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
-            )),
-            "S" => Ok(Unitary2::new(
-                C64::new(1.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 0.0),
-                C64::new(0.0, 1.0),
-            )),
-            _ => Ok(Unitary2::identity()), // Default to identity for unknown gates
+            "H" => Ok(arr2(&[
+                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
+                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+            ])),
+            "T" => Ok(arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+            ])),
+            "S" => Ok(arr2(&[
+                [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+                [C64::new(0.0, 0.0), C64::new(0.0, 1.0)],
+            ])),
+            _ => Ok(Array2::<C64>::eye(2)), // Default to identity for unknown gates
         }
     }
 
@@ -534,30 +526,22 @@ impl TwoQubitSynthesizer {
         // we can write U = V₀ ⊗ W₀ when control=0, V₁ ⊗ W₁ when control=1
 
         // Extract the 2x2 blocks corresponding to control qubit states
-        let u00_block = Unitary2::new(
-            unitary[(0, 0)],
-            unitary[(0, 1)],
-            unitary[(1, 0)],
-            unitary[(1, 1)],
-        );
-        let u01_block = Unitary2::new(
-            unitary[(0, 2)],
-            unitary[(0, 3)],
-            unitary[(1, 2)],
-            unitary[(1, 3)],
-        );
-        let u10_block = Unitary2::new(
-            unitary[(2, 0)],
-            unitary[(2, 1)],
-            unitary[(3, 0)],
-            unitary[(3, 1)],
-        );
-        let u11_block = Unitary2::new(
-            unitary[(2, 2)],
-            unitary[(2, 3)],
-            unitary[(3, 2)],
-            unitary[(3, 3)],
-        );
+        let u00_block = arr2(&[
+            [unitary[[0, 0]], unitary[[0, 1]]],
+            [unitary[[1, 0]], unitary[[1, 1]]],
+        ]);
+        let u01_block = arr2(&[
+            [unitary[[0, 2]], unitary[[0, 3]]],
+            [unitary[[1, 2]], unitary[[1, 3]]],
+        ]);
+        let u10_block = arr2(&[
+            [unitary[[2, 0]], unitary[[2, 1]]],
+            [unitary[[3, 0]], unitary[[3, 1]]],
+        ]);
+        let u11_block = arr2(&[
+            [unitary[[2, 2]], unitary[[2, 3]]],
+            [unitary[[3, 2]], unitary[[3, 3]]],
+        ]);
 
         // Decompose each 2x2 block using single-qubit synthesizer
         let single_synth = SingleQubitSynthesizer::new(self.config.clone());
@@ -637,15 +621,16 @@ impl TwoQubitSynthesizer {
 
     /// Check if a 2x2 unitary block is significant (not close to identity)
     fn is_significant_block(&self, block: &Unitary2) -> bool {
-        let identity = Unitary2::identity();
-        let diff = (block - identity).norm();
-        diff > self.config.tolerance
+        let identity = Array2::<C64>::eye(2);
+        let diff = block - &identity;
+        let norm = frobenius_norm(&diff);
+        norm > self.config.tolerance
     }
 
     /// Extract global phase correction from 4x4 unitary
     fn extract_global_phase_correction(&self, unitary: &Unitary4) -> f64 {
         // Simplified: extract phase from the (0,0) element
-        unitary[(0, 0)].arg()
+        unitary[[0, 0]].arg()
     }
 }
 
@@ -671,7 +656,7 @@ impl MultiQubitSynthesizer {
     }
 
     /// Synthesize a circuit from an arbitrary unitary matrix
-    pub fn synthesize<const N: usize>(&self, unitary: &DMatrix<C64>) -> QuantRS2Result<Circuit<N>> {
+    pub fn synthesize<const N: usize>(&self, unitary: &Array2<C64>) -> QuantRS2Result<Circuit<N>> {
         let n_qubits = (unitary.nrows() as f64).log2() as usize;
 
         if n_qubits != N {
@@ -692,7 +677,7 @@ impl MultiQubitSynthesizer {
     /// Synthesize single-qubit unitary
     fn synthesize_single_qubit<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         if unitary.nrows() != 2 || unitary.ncols() != 2 {
             return Err(QuantRS2Error::InvalidInput(
@@ -700,12 +685,10 @@ impl MultiQubitSynthesizer {
             ));
         }
 
-        let u2 = Unitary2::new(
-            unitary[(0, 0)],
-            unitary[(0, 1)],
-            unitary[(1, 0)],
-            unitary[(1, 1)],
-        );
+        let u2 = arr2(&[
+            [unitary[[0, 0]], unitary[[0, 1]]],
+            [unitary[[1, 0]], unitary[[1, 1]]],
+        ]);
 
         self.single_synth.synthesize(&u2, QubitId(0))
     }
@@ -713,7 +696,7 @@ impl MultiQubitSynthesizer {
     /// Synthesize two-qubit unitary
     fn synthesize_two_qubit<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         if unitary.nrows() != 4 || unitary.ncols() != 4 {
             return Err(QuantRS2Error::InvalidInput(
@@ -721,14 +704,20 @@ impl MultiQubitSynthesizer {
             ));
         }
 
-        let u4 = Unitary4::from_iterator(unitary.iter().cloned());
+        // Convert Array2 to Unitary4 by extracting elements
+        let u4 = arr2(&[
+            [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
+            [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
+            [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
+            [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+        ]);
         self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))
     }
 
     /// Synthesize multi-qubit unitary using recursive decomposition
     fn synthesize_multi_qubit<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         let n_qubits = N;
 
@@ -748,7 +737,7 @@ impl MultiQubitSynthesizer {
     /// Decomposes an n-qubit unitary into smaller operations
     fn cosine_sine_decomposition<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         let mut circuit = Circuit::<N>::new();
         let n = unitary.nrows();
@@ -767,10 +756,10 @@ impl MultiQubitSynthesizer {
         let half_size = n / 2;
 
         // Extract the 4 blocks
-        let u11 = unitary.view((0, 0), (half_size, half_size));
-        let u12 = unitary.view((0, half_size), (half_size, half_size));
-        let u21 = unitary.view((half_size, 0), (half_size, half_size));
-        let u22 = unitary.view((half_size, half_size), (half_size, half_size));
+        let u11 = unitary.slice(s![0..half_size, 0..half_size]);
+        let u12 = unitary.slice(s![0..half_size, half_size..n]);
+        let u21 = unitary.slice(s![half_size..n, 0..half_size]);
+        let u22 = unitary.slice(s![half_size..n, half_size..n]);
 
         // Perform QR decomposition to find the cosine-sine structure
         // This is simplified - real CSD involves SVD and more complex operations
@@ -785,10 +774,10 @@ impl MultiQubitSynthesizer {
         }
 
         // Step 2: Add controlled operations based on block structure
-        if self.is_block_significant(&u11.clone_owned()) {
+        if self.is_block_significant(&u11.to_owned()) {
             // Apply controlled rotations for the u11 block
             for i in 0..half_size.min(N - 1) {
-                let angle = self.extract_rotation_angle_from_block(&u11.clone_owned(), i);
+                let angle = self.extract_rotation_angle_from_block(&u11.to_owned(), i);
                 if angle.abs() > self.config.tolerance {
                     circuit.add_gate(CRY {
                         control: QubitId(control_qubit as u32),
@@ -810,10 +799,10 @@ impl MultiQubitSynthesizer {
         }
 
         // Step 4: Process u22 block
-        if self.is_block_significant(&u22.clone_owned()) {
+        if self.is_block_significant(&u22.to_owned()) {
             for i in half_size..n.min(N) {
                 let angle =
-                    self.extract_rotation_angle_from_block(&u22.clone_owned(), i - half_size);
+                    self.extract_rotation_angle_from_block(&u22.to_owned(), i - half_size);
                 if angle.abs() > self.config.tolerance && i < N {
                     circuit.add_gate(RotationZ {
                         target: QubitId(i as u32),
@@ -834,16 +823,16 @@ impl MultiQubitSynthesizer {
     }
 
     /// Check if a matrix block has significant elements
-    fn is_block_significant(&self, block: &DMatrix<C64>) -> bool {
-        let norm = block.norm();
+    fn is_block_significant(&self, block: &Array2<C64>) -> bool {
+        let norm = frobenius_norm(block);
         norm > self.config.tolerance
     }
 
     /// Extract rotation angle from a matrix block (simplified heuristic)
-    fn extract_rotation_angle_from_block(&self, block: &DMatrix<C64>, index: usize) -> f64 {
+    fn extract_rotation_angle_from_block(&self, block: &Array2<C64>, index: usize) -> f64 {
         if index < block.nrows() && index < block.ncols() {
             // Extract phase from diagonal element
-            block[(index, index)].arg()
+            block[[index, index]].arg()
         } else {
             0.0
         }
@@ -852,43 +841,29 @@ impl MultiQubitSynthesizer {
     /// Decompose small matrices (up to 4x4) directly
     fn decompose_small_matrix<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         let mut circuit = Circuit::<N>::new();
 
         match unitary.nrows() {
             2 => {
                 // Single qubit: use ZYZ decomposition
-                let u2 = Unitary2::new(
-                    unitary[(0, 0)],
-                    unitary[(0, 1)],
-                    unitary[(1, 0)],
-                    unitary[(1, 1)],
-                );
+                let u2 = arr2(&[
+                    [unitary[[0, 0]], unitary[[0, 1]]],
+                    [unitary[[1, 0]], unitary[[1, 1]]],
+                ]);
                 let single_circ: Circuit<N> = self.single_synth.synthesize(&u2, QubitId(0))?;
                 // Simplified: add basic gates rather than cloning
                 circuit.add_gate(Hadamard { target: QubitId(0) })?;
             }
             4 => {
                 // Two qubits: use two-qubit synthesizer
-                let u4 = Unitary4::new(
-                    unitary[(0, 0)],
-                    unitary[(0, 1)],
-                    unitary[(0, 2)],
-                    unitary[(0, 3)],
-                    unitary[(1, 0)],
-                    unitary[(1, 1)],
-                    unitary[(1, 2)],
-                    unitary[(1, 3)],
-                    unitary[(2, 0)],
-                    unitary[(2, 1)],
-                    unitary[(2, 2)],
-                    unitary[(2, 3)],
-                    unitary[(3, 0)],
-                    unitary[(3, 1)],
-                    unitary[(3, 2)],
-                    unitary[(3, 3)],
-                );
+                let u4 = arr2(&[
+                    [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
+                    [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
+                    [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
+                    [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+                ]);
                 let two_circ: Circuit<N> =
                     self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))?;
                 // Simplified: add basic gates rather than cloning
@@ -919,40 +894,26 @@ impl MultiQubitSynthesizer {
     /// Synthesize single-qubit matrix
     fn synthesize_single_qubit_matrix<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
-        let u2 = Unitary2::new(
-            unitary[(0, 0)],
-            unitary[(0, 1)],
-            unitary[(1, 0)],
-            unitary[(1, 1)],
-        );
+        let u2 = arr2(&[
+            [unitary[[0, 0]], unitary[[0, 1]]],
+            [unitary[[1, 0]], unitary[[1, 1]]],
+        ]);
         self.single_synth.synthesize(&u2, QubitId(0))
     }
 
     /// Synthesize two-qubit matrix
     fn synthesize_two_qubit_matrix<const N: usize>(
         &self,
-        unitary: &DMatrix<C64>,
+        unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
-        let u4 = Unitary4::new(
-            unitary[(0, 0)],
-            unitary[(0, 1)],
-            unitary[(0, 2)],
-            unitary[(0, 3)],
-            unitary[(1, 0)],
-            unitary[(1, 1)],
-            unitary[(1, 2)],
-            unitary[(1, 3)],
-            unitary[(2, 0)],
-            unitary[(2, 1)],
-            unitary[(2, 2)],
-            unitary[(2, 3)],
-            unitary[(3, 0)],
-            unitary[(3, 1)],
-            unitary[(3, 2)],
-            unitary[(3, 3)],
-        );
+        let u4 = arr2(&[
+            [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
+            [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
+            [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
+            [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+        ]);
         self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))
     }
 }
@@ -990,7 +951,7 @@ impl UnitarySynthesizer {
     }
 
     /// Synthesize circuit from unitary matrix
-    pub fn synthesize<const N: usize>(&self, unitary: &DMatrix<C64>) -> QuantRS2Result<Circuit<N>> {
+    pub fn synthesize<const N: usize>(&self, unitary: &Array2<C64>) -> QuantRS2Result<Circuit<N>> {
         // Validate unitary matrix
         self.validate_unitary(unitary)?;
 
@@ -1027,7 +988,7 @@ impl UnitarySynthesizer {
     }
 
     /// Validate that matrix is unitary
-    pub fn validate_unitary(&self, unitary: &DMatrix<C64>) -> QuantRS2Result<()> {
+    pub fn validate_unitary(&self, unitary: &Array2<C64>) -> QuantRS2Result<()> {
         if unitary.nrows() != unitary.ncols() {
             return Err(QuantRS2Error::InvalidInput(
                 "Matrix must be square".to_string(),
@@ -1042,9 +1003,9 @@ impl UnitarySynthesizer {
         }
 
         // Check if U * U† = I (within tolerance)
-        let adjoint = unitary.adjoint();
-        let product = unitary * &adjoint;
-        let identity = DMatrix::<C64>::identity(n, n);
+        let u_adjoint = adjoint(unitary);
+        let product = unitary.dot(&u_adjoint);
+        let identity = Array2::<C64>::eye(n);
 
         let diff = &product - &identity;
         let max_error = diff.iter().map(|x| x.norm()).fold(0.0, f64::max);
@@ -1189,7 +1150,7 @@ pub enum UnitaryOperation {
         target: QubitId,
     },
     /// Arbitrary matrix
-    Matrix(DMatrix<C64>),
+    Matrix(Array2<C64>),
 }
 
 /// Utilities for creating common unitary matrices
@@ -1198,43 +1159,35 @@ pub mod unitaries {
 
     /// Create Pauli-X matrix
     pub fn pauli_x() -> Unitary2 {
-        Unitary2::new(
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-        )
+        arr2(&[
+            [C64::new(0.0, 0.0), C64::new(1.0, 0.0)],
+            [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+        ])
     }
 
     /// Create Pauli-Y matrix
     pub fn pauli_y() -> Unitary2 {
-        Unitary2::new(
-            C64::new(0.0, 0.0),
-            C64::new(0.0, -1.0),
-            C64::new(0.0, 1.0),
-            C64::new(0.0, 0.0),
-        )
+        arr2(&[
+            [C64::new(0.0, 0.0), C64::new(0.0, -1.0)],
+            [C64::new(0.0, 1.0), C64::new(0.0, 0.0)],
+        ])
     }
 
     /// Create Pauli-Z matrix
     pub fn pauli_z() -> Unitary2 {
-        Unitary2::new(
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(-1.0, 0.0),
-        )
+        arr2(&[
+            [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+            [C64::new(0.0, 0.0), C64::new(-1.0, 0.0)],
+        ])
     }
 
     /// Create Hadamard matrix
     pub fn hadamard() -> Unitary2 {
         let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
-        Unitary2::new(
-            C64::new(inv_sqrt2, 0.0),
-            C64::new(inv_sqrt2, 0.0),
-            C64::new(inv_sqrt2, 0.0),
-            C64::new(-inv_sqrt2, 0.0),
-        )
+        arr2(&[
+            [C64::new(inv_sqrt2, 0.0), C64::new(inv_sqrt2, 0.0)],
+            [C64::new(inv_sqrt2, 0.0), C64::new(-inv_sqrt2, 0.0)],
+        ])
     }
 
     /// Create rotation matrices
@@ -1242,53 +1195,40 @@ pub mod unitaries {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        Unitary2::new(
-            C64::new(cos_half, 0.0),
-            C64::new(0.0, -sin_half),
-            C64::new(0.0, -sin_half),
-            C64::new(cos_half, 0.0),
-        )
+        arr2(&[
+            [C64::new(cos_half, 0.0), C64::new(0.0, -sin_half)],
+            [C64::new(0.0, -sin_half), C64::new(cos_half, 0.0)],
+        ])
     }
 
     pub fn rotation_y(angle: f64) -> Unitary2 {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
 
-        Unitary2::new(
-            C64::new(cos_half, 0.0),
-            C64::new(-sin_half, 0.0),
-            C64::new(sin_half, 0.0),
-            C64::new(cos_half, 0.0),
-        )
+        arr2(&[
+            [C64::new(cos_half, 0.0), C64::new(-sin_half, 0.0)],
+            [C64::new(sin_half, 0.0), C64::new(cos_half, 0.0)],
+        ])
     }
 
     pub fn rotation_z(angle: f64) -> Unitary2 {
         let exp_neg = C64::from_polar(1.0, -angle / 2.0);
         let exp_pos = C64::from_polar(1.0, angle / 2.0);
 
-        Unitary2::new(exp_neg, C64::new(0.0, 0.0), C64::new(0.0, 0.0), exp_pos)
+        arr2(&[
+            [exp_neg, C64::new(0.0, 0.0)],
+            [C64::new(0.0, 0.0), exp_pos],
+        ])
     }
 
     /// Create CNOT matrix (4x4)
     pub fn cnot() -> Unitary4 {
-        Unitary4::new(
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-        )
+        arr2(&[
+            [C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0)],
+            [C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0)],
+            [C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0)],
+            [C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+        ])
     }
 }
 
@@ -1316,7 +1256,7 @@ mod tests {
         let config = SynthesisConfig::default();
         let synthesizer = SingleQubitSynthesizer::new(config);
 
-        let identity = Unitary2::identity();
+        let identity = Array2::<C64>::eye(2);
         let (alpha, beta, gamma, delta) = synthesizer.zyz_decomposition(&identity).unwrap();
 
         // Identity should have minimal rotation angles
@@ -1361,15 +1301,15 @@ mod tests {
         let synthesizer = UnitarySynthesizer::default_config();
 
         // Test valid unitary
-        let mut valid_unitary = DMatrix::zeros(2, 2);
-        valid_unitary[(0, 0)] = C64::new(1.0, 0.0);
-        valid_unitary[(1, 1)] = C64::new(1.0, 0.0);
+        let mut valid_unitary = Array2::<C64>::zeros((2, 2));
+        valid_unitary[[0, 0]] = C64::new(1.0, 0.0);
+        valid_unitary[[1, 1]] = C64::new(1.0, 0.0);
 
         assert!(synthesizer.validate_unitary(&valid_unitary).is_ok());
 
         // Test invalid unitary
-        let mut invalid_unitary = DMatrix::zeros(2, 2);
-        invalid_unitary[(0, 0)] = C64::new(2.0, 0.0); // Not unitary
+        let mut invalid_unitary = Array2::<C64>::zeros((2, 2));
+        invalid_unitary[[0, 0]] = C64::new(2.0, 0.0); // Not unitary
 
         assert!(synthesizer.validate_unitary(&invalid_unitary).is_err());
     }

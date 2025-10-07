@@ -3,13 +3,14 @@
 //! This example shows how to synthesize quantum circuits from unitary matrix
 //! descriptions using various decomposition algorithms.
 
-use nalgebra::{Complex, DMatrix};
+use scirs2_core::Complex64;
+use scirs2_core::ndarray::Array2;
 use quantrs2_circuit::prelude::*;
 use quantrs2_circuit::synthesis::unitaries::*;
 use quantrs2_core::qubit::QubitId;
 use std::f64::consts::PI;
 
-type C64 = Complex<f64>;
+type C64 = Complex64;
 
 fn main() -> quantrs2_core::error::QuantRS2Result<()> {
     println!("=== Unitary Synthesis Demo ===\n");
@@ -156,32 +157,29 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     // Test valid unitaries
     println!("Valid unitaries:");
 
-    let identity_2x2 = DMatrix::from_vec(
-        2,
-        2,
+    // Identity matrix in row-major format
+    let identity_2x2 = Array2::from_shape_vec(
+        (2, 2),
         vec![
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
+            C64::new(1.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0), C64::new(1.0, 0.0),
         ],
-    );
+    ).unwrap();
 
     match synthesizer.validate_unitary(&identity_2x2) {
         Ok(_) => println!("  ✓ 2x2 Identity matrix"),
         Err(e) => println!("  ✗ 2x2 Identity matrix: {}", e),
     }
 
-    let hadamard_matrix = DMatrix::from_vec(
-        2,
-        2,
+    // Hadamard matrix in row-major format
+    let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
+    let hadamard_matrix = Array2::from_shape_vec(
+        (2, 2),
         vec![
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-            C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
+            C64::new(inv_sqrt2, 0.0), C64::new(inv_sqrt2, 0.0),
+            C64::new(inv_sqrt2, 0.0), C64::new(-inv_sqrt2, 0.0),
         ],
-    );
+    ).unwrap();
 
     match synthesizer.validate_unitary(&hadamard_matrix) {
         Ok(_) => println!("  ✓ Hadamard matrix"),
@@ -191,55 +189,43 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     // Test invalid unitaries
     println!("\nInvalid unitaries:");
 
-    let non_square = DMatrix::from_vec(
-        2,
-        3,
+    // Non-square matrix (2x3) in row-major format
+    let non_square = Array2::from_shape_vec(
+        (2, 3),
         vec![
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0),
         ],
-    );
+    ).unwrap();
 
     match synthesizer.validate_unitary(&non_square) {
         Ok(_) => println!("  ✓ Non-square matrix (unexpected)"),
         Err(_) => println!("  ✗ Non-square matrix (expected)"),
     }
 
-    let non_unitary = DMatrix::from_vec(
-        2,
-        2,
+    // Non-unitary matrix in row-major format
+    let non_unitary = Array2::from_shape_vec(
+        (2, 2),
         vec![
-            C64::new(2.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
+            C64::new(2.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0), C64::new(1.0, 0.0),
         ],
-    );
+    ).unwrap();
 
     match synthesizer.validate_unitary(&non_unitary) {
         Ok(_) => println!("  ✓ Non-unitary matrix (unexpected)"),
         Err(_) => println!("  ✗ Non-unitary matrix (expected)"),
     }
 
-    let wrong_dimension = DMatrix::from_vec(
-        3,
-        3,
+    // 3x3 matrix (non-power-of-2) in row-major format
+    let wrong_dimension = Array2::from_shape_vec(
+        (3, 3),
         vec![
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0),
-            C64::new(1.0, 0.0),
+            C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0),
         ],
-    );
+    ).unwrap();
 
     match synthesizer.validate_unitary(&wrong_dimension) {
         Ok(_) => println!("  ✓ Non-power-of-2 dimension (unexpected)"),
@@ -253,33 +239,28 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
 fn demo_synthesis_comparison() -> quantrs2_core::error::QuantRS2Result<()> {
     println!("--- Synthesis Algorithm Comparison ---");
 
+    let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
     let test_unitaries = vec![
-        ("Identity", DMatrix::identity(2, 2)),
+        ("Identity", Array2::<C64>::eye(2)),
         (
             "Hadamard",
-            DMatrix::from_vec(
-                2,
-                2,
+            Array2::from_shape_vec(
+                (2, 2),
                 vec![
-                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
-                    C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
+                    C64::new(inv_sqrt2, 0.0), C64::new(inv_sqrt2, 0.0),
+                    C64::new(inv_sqrt2, 0.0), C64::new(-inv_sqrt2, 0.0),
                 ],
-            ),
+            ).unwrap(),
         ),
         (
             "T gate",
-            DMatrix::from_vec(
-                2,
-                2,
+            Array2::from_shape_vec(
+                (2, 2),
                 vec![
-                    C64::new(1.0, 0.0),
-                    C64::new(0.0, 0.0),
-                    C64::new(0.0, 0.0),
-                    C64::from_polar(1.0, PI / 4.0),
+                    C64::new(1.0, 0.0), C64::new(0.0, 0.0),
+                    C64::new(0.0, 0.0), C64::from_polar(1.0, PI / 4.0),
                 ],
-            ),
+            ).unwrap(),
         ),
     ];
 

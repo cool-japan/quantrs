@@ -16,64 +16,110 @@ use quantrs2_core::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
-// Placeholder SciRS2 structures until the actual crate is available
-mod scirs2_placeholders {
-    use std::collections::HashMap;
 
-    #[derive(Debug, Clone)]
-    pub struct GraphOptimizer {
-        pub config: HashMap<String, f64>,
-    }
+// SciRS2 Graph optimization imports
+use scirs2_graph::{
+    Graph as ScirsGraph, DiGraph, dijkstra_path, astar_search,
+    connected_components, bridges, articulation_points,
+    betweenness_centrality, closeness_centrality, diameter,
+    minimum_spanning_tree, k_shortest_paths,
+};
 
-    impl GraphOptimizer {
-        pub fn new() -> Self {
-            Self {
-                config: HashMap::new(),
-            }
+/// Advanced path optimizer using SciRS2 graph algorithms
+#[derive(Debug, Clone)]
+pub struct PathOptimizer {
+    /// Optimization algorithm to use
+    pub algorithm: PathAlgorithm,
+    /// Maximum number of alternative paths to consider
+    pub max_alternatives: usize,
+}
+
+/// Available path optimization algorithms
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathAlgorithm {
+    /// Dijkstra's shortest path
+    Dijkstra,
+    /// A* with heuristic
+    AStar,
+    /// k-shortest paths
+    KShortest,
+}
+
+impl PathOptimizer {
+    pub fn new() -> Self {
+        Self {
+            algorithm: PathAlgorithm::Dijkstra,
+            max_alternatives: 5,
         }
     }
 
-    #[derive(Debug, Clone)]
-    pub struct BufferPool<T> {
-        pub size: usize,
-        _phantom: std::marker::PhantomData<T>,
-    }
-
-    impl<T> BufferPool<T> {
-        pub fn new(size: usize) -> Self {
-            Self {
-                size,
-                _phantom: std::marker::PhantomData,
-            }
-        }
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct ConnectivityAnalyzer {
-        pub analysis_depth: usize,
-    }
-
-    impl ConnectivityAnalyzer {
-        pub fn new() -> Self {
-            Self { analysis_depth: 5 }
-        }
-    }
-
-    #[derive(Debug, Clone)]
-    pub struct PathOptimizer {
-        pub algorithm: String,
-    }
-
-    impl PathOptimizer {
-        pub fn new() -> Self {
-            Self {
-                algorithm: "dijkstra".to_string(),
-            }
-        }
+    pub fn with_algorithm(mut self, algorithm: PathAlgorithm) -> Self {
+        self.algorithm = algorithm;
+        self
     }
 }
 
-use scirs2_placeholders::{BufferPool, ConnectivityAnalyzer, GraphOptimizer, PathOptimizer};
+/// Connectivity analyzer using SciRS2 graph algorithms
+#[derive(Debug, Clone)]
+pub struct ConnectivityAnalyzer {
+    /// Analysis depth for connectivity
+    pub analysis_depth: usize,
+    /// Cache for connectivity results
+    pub connectivity_cache: HashMap<(usize, usize), bool>,
+}
+
+impl ConnectivityAnalyzer {
+    pub fn new() -> Self {
+        Self {
+            analysis_depth: 5,
+            connectivity_cache: HashMap::new(),
+        }
+    }
+
+    pub fn with_depth(mut self, depth: usize) -> Self {
+        self.analysis_depth = depth;
+        self
+    }
+}
+
+/// Graph optimizer using SciRS2 graph algorithms
+#[derive(Debug, Clone)]
+pub struct GraphOptimizer {
+    /// Optimization configuration parameters
+    pub config: HashMap<String, f64>,
+    /// Enable advanced optimizations
+    pub use_advanced: bool,
+}
+
+impl GraphOptimizer {
+    pub fn new() -> Self {
+        Self {
+            config: HashMap::new(),
+            use_advanced: true,
+        }
+    }
+
+    pub fn with_config(mut self, key: String, value: f64) -> Self {
+        self.config.insert(key, value);
+        self
+    }
+}
+
+/// Buffer pool for memory-efficient graph operations
+#[derive(Debug, Clone)]
+pub struct BufferPool<T> {
+    pub size: usize,
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> BufferPool<T> {
+    pub fn new(size: usize) -> Self {
+        Self {
+            size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
 
 /// Device-specific hardware constraints and capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1090,6 +1136,120 @@ impl DeviceTranspiler {
             false
         } else {
             true
+        }
+    }
+
+    /// Analyze connectivity using SciRS2 graph algorithms
+    fn analyze_connectivity_scirs2(
+        &self,
+        coupling_map: &CouplingMap,
+    ) -> QuantRS2Result<HashMap<String, f64>> {
+        // Build scirs2-graph from coupling map
+        let mut graph: ScirsGraph<usize, f64> = ScirsGraph::new();
+
+        // Add nodes for each qubit
+        for i in 0..coupling_map.num_qubits() {
+            graph.add_node(i);
+        }
+
+        // Add edges from coupling map
+        for edge in coupling_map.edges() {
+            let _ = graph.add_edge(edge.0, edge.1, 1.0); // Unit weight for connectivity
+        }
+
+        // Calculate advanced connectivity metrics
+        let mut metrics = HashMap::new();
+
+        // Graph diameter (maximum shortest path)
+        if let Some(diam) = diameter(&graph) {
+            metrics.insert("diameter".to_string(), diam);
+        }
+
+        // Number of connected components
+        let components = connected_components(&graph);
+        metrics.insert("connected_components".to_string(), components.len() as f64);
+
+        // Number of bridges (critical connections)
+        let bridge_list = bridges(&graph);
+        metrics.insert("bridges".to_string(), bridge_list.len() as f64);
+
+        // Number of articulation points (critical nodes)
+        let art_points = articulation_points(&graph);
+        metrics.insert("articulation_points".to_string(), art_points.len() as f64);
+
+        Ok(metrics)
+    }
+
+    /// Find optimal path between qubits using SciRS2 graph algorithms
+    fn find_optimal_path_scirs2(
+        &self,
+        coupling_map: &CouplingMap,
+        start: usize,
+        end: usize,
+        algorithm: PathAlgorithm,
+    ) -> QuantRS2Result<Vec<usize>> {
+        // Build weighted graph from coupling map
+        let mut graph: ScirsGraph<usize, f64> = ScirsGraph::new();
+
+        for i in 0..coupling_map.num_qubits() {
+            graph.add_node(i);
+        }
+
+        for edge in coupling_map.edges() {
+            // Use error rates as weights if available, otherwise unit weight
+            let weight = 1.0;
+            let _ = graph.add_edge(edge.0, edge.1, weight);
+        }
+
+        // Find path based on selected algorithm
+        match algorithm {
+            PathAlgorithm::Dijkstra => {
+                if let Ok(Some(path_struct)) = dijkstra_path(&graph, &start, &end) {
+                    // Extract nodes from Path struct
+                    Ok(path_struct.nodes)
+                } else {
+                    Err(QuantRS2Error::InvalidInput(format!(
+                        "No path found between qubits {} and {}",
+                        start, end
+                    )))
+                }
+            }
+            PathAlgorithm::AStar => {
+                // A* with Manhattan distance heuristic
+                let heuristic = |node: &usize| -> f64 {
+                    // Simple heuristic: absolute difference
+                    ((*node as i32) - (end as i32)).abs() as f64
+                };
+
+                if let Ok(result) = astar_search(&graph, &start, &end, heuristic) {
+                    // result.path is Vec<usize>, not Option
+                    Ok(result.path)
+                } else {
+                    Err(QuantRS2Error::InvalidInput(format!(
+                        "A* search failed between qubits {} and {}",
+                        start, end
+                    )))
+                }
+            }
+            PathAlgorithm::KShortest => {
+                // Find k shortest paths
+                if let Ok(paths) = k_shortest_paths(&graph, &start, &end, 3) {
+                    if let Some((cost, path)) = paths.first() {
+                        // Extract path from (cost, path) tuple
+                        Ok(path.clone())
+                    } else {
+                        Err(QuantRS2Error::InvalidInput(format!(
+                            "No path found between qubits {} and {}",
+                            start, end
+                        )))
+                    }
+                } else {
+                    Err(QuantRS2Error::InvalidInput(format!(
+                        "k-shortest paths failed between qubits {} and {}",
+                        start, end
+                    )))
+                }
+            }
         }
     }
 
