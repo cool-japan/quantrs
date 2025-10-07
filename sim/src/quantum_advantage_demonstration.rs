@@ -7,8 +7,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -891,9 +891,15 @@ impl QuantumAdvantageDemonstrator {
             // Single-qubit gates
             for qubit in 0..num_qubits {
                 let gate_type = match layer % 3 {
-                    0 => InterfaceGateType::RX(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
-                    1 => InterfaceGateType::RY(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
-                    _ => InterfaceGateType::RZ(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
+                    0 => InterfaceGateType::RX(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
+                    1 => InterfaceGateType::RY(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
+                    _ => InterfaceGateType::RZ(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
                 };
                 circuit.add_gate(InterfaceGate::new(gate_type, vec![qubit]));
             }

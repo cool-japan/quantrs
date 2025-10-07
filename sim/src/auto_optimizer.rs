@@ -23,8 +23,8 @@ use quantrs2_core::{
 
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::SciRS2GpuStateVectorSimulator;
+use scirs2_core::parallel_ops::current_num_threads; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
-use scirs2_core::parallel_ops::current_num_threads;  // SciRS2 POLICY compliant
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -261,7 +261,7 @@ impl AutoOptimizer {
         };
 
         let parallel_config = AutoParallelConfig {
-            max_threads: current_num_threads(),  // SciRS2 POLICY compliant
+            max_threads: current_num_threads(), // SciRS2 POLICY compliant
             min_gates_for_parallel: 20,
             strategy: crate::automatic_parallelization::ParallelizationStrategy::Hybrid,
             ..Default::default()

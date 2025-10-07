@@ -6,7 +6,6 @@
 //! - Advanced visualization and analysis
 //! - Performance comparison across different samplers
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     analysis::graph::generate_graph,
     auto_array,
@@ -24,6 +23,7 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, DistributionConfig},
     },
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -363,7 +363,10 @@ fn verify_coloring(
 }
 
 /// Convert edge list to adjacency matrix
-fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> scirs2_core::ndarray::Array2<bool> {
+fn edges_to_adjacency(
+    edges: &[(usize, usize)],
+    n_nodes: usize,
+) -> scirs2_core::ndarray::Array2<bool> {
     use scirs2_core::ndarray::Array2;
     let mut adjacency = Array2::from_elem((n_nodes, n_nodes), false);
 

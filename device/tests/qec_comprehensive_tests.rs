@@ -3,8 +3,6 @@
 //! This module provides extensive test coverage for all QEC components including
 //! error codes, detection strategies, correction algorithms, and adaptive systems.
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use quantrs2_core::prelude::*;
 use quantrs2_device::ml_optimization::{
     CircuitFeatureConfig, DimensionalityReductionConfig, FeatureExtractionConfig,
@@ -62,7 +60,9 @@ use quantrs2_device::qec::{
     ZNEConfig as QECZNEConfig,
 };
 use quantrs2_device::unified_benchmarking::config::{MLModelType, OptimizationAlgorithm};
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::Duration;
 

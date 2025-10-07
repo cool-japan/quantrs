@@ -1,8 +1,8 @@
 //! RL training logic and experience replay
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::time::Instant;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};

@@ -3,9 +3,9 @@
 //! This example demonstrates quantum diffusion models for generative modeling,
 //! including DDPM-style models and score-based diffusion.
 
-use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

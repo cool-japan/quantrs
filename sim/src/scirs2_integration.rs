@@ -11,10 +11,12 @@
 //! - Memory-optimized data structures with SciRS2 allocators
 //! - GPU-ready abstractions for heterogeneous computing
 
-use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
-use scirs2_core::ndarray::ndarray_linalg::Norm;  // SciRS2 POLICY compliant
 #[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
+use scirs2_core::ndarray::ndarray_linalg::Norm; // SciRS2 POLICY compliant
+use scirs2_core::ndarray::{
+    s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2,
+};
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -22,7 +24,7 @@ use std::sync::{Arc, Mutex};
 
 // Core SciRS2 integration imports
 use quantrs2_core::prelude::QuantRS2Error as SciRS2Error;
-use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::simd_ops::SimdUnifiedOps;
 
 use crate::error::{Result, SimulatorError};
@@ -396,15 +398,15 @@ pub struct SciRS2ParallelContext {
     /// Number of worker threads
     pub num_threads: usize,
     /// Thread pool for parallel execution
-    pub thread_pool: ThreadPool,  // SciRS2 POLICY compliant
+    pub thread_pool: ThreadPool, // SciRS2 POLICY compliant
     /// NUMA topology awareness
     pub numa_aware: bool,
 }
 
 impl Default for SciRS2ParallelContext {
     fn default() -> Self {
-        let num_threads = current_num_threads();  // SciRS2 POLICY compliant
-        let thread_pool = ThreadPoolBuilder::new()  // SciRS2 POLICY compliant
+        let num_threads = current_num_threads(); // SciRS2 POLICY compliant
+        let thread_pool = ThreadPoolBuilder::new() // SciRS2 POLICY compliant
             .num_threads(num_threads)
             .build()
             .unwrap_or_else(|_| ThreadPoolBuilder::new().build().unwrap());
@@ -1225,7 +1227,7 @@ pub struct LAPACK;
 impl LAPACK {
     pub fn svd(matrix: &Matrix) -> Result<SvdResult> {
         // Use ndarray-linalg SVD for complex matrices
-        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
 
         let svd_result = matrix
             .data
@@ -1254,7 +1256,7 @@ impl LAPACK {
 
     pub fn eig(matrix: &Matrix) -> Result<EigResult> {
         // Eigenvalue decomposition using SciRS2
-        use scirs2_core::ndarray::ndarray_linalg::Eig;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::Eig; // SciRS2 POLICY compliant
 
         let eig_result = matrix.data.eig().map_err(|_| {
             SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string())
@@ -1321,7 +1323,7 @@ impl LAPACK {
 
     pub fn qr(matrix: &Matrix) -> Result<(Matrix, Matrix)> {
         // QR decomposition using ndarray-linalg
-        use scirs2_core::ndarray::ndarray_linalg::QR;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::QR; // SciRS2 POLICY compliant
 
         let (q, r) = matrix
             .data
@@ -1827,7 +1829,12 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
+                .map(|_| {
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
+                })
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
@@ -1922,7 +1929,12 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
+                .map(|_| {
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
+                })
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
@@ -1993,7 +2005,7 @@ pub struct AdvancedLinearAlgebra;
 impl AdvancedLinearAlgebra {
     /// QR decomposition with pivoting
     pub fn qr_decomposition(matrix: &Matrix) -> Result<QRResult> {
-        use scirs2_core::ndarray::ndarray_linalg::QR;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::QR; // SciRS2 POLICY compliant
 
         let qr_result = matrix
             .data
@@ -2009,14 +2021,11 @@ impl AdvancedLinearAlgebra {
 
     /// Cholesky decomposition for positive definite matrices
     pub fn cholesky_decomposition(matrix: &Matrix) -> Result<Matrix> {
-        use scirs2_core::ndarray::ndarray_linalg::{Cholesky, UPLO};  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::{Cholesky, UPLO}; // SciRS2 POLICY compliant
 
-        let chol_result = matrix
-            .data
-            .cholesky(UPLO::Lower)
-            .map_err(|_| {
-                SimulatorError::ComputationError("Cholesky decomposition failed".to_string())
-            })?;
+        let chol_result = matrix.data.cholesky(UPLO::Lower).map_err(|_| {
+            SimulatorError::ComputationError("Cholesky decomposition failed".to_string())
+        })?;
 
         Matrix::from_array2(&chol_result.view(), &MemoryPool::new())
     }

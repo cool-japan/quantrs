@@ -7,9 +7,9 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use scirs2_core::ndarray::{Array, Array1, Array2, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng, Distribution, RandNormal};
+use scirs2_core::random::{Distribution, RandNormal, Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 type Normal<T> = RandNormal<T>;

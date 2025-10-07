@@ -5,10 +5,10 @@
 //! - Continuous-time quantum walk on a complete graph
 //! - Quantum walk search algorithm
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use quantrs2_core::prelude::*;
 use quantrs2_core::quantum_walk::{CoinOperator, SearchOracle};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 fn main() {

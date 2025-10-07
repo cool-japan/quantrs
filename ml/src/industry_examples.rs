@@ -10,9 +10,9 @@ use crate::error::{MLError, Result};
 use crate::keras_api::{Dense, LossFunction, MetricType, OptimizerType, QuantumDense, Sequential};
 use crate::model_zoo::{ModelZoo, QuantumModel};
 use crate::transfer::{QuantumTransferLearning, TransferStrategy};
-use scirs2_core::ndarray::{s, Array1, Array2, ArrayD, Axis, IxDyn};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayD, Axis, IxDyn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

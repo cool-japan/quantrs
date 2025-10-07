@@ -9,8 +9,8 @@ use crate::keras_api::{
 };
 use crate::pytorch_api::{QuantumLinear, QuantumModule, QuantumSequential};
 use crate::simulator_backends::DynamicCircuit;
-use scirs2_core::ndarray::{Array1, Array2, ArrayD};
 use quantrs2_circuit::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD};
 use std::collections::HashMap;
 use std::io::Write;
 
@@ -843,9 +843,12 @@ mod tests {
 
     #[test]
     fn test_onnx_tensor_creation() {
-        let array = scirs2_core::ndarray::Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
-            .unwrap()
-            .into_dyn();
+        let array = scirs2_core::ndarray::Array2::from_shape_vec(
+            (2, 3),
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        )
+        .unwrap()
+        .into_dyn();
 
         let tensor = ONNXTensor::from_array_f64("test_tensor", &array);
         assert_eq!(tensor.name, "test_tensor");

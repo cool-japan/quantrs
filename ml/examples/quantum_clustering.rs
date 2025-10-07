@@ -4,10 +4,10 @@
 //! quantum ML module, including quantum K-means, DBSCAN, spectral clustering,
 //! fuzzy c-means, and Gaussian mixture models.
 
-use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_ml::clustering::*;
 use quantrs2_ml::dimensionality_reduction::{QuantumDistanceMetric, QuantumEnhancementLevel};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{array, Array1, Array2};
 
 fn main() -> Result<()> {
     println!("🌀 Quantum Clustering Algorithms Demo");

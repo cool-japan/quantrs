@@ -3,10 +3,10 @@
 //! This module provides a tensor-based representation for quantum states
 //! and operations used in the tensor network simulator.
 
-use scirs2_core::ndarray::{Array, ArrayD, Axis, IxDyn};
-use scirs2_core::Complex64;
 use quantrs2_core::error::QuantRS2Result;
+use scirs2_core::ndarray::{Array, ArrayD, Axis, IxDyn};
 use scirs2_core::ndarray_ext::manipulation;
+use scirs2_core::Complex64;
 
 /// A tensor representing a quantum state or operation
 #[derive(Debug, Clone)]

@@ -4,14 +4,14 @@
 //! for variational quantum algorithms, including parameter-shift rule, finite differences,
 //! and optimization strategies for VQE.
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::random::prelude::*;
-use scirs2_core::Complex64;
-use std::f64::consts::PI;
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::statevector::StateVectorSimulator;
 use quantrs2_core::gate::GateOp;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
+use std::f64::consts::PI;
 
 /// Gradient computation method
 #[derive(Debug, Clone, Copy)]

@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
 
 /// Enhanced mid-circuit measurement execution result with SciRS2 analytics

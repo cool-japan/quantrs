@@ -4,11 +4,11 @@
 //! algorithm, which is used to find ground state energies of quantum systems.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// A parameterized quantum circuit for VQE applications

@@ -4,10 +4,10 @@
 //! quantum data compression and feature extraction.
 
 use crate::error::MLError;
-use scirs2_core::Complex64 as Complex;
-use scirs2_core::random::prelude::*;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
 /// Quantum Variational Autoencoder
@@ -288,11 +288,19 @@ impl ClassicalAutoencoder {
 
         // Initialize weights with small random values
         let encoder_weights = (0..latent_dim)
-            .map(|_| (0..input_dim).map(|_| rng.gen::<f64>() * 0.1 - 0.05).collect())
+            .map(|_| {
+                (0..input_dim)
+                    .map(|_| rng.gen::<f64>() * 0.1 - 0.05)
+                    .collect()
+            })
             .collect();
 
         let decoder_weights = (0..input_dim)
-            .map(|_| (0..latent_dim).map(|_| rng.gen::<f64>() * 0.1 - 0.05).collect())
+            .map(|_| {
+                (0..latent_dim)
+                    .map(|_| rng.gen::<f64>() * 0.1 - 0.05)
+                    .collect()
+            })
             .collect();
 
         Self {

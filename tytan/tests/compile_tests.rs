@@ -1,7 +1,7 @@
 //! Tests for the compile module.
 
-use scirs2_core::ndarray::Array;
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::Array;
 
 #[cfg(feature = "dwave")]
 use quantrs2_tytan::compile::Compile;

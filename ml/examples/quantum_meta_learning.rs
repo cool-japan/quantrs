@@ -3,10 +3,10 @@
 //! This example demonstrates various quantum meta-learning algorithms including
 //! MAML, Reptile, ProtoMAML, Meta-SGD, and ANIL for few-shot learning tasks.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
     println!("=== Quantum Meta-Learning Demo ===\n");

@@ -1,5 +1,5 @@
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::sync::Mutex;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};

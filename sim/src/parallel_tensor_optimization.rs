@@ -5,8 +5,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{ArrayD, Dimension, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -36,7 +36,7 @@ pub struct ParallelTensorConfig {
 impl Default for ParallelTensorConfig {
     fn default() -> Self {
         Self {
-            num_threads: current_num_threads(),  // SciRS2 POLICY compliant
+            num_threads: current_num_threads(), // SciRS2 POLICY compliant
             chunk_size: 1024,
             enable_work_stealing: true,
             parallel_threshold_bytes: 1024 * 1024, // 1MB
@@ -198,7 +198,7 @@ pub struct ParallelTensorEngine {
     /// Configuration
     config: ParallelTensorConfig,
     /// Worker thread pool
-    thread_pool: ThreadPool,  // SciRS2 POLICY compliant
+    thread_pool: ThreadPool, // SciRS2 POLICY compliant
     /// Performance statistics
     stats: Arc<Mutex<ParallelTensorStats>>,
 }
@@ -225,7 +225,7 @@ pub struct ParallelTensorStats {
 impl ParallelTensorEngine {
     /// Create new parallel tensor engine
     pub fn new(config: ParallelTensorConfig) -> Result<Self> {
-        let thread_pool = ThreadPoolBuilder::new()  // SciRS2 POLICY compliant
+        let thread_pool = ThreadPoolBuilder::new() // SciRS2 POLICY compliant
             .num_threads(config.num_threads)
             .build()
             .map_err(|e| {
@@ -565,7 +565,7 @@ pub struct NumaTopology {
 
 impl Default for NumaTopology {
     fn default() -> Self {
-        let num_cores = current_num_threads();  // SciRS2 POLICY compliant
+        let num_cores = current_num_threads(); // SciRS2 POLICY compliant
         Self {
             num_nodes: 1,
             cores_per_node: vec![num_cores],

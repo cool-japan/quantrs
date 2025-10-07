@@ -1,8 +1,8 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::parametric::*;
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
+use scirs2_core::Complex64;
 
 use std::f64::consts::PI;
 use std::sync::Arc;

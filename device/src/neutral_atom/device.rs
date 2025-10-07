@@ -5,9 +5,9 @@ use super::{
 };
 use crate::{Circuit, CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
 use async_trait::async_trait;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::time::Duration;
-use scirs2_core::random::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct NeutralAtomDevice {

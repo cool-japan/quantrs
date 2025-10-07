@@ -1,8 +1,8 @@
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::gan::{DiscriminatorType, GANEvaluationMetrics, GeneratorType, QuantumGAN};
 use quantrs2_ml::prelude::*;
-use std::time::Instant;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<()> {
     println!("Quantum Generative Adversarial Network Example");
@@ -70,7 +70,11 @@ fn main() -> Result<()> {
 
     println!("Generated {} samples", num_samples);
     println!("First sample:");
-    print_sample(&generated_samples.slice(scirs2_core::ndarray::s![0, ..]).to_owned());
+    print_sample(
+        &generated_samples
+            .slice(scirs2_core::ndarray::s![0, ..])
+            .to_owned(),
+    );
 
     // Evaluate GAN
     println!("\nEvaluating GAN quality...");

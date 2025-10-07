@@ -3,9 +3,9 @@
 //! This example demonstrates quantum reinforcement learning algorithms
 //! for continuous action spaces, including QDDPG and QSAC.
 
-use scirs2_core::ndarray::Array1;
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::Array1;
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

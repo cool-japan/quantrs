@@ -12,9 +12,9 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
-use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

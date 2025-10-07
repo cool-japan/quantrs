@@ -3,11 +3,11 @@
 //! This example shows how to use tensor network methods to compress
 //! and analyze quantum circuits efficiently.
 
-use scirs2_core::Complex;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::multi::CNOT;
 use quantrs2_core::gate::single::{Hadamard, RotationZ, T};
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex;
 
 type C64 = Complex<f64>;
 

@@ -3,7 +3,6 @@
 //! This module provides comprehensive bindings for all gate operations from the core module,
 //! including standard gates, parameterized gates, multi-qubit gates, and custom gate creation.
 
-use scirs2_core::Complex64;
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
@@ -14,6 +13,7 @@ use quantrs2_core::parametric::{
     ParametricRotationY, ParametricRotationZ, ParametricU,
 };
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Base class for all quantum gates

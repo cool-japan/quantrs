@@ -5,8 +5,8 @@
 //! These implementations avoid general matrix multiplication and directly
 //! manipulate state vector amplitudes.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use quantrs2_core::{

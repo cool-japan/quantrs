@@ -1,10 +1,10 @@
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use crate::optimization::Optimizer;
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::fmt;
 
 /// Activation function types for quantum layers

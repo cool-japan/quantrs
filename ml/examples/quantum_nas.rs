@@ -4,9 +4,9 @@
 //! including evolutionary search, reinforcement learning, random search,
 //! Bayesian optimization, and DARTS.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

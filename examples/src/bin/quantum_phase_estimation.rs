@@ -1,8 +1,8 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::{Circuit, Simulator};
 use quantrs2_core::{gate::multi::CRZ, qubit::QubitId, register::Register};
 use quantrs2_sim::noise_advanced::{RealisticNoiseModelBuilder, ThermalRelaxationChannel};
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 use std::time::Duration;
 

@@ -6,8 +6,8 @@
 //! state and excited state calculations in strongly correlated molecular systems.
 
 use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;

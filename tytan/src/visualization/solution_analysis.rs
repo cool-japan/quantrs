@@ -473,7 +473,7 @@ impl SolutionDistribution {
         #[cfg(not(feature = "scirs"))]
         {
             // Simple random assignment as fallback
-            
+
             use scirs2_core::random::prelude::*;
             let mut rng = StdRng::seed_from_u64(42);
 

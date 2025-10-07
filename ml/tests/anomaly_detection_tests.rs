@@ -1,8 +1,8 @@
 //! Unit tests for quantum anomaly detection module
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::anomaly_detection::*;
 use quantrs2_ml::error::Result;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 /// Create default anomaly detection configuration

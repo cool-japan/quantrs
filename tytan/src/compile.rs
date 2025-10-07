@@ -707,7 +707,13 @@ impl Compile {
     /// - An offset value that should be added to all energy values
     pub fn get_qubo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         #[cfg(feature = "scirs")]
         {
             self.get_qubo_scirs()
@@ -721,7 +727,13 @@ impl Compile {
     /// Standard QUBO compilation without SciRS2
     fn get_qubo_standard(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Expand the expression to simplify
         let mut expr = self.expr.expand();
 
@@ -750,7 +762,13 @@ impl Compile {
     #[cfg(feature = "scirs")]
     fn get_qubo_scirs(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Get standard result
         let ((matrix, var_map), offset) = self.get_qubo_standard()?;
 
@@ -772,7 +790,13 @@ impl Compile {
     /// - An offset value that should be added to all energy values
     pub fn get_hobo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Expand the expression to simplify
         let mut expr = self.expr.expand();
 
@@ -1204,7 +1228,10 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 #[allow(dead_code)]
 fn build_qubo_matrix(
     coeffs: &HashMap<Vec<String>, f64>,
-) -> CompileResult<(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>)> {
+) -> CompileResult<(
+    Array<f64, scirs2_core::ndarray::Ix2>,
+    HashMap<String, usize>,
+)> {
     // Collect all unique variable names
     let mut all_vars = HashSet::new();
     for vars in coeffs.keys() {
@@ -1274,7 +1301,10 @@ fn build_qubo_matrix(
 fn build_hobo_tensor(
     coeffs: &HashMap<Vec<String>, f64>,
     max_degree: usize,
-) -> CompileResult<(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>)> {
+) -> CompileResult<(
+    Array<f64, scirs2_core::ndarray::IxDyn>,
+    HashMap<String, usize>,
+)> {
     // Collect all unique variable names
     let mut all_vars = HashSet::new();
     for vars in coeffs.keys() {
@@ -1360,7 +1390,13 @@ impl PieckCompile {
     /// Compile the expression to a QUBO model optimized for one-hot constraints
     pub fn get_qubo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Implementation will compile the expression using specialized techniques
         // For now, call the regular compiler
         Compile::new(self.expr.clone()).get_qubo()

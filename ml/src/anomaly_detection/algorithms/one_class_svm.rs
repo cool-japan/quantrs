@@ -1,9 +1,9 @@
 //! Quantum One-Class SVM implementation
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use crate::qsvm::QSVM;
 use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 use super::super::config::*;

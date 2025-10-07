@@ -3,11 +3,11 @@
 //! This example shows how to use low-level pulse control for fine-grained
 //! optimization and hardware-specific calibration.
 
-use scirs2_core::Complex;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::multi::CNOT;
 use quantrs2_core::gate::single::{Hadamard, PauliX, RotationZ};
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex;
 use std::f64::consts::PI;
 
 type C64 = Complex<f64>;

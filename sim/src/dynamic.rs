@@ -1,5 +1,4 @@
 use crate::simulator::Simulator; // Local simulator trait
-use scirs2_core::Complex64;
 #[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python")]
@@ -10,6 +9,7 @@ use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
 };
+use scirs2_core::Complex64;
 
 // Unused imports
 #[allow(unused_imports)]

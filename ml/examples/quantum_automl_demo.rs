@@ -4,8 +4,8 @@
 //! framework capabilities, including automated model selection, hyperparameter
 //! optimization, preprocessing pipelines, and ensemble construction.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
     println!("🚀 Quantum AutoML Framework Demo");

@@ -5,12 +5,12 @@
 
 use crate::builder::Circuit;
 // SciRS2 POLICY compliant - using scirs2_core::Complex64
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;

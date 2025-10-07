@@ -25,9 +25,9 @@
 //!   adiabatic processes, and quantum error correction integration
 
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use scirs2_core::Complex64;
-use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;

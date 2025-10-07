@@ -1,7 +1,7 @@
 //! Comprehensive tests for advanced error mitigation and calibration.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::advanced_error_mitigation::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, SystemTime};

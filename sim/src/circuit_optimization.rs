@@ -3,13 +3,13 @@
 //! This module provides various optimization techniques for quantum circuits
 //! to reduce gate count, improve parallelization, and enhance simulation performance.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Circuit optimization configuration

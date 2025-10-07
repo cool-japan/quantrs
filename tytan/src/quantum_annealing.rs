@@ -338,8 +338,7 @@ impl QuantumAnnealingSampler {
             // Dephasing noise
             if noise.dephasing_rate > 0.0 {
                 for amp in state.amplitudes.iter_mut() {
-                    let phase_noise =
-                        rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
+                    let phase_noise = rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
                     let phase = Complex64::new(phase_noise.cos(), phase_noise.sin());
                     let new_amp = Complex64::new(
                         amp.re * phase.re - amp.im * phase.im,
@@ -434,7 +433,10 @@ impl QuantumAnnealingSampler {
 impl Sampler for QuantumAnnealingSampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         num_reads: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix, var_map) = qubo;
@@ -504,7 +506,10 @@ impl Sampler for QuantumAnnealingSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix_dyn, var_map) = hobo;

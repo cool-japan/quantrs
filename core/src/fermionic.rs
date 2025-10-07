@@ -9,9 +9,9 @@ use crate::{
     gate::{single, GateOp},
     qubit::QubitId,
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::Array2;
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 
 /// Type alias for complex numbers
 type Complex64 = Complex<f64>;

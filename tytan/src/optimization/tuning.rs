@@ -256,7 +256,6 @@ impl ParameterTuner {
 
     /// Sample random parameters
     fn sample_random_parameters(&self, seed: u64) -> HashMap<String, f64> {
-        
         use scirs2_core::random::prelude::*;
 
         let mut rng = StdRng::seed_from_u64(seed + self.config.seed.unwrap_or(42));

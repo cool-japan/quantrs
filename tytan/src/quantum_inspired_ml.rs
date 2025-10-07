@@ -778,8 +778,8 @@ impl QuantumClustering {
 mod tests {
     use super::*;
     use crate::sampler::SASampler;
-    use scirs2_core::ndarray::array;
     use quantrs2_anneal::simulator::AnnealingParams;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_svm() {

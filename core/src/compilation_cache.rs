@@ -389,10 +389,8 @@ impl CompilationCache {
         let reader = BufReader::new(file);
 
         // bincode v2: use serde helper API with an explicit config
-        let compiled: CompiledGate = bincode::serde::decode_from_reader(
-            reader,
-            bincode::config::standard(),
-        )?;
+        let compiled: CompiledGate =
+            bincode::serde::decode_from_reader(reader, bincode::config::standard())?;
 
         Ok(Some(compiled))
     }
@@ -408,11 +406,7 @@ impl CompilationCache {
 
         let file = File::create(&file_path)?;
         let mut writer = BufWriter::new(file);
-        bincode::serde::encode_into_std_write(
-            compiled,
-            &mut writer,
-            bincode::config::standard(),
-        )?;
+        bincode::serde::encode_into_std_write(compiled, &mut writer, bincode::config::standard())?;
 
         Ok(())
     }
@@ -463,11 +457,7 @@ impl CompilationCache {
 
         let file = File::create(file_path)?;
         let mut writer = BufWriter::new(file);
-        bincode::serde::encode_into_std_write(
-            compiled,
-            &mut writer,
-            bincode::config::standard(),
-        )?;
+        bincode::serde::encode_into_std_write(compiled, &mut writer, bincode::config::standard())?;
 
         Ok(())
     }

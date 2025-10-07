@@ -6,12 +6,12 @@
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag, DagNode};
 // SciRS2 POLICY compliant - using scirs2_core::Complex64
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 

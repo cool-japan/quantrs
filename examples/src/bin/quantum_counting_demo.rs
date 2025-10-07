@@ -5,9 +5,9 @@
 //! - Quantum Counting for search problems
 //! - Quantum Amplitude Estimation
 
+use quantrs2_core::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
-use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
 
 fn main() {

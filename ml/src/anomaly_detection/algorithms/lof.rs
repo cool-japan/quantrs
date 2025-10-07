@@ -1,8 +1,8 @@
 //! Quantum Local Outlier Factor implementation
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 use super::super::config::*;
@@ -52,7 +52,9 @@ impl AnomalyDetectorTrait for QuantumLOF {
             "lof".to_string(),
             MethodSpecificResult::LOF {
                 local_outlier_factors: anomaly_scores.clone(),
-                reachability_distances: Array1::from_shape_fn(n_samples, |_| thread_rng().gen::<f64>()),
+                reachability_distances: Array1::from_shape_fn(n_samples, |_| {
+                    thread_rng().gen::<f64>()
+                }),
             },
         );
 

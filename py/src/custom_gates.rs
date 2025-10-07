@@ -5,12 +5,12 @@
 //! - Python functions for parametric gates
 //! - Symbolic expressions for gate decompositions
 
-use scirs2_core::ndarray::{Array2, ArrayView2};
-use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray2, PyReadonlyArray2};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
+use scirs2_core::ndarray::{Array2, ArrayView2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

@@ -3,8 +3,8 @@
 //! This example demonstrates quantum Boltzmann machines for unsupervised learning,
 //! including RBMs and deep Boltzmann machines.
 
-use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

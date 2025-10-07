@@ -4,11 +4,11 @@
 //! where quantum circuits and classical processing are interleaved and optimized together.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// A hybrid quantum-classical optimization problem

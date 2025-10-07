@@ -13,8 +13,8 @@
 //! - Support for heterogeneous inner and outer codes
 
 use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 

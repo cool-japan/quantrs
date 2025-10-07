@@ -1,9 +1,9 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
 use quantrs2_sim::noise_advanced::{AdvancedNoiseModel, RealisticNoiseModelBuilder};
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::Duration;
 

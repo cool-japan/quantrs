@@ -3,12 +3,12 @@
 //! This module provides Python bindings for SciRS2 numerical operations,
 //! including linear algebra, optimization, and statistical functions.
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyTuple};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 
 // SciRS2 stub types (would be replaced with actual SciRS2 imports)
 #[derive(Debug)]

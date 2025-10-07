@@ -7,9 +7,9 @@
 #![allow(dead_code)]
 
 use scirs2_core::ndarray::{Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
-use scirs2_core::random::prelude::*;
-use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

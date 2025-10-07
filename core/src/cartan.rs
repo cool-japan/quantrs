@@ -15,9 +15,9 @@ use crate::{
     qubit::QubitId,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
 /// Result of Cartan decomposition for a two-qubit unitary

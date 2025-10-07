@@ -4,8 +4,6 @@
 //! representation, which is particularly effective for simulating quantum systems with
 //! limited entanglement.
 
-use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -13,6 +11,8 @@ use quantrs2_core::{
     prelude::QubitId,
     register::Register,
 };
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView2};
+use scirs2_core::Complex64;
 
 /// MPS tensor for a single qubit
 #[derive(Debug, Clone)]

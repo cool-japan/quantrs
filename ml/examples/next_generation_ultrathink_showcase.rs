@@ -18,13 +18,13 @@
 //! - Advanced optimization landscapes via quantum tunneling
 //! - Next-generation representational capacity
 
-use scirs2_core::ndarray::{Array1, Array2, Array3};
-use scirs2_core::Complex64;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::quantum_neural_radiance_fields::SceneBounds;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::Instant;
-use scirs2_core::random::prelude::*;
 
 /// Comprehensive showcase configuration
 #[derive(Debug, Clone)]

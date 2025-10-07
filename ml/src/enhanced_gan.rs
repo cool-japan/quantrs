@@ -4,10 +4,10 @@
 //! proper quantum circuit integration and advanced features.
 
 use crate::error::MLError;
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64 as Complex;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
 /// Enhanced Quantum Generator with proper circuit implementation

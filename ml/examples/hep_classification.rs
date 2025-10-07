@@ -1,8 +1,8 @@
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::hep::{CollisionEvent, HEPQuantumClassifier, ParticleFeatures, ParticleType};
 use quantrs2_ml::prelude::*;
-use std::time::Instant;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<()> {
     println!("Quantum High-Energy Physics Classification Example");

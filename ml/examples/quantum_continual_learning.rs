@@ -3,10 +3,10 @@
 //! This example demonstrates various continual learning strategies for quantum neural networks,
 //! including Elastic Weight Consolidation, Experience Replay, Progressive Networks, and more.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

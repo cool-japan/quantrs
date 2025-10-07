@@ -5,11 +5,11 @@
 //! quantum circuits on various backends.
 
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::StateVectorSimulator;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Quantum circuit executor for ML applications

@@ -6,12 +6,12 @@
 //! for efficient data structures and operations.
 
 use crate::simulator::{Simulator, SimulatorResult};
-use scirs2_core::ndarray::{Array2, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::GateOp;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array2, ArrayView2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::Arc;
 

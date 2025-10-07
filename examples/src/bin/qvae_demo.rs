@@ -2,8 +2,8 @@
 //!
 //! This example demonstrates quantum data compression using a QVAE.
 
-use scirs2_core::Complex64 as Complex;
 use quantrs2_ml::vae::{ClassicalAutoencoder, HybridAutoencoder, QVAE};
+use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

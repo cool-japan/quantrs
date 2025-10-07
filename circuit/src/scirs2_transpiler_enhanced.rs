@@ -12,8 +12,6 @@ use crate::scirs2_integration::{
     AnalyzerConfig, GraphMetrics, GraphMotif,
     OptimizationSuggestion as SciRS2OptimizationSuggestion, SciRS2CircuitAnalyzer,
 };
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use petgraph::algo::{astar, dijkstra, kosaraju_scc};
 use petgraph::graph::{Graph, NodeIndex};
 use quantrs2_core::platform::PlatformCapabilities;
@@ -22,7 +20,9 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;

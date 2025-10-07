@@ -10,10 +10,10 @@ use super::{
     TopologicalSystemType,
 };
 use crate::{Circuit, CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice};
+use scirs2_core::random::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use scirs2_core::random::prelude::*;
 
 /// Enhanced topological quantum device with full anyon manipulation
 pub struct EnhancedTopologicalDevice {

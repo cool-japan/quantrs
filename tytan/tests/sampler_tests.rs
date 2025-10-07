@@ -1,8 +1,8 @@
 //! Tests for the sampler module.
 
-use scirs2_core::ndarray::{ArrayD, IxDyn};
 use quantrs2_tytan::sampler::{GASampler, SASampler, Sampler};
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::{ArrayD, IxDyn};
 use std::collections::HashMap;
 
 #[cfg(feature = "dwave")]

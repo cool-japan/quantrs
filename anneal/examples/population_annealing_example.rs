@@ -324,7 +324,11 @@ fn create_random_spin_glass(
     for i in 0..n {
         for j in (i + 1)..n {
             if thread_rng().gen::<f64>() < density {
-                let coupling = if thread_rng().gen::<bool>() { 1.0 } else { -1.0 };
+                let coupling = if thread_rng().gen::<bool>() {
+                    1.0
+                } else {
+                    -1.0
+                };
                 model.set_coupling(i, j, coupling)?;
             }
         }

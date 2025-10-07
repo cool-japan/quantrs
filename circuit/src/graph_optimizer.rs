@@ -4,9 +4,9 @@
 //! and algorithms from SciRS2 for optimal gate scheduling and optimization.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::error::QuantRS2Error;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // SciRS2 integration for graph algorithms when available

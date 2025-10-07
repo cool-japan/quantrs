@@ -5,7 +5,6 @@
 //! automatically selects the best available GPU backend (CUDA, Metal, OpenCL)
 //! and provides optimal performance for quantum circuit simulation.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
@@ -14,6 +13,7 @@ use quantrs2_core::gpu::{
 };
 use quantrs2_core::prelude::QubitId;
 use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
@@ -209,8 +209,9 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
                         .matrix()
                         .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
                     let size = 1 << qubits.len();
-                    let matrix_array = scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
+                    let matrix_array =
+                        scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
+                            .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
                     kernel
                         .apply_multi_qubit_gate(state_vector.as_mut(), &matrix_array, &qubits, N)

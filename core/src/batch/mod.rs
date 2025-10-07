@@ -227,7 +227,10 @@ pub fn split_batch(batch: &BatchStateVector, chunk_size: usize) -> Vec<BatchStat
 
     for start in (0..batch_size).step_by(chunk_size) {
         let end = (start + chunk_size).min(batch_size);
-        let chunk_states = batch.states.slice(scirs2_core::ndarray::s![start..end, ..]).to_owned();
+        let chunk_states = batch
+            .states
+            .slice(scirs2_core::ndarray::s![start..end, ..])
+            .to_owned();
 
         if let Ok(chunk) = BatchStateVector::from_states(chunk_states, batch.config.clone()) {
             chunks.push(chunk);

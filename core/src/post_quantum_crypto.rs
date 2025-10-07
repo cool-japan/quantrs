@@ -11,8 +11,8 @@ use scirs2_core::ndarray::{Array1, Array2};
 // use std::collections::HashMap;
 use std::f64::consts::PI;
 // use sha3::{Digest, Sha3_256, Sha3_512};
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha20Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 
 /// Quantum hash function implementations
 #[derive(Debug, Clone)]
@@ -1103,7 +1103,8 @@ mod tests {
         assert!(signature_scheme.is_ok());
 
         let qds = signature_scheme.unwrap();
-        let message = scirs2_core::ndarray::array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0)];
+        let message =
+            scirs2_core::ndarray::array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0)];
 
         let signature = qds.sign(&message);
         assert!(signature.is_ok());

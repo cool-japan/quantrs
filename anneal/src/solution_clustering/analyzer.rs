@@ -1,8 +1,8 @@
 //! Main solution clustering analyzer implementation
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 

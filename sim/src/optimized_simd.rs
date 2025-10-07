@@ -8,9 +8,9 @@ use crate::scirs2_complex_simd::{
     apply_single_qubit_gate_complex_simd, ComplexSimdOps, ComplexSimdVector,
 };
 use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::simd_ops::SimdUnifiedOps;
+use scirs2_core::Complex64;
 
 /// Simplified SIMD-like structure for complex operations
 /// NOTE: This is being deprecated in favor of SciRS2 SIMD operations.

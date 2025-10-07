@@ -1,8 +1,8 @@
 //! Demonstration of graph-based circuit optimization
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::Complex64;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Graph-Based Circuit Optimizer Demo ===\n");

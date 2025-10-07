@@ -138,7 +138,11 @@ fn adiabatic_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..5 {
         for j in (i + 1)..5 {
             if thread_rng().gen::<f64>() < 0.4 {
-                let coupling = if thread_rng().gen::<bool>() { 1.0 } else { -1.0 };
+                let coupling = if thread_rng().gen::<bool>() {
+                    1.0
+                } else {
+                    -1.0
+                };
                 model.set_coupling(i, j, coupling)?;
             }
         }

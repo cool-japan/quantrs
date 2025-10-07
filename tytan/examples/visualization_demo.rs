@@ -4,7 +4,6 @@
 //! visualize quantum annealing results including energy landscapes,
 //! solution distributions, and convergence plots.
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     sampler::{SASampler, SampleResult, Sampler},
     visualization::{
@@ -15,6 +14,7 @@ use quantrs2_tytan::{
         solution_analysis::{ClusteringMethod, DistributionConfig, SolutionDistribution},
     },
 };
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

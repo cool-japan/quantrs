@@ -1,7 +1,7 @@
 //! Comprehensive tests for advanced visualization and analysis.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::advanced_visualization::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, SystemTime};

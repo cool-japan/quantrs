@@ -4,11 +4,11 @@
 //! multiple quantum devices, simulators, or cloud services in a distributed manner.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

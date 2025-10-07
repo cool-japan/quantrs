@@ -3,9 +3,9 @@
 //! This module provides a test suite for the optimized simulator implementations
 //! to verify correctness and benchmark performance.
 
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::f64::consts::FRAC_1_SQRT_2;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};

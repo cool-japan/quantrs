@@ -6,8 +6,6 @@
 
 use crate::buffer_manager::{BufferManager, ManagedComplexBuffer, ManagedF64Buffer};
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
 use quantrs2_core::buffer_pool::BufferPool;
 use quantrs2_core::platform::PlatformCapabilities;
 use quantrs2_core::{
@@ -15,7 +13,9 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt;

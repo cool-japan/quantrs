@@ -9,15 +9,15 @@ use crate::error::{MLError, Result};
 use crate::kernels::QuantumKernel;
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
-use scirs2_core::random::prelude::*;
-use scirs2_core::SliceRandomExt;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
     GateOp,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::random::prelude::*;
+use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 
 /// Few-shot learning algorithm types

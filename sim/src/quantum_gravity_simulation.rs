@@ -7,8 +7,8 @@
 //! gravitational quantum effects at the Planck scale.
 
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -746,7 +746,10 @@ impl QuantumGravitySimulator {
                 let output_spin = input_spins.iter().sum::<f64>() / input_spins.len() as f64;
                 let dim = input_spins.len();
                 let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(_i, _j)| {
-                    Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5)
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
                 });
 
                 intertwiners.insert(
@@ -787,8 +790,14 @@ impl QuantumGravitySimulator {
 
     /// Generate random SU(2) element
     fn generate_su2_element(&self) -> Result<Array2<Complex64>> {
-        let a = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
-        let b = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
+        let a = Complex64::new(
+            thread_rng().gen::<f64>() - 0.5,
+            thread_rng().gen::<f64>() - 0.5,
+        );
+        let b = Complex64::new(
+            thread_rng().gen::<f64>() - 0.5,
+            thread_rng().gen::<f64>() - 0.5,
+        );
 
         // Normalize to ensure det = 1
         let norm = (a.norm_sqr() + b.norm_sqr()).sqrt();

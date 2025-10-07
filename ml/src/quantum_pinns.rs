@@ -946,15 +946,20 @@ impl QuantumPINN {
                 point_plus[j] += h;
                 point_minus[j] -= h;
 
-                let output_plus = self.forward(&point_plus.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
+                let output_plus =
+                    self.forward(&point_plus.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
                 let output_minus =
                     self.forward(&point_minus.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
 
                 first_derivatives[[i, j]] = (output_plus - output_minus) / (2.0 * h);
 
                 // Second derivatives
-                let output_center =
-                    self.forward(&points.row(i).insert_axis(scirs2_core::ndarray::Axis(0)).to_owned())?[[0, 0]];
+                let output_center = self.forward(
+                    &points
+                        .row(i)
+                        .insert_axis(scirs2_core::ndarray::Axis(0))
+                        .to_owned(),
+                )?[[0, 0]];
                 second_derivatives[[i, j]] =
                     (output_plus - 2.0 * output_center + output_minus) / (h * h);
 
@@ -974,10 +979,14 @@ impl QuantumPINN {
                     point_mm[j] -= h;
                     point_mm[k] -= h;
 
-                    let output_pp = self.forward(&point_pp.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
-                    let output_pm = self.forward(&point_pm.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
-                    let output_mp = self.forward(&point_mp.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
-                    let output_mm = self.forward(&point_mm.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
+                    let output_pp =
+                        self.forward(&point_pp.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
+                    let output_pm =
+                        self.forward(&point_pm.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
+                    let output_mp =
+                        self.forward(&point_mp.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
+                    let output_mm =
+                        self.forward(&point_mm.insert_axis(scirs2_core::ndarray::Axis(0)))?[[0, 0]];
 
                     let mixed_deriv =
                         (output_pp - output_pm - output_mp + output_mm) / (4.0 * h * h);

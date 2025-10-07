@@ -6,7 +6,6 @@
 //! - Contact map prediction
 //! - Comparison with molecular dynamics approaches
 
-use scirs2_core::ndarray::{Array2, Array3};
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -21,6 +20,7 @@ use quantrs2_tytan::{
         solution_analysis::analyze_solution_distribution,
     },
 };
+use scirs2_core::ndarray::{Array2, Array3};
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 

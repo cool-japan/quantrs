@@ -201,7 +201,9 @@ impl PySolutionAnalyzer {
                 let (rows, cols) = components.dim();
                 let flat_data: Vec<f64> = components.into_raw_vec();
                 let array = scirs2_core::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
-                    .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
+                    .map_err(|e| {
+                    PyValueError::new_err(format!("Failed to create array: {}", e))
+                })?;
                 let py_array = array.into_pyarray(py);
                 dict.set_item("pca_components", py_array)?;
             }

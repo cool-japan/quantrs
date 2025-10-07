@@ -421,7 +421,8 @@ impl AdvancedEquivalenceChecker {
         let diff = &matrix1 - &matrix2;
 
         // Compute SVD to get spectral norm (use SVD trait via scirs2_core - SciRS2 POLICY)
-        let (_, singular_values, _) = diff.svd(true, true)
+        let (_, singular_values, _) = diff
+            .svd(true, true)
             .map_err(|_| QuantRS2Error::ComputationError("SVD computation failed".into()))?;
 
         let spectral_norm = singular_values[0];
@@ -540,13 +541,11 @@ impl AdvancedEquivalenceChecker {
         let diff_dag_diff = diff.t().mapv(|x| x.conj()).dot(&diff);
 
         // Use ndarray-linalg trait via scirs2_core for complex hermitian matrices (SciRS2 POLICY)
-        let (eigenvalues, _) = diff_dag_diff
-            .eigh(UPLO::Upper)
-            .map_err(|_| {
-                QuantRS2Error::ComputationError(
-                    "Eigenvalue computation failed for trace distance".into(),
-                )
-            })?;
+        let (eigenvalues, _) = diff_dag_diff.eigh(UPLO::Upper).map_err(|_| {
+            QuantRS2Error::ComputationError(
+                "Eigenvalue computation failed for trace distance".into(),
+            )
+        })?;
 
         let trace_distance: f64 =
             eigenvalues.iter().map(|&lambda| lambda.sqrt()).sum::<f64>() * 0.5;

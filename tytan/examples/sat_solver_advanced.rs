@@ -6,7 +6,6 @@
 //! - Various SAT problem instances (3-SAT, k-SAT)
 //! - Performance comparison with classical SAT solvers
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -16,6 +15,7 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 

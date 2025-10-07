@@ -797,7 +797,11 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
 
 // Helper functions
 
-fn simulate_cartpole_step(state: &[f64], action: usize, rng: &mut scirs2_core::random::ChaCha8Rng) -> Vec<f64> {
+fn simulate_cartpole_step(
+    state: &[f64],
+    action: usize,
+    rng: &mut scirs2_core::random::ChaCha8Rng,
+) -> Vec<f64> {
     let pos = state[0];
     let vel = state[1];
     let angle = state[2];

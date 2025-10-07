@@ -3,8 +3,8 @@
 //! This module provides advanced error handling, performance diagnostics,
 //! and system health monitoring for the quantum simulation framework.
 
-use scirs2_core::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

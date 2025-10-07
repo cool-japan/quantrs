@@ -3,7 +3,6 @@
 //! This example shows how to use the penalty optimization module
 //! to automatically tune penalty weights for constrained QUBO problems.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::{
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
@@ -12,6 +11,7 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::error::Error;
 

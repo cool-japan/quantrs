@@ -3,8 +3,8 @@
 //! This simulator automatically detects and uses specialized gate implementations
 //! for improved performance compared to general matrix multiplication.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};

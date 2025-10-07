@@ -39,7 +39,6 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new Quantum Boltzmann Machine
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        
         use scirs2_core::random::prelude::*;
         let mut rng = StdRng::seed_from_u64(42);
 
@@ -344,7 +343,9 @@ impl QuantumVAE {
         }
 
         // Extract mean and variance for latent distribution
-        let mean = state.slice(scirs2_core::ndarray::s![..self.latent_dim]).to_owned();
+        let mean = state
+            .slice(scirs2_core::ndarray::s![..self.latent_dim])
+            .to_owned();
         let log_var = state
             .slice(scirs2_core::ndarray::s![
                 self.latent_dim..2 * self.latent_dim.min(self.input_dim)

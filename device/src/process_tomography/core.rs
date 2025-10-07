@@ -1,13 +1,13 @@
 //! Core process tomography implementation
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use crate::{

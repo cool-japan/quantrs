@@ -3,14 +3,14 @@
 //! This module provides familiar APIs for users coming from Qiskit or Cirq,
 //! making it easier to transition to QuantRS2.
 
-#![allow(non_snake_case)]  // Python API convention: match Qiskit/Cirq naming (H, X, Y, Z, CNOT, LineQubit, GridQubit)
+#![allow(non_snake_case)] // Python API convention: match Qiskit/Cirq naming (H, X, Y, Z, CNOT, LineQubit, GridQubit)
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

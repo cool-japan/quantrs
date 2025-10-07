@@ -370,11 +370,15 @@ impl HybridNeuralNetwork {
             // Adjust prediction dimensions to match target if needed
             if prediction.len() != target.len() {
                 let min_len = prediction.len().min(target.len());
-                prediction = prediction.slice(scirs2_core::ndarray::s![..min_len]).to_owned();
+                prediction = prediction
+                    .slice(scirs2_core::ndarray::s![..min_len])
+                    .to_owned();
             }
 
             let adjusted_target = if target.len() > prediction.len() {
-                target.slice(scirs2_core::ndarray::s![..prediction.len()]).to_owned()
+                target
+                    .slice(scirs2_core::ndarray::s![..prediction.len()])
+                    .to_owned()
             } else {
                 target
             };
@@ -634,8 +638,7 @@ impl HybridNeuralNetwork {
         let mut rng = thread_rng();
         for layer in &mut self.classical_layers {
             for weight in layer.weights.iter_mut() {
-                *weight +=
-                    self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
+                *weight += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
             for bias in layer.biases.iter_mut() {
                 *bias += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;

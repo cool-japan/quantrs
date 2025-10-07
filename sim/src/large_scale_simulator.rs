@@ -11,11 +11,11 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
-// use quantrs2_core::platform::PlatformCapabilities;
-// use scirs2_core::memory::BufferPool as SciRS2BufferPool;
-// use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
-// use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+                                  // use quantrs2_core::platform::PlatformCapabilities;
+                                  // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
+                                  // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
+                                  // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use memmap2::{MmapMut, MmapOptions};
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};

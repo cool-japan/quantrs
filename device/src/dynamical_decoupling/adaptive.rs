@@ -7,9 +7,9 @@ use std::time::{Duration, Instant};
 
 use scirs2_core::random::Rng;
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::ndarray::{Array1, Array2};
 
 use super::{
     config::{
@@ -794,8 +794,7 @@ impl AdaptiveDDSystem {
             ExplorationStrategy::EpsilonGreedy(epsilon) => {
                 if thread_rng().gen::<f64>() < epsilon {
                     // Explore: select random sequence
-                    let random_idx =
-                        thread_rng().gen_range(0..self.available_sequences.len());
+                    let random_idx = thread_rng().gen_range(0..self.available_sequences.len());
                     best_sequence = self.available_sequences[random_idx].clone();
                 }
             }

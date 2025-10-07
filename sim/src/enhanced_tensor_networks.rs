@@ -5,9 +5,9 @@
 //! bond dimension management, and SciRS2-accelerated tensor operations.
 
 use scirs2_core::ndarray::{Array, Array2, ArrayD, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 

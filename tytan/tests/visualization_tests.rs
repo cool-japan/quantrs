@@ -1,9 +1,9 @@
 //! Tests and examples for advanced visualization functionality
 
-use scirs2_core::ndarray::Array;
-use scirs2_core::random::prelude::*;
 use quantrs2_tytan::analysis::visualization::*;
 use quantrs2_tytan::sampler::{SASampler, SampleResult, Sampler};
+use scirs2_core::ndarray::Array;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Create dummy sample results for testing

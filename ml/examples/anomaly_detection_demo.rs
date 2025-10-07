@@ -3,8 +3,8 @@
 //! This example demonstrates how to use the quantum anomaly detection module
 //! for various types of anomaly detection tasks.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> quantrs2_ml::Result<()> {

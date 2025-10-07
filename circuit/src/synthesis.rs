@@ -5,8 +5,6 @@
 
 use crate::builder::Circuit;
 // Now using SciRS2 for all matrix operations (SciRS2 POLICY COMPLIANT)
-use scirs2_core::Complex64;
-use scirs2_core::ndarray::{arr2, Array2, Axis, s};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{
@@ -16,6 +14,8 @@ use quantrs2_core::{
     },
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{arr2, s, Array2, Axis};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Complex number type for quantum computations
@@ -220,18 +220,30 @@ impl SingleQubitSynthesizer {
             ]),
             // Hadamard
             arr2(&[
-                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
-                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+                [
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                ],
+                [
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                    C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
+                ],
             ]),
             // T gate
             arr2(&[
                 [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
-                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+                [
+                    C64::new(0.0, 0.0),
+                    C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
+                ],
             ]),
             // T† gate
             arr2(&[
                 [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
-                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), -1.0 / 2.0_f64.sqrt())],
+                [
+                    C64::new(0.0, 0.0),
+                    C64::new(1.0 / 2.0_f64.sqrt(), -1.0 / 2.0_f64.sqrt()),
+                ],
             ]),
             // S gate
             arr2(&[
@@ -365,12 +377,21 @@ impl SingleQubitSynthesizer {
         // Simplified implementation: return two basic gates
         // In full implementation, this would use more sophisticated search
         let h_matrix = arr2(&[
-            [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
-            [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+            [
+                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+            ],
+            [
+                C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
+            ],
         ]);
         let t_matrix = arr2(&[
             [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
-            [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+            [
+                C64::new(0.0, 0.0),
+                C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
+            ],
         ]);
 
         Some((h_matrix, t_matrix))
@@ -392,12 +413,21 @@ impl SingleQubitSynthesizer {
     fn gate_to_matrix(&self, gate: &dyn GateOp) -> QuantRS2Result<Unitary2> {
         match gate.name() {
             "H" => Ok(arr2(&[
-                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 0.0)],
-                [C64::new(1.0 / 2.0_f64.sqrt(), 0.0), C64::new(-1.0 / 2.0_f64.sqrt(), 0.0)],
+                [
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                ],
+                [
+                    C64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+                    C64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
+                ],
             ])),
             "T" => Ok(arr2(&[
                 [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
-                [C64::new(0.0, 0.0), C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt())],
+                [
+                    C64::new(0.0, 0.0),
+                    C64::new(1.0 / 2.0_f64.sqrt(), 1.0 / 2.0_f64.sqrt()),
+                ],
             ])),
             "S" => Ok(arr2(&[
                 [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
@@ -706,10 +736,30 @@ impl MultiQubitSynthesizer {
 
         // Convert Array2 to Unitary4 by extracting elements
         let u4 = arr2(&[
-            [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
-            [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
-            [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
-            [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+            [
+                unitary[[0, 0]],
+                unitary[[0, 1]],
+                unitary[[0, 2]],
+                unitary[[0, 3]],
+            ],
+            [
+                unitary[[1, 0]],
+                unitary[[1, 1]],
+                unitary[[1, 2]],
+                unitary[[1, 3]],
+            ],
+            [
+                unitary[[2, 0]],
+                unitary[[2, 1]],
+                unitary[[2, 2]],
+                unitary[[2, 3]],
+            ],
+            [
+                unitary[[3, 0]],
+                unitary[[3, 1]],
+                unitary[[3, 2]],
+                unitary[[3, 3]],
+            ],
         ]);
         self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))
     }
@@ -801,8 +851,7 @@ impl MultiQubitSynthesizer {
         // Step 4: Process u22 block
         if self.is_block_significant(&u22.to_owned()) {
             for i in half_size..n.min(N) {
-                let angle =
-                    self.extract_rotation_angle_from_block(&u22.to_owned(), i - half_size);
+                let angle = self.extract_rotation_angle_from_block(&u22.to_owned(), i - half_size);
                 if angle.abs() > self.config.tolerance && i < N {
                     circuit.add_gate(RotationZ {
                         target: QubitId(i as u32),
@@ -859,10 +908,30 @@ impl MultiQubitSynthesizer {
             4 => {
                 // Two qubits: use two-qubit synthesizer
                 let u4 = arr2(&[
-                    [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
-                    [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
-                    [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
-                    [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+                    [
+                        unitary[[0, 0]],
+                        unitary[[0, 1]],
+                        unitary[[0, 2]],
+                        unitary[[0, 3]],
+                    ],
+                    [
+                        unitary[[1, 0]],
+                        unitary[[1, 1]],
+                        unitary[[1, 2]],
+                        unitary[[1, 3]],
+                    ],
+                    [
+                        unitary[[2, 0]],
+                        unitary[[2, 1]],
+                        unitary[[2, 2]],
+                        unitary[[2, 3]],
+                    ],
+                    [
+                        unitary[[3, 0]],
+                        unitary[[3, 1]],
+                        unitary[[3, 2]],
+                        unitary[[3, 3]],
+                    ],
                 ]);
                 let two_circ: Circuit<N> =
                     self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))?;
@@ -909,10 +978,30 @@ impl MultiQubitSynthesizer {
         unitary: &Array2<C64>,
     ) -> QuantRS2Result<Circuit<N>> {
         let u4 = arr2(&[
-            [unitary[[0, 0]], unitary[[0, 1]], unitary[[0, 2]], unitary[[0, 3]]],
-            [unitary[[1, 0]], unitary[[1, 1]], unitary[[1, 2]], unitary[[1, 3]]],
-            [unitary[[2, 0]], unitary[[2, 1]], unitary[[2, 2]], unitary[[2, 3]]],
-            [unitary[[3, 0]], unitary[[3, 1]], unitary[[3, 2]], unitary[[3, 3]]],
+            [
+                unitary[[0, 0]],
+                unitary[[0, 1]],
+                unitary[[0, 2]],
+                unitary[[0, 3]],
+            ],
+            [
+                unitary[[1, 0]],
+                unitary[[1, 1]],
+                unitary[[1, 2]],
+                unitary[[1, 3]],
+            ],
+            [
+                unitary[[2, 0]],
+                unitary[[2, 1]],
+                unitary[[2, 2]],
+                unitary[[2, 3]],
+            ],
+            [
+                unitary[[3, 0]],
+                unitary[[3, 1]],
+                unitary[[3, 2]],
+                unitary[[3, 3]],
+            ],
         ]);
         self.two_synth.synthesize(&u4, QubitId(0), QubitId(1))
     }
@@ -1215,19 +1304,36 @@ pub mod unitaries {
         let exp_neg = C64::from_polar(1.0, -angle / 2.0);
         let exp_pos = C64::from_polar(1.0, angle / 2.0);
 
-        arr2(&[
-            [exp_neg, C64::new(0.0, 0.0)],
-            [C64::new(0.0, 0.0), exp_pos],
-        ])
+        arr2(&[[exp_neg, C64::new(0.0, 0.0)], [C64::new(0.0, 0.0), exp_pos]])
     }
 
     /// Create CNOT matrix (4x4)
     pub fn cnot() -> Unitary4 {
         arr2(&[
-            [C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0)],
-            [C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0)],
-            [C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0)],
-            [C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
+            [
+                C64::new(1.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+            ],
+            [
+                C64::new(0.0, 0.0),
+                C64::new(1.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+            ],
+            [
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(1.0, 0.0),
+            ],
+            [
+                C64::new(0.0, 0.0),
+                C64::new(0.0, 0.0),
+                C64::new(1.0, 0.0),
+                C64::new(0.0, 0.0),
+            ],
         ])
     }
 }

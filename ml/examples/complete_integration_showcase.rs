@@ -3,10 +3,10 @@
 //! This example demonstrates the full ecosystem of QuantRS2-ML integrations,
 //! showcasing how all components work together in a real-world workflow.
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use quantrs2_ml::prelude::*;
-use std::collections::HashMap;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("=== QuantRS2-ML Complete Integration Showcase ===\n");

@@ -2,7 +2,6 @@
 //!
 //! This example showcases the full capabilities of the quantum optimization framework.
 
-use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_tytan::applications::finance::*;
 use quantrs2_tytan::coherent_ising_machine::*;
 use quantrs2_tytan::performance_profiler::*;
@@ -11,6 +10,7 @@ use quantrs2_tytan::problem_dsl::*;
 use quantrs2_tytan::sampler::Sampler;
 use quantrs2_tytan::solution_debugger::*;
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::{array, Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
 

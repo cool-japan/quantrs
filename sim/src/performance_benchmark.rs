@@ -4,8 +4,8 @@
 //! the performance of various quantum simulation components, including optimizations,
 //! memory efficiency, and scalability analysis.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

@@ -4,10 +4,10 @@
 //! manages precision levels for optimal performance and accuracy.
 
 use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
-use scirs2_core::random::prelude::*;
 use crate::error::{Result, SimulatorError};
 use crate::prelude::SciRS2Backend;
 use scirs2_core::ndarray::Array1;
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -232,7 +232,6 @@ impl EnergyLandscape {
         data: &Array2<f64>,
         n_components: usize,
     ) -> Result<Array2<f64>, Box<dyn std::error::Error>> {
-        
         use scirs2_core::random::prelude::*;
 
         let n_features = data.ncols();

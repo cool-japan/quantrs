@@ -6,11 +6,11 @@
 
 // We don't use these imports directly in the non-dwave version
 #[cfg(feature = "dwave")]
-use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
-#[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
 use regex::Regex;
+#[cfg(feature = "dwave")]
+use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
 #[cfg(feature = "dwave")]
 use std::collections::HashMap;
 use thiserror::Error;

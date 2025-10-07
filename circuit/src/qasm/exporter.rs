@@ -2,8 +2,8 @@
 
 use super::ast::*;
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::sync::Arc;

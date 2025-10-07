@@ -1,8 +1,8 @@
 //! Quantum unit testing framework demonstration
 
+use quantrs2_core::prelude::*;
 use scirs2_core::ndarray::{array, Array1, Array2};
 use scirs2_core::Complex64;
-use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

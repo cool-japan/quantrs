@@ -9,11 +9,11 @@
 //! - Quantum posterior inference and sampling
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, Axis};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha20Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1112,8 +1112,10 @@ impl QuantumContinuousFlow {
 
         // Combine outputs
         let mut z = Array1::zeros(x.len());
-        z.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&x1); // First half unchanged
-        z.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&z2); // Second half transformed
+        z.slice_mut(scirs2_core::ndarray::s![..split_dim])
+            .assign(&x1); // First half unchanged
+        z.slice_mut(scirs2_core::ndarray::s![split_dim..])
+            .assign(&z2); // Second half transformed
 
         Ok(LayerOutput {
             transformed_data: z,
@@ -1533,8 +1535,10 @@ impl QuantumContinuousFlow {
 
         // Combine
         let mut z = Array1::zeros(x.len());
-        z.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&x1);
-        z.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&z2);
+        z.slice_mut(scirs2_core::ndarray::s![..split_dim])
+            .assign(&x1);
+        z.slice_mut(scirs2_core::ndarray::s![split_dim..])
+            .assign(&z2);
 
         Ok(LayerOutput {
             transformed_data: z,
@@ -1564,7 +1568,9 @@ impl QuantumContinuousFlow {
             .mapv(|amp| amp.re * network.quantum_enhancement);
 
         let output = if full_output.len() > x.len() {
-            full_output.slice(scirs2_core::ndarray::s![..x.len()]).to_owned()
+            full_output
+                .slice(scirs2_core::ndarray::s![..x.len()])
+                .to_owned()
         } else {
             full_output
         };
@@ -1719,8 +1725,10 @@ impl QuantumContinuousFlow {
 
         // Combine
         let mut x = Array1::zeros(z.len());
-        x.slice_mut(scirs2_core::ndarray::s![..split_dim]).assign(&z1);
-        x.slice_mut(scirs2_core::ndarray::s![split_dim..]).assign(&x2);
+        x.slice_mut(scirs2_core::ndarray::s![..split_dim])
+            .assign(&z1);
+        x.slice_mut(scirs2_core::ndarray::s![split_dim..])
+            .assign(&x2);
 
         Ok(LayerOutput {
             transformed_data: x,

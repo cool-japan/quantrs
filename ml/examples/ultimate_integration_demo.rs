@@ -4,8 +4,8 @@
 //! framework integrations, advanced error mitigation, and production-ready features.
 //! This is the definitive showcase of the entire quantum ML framework.
 
-use scirs2_core::ndarray::{Array1, Array2, Axis};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {

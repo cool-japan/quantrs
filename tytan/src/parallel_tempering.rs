@@ -133,8 +133,7 @@ impl ParallelTemperingSampler {
 
             let delta_energy = new_energy - old_energy;
 
-            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp()
-            {
+            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp() {
                 chain[idx] = new_value;
             }
         }

@@ -1154,7 +1154,9 @@ impl QuantumGNN {
     /// Apply readout operation
     fn apply_readout(&self, node_features: &Array2<f64>) -> Result<Array1<f64>> {
         let readout_features = match self.readout {
-            ReadoutType::Mean => node_features.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
+            ReadoutType::Mean => node_features
+                .mean_axis(scirs2_core::ndarray::Axis(0))
+                .unwrap(),
             ReadoutType::Max => {
                 let mut max_features = Array1::from_elem(node_features.ncols(), f64::NEG_INFINITY);
                 for row in node_features.rows() {

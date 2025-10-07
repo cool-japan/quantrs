@@ -659,7 +659,8 @@ impl SqueezedStateMeasurement {
 
         for _ in 0..num_samples {
             // Add dark counts
-            let dark_noise = if thread_rng().gen::<f64>() < self.dark_count_rate / self.bandwidth_hz {
+            let dark_noise = if thread_rng().gen::<f64>() < self.dark_count_rate / self.bandwidth_hz
+            {
                 (thread_rng().gen::<f64>() - 0.5) * 0.1
             } else {
                 0.0

@@ -33,8 +33,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn demonstrate_complex_operations() -> Result<(), Box<dyn std::error::Error>> {
-    use scirs2_core::Complex64;
     use quantrs2_core::complex_ext::QuantumComplexExt;
+    use scirs2_core::Complex64;
 
     // Create quantum amplitudes
     let amp1 = Complex64::new(0.6, 0.8);

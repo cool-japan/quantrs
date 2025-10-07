@@ -15,10 +15,10 @@
 //! - Basis set optimization for quantum hardware
 //! - Active space selection and orbital optimization
 
+use scirs2_core::ndarray::ndarray_linalg::Norm; // SciRS2 POLICY compliant
 use scirs2_core::ndarray::{Array1, Array2, Array4};
-use scirs2_core::ndarray::ndarray_linalg::Norm;  // SciRS2 POLICY compliant
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

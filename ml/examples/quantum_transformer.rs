@@ -4,9 +4,9 @@
 //! attention mechanisms, position encodings, and applications to different tasks
 //! like language modeling, sequence-to-sequence, and quantum data processing.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -227,8 +227,12 @@ fn position_encoding_demo() -> Result<()> {
         println!("   Value range: {:.4}", encoding_range);
 
         // Check position distinguishability
-        let pos1 = encodings.slice(scirs2_core::ndarray::s![0, 0, ..]).to_owned();
-        let pos2 = encodings.slice(scirs2_core::ndarray::s![0, seq_len - 1, ..]).to_owned();
+        let pos1 = encodings
+            .slice(scirs2_core::ndarray::s![0, 0, ..])
+            .to_owned();
+        let pos2 = encodings
+            .slice(scirs2_core::ndarray::s![0, seq_len - 1, ..])
+            .to_owned();
         let position_distance = (&pos1 - &pos2).mapv(|x| x * x).sum().sqrt();
 
         println!(
@@ -415,7 +419,8 @@ fn language_modeling_demo() -> Result<()> {
             let probs = exp_logits / sum_exp;
 
             // Simulate target token (next position embedding)
-            let target_embedding = input_tokens.slice(scirs2_core::ndarray::s![batch_idx, pos + 1, ..]);
+            let target_embedding =
+                input_tokens.slice(scirs2_core::ndarray::s![batch_idx, pos + 1, ..]);
             let target_prob = compute_token_probability(&probs, &target_embedding.to_owned())?;
 
             if target_prob > 1e-10 {
@@ -447,7 +452,10 @@ fn language_modeling_demo() -> Result<()> {
         );
 
         // Information flow analysis
-        let first_layer_norm = logits.slice(scirs2_core::ndarray::s![0, .., ..]).var(0.0).sqrt();
+        let first_layer_norm = logits
+            .slice(scirs2_core::ndarray::s![0, .., ..])
+            .var(0.0)
+            .sqrt();
         println!(
             "   - Output layer standard deviation: {:.4}",
             first_layer_norm

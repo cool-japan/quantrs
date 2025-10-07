@@ -12,8 +12,8 @@ use quantrs2_anneal::{
     qubo::QuboBuilder,
     simulator::{ClassicalAnnealingSimulator, QuantumAnnealingSimulator},
 };
-use std::time::Instant;
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Problem-Specific Annealing Schedules Demo ===\n");

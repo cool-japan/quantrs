@@ -1,8 +1,5 @@
 //! Comprehensive tests for advanced features.
 
-use scirs2_core::ndarray::{array, Array, Array1, Array2};
-use scirs2_core::RandomExt;
-use scirs2_core::ndarray::distributions::Uniform;
 use quantrs2_tytan::applications::finance::*;
 use quantrs2_tytan::applications::logistics::*;
 use quantrs2_tytan::coherent_ising_machine::*;
@@ -14,6 +11,9 @@ use quantrs2_tytan::sampler::Sampler;
 use quantrs2_tytan::solution_debugger::*;
 use quantrs2_tytan::testing_framework::*;
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::distributions::Uniform;
+use scirs2_core::ndarray::{array, Array, Array1, Array2};
+use scirs2_core::RandomExt;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -147,10 +147,7 @@ mod decomposition_tests {
     #[test]
     fn test_domain_decomposer() {
         let size = 12;
-        let mut qubo = Array2::random(
-            (size, size),
-            Uniform::new(-1.0, 1.0),
-        );
+        let mut qubo = Array2::random((size, size), Uniform::new(-1.0, 1.0));
 
         let mut sampler = SASampler::new(None);
         let mut decomposer = DomainDecomposer::new(sampler);

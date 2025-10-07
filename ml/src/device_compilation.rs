@@ -5,9 +5,9 @@
 
 use crate::circuit_integration::{DeviceTopology, QubitProperties};
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Device-specific model compiler

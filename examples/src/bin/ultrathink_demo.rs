@@ -1,10 +1,10 @@
 //! UltraThink Mode Demonstration
 //! This demonstrates the quantum advantage capabilities of the UltraThink system
 
-use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
 use quantrs2_core::qubit::QubitId;
 use quantrs2_core::ultrathink_core::UltraThinkQuantumComputer;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

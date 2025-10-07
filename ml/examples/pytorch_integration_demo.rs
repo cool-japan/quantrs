@@ -3,9 +3,9 @@
 //! This example demonstrates how to use the PyTorch-like API for quantum machine learning,
 //! including quantum layers, training loops, and data handling that feels familiar to PyTorch users.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::pytorch_api::{ActivationType, TrainingHistory};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {

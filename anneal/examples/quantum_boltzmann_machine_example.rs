@@ -15,9 +15,9 @@ use quantrs2_anneal::{
     },
     simulator::AnnealingParams,
 };
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::Rng;
 use std::time::Instant;
-use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Boltzmann Machine Demo ===\n");

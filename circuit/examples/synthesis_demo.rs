@@ -3,11 +3,11 @@
 //! This example shows how to synthesize quantum circuits from unitary matrix
 //! descriptions using various decomposition algorithms.
 
-use scirs2_core::Complex64;
-use scirs2_core::ndarray::Array2;
 use quantrs2_circuit::prelude::*;
 use quantrs2_circuit::synthesis::unitaries::*;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 type C64 = Complex64;
@@ -161,10 +161,13 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     let identity_2x2 = Array2::from_shape_vec(
         (2, 2),
         vec![
-            C64::new(1.0, 0.0), C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0), C64::new(1.0, 0.0),
+            C64::new(1.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
         ],
-    ).unwrap();
+    )
+    .unwrap();
 
     match synthesizer.validate_unitary(&identity_2x2) {
         Ok(_) => println!("  ✓ 2x2 Identity matrix"),
@@ -176,10 +179,13 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     let hadamard_matrix = Array2::from_shape_vec(
         (2, 2),
         vec![
-            C64::new(inv_sqrt2, 0.0), C64::new(inv_sqrt2, 0.0),
-            C64::new(inv_sqrt2, 0.0), C64::new(-inv_sqrt2, 0.0),
+            C64::new(inv_sqrt2, 0.0),
+            C64::new(inv_sqrt2, 0.0),
+            C64::new(inv_sqrt2, 0.0),
+            C64::new(-inv_sqrt2, 0.0),
         ],
-    ).unwrap();
+    )
+    .unwrap();
 
     match synthesizer.validate_unitary(&hadamard_matrix) {
         Ok(_) => println!("  ✓ Hadamard matrix"),
@@ -193,10 +199,15 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     let non_square = Array2::from_shape_vec(
         (2, 3),
         vec![
-            C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
+            C64::new(0.0, 0.0),
         ],
-    ).unwrap();
+    )
+    .unwrap();
 
     match synthesizer.validate_unitary(&non_square) {
         Ok(_) => println!("  ✓ Non-square matrix (unexpected)"),
@@ -207,10 +218,13 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     let non_unitary = Array2::from_shape_vec(
         (2, 2),
         vec![
-            C64::new(2.0, 0.0), C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0), C64::new(1.0, 0.0),
+            C64::new(2.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
         ],
-    ).unwrap();
+    )
+    .unwrap();
 
     match synthesizer.validate_unitary(&non_unitary) {
         Ok(_) => println!("  ✓ Non-unitary matrix (unexpected)"),
@@ -221,11 +235,18 @@ fn demo_validation() -> quantrs2_core::error::QuantRS2Result<()> {
     let wrong_dimension = Array2::from_shape_vec(
         (3, 3),
         vec![
-            C64::new(1.0, 0.0), C64::new(0.0, 0.0), C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0), C64::new(1.0, 0.0), C64::new(0.0, 0.0),
-            C64::new(0.0, 0.0), C64::new(0.0, 0.0), C64::new(1.0, 0.0),
+            C64::new(1.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(0.0, 0.0),
+            C64::new(1.0, 0.0),
         ],
-    ).unwrap();
+    )
+    .unwrap();
 
     match synthesizer.validate_unitary(&wrong_dimension) {
         Ok(_) => println!("  ✓ Non-power-of-2 dimension (unexpected)"),
@@ -247,20 +268,26 @@ fn demo_synthesis_comparison() -> quantrs2_core::error::QuantRS2Result<()> {
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
-                    C64::new(inv_sqrt2, 0.0), C64::new(inv_sqrt2, 0.0),
-                    C64::new(inv_sqrt2, 0.0), C64::new(-inv_sqrt2, 0.0),
+                    C64::new(inv_sqrt2, 0.0),
+                    C64::new(inv_sqrt2, 0.0),
+                    C64::new(inv_sqrt2, 0.0),
+                    C64::new(-inv_sqrt2, 0.0),
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
         ),
         (
             "T gate",
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
-                    C64::new(1.0, 0.0), C64::new(0.0, 0.0),
-                    C64::new(0.0, 0.0), C64::from_polar(1.0, PI / 4.0),
+                    C64::new(1.0, 0.0),
+                    C64::new(0.0, 0.0),
+                    C64::new(0.0, 0.0),
+                    C64::from_polar(1.0, PI / 4.0),
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
         ),
     ];
 

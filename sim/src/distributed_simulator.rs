@@ -20,8 +20,8 @@ use quantrs2_core::{
 // use scirs2_core::communication::{MessagePassing, NetworkTopology};
 // use scirs2_core::load_balancing::{LoadBalancer, WorkDistribution};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
-use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::{BufReader, BufWriter, Read, Write};

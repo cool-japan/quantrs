@@ -15,8 +15,8 @@
 //! - Compilation pipeline optimization
 //! - Real-time hardware characterization integration
 
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::{Duration, Instant};
 use thiserror::Error;

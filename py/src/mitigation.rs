@@ -8,7 +8,6 @@
 
 use crate::measurement::PyMeasurementResult;
 use crate::PyCircuit;
-use scirs2_core::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -17,6 +16,7 @@ use quantrs2_device::zero_noise_extrapolation::{
     CircuitFolder, ExtrapolationFitter, ExtrapolationMethod, NoiseScalingMethod, Observable,
     ZNEConfig, ZNEResult,
 };
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Zero-Noise Extrapolation configuration

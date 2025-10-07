@@ -2,9 +2,9 @@
 
 #[cfg(test)]
 mod tests {
-    use scirs2_core::ndarray::{Array1, Array2, ArrayD};
     use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
     use quantrs2_tytan::tensor_network_sampler::*;
+    use scirs2_core::ndarray::{Array1, Array2, ArrayD};
     use std::collections::HashMap;
 
     /// Test tensor network configuration

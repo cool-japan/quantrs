@@ -258,7 +258,10 @@ impl QuantumCellularAutomaton1D {
     }
 
     /// Initialize with a random state
-    pub fn initialize_random(&mut self, rng: &mut dyn scirs2_core::random::RngCore) -> QuantRS2Result<()> {
+    pub fn initialize_random(
+        &mut self,
+        rng: &mut dyn scirs2_core::random::RngCore,
+    ) -> QuantRS2Result<()> {
         use scirs2_core::random::prelude::*;
 
         for i in 0..self.num_sites {

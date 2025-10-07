@@ -4,9 +4,9 @@
 //! various tasks including classification, object detection, segmentation,
 //! and feature extraction using quantum circuits and quantum machine learning.
 
-use scirs2_core::ndarray::{Array2, Array3, Array4};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qcnn::PoolingType;
+use scirs2_core::ndarray::{Array2, Array3, Array4};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {

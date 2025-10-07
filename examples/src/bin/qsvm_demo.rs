@@ -1,8 +1,8 @@
 //! Quantum Support Vector Machine demonstration
 
-use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_ml::prelude::*;
-use scirs2_core::random::{Rng, thread_rng};
+use scirs2_core::ndarray::{array, Array1, Array2};
+use scirs2_core::random::{thread_rng, Rng};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Support Vector Machine Demo ===\n");

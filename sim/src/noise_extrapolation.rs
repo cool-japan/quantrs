@@ -5,8 +5,8 @@
 //! and other methods to extrapolate quantum results to the zero-noise limit.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, SimulatorError};

@@ -7,11 +7,11 @@
 //! - Quantum-Enhanced Stochastic Differential Equations
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, Axis};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha20Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

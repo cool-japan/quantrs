@@ -17,7 +17,7 @@
 // MIGRATION PATH: Will migrate when scirs2_sparse adds integer type support
 //
 // See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md for detailed analysis
-use nalgebra_sparse::{CooMatrix, CsrMatrix};  // POLICY EXCEPTION (see above)
+use nalgebra_sparse::{CooMatrix, CsrMatrix}; // POLICY EXCEPTION (see above)
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 

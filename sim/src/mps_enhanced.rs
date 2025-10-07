@@ -4,19 +4,19 @@
 //! with proper SVD decomposition, comprehensive gate support, and performance optimizations.
 
 use crate::scirs2_integration::SciRS2Backend;
-use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
-use scirs2_core::ndarray::ndarray_linalg::{QR, SVD};  // SciRS2 POLICY compliant
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
 };
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::ndarray::ndarray_linalg::{QR, SVD}; // SciRS2 POLICY compliant
+use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
 use scirs2_core::parallel_ops::*;
-use std::f64::consts::{PI, SQRT_2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
+use std::f64::consts::{PI, SQRT_2};
 
 /// Configuration for MPS simulator
 #[derive(Debug, Clone)]
@@ -273,7 +273,10 @@ impl EnhancedMPS {
     /// Apply two-qubit gate and decompose using SVD
     fn apply_and_decompose_two_qubit_gate(
         &mut self,
-        gate_array: &scirs2_core::ndarray::ArrayBase<scirs2_core::ndarray::OwnedRepr<Complex64>, scirs2_core::ndarray::Dim<[usize; 4]>>,
+        gate_array: &scirs2_core::ndarray::ArrayBase<
+            scirs2_core::ndarray::OwnedRepr<Complex64>,
+            scirs2_core::ndarray::Dim<[usize; 4]>,
+        >,
         left_qubit: usize,
         right_qubit: usize,
     ) -> QuantRS2Result<()> {
@@ -1008,7 +1011,7 @@ impl EnhancedMPS {
             eprintln!("DEBUG: Reduced density matrix: {:?}", rho);
 
             // Compute eigenvalues
-            use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO};  // SciRS2 POLICY compliant
+            use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO}; // SciRS2 POLICY compliant
             let (eigenvalues, _) = rho.eigh(UPLO::Lower).map_err(|e| {
                 QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {}", e))
             })?;
@@ -1037,7 +1040,7 @@ impl EnhancedMPS {
         let tensor = &self.tensors[cut_position];
 
         // Reshape and compute SVD
-        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
         let mut matrix = Array2::<Complex64>::zeros((tensor.left_dim * 2, tensor.right_dim));
         for l in 0..tensor.left_dim {
             for p in 0..2 {
@@ -1284,7 +1287,7 @@ impl EnhancedMPS {
         &self,
         matrix: &Array2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
-        use scirs2_core::ndarray::ndarray_linalg::SVD;  // SciRS2 POLICY compliant
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
 
         // Perform SVD using ndarray-linalg
         let (u, s, vt) = matrix

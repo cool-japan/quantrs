@@ -21,9 +21,9 @@
 //! cargo run --example comprehensive_framework_demo --all-features
 //! ```
 
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use scirs2_core::random::prelude::*;
 
 // Core framework imports
 use quantrs2_anneal::{
@@ -650,7 +650,7 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
         // Create random problem
         let mut model = IsingModel::new(size);
-            let mut rng = thread_rng();
+        let mut rng = thread_rng();
 
         for i in 0..size {
             for j in (i + 1)..size {

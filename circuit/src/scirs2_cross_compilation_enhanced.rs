@@ -20,8 +20,8 @@ use crate::scirs2_ir_tools::{
     IntermediateRepresentation, TargetGenerator,
 };
 use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
-use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;

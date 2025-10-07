@@ -12,9 +12,9 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*;  // SciRS2 POLICY compliant
-// use scirs2_core::scheduling::{Scheduler, TaskGraph, ParallelExecutor};
-// use scirs2_core::optimization::{CostModel, ResourceOptimizer};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+                                  // use scirs2_core::scheduling::{Scheduler, TaskGraph, ParallelExecutor};
+                                  // use scirs2_core::optimization::{CostModel, ResourceOptimizer};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ pub struct AutoParallelConfig {
 impl Default for AutoParallelConfig {
     fn default() -> Self {
         Self {
-            max_threads: current_num_threads(),  // SciRS2 POLICY compliant
+            max_threads: current_num_threads(), // SciRS2 POLICY compliant
             min_gates_for_parallel: 10,
             strategy: ParallelizationStrategy::DependencyAnalysis,
             resource_constraints: ResourceConstraints::default(),

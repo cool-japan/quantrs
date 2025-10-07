@@ -4,8 +4,8 @@
 //! in large quantum circuit processing by centralizing buffer pools and
 //! implementing intelligent allocation strategies.
 
-use scirs2_core::Complex64;
 use quantrs2_core::buffer_pool::BufferPool;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 

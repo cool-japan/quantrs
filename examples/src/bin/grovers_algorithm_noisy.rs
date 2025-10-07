@@ -1,4 +1,3 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::{
@@ -9,6 +8,7 @@ use quantrs2_sim::noise_advanced::{
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 /// Grover's Algorithm with Realistic Noise Models

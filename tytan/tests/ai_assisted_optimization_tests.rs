@@ -1,7 +1,7 @@
 //! Comprehensive tests for AI-assisted quantum optimization.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::ai_assisted_optimization::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
 

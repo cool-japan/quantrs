@@ -8,9 +8,9 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::{single::*, GateOp};
 use crate::matrix_ops::{matrices_approx_equal, DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{Array2, ArrayView2};
 use scirs2_core::Complex64;
-use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use std::f64::consts::{PI, SQRT_2};
 

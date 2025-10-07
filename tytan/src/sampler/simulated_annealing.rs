@@ -260,7 +260,10 @@ impl SASampler {
             // We'll match based on tensor dimension to handle differently
             // Handle the tensor processing based on its dimensions
             if tensor.ndim() == 3 {
-                let tensor3d = tensor.to_owned().into_dimensionality::<scirs2_core::ndarray::Ix3>().ok();
+                let tensor3d = tensor
+                    .to_owned()
+                    .into_dimensionality::<scirs2_core::ndarray::Ix3>()
+                    .ok();
                 if let Some(t) = tensor3d {
                     // Calculate energy for 3D tensor
                     for i in 0..std::cmp::min(n_vars, t.dim().0) {
@@ -418,8 +421,8 @@ impl SASampler {
                         let delta_e = new_energy - energy;
 
                         // Metropolis acceptance criterion
-                        let accept = delta_e <= 0.0
-                            || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
+                        let accept =
+                            delta_e <= 0.0 || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
 
                         if accept {
                             energy = new_energy;
@@ -481,7 +484,10 @@ impl SASampler {
 impl Sampler for SASampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&qubo.0, &qubo.1, shots)
@@ -489,7 +495,10 @@ impl Sampler for SASampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&hobo.0, &hobo.1, shots)

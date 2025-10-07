@@ -9,13 +9,13 @@ use crate::{
     error::{Result, SimulatorError},
     scirs2_integration::{Matrix, SciRS2Backend, Vector},
 };
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};

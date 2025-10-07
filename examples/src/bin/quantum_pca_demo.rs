@@ -1,7 +1,7 @@
 //! Quantum Principal Component Analysis demonstration
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

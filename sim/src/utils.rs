@@ -1,6 +1,6 @@
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 
 use quantrs2_core::qubit::QubitId;
 

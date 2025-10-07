@@ -5,9 +5,9 @@
 //!
 //! Note: This requires the `scirs2-autograd` feature to be enabled.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Example quantum neural network layer using parameterized gates

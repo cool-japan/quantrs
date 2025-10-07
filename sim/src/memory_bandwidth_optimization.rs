@@ -5,8 +5,8 @@
 //! strategies, data locality optimizations, and NUMA-aware memory management.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;

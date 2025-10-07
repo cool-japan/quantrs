@@ -5,8 +5,8 @@
 
 #![allow(dead_code)]
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 use quantrs2_core::platform::PlatformCapabilities;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
 // NOTE: Parallel feature removed per SciRS2 POLICY - use scirs2_core::parallel_ops directly
 use scirs2_core::simd_ops;
 use std::sync::Arc;

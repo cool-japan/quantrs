@@ -29,11 +29,11 @@ use crate::{
     variational::VariationalCircuit,
 };
 
-use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use numpy::{PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
 use pyo3::types::PyString;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::time::{Duration, SystemTime};
 
 /// Python wrapper for QubitId

@@ -1,15 +1,15 @@
 //! Demonstration of GPU-accelerated linear algebra operations
 
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
-use scirs2_core::ndarray::Array2;
-#[cfg(all(feature = "gpu", not(target_os = "macos")))]
-use scirs2_core::Complex64;
-#[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_core::prelude::*;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_sim::gpu_linalg::GpuLinearAlgebra;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use quantrs2_sim::prelude::*;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
+use scirs2_core::ndarray::Array2;
+#[cfg(all(feature = "gpu", not(target_os = "macos")))]
+use scirs2_core::Complex64;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use std::time::Instant;
 

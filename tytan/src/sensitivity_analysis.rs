@@ -883,8 +883,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
                 let level = permutations[j][i];
                 let value = min_val
-                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64
-                        * (max_val - min_val);
+                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64 * (max_val - min_val);
 
                 sample.insert(name, value);
             }

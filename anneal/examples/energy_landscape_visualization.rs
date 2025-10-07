@@ -14,8 +14,8 @@ use quantrs2_anneal::{
         LandscapeAnalyzer,
     },
 };
-use std::fs;
 use scirs2_core::random::prelude::*;
+use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Energy Landscape Visualization Demo ===\n");

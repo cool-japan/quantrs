@@ -11,9 +11,9 @@ use crate::keras_api::{Dense, QuantumDense, Sequential};
 use crate::model_zoo::{ModelZoo, QuantumModel};
 use crate::pytorch_api::{QuantumLinear, QuantumModule};
 use crate::sklearn_compatibility::{QuantumMLPClassifier, QuantumSVC};
-use scirs2_core::ndarray::{s, Array1, Array2, ArrayD, Axis, IxDyn};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayD, Axis, IxDyn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

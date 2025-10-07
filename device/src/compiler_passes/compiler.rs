@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use scirs2_core::ndarray::Array1;
 use quantrs2_circuit::prelude::Circuit;
+use scirs2_core::ndarray::Array1;
 
 use crate::{
     backend_traits::BackendCapabilities, calibration::DeviceCalibration,

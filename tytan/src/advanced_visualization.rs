@@ -6,8 +6,8 @@
 
 #![allow(dead_code)]
 
-use scirs2_core::ndarray::{Array1, Array2, Array3};
 use num;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};

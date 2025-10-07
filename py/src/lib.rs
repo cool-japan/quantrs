@@ -11,12 +11,12 @@
 //! - Advanced quantum ML capabilities with autograd support
 //! - Comprehensive policy documentation for Python quantum computing
 
-use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 use quantrs2_sim::dynamic::{DynamicCircuit, DynamicResult};

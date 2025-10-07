@@ -9,12 +9,12 @@
 //! 6. Examine quantum advantages in non-stoquastic systems
 //! 7. Convert between different Hamiltonian representations
 
-use scirs2_core::Complex as NComplex;
 use quantrs2_anneal::{
     ising::IsingModel,
     non_stoquastic::*,
     simulator::{AnnealingParams, ClassicalAnnealingSimulator},
 };
+use scirs2_core::Complex as NComplex;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -6,7 +6,6 @@
 //! - Constraint formulations for different objectives
 //! - Performance analysis on various problem instances
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -20,6 +19,7 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, ClusteringMethod, DistributionConfig},
     },
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 

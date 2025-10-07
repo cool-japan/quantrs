@@ -5,13 +5,13 @@
 //! The implementation automatically selects the best available GPU backend.
 
 use crate::linalg_ops;
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use quantrs2_core::gpu::{GpuConfig, SciRS2GpuBackend};
 use quantrs2_core::prelude::*;
 use quantrs2_core::GpuBackend;
 use scirs2_core::gpu::{GpuBackend as SciRS2GpuBackendTrait, GpuBuffer, GpuContext};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations

@@ -4,11 +4,11 @@
 //! computers, including random circuit generation, ideal simulation, heavy output
 //! probability calculation, and quantum volume determination.
 
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng as RngTrait, SeedableRng, ChaCha8Rng};  // Rename to avoid conflict
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{ChaCha8Rng, Rng as RngTrait, SeedableRng}; // Rename to avoid conflict
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

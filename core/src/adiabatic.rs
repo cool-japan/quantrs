@@ -12,8 +12,8 @@
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Types of optimization problems for adiabatic quantum computing

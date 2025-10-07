@@ -8,8 +8,8 @@
 //! 5. Compare different photonic configurations
 
 use quantrs2_anneal::{ising::IsingModel, photonic_annealing::*};
-use std::time::Instant;
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Photonic Annealing Systems Demo ===\n");

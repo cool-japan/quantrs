@@ -19,10 +19,9 @@ use std::sync::Arc;
 
 // SciRS2 Graph optimization imports
 use scirs2_graph::{
-    Graph as ScirsGraph, DiGraph, dijkstra_path, astar_search,
-    connected_components, bridges, articulation_points,
-    betweenness_centrality, closeness_centrality, diameter,
-    minimum_spanning_tree, k_shortest_paths,
+    articulation_points, astar_search, betweenness_centrality, bridges, closeness_centrality,
+    connected_components, diameter, dijkstra_path, k_shortest_paths, minimum_spanning_tree,
+    DiGraph, Graph as ScirsGraph,
 };
 
 /// Advanced path optimizer using SciRS2 graph algorithms

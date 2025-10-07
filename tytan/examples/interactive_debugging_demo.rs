@@ -1,8 +1,8 @@
 //! Interactive debugging demonstration.
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::sampler::{SASampler, Sampler};
 use quantrs2_tytan::solution_debugger::*;
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use std::io::{self, Write};
 

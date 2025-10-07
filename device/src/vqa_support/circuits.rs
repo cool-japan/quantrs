@@ -3,9 +3,9 @@
 //! This module provides parametric quantum circuits commonly used
 //! in variational quantum algorithms.
 
-use scirs2_core::random::prelude::*;
 use crate::DeviceResult;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Parametric circuit configuration

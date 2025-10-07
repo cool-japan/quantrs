@@ -3,12 +3,12 @@
 //! This module provides various optimization passes for quantum circuits,
 //! including gate cancellation, commutation, synthesis, and depth reduction.
 
-use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // Gate representation for optimization

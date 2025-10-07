@@ -10,11 +10,11 @@
 //! - Quantum attention mechanisms for 3D spatial reasoning
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, Array3, Array4, ArrayView1, Axis};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha20Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -1706,7 +1706,11 @@ impl QuantumNeRF {
         let output_dim = current_features.len();
         if output_dim >= 4 {
             Ok(MLPOutput {
-                color: Array1::from_vec(current_features.slice(scirs2_core::ndarray::s![0..3]).to_vec()),
+                color: Array1::from_vec(
+                    current_features
+                        .slice(scirs2_core::ndarray::s![0..3])
+                        .to_vec(),
+                ),
                 density: current_features[3],
                 quantum_state,
             })

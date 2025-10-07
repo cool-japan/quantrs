@@ -506,11 +506,7 @@ impl VariationalQuantumOptimizer {
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.gen::<bool>() {
-            epsilon
-        } else {
-            -epsilon
-        };
+        let perturbation = if rng.gen::<bool>() { epsilon } else { -epsilon };
 
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
