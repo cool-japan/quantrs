@@ -145,7 +145,7 @@ md5 = "0.8"
 
 # GPU computing support
 wgpu = { version = "26.0.1" }
-bytemuck = { version = "1.23.2", features = ["derive"] }
+bytemuck = { version = "1.24.0", features = ["derive"] }
 ocl = "0.19.7"
 
 # Async and networking
@@ -162,7 +162,7 @@ numpy = "0.25"
 uuid = { version = "1.18.1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.11.3"
-colored = "2.2"
+colored = "3.0"
 tempfile = "3.23"
 petgraph = "0.8"
 pest = "2.8"
@@ -183,7 +183,7 @@ nalgebra-sparse = "0.11"
 plotters = "0.3"
 
 # System information
-sysinfo = "0.30"
+sysinfo = "0.36"
 
 # Additional dependencies for workspace members
 libc = "0.2"
@@ -199,7 +199,7 @@ tokio-test = "0.4"
 memmap2 = "0.9"
 
 # Development and testing
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 
 # NumRS2 ecosystem dependencies
 numrs2 = "0.1.0-beta.3"
