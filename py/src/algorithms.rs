@@ -90,11 +90,11 @@ pub struct PyQAOA {
 #[pymethods]
 impl PyQAOA {
     #[new]
-    fn new(n_qubits: usize, p: usize) -> Self {
+    const fn new(n_qubits: usize, p: usize) -> Self {
         Self { n_qubits, p }
     }
 
-    /// Create QAOA circuit for MaxCut problem
+    /// Create QAOA circuit for `MaxCut` problem
     fn maxcut_circuit(
         &self,
         py: Python,
@@ -145,7 +145,7 @@ pub struct PyQFT {}
 #[pymethods]
 impl PyQFT {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
@@ -160,7 +160,7 @@ impl PyQFT {
             for j in (0..n_qubits).rev() {
                 // Controlled phase rotations
                 for k in (j + 1..n_qubits).rev() {
-                    let angle = -std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = -std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(k, j, angle)?;
                 }
                 // Hadamard
@@ -179,7 +179,7 @@ impl PyQFT {
 
                 // Controlled phase rotations
                 for k in j + 1..n_qubits {
-                    let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(k, j, angle)?;
                 }
             }
@@ -207,7 +207,7 @@ impl PyQFT {
             // Inverse QFT on specified qubits
             for j in (0..n).rev() {
                 for k in (j + 1..n).rev() {
-                    let angle = -std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = -std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(qubits[k], qubits[j], angle)?;
                 }
                 circuit.h(qubits[j])?;
@@ -222,7 +222,7 @@ impl PyQFT {
                 circuit.h(qubits[j])?;
 
                 for k in j + 1..n {
-                    let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(qubits[k], qubits[j], angle)?;
                 }
             }
@@ -249,7 +249,7 @@ impl PyGrover {
     fn new(n_qubits: usize) -> Self {
         // Calculate optimal number of iterations
         let n_items = 1 << n_qubits;
-        let n_iterations = ((std::f64::consts::PI / 4.0) * (n_items as f64).sqrt()) as usize;
+        let n_iterations = ((std::f64::consts::PI / 4.0) * f64::from(n_items).sqrt()) as usize;
 
         Self {
             n_qubits,
@@ -355,7 +355,7 @@ pub struct PyQPE {}
 #[pymethods]
 impl PyQPE {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 

@@ -52,8 +52,7 @@ impl GateRegistry {
         let mut gates = self.gates.lock().unwrap();
         if gates.contains_key(&name) {
             return Err(PyValueError::new_err(format!(
-                "Gate {} already exists",
-                name
+                "Gate {name} already exists"
             )));
         }
         gates.insert(name, definition);
@@ -127,10 +126,7 @@ impl PyCustomGate {
         // Create wrapper that calls Python function
         let matrix_fn_wrapper = Arc::new(move |params: &[f64]| -> Array2<Complex64> {
             Python::with_gil(|py| {
-                let params_py = params
-                    .iter()
-                    .copied()
-                    .collect::<Vec<f64>>()
+                let params_py = params.to_vec()
                     .into_pyarray(py);
                 let result = matrix_fn.call1(py, (params_py,)).unwrap();
                 let matrix: PyReadonlyArray2<Complex64> = result.extract(py).unwrap();
@@ -189,7 +185,7 @@ impl PyCustomGate {
 
     /// Get the number of qubits this gate acts on
     #[getter]
-    fn num_qubits(&self) -> usize {
+    const fn num_qubits(&self) -> usize {
         match &self.definition {
             GateDefinition::Matrix { num_qubits, .. } => *num_qubits,
             GateDefinition::Parametric { num_qubits, .. } => *num_qubits,
@@ -206,7 +202,7 @@ impl PyCustomGate {
 
     /// Get the number of parameters (0 for non-parametric gates)
     #[getter]
-    fn num_params(&self) -> usize {
+    const fn num_params(&self) -> usize {
         match &self.definition {
             GateDefinition::Matrix { .. } => 0,
             GateDefinition::Parametric { num_params, .. } => *num_params,
@@ -222,9 +218,9 @@ impl PyCustomGate {
     }
 
     /// Get the unitary matrix for given parameters
-    fn get_matrix<'py>(
+    fn get_matrix(
         &self,
-        py: Python<'py>,
+        py: Python<'_>,
         params: Option<Vec<f64>>,
     ) -> PyResult<Py<PyArray2<Complex64>>> {
         match &self.definition {
@@ -235,7 +231,7 @@ impl PyCustomGate {
                 ..
             } => {
                 let params = params.ok_or_else(|| {
-                    PyValueError::new_err(format!("Expected {} parameters", num_params))
+                    PyValueError::new_err(format!("Expected {num_params} parameters"))
                 })?;
 
                 if params.len() != *num_params {
@@ -269,7 +265,7 @@ pub struct PyGateBuilder {
 #[pymethods]
 impl PyGateBuilder {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             name: None,
             matrix: None,
@@ -445,7 +441,7 @@ fn create_phase_gate(phase: f64) -> PyResult<PyCustomGate> {
     .unwrap();
 
     Ok(PyCustomGate {
-        name: format!("Phase({:.3})", phase),
+        name: format!("Phase({phase:.3})"),
         definition: GateDefinition::Matrix {
             unitary: matrix,
             num_qubits: 1,
@@ -461,7 +457,7 @@ fn create_rotation_gate(axis: Vec<f64>, angle: f64) -> PyResult<PyCustomGate> {
     }
 
     // Normalize axis
-    let norm = (axis[0].powi(2) + axis[1].powi(2) + axis[2].powi(2)).sqrt();
+    let norm = axis[2].mul_add(axis[2], axis[1].mul_add(axis[1], axis[0].powi(2))).sqrt();
     let nx = axis[0] / norm;
     let ny = axis[1] / norm;
     let nz = axis[2] / norm;
@@ -482,7 +478,7 @@ fn create_rotation_gate(axis: Vec<f64>, angle: f64) -> PyResult<PyCustomGate> {
     .unwrap();
 
     Ok(PyCustomGate {
-        name: format!("Rot({:.2},{:.2},{:.2},{:.3})", nx, ny, nz, angle),
+        name: format!("Rot({nx:.2},{ny:.2},{nz:.2},{angle:.3})"),
         definition: GateDefinition::Matrix {
             unitary: matrix,
             num_qubits: 1,

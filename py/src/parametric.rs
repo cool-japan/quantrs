@@ -39,7 +39,7 @@ impl PyParametricCircuit {
         self.parameters
             .get(name)
             .copied()
-            .ok_or_else(|| PyValueError::new_err(format!("Parameter {} not found", name)))
+            .ok_or_else(|| PyValueError::new_err(format!("Parameter {name} not found")))
     }
 
     /// Set parameter value
@@ -49,8 +49,7 @@ impl PyParametricCircuit {
             Ok(())
         } else {
             Err(PyValueError::new_err(format!(
-                "Parameter {} not found",
-                name
+                "Parameter {name} not found"
             )))
         }
     }
@@ -120,15 +119,15 @@ impl PyParametricCircuit {
         self.add_parameter(param_name.to_string(), value)
     }
 
-    pub fn cnot(&mut self, _control: usize, _target: usize) -> PyResult<()> {
+    pub const fn cnot(&mut self, _control: usize, _target: usize) -> PyResult<()> {
         Ok(())
     }
 
-    pub fn h(&mut self, _qubit: usize) -> PyResult<()> {
+    pub const fn h(&mut self, _qubit: usize) -> PyResult<()> {
         Ok(())
     }
 
-    pub fn x(&mut self, _qubit: usize) -> PyResult<()> {
+    pub const fn x(&mut self, _qubit: usize) -> PyResult<()> {
         Ok(())
     }
 
@@ -151,7 +150,7 @@ pub struct PyCircuitOptimizer {
 impl PyCircuitOptimizer {
     #[new]
     #[pyo3(signature = (learning_rate=0.01, momentum=0.0))]
-    pub fn new(learning_rate: f64, momentum: f64) -> Self {
+    pub const fn new(learning_rate: f64, momentum: f64) -> Self {
         // momentum is ignored in this simplified version
         Self { learning_rate }
     }

@@ -1,11 +1,11 @@
-//! Python bindings for the QuantRS2 framework.
+//! Python bindings for the `QuantRS2` framework.
 //!
-//! This crate provides Python bindings using PyO3,
-//! allowing QuantRS2 to be used from Python.
+//! This crate provides Python bindings using `PyO3`,
+//! allowing `QuantRS2` to be used from Python.
 //!
 //! ## Recent Updates (v0.1.0-beta.2)
 //!
-//! - Refined SciRS2 v0.1.0-beta.3 integration with unified patterns
+//! - Refined `SciRS2` v0.1.0-beta.3 integration with unified patterns
 //! - Enhanced cross-platform support (macOS, Linux, Windows)
 //! - Improved GPU acceleration with CUDA support
 //! - Advanced quantum ML capabilities with autograd support

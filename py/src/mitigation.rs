@@ -26,6 +26,7 @@ pub struct PyZNEConfig {
     inner: ZNEConfig,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyZNEConfig {
     #[new]
@@ -51,8 +52,7 @@ impl PyZNEConfig {
                 "digital" => NoiseScalingMethod::DigitalRepetition,
                 _ => {
                     return Err(PyValueError::new_err(format!(
-                        "Unknown scaling method: {}",
-                        method
+                        "Unknown scaling method: {method}"
                     )))
                 }
             };
@@ -68,8 +68,7 @@ impl PyZNEConfig {
                 "adaptive" => ExtrapolationMethod::Adaptive,
                 _ => {
                     return Err(PyValueError::new_err(format!(
-                        "Unknown extrapolation method: {}",
-                        method
+                        "Unknown extrapolation method: {method}"
                     )))
                 }
             };
@@ -110,7 +109,7 @@ impl PyZNEConfig {
     fn extrapolation_method(&self) -> String {
         match self.inner.extrapolation_method {
             ExtrapolationMethod::Linear => "linear".to_string(),
-            ExtrapolationMethod::Polynomial(n) => format!("polynomial{}", n),
+            ExtrapolationMethod::Polynomial(n) => format!("polynomial{n}"),
             ExtrapolationMethod::Exponential => "exponential".to_string(),
             ExtrapolationMethod::Richardson => "richardson".to_string(),
             ExtrapolationMethod::Adaptive => "adaptive".to_string(),
@@ -145,6 +144,7 @@ pub struct PyZNEResult {
     inner: ZNEResult,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyZNEResult {
     #[getter]
@@ -168,7 +168,7 @@ impl PyZNEResult {
     }
 
     #[getter]
-    fn fit_params<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
+    fn fit_params(&self, py: Python<'_>) -> Py<PyArray1<f64>> {
         Array1::from_vec(self.inner.fit_params.clone())
             .into_pyarray(py)
             .into()
@@ -202,6 +202,7 @@ pub struct PyObservable {
     inner: Observable,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyObservable {
     #[new]
@@ -211,8 +212,7 @@ impl PyObservable {
         for (_, pauli) in &pauli_string {
             if !["I", "X", "Y", "Z"].contains(&pauli.as_str()) {
                 return Err(PyValueError::new_err(format!(
-                    "Invalid Pauli operator: {}",
-                    pauli
+                    "Invalid Pauli operator: {pauli}"
                 )));
             }
         }
@@ -369,7 +369,7 @@ pub struct PyCircuitFolding;
 #[pymethods]
 impl PyCircuitFolding {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 

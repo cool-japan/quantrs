@@ -1,6 +1,6 @@
-//! SciRS2 Python bindings integration for numerical operations.
+//! `SciRS2` Python bindings integration for numerical operations.
 //!
-//! This module provides Python bindings for SciRS2 numerical operations,
+//! This module provides Python bindings for `SciRS2` numerical operations,
 //! including linear algebra, optimization, and statistical functions.
 
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArray1, PyReadonlyArray2};
@@ -93,14 +93,14 @@ impl SciRS2Optimizer {
     }
 }
 
-/// SciRS2 Linear Algebra operations for Python
+/// `SciRS2` Linear Algebra operations for Python
 #[pyclass(name = "SciRS2LinAlg")]
 pub struct PySciRS2LinAlg;
 
 #[pymethods]
 impl PySciRS2LinAlg {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -199,7 +199,7 @@ impl PySciRS2LinAlg {
     }
 }
 
-/// SciRS2 Optimization for Python
+/// `SciRS2` Optimization for Python
 #[pyclass(name = "SciRS2Optimizer")]
 pub struct PySciRS2Optimizer {
     tolerance: f64,
@@ -210,7 +210,7 @@ pub struct PySciRS2Optimizer {
 impl PySciRS2Optimizer {
     #[new]
     #[pyo3(signature = (tolerance=1e-8, max_iterations=1000))]
-    fn new(tolerance: f64, max_iterations: usize) -> Self {
+    const fn new(tolerance: f64, max_iterations: usize) -> Self {
         Self {
             tolerance,
             max_iterations,
@@ -267,14 +267,14 @@ impl PySciRS2Optimizer {
     }
 }
 
-/// SciRS2 Statistical functions for Python
+/// `SciRS2` Statistical functions for Python
 #[pyclass(name = "SciRS2Stats")]
 pub struct PySciRS2Stats;
 
 #[pymethods]
 impl PySciRS2Stats {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -365,14 +365,14 @@ impl PySciRS2Stats {
     }
 }
 
-/// SciRS2 Fast Fourier Transform for Python
+/// `SciRS2` Fast Fourier Transform for Python
 #[pyclass(name = "SciRS2FFT")]
 pub struct PySciRS2FFT;
 
 #[pymethods]
 impl PySciRS2FFT {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -436,7 +436,7 @@ impl PySciRS2FFT {
     }
 }
 
-/// Initialize the SciRS2 bindings submodule
+/// Initialize the `SciRS2` bindings submodule
 pub fn create_scirs2_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let submodule = PyModule::new(m.py(), "scirs2")?;
 
@@ -449,14 +449,14 @@ pub fn create_scirs2_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Quantum-specific numerical operations using SciRS2
+/// Quantum-specific numerical operations using `SciRS2`
 #[pyclass(name = "QuantumNumerics")]
 pub struct PyQuantumNumerics;
 
 #[pymethods]
 impl PyQuantumNumerics {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 

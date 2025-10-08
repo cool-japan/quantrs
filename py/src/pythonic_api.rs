@@ -1,7 +1,7 @@
 //! Pythonic API matching Qiskit/Cirq conventions.
 //!
 //! This module provides familiar APIs for users coming from Qiskit or Cirq,
-//! making it easier to transition to QuantRS2.
+//! making it easier to transition to `QuantRS2`.
 
 #![allow(non_snake_case)] // Python API convention: match Qiskit/Cirq naming (H, X, Y, Z, CNOT, LineQubit, GridQubit)
 
@@ -17,7 +17,7 @@ use std::f64::consts::PI;
 // Re-use types from main module
 use crate::{PyCircuit, PySimulationResult};
 
-/// Qiskit-style QuantumCircuit
+/// Qiskit-style `QuantumCircuit`
 #[pyclass(name = "QuantumCircuit")]
 pub struct PyQuantumCircuit {
     inner: PyCircuit,
@@ -30,8 +30,8 @@ impl PyQuantumCircuit {
     /// Create a new quantum circuit
     ///
     /// Args:
-    ///     n_qubits: Number of qubits (or QuantumRegister)
-    ///     n_clbits: Number of classical bits (optional)
+    ///     `n_qubits`: Number of qubits (or `QuantumRegister`)
+    ///     `n_clbits`: Number of classical bits (optional)
     ///     name: Circuit name (optional)
     #[new]
     #[pyo3(signature = (n_qubits, n_clbits=None, name=None))]
@@ -79,8 +79,7 @@ impl PyQuantumCircuit {
             .values()
             .flatten()
             .max()
-            .map(|&x| x + 1)
-            .unwrap_or(0);
+            .map_or(0, |&x| x + 1);
         let indices: Vec<usize> = (start_idx..start_idx + register.size).collect();
         self.registers.insert(register.name.clone(), indices);
 
@@ -215,7 +214,7 @@ impl PyQuantumCircuit {
     fn measure(&mut self, qubit: &Bound<'_, PyAny>, cbit: &Bound<'_, PyAny>) -> PyResult<()> {
         let q = self.parse_qubit(qubit)?;
         let c = if let Ok(bit) = cbit.extract::<usize>() {
-            format!("c{}", bit)
+            format!("c{bit}")
         } else if let Ok(name) = cbit.extract::<String>() {
             name
         } else {
@@ -229,7 +228,7 @@ impl PyQuantumCircuit {
     /// Measure all qubits
     fn measure_all(&mut self) -> PyResult<()> {
         for q in 0..self.inner.n_qubits() {
-            self.measurements.insert(q, format!("c{}", q));
+            self.measurements.insert(q, format!("c{q}"));
         }
         Ok(())
     }
@@ -241,7 +240,7 @@ impl PyQuantumCircuit {
     }
 
     /// Compose with another circuit
-    fn compose(&mut self, other: &PyQuantumCircuit, qubits: Option<Vec<usize>>) -> PyResult<()> {
+    fn compose(&mut self, other: &Self, qubits: Option<Vec<usize>>) -> PyResult<()> {
         // Simplified composition - would need full implementation
         if other.num_qubits() > self.num_qubits() {
             return Err(PyValueError::new_err("Other circuit has more qubits"));
@@ -250,7 +249,7 @@ impl PyQuantumCircuit {
     }
 
     /// Get circuit depth
-    fn depth(&self) -> usize {
+    const fn depth(&self) -> usize {
         // Simplified - would need to track gate operations
         0
     }
@@ -290,7 +289,7 @@ impl PyQuantumCircuit {
                 .and_then(|indices| indices.get(idx))
                 .copied()
                 .ok_or_else(|| {
-                    PyValueError::new_err(format!("Invalid register access: {}[{}]", reg_name, idx))
+                    PyValueError::new_err(format!("Invalid register access: {reg_name}[{idx}]"))
                 })
         } else {
             Err(PyValueError::new_err(
@@ -312,12 +311,12 @@ impl PyQuantumRegister {
     #[new]
     #[pyo3(signature = (size, name=None))]
     fn new(size: usize, name: Option<String>) -> Self {
-        let name = name.unwrap_or_else(|| format!("q{}", size));
+        let name = name.unwrap_or_else(|| format!("q{size}"));
         Self { size, name }
     }
 
     #[getter]
-    fn size(&self) -> usize {
+    const fn size(&self) -> usize {
         self.size
     }
 
@@ -326,7 +325,7 @@ impl PyQuantumRegister {
         &self.name
     }
 
-    fn __len__(&self) -> usize {
+    const fn __len__(&self) -> usize {
         self.size
     }
 
@@ -353,12 +352,12 @@ impl PyClassicalRegister {
     #[new]
     #[pyo3(signature = (size, name=None))]
     fn new(size: usize, name: Option<String>) -> Self {
-        let name = name.unwrap_or_else(|| format!("c{}", size));
+        let name = name.unwrap_or_else(|| format!("c{size}"));
         Self { size, name }
     }
 
     #[getter]
-    fn size(&self) -> usize {
+    const fn size(&self) -> usize {
         self.size
     }
 
@@ -383,7 +382,7 @@ impl PyQubit {
     }
 
     #[getter]
-    fn index(&self) -> usize {
+    const fn index(&self) -> usize {
         self.index
     }
 }
@@ -398,7 +397,7 @@ pub struct PyCirqCircuit {
 #[pymethods]
 impl PyCirqCircuit {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             moments: Vec::new(),
             n_qubits: 0,
@@ -438,7 +437,7 @@ impl PyCirqCircuit {
         self.moments.clone()
     }
 
-    /// Convert to QuantRS2 native circuit
+    /// Convert to `QuantRS2` native circuit
     fn to_quantrs(&self, py: Python) -> PyResult<Py<PyCircuit>> {
         let mut circuit = PyCircuit::new(self.n_qubits)?;
 
@@ -455,8 +454,7 @@ impl PyCirqCircuit {
                     "RZ" => circuit.rz(qubits[0], params.as_ref().unwrap()[0])?,
                     _ => {
                         return Err(PyValueError::new_err(format!(
-                            "Unknown gate: {}",
-                            gate_type
+                            "Unknown gate: {gate_type}"
                         )))
                     }
                 }
@@ -556,13 +554,13 @@ impl PyCirqGates {
 
 /// Create a line qubit (Cirq-style)
 #[pyfunction]
-fn LineQubit(x: usize) -> usize {
+const fn LineQubit(x: usize) -> usize {
     x
 }
 
 /// Create grid qubits (Cirq-style)
 #[pyfunction]
-fn GridQubit(row: usize, col: usize, n_cols: usize) -> usize {
+const fn GridQubit(row: usize, col: usize, n_cols: usize) -> usize {
     row * n_cols + col
 }
 

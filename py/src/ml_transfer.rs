@@ -30,13 +30,13 @@ impl From<PyTransferStrategy> for TransferStrategy {
         match py_strategy {
             PyTransferStrategy::FineTuning {
                 num_trainable_layers,
-            } => TransferStrategy::FineTuning {
+            } => Self::FineTuning {
                 num_trainable_layers,
             },
-            PyTransferStrategy::FeatureExtraction {} => TransferStrategy::FeatureExtraction,
-            PyTransferStrategy::SelectiveAdaptation {} => TransferStrategy::SelectiveAdaptation,
+            PyTransferStrategy::FeatureExtraction {} => Self::FeatureExtraction,
+            PyTransferStrategy::SelectiveAdaptation {} => Self::SelectiveAdaptation,
             PyTransferStrategy::ProgressiveUnfreezing { unfreeze_rate } => {
-                TransferStrategy::ProgressiveUnfreezing { unfreeze_rate }
+                Self::ProgressiveUnfreezing { unfreeze_rate }
             }
         }
     }
@@ -55,6 +55,7 @@ pub struct PyTransferConfig {
     pub freeze_batch_norm: bool,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyTransferConfig {
     #[new]
@@ -65,6 +66,12 @@ impl PyTransferConfig {
             warmup_epochs: 5,
             freeze_batch_norm: true,
         }
+    }
+}
+
+impl Default for PyTransferConfig {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -79,6 +86,7 @@ pub struct PyPretrainedModel {
     description: String,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyPretrainedModel {
     /// Get model name
@@ -97,11 +105,10 @@ impl PyPretrainedModel {
     fn n_qubits(&self) -> PyResult<usize> {
         #[cfg(feature = "ml")]
         {
-            if let Some(model) = &self.inner {
-                Ok(model.qnn.num_qubits)
-            } else {
-                Err(PyValueError::new_err("Model not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Model not initialized")),
+                |model| Ok(model.qnn.num_qubits),
+            )
         }
 
         #[cfg(not(feature = "ml"))]
@@ -116,11 +123,10 @@ impl PyPretrainedModel {
     fn n_layers(&self) -> PyResult<usize> {
         #[cfg(feature = "ml")]
         {
-            if let Some(model) = &self.inner {
-                Ok(model.qnn.layers.len())
-            } else {
-                Err(PyValueError::new_err("Model not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Model not initialized")),
+                |model| Ok(model.qnn.layers.len()),
+            )
         }
 
         #[cfg(not(feature = "ml"))]
@@ -139,6 +145,7 @@ pub struct PyQuantumTransferLearning {
     strategy: PyTransferStrategy,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyQuantumTransferLearning {
     #[new]
@@ -148,16 +155,17 @@ impl PyQuantumTransferLearning {
     ) -> PyResult<Self> {
         #[cfg(feature = "ml")]
         {
-            if let Some(model) = &pretrained_model.inner {
-                // Note: Using simplified constructor since TransferConfig is not available
-                // The actual API might need adjustment based on the Rust implementation
-                Ok(Self {
-                    inner: None, // Set to None for now due to API incompatibility
-                    strategy,
-                })
-            } else {
-                Err(PyValueError::new_err("Invalid pretrained model"))
-            }
+            pretrained_model.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Invalid pretrained model")),
+                |_model| {
+                    // Note: Using simplified constructor since TransferConfig is not available
+                    // The actual API might need adjustment based on the Rust implementation
+                    Ok(Self {
+                        inner: None, // Set to None for now due to API incompatibility
+                        strategy,
+                    })
+                },
+            )
         }
 
         #[cfg(not(feature = "ml"))]
@@ -176,15 +184,16 @@ impl PyQuantumTransferLearning {
     fn adapt_for_task(&mut self, n_outputs: usize) -> PyResult<()> {
         #[cfg(feature = "ml")]
         {
-            if let Some(qtl) = &mut self.inner {
-                // Note: adapt_for_task method not yet implemented in the Rust side
-                // This would need to be implemented in the QuantumTransferLearning struct
-                Err(PyValueError::new_err(
-                    "adapt_for_task method not yet implemented",
-                ))
-            } else {
-                Err(PyValueError::new_err("Transfer learning not initialized"))
-            }
+            self.inner.as_mut().map_or_else(
+                || Err(PyValueError::new_err("Transfer learning not initialized")),
+                |_qtl| {
+                    // Note: adapt_for_task method not yet implemented in the Rust side
+                    // This would need to be implemented in the QuantumTransferLearning struct
+                    Err(PyValueError::new_err(
+                        "adapt_for_task method not yet implemented",
+                    ))
+                },
+            )
         }
 
         #[cfg(not(feature = "ml"))]
@@ -197,14 +206,15 @@ impl PyQuantumTransferLearning {
     fn trainable_parameters(&self) -> PyResult<usize> {
         #[cfg(feature = "ml")]
         {
-            if let Some(qtl) = &self.inner {
-                // Note: trainable_parameters method not yet implemented in the Rust side
-                Err(PyValueError::new_err(
-                    "trainable_parameters method not yet implemented",
-                ))
-            } else {
-                Err(PyValueError::new_err("Transfer learning not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Transfer learning not initialized")),
+                |_qtl| {
+                    // Note: trainable_parameters method not yet implemented in the Rust side
+                    Err(PyValueError::new_err(
+                        "trainable_parameters method not yet implemented",
+                    ))
+                },
+            )
         }
 
         #[cfg(not(feature = "ml"))]
@@ -218,6 +228,7 @@ impl PyQuantumTransferLearning {
 #[pyclass]
 pub struct PyQuantumModelZoo;
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyQuantumModelZoo {
     /// Get VQE feature extractor model
@@ -228,12 +239,12 @@ impl PyQuantumModelZoo {
             use quantrs2_ml::transfer::QuantumModelZoo;
 
             let model = QuantumModelZoo::vqe_feature_extractor(n_qubits)
-                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {e}")))?;
 
             Ok(PyPretrainedModel {
                 inner: Some(model),
                 name: "VQE Feature Extractor".to_string(),
-                description: format!("Pretrained VQE model for {} qubits", n_qubits),
+                description: format!("Pretrained VQE model for {n_qubits} qubits"),
             })
         }
 
@@ -241,7 +252,7 @@ impl PyQuantumModelZoo {
         {
             Ok(PyPretrainedModel {
                 name: "VQE Feature Extractor".to_string(),
-                description: format!("Pretrained VQE model for {} qubits", n_qubits),
+                description: format!("Pretrained VQE model for {n_qubits} qubits"),
             })
         }
     }
@@ -254,14 +265,13 @@ impl PyQuantumModelZoo {
             use quantrs2_ml::transfer::QuantumModelZoo;
 
             let model = QuantumModelZoo::qaoa_classifier(n_qubits, n_layers)
-                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {e}")))?;
 
             Ok(PyPretrainedModel {
                 inner: Some(model),
                 name: "QAOA Classifier".to_string(),
                 description: format!(
-                    "Pretrained QAOA model with {} qubits and {} layers",
-                    n_qubits, n_layers
+                    "Pretrained QAOA model with {n_qubits} qubits and {n_layers} layers"
                 ),
             })
         }
@@ -271,8 +281,7 @@ impl PyQuantumModelZoo {
             Ok(PyPretrainedModel {
                 name: "QAOA Classifier".to_string(),
                 description: format!(
-                    "Pretrained QAOA model with {} qubits and {} layers",
-                    n_qubits, n_layers
+                    "Pretrained QAOA model with {n_qubits} qubits and {n_layers} layers"
                 ),
             })
         }
@@ -286,14 +295,13 @@ impl PyQuantumModelZoo {
             use quantrs2_ml::transfer::QuantumModelZoo;
 
             let model = QuantumModelZoo::quantum_autoencoder(n_qubits, latent_dim)
-                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Failed to create model: {e}")))?;
 
             Ok(PyPretrainedModel {
                 inner: Some(model),
                 name: "Quantum Autoencoder".to_string(),
                 description: format!(
-                    "Pretrained autoencoder with {} qubits and {} latent dimensions",
-                    n_qubits, latent_dim
+                    "Pretrained autoencoder with {n_qubits} qubits and {latent_dim} latent dimensions"
                 ),
             })
         }
@@ -303,8 +311,7 @@ impl PyQuantumModelZoo {
             Ok(PyPretrainedModel {
                 name: "Quantum Autoencoder".to_string(),
                 description: format!(
-                    "Pretrained autoencoder with {} qubits and {} latent dimensions",
-                    n_qubits, latent_dim
+                    "Pretrained autoencoder with {n_qubits} qubits and {latent_dim} latent dimensions"
                 ),
             })
         }

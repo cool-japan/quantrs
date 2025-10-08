@@ -119,7 +119,7 @@ impl PyMeasurementResult {
         &self,
         py: Python,
         error_matrix: PyReadonlyArray2<f64>,
-    ) -> PyResult<Py<PyMeasurementResult>> {
+    ) -> PyResult<Py<Self>> {
         let error_mat = error_matrix.as_array();
         let n_states = 1 << self.n_qubits;
 
@@ -159,7 +159,7 @@ impl PyMeasurementResult {
 
         Py::new(
             py,
-            PyMeasurementResult {
+            Self {
                 counts: new_counts,
                 shots: self.shots,
                 n_qubits: self.n_qubits,
@@ -177,7 +177,7 @@ pub struct PyStateTomography {
 #[pymethods]
 impl PyStateTomography {
     #[new]
-    fn new(n_qubits: usize) -> Self {
+    const fn new(n_qubits: usize) -> Self {
         Self { n_qubits }
     }
 
@@ -309,7 +309,7 @@ pub struct PyProcessTomography {
 #[pymethods]
 impl PyProcessTomography {
     #[new]
-    fn new(n_qubits: usize) -> Self {
+    const fn new(n_qubits: usize) -> Self {
         Self { n_qubits }
     }
 
@@ -425,7 +425,7 @@ pub struct PyMeasurementSampler {}
 #[pymethods]
 impl PyMeasurementSampler {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
@@ -440,7 +440,7 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
+        let probs: Vec<f64> = result.amplitudes.iter().map(scirs2_core::Complex::norm_sqr).collect();
 
         // Sample measurements
         for _ in 0..shots {
@@ -479,7 +479,7 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
+        let probs: Vec<f64> = result.amplitudes.iter().map(scirs2_core::Complex::norm_sqr).collect();
 
         // Sample measurements
         for _ in 0..shots {
