@@ -27,35 +27,39 @@ struct SciRS2LinearAlgebra;
 impl SciRS2LinearAlgebra {
     fn svd(matrix: &Array2<f64>) -> (Array2<f64>, Array1<f64>, Array2<f64>) {
         // Stub implementation
-        let m = matrix.nrows();
-        let n = matrix.ncols();
-        let k = m.min(n);
+        let row_count = matrix.nrows();
+        let column_count = matrix.ncols();
+        let min_dimension = row_count.min(column_count);
 
-        let u = Array2::eye(m);
-        let s = Array1::ones(k);
-        let vt = Array2::eye(n);
+        let left_singular_vectors = Array2::eye(row_count);
+        let singular_values = Array1::ones(min_dimension);
+        let right_singular_vectors = Array2::eye(column_count);
 
-        (u, s, vt)
+        (
+            left_singular_vectors,
+            singular_values,
+            right_singular_vectors,
+        )
     }
 
     fn eig(matrix: &Array2<Complex64>) -> (Array1<Complex64>, Array2<Complex64>) {
         // Stub implementation
-        let n = matrix.nrows();
-        let eigenvalues = Array1::zeros(n);
-        let eigenvectors = Array2::eye(n);
+        let dimension = matrix.nrows();
+        let eigenvalues = Array1::zeros(dimension);
+        let eigenvectors = Array2::eye(dimension);
 
         (eigenvalues, eigenvectors)
     }
 
     fn qr(matrix: &Array2<f64>) -> (Array2<f64>, Array2<f64>) {
         // Stub implementation
-        let m = matrix.nrows();
-        let n = matrix.ncols();
+        let row_count = matrix.nrows();
+        let column_count = matrix.ncols();
 
-        let q = Array2::eye(m);
-        let r = Array2::zeros((m, n));
+        let orthogonal_matrix = Array2::eye(row_count);
+        let upper_triangular = Array2::zeros((row_count, column_count));
 
-        (q, r)
+        (orthogonal_matrix, upper_triangular)
     }
 }
 

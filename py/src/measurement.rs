@@ -183,7 +183,7 @@ impl PyStateTomography {
 
     /// Generate measurement circuits for state tomography
     fn measurement_circuits(&self, py: Python) -> PyResult<PyObject> {
-        let bases = vec!["X", "Y", "Z"];
+        let bases = ["X", "Y", "Z"];
         let n_bases = bases.len();
         let n_circuits = n_bases.pow(self.n_qubits as u32);
 
@@ -318,7 +318,7 @@ impl PyProcessTomography {
         let states = PyList::empty(py);
 
         // Standard input states: |0>, |1>, |+>, |->, |+i>, |-i> per qubit
-        let state_names = vec!["0", "1", "+", "-", "+i", "-i"];
+        let state_names = ["0", "1", "+", "-", "+i", "-i"];
         let n_states = state_names.len();
         let n_configs = n_states.pow(self.n_qubits as u32);
 

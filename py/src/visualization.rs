@@ -332,7 +332,7 @@ impl CircuitVisualization {
         }
 
         let mut html = String::from(
-            r#"
+            r"
         <style>
             .qc-container {
                 font-family: monospace;
@@ -429,7 +429,7 @@ impl CircuitVisualization {
                 margin: 10px 0;
             }
         </style>
-        "#,
+        ",
         );
 
         // Create the container with CSS variables for qubit count and depth
