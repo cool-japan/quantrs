@@ -1,4 +1,4 @@
-//! Advanced quantum circuit profiler using SciRS2 performance metrics
+//! Advanced quantum circuit profiler using `SciRS2` performance metrics
 //!
 //! This module provides comprehensive performance profiling for quantum circuits,
 //! including execution timing, memory usage analysis, gate-level profiling,
@@ -18,13 +18,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Comprehensive quantum circuit profiler with SciRS2 integration
+/// Comprehensive quantum circuit profiler with `SciRS2` integration
 pub struct QuantumProfiler<const N: usize> {
     /// Circuit being profiled
     circuit: Circuit<N>,
     /// Profiler configuration
     config: ProfilerConfig,
-    /// SciRS2 analyzer for performance analysis
+    /// `SciRS2` analyzer for performance analysis
     analyzer: SciRS2CircuitAnalyzer,
     /// Performance metrics collector
     metrics_collector: Arc<RwLock<MetricsCollector>>,
@@ -61,7 +61,7 @@ pub struct ProfilerConfig {
     pub max_history_entries: usize,
     /// Profiling precision level
     pub precision_level: PrecisionLevel,
-    /// Enable SciRS2 analysis integration
+    /// Enable `SciRS2` analysis integration
     pub enable_scirs2_analysis: bool,
     /// Statistical analysis confidence level
     pub confidence_level: f64,
@@ -1051,7 +1051,7 @@ pub struct ResourceRequirements {
     pub human_resources: usize,
 }
 
-/// Performance analyzer with SciRS2 integration
+/// Performance analyzer with `SciRS2` integration
 #[derive(Debug, Clone)]
 pub struct PerformanceAnalyzer {
     /// Analysis configuration
@@ -1274,7 +1274,7 @@ pub enum StorageType {
     HDD,
     /// Solid state drive
     SSD,
-    /// NVMe SSD
+    /// `NVMe` SSD
     NVMe,
     /// Network storage
     Network,
@@ -2377,7 +2377,7 @@ pub enum SerializationFormat {
     Binary,
     /// Protocol buffers
     ProtocolBuffers,
-    /// MessagePack
+    /// `MessagePack`
     MessagePack,
 }
 
@@ -2465,6 +2465,7 @@ pub struct SessionTrendAnalysis {
 
 impl<const N: usize> QuantumProfiler<N> {
     /// Create a new quantum profiler
+    #[must_use] 
     pub fn new(circuit: Circuit<N>) -> Self {
         let config = ProfilerConfig::default();
         let analyzer = SciRS2CircuitAnalyzer::with_config(AnalyzerConfig::default());
@@ -2761,6 +2762,7 @@ impl<const N: usize> QuantumProfiler<N> {
     }
 
     /// Create profiler with custom configuration
+    #[must_use] 
     pub fn with_config(circuit: Circuit<N>, config: ProfilerConfig) -> Self {
         let mut profiler = Self::new(circuit);
         profiler.config = config;
@@ -2910,8 +2912,7 @@ impl<const N: usize> QuantumProfiler<N> {
             Ok(result)
         } else {
             Err(QuantRS2Error::InvalidOperation(format!(
-                "Benchmark suite '{}' not found",
-                suite_name
+                "Benchmark suite '{suite_name}' not found"
             )))
         }
     }
@@ -2953,8 +2954,7 @@ impl<const N: usize> QuantumProfiler<N> {
             }
         } else {
             Err(QuantRS2Error::InvalidOperation(format!(
-                "Session '{}' not found",
-                session_id
+                "Session '{session_id}' not found"
             )))
         }
     }
@@ -2967,27 +2967,27 @@ impl<const N: usize> QuantumProfiler<N> {
         Ok(())
     }
 
-    fn start_metrics_collection(&mut self) -> QuantRS2Result<()> {
+    const fn start_metrics_collection(&mut self) -> QuantRS2Result<()> {
         // Start metrics collection thread
         Ok(())
     }
 
-    fn initialize_gate_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_gate_profiling(&mut self) -> QuantRS2Result<()> {
         // Initialize gate-level profiling
         Ok(())
     }
 
-    fn initialize_memory_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_memory_profiling(&mut self) -> QuantRS2Result<()> {
         // Initialize memory profiling
         Ok(())
     }
 
-    fn initialize_resource_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_resource_profiling(&mut self) -> QuantRS2Result<()> {
         // Initialize resource profiling
         Ok(())
     }
 
-    fn finalize_data_collection(&mut self) -> QuantRS2Result<()> {
+    const fn finalize_data_collection(&mut self) -> QuantRS2Result<()> {
         // Finalize and aggregate collected data
         Ok(())
     }
@@ -3178,7 +3178,7 @@ impl<const N: usize> QuantumProfiler<N> {
         })
     }
 
-    fn run_regression_detection(
+    const fn run_regression_detection(
         &self,
         _data: &[&PerformanceSnapshot],
         _config: &RegressionDetectionConfig,
@@ -3190,7 +3190,7 @@ impl<const N: usize> QuantumProfiler<N> {
     fn export_json(&self, session: &ProfilingSession) -> QuantRS2Result<String> {
         // Export session data as JSON
         serde_json::to_string_pretty(session)
-            .map_err(|e| QuantRS2Error::InvalidOperation(format!("Serialization error: {}", e)))
+            .map_err(|e| QuantRS2Error::InvalidOperation(format!("Serialization error: {e}")))
     }
 
     fn export_csv(&self, _session: &ProfilingSession) -> QuantRS2Result<String> {

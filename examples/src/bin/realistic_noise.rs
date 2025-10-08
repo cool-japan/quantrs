@@ -106,7 +106,7 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
         simulator.set_advanced_noise_model(noise_model);
 
         // Run simulation
-        println!("\nSimulation with {} noise model:", device);
+        println!("\nSimulation with {device} noise model:");
         let result = simulator.run(&circuit)?;
 
         // Count states with significant probability
@@ -125,8 +125,8 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
 
         // Calculate fidelity to ideal state (|00000⟩ + |11111⟩)/√2
         let ideal_states = [0b00000, 0b11111];
-        let fidelity = calculate_fidelity(&result.amplitudes(), &ideal_states);
-        println!("Fidelity to ideal GHZ state: {:.4}", fidelity);
+        let fidelity = calculate_fidelity(result.amplitudes(), &ideal_states);
+        println!("Fidelity to ideal GHZ state: {fidelity:.4}");
 
         // Print the top 5 most probable states
         println!("Top 5 most probable states:");
@@ -208,8 +208,8 @@ fn simulate_with_custom_noise() -> Result<(), Box<dyn std::error::Error>> {
     print_state_probabilities(&result_noisy.probabilities(), 3);
 
     // Calculate fidelity between ideal and noisy results
-    let fidelity = calculate_state_fidelity(&result_ideal.amplitudes(), &result_noisy.amplitudes());
-    println!("\nFidelity between ideal and noisy states: {:.6}", fidelity);
+    let fidelity = calculate_state_fidelity(result_ideal.amplitudes(), result_noisy.amplitudes());
+    println!("\nFidelity between ideal and noisy states: {fidelity:.6}");
 
     Ok(())
 }
@@ -221,13 +221,13 @@ fn print_state_probabilities(probabilities: &[f64], num_qubits: usize) {
     for (i, &prob) in probabilities.iter().enumerate() {
         if prob > 0.001 {
             // Only show states with probability > 0.1%
-            let state = format!("{:0width$b}", i, width = num_qubits);
+            let state = format!("{i:0num_qubits$b}");
             state_probs.insert(state, prob);
         }
     }
 
     // Print the states
-    for (state, prob) in state_probs.iter() {
+    for (state, prob) in &state_probs {
         println!("  |{}⟩: {:.6} ({:.2}%)", state, prob, prob * 100.0);
     }
 }

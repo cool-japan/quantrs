@@ -4,7 +4,7 @@ use std::fmt;
 use std::os::raw::c_ulong;
 
 use crate::{SymEngineError, SymEngineResult};
-use quantrs2_symengine_sys::*;
+use quantrs2_symengine_sys::{basic_struct, basic_new_stack, basic_assign, basic_parse, CWRAPPER_OUTPUT_TYPE, symbol_set, integer_set_si, integer_set_ui, real_double_set_d, basic_free_stack, basic_str, basic_add, basic_sub, basic_mul, basic_div, basic_expand, basic_get_type, SYMENGINE_SYMBOL, SYMENGINE_INTEGER, SYMENGINE_RATIONAL, SYMENGINE_REAL_DOUBLE, SYMENGINE_POW, SYMENGINE_MUL, SYMENGINE_ADD, vecbasic_new, basic_get_args, symengine_exceptions_t, vecbasic_free, vecbasic_size, vecbasic_get, function_symbol_get_name, basic_str_free, real_double_get_d, integer_get_si, basic_pow, basic_eq};
 
 #[cfg(feature = "serde-serialize")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -20,7 +20,7 @@ unsafe impl Sync for Expression {}
 
 impl Clone for Expression {
     fn clone(&self) -> Self {
-        let new = Expression {
+        let new = Self {
             basic: UnsafeCell::new(unsafe { std::mem::zeroed() }),
         };
         unsafe {
@@ -40,7 +40,7 @@ impl Expression {
         let expr_string = expr.to_string();
         let expr = CString::new(expr_string).expect("Failed to create CString");
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -66,7 +66,7 @@ impl Expression {
             .map_err(|_| SymEngineError::invalid_operation("String contains null bytes"))?;
 
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -87,7 +87,7 @@ impl Expression {
         let name_cstr =
             CString::new(name_string).expect("Failed to create CString for symbol name");
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -102,42 +102,47 @@ impl Expression {
     {
         unsafe {
             let mut basic: basic_struct = std::mem::zeroed();
-            basic_new_stack(&mut basic);
-            f(&mut basic, value);
-            Expression {
+            basic_new_stack(&raw mut basic);
+            f(&raw mut basic, value);
+            Self {
                 basic: UnsafeCell::new(basic),
             }
         }
     }
 
+    #[must_use] 
     pub fn from_i64(value: i64) -> Self {
         Self::from_value(|ptr, val| unsafe { integer_set_si(ptr, val) }, value)
     }
 
+    #[must_use] 
     pub fn from_i32(value: i32) -> Self {
-        Self::from_value(|ptr, val| unsafe { integer_set_si(ptr, val) }, value as i64)
+        Self::from_value(|ptr, val| unsafe { integer_set_si(ptr, val) }, i64::from(value))
     }
 
+    #[must_use] 
     pub fn from_u32(value: u32) -> Self {
         Self::from_value(
             |ptr, val| unsafe { integer_set_ui(ptr, val) },
-            value as c_ulong,
+            c_ulong::from(value),
         )
     }
 
+    #[must_use] 
     pub fn from_f64(value: f64) -> Self {
         Self::from_value(|ptr, val| unsafe { real_double_set_d(ptr, val) }, value)
     }
 
+    #[must_use] 
     pub fn from_f32(value: f32) -> Self {
         Self::from_value(
             |ptr, val| unsafe { real_double_set_d(ptr, val) },
-            value as f64,
+            f64::from(value),
         )
     }
 
     pub fn assign_copy(&self) -> Self {
-        let new = Expression {
+        let new = Self {
             basic: UnsafeCell::new(unsafe { std::mem::zeroed() }),
         };
         unsafe { basic_assign(new.basic.get(), self.basic.get()) };
@@ -262,7 +267,7 @@ impl Expression {
         F: Fn(*mut basic_struct, *mut basic_struct, *mut basic_struct) -> CWRAPPER_OUTPUT_TYPE,
     {
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -273,7 +278,7 @@ impl Expression {
 
     pub fn expand(&self) -> Self {
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -326,7 +331,7 @@ impl Expression {
     }
 
     /// Get the base and exponent of a power expression
-    pub fn as_pow(&self) -> Option<(Expression, Expression)> {
+    pub fn as_pow(&self) -> Option<(Self, Self)> {
         if !self.is_pow() {
             return None;
         }
@@ -352,10 +357,10 @@ impl Expression {
                 return None;
             }
 
-            let base = Expression {
+            let base = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
-            let exp = Expression {
+            let exp = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(base.basic.get());
@@ -371,7 +376,7 @@ impl Expression {
     }
 
     /// Get an iterator over the terms in an addition
-    pub fn as_add(&self) -> Option<Vec<Expression>> {
+    pub fn as_add(&self) -> Option<Vec<Self>> {
         if !self.is_add() {
             return None;
         }
@@ -394,7 +399,7 @@ impl Expression {
             let mut terms = Vec::new();
 
             for i in 0..args_size {
-                let term = Expression {
+                let term = Self {
                     basic: UnsafeCell::new(std::mem::zeroed()),
                 };
                 basic_new_stack(term.basic.get());
@@ -408,7 +413,7 @@ impl Expression {
     }
 
     /// Get an iterator over the factors in a multiplication
-    pub fn as_mul(&self) -> Option<Vec<Expression>> {
+    pub fn as_mul(&self) -> Option<Vec<Self>> {
         if !self.is_mul() {
             return None;
         }
@@ -431,7 +436,7 @@ impl Expression {
             let mut factors = Vec::new();
 
             for i in 0..args_size {
-                let factor = Expression {
+                let factor = Self {
                     basic: UnsafeCell::new(std::mem::zeroed()),
                 };
                 basic_new_stack(factor.basic.get());
@@ -487,9 +492,9 @@ impl Expression {
     }
 
     /// Power operation
-    pub fn pow(&self, exp: Expression) -> Expression {
+    pub fn pow(&self, exp: Self) -> Self {
         unsafe {
-            let new = Expression {
+            let new = Self {
                 basic: UnsafeCell::new(std::mem::zeroed()),
             };
             basic_new_stack(new.basic.get());
@@ -533,6 +538,6 @@ impl<'de> Deserialize<'de> for Expression {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(Expression::new(s))
+        Ok(Self::new(s))
     }
 }

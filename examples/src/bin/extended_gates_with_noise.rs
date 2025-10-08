@@ -57,7 +57,7 @@ fn run_grover_with_noise() {
 
     println!("Ideal Grover result:");
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -94,7 +94,7 @@ fn run_grover_with_noise() {
 
     println!("\nGrover with realistic noise:");
     for (i, amplitude) in noisy_result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -158,8 +158,8 @@ fn run_qft_with_noise() {
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
         let prob = amplitude.norm_sqr();
         if prob > threshold {
-            let bits = format!("{:03b}", i);
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            let bits = format!("{i:03b}");
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -185,8 +185,8 @@ fn run_qft_with_noise() {
     for (i, amplitude) in noisy_result.amplitudes().iter().enumerate() {
         let prob = amplitude.norm_sqr();
         if prob > threshold {
-            let bits = format!("{:03b}", i);
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            let bits = format!("{i:03b}");
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -243,8 +243,8 @@ fn run_error_correction_code() {
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
         let prob = amplitude.norm_sqr();
         if prob > 0.01 {
-            let bits = format!("{:03b}", i);
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            let bits = format!("{i:03b}");
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -266,8 +266,8 @@ fn run_error_correction_code() {
     for (i, amplitude) in noisy_result.amplitudes().iter().enumerate() {
         let prob = amplitude.norm_sqr();
         if prob > 0.01 {
-            let bits = format!("{:03b}", i);
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            let bits = format!("{i:03b}");
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -332,7 +332,7 @@ fn run_variational_circuit() {
 
     for (i, prob) in probs.iter().take(5) {
         let bits = format!("{:04b}", *i);
-        println!("|{}⟩: {:.6}", bits, prob);
+        println!("|{bits}⟩: {prob:.6}");
     }
 
     // Run with realistic noise model for NISQ devices
@@ -373,7 +373,7 @@ fn run_variational_circuit() {
 
     for (i, prob) in noisy_probs.iter().take(5) {
         let bits = format!("{:04b}", *i);
-        println!("|{}⟩: {:.6}", bits, prob);
+        println!("|{bits}⟩: {prob:.6}");
     }
 
     // Calculate the total variation distance between the ideal and noisy distributions
@@ -386,7 +386,7 @@ fn run_variational_circuit() {
     tvd /= 2.0; // Normalize
 
     println!("\nImpact of noise on variational circuit:");
-    println!("- Total variation distance: {:.6}", tvd);
+    println!("- Total variation distance: {tvd:.6}");
     println!("- Noise tends to 'flatten' the distribution toward a uniform mixture");
     println!("- Deeper circuits (more gates) are more susceptible to noise effects");
     println!("- Real NISQ devices would typically show even more degradation");

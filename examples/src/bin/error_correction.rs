@@ -112,10 +112,10 @@ fn run_without_noise(encode_circuit: &Circuit<5>) {
     // Print the resulting state vector
     println!("Encoded state (first 8 amplitudes):");
     for (i, amplitude) in result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -126,9 +126,9 @@ fn run_without_noise(encode_circuit: &Circuit<5>) {
     let q1_prob_one = get_qubit_prob_one(&result, 1);
     let q2_prob_one = get_qubit_prob_one(&result, 2);
 
-    println!("Probability qubit 0 is |1⟩: {:.6}", q0_prob_one);
-    println!("Probability qubit 1 is |1⟩: {:.6}", q1_prob_one);
-    println!("Probability qubit 2 is |1⟩: {:.6}", q2_prob_one);
+    println!("Probability qubit 0 is |1⟩: {q0_prob_one:.6}");
+    println!("Probability qubit 1 is |1⟩: {q1_prob_one:.6}");
+    println!("Probability qubit 2 is |1⟩: {q2_prob_one:.6}");
 
     println!("\nEncoding successful: all data qubits are in state |1⟩\n");
 }
@@ -168,10 +168,10 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
     // Print the result after noise
     println!("State after encoding and noise (first 8 amplitudes):");
     for (i, amplitude) in noisy_state.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -180,9 +180,9 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
     let q1_prob_one = get_qubit_prob_one(&noisy_state, 1);
     let q2_prob_one = get_qubit_prob_one(&noisy_state, 2);
 
-    println!("Probability qubit 0 is |1⟩: {:.6}", q0_prob_one);
-    println!("Probability qubit 1 is |1⟩: {:.6}", q1_prob_one);
-    println!("Probability qubit 2 is |1⟩: {:.6}", q2_prob_one);
+    println!("Probability qubit 0 is |1⟩: {q0_prob_one:.6}");
+    println!("Probability qubit 1 is |1⟩: {q1_prob_one:.6}");
+    println!("Probability qubit 2 is |1⟩: {q2_prob_one:.6}");
 
     println!("\nNoise has corrupted some of the qubits.\n");
 
@@ -206,10 +206,10 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
     // Print the result after correction
     println!("State after error correction (first 8 amplitudes):");
     for (i, amplitude) in corrected_state.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -219,9 +219,9 @@ fn run_with_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit<5>) 
     let q2_prob_one_after = get_qubit_prob_one(&corrected_state, 2);
 
     println!("After correction:");
-    println!("Probability qubit 0 is |1⟩: {:.6}", q0_prob_one_after);
-    println!("Probability qubit 1 is |1⟩: {:.6}", q1_prob_one_after);
-    println!("Probability qubit 2 is |1⟩: {:.6}", q2_prob_one_after);
+    println!("Probability qubit 0 is |1⟩: {q0_prob_one_after:.6}");
+    println!("Probability qubit 1 is |1⟩: {q1_prob_one_after:.6}");
+    println!("Probability qubit 2 is |1⟩: {q2_prob_one_after:.6}");
 
     println!("\nError correction has restored the original state!\n");
 }
@@ -261,10 +261,10 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
     // Print the result after noise
     println!("State after encoding and high noise (first 8 amplitudes):");
     for (i, amplitude) in noisy_state.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -291,9 +291,9 @@ fn run_with_high_noise(encode_circuit: &Circuit<5>, correction_circuit: &Circuit
     let q2_prob_one_after = get_qubit_prob_one(&corrected_state, 2);
 
     println!("\nAfter correction with high noise:");
-    println!("Probability qubit 0 is |1⟩: {:.6}", q0_prob_one_after);
-    println!("Probability qubit 1 is |1⟩: {:.6}", q1_prob_one_after);
-    println!("Probability qubit 2 is |1⟩: {:.6}", q2_prob_one_after);
+    println!("Probability qubit 0 is |1⟩: {q0_prob_one_after:.6}");
+    println!("Probability qubit 1 is |1⟩: {q1_prob_one_after:.6}");
+    println!("Probability qubit 2 is |1⟩: {q2_prob_one_after:.6}");
 
     println!("\nThe error correction code is unable to fully recover from multiple bit flips!");
     println!("This demonstrates the limitations of the 3-qubit bit flip code - it can only");

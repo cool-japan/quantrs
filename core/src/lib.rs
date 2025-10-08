@@ -19,8 +19,6 @@
 //! - Consistent SciRS2 usage: `scirs2_core::ndarray::*`, `scirs2_core::random::prelude::*`
 //! - Improved developer experience with CLAUDE.md development guidelines
 
-#![allow(clippy::fn_address_comparisons)]
-#![allow(clippy::elided_lifetimes_in_paths)]
 #![allow(clippy::ptr_eq)]
 #![warn(clippy::all)]
 #![allow(dead_code)]

@@ -1,4 +1,4 @@
-//! Demonstration of the sparse Clifford simulator using SciRS2
+//! Demonstration of the sparse Clifford simulator using `SciRS2`
 //!
 //! This example shows how the sparse representation improves memory efficiency
 //! for large Clifford circuits.
@@ -11,7 +11,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     // Compare standard vs sparse simulator for different circuit sizes
     for num_qubits in [10, 20, 50, 100] {
-        println!("Testing with {} qubits:", num_qubits);
+        println!("Testing with {num_qubits} qubits:");
 
         // Create a sparse Clifford simulator
         let mut sparse_sim = SparseCliffordSimulator::new(num_qubits);
@@ -39,7 +39,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         // Check sparsity
         let (stab_sparsity, destab_sparsity) = sparse_sim.get_sparsity_info();
 
-        println!("  Circuit execution time: {:?}", circuit_time);
+        println!("  Circuit execution time: {circuit_time:?}");
         println!("  Stabilizer sparsity: {:.2}%", stab_sparsity * 100.0);
         println!("  Destabilizer sparsity: {:.2}%", destab_sparsity * 100.0);
 
@@ -48,7 +48,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("  Sample stabilizers:");
             let stabs = sparse_sim.get_stabilizers();
             for (i, stab) in stabs.iter().take(3).enumerate() {
-                println!("    S{}: {}", i, stab);
+                println!("    S{i}: {stab}");
             }
         }
 
@@ -67,7 +67,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     }
     let ghz_stabs = ghz_sim.get_stabilizers();
     for (i, stab) in ghz_stabs.iter().enumerate() {
-        println!("  S{}: {}", i, stab);
+        println!("  S{i}: {stab}");
     }
 
     // Create graph state
@@ -90,7 +90,7 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let graph_stabs = graph_sim.get_stabilizers();
     for (i, stab) in graph_stabs.iter().enumerate() {
-        println!("  S{}: {}", i, stab);
+        println!("  S{i}: {stab}");
     }
 
     // Memory efficiency demonstration

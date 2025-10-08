@@ -1,6 +1,6 @@
-//! SciRS2 graph algorithms integration for circuit analysis
+//! `SciRS2` graph algorithms integration for circuit analysis
 //!
-//! This module integrates SciRS2's advanced graph algorithms and data structures
+//! This module integrates `SciRS2`'s advanced graph algorithms and data structures
 //! to provide sophisticated circuit analysis, optimization, and pattern matching capabilities.
 
 use crate::builder::Circuit;
@@ -29,7 +29,7 @@ pub struct SciRS2CircuitGraph {
     pub metrics_cache: Option<GraphMetrics>,
 }
 
-/// Enhanced node representation with SciRS2 properties
+/// Enhanced node representation with `SciRS2` properties
 #[derive(Debug, Clone)]
 pub struct SciRS2Node {
     pub id: usize,
@@ -41,8 +41,8 @@ pub struct SciRS2Node {
     pub centrality_measures: CentralityMeasures,
 }
 
-/// Types of nodes in SciRS2 graph representation
-#[derive(Debug, Clone, PartialEq)]
+/// Types of nodes in `SciRS2` graph representation
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SciRS2NodeType {
     /// Input boundary node
     Input { qubit: u32 },
@@ -121,7 +121,7 @@ pub struct CentralityMeasures {
     pub closeness: Option<f64>,
     /// Eigenvector centrality
     pub eigenvector: Option<f64>,
-    /// PageRank score
+    /// `PageRank` score
     pub pagerank: Option<f64>,
 }
 
@@ -148,7 +148,7 @@ pub struct GraphMetrics {
     pub small_world_coefficient: Option<f64>,
 }
 
-/// SciRS2 circuit analyzer with advanced graph algorithms
+/// `SciRS2` circuit analyzer with advanced graph algorithms
 pub struct SciRS2CircuitAnalyzer {
     /// Configuration options
     pub config: AnalyzerConfig,
@@ -156,7 +156,7 @@ pub struct SciRS2CircuitAnalyzer {
     analysis_cache: HashMap<String, AnalysisResult>,
 }
 
-/// Configuration for SciRS2 analysis
+/// Configuration for `SciRS2` analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalyzerConfig {
     /// Enable community detection
@@ -217,7 +217,7 @@ pub struct GraphMotif {
 }
 
 /// Types of graph motifs
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MotifType {
     /// Chain of single-qubit gates
     SingleQubitChain,
@@ -249,7 +249,7 @@ pub struct OptimizationSuggestion {
 }
 
 /// Types of optimization suggestions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuggestionType {
     /// Gate reordering based on commutation
     GateReordering,
@@ -265,6 +265,7 @@ pub enum SuggestionType {
 
 impl SciRS2CircuitAnalyzer {
     /// Create a new analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config: AnalyzerConfig::default(),
@@ -273,6 +274,7 @@ impl SciRS2CircuitAnalyzer {
     }
 
     /// Create analyzer with custom configuration
+    #[must_use] 
     pub fn with_config(config: AnalyzerConfig) -> Self {
         Self {
             config,
@@ -280,7 +282,7 @@ impl SciRS2CircuitAnalyzer {
         }
     }
 
-    /// Convert circuit to SciRS2 graph representation
+    /// Convert circuit to `SciRS2` graph representation
     pub fn circuit_to_scirs2_graph<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -334,7 +336,7 @@ impl SciRS2CircuitAnalyzer {
         Ok(graph)
     }
 
-    /// Classify node type for SciRS2 representation
+    /// Classify node type for `SciRS2` representation
     fn classify_node_type(&self, node: &DagNode) -> QuantRS2Result<SciRS2NodeType> {
         let gate = node.gate.as_ref();
         let qubits = gate.qubits();
@@ -352,7 +354,7 @@ impl SciRS2CircuitAnalyzer {
             }),
             _ => Ok(SciRS2NodeType::MultiQubitGate {
                 gate_type: gate_name.to_string(),
-                qubits: qubits.iter().map(|q| q.id()).collect(),
+                qubits: qubits.iter().map(quantrs2_core::QubitId::id).collect(),
             }),
         }
     }
@@ -466,7 +468,7 @@ impl SciRS2CircuitAnalyzer {
         }
 
         let possible_connections = k * (k - 1) / 2;
-        Some(connections as f64 / possible_connections as f64)
+        Some(f64::from(connections) / possible_connections as f64)
     }
 
     /// Get neighbors of a node
@@ -571,7 +573,7 @@ impl SciRS2CircuitAnalyzer {
         }
 
         if count > 0 {
-            total / count as f64
+            total / f64::from(count)
         } else {
             0.0
         }
@@ -604,7 +606,7 @@ impl SciRS2CircuitAnalyzer {
         }
 
         if count > 0 {
-            Some(total / count as f64)
+            Some(total / f64::from(count))
         } else {
             None
         }
@@ -615,7 +617,7 @@ impl SciRS2CircuitAnalyzer {
         &self,
         graph: &SciRS2CircuitGraph,
     ) -> HashMap<usize, HashMap<usize, usize>> {
-        let nodes: Vec<_> = graph.nodes.keys().cloned().collect();
+        let nodes: Vec<_> = graph.nodes.keys().copied().collect();
         let mut distances = HashMap::new();
 
         // Initialize distances

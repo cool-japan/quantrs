@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Check if the device is available
     let available = device.is_available().await?;
-    println!("Device available: {}", available);
+    println!("Device available: {available}");
 
     if !available {
         println!("Selected backend is not available. Please try again later.");
@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Check if we can execute this circuit on the selected backend
     let can_execute = device.can_execute_circuit(&circuit).await?;
-    println!("Can execute circuit: {}", can_execute);
+    println!("Can execute circuit: {can_execute}");
 
     if !can_execute {
         println!("Circuit cannot be executed on the selected backend.");

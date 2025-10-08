@@ -1,8 +1,8 @@
-//! Enhanced Quantum Pulse Control with Advanced SciRS2 Signal Processing
+//! Enhanced Quantum Pulse Control with Advanced `SciRS2` Signal Processing
 //!
 //! This module provides state-of-the-art pulse-level control for quantum devices
 //! with ML-based pulse optimization, real-time calibration, advanced waveform
-//! synthesis, and comprehensive error mitigation powered by SciRS2.
+//! synthesis, and comprehensive error mitigation powered by `SciRS2`.
 
 use crate::buffer_manager::{BufferManager, ManagedComplexBuffer, ManagedF64Buffer};
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
@@ -14,7 +14,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{ParallelIterator, IndexedParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -438,7 +438,7 @@ struct SignalProcessor {
     adaptive_processor: AdaptiveSignalProcessor,
 }
 
-/// Signal processor configuration with SciRS2 optimizations
+/// Signal processor configuration with `SciRS2` optimizations
 #[derive(Debug, Clone)]
 struct SignalProcessorConfig {
     window_size: usize,
@@ -605,7 +605,7 @@ impl SignalProcessor {
         }
     }
 
-    /// High-performance interpolation using SciRS2 SIMD operations
+    /// High-performance interpolation using `SciRS2` SIMD operations
     fn interpolate(
         &self,
         samples: &[Complex64],
@@ -645,7 +645,7 @@ impl SignalProcessor {
         Ok(())
     }
 
-    /// Advanced Butterworth filtering with SciRS2 optimization
+    /// Advanced Butterworth filtering with `SciRS2` optimization
     fn butterworth_filter(
         &self,
         samples: &[Complex64],
@@ -796,7 +796,7 @@ impl SignalProcessor {
         Ok(output)
     }
 
-    /// Optimized FFT using SciRS2 algorithms
+    /// Optimized FFT using `SciRS2` algorithms
     fn fft(&self, samples: &[Complex64]) -> QuantRS2Result<Vec<Complex64>> {
         if samples.is_empty() {
             return Ok(Vec::new());
@@ -844,8 +844,7 @@ impl SignalProcessor {
             };
 
             // Apply Hamming window
-            let window = 0.54
-                - 0.46 * (2.0 * std::f64::consts::PI * i as f64 / (kernel_size - 1) as f64).cos();
+            let window = 0.46f64.mul_add(-(2.0 * std::f64::consts::PI * i as f64 / (kernel_size - 1) as f64).cos(), 0.54);
             kernel.push(sinc_val * window);
         }
 
@@ -1046,6 +1045,7 @@ pub struct EnhancedPulseController {
 
 impl EnhancedPulseController {
     /// Create a new enhanced pulse controller
+    #[must_use] 
     pub fn new(config: EnhancedPulseConfig) -> Self {
         let signal_processor = Arc::new(SignalProcessor::new());
         let ml_optimizer = if config.enable_ml_optimization {
@@ -1221,7 +1221,7 @@ impl EnhancedPulseController {
         Ok(pulse)
     }
 
-    /// Oversample waveform using SciRS2 signal processing
+    /// Oversample waveform using `SciRS2` signal processing
     fn oversample_waveform(&self, waveform: &Waveform, factor: usize) -> QuantRS2Result<Waveform> {
         let samples = &waveform.samples;
         let new_length = samples.len() * factor;
@@ -1307,8 +1307,7 @@ impl EnhancedPulseController {
             if let Some(limit) = self.config.performance_constraints.max_amplitude {
                 if max_amp > limit {
                     return Err(QuantRS2Error::InvalidOperation(format!(
-                        "Pulse amplitude {} exceeds limit {}",
-                        max_amp, limit
+                        "Pulse amplitude {max_amp} exceeds limit {limit}"
                     )));
                 }
             }
@@ -1318,8 +1317,7 @@ impl EnhancedPulseController {
                 let slew_rate = self.calculate_max_slew_rate(&channel.waveform)?;
                 if slew_rate > limit {
                     return Err(QuantRS2Error::InvalidOperation(format!(
-                        "Slew rate {} exceeds limit {}",
-                        slew_rate, limit
+                        "Slew rate {slew_rate} exceeds limit {limit}"
                     )));
                 }
             }
@@ -1329,8 +1327,7 @@ impl EnhancedPulseController {
                 let max_freq = self.calculate_max_frequency(&channel.waveform)?;
                 if max_freq > limit {
                     return Err(QuantRS2Error::InvalidOperation(format!(
-                        "Frequency content {} exceeds limit {}",
-                        max_freq, limit
+                        "Frequency content {max_freq} exceeds limit {limit}"
                     )));
                 }
             }
@@ -1362,7 +1359,7 @@ impl EnhancedPulseController {
 
         // Find highest frequency with significant power
         let power_threshold = 0.01; // 1% of max power
-        let max_power = fft_result.iter().map(|c| c.norm_sqr()).fold(0.0, f64::max);
+        let max_power = fft_result.iter().map(scirs2_core::Complex::norm_sqr).fold(0.0, f64::max);
 
         for (i, (freq, power)) in freq_bins.iter().zip(fft_result.iter()).rev().enumerate() {
             if power.norm_sqr() > power_threshold * max_power {
@@ -1422,7 +1419,7 @@ impl EnhancedPulseController {
         Ok(Array2::eye(2))
     }
 
-    fn determine_control_requirements(
+    const fn determine_control_requirements(
         &self,
         gate_type: &GateType,
     ) -> QuantRS2Result<ControlRequirements> {
@@ -1433,7 +1430,7 @@ impl EnhancedPulseController {
         })
     }
 
-    fn set_performance_targets(&self, gate_type: &GateType) -> QuantRS2Result<PerformanceTargets> {
+    const fn set_performance_targets(&self, gate_type: &GateType) -> QuantRS2Result<PerformanceTargets> {
         Ok(PerformanceTargets {
             target_fidelity: 0.999,
             max_duration: 50e-9,
@@ -1441,23 +1438,23 @@ impl EnhancedPulseController {
         })
     }
 
-    fn select_base_shape(&self, analysis: &GateAnalysis) -> QuantRS2Result<PulseShape> {
+    const fn select_base_shape(&self, analysis: &GateAnalysis) -> QuantRS2Result<PulseShape> {
         Ok(PulseShape::Gaussian)
     }
 
-    fn calculate_duration(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
+    const fn calculate_duration(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
         Ok(40e-9) // 40 ns default
     }
 
-    fn calculate_amplitude(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
+    const fn calculate_amplitude(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
         Ok(0.5) // Default amplitude
     }
 
-    fn calculate_frequency(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
+    const fn calculate_frequency(&self, analysis: &GateAnalysis) -> QuantRS2Result<f64> {
         Ok(5e9) // 5 GHz default
     }
 
-    fn update_pulse_library(&mut self, updates: &[ParameterUpdate]) -> QuantRS2Result<()> {
+    const fn update_pulse_library(&mut self, updates: &[ParameterUpdate]) -> QuantRS2Result<()> {
         // Apply parameter updates to pulse library
         Ok(())
     }
@@ -1510,7 +1507,7 @@ impl EnhancedPulseController {
 
         for (i, sample) in windowed.iter_mut().enumerate() {
             let window =
-                0.54 - 0.46 * (2.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos();
+                0.46f64.mul_add(-(2.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos(), 0.54);
             *sample *= window;
         }
 
@@ -1678,7 +1675,7 @@ impl MLPulseOptimizer {
         }
     }
 
-    fn optimize_pulse(
+    const fn optimize_pulse(
         &self,
         pulse: PulseSequence,
         analysis: &GateAnalysis,
@@ -1713,14 +1710,14 @@ impl CalibrationEngine {
         })
     }
 
-    fn calculate_updates(
+    const fn calculate_updates(
         &self,
         analysis: &CalibrationAnalysis,
     ) -> QuantRS2Result<Vec<ParameterUpdate>> {
         Ok(Vec::new())
     }
 
-    fn apply_corrections(
+    const fn apply_corrections(
         &self,
         pulse: PulseSequence,
         qubits: &[QubitId],
@@ -1736,7 +1733,7 @@ struct WaveformSynthesizer {
 }
 
 impl WaveformSynthesizer {
-    fn new(sample_rate: f64) -> Self {
+    const fn new(sample_rate: f64) -> Self {
         Self { sample_rate }
     }
 
@@ -1831,7 +1828,7 @@ impl PulseErrorMitigator {
         }
     }
 
-    fn mitigate(
+    const fn mitigate(
         &self,
         pulse: PulseSequence,
         analysis: &GateAnalysis,
@@ -1856,12 +1853,12 @@ impl PulseCache {
     }
 
     fn get(&self, gate: &dyn GateOp, qubits: &[QubitId]) -> Option<PulseSequence> {
-        let key = (format!("{:?}", gate), qubits.to_vec());
+        let key = (format!("{gate:?}"), qubits.to_vec());
         self.cache.get(&key).cloned()
     }
 
     fn insert(&mut self, gate: Box<dyn GateOp>, qubits: Vec<QubitId>, pulse: PulseSequence) {
-        let key = (format!("{:?}", gate), qubits);
+        let key = (format!("{gate:?}"), qubits);
         self.cache.insert(key, pulse);
 
         // Evict if cache is too large
@@ -1952,7 +1949,7 @@ pub struct PerformanceTargets {
 }
 
 /// Pulse shapes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PulseShape {
     Gaussian,
     DRAG,
@@ -2115,7 +2112,7 @@ impl fmt::Display for PulseSequence {
         }
         write!(f, "  Gate: {}\n", self.metadata.gate_name)?;
         if let Some(fidelity) = self.metadata.fidelity_estimate {
-            write!(f, "  Estimated fidelity: {:.4}\n", fidelity)?;
+            write!(f, "  Estimated fidelity: {fidelity:.4}\n")?;
         }
         Ok(())
     }

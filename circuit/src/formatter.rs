@@ -1,8 +1,8 @@
-//! Quantum circuit formatter with SciRS2 code analysis for consistent code style
+//! Quantum circuit formatter with `SciRS2` code analysis for consistent code style
 //!
 //! This module provides comprehensive code formatting for quantum circuits,
 //! including automatic layout optimization, style enforcement, code organization,
-//! and intelligent formatting using SciRS2's graph analysis and pattern recognition.
+//! and intelligent formatting using `SciRS2`'s graph analysis and pattern recognition.
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
@@ -18,13 +18,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Comprehensive quantum circuit formatter with SciRS2 integration
+/// Comprehensive quantum circuit formatter with `SciRS2` integration
 pub struct QuantumFormatter<const N: usize> {
     /// Circuit to format
     circuit: Circuit<N>,
     /// Formatter configuration
     config: FormatterConfig,
-    /// SciRS2 analyzer for intelligent formatting
+    /// `SciRS2` analyzer for intelligent formatting
     analyzer: SciRS2CircuitAnalyzer,
     /// Layout optimizer
     layout_optimizer: Arc<RwLock<LayoutOptimizer<N>>>,
@@ -59,7 +59,7 @@ pub struct FormatterConfig {
     pub optimization: OptimizationConfig,
     /// Style enforcement
     pub style_enforcement: StyleEnforcementConfig,
-    /// SciRS2 analysis integration
+    /// `SciRS2` analysis integration
     pub scirs2_analysis: SciRS2AnalysisConfig,
     /// Auto-correction settings
     pub auto_correction: AutoCorrectionConfig,
@@ -312,7 +312,7 @@ pub struct OptimizationConfig {
     pub consolidate_operations: bool,
     /// Layout optimization level
     pub layout_optimization_level: OptimizationLevel,
-    /// Enable SciRS2 graph optimization
+    /// Enable `SciRS2` graph optimization
     pub enable_graph_optimization: bool,
 }
 
@@ -410,7 +410,7 @@ pub enum RulePriority {
     Critical,
 }
 
-/// SciRS2 analysis configuration
+/// `SciRS2` analysis configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SciRS2AnalysisConfig {
     /// Enable graph-based formatting
@@ -996,13 +996,13 @@ pub struct FormattingMetadata {
     pub formatter_version: String,
     /// Configuration used
     pub config: FormatterConfig,
-    /// SciRS2 analysis results
+    /// `SciRS2` analysis results
     pub scirs2_analysis: Option<SciRS2FormattingAnalysis>,
     /// Input statistics
     pub input_statistics: InputStatistics,
 }
 
-/// SciRS2 formatting analysis
+/// `SciRS2` formatting analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SciRS2FormattingAnalysis {
     /// Graph analysis results
@@ -1145,7 +1145,7 @@ pub struct ParallelizationOpportunity {
     pub complexity_increase: f64,
 }
 
-/// SciRS2 optimization suggestion
+/// `SciRS2` optimization suggestion
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SciRS2OptimizationSuggestion {
     /// Suggestion type
@@ -1196,7 +1196,7 @@ pub struct LayoutOptimizer<const N: usize> {
     strategies: Vec<LayoutStrategy>,
     /// Current layout
     current_layout: Option<LayoutInformation>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -1223,7 +1223,7 @@ pub struct StyleEnforcer<const N: usize> {
     rules: Vec<StyleRule>,
     /// Enforcement state
     enforcement_state: HashMap<String, EnforcementState>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -1307,7 +1307,7 @@ pub struct CodeOrganizer<const N: usize> {
     rules: Vec<OrganizationRule>,
     /// Current organization
     current_organization: Option<CodeStructure>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -1665,6 +1665,7 @@ pub struct AlignmentOptimization {
 
 impl<const N: usize> QuantumFormatter<N> {
     /// Create a new quantum formatter
+    #[must_use] 
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1680,6 +1681,7 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Create formatter with custom configuration
+    #[must_use] 
     pub fn with_config(circuit: Circuit<N>, config: FormatterConfig) -> Self {
         Self {
             circuit,
@@ -1780,7 +1782,7 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Parse code structure
-    fn parse_code_structure(&self) -> QuantRS2Result<CodeStructure> {
+    const fn parse_code_structure(&self) -> QuantRS2Result<CodeStructure> {
         // Simplified structure parsing
         Ok(CodeStructure {
             sections: Vec::new(),
@@ -1791,7 +1793,7 @@ impl<const N: usize> QuantumFormatter<N> {
         })
     }
 
-    /// Perform SciRS2 analysis
+    /// Perform `SciRS2` analysis
     fn perform_scirs2_analysis(&self) -> QuantRS2Result<SciRS2FormattingAnalysis> {
         // Simplified SciRS2 analysis
         Ok(SciRS2FormattingAnalysis {
@@ -1953,7 +1955,7 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Generate optimization results
-    fn generate_optimization_results(
+    const fn generate_optimization_results(
         &self,
         scirs2_analysis: &Option<SciRS2FormattingAnalysis>,
     ) -> QuantRS2Result<OptimizationResults> {
@@ -1966,7 +1968,7 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Collect warnings
-    fn collect_warnings(
+    const fn collect_warnings(
         &self,
         changes: &[FormattingChange],
         scirs2_analysis: &Option<SciRS2FormattingAnalysis>,
@@ -1977,6 +1979,7 @@ impl<const N: usize> QuantumFormatter<N> {
 
 // Implementation of helper components
 impl<const N: usize> LayoutOptimizer<N> {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             strategies: vec![
@@ -2005,6 +2008,7 @@ impl<const N: usize> LayoutOptimizer<N> {
 }
 
 impl<const N: usize> StyleEnforcer<N> {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -2013,7 +2017,7 @@ impl<const N: usize> StyleEnforcer<N> {
         }
     }
 
-    pub fn enforce_style(
+    pub const fn enforce_style(
         &self,
         code_structure: &CodeStructure,
         config: &FormatterConfig,
@@ -2034,6 +2038,7 @@ impl<const N: usize> StyleEnforcer<N> {
 }
 
 impl<const N: usize> CodeOrganizer<N> {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -2042,7 +2047,7 @@ impl<const N: usize> CodeOrganizer<N> {
         }
     }
 
-    pub fn organize_code(
+    pub const fn organize_code(
         &self,
         code_structure: CodeStructure,
         config: &FormatterConfig,
@@ -2053,6 +2058,7 @@ impl<const N: usize> CodeOrganizer<N> {
 }
 
 impl<const N: usize> CommentFormatter<N> {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             styles: Vec::new(),
@@ -2066,7 +2072,7 @@ impl<const N: usize> CommentFormatter<N> {
         }
     }
 
-    pub fn format_comments(
+    pub const fn format_comments(
         &self,
         code_structure: &CodeStructure,
         config: &FormatterConfig,
@@ -2076,7 +2082,8 @@ impl<const N: usize> CommentFormatter<N> {
 }
 
 impl<const N: usize> WhitespaceManager<N> {
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             rules: Vec::new(),
             current_state: WhitespaceState {
@@ -2101,7 +2108,7 @@ impl<const N: usize> WhitespaceManager<N> {
         }
     }
 
-    pub fn manage_whitespace(
+    pub const fn manage_whitespace(
         &self,
         code_structure: &CodeStructure,
         config: &FormatterConfig,
@@ -2111,7 +2118,8 @@ impl<const N: usize> WhitespaceManager<N> {
 }
 
 impl<const N: usize> AlignmentEngine<N> {
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             rules: Vec::new(),
             current_state: AlignmentState {
@@ -2133,7 +2141,7 @@ impl<const N: usize> AlignmentEngine<N> {
         }
     }
 
-    pub fn apply_alignment(
+    pub const fn apply_alignment(
         &self,
         code_structure: &CodeStructure,
         config: &FormatterConfig,

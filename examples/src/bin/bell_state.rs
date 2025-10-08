@@ -15,14 +15,14 @@ fn main() {
     // Print the resulting amplitudes
     println!("Bell state (|00⟩ + |11⟩)/√2 amplitudes:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!("|{}⟩: {} + {}i", bits, amplitude.re, amplitude.im);
     }
 
     // Calculate probabilities
     println!("\nProbabilities:");
     for (i, prob) in result.probabilities().iter().enumerate() {
-        let bits = format!("{:02b}", i);
-        println!("|{}⟩: {:.6}", bits, prob);
+        let bits = format!("{i:02b}");
+        println!("|{bits}⟩: {prob:.6}");
     }
 }

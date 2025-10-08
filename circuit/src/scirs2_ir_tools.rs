@@ -1,4 +1,4 @@
-//! SciRS2 Intermediate Representation Tools
+//! `SciRS2` Intermediate Representation Tools
 //!
 //! This module provides the IR tools integration for SciRS2-enhanced cross-compilation,
 //! implementing intermediate representation, optimization passes, and code generation
@@ -10,7 +10,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, RwLock};
 use uuid::Uuid;
 
-/// SciRS2 Intermediate Representation for Quantum Circuits
+/// `SciRS2` Intermediate Representation for Quantum Circuits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntermediateRepresentation {
     /// IR module identifier
@@ -178,7 +178,7 @@ pub struct InstructionMetadata {
 }
 
 /// Source location information
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceLocation {
     pub file: String,
     pub line: u32,
@@ -314,7 +314,7 @@ pub enum OptimizationLevel {
 
 impl Default for OptimizationLevel {
     fn default() -> Self {
-        OptimizationLevel::Release
+        Self::Release
     }
 }
 
@@ -386,6 +386,7 @@ pub struct IRBuilder {
 
 impl IRBuilder {
     /// Create new IR builder
+    #[must_use] 
     pub fn new(name: String) -> Self {
         let mut symbol_table = SymbolTable::default();
         symbol_table.scopes.push(Scope {
@@ -547,6 +548,7 @@ impl IRBuilder {
     }
 
     /// Build final IR
+    #[must_use] 
     pub fn build(mut self) -> IntermediateRepresentation {
         self.analyze_control_flow();
         self.analyze_dependencies();
@@ -691,6 +693,7 @@ pub struct OptimizationStats {
 
 impl IROptimizer {
     /// Create new optimizer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             passes: Vec::new(),
@@ -728,7 +731,8 @@ impl IROptimizer {
     }
 
     /// Get optimization statistics
-    pub fn get_stats(&self) -> &OptimizationStats {
+    #[must_use] 
+    pub const fn get_stats(&self) -> &OptimizationStats {
         &self.stats
     }
 }
@@ -759,6 +763,7 @@ pub struct IRValidator {
 
 impl IRValidator {
     /// Create new validator
+    #[must_use] 
     pub fn new() -> Self {
         Self { rules: Vec::new() }
     }
@@ -806,7 +811,7 @@ pub struct ValidationReport {
 
 impl ValidationReport {
     /// Merge another report
-    pub fn merge(&mut self, other: ValidationReport) {
+    pub fn merge(&mut self, other: Self) {
         self.errors.extend(other.errors);
         self.warnings.extend(other.warnings);
         self.passed = self.passed && other.passed && self.errors.is_empty();
@@ -913,13 +918,13 @@ pub enum IRError {
 impl fmt::Display for IRError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IRError::InvalidInstruction(msg) => write!(f, "Invalid instruction: {}", msg),
-            IRError::UndefinedSymbol(symbol) => write!(f, "Undefined symbol: {}", symbol),
-            IRError::InvalidOperand(msg) => write!(f, "Invalid operand: {}", msg),
-            IRError::OptimizationFailed(msg) => write!(f, "Optimization failed: {}", msg),
-            IRError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            IRError::CodeGenerationFailed(msg) => write!(f, "Code generation failed: {}", msg),
-            IRError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            Self::InvalidInstruction(msg) => write!(f, "Invalid instruction: {msg}"),
+            Self::UndefinedSymbol(symbol) => write!(f, "Undefined symbol: {symbol}"),
+            Self::InvalidOperand(msg) => write!(f, "Invalid operand: {msg}"),
+            Self::OptimizationFailed(msg) => write!(f, "Optimization failed: {msg}"),
+            Self::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
+            Self::CodeGenerationFailed(msg) => write!(f, "Code generation failed: {msg}"),
+            Self::InternalError(msg) => write!(f, "Internal error: {msg}"),
         }
     }
 }

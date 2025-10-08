@@ -27,7 +27,7 @@ fn main() {
 
     // Set the number of colors to use
     let num_colors = 3;
-    println!("Attempting to color the graph with {} colors", num_colors);
+    println!("Attempting to color the graph with {num_colors} colors");
 
     // Formulate the graph coloring problem as a QUBO
     let (qubo_model, var_map) = formulate_graph_coloring_qubo(&graph, num_colors);
@@ -42,7 +42,7 @@ fn main() {
         "Converted QUBO to Ising model with {} qubits",
         ising_model.num_qubits
     );
-    println!("Offset from QUBO to Ising conversion: {:.4}\n", offset);
+    println!("Offset from QUBO to Ising conversion: {offset:.4}\n");
 
     // Solve using classical simulated annealing
     println!("Solving with Classical Simulated Annealing...");
@@ -72,22 +72,22 @@ fn main() {
 
                     // Verify the coloring is valid
                     let is_valid = validate_coloring(&graph, &coloring);
-                    println!("Valid coloring: {}", is_valid);
+                    println!("Valid coloring: {is_valid}");
 
                     // Print the coloring
                     println!("\nVertex coloring:");
                     for (vertex_name, color) in &coloring {
-                        println!("  {} -> Color {}", vertex_name, color);
+                        println!("  {vertex_name} -> Color {color}");
                     }
 
                     // Count violations
                     let violations = count_violations(&graph, &coloring);
-                    println!("\nConstraint violations: {}", violations);
+                    println!("\nConstraint violations: {violations}");
                 }
-                Err(err) => println!("Error solving with classical annealing: {}", err),
+                Err(err) => println!("Error solving with classical annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating classical annealing simulator: {}", err),
+        Err(err) => println!("Error creating classical annealing simulator: {err}"),
     }
 
     println!("\nSolving with Quantum Simulated Annealing...");
@@ -120,22 +120,22 @@ fn main() {
 
                     // Verify the coloring is valid
                     let is_valid = validate_coloring(&graph, &coloring);
-                    println!("Valid coloring: {}", is_valid);
+                    println!("Valid coloring: {is_valid}");
 
                     // Print the coloring
                     println!("\nVertex coloring:");
                     for (vertex_name, color) in &coloring {
-                        println!("  {} -> Color {}", vertex_name, color);
+                        println!("  {vertex_name} -> Color {color}");
                     }
 
                     // Count violations
                     let violations = count_violations(&graph, &coloring);
-                    println!("\nConstraint violations: {}", violations);
+                    println!("\nConstraint violations: {violations}");
                 }
-                Err(err) => println!("Error solving with quantum annealing: {}", err),
+                Err(err) => println!("Error solving with quantum annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating quantum annealing simulator: {}", err),
+        Err(err) => println!("Error creating quantum annealing simulator: {err}"),
     }
 
     println!("\nNote: The quantum annealing simulation is just a demonstration.");
@@ -190,11 +190,11 @@ fn formulate_graph_coloring_qubo(
     // Create binary variables: x_{v,c} = 1 if vertex v has color c, otherwise 0
     let mut vertex_color_vars: Vec<Vec<Variable>> = Vec::new();
 
-    for vertex in graph.vertices.iter() {
+    for vertex in &graph.vertices {
         let mut color_vars = Vec::new();
 
         for c in 0..num_colors {
-            let var_name = format!("{}_{}", vertex, c);
+            let var_name = format!("{vertex}_{c}");
             let var = builder.add_variable(var_name).unwrap();
             color_vars.push(var);
         }
@@ -240,9 +240,9 @@ fn interpret_coloring(
 ) -> HashMap<String, usize> {
     let mut coloring = HashMap::new();
 
-    for vertex in graph.vertices.iter() {
+    for vertex in &graph.vertices {
         for c in 0..num_colors {
-            let var_name = format!("{}_{}", vertex, c);
+            let var_name = format!("{vertex}_{c}");
             let var_idx = var_map[&var_name];
 
             if solution[var_idx] {

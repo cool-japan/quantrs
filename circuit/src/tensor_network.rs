@@ -31,6 +31,7 @@ pub struct Tensor {
 
 impl Tensor {
     /// Create a new tensor
+    #[must_use] 
     pub fn new(data: Vec<C64>, shape: Vec<usize>, indices: Vec<String>) -> Self {
         assert_eq!(shape.len(), indices.len());
         let total_size: usize = shape.iter().product();
@@ -44,6 +45,7 @@ impl Tensor {
     }
 
     /// Create an identity tensor
+    #[must_use] 
     pub fn identity(dim: usize, in_label: String, out_label: String) -> Self {
         let mut data = vec![C64::new(0.0, 0.0); dim * dim];
         for i in 0..dim {
@@ -54,11 +56,13 @@ impl Tensor {
     }
 
     /// Get the rank (number of indices)
+    #[must_use] 
     pub fn rank(&self) -> usize {
         self.shape.len()
     }
 
     /// Get the total number of elements
+    #[must_use] 
     pub fn size(&self) -> usize {
         self.data.len()
     }
@@ -66,21 +70,21 @@ impl Tensor {
     /// Contract two tensors along specified indices
     pub fn contract(
         &self,
-        other: &Tensor,
+        other: &Self,
         self_idx: &str,
         other_idx: &str,
-    ) -> QuantRS2Result<Tensor> {
+    ) -> QuantRS2Result<Self> {
         // Find index positions
         let self_pos = self
             .indices
             .iter()
             .position(|s| s == self_idx)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Index {} not found", self_idx)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Index {self_idx} not found")))?;
         let other_pos = other
             .indices
             .iter()
             .position(|s| s == other_idx)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Index {} not found", other_idx)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Index {other_idx} not found")))?;
 
         // Check dimensions match
         if self.shape[self_pos] != other.shape[other_pos] {
@@ -116,7 +120,7 @@ impl Tensor {
         let contract_dim = self.shape[self_pos];
 
         // For now, return a placeholder
-        Ok(Tensor::new(new_data, new_shape, new_indices))
+        Ok(Self::new(new_data, new_shape, new_indices))
     }
 
     /// Reshape the tensor
@@ -140,7 +144,7 @@ impl Tensor {
 pub struct TensorNetwork {
     /// Tensors in the network
     tensors: Vec<Tensor>,
-    /// Connections between tensors (tensor_idx1, idx1, tensor_idx2, idx2)
+    /// Connections between tensors (`tensor_idx1`, idx1, `tensor_idx2`, idx2)
     bonds: Vec<(usize, String, usize, String)>,
     /// Open indices (external legs)
     open_indices: HashMap<String, (usize, usize)>, // index -> (tensor_idx, position)
@@ -148,6 +152,7 @@ pub struct TensorNetwork {
 
 impl TensorNetwork {
     /// Create a new empty tensor network
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             tensors: Vec::new(),
@@ -214,7 +219,7 @@ impl TensorNetwork {
     }
 
     /// Apply SVD-based compression
-    pub fn compress(&mut self, max_bond_dim: usize, tolerance: f64) -> QuantRS2Result<()> {
+    pub const fn compress(&mut self, max_bond_dim: usize, tolerance: f64) -> QuantRS2Result<()> {
         // Placeholder for SVD-based compression
         // Would implement MPS/MPO compression techniques
         Ok(())
@@ -231,7 +236,8 @@ pub struct CircuitToTensorNetwork<const N: usize> {
 
 impl<const N: usize> CircuitToTensorNetwork<N> {
     /// Create a new converter
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             max_bond_dim: None,
             tolerance: 1e-10,
@@ -239,13 +245,15 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
     }
 
     /// Set maximum bond dimension
-    pub fn with_max_bond_dim(mut self, dim: usize) -> Self {
+    #[must_use] 
+    pub const fn with_max_bond_dim(mut self, dim: usize) -> Self {
         self.max_bond_dim = Some(dim);
         self
     }
 
     /// Set truncation tolerance
-    pub fn with_tolerance(mut self, tol: f64) -> Self {
+    #[must_use] 
+    pub const fn with_tolerance(mut self, tol: f64) -> Self {
         self.tolerance = tol;
         self
     }
@@ -257,7 +265,7 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
 
         // Initialize qubit wires
         for i in 0..N {
-            qubit_wires.insert(i, format!("q{}_in", i));
+            qubit_wires.insert(i, format!("q{i}_in"));
         }
 
         // Convert each gate to a tensor
@@ -269,7 +277,7 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
             for qubit in gate.qubits() {
                 let q = qubit.id() as usize;
                 let prev_wire = qubit_wires.get(&q).unwrap().clone();
-                let new_wire = format!("q{}_g{}", q, gate_idx);
+                let new_wire = format!("q{q}_g{gate_idx}");
 
                 // Add bond from previous wire to this gate
                 if gate_idx > 0 || prev_wire.contains("_g") {
@@ -277,7 +285,7 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
                         tensor_idx - 1,
                         prev_wire.clone(),
                         tensor_idx,
-                        format!("in_{}", q),
+                        format!("in_{q}"),
                     )?;
                 }
 
@@ -301,7 +309,7 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
                 let q = qubits[0].id() as usize;
 
                 Ok(Tensor::new(
-                    matrix.iter().cloned().collect(),
+                    matrix.iter().copied().collect(),
                     vec![2, 2],
                     vec![format!("in_{}", q), format!("out_{}", q)],
                 ))
@@ -324,8 +332,7 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
                 ))
             }
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
-                "{}-qubit gates not yet supported for tensor networks",
-                n_qubits
+                "{n_qubits}-qubit gates not yet supported for tensor networks"
             ))),
         }
     }
@@ -370,23 +377,20 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
     /// Get matrix representation of two-qubit gate
     fn get_two_qubit_matrix(&self, gate: &dyn GateOp) -> QuantRS2Result<Vec<C64>> {
         // Simplified - would use actual gate matrices
-        match gate.name() {
-            "CNOT" => {
-                let mut matrix = vec![C64::new(0.0, 0.0); 16];
-                matrix[0] = C64::new(1.0, 0.0); // |00⟩ -> |00⟩
-                matrix[5] = C64::new(1.0, 0.0); // |01⟩ -> |01⟩
-                matrix[15] = C64::new(1.0, 0.0); // |10⟩ -> |11⟩
-                matrix[10] = C64::new(1.0, 0.0); // |11⟩ -> |10⟩
-                Ok(matrix)
+        if gate.name() == "CNOT" {
+            let mut matrix = vec![C64::new(0.0, 0.0); 16];
+            matrix[0] = C64::new(1.0, 0.0); // |00⟩ -> |00⟩
+            matrix[5] = C64::new(1.0, 0.0); // |01⟩ -> |01⟩
+            matrix[15] = C64::new(1.0, 0.0); // |10⟩ -> |11⟩
+            matrix[10] = C64::new(1.0, 0.0); // |11⟩ -> |10⟩
+            Ok(matrix)
+        } else {
+            // Identity for unsupported gates
+            let mut matrix = vec![C64::new(0.0, 0.0); 16];
+            for i in 0..16 {
+                matrix[i * 16 + i] = C64::new(1.0, 0.0);
             }
-            _ => {
-                // Identity for unsupported gates
-                let mut matrix = vec![C64::new(0.0, 0.0); 16];
-                for i in 0..16 {
-                    matrix[i * 16 + i] = C64::new(1.0, 0.0);
-                }
-                Ok(matrix)
-            }
+            Ok(matrix)
         }
     }
 }
@@ -418,14 +422,14 @@ impl MatrixProductState {
     }
 
     /// Compress the MPS
-    pub fn compress(&mut self, max_bond_dim: usize, tolerance: f64) -> QuantRS2Result<()> {
+    pub const fn compress(&mut self, max_bond_dim: usize, tolerance: f64) -> QuantRS2Result<()> {
         // Implement SVD-based compression
         // Sweep through the MPS and truncate bonds
         Ok(())
     }
 
     /// Calculate overlap with another MPS
-    pub fn overlap(&self, other: &MatrixProductState) -> QuantRS2Result<C64> {
+    pub fn overlap(&self, other: &Self) -> QuantRS2Result<C64> {
         if self.n_qubits != other.n_qubits {
             return Err(QuantRS2Error::InvalidInput(
                 "MPS have different number of qubits".to_string(),
@@ -437,7 +441,7 @@ impl MatrixProductState {
     }
 
     /// Calculate expectation value of observable
-    pub fn expectation_value(&self, observable: &TensorNetwork) -> QuantRS2Result<f64> {
+    pub const fn expectation_value(&self, observable: &TensorNetwork) -> QuantRS2Result<f64> {
         // Calculate ⟨ψ|O|ψ⟩
         Ok(0.0) // Placeholder
     }
@@ -465,7 +469,8 @@ pub enum CompressionMethod {
 
 impl TensorNetworkCompressor {
     /// Create a new compressor
-    pub fn new(max_bond_dim: usize) -> Self {
+    #[must_use] 
+    pub const fn new(max_bond_dim: usize) -> Self {
         Self {
             max_bond_dim,
             tolerance: 1e-10,
@@ -474,7 +479,8 @@ impl TensorNetworkCompressor {
     }
 
     /// Set compression method
-    pub fn with_method(mut self, method: CompressionMethod) -> Self {
+    #[must_use] 
+    pub const fn with_method(mut self, method: CompressionMethod) -> Self {
         self.method = method;
         self
     }
@@ -507,7 +513,8 @@ pub struct CompressedCircuit<const N: usize> {
 
 impl<const N: usize> CompressedCircuit<N> {
     /// Get compression ratio
-    pub fn compression_ratio(&self) -> f64 {
+    #[must_use] 
+    pub const fn compression_ratio(&self) -> f64 {
         self.compression_ratio
     }
 
@@ -519,7 +526,7 @@ impl<const N: usize> CompressedCircuit<N> {
     }
 
     /// Get fidelity with original circuit
-    pub fn fidelity(&self, original: &Circuit<N>) -> QuantRS2Result<f64> {
+    pub const fn fidelity(&self, original: &Circuit<N>) -> QuantRS2Result<f64> {
         // Calculate |⟨ψ_compressed|ψ_original⟩|²
         Ok(0.99) // Placeholder
     }

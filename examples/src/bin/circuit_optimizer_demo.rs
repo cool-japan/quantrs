@@ -50,7 +50,7 @@ fn optimize_basic_circuit() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Optimization completed in {:?}", elapsed);
+    println!("Optimization completed in {elapsed:?}");
     result.print_summary();
 }
 
@@ -91,7 +91,7 @@ fn optimize_complex_circuit() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Optimization completed in {:?}", elapsed);
+    println!("Optimization completed in {elapsed:?}");
     result.print_summary();
 }
 
@@ -133,7 +133,7 @@ fn optimize_with_custom_passes() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Custom optimization completed in {:?}", elapsed);
+    println!("Custom optimization completed in {elapsed:?}");
     result.print_summary();
 }
 

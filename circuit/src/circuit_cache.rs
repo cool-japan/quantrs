@@ -35,7 +35,7 @@ pub struct CacheEntry<T> {
 }
 
 /// Cache eviction policy
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvictionPolicy {
     /// Least Recently Used
     LRU,
@@ -130,6 +130,7 @@ pub struct CircuitCache<T: Clone> {
 
 impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     /// Create a new circuit cache
+    #[must_use] 
     pub fn new(config: CacheConfig) -> Self {
         let cache = Self {
             entries: Arc::new(RwLock::new(HashMap::new())),
@@ -143,11 +144,13 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     }
 
     /// Create cache with default configuration
+    #[must_use] 
     pub fn with_default_config() -> Self {
         Self::new(CacheConfig::default())
     }
 
     /// Get value from cache
+    #[must_use] 
     pub fn get(&self, key: &CircuitSignature) -> Option<T> {
         let start_time = Instant::now();
         let key_hash = self.hash_signature(key);
@@ -198,6 +201,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     }
 
     /// Remove entry from cache
+    #[must_use] 
     pub fn remove(&self, key: &CircuitSignature) -> Option<T> {
         let key_hash = self.hash_signature(key);
 
@@ -232,16 +236,19 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     }
 
     /// Get cache statistics
+    #[must_use] 
     pub fn get_stats(&self) -> CacheStats {
         self.stats.lock().unwrap().clone()
     }
 
     /// Get current cache size
+    #[must_use] 
     pub fn size(&self) -> usize {
         self.entries.read().unwrap().len()
     }
 
     /// Check if cache contains key
+    #[must_use] 
     pub fn contains_key(&self, key: &CircuitSignature) -> bool {
         let key_hash = self.hash_signature(key);
         self.entries.read().unwrap().contains_key(&key_hash)
@@ -339,8 +346,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
             // Update average access time (simple moving average)
             let current_avg_nanos = stats.avg_access_time.as_nanos() as f64;
-            let new_avg_nanos = (current_avg_nanos * (total_accesses - 1) as f64
-                + access_time.as_nanos() as f64)
+            let new_avg_nanos = current_avg_nanos.mul_add((total_accesses - 1) as f64, access_time.as_nanos() as f64)
                 / total_accesses as f64;
             stats.avg_access_time = Duration::from_nanos(new_avg_nanos as u64);
         }
@@ -562,7 +568,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     }
 
     /// Estimate size of cached value
-    fn estimate_size(&self, _value: &T) -> usize {
+    const fn estimate_size(&self, _value: &T) -> usize {
         // This is a simplified size estimation
         // In practice, this would use serialization or memory introspection
         std::mem::size_of::<T>() + 1024 // Base overhead estimate
@@ -583,6 +589,7 @@ pub struct SignatureGenerator;
 
 impl SignatureGenerator {
     /// Generate signature for a circuit
+    #[must_use] 
     pub fn generate_circuit_signature<const N: usize>(
         circuit: &Circuit<N>,
         options_hash: u64,
@@ -613,6 +620,7 @@ impl SignatureGenerator {
     }
 
     /// Generate signature with compilation options
+    #[must_use] 
     pub fn generate_with_compilation_options<const N: usize>(
         circuit: &Circuit<N>,
         backend: &str,
@@ -628,6 +636,7 @@ impl SignatureGenerator {
     }
 
     /// Generate signature with transpilation options
+    #[must_use] 
     pub fn generate_with_transpilation_options<const N: usize>(
         circuit: &Circuit<N>,
         device: &str,
@@ -655,6 +664,7 @@ pub struct CacheManager {
 
 impl CacheManager {
     /// Create a new cache manager
+    #[must_use] 
     pub fn new(config: CacheConfig) -> Self {
         Self {
             compiled_cache: CompiledCircuitCache::new(config.clone()),
@@ -664,11 +674,13 @@ impl CacheManager {
     }
 
     /// Create with default configuration
+    #[must_use] 
     pub fn with_default_config() -> Self {
         Self::new(CacheConfig::default())
     }
 
     /// Get aggregated cache statistics
+    #[must_use] 
     pub fn get_aggregated_stats(&self) -> HashMap<String, CacheStats> {
         let mut stats = HashMap::new();
         stats.insert("compiled".to_string(), self.compiled_cache.get_stats());

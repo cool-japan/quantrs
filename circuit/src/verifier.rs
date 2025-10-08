@@ -1,8 +1,8 @@
-//! Circuit verifier with SciRS2 formal methods for correctness checking
+//! Circuit verifier with `SciRS2` formal methods for correctness checking
 //!
 //! This module provides comprehensive formal verification capabilities for quantum circuits,
 //! including property verification, invariant checking, correctness proofs, and automated
-//! theorem proving using SciRS2's formal methods and symbolic computation capabilities.
+//! theorem proving using `SciRS2`'s formal methods and symbolic computation capabilities.
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
@@ -18,13 +18,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Comprehensive quantum circuit verifier with SciRS2 formal methods
+/// Comprehensive quantum circuit verifier with `SciRS2` formal methods
 pub struct QuantumVerifier<const N: usize> {
     /// Circuit being verified
     circuit: Circuit<N>,
     /// Verifier configuration
     config: VerifierConfig,
-    /// SciRS2 analyzer for formal analysis
+    /// `SciRS2` analyzer for formal analysis
     analyzer: SciRS2CircuitAnalyzer,
     /// Property checker engine
     property_checker: Arc<RwLock<PropertyChecker<N>>>,
@@ -134,7 +134,7 @@ pub struct PropertyChecker<const N: usize> {
     properties: Vec<QuantumProperty<N>>,
     /// Property verification cache
     verification_cache: HashMap<String, PropertyVerificationResult>,
-    /// SciRS2 integration for numerical analysis
+    /// `SciRS2` integration for numerical analysis
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -297,7 +297,7 @@ pub struct InvariantChecker<const N: usize> {
     invariants: Vec<CircuitInvariant<N>>,
     /// Invariant checking results
     check_results: HashMap<String, InvariantCheckResult>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -375,7 +375,7 @@ pub struct TheoremProver<const N: usize> {
     theorems: Vec<QuantumTheorem<N>>,
     /// Proof cache
     proof_cache: HashMap<String, TheoremResult>,
-    /// SciRS2 symbolic computation
+    /// `SciRS2` symbolic computation
     analyzer: SciRS2CircuitAnalyzer,
     /// Proof strategies
     strategies: Vec<ProofStrategy>,
@@ -546,7 +546,7 @@ pub struct Counterexample {
     pub inputs: HashMap<String, f64>,
     /// Expected vs actual output
     pub expected_output: String,
-    /// actual_output: String,
+    /// `actual_output`: String,
     pub actual_output: String,
     /// Minimal counterexample flag
     pub is_minimal: bool,
@@ -594,7 +594,7 @@ pub struct ModelChecker<const N: usize> {
     results: HashMap<String, ModelCheckResult>,
     /// State space representation
     state_space: StateSpace<N>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -717,7 +717,7 @@ pub struct CorrectnessChecker<const N: usize> {
     results: HashMap<String, CorrectnessResult>,
     /// Reference implementations
     references: HashMap<String, Circuit<N>>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -829,7 +829,7 @@ pub struct SymbolicExecutor<const N: usize> {
     symbolic_states: HashMap<String, SymbolicState>,
     /// Path constraints
     path_constraints: Vec<SymbolicConstraint>,
-    /// SciRS2 symbolic computation
+    /// `SciRS2` symbolic computation
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -1114,7 +1114,7 @@ pub struct VerificationMetadata {
     pub timestamp: SystemTime,
     /// Verifier version
     pub verifier_version: String,
-    /// SciRS2 version
+    /// `SciRS2` version
     pub scirs2_version: String,
     /// Verification configuration
     pub config: VerifierConfig,
@@ -1124,6 +1124,7 @@ pub struct VerificationMetadata {
 
 impl<const N: usize> QuantumVerifier<N> {
     /// Create a new quantum verifier
+    #[must_use] 
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1139,6 +1140,7 @@ impl<const N: usize> QuantumVerifier<N> {
     }
 
     /// Create verifier with custom configuration
+    #[must_use] 
     pub fn with_config(circuit: Circuit<N>, config: VerifierConfig) -> Self {
         Self {
             circuit,
@@ -1527,6 +1529,7 @@ impl<const N: usize> QuantumVerifier<N> {
 
 impl<const N: usize> PropertyChecker<N> {
     /// Create new property checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             properties: Vec::new(),
@@ -1651,7 +1654,7 @@ impl<const N: usize> PropertyChecker<N> {
         entanglement_type: &EntanglementType,
         threshold: f64,
     ) -> QuantRS2Result<(String, VerificationOutcome, Vec<NumericalEvidence>)> {
-        let property_name = format!("Entanglement {:?}", entanglement_type);
+        let property_name = format!("Entanglement {entanglement_type:?}");
         let result = VerificationOutcome::Satisfied; // Simplified
         let evidence = Vec::new();
 
@@ -1666,7 +1669,7 @@ impl<const N: usize> PropertyChecker<N> {
         superposition_type: &SuperpositionType,
         threshold: f64,
     ) -> QuantRS2Result<(String, VerificationOutcome, Vec<NumericalEvidence>)> {
-        let property_name = format!("Superposition {:?}", superposition_type);
+        let property_name = format!("Superposition {superposition_type:?}");
         let result = VerificationOutcome::Satisfied; // Simplified
         let evidence = Vec::new();
 
@@ -1716,6 +1719,7 @@ impl<const N: usize> PropertyChecker<N> {
 
 impl<const N: usize> InvariantChecker<N> {
     /// Create new invariant checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             invariants: Vec::new(),
@@ -1871,7 +1875,7 @@ impl<const N: usize> InvariantChecker<N> {
         let invariant_name = "Gate Count Bounds".to_string();
         let gate_count = circuit.num_gates();
         let measured_value = gate_count as f64;
-        let expected_value = ((min_gates + max_gates) / 2) as f64;
+        let expected_value = usize::midpoint(min_gates, max_gates) as f64;
 
         let result = if gate_count >= min_gates && gate_count <= max_gates {
             VerificationOutcome::Satisfied
@@ -1910,7 +1914,7 @@ impl<const N: usize> InvariantChecker<N> {
         let invariant_name = "Depth Bounds".to_string();
         let circuit_depth = circuit.calculate_depth();
         let measured_value = circuit_depth as f64;
-        let expected_value = ((min_depth + max_depth) / 2) as f64;
+        let expected_value = usize::midpoint(min_depth, max_depth) as f64;
 
         let result = if circuit_depth >= min_depth && circuit_depth <= max_depth {
             VerificationOutcome::Satisfied
@@ -2040,6 +2044,7 @@ impl<const N: usize> InvariantChecker<N> {
 
 impl<const N: usize> TheoremProver<N> {
     /// Create new theorem prover
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             theorems: Vec::new(),
@@ -2234,7 +2239,7 @@ impl<const N: usize> TheoremProver<N> {
         Option<FormalProof>,
         Option<Counterexample>,
     )> {
-        let theorem_name = format!("Algorithm Correctness: {}", algorithm_name);
+        let theorem_name = format!("Algorithm Correctness: {algorithm_name}");
         let proof_status = ProofStatus::Proved; // Simplified
         let proof = None;
         let counterexample = None;
@@ -2265,6 +2270,7 @@ impl<const N: usize> TheoremProver<N> {
 
 impl<const N: usize> ModelChecker<N> {
     /// Create new model checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             properties: Vec::new(),
@@ -2280,7 +2286,7 @@ impl<const N: usize> ModelChecker<N> {
     }
 
     /// Check all properties
-    pub fn check_all_properties(
+    pub const fn check_all_properties(
         &self,
         circuit: &Circuit<N>,
         config: &VerifierConfig,
@@ -2292,6 +2298,7 @@ impl<const N: usize> ModelChecker<N> {
 
 impl<const N: usize> CorrectnessChecker<N> {
     /// Create new correctness checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             criteria: Vec::new(),
@@ -2304,6 +2311,7 @@ impl<const N: usize> CorrectnessChecker<N> {
 
 impl<const N: usize> SymbolicExecutor<N> {
     /// Create new symbolic executor
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config: SymbolicExecutionConfig {
@@ -2320,7 +2328,7 @@ impl<const N: usize> SymbolicExecutor<N> {
     }
 
     /// Execute circuit symbolically
-    pub fn execute_circuit(
+    pub const fn execute_circuit(
         &self,
         circuit: &Circuit<N>,
         config: &VerifierConfig,

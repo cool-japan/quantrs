@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let prob = amplitudes[i].norm_sqr();
         if prob > 0.01 {
             // Only show states with significant probability
-            println!("State |{:03b}⟩: probability = {:.6}", i, prob);
+            println!("State |{i:03b}⟩: probability = {prob:.6}");
 
             // Calculate the phase and interpret it in terms of the period
             let phase = i as f64 / 8.0;
@@ -135,7 +135,7 @@ fn apply_inverse_qft(circuit: &mut Circuit<4>, n: usize) {
     for i in (0..n).rev() {
         // Apply inverse controlled rotations using available gates
         for j in (i + 1..n).rev() {
-            let angle = -PI / (1 << (j - i)) as f64; // -PI/2^(j-i)
+            let angle = -PI / f64::from(1 << (j - i)); // -PI/2^(j-i)
             circuit.cp(QubitId::new(j as u32), QubitId::new(i as u32), angle);
         }
 

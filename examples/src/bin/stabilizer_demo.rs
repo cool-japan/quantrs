@@ -64,7 +64,7 @@ fn main() {
 
     // Measure qubit 0
     let outcome = sim.measure(0).unwrap();
-    println!("Measurement outcome: {}", outcome as u8);
+    println!("Measurement outcome: {}", u8::from(outcome));
     println!("After measurement: {:?}", sim.get_stabilizers());
 
     // Example 5: Using the Clifford Circuit Builder
@@ -103,13 +103,13 @@ fn main() {
     circuit.cnot(0, 1).unwrap();
 
     let is_clifford = is_clifford_circuit(&circuit);
-    println!("Is Bell state circuit Clifford? {}", is_clifford);
+    println!("Is Bell state circuit Clifford? {is_clifford}");
 
     // Add a non-Clifford gate
     circuit.rx(0, std::f64::consts::PI / 4.0).unwrap();
 
     let is_clifford = is_clifford_circuit(&circuit);
-    println!("Is circuit with Rx(π/4) Clifford? {}", is_clifford);
+    println!("Is circuit with Rx(π/4) Clifford? {is_clifford}");
 
     println!("\n=== Demo Complete ===");
 }

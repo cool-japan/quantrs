@@ -25,7 +25,7 @@ fn main() {
 
     println!("Ideal Bell State (no noise):");
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -68,7 +68,7 @@ fn run_with_bit_flip_noise(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -103,7 +103,7 @@ fn run_with_phase_flip_noise(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -132,7 +132,7 @@ fn run_with_depolarizing_noise(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -163,7 +163,7 @@ fn run_with_amplitude_damping(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -192,7 +192,7 @@ fn run_with_phase_damping(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -239,7 +239,7 @@ fn run_with_combined_noise(circuit: &Circuit<2>) {
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -254,7 +254,7 @@ fn run_with_combined_noise(circuit: &Circuit<2>) {
     // Display the probabilities
     println!("\nFinal state probabilities:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!("|{}⟩: {:.6}", bits, amplitude.norm_sqr());
     }
     println!("\nNotice how the Bell state has degraded from the ideal (50/50 in |00⟩/|11⟩) due to noise.");
@@ -321,7 +321,7 @@ fn run_with_realistic_ibm_noise(circuit: &Circuit<2>) {
     // Display the full quantum state
     println!("\nFull quantum state:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -333,7 +333,7 @@ fn run_with_realistic_ibm_noise(circuit: &Circuit<2>) {
     // Display just the probabilities
     println!("\nFinal state probabilities:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!("|{}⟩: {:.6}", bits, amplitude.norm_sqr());
     }
 

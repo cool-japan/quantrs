@@ -3,8 +3,6 @@
 //! This provides a CPU-based fallback implementation of the GPU backend
 //! interface, useful for testing and systems without GPU support.
 
-#![allow(clippy::elided_lifetimes_in_paths)]
-
 use super::{GpuBackend, GpuBuffer, GpuKernel};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

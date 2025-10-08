@@ -38,7 +38,7 @@ fn main() {
         "Converted QUBO to Ising model with {} qubits",
         ising_model.num_qubits
     );
-    println!("Offset from QUBO to Ising conversion: {:.4}\n", offset);
+    println!("Offset from QUBO to Ising conversion: {offset:.4}\n");
 
     // Solve using classical simulated annealing
     println!("Solving with Classical Simulated Annealing...");
@@ -92,10 +92,10 @@ fn main() {
                             .collect::<Vec<_>>()
                     );
                 }
-                Err(err) => println!("Error solving with classical annealing: {}", err),
+                Err(err) => println!("Error solving with classical annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating classical annealing simulator: {}", err),
+        Err(err) => println!("Error creating classical annealing simulator: {err}"),
     }
 
     println!("\nSolving with Quantum Simulated Annealing...");
@@ -151,10 +151,10 @@ fn main() {
                             .collect::<Vec<_>>()
                     );
                 }
-                Err(err) => println!("Error solving with quantum annealing: {}", err),
+                Err(err) => println!("Error solving with quantum annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating quantum annealing simulator: {}", err),
+        Err(err) => println!("Error creating quantum annealing simulator: {err}"),
     }
 
     println!("\nNote: The quantum annealing simulation is just a demonstration.");

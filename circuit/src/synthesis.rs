@@ -62,7 +62,7 @@ impl Default for SynthesisConfig {
 }
 
 /// Available gate sets for synthesis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GateSet {
     /// Universal gate set {H, T, CNOT}
     Universal,
@@ -84,7 +84,8 @@ pub struct SingleQubitSynthesizer {
 
 impl SingleQubitSynthesizer {
     /// Create a new single-qubit synthesizer
-    pub fn new(config: SynthesisConfig) -> Self {
+    #[must_use] 
+    pub const fn new(config: SynthesisConfig) -> Self {
         Self { config }
     }
 
@@ -466,7 +467,8 @@ pub struct TwoQubitSynthesizer {
 
 impl TwoQubitSynthesizer {
     /// Create a new two-qubit synthesizer
-    pub fn new(config: SynthesisConfig) -> Self {
+    #[must_use] 
+    pub const fn new(config: SynthesisConfig) -> Self {
         Self { config }
     }
 
@@ -674,6 +676,7 @@ pub struct MultiQubitSynthesizer {
 
 impl MultiQubitSynthesizer {
     /// Create a new multi-qubit synthesizer
+    #[must_use] 
     pub fn new(config: SynthesisConfig) -> Self {
         let single_synth = SingleQubitSynthesizer::new(config.clone());
         let two_synth = TwoQubitSynthesizer::new(config.clone());
@@ -1016,6 +1019,7 @@ pub struct UnitarySynthesizer {
 
 impl UnitarySynthesizer {
     /// Create a new unitary synthesizer
+    #[must_use] 
     pub fn new(config: SynthesisConfig) -> Self {
         let multi_synth = MultiQubitSynthesizer::new(config.clone());
 
@@ -1026,11 +1030,13 @@ impl UnitarySynthesizer {
     }
 
     /// Create synthesizer with default configuration
+    #[must_use] 
     pub fn default_config() -> Self {
         Self::new(SynthesisConfig::default())
     }
 
     /// Create synthesizer for specific gate set
+    #[must_use] 
     pub fn for_gate_set(gate_set: GateSet) -> Self {
         let config = SynthesisConfig {
             gate_set,
@@ -1101,8 +1107,7 @@ impl UnitarySynthesizer {
 
         if max_error > self.config.tolerance * 10.0 {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Matrix is not unitary (error: {})",
-                max_error
+                "Matrix is not unitary (error: {max_error})"
             )));
         }
 
@@ -1126,7 +1131,7 @@ impl UnitarySynthesizer {
             })?;
 
             for j in (i + 1)..n_qubits {
-                let angle = PI / (1 << (j - i)) as f64;
+                let angle = PI / f64::from(1 << (j - i));
                 circuit.add_gate(RotationZ {
                     target: QubitId(j as u32),
                     theta: angle,
@@ -1214,7 +1219,7 @@ impl UnitarySynthesizer {
     }
 
     /// Optimize synthesized circuit
-    fn optimize_circuit<const N: usize>(&self, circuit: Circuit<N>) -> QuantRS2Result<Circuit<N>> {
+    const fn optimize_circuit<const N: usize>(&self, circuit: Circuit<N>) -> QuantRS2Result<Circuit<N>> {
         // Apply basic optimizations based on optimization level
         // This would integrate with the optimization module
         Ok(circuit)
@@ -1244,9 +1249,10 @@ pub enum UnitaryOperation {
 
 /// Utilities for creating common unitary matrices
 pub mod unitaries {
-    use super::*;
+    use super::{Unitary2, arr2, C64, Unitary4};
 
     /// Create Pauli-X matrix
+    #[must_use] 
     pub fn pauli_x() -> Unitary2 {
         arr2(&[
             [C64::new(0.0, 0.0), C64::new(1.0, 0.0)],
@@ -1255,6 +1261,7 @@ pub mod unitaries {
     }
 
     /// Create Pauli-Y matrix
+    #[must_use] 
     pub fn pauli_y() -> Unitary2 {
         arr2(&[
             [C64::new(0.0, 0.0), C64::new(0.0, -1.0)],
@@ -1263,6 +1270,7 @@ pub mod unitaries {
     }
 
     /// Create Pauli-Z matrix
+    #[must_use] 
     pub fn pauli_z() -> Unitary2 {
         arr2(&[
             [C64::new(1.0, 0.0), C64::new(0.0, 0.0)],
@@ -1271,6 +1279,7 @@ pub mod unitaries {
     }
 
     /// Create Hadamard matrix
+    #[must_use] 
     pub fn hadamard() -> Unitary2 {
         let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
         arr2(&[
@@ -1280,6 +1289,7 @@ pub mod unitaries {
     }
 
     /// Create rotation matrices
+    #[must_use] 
     pub fn rotation_x(angle: f64) -> Unitary2 {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
@@ -1290,6 +1300,7 @@ pub mod unitaries {
         ])
     }
 
+    #[must_use] 
     pub fn rotation_y(angle: f64) -> Unitary2 {
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
@@ -1300,6 +1311,7 @@ pub mod unitaries {
         ])
     }
 
+    #[must_use] 
     pub fn rotation_z(angle: f64) -> Unitary2 {
         let exp_neg = C64::from_polar(1.0, -angle / 2.0);
         let exp_pos = C64::from_polar(1.0, angle / 2.0);
@@ -1308,6 +1320,7 @@ pub mod unitaries {
     }
 
     /// Create CNOT matrix (4x4)
+    #[must_use] 
     pub fn cnot() -> Unitary4 {
         arr2(&[
             [

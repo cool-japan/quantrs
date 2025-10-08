@@ -30,7 +30,7 @@ fn main() {
     // Display the initial state
     println!("\nInitial state (first 2 amplitudes):");
     for (i, amplitude) in ideal_result.amplitudes().iter().take(2).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -68,10 +68,10 @@ fn main() {
     // Display the encoded state
     println!("\nEncoded state (first 8 amplitudes):");
     for (i, amplitude) in encoded_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -104,10 +104,10 @@ fn main() {
     // Display the noisy state
     println!("\nState after noise (first 8 amplitudes):");
     for (i, amplitude) in noisy_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -145,10 +145,10 @@ fn main() {
     // Display the corrected state
     println!("\nCorrected state (first 8 amplitudes):");
     for (i, amplitude) in corrected_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -171,13 +171,12 @@ fn main() {
     let prob_1 = logical_state[1].norm_sqr();
 
     println!("\nFor an ideal |+⟩ state, we expect P(|0⟩) ≈ P(|1⟩) ≈ 0.5");
-    println!("Measured: P(|0⟩) = {:.6}, P(|1⟩) = {:.6}", prob_0, prob_1);
+    println!("Measured: P(|0⟩) = {prob_0:.6}, P(|1⟩) = {prob_1:.6}");
 
     // Verify phase relationship (should be approximately +1, not -1)
     let phase = (logical_state[0].conj() * logical_state[1]).re;
     println!(
-        "Phase relationship: {:.6} (should be positive for |+⟩)",
-        phase
+        "Phase relationship: {phase:.6} (should be positive for |+⟩)"
     );
 
     println!("\nConclusion: The 3-qubit phase flip code successfully protected our");

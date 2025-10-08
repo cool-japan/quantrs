@@ -19,7 +19,7 @@ fn main() -> Result<(), MLError> {
     println!("\nInput image (4x4):");
     for row in &image {
         for &val in row {
-            print!("{:.2} ", val);
+            print!("{val:.2} ");
         }
         println!();
     }
@@ -71,8 +71,8 @@ fn main() -> Result<(), MLError> {
     let output = qcnn.forward(&input_state)?;
 
     println!("\nOutput state statistics:");
-    let output_norm: f64 = output.iter().map(|c| c.norm_sqr()).sum();
-    println!("  Total probability: {:.6}", output_norm);
+    let output_norm: f64 = output.iter().map(scirs2_core::Complex::norm_sqr).sum();
+    println!("  Total probability: {output_norm:.6}");
 
     // Find the most probable outcomes
     let mut outcomes: Vec<(usize, f64)> = output

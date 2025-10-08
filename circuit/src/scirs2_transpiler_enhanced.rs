@@ -1,8 +1,8 @@
-//! Enhanced Quantum Circuit Transpiler with Advanced SciRS2 Graph Optimization
+//! Enhanced Quantum Circuit Transpiler with Advanced `SciRS2` Graph Optimization
 //!
 //! This module provides state-of-the-art transpilation with ML-based routing,
 //! hardware-aware optimization, real-time performance prediction, and comprehensive
-//! error mitigation powered by SciRS2's graph algorithms.
+//! error mitigation powered by `SciRS2`'s graph algorithms.
 
 use crate::buffer_manager::{BufferManager, ManagedF64Buffer};
 use crate::builder::Circuit;
@@ -21,7 +21,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{ParallelIterator, IndexedParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -530,7 +530,7 @@ impl SciRS2GraphOptimizer {
                 },
                 _ => SciRS2NodeType::MultiQubitGate {
                     gate_type: gate.name().to_string(),
-                    qubits: qubits.iter().map(|q| q.id()).collect(),
+                    qubits: qubits.iter().map(quantrs2_core::QubitId::id).collect(),
                 },
             };
 
@@ -579,7 +579,7 @@ impl SciRS2GraphOptimizer {
         })
     }
 
-    /// Optimize using minimum spanning tree approach with SciRS2
+    /// Optimize using minimum spanning tree approach with `SciRS2`
     fn optimize_with_mst(
         &self,
         graph: &crate::scirs2_integration::SciRS2CircuitGraph,
@@ -786,11 +786,11 @@ impl GateOp for DummyGate {
         self
     }
     fn clone_gate(&self) -> Box<dyn GateOp> {
-        Box::new(DummyGate)
+        Box::new(Self)
     }
 }
 
-/// Enhanced quantum circuit transpiler with advanced SciRS2 integration
+/// Enhanced quantum circuit transpiler with advanced `SciRS2` integration
 pub struct EnhancedTranspiler<const N: usize = 100> {
     config: EnhancedTranspilerConfig,
     graph_optimizer: Arc<Mutex<SciRS2GraphOptimizer>>,
@@ -803,7 +803,8 @@ pub struct EnhancedTranspiler<const N: usize = 100> {
 }
 
 impl<const N: usize> EnhancedTranspiler<N> {
-    /// Create a new enhanced transpiler with advanced SciRS2 integration
+    /// Create a new enhanced transpiler with advanced `SciRS2` integration
+    #[must_use] 
     pub fn new(config: EnhancedTranspilerConfig) -> Self {
         // Detect platform capabilities for hardware-aware optimization
         let platform_capabilities = Arc::new(PlatformCapabilities::detect());
@@ -938,7 +939,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
         Ok(result)
     }
 
-    /// Analyze circuit structure using advanced SciRS2 graph algorithms
+    /// Analyze circuit structure using advanced `SciRS2` graph algorithms
     fn analyze_circuit(&self, circuit: &Circuit<N>) -> QuantRS2Result<CircuitAnalysis> {
         // Build SciRS2 circuit graph for comprehensive analysis
         let scirs2_graph = self.build_scirs2_circuit_graph(circuit)?;
@@ -1015,7 +1016,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
                 },
                 _ => SciRS2NodeType::MultiQubitGate {
                     gate_type: gate.name().to_string(),
-                    qubits: qubits.iter().map(|q| q.id()).collect(),
+                    qubits: qubits.iter().map(quantrs2_core::QubitId::id).collect(),
                 },
             };
 
@@ -1226,7 +1227,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Get number of optimization iterations based on level
-    fn get_optimization_iterations(&self) -> usize {
+    const fn get_optimization_iterations(&self) -> usize {
         match self.config.optimization_level {
             OptimizationLevel::None => 0,
             OptimizationLevel::Light => 1,
@@ -1238,7 +1239,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
 
     /// Check if gate is native to hardware
     fn is_native_gate(&self, gate: &dyn GateOp) -> QuantRS2Result<bool> {
-        let gate_name = format!("{:?}", gate);
+        let gate_name = format!("{gate:?}");
         Ok(self
             .config
             .hardware_spec
@@ -1267,7 +1268,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Apply gate cancellation optimization
-    fn apply_gate_cancellation(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
+    const fn apply_gate_cancellation(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
         // Find and remove redundant gates
         let mut removed = 0;
         // Implementation here
@@ -1275,7 +1276,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Apply gate fusion optimization
-    fn apply_gate_fusion(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
+    const fn apply_gate_fusion(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
         // Fuse compatible gates
         let mut fused = 0;
         // Implementation here
@@ -1283,7 +1284,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Apply commutation analysis
-    fn apply_commutation_analysis(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
+    const fn apply_commutation_analysis(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
         // Reorder commuting gates for optimization
         let mut optimized = 0;
         // Implementation here
@@ -1291,7 +1292,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Apply template matching optimization
-    fn apply_template_matching(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
+    const fn apply_template_matching(&self, circuit: &mut Circuit<N>) -> QuantRS2Result<usize> {
         // Match and replace known patterns
         let mut matched = 0;
         // Implementation here
@@ -1299,7 +1300,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Apply custom transpilation pass
-    fn apply_custom_pass(
+    const fn apply_custom_pass(
         &self,
         circuit: &mut Circuit<N>,
         pass: &TranspilationPass,
@@ -1342,7 +1343,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
         Ok(exports)
     }
 
-    /// Build dependency graph using SciRS2
+    /// Build dependency graph using `SciRS2`
     fn build_dependency_graph(&self, circuit: &Circuit<N>) -> QuantRS2Result<DependencyGraph> {
         let mut graph = Graph::new();
         let mut qubit_last_use: HashMap<usize, NodeIndex> = HashMap::new();
@@ -1372,13 +1373,13 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Find critical path in circuit
-    fn find_critical_path(&self, dep_graph: &DependencyGraph) -> QuantRS2Result<Vec<usize>> {
+    const fn find_critical_path(&self, dep_graph: &DependencyGraph) -> QuantRS2Result<Vec<usize>> {
         // Use SciRS2 graph algorithms to find longest path
         Ok(Vec::new()) // Placeholder
     }
 
     /// Analyze parallelism opportunities
-    fn analyze_parallelism(
+    const fn analyze_parallelism(
         &self,
         dep_graph: &DependencyGraph,
     ) -> QuantRS2Result<ParallelismAnalysis> {
@@ -1435,13 +1436,13 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Calculate circuit complexity score
-    fn calculate_complexity_score(&self, circuit: &Circuit<N>) -> QuantRS2Result<f64> {
+    const fn calculate_complexity_score(&self, circuit: &Circuit<N>) -> QuantRS2Result<f64> {
         // Use SciRS2 complexity metrics
         Ok(0.0) // Placeholder
     }
 
     /// Calculate quality metrics
-    fn calculate_quality_metrics(&self, circuit: &Circuit<N>) -> QuantRS2Result<QualityMetrics> {
+    const fn calculate_quality_metrics(&self, circuit: &Circuit<N>) -> QuantRS2Result<QualityMetrics> {
         Ok(QualityMetrics {
             estimated_fidelity: 0.99,
             gate_overhead: 1.0,
@@ -1635,7 +1636,7 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Check hardware compatibility
-    fn check_hardware_compatibility(
+    const fn check_hardware_compatibility(
         &self,
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<CompatibilityReport> {
@@ -1935,7 +1936,7 @@ impl<const N: usize> MLRouter<N> {
         Self { model: None }
     }
 
-    fn route(
+    const fn route(
         &self,
         circuit: &Circuit<N>,
         hardware: &HardwareSpec,
@@ -2017,7 +2018,7 @@ impl<const N: usize> TranspilationCache<N> {
         }
     }
 
-    fn get(&self, circuit: &Circuit<N>) -> Option<TranspilationResult<N>> {
+    const fn get(&self, circuit: &Circuit<N>) -> Option<TranspilationResult<N>> {
         // Calculate circuit hash and lookup
         None
     }

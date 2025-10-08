@@ -1,7 +1,7 @@
-//! Enhanced Device-specific transpiler with SciRS2 Graph Optimization
+//! Enhanced Device-specific transpiler with `SciRS2` Graph Optimization
 //!
 //! This module provides advanced transpilation functionality to convert generic quantum circuits
-//! into device-specific optimized circuits using SciRS2's graph optimization algorithms.
+//! into device-specific optimized circuits using `SciRS2`'s graph optimization algorithms.
 //! Features include intelligent gate decomposition, connectivity-aware routing, and
 //! performance optimization with advanced graph analysis.
 
@@ -24,7 +24,7 @@ use scirs2_graph::{
     DiGraph, Graph as ScirsGraph,
 };
 
-/// Advanced path optimizer using SciRS2 graph algorithms
+/// Advanced path optimizer using `SciRS2` graph algorithms
 #[derive(Debug, Clone)]
 pub struct PathOptimizer {
     /// Optimization algorithm to use
@@ -45,20 +45,22 @@ pub enum PathAlgorithm {
 }
 
 impl PathOptimizer {
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             algorithm: PathAlgorithm::Dijkstra,
             max_alternatives: 5,
         }
     }
 
-    pub fn with_algorithm(mut self, algorithm: PathAlgorithm) -> Self {
+    #[must_use] 
+    pub const fn with_algorithm(mut self, algorithm: PathAlgorithm) -> Self {
         self.algorithm = algorithm;
         self
     }
 }
 
-/// Connectivity analyzer using SciRS2 graph algorithms
+/// Connectivity analyzer using `SciRS2` graph algorithms
 #[derive(Debug, Clone)]
 pub struct ConnectivityAnalyzer {
     /// Analysis depth for connectivity
@@ -68,6 +70,7 @@ pub struct ConnectivityAnalyzer {
 }
 
 impl ConnectivityAnalyzer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             analysis_depth: 5,
@@ -75,13 +78,14 @@ impl ConnectivityAnalyzer {
         }
     }
 
-    pub fn with_depth(mut self, depth: usize) -> Self {
+    #[must_use] 
+    pub const fn with_depth(mut self, depth: usize) -> Self {
         self.analysis_depth = depth;
         self
     }
 }
 
-/// Graph optimizer using SciRS2 graph algorithms
+/// Graph optimizer using `SciRS2` graph algorithms
 #[derive(Debug, Clone)]
 pub struct GraphOptimizer {
     /// Optimization configuration parameters
@@ -91,6 +95,7 @@ pub struct GraphOptimizer {
 }
 
 impl GraphOptimizer {
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             config: HashMap::new(),
@@ -98,6 +103,7 @@ impl GraphOptimizer {
         }
     }
 
+    #[must_use] 
     pub fn with_config(mut self, key: String, value: f64) -> Self {
         self.config.insert(key, value);
         self
@@ -112,7 +118,8 @@ pub struct BufferPool<T> {
 }
 
 impl<T> BufferPool<T> {
-    pub fn new(size: usize) -> Self {
+    #[must_use] 
+    pub const fn new(size: usize) -> Self {
         Self {
             size,
             _phantom: std::marker::PhantomData,
@@ -158,7 +165,7 @@ pub struct NativeGateSet {
     pub parameterized: HashMap<String, usize>, // gate name -> parameter count
 }
 
-/// Enhanced transpilation strategy with SciRS2 graph optimization
+/// Enhanced transpilation strategy with `SciRS2` graph optimization
 #[derive(Debug, Clone, PartialEq)]
 pub enum TranspilationStrategy {
     /// Minimize circuit depth
@@ -169,7 +176,7 @@ pub enum TranspilationStrategy {
     MinimizeError,
     /// Balanced optimization
     Balanced,
-    /// SciRS2 graph-based optimization
+    /// `SciRS2` graph-based optimization
     SciRS2GraphOptimized {
         /// Graph optimization strategy
         graph_strategy: GraphOptimizationStrategy,
@@ -178,7 +185,7 @@ pub enum TranspilationStrategy {
         /// Use advanced connectivity analysis
         advanced_connectivity: bool,
     },
-    /// SciRS2 machine learning guided optimization
+    /// `SciRS2` machine learning guided optimization
     SciRS2MLGuided {
         /// ML model for cost prediction
         use_ml_cost_model: bool,
@@ -195,8 +202,8 @@ pub enum TranspilationStrategy {
     },
 }
 
-/// SciRS2 graph optimization strategies
-#[derive(Debug, Clone, PartialEq)]
+/// `SciRS2` graph optimization strategies
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphOptimizationStrategy {
     /// Minimum spanning tree based
     MinimumSpanningTree,
@@ -212,7 +219,7 @@ pub enum GraphOptimizationStrategy {
     MultiObjective,
 }
 
-/// Enhanced transpilation options with SciRS2 features
+/// Enhanced transpilation options with `SciRS2` features
 #[derive(Debug, Clone)]
 pub struct TranspilationOptions {
     /// Target hardware specification
@@ -229,7 +236,7 @@ pub struct TranspilationOptions {
     pub initial_layout: Option<HashMap<QubitId, usize>>,
     /// Skip routing if circuit already satisfies connectivity
     pub skip_routing_if_connected: bool,
-    /// SciRS2 specific configuration
+    /// `SciRS2` specific configuration
     pub scirs2_config: SciRS2TranspilerConfig,
 }
 
@@ -311,7 +318,7 @@ pub struct TranspilationResult<const N: usize> {
     pub applied_passes: Vec<String>,
 }
 
-/// Enhanced transpilation statistics with SciRS2 metrics
+/// Enhanced transpilation statistics with `SciRS2` metrics
 #[derive(Debug, Clone)]
 pub struct TranspilationStats {
     /// Original circuit depth
@@ -328,11 +335,11 @@ pub struct TranspilationStats {
     pub estimated_error: f64,
     /// Transpilation time
     pub transpilation_time: std::time::Duration,
-    /// SciRS2 graph optimization metrics
+    /// `SciRS2` graph optimization metrics
     pub graph_optimization_stats: SciRS2GraphStats,
 }
 
-/// SciRS2 graph optimization statistics
+/// `SciRS2` graph optimization statistics
 #[derive(Debug, Clone)]
 pub struct SciRS2GraphStats {
     /// Graph construction time
@@ -377,6 +384,7 @@ pub struct CostFunctionEvaluator {
 
 impl CostFunctionEvaluator {
     /// Create a new cost function evaluator
+    #[must_use] 
     pub fn new(weights: HashMap<String, f64>) -> Self {
         Self {
             weights,
@@ -386,6 +394,7 @@ impl CostFunctionEvaluator {
     }
 
     /// Evaluate the total cost of a circuit configuration
+    #[must_use] 
     pub fn evaluate_cost(
         &self,
         depth: usize,
@@ -402,6 +411,7 @@ impl CostFunctionEvaluator {
     }
 
     /// Evaluate connectivity quality
+    #[must_use] 
     pub fn evaluate_connectivity(&self, connectivity_matrix: &[Vec<f64>]) -> f64 {
         if connectivity_matrix.is_empty() {
             return 0.0;
@@ -419,22 +429,22 @@ impl CostFunctionEvaluator {
         }
 
         if count > 0 {
-            total_connectivity / count as f64
+            total_connectivity / f64::from(count)
         } else {
             0.0
         }
     }
 }
 
-/// Enhanced device-specific transpiler with SciRS2 graph optimization
+/// Enhanced device-specific transpiler with `SciRS2` graph optimization
 pub struct DeviceTranspiler {
     /// Hardware specifications by device name
     hardware_specs: HashMap<String, HardwareSpec>,
     /// Cached decomposition rules
     decomposition_cache: HashMap<String, Vec<Box<dyn GateOp>>>,
-    /// SciRS2 graph optimizer
+    /// `SciRS2` graph optimizer
     graph_optimizer: Option<Arc<GraphOptimizer>>,
-    /// SciRS2 memory buffer pool
+    /// `SciRS2` memory buffer pool
     buffer_pool: Option<Arc<BufferPool<f64>>>,
     /// Connectivity analyzer for advanced routing
     connectivity_analyzer: Option<ConnectivityAnalyzer>,
@@ -446,6 +456,7 @@ pub struct DeviceTranspiler {
 
 impl DeviceTranspiler {
     /// Create a new device transpiler
+    #[must_use] 
     pub fn new() -> Self {
         let mut cost_weights = HashMap::new();
         cost_weights.insert("depth".to_string(), 0.4);
@@ -467,7 +478,8 @@ impl DeviceTranspiler {
         transpiler
     }
 
-    /// Create a new device transpiler with SciRS2 optimization enabled
+    /// Create a new device transpiler with `SciRS2` optimization enabled
+    #[must_use] 
     pub fn new_with_scirs2_optimization() -> Self {
         let mut transpiler = Self::new();
 
@@ -490,7 +502,7 @@ impl DeviceTranspiler {
         transpiler
     }
 
-    /// Optimize circuit layout using SciRS2 graph algorithms
+    /// Optimize circuit layout using `SciRS2` graph algorithms
     pub fn optimize_layout_scirs2<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -680,7 +692,7 @@ impl DeviceTranspiler {
                 let distance = hardware_spec
                     .coupling_map
                     .distance(physical, other_physical);
-                total_cost += count as f64 * distance as f64;
+                total_cost += f64::from(count) * distance as f64;
             }
         }
 
@@ -818,7 +830,8 @@ impl DeviceTranspiler {
         qubit_depths.into_iter().max().unwrap_or(0)
     }
 
-    /// Generate optimization report with SciRS2 insights
+    /// Generate optimization report with `SciRS2` insights
+    #[must_use] 
     pub fn generate_scirs2_optimization_report<const N: usize>(
         &self,
         original_circuit: &Circuit<N>,
@@ -903,6 +916,7 @@ impl DeviceTranspiler {
     }
 
     /// Get available hardware devices
+    #[must_use] 
     pub fn available_devices(&self) -> Vec<String> {
         self.hardware_specs.keys().cloned().collect()
     }
@@ -920,7 +934,7 @@ impl DeviceTranspiler {
         let hardware_spec = self
             .hardware_specs
             .get(device)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {}", device)))?
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {device}")))?
             .clone();
 
         let mut options = options.unwrap_or_default();
@@ -972,7 +986,7 @@ impl DeviceTranspiler {
 
         let final_depth = self.calculate_depth(&current_circuit);
         let final_gates = current_circuit.gates().len();
-        let added_swaps = routing_stats.as_ref().map(|r| r.total_swaps).unwrap_or(0);
+        let added_swaps = routing_stats.as_ref().map_or(0, |r| r.total_swaps);
         let estimated_error = self.estimate_error_rate(&current_circuit, &options.hardware_spec);
 
         // Create SciRS2 graph optimization stats
@@ -1119,7 +1133,7 @@ impl DeviceTranspiler {
             // Check if all two-qubit gates respect connectivity
             for gate in circuit.gates() {
                 if gate.qubits().len() == 2 {
-                    let gate_qubits: Vec<_> = gate.qubits().iter().cloned().collect();
+                    let gate_qubits: Vec<_> = gate.qubits().iter().copied().collect();
                     let physical_q1 = layout[&gate_qubits[0]];
                     let physical_q2 = layout[&gate_qubits[1]];
 
@@ -1138,7 +1152,7 @@ impl DeviceTranspiler {
         }
     }
 
-    /// Analyze connectivity using SciRS2 graph algorithms
+    /// Analyze connectivity using `SciRS2` graph algorithms
     fn analyze_connectivity_scirs2(
         &self,
         coupling_map: &CouplingMap,
@@ -1179,7 +1193,7 @@ impl DeviceTranspiler {
         Ok(metrics)
     }
 
-    /// Find optimal path between qubits using SciRS2 graph algorithms
+    /// Find optimal path between qubits using `SciRS2` graph algorithms
     fn find_optimal_path_scirs2(
         &self,
         coupling_map: &CouplingMap,
@@ -1208,8 +1222,7 @@ impl DeviceTranspiler {
                     Ok(path_struct.nodes)
                 } else {
                     Err(QuantRS2Error::InvalidInput(format!(
-                        "No path found between qubits {} and {}",
-                        start, end
+                        "No path found between qubits {start} and {end}"
                     )))
                 }
             }
@@ -1217,7 +1230,7 @@ impl DeviceTranspiler {
                 // A* with Manhattan distance heuristic
                 let heuristic = |node: &usize| -> f64 {
                     // Simple heuristic: absolute difference
-                    ((*node as i32) - (end as i32)).abs() as f64
+                    f64::from(((*node as i32) - (end as i32)).abs())
                 };
 
                 if let Ok(result) = astar_search(&graph, &start, &end, heuristic) {
@@ -1225,8 +1238,7 @@ impl DeviceTranspiler {
                     Ok(result.path)
                 } else {
                     Err(QuantRS2Error::InvalidInput(format!(
-                        "A* search failed between qubits {} and {}",
-                        start, end
+                        "A* search failed between qubits {start} and {end}"
                     )))
                 }
             }
@@ -1238,14 +1250,12 @@ impl DeviceTranspiler {
                         Ok(path.clone())
                     } else {
                         Err(QuantRS2Error::InvalidInput(format!(
-                            "No path found between qubits {} and {}",
-                            start, end
+                            "No path found between qubits {start} and {end}"
                         )))
                     }
                 } else {
                     Err(QuantRS2Error::InvalidInput(format!(
-                        "k-shortest paths failed between qubits {} and {}",
-                        start, end
+                        "k-shortest paths failed between qubits {start} and {end}"
                     )))
                 }
             }
@@ -1406,16 +1416,17 @@ impl Default for DeviceTranspiler {
 
 impl HardwareSpec {
     /// Create IBM Quantum device specification
+    #[must_use] 
     pub fn ibm_quantum() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
             ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let mut two_qubit = HashSet::new();
-        two_qubit.extend(["CNOT", "CZ"].iter().map(|s| s.to_string()));
+        two_qubit.extend(["CNOT", "CZ"].iter().map(|s| (*s).to_string()));
 
         let native_gates = NativeGateSet {
             single_qubit,
@@ -1423,7 +1434,7 @@ impl HardwareSpec {
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -1434,12 +1445,12 @@ impl HardwareSpec {
             native_gates,
             gate_errors: [("CNOT", 0.01), ("RZ", 0.0001)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             coherence_times: HashMap::new(),
             gate_durations: [("CNOT", 300.0), ("RZ", 0.0)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             readout_fidelity: HashMap::new(),
             crosstalk_matrix: None,
@@ -1448,16 +1459,17 @@ impl HardwareSpec {
     }
 
     /// Create Google Quantum AI device specification
+    #[must_use] 
     pub fn google_quantum() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
             ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let mut two_qubit = HashSet::new();
-        two_qubit.extend(["CZ", "ISWAP"].iter().map(|s| s.to_string()));
+        two_qubit.extend(["CZ", "ISWAP"].iter().map(|s| (*s).to_string()));
 
         let native_gates = NativeGateSet {
             single_qubit,
@@ -1465,7 +1477,7 @@ impl HardwareSpec {
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -1476,12 +1488,12 @@ impl HardwareSpec {
             native_gates,
             gate_errors: [("CZ", 0.005), ("RZ", 0.0001)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             coherence_times: HashMap::new(),
             gate_durations: [("CZ", 20.0), ("RZ", 0.0)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             readout_fidelity: HashMap::new(),
             crosstalk_matrix: None,
@@ -1490,16 +1502,17 @@ impl HardwareSpec {
     }
 
     /// Create AWS Braket device specification
+    #[must_use] 
     pub fn aws_braket() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
             ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let mut two_qubit = HashSet::new();
-        two_qubit.extend(["CNOT", "CZ", "ISWAP"].iter().map(|s| s.to_string()));
+        two_qubit.extend(["CNOT", "CZ", "ISWAP"].iter().map(|s| (*s).to_string()));
 
         let native_gates = NativeGateSet {
             single_qubit,
@@ -1507,7 +1520,7 @@ impl HardwareSpec {
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -1518,12 +1531,12 @@ impl HardwareSpec {
             native_gates,
             gate_errors: [("CNOT", 0.008), ("RZ", 0.0001)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             coherence_times: HashMap::new(),
             gate_durations: [("CNOT", 200.0), ("RZ", 0.0)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
             readout_fidelity: HashMap::new(),
             crosstalk_matrix: None,
@@ -1532,23 +1545,24 @@ impl HardwareSpec {
     }
 
     /// Create generic device specification for testing
+    #[must_use] 
     pub fn generic() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
             ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let mut two_qubit = HashSet::new();
         two_qubit.extend(
             ["CNOT", "CZ", "ISWAP", "SWAP"]
                 .iter()
-                .map(|s| s.to_string()),
+                .map(|s| (*s).to_string()),
         );
 
         let mut multi_qubit = HashSet::new();
-        multi_qubit.extend(["Toffoli", "Fredkin"].iter().map(|s| s.to_string()));
+        multi_qubit.extend(["Toffoli", "Fredkin"].iter().map(|s| (*s).to_string()));
 
         let native_gates = NativeGateSet {
             single_qubit,
@@ -1556,7 +1570,7 @@ impl HardwareSpec {
             multi_qubit,
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 

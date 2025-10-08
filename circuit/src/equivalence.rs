@@ -1,8 +1,8 @@
-//! Circuit equivalence checking algorithms with SciRS2 numerical tolerance
+//! Circuit equivalence checking algorithms with `SciRS2` numerical tolerance
 //!
 //! This module provides various methods to check if two quantum circuits
 //! are equivalent, including exact and approximate equivalence using
-//! SciRS2's advanced numerical analysis capabilities.
+//! `SciRS2`'s advanced numerical analysis capabilities.
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, SciRS2CircuitAnalyzer};
@@ -19,13 +19,13 @@ use std::collections::HashMap;
 /// Default tolerance for numerical comparisons
 const DEFAULT_TOLERANCE: f64 = 1e-10;
 
-/// Enhanced tolerance with SciRS2 statistical analysis
+/// Enhanced tolerance with `SciRS2` statistical analysis
 const SCIRS2_DEFAULT_TOLERANCE: f64 = 1e-12;
 
 /// Tolerance for complex number comparisons
 const COMPLEX_TOLERANCE: f64 = 1e-14;
 
-/// Enhanced result of equivalence check with SciRS2 analysis
+/// Enhanced result of equivalence check with `SciRS2` analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquivalenceResult {
     /// Whether the circuits are equivalent
@@ -36,7 +36,7 @@ pub struct EquivalenceResult {
     pub max_difference: Option<f64>,
     /// Additional details about the check
     pub details: String,
-    /// SciRS2 numerical analysis results
+    /// `SciRS2` numerical analysis results
     pub numerical_analysis: Option<NumericalAnalysis>,
     /// Confidence score (0.0 to 1.0)
     pub confidence_score: f64,
@@ -46,7 +46,7 @@ pub struct EquivalenceResult {
     pub error_bounds: Option<ErrorBounds>,
 }
 
-/// SciRS2 numerical analysis for equivalence checking
+/// `SciRS2` numerical analysis for equivalence checking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NumericalAnalysis {
     /// Condition number of the matrices involved
@@ -76,7 +76,7 @@ pub struct ErrorBounds {
     pub standard_deviation: Option<f64>,
 }
 
-/// Types of equivalence checks with SciRS2 enhancements
+/// Types of equivalence checks with `SciRS2` enhancements
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EquivalenceType {
     /// Check if circuits produce identical unitaries
@@ -91,13 +91,13 @@ pub enum EquivalenceType {
     GlobalPhaseEquivalence,
     /// SciRS2-powered numerical equivalence with adaptive tolerance
     SciRS2NumericalEquivalence,
-    /// SciRS2 statistical equivalence with confidence intervals
+    /// `SciRS2` statistical equivalence with confidence intervals
     SciRS2StatisticalEquivalence,
-    /// SciRS2 graph-based structural equivalence
+    /// `SciRS2` graph-based structural equivalence
     SciRS2GraphEquivalence,
 }
 
-/// Enhanced options for equivalence checking with SciRS2 features
+/// Enhanced options for equivalence checking with `SciRS2` features
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquivalenceOptions {
     /// Numerical tolerance for comparisons
@@ -108,19 +108,19 @@ pub struct EquivalenceOptions {
     pub check_all_states: bool,
     /// Maximum circuit size for unitary construction
     pub max_unitary_qubits: usize,
-    /// Enable SciRS2 adaptive tolerance
+    /// Enable `SciRS2` adaptive tolerance
     pub enable_adaptive_tolerance: bool,
-    /// Enable SciRS2 statistical analysis
+    /// Enable `SciRS2` statistical analysis
     pub enable_statistical_analysis: bool,
-    /// Enable SciRS2 numerical stability analysis
+    /// Enable `SciRS2` numerical stability analysis
     pub enable_stability_analysis: bool,
-    /// Enable SciRS2 graph-based comparison
+    /// Enable `SciRS2` graph-based comparison
     pub enable_graph_comparison: bool,
     /// Confidence level for statistical tests (e.g., 0.95)
     pub confidence_level: f64,
     /// Maximum condition number for numerical stability
     pub max_condition_number: f64,
-    /// SciRS2 analyzer configuration
+    /// `SciRS2` analyzer configuration
     pub scirs2_config: Option<AnalyzerConfig>,
     /// Complex number tolerance
     pub complex_tolerance: f64,
@@ -130,7 +130,7 @@ pub struct EquivalenceOptions {
 
 impl Default for EquivalenceOptions {
     fn default() -> Self {
-        EquivalenceOptions {
+        Self {
             tolerance: DEFAULT_TOLERANCE,
             ignore_global_phase: true,
             check_all_states: true,
@@ -148,7 +148,7 @@ impl Default for EquivalenceOptions {
     }
 }
 
-/// Enhanced circuit equivalence checker with SciRS2 integration
+/// Enhanced circuit equivalence checker with `SciRS2` integration
 pub struct EquivalenceChecker {
     options: EquivalenceOptions,
     scirs2_analyzer: Option<SciRS2CircuitAnalyzer>,
@@ -157,6 +157,7 @@ pub struct EquivalenceChecker {
 
 impl EquivalenceChecker {
     /// Create a new equivalence checker with options
+    #[must_use] 
     pub fn new(options: EquivalenceOptions) -> Self {
         let scirs2_analyzer = if options.enable_graph_comparison
             || options.enable_statistical_analysis
@@ -167,7 +168,7 @@ impl EquivalenceChecker {
             None
         };
 
-        EquivalenceChecker {
+        Self {
             options,
             scirs2_analyzer,
             numerical_cache: HashMap::new(),
@@ -175,11 +176,13 @@ impl EquivalenceChecker {
     }
 
     /// Create a new equivalence checker with default options
+    #[must_use] 
     pub fn default() -> Self {
         Self::new(EquivalenceOptions::default())
     }
 
-    /// Create a new equivalence checker with custom SciRS2 configuration
+    /// Create a new equivalence checker with custom `SciRS2` configuration
+    #[must_use] 
     pub fn with_scirs2_config(config: AnalyzerConfig) -> Self {
         let mut options = EquivalenceOptions::default();
         options.scirs2_config = Some(config.clone());
@@ -187,14 +190,14 @@ impl EquivalenceChecker {
 
         let scirs2_analyzer = Some(SciRS2CircuitAnalyzer::with_config(config));
 
-        EquivalenceChecker {
+        Self {
             options,
             scirs2_analyzer,
             numerical_cache: HashMap::new(),
         }
     }
 
-    /// Check if two circuits are equivalent using all methods including SciRS2
+    /// Check if two circuits are equivalent using all methods including `SciRS2`
     pub fn check_equivalence<const N: usize>(
         &mut self,
         circuit1: &Circuit<N>,
@@ -232,7 +235,7 @@ impl EquivalenceChecker {
         self.check_state_vector_equivalence(circuit1, circuit2)
     }
 
-    /// Check equivalence using SciRS2 numerical analysis with adaptive tolerance
+    /// Check equivalence using `SciRS2` numerical analysis with adaptive tolerance
     pub fn check_scirs2_numerical_equivalence<const N: usize>(
         &mut self,
         circuit1: &Circuit<N>,
@@ -283,7 +286,7 @@ impl EquivalenceChecker {
         })
     }
 
-    /// Check equivalence using SciRS2 graph-based analysis
+    /// Check equivalence using `SciRS2` graph-based analysis
     pub fn check_scirs2_graph_equivalence<const N: usize>(
         &mut self,
         circuit1: &Circuit<N>,
@@ -431,7 +434,7 @@ impl EquivalenceChecker {
             details: if equivalent {
                 "Unitaries are equivalent".to_string()
             } else {
-                format!("Maximum unitary difference: {:.2e}", max_diff)
+                format!("Maximum unitary difference: {max_diff:.2e}")
             },
             numerical_analysis: None,
             confidence_score: if equivalent {
@@ -729,8 +732,7 @@ impl EquivalenceChecker {
                     check_type: EquivalenceType::StateVectorEquivalence,
                     max_difference: Some(max_diff),
                     details: format!(
-                        "States differ for input |{:0b}>: max difference {:.2e}",
-                        state_idx, max_diff
+                        "States differ for input |{state_idx:0b}>: max difference {max_diff:.2e}"
                     ),
                     numerical_analysis: None,
                     confidence_score: 0.0,
@@ -744,7 +746,7 @@ impl EquivalenceChecker {
             equivalent: true,
             check_type: EquivalenceType::StateVectorEquivalence,
             max_difference: Some(max_diff),
-            details: format!("Checked {} computational basis states", num_states),
+            details: format!("Checked {num_states} computational basis states"),
             numerical_analysis: None,
             confidence_score: 1.0 - (max_diff / self.options.tolerance).min(1.0),
             statistical_significance: None,
@@ -942,8 +944,7 @@ impl EquivalenceChecker {
                         check_type: EquivalenceType::ProbabilisticEquivalence,
                         max_difference: Some(max_diff),
                         details: format!(
-                            "Measurement probabilities differ for input |{:0b}>",
-                            state_idx
+                            "Measurement probabilities differ for input |{state_idx:0b}>"
                         ),
                         numerical_analysis: None,
                         confidence_score: 0.0,
@@ -979,7 +980,7 @@ impl EquivalenceChecker {
         // Calculate probabilities from amplitudes
         let probs: Vec<f64> = final_state
             .iter()
-            .map(|amplitude| amplitude.norm_sqr())
+            .map(scirs2_core::Complex::norm_sqr)
             .collect();
 
         Ok(probs)
@@ -987,7 +988,7 @@ impl EquivalenceChecker {
 
     // ===== SciRS2 Enhanced Methods =====
 
-    /// Perform comprehensive numerical analysis using SciRS2 capabilities
+    /// Perform comprehensive numerical analysis using `SciRS2` capabilities
     fn perform_scirs2_numerical_analysis(
         &mut self,
         unitary1: &Array2<Complex64>,
@@ -997,7 +998,7 @@ impl EquivalenceChecker {
         let diff_matrix = unitary1 - unitary2;
 
         // Calculate Frobenius norm
-        let frobenius_norm = diff_matrix.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        let frobenius_norm = diff_matrix.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
 
         // Calculate condition number using SVD approximation
         let condition_number = if self.options.enable_stability_analysis {
@@ -1053,17 +1054,17 @@ impl EquivalenceChecker {
         };
 
         // Scale tolerance based on circuit size (more qubits = less precision)
-        let size_factor = 1.0 + (num_qubits as f64).powf(1.5) * 1e-15;
+        let size_factor = (num_qubits as f64).powf(1.5).mul_add(1e-15, 1.0);
 
         // Scale based on condition number
         let condition_factor = if let Some(cond_num) = analysis.condition_number {
-            1.0 + (cond_num / 1e12).log10().max(0.0) * 1e-2
+            (cond_num / 1e12).log10().max(0.0).mul_add(1e-2, 1.0)
         } else {
             1.0
         };
 
         // Scale based on Frobenius norm
-        let norm_factor = 1.0 + analysis.frobenius_norm * 1e-3;
+        let norm_factor = analysis.frobenius_norm.mul_add(1e-3, 1.0);
 
         base_tolerance * size_factor * condition_factor * norm_factor
     }
@@ -1076,14 +1077,14 @@ impl EquivalenceChecker {
         condition_number: f64,
     ) -> f64 {
         let base_tolerance = SCIRS2_DEFAULT_TOLERANCE;
-        let size_factor = 1.0 + (matrix_size as f64).sqrt() * 1e-15;
-        let condition_factor = 1.0 + (condition_number / 1e12).log10().max(0.0) * 1e-2;
-        let norm_factor = 1.0 + frobenius_norm * 1e-3;
+        let size_factor = (matrix_size as f64).sqrt().mul_add(1e-15, 1.0);
+        let condition_factor = (condition_number / 1e12).log10().max(0.0).mul_add(1e-2, 1.0);
+        let norm_factor = frobenius_norm.mul_add(1e-3, 1.0);
 
         base_tolerance * size_factor * condition_factor * norm_factor
     }
 
-    /// Compare unitaries using SciRS2 enhanced numerical analysis
+    /// Compare unitaries using `SciRS2` enhanced numerical analysis
     fn scirs2_unitaries_equal(
         &self,
         u1: &Array2<Complex64>,
@@ -1131,7 +1132,7 @@ impl EquivalenceChecker {
         let mean_diff = differences.iter().sum::<f64>() / differences.len() as f64;
         let variance = differences
             .iter()
-            .map(|d| (d - mean_diff).powf(2.0))
+            .map(|d| (d - mean_diff).powi(2))
             .sum::<f64>()
             / differences.len() as f64;
         let std_dev = variance.sqrt();
@@ -1145,8 +1146,8 @@ impl EquivalenceChecker {
 
         // Calculate error bounds
         let error_bounds = ErrorBounds {
-            lower_bound: (mean_diff - 2.0 * std_dev).max(0.0),
-            upper_bound: mean_diff + 2.0 * std_dev,
+            lower_bound: 2.0f64.mul_add(-std_dev, mean_diff).max(0.0),
+            upper_bound: 2.0f64.mul_add(std_dev, mean_diff),
             confidence_level: self.options.confidence_level,
             standard_deviation: Some(std_dev),
         };
@@ -1156,7 +1157,7 @@ impl EquivalenceChecker {
         Ok((equivalent, max_diff, confidence_score, error_bounds))
     }
 
-    /// Compare SciRS2 graphs for structural equivalence
+    /// Compare `SciRS2` graphs for structural equivalence
     fn compare_scirs2_graphs(
         &self,
         graph1: &crate::scirs2_integration::SciRS2CircuitGraph,
@@ -1198,8 +1199,7 @@ impl EquivalenceChecker {
         let equivalent = overall_similarity > 0.95; // 95% similarity threshold
 
         let details = format!(
-            "Graph similarity analysis: nodes={:.3}, edges={:.3}, topology={:.3}, overall={:.3}",
-            node_similarity, edge_similarity, topology_similarity, overall_similarity
+            "Graph similarity analysis: nodes={node_similarity:.3}, edges={edge_similarity:.3}, topology={topology_similarity:.3}, overall={overall_similarity:.3}"
         );
 
         Ok((equivalent, overall_similarity, details))
@@ -1228,7 +1228,7 @@ impl EquivalenceChecker {
             }
         }
 
-        matching_nodes as f64 / total_nodes as f64
+        f64::from(matching_nodes) / total_nodes as f64
     }
 
     /// Calculate edge similarity between graphs
@@ -1254,7 +1254,7 @@ impl EquivalenceChecker {
             }
         }
 
-        matching_edges as f64 / total_edges as f64
+        f64::from(matching_edges) / total_edges as f64
     }
 
     /// Calculate topology similarity using adjacency matrix comparison
@@ -1290,7 +1290,7 @@ impl EquivalenceChecker {
         if total_elements == 0 {
             1.0
         } else {
-            matching_elements as f64 / total_elements as f64
+            f64::from(matching_elements) / f64::from(total_elements)
         }
     }
 
@@ -1317,7 +1317,7 @@ impl EquivalenceChecker {
             }
 
             // Normalize
-            let norm = new_v.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+            let norm = new_v.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
             if norm > 0.0 {
                 for x in &mut new_v {
                     *x /= norm;
@@ -1346,7 +1346,7 @@ impl EquivalenceChecker {
         let mut rank = 0;
 
         for row in matrix.rows() {
-            let row_norm = row.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+            let row_norm = row.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
             if row_norm > tolerance {
                 rank += 1;
             }
@@ -1377,7 +1377,7 @@ impl EquivalenceChecker {
         let mean_diff = differences.iter().sum::<f64>() / n as f64;
         let variance = differences
             .iter()
-            .map(|d| (d - mean_diff).powf(2.0))
+            .map(|d| (d - mean_diff).powi(2))
             .sum::<f64>()
             / degrees_of_freedom as f64;
         let std_error = (variance / n as f64).sqrt();
@@ -1396,6 +1396,7 @@ impl EquivalenceChecker {
 }
 
 /// Quick check if two circuits are structurally identical
+#[must_use] 
 pub fn circuits_structurally_equal<const N: usize>(
     circuit1: &Circuit<N>,
     circuit2: &Circuit<N>,
@@ -1416,7 +1417,7 @@ pub fn circuits_equivalent<const N: usize>(
     Ok(checker.check_equivalence(circuit1, circuit2)?.equivalent)
 }
 
-/// Check equivalence using SciRS2 numerical analysis with custom tolerance
+/// Check equivalence using `SciRS2` numerical analysis with custom tolerance
 pub fn circuits_scirs2_equivalent<const N: usize>(
     circuit1: &Circuit<N>,
     circuit2: &Circuit<N>,
@@ -1426,7 +1427,7 @@ pub fn circuits_scirs2_equivalent<const N: usize>(
     checker.check_equivalence(circuit1, circuit2)
 }
 
-/// Quick SciRS2 numerical equivalence check with default enhanced options
+/// Quick `SciRS2` numerical equivalence check with default enhanced options
 pub fn circuits_scirs2_numerical_equivalent<const N: usize>(
     circuit1: &Circuit<N>,
     circuit2: &Circuit<N>,

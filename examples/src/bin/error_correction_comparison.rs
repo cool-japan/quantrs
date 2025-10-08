@@ -222,10 +222,10 @@ fn compare_efficiency() {
     let _ = five_qubit.encode_circuit(&base_qubits, &(1..5).map(QubitId::new).collect::<Vec<_>>());
     let five_qubit_encode_time = start.elapsed();
 
-    println!("- 3-qubit bit flip code: {:?}", bit_flip_encode_time);
-    println!("- 3-qubit phase flip code: {:?}", phase_flip_encode_time);
-    println!("- 9-qubit Shor code: {:?}", shor_encode_time);
-    println!("- 5-qubit perfect code: {:?}", five_qubit_encode_time);
+    println!("- 3-qubit bit flip code: {bit_flip_encode_time:?}");
+    println!("- 3-qubit phase flip code: {phase_flip_encode_time:?}");
+    println!("- 9-qubit Shor code: {shor_encode_time:?}");
+    println!("- 5-qubit perfect code: {five_qubit_encode_time:?}");
 
     // Circuit depth (approximate based on gate count)
     println!("\nApproximate circuit complexity (gate count):");
@@ -367,8 +367,8 @@ fn test_code_with_noise<T: ErrorCorrection>(
         utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state).unwrap();
 
     // Print results
-    println!("Fidelity before correction: {:.6}", fidelity_before);
-    println!("Fidelity after correction: {:.6}", fidelity_after);
+    println!("Fidelity before correction: {fidelity_before:.6}");
+    println!("Fidelity after correction: {fidelity_after:.6}");
     println!(
         "Improvement: {:.2}%",
         (fidelity_after - fidelity_before) * 100.0
@@ -410,11 +410,11 @@ fn extract_logical_state(
     }
 
     if count_0 > 0 {
-        logical_state[0] = sum_0 / Complex64::new(count_0 as f64, 0.0);
+        logical_state[0] = sum_0 / Complex64::new(f64::from(count_0), 0.0);
     }
 
     if count_1 > 0 {
-        logical_state[1] = sum_1 / Complex64::new(count_1 as f64, 0.0);
+        logical_state[1] = sum_1 / Complex64::new(f64::from(count_1), 0.0);
     }
 
     // Normalize

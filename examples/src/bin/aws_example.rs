@@ -10,13 +10,13 @@ use std::env;
 /// You can set them using environment variables or the AWS credentials file.
 ///
 /// Required environment variables:
-/// - AWS_ACCESS_KEY_ID
-/// - AWS_SECRET_ACCESS_KEY
-/// - AWS_S3_BUCKET - S3 bucket for storing results
+/// - `AWS_ACCESS_KEY_ID`
+/// - `AWS_SECRET_ACCESS_KEY`
+/// - `AWS_S3_BUCKET` - S3 bucket for storing results
 ///
 /// Optional environment variables:
-/// - AWS_REGION - AWS region to use (default: us-east-1)
-/// - AWS_S3_KEY_PREFIX - S3 key prefix for results (default: quantrs2)
+/// - `AWS_REGION` - AWS region to use (default: us-east-1)
+/// - `AWS_S3_KEY_PREFIX` - S3 key prefix for results (default: quantrs2)
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("QuantRS2 AWS Example");
@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Print results
         println!("Results:");
-        for (state, count) in result.counts.iter() {
+        for (state, count) in &result.counts {
             println!(
                 "- |{}⟩: {} ({:.1}%)",
                 state,

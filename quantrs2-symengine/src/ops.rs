@@ -1,4 +1,4 @@
-//! Additional mathematical operations for SymEngine expressions.
+//! Additional mathematical operations for `SymEngine` expressions.
 
 use crate::Expression;
 use scirs2_core::num_traits::{One, Zero}; // SciRS2 POLICY compliant
@@ -8,31 +8,37 @@ pub mod constants {
     use crate::Expression;
 
     /// Euler's number (e ≈ 2.71828...)
+    #[must_use] 
     pub fn e() -> Expression {
         Expression::new("E")
     }
 
     /// Pi (π ≈ 3.14159...)
+    #[must_use] 
     pub fn pi() -> Expression {
         Expression::new("pi")
     }
 
     /// Imaginary unit (i)
+    #[must_use] 
     pub fn i() -> Expression {
         Expression::new("I")
     }
 
     /// Golden ratio (φ ≈ 1.618...)
+    #[must_use] 
     pub fn golden_ratio() -> Expression {
         Expression::new("GoldenRatio")
     }
 
     /// Catalan's constant (≈ 0.915...)
+    #[must_use] 
     pub fn catalan() -> Expression {
         Expression::new("Catalan")
     }
 
     /// Euler-Mascheroni constant (γ ≈ 0.577...)
+    #[must_use] 
     pub fn euler_gamma() -> Expression {
         Expression::new("EulerGamma")
     }
@@ -44,52 +50,52 @@ pub mod trig {
 
     /// Sine function
     pub fn sin(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("sin({})", expr)))
+        Ok(Expression::new(format!("sin({expr})")))
     }
 
     /// Cosine function
     pub fn cos(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("cos({})", expr)))
+        Ok(Expression::new(format!("cos({expr})")))
     }
 
     /// Tangent function
     pub fn tan(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("tan({})", expr)))
+        Ok(Expression::new(format!("tan({expr})")))
     }
 
     /// Arcsine function
     pub fn asin(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("asin({})", expr)))
+        Ok(Expression::new(format!("asin({expr})")))
     }
 
     /// Arccosine function
     pub fn acos(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("acos({})", expr)))
+        Ok(Expression::new(format!("acos({expr})")))
     }
 
     /// Arctangent function
     pub fn atan(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("atan({})", expr)))
+        Ok(Expression::new(format!("atan({expr})")))
     }
 
     /// Two-argument arctangent function
     pub fn atan2(y: &Expression, x: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("atan2({}, {})", y, x)))
+        Ok(Expression::new(format!("atan2({y}, {x})")))
     }
 
     /// Hyperbolic sine
     pub fn sinh(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("sinh({})", expr)))
+        Ok(Expression::new(format!("sinh({expr})")))
     }
 
     /// Hyperbolic cosine
     pub fn cosh(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("cosh({})", expr)))
+        Ok(Expression::new(format!("cosh({expr})")))
     }
 
     /// Hyperbolic tangent
     pub fn tanh(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("tanh({})", expr)))
+        Ok(Expression::new(format!("tanh({expr})")))
     }
 }
 
@@ -99,17 +105,17 @@ pub mod exp_log {
 
     /// Exponential function (e^x)
     pub fn exp(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("exp({})", expr)))
+        Ok(Expression::new(format!("exp({expr})")))
     }
 
     /// Natural logarithm (ln)
     pub fn ln(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("log({})", expr)))
+        Ok(Expression::new(format!("log({expr})")))
     }
 
     /// Logarithm with specified base
     pub fn log(expr: &Expression, base: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("log({}, {})", expr, base)))
+        Ok(Expression::new(format!("log({expr}, {base})")))
     }
 
     /// Base-10 logarithm
@@ -124,7 +130,7 @@ pub mod exp_log {
 
     /// Power function (base^exponent)
     pub fn pow(base: &Expression, exponent: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("({})^({})", base, exponent)))
+        Ok(Expression::new(format!("({base})^({exponent})")))
     }
 
     /// Square root
@@ -149,47 +155,47 @@ pub mod special {
 
     /// Gamma function
     pub fn gamma(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("gamma({})", expr)))
+        Ok(Expression::new(format!("gamma({expr})")))
     }
 
     /// Logarithm of gamma function
     pub fn log_gamma(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("loggamma({})", expr)))
+        Ok(Expression::new(format!("loggamma({expr})")))
     }
 
     /// Beta function
     pub fn beta(a: &Expression, b: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("beta({}, {})", a, b)))
+        Ok(Expression::new(format!("beta({a}, {b})")))
     }
 
     /// Error function
     pub fn erf(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("erf({})", expr)))
+        Ok(Expression::new(format!("erf({expr})")))
     }
 
     /// Complementary error function
     pub fn erfc(expr: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("erfc({})", expr)))
+        Ok(Expression::new(format!("erfc({expr})")))
     }
 
     /// Bessel function of the first kind
     pub fn bessel_j(n: &Expression, x: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("besselj({}, {})", n, x)))
+        Ok(Expression::new(format!("besselj({n}, {x})")))
     }
 
     /// Bessel function of the second kind
     pub fn bessel_y(n: &Expression, x: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("bessely({}, {})", n, x)))
+        Ok(Expression::new(format!("bessely({n}, {x})")))
     }
 
     /// Modified Bessel function of the first kind
     pub fn bessel_i(n: &Expression, x: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("besseli({}, {})", n, x)))
+        Ok(Expression::new(format!("besseli({n}, {x})")))
     }
 
     /// Modified Bessel function of the second kind
     pub fn bessel_k(n: &Expression, x: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("besselk({}, {})", n, x)))
+        Ok(Expression::new(format!("besselk({n}, {x})")))
     }
 }
 
@@ -199,7 +205,7 @@ pub mod calculus {
 
     /// Differentiate expression with respect to a symbol
     pub fn diff(expr: &Expression, symbol: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("diff({}, {})", expr, symbol)))
+        Ok(Expression::new(format!("diff({expr}, {symbol})")))
     }
 
     /// Partial differentiate (alias for diff)
@@ -218,7 +224,7 @@ pub mod calculus {
 
     /// Integrate expression (indefinite integral)
     pub fn integrate(expr: &Expression, symbol: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("integrate({}, {})", expr, symbol)))
+        Ok(Expression::new(format!("integrate({expr}, {symbol})")))
     }
 
     /// Definite integral
@@ -229,8 +235,7 @@ pub mod calculus {
         upper: &Expression,
     ) -> SymEngineResult<Expression> {
         Ok(Expression::new(format!(
-            "integrate({}, ({}, {}, {}))",
-            expr, symbol, lower, upper
+            "integrate({expr}, ({symbol}, {lower}, {upper}))"
         )))
     }
 
@@ -241,8 +246,7 @@ pub mod calculus {
         value: &Expression,
     ) -> SymEngineResult<Expression> {
         Ok(Expression::new(format!(
-            "limit({}, {}, {})",
-            expr, symbol, value
+            "limit({expr}, {symbol}, {value})"
         )))
     }
 
@@ -253,8 +257,7 @@ pub mod calculus {
         value: &Expression,
     ) -> SymEngineResult<Expression> {
         Ok(Expression::new(format!(
-            "limit({}, {}, {}, '-')",
-            expr, symbol, value
+            "limit({expr}, {symbol}, {value}, '-')"
         )))
     }
 
@@ -265,8 +268,7 @@ pub mod calculus {
         value: &Expression,
     ) -> SymEngineResult<Expression> {
         Ok(Expression::new(format!(
-            "limit({}, {}, {}, '+')",
-            expr, symbol, value
+            "limit({expr}, {symbol}, {value}, '+')"
         )))
     }
 
@@ -278,8 +280,7 @@ pub mod calculus {
         n_terms: u32,
     ) -> SymEngineResult<Expression> {
         Ok(Expression::new(format!(
-            "series({}, {}, {}, {})",
-            expr, symbol, point, n_terms
+            "series({expr}, {symbol}, {point}, {n_terms})"
         )))
     }
 }
@@ -305,37 +306,37 @@ pub mod linalg {
 
     /// Create an identity matrix of size n×n
     pub fn identity(n: usize) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("eye({})", n)))
+        Ok(Expression::new(format!("eye({n})")))
     }
 
     /// Create a zero matrix of size m×n
     pub fn zeros(m: usize, n: usize) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("zeros({}, {})", m, n)))
+        Ok(Expression::new(format!("zeros({m}, {n})")))
     }
 
     /// Create a ones matrix of size m×n
     pub fn ones(m: usize, n: usize) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("ones({}, {})", m, n)))
+        Ok(Expression::new(format!("ones({m}, {n})")))
     }
 
     /// Matrix determinant
     pub fn det(matrix: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("det({})", matrix)))
+        Ok(Expression::new(format!("det({matrix})")))
     }
 
     /// Matrix trace
     pub fn trace(matrix: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("trace({})", matrix)))
+        Ok(Expression::new(format!("trace({matrix})")))
     }
 
     /// Matrix transpose
     pub fn transpose(matrix: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("transpose({})", matrix)))
+        Ok(Expression::new(format!("transpose({matrix})")))
     }
 
     /// Matrix inverse
     pub fn inverse(matrix: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("inverse({})", matrix)))
+        Ok(Expression::new(format!("inverse({matrix})")))
     }
 }
 
@@ -345,48 +346,48 @@ pub mod number_theory {
 
     /// Greatest common divisor
     pub fn gcd(a: &Expression, b: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("gcd({}, {})", a, b)))
+        Ok(Expression::new(format!("gcd({a}, {b})")))
     }
 
     /// Least common multiple
     pub fn lcm(a: &Expression, b: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("lcm({}, {})", a, b)))
+        Ok(Expression::new(format!("lcm({a}, {b})")))
     }
 
     /// Factorial
     pub fn factorial(n: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("factorial({})", n)))
+        Ok(Expression::new(format!("factorial({n})")))
     }
 
     /// Binomial coefficient
     pub fn binomial(n: &Expression, k: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("binomial({}, {})", n, k)))
+        Ok(Expression::new(format!("binomial({n}, {k})")))
     }
 
     /// Prime factorization
     pub fn factor(n: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("factor({})", n)))
+        Ok(Expression::new(format!("factor({n})")))
     }
 
     /// Check if number is prime
     pub fn is_prime(n: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("isprime({})", n)))
+        Ok(Expression::new(format!("isprime({n})")))
     }
 
     /// Next prime number
     pub fn next_prime(n: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("nextprime({})", n)))
+        Ok(Expression::new(format!("nextprime({n})")))
     }
 
     /// Previous prime number
     pub fn prev_prime(n: &Expression) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!("prevprime({})", n)))
+        Ok(Expression::new(format!("prevprime({n})")))
     }
 }
 
 impl Zero for Expression {
     fn zero() -> Self {
-        Expression::from(0)
+        Self::from(0)
     }
 
     fn is_zero(&self) -> bool {
@@ -397,7 +398,7 @@ impl Zero for Expression {
 
 impl One for Expression {
     fn one() -> Self {
-        Expression::from(1)
+        Self::from(1)
     }
 
     fn is_one(&self) -> bool {

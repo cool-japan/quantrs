@@ -48,35 +48,37 @@ pub enum ZXNode {
 }
 
 impl ZXNode {
-    pub fn id(&self) -> usize {
+    #[must_use] 
+    pub const fn id(&self) -> usize {
         match self {
-            ZXNode::ZSpider { id, .. } => *id,
-            ZXNode::XSpider { id, .. } => *id,
-            ZXNode::Hadamard { id } => *id,
-            ZXNode::Input { id, .. } => *id,
-            ZXNode::Output { id, .. } => *id,
+            Self::ZSpider { id, .. } => *id,
+            Self::XSpider { id, .. } => *id,
+            Self::Hadamard { id } => *id,
+            Self::Input { id, .. } => *id,
+            Self::Output { id, .. } => *id,
         }
     }
 
-    pub fn phase(&self) -> f64 {
+    #[must_use] 
+    pub const fn phase(&self) -> f64 {
         match self {
-            ZXNode::ZSpider { phase, .. } => *phase,
-            ZXNode::XSpider { phase, .. } => *phase,
+            Self::ZSpider { phase, .. } => *phase,
+            Self::XSpider { phase, .. } => *phase,
             _ => 0.0,
         }
     }
 
-    pub fn set_phase(&mut self, new_phase: f64) {
+    pub const fn set_phase(&mut self, new_phase: f64) {
         match self {
-            ZXNode::ZSpider { phase, .. } => *phase = new_phase,
-            ZXNode::XSpider { phase, .. } => *phase = new_phase,
+            Self::ZSpider { phase, .. } => *phase = new_phase,
+            Self::XSpider { phase, .. } => *phase = new_phase,
             _ => {}
         }
     }
 }
 
 /// Edge in ZX-diagram
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ZXEdge {
     pub source: usize,
     pub target: usize,
@@ -103,6 +105,7 @@ pub struct ZXDiagram {
 
 impl ZXDiagram {
     /// Create a new empty ZX diagram
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -160,11 +163,11 @@ impl ZXDiagram {
     }
 
     /// Get neighbors of a node
+    #[must_use] 
     pub fn neighbors(&self, node_id: usize) -> &[usize] {
         self.adjacency
             .get(&node_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
+            .map_or(&[], std::vec::Vec::as_slice)
     }
 
     /// Apply spider fusion rule
@@ -264,7 +267,7 @@ impl ZXDiagram {
 
     /// Apply pi-commutation rule
     /// A spider with phase π can pass through Hadamard gates
-    pub fn pi_commutation(&mut self) -> bool {
+    pub const fn pi_commutation(&mut self) -> bool {
         let mut changed = false;
         // Implementation would involve complex graph rewriting
         // For now, return false as this is a placeholder
@@ -315,6 +318,7 @@ impl ZXDiagram {
     }
 
     /// Calculate the T-count (number of T gates) in the diagram
+    #[must_use] 
     pub fn t_count(&self) -> usize {
         self.nodes
             .values()
@@ -401,6 +405,7 @@ impl Default for ZXOptimizer {
 
 impl ZXOptimizer {
     /// Create a new ZX optimizer
+    #[must_use] 
     pub fn new() -> Self {
         Self::default()
     }

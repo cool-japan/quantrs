@@ -37,6 +37,7 @@ pub struct Waveform {
 
 impl Waveform {
     /// Create a new waveform
+    #[must_use] 
     pub fn new(samples: Vec<C64>, sample_rate: f64) -> Self {
         let duration = (samples.len() as f64) / sample_rate;
         Self {
@@ -47,6 +48,7 @@ impl Waveform {
     }
 
     /// Create a Gaussian pulse
+    #[must_use] 
     pub fn gaussian(amplitude: f64, sigma: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let center = duration / 2.0;
@@ -62,6 +64,7 @@ impl Waveform {
     }
 
     /// Create a DRAG (Derivative Removal by Adiabatic Gate) pulse
+    #[must_use] 
     pub fn drag(amplitude: f64, sigma: f64, beta: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let center = duration / 2.0;
@@ -80,6 +83,7 @@ impl Waveform {
     }
 
     /// Create a square pulse
+    #[must_use] 
     pub fn square(amplitude: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let samples = vec![C64::new(amplitude, 0.0); n_samples];
@@ -90,7 +94,7 @@ impl Waveform {
     pub fn modulate(&mut self, frequency: Frequency, phase: f64) {
         for (i, sample) in self.samples.iter_mut().enumerate() {
             let t = (i as f64) / self.sample_rate;
-            let rotation = C64::from_polar(1.0, 2.0 * PI * frequency * t + phase);
+            let rotation = C64::from_polar(1.0, (2.0 * PI * frequency).mul_add(t, phase));
             *sample *= rotation;
         }
     }
@@ -167,7 +171,8 @@ pub struct PulseSchedule {
 
 impl PulseSchedule {
     /// Create a new empty schedule
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             instructions: Vec::new(),
             duration: 0.0,
@@ -214,14 +219,14 @@ impl PulseSchedule {
     }
 
     /// Merge with another schedule
-    pub fn append(&mut self, other: &PulseSchedule, time_offset: Time) {
+    pub fn append(&mut self, other: &Self, time_offset: Time) {
         for (time, instruction) in &other.instructions {
             self.add_instruction(time + time_offset, instruction.clone());
         }
     }
 
     /// Align schedules on multiple channels
-    pub fn align_parallel(&mut self, schedules: Vec<PulseSchedule>) {
+    pub fn align_parallel(&mut self, schedules: Vec<Self>) {
         let start_time = self.duration;
         let mut max_duration: f64 = 0.0;
 
@@ -272,6 +277,7 @@ pub struct DeviceConfig {
 
 impl DeviceConfig {
     /// Create a default configuration
+    #[must_use] 
     pub fn default_config(num_qubits: usize) -> Self {
         let mut config = Self {
             qubit_frequencies: HashMap::new(),
@@ -283,8 +289,8 @@ impl DeviceConfig {
 
         // Default frequencies around 5 GHz
         for i in 0..num_qubits {
-            config.qubit_frequencies.insert(i, 5.0 + (i as f64) * 0.1);
-            config.meas_frequencies.insert(i, 6.5 + (i as f64) * 0.05);
+            config.qubit_frequencies.insert(i, (i as f64).mul_add(0.1, 5.0));
+            config.meas_frequencies.insert(i, (i as f64).mul_add(0.05, 6.5));
             config.drive_amplitudes.insert(i, 0.1);
         }
 
@@ -299,6 +305,7 @@ impl DeviceConfig {
 
 impl PulseCompiler {
     /// Create a new pulse compiler
+    #[must_use] 
     pub fn new(device_config: DeviceConfig) -> Self {
         let mut compiler = Self {
             calibrations: HashMap::new(),
@@ -380,7 +387,7 @@ impl PulseCompiler {
         cnot_schedule.add_instruction(
             0.0,
             PulseInstruction::Play {
-                waveform: cr_waveform.clone(),
+                waveform: cr_waveform,
                 channel: Channel::Control(0, 1),
                 phase: 0.0,
             },
@@ -391,7 +398,7 @@ impl PulseCompiler {
         cnot_schedule.add_instruction(
             100.0,
             PulseInstruction::Play {
-                waveform: echo_waveform.clone(),
+                waveform: echo_waveform,
                 channel: Channel::Drive(1),
                 phase: PI,
             },
@@ -526,7 +533,8 @@ pub struct PulseOptimizer {
 
 impl PulseOptimizer {
     /// Create a new optimizer
-    pub fn new() -> Self {
+    #[must_use] 
+    pub const fn new() -> Self {
         Self {
             target_fidelity: 0.999,
             max_iterations: 100,
@@ -534,7 +542,7 @@ impl PulseOptimizer {
     }
 
     /// Optimize a pulse schedule
-    pub fn optimize(&self, schedule: &mut PulseSchedule) -> QuantRS2Result<()> {
+    pub const fn optimize(&self, schedule: &mut PulseSchedule) -> QuantRS2Result<()> {
         // Placeholder for pulse optimization
         // Would implement gradient-based optimization, GRAPE, etc.
         Ok(())

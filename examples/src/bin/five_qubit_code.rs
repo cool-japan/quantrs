@@ -378,7 +378,7 @@ fn analyze_logical_state(state: &quantrs2_core::register::Register<9>) -> (f64, 
 
     // Count probabilities based on the first qubit
     for (i, amplitude) in amplitudes.iter().enumerate() {
-        let first_bit = (i >> 0) & 1;
+        let first_bit = i & 1;
         if first_bit == 0 {
             prob_0 += amplitude.norm_sqr();
             amplitude_0 += *amplitude;

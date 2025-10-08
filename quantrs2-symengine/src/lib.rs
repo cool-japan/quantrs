@@ -1,8 +1,8 @@
-//! # SymEngine for Rust
+//! # `SymEngine` for Rust
 //!
 //! Symbolic computation in Rust, powered by [SymEngine](https://github.com/symengine/symengine).
 //!
-//! This crate provides safe, idiomatic Rust bindings to SymEngine, a fast symbolic manipulation
+//! This crate provides safe, idiomatic Rust bindings to `SymEngine`, a fast symbolic manipulation
 //! library written in C++. It allows you to perform symbolic mathematics operations such as
 //! algebraic manipulation, calculus, equation solving, and more.
 //!
@@ -25,7 +25,7 @@
 //!
 //! ## Features
 //!
-//! - **Fast**: Built on SymEngine's optimized C++ core
+//! - **Fast**: Built on `SymEngine`'s optimized C++ core
 //! - **Safe**: Memory-safe Rust interface with proper error handling
 //! - **Feature-rich**: Supports algebraic operations, calculus, equation solving
 //! - **Serializable**: Optional serde support for persistence
@@ -34,8 +34,8 @@
 //! ## Optional Features
 //!
 //! - `serde-serialize`: Enable serialization/deserialization support
-//! - `static`: Link SymEngine statically
-//! - `system-deps`: Use system-installed SymEngine via pkg-config
+//! - `static`: Link `SymEngine` statically
+//! - `system-deps`: Use system-installed `SymEngine` via pkg-config
 
 pub mod error;
 pub mod expr;
@@ -52,8 +52,9 @@ pub use quantrs2_symengine_sys as symengine_sys;
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Check if SymEngine is properly initialized and available
-pub fn is_available() -> bool {
+/// Check if `SymEngine` is properly initialized and available
+#[must_use] 
+pub const fn is_available() -> bool {
     // For now, assume it's available if we can link
     true
 }

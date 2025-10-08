@@ -52,7 +52,7 @@ fn main() {
     ];
 
     for (name, strategy) in strategies {
-        println!("\n   Strategy: {}", name);
+        println!("\n   Strategy: {name}");
 
         let router = QubitRouter::new(linear.clone(), strategy);
         let start = Instant::now();
@@ -81,7 +81,7 @@ fn main() {
                 }
             }
             Err(e) => {
-                println!("     Error: {}", e);
+                println!("     Error: {e}");
             }
         }
     }
@@ -89,7 +89,7 @@ fn main() {
     // 4. Grid topology routing
     println!("\n4. Grid Topology Routing:");
 
-    let grid_router = QubitRouter::new(grid.clone(), RoutingStrategy::Lookahead { depth: 5 });
+    let grid_router = QubitRouter::new(grid, RoutingStrategy::Lookahead { depth: 5 });
     match grid_router.route_circuit(&circuit) {
         Ok(grid_result) => {
             println!("   Grid mapping results:");
@@ -100,7 +100,7 @@ fn main() {
             );
         }
         Err(e) => {
-            println!("   Error routing on grid: {}", e);
+            println!("   Error routing on grid: {e}");
         }
     }
 
@@ -122,16 +122,16 @@ fn main() {
     interaction_graph.add_edge(nodes[&2], nodes[&4], 1.0);
     interaction_graph.add_edge(nodes[&0], nodes[&4], 1.0);
 
-    let synthesizer = LayoutSynthesis::new(ibm_like.clone());
+    let synthesizer = LayoutSynthesis::new(ibm_like);
     match synthesizer.synthesize_layout(&interaction_graph) {
         Ok(optimized_layout) => {
             println!("   Optimized initial layout for IBM topology:");
             for (logical, physical) in &optimized_layout {
-                println!("     Logical q{} → Physical q{}", logical, physical);
+                println!("     Logical q{logical} → Physical q{physical}");
             }
         }
         Err(e) => {
-            println!("   Error synthesizing layout: {}", e);
+            println!("   Error synthesizing layout: {e}");
         }
     }
 
@@ -203,7 +203,7 @@ fn main() {
         // Create topologies of different sizes
         let linear_topo = HardwareTopology::linear_topology(size);
         let grid_cols = ((size as f64).sqrt().ceil()) as usize;
-        let grid_rows = (size + grid_cols - 1) / grid_cols;
+        let grid_rows = size.div_ceil(grid_cols);
         let grid_topo = HardwareTopology::grid_topology(grid_rows, grid_cols);
 
         // Estimate routing costs based on topology
@@ -215,8 +215,7 @@ fn main() {
         let speedup = linear_swaps as f64 / grid_swaps.max(1) as f64;
 
         println!(
-            "   {:12} | {:12} | {:10} | {:6.2}x",
-            size, linear_swaps, grid_swaps, speedup
+            "   {size:12} | {linear_swaps:12} | {grid_swaps:10} | {speedup:6.2}x"
         );
     }
 

@@ -1,6 +1,6 @@
-//! Parser for OpenQASM 3.0
+//! Parser for `OpenQASM` 3.0
 
-use super::ast::*;
+use super::ast::{QasmProgram, Declaration, QasmRegister, GateDefinition, QasmStatement, Measurement, ForLoop, QasmGate, QubitRef, ClassicalRef, Expression, BinaryOp, UnaryOp, Literal, Condition, ComparisonOp};
 use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
@@ -182,7 +182,7 @@ impl<'a> Lexer<'a> {
             if ch.is_numeric() {
                 result.push(ch);
                 self.advance();
-            } else if ch == '.' && !has_dot && self.peek().map_or(false, |c| c.is_numeric()) {
+            } else if ch == '.' && !has_dot && self.peek().map_or(false, char::is_numeric) {
                 has_dot = true;
                 result.push(ch);
                 self.advance();
@@ -499,7 +499,7 @@ impl<'a> QasmParser<'a> {
             self.advance()
         } else {
             Err(ParseError::ExpectedToken {
-                expected: format!("{:?}", expected),
+                expected: format!("{expected:?}"),
                 found: format!("{:?}", self.current_token),
             })
         }
@@ -511,7 +511,7 @@ impl<'a> QasmParser<'a> {
                 let version = if *v == 3.0 {
                     "3.0".to_string()
                 } else {
-                    format!("{}", v)
+                    format!("{v}")
                 };
                 if !version.starts_with("3.") {
                     return Err(ParseError::VersionMismatch(version));
@@ -527,7 +527,7 @@ impl<'a> QasmParser<'a> {
                     if let Token::Integer(minor) = self.current_token.clone() {
                         let minor_val = minor;
                         self.advance()?;
-                        Ok(format!("3.{}", minor_val))
+                        Ok(format!("3.{minor_val}"))
                     } else {
                         Ok("3.0".to_string())
                     }

@@ -62,8 +62,7 @@ fn main() {
     }
 
     println!(
-        "Most probable state: |{:03b}⟩ with probability {:.6}",
-        max_state, max_prob
+        "Most probable state: |{max_state:03b}⟩ with probability {max_prob:.6}"
     );
 
     // Check if we found the correct state

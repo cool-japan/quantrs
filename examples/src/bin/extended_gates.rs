@@ -77,7 +77,7 @@ fn main() {
     println!("After applying H to q0, then CH(q0, q1):");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
         // Format the state in binary
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (magnitude: {:.6})",
             bits,
@@ -107,7 +107,7 @@ fn main() {
     println!("After applying X to q0, then CRZ(q0, q1, π/2):");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
         // Format the state in binary
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (magnitude: {:.6})",
             bits,

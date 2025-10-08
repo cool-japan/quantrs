@@ -267,6 +267,7 @@ pub struct CircuitValidator {
 
 impl CircuitValidator {
     /// Create a new circuit validator
+    #[must_use] 
     pub fn new() -> Self {
         let mut validator = Self {
             backend_rules: HashMap::new(),
@@ -284,6 +285,7 @@ impl CircuitValidator {
     }
 
     /// Get available backends for validation
+    #[must_use] 
     pub fn available_backends(&self) -> Vec<String> {
         self.backend_rules.keys().cloned().collect()
     }
@@ -301,7 +303,7 @@ impl CircuitValidator {
         let rules = self
             .backend_rules
             .get(backend)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {}", backend)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {backend}")))?;
 
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -568,7 +570,7 @@ impl CircuitValidator {
     }
 
     /// Validate measurement constraints
-    fn validate_measurements<const N: usize>(
+    const fn validate_measurements<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
@@ -627,7 +629,7 @@ impl CircuitValidator {
     }
 
     /// Estimate memory usage
-    fn estimate_memory_usage<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
+    const fn estimate_memory_usage<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
         // Estimate based on state vector simulation
         if N <= 30 {
             (1usize << N) * 16 // 16 bytes per complex amplitude
@@ -651,13 +653,11 @@ impl CircuitValidator {
                 1 => noise_model
                     .single_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.depolarizing + e.amplitude_damping + e.phase_damping)
-                    .unwrap_or(0.001),
+                    .map_or(0.001, |e| e.depolarizing + e.amplitude_damping + e.phase_damping),
                 2 => noise_model
                     .two_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.depolarizing)
-                    .unwrap_or(0.01),
+                    .map_or(0.01, |e| e.depolarizing),
                 _ => 0.05, // Multi-qubit gates
             };
             total_error += error;
@@ -715,17 +715,18 @@ impl CircuitValidator {
 
 impl ValidationRules {
     /// IBM Quantum validation rules
+    #[must_use] 
     pub fn ibm_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
-            two_qubit: ["CNOT", "CZ"].iter().map(|s| s.to_string()).collect(),
+            two_qubit: ["CNOT", "CZ"].iter().map(|s| (*s).to_string()).collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -774,17 +775,18 @@ impl ValidationRules {
     }
 
     /// Google Quantum AI validation rules
+    #[must_use] 
     pub fn google_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
-            two_qubit: ["CZ", "ISWAP"].iter().map(|s| s.to_string()).collect(),
+            two_qubit: ["CZ", "ISWAP"].iter().map(|s| (*s).to_string()).collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -833,20 +835,21 @@ impl ValidationRules {
     }
 
     /// AWS Braket validation rules
+    #[must_use] 
     pub fn aws_braket() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             two_qubit: ["CNOT", "CZ", "ISWAP"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -895,23 +898,24 @@ impl ValidationRules {
     }
 
     /// Simulator validation rules
+    #[must_use] 
     pub fn simulator() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "U"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             two_qubit: ["CNOT", "CZ", "ISWAP", "SWAP", "CX"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             multi_qubit: ["Toffoli", "Fredkin"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1), ("U", 3)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 

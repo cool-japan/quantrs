@@ -1,6 +1,6 @@
-//! Export QuantRS2 circuits to OpenQASM 3.0 format
+//! Export `QuantRS2` circuits to `OpenQASM` 3.0 format
 
-use super::ast::*;
+use super::ast::{QasmProgram, Declaration, QasmRegister, GateDefinition, QasmStatement, QubitRef, ClassicalRef, Measurement, QasmGate, Expression, Literal};
 use crate::builder::Circuit;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
 use scirs2_core::Complex64;
@@ -42,7 +42,7 @@ pub struct ExportOptions {
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        ExportOptions {
+        Self {
             include_stdgates: true,
             decompose_custom: true,
             include_gate_comments: false,
@@ -73,8 +73,9 @@ struct GateInfo {
 
 impl QasmExporter {
     /// Create a new exporter with options
+    #[must_use] 
     pub fn new(options: ExportOptions) -> Self {
-        QasmExporter {
+        Self {
             options,
             custom_gates: HashMap::new(),
             qubit_usage: HashSet::new(),
@@ -281,7 +282,7 @@ impl QasmExporter {
     }
 
     /// Generate gate definition for custom gate
-    fn generate_gate_definition(
+    const fn generate_gate_definition(
         &self,
         gate_info: &GateInfo,
     ) -> Result<Option<GateDefinition>, ExportError> {

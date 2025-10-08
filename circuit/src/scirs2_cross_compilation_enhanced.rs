@@ -1,8 +1,8 @@
-//! Enhanced Cross-Compilation with Advanced SciRS2 IR Tools
+//! Enhanced Cross-Compilation with Advanced `SciRS2` IR Tools
 //!
 //! This module provides state-of-the-art cross-compilation between quantum frameworks
 //! and hardware platforms using ML-based optimization, multi-stage compilation,
-//! target-specific code generation, and comprehensive error handling powered by SciRS2.
+//! target-specific code generation, and comprehensive error handling powered by `SciRS2`.
 
 use crate::optimization::pass_manager::{OptimizationLevel, PassManager};
 use quantrs2_core::buffer_pool::BufferPool;
@@ -13,7 +13,7 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{ParallelIterator, IntoParallelRefIterator, IndexedParallelIterator};
 // SciRS2 IR Tools Integration (implemented locally until SciRS2 v0.1.0-alpha.6)
 use crate::scirs2_ir_tools::{
     CodeEmitter, CompilationPass, IRBuilder, IROptimizer, IRTransform, IRValidator,
@@ -196,6 +196,7 @@ pub struct EnhancedCrossCompiler {
 
 impl EnhancedCrossCompiler {
     /// Create new enhanced cross-compiler
+    #[must_use] 
     pub fn new(config: EnhancedCrossCompilationConfig) -> Self {
         let buffer_pool = BufferPool::new();
 
@@ -216,7 +217,7 @@ impl EnhancedCrossCompiler {
             },
             target_generators,
             realtime_monitor: Arc::new(CompilationMonitor::new(config.clone())),
-            validator: Arc::new(CompilationValidator::new(config.clone())),
+            validator: Arc::new(CompilationValidator::new(config)),
             buffer_pool,
             cache: Arc::new(Mutex::new(CompilationCache::new())),
         }
@@ -518,7 +519,7 @@ impl EnhancedCrossCompiler {
         target: TargetPlatform,
     ) -> QuantRS2Result<TargetCode> {
         let generator = self.target_generators.get(&target).ok_or_else(|| {
-            QuantRS2Error::UnsupportedOperation(format!("No code generator for {:?}", target))
+            QuantRS2Error::UnsupportedOperation(format!("No code generator for {target:?}"))
         })?;
 
         generator.generate(ir)
@@ -706,7 +707,7 @@ struct CompilationValidator {
 }
 
 impl CompilationValidator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 
@@ -765,7 +766,7 @@ struct IBMQuantumGenerator {
 }
 
 impl IBMQuantumGenerator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 }
@@ -808,7 +809,7 @@ impl IBMQuantumGenerator {
         // Operations
         for op in &ir.operations {
             let gate_str = self.ir_op_to_qasm(op)?;
-            qasm.push_str(&format!("{}\n", gate_str));
+            qasm.push_str(&format!("{gate_str}\n"));
         }
 
         Ok(qasm)
@@ -838,8 +839,7 @@ impl IBMQuantumGenerator {
             IRGate::RY(angle) => Ok(format!("ry({}) q[{}];", angle, qubits[0])),
             IRGate::RZ(angle) => Ok(format!("rz({}) q[{}];", angle, qubits[0])),
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Gate {:?} not supported in QASM",
-                gate
+                "Gate {gate:?} not supported in QASM"
             ))),
         }
     }
@@ -851,7 +851,7 @@ struct GoogleSycamoreGenerator {
 }
 
 impl GoogleSycamoreGenerator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 }
@@ -887,7 +887,7 @@ impl GoogleSycamoreGenerator {
         // Add operations
         for op in &ir.operations {
             let op_str = self.ir_op_to_cirq(op)?;
-            code.push_str(&format!("circuit.append({})\n", op_str));
+            code.push_str(&format!("circuit.append({op_str})\n"));
         }
 
         Ok(code)
@@ -925,20 +925,19 @@ impl GoogleSycamoreGenerator {
                 qubits[0], qubits[1]
             )),
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Gate {:?} not supported in Cirq",
-                gate
+                "Gate {gate:?} not supported in Cirq"
             ))),
         }
     }
 }
 
-/// IonQ code generator
+/// `IonQ` code generator
 struct IonQGenerator {
     config: EnhancedCrossCompilationConfig,
 }
 
 impl IonQGenerator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 }
@@ -962,7 +961,7 @@ struct RigettiGenerator {
 }
 
 impl RigettiGenerator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 }
@@ -986,7 +985,7 @@ struct GenericGenerator {
 }
 
 impl GenericGenerator {
-    fn new(config: EnhancedCrossCompilationConfig) -> Self {
+    const fn new(config: EnhancedCrossCompilationConfig) -> Self {
         Self { config }
     }
 }
@@ -1311,7 +1310,7 @@ pub struct ValidationResult {
 }
 
 impl ValidationResult {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             is_valid: true,
             errors: Vec::new(),
@@ -1582,7 +1581,7 @@ pub struct VisualCompilationFlow {
 }
 
 impl VisualCompilationFlow {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             nodes: Vec::new(),
             edges: Vec::new(),
@@ -1822,7 +1821,7 @@ pub struct BatchCompilationResult {
 }
 
 impl BatchCompilationResult {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             successful_compilations: Vec::new(),
             failed_compilations: Vec::new(),
@@ -1898,11 +1897,11 @@ struct CompilationModel {
 }
 
 impl CompilationModel {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn predict_strategy(
+    const fn predict_strategy(
         &self,
         features: &CompilationFeatures,
     ) -> QuantRS2Result<MLOptimizationStrategy> {
@@ -1920,11 +1919,11 @@ struct CompilationFeatureExtractor {
 }
 
 impl CompilationFeatureExtractor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn extract_features(
+    const fn extract_features(
         &self,
         ir: &QuantumIR,
         target: TargetPlatform,
@@ -1952,7 +1951,7 @@ struct CompilationMetrics {
 }
 
 impl CompilationMetrics {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             gate_count: 0,
             circuit_depth: 0,
@@ -1966,7 +1965,7 @@ impl CompilationMetrics {
         Ok(())
     }
 
-    fn detect_anomaly(&self) -> bool {
+    const fn detect_anomaly(&self) -> bool {
         // Simple anomaly detection
         false
     }
@@ -2082,7 +2081,7 @@ impl EnhancedCrossCompiler {
         Ok(ir.clone())
     }
 
-    fn update_cache(
+    const fn update_cache(
         &self,
         source: &SourceCircuit,
         target: TargetPlatform,
@@ -2214,7 +2213,7 @@ impl EnhancedCrossCompiler {
         Ok(ResourceUsage::default())
     }
 
-    fn generate_recommendations(
+    const fn generate_recommendations(
         &self,
         result: &CrossCompilationResult,
     ) -> QuantRS2Result<Vec<CompilationRecommendation>> {
@@ -2254,7 +2253,7 @@ impl EnhancedCrossCompiler {
         })
     }
 
-    fn visualize_optimizations(
+    const fn visualize_optimizations(
         &self,
         result: &CrossCompilationResult,
     ) -> QuantRS2Result<OptimizationVisualization> {
@@ -2288,7 +2287,7 @@ impl EnhancedCrossCompiler {
 
 // Validation helpers
 impl CompilationValidator {
-    fn validate_semantics(
+    const fn validate_semantics(
         &self,
         source: &SourceCircuit,
         target: &TargetCode,
@@ -2297,7 +2296,7 @@ impl CompilationValidator {
         Ok(true)
     }
 
-    fn validate_resources(
+    const fn validate_resources(
         &self,
         target: &TargetCode,
         platform: TargetPlatform,
@@ -2306,7 +2305,7 @@ impl CompilationValidator {
         Ok(true)
     }
 
-    fn estimate_fidelity(
+    const fn estimate_fidelity(
         &self,
         source: &SourceCircuit,
         target: &TargetCode,
@@ -2418,8 +2417,7 @@ impl IonQGenerator {
                 "target": qubits[1]
             })),
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Gate {:?} not supported on IonQ",
-                gate
+                "Gate {gate:?} not supported on IonQ"
             ))),
         }
     }
@@ -2436,7 +2434,7 @@ impl RigettiGenerator {
         for op in &ir.operations {
             if let IROperationType::Gate(gate) = &op.operation_type {
                 let gate_str = self.ir_gate_to_quil(gate, &op.qubits)?;
-                quil.push_str(&format!("{}\n", gate_str));
+                quil.push_str(&format!("{gate_str}\n"));
             } else if let IROperationType::Measurement(qubits, bits) = &op.operation_type {
                 quil.push_str(&format!("MEASURE {} ro[{}]\n", qubits[0], bits[0]));
             }
@@ -2456,8 +2454,7 @@ impl RigettiGenerator {
             IRGate::RY(angle) => Ok(format!("RY({}) {}", angle, qubits[0])),
             IRGate::RZ(angle) => Ok(format!("RZ({}) {}", angle, qubits[0])),
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Gate {:?} not supported in Quil",
-                gate
+                "Gate {gate:?} not supported in Quil"
             ))),
         }
     }

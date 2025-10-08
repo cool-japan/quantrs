@@ -21,14 +21,14 @@ fn main() {
 }
 
 fn run_demo(qubits: usize, name: &str) {
-    println!("=== {} ({} qubits) ===", name, qubits);
+    println!("=== {name} ({qubits} qubits) ===");
 
     match qubits {
         // Use compile-time known qubit counts to utilize const generics
         10 => run_with_qubits::<10>(),
         20 => run_with_qubits::<20>(),
         25 => run_with_qubits::<25>(),
-        n => println!("Qubit count {} not supported in this demo", n),
+        n => println!("Qubit count {n} not supported in this demo"),
     }
 
     println!();

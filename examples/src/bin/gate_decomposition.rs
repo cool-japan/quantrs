@@ -58,7 +58,7 @@ fn main() -> QuantRS2Result<()> {
         let diff = (original_probs[i] - decomposed_probs[i]).abs();
         max_diff = max_diff.max(diff);
     }
-    println!("Maximum probability difference: {:.10}", max_diff);
+    println!("Maximum probability difference: {max_diff:.10}");
 
     if max_diff < 1e-10 {
         println!("Results match! The decomposition preserves the circuit's behavior.");
@@ -117,7 +117,7 @@ fn main() -> QuantRS2Result<()> {
         let diff = (redundant_probs[i] - optimized_probs[i]).abs();
         max_diff = max_diff.max(diff);
     }
-    println!("Maximum probability difference: {:.10}", max_diff);
+    println!("Maximum probability difference: {max_diff:.10}");
 
     if max_diff < 1e-10 {
         println!("Results match! The optimization preserves the circuit's behavior.");
@@ -143,7 +143,7 @@ fn print_state<const N: usize>(register: &Register<N>) {
     let probabilities = register.probabilities();
     for (i, prob) in probabilities.iter().enumerate() {
         if *prob > 1e-10 {
-            println!("  |{:0width$b}⟩: {:.6}", i, prob, width = N);
+            println!("  |{i:0N$b}⟩: {prob:.6}");
         }
     }
 }

@@ -17,7 +17,7 @@ fn main() {
 
     // Print the resulting amplitudes
     for (i, amplitude) in state_prep.amplitudes().iter().enumerate() {
-        let bits = format!("{:03b}", i);
+        let bits = format!("{i:03b}");
         if amplitude.norm_sqr() > 1e-10 {
             println!("|{}⟩: {} + {}i", bits, amplitude.re, amplitude.im);
         }
@@ -41,7 +41,7 @@ fn main() {
 
     println!("\nFinal state after teleportation:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:03b}", i);
+        let bits = format!("{i:03b}");
         if amplitude.norm_sqr() > 1e-10 {
             println!("|{}⟩: {} + {}i", bits, amplitude.re, amplitude.im);
         }
@@ -62,11 +62,9 @@ fn main() {
         + result.probability(&[1, 1, 1]).unwrap();
 
     println!(
-        "Probability of measuring |0⟩ on teleported qubit: {:.6}",
-        prob_z0
+        "Probability of measuring |0⟩ on teleported qubit: {prob_z0:.6}"
     );
     println!(
-        "Probability of measuring |1⟩ on teleported qubit: {:.6}",
-        prob_z1
+        "Probability of measuring |1⟩ on teleported qubit: {prob_z1:.6}"
     );
 }

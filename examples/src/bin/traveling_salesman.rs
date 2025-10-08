@@ -28,7 +28,7 @@ fn main() {
             .map(|j| format!("{:4.1}", tsp.distances[i][j]))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("  {}", row);
+        println!("  {row}");
     }
 
     // Formulate the TSP as a QUBO
@@ -44,7 +44,7 @@ fn main() {
         "Converted QUBO to Ising model with {} qubits",
         ising_model.num_qubits
     );
-    println!("Offset from QUBO to Ising conversion: {:.4}\n", offset);
+    println!("Offset from QUBO to Ising conversion: {offset:.4}\n");
 
     // Solve using classical simulated annealing
     println!("Solving with Classical Simulated Annealing...");
@@ -73,26 +73,26 @@ fn main() {
 
                     // Validate the tour
                     let (is_valid, violations) = validate_tour(&tsp, &tour);
-                    println!("Valid tour: {}", is_valid);
+                    println!("Valid tour: {is_valid}");
 
                     // Print the tour
-                    if !tour.is_empty() {
+                    if tour.is_empty() {
+                        println!("No valid tour found");
+                    } else {
                         print_tour(&tsp, &tour);
                         // Calculate tour length
                         let tour_length = calculate_tour_length(&tsp, &tour);
-                        println!("Tour length: {:.2}", tour_length);
-                    } else {
-                        println!("No valid tour found");
+                        println!("Tour length: {tour_length:.2}");
                     }
 
                     if violations > 0 {
-                        println!("Constraint violations: {}", violations);
+                        println!("Constraint violations: {violations}");
                     }
                 }
-                Err(err) => println!("Error solving with classical annealing: {}", err),
+                Err(err) => println!("Error solving with classical annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating classical annealing simulator: {}", err),
+        Err(err) => println!("Error creating classical annealing simulator: {err}"),
     }
 
     println!("\nSolving with Quantum Simulated Annealing...");
@@ -124,26 +124,26 @@ fn main() {
 
                     // Validate the tour
                     let (is_valid, violations) = validate_tour(&tsp, &tour);
-                    println!("Valid tour: {}", is_valid);
+                    println!("Valid tour: {is_valid}");
 
                     // Print the tour
-                    if !tour.is_empty() {
+                    if tour.is_empty() {
+                        println!("No valid tour found");
+                    } else {
                         print_tour(&tsp, &tour);
                         // Calculate tour length
                         let tour_length = calculate_tour_length(&tsp, &tour);
-                        println!("Tour length: {:.2}", tour_length);
-                    } else {
-                        println!("No valid tour found");
+                        println!("Tour length: {tour_length:.2}");
                     }
 
                     if violations > 0 {
-                        println!("Constraint violations: {}", violations);
+                        println!("Constraint violations: {violations}");
                     }
                 }
-                Err(err) => println!("Error solving with quantum annealing: {}", err),
+                Err(err) => println!("Error solving with quantum annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating quantum annealing simulator: {}", err),
+        Err(err) => println!("Error creating quantum annealing simulator: {err}"),
     }
 
     println!("\nNote: The quantum annealing simulation is just a demonstration.");
@@ -199,7 +199,7 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
         let mut city_vars = Vec::new();
 
         for p in 0..n {
-            let var_name = format!("x_{}_{}", i, p);
+            let var_name = format!("x_{i}_{p}");
             let var = builder.add_variable(var_name).unwrap();
             city_vars.push(var);
         }
@@ -264,7 +264,7 @@ fn interpret_tour(tsp: &Tsp, solution: &[bool], var_map: &HashMap<String, usize>
         // Find which city is at this position
         #[allow(clippy::needless_range_loop)]
         for i in 0..n {
-            let var_name = format!("x_{}_{}", i, p);
+            let var_name = format!("x_{i}_{p}");
             if let Some(&var_idx) = var_map.get(&var_name) {
                 if solution[var_idx] {
                     if found_city {

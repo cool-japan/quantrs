@@ -59,6 +59,7 @@ pub struct GatePool {
 
 impl GatePool {
     /// Create a new gate pool with common gates pre-allocated
+    #[must_use] 
     pub fn new() -> Self {
         let mut gates = HashMap::with_capacity(16);
 
@@ -68,27 +69,27 @@ impl GatePool {
 
             // Common single-qubit gates
             gates.insert(
-                format!("H_{}", qubit_id),
+                format!("H_{qubit_id}"),
                 Arc::new(Hadamard { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("X_{}", qubit_id),
+                format!("X_{qubit_id}"),
                 Arc::new(PauliX { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("Y_{}", qubit_id),
+                format!("Y_{qubit_id}"),
                 Arc::new(PauliY { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("Z_{}", qubit_id),
+                format!("Z_{qubit_id}"),
                 Arc::new(PauliZ { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("S_{}", qubit_id),
+                format!("S_{qubit_id}"),
                 Arc::new(Phase { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("T_{}", qubit_id),
+                format!("T_{qubit_id}"),
                 Arc::new(T { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
         }
@@ -186,6 +187,7 @@ impl<const N: usize> fmt::Debug for Circuit<N> {
 
 impl<const N: usize> Circuit<N> {
     /// Create a new empty circuit with N qubits
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             gates: Vec::with_capacity(64), // Pre-allocate capacity for better performance
@@ -194,6 +196,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Create a new circuit with estimated capacity
+    #[must_use] 
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             gates: Vec::with_capacity(capacity),
@@ -248,11 +251,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get all gates in the circuit
+    #[must_use] 
     pub fn gates(&self) -> &[Arc<dyn GateOp + Send + Sync>] {
         &self.gates
     }
 
     /// Get gates as Vec for compatibility with existing optimization code
+    #[must_use] 
     pub fn gates_as_boxes(&self) -> Vec<Box<dyn GateOp>> {
         self.gates
             .iter()
@@ -263,6 +268,7 @@ impl<const N: usize> Circuit<N> {
     /// Circuit introspection methods for optimization
 
     /// Count gates by type
+    #[must_use] 
     pub fn count_gates_by_type(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
         for gate in &self.gates {
@@ -272,6 +278,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Calculate circuit depth (longest sequential path)
+    #[must_use] 
     pub fn calculate_depth(&self) -> usize {
         if self.gates.is_empty() {
             return 0;
@@ -305,6 +312,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Count two-qubit gates
+    #[must_use] 
     pub fn count_two_qubit_gates(&self) -> usize {
         self.gates
             .iter()
@@ -313,6 +321,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Count multi-qubit gates (3 or more qubits)
+    #[must_use] 
     pub fn count_multi_qubit_gates(&self) -> usize {
         self.gates
             .iter()
@@ -321,11 +330,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Calculate the critical path length (same as depth for now, but could be enhanced)
+    #[must_use] 
     pub fn calculate_critical_path(&self) -> usize {
         self.calculate_depth()
     }
 
     /// Calculate gate density (gates per qubit)
+    #[must_use] 
     pub fn calculate_gate_density(&self) -> f64 {
         if N == 0 {
             0.0
@@ -335,6 +346,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get all unique qubits used in the circuit
+    #[must_use] 
     pub fn get_used_qubits(&self) -> HashSet<QubitId> {
         let mut used_qubits = HashSet::new();
         for gate in &self.gates {
@@ -346,11 +358,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Check if the circuit uses all available qubits
+    #[must_use] 
     pub fn uses_all_qubits(&self) -> bool {
         self.get_used_qubits().len() == N
     }
 
     /// Get gates that operate on a specific qubit
+    #[must_use] 
     pub fn gates_on_qubit(&self, target_qubit: QubitId) -> Vec<&Arc<dyn GateOp + Send + Sync>> {
         self.gates
             .iter()
@@ -359,6 +373,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get gates between two indices (inclusive)
+    #[must_use] 
     pub fn gates_in_range(&self, start: usize, end: usize) -> &[Arc<dyn GateOp + Send + Sync>] {
         let end = end.min(self.gates.len().saturating_sub(1));
         let start = start.min(end);
@@ -366,11 +381,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Check if circuit is empty
+    #[must_use] 
     pub fn is_empty(&self) -> bool {
         self.gates.is_empty()
     }
 
     /// Get circuit statistics summary
+    #[must_use] 
     pub fn get_stats(&self) -> CircuitStats {
         let gate_counts = self.count_gates_by_type();
         let depth = self.calculate_depth();
@@ -392,16 +409,19 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get the number of qubits in the circuit
-    pub fn num_qubits(&self) -> usize {
+    #[must_use] 
+    pub const fn num_qubits(&self) -> usize {
         N
     }
 
     /// Get the number of gates in the circuit
+    #[must_use] 
     pub fn num_gates(&self) -> usize {
         self.gates.len()
     }
 
     /// Get the names of all gates in the circuit
+    #[must_use] 
     pub fn get_gate_names(&self) -> Vec<String> {
         self.gates
             .iter()
@@ -422,8 +442,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a single-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a single-qubit gate"
                 ))
             })
     }
@@ -448,8 +467,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a rotation gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a rotation gate"
                 ))
             })
     }
@@ -471,8 +489,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a two-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a two-qubit gate"
                 ))
             })
     }
@@ -497,8 +514,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a controlled rotation gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a controlled rotation gate"
                 ))
             })
     }
@@ -524,8 +540,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a three-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a three-qubit gate"
                 ))
             })
     }
@@ -870,7 +885,8 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Build the circuit (for compatibility - returns self)
-    pub fn build(self) -> Self {
+    #[must_use] 
+    pub const fn build(self) -> Self {
         self
     }
 
@@ -1019,7 +1035,8 @@ impl<const N: usize> Circuit<N> {
         Ok(self)
     }
 
-    /// Convert this circuit to a ClassicalCircuit with classical control support
+    /// Convert this circuit to a `ClassicalCircuit` with classical control support
+    #[must_use] 
     pub fn with_classical_control(self) -> crate::classical::ClassicalCircuit<N> {
         let mut classical_circuit = crate::classical::ClassicalCircuit::new();
 

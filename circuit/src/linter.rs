@@ -1,8 +1,8 @@
-//! Quantum circuit linter using SciRS2 pattern matching for code quality analysis
+//! Quantum circuit linter using `SciRS2` pattern matching for code quality analysis
 //!
 //! This module provides comprehensive code quality analysis for quantum circuits,
 //! including pattern detection, anti-pattern identification, optimization suggestions,
-//! style checking, and best practice enforcement using SciRS2's advanced pattern
+//! style checking, and best practice enforcement using `SciRS2`'s advanced pattern
 //! matching and graph analysis capabilities.
 
 use crate::builder::Circuit;
@@ -19,13 +19,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Comprehensive quantum circuit linter with SciRS2 pattern matching
+/// Comprehensive quantum circuit linter with `SciRS2` pattern matching
 pub struct QuantumLinter<const N: usize> {
     /// Circuit being analyzed
     circuit: Circuit<N>,
     /// Linter configuration
     config: LinterConfig,
-    /// SciRS2 analyzer for pattern recognition
+    /// `SciRS2` analyzer for pattern recognition
     analyzer: SciRS2CircuitAnalyzer,
     /// Pattern detector
     pattern_detector: Arc<RwLock<PatternDetector<N>>>,
@@ -60,7 +60,7 @@ pub struct LinterConfig {
     pub severity_threshold: Severity,
     /// Maximum analysis depth
     pub max_analysis_depth: usize,
-    /// Enable SciRS2 advanced analysis
+    /// Enable `SciRS2` advanced analysis
     pub enable_scirs2_analysis: bool,
     /// Pattern matching confidence threshold
     pub pattern_confidence_threshold: f64,
@@ -227,7 +227,7 @@ pub struct PatternDetector<const N: usize> {
     patterns: Vec<QuantumPattern<N>>,
     /// Pattern detection results
     detection_results: HashMap<String, PatternDetectionResult>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -436,7 +436,7 @@ pub struct AntiPatternDetector<const N: usize> {
     antipatterns: Vec<QuantumAntiPattern<N>>,
     /// Detection results
     detection_results: HashMap<String, AntiPatternDetectionResult>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -544,11 +544,11 @@ pub enum StyleRule {
 pub enum NamingConvention {
     /// CamelCase
     CamelCase,
-    /// snake_case
+    /// `snake_case`
     SnakeCase,
     /// kebab-case
     KebabCase,
-    /// UPPER_CASE
+    /// `UPPER_CASE`
     UpperCase,
     /// Custom convention
     Custom { pattern: String },
@@ -675,7 +675,7 @@ pub struct OptimizationAnalyzer<const N: usize> {
     rules: Vec<OptimizationRule>,
     /// Analysis results
     results: HashMap<String, OptimizationAnalysisResult>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -824,7 +824,7 @@ pub struct ComplexityAnalyzer<const N: usize> {
     metrics: Vec<ComplexityMetric>,
     /// Analysis results
     results: HashMap<String, ComplexityAnalysisResult>,
-    /// SciRS2 analyzer
+    /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
 
@@ -1179,7 +1179,7 @@ pub struct LintingMetadata {
     pub linter_version: String,
     /// Configuration used
     pub config: LinterConfig,
-    /// SciRS2 analysis enabled
+    /// `SciRS2` analysis enabled
     pub scirs2_enabled: bool,
     /// Analysis scope
     pub analysis_scope: AnalysisScope,
@@ -1200,6 +1200,7 @@ pub struct AnalysisScope {
 
 impl<const N: usize> QuantumLinter<N> {
     /// Create a new quantum linter
+    #[must_use] 
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1215,6 +1216,7 @@ impl<const N: usize> QuantumLinter<N> {
     }
 
     /// Create linter with custom configuration
+    #[must_use] 
     pub fn with_config(circuit: Circuit<N>, config: LinterConfig) -> Self {
         Self {
             circuit,
@@ -1497,6 +1499,7 @@ impl<const N: usize> QuantumLinter<N> {
 
 impl<const N: usize> PatternDetector<N> {
     /// Create new pattern detector
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             patterns: Vec::new(),
@@ -1506,7 +1509,7 @@ impl<const N: usize> PatternDetector<N> {
     }
 
     /// Detect all patterns
-    pub fn detect_all_patterns(
+    pub const fn detect_all_patterns(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
@@ -1523,6 +1526,7 @@ impl<const N: usize> PatternDetector<N> {
 
 impl<const N: usize> AntiPatternDetector<N> {
     /// Create new anti-pattern detector
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             antipatterns: Vec::new(),
@@ -1532,7 +1536,7 @@ impl<const N: usize> AntiPatternDetector<N> {
     }
 
     /// Detect all anti-patterns
-    pub fn detect_all_antipatterns(
+    pub const fn detect_all_antipatterns(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
@@ -1544,6 +1548,7 @@ impl<const N: usize> AntiPatternDetector<N> {
 
 impl<const N: usize> StyleChecker<N> {
     /// Create new style checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -1558,7 +1563,7 @@ impl<const N: usize> StyleChecker<N> {
     }
 
     /// Check all style rules
-    pub fn check_all_styles(
+    pub const fn check_all_styles(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
@@ -1578,6 +1583,7 @@ impl<const N: usize> StyleChecker<N> {
 
 impl<const N: usize> OptimizationAnalyzer<N> {
     /// Create new optimization analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -1587,7 +1593,7 @@ impl<const N: usize> OptimizationAnalyzer<N> {
     }
 
     /// Analyze optimization opportunities
-    pub fn analyze_optimizations(
+    pub const fn analyze_optimizations(
         &self,
         circuit: &Circuit<N>,
         config: &LinterConfig,
@@ -1599,6 +1605,7 @@ impl<const N: usize> OptimizationAnalyzer<N> {
 
 impl<const N: usize> ComplexityAnalyzer<N> {
     /// Create new complexity analyzer
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             metrics: Vec::new(),
@@ -1630,6 +1637,7 @@ impl<const N: usize> ComplexityAnalyzer<N> {
 
 impl<const N: usize> BestPracticesChecker<N> {
     /// Create new best practices checker
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),

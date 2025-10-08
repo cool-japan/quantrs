@@ -1,5 +1,5 @@
 #![doc = r#"
-# QuantRS2 - High-Performance Quantum Computing Framework for Rust
+# `QuantRS2` - High-Performance Quantum Computing Framework for Rust
 
 <div align="center">
 
@@ -16,16 +16,16 @@ built on Rust's zero-cost abstractions and the [SciRS2](https://github.com/cool-
 
 ## 🌟 Overview
 
-QuantRS2 provides a unified, modular toolkit for quantum computing that spans:
+`QuantRS2` provides a unified, modular toolkit for quantum computing that spans:
 - **Quantum Circuit Design** with expressive DSLs and visual representations
 - **Multiple Simulation Backends** (state-vector, tensor-network, stabilizer, GPU-accelerated)
 - **Real Hardware Integration** (IBM Quantum, Azure Quantum, AWS Braket)
 - **Quantum Machine Learning** (QNNs, QGANs, VQE, QAOA)
 - **Quantum Annealing** (D-Wave integration, QUBO/Ising solvers)
-- **Symbolic Quantum Computation** with SymEngine integration
-- **Python Bindings** via PyO3 for seamless interoperability
+- **Symbolic Quantum Computation** with `SymEngine` integration
+- **Python Bindings** via `PyO3` for seamless interoperability
 
-Built on the [SciRS2 scientific computing foundation](https://github.com/cool-japan/scirs), QuantRS2
+Built on the [SciRS2 scientific computing foundation](https://github.com/cool-japan/scirs), `QuantRS2`
 leverages battle-tested linear algebra, automatic differentiation, and optimization libraries,
 ensuring both **correctness** and **performance** for quantum algorithm development.
 
@@ -35,7 +35,7 @@ ensuring both **correctness** and **performance** for quantum algorithm developm
 
 ### Basic Installation
 
-Add QuantRS2 to your `Cargo.toml`:
+Add `QuantRS2` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -62,7 +62,7 @@ quantrs2 = { version = "0.1.0-beta.2", features = ["circuit", "sim", "ml"] }
 - `ml` - Quantum machine learning (QNNs, VQE, QAOA)
 - `anneal` - Quantum annealing and optimization
 - `tytan` - High-level annealing library (Tytan API)
-- `symengine` - Symbolic computation with SymEngine
+- `symengine` - Symbolic computation with `SymEngine`
 - `full` - All features enabled
 
 ---
@@ -133,7 +133,7 @@ println!("Optimal parameters: {:?}", result.parameters);
 
 ### Example 3: Quantum Approximate Optimization Algorithm (QAOA)
 
-Solve MaxCut problem on a graph:
+Solve `MaxCut` problem on a graph:
 
 ```rust,ignore
 // This example demonstrates QAOA usage with the quantum ML module
@@ -179,7 +179,7 @@ println!("Energy: {:.4}", result.best_energy());
 
 ## 🏗️ Architecture
 
-QuantRS2 follows a modular, layered architecture:
+`QuantRS2` follows a modular, layered architecture:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -227,7 +227,7 @@ QuantRS2 follows a modular, layered architecture:
 | **`quantrs2-anneal`** | Quantum annealing | QUBO/Ising solvers, D-Wave integration |
 | **`quantrs2-tytan`** | High-level annealing DSL | Intuitive problem modeling, auto-compilation |
 | **`quantrs2-symengine`** | Symbolic computation | Parametric gates, symbolic optimization |
-| **`quantrs2-py`** | Python bindings | PyO3-based interoperability with NumPy |
+| **`quantrs2-py`** | Python bindings | PyO3-based interoperability with `NumPy` |
 
 ---
 
@@ -247,8 +247,8 @@ QuantRS2 follows a modular, layered architecture:
 | Provider | Access Method | Supported Devices | Authentication |
 |----------|---------------|-------------------|----------------|
 | **IBM Quantum** | REST API + WebSocket | 100+ qubits (various topologies) | API Token |
-| **Azure Quantum** | Azure SDK | IonQ, Rigetti, Honeywell | Azure Credentials |
-| **AWS Braket** | Boto3 | IonQ, Rigetti, Oxford | AWS IAM |
+| **Azure Quantum** | Azure SDK | `IonQ`, Rigetti, Honeywell | Azure Credentials |
+| **AWS Braket** | Boto3 | `IonQ`, Rigetti, Oxford | AWS IAM |
 
 ---
 
@@ -256,7 +256,7 @@ QuantRS2 follows a modular, layered architecture:
 
 ### Automatic Differentiation for Variational Algorithms
 
-QuantRS2 integrates with SciRS2's automatic differentiation engine for efficient gradient computation:
+`QuantRS2` integrates with `SciRS2`'s automatic differentiation engine for efficient gradient computation:
 
 ```rust,ignore
 // Define parametrized quantum circuit
@@ -319,9 +319,9 @@ let result = simulator.run(&circuit, 1000)?;
 
 ## 🔧 Dependencies and Integration
 
-### SciRS2 Foundation
+### `SciRS2` Foundation
 
-QuantRS2 is built on the [SciRS2 scientific computing ecosystem](https://github.com/cool-japan/scirs):
+`QuantRS2` is built on the [SciRS2 scientific computing ecosystem](https://github.com/cool-japan/scirs):
 
 - **`scirs2-core`**: Complex numbers, random number generation, SIMD operations
 - **`scirs2-linalg`**: Unitary matrix operations, eigenvalue solvers
@@ -331,11 +331,11 @@ QuantRS2 is built on the [SciRS2 scientific computing ecosystem](https://github.
 - **`scirs2-sparse`**: Sparse matrix operations for large Hamiltonians
 - **`scirs2-neural`**: Neural network primitives for quantum ML
 
-**Important**: QuantRS2 follows strict SciRS2 integration policies. All array operations use
+**Important**: `QuantRS2` follows strict `SciRS2` integration policies. All array operations use
 `scirs2_core::ndarray`, all complex numbers use `scirs2_core::{Complex64, Complex32}`, and all
 random number generation uses `scirs2_core::random`. See [`SCIRS2_INTEGRATION_POLICY.md`](https://github.com/cool-japan/quantrs/blob/master/SCIRS2_INTEGRATION_POLICY.md) for details.
 
-### OptiRS Integration
+### `OptiRS` Integration
 
 Advanced optimization algorithms from [OptiRS](https://github.com/cool-japan/optirs):
 
@@ -429,13 +429,13 @@ assert_eq!(alice_key, bob_key);
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| **Linux (x86_64)** | ✅ Full Support | Recommended for production |
+| **Linux (`x86_64`)** | ✅ Full Support | Recommended for production |
 | **macOS (Intel)** | ✅ Full Support | Native performance |
 | **macOS (Apple Silicon)** | ✅ Full Support | Optimized for M-series chips |
-| **Windows (x86_64)** | ✅ Full Support | Requires MSVC toolchain |
+| **Windows (`x86_64`)** | ✅ Full Support | Requires MSVC toolchain |
 | **WebAssembly** | 🚧 Experimental | Limited feature set |
 | **CUDA (NVIDIA GPUs)** | ✅ Full Support | Requires CUDA 11.8+ |
-| **OpenCL** | 🚧 Experimental | Limited backend support |
+| **`OpenCL`** | 🚧 Experimental | Limited backend support |
 
 ---
 
@@ -491,7 +491,7 @@ print(result.counts())  # {'00': 501, '11': 499}
 ### Related Projects
 - **SciRS2**: Scientific computing foundation - [github.com/cool-japan/scirs](https://github.com/cool-japan/scirs)
 - **OptiRS**: Advanced optimization algorithms - [github.com/cool-japan/optirs](https://github.com/cool-japan/optirs)
-- **NumRS2**: Numerical computing library - [github.com/cool-japan/numrs](https://github.com/cool-japan/numrs)
+- **`NumRS2`**: Numerical computing library - [github.com/cool-japan/numrs](https://github.com/cool-japan/numrs)
 
 ---
 
@@ -524,10 +524,10 @@ at your option.
 
 ### Recent Updates (v0.1.0-beta.2)
 
-- ✨ Refined SciRS2 v0.1.0-beta.3 integration with unified import patterns
+- ✨ Refined `SciRS2` v0.1.0-beta.3 integration with unified import patterns
 - 📚 Comprehensive policy documentation ([SCIRS2_INTEGRATION_POLICY.md](https://github.com/cool-japan/quantrs/blob/master/SCIRS2_INTEGRATION_POLICY.md))
 - 🛠️ Enhanced developer experience with [CLAUDE.md](https://github.com/cool-japan/quantrs/blob/master/CLAUDE.md) development guidelines
-- 🔄 All subcrates updated with consistent SciRS2 usage patterns
+- 🔄 All subcrates updated with consistent `SciRS2` usage patterns
 - 📖 Significantly improved documentation across all modules
 - 🚀 Performance optimizations in state-vector simulator
 - 🐛 Bug fixes in circuit optimization passes
@@ -542,7 +542,7 @@ at your option.
 
 <div align="center">
 
-**Built with ❤️ by the QuantRS2 Contributors**
+**Built with ❤️ by the `QuantRS2` Contributors**
 
 *Empowering quantum computing research and development with Rust's performance and safety.*
 

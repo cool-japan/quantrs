@@ -37,6 +37,7 @@ deprecated = "allow"
 ambiguous_glob_reexports = "allow"
 private_bounds = "allow"
 elided_lifetimes_in_paths = "allow"
+unpredictable_function_pointer_comparisons = "allow"  # Renamed from fn_address_comparisons
 private_interfaces = "allow"
 
 [workspace.lints.clippy]
@@ -49,9 +50,6 @@ cast_sign_loss = "warn"
 cast_possible_wrap = "warn"
 dbg_macro = "warn"
 missing_docs_in_private_items = "allow"
-ambiguous_glob_reexports = "allow"
-unpredictable_function_pointer_comparisons = "allow"  # Renamed from fn_address_comparisons
-elided_lifetimes_in_paths = "allow"
 ptr_eq = "allow"
 
 [workspace.package]

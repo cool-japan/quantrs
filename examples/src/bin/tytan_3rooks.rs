@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Define a 3x3 grid of variables
     let q = symbols_list([3, 3], "q{}_{}").expect("Failed to create symbols");
-    println!("Created symbols:\n{:?}", q);
+    println!("Created symbols:\n{q:?}");
 
     // Constraint 1: Each row must have exactly one rook
     let mut h: Expression = 0.into();
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(h).get_qubo()?;
-    println!("Compiled to QUBO with offset: {}", offset);
+    println!("Compiled to QUBO with offset: {offset}");
 
     // Choose a sampler
     let solver = SASampler::new(Some(42)); // Fixed seed for reproducibility

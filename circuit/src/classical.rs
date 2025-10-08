@@ -40,7 +40,7 @@ pub struct ClassicalBit {
 }
 
 /// Classical values that can be used in conditions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassicalValue {
     /// A single bit value
     Bit(bool),
@@ -80,7 +80,8 @@ pub struct ClassicalCondition {
 
 impl ClassicalCondition {
     /// Create a new equality condition
-    pub fn equals(lhs: ClassicalValue, rhs: ClassicalValue) -> Self {
+    #[must_use] 
+    pub const fn equals(lhs: ClassicalValue, rhs: ClassicalValue) -> Self {
         Self {
             lhs,
             op: ComparisonOp::Equal,
@@ -89,6 +90,7 @@ impl ClassicalCondition {
     }
 
     /// Check if a register equals a specific value
+    #[must_use] 
     pub fn register_equals(register: &str, value: u64) -> Self {
         Self {
             lhs: ClassicalValue::Register(register.to_string()),
@@ -109,6 +111,7 @@ pub struct MeasureOp {
 
 impl MeasureOp {
     /// Create a new measurement operation
+    #[must_use] 
     pub fn new(qubit: QubitId, register: &str, bit_index: usize) -> Self {
         Self {
             qubit,
@@ -175,6 +178,7 @@ pub enum CircuitOp {
 
 impl<const N: usize> ClassicalCircuit<N> {
     /// Create a new circuit with classical control
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             classical_registers: HashMap::new(),
@@ -186,8 +190,7 @@ impl<const N: usize> ClassicalCircuit<N> {
     pub fn add_classical_register(&mut self, name: &str, size: usize) -> QuantRS2Result<()> {
         if self.classical_registers.contains_key(name) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Classical register '{}' already exists",
-                name
+                "Classical register '{name}' already exists"
             )));
         }
 
@@ -218,7 +221,7 @@ impl<const N: usize> ClassicalCircuit<N> {
 
         // Validate classical register
         let creg = self.classical_registers.get(register).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Classical register '{}' not found", register))
+            QuantRS2Error::InvalidInput(format!("Classical register '{register}' not found"))
         })?;
 
         if bit >= creg.size {
@@ -264,8 +267,7 @@ impl<const N: usize> ClassicalCircuit<N> {
     pub fn reset_classical(&mut self, register: &str) -> QuantRS2Result<()> {
         if !self.classical_registers.contains_key(register) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Classical register '{}' not found",
-                register
+                "Classical register '{register}' not found"
             )));
         }
 
@@ -277,6 +279,7 @@ impl<const N: usize> ClassicalCircuit<N> {
     }
 
     /// Get the number of operations
+    #[must_use] 
     pub fn num_operations(&self) -> usize {
         self.operations.len()
     }
@@ -289,6 +292,7 @@ pub struct ClassicalCircuitBuilder<const N: usize> {
 
 impl<const N: usize> ClassicalCircuitBuilder<N> {
     /// Create a new builder
+    #[must_use] 
     pub fn new() -> Self {
         Self {
             circuit: ClassicalCircuit::new(),
@@ -324,6 +328,7 @@ impl<const N: usize> ClassicalCircuitBuilder<N> {
     }
 
     /// Build the circuit
+    #[must_use] 
     pub fn build(self) -> ClassicalCircuit<N> {
         self.circuit
     }

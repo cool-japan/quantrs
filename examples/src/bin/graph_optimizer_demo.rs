@@ -198,7 +198,7 @@ fn dag_analysis_demo() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get topological ordering
     let order = dag.optimized_topological_sort();
-    println!("\nOptimized execution order: {:?}", order);
+    println!("\nOptimized execution order: {order:?}");
 
     println!("✓ DAG ensures correct gate ordering while maximizing parallelism\n");
 
