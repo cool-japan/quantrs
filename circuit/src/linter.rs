@@ -1200,7 +1200,7 @@ pub struct AnalysisScope {
 
 impl<const N: usize> QuantumLinter<N> {
     /// Create a new quantum linter
-    #[must_use] 
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1216,7 +1216,7 @@ impl<const N: usize> QuantumLinter<N> {
     }
 
     /// Create linter with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: LinterConfig) -> Self {
         Self {
             circuit,
@@ -1499,7 +1499,7 @@ impl<const N: usize> QuantumLinter<N> {
 
 impl<const N: usize> PatternDetector<N> {
     /// Create new pattern detector
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: Vec::new(),
@@ -1526,7 +1526,7 @@ impl<const N: usize> PatternDetector<N> {
 
 impl<const N: usize> AntiPatternDetector<N> {
     /// Create new anti-pattern detector
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             antipatterns: Vec::new(),
@@ -1548,7 +1548,7 @@ impl<const N: usize> AntiPatternDetector<N> {
 
 impl<const N: usize> StyleChecker<N> {
     /// Create new style checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -1583,7 +1583,7 @@ impl<const N: usize> StyleChecker<N> {
 
 impl<const N: usize> OptimizationAnalyzer<N> {
     /// Create new optimization analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -1605,7 +1605,7 @@ impl<const N: usize> OptimizationAnalyzer<N> {
 
 impl<const N: usize> ComplexityAnalyzer<N> {
     /// Create new complexity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: Vec::new(),
@@ -1637,7 +1637,7 @@ impl<const N: usize> ComplexityAnalyzer<N> {
 
 impl<const N: usize> BestPracticesChecker<N> {
     /// Create new best practices checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),

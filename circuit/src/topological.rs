@@ -39,7 +39,7 @@ pub enum AnyonType {
 
 impl AnyonType {
     /// Get the quantum dimension of the anyon
-    #[must_use] 
+    #[must_use]
     pub fn quantum_dimension(&self) -> f64 {
         match self {
             Self::Vacuum => 1.0,
@@ -55,13 +55,13 @@ impl AnyonType {
     }
 
     /// Check if this anyon type is Abelian
-    #[must_use] 
+    #[must_use]
     pub const fn is_abelian(&self) -> bool {
         matches!(self, Self::Vacuum)
     }
 
     /// Check if this anyon type supports universal quantum computation
-    #[must_use] 
+    #[must_use]
     pub const fn is_universal(&self) -> bool {
         match self {
             Self::Fibonacci => true,
@@ -96,7 +96,7 @@ pub struct Anyon {
 
 impl Anyon {
     /// Create a new anyon
-    #[must_use] 
+    #[must_use]
     pub const fn new(id: usize, anyon_type: AnyonType, position: (f64, f64)) -> Self {
         Self {
             id,
@@ -107,7 +107,7 @@ impl Anyon {
     }
 
     /// Check if this anyon can fuse with another
-    #[must_use] 
+    #[must_use]
     pub fn can_fuse_with(&self, other: &Self) -> bool {
         // For now, allow fusion between same types or with vacuum
         self.anyon_type == other.anyon_type
@@ -278,7 +278,7 @@ pub struct AnyonModel {
 
 impl AnyonModel {
     /// Create Fibonacci anyon model
-    #[must_use] 
+    #[must_use]
     pub fn fibonacci() -> Self {
         let fusion_rules = vec![(
             AnyonType::Fibonacci,
@@ -302,7 +302,7 @@ impl AnyonModel {
     }
 
     /// Create Ising anyon model
-    #[must_use] 
+    #[must_use]
     pub fn ising() -> Self {
         let fusion_rules = vec![(
             AnyonType::Ising,
@@ -366,7 +366,7 @@ pub struct LayoutOptimizer {
 
 impl TopologicalCompiler {
     /// Create a new topological compiler
-    #[must_use] 
+    #[must_use]
     pub const fn new(anyon_model: AnyonModel) -> Self {
         Self {
             default_anyon_model: anyon_model,
@@ -693,25 +693,37 @@ impl TopologicalCompiler {
     }
 
     /// Optimize for minimum length
-    const fn optimize_for_length(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_length(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement length optimization
         Ok(())
     }
 
     /// Optimize for minimum crossings
-    const fn optimize_for_crossings(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_crossings(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement crossing optimization
         Ok(())
     }
 
     /// Optimize for minimum time
-    const fn optimize_for_time(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_time(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement time optimization
         Ok(())
     }
 
     /// Balanced optimization
-    const fn optimize_balanced(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_balanced(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement balanced optimization
         Ok(())
     }
@@ -730,7 +742,7 @@ pub struct OptimizationStats {
 
 impl TopologicalCircuit {
     /// Calculate the total number of braiding operations
-    #[must_use] 
+    #[must_use]
     pub fn total_braiding_operations(&self) -> usize {
         self.braiding_sequence
             .iter()
@@ -739,13 +751,13 @@ impl TopologicalCircuit {
     }
 
     /// Get the number of anyons
-    #[must_use] 
+    #[must_use]
     pub fn anyon_count(&self) -> usize {
         self.anyons.len()
     }
 
     /// Check if the circuit uses universal anyons
-    #[must_use] 
+    #[must_use]
     pub fn is_universal(&self) -> bool {
         self.anyons
             .values()
@@ -753,7 +765,7 @@ impl TopologicalCircuit {
     }
 
     /// Calculate circuit depth in terms of braiding layers
-    #[must_use] 
+    #[must_use]
     pub fn braiding_depth(&self) -> usize {
         // Simplified depth calculation
         self.braiding_sequence.len()

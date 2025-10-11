@@ -265,7 +265,7 @@ pub enum SuggestionType {
 
 impl SciRS2CircuitAnalyzer {
     /// Create a new analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: AnalyzerConfig::default(),
@@ -274,7 +274,7 @@ impl SciRS2CircuitAnalyzer {
     }
 
     /// Create analyzer with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(config: AnalyzerConfig) -> Self {
         Self {
             config,

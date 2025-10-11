@@ -441,9 +441,7 @@ impl CircuitVisualization {
         // Add qubit labels
         html.push_str("  <div class=\"qc-qubit-labels\">\n");
         for q in 0..self.n_qubits {
-            html.push_str(&format!(
-                "    <div class=\"qc-qubit-label\">q{q}:</div>\n"
-            ));
+            html.push_str(&format!("    <div class=\"qc-qubit-label\">q{q}:</div>\n"));
         }
         html.push_str("  </div>\n");
 
@@ -538,8 +536,8 @@ impl CircuitVisualization {
                             }
 
                             // Add connections between control and target qubits
-                            let min_q = *op.qubits.iter().min().unwrap();
-                            let max_q = *op.qubits.iter().max().unwrap();
+                            let min_q = *op.qubits.iter().min().expect("Failed to find min qubit in circuit visualization (op.qubits should not be empty)");
+                            let max_q = *op.qubits.iter().max().expect("Failed to find max qubit in circuit visualization (op.qubits should not be empty)");
 
                             if op.qubits.len() == 2 && min_q < max_q && (q == min_q || q == max_q) {
                                 let top = if q == min_q { "50%" } else { "0" };

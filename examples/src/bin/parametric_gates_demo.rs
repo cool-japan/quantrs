@@ -1,5 +1,7 @@
 use quantrs2_circuit::prelude::*;
-use quantrs2_core::parametric::{ParametricRotationX, ParametricGate, ParametricRotationY, ParametricU};
+use quantrs2_core::parametric::{
+    ParametricGate, ParametricRotationX, ParametricRotationY, ParametricU,
+};
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
 use scirs2_core::Complex64;

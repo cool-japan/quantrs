@@ -61,7 +61,7 @@ pub struct CircuitDAG {
 
 impl CircuitDAG {
     /// Create a new empty DAG
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -274,7 +274,7 @@ impl CircuitDAG {
     }
 
     /// Topological sort with optimization
-    #[must_use] 
+    #[must_use]
     pub fn optimized_topological_sort(&self) -> Vec<usize> {
         #[cfg(feature = "scirs")]
         {
@@ -433,7 +433,8 @@ impl CircuitDAG {
                 }
 
                 let gate = &self.nodes[gate_id];
-                let gate_qubits: HashSet<_> = gate.qubits.iter().map(quantrs2_core::QubitId::id).collect();
+                let gate_qubits: HashSet<_> =
+                    gate.qubits.iter().map(quantrs2_core::QubitId::id).collect();
 
                 // Check if this gate conflicts with current layer
                 if gate_qubits.is_disjoint(&layer_qubits) {
@@ -488,7 +489,7 @@ pub struct GraphOptimizer {
 
 impl GraphOptimizer {
     /// Create a new graph optimizer
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             merge_threshold: 1e-6,
@@ -569,7 +570,7 @@ impl GraphOptimizer {
     }
 
     /// Optimize gate sequence using commutation rules
-    #[must_use] 
+    #[must_use]
     pub fn optimize_gate_sequence(&self, gates: Vec<GraphGate>) -> Vec<GraphGate> {
         let mut dag = CircuitDAG::new();
 
@@ -638,7 +639,7 @@ impl GraphOptimizer {
     }
 
     /// Merge consecutive single-qubit gates
-    #[must_use] 
+    #[must_use]
     pub fn merge_single_qubit_gates(&self, g1: &GraphGate, g2: &GraphGate) -> Option<GraphGate> {
         // Check if both are single-qubit gates on the same qubit
         if g1.qubits.len() != 1 || g2.qubits.len() != 1 || g1.qubits[0] != g2.qubits[0] {
@@ -777,7 +778,7 @@ pub struct OptimizationStats {
 }
 
 impl OptimizationStats {
-    #[must_use] 
+    #[must_use]
     pub fn improvement_percentage(&self) -> f64 {
         if self.original_gate_count == 0 {
             0.0

@@ -30,11 +30,15 @@ fn main() {
 
     // First, create a test state: |+⟩ = (|0⟩ + |1⟩)/√2
     let mut base_circuit = Circuit::<1>::new();
-    base_circuit.h(0).unwrap();
+    base_circuit
+        .h(0)
+        .expect("Failed to apply H gate for base state");
 
     // Verify the base state is correct
     let ideal_sim = StateVectorSimulator::sequential();
-    let base_state = base_circuit.run(ideal_sim).unwrap();
+    let base_state = base_circuit
+        .run(ideal_sim)
+        .expect("Failed to run base circuit");
     println!("Base state: |+⟩ = (|0⟩ + |1⟩)/√2");
     println!(
         "Probabilities: |0⟩ = {:.6}, |1⟩ = {:.6}\n",
@@ -77,7 +81,9 @@ fn main() {
 fn test_with_bit_flip_error() {
     // Base test state
     let mut base_circuit = Circuit::<1>::new();
-    base_circuit.h(0).unwrap(); // |+⟩ state
+    base_circuit
+        .h(0)
+        .expect("Failed to apply H gate in bit flip test"); // |+⟩ state
 
     // Create a noise model with 100% bit flip probability
     let mut noise_model = NoiseModel::new(false);
@@ -109,7 +115,9 @@ fn test_with_bit_flip_error() {
 fn test_with_phase_flip_error() {
     // Base test state
     let mut base_circuit = Circuit::<1>::new();
-    base_circuit.h(0).unwrap(); // |+⟩ state
+    base_circuit
+        .h(0)
+        .expect("Failed to apply H gate in phase flip test"); // |+⟩ state
 
     // Create a noise model with 100% phase flip probability
     let mut noise_model = NoiseModel::new(false);
@@ -141,7 +149,9 @@ fn test_with_phase_flip_error() {
 fn test_with_arbitrary_errors() {
     // Base test state
     let mut base_circuit = Circuit::<1>::new();
-    base_circuit.h(0).unwrap(); // |+⟩ state
+    base_circuit
+        .h(0)
+        .expect("Failed to apply H gate in arbitrary errors test"); // |+⟩ state
 
     // Create a noise model with depolarizing noise (random X, Y, Z errors)
     let mut noise_model = NoiseModel::new(false);
@@ -197,7 +207,9 @@ fn compare_efficiency() {
 
     // Prepare test circuit
     let mut base_circuit = Circuit::<1>::new();
-    base_circuit.h(0).unwrap();
+    base_circuit
+        .h(0)
+        .expect("Failed to apply H gate in efficiency comparison");
 
     // Measure encoding time for each code
     let base_qubits = vec![QubitId::new(0)];
@@ -281,8 +293,12 @@ fn compare_efficiency() {
 
     println!(
         "- 5-qubit perfect code: {} encoding gates, {} correction gates",
-        encoder.unwrap().num_gates(),
-        decoder.unwrap().num_gates()
+        encoder
+            .expect("Failed to create 5-qubit encoder circuit")
+            .num_gates(),
+        decoder
+            .expect("Failed to create 5-qubit decoder circuit")
+            .num_gates()
     );
 }
 
@@ -294,11 +310,15 @@ fn test_code_with_noise<T: ErrorCorrection>(
 ) {
     // Step 1: Create ideal state for comparison
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_state = base_circuit.run(ideal_sim).unwrap();
+    let ideal_state = base_circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal state circuit");
 
     // Step 2: Run with noise but no error correction
     let noisy_sim = StateVectorSimulator::with_noise(noise_model.clone());
-    let noisy_state = base_circuit.run(noisy_sim).unwrap();
+    let noisy_state = base_circuit
+        .run(noisy_sim)
+        .expect("Failed to run noisy state circuit");
 
     // Step 3: Setup error correction
     let num_qubits = 1 + code.physical_qubits() - 1 + code.physical_qubits(); // logical + ancilla + syndrome
@@ -319,13 +339,19 @@ fn test_code_with_noise<T: ErrorCorrection>(
     let mut encoded_circuit = Circuit::<16>::new();
 
     // Add the base state preparation
-    encoded_circuit.h(base_qubit).unwrap();
+    encoded_circuit
+        .h(base_qubit)
+        .expect("Failed to apply H gate to base qubit");
 
     // Add encoding operations
-    let encoder = code.encode_circuit(&[base_qubit], &ancilla_qubits).unwrap();
+    let encoder = code
+        .encode_circuit(&[base_qubit], &ancilla_qubits)
+        .expect("Failed to create encoder circuit");
     for gate in encoder.gates() {
         // Convert gate reference to concrete gate type for circuit
-        encoded_circuit.add_gate_arc(gate.clone()).unwrap();
+        encoded_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to circuit");
     }
 
     // Step 4: Run the encoded circuit with noise
@@ -333,38 +359,47 @@ fn test_code_with_noise<T: ErrorCorrection>(
         .map(|i| QubitId::new(i as u32))
         .collect::<Vec<_>>();
     let noisy_encoded_sim = StateVectorSimulator::with_noise(noise_model.clone());
-    let noisy_encoded_state = encoded_circuit.run(noisy_encoded_sim).unwrap();
+    let noisy_encoded_state = encoded_circuit
+        .run(noisy_encoded_sim)
+        .expect("Failed to run encoded circuit with noise");
 
     // Step 5: Apply error correction
     let mut correction_circuit = Circuit::<16>::new();
 
     // Add the encoded circuit with noise
     for gate in encoded_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoded gate to correction circuit");
     }
 
     // Add error correction operations
     let correction = code
         .decode_circuit(&encoded_qubits, &syndrome_qubits)
-        .unwrap();
+        .expect("Failed to create correction decoder circuit");
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to circuit");
     }
 
     // Run with error correction
     let corrected_sim = StateVectorSimulator::sequential();
-    let corrected_state = correction_circuit.run(corrected_sim).unwrap();
+    let corrected_state = correction_circuit
+        .run(corrected_sim)
+        .expect("Failed to run correction circuit");
 
     // Step 6: Analyze and compare results
     // Calculate fidelity before and after correction
     let fidelity_before =
-        utils::calculate_fidelity(ideal_state.amplitudes(), noisy_state.amplitudes()).unwrap();
+        utils::calculate_fidelity(ideal_state.amplitudes(), noisy_state.amplitudes())
+            .expect("Failed to calculate fidelity before correction");
 
     // For corrected state, we need to extract the logical qubit state,
     // but this is a simplified approach for demonstration
     let logical_state = extract_logical_state(&corrected_state);
-    let fidelity_after =
-        utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state).unwrap();
+    let fidelity_after = utils::calculate_fidelity(ideal_state.amplitudes(), &logical_state)
+        .expect("Failed to calculate fidelity after correction");
 
     // Print results
     println!("Fidelity before correction: {fidelity_before:.6}");

@@ -14,7 +14,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::{ParallelIterator, IndexedParallelIterator};
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -844,7 +844,10 @@ impl SignalProcessor {
             };
 
             // Apply Hamming window
-            let window = 0.46f64.mul_add(-(2.0 * std::f64::consts::PI * i as f64 / (kernel_size - 1) as f64).cos(), 0.54);
+            let window = 0.46f64.mul_add(
+                -(2.0 * std::f64::consts::PI * i as f64 / (kernel_size - 1) as f64).cos(),
+                0.54,
+            );
             kernel.push(sinc_val * window);
         }
 
@@ -1045,7 +1048,7 @@ pub struct EnhancedPulseController {
 
 impl EnhancedPulseController {
     /// Create a new enhanced pulse controller
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EnhancedPulseConfig) -> Self {
         let signal_processor = Arc::new(SignalProcessor::new());
         let ml_optimizer = if config.enable_ml_optimization {
@@ -1359,7 +1362,10 @@ impl EnhancedPulseController {
 
         // Find highest frequency with significant power
         let power_threshold = 0.01; // 1% of max power
-        let max_power = fft_result.iter().map(scirs2_core::Complex::norm_sqr).fold(0.0, f64::max);
+        let max_power = fft_result
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .fold(0.0, f64::max);
 
         for (i, (freq, power)) in freq_bins.iter().zip(fft_result.iter()).rev().enumerate() {
             if power.norm_sqr() > power_threshold * max_power {
@@ -1430,7 +1436,10 @@ impl EnhancedPulseController {
         })
     }
 
-    const fn set_performance_targets(&self, gate_type: &GateType) -> QuantRS2Result<PerformanceTargets> {
+    const fn set_performance_targets(
+        &self,
+        gate_type: &GateType,
+    ) -> QuantRS2Result<PerformanceTargets> {
         Ok(PerformanceTargets {
             target_fidelity: 0.999,
             max_duration: 50e-9,
@@ -1506,8 +1515,10 @@ impl EnhancedPulseController {
         let mut windowed = samples.to_vec();
 
         for (i, sample) in windowed.iter_mut().enumerate() {
-            let window =
-                0.46f64.mul_add(-(2.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos(), 0.54);
+            let window = 0.46f64.mul_add(
+                -(2.0 * std::f64::consts::PI * i as f64 / (n - 1) as f64).cos(),
+                0.54,
+            );
             *sample *= window;
         }
 

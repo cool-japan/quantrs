@@ -13,7 +13,9 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
-use scirs2_core::parallel_ops::{ParallelIterator, IntoParallelRefIterator, IndexedParallelIterator};
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 // SciRS2 IR Tools Integration (implemented locally until SciRS2 v0.1.0-alpha.6)
 use crate::scirs2_ir_tools::{
     CodeEmitter, CompilationPass, IRBuilder, IROptimizer, IRTransform, IRValidator,
@@ -196,7 +198,7 @@ pub struct EnhancedCrossCompiler {
 
 impl EnhancedCrossCompiler {
     /// Create new enhanced cross-compiler
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EnhancedCrossCompilationConfig) -> Self {
         let buffer_pool = BufferPool::new();
 

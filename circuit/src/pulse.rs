@@ -37,7 +37,7 @@ pub struct Waveform {
 
 impl Waveform {
     /// Create a new waveform
-    #[must_use] 
+    #[must_use]
     pub fn new(samples: Vec<C64>, sample_rate: f64) -> Self {
         let duration = (samples.len() as f64) / sample_rate;
         Self {
@@ -48,7 +48,7 @@ impl Waveform {
     }
 
     /// Create a Gaussian pulse
-    #[must_use] 
+    #[must_use]
     pub fn gaussian(amplitude: f64, sigma: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let center = duration / 2.0;
@@ -64,7 +64,7 @@ impl Waveform {
     }
 
     /// Create a DRAG (Derivative Removal by Adiabatic Gate) pulse
-    #[must_use] 
+    #[must_use]
     pub fn drag(amplitude: f64, sigma: f64, beta: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let center = duration / 2.0;
@@ -83,7 +83,7 @@ impl Waveform {
     }
 
     /// Create a square pulse
-    #[must_use] 
+    #[must_use]
     pub fn square(amplitude: f64, duration: Time, sample_rate: f64) -> Self {
         let n_samples = (duration * sample_rate) as usize;
         let samples = vec![C64::new(amplitude, 0.0); n_samples];
@@ -171,7 +171,7 @@ pub struct PulseSchedule {
 
 impl PulseSchedule {
     /// Create a new empty schedule
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             instructions: Vec::new(),
@@ -277,7 +277,7 @@ pub struct DeviceConfig {
 
 impl DeviceConfig {
     /// Create a default configuration
-    #[must_use] 
+    #[must_use]
     pub fn default_config(num_qubits: usize) -> Self {
         let mut config = Self {
             qubit_frequencies: HashMap::new(),
@@ -289,8 +289,12 @@ impl DeviceConfig {
 
         // Default frequencies around 5 GHz
         for i in 0..num_qubits {
-            config.qubit_frequencies.insert(i, (i as f64).mul_add(0.1, 5.0));
-            config.meas_frequencies.insert(i, (i as f64).mul_add(0.05, 6.5));
+            config
+                .qubit_frequencies
+                .insert(i, (i as f64).mul_add(0.1, 5.0));
+            config
+                .meas_frequencies
+                .insert(i, (i as f64).mul_add(0.05, 6.5));
             config.drive_amplitudes.insert(i, 0.1);
         }
 
@@ -305,7 +309,7 @@ impl DeviceConfig {
 
 impl PulseCompiler {
     /// Create a new pulse compiler
-    #[must_use] 
+    #[must_use]
     pub fn new(device_config: DeviceConfig) -> Self {
         let mut compiler = Self {
             calibrations: HashMap::new(),
@@ -533,7 +537,7 @@ pub struct PulseOptimizer {
 
 impl PulseOptimizer {
     /// Create a new optimizer
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             target_fidelity: 0.999,

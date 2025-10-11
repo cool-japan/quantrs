@@ -48,7 +48,7 @@ pub enum ZXNode {
 }
 
 impl ZXNode {
-    #[must_use] 
+    #[must_use]
     pub const fn id(&self) -> usize {
         match self {
             Self::ZSpider { id, .. } => *id,
@@ -59,7 +59,7 @@ impl ZXNode {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn phase(&self) -> f64 {
         match self {
             Self::ZSpider { phase, .. } => *phase,
@@ -105,7 +105,7 @@ pub struct ZXDiagram {
 
 impl ZXDiagram {
     /// Create a new empty ZX diagram
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -163,7 +163,7 @@ impl ZXDiagram {
     }
 
     /// Get neighbors of a node
-    #[must_use] 
+    #[must_use]
     pub fn neighbors(&self, node_id: usize) -> &[usize] {
         self.adjacency
             .get(&node_id)
@@ -318,7 +318,7 @@ impl ZXDiagram {
     }
 
     /// Calculate the T-count (number of T gates) in the diagram
-    #[must_use] 
+    #[must_use]
     pub fn t_count(&self) -> usize {
         self.nodes
             .values()
@@ -405,7 +405,7 @@ impl Default for ZXOptimizer {
 
 impl ZXOptimizer {
     /// Create a new ZX optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

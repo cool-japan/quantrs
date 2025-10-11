@@ -204,7 +204,9 @@ fn formulate_maxcut_qubo(graph: &Graph) -> (QuboModel, std::collections::HashMap
     // Each variable represents whether the vertex is in set 0 or set 1
     let mut variables = Vec::new();
     for vertex in &graph.vertices {
-        let var = builder.add_variable(vertex.clone()).unwrap();
+        let var = builder.add_variable(vertex.clone()).expect(&format!(
+            "Failed to add variable '{vertex}' to QUBO builder for MaxCut"
+        ));
         variables.push(var);
     }
 
@@ -214,13 +216,23 @@ fn formulate_maxcut_qubo(graph: &Graph) -> (QuboModel, std::collections::HashMap
     //                                    = -w_ij*x_i - w_ij*x_j + 2*w_ij*x_i*x_j
     for &(i, j, weight) in &graph.edges {
         // Add the linear terms
-        builder.minimize_linear(&variables[i], -weight).unwrap();
-        builder.minimize_linear(&variables[j], -weight).unwrap();
+        builder
+            .minimize_linear(&variables[i], -weight)
+            .expect(&format!(
+                "Failed to add linear term for vertex {i} in MaxCut QUBO"
+            ));
+        builder
+            .minimize_linear(&variables[j], -weight)
+            .expect(&format!(
+                "Failed to add linear term for vertex {j} in MaxCut QUBO"
+            ));
 
         // Add the quadratic term
         builder
             .minimize_quadratic(&variables[i], &variables[j], 2.0 * weight)
-            .unwrap();
+            .expect(&format!(
+                "Failed to add quadratic term for edge ({i}, {j}) with weight {weight} in MaxCut QUBO"
+            ));
     }
 
     // Build the QUBO model

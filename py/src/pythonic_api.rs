@@ -449,14 +449,19 @@ impl PyCirqCircuit {
                     "Y" => circuit.y(qubits[0])?,
                     "Z" => circuit.z(qubits[0])?,
                     "CNOT" => circuit.cnot(qubits[0], qubits[1])?,
-                    "RX" => circuit.rx(qubits[0], params.as_ref().unwrap()[0])?,
-                    "RY" => circuit.ry(qubits[0], params.as_ref().unwrap()[0])?,
-                    "RZ" => circuit.rz(qubits[0], params.as_ref().unwrap()[0])?,
-                    _ => {
-                        return Err(PyValueError::new_err(format!(
-                            "Unknown gate: {gate_type}"
-                        )))
-                    }
+                    "RX" => circuit.rx(
+                        qubits[0],
+                        params.as_ref().expect("RX gate requires parameter")[0],
+                    )?,
+                    "RY" => circuit.ry(
+                        qubits[0],
+                        params.as_ref().expect("RY gate requires parameter")[0],
+                    )?,
+                    "RZ" => circuit.rz(
+                        qubits[0],
+                        params.as_ref().expect("RZ gate requires parameter")[0],
+                    )?,
+                    _ => return Err(PyValueError::new_err(format!("Unknown gate: {gate_type}"))),
                 }
             }
         }

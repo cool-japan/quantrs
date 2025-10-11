@@ -32,28 +32,60 @@ fn run_grover_with_noise() {
     let mut circuit = Circuit::<2>::new();
 
     // Initialize in superposition
-    circuit.h(0).unwrap().h(1).unwrap();
+    circuit
+        .h(0)
+        .expect("Failed to apply H gate to qubit 0")
+        .h(1)
+        .expect("Failed to apply H gate to qubit 1");
 
     // Oracle: Mark the |11⟩ state (using a Z gate controlled by both qubits)
     // For a 2-qubit circuit, we can implement this with a CZ gate
-    circuit.x(0).unwrap().x(1).unwrap(); // Flip to |11⟩
-    circuit.h(1).unwrap(); // Prepare for CZ
-    circuit.cnot(0, 1).unwrap(); // CNOT part of CZ
-    circuit.h(1).unwrap(); // Complete CZ
-    circuit.x(0).unwrap().x(1).unwrap(); // Flip back
+    circuit
+        .x(0)
+        .expect("Failed to apply X to qubit 0")
+        .x(1)
+        .expect("Failed to apply X to qubit 1"); // Flip to |11⟩
+    circuit.h(1).expect("Failed to apply H to qubit 1 for CZ"); // Prepare for CZ
+    circuit.cnot(0, 1).expect("Failed to apply CNOT for CZ"); // CNOT part of CZ
+    circuit.h(1).expect("Failed to apply H to complete CZ"); // Complete CZ
+    circuit
+        .x(0)
+        .expect("Failed to apply X to qubit 0 (flip back)")
+        .x(1)
+        .expect("Failed to apply X to qubit 1 (flip back)"); // Flip back
 
     // Amplitude amplification (diffusion operator)
-    circuit.h(0).unwrap().h(1).unwrap(); // H gates
-    circuit.x(0).unwrap().x(1).unwrap(); // X gates
-    circuit.h(1).unwrap(); // H on target for CZ
-    circuit.cnot(0, 1).unwrap(); // CNOT part of CZ
-    circuit.h(1).unwrap(); // Complete CZ
-    circuit.x(0).unwrap().x(1).unwrap(); // X gates
-    circuit.h(0).unwrap().h(1).unwrap(); // H gates
+    circuit
+        .h(0)
+        .expect("Failed to apply H to qubit 0 in diffusion")
+        .h(1)
+        .expect("Failed to apply H to qubit 1 in diffusion"); // H gates
+    circuit
+        .x(0)
+        .expect("Failed to apply X to qubit 0 in diffusion")
+        .x(1)
+        .expect("Failed to apply X to qubit 1 in diffusion"); // X gates
+    circuit.h(1).expect("Failed to apply H for diffusion CZ"); // H on target for CZ
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT in diffusion"); // CNOT part of CZ
+    circuit.h(1).expect("Failed to complete diffusion CZ"); // Complete CZ
+    circuit
+        .x(0)
+        .expect("Failed to apply final X to qubit 0")
+        .x(1)
+        .expect("Failed to apply final X to qubit 1"); // X gates
+    circuit
+        .h(0)
+        .expect("Failed to apply final H to qubit 0")
+        .h(1)
+        .expect("Failed to apply final H to qubit 1"); // H gates
 
     // Run with ideal simulator first
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal Grover circuit");
 
     println!("Ideal Grover result:");
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
@@ -90,7 +122,9 @@ fn run_grover_with_noise() {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let noisy_result = circuit.run(noisy_sim).unwrap();
+    let noisy_result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run Grover circuit with noise");
 
     println!("\nGrover with realistic noise:");
     for (i, amplitude) in noisy_result.amplitudes().iter().enumerate() {
@@ -129,28 +163,38 @@ fn run_qft_with_noise() {
     let mut circuit = Circuit::<3>::new();
 
     // Initialize in a non-trivial state |101⟩
-    circuit.x(0).unwrap();
-    circuit.x(2).unwrap();
+    circuit.x(0).expect("Failed to initialize qubit 0 to |1⟩");
+    circuit.x(2).expect("Failed to initialize qubit 2 to |1⟩");
 
     // Apply QFT
     // QFT on qubit 0
-    circuit.h(0).unwrap();
-    circuit.crz(1, 0, PI / 2.0).unwrap();
-    circuit.crz(2, 0, PI / 4.0).unwrap();
+    circuit.h(0).expect("Failed to apply H to qubit 0 in QFT");
+    circuit
+        .crz(1, 0, PI / 2.0)
+        .expect("Failed to apply CRZ(π/2) in QFT");
+    circuit
+        .crz(2, 0, PI / 4.0)
+        .expect("Failed to apply CRZ(π/4) in QFT");
 
     // QFT on qubit 1
-    circuit.h(1).unwrap();
-    circuit.crz(2, 1, PI / 2.0).unwrap();
+    circuit.h(1).expect("Failed to apply H to qubit 1 in QFT");
+    circuit
+        .crz(2, 1, PI / 2.0)
+        .expect("Failed to apply CRZ(π/2) to qubit 1 in QFT");
 
     // QFT on qubit 2
-    circuit.h(2).unwrap();
+    circuit.h(2).expect("Failed to apply H to qubit 2 in QFT");
 
     // Swap qubits for correct output order
-    circuit.swap(0, 2).unwrap();
+    circuit
+        .swap(0, 2)
+        .expect("Failed to swap qubits for QFT output");
 
     // Run with ideal simulator first
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal QFT circuit");
 
     println!("Ideal QFT result:");
     // Find states with significant probability
@@ -178,7 +222,9 @@ fn run_qft_with_noise() {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let noisy_result = circuit.run(noisy_sim).unwrap();
+    let noisy_result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run QFT circuit with phase damping noise");
 
     println!("\nQFT with phase damping noise:");
     // Find states with significant probability
@@ -204,40 +250,80 @@ fn run_error_correction_code() {
     let mut circuit = Circuit::<3>::new();
 
     // Encode logical |1⟩ state into |111⟩
-    circuit.x(0).unwrap(); // Prepare in |1⟩
-    circuit.cnot(0, 1).unwrap(); // Spread to second qubit
-    circuit.cnot(0, 2).unwrap(); // Spread to third qubit
+    circuit.x(0).expect("Failed to prepare qubit 0 in |1⟩"); // Prepare in |1⟩
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to spread to second qubit"); // Spread to second qubit
+    circuit.cnot(0, 2).expect("Failed to spread to third qubit"); // Spread to third qubit
 
     // Introduce an X error on the second qubit
     println!("Introducing X error on qubit 1");
-    circuit.x(1).unwrap();
+    circuit
+        .x(1)
+        .expect("Failed to introduce X error on qubit 1");
 
     // Error detection and correction
     // Use CNOTs to detect the error syndrome
-    circuit.cnot(0, 1).unwrap(); // Check 0-1 parity
-    circuit.cnot(0, 2).unwrap(); // Check 0-2 parity
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT for parity check"); // Check 0-1 parity
+    circuit
+        .cnot(0, 2)
+        .expect("Failed to apply CNOT for 0-2 parity"); // Check 0-2 parity
 
     // Use Toffoli gate for correction (if both syndrome bits are 1, flip qubit 1)
     // Since Toffoli is not directly supported, we'll use a decomposition
-    circuit.h(1).unwrap();
-    circuit.cnot(2, 1).unwrap();
-    circuit.tdg(1).unwrap();
-    circuit.cnot(0, 1).unwrap();
-    circuit.t(1).unwrap();
-    circuit.cnot(2, 1).unwrap();
-    circuit.tdg(1).unwrap();
-    circuit.cnot(0, 1).unwrap();
-    circuit.t(2).unwrap();
-    circuit.t(1).unwrap();
-    circuit.h(1).unwrap();
-    circuit.cnot(2, 0).unwrap();
-    circuit.t(0).unwrap();
-    circuit.tdg(2).unwrap();
-    circuit.cnot(2, 0).unwrap();
+    circuit
+        .h(1)
+        .expect("Failed to apply H in Toffoli decomposition");
+    circuit
+        .cnot(2, 1)
+        .expect("Failed to apply CNOT in Toffoli decomposition");
+    circuit
+        .tdg(1)
+        .expect("Failed to apply T† in Toffoli decomposition");
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT in Toffoli decomposition");
+    circuit
+        .t(1)
+        .expect("Failed to apply T in Toffoli decomposition");
+    circuit
+        .cnot(2, 1)
+        .expect("Failed to apply CNOT in Toffoli decomposition");
+    circuit
+        .tdg(1)
+        .expect("Failed to apply T† in Toffoli decomposition");
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT in Toffoli decomposition");
+    circuit
+        .t(2)
+        .expect("Failed to apply T to qubit 2 in Toffoli decomposition");
+    circuit
+        .t(1)
+        .expect("Failed to apply T to qubit 1 in Toffoli decomposition");
+    circuit
+        .h(1)
+        .expect("Failed to apply final H in Toffoli decomposition");
+    circuit
+        .cnot(2, 0)
+        .expect("Failed to apply CNOT in Toffoli decomposition");
+    circuit
+        .t(0)
+        .expect("Failed to apply T to qubit 0 in Toffoli decomposition");
+    circuit
+        .tdg(2)
+        .expect("Failed to apply T† to qubit 2 in Toffoli decomposition");
+    circuit
+        .cnot(2, 0)
+        .expect("Failed to complete Toffoli decomposition");
 
     // Run with ideal simulator
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal error correction circuit");
 
     println!("Ideal error correction result:");
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
@@ -260,7 +346,9 @@ fn run_error_correction_code() {
     }
 
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
-    let noisy_result = circuit.run(noisy_sim).unwrap();
+    let noisy_result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run error correction circuit with phase flip noise");
 
     println!("\nError correction with phase flip noise:");
     for (i, amplitude) in noisy_result.amplitudes().iter().enumerate() {
@@ -285,39 +373,63 @@ fn run_variational_circuit() {
 
     // Initial state preparation (all qubits in superposition)
     for i in 0..4 {
-        circuit.h(i).unwrap();
+        circuit
+            .h(i)
+            .expect(&format!("Failed to apply H to qubit {i}"));
     }
 
     // Variational ansatz layer 1 (problem Hamiltonian)
     // ZZ interactions between neighboring qubits
     for i in 0..3 {
-        circuit.cnot(i, i + 1).unwrap();
-        circuit.rz(i + 1, 0.1 * PI).unwrap(); // Interaction strength parameter
-        circuit.cnot(i, i + 1).unwrap();
+        circuit.cnot(i, i + 1).expect(&format!(
+            "Failed to apply CNOT between qubits {i} and {}",
+            i + 1
+        ));
+        circuit
+            .rz(i + 1, 0.1 * PI)
+            .expect(&format!("Failed to apply RZ to qubit {}", i + 1)); // Interaction strength parameter
+        circuit.cnot(i, i + 1).expect(&format!(
+            "Failed to apply second CNOT between qubits {i} and {}",
+            i + 1
+        ));
     }
 
     // Variational ansatz layer 2 (mixer Hamiltonian)
     // X rotations on all qubits
     for i in 0..4 {
-        circuit.rx(i, 0.2 * PI).unwrap(); // Mixing parameter
+        circuit
+            .rx(i, 0.2 * PI)
+            .expect(&format!("Failed to apply RX to qubit {i}")); // Mixing parameter
     }
 
     // Repeat the ansatz (deeper circuit)
     // Layer 3 (problem Hamiltonian again)
     for i in 0..3 {
-        circuit.cnot(i, i + 1).unwrap();
-        circuit.rz(i + 1, 0.3 * PI).unwrap(); // Different parameter
-        circuit.cnot(i, i + 1).unwrap();
+        circuit.cnot(i, i + 1).expect(&format!(
+            "Failed to apply CNOT in layer 3 between qubits {i} and {}",
+            i + 1
+        ));
+        circuit
+            .rz(i + 1, 0.3 * PI)
+            .expect(&format!("Failed to apply RZ in layer 3 to qubit {}", i + 1)); // Different parameter
+        circuit.cnot(i, i + 1).expect(&format!(
+            "Failed to apply second CNOT in layer 3 between qubits {i} and {}",
+            i + 1
+        ));
     }
 
     // Layer 4 (mixer Hamiltonian again)
     for i in 0..4 {
-        circuit.rx(i, 0.4 * PI).unwrap(); // Different parameter
+        circuit
+            .rx(i, 0.4 * PI)
+            .expect(&format!("Failed to apply RX in layer 4 to qubit {i}")); // Different parameter
     }
 
     // Run with ideal simulator
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal variational circuit");
 
     println!("Ideal variational circuit result (top 5 states):");
     // Find top 5 states by probability
@@ -328,7 +440,10 @@ fn run_variational_circuit() {
         .map(|(i, amp)| (i, amp.norm_sqr()))
         .collect();
 
-    probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare probabilities")
+    });
 
     for (i, prob) in probs.iter().take(5) {
         let bits = format!("{:04b}", *i);
@@ -359,7 +474,9 @@ fn run_variational_circuit() {
     }
 
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
-    let noisy_result = circuit.run(noisy_sim).unwrap();
+    let noisy_result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run variational circuit with NISQ noise");
 
     println!("\nVariational circuit with realistic NISQ noise (top 5 states):");
     let mut noisy_probs: Vec<(usize, f64)> = noisy_result
@@ -369,7 +486,10 @@ fn run_variational_circuit() {
         .map(|(i, amp)| (i, amp.norm_sqr()))
         .collect();
 
-    noisy_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    noisy_probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare noisy probabilities")
+    });
 
     for (i, prob) in noisy_probs.iter().take(5) {
         let bits = format!("{:04b}", *i);

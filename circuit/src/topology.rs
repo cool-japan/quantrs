@@ -57,7 +57,7 @@ pub struct TopologicalAnalyzer {
 
 impl TopologicalAnalyzer {
     /// Create a new topological analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             commutation_analyzer: CommutationAnalyzer::new(),
@@ -65,7 +65,7 @@ impl TopologicalAnalyzer {
     }
 
     /// Perform comprehensive topological analysis
-    #[must_use] 
+    #[must_use]
     pub fn analyze<const N: usize>(&self, circuit: &Circuit<N>) -> TopologicalAnalysis {
         let dag = circuit_to_dag(circuit);
 
@@ -107,7 +107,7 @@ impl TopologicalAnalyzer {
     }
 
     /// Perform topological sort with specific strategy
-    #[must_use] 
+    #[must_use]
     pub fn sort_with_strategy<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -359,14 +359,14 @@ impl TopologicalAnalyzer {
     }
 
     /// Find the longest dependency chain in the circuit
-    #[must_use] 
+    #[must_use]
     pub fn find_longest_chain<const N: usize>(&self, circuit: &Circuit<N>) -> Vec<usize> {
         let dag = circuit_to_dag(circuit);
         dag.critical_path()
     }
 
     /// Find independent gate sets
-    #[must_use] 
+    #[must_use]
     pub fn find_independent_sets<const N: usize>(&self, circuit: &Circuit<N>) -> Vec<Vec<usize>> {
         let dag = circuit_to_dag(circuit);
         let nodes = dag.nodes();
@@ -402,7 +402,7 @@ impl TopologicalAnalyzer {
     }
 
     /// Compute the dependency matrix
-    #[must_use] 
+    #[must_use]
     pub fn dependency_matrix<const N: usize>(&self, circuit: &Circuit<N>) -> Vec<Vec<bool>> {
         let dag = circuit_to_dag(circuit);
         let n = dag.nodes().len();
@@ -430,14 +430,14 @@ impl Default for TopologicalAnalyzer {
 /// Extension methods for circuits
 impl<const N: usize> Circuit<N> {
     /// Perform topological analysis
-    #[must_use] 
+    #[must_use]
     pub fn topological_analysis(&self) -> TopologicalAnalysis {
         let analyzer = TopologicalAnalyzer::new();
         analyzer.analyze(self)
     }
 
     /// Get topological order with specific strategy
-    #[must_use] 
+    #[must_use]
     pub fn topological_sort(&self, strategy: TopologicalStrategy) -> Vec<usize> {
         let analyzer = TopologicalAnalyzer::new();
         analyzer.sort_with_strategy(self, strategy)

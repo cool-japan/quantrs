@@ -691,7 +691,8 @@ impl AdvancedMLErrorMitigator {
             ActivationFunction::GELU => {
                 0.5 * x
                     * (1.0
-                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044715 * x.powi(3))).tanh())
+                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044_715 * x.powi(3)))
+                            .tanh())
             }
         }
     }

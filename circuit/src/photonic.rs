@@ -23,7 +23,7 @@ pub struct PhotonicMode {
 }
 
 impl PhotonicMode {
-    #[must_use] 
+    #[must_use]
     pub const fn new(id: u32) -> Self {
         Self {
             id,
@@ -32,13 +32,13 @@ impl PhotonicMode {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_polarization(mut self, polarization: Polarization) -> Self {
         self.polarization = polarization;
         self
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_frequency(mut self, frequency: f64) -> Self {
         self.frequency = Some(frequency);
         self
@@ -111,7 +111,7 @@ pub enum PhotonicGate {
 
 impl PhotonicGate {
     /// Get the modes involved in this gate
-    #[must_use] 
+    #[must_use]
     pub fn modes(&self) -> Vec<PhotonicMode> {
         match self {
             Self::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
@@ -152,7 +152,7 @@ impl PhotonicGate {
     }
 
     /// Get gate name
-    #[must_use] 
+    #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
             Self::BeamSplitter { .. } => "BS",
@@ -223,7 +223,7 @@ pub struct PhotonicCircuit {
 
 impl PhotonicCircuit {
     /// Create a new photonic circuit
-    #[must_use] 
+    #[must_use]
     pub fn new(num_modes: usize) -> Self {
         Self {
             num_modes,
@@ -256,7 +256,7 @@ impl PhotonicCircuit {
     }
 
     /// Get circuit depth (simplified)
-    #[must_use] 
+    #[must_use]
     pub fn depth(&self) -> usize {
         // For photonic circuits, depth is more complex due to parallelism
         // This is a simplified calculation
@@ -294,7 +294,7 @@ pub struct PhotonicCircuitBuilder {
 
 impl PhotonicCircuitBuilder {
     /// Create a new builder
-    #[must_use] 
+    #[must_use]
     pub fn new(num_modes: usize) -> Self {
         Self {
             circuit: PhotonicCircuit::new(num_modes),
@@ -535,7 +535,7 @@ pub enum CVMeasurement {
 
 impl CVCircuit {
     /// Create new CV circuit
-    #[must_use] 
+    #[must_use]
     pub const fn new(num_modes: usize) -> Self {
         Self {
             num_modes,

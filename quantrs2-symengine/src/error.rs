@@ -52,17 +52,11 @@ impl From<quantrs2_symengine_sys::SymEngineError> for SymEngineError {
             quantrs2_symengine_sys::SymEngineError::RuntimeError(msg) => {
                 Self::RuntimeError { message: msg }
             }
-            quantrs2_symengine_sys::SymEngineError::DivisionByZero => {
-                Self::DivisionByZero
-            }
-            quantrs2_symengine_sys::SymEngineError::NotImplemented => {
-                Self::NotImplemented
-            }
+            quantrs2_symengine_sys::SymEngineError::DivisionByZero => Self::DivisionByZero,
+            quantrs2_symengine_sys::SymEngineError::NotImplemented => Self::NotImplemented,
             quantrs2_symengine_sys::SymEngineError::DomainError => Self::DomainError,
             quantrs2_symengine_sys::SymEngineError::ParseError => Self::ParseError,
-            quantrs2_symengine_sys::SymEngineError::Unknown(code) => {
-                Self::Unknown { code }
-            }
+            quantrs2_symengine_sys::SymEngineError::Unknown(code) => Self::Unknown { code },
         }
     }
 }
@@ -83,16 +77,13 @@ impl SymEngineError {
     }
 
     /// Check if this error indicates a critical failure
-    #[must_use] 
+    #[must_use]
     pub const fn is_critical(&self) -> bool {
-        matches!(
-            self,
-            Self::MemoryError | Self::Unknown { .. }
-        )
+        matches!(self, Self::MemoryError | Self::Unknown { .. })
     }
 
     /// Get the error code for this error (compatible with `SymEngine` C API)
-    #[must_use] 
+    #[must_use]
     pub const fn error_code(&self) -> i32 {
         match self {
             Self::NoException => 0,

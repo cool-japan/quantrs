@@ -36,7 +36,7 @@ pub struct CircuitMetrics {
 
 impl CircuitMetrics {
     /// Calculate improvement percentage compared to another metric
-    #[must_use] 
+    #[must_use]
     pub fn improvement_from(&self, other: &Self) -> MetricImprovement {
         MetricImprovement {
             gate_count: Self::percent_change(other.gate_count as f64, self.gate_count as f64),
@@ -77,7 +77,7 @@ pub struct CircuitAnalyzer {
 
 impl CircuitAnalyzer {
     /// Create a new circuit analyzer
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             analyze_parallelism: true,
@@ -171,7 +171,7 @@ impl CircuitAnalyzer {
     }
 
     /// Analyze gate sequence (helper for when we have gate list)
-    #[must_use] 
+    #[must_use]
     pub fn analyze_gates(&self, gates: &[Box<dyn GateOp>], num_qubits: usize) -> CircuitMetrics {
         let mut gate_types = HashMap::new();
         let mut two_qubit_gates = 0;
@@ -304,7 +304,7 @@ pub struct OptimizationReport {
 
 impl OptimizationReport {
     /// Get improvement metrics
-    #[must_use] 
+    #[must_use]
     pub fn improvement(&self) -> MetricImprovement {
         self.final_metrics.improvement_from(&self.initial_metrics)
     }
@@ -351,7 +351,7 @@ impl OptimizationReport {
     }
 
     /// Generate a detailed report as string
-    #[must_use] 
+    #[must_use]
     pub fn detailed_report(&self) -> String {
         let mut report = String::new();
 

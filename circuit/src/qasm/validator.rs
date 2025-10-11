@@ -1,6 +1,9 @@
 //! Validator for `OpenQASM` 3.0 programs
 
-use super::ast::{QasmProgram, Declaration, QasmStatement, QasmGate, Measurement, QubitRef, ClassicalRef, Expression, Literal, BinaryOp, UnaryOp, Condition};
+use super::ast::{
+    BinaryOp, ClassicalRef, Condition, Declaration, Expression, Literal, Measurement, QasmGate,
+    QasmProgram, QasmStatement, QubitRef, UnaryOp,
+};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
@@ -103,7 +106,7 @@ pub struct QasmValidator {
 
 impl QasmValidator {
     /// Create a new validator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut standard_gates = HashMap::new();
 

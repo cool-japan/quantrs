@@ -24,7 +24,10 @@ use std::sync::Arc;
 use std::time::Instant;
 
 // Enhanced SciRS2 imports using available features
-use scirs2_core::{parallel_ops::{IndexedParallelIterator, ParallelIterator}, simd_ops::*};
+use scirs2_core::{
+    parallel_ops::{IndexedParallelIterator, ParallelIterator},
+    simd_ops::*,
+};
 // Re-export Complex64 for public use
 pub use scirs2_core::Complex64;
 
@@ -36,7 +39,7 @@ pub struct SciRSSparseMatrix<T> {
 }
 
 impl<T: Clone> SciRSSparseMatrix<T> {
-    #[must_use] 
+    #[must_use]
     pub const fn new(rows: usize, cols: usize) -> Self {
         Self {
             data: Vec::new(),
@@ -44,7 +47,7 @@ impl<T: Clone> SciRSSparseMatrix<T> {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn identity(size: usize) -> Self
     where
         T: From<f64> + Default,
@@ -60,7 +63,7 @@ impl<T: Clone> SciRSSparseMatrix<T> {
         self.data.push((row, col, value));
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -70,7 +73,7 @@ impl<T: Clone> SciRSSparseMatrix<T> {
 #[derive(Debug, Clone)]
 pub struct SimdOperations;
 impl SimdOperations {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -81,21 +84,21 @@ impl SimdOperations {
     ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
         Ok(SciRSSparseMatrix::new(1, 1))
     }
-    #[must_use] 
+    #[must_use]
     pub fn transpose_simd(
         &self,
         matrix: &SciRSSparseMatrix<Complex64>,
     ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
-    #[must_use] 
+    #[must_use]
     pub fn hermitian_conjugate_simd(
         &self,
         matrix: &SciRSSparseMatrix<Complex64>,
     ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
-    #[must_use] 
+    #[must_use]
     pub const fn matrices_approx_equal(
         &self,
         _a: &SciRSSparseMatrix<Complex64>,
@@ -104,7 +107,7 @@ impl SimdOperations {
     ) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub fn threshold_filter(
         &self,
         matrix: &SciRSSparseMatrix<Complex64>,
@@ -112,11 +115,11 @@ impl SimdOperations {
     ) -> SciRSSparseMatrix<Complex64> {
         matrix.clone()
     }
-    #[must_use] 
+    #[must_use]
     pub const fn is_unitary(&self, _matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn gate_fidelity_simd(
         &self,
         _a: &SciRSSparseMatrix<Complex64>,
@@ -145,15 +148,15 @@ impl SimdOperations {
     ) -> QuantRS2Result<SciRSSparseMatrix<Complex64>> {
         Ok(matrix.clone())
     }
-    #[must_use] 
+    #[must_use]
     pub const fn has_advanced_simd(&self) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn has_gpu_support(&self) -> bool {
         false
     }
-    #[must_use] 
+    #[must_use]
     pub const fn predict_format_performance(
         &self,
         _pattern: &SparsityPattern,
@@ -166,7 +169,7 @@ impl SimdOperations {
 
 pub struct VectorizedOps;
 impl VectorizedOps {
-    #[must_use] 
+    #[must_use]
     pub const fn from_slice(_slice: &[Complex64]) -> Self {
         Self
     }
@@ -175,7 +178,7 @@ impl VectorizedOps {
 
 pub struct BLAS;
 impl BLAS {
-    #[must_use] 
+    #[must_use]
     pub const fn matrix_approx_equal(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
@@ -183,11 +186,11 @@ impl BLAS {
     ) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn condition_number(_matrix: &SciRSSparseMatrix<Complex64>) -> f64 {
         1.0
     }
-    #[must_use] 
+    #[must_use]
     pub fn is_symmetric(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
         // Check if matrix is symmetric (A = A^T)
         if matrix.shape.0 != matrix.shape.1 {
@@ -217,7 +220,7 @@ impl BLAS {
         }
         true
     }
-    #[must_use] 
+    #[must_use]
     pub fn is_hermitian(matrix: &SciRSSparseMatrix<Complex64>, tol: f64) -> bool {
         // Check if matrix is Hermitian (A = A†, conjugate transpose)
         if matrix.shape.0 != matrix.shape.1 {
@@ -248,54 +251,54 @@ impl BLAS {
         }
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn is_positive_definite(_matrix: &SciRSSparseMatrix<Complex64>) -> bool {
         false
     }
-    #[must_use] 
+    #[must_use]
     pub const fn matrix_norm(_matrix: &SciRSSparseMatrix<Complex64>, _norm_type: &str) -> f64 {
         1.0
     }
-    #[must_use] 
+    #[must_use]
     pub const fn numerical_rank(_matrix: &SciRSSparseMatrix<Complex64>, _tol: f64) -> usize {
         1
     }
-    #[must_use] 
+    #[must_use]
     pub const fn spectral_analysis(_matrix: &SciRSSparseMatrix<Complex64>) -> SpectralAnalysis {
         SpectralAnalysis {
             spectral_radius: 1.0,
             eigenvalue_spread: 0.0,
         }
     }
-    #[must_use] 
+    #[must_use]
     pub const fn gate_fidelity(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
         0.99
     }
-    #[must_use] 
+    #[must_use]
     pub const fn trace_distance(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
         0.001
     }
-    #[must_use] 
+    #[must_use]
     pub const fn diamond_distance(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
         0.001
     }
-    #[must_use] 
+    #[must_use]
     pub const fn process_fidelity(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
     ) -> f64 {
         0.99
     }
-    #[must_use] 
+    #[must_use]
     pub const fn error_decomposition(
         _a: &SciRSSparseMatrix<Complex64>,
         _b: &SciRSSparseMatrix<Complex64>,
@@ -321,43 +324,43 @@ impl BLAS {
 
 pub struct SparsityPattern;
 impl SparsityPattern {
-    #[must_use] 
+    #[must_use]
     pub const fn analyze(_matrix: &SciRSSparseMatrix<Complex64>) -> Self {
         Self
     }
-    #[must_use] 
+    #[must_use]
     pub const fn estimate_compression_ratio(&self) -> f64 {
         0.5
     }
-    #[must_use] 
+    #[must_use]
     pub const fn bandwidth(&self) -> usize {
         10
     }
-    #[must_use] 
+    #[must_use]
     pub const fn is_diagonal(&self) -> bool {
         false
     }
-    #[must_use] 
+    #[must_use]
     pub const fn has_block_structure(&self) -> bool {
         false
     }
-    #[must_use] 
+    #[must_use]
     pub const fn is_gpu_suitable(&self) -> bool {
         false
     }
-    #[must_use] 
+    #[must_use]
     pub const fn is_simd_aligned(&self) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn sparsity(&self) -> f64 {
         0.1
     }
-    #[must_use] 
+    #[must_use]
     pub const fn has_row_major_access(&self) -> bool {
         true
     }
-    #[must_use] 
+    #[must_use]
     pub const fn analyze_access_patterns(&self) -> AccessPatterns {
         AccessPatterns
     }
@@ -394,15 +397,15 @@ pub enum SciRSSparseFormat {
 }
 
 impl SciRSSparseFormat {
-    #[must_use] 
+    #[must_use]
     pub const fn adaptive_optimal(_matrix: &SciRSSparseMatrix<Complex64>) -> Self {
         Self::CSR
     }
-    #[must_use] 
+    #[must_use]
     pub const fn gpu_optimized() -> Self {
         Self::CSR
     }
-    #[must_use] 
+    #[must_use]
     pub const fn simd_aligned() -> Self {
         Self::CSR
     }
@@ -410,7 +413,7 @@ impl SciRSSparseFormat {
 
 pub struct ParallelMatrixOps;
 impl ParallelMatrixOps {
-    #[must_use] 
+    #[must_use]
     pub const fn kronecker_product(
         a: &SciRSSparseMatrix<Complex64>,
         b: &SciRSSparseMatrix<Complex64>,
@@ -432,22 +435,22 @@ impl SciRSSparseMatrix<Complex64> {
     pub fn matmul(&self, _other: &Self) -> QuantRS2Result<Self> {
         Ok(self.clone())
     }
-    #[must_use] 
+    #[must_use]
     pub fn transpose_optimized(&self) -> Self {
         self.clone()
     }
-    #[must_use] 
+    #[must_use]
     pub fn hermitian_conjugate(&self) -> Self {
         self.clone()
     }
-    #[must_use] 
+    #[must_use]
     pub fn convert_to_format(&self, _format: SciRSSparseFormat) -> Self {
         self.clone()
     }
     pub fn compress(&self, _level: CompressionLevel) -> QuantRS2Result<Self> {
         Ok(self.clone())
     }
-    #[must_use] 
+    #[must_use]
     pub fn memory_footprint(&self) -> usize {
         self.data.len() * std::mem::size_of::<(usize, usize, Complex64)>()
     }
@@ -503,7 +506,7 @@ pub enum SparseFormat {
 
 impl SparseMatrix {
     /// Create a new sparse matrix with `SciRS2` backend
-    #[must_use] 
+    #[must_use]
     pub fn new(rows: usize, cols: usize, format: SparseFormat) -> Self {
         let inner = SciRSSparseMatrix::new(rows, cols);
         let buffer_pool = Arc::new(quantrs2_core::buffer_pool::BufferPool::new());
@@ -530,7 +533,7 @@ impl SparseMatrix {
     }
 
     /// Create identity matrix with `SciRS2` optimization
-    #[must_use] 
+    #[must_use]
     pub fn identity(size: usize) -> Self {
         let start_time = Instant::now();
         let mut matrix = Self::new(size, size, SparseFormat::DIA);
@@ -544,7 +547,7 @@ impl SparseMatrix {
     }
 
     /// Create zero matrix
-    #[must_use] 
+    #[must_use]
     pub fn zeros(rows: usize, cols: usize) -> Self {
         Self::new(rows, cols, SparseFormat::COO)
     }
@@ -558,13 +561,13 @@ impl SparseMatrix {
     }
 
     /// Get number of non-zero entries
-    #[must_use] 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.inner.nnz()
     }
 
     /// Convert to different sparse format with `SciRS2` optimization
-    #[must_use] 
+    #[must_use]
     pub fn to_format(&self, new_format: SparseFormat) -> Self {
         let start_time = Instant::now();
         let mut new_matrix = self.clone();
@@ -624,7 +627,7 @@ impl SparseMatrix {
     }
 
     /// High-performance tensor product using `SciRS2` parallel operations
-    #[must_use] 
+    #[must_use]
     pub fn kron(&self, other: &Self) -> Self {
         let start_time = Instant::now();
         let new_rows = self.shape.0 * other.shape.0;
@@ -642,7 +645,7 @@ impl SparseMatrix {
     }
 
     /// High-performance transpose using `SciRS2`
-    #[must_use] 
+    #[must_use]
     pub fn transpose(&self) -> Self {
         let start_time = Instant::now();
         let mut result = Self::new(self.shape.1, self.shape.0, self.format.clone());
@@ -662,7 +665,7 @@ impl SparseMatrix {
     }
 
     /// High-performance Hermitian conjugate using `SciRS2`
-    #[must_use] 
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let start_time = Instant::now();
         let mut result = Self::new(self.shape.1, self.shape.0, self.format.clone());
@@ -682,7 +685,7 @@ impl SparseMatrix {
     }
 
     /// Check if matrix is unitary using `SciRS2`'s numerical analysis
-    #[must_use] 
+    #[must_use]
     pub fn is_unitary(&self, tolerance: f64) -> bool {
         if self.shape.0 != self.shape.1 {
             return false;
@@ -726,7 +729,7 @@ impl SparseMatrix {
     }
 
     /// Advanced matrix analysis using `SciRS2` numerical routines
-    #[must_use] 
+    #[must_use]
     pub fn analyze_structure(&self) -> MatrixStructureAnalysis {
         let start_time = Instant::now();
 
@@ -859,7 +862,7 @@ pub struct SparseGate {
 
 impl SparseGate {
     /// Create a new sparse gate
-    #[must_use] 
+    #[must_use]
     pub const fn new(name: String, qubits: Vec<QubitId>, matrix: SparseMatrix) -> Self {
         Self {
             name,
@@ -914,7 +917,7 @@ impl SparseGate {
     }
 
     /// Get gate fidelity with respect to ideal unitary
-    #[must_use] 
+    #[must_use]
     pub const fn fidelity(&self, ideal: &SparseMatrix) -> f64 {
         // Simplified fidelity calculation
         // F = |Tr(U†V)|²/d where d is the dimension
@@ -962,7 +965,7 @@ pub struct LibraryMetrics {
 
 impl SparseGateLibrary {
     /// Create a new gate library
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut library = Self {
             gates: HashMap::new(),
@@ -976,7 +979,7 @@ impl SparseGateLibrary {
     }
 
     /// Create library optimized for specific hardware
-    #[must_use] 
+    #[must_use]
     pub fn new_for_hardware(hardware_spec: HardwareSpecification) -> Self {
         let mut library = Self::new();
 
@@ -1107,7 +1110,7 @@ impl SparseGateLibrary {
     }
 
     /// Get gate matrix by name
-    #[must_use] 
+    #[must_use]
     pub fn get_gate(&self, name: &str) -> Option<&SparseMatrix> {
         self.gates.get(name)
     }
@@ -1234,7 +1237,7 @@ pub struct CircuitToSparseMatrix {
 
 impl CircuitToSparseMatrix {
     /// Create a new converter
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gate_library: Arc::new(SparseGateLibrary::new()),
@@ -1286,7 +1289,7 @@ impl CircuitToSparseMatrix {
     }
 
     /// Get gate library
-    #[must_use] 
+    #[must_use]
     pub fn gate_library(&self) -> &SparseGateLibrary {
         &self.gate_library
     }
@@ -1301,7 +1304,7 @@ pub struct SparseOptimizer {
 
 impl SparseOptimizer {
     /// Create new optimizer with `SciRS2` acceleration
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             simd_ops: Arc::new(SimdOperations::new()),
@@ -1311,7 +1314,7 @@ impl SparseOptimizer {
     }
 
     /// Advanced sparse matrix optimization with `SciRS2`
-    #[must_use] 
+    #[must_use]
     pub fn optimize_sparsity(&self, matrix: &SparseMatrix, threshold: f64) -> SparseMatrix {
         let start_time = Instant::now();
         let mut optimized = matrix.clone();
@@ -1335,7 +1338,7 @@ impl SparseOptimizer {
     }
 
     /// Advanced format optimization using `SciRS2` analysis
-    #[must_use] 
+    #[must_use]
     pub fn find_optimal_format(&self, matrix: &SparseMatrix) -> SparseFormat {
         let analysis = matrix.analyze_structure();
 
@@ -1359,7 +1362,7 @@ impl SparseOptimizer {
     }
 
     /// Comprehensive gate matrix analysis using `SciRS2`
-    #[must_use] 
+    #[must_use]
     pub fn analyze_gate_properties(&self, matrix: &SparseMatrix) -> GateProperties {
         let start_time = Instant::now();
         let structure_analysis = matrix.analyze_structure();
@@ -1405,7 +1408,7 @@ impl SparseOptimizer {
     }
 
     /// Retrieve cached matrix
-    #[must_use] 
+    #[must_use]
     pub fn get_cached_matrix(&self, key: &str) -> Option<&SparseMatrix> {
         self.optimization_cache.get(key)
     }

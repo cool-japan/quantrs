@@ -45,7 +45,7 @@ pub enum PathAlgorithm {
 }
 
 impl PathOptimizer {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             algorithm: PathAlgorithm::Dijkstra,
@@ -53,7 +53,7 @@ impl PathOptimizer {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_algorithm(mut self, algorithm: PathAlgorithm) -> Self {
         self.algorithm = algorithm;
         self
@@ -70,7 +70,7 @@ pub struct ConnectivityAnalyzer {
 }
 
 impl ConnectivityAnalyzer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analysis_depth: 5,
@@ -78,7 +78,7 @@ impl ConnectivityAnalyzer {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_depth(mut self, depth: usize) -> Self {
         self.analysis_depth = depth;
         self
@@ -95,7 +95,7 @@ pub struct GraphOptimizer {
 }
 
 impl GraphOptimizer {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: HashMap::new(),
@@ -103,7 +103,7 @@ impl GraphOptimizer {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn with_config(mut self, key: String, value: f64) -> Self {
         self.config.insert(key, value);
         self
@@ -118,7 +118,7 @@ pub struct BufferPool<T> {
 }
 
 impl<T> BufferPool<T> {
-    #[must_use] 
+    #[must_use]
     pub const fn new(size: usize) -> Self {
         Self {
             size,
@@ -384,7 +384,7 @@ pub struct CostFunctionEvaluator {
 
 impl CostFunctionEvaluator {
     /// Create a new cost function evaluator
-    #[must_use] 
+    #[must_use]
     pub fn new(weights: HashMap<String, f64>) -> Self {
         Self {
             weights,
@@ -394,7 +394,7 @@ impl CostFunctionEvaluator {
     }
 
     /// Evaluate the total cost of a circuit configuration
-    #[must_use] 
+    #[must_use]
     pub fn evaluate_cost(
         &self,
         depth: usize,
@@ -411,7 +411,7 @@ impl CostFunctionEvaluator {
     }
 
     /// Evaluate connectivity quality
-    #[must_use] 
+    #[must_use]
     pub fn evaluate_connectivity(&self, connectivity_matrix: &[Vec<f64>]) -> f64 {
         if connectivity_matrix.is_empty() {
             return 0.0;
@@ -456,7 +456,7 @@ pub struct DeviceTranspiler {
 
 impl DeviceTranspiler {
     /// Create a new device transpiler
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut cost_weights = HashMap::new();
         cost_weights.insert("depth".to_string(), 0.4);
@@ -479,7 +479,7 @@ impl DeviceTranspiler {
     }
 
     /// Create a new device transpiler with `SciRS2` optimization enabled
-    #[must_use] 
+    #[must_use]
     pub fn new_with_scirs2_optimization() -> Self {
         let mut transpiler = Self::new();
 
@@ -831,7 +831,7 @@ impl DeviceTranspiler {
     }
 
     /// Generate optimization report with `SciRS2` insights
-    #[must_use] 
+    #[must_use]
     pub fn generate_scirs2_optimization_report<const N: usize>(
         &self,
         original_circuit: &Circuit<N>,
@@ -916,7 +916,7 @@ impl DeviceTranspiler {
     }
 
     /// Get available hardware devices
-    #[must_use] 
+    #[must_use]
     pub fn available_devices(&self) -> Vec<String> {
         self.hardware_specs.keys().cloned().collect()
     }
@@ -1416,7 +1416,7 @@ impl Default for DeviceTranspiler {
 
 impl HardwareSpec {
     /// Create IBM Quantum device specification
-    #[must_use] 
+    #[must_use]
     pub fn ibm_quantum() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
@@ -1459,7 +1459,7 @@ impl HardwareSpec {
     }
 
     /// Create Google Quantum AI device specification
-    #[must_use] 
+    #[must_use]
     pub fn google_quantum() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
@@ -1502,7 +1502,7 @@ impl HardwareSpec {
     }
 
     /// Create AWS Braket device specification
-    #[must_use] 
+    #[must_use]
     pub fn aws_braket() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(
@@ -1545,7 +1545,7 @@ impl HardwareSpec {
     }
 
     /// Create generic device specification for testing
-    #[must_use] 
+    #[must_use]
     pub fn generic() -> Self {
         let mut single_qubit = HashSet::new();
         single_qubit.extend(

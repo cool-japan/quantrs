@@ -53,7 +53,7 @@ pub use quantrs2_symengine_sys as symengine_sys;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Check if `SymEngine` is properly initialized and available
-#[must_use] 
+#[must_use]
 pub const fn is_available() -> bool {
     // For now, assume it's available if we can link
     true

@@ -30,7 +30,7 @@ pub struct LookaheadConfig {
 
 impl LookaheadConfig {
     /// Create a new lookahead configuration with specified depth
-    #[must_use] 
+    #[must_use]
     pub const fn new(depth: usize) -> Self {
         Self {
             lookahead_depth: depth,
@@ -56,7 +56,7 @@ pub struct LookaheadRouter {
 
 impl LookaheadRouter {
     /// Create a new lookahead router
-    #[must_use] 
+    #[must_use]
     pub const fn new(coupling_map: CouplingMap, config: LookaheadConfig) -> Self {
         Self {
             coupling_map,

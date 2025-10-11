@@ -62,7 +62,7 @@ pub struct GateCancellation {
 }
 
 impl GateCancellation {
-    #[must_use] 
+    #[must_use]
     pub const fn new(aggressive: bool) -> Self {
         Self { aggressive }
     }
@@ -185,7 +185,7 @@ pub struct GateCommutation {
 }
 
 impl GateCommutation {
-    #[must_use] 
+    #[must_use]
     pub fn new(max_lookahead: usize) -> Self {
         Self {
             max_lookahead,
@@ -215,9 +215,7 @@ impl GateCommutation {
             ("RX", "RX") | ("RY", "RY") | ("RZ", "RZ") => true,
 
             // RZ commutes with Z-like gates
-            ("RZ", "Z" | "S" | "T") | ("Z" | "S" | "T", "RZ") => {
-                true
-            }
+            ("RZ", "Z" | "S" | "T") | ("Z" | "S" | "T", "RZ") => true,
 
             _ => false,
         }
@@ -327,7 +325,7 @@ pub struct GateMerging {
 }
 
 impl GateMerging {
-    #[must_use] 
+    #[must_use]
     pub const fn new(merge_rotations: bool, merge_threshold: f64) -> Self {
         Self {
             merge_rotations,
@@ -440,7 +438,7 @@ pub struct RotationMerging {
 }
 
 impl RotationMerging {
-    #[must_use] 
+    #[must_use]
     pub const fn new(tolerance: f64) -> Self {
         Self { tolerance }
     }
@@ -566,7 +564,7 @@ pub struct DecompositionOptimization {
 }
 
 impl DecompositionOptimization {
-    #[must_use] 
+    #[must_use]
     pub const fn new(target_gate_set: HashSet<String>, prefer_native: bool) -> Self {
         Self {
             target_gate_set,
@@ -574,7 +572,7 @@ impl DecompositionOptimization {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let target_gate_set = match hardware {
             "ibm" => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "CNOT", "CZ"]
@@ -698,7 +696,10 @@ impl DecompositionOptimization {
         let target = qubits[2];
 
         // Standard Toffoli decomposition using CNOT and T gates
-        use quantrs2_core::gate::{multi::CNOT, single::{Hadamard, TDagger, T}};
+        use quantrs2_core::gate::{
+            multi::CNOT,
+            single::{Hadamard, TDagger, T},
+        };
 
         gates.push(Box::new(Hadamard { target }));
         gates.push(Box::new(CNOT {
@@ -829,7 +830,10 @@ impl DecompositionOptimization {
 
         // Simplified decomposition - in reality, we'd extract the angle parameter
         // For now, we'll use a generic decomposition with placeholder angles
-        use quantrs2_core::gate::{multi::CNOT, single::{RotationX, RotationY, RotationZ}};
+        use quantrs2_core::gate::{
+            multi::CNOT,
+            single::{RotationX, RotationY, RotationZ},
+        };
 
         match gate.name() {
             "CRX" => {
@@ -895,7 +899,7 @@ pub enum CostTarget {
 }
 
 impl CostBasedOptimization {
-    #[must_use] 
+    #[must_use]
     pub const fn new(target: CostTarget, max_iterations: usize) -> Self {
         Self {
             optimization_target: target,
@@ -947,7 +951,8 @@ impl CostBasedOptimization {
                 let error = self.calculate_total_error(gates);
                 let time = self.calculate_execution_time(gates);
 
-                (0.2 * error).mul_add(1000.0, 0.3f64.mul_add(gate_count, 0.3 * depth)) + 0.2 * time / 1000.0
+                (0.2 * error).mul_add(1000.0, 0.3f64.mul_add(gate_count, 0.3 * depth))
+                    + 0.2 * time / 1000.0
             }
         }
     }
@@ -1118,7 +1123,7 @@ pub struct TwoQubitOptimization {
 }
 
 impl TwoQubitOptimization {
-    #[must_use] 
+    #[must_use]
     pub const fn new(use_kak_decomposition: bool, optimize_cnots: bool) -> Self {
         Self {
             use_kak_decomposition,
@@ -1156,7 +1161,7 @@ pub struct PeepholePattern {
 }
 
 impl PeepholeOptimization {
-    #[must_use] 
+    #[must_use]
     pub fn new(window_size: usize) -> Self {
         let patterns = vec![
             // Pattern: X-Y-X = -Y
@@ -1395,7 +1400,7 @@ pub struct CircuitTemplate {
 }
 
 impl TemplateMatching {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let templates = vec![
             CircuitTemplate {
@@ -1421,7 +1426,7 @@ impl TemplateMatching {
         Self { templates }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn with_templates(templates: Vec<CircuitTemplate>) -> Self {
         Self { templates }
     }
@@ -1687,7 +1692,7 @@ impl TemplateMatching {
     }
 
     /// Create an advanced template matcher with more sophisticated patterns
-    #[must_use] 
+    #[must_use]
     pub fn with_advanced_templates() -> Self {
         let templates = vec![
             // Basis change patterns
@@ -1748,7 +1753,7 @@ impl TemplateMatching {
     }
 
     /// Create a template matcher for specific hardware
-    #[must_use] 
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let templates = match hardware {
             "ibm" => vec![
@@ -1798,7 +1803,7 @@ pub struct RewriteRule {
 }
 
 impl CircuitRewriting {
-    #[must_use] 
+    #[must_use]
     pub const fn new(max_rewrites: usize) -> Self {
         let rules = vec![
             // Add rewrite rules here
@@ -1828,7 +1833,7 @@ impl OptimizationPass for CircuitRewriting {
 
 /// Helper functions for optimization passes
 pub mod utils {
-    use super::{GateOp, OptimizationPass, get_gate_properties, HashMap};
+    use super::{get_gate_properties, GateOp, HashMap, OptimizationPass};
 
     /// Check if two gates cancel each other
     pub fn gates_cancel(gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
@@ -1857,7 +1862,7 @@ pub mod utils {
     }
 
     /// Calculate circuit depth
-    #[must_use] 
+    #[must_use]
     pub fn calculate_depth(gates: &[Box<dyn GateOp>]) -> usize {
         let mut qubit_depths: HashMap<u32, usize> = HashMap::new();
         let mut max_depth = 0;

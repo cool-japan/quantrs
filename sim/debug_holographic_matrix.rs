@@ -1,4 +1,6 @@
-use quantrs2_sim::holographic_quantum_error_correction::{HolographicQECConfig, HolographicCodeType, HolographicQECSimulator};
+use quantrs2_sim::holographic_quantum_error_correction::{
+    HolographicCodeType, HolographicQECConfig, HolographicQECSimulator,
+};
 use scirs2_core::ndarray::Array2;
 use scirs2_core::Complex64;
 
@@ -20,9 +22,7 @@ fn main() {
     let bulk_dim = 1 << 3; // 8
 
     println!("Testing holographic encoding matrix creation...");
-    println!(
-        "Boundary dimension: {boundary_dim}, Bulk dimension: {bulk_dim}"
-    );
+    println!("Boundary dimension: {boundary_dim}, Bulk dimension: {bulk_dim}");
 
     match simulator.create_holographic_encoding_matrix(boundary_dim, bulk_dim) {
         Ok(matrix) => {
@@ -117,9 +117,7 @@ fn main() {
         for j in 0..boundary_dim {
             let rf = simulator.calculate_rindler_factor(i, j);
             let ef = simulator.calculate_entanglement_factor(i, j);
-            println!(
-                "  ({i}, {j}): Rindler={rf:.6}, Entanglement={ef:.6}"
-            );
+            println!("  ({i}, {j}): Rindler={rf:.6}, Entanglement={ef:.6}");
         }
     }
 }

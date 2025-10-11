@@ -363,7 +363,7 @@ pub enum InsightCategory {
 
 impl CircuitBenchmark {
     /// Create a new circuit benchmark suite
-    #[must_use] 
+    #[must_use]
     pub const fn new(config: BenchmarkConfig) -> Self {
         Self {
             config,
@@ -742,7 +742,7 @@ pub struct StatisticalAnalyzer;
 
 impl StatisticalAnalyzer {
     /// Create a new statistical analyzer
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }

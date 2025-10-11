@@ -81,7 +81,11 @@ fn main() -> Result<(), MLError> {
         .map(|(i, c)| (i, c.norm_sqr()))
         .filter(|(_, p)| *p > 1e-6)
         .collect();
-    outcomes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    outcomes.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1).expect(
+            "Failed to compare outcome probabilities (NaN encountered in QCNN forward pass)",
+        )
+    });
 
     println!("\nTop 5 measurement outcomes:");
     for (idx, (state, prob)) in outcomes.iter().take(5).enumerate() {

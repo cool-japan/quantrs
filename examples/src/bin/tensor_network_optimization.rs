@@ -71,9 +71,7 @@ where
     F: Fn(usize, usize) -> Result<Circuit<4>, Box<dyn std::error::Error>>,
 {
     println!("===============================================");
-    println!(
-        "Benchmarking {name} with {num_qubits} qubits, params: {params}"
-    );
+    println!("Benchmarking {name} with {num_qubits} qubits, params: {params}");
     println!("===============================================");
 
     let circuit = match circuit_fn(num_qubits, params) {
@@ -87,14 +85,18 @@ where
     // Standard state vector simulator
     let start = Instant::now();
     let standard_sim = StateVectorSimulator::new();
-    let _standard_result = standard_sim.run(&circuit).unwrap();
+    let _standard_result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with StateVector simulator");
     let standard_duration = start.elapsed();
     println!("StateVector simulator: {standard_duration:?}");
 
     // Tensor network with default strategy
     let start = Instant::now();
     let mut tensor_sim = TensorNetworkSimulator::new(num_qubits);
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with TensorNetwork simulator (default strategy)");
     let tensor_duration = start.elapsed();
     println!("TensorNetwork (default): {tensor_duration:?}");
 
@@ -102,7 +104,9 @@ where
     let start = Instant::now();
     let mut tensor_sim =
         TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy);
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with TensorNetwork simulator (greedy strategy)");
     let greedy_duration = start.elapsed();
     println!("TensorNetwork (greedy): {greedy_duration:?}");
 
@@ -115,7 +119,9 @@ where
         }
         _ => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
     };
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim.run(&circuit).expect(&format!(
+        "Failed to run circuit with TensorNetwork simulator (optimized strategy for {name})"
+    ));
     let optimized_duration = start.elapsed();
     println!("TensorNetwork (optimized): {optimized_duration:?}");
 

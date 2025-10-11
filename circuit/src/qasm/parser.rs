@@ -1,6 +1,10 @@
 //! Parser for `OpenQASM` 3.0
 
-use super::ast::{QasmProgram, Declaration, QasmRegister, GateDefinition, QasmStatement, Measurement, ForLoop, QasmGate, QubitRef, ClassicalRef, Expression, BinaryOp, UnaryOp, Literal, Condition, ComparisonOp};
+use super::ast::{
+    BinaryOp, ClassicalRef, ComparisonOp, Condition, Declaration, Expression, ForLoop,
+    GateDefinition, Literal, Measurement, QasmGate, QasmProgram, QasmRegister, QasmStatement,
+    QubitRef, UnaryOp,
+};
 use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;

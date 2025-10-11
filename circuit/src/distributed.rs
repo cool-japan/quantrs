@@ -720,7 +720,7 @@ pub struct CostInfo {
 
 impl DistributedExecutor {
     /// Create a new distributed executor
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             backends: Vec::new(),
@@ -978,7 +978,7 @@ impl DistributedExecutor {
     }
 
     /// Get system health status
-    #[must_use] 
+    #[must_use]
     pub fn get_health_status(&self) -> SystemHealthStatus {
         let available_backends = self
             .backends

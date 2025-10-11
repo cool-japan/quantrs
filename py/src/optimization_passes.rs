@@ -86,9 +86,7 @@ impl OptimizationGate {
             (Self::SDag(q1), Self::S(q2)) => q1 == q2,
             (Self::T(q1), Self::TDag(q2)) => q1 == q2,
             (Self::TDag(q1), Self::T(q2)) => q1 == q2,
-            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => {
-                c1 == c2 && t1 == t2
-            }
+            (Self::CNOT(c1, t1), Self::CNOT(c2, t2)) => c1 == c2 && t1 == t2,
             (Self::CY(c1, t1), Self::CY(c2, t2)) => c1 == c2 && t1 == t2,
             (Self::CZ(c1, t1), Self::CZ(c2, t2)) => c1 == c2 && t1 == t2,
             (Self::SWAP(q1, q2), Self::SWAP(q3, q4)) => {
@@ -398,11 +396,7 @@ impl PyCircuitTranspiler {
                 "cz" => OptimizationGate::CZ(qubits[0], qubits[1]),
                 "swap" => OptimizationGate::SWAP(qubits[0], qubits[1]),
                 "toffoli" => OptimizationGate::Toffoli(qubits[0], qubits[1], qubits[2]),
-                _ => {
-                    return Err(PyValueError::new_err(format!(
-                        "Unknown gate: {gate_name}"
-                    )))
-                }
+                _ => return Err(PyValueError::new_err(format!("Unknown gate: {gate_name}"))),
             };
 
             context.add_gate(gate);

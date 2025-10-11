@@ -51,12 +51,13 @@ fn discrete_walk_example() {
         let (max_pos, max_prob) = probs
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .max_by(|(_, a), (_, b)| {
+                a.partial_cmp(b)
+                    .expect("Failed to compare probabilities (NaN encountered)")
+            })
+            .expect("Failed to find maximum probability position in quantum walk");
 
-        println!(
-            "  Step {step}: Most probable position = {max_pos} (p = {max_prob:.3})"
-        );
+        println!("  Step {step}: Most probable position = {max_pos} (p = {max_prob:.3})");
     }
 
     // Show final probability distribution
@@ -104,9 +105,7 @@ fn continuous_walk_example() {
 
     // Demonstrate transport probability
     let transport_prob = walk.transport_probability(0, 4, PI);
-    println!(
-        "\nTransport probability from vertex 0 to 4 at t=π: {transport_prob:.3}"
-    );
+    println!("\nTransport probability from vertex 0 to 4 at t=π: {transport_prob:.3}");
     println!();
 }
 
@@ -140,9 +139,7 @@ fn quantum_search_example() {
     let speedup = classical_expected_steps / (steps as f64);
 
     println!("\nComparison with classical search:");
-    println!(
-        "  Classical expected steps: {classical_expected_steps:.1}"
-    );
+    println!("  Classical expected steps: {classical_expected_steps:.1}");
     println!("  Quantum speedup: {speedup:.2}x");
 
     // Show probability distribution at marked vertices
@@ -173,7 +170,7 @@ fn custom_coin_example() {
             Complex64::new(-theta.cos(), 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 coin matrix for custom coin operator");
 
     let custom_coin = CoinOperator::Custom(coin_matrix);
 

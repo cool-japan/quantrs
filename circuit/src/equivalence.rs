@@ -157,7 +157,7 @@ pub struct EquivalenceChecker {
 
 impl EquivalenceChecker {
     /// Create a new equivalence checker with options
-    #[must_use] 
+    #[must_use]
     pub fn new(options: EquivalenceOptions) -> Self {
         let scirs2_analyzer = if options.enable_graph_comparison
             || options.enable_statistical_analysis
@@ -176,13 +176,13 @@ impl EquivalenceChecker {
     }
 
     /// Create a new equivalence checker with default options
-    #[must_use] 
+    #[must_use]
     pub fn default() -> Self {
         Self::new(EquivalenceOptions::default())
     }
 
     /// Create a new equivalence checker with custom `SciRS2` configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_scirs2_config(config: AnalyzerConfig) -> Self {
         let mut options = EquivalenceOptions::default();
         options.scirs2_config = Some(config.clone());
@@ -998,7 +998,11 @@ impl EquivalenceChecker {
         let diff_matrix = unitary1 - unitary2;
 
         // Calculate Frobenius norm
-        let frobenius_norm = diff_matrix.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
+        let frobenius_norm = diff_matrix
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            .sqrt();
 
         // Calculate condition number using SVD approximation
         let condition_number = if self.options.enable_stability_analysis {
@@ -1078,7 +1082,10 @@ impl EquivalenceChecker {
     ) -> f64 {
         let base_tolerance = SCIRS2_DEFAULT_TOLERANCE;
         let size_factor = (matrix_size as f64).sqrt().mul_add(1e-15, 1.0);
-        let condition_factor = (condition_number / 1e12).log10().max(0.0).mul_add(1e-2, 1.0);
+        let condition_factor = (condition_number / 1e12)
+            .log10()
+            .max(0.0)
+            .mul_add(1e-2, 1.0);
         let norm_factor = frobenius_norm.mul_add(1e-3, 1.0);
 
         base_tolerance * size_factor * condition_factor * norm_factor
@@ -1317,7 +1324,11 @@ impl EquivalenceChecker {
             }
 
             // Normalize
-            let norm = new_v.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
+            let norm = new_v
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
             if norm > 0.0 {
                 for x in &mut new_v {
                     *x /= norm;
@@ -1346,7 +1357,11 @@ impl EquivalenceChecker {
         let mut rank = 0;
 
         for row in matrix.rows() {
-            let row_norm = row.iter().map(scirs2_core::Complex::norm_sqr).sum::<f64>().sqrt();
+            let row_norm = row
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
             if row_norm > tolerance {
                 rank += 1;
             }
@@ -1396,7 +1411,7 @@ impl EquivalenceChecker {
 }
 
 /// Quick check if two circuits are structurally identical
-#[must_use] 
+#[must_use]
 pub fn circuits_structurally_equal<const N: usize>(
     circuit1: &Circuit<N>,
     circuit2: &Circuit<N>,

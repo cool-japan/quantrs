@@ -228,7 +228,7 @@ pub struct EntanglementStructure {
 
 impl CircuitSimilarityAnalyzer {
     /// Create a new circuit similarity analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             config,
@@ -239,7 +239,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Create analyzer with default configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_default_config() -> Self {
         Self::new(SimilarityConfig::default())
     }
@@ -253,11 +253,7 @@ impl CircuitSimilarityAnalyzer {
         // Generate unique identifiers for caching
         let id1 = self.generate_circuit_id(circuit1);
         let id2 = self.generate_circuit_id(circuit2);
-        let cache_key = if id1 < id2 {
-            (id1, id2)
-        } else {
-            (id2, id1)
-        };
+        let cache_key = if id1 < id2 { (id1, id2) } else { (id2, id1) };
 
         // Check cache
         if self.config.cache_results {
@@ -308,7 +304,16 @@ impl CircuitSimilarityAnalyzer {
         let topological_similarity = self.compute_topological_similarity(&features1, &features2)?;
 
         // Compute overall similarity using weighted combination
-        let overall_similarity = self.config.weights.topological.mul_add(topological_similarity, self.config.weights.sequence.mul_add(sequence_similarity, self.config.weights.structural.mul_add(structural_similarity, self.config.weights.functional * functional_similarity)));
+        let overall_similarity = self.config.weights.topological.mul_add(
+            topological_similarity,
+            self.config.weights.sequence.mul_add(
+                sequence_similarity,
+                self.config.weights.structural.mul_add(
+                    structural_similarity,
+                    self.config.weights.functional * functional_similarity,
+                ),
+            ),
+        );
 
         let result = CircuitSimilarityMetrics {
             structural_similarity,
@@ -950,7 +955,7 @@ pub struct BatchSimilarityComputer {
 
 impl BatchSimilarityComputer {
     /// Create new batch computer
-    #[must_use] 
+    #[must_use]
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             analyzer: CircuitSimilarityAnalyzer::new(config),

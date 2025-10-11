@@ -32,7 +32,10 @@ fn main() {
 
         // Normalize the state
         let start = Instant::now();
-        normalize_simd(&mut state).unwrap();
+        normalize_simd(&mut state).expect(&format!(
+            "Failed to normalize state vector with {} amplitudes",
+            size
+        ));
         let norm_time = start.elapsed();
         println!("  Normalization time: {norm_time:?}");
 
@@ -74,7 +77,10 @@ fn main() {
             .collect();
 
         let start = Instant::now();
-        let _inner_prod = inner_product(&state, &state2).unwrap();
+        let _inner_prod = inner_product(&state, &state2).expect(&format!(
+            "Failed to compute inner product for state vectors with {} amplitudes",
+            size
+        ));
         let inner_time = start.elapsed();
         println!("  Inner product time: {inner_time:?}");
 
@@ -95,14 +101,15 @@ fn main() {
 
     for chunk in large_state.chunks_mut(chunk_size) {
         // Apply operations to each chunk
-        normalize_simd(chunk).unwrap();
+        normalize_simd(chunk).expect(&format!(
+            "Failed to normalize chunk of {} amplitudes in chunked processing",
+            chunk_size
+        ));
         apply_phase_simd(chunk, 0.1);
     }
 
     let chunked_time = start.elapsed();
-    println!(
-        "Chunked processing of {large_size} amplitudes: {chunked_time:?}"
-    );
+    println!("Chunked processing of {large_size} amplitudes: {chunked_time:?}");
     println!(
         "Average time per chunk: {:?}",
         chunked_time / (large_size / chunk_size) as u32

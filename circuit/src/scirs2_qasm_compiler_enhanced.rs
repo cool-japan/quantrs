@@ -245,7 +245,7 @@ pub struct EnhancedQASMCompiler {
 
 impl EnhancedQASMCompiler {
     /// Create a new enhanced QASM compiler
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EnhancedQASMConfig) -> Self {
         let parser = Arc::new(QASMParser::new(config.base_config.qasm_version));
         let semantic_analyzer = Arc::new(SemanticAnalyzer::new());

@@ -267,7 +267,7 @@ pub struct CircuitValidator {
 
 impl CircuitValidator {
     /// Create a new circuit validator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut validator = Self {
             backend_rules: HashMap::new(),
@@ -285,7 +285,7 @@ impl CircuitValidator {
     }
 
     /// Get available backends for validation
-    #[must_use] 
+    #[must_use]
     pub fn available_backends(&self) -> Vec<String> {
         self.backend_rules.keys().cloned().collect()
     }
@@ -653,7 +653,9 @@ impl CircuitValidator {
                 1 => noise_model
                     .single_qubit_errors
                     .get(gate_name)
-                    .map_or(0.001, |e| e.depolarizing + e.amplitude_damping + e.phase_damping),
+                    .map_or(0.001, |e| {
+                        e.depolarizing + e.amplitude_damping + e.phase_damping
+                    }),
                 2 => noise_model
                     .two_qubit_errors
                     .get(gate_name)
@@ -715,7 +717,7 @@ impl CircuitValidator {
 
 impl ValidationRules {
     /// IBM Quantum validation rules
-    #[must_use] 
+    #[must_use]
     pub fn ibm_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
@@ -775,7 +777,7 @@ impl ValidationRules {
     }
 
     /// Google Quantum AI validation rules
-    #[must_use] 
+    #[must_use]
     pub fn google_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
@@ -835,7 +837,7 @@ impl ValidationRules {
     }
 
     /// AWS Braket validation rules
-    #[must_use] 
+    #[must_use]
     pub fn aws_braket() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
@@ -898,7 +900,7 @@ impl ValidationRules {
     }
 
     /// Simulator validation rules
-    #[must_use] 
+    #[must_use]
     pub fn simulator() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "U"]

@@ -80,7 +80,7 @@ pub struct ClassicalCondition {
 
 impl ClassicalCondition {
     /// Create a new equality condition
-    #[must_use] 
+    #[must_use]
     pub const fn equals(lhs: ClassicalValue, rhs: ClassicalValue) -> Self {
         Self {
             lhs,
@@ -90,7 +90,7 @@ impl ClassicalCondition {
     }
 
     /// Check if a register equals a specific value
-    #[must_use] 
+    #[must_use]
     pub fn register_equals(register: &str, value: u64) -> Self {
         Self {
             lhs: ClassicalValue::Register(register.to_string()),
@@ -111,7 +111,7 @@ pub struct MeasureOp {
 
 impl MeasureOp {
     /// Create a new measurement operation
-    #[must_use] 
+    #[must_use]
     pub fn new(qubit: QubitId, register: &str, bit_index: usize) -> Self {
         Self {
             qubit,
@@ -178,7 +178,7 @@ pub enum CircuitOp {
 
 impl<const N: usize> ClassicalCircuit<N> {
     /// Create a new circuit with classical control
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             classical_registers: HashMap::new(),
@@ -279,7 +279,7 @@ impl<const N: usize> ClassicalCircuit<N> {
     }
 
     /// Get the number of operations
-    #[must_use] 
+    #[must_use]
     pub fn num_operations(&self) -> usize {
         self.operations.len()
     }
@@ -292,7 +292,7 @@ pub struct ClassicalCircuitBuilder<const N: usize> {
 
 impl<const N: usize> ClassicalCircuitBuilder<N> {
     /// Create a new builder
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             circuit: ClassicalCircuit::new(),
@@ -328,7 +328,7 @@ impl<const N: usize> ClassicalCircuitBuilder<N> {
     }
 
     /// Build the circuit
-    #[must_use] 
+    #[must_use]
     pub fn build(self) -> ClassicalCircuit<N> {
         self.circuit
     }

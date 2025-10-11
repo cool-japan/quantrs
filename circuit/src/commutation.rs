@@ -68,7 +68,7 @@ pub struct CommutationRules {
 
 impl CommutationRules {
     /// Create a new commutation rules database with standard rules
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut rules = Self {
             cache: HashMap::new(),
@@ -80,8 +80,8 @@ impl CommutationRules {
 
     /// Initialize standard commutation rules
     fn initialize_standard_rules(&mut self) {
-        use CommutationResult::{Commute, NonCommute, ConditionalCommute};
-        use GateType::{X, Y, Z, H, S, T, Rz, CNOT, CZ, Measure};
+        use CommutationResult::{Commute, ConditionalCommute, NonCommute};
+        use GateType::{Measure, Rz, CNOT, CZ, H, S, T, X, Y, Z};
 
         // Pauli commutation rules
         self.add_rule(X, X, Commute);
@@ -151,7 +151,7 @@ impl CommutationRules {
     }
 
     /// Check if two gate types commute
-    #[must_use] 
+    #[must_use]
     pub fn check_commutation(&self, gate1: &GateType, gate2: &GateType) -> CommutationResult {
         // Check cache first
         if let Some(result) = self.cache.get(&(gate1.clone(), gate2.clone())) {
@@ -183,7 +183,7 @@ pub struct CommutationAnalyzer {
 
 impl CommutationAnalyzer {
     /// Create a new commutation analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: CommutationRules::new(),
@@ -191,7 +191,7 @@ impl CommutationAnalyzer {
     }
 
     /// Create with custom rules
-    #[must_use] 
+    #[must_use]
     pub const fn with_rules(rules: CommutationRules) -> Self {
         Self { rules }
     }
@@ -219,8 +219,16 @@ impl CommutationAnalyzer {
 
     /// Check if two gates commute considering their qubit assignments
     pub fn gates_commute(&self, gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
-        let qubits1: HashSet<_> = gate1.qubits().iter().map(quantrs2_core::QubitId::id).collect();
-        let qubits2: HashSet<_> = gate2.qubits().iter().map(quantrs2_core::QubitId::id).collect();
+        let qubits1: HashSet<_> = gate1
+            .qubits()
+            .iter()
+            .map(quantrs2_core::QubitId::id)
+            .collect();
+        let qubits2: HashSet<_> = gate2
+            .qubits()
+            .iter()
+            .map(quantrs2_core::QubitId::id)
+            .collect();
 
         // Gates on disjoint qubits always commute
         if qubits1.is_disjoint(&qubits2) {
@@ -261,8 +269,16 @@ impl CommutationAnalyzer {
             }
             "Same qubits" => {
                 // Check if gates operate on exactly the same qubits
-                let qubits1: HashSet<_> = gate1.qubits().iter().map(quantrs2_core::QubitId::id).collect();
-                let qubits2: HashSet<_> = gate2.qubits().iter().map(quantrs2_core::QubitId::id).collect();
+                let qubits1: HashSet<_> = gate1
+                    .qubits()
+                    .iter()
+                    .map(quantrs2_core::QubitId::id)
+                    .collect();
+                let qubits2: HashSet<_> = gate2
+                    .qubits()
+                    .iter()
+                    .map(quantrs2_core::QubitId::id)
+                    .collect();
                 qubits1 == qubits2
             }
             _ => false,
@@ -284,7 +300,7 @@ impl CommutationAnalyzer {
     }
 
     /// Build a commutation matrix for a list of gates
-    #[must_use] 
+    #[must_use]
     pub fn build_commutation_matrix(&self, gates: &[Box<dyn GateOp>]) -> Array2<bool> {
         let n = gates.len();
         let mut matrix = Array2::from_elem((n, n), false);
@@ -303,7 +319,7 @@ impl CommutationAnalyzer {
     }
 
     /// Find independent gate sets that can be executed in parallel
-    #[must_use] 
+    #[must_use]
     pub fn find_parallel_sets(&self, gates: &[Box<dyn GateOp>]) -> Vec<Vec<usize>> {
         let n = gates.len();
         let mut remaining: HashSet<usize> = (0..n).collect();
@@ -317,7 +333,11 @@ impl CommutationAnalyzer {
             indices_to_check.sort_unstable(); // Process in order for deterministic results
 
             for idx in indices_to_check {
-                let gate_qubits: HashSet<_> = gates[idx].qubits().iter().map(quantrs2_core::QubitId::id).collect();
+                let gate_qubits: HashSet<_> = gates[idx]
+                    .qubits()
+                    .iter()
+                    .map(quantrs2_core::QubitId::id)
+                    .collect();
 
                 // Check if this gate can be added to current set
                 let can_add = if current_set.is_empty() {

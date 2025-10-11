@@ -184,7 +184,7 @@ pub struct FeatureExtractor {
 
 impl FeatureExtractor {
     /// Create a new feature extractor
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analyzer: SciRS2CircuitAnalyzer::new(),
@@ -449,7 +449,7 @@ pub struct TreeNode {
 
 impl MLCircuitOptimizer {
     /// Create a new ML optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new(strategy: MLStrategy) -> Self {
         Self {
             strategy,
@@ -461,7 +461,7 @@ impl MLCircuitOptimizer {
     }
 
     /// Create optimizer with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(strategy: MLStrategy, config: MLOptimizerConfig) -> Self {
         Self {
             strategy,

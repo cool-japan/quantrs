@@ -501,7 +501,7 @@ pub struct PlatformCharacteristics {
 
 impl ResourceEstimator {
     /// Create a new resource estimator
-    #[must_use] 
+    #[must_use]
     pub fn new(config: ResourceEstimatorConfig) -> Self {
         let scirs2_analyzer = if config.enable_graph_analysis {
             Some(SciRS2CircuitAnalyzer::new())
@@ -521,7 +521,7 @@ impl ResourceEstimator {
     }
 
     /// Create resource estimator with custom `SciRS2` configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_scirs2_config(
         config: ResourceEstimatorConfig,
         scirs2_config: AnalyzerConfig,
@@ -1253,7 +1253,7 @@ impl ResourceEstimator {
         predictions.insert(
             "gates".to_string(),
             ScalingPrediction {
-                problem_sizes: problem_sizes,
+                problem_sizes,
                 predicted_values: gate_predictions,
                 confidence_intervals: gate_confidence,
                 model: "Linear scaling".to_string(),

@@ -111,16 +111,12 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
 
         // Count states with significant probability
         let probabilities = result.probabilities();
-        let significant_states = probabilities
-            .iter()
-            .enumerate()
-            .filter(|(_, &p)| p > 0.01)
-            .collect::<Vec<_>>();
+        let significant_states_count = probabilities.iter().filter(|&&p| p > 0.01).count();
 
         // Print state statistics
         println!(
             "Number of significant states (p > 1%): {}",
-            significant_states.len()
+            significant_states_count
         );
 
         // Calculate fidelity to ideal state (|00000⟩ + |11111⟩)/√2
@@ -132,7 +128,11 @@ fn simulate_with_ibm_noise() -> Result<(), Box<dyn std::error::Error>> {
         println!("Top 5 most probable states:");
         let probabilities = result.probabilities();
         let mut probs = probabilities.iter().enumerate().collect::<Vec<_>>();
-        probs.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+        probs.sort_by(|a, b| {
+            b.1.partial_cmp(a.1).expect(
+                "Failed to compare probabilities (NaN encountered in realistic noise simulation)",
+            )
+        });
 
         for (i, (idx, prob)) in probs.iter().take(5).enumerate() {
             println!("  {}. |{:05b}⟩: {:.6}", i + 1, idx, prob);

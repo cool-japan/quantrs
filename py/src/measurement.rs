@@ -137,7 +137,8 @@ impl PyMeasurementResult {
         let total = self.shots as f64;
 
         for (bitstring, count) in &self.counts {
-            let index = usize::from_str_radix(bitstring, 2).unwrap();
+            let index = usize::from_str_radix(bitstring, 2)
+                .expect("Failed to parse binary bitstring in PyMeasurementResult::mitigate_errors");
             prob_vec[index] = *count as f64 / total;
         }
 
@@ -241,8 +242,8 @@ impl PyStateTomography {
         let mut measurement_data = Vec::new();
         for item in measurements {
             let dict = item.downcast::<PyDict>()?;
-            let basis: String = dict.get_item("basis")?.unwrap().extract()?;
-            let result: PyRef<PyMeasurementResult> = dict.get_item("result")?.unwrap().extract()?;
+            let basis: String = dict.get_item("basis")?.expect("Missing 'basis' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
+            let result: PyRef<PyMeasurementResult> = dict.get_item("result")?.expect("Missing 'result' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
             measurement_data.push((basis, result));
         }
 
@@ -254,7 +255,9 @@ impl PyStateTomography {
             if basis.chars().all(|c| c == 'Z') {
                 // Use Z-basis measurements to estimate diagonal elements
                 for (bitstring, count) in &result.counts {
-                    let idx = usize::from_str_radix(bitstring, 2).unwrap();
+                    let idx = usize::from_str_radix(bitstring, 2).expect(
+                        "Failed to parse binary bitstring in PyStateTomography::reconstruct_state",
+                    );
                     let prob = *count as f64 / result.shots as f64;
                     density_matrix[[idx, idx]] = Complex64::new(prob, 0.0);
                 }
@@ -440,7 +443,11 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(scirs2_core::Complex::norm_sqr).collect();
+        let probs: Vec<f64> = result
+            .amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
 
         // Sample measurements
         for _ in 0..shots {
@@ -479,7 +486,11 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(scirs2_core::Complex::norm_sqr).collect();
+        let probs: Vec<f64> = result
+            .amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
 
         // Sample measurements
         for _ in 0..shots {

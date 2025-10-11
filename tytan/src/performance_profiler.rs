@@ -544,7 +544,7 @@ impl PerformanceProfiler {
         recommendations.sort_by(|a, b| {
             b.estimated_improvement
                 .partial_cmp(&a.estimated_improvement)
-                .unwrap()
+                .expect("Failed to compare estimated improvements in recommendation sorting")
         });
 
         recommendations
@@ -793,7 +793,7 @@ impl PerformanceProfiler {
                 name,
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("Failed to get current system time for profile ID generation")
                     .as_secs()
             ),
             start_time: Instant::now(),
@@ -881,8 +881,11 @@ impl PerformanceProfiler {
         context.profile.end_time = Some(Instant::now());
 
         // Calculate total time
-        context.profile.metrics.time_metrics.total_time =
-            context.profile.end_time.unwrap() - context.profile.start_time;
+        context.profile.metrics.time_metrics.total_time = context
+            .profile
+            .end_time
+            .expect("Profile end_time should be set before calculating total time")
+            - context.profile.start_time;
 
         // Process metrics buffer
         self.process_metrics_buffer(&mut context)?;
@@ -1325,20 +1328,21 @@ impl PerformanceProfiler {
 
         // Profile metadata
         json.push_str("  \"metadata\": {\n");
-        writeln!(&mut json, "    \"id\": \"{}\",", profile.id).unwrap();
+        writeln!(&mut json, "    \"id\": \"{}\",", profile.id)
+            .expect("Failed to write profile ID to JSON report");
         writeln!(
             &mut json,
             "    \"start_time\": {},",
             profile.start_time.elapsed().as_millis()
         )
-        .unwrap();
+        .expect("Failed to write start_time to JSON report");
         if let Some(end_time) = profile.end_time {
             writeln!(
                 &mut json,
                 "    \"end_time\": {},",
                 end_time.elapsed().as_millis()
             )
-            .unwrap();
+            .expect("Failed to write end_time to JSON report");
         }
         json.push_str("    \"duration_ms\": ");
         write!(
@@ -1346,7 +1350,7 @@ impl PerformanceProfiler {
             "{}",
             profile.metrics.time_metrics.total_time.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write duration_ms to JSON report");
         json.push_str("\n  },\n");
 
         // Time metrics
@@ -1356,7 +1360,7 @@ impl PerformanceProfiler {
             "    \"total_time_ms\": {},\n",
             profile.metrics.time_metrics.total_time.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write total_time_ms to JSON report");
         write!(
             &mut json,
             "    \"qubo_generation_ms\": {},\n",
@@ -1366,19 +1370,19 @@ impl PerformanceProfiler {
                 .qubo_generation_time
                 .as_millis()
         )
-        .unwrap();
+        .expect("Failed to write qubo_generation_ms to JSON report");
         write!(
             &mut json,
             "    \"compilation_ms\": {},\n",
             profile.metrics.time_metrics.compilation_time.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write compilation_ms to JSON report");
         write!(
             &mut json,
             "    \"solving_ms\": {},\n",
             profile.metrics.time_metrics.solving_time.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write solving_ms to JSON report");
         write!(
             &mut json,
             "    \"post_processing_ms\": {},\n",
@@ -1388,13 +1392,14 @@ impl PerformanceProfiler {
                 .post_processing_time
                 .as_millis()
         )
-        .unwrap();
+        .expect("Failed to write post_processing_ms to JSON report");
 
         // Function times
         json.push_str("    \"function_times\": {\n");
         let func_entries: Vec<_> = profile.metrics.time_metrics.function_times.iter().collect();
         for (i, (func, time)) in func_entries.iter().enumerate() {
-            write!(&mut json, "      \"{}\": {}", func, time.as_millis()).unwrap();
+            write!(&mut json, "      \"{}\": {}", func, time.as_millis())
+                .expect("Failed to write function time entry to JSON report");
             if i < func_entries.len() - 1 {
                 json.push(',');
             }
@@ -1409,31 +1414,31 @@ impl PerformanceProfiler {
             "      \"p50\": {},\n",
             profile.metrics.time_metrics.percentiles.p50.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write p50 percentile to JSON report");
         write!(
             &mut json,
             "      \"p90\": {},\n",
             profile.metrics.time_metrics.percentiles.p90.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write p90 percentile to JSON report");
         write!(
             &mut json,
             "      \"p95\": {},\n",
             profile.metrics.time_metrics.percentiles.p95.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write p95 percentile to JSON report");
         write!(
             &mut json,
             "      \"p99\": {},\n",
             profile.metrics.time_metrics.percentiles.p99.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write p99 percentile to JSON report");
         write!(
             &mut json,
             "      \"p999\": {}\n",
             profile.metrics.time_metrics.percentiles.p999.as_millis()
         )
-        .unwrap();
+        .expect("Failed to write p999 percentile to JSON report");
         json.push_str("    }\n");
         json.push_str("  },\n");
 
@@ -1444,31 +1449,31 @@ impl PerformanceProfiler {
             "    \"peak_memory_bytes\": {},\n",
             profile.metrics.memory_metrics.peak_memory
         )
-        .unwrap();
+        .expect("Failed to write peak_memory_bytes to JSON report");
         write!(
             &mut json,
             "    \"avg_memory_bytes\": {},\n",
             profile.metrics.memory_metrics.avg_memory
         )
-        .unwrap();
+        .expect("Failed to write avg_memory_bytes to JSON report");
         write!(
             &mut json,
             "    \"allocations\": {},\n",
             profile.metrics.memory_metrics.allocations
         )
-        .unwrap();
+        .expect("Failed to write allocations to JSON report");
         write!(
             &mut json,
             "    \"deallocations\": {},\n",
             profile.metrics.memory_metrics.deallocations
         )
-        .unwrap();
+        .expect("Failed to write deallocations to JSON report");
         write!(
             &mut json,
             "    \"largest_allocation_bytes\": {}\n",
             profile.metrics.memory_metrics.largest_allocation
         )
-        .unwrap();
+        .expect("Failed to write largest_allocation_bytes to JSON report");
         json.push_str("  },\n");
 
         // Computation metrics
@@ -1478,19 +1483,19 @@ impl PerformanceProfiler {
             "    \"flops\": {},\n",
             profile.metrics.computation_metrics.flops
         )
-        .unwrap();
+        .expect("Failed to write flops to JSON report");
         write!(
             &mut json,
             "    \"memory_bandwidth_gbps\": {},\n",
             profile.metrics.computation_metrics.memory_bandwidth
         )
-        .unwrap();
+        .expect("Failed to write memory_bandwidth_gbps to JSON report");
         write!(
             &mut json,
             "    \"cache_hit_rate\": {},\n",
             profile.metrics.computation_metrics.cache_hit_rate
         )
-        .unwrap();
+        .expect("Failed to write cache_hit_rate to JSON report");
         write!(
             &mut json,
             "    \"branch_prediction_accuracy\": {},\n",
@@ -1499,13 +1504,13 @@ impl PerformanceProfiler {
                 .computation_metrics
                 .branch_prediction_accuracy
         )
-        .unwrap();
+        .expect("Failed to write branch_prediction_accuracy to JSON report");
         write!(
             &mut json,
             "    \"vectorization_efficiency\": {}\n",
             profile.metrics.computation_metrics.vectorization_efficiency
         )
-        .unwrap();
+        .expect("Failed to write vectorization_efficiency to JSON report");
         json.push_str("  },\n");
 
         // Quality metrics
@@ -1515,13 +1520,13 @@ impl PerformanceProfiler {
             "    \"convergence_rate\": {},\n",
             profile.metrics.quality_metrics.convergence_rate
         )
-        .unwrap();
+        .expect("Failed to write convergence_rate to JSON report");
         write!(
             &mut json,
             "    \"improvement_per_iteration\": {},\n",
             profile.metrics.quality_metrics.improvement_per_iteration
         )
-        .unwrap();
+        .expect("Failed to write improvement_per_iteration to JSON report");
         write!(
             &mut json,
             "    \"time_to_first_solution_ms\": {},\n",
@@ -1531,7 +1536,7 @@ impl PerformanceProfiler {
                 .time_to_first_solution
                 .as_millis()
         )
-        .unwrap();
+        .expect("Failed to write time_to_first_solution_ms to JSON report");
         write!(
             &mut json,
             "    \"time_to_best_solution_ms\": {},\n",
@@ -1541,7 +1546,7 @@ impl PerformanceProfiler {
                 .time_to_best_solution
                 .as_millis()
         )
-        .unwrap();
+        .expect("Failed to write time_to_best_solution_ms to JSON report");
 
         // Quality timeline
         json.push_str("    \"quality_timeline\": [\n");
@@ -1553,8 +1558,10 @@ impl PerformanceProfiler {
             .enumerate()
         {
             json.push_str("      {\n");
-            writeln!(&mut json, "        \"time_ms\": {},", time.as_millis()).unwrap();
-            write!(&mut json, "        \"quality\": {}\n", quality).unwrap();
+            writeln!(&mut json, "        \"time_ms\": {},", time.as_millis())
+                .expect("Failed to write quality timeline time_ms to JSON report");
+            write!(&mut json, "        \"quality\": {}\n", quality)
+                .expect("Failed to write quality timeline quality value to JSON report");
             json.push_str("      }");
             if i < profile.metrics.quality_metrics.quality_timeline.len() - 1 {
                 json.push(',');
@@ -1569,32 +1576,34 @@ impl PerformanceProfiler {
         json.push_str("    \"nodes\": [\n");
         for (i, node) in profile.call_graph.nodes.iter().enumerate() {
             json.push_str("      {\n");
-            write!(&mut json, "        \"id\": {},\n", node.id).unwrap();
+            write!(&mut json, "        \"id\": {},\n", node.id)
+                .expect("Failed to write call graph node id to JSON report");
             write!(
                 &mut json,
                 "        \"name\": \"{}\",\n",
                 node.name.replace("\"", "\\\"")
             )
-            .unwrap();
+            .expect("Failed to write call graph node name to JSON report");
             write!(
                 &mut json,
                 "        \"total_time_ms\": {},\n",
                 node.total_time.as_millis()
             )
-            .unwrap();
+            .expect("Failed to write call graph node total_time_ms to JSON report");
             write!(
                 &mut json,
                 "        \"self_time_ms\": {},\n",
                 node.self_time.as_millis()
             )
-            .unwrap();
-            write!(&mut json, "        \"call_count\": {},\n", node.call_count).unwrap();
+            .expect("Failed to write call graph node self_time_ms to JSON report");
+            write!(&mut json, "        \"call_count\": {},\n", node.call_count)
+                .expect("Failed to write call graph node call_count to JSON report");
             write!(
                 &mut json,
                 "        \"avg_time_ms\": {}\n",
                 node.avg_time.as_millis()
             )
-            .unwrap();
+            .expect("Failed to write call graph node avg_time_ms to JSON report");
             json.push_str("      }");
             if i < profile.call_graph.nodes.len() - 1 {
                 json.push(',');
@@ -1606,15 +1615,18 @@ impl PerformanceProfiler {
         json.push_str("    \"edges\": [\n");
         for (i, edge) in profile.call_graph.edges.iter().enumerate() {
             json.push_str("      {\n");
-            write!(&mut json, "        \"from\": {},\n", edge.from).unwrap();
-            write!(&mut json, "        \"to\": {},\n", edge.to).unwrap();
-            write!(&mut json, "        \"call_count\": {},\n", edge.call_count).unwrap();
+            write!(&mut json, "        \"from\": {},\n", edge.from)
+                .expect("Failed to write call graph edge from to JSON report");
+            write!(&mut json, "        \"to\": {},\n", edge.to)
+                .expect("Failed to write call graph edge to to JSON report");
+            write!(&mut json, "        \"call_count\": {},\n", edge.call_count)
+                .expect("Failed to write call graph edge call_count to JSON report");
             write!(
                 &mut json,
                 "        \"total_time_ms\": {}\n",
                 edge.total_time.as_millis()
             )
-            .unwrap();
+            .expect("Failed to write call graph edge total_time_ms to JSON report");
             json.push_str("      }");
             if i < profile.call_graph.edges.len() - 1 {
                 json.push(',');
@@ -1631,7 +1643,7 @@ impl PerformanceProfiler {
             "    \"total_events\": {},\n",
             profile.events.len()
         )
-        .unwrap();
+        .expect("Failed to write total_events to JSON report");
 
         // Count events by type
         let mut event_counts = std::collections::BTreeMap::new();
@@ -1651,7 +1663,8 @@ impl PerformanceProfiler {
         json.push_str("    \"event_counts\": {\n");
         let count_entries: Vec<_> = event_counts.iter().collect();
         for (i, (event_type, count)) in count_entries.iter().enumerate() {
-            write!(&mut json, "      \"{}\": {}", event_type, count).unwrap();
+            write!(&mut json, "      \"{}\": {}", event_type, count)
+                .expect("Failed to write event count entry to JSON report");
             if i < count_entries.len() - 1 {
                 json.push(',');
             }
@@ -2029,7 +2042,10 @@ impl PerformanceAnalyzer {
             .map(|n| (n.name.clone(), n.total_time.as_secs_f64() / total_time))
             .collect();
 
-        hot_functions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        hot_functions.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .expect("Failed to compare time percentages in hot function sorting")
+        });
         hot_functions.truncate(10);
 
         hot_functions
@@ -2219,7 +2235,10 @@ impl RealTimeMonitor {
     }
 
     pub fn get_live_metrics(&self) -> LiveMetrics {
-        self.live_metrics.lock().unwrap().clone()
+        self.live_metrics
+            .lock()
+            .expect("Failed to acquire lock on live_metrics for reading")
+            .clone()
     }
 }
 
@@ -2551,7 +2570,7 @@ mod tests {
         let profile = profiler.stop_profile();
         assert!(profile.is_ok());
 
-        let profile = profile.unwrap();
+        let profile = profile.expect("Failed to stop profiling in test_performance_profiler");
         assert!(!profile.events.is_empty());
         assert!(profile.metrics.time_metrics.total_time > Duration::from_secs(0));
 

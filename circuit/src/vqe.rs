@@ -248,7 +248,9 @@ impl<const N: usize> VQECircuit<N> {
         // Build ansatz based on geometric connectivity
         for (i, &(x1, y1, z1)) in geometry.iter().enumerate() {
             for (j, &(x2, y2, z2)) in geometry.iter().enumerate().skip(i + 1) {
-                let distance = (z2 - z1).mul_add(z2 - z1, (y2 - y1).mul_add(y2 - y1, (x2 - x1).powi(2))).sqrt();
+                let distance = (z2 - z1)
+                    .mul_add(z2 - z1, (y2 - y1).mul_add(y2 - y1, (x2 - x1).powi(2)))
+                    .sqrt();
 
                 // Only include interactions within a cutoff distance
                 if distance < 3.0 {
@@ -289,7 +291,7 @@ impl<const N: usize> VQECircuit<N> {
     }
 
     /// Get a parameter by name
-    #[must_use] 
+    #[must_use]
     pub fn get_parameter(&self, name: &str) -> Option<f64> {
         self.parameter_map
             .get(name)
@@ -298,9 +300,10 @@ impl<const N: usize> VQECircuit<N> {
 
     /// Set a parameter by name
     pub fn set_parameter(&mut self, name: &str, value: f64) -> QuantRS2Result<()> {
-        let index = self.parameter_map.get(name).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Parameter '{name}' not found"))
-        })?;
+        let index = self
+            .parameter_map
+            .get(name)
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Parameter '{name}' not found")))?;
 
         self.parameters[*index] = value;
         Ok(())
@@ -349,7 +352,7 @@ impl<const N: usize> VQECircuit<N> {
     }
 
     /// Get the number of parameters
-    #[must_use] 
+    #[must_use]
     pub fn num_parameters(&self) -> usize {
         self.parameters.len()
     }
@@ -357,7 +360,7 @@ impl<const N: usize> VQECircuit<N> {
 
 impl VQEObservable {
     /// Create a new empty observable
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self { terms: Vec::new() }
     }
@@ -368,7 +371,7 @@ impl VQEObservable {
     }
 
     /// Create a Heisenberg model Hamiltonian
-    #[must_use] 
+    #[must_use]
     pub fn heisenberg_model(num_qubits: usize, j_coupling: f64) -> Self {
         let mut observable = Self::new();
 
@@ -394,7 +397,7 @@ impl VQEObservable {
     }
 
     /// Create a transverse field Ising model Hamiltonian
-    #[must_use] 
+    #[must_use]
     pub fn tfim(num_qubits: usize, j_coupling: f64, h_field: f64) -> Self {
         let mut observable = Self::new();
 
@@ -415,7 +418,7 @@ impl VQEObservable {
     }
 
     /// Create a molecular Hamiltonian (simplified version)
-    #[must_use] 
+    #[must_use]
     pub fn molecular_hamiltonian(
         one_body: &[(usize, usize, f64)],
         two_body: &[(usize, usize, usize, usize, f64)],
@@ -490,7 +493,7 @@ pub enum VQEOptimizerType {
 
 impl VQEOptimizer {
     /// Create a new VQE optimizer
-    #[must_use] 
+    #[must_use]
     pub const fn new(optimizer_type: VQEOptimizerType) -> Self {
         Self {
             max_iterations: 1000,

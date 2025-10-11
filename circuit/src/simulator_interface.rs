@@ -394,7 +394,7 @@ impl OptimizationPass for GateFusionPass {
 
 impl CircuitCompiler {
     /// Create a new circuit compiler
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             targets: Vec::new(),
@@ -758,7 +758,7 @@ impl CircuitCompiler {
     }
 
     /// Get compilation statistics
-    #[must_use] 
+    #[must_use]
     pub fn get_stats(&self) -> GlobalCompilationStats {
         self.stats_collector
             .lock()

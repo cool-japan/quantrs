@@ -30,11 +30,21 @@ fn main() {
     let mut circuit = Circuit::<5>::new();
 
     // Add gates that require routing on linear topology
-    circuit.h(QubitId::new(0)).unwrap();
-    circuit.cnot(QubitId::new(0), QubitId::new(2)).unwrap(); // Not connected on linear
-    circuit.cnot(QubitId::new(1), QubitId::new(3)).unwrap(); // Not connected on linear
-    circuit.cnot(QubitId::new(2), QubitId::new(4)).unwrap(); // Not connected on linear
-    circuit.cnot(QubitId::new(0), QubitId::new(4)).unwrap(); // Not connected on linear
+    circuit
+        .h(QubitId::new(0))
+        .expect("Failed to apply H gate to qubit 0 for routing demo");
+    circuit
+        .cnot(QubitId::new(0), QubitId::new(2))
+        .expect("Failed to apply CNOT from qubit 0 to qubit 2 (not connected on linear topology)"); // Not connected on linear
+    circuit
+        .cnot(QubitId::new(1), QubitId::new(3))
+        .expect("Failed to apply CNOT from qubit 1 to qubit 3 (not connected on linear topology)"); // Not connected on linear
+    circuit
+        .cnot(QubitId::new(2), QubitId::new(4))
+        .expect("Failed to apply CNOT from qubit 2 to qubit 4 (not connected on linear topology)"); // Not connected on linear
+    circuit
+        .cnot(QubitId::new(0), QubitId::new(4))
+        .expect("Failed to apply CNOT from qubit 0 to qubit 4 (not connected on linear topology)"); // Not connected on linear
 
     println!("   Circuit with 5 qubits and non-local CNOTs created");
     println!("   Total gates: 5 (1 H + 4 CNOTs)");
@@ -214,9 +224,7 @@ fn main() {
         let grid_swaps = interactions * ((size as f64).sqrt() as usize) / 2;
         let speedup = linear_swaps as f64 / grid_swaps.max(1) as f64;
 
-        println!(
-            "   {size:12} | {linear_swaps:12} | {grid_swaps:10} | {speedup:6.2}x"
-        );
+        println!("   {size:12} | {linear_swaps:12} | {grid_swaps:10} | {speedup:6.2}x");
     }
 
     // 9. Routing optimization tips

@@ -182,7 +182,7 @@ impl BufferManager {
     }
 
     /// Allocate an f64 buffer through the global pool
-    #[must_use] 
+    #[must_use]
     pub fn alloc_f64_buffer(size: usize) -> Vec<f64> {
         Self::instance().lock().unwrap().get_f64_buffer(size)
     }
@@ -193,7 +193,7 @@ impl BufferManager {
     }
 
     /// Allocate a complex buffer through the global pool
-    #[must_use] 
+    #[must_use]
     pub fn alloc_complex_buffer(size: usize) -> Vec<Complex64> {
         Self::instance().lock().unwrap().get_complex_buffer(size)
     }
@@ -207,7 +207,7 @@ impl BufferManager {
     }
 
     /// Allocate a parameter buffer for gate operations
-    #[must_use] 
+    #[must_use]
     pub fn alloc_parameter_buffer(size: usize) -> Vec<f64> {
         Self::instance().lock().unwrap().get_parameter_buffer(size)
     }
@@ -221,7 +221,7 @@ impl BufferManager {
     }
 
     /// Get memory usage statistics
-    #[must_use] 
+    #[must_use]
     pub fn get_memory_stats() -> MemoryStats {
         Self::instance().lock().unwrap().get_stats().clone()
     }
@@ -244,7 +244,7 @@ pub struct ManagedF64Buffer {
 
 impl ManagedF64Buffer {
     /// Create a managed buffer that will be automatically returned to pool
-    #[must_use] 
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             buffer: Some(BufferManager::alloc_f64_buffer(size)),
@@ -257,13 +257,13 @@ impl ManagedF64Buffer {
     }
 
     /// Get immutable access to the buffer
-    #[must_use] 
+    #[must_use]
     pub const fn as_ref(&self) -> &Vec<f64> {
         self.buffer.as_ref().unwrap()
     }
 
     /// Take ownership of the buffer (preventing automatic return)
-    #[must_use] 
+    #[must_use]
     pub fn take(mut self) -> Vec<f64> {
         self.buffer.take().unwrap()
     }
@@ -283,7 +283,7 @@ pub struct ManagedComplexBuffer {
 }
 
 impl ManagedComplexBuffer {
-    #[must_use] 
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             buffer: Some(BufferManager::alloc_complex_buffer(size)),
@@ -294,12 +294,12 @@ impl ManagedComplexBuffer {
         self.buffer.as_mut().unwrap()
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn as_ref(&self) -> &Vec<Complex64> {
         self.buffer.as_ref().unwrap()
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn take(mut self) -> Vec<Complex64> {
         self.buffer.take().unwrap()
     }

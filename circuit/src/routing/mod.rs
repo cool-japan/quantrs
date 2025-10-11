@@ -40,7 +40,7 @@ pub struct CircuitRouter {
 
 impl CircuitRouter {
     /// Create a new router with the specified strategy and coupling map
-    #[must_use] 
+    #[must_use]
     pub const fn new(strategy: RoutingStrategy, coupling_map: CouplingMap) -> Self {
         Self {
             strategy,
@@ -49,7 +49,7 @@ impl CircuitRouter {
     }
 
     /// Create a router for a specific backend
-    #[must_use] 
+    #[must_use]
     pub fn for_backend(backend: &str) -> Self {
         let coupling_map = match backend {
             "ibm_lagos" => CouplingMap::ibm_lagos(),
@@ -110,7 +110,7 @@ impl CircuitRouter {
     }
 
     /// Get the coupling map
-    #[must_use] 
+    #[must_use]
     pub const fn coupling_map(&self) -> &CouplingMap {
         &self.coupling_map
     }
@@ -118,7 +118,7 @@ impl CircuitRouter {
 
 /// Utilities for analyzing routing complexity
 pub mod analysis {
-    use super::{CouplingMap, Circuit};
+    use super::{Circuit, CouplingMap};
     use crate::dag::{circuit_to_dag, CircuitDag};
 
     /// Analyze routing complexity for a circuit
@@ -127,13 +127,13 @@ pub mod analysis {
     }
 
     impl RoutingAnalyzer {
-        #[must_use] 
+        #[must_use]
         pub const fn new(coupling_map: CouplingMap) -> Self {
             Self { coupling_map }
         }
 
         /// Estimate the number of SWAPs needed
-        #[must_use] 
+        #[must_use]
         pub fn estimate_swaps<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
             let dag = circuit_to_dag(circuit);
             let mut swap_count = 0;
@@ -161,7 +161,7 @@ pub mod analysis {
         }
 
         /// Calculate interaction graph density
-        #[must_use] 
+        #[must_use]
         pub fn interaction_density<const N: usize>(&self, circuit: &Circuit<N>) -> f64 {
             let mut interactions = std::collections::HashSet::new();
 

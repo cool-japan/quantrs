@@ -49,7 +49,7 @@ fn phase_estimation_demo() {
             Complex64::new((angle / 2.0).cos(), (angle / 2.0).sin()),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 unitary matrix for Z-axis rotation in phase estimation");
 
     // Test with different precision levels
     for precision in [3, 4, 5] {
@@ -123,7 +123,7 @@ fn amplitude_estimation_demo() {
             Complex64::new(0.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 state preparation matrix for amplitude estimation");
 
     // Oracle marks state |1⟩
     let oracle = Array2::from_shape_vec(
@@ -135,7 +135,7 @@ fn amplitude_estimation_demo() {
             Complex64::new(1.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 oracle matrix for amplitude estimation (marking state |1⟩)");
 
     println!("State preparation: |ψ⟩ = 0.8|0⟩ + 0.6|1⟩");
     println!("Oracle marks state |1⟩");
@@ -230,18 +230,18 @@ fn multi_amplitude_estimation_demo() {
         oracle[[marked, marked]] = Complex64::new(1.0, 0.0);
     }
 
-    let marked_amplitude =
-        (amplitudes[5].mul_add(amplitudes[5], amplitudes[3].mul_add(amplitudes[3], amplitudes[1].powi(2))) / norm.powi(2))
-            .sqrt();
+    let marked_amplitude = (amplitudes[5].mul_add(
+        amplitudes[5],
+        amplitudes[3].mul_add(amplitudes[3], amplitudes[1].powi(2)),
+    ) / norm.powi(2))
+    .sqrt();
 
     println!("State amplitudes (normalized):");
     for i in 0..n {
         println!("  |{}⟩: {:.3}", i, amplitudes[i] / norm);
     }
     println!("Marked states: 1, 3, 5");
-    println!(
-        "True total amplitude of marked states: {marked_amplitude:.3}"
-    );
+    println!("True total amplitude of marked states: {marked_amplitude:.3}");
 
     let qae = QuantumAmplitudeEstimation::new(state_prep, oracle, 5);
     let estimated = qae.estimate();

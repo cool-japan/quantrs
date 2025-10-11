@@ -48,9 +48,7 @@ impl PyParametricCircuit {
             self.parameters.insert(name.to_string(), value);
             Ok(())
         } else {
-            Err(PyValueError::new_err(format!(
-                "Parameter {name} not found"
-            )))
+            Err(PyValueError::new_err(format!("Parameter {name} not found")))
         }
     }
 

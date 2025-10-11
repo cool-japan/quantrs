@@ -195,7 +195,9 @@ fn formulate_graph_coloring_qubo(
 
         for c in 0..num_colors {
             let var_name = format!("{vertex}_{c}");
-            let var = builder.add_variable(var_name).unwrap();
+            let var = builder.add_variable(var_name.clone()).expect(&format!(
+                "Failed to add variable '{var_name}' for vertex '{vertex}' with color {c}"
+            ));
             color_vars.push(var);
         }
 
@@ -203,11 +205,16 @@ fn formulate_graph_coloring_qubo(
     }
 
     // Set constraint weight
-    builder.set_constraint_weight(5.0).unwrap();
+    builder
+        .set_constraint_weight(5.0)
+        .expect("Failed to set constraint weight for graph coloring QUBO");
 
     // Constraint 1: Each vertex must have exactly one color
-    for vertex_vars in &vertex_color_vars {
-        builder.constrain_one_hot(vertex_vars).unwrap();
+    for (vertex_idx, vertex_vars) in vertex_color_vars.iter().enumerate() {
+        builder.constrain_one_hot(vertex_vars).expect(&format!(
+            "Failed to apply one-hot constraint for vertex {} ({})",
+            vertex_idx, graph.vertices[vertex_idx]
+        ));
     }
 
     // Constraint 2: Adjacent vertices must have different colors
@@ -220,7 +227,10 @@ fn formulate_graph_coloring_qubo(
                     &vertex_color_vars[v2][c],
                     10.0, // High penalty for color conflicts
                 )
-                .unwrap();
+                .expect(&format!(
+                    "Failed to add quadratic penalty for edge ({}, {}) with color {}",
+                    v1, v2, c
+                ));
         }
     }
 

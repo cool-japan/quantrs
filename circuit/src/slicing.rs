@@ -68,7 +68,7 @@ pub struct CircuitSlicer {
 
 impl CircuitSlicer {
     /// Create a new circuit slicer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             commutation_analyzer: CommutationAnalyzer::new(),
@@ -76,7 +76,7 @@ impl CircuitSlicer {
     }
 
     /// Slice a circuit according to the given strategy
-    #[must_use] 
+    #[must_use]
     pub fn slice_circuit<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -114,7 +114,11 @@ impl CircuitSlicer {
         let mut qubit_last_slice: HashMap<u32, usize> = HashMap::new();
 
         for (gate_idx, gate) in circuit.gates().iter().enumerate() {
-            let gate_qubits: HashSet<u32> = gate.qubits().iter().map(quantrs2_core::QubitId::id).collect();
+            let gate_qubits: HashSet<u32> = gate
+                .qubits()
+                .iter()
+                .map(quantrs2_core::QubitId::id)
+                .collect();
 
             // Check if adding this gate would exceed qubit limit
             let combined_qubits: HashSet<u32> =
@@ -190,7 +194,9 @@ impl CircuitSlicer {
             let base_idx = chunk_idx * max_gates;
             for (local_idx, gate) in chunk.iter().enumerate() {
                 slice.gate_indices.push(base_idx + local_idx);
-                slice.qubits.extend(gate.qubits().iter().map(quantrs2_core::QubitId::id));
+                slice
+                    .qubits
+                    .extend(gate.qubits().iter().map(quantrs2_core::QubitId::id));
             }
 
             slices.push(slice);
@@ -262,8 +268,16 @@ impl CircuitSlicer {
 
         for i in 0..n_gates {
             for j in i + 1..n_gates {
-                let qubits_i: HashSet<u32> = gates[i].qubits().iter().map(quantrs2_core::QubitId::id).collect();
-                let qubits_j: HashSet<u32> = gates[j].qubits().iter().map(quantrs2_core::QubitId::id).collect();
+                let qubits_i: HashSet<u32> = gates[i]
+                    .qubits()
+                    .iter()
+                    .map(quantrs2_core::QubitId::id)
+                    .collect();
+                let qubits_j: HashSet<u32> = gates[j]
+                    .qubits()
+                    .iter()
+                    .map(quantrs2_core::QubitId::id)
+                    .collect();
 
                 let shared_qubits = qubits_i.intersection(&qubits_j).count();
                 if shared_qubits > 0 {
@@ -302,9 +316,12 @@ impl CircuitSlicer {
                     // Add to slice if first gate or has affinity
                     if slice.gate_indices.is_empty() || affinity > 0.0 {
                         slice.gate_indices.push(gate_idx);
-                        slice
-                            .qubits
-                            .extend(gates[gate_idx].qubits().iter().map(quantrs2_core::QubitId::id));
+                        slice.qubits.extend(
+                            gates[gate_idx]
+                                .qubits()
+                                .iter()
+                                .map(quantrs2_core::QubitId::id),
+                        );
                         assigned[gate_idx] = true;
 
                         // Limit slice size
@@ -341,9 +358,12 @@ impl CircuitSlicer {
                 }
 
                 slices[best_slice].gate_indices.push(gate_idx);
-                slices[best_slice]
-                    .qubits
-                    .extend(gates[gate_idx].qubits().iter().map(quantrs2_core::QubitId::id));
+                slices[best_slice].qubits.extend(
+                    gates[gate_idx]
+                        .qubits()
+                        .iter()
+                        .map(quantrs2_core::QubitId::id),
+                );
             }
         }
 
@@ -374,7 +394,11 @@ impl CircuitSlicer {
         let mut gate_to_slice: HashMap<usize, usize> = HashMap::new();
 
         for (gate_idx, gate) in gates.iter().enumerate() {
-            let gate_qubits: HashSet<u32> = gate.qubits().iter().map(quantrs2_core::QubitId::id).collect();
+            let gate_qubits: HashSet<u32> = gate
+                .qubits()
+                .iter()
+                .map(quantrs2_core::QubitId::id)
+                .collect();
 
             // Find slices that share qubits with this gate
             let mut connected_slices: Vec<usize> = Vec::new();
@@ -482,14 +506,21 @@ impl CircuitSlicer {
     ) {
         for (gate_idx, gate) in gates.iter().enumerate() {
             let slice_idx = gate_to_slice[&gate_idx];
-            let gate_qubits: HashSet<u32> = gate.qubits().iter().map(quantrs2_core::QubitId::id).collect();
+            let gate_qubits: HashSet<u32> = gate
+                .qubits()
+                .iter()
+                .map(quantrs2_core::QubitId::id)
+                .collect();
 
             // Look for earlier gates on same qubits
             for prev_idx in 0..gate_idx {
                 let prev_slice = gate_to_slice[&prev_idx];
                 if prev_slice != slice_idx {
-                    let prev_qubits: HashSet<u32> =
-                        gates[prev_idx].qubits().iter().map(quantrs2_core::QubitId::id).collect();
+                    let prev_qubits: HashSet<u32> = gates[prev_idx]
+                        .qubits()
+                        .iter()
+                        .map(quantrs2_core::QubitId::id)
+                        .collect();
 
                     if !gate_qubits.is_disjoint(&prev_qubits) {
                         slices[slice_idx].dependencies.insert(prev_slice);
@@ -588,7 +619,7 @@ impl Default for CircuitSlicer {
 /// Extension trait for circuit slicing
 impl<const N: usize> Circuit<N> {
     /// Slice this circuit using the given strategy
-    #[must_use] 
+    #[must_use]
     pub fn slice(&self, strategy: SlicingStrategy) -> SlicingResult {
         let slicer = CircuitSlicer::new();
         slicer.slice_circuit(self, strategy)

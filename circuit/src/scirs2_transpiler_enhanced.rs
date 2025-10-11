@@ -21,7 +21,7 @@ use quantrs2_core::{
     qubit::QubitId,
 };
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::{ParallelIterator, IndexedParallelIterator};
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -804,7 +804,7 @@ pub struct EnhancedTranspiler<const N: usize = 100> {
 
 impl<const N: usize> EnhancedTranspiler<N> {
     /// Create a new enhanced transpiler with advanced `SciRS2` integration
-    #[must_use] 
+    #[must_use]
     pub fn new(config: EnhancedTranspilerConfig) -> Self {
         // Detect platform capabilities for hardware-aware optimization
         let platform_capabilities = Arc::new(PlatformCapabilities::detect());
@@ -1442,7 +1442,10 @@ impl<const N: usize> EnhancedTranspiler<N> {
     }
 
     /// Calculate quality metrics
-    const fn calculate_quality_metrics(&self, circuit: &Circuit<N>) -> QuantRS2Result<QualityMetrics> {
+    const fn calculate_quality_metrics(
+        &self,
+        circuit: &Circuit<N>,
+    ) -> QuantRS2Result<QualityMetrics> {
         Ok(QualityMetrics {
             estimated_fidelity: 0.99,
             gate_overhead: 1.0,

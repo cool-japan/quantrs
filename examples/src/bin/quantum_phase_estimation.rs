@@ -42,9 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Run the Quantum Phase Estimation algorithm without noise
 fn run_ideal_qpe(precision_bits: usize, phase: f64) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "\nRunning ideal QPE with {precision_bits} precision qubits:"
-    );
+    println!("\nRunning ideal QPE with {precision_bits} precision qubits:");
 
     let total_qubits = precision_bits + 1;
     let target_qubit = total_qubits - 1;
@@ -205,7 +203,10 @@ fn analyze_qpe_result(result: &Register<8>, precision_bits: usize, true_phase: f
     }
 
     // Sort by probability in descending order
-    state_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    state_probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare probabilities (NaN encountered in QPE result analysis)")
+    });
 
     // Print the top 5 states (or fewer if there aren't 5)
     for (idx, (state, prob)) in state_probs.iter().take(5).enumerate() {

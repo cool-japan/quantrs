@@ -4,7 +4,11 @@
 
 use crate::builder::Circuit;
 use crate::optimization::cost_model::{CircuitCostExt, CostModel};
-use crate::optimization::passes::{OptimizationPassExt, OptimizationPass, GateCancellation, RotationMerging, GateCommutation, PeepholeOptimization, GateMerging, TemplateMatching, DecompositionOptimization, TwoQubitOptimization, CircuitRewriting, CostBasedOptimization, CostTarget};
+use crate::optimization::passes::{
+    CircuitRewriting, CostBasedOptimization, CostTarget, DecompositionOptimization,
+    GateCancellation, GateCommutation, GateMerging, OptimizationPass, OptimizationPassExt,
+    PeepholeOptimization, RotationMerging, TemplateMatching, TwoQubitOptimization,
+};
 use quantrs2_core::error::QuantRS2Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -63,13 +67,13 @@ pub struct PassManager {
 
 impl PassManager {
     /// Create a new pass manager with default configuration
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self::with_level(OptimizationLevel::Medium)
     }
 
     /// Create a pass manager with a specific optimization level
-    #[must_use] 
+    #[must_use]
     pub fn with_level(level: OptimizationLevel) -> Self {
         let config = PassConfig {
             level,
@@ -86,7 +90,7 @@ impl PassManager {
     }
 
     /// Create a pass manager optimized for specific hardware
-    #[must_use] 
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let mut config = PassConfig {
             level: OptimizationLevel::Medium,
@@ -175,7 +179,7 @@ impl PassManager {
     }
 
     /// Get the list of applied passes
-    #[must_use] 
+    #[must_use]
     pub fn get_applied_passes(&self) -> Vec<String> {
         self.applied_passes.clone()
     }

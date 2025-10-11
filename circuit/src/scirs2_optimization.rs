@@ -265,7 +265,7 @@ pub struct Parameter {
 
 impl QuantumCircuitOptimizer {
     /// Create a new quantum circuit optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new(template: CircuitTemplate, config: OptimizationConfig) -> Self {
         Self {
             circuit_template: template,
@@ -801,13 +801,13 @@ impl QuantumCircuitOptimizer {
     }
 
     /// Get current best parameters
-    #[must_use] 
+    #[must_use]
     pub fn get_best_parameters(&self) -> Option<Vec<f64>> {
         self.best_parameters.lock().unwrap().clone()
     }
 
     /// Get current best value
-    #[must_use] 
+    #[must_use]
     pub fn get_best_value(&self) -> f64 {
         *self.best_value.lock().unwrap()
     }
@@ -845,7 +845,7 @@ pub struct VQEObjective {
 
 impl VQEObjective {
     /// Create new VQE objective
-    #[must_use] 
+    #[must_use]
     pub fn new(hamiltonian: SparseMatrix, circuit_template: CircuitTemplate) -> Self {
         let bounds = circuit_template
             .parameters
@@ -899,7 +899,7 @@ pub struct QAOAObjective {
 
 impl QAOAObjective {
     /// Create new QAOA objective
-    #[must_use] 
+    #[must_use]
     pub fn new(
         problem_hamiltonian: SparseMatrix,
         mixer_hamiltonian: SparseMatrix,

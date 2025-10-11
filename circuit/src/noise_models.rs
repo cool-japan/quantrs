@@ -138,7 +138,7 @@ pub struct NoiseAnalyzer {
 
 impl NoiseAnalyzer {
     /// Create a new noise analyzer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let mut analyzer = Self {
             noise_models: HashMap::new(),
@@ -155,7 +155,7 @@ impl NoiseAnalyzer {
     }
 
     /// Get available noise models
-    #[must_use] 
+    #[must_use]
     pub fn available_models(&self) -> Vec<String> {
         self.noise_models.keys().cloned().collect()
     }
@@ -428,7 +428,7 @@ pub enum ErrorSource {
 
 impl NoiseModel {
     /// Create IBM Quantum noise model based on typical device characteristics
-    #[must_use] 
+    #[must_use]
     pub fn ibm_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
 
@@ -517,7 +517,7 @@ impl NoiseModel {
     }
 
     /// Create Google Quantum AI noise model
-    #[must_use] 
+    #[must_use]
     pub fn google_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
 
@@ -604,7 +604,7 @@ impl NoiseModel {
     }
 
     /// Create AWS Braket noise model
-    #[must_use] 
+    #[must_use]
     pub fn aws_braket() -> Self {
         // Simplified model that varies by backend
         let mut single_qubit_errors = HashMap::new();

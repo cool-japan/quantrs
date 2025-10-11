@@ -17,7 +17,7 @@ pub struct RoutingResult {
 
 impl RoutingResult {
     /// Calculate total cost (combination of swaps and depth)
-    #[must_use] 
+    #[must_use]
     pub fn total_cost(&self) -> f64 {
         (self.circuit_depth as f64).mul_add(0.1, self.total_swaps as f64)
     }
@@ -36,7 +36,7 @@ pub struct RoutedCircuit<const N: usize> {
 
 impl<const N: usize> RoutedCircuit<N> {
     /// Create a new routed circuit
-    #[must_use] 
+    #[must_use]
     pub fn new(
         gates: Vec<Box<dyn GateOp>>,
         logical_to_physical: HashMap<usize, usize>,
@@ -50,25 +50,25 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get total cost of the routed circuit
-    #[must_use] 
+    #[must_use]
     pub fn total_cost(&self) -> f64 {
         self.result.total_cost()
     }
 
     /// Get the number of gates in the routed circuit
-    #[must_use] 
+    #[must_use]
     pub fn num_gates(&self) -> usize {
         self.gates.len()
     }
 
     /// Get the number of SWAP gates
-    #[must_use] 
+    #[must_use]
     pub fn num_swaps(&self) -> usize {
         self.gates.iter().filter(|g| g.name() == "SWAP").count()
     }
 
     /// Get the routing overhead (SWAPs / total gates)
-    #[must_use] 
+    #[must_use]
     pub fn routing_overhead(&self) -> f64 {
         if self.gates.is_empty() {
             0.0
@@ -78,7 +78,7 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get gates by type
-    #[must_use] 
+    #[must_use]
     pub fn gates_by_type(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
         for gate in &self.gates {
@@ -99,13 +99,13 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get the final qubit mapping
-    #[must_use] 
+    #[must_use]
     pub const fn get_mapping(&self) -> &HashMap<usize, usize> {
         &self.logical_to_physical
     }
 
     /// Get the inverse mapping (physical to logical)
-    #[must_use] 
+    #[must_use]
     pub fn get_inverse_mapping(&self) -> HashMap<usize, usize> {
         self.logical_to_physical
             .iter()
@@ -114,7 +114,7 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Calculate circuit statistics
-    #[must_use] 
+    #[must_use]
     pub fn statistics(&self) -> RoutingStatistics {
         let mut two_qubit_gates = 0;
         let mut single_qubit_gates = 0;
@@ -158,7 +158,7 @@ pub struct RoutingStatistics {
 
 impl RoutingStatistics {
     /// Calculate the improvement ratio compared to another statistic
-    #[must_use] 
+    #[must_use]
     pub fn improvement_ratio(&self, other: &Self) -> f64 {
         if other.total_gates == 0 {
             return 0.0;
@@ -168,7 +168,7 @@ impl RoutingStatistics {
     }
 
     /// Calculate SWAP efficiency (two-qubit gates / total gates)
-    #[must_use] 
+    #[must_use]
     pub fn swap_efficiency(&self) -> f64 {
         if self.total_gates == 0 {
             0.0
@@ -193,7 +193,7 @@ pub enum RoutingPassType {
 
 impl RoutingPassType {
     /// Get the name of the routing pass
-    #[must_use] 
+    #[must_use]
     pub const fn name(&self) -> &str {
         match self {
             Self::Sabre { .. } => "SABRE",
@@ -222,13 +222,13 @@ impl RoutingPassType {
     }
 
     /// Check if this pass should be applied
-    #[must_use] 
+    #[must_use]
     pub const fn should_apply<const N: usize>(&self, _circuit: &Circuit<N>) -> bool {
         true
     }
 
     /// Get pass configuration as string (for debugging)
-    #[must_use] 
+    #[must_use]
     pub fn config_string(&self) -> String {
         match self {
             Self::Sabre { config, .. } => {

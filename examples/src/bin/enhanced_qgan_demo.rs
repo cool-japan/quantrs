@@ -27,8 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Parameters: {}", generator.params.len());
 
     // Generate samples
-    let latent_vectors =
-        Array2::from_shape_fn((5, 2), |(i, j)| (i as f64).mul_add(0.2, j as f64 * 0.1) - 0.5);
+    let latent_vectors = Array2::from_shape_fn((5, 2), |(i, j)| {
+        (i as f64).mul_add(0.2, j as f64 * 0.1) - 0.5
+    });
 
     let samples = generator.generate(&latent_vectors)?;
     println!(
@@ -85,8 +86,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n   Wasserstein distance: {w_loss:.4}");
 
     // Generate fake samples for gradient penalty
-    let real_samples =
-        Array2::from_shape_fn((5, 4), |(i, j)| ((i + j) as f64 * 0.1).sin().mul_add(0.5, 0.5));
+    let real_samples = Array2::from_shape_fn((5, 4), |(i, j)| {
+        ((i + j) as f64 * 0.1).sin().mul_add(0.5, 0.5)
+    });
     let fake_samples = wqgan.generator.generate(&latent_vectors)?;
 
     let gp = wqgan.gradient_penalty(&real_samples, &fake_samples)?;
@@ -180,8 +182,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_samples = num_modes * samples_per_mode;
 
     // Generate many samples
-    let large_latent =
-        Array2::from_shape_fn((total_samples, 2), |(_, j)| fastrand::f64().mul_add(2.0, -1.0));
+    let large_latent = Array2::from_shape_fn((total_samples, 2), |(_, j)| {
+        fastrand::f64().mul_add(2.0, -1.0)
+    });
     let generated = generator.generate(&large_latent)?;
 
     // Simple mode detection (based on which quadrant the samples fall into)

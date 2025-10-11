@@ -8,37 +8,37 @@ pub mod constants {
     use crate::Expression;
 
     /// Euler's number (e ≈ 2.71828...)
-    #[must_use] 
+    #[must_use]
     pub fn e() -> Expression {
         Expression::new("E")
     }
 
     /// Pi (π ≈ 3.14159...)
-    #[must_use] 
+    #[must_use]
     pub fn pi() -> Expression {
         Expression::new("pi")
     }
 
     /// Imaginary unit (i)
-    #[must_use] 
+    #[must_use]
     pub fn i() -> Expression {
         Expression::new("I")
     }
 
     /// Golden ratio (φ ≈ 1.618...)
-    #[must_use] 
+    #[must_use]
     pub fn golden_ratio() -> Expression {
         Expression::new("GoldenRatio")
     }
 
     /// Catalan's constant (≈ 0.915...)
-    #[must_use] 
+    #[must_use]
     pub fn catalan() -> Expression {
         Expression::new("Catalan")
     }
 
     /// Euler-Mascheroni constant (γ ≈ 0.577...)
-    #[must_use] 
+    #[must_use]
     pub fn euler_gamma() -> Expression {
         Expression::new("EulerGamma")
     }
@@ -245,9 +245,7 @@ pub mod calculus {
         symbol: &Expression,
         value: &Expression,
     ) -> SymEngineResult<Expression> {
-        Ok(Expression::new(format!(
-            "limit({expr}, {symbol}, {value})"
-        )))
+        Ok(Expression::new(format!("limit({expr}, {symbol}, {value})")))
     }
 
     /// Left limit
@@ -424,20 +422,22 @@ mod tests {
     #[test]
     fn test_trig_functions() {
         let x = Expression::symbol("x");
-        let sin_x = trig::sin(&x).unwrap();
+        let sin_x = trig::sin(&x).expect("Failed to create sin expression in test_trig_functions");
         assert!(sin_x.to_string().contains("sin"));
 
-        let cos_x = trig::cos(&x).unwrap();
+        let cos_x = trig::cos(&x).expect("Failed to create cos expression in test_trig_functions");
         assert!(cos_x.to_string().contains("cos"));
     }
 
     #[test]
     fn test_exp_log_functions() {
         let x = Expression::symbol("x");
-        let exp_x = exp_log::exp(&x).unwrap();
+        let exp_x =
+            exp_log::exp(&x).expect("Failed to create exp expression in test_exp_log_functions");
         assert!(exp_x.to_string().contains("exp"));
 
-        let ln_x = exp_log::ln(&x).unwrap();
+        let ln_x =
+            exp_log::ln(&x).expect("Failed to create ln expression in test_exp_log_functions");
         assert!(ln_x.to_string().contains("log"));
     }
 
@@ -445,7 +445,8 @@ mod tests {
     fn test_calculus_operations() {
         let x = Expression::symbol("x");
         let x_squared = &x * x.clone();
-        let derivative = calculus::diff(&x_squared, &x).unwrap();
+        let derivative = calculus::diff(&x_squared, &x)
+            .expect("Failed to create diff expression in test_calculus_operations");
         assert!(derivative.to_string().contains("diff"));
     }
 

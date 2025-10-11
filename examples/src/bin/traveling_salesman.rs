@@ -200,7 +200,9 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
 
         for p in 0..n {
             let var_name = format!("x_{i}_{p}");
-            let var = builder.add_variable(var_name).unwrap();
+            let var = builder.add_variable(var_name.clone()).expect(&format!(
+                "Failed to add variable {var_name} to QUBO builder"
+            ));
             city_vars.push(var);
         }
 
@@ -209,19 +211,27 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
 
     // Set constraint weight
     let constraint_weight = 10.0 * n as f64; // Make constraints stronger than objective
-    builder.set_constraint_weight(constraint_weight).unwrap();
+    builder
+        .set_constraint_weight(constraint_weight)
+        .expect(&format!(
+            "Failed to set constraint weight {constraint_weight} in QUBO builder"
+        ));
 
     // Constraint 1: Each city must be visited exactly once
     #[allow(clippy::needless_range_loop)]
     for i in 0..n {
         let city_vars = variables[i].clone();
-        builder.constrain_one_hot(&city_vars).unwrap();
+        builder
+            .constrain_one_hot(&city_vars)
+            .expect(&format!("Failed to apply one-hot constraint for city {i}"));
     }
 
     // Constraint 2: Each position in the tour must be occupied by exactly one city
     for p in 0..n {
         let position_vars: Vec<Variable> = (0..n).map(|i| variables[i][p].clone()).collect();
-        builder.constrain_one_hot(&position_vars).unwrap();
+        builder.constrain_one_hot(&position_vars).expect(&format!(
+            "Failed to apply one-hot constraint for position {p}"
+        ));
     }
 
     // Objective: Minimize the total distance
@@ -237,7 +247,9 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
                     let distance = tsp.distances[i][j];
                     builder
                         .minimize_quadratic(&variables[i][p], &variables[j][p_next], distance)
-                        .unwrap();
+                        .expect(&format!(
+                            "Failed to add quadratic term for distance between city {i} at position {p} and city {j} at position {p_next}"
+                        ));
                 }
             }
         }

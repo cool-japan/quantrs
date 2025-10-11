@@ -444,8 +444,7 @@ impl PyPulseBuilder {
     /// Add a barrier to synchronize channels
     fn barrier(&mut self, channels: Vec<PyChannel>) -> PyResult<()> {
         if let Some(builder) = self.builder.take() {
-            let channel_types: Vec<ChannelType> =
-                channels.into_iter().map(|c| c.inner).collect();
+            let channel_types: Vec<ChannelType> = channels.into_iter().map(|c| c.inner).collect();
             self.builder = Some(builder.barrier(channel_types));
             Ok(())
         } else {

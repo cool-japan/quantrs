@@ -31,7 +31,7 @@ pub struct Tensor {
 
 impl Tensor {
     /// Create a new tensor
-    #[must_use] 
+    #[must_use]
     pub fn new(data: Vec<C64>, shape: Vec<usize>, indices: Vec<String>) -> Self {
         assert_eq!(shape.len(), indices.len());
         let total_size: usize = shape.iter().product();
@@ -45,7 +45,7 @@ impl Tensor {
     }
 
     /// Create an identity tensor
-    #[must_use] 
+    #[must_use]
     pub fn identity(dim: usize, in_label: String, out_label: String) -> Self {
         let mut data = vec![C64::new(0.0, 0.0); dim * dim];
         for i in 0..dim {
@@ -56,24 +56,19 @@ impl Tensor {
     }
 
     /// Get the rank (number of indices)
-    #[must_use] 
+    #[must_use]
     pub fn rank(&self) -> usize {
         self.shape.len()
     }
 
     /// Get the total number of elements
-    #[must_use] 
+    #[must_use]
     pub fn size(&self) -> usize {
         self.data.len()
     }
 
     /// Contract two tensors along specified indices
-    pub fn contract(
-        &self,
-        other: &Self,
-        self_idx: &str,
-        other_idx: &str,
-    ) -> QuantRS2Result<Self> {
+    pub fn contract(&self, other: &Self, self_idx: &str, other_idx: &str) -> QuantRS2Result<Self> {
         // Find index positions
         let self_pos = self
             .indices
@@ -152,7 +147,7 @@ pub struct TensorNetwork {
 
 impl TensorNetwork {
     /// Create a new empty tensor network
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tensors: Vec::new(),
@@ -236,7 +231,7 @@ pub struct CircuitToTensorNetwork<const N: usize> {
 
 impl<const N: usize> CircuitToTensorNetwork<N> {
     /// Create a new converter
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             max_bond_dim: None,
@@ -245,14 +240,14 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
     }
 
     /// Set maximum bond dimension
-    #[must_use] 
+    #[must_use]
     pub const fn with_max_bond_dim(mut self, dim: usize) -> Self {
         self.max_bond_dim = Some(dim);
         self
     }
 
     /// Set truncation tolerance
-    #[must_use] 
+    #[must_use]
     pub const fn with_tolerance(mut self, tol: f64) -> Self {
         self.tolerance = tol;
         self
@@ -469,7 +464,7 @@ pub enum CompressionMethod {
 
 impl TensorNetworkCompressor {
     /// Create a new compressor
-    #[must_use] 
+    #[must_use]
     pub const fn new(max_bond_dim: usize) -> Self {
         Self {
             max_bond_dim,
@@ -479,7 +474,7 @@ impl TensorNetworkCompressor {
     }
 
     /// Set compression method
-    #[must_use] 
+    #[must_use]
     pub const fn with_method(mut self, method: CompressionMethod) -> Self {
         self.method = method;
         self
@@ -513,7 +508,7 @@ pub struct CompressedCircuit<const N: usize> {
 
 impl<const N: usize> CompressedCircuit<N> {
     /// Get compression ratio
-    #[must_use] 
+    #[must_use]
     pub const fn compression_ratio(&self) -> f64 {
         self.compression_ratio
     }

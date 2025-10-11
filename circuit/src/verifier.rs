@@ -1124,7 +1124,7 @@ pub struct VerificationMetadata {
 
 impl<const N: usize> QuantumVerifier<N> {
     /// Create a new quantum verifier
-    #[must_use] 
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1140,7 +1140,7 @@ impl<const N: usize> QuantumVerifier<N> {
     }
 
     /// Create verifier with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: VerifierConfig) -> Self {
         Self {
             circuit,
@@ -1529,7 +1529,7 @@ impl<const N: usize> QuantumVerifier<N> {
 
 impl<const N: usize> PropertyChecker<N> {
     /// Create new property checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             properties: Vec::new(),
@@ -1719,7 +1719,7 @@ impl<const N: usize> PropertyChecker<N> {
 
 impl<const N: usize> InvariantChecker<N> {
     /// Create new invariant checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             invariants: Vec::new(),
@@ -2044,7 +2044,7 @@ impl<const N: usize> InvariantChecker<N> {
 
 impl<const N: usize> TheoremProver<N> {
     /// Create new theorem prover
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             theorems: Vec::new(),
@@ -2270,7 +2270,7 @@ impl<const N: usize> TheoremProver<N> {
 
 impl<const N: usize> ModelChecker<N> {
     /// Create new model checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             properties: Vec::new(),
@@ -2298,7 +2298,7 @@ impl<const N: usize> ModelChecker<N> {
 
 impl<const N: usize> CorrectnessChecker<N> {
     /// Create new correctness checker
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             criteria: Vec::new(),
@@ -2311,7 +2311,7 @@ impl<const N: usize> CorrectnessChecker<N> {
 
 impl<const N: usize> SymbolicExecutor<N> {
     /// Create new symbolic executor
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: SymbolicExecutionConfig {

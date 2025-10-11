@@ -109,9 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_inputs = vec![test_state; 5];
     let lambda = 0.01; // Regularization parameter
     let loss = qvae.compute_loss(&test_inputs, lambda)?;
-    println!(
-        "   Average loss (with L2 regularization λ={lambda}): {loss:.6}"
-    );
+    println!("   Average loss (with L2 regularization λ={lambda}): {loss:.6}");
 
     // 9. Compression analysis
     println!("\n9. Quantum Data Compression Analysis:");

@@ -1169,7 +1169,7 @@ pub enum CorrelationType {
 
 impl<const N: usize> QuantumDebugger<N> {
     /// Create a new quantum debugger
-    #[must_use] 
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         let config = DebuggerConfig::default();
         let analyzer = SciRS2CircuitAnalyzer::with_config(AnalyzerConfig::default());
@@ -1326,7 +1326,7 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Create debugger with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: DebuggerConfig) -> Self {
         let mut debugger = Self::new(circuit);
         debugger.config = config;
@@ -1509,7 +1509,7 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Get execution status
-    #[must_use] 
+    #[must_use]
     pub fn get_execution_status(&self) -> ExecutionStatus {
         let state = self.execution_state.read().unwrap();
         state.status.clone()

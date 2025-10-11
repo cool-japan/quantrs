@@ -30,7 +30,7 @@ pub struct CrosstalkModel {
 
 impl CrosstalkModel {
     /// Create a new crosstalk model
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             crosstalk_coefficients: HashMap::new(),
@@ -41,7 +41,7 @@ impl CrosstalkModel {
     }
 
     /// Create a uniform crosstalk model for testing
-    #[must_use] 
+    #[must_use]
     pub fn uniform(num_qubits: usize, crosstalk_rate: f64) -> Self {
         let mut model = Self::new();
 
@@ -76,7 +76,7 @@ impl CrosstalkModel {
     }
 
     /// Load from device characterization data
-    #[must_use] 
+    #[must_use]
     pub fn from_characterization(data: &CrosstalkCharacterization) -> Self {
         let mut model = Self::new();
 
@@ -215,7 +215,7 @@ pub enum SchedulingStrategy {
 
 impl CrosstalkScheduler {
     /// Create a new scheduler
-    #[must_use] 
+    #[must_use]
     pub const fn new(model: CrosstalkModel) -> Self {
         Self {
             model,
@@ -224,7 +224,7 @@ impl CrosstalkScheduler {
     }
 
     /// Set scheduling strategy
-    #[must_use] 
+    #[must_use]
     pub const fn with_strategy(mut self, strategy: SchedulingStrategy) -> Self {
         self.strategy = strategy;
         self
@@ -381,13 +381,13 @@ pub struct CrosstalkAnalyzer {
 
 impl CrosstalkAnalyzer {
     /// Create a new analyzer
-    #[must_use] 
+    #[must_use]
     pub const fn new(model: CrosstalkModel) -> Self {
         Self { model }
     }
 
     /// Analyze potential crosstalk in a circuit
-    #[must_use] 
+    #[must_use]
     pub fn analyze<const N: usize>(&self, circuit: &Circuit<N>) -> CrosstalkAnalysis {
         let gates = circuit.gates();
         let mut problematic_pairs = Vec::new();

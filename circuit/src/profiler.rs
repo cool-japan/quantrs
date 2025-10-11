@@ -2465,7 +2465,7 @@ pub struct SessionTrendAnalysis {
 
 impl<const N: usize> QuantumProfiler<N> {
     /// Create a new quantum profiler
-    #[must_use] 
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         let config = ProfilerConfig::default();
         let analyzer = SciRS2CircuitAnalyzer::with_config(AnalyzerConfig::default());
@@ -2762,7 +2762,7 @@ impl<const N: usize> QuantumProfiler<N> {
     }
 
     /// Create profiler with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: ProfilerConfig) -> Self {
         let mut profiler = Self::new(circuit);
         profiler.config = config;

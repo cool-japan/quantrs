@@ -56,7 +56,7 @@ fn larger_system_example() {
             Complex64::new(4.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 4x4 Hermitian matrix for HHL algorithm demonstration");
 
     // Vector b
     let vector_b = Array1::from_vec(vec![

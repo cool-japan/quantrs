@@ -245,7 +245,7 @@ impl PerformanceTracker {
             .map(|i| (i as f64).powi(2))
             .sum::<f64>();
 
-        let denominator = n * sum_x2 - sum_x * sum_x;
+        let denominator = n * sum_x2 - sum_x.powi(2);
         if denominator.abs() < 1e-8 {
             0.0
         } else {

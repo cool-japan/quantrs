@@ -47,7 +47,7 @@ impl Default for SabreConfig {
 
 impl SabreConfig {
     /// Create a basic configuration with minimal overhead
-    #[must_use] 
+    #[must_use]
     pub const fn basic() -> Self {
         Self {
             max_iterations: 100,
@@ -60,7 +60,7 @@ impl SabreConfig {
     }
 
     /// Create a stochastic configuration for multiple trials
-    #[must_use] 
+    #[must_use]
     pub fn stochastic() -> Self {
         Self {
             stochastic: true,
@@ -77,7 +77,7 @@ pub struct SabreRouter {
 
 impl SabreRouter {
     /// Create a new SABRE router
-    #[must_use] 
+    #[must_use]
     pub const fn new(coupling_map: CouplingMap, config: SabreConfig) -> Self {
         Self {
             coupling_map,

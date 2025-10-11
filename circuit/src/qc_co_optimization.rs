@@ -364,7 +364,7 @@ pub enum LoadBalancingStrategy {
 
 impl<const N: usize> HybridOptimizationProblem<N> {
     /// Create a new hybrid optimization problem
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             quantum_circuits: Vec::new(),
@@ -537,7 +537,7 @@ impl Default for HybridOptimizationProblem<4> {
 
 impl HybridOptimizer {
     /// Create a new hybrid optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new(algorithm: HybridOptimizationAlgorithm) -> Self {
         Self {
             algorithm,

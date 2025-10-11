@@ -39,9 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let amplitude = result.amplitude(&bits)?;
         let magnitude = amplitude.re.hypot(amplitude.im);
         let phase = amplitude.im.atan2(amplitude.re).to_degrees();
-        println!(
-            "State |{i:04b}⟩: magnitude = {magnitude:.6}, phase = {phase:.2}°"
-        );
+        println!("State |{i:04b}⟩: magnitude = {magnitude:.6}, phase = {phase:.2}°");
     }
 
     // Apply inverse QFT to verify we get back to |0011⟩
@@ -79,9 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bits_3 = [0, 0, 1, 1]; // |0011⟩ = 3 in binary
     let prob_3 = inverse_result.probability(&bits_3)?;
     if prob_3 > 0.99 {
-        println!(
-            "\nSuccess! Recovered the original state |0011⟩ with probability {prob_3:.6}"
-        );
+        println!("\nSuccess! Recovered the original state |0011⟩ with probability {prob_3:.6}");
     } else {
         println!("\nFailed to recover the original state |0011⟩");
     }

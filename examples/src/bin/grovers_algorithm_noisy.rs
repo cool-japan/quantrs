@@ -27,15 +27,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // The database size is 2^n_qubits
         let db_size = 1 << n_qubits;
 
-        println!(
-            "\n===== Database size: {db_size} (using {n_qubits} qubits) ====="
-        );
+        println!("\n===== Database size: {db_size} (using {n_qubits} qubits) =====");
 
         // Pick a random item to search for (the marked element)
         let marked_item = thread_rng().gen_range(0..db_size);
-        println!(
-            "Searching for marked item: {marked_item} (binary: {marked_item:0n_qubits$b})"
-        );
+        println!("Searching for marked item: {marked_item} (binary: {marked_item:0n_qubits$b})");
 
         // Run without noise first for comparison
         run_grovers(n_qubits, marked_item, None)?;
@@ -289,7 +285,10 @@ fn analyze_results<const N: usize>(result: &Register<N>, marked_item: usize) {
     }
 
     // Sort by probability in descending order
-    state_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    state_probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare probabilities (NaN encountered in Grover's algorithm result analysis)")
+    });
 
     // Print the top 5 states
     println!("Top measured states:");
@@ -365,7 +364,6 @@ fn create_noise_model(n_qubits: usize, noise_level: f64) -> AdvancedNoiseModel {
     println!("  - 2-qubit gate error: {gate_error_2q:.5}");
 
     // Create the noise model
-    
 
     RealisticNoiseModelBuilder::new(true)
         .with_custom_thermal_relaxation(

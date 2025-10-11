@@ -1665,7 +1665,7 @@ pub struct AlignmentOptimization {
 
 impl<const N: usize> QuantumFormatter<N> {
     /// Create a new quantum formatter
-    #[must_use] 
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         Self {
             circuit,
@@ -1681,7 +1681,7 @@ impl<const N: usize> QuantumFormatter<N> {
     }
 
     /// Create formatter with custom configuration
-    #[must_use] 
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: FormatterConfig) -> Self {
         Self {
             circuit,
@@ -1979,7 +1979,7 @@ impl<const N: usize> QuantumFormatter<N> {
 
 // Implementation of helper components
 impl<const N: usize> LayoutOptimizer<N> {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             strategies: vec![
@@ -2008,7 +2008,7 @@ impl<const N: usize> LayoutOptimizer<N> {
 }
 
 impl<const N: usize> StyleEnforcer<N> {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -2038,7 +2038,7 @@ impl<const N: usize> StyleEnforcer<N> {
 }
 
 impl<const N: usize> CodeOrganizer<N> {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -2058,7 +2058,7 @@ impl<const N: usize> CodeOrganizer<N> {
 }
 
 impl<const N: usize> CommentFormatter<N> {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             styles: Vec::new(),
@@ -2082,7 +2082,7 @@ impl<const N: usize> CommentFormatter<N> {
 }
 
 impl<const N: usize> WhitespaceManager<N> {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             rules: Vec::new(),
@@ -2118,7 +2118,7 @@ impl<const N: usize> WhitespaceManager<N> {
 }
 
 impl<const N: usize> AlignmentEngine<N> {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             rules: Vec::new(),

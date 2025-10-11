@@ -18,7 +18,7 @@ pub struct SwapLayer {
 
 impl SwapLayer {
     /// Create a new SWAP layer
-    #[must_use] 
+    #[must_use]
     pub const fn new(depth: usize) -> Self {
         Self {
             swaps: Vec::new(),
@@ -32,7 +32,7 @@ impl SwapLayer {
     }
 
     /// Check if two qubits are involved in any SWAP in this layer
-    #[must_use] 
+    #[must_use]
     pub fn involves_qubits(&self, qubit1: usize, qubit2: usize) -> bool {
         self.swaps
             .iter()
@@ -40,7 +40,7 @@ impl SwapLayer {
     }
 
     /// Get all qubits involved in this layer
-    #[must_use] 
+    #[must_use]
     pub fn qubits(&self) -> HashSet<usize> {
         let mut qubits = HashSet::new();
         for &(q1, q2) in &self.swaps {
@@ -51,7 +51,7 @@ impl SwapLayer {
     }
 
     /// Check if a SWAP can be added without conflicts
-    #[must_use] 
+    #[must_use]
     pub fn can_add_swap(&self, qubit1: usize, qubit2: usize) -> bool {
         !self.involves_qubits(qubit1, qubit2)
     }
@@ -68,7 +68,7 @@ pub struct SwapNetwork {
 
 impl SwapNetwork {
     /// Create a new SWAP network
-    #[must_use] 
+    #[must_use]
     pub const fn new(coupling_map: CouplingMap) -> Self {
         Self {
             layers: Vec::new(),
@@ -276,7 +276,7 @@ impl SwapNetwork {
     }
 
     /// Convert the SWAP network to a sequence of SWAP gates
-    #[must_use] 
+    #[must_use]
     pub fn to_swap_gates(&self) -> Vec<SWAP> {
         let mut gates = Vec::new();
 
@@ -293,19 +293,19 @@ impl SwapNetwork {
     }
 
     /// Get the total number of SWAP operations
-    #[must_use] 
+    #[must_use]
     pub fn total_swaps(&self) -> usize {
         self.layers.iter().map(|layer| layer.swaps.len()).sum()
     }
 
     /// Get the depth of the SWAP network
-    #[must_use] 
+    #[must_use]
     pub fn depth(&self) -> usize {
         self.layers.len()
     }
 
     /// Check if the network is empty
-    #[must_use] 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.layers.is_empty() || self.layers.iter().all(|layer| layer.swaps.is_empty())
     }
@@ -369,7 +369,7 @@ impl SwapNetwork {
 
 /// Utilities for generating common SWAP networks
 pub mod networks {
-    use super::{SwapNetwork, CouplingMap, SwapLayer, HashMap, QuantRS2Result};
+    use super::{CouplingMap, HashMap, QuantRS2Result, SwapLayer, SwapNetwork};
 
     /// Generate a SWAP network for reversing a linear array
     pub fn linear_reversal(num_qubits: usize) -> SwapNetwork {

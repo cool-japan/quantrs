@@ -335,7 +335,10 @@ impl Graph {
             }
         }
 
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("Failed to compare eigenvalues in Graph::compute_laplacian_eigenvalues")
+        });
         eigenvalues.truncate(self.num_vertices);
         eigenvalues
     }
@@ -1365,7 +1368,9 @@ mod tests {
         matrix[[1, 2]] = 2.0;
         matrix[[2, 1]] = 2.0;
 
-        let graph = Graph::from_adjacency_matrix(&matrix).unwrap();
+        let graph = Graph::from_adjacency_matrix(&matrix).expect(
+            "Failed to create graph from adjacency matrix in test_graph_from_adjacency_matrix",
+        );
         assert_eq!(graph.num_vertices, 3);
         assert_eq!(graph.degree(0), 1);
         assert_eq!(graph.degree(1), 2);
@@ -1456,7 +1461,9 @@ mod tests {
         let mut multi_walk = MultiWalkerQuantumWalk::new(graph, 2);
 
         // Initialize two walkers at positions 0 and 1
-        multi_walk.initialize_positions(&[0, 1]).unwrap();
+        multi_walk
+            .initialize_positions(&[0, 1])
+            .expect("Failed to initialize positions in test_multi_walker_quantum_walk");
 
         let marginal_0 = multi_walk.marginal_probabilities(0);
         let marginal_1 = multi_walk.marginal_probabilities(1);
@@ -1480,7 +1487,9 @@ mod tests {
         let graph = Graph::new(GraphType::Cycle, 4);
         let mut multi_walk = MultiWalkerQuantumWalk::new(graph, 2);
 
-        multi_walk.initialize_entangled_bell_state(0, 1).unwrap();
+        multi_walk
+            .initialize_entangled_bell_state(0, 1)
+            .expect("Failed to initialize entangled Bell state in test_multi_walker_bell_state");
 
         let marginal_0 = multi_walk.marginal_probabilities(0);
         let marginal_1 = multi_walk.marginal_probabilities(1);

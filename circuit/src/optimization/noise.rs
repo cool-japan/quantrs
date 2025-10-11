@@ -36,7 +36,7 @@ pub struct NoiseModel {
 
 impl NoiseModel {
     /// Create a new empty noise model
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             single_qubit_errors: HashMap::new(),
@@ -50,7 +50,7 @@ impl NoiseModel {
     }
 
     /// Create a uniform noise model for testing
-    #[must_use] 
+    #[must_use]
     pub fn uniform(num_qubits: usize) -> Self {
         let mut model = Self::new();
 
@@ -87,7 +87,7 @@ impl NoiseModel {
     }
 
     /// Create a realistic noise model based on IBM devices
-    #[must_use] 
+    #[must_use]
     pub fn ibm_like(num_qubits: usize) -> Self {
         let mut model = Self::new();
 
@@ -126,7 +126,7 @@ impl NoiseModel {
     }
 
     /// Get error rate for a single-qubit gate
-    #[must_use] 
+    #[must_use]
     pub fn single_qubit_error(&self, qubit: usize) -> f64 {
         self.single_qubit_errors
             .get(&qubit)
@@ -135,26 +135,26 @@ impl NoiseModel {
     }
 
     /// Get error rate for a two-qubit gate
-    #[must_use] 
+    #[must_use]
     pub fn two_qubit_error(&self, q1: usize, q2: usize) -> f64 {
         let key = (q1.min(q2), q1.max(q2));
         self.two_qubit_errors.get(&key).copied().unwrap_or(1e-2)
     }
 
     /// Get T1 time for a qubit
-    #[must_use] 
+    #[must_use]
     pub fn t1_time(&self, qubit: usize) -> f64 {
         self.t1_times.get(&qubit).copied().unwrap_or(100.0)
     }
 
     /// Get T2 time for a qubit
-    #[must_use] 
+    #[must_use]
     pub fn t2_time(&self, qubit: usize) -> f64 {
         self.t2_times.get(&qubit).copied().unwrap_or(50.0)
     }
 
     /// Get gate execution time
-    #[must_use] 
+    #[must_use]
     pub fn gate_time(&self, gate_name: &str) -> f64 {
         self.gate_times.get(gate_name).copied().unwrap_or(100.0)
     }
@@ -191,7 +191,7 @@ pub struct NoiseAwareCostModel {
 
 impl NoiseAwareCostModel {
     /// Create a new noise-aware cost model
-    #[must_use] 
+    #[must_use]
     pub const fn new(noise_model: NoiseModel) -> Self {
         Self {
             noise_model,
@@ -203,7 +203,7 @@ impl NoiseAwareCostModel {
     }
 
     /// Set the coupling map for connectivity analysis
-    #[must_use] 
+    #[must_use]
     pub fn with_coupling_map(mut self, coupling_map: CouplingMap) -> Self {
         self.coupling_map = Some(coupling_map);
         self
@@ -215,7 +215,9 @@ impl NoiseAwareCostModel {
         let exec_time = self.noise_model.gate_time(gate.name());
 
         // Base cost from error probability and execution time
-        let mut cost = self.error_weight.mul_add(error_prob, self.time_weight * exec_time);
+        let mut cost = self
+            .error_weight
+            .mul_add(error_prob, self.time_weight * exec_time);
 
         // Add coherence penalty for long operations
         if exec_time > 100.0 {
@@ -231,7 +233,7 @@ impl NoiseAwareCostModel {
     }
 
     /// Calculate total circuit cost
-    #[must_use] 
+    #[must_use]
     pub fn circuit_cost<const N: usize>(&self, circuit: &Circuit<N>) -> f64 {
         let mut total_cost = 0.0;
         let mut total_time = 0.0;
@@ -261,7 +263,9 @@ impl CostModel for NoiseAwareCostModel {
         let exec_time = self.noise_model.gate_time(gate.name());
 
         // Base cost from error probability and execution time
-        let mut cost = self.error_weight.mul_add(error_prob, self.time_weight * exec_time);
+        let mut cost = self
+            .error_weight
+            .mul_add(error_prob, self.time_weight * exec_time);
 
         // Add coherence penalty for long operations
         if exec_time > 100.0 {
@@ -316,7 +320,7 @@ pub struct CoherenceOptimization {
 
 impl CoherenceOptimization {
     /// Create a new coherence optimization pass
-    #[must_use] 
+    #[must_use]
     pub const fn new(noise_model: NoiseModel) -> Self {
         Self {
             noise_model,
@@ -390,7 +394,7 @@ pub struct NoiseAwareMapping {
 
 impl NoiseAwareMapping {
     /// Create a new noise-aware mapping pass
-    #[must_use] 
+    #[must_use]
     pub const fn new(noise_model: NoiseModel, coupling_map: CouplingMap) -> Self {
         Self {
             noise_model,
@@ -467,7 +471,7 @@ pub enum DecouplingSequence {
 
 impl DynamicalDecoupling {
     /// Create a new dynamical decoupling pass
-    #[must_use] 
+    #[must_use]
     pub const fn new(noise_model: NoiseModel) -> Self {
         Self {
             noise_model,
@@ -525,7 +529,7 @@ pub struct NoiseAwareOptimizer {
 
 impl NoiseAwareOptimizer {
     /// Create a new noise-aware optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new(noise_model: NoiseModel) -> Self {
         let cost_model = NoiseAwareCostModel::new(noise_model.clone());
 
@@ -537,7 +541,7 @@ impl NoiseAwareOptimizer {
     }
 
     /// Set the coupling map
-    #[must_use] 
+    #[must_use]
     pub fn with_coupling_map(mut self, coupling_map: CouplingMap) -> Self {
         self.cost_model = self.cost_model.with_coupling_map(coupling_map.clone());
         self.coupling_map = Some(coupling_map);
@@ -545,7 +549,7 @@ impl NoiseAwareOptimizer {
     }
 
     /// Get all noise-aware optimization passes
-    #[must_use] 
+    #[must_use]
     pub fn get_passes(&self) -> Vec<Box<dyn OptimizationPass>> {
         let mut passes: Vec<Box<dyn OptimizationPass>> = Vec::new();
 
@@ -576,7 +580,7 @@ impl NoiseAwareOptimizer {
     }
 
     /// Estimate circuit fidelity
-    #[must_use] 
+    #[must_use]
     pub fn estimate_fidelity<const N: usize>(&self, circuit: &Circuit<N>) -> f64 {
         let mut total_error_prob = 0.0;
 
@@ -590,13 +594,13 @@ impl NoiseAwareOptimizer {
     }
 
     /// Get the noise model
-    #[must_use] 
+    #[must_use]
     pub const fn noise_model(&self) -> &NoiseModel {
         &self.noise_model
     }
 
     /// Get the cost model
-    #[must_use] 
+    #[must_use]
     pub const fn cost_model(&self) -> &NoiseAwareCostModel {
         &self.cost_model
     }

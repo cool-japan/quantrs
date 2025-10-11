@@ -386,7 +386,7 @@ pub struct IRBuilder {
 
 impl IRBuilder {
     /// Create new IR builder
-    #[must_use] 
+    #[must_use]
     pub fn new(name: String) -> Self {
         let mut symbol_table = SymbolTable::default();
         symbol_table.scopes.push(Scope {
@@ -548,7 +548,7 @@ impl IRBuilder {
     }
 
     /// Build final IR
-    #[must_use] 
+    #[must_use]
     pub fn build(mut self) -> IntermediateRepresentation {
         self.analyze_control_flow();
         self.analyze_dependencies();
@@ -693,7 +693,7 @@ pub struct OptimizationStats {
 
 impl IROptimizer {
     /// Create new optimizer
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             passes: Vec::new(),
@@ -731,7 +731,7 @@ impl IROptimizer {
     }
 
     /// Get optimization statistics
-    #[must_use] 
+    #[must_use]
     pub const fn get_stats(&self) -> &OptimizationStats {
         &self.stats
     }
@@ -763,7 +763,7 @@ pub struct IRValidator {
 
 impl IRValidator {
     /// Create new validator
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         Self { rules: Vec::new() }
     }

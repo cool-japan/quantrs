@@ -4,7 +4,15 @@ use std::fmt;
 use std::os::raw::c_ulong;
 
 use crate::{SymEngineError, SymEngineResult};
-use quantrs2_symengine_sys::{basic_struct, basic_new_stack, basic_assign, basic_parse, CWRAPPER_OUTPUT_TYPE, symbol_set, integer_set_si, integer_set_ui, real_double_set_d, basic_free_stack, basic_str, basic_add, basic_sub, basic_mul, basic_div, basic_expand, basic_get_type, SYMENGINE_SYMBOL, SYMENGINE_INTEGER, SYMENGINE_RATIONAL, SYMENGINE_REAL_DOUBLE, SYMENGINE_POW, SYMENGINE_MUL, SYMENGINE_ADD, vecbasic_new, basic_get_args, symengine_exceptions_t, vecbasic_free, vecbasic_size, vecbasic_get, function_symbol_get_name, basic_str_free, real_double_get_d, integer_get_si, basic_pow, basic_eq};
+use quantrs2_symengine_sys::{
+    basic_add, basic_assign, basic_div, basic_eq, basic_expand, basic_free_stack, basic_get_args,
+    basic_get_type, basic_mul, basic_new_stack, basic_parse, basic_pow, basic_str, basic_str_free,
+    basic_struct, basic_sub, function_symbol_get_name, integer_get_si, integer_set_si,
+    integer_set_ui, real_double_get_d, real_double_set_d, symbol_set, symengine_exceptions_t,
+    vecbasic_free, vecbasic_get, vecbasic_new, vecbasic_size, CWRAPPER_OUTPUT_TYPE, SYMENGINE_ADD,
+    SYMENGINE_INTEGER, SYMENGINE_MUL, SYMENGINE_POW, SYMENGINE_RATIONAL, SYMENGINE_REAL_DOUBLE,
+    SYMENGINE_SYMBOL,
+};
 
 #[cfg(feature = "serde-serialize")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -110,17 +118,20 @@ impl Expression {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_i64(value: i64) -> Self {
         Self::from_value(|ptr, val| unsafe { integer_set_si(ptr, val) }, value)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_i32(value: i32) -> Self {
-        Self::from_value(|ptr, val| unsafe { integer_set_si(ptr, val) }, i64::from(value))
+        Self::from_value(
+            |ptr, val| unsafe { integer_set_si(ptr, val) },
+            i64::from(value),
+        )
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_u32(value: u32) -> Self {
         Self::from_value(
             |ptr, val| unsafe { integer_set_ui(ptr, val) },
@@ -128,12 +139,12 @@ impl Expression {
         )
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_f64(value: f64) -> Self {
         Self::from_value(|ptr, val| unsafe { real_double_set_d(ptr, val) }, value)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn from_f32(value: f32) -> Self {
         Self::from_value(
             |ptr, val| unsafe { real_double_set_d(ptr, val) },

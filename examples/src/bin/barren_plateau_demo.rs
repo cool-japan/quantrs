@@ -106,7 +106,11 @@ fn main() -> Result<(), MLError> {
     // Check for exponential decay
     if scaling_results.len() >= 2 {
         let first = scaling_results[0].1.ln();
-        let last = scaling_results.last().unwrap().1.ln();
+        let last = scaling_results
+            .last()
+            .expect("Failed to get last scaling result (empty vector)")
+            .1
+            .ln();
         let decay_rate = (last - first) / (scaling_results.len() as f64 - 1.0);
 
         println!("\nExponential decay rate: {decay_rate:.3} per qubit");
