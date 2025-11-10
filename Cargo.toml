@@ -82,7 +82,7 @@ quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-bet
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray = { version = "0.16.1", features = ["rayon", "serde"] }  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 nalgebra = "0.33.2"
-ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
+ndarray-linalg = { version = "0.18", default-features = false, features = ["openblas-system"] }
 ndarray-rand = "0.15"
 ndarray-stats = "0.6"
 num-traits = "0.2"
