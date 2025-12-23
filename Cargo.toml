@@ -128,7 +128,7 @@ quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-bet
 # LIMITED USE: nalgebra for sparse matrix operations (PARTIALLY VIOLATES SciRS2 POLICY)
 # Location: sim/src/scirs2_integration.rs (sparse matrix operations only)
 # TODO: Migrate to scirs2-sparse when API stabilizes (planned for v0.2.0)
-nalgebra = "0.33.2"            # Temporary - sparse operations only
+nalgebra = "0.34.1"            # Temporary - sparse operations only
 # ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 # ndarray-rand = "0.15"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # ndarray-stats = "0.6"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
@@ -183,13 +183,13 @@ thiserror = "2.0.17"
 # Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bincode = "2.0.1"
+bincode = "3.0.0"
 zstd = "0.13"
 flate2 = "1.1"
 md5 = "0.8"
 
 # GPU computing support
-wgpu = { version = "26.0.1" }
+wgpu = { version = "28.0.0" }
 bytemuck = { version = "1.24.0", features = ["derive"] }
 ocl = "0.19.7"
 
@@ -228,7 +228,7 @@ nalgebra-sparse = "0.11"
 plotters = "0.3"
 
 # System information
-sysinfo = "0.36"
+sysinfo = "0.37"
 
 # Additional dependencies for workspace members
 libc = "0.2"
@@ -244,7 +244,7 @@ tokio-test = "0.4"
 memmap2 = "0.9"
 
 # Development and testing
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 # NumRS2 ecosystem dependencies
 numrs2 = "0.1.0-rc.3"
