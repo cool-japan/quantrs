@@ -1044,7 +1044,7 @@ impl QuantumNodeCapabilities {
         Self {
             max_qubits: 1000,
             max_entanglement_rate: 10000.0,
-            quantum_memory_capacity: 100000,
+            quantum_memory_capacity: 100_000,
             error_correction_capability: vec![
                 ErrorCorrectionCode::SurfaceCode,
                 ErrorCorrectionCode::ColorCode,
@@ -1084,7 +1084,7 @@ pub struct QuantumProcessingPower {
 impl QuantumProcessingPower {
     pub fn high_performance() -> Self {
         Self {
-            gate_rate: 1000000.0,
+            gate_rate: 1_000_000.0,
             qubit_count: 1000,
             fidelity: 0.999,
         }
@@ -1259,7 +1259,7 @@ impl TerrestrialQuantumNetwork {
         Self {
             network_id: QuantumInternet::generate_id(),
             network_name: "Global Terrestrial Network".to_string(),
-            fiber_length: 100000.0,
+            fiber_length: 100_000.0,
             repeater_spacing: 50.0,
             coverage_regions: Vec::new(),
         }

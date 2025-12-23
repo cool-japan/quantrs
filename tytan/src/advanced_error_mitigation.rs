@@ -1140,7 +1140,7 @@ impl AdvancedErrorMitigationManager {
     }
 
     /// Predict error syndromes for upcoming operations
-    pub fn predict_syndromes(
+    pub const fn predict_syndromes(
         &self,
         circuit: &QuantumCircuit,
         horizon: Duration,
@@ -1307,7 +1307,7 @@ impl NoiseCharacterizer {
         }
     }
 
-    pub fn start_continuous_monitoring(&mut self) -> Result<(), MitigationError> {
+    pub const fn start_continuous_monitoring(&mut self) -> Result<(), MitigationError> {
         // Implementation stub
         Ok(())
     }
@@ -1354,7 +1354,7 @@ impl NoiseCharacterizer {
         })
     }
 
-    pub fn update_config(
+    pub const fn update_config(
         &mut self,
         _config: &ErrorMitigationConfig,
     ) -> Result<(), MitigationError> {
@@ -1362,12 +1362,12 @@ impl NoiseCharacterizer {
     }
 
     /// Get a reference to the noise characterization history
-    pub fn history(&self) -> &VecDeque<NoiseCharacterizationResult> {
+    pub const fn history(&self) -> &VecDeque<NoiseCharacterizationResult> {
         &self.history
     }
 
     /// Get a reference to the noise characterization config
-    pub fn config(&self) -> &NoiseCharacterizationConfig {
+    pub const fn config(&self) -> &NoiseCharacterizationConfig {
         &self.config
     }
 }
@@ -1410,7 +1410,7 @@ impl AdaptiveMitigationEngine {
         }
     }
 
-    pub fn initialize_protocols(&mut self) -> Result<(), MitigationError> {
+    pub const fn initialize_protocols(&mut self) -> Result<(), MitigationError> {
         Ok(())
     }
 
@@ -1427,7 +1427,7 @@ impl AdaptiveMitigationEngine {
         })
     }
 
-    pub fn update_config(
+    pub const fn update_config(
         &mut self,
         _config: &ErrorMitigationConfig,
     ) -> Result<(), MitigationError> {
@@ -1461,11 +1461,11 @@ impl CalibrationSystem {
         }
     }
 
-    pub fn start_monitoring(&mut self) -> Result<(), MitigationError> {
+    pub const fn start_monitoring(&mut self) -> Result<(), MitigationError> {
         Ok(())
     }
 
-    pub fn update_config(
+    pub const fn update_config(
         &mut self,
         _config: &ErrorMitigationConfig,
     ) -> Result<(), MitigationError> {
@@ -1522,11 +1522,11 @@ impl ErrorSyndromePredictor {
         }
     }
 
-    pub fn initialize(&mut self) -> Result<(), MitigationError> {
+    pub const fn initialize(&mut self) -> Result<(), MitigationError> {
         Ok(())
     }
 
-    pub fn predict_syndromes(
+    pub const fn predict_syndromes(
         &self,
         _circuit: &QuantumCircuit,
         _horizon: Duration,
@@ -1534,7 +1534,7 @@ impl ErrorSyndromePredictor {
         Ok(Vec::new())
     }
 
-    pub fn update_config(
+    pub const fn update_config(
         &mut self,
         _config: &ErrorMitigationConfig,
     ) -> Result<(), MitigationError> {
@@ -1580,7 +1580,7 @@ impl QECIntegrator {
         }
     }
 
-    pub fn integrate_error_correction(
+    pub const fn integrate_error_correction(
         &self,
         _code_name: &str,
         _circuit: &QuantumCircuit,
@@ -1595,7 +1595,7 @@ impl QECIntegrator {
         })
     }
 
-    pub fn update_config(
+    pub const fn update_config(
         &mut self,
         _config: &ErrorMitigationConfig,
     ) -> Result<(), MitigationError> {

@@ -1,11 +1,11 @@
 //! PyTorch-Style Quantum ML Integration Example
 //!
 //! This example demonstrates how to use the PyTorch-like API for quantum machine learning,
-//! including quantum layers, training loops, and data handling that feels familiar to PyTorch users.
+//! including quantum layers, training loops, and data handling that feels familiar to `PyTorch` users.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::pytorch_api::{ActivationType, TrainingHistory};
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {
@@ -68,7 +68,7 @@ fn main() -> Result<()> {
         let val_accuracy = 0.75; // Placeholder
 
         // Record metrics
-        let train_accuracy = correct_predictions as f64 / total_samples as f64;
+        let train_accuracy = f64::from(correct_predictions) / f64::from(total_samples);
         training_history.add_training(epoch_loss, Some(train_accuracy));
         training_history.add_validation(val_loss, Some(val_accuracy));
 
@@ -88,8 +88,8 @@ fn main() -> Result<()> {
 
     let final_test_loss = trainer.evaluate(&mut test_loader)?;
     let final_test_accuracy = 0.82; // Placeholder
-    println!("   Final test accuracy: {:.3}", final_test_accuracy);
-    println!("   Final test loss: {:.4}", final_test_loss);
+    println!("   Final test accuracy: {final_test_accuracy:.3}");
+    println!("   Final test loss: {final_test_loss:.4}");
 
     // Step 6: Parameter analysis (placeholder)
     println!("\n6. Quantum parameter analysis...");
@@ -116,8 +116,8 @@ fn main() -> Result<()> {
 
     let classical_accuracy = 0.78; // Placeholder classical model accuracy
 
-    println!("   - Quantum model accuracy: {:.3}", final_test_accuracy);
-    println!("   - Classical model accuracy: {:.3}", classical_accuracy);
+    println!("   - Quantum model accuracy: {final_test_accuracy:.3}");
+    println!("   - Classical model accuracy: {classical_accuracy:.3}");
     println!(
         "   - Quantum advantage: {:.3}",
         final_test_accuracy - classical_accuracy
@@ -126,7 +126,7 @@ fn main() -> Result<()> {
     // Step 10: Training analytics (placeholder)
     println!("\n10. Training analytics:");
     println!("   - Training completed successfully");
-    println!("   - {} epochs completed", num_epochs);
+    println!("   - {num_epochs} epochs completed");
 
     println!("\n=== PyTorch Integration Demo Complete ===");
 
@@ -141,7 +141,7 @@ fn create_quantum_datasets() -> Result<(MemoryDataLoader, MemoryDataLoader)> {
 
     // Training data with quantum entanglement patterns
     let train_data = Array2::from_shape_fn((num_train, num_features), |(i, j)| {
-        let phase = (i as f64 * 0.1) + (j as f64 * 0.2);
+        let phase = (i as f64).mul_add(0.1, j as f64 * 0.2);
         (phase.sin() + (phase * 2.0).cos()) * 0.5
     });
 
@@ -157,7 +157,7 @@ fn create_quantum_datasets() -> Result<(MemoryDataLoader, MemoryDataLoader)> {
 
     // Test data
     let test_data = Array2::from_shape_fn((num_test, num_features), |(i, j)| {
-        let phase = (i as f64 * 0.15) + (j as f64 * 0.25);
+        let phase = (i as f64).mul_add(0.15, j as f64 * 0.25);
         (phase.sin() + (phase * 2.0).cos()) * 0.5
     });
 

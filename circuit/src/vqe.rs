@@ -4,11 +4,11 @@
 //! algorithm, which is used to find ground state energies of quantum systems.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// A parameterized quantum circuit for VQE applications
@@ -53,7 +53,7 @@ pub struct VQEObservable {
 }
 
 /// Pauli operators for observable construction
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PauliOperator {
     I, // Identity
     X, // Pauli-X
@@ -141,7 +141,7 @@ impl<const N: usize> VQECircuit<N> {
             // Single-qubit rotation layer
             for qubit in 0..N {
                 // RY rotation
-                let param_name = format!("ry_{}_q{}", layer, qubit);
+                let param_name = format!("ry_{layer}_q{qubit}");
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0); // Initialize to 0
@@ -149,7 +149,7 @@ impl<const N: usize> VQECircuit<N> {
                 circuit.ry(QubitId(qubit as u32), 0.0)?; // Placeholder angle
 
                 // RZ rotation
-                let param_name = format!("rz_{}_q{}", layer, qubit);
+                let param_name = format!("rz_{layer}_q{qubit}");
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0); // Initialize to 0
@@ -191,7 +191,7 @@ impl<const N: usize> VQECircuit<N> {
         // Single excitations
         for i in 0..occupied_orbitals {
             for a in occupied_orbitals..(occupied_orbitals + virtual_orbitals) {
-                let param_name = format!("t1_{}_{}", i, a);
+                let param_name = format!("t1_{i}_{a}");
                 parameter_names.push(param_name.clone());
                 parameter_map.insert(param_name, parameters.len());
                 parameters.push(0.0);
@@ -209,7 +209,7 @@ impl<const N: usize> VQECircuit<N> {
                 for a in occupied_orbitals..(occupied_orbitals + virtual_orbitals) {
                     for b in (a + 1)..(occupied_orbitals + virtual_orbitals) {
                         if a < N && b < N {
-                            let param_name = format!("t2_{}_{}_{}_{}", i, j, a, b);
+                            let param_name = format!("t2_{i}_{j}_{a}_{b}");
                             parameter_names.push(param_name.clone());
                             parameter_map.insert(param_name, parameters.len());
                             parameters.push(0.0);
@@ -248,12 +248,14 @@ impl<const N: usize> VQECircuit<N> {
         // Build ansatz based on geometric connectivity
         for (i, &(x1, y1, z1)) in geometry.iter().enumerate() {
             for (j, &(x2, y2, z2)) in geometry.iter().enumerate().skip(i + 1) {
-                let distance = ((x2 - x1).powi(2) + (y2 - y1).powi(2) + (z2 - z1).powi(2)).sqrt();
+                let distance = (z2 - z1)
+                    .mul_add(z2 - z1, (y2 - y1).mul_add(y2 - y1, (x2 - x1).powi(2)))
+                    .sqrt();
 
                 // Only include interactions within a cutoff distance
                 if distance < 3.0 {
                     // Cutoff distance
-                    let param_name = format!("j_{}_{}", i, j);
+                    let param_name = format!("j_{i}_{j}");
                     parameter_names.push(param_name.clone());
                     parameter_map.insert(param_name, parameters.len());
                     parameters.push(0.0);
@@ -289,6 +291,7 @@ impl<const N: usize> VQECircuit<N> {
     }
 
     /// Get a parameter by name
+    #[must_use]
     pub fn get_parameter(&self, name: &str) -> Option<f64> {
         self.parameter_map
             .get(name)
@@ -297,9 +300,10 @@ impl<const N: usize> VQECircuit<N> {
 
     /// Set a parameter by name
     pub fn set_parameter(&mut self, name: &str, value: f64) -> QuantRS2Result<()> {
-        let index = self.parameter_map.get(name).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Parameter '{}' not found", name))
-        })?;
+        let index = self
+            .parameter_map
+            .get(name)
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Parameter '{name}' not found")))?;
 
         self.parameters[*index] = value;
         Ok(())
@@ -313,8 +317,7 @@ impl<const N: usize> VQECircuit<N> {
     ) -> QuantRS2Result<()> {
         if self.parameter_map.contains_key(parameter_name) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Parameter '{}' already exists",
-                parameter_name
+                "Parameter '{parameter_name}' already exists"
             )));
         }
 
@@ -335,8 +338,7 @@ impl<const N: usize> VQECircuit<N> {
     ) -> QuantRS2Result<()> {
         if self.parameter_map.contains_key(parameter_name) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Parameter '{}' already exists",
-                parameter_name
+                "Parameter '{parameter_name}' already exists"
             )));
         }
 
@@ -350,6 +352,7 @@ impl<const N: usize> VQECircuit<N> {
     }
 
     /// Get the number of parameters
+    #[must_use]
     pub fn num_parameters(&self) -> usize {
         self.parameters.len()
     }
@@ -357,7 +360,8 @@ impl<const N: usize> VQECircuit<N> {
 
 impl VQEObservable {
     /// Create a new empty observable
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self { terms: Vec::new() }
     }
 
@@ -367,6 +371,7 @@ impl VQEObservable {
     }
 
     /// Create a Heisenberg model Hamiltonian
+    #[must_use]
     pub fn heisenberg_model(num_qubits: usize, j_coupling: f64) -> Self {
         let mut observable = Self::new();
 
@@ -392,6 +397,7 @@ impl VQEObservable {
     }
 
     /// Create a transverse field Ising model Hamiltonian
+    #[must_use]
     pub fn tfim(num_qubits: usize, j_coupling: f64, h_field: f64) -> Self {
         let mut observable = Self::new();
 
@@ -412,6 +418,7 @@ impl VQEObservable {
     }
 
     /// Create a molecular Hamiltonian (simplified version)
+    #[must_use]
     pub fn molecular_hamiltonian(
         one_body: &[(usize, usize, f64)],
         two_body: &[(usize, usize, usize, usize, f64)],
@@ -486,7 +493,8 @@ pub enum VQEOptimizerType {
 
 impl VQEOptimizer {
     /// Create a new VQE optimizer
-    pub fn new(optimizer_type: VQEOptimizerType) -> Self {
+    #[must_use]
+    pub const fn new(optimizer_type: VQEOptimizerType) -> Self {
         Self {
             max_iterations: 1000,
             tolerance: 1e-6,
@@ -553,7 +561,7 @@ impl VQEOptimizer {
     }
 
     /// Evaluate the energy expectation value (simplified)
-    fn evaluate_energy<const N: usize>(
+    const fn evaluate_energy<const N: usize>(
         &self,
         _circuit: &VQECircuit<N>,
         _observable: &VQEObservable,

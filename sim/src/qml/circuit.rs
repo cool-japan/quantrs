@@ -81,7 +81,7 @@ impl ParameterizedQuantumCircuit {
     /// Set parameter at specific index
     pub fn set_parameter(&mut self, index: usize, value: f64) -> Result<(), String> {
         if index >= self.parameters.len() {
-            return Err(format!("Parameter index {} out of bounds", index));
+            return Err(format!("Parameter index {index} out of bounds"));
         }
         self.parameters[index] = value;
         Ok(())
@@ -93,7 +93,7 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.circuit.num_qubits
     }
 
@@ -353,7 +353,7 @@ impl HardwareOptimizations {
 
     /// Get average gate fidelity
     pub fn average_gate_fidelity(&self) -> f64 {
-        let fidelities: Vec<f64> = self.gate_fidelities.values().cloned().collect();
+        let fidelities: Vec<f64> = self.gate_fidelities.values().copied().collect();
         if fidelities.is_empty() {
             1.0
         } else {
@@ -369,7 +369,7 @@ impl HardwareOptimizations {
         self.connectivity_graph
             .row(qubit)
             .iter()
-            .map(|&x| if x { 1 } else { 0 })
+            .map(|&x| usize::from(x))
             .sum()
     }
 }

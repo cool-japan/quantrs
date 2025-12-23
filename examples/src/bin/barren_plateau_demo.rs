@@ -52,9 +52,9 @@ fn main() -> Result<(), MLError> {
     };
 
     println!("Circuit configuration:");
-    println!("  - Qubits: {}", num_qubits);
-    println!("  - Layers: {}", num_layers);
-    println!("  - Total parameters: {}", total_params);
+    println!("  - Qubits: {num_qubits}");
+    println!("  - Layers: {num_layers}");
+    println!("  - Total parameters: {total_params}");
     println!("  - Entanglement: Circular connectivity");
 
     println!("\nAnalyzing for barren plateaus...");
@@ -106,10 +106,14 @@ fn main() -> Result<(), MLError> {
     // Check for exponential decay
     if scaling_results.len() >= 2 {
         let first = scaling_results[0].1.ln();
-        let last = scaling_results.last().unwrap().1.ln();
+        let last = scaling_results
+            .last()
+            .expect("Failed to get last scaling result (empty vector)")
+            .1
+            .ln();
         let decay_rate = (last - first) / (scaling_results.len() as f64 - 1.0);
 
-        println!("\nExponential decay rate: {:.3} per qubit", decay_rate);
+        println!("\nExponential decay rate: {decay_rate:.3} per qubit");
         if decay_rate < -0.5 {
             println!("⚠️  Warning: Exponential gradient suppression detected!");
         }
@@ -125,7 +129,7 @@ fn main() -> Result<(), MLError> {
     let smart_params = mitigation.smart_initialization(total_params);
     println!("\nSmart initialization (first 10 parameters):");
     for (i, &p) in smart_params.iter().take(10).enumerate() {
-        println!("  param[{}] = {:.4}", i, p);
+        println!("  param[{i}] = {p:.4}");
     }
 
     // Layer-wise pre-training

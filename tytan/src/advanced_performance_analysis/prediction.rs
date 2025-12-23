@@ -75,7 +75,7 @@ impl PerformancePredictionModel for LinearRegressionModel {
         self.accuracy
     }
 
-    fn get_model_name(&self) -> &str {
+    fn get_model_name(&self) -> &'static str {
         "Linear Regression Model"
     }
 }
@@ -93,7 +93,7 @@ impl Default for RandomForestModel {
 }
 
 impl RandomForestModel {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { accuracy: 0.92 }
     }
 }
@@ -120,7 +120,7 @@ impl PerformancePredictionModel for RandomForestModel {
         self.accuracy
     }
 
-    fn get_model_name(&self) -> &str {
+    fn get_model_name(&self) -> &'static str {
         "Random Forest Model"
     }
 }

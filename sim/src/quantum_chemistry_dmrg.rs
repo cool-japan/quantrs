@@ -6,8 +6,8 @@
 //! state and excited state calculations in strongly correlated molecular systems.
 
 use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -872,7 +872,7 @@ impl QuantumChemistryDMRGSimulator {
         };
 
         // Simulate tensor optimization (would involve actual diagonalization in practice)
-        let optimization_factor = 0.9 + 0.1 * thread_rng().gen::<f64>();
+        let optimization_factor = 0.1f64.mul_add(thread_rng().gen::<f64>(), 0.9);
 
         // Update the tensor with optimization (simplified)
         if let Some(tensor) = state.site_tensors.get_mut(site) {
@@ -911,7 +911,11 @@ impl QuantumChemistryDMRGSimulator {
     }
 
     fn calculate_distance(&self, pos1: &[f64; 3], pos2: &[f64; 3]) -> f64 {
-        ((pos1[0] - pos2[0]).powi(2) + (pos1[1] - pos2[1]).powi(2) + (pos1[2] - pos2[2]).powi(2))
+        (pos1[2] - pos2[2])
+            .mul_add(
+                pos1[2] - pos2[2],
+                (pos1[1] - pos2[1]).mul_add(pos1[1] - pos2[1], (pos1[0] - pos2[0]).powi(2)),
+            )
             .sqrt()
     }
 
@@ -958,7 +962,7 @@ impl QuantumChemistryDMRGSimulator {
         for atom in &self.config.molecular_geometry {
             // Distance-based approximation
             let distance_factor =
-                1.0 / (1.0 + 0.1 * atom.position.iter().map(|x| x.abs()).sum::<f64>());
+                1.0 / 0.1f64.mul_add(atom.position.iter().map(|x| x.abs()).sum::<f64>(), 1.0);
             integral -= atom.nuclear_charge * distance_factor * if i == j { 1.0 } else { 0.1 };
         }
 
@@ -973,7 +977,7 @@ impl QuantumChemistryDMRGSimulator {
         l: usize,
     ) -> Result<f64> {
         // Simplified two-electron repulsion integral
-        let distance_factor = 1.0 / (1.0 + 0.5 * ((i + j + k + l) as f64).sqrt());
+        let distance_factor = 1.0 / 0.5f64.mul_add(((i + j + k + l) as f64).sqrt(), 1.0);
 
         if i == k && j == l {
             Ok(distance_factor)
@@ -1011,8 +1015,10 @@ impl QuantumChemistryDMRGSimulator {
                 if i < hamiltonian.two_electron_integrals.shape()[0]
                     && j < hamiltonian.two_electron_integrals.shape()[1]
                 {
-                    hf_energy += hamiltonian.two_electron_integrals[(i, j, i, j)]
-                        - 0.5 * hamiltonian.two_electron_integrals[(i, j, j, i)];
+                    hf_energy += 0.5f64.mul_add(
+                        -hamiltonian.two_electron_integrals[(i, j, j, i)],
+                        hamiltonian.two_electron_integrals[(i, j, i, j)],
+                    );
                 }
             }
         }
@@ -1051,7 +1057,7 @@ impl QuantumChemistryDMRGSimulator {
             dipole[2] += charge_contrib * atom.position[2];
 
             // Electronic contribution (simplified)
-            let electronic_factor = 1.0 - (atom_idx as f64 + 1.0) * 0.1;
+            let electronic_factor = (atom_idx as f64 + 1.0).mul_add(-0.1, 1.0);
             dipole[0] -= electronic_factor * atom.position[0];
             dipole[1] -= electronic_factor * atom.position[1];
             dipole[2] -= electronic_factor * atom.position[2];
@@ -1068,9 +1074,9 @@ impl QuantumChemistryDMRGSimulator {
             let [x, y, z] = atom.position;
 
             // Diagonal elements
-            quadrupole[(0, 0)] += charge * (3.0 * x * x - (x * x + y * y + z * z));
-            quadrupole[(1, 1)] += charge * (3.0 * y * y - (x * x + y * y + z * z));
-            quadrupole[(2, 2)] += charge * (3.0 * z * z - (x * x + y * y + z * z));
+            quadrupole[(0, 0)] += charge * (3.0 * x).mul_add(x, -z.mul_add(z, x.mul_add(x, y * y)));
+            quadrupole[(1, 1)] += charge * (3.0 * y).mul_add(y, -z.mul_add(z, x.mul_add(x, y * y)));
+            quadrupole[(2, 2)] += charge * (3.0 * z).mul_add(z, -z.mul_add(z, x.mul_add(x, y * y)));
 
             // Off-diagonal elements
             quadrupole[(0, 1)] += charge * 3.0 * x * y;
@@ -1158,13 +1164,13 @@ impl QuantumChemistryDMRGSimulator {
         let mut excited_state = self.initialize_dmrg_state()?;
 
         // Modify state to represent excited state
-        excited_state.energy = excited_state.energy + state_index as f64 * 0.1;
+        excited_state.energy = (state_index as f64).mul_add(0.1, excited_state.energy);
         excited_state.quantum_numbers.total_spin = if state_index % 2 == 0 { 0 } else { 2 };
 
         Ok(excited_state)
     }
 
-    fn calculate_state_energy(&self, state: &DMRGState) -> Result<f64> {
+    const fn calculate_state_energy(&self, state: &DMRGState) -> Result<f64> {
         // Calculate energy of a given state
         Ok(state.energy)
     }
@@ -1178,7 +1184,7 @@ impl QuantumChemistryDMRGSimulator {
 
         for (i, bond_matrix) in bond_matrices.iter().enumerate() {
             let mut s = 0.0;
-            for &sigma in bond_matrix.iter() {
+            for &sigma in bond_matrix {
                 if sigma > 1e-12 {
                     let p = sigma * sigma;
                     s -= p * p.ln();
@@ -1264,19 +1270,19 @@ impl QuantumChemistryDMRGSimulator {
 
     fn update_statistics(&mut self, result: &DMRGResult) {
         self.stats.total_calculations += 1;
-        self.stats.average_convergence_time = (self.stats.average_convergence_time
-            * (self.stats.total_calculations - 1) as f64
-            + result.timing_stats.total_time)
-            / self.stats.total_calculations as f64;
+        self.stats.average_convergence_time = self.stats.average_convergence_time.mul_add(
+            (self.stats.total_calculations - 1) as f64,
+            result.timing_stats.total_time,
+        ) / self.stats.total_calculations as f64;
 
-        self.stats.success_rate = (self.stats.success_rate
-            * (self.stats.total_calculations - 1) as f64
-            + if result.convergence_info.converged {
+        self.stats.success_rate = self.stats.success_rate.mul_add(
+            (self.stats.total_calculations - 1) as f64,
+            if result.convergence_info.converged {
                 1.0
             } else {
                 0.0
-            })
-            / self.stats.total_calculations as f64;
+            },
+        ) / self.stats.total_calculations as f64;
 
         self.stats.accuracy_metrics.energy_accuracy =
             (result.ground_state_energy - result.correlation_energy).abs()
@@ -1491,7 +1497,7 @@ impl QuantumChemistryDMRGUtils {
         // Rough cost estimates based on DMRG scaling
         let hamiltonian_cost = n_orb.powi(4); // O(N^4) for two-electron integrals
         let dmrg_sweep_cost = n_orb * bond_dim.powi(3); // O(N * D^3) per sweep
-        let total_cost = hamiltonian_cost + n_sweeps * dmrg_sweep_cost;
+        let total_cost = n_sweeps.mul_add(dmrg_sweep_cost, hamiltonian_cost);
 
         // Memory estimates
         let hamiltonian_memory = n_orb.powi(4) * 8.0 / (1024.0 * 1024.0); // MB

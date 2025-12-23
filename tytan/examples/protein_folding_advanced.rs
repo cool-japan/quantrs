@@ -6,7 +6,6 @@
 //! - Contact map prediction
 //! - Comparison with molecular dynamics approaches
 
-use scirs2_core::ndarray::{Array2, Array3};
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -21,6 +20,7 @@ use quantrs2_tytan::{
         solution_analysis::analyze_solution_distribution,
     },
 };
+use scirs2_core::ndarray::{Array2, Array3};
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -44,7 +44,7 @@ impl AminoAcid {
         }
     }
 
-    fn interaction_energy(&self, other: &Self) -> f64 {
+    const fn interaction_energy(&self, other: &Self) -> f64 {
         match (self, other) {
             (Self::Hydrophobic, Self::Hydrophobic) => -1.0, // H-H attractive
             _ => 0.0,                                       // P-P and H-P neutral
@@ -114,7 +114,7 @@ impl LatticeType {
         }
     }
 
-    fn max_dimension(&self) -> usize {
+    const fn max_dimension(&self) -> usize {
         match self {
             Self::Square2D | Self::Triangular2D => 2,
             Self::Cubic3D => 3,
@@ -172,7 +172,7 @@ fn create_folding_model(
         for idx in 0..positions.len() {
             pos_sum.push(position_vars[&(i, idx)].clone());
         }
-        model.add_constraint_eq_one(&format!("residue_{}_position", i), pos_sum)?;
+        model.add_constraint_eq_one(&format!("residue_{i}_position"), pos_sum)?;
     }
 
     // Constraint 2: Each position can have at most one residue
@@ -181,7 +181,7 @@ fn create_folding_model(
         for i in 0..n {
             residue_sum.push(position_vars[&(i, idx)].clone());
         }
-        model.add_constraint_at_most_one(&format!("position_{}_occupancy", idx), residue_sum)?;
+        model.add_constraint_at_most_one(&format!("position_{idx}_occupancy"), residue_sum)?;
     }
 
     // Constraint 3: Sequential residues must be neighbors on lattice
@@ -198,7 +198,7 @@ fn create_folding_model(
                 // Find if pos2 exists in our position list
                 if let Some(idx2) = positions.iter().position(|&p| p == pos2) {
                     // Create auxiliary variable for this valid pair
-                    let aux_var = model.add_variable(&format!("seq_{}_{}_to_{}", i, idx1, idx2))?;
+                    let aux_var = model.add_variable(&format!("seq_{i}_{idx1}_to_{idx2}"))?;
 
                     // Simplified: aux_var represents valid consecutive placement
                     // Constraints handled as penalty terms in objective
@@ -209,7 +209,7 @@ fn create_folding_model(
         }
 
         // At least one valid pair must be selected
-        model.add_constraint_eq_one(&format!("sequence_connectivity_{}", i), valid_pairs)?;
+        model.add_constraint_eq_one(&format!("sequence_connectivity_{i}"), valid_pairs)?;
     }
 
     // Objective: Minimize energy (maximize H-H contacts)
@@ -308,7 +308,7 @@ fn validate_conformation(conformation: &[(i32, i32, i32)], lattice: LatticeType)
     let n = conformation.len();
 
     // Check no overlaps
-    let unique_positions: HashSet<_> = conformation.iter().cloned().collect();
+    let unique_positions: HashSet<_> = conformation.iter().copied().collect();
     if unique_positions.len() != n {
         return false;
     }
@@ -368,17 +368,17 @@ fn calculate_radius_of_gyration(conformation: &[(i32, i32, i32)]) -> f64 {
     // Calculate center of mass
     let mut center = (0.0, 0.0, 0.0);
     for &(x, y, z) in conformation {
-        center.0 += x as f64 / n;
-        center.1 += y as f64 / n;
-        center.2 += z as f64 / n;
+        center.0 += f64::from(x) / n;
+        center.1 += f64::from(y) / n;
+        center.2 += f64::from(z) / n;
     }
 
     // Calculate radius of gyration
     let mut rg2 = 0.0;
     for &(x, y, z) in conformation {
-        let dx = x as f64 - center.0;
-        let dy = y as f64 - center.1;
-        let dz = z as f64 - center.2;
+        let dx = f64::from(x) - center.0;
+        let dy = f64::from(y) - center.1;
+        let dz = f64::from(z) - center.2;
         rg2 += (dx * dx + dy * dy + dz * dz) / n;
     }
 
@@ -403,16 +403,16 @@ fn run_folding_experiment(
             .collect::<String>()
     );
     println!("Length: {}", protein.len());
-    println!("Lattice: {:?}", lattice);
+    println!("Lattice: {lattice:?}");
 
     // Determine lattice size
     let lattice_size = match lattice {
         LatticeType::Square2D => ((protein.len() as f64).sqrt() * 2.0).ceil() as usize,
-        LatticeType::Cubic3D => ((protein.len() as f64).powf(1.0 / 3.0) * 2.0).ceil() as usize,
+        LatticeType::Cubic3D => ((protein.len() as f64).cbrt() * 2.0).ceil() as usize,
         LatticeType::Triangular2D => ((protein.len() as f64).sqrt() * 1.5).ceil() as usize,
     };
 
-    println!("Lattice size: {}", lattice_size);
+    println!("Lattice size: {lattice_size}");
 
     // Create model
     let model = create_folding_model(protein, lattice, lattice_size)?;
@@ -453,7 +453,7 @@ fn run_folding_experiment(
     let mut var_map = HashMap::new();
 
     for i in 0..n_vars {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
         if let Ok(linear) = qubo.get_linear(i) {
             matrix[[i, i]] = linear;
         }
@@ -501,11 +501,11 @@ fn run_folding_experiment(
         valid_conformations.len(),
         samples.len()
     );
-    println!("  Best energy: {:.1}", best_energy);
+    println!("  Best energy: {best_energy:.1}");
 
     if let Some(conformation) = best_conformation {
         let rg = calculate_radius_of_gyration(&conformation);
-        println!("  Radius of gyration: {:.2}", rg);
+        println!("  Radius of gyration: {rg:.2}");
 
         // Count H-H contacts
         let mut hh_contacts = 0;
@@ -525,7 +525,7 @@ fn run_folding_experiment(
             }
         }
 
-        println!("  H-H contacts: {}", hh_contacts);
+        println!("  H-H contacts: {hh_contacts}");
 
         // Print conformation
         if lattice_size <= 10 && matches!(lattice, LatticeType::Square2D) {
@@ -573,13 +573,13 @@ fn run_folding_experiment(
         let energies: Vec<f64> = valid_conformations.iter().map(|(_, e)| *e).collect();
 
         let mean_energy = energies.iter().sum::<f64>() / energies.len() as f64;
-        let min_energy = energies.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_energy = energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min_energy = energies.iter().copied().fold(f64::INFINITY, f64::min);
+        let max_energy = energies.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
         println!("\n  Energy distribution:");
-        println!("    Mean: {:.2}", mean_energy);
-        println!("    Min: {:.2}", min_energy);
-        println!("    Max: {:.2}", max_energy);
+        println!("    Mean: {mean_energy:.2}");
+        println!("    Min: {min_energy:.2}");
+        println!("    Max: {max_energy:.2}");
 
         // Count unique conformations
         let unique_energies: HashSet<_> = energies
@@ -604,18 +604,18 @@ fn save_contact_map(
     let n = contact_map.nrows();
 
     // Header
-    write!(&mut csv, "i,j,contact\n")?;
+    writeln!(&mut csv, "i,j,contact")?;
 
     for i in 0..n {
         for j in 0..n {
             if contact_map[[i, j]] > 0.0 {
-                writeln!(&mut csv, "{},{},1", i, j)?;
+                writeln!(&mut csv, "{i},{j},1")?;
             }
         }
     }
 
     std::fs::write(filename, csv)?;
-    println!("  Contact map saved to {}", filename);
+    println!("  Contact map saved to {filename}");
 
     Ok(())
 }
@@ -681,7 +681,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Analyze designed sequences
     for (name, seq) in &[("Alpha", "HHHHPPPPHHHHPPPP"), ("Beta", "HPHPHPHPHPHPHPH")] {
         if let Some(protein) = Protein::from_sequence(name, seq) {
-            println!("\nAnalyzing {} sequence", name);
+            println!("\nAnalyzing {name} sequence");
             run_folding_experiment(&protein, LatticeType::Square2D)?;
         }
     }
@@ -709,7 +709,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut var_map = HashMap::new();
 
             for i in 0..n_vars {
-                var_map.insert(format!("x_{}", i), i);
+                var_map.insert(format!("x_{i}"), i);
                 if let Ok(linear) = qubo.get_linear(i) {
                     matrix[[i, i]] = linear;
                 }

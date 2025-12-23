@@ -28,7 +28,7 @@ fn main() {
             .map(|j| format!("{:4.1}", tsp.distances[i][j]))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("  {}", row);
+        println!("  {row}");
     }
 
     // Formulate the TSP as a QUBO
@@ -44,7 +44,7 @@ fn main() {
         "Converted QUBO to Ising model with {} qubits",
         ising_model.num_qubits
     );
-    println!("Offset from QUBO to Ising conversion: {:.4}\n", offset);
+    println!("Offset from QUBO to Ising conversion: {offset:.4}\n");
 
     // Solve using classical simulated annealing
     println!("Solving with Classical Simulated Annealing...");
@@ -73,26 +73,26 @@ fn main() {
 
                     // Validate the tour
                     let (is_valid, violations) = validate_tour(&tsp, &tour);
-                    println!("Valid tour: {}", is_valid);
+                    println!("Valid tour: {is_valid}");
 
                     // Print the tour
-                    if !tour.is_empty() {
+                    if tour.is_empty() {
+                        println!("No valid tour found");
+                    } else {
                         print_tour(&tsp, &tour);
                         // Calculate tour length
                         let tour_length = calculate_tour_length(&tsp, &tour);
-                        println!("Tour length: {:.2}", tour_length);
-                    } else {
-                        println!("No valid tour found");
+                        println!("Tour length: {tour_length:.2}");
                     }
 
                     if violations > 0 {
-                        println!("Constraint violations: {}", violations);
+                        println!("Constraint violations: {violations}");
                     }
                 }
-                Err(err) => println!("Error solving with classical annealing: {}", err),
+                Err(err) => println!("Error solving with classical annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating classical annealing simulator: {}", err),
+        Err(err) => println!("Error creating classical annealing simulator: {err}"),
     }
 
     println!("\nSolving with Quantum Simulated Annealing...");
@@ -124,26 +124,26 @@ fn main() {
 
                     // Validate the tour
                     let (is_valid, violations) = validate_tour(&tsp, &tour);
-                    println!("Valid tour: {}", is_valid);
+                    println!("Valid tour: {is_valid}");
 
                     // Print the tour
-                    if !tour.is_empty() {
+                    if tour.is_empty() {
+                        println!("No valid tour found");
+                    } else {
                         print_tour(&tsp, &tour);
                         // Calculate tour length
                         let tour_length = calculate_tour_length(&tsp, &tour);
-                        println!("Tour length: {:.2}", tour_length);
-                    } else {
-                        println!("No valid tour found");
+                        println!("Tour length: {tour_length:.2}");
                     }
 
                     if violations > 0 {
-                        println!("Constraint violations: {}", violations);
+                        println!("Constraint violations: {violations}");
                     }
                 }
-                Err(err) => println!("Error solving with quantum annealing: {}", err),
+                Err(err) => println!("Error solving with quantum annealing: {err}"),
             }
         }
-        Err(err) => println!("Error creating quantum annealing simulator: {}", err),
+        Err(err) => println!("Error creating quantum annealing simulator: {err}"),
     }
 
     println!("\nNote: The quantum annealing simulation is just a demonstration.");
@@ -199,8 +199,10 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
         let mut city_vars = Vec::new();
 
         for p in 0..n {
-            let var_name = format!("x_{}_{}", i, p);
-            let var = builder.add_variable(var_name).unwrap();
+            let var_name = format!("x_{i}_{p}");
+            let var = builder
+                .add_variable(var_name.clone())
+                .unwrap_or_else(|_| panic!("Failed to add variable {var_name} to QUBO builder"));
             city_vars.push(var);
         }
 
@@ -209,19 +211,27 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
 
     // Set constraint weight
     let constraint_weight = 10.0 * n as f64; // Make constraints stronger than objective
-    builder.set_constraint_weight(constraint_weight).unwrap();
+    builder
+        .set_constraint_weight(constraint_weight)
+        .unwrap_or_else(|_| {
+            panic!("Failed to set constraint weight {constraint_weight} in QUBO builder")
+        });
 
     // Constraint 1: Each city must be visited exactly once
     #[allow(clippy::needless_range_loop)]
     for i in 0..n {
         let city_vars = variables[i].clone();
-        builder.constrain_one_hot(&city_vars).unwrap();
+        builder
+            .constrain_one_hot(&city_vars)
+            .unwrap_or_else(|_| panic!("Failed to apply one-hot constraint for city {i}"));
     }
 
     // Constraint 2: Each position in the tour must be occupied by exactly one city
     for p in 0..n {
         let position_vars: Vec<Variable> = (0..n).map(|i| variables[i][p].clone()).collect();
-        builder.constrain_one_hot(&position_vars).unwrap();
+        builder
+            .constrain_one_hot(&position_vars)
+            .unwrap_or_else(|_| panic!("Failed to apply one-hot constraint for position {p}"));
     }
 
     // Objective: Minimize the total distance
@@ -237,7 +247,7 @@ fn formulate_tsp_qubo(tsp: &Tsp) -> (QuboModel, HashMap<String, usize>) {
                     let distance = tsp.distances[i][j];
                     builder
                         .minimize_quadratic(&variables[i][p], &variables[j][p_next], distance)
-                        .unwrap();
+                        .unwrap_or_else(|_| panic!("Failed to add quadratic term for distance between city {i} at position {p} and city {j} at position {p_next}"));
                 }
             }
         }
@@ -264,7 +274,7 @@ fn interpret_tour(tsp: &Tsp, solution: &[bool], var_map: &HashMap<String, usize>
         // Find which city is at this position
         #[allow(clippy::needless_range_loop)]
         for i in 0..n {
-            let var_name = format!("x_{}_{}", i, p);
+            let var_name = format!("x_{i}_{p}");
             if let Some(&var_idx) = var_map.get(&var_name) {
                 if solution[var_idx] {
                     if found_city {

@@ -88,21 +88,19 @@ pub struct FermionicStats {
 
 impl FermionicOperator {
     /// Check if operator is creation type
-    pub fn is_creation(&self) -> bool {
-        matches!(self, FermionicOperator::Creation(_))
+    pub const fn is_creation(&self) -> bool {
+        matches!(self, Self::Creation(_))
     }
 
     /// Check if operator is annihilation type
-    pub fn is_annihilation(&self) -> bool {
-        matches!(self, FermionicOperator::Annihilation(_))
+    pub const fn is_annihilation(&self) -> bool {
+        matches!(self, Self::Annihilation(_))
     }
 
     /// Get site index for single-site operators
-    pub fn site(&self) -> Option<usize> {
+    pub const fn site(&self) -> Option<usize> {
         match self {
-            FermionicOperator::Creation(i)
-            | FermionicOperator::Annihilation(i)
-            | FermionicOperator::Number(i) => Some(*i),
+            Self::Creation(i) | Self::Annihilation(i) | Self::Number(i) => Some(*i),
             _ => None,
         }
     }
@@ -110,13 +108,13 @@ impl FermionicOperator {
     /// Get canonical ordering for operator comparison
     pub fn ordering_key(&self) -> (usize, usize) {
         match self {
-            FermionicOperator::Creation(i) => (1, *i),
-            FermionicOperator::Annihilation(i) => (0, *i),
-            FermionicOperator::Number(i) => (2, *i),
-            FermionicOperator::Hopping { from, to } => (3, from.min(to) * 1000 + from.max(to)),
-            FermionicOperator::Interaction { sites } => {
+            Self::Creation(i) => (1, *i),
+            Self::Annihilation(i) => (0, *i),
+            Self::Number(i) => (2, *i),
+            Self::Hopping { from, to } => (3, from.min(to) * 1000 + from.max(to)),
+            Self::Interaction { sites } => {
                 let mut sorted_sites = *sites;
-                sorted_sites.sort();
+                sorted_sites.sort_unstable();
                 (
                     4,
                     sorted_sites[0] * 1000000
@@ -131,7 +129,7 @@ impl FermionicOperator {
 
 impl FermionicString {
     /// Create new fermionic string
-    pub fn new(
+    pub const fn new(
         operators: Vec<FermionicOperator>,
         coefficient: Complex64,
         num_modes: usize,
@@ -181,7 +179,7 @@ impl FermionicString {
     }
 
     /// Multiply two fermionic strings
-    pub fn multiply(&self, other: &FermionicString) -> Result<FermionicString> {
+    pub fn multiply(&self, other: &Self) -> Result<Self> {
         if self.num_modes != other.num_modes {
             return Err(SimulatorError::DimensionMismatch(
                 "Fermionic strings must have same number of modes".to_string(),
@@ -194,7 +192,7 @@ impl FermionicString {
         // Apply fermionic anticommutation rules
         let (canonical_ops, sign) = self.canonicalize_operators(&result_ops)?;
 
-        Ok(FermionicString {
+        Ok(Self {
             operators: canonical_ops,
             coefficient: self.coefficient * other.coefficient * sign,
             num_modes: self.num_modes,
@@ -240,7 +238,6 @@ impl FermionicString {
                     {
                         result.push(FermionicOperator::Number(*a));
                         i += 2;
-                        continue;
                     }
                     // c_i c_i = 0 (skip both)
                     (FermionicOperator::Annihilation(a), FermionicOperator::Annihilation(b))
@@ -248,13 +245,11 @@ impl FermionicString {
                     {
                         // Result is zero - would need to handle this properly
                         i += 2;
-                        continue;
                     }
                     // c†_i c†_i = 0 (skip both)
                     (FermionicOperator::Creation(a), FermionicOperator::Creation(b)) if a == b => {
                         // Result is zero - would need to handle this properly
                         i += 2;
-                        continue;
                     }
                     _ => {
                         result.push(ops[i].clone());
@@ -271,7 +266,7 @@ impl FermionicString {
     }
 
     /// Compute Hermitian conjugate
-    pub fn hermitian_conjugate(&self) -> FermionicString {
+    pub fn hermitian_conjugate(&self) -> Self {
         let mut conjugate_ops = Vec::new();
 
         // Reverse order and conjugate each operator
@@ -294,7 +289,7 @@ impl FermionicString {
             conjugate_ops.push(conjugate_op);
         }
 
-        FermionicString {
+        Self {
             operators: conjugate_ops,
             coefficient: self.coefficient.conj(),
             num_modes: self.num_modes,
@@ -304,7 +299,7 @@ impl FermionicString {
 
 impl FermionicHamiltonian {
     /// Create new fermionic Hamiltonian
-    pub fn new(num_modes: usize) -> Self {
+    pub const fn new(num_modes: usize) -> Self {
         Self {
             terms: Vec::new(),
             num_modes,
@@ -737,7 +732,7 @@ impl FermionicSimulator {
     }
 
     /// Apply Pauli string to current state
-    fn apply_pauli_string(&mut self, pauli_string: &PauliString) -> Result<()> {
+    const fn apply_pauli_string(&mut self, pauli_string: &PauliString) -> Result<()> {
         // This would need proper Pauli string application
         // For now, placeholder implementation
         Ok(())
@@ -754,7 +749,7 @@ impl FermionicSimulator {
     }
 
     /// Compute Pauli string expectation value
-    fn compute_pauli_expectation(&self, pauli_string: &PauliString) -> Result<Complex64> {
+    const fn compute_pauli_expectation(&self, pauli_string: &PauliString) -> Result<Complex64> {
         // Simplified implementation
         // Would need proper Pauli string expectation value computation
         Ok(Complex64::new(0.0, 0.0))
@@ -776,7 +771,7 @@ impl FermionicSimulator {
     }
 
     /// Evolve under Pauli Hamiltonian
-    fn evolve_pauli_hamiltonian(
+    const fn evolve_pauli_hamiltonian(
         &mut self,
         _hamiltonian: &PauliOperatorSum,
         _time: f64,
@@ -787,7 +782,7 @@ impl FermionicSimulator {
     }
 
     /// Get current state vector
-    pub fn get_state(&self) -> &Array1<Complex64> {
+    pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
@@ -805,7 +800,7 @@ impl FermionicSimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_stats(&self) -> &FermionicStats {
+    pub const fn get_stats(&self) -> &FermionicStats {
         &self.stats
     }
 
@@ -820,7 +815,7 @@ impl FermionicSimulator {
         // For ⟨n_i n_j⟩, would need to compute product operator expectation
         let n1_n2_exp = 0.0; // Placeholder
 
-        Ok(n1_n2_exp - n1_exp * n2_exp)
+        Ok(n1_exp.mul_add(-n2_exp, n1_n2_exp))
     }
 }
 

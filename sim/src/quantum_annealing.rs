@@ -8,8 +8,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -278,9 +278,10 @@ impl IsingProblem {
 
     /// Find ground state using brute force (for small problems)
     pub fn find_ground_state_brute_force(&self) -> (Vec<i8>, f64) {
-        if self.num_spins > 20 {
-            panic!("Brute force search only supported for <= 20 spins");
-        }
+        assert!(
+            (self.num_spins <= 20),
+            "Brute force search only supported for <= 20 spins"
+        );
 
         let mut best_config = vec![-1; self.num_spins];
         let mut best_energy = f64::INFINITY;
@@ -568,11 +569,7 @@ impl QuantumAnnealingSimulator {
 
         Ok(AnnealingResult {
             solutions: self.solutions.clone(),
-            best_energy: self
-                .solutions
-                .first()
-                .map(|s| s.energy)
-                .unwrap_or(f64::INFINITY),
+            best_energy: self.solutions.first().map_or(f64::INFINITY, |s| s.energy),
             annealing_history: self.annealing_history.clone(),
             total_time_ms: total_time,
             success_probability: self.stats.success_probability,
@@ -667,7 +664,10 @@ impl QuantumAnnealingSimulator {
                 } else if normalized_t < 0.9 {
                     0.05 + 0.9 * (normalized_t - 0.1) / 0.8
                 } else {
-                    0.95 + 0.05 * (1.0 - (1.0 - normalized_t) * (1.0 - normalized_t) / 0.01)
+                    0.05f64.mul_add(
+                        1.0 - (1.0 - normalized_t) * (1.0 - normalized_t) / 0.01,
+                        0.95,
+                    )
                 }
             }
             AnnealingScheduleType::Optimized => {
@@ -688,10 +688,8 @@ impl QuantumAnnealingSimulator {
             }
             AnnealingScheduleType::NonMonotonic => {
                 // Non-monotonic schedule with oscillations
-                normalized_t
-                    + 0.1
-                        * (10.0 * std::f64::consts::PI * normalized_t).sin()
-                        * (1.0 - normalized_t)
+                (0.1 * (10.0 * std::f64::consts::PI * normalized_t).sin())
+                    .mul_add(1.0 - normalized_t, normalized_t)
             }
             AnnealingScheduleType::Reverse { reinitialize_point } => {
                 if normalized_t < reinitialize_point {
@@ -712,7 +710,7 @@ impl QuantumAnnealingSimulator {
         } else if t < 0.7 {
             0.3 + (t - 0.3) * 0.4 / 0.4
         } else {
-            0.7 + (t - 0.7) * (t - 0.7) / 0.09 * 0.3
+            ((t - 0.7) * (t - 0.7) / 0.09).mul_add(0.3, 0.7)
         }
     }
 
@@ -865,7 +863,7 @@ impl QuantumAnnealingSimulator {
             term = term.dot(&scaled_matrix) / (n as f64);
             let term_norm: f64 = term.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
 
-            result = result + &term;
+            result += &term;
 
             if term_norm < 1e-12 {
                 break;
@@ -1083,7 +1081,7 @@ impl QuantumAnnealingSimulator {
         for (i, solution) in self.solutions.iter().enumerate() {
             config_groups
                 .entry(solution.configuration.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(i);
         }
 
@@ -1118,9 +1116,8 @@ impl QuantumAnnealingSimulator {
                         improved_energy = new_energy;
                         found_improvement = true;
                         break;
-                    } else {
-                        improved_config[spin] *= -1; // Revert
                     }
+                    improved_config[spin] *= -1; // Revert
                 }
 
                 if !found_improvement {
@@ -1171,7 +1168,7 @@ impl QuantumAnnealingSimulator {
     }
 
     /// Get annealing statistics
-    pub fn get_stats(&self) -> &AnnealingStats {
+    pub const fn get_stats(&self) -> &AnnealingStats {
         &self.stats
     }
 
@@ -1297,10 +1294,10 @@ impl QuantumAnnealingUtils {
 
                 results
                     .execution_times
-                    .push((format!("{}spins_{}us", size, time), execution_time));
+                    .push((format!("{size}spins_{time}us"), execution_time));
                 results
                     .best_energies
-                    .push((format!("{}spins_{}us", size, time), result.best_energy));
+                    .push((format!("{size}spins_{time}us"), result.best_energy));
             }
         }
 

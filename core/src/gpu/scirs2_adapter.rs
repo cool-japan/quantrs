@@ -14,7 +14,6 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "gpu")]
 // use scirs2_core::gpu::GpuDevice;
 // Placeholder for GpuDevice until scirs2 is available
-#[cfg(feature = "gpu")]
 type GpuDevice = ();
 //
 // /// Enhanced GPU configuration for SciRS2 integration
@@ -169,8 +168,8 @@ impl GpuBuffer for SciRS2BufferAdapter {
 
         #[cfg(feature = "gpu")]
         if let Some(ref _device) = self.device {
-            // Use SciRS2 GPU memory transfer
-            // TODO: Implement actual GPU upload when SciRS2 API is stable
+            // Beta.3: CPU fallback with memory tracking
+            // Future: Direct GPU memory transfer via scirs2_core::gpu when API stabilizes
             self.data.copy_from_slice(data);
 
             // Update metrics
@@ -197,8 +196,8 @@ impl GpuBuffer for SciRS2BufferAdapter {
 
         #[cfg(feature = "gpu")]
         if let Some(ref _device) = self.device {
-            // Use SciRS2 GPU memory transfer
-            // TODO: Implement actual GPU download when SciRS2 API is stable
+            // Beta.3: CPU fallback implementation
+            // Future: Direct GPU memory transfer via scirs2_core::gpu when API stabilizes
             data.copy_from_slice(&self.data);
             return Ok(());
         }
@@ -211,8 +210,8 @@ impl GpuBuffer for SciRS2BufferAdapter {
     fn sync(&self) -> QuantRS2Result<()> {
         #[cfg(feature = "gpu")]
         if let Some(ref _device) = self.device {
-            // Use SciRS2 GPU synchronization
-            // TODO: Implement actual GPU sync when SciRS2 API is stable
+            // Beta.3: CPU mode - no synchronization needed
+            // Future: GPU barrier synchronization via scirs2_core::gpu when API stabilizes
             return Ok(());
         }
 
@@ -891,7 +890,8 @@ mod tests {
 
     #[test]
     fn test_scirs2_gpu_backend_creation() {
-        let backend = SciRS2GpuBackend::new().unwrap();
+        let backend = SciRS2GpuBackend::new()
+            .expect("Failed to create SciRS2 GPU backend in test_scirs2_gpu_backend_creation");
         assert_eq!(backend.name(), "SciRS2_GPU");
         assert!(!backend.device_info().is_empty());
     }
@@ -906,10 +906,14 @@ mod tests {
             Complex64::new(0.0, -1.0),
         ];
 
-        buffer.upload(&data).unwrap();
+        buffer
+            .upload(&data)
+            .expect("Failed to upload data in test_buffer_upload_download");
 
         let mut downloaded = vec![Complex64::new(0.0, 0.0); 4];
-        buffer.download(&mut downloaded).unwrap();
+        buffer
+            .download(&mut downloaded)
+            .expect("Failed to download data in test_buffer_upload_download");
 
         for (original, downloaded) in data.iter().zip(downloaded.iter()) {
             assert!((original - downloaded).norm() < 1e-10);
@@ -928,7 +932,9 @@ mod tests {
             Complex64::new(0.0, 0.0), // |10⟩
             Complex64::new(0.0, 0.0), // |11⟩
         ];
-        buffer.upload(&initial_state).unwrap();
+        buffer
+            .upload(&initial_state)
+            .expect("Failed to upload initial state in test_kernel_execution");
 
         // Apply X gate to qubit 0
         let x_gate = [
@@ -945,11 +951,13 @@ mod tests {
                 crate::qubit::QubitId(0),
                 2,
             )
-            .unwrap();
+            .expect("Failed to apply single qubit gate in test_kernel_execution");
 
         // Check result - should be |01⟩
         let mut result = vec![Complex64::new(0.0, 0.0); 4];
-        buffer.download(&mut result).unwrap();
+        buffer
+            .download(&mut result)
+            .expect("Failed to download result in test_kernel_execution");
 
         assert!((result[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10); // |00⟩
         assert!((result[1] - Complex64::new(1.0, 0.0)).norm() < 1e-10); // |01⟩
@@ -959,7 +967,8 @@ mod tests {
 
     #[test]
     fn test_gpu_factory() {
-        let backend = SciRS2GpuFactory::create_best().unwrap();
+        let backend = SciRS2GpuFactory::create_best()
+            .expect("Failed to create best GPU backend in test_gpu_factory");
         assert_eq!(backend.name(), "SciRS2_GPU");
 
         let backends = SciRS2GpuFactory::available_backends();
@@ -968,7 +977,8 @@ mod tests {
 
     #[test]
     fn test_qml_optimized_backend() {
-        let backend = SciRS2GpuFactory::create_qml_optimized().unwrap();
+        let backend = SciRS2GpuFactory::create_qml_optimized()
+            .expect("Failed to create QML-optimized backend in test_qml_optimized_backend");
         assert_eq!(backend.config.simd_level, 3);
         assert_eq!(backend.config.max_memory_mb, 4096);
         assert!(backend
@@ -986,7 +996,8 @@ mod tests {
 
     #[test]
     fn test_performance_metrics() {
-        let backend = SciRS2GpuBackend::new().unwrap();
+        let backend =
+            SciRS2GpuBackend::new().expect("Failed to create backend in test_performance_metrics");
         let metrics = backend.get_performance_metrics();
 
         // Initially no kernels executed
@@ -1010,7 +1021,8 @@ mod tests {
             compilation_flags: vec!["-O3".to_string()],
         };
 
-        let backend = SciRS2GpuBackend::with_config(config.clone()).unwrap();
+        let backend = SciRS2GpuBackend::with_config(config.clone())
+            .expect("Failed to create backend with config in test_config_validation");
         assert_eq!(backend.config.max_memory_mb, 1024);
         assert_eq!(backend.config.simd_level, 2);
         assert!(backend.config.enable_kernel_cache);

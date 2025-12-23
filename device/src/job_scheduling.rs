@@ -656,11 +656,17 @@ impl QuantumJobScheduler {
 
     /// Register a backend
     pub async fn register_backend(&self, backend: HardwareBackend) -> DeviceResult<()> {
-        let mut backends = self.backends.write().unwrap();
+        let mut backends = self
+            .backends
+            .write()
+            .expect("Failed to acquire write lock on backends in register_backend");
         backends.insert(backend);
 
         // Initialize performance tracking
-        let mut performance = self.backend_performance.write().unwrap();
+        let mut performance = self
+            .backend_performance
+            .write()
+            .expect("Failed to acquire write lock on backend_performance in register_backend");
         performance.insert(
             backend,
             BackendPerformance {
@@ -678,7 +684,10 @@ impl QuantumJobScheduler {
 
         // Initialize resource capacity
         let capabilities = query_backend_capabilities(backend);
-        let mut resource_manager = self.resource_manager.lock().unwrap();
+        let mut resource_manager = self
+            .resource_manager
+            .lock()
+            .expect("Failed to acquire lock on resource_manager in register_backend");
         resource_manager.available_resources.insert(
             backend,
             ResourceCapacity {
@@ -700,7 +709,10 @@ impl QuantumJobScheduler {
 
     /// Get list of available backends
     pub fn get_available_backends(&self) -> Vec<HardwareBackend> {
-        let backends = self.backends.read().unwrap();
+        let backends = self
+            .backends
+            .read()
+            .expect("Failed to acquire read lock on backends in get_available_backends");
         backends.iter().cloned().collect()
     }
 
@@ -743,12 +755,18 @@ impl QuantumJobScheduler {
         };
 
         // Store job
-        let mut jobs = self.jobs.write().unwrap();
+        let mut jobs = self
+            .jobs
+            .write()
+            .expect("Failed to acquire write lock on jobs in submit_job");
         jobs.insert(job_id.clone(), Box::new(job.clone()));
         drop(jobs);
 
         // Add to appropriate priority queue
-        let mut queues = self.job_queues.lock().unwrap();
+        let mut queues = self
+            .job_queues
+            .lock()
+            .expect("Failed to acquire lock on job_queues in submit_job");
         let queue = queues
             .entry(job.config.priority)
             .or_insert_with(VecDeque::new);
@@ -772,7 +790,10 @@ impl QuantumJobScheduler {
     /// Cancel a queued or running job
     pub async fn cancel_job(&self, job_id: &JobId) -> DeviceResult<bool> {
         // Remove from queue if still pending
-        let mut queues = self.job_queues.lock().unwrap();
+        let mut queues = self
+            .job_queues
+            .lock()
+            .expect("Failed to acquire lock on job_queues in cancel_job");
         for queue in queues.values_mut() {
             if let Some(pos) = queue.iter().position(|id| id == job_id) {
                 queue.remove(pos);
@@ -791,7 +812,10 @@ impl QuantumJobScheduler {
         drop(queues);
 
         // Cancel running job if applicable
-        let running_jobs = self.running_jobs.read().unwrap();
+        let running_jobs = self
+            .running_jobs
+            .read()
+            .expect("Failed to acquire read lock on running_jobs in cancel_job");
         if running_jobs.contains_key(job_id) {
             // TODO: Implement backend-specific job cancellation
             // For now, mark as cancelled and clean up when job completes
@@ -807,7 +831,10 @@ impl QuantumJobScheduler {
         &self,
         job_id: &JobId,
     ) -> DeviceResult<Option<QuantumJob<N>>> {
-        let jobs = self.jobs.read().unwrap();
+        let jobs = self
+            .jobs
+            .read()
+            .expect("Failed to acquire read lock on jobs in get_job_status");
         if let Some(job_any) = jobs.get(job_id) {
             if let Some(job) = job_any.downcast_ref::<QuantumJob<N>>() {
                 return Ok(Some(job.clone()));
@@ -818,8 +845,14 @@ impl QuantumJobScheduler {
 
     /// Get queue analytics and predictions
     pub async fn get_queue_analytics(&self) -> DeviceResult<QueueAnalytics> {
-        let queues = self.job_queues.lock().unwrap();
-        let backend_performance = self.backend_performance.read().unwrap();
+        let queues = self
+            .job_queues
+            .lock()
+            .expect("Failed to acquire lock on job_queues in get_queue_analytics");
+        let backend_performance = self
+            .backend_performance
+            .read()
+            .expect("Failed to acquire read lock on backend_performance in get_queue_analytics");
 
         let total_queue_length = queues.values().map(|q| q.len()).sum();
 
@@ -852,7 +885,10 @@ impl QuantumJobScheduler {
 
     /// Start the job scheduler
     pub async fn start_scheduler(&self) -> DeviceResult<()> {
-        let mut running = self.scheduler_running.lock().unwrap();
+        let mut running = self
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in start_scheduler");
         if *running {
             return Err(DeviceError::APIError(
                 "Scheduler already running".to_string(),
@@ -874,7 +910,10 @@ impl QuantumJobScheduler {
         });
 
         // Start SciRS2 optimization if enabled
-        let params = self.params.read().unwrap();
+        let params = self
+            .params
+            .read()
+            .expect("Failed to acquire read lock on params in start_scheduler");
         if params.scirs2_params.enabled {
             drop(params);
             let scheduler = Arc::new(self.clone());
@@ -888,7 +927,10 @@ impl QuantumJobScheduler {
 
     /// Stop the job scheduler
     pub async fn stop_scheduler(&self) -> DeviceResult<()> {
-        let mut running = self.scheduler_running.lock().unwrap();
+        let mut running = self
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in stop_scheduler");
         *running = false;
         Ok(())
     }
@@ -897,13 +939,19 @@ impl QuantumJobScheduler {
 
     async fn validate_job_config(&self, config: &JobConfig) -> DeviceResult<()> {
         // Validate resource requirements against available backends
-        let backends = self.backends.read().unwrap();
+        let backends = self
+            .backends
+            .read()
+            .expect("Failed to acquire read lock on backends in validate_job_config");
         if backends.is_empty() {
             return Err(DeviceError::APIError("No backends available".to_string()));
         }
 
         // Check if any backend can satisfy requirements
-        let resource_manager = self.resource_manager.lock().unwrap();
+        let resource_manager = self
+            .resource_manager
+            .lock()
+            .expect("Failed to acquire lock on resource_manager in validate_job_config");
         let mut can_satisfy = false;
 
         for (backend, capacity) in &resource_manager.available_resources {
@@ -947,7 +995,9 @@ impl QuantumJobScheduler {
         let base_time = Duration::from_secs((circuit_complexity * shots_factor) as u64);
 
         // Adjust based on backend performance if available
-        let backend_performance = self.backend_performance.read().unwrap();
+        let backend_performance = self.backend_performance.read().expect(
+            "Failed to acquire read lock on backend_performance in estimate_execution_time",
+        );
         let avg_execution_time = if backend_performance.is_empty() {
             Duration::from_secs(60) // Default 1 minute
         } else {
@@ -961,7 +1011,9 @@ impl QuantumJobScheduler {
         let estimated = Duration::from_millis(
             ((base_time.as_millis() + avg_execution_time.as_millis()) / 2)
                 .try_into()
-                .unwrap(),
+                .expect(
+                    "Failed to convert estimated execution time to u64 in estimate_execution_time",
+                ),
         );
 
         Ok(estimated)
@@ -994,7 +1046,10 @@ impl QuantumJobScheduler {
     }
 
     async fn update_user_share(&self, user_id: &str, queued_delta: i32, running_delta: i32) {
-        let mut user_shares = self.user_shares.write().unwrap();
+        let mut user_shares = self
+            .user_shares
+            .write()
+            .expect("Failed to acquire write lock on user_shares in update_user_share");
         let share = user_shares.entry(user_id.to_string()).or_insert(UserShare {
             user_id: user_id.to_string(),
             allocated_share: 1.0, // Default equal share
@@ -1010,7 +1065,10 @@ impl QuantumJobScheduler {
     }
 
     async fn update_job_status(&self, job_id: &JobId, status: JobStatus) -> DeviceResult<()> {
-        let mut jobs = self.jobs.write().unwrap();
+        let mut jobs = self
+            .jobs
+            .write()
+            .expect("Failed to acquire write lock on jobs in update_job_status");
         if let Some(job_any) = jobs.get_mut(job_id) {
             // This is a simplified update - in practice, we'd need proper type handling
             // TODO: Implement proper job status updates
@@ -1019,7 +1077,10 @@ impl QuantumJobScheduler {
     }
 
     async fn ensure_scheduler_running(&self) {
-        let running = self.scheduler_running.lock().unwrap();
+        let running = self
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in ensure_scheduler_running");
         if !*running {
             drop(running);
             let _ = self.start_scheduler().await;
@@ -1058,7 +1119,10 @@ impl QuantumJobScheduler {
     }
 
     async fn calculate_throughput(&self) -> f64 {
-        let history = self.execution_history.read().unwrap();
+        let history = self
+            .execution_history
+            .read()
+            .expect("Failed to acquire read lock on execution_history in calculate_throughput");
         if history.is_empty() {
             return 0.0;
         }
@@ -1074,7 +1138,9 @@ impl QuantumJobScheduler {
     }
 
     async fn calculate_average_wait_time(&self) -> Duration {
-        let history = self.execution_history.read().unwrap();
+        let history = self.execution_history.read().expect(
+            "Failed to acquire read lock on execution_history in calculate_average_wait_time",
+        );
         if history.is_empty() {
             return Duration::from_secs(0);
         }
@@ -1086,7 +1152,11 @@ impl QuantumJobScheduler {
 
     // Main scheduling loop
     async fn scheduling_loop(&self) {
-        while *self.scheduler_running.lock().unwrap() {
+        while *self
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in scheduling_loop")
+        {
             if let Err(e) = self.schedule_next_jobs().await {
                 eprintln!("Scheduling error: {}", e);
             }
@@ -1096,7 +1166,11 @@ impl QuantumJobScheduler {
     }
 
     async fn schedule_next_jobs(&self) -> DeviceResult<()> {
-        let params = self.params.read().unwrap().clone();
+        let params = self
+            .params
+            .read()
+            .expect("Failed to acquire read lock on params in schedule_next_jobs")
+            .clone();
 
         match params.strategy {
             SchedulingStrategy::PriorityFIFO => self.schedule_priority_fifo().await,
@@ -1120,7 +1194,10 @@ impl QuantumJobScheduler {
             JobPriority::BestEffort,
         ] {
             let job_id = {
-                let mut queues = self.job_queues.lock().unwrap();
+                let mut queues = self
+                    .job_queues
+                    .lock()
+                    .expect("Failed to acquire lock on job_queues in schedule_priority_fifo");
                 if let Some(queue) = queues.get_mut(&priority) {
                     queue.pop_front()
                 } else {
@@ -1134,7 +1211,7 @@ impl QuantumJobScheduler {
                     break;
                 } else {
                     // No available backend, put job back
-                    let mut queues = self.job_queues.lock().unwrap();
+                    let mut queues = self.job_queues.lock().expect("Failed to acquire lock on job_queues to requeue job in schedule_priority_fifo");
                     if let Some(queue) = queues.get_mut(&priority) {
                         queue.push_front(job_id);
                     }
@@ -1189,7 +1266,10 @@ impl QuantumJobScheduler {
     async fn find_best_backend(&self, job_id: &JobId) -> DeviceResult<Option<HardwareBackend>> {
         // Check if job exists and drop the lock immediately
         {
-            let jobs = self.jobs.read().unwrap();
+            let jobs = self
+                .jobs
+                .read()
+                .expect("Failed to acquire read lock on jobs in find_best_backend");
             let _job_any = jobs
                 .get(job_id)
                 .ok_or_else(|| DeviceError::APIError("Job not found".to_string()))?;
@@ -1199,17 +1279,26 @@ impl QuantumJobScheduler {
         // For now, use simplified backend selection
 
         let backends: Vec<_> = {
-            let backends = self.backends.read().unwrap();
+            let backends = self
+                .backends
+                .read()
+                .expect("Failed to acquire read lock on backends in find_best_backend");
             backends.iter().copied().collect()
         };
 
         let allocation_strategy = {
-            let params = self.params.read().unwrap();
+            let params = self
+                .params
+                .read()
+                .expect("Failed to acquire read lock on params in find_best_backend");
             params.allocation_strategy.clone()
         };
 
         let backend_performance_snapshot = {
-            let backend_performance = self.backend_performance.read().unwrap();
+            let backend_performance = self
+                .backend_performance
+                .read()
+                .expect("Failed to acquire read lock on backend_performance in find_best_backend");
             backend_performance.clone()
         };
 
@@ -1261,10 +1350,16 @@ impl QuantumJobScheduler {
     }
 
     async fn is_backend_available(&self, backend: HardwareBackend) -> bool {
-        let running_jobs = self.running_jobs.read().unwrap();
+        let running_jobs = self
+            .running_jobs
+            .read()
+            .expect("Failed to acquire read lock on running_jobs in is_backend_available");
         let backend_jobs = running_jobs.values().filter(|(b, _)| *b == backend).count();
 
-        let resource_manager = self.resource_manager.lock().unwrap();
+        let resource_manager = self
+            .resource_manager
+            .lock()
+            .expect("Failed to acquire lock on resource_manager in is_backend_available");
         if let Some(capacity) = resource_manager.available_resources.get(&backend) {
             backend_jobs < capacity.concurrent_jobs
         } else {
@@ -1278,7 +1373,10 @@ impl QuantumJobScheduler {
         backend: HardwareBackend,
     ) -> DeviceResult<()> {
         {
-            let mut running_jobs = self.running_jobs.write().unwrap();
+            let mut running_jobs = self
+                .running_jobs
+                .write()
+                .expect("Failed to acquire write lock on running_jobs in assign_job_to_backend");
             running_jobs.insert(job_id.clone(), (backend, SystemTime::now()));
         }
 
@@ -1311,7 +1409,10 @@ impl QuantumJobScheduler {
 
         // Check if backend is available
         {
-            let backends = self.backends.read().unwrap();
+            let backends = self
+                .backends
+                .read()
+                .expect("Failed to acquire read lock on backends in execute_job");
             if !backends.contains(&backend) {
                 return Err(DeviceError::APIError("Backend not found".to_string()));
             }
@@ -1325,7 +1426,10 @@ impl QuantumJobScheduler {
 
         // Clean up running job
         {
-            let mut running_jobs = self.running_jobs.write().unwrap();
+            let mut running_jobs = self
+                .running_jobs
+                .write()
+                .expect("Failed to acquire write lock on running_jobs in execute_job cleanup");
             running_jobs.remove(job_id);
         }
 
@@ -1333,7 +1437,9 @@ impl QuantumJobScheduler {
         self.update_job_status(job_id, JobStatus::Completed).await?;
 
         // Record execution metrics
-        let execution_time = SystemTime::now().duration_since(execution_start).unwrap();
+        let execution_time = SystemTime::now()
+            .duration_since(execution_start)
+            .expect("Failed to calculate execution time duration in execute_job");
         // TODO: Record proper execution metrics
 
         Ok(())
@@ -1341,14 +1447,20 @@ impl QuantumJobScheduler {
 
     // Performance monitoring loop
     async fn performance_monitoring_loop(&self) {
-        while *self.scheduler_running.lock().unwrap() {
+        while *self
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in performance_monitoring_loop")
+        {
             self.update_backend_performance().await;
             tokio::time::sleep(Duration::from_secs(30)).await;
         }
     }
 
     async fn update_backend_performance(&self) {
-        let mut backend_performance = self.backend_performance.write().unwrap();
+        let mut backend_performance = self.backend_performance.write().expect(
+            "Failed to acquire write lock on backend_performance in update_backend_performance",
+        );
         let now = SystemTime::now();
 
         for (backend, perf) in backend_performance.iter_mut() {
@@ -1381,12 +1493,18 @@ impl QuantumJobScheduler {
     // SciRS2 optimization loop
     async fn scirs2_optimization_loop(&self) {
         let frequency = {
-            let params = self.params.read().unwrap();
+            let params = self
+                .params
+                .read()
+                .expect("Failed to acquire read lock on params in scirs2_optimization_loop");
             params.scirs2_params.optimization_frequency
         };
 
         loop {
-            let should_continue = *self.scheduler_running.lock().unwrap();
+            let should_continue = *self
+                .scheduler_running
+                .lock()
+                .expect("Failed to acquire lock on scheduler_running in scirs2_optimization_loop");
             if !should_continue {
                 break;
             }
@@ -1407,7 +1525,9 @@ impl QuantumJobScheduler {
             // to optimize job scheduling decisions
 
             // Collect performance data
-            let backend_performance = self.backend_performance.read().unwrap();
+            let backend_performance = self.backend_performance.read().expect(
+                "Failed to acquire read lock on backend_performance in run_scirs2_optimization",
+            );
             let performance_data: Vec<f64> = backend_performance
                 .values()
                 .map(|p| p.utilization)
@@ -1877,7 +1997,10 @@ mod tests {
     async fn test_job_scheduler_creation() {
         let params = SchedulingParams::default();
         let scheduler = QuantumJobScheduler::new(params);
-        assert!(!*scheduler.scheduler_running.lock().unwrap());
+        assert!(!*scheduler
+            .scheduler_running
+            .lock()
+            .expect("Failed to acquire lock on scheduler_running in test"));
     }
 
     #[tokio::test]

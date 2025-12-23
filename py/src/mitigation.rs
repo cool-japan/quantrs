@@ -8,8 +8,6 @@
 
 use crate::measurement::PyMeasurementResult;
 use crate::PyCircuit;
-use scirs2_core::ndarray::{Array1, Array2};
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -17,6 +15,8 @@ use quantrs2_device::zero_noise_extrapolation::{
     CircuitFolder, ExtrapolationFitter, ExtrapolationMethod, NoiseScalingMethod, Observable,
     ZNEConfig, ZNEResult,
 };
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1};
 use std::collections::HashMap;
 
 /// Zero-Noise Extrapolation configuration
@@ -26,6 +26,7 @@ pub struct PyZNEConfig {
     inner: ZNEConfig,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyZNEConfig {
     #[new]
@@ -51,8 +52,7 @@ impl PyZNEConfig {
                 "digital" => NoiseScalingMethod::DigitalRepetition,
                 _ => {
                     return Err(PyValueError::new_err(format!(
-                        "Unknown scaling method: {}",
-                        method
+                        "Unknown scaling method: {method}"
                     )))
                 }
             };
@@ -68,8 +68,7 @@ impl PyZNEConfig {
                 "adaptive" => ExtrapolationMethod::Adaptive,
                 _ => {
                     return Err(PyValueError::new_err(format!(
-                        "Unknown extrapolation method: {}",
-                        method
+                        "Unknown extrapolation method: {method}"
                     )))
                 }
             };
@@ -110,7 +109,7 @@ impl PyZNEConfig {
     fn extrapolation_method(&self) -> String {
         match self.inner.extrapolation_method {
             ExtrapolationMethod::Linear => "linear".to_string(),
-            ExtrapolationMethod::Polynomial(n) => format!("polynomial{}", n),
+            ExtrapolationMethod::Polynomial(n) => format!("polynomial{n}"),
             ExtrapolationMethod::Exponential => "exponential".to_string(),
             ExtrapolationMethod::Richardson => "richardson".to_string(),
             ExtrapolationMethod::Adaptive => "adaptive".to_string(),
@@ -145,6 +144,7 @@ pub struct PyZNEResult {
     inner: ZNEResult,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyZNEResult {
     #[getter]
@@ -168,10 +168,9 @@ impl PyZNEResult {
     }
 
     #[getter]
-    fn fit_params<'py>(&self, py: Python<'py>) -> Py<PyArray1<f64>> {
-        Array1::from_vec(self.inner.fit_params.clone())
-            .into_pyarray(py)
-            .into()
+    fn fit_params(&self, py: Python<'_>) -> Py<PyArray1<f64>> {
+        let arr = Array1::from_vec(self.inner.fit_params.clone());
+        arr.into_pyarray(py).into()
     }
 
     #[getter]
@@ -202,6 +201,7 @@ pub struct PyObservable {
     inner: Observable,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyObservable {
     #[new]
@@ -211,8 +211,7 @@ impl PyObservable {
         for (_, pauli) in &pauli_string {
             if !["I", "X", "Y", "Z"].contains(&pauli.as_str()) {
                 return Err(PyValueError::new_err(format!(
-                    "Invalid Pauli operator: {}",
-                    pauli
+                    "Invalid Pauli operator: {pauli}"
                 )));
             }
         }
@@ -265,7 +264,7 @@ impl PyObservable {
             .inner
             .pauli_string
             .iter()
-            .map(|(q, p)| format!("{}_{}", p, q))
+            .map(|(q, p)| format!("{p}_{q}"))
             .collect();
         format!(
             "Observable({} * {})",
@@ -283,6 +282,7 @@ pub struct PyZeroNoiseExtrapolation {
 
 #[pymethods]
 impl PyZeroNoiseExtrapolation {
+    #[allow(clippy::missing_const_for_fn)]
     #[new]
     #[pyo3(signature = (config=None))]
     fn new(config: Option<PyZNEConfig>) -> Self {
@@ -294,6 +294,7 @@ impl PyZeroNoiseExtrapolation {
     }
 
     /// Apply circuit folding for noise scaling
+    #[allow(clippy::unused_self)]
     fn fold_circuit(&self, _circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
         // Note: This is a placeholder implementation
         // The actual folding would need to be implemented once Circuit API supports it
@@ -308,6 +309,7 @@ impl PyZeroNoiseExtrapolation {
     }
 
     /// Perform ZNE given measurement results at different scale factors
+    #[allow(clippy::needless_pass_by_value)]
     fn extrapolate(&self, py: Python, data: Vec<(f64, f64)>) -> PyResult<Py<PyZNEResult>> {
         let scale_factors: Vec<f64> = data.iter().map(|(s, _)| *s).collect();
         let values: Vec<f64> = data.iter().map(|(_, v)| *v).collect();
@@ -317,7 +319,7 @@ impl PyZeroNoiseExtrapolation {
             &values,
             self.config.inner.extrapolation_method,
         )
-        .map_err(|e| PyValueError::new_err(format!("Extrapolation failed: {:?}", e)))?;
+        .map_err(|e| PyValueError::new_err(format!("Extrapolation failed: {e:?}")))?;
 
         // Add bootstrap error estimate if requested
         let mut final_result = result;
@@ -342,6 +344,7 @@ impl PyZeroNoiseExtrapolation {
 
     /// Convenience method to run ZNE on an observable
     #[pyo3(signature = (observable, measurements))]
+    #[allow(clippy::needless_pass_by_value)]
     fn mitigate_observable(
         &self,
         py: Python,
@@ -365,7 +368,7 @@ pub struct PyCircuitFolding;
 #[pymethods]
 impl PyCircuitFolding {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -403,11 +406,13 @@ pub struct PyExtrapolationFitting;
 
 #[pymethods]
 impl PyExtrapolationFitting {
+    #[allow(clippy::missing_const_for_fn)]
     #[new]
     fn new() -> Self {
         Self
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[staticmethod]
     fn fit_linear(
         py: Python,
@@ -419,11 +424,12 @@ impl PyExtrapolationFitting {
 
         let result =
             ExtrapolationFitter::fit_and_extrapolate(x_vec, y_vec, ExtrapolationMethod::Linear)
-                .map_err(|e| PyValueError::new_err(format!("Linear fit failed: {:?}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Linear fit failed: {e:?}")))?;
 
         Py::new(py, PyZNEResult { inner: result })
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[staticmethod]
     fn fit_polynomial(
         py: Python,
@@ -439,11 +445,12 @@ impl PyExtrapolationFitting {
             y_vec,
             ExtrapolationMethod::Polynomial(order),
         )
-        .map_err(|e| PyValueError::new_err(format!("Polynomial fit failed: {:?}", e)))?;
+        .map_err(|e| PyValueError::new_err(format!("Polynomial fit failed: {e:?}")))?;
 
         Py::new(py, PyZNEResult { inner: result })
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[staticmethod]
     fn fit_exponential(
         py: Python,
@@ -458,11 +465,12 @@ impl PyExtrapolationFitting {
             y_vec,
             ExtrapolationMethod::Exponential,
         )
-        .map_err(|e| PyValueError::new_err(format!("Exponential fit failed: {:?}", e)))?;
+        .map_err(|e| PyValueError::new_err(format!("Exponential fit failed: {e:?}")))?;
 
         Py::new(py, PyZNEResult { inner: result })
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[staticmethod]
     fn fit_richardson(
         py: Python,
@@ -475,12 +483,13 @@ impl PyExtrapolationFitting {
         let result =
             ExtrapolationFitter::fit_and_extrapolate(x_vec, y_vec, ExtrapolationMethod::Richardson)
                 .map_err(|e| {
-                    PyValueError::new_err(format!("Richardson extrapolation failed: {:?}", e))
+                    PyValueError::new_err(format!("Richardson extrapolation failed: {e:?}"))
                 })?;
 
         Py::new(py, PyZNEResult { inner: result })
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[staticmethod]
     fn fit_adaptive(
         py: Python,
@@ -492,7 +501,7 @@ impl PyExtrapolationFitting {
 
         let result =
             ExtrapolationFitter::fit_and_extrapolate(x_vec, y_vec, ExtrapolationMethod::Adaptive)
-                .map_err(|e| PyValueError::new_err(format!("Adaptive fit failed: {:?}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Adaptive fit failed: {e:?}")))?;
 
         Py::new(py, PyZNEResult { inner: result })
     }
@@ -504,11 +513,13 @@ pub struct PyProbabilisticErrorCancellation;
 
 #[pymethods]
 impl PyProbabilisticErrorCancellation {
+    #[allow(clippy::missing_const_for_fn)]
     #[new]
     fn new() -> Self {
         Self
     }
 
+    #[allow(clippy::unused_self)]
     fn quasi_probability_decomposition(
         &self,
         _circuit: &PyCircuit,
@@ -524,11 +535,13 @@ pub struct PyVirtualDistillation;
 
 #[pymethods]
 impl PyVirtualDistillation {
+    #[allow(clippy::missing_const_for_fn)]
     #[new]
     fn new() -> Self {
         Self
     }
 
+    #[allow(clippy::unused_self)]
     fn distill(&self, _circuits: Vec<PyRef<PyCircuit>>) -> PyResult<PyCircuit> {
         // Placeholder implementation
         Err(PyValueError::new_err(
@@ -543,11 +556,13 @@ pub struct PySymmetryVerification;
 
 #[pymethods]
 impl PySymmetryVerification {
+    #[allow(clippy::missing_const_for_fn)]
     #[new]
     fn new() -> Self {
         Self
     }
 
+    #[allow(clippy::unused_self)]
     fn verify_symmetry(&self, _circuit: &PyCircuit, _symmetry: &str) -> PyResult<bool> {
         // Placeholder implementation
         Err(PyValueError::new_err(

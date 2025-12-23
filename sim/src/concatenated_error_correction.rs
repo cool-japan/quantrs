@@ -13,8 +13,8 @@
 //! - Support for heterogeneous inner and outer codes
 
 use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
@@ -295,7 +295,7 @@ impl ConcatenatedErrorCorrection {
             let error_patterns: Vec<String> = decoding_result
                 .error_pattern
                 .iter()
-                .map(|e| format!("{:?}", e))
+                .map(|e| format!("{e:?}"))
                 .collect();
 
             let level_result = LevelDecodingResult {
@@ -361,7 +361,7 @@ impl ConcatenatedErrorCorrection {
                 let error_patterns: Vec<String> = decoding_result
                     .error_pattern
                     .iter()
-                    .map(|e| format!("{:?}", e))
+                    .map(|e| format!("{e:?}"))
                     .collect();
 
                 LevelDecodingResult {
@@ -434,7 +434,7 @@ impl ConcatenatedErrorCorrection {
 
         // Initialize belief messages
         let num_levels = self.config.codes_per_level.len();
-        let mut beliefs = vec![1.0; num_levels];
+        let mut beliefs: Vec<f64> = vec![1.0; num_levels];
 
         for iteration in 0..self.config.max_decoding_iterations.min(5) {
             for (level, code) in self.config.codes_per_level.iter().enumerate() {
@@ -444,14 +444,14 @@ impl ConcatenatedErrorCorrection {
                 let decoding_result = code.decode(&current_state)?;
 
                 // Update beliefs based on decoding confidence
-                beliefs[level] = beliefs[level] * 0.9 + decoding_result.confidence * 0.1;
+                beliefs[level] = beliefs[level].mul_add(0.9, decoding_result.confidence * 0.1);
 
                 current_state = decoding_result.corrected_state;
 
                 let error_patterns: Vec<String> = decoding_result
                     .error_pattern
                     .iter()
-                    .map(|e| format!("{:?}", e))
+                    .map(|e| format!("{e:?}"))
                     .collect();
 
                 let level_result = LevelDecodingResult {
@@ -519,7 +519,7 @@ impl ConcatenatedErrorCorrection {
     }
 
     /// Get current statistics
-    pub fn get_stats(&self) -> &ConcatenationStats {
+    pub const fn get_stats(&self) -> &ConcatenationStats {
         &self.stats
     }
 
@@ -536,8 +536,14 @@ impl ConcatenatedErrorCorrection {
 #[derive(Debug, Clone)]
 pub struct BitFlipCode;
 
+impl Default for BitFlipCode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BitFlipCode {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -548,8 +554,14 @@ pub struct ConcatenatedBitFlipCode {
     inner_code: BitFlipCode,
 }
 
+impl Default for ConcatenatedBitFlipCode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConcatenatedBitFlipCode {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner_code: BitFlipCode::new(),
         }
@@ -765,7 +777,7 @@ pub fn benchmark_concatenated_error_correction() -> Result<HashMap<String, f64>>
         let _result = concatenated.decode_hierarchical(&noisy_encoded)?;
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("level_{}", level), time);
+        results.insert(format!("level_{level}"), time);
     }
 
     Ok(results)

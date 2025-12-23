@@ -53,7 +53,7 @@ impl ImportResolver {
     }
 
     /// Load module
-    pub fn load_module(&mut self, _name: &str) -> Result<(), String> {
+    pub const fn load_module(&mut self, _name: &str) -> Result<(), String> {
         // Placeholder implementation
         Ok(())
     }

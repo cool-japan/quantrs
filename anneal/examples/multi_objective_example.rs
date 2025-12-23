@@ -68,7 +68,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
     // Objective 2: Maximize return (negative to convert to minimization)
     let expected_returns_clone = expected_returns.clone();
     let risks_clone = risks.clone();
-    let correlations_clone = correlations.clone();
+    let correlations_clone = correlations;
     let objective_function = Box::new(move |spins: &[i8]| -> Vec<f64> {
         // Convert spin solution to portfolio weights
         let weights = spins_to_portfolio_weights(spins);
@@ -119,12 +119,12 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Portfolio Optimization Results:");
     println!("  Assets: Conservative, Balanced, Aggressive, Speculative");
-    println!("  Expected returns: {:?}", expected_returns);
-    println!("  Risks (volatility): {:?}", risks);
+    println!("  Expected returns: {expected_returns:?}");
+    println!("  Risks (volatility): {risks:?}");
     println!();
     println!("  Solutions found: {}", results.all_solutions.len());
     println!("  Pareto front size: {}", results.pareto_front.len());
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Show best solutions for each objective
     if let Some(min_risk_sol) = results
@@ -138,7 +138,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
             "    Weights: {:?}",
             weights
                 .iter()
-                .map(|w| format!("{:.3}", w))
+                .map(|w| format!("{w:.3}"))
                 .collect::<Vec<_>>()
         );
         println!("    Risk: {:.4}", min_risk_sol.objectives[0]);
@@ -156,7 +156,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
             "    Weights: {:?}",
             weights
                 .iter()
-                .map(|w| format!("{:.3}", w))
+                .map(|w| format!("{w:.3}"))
                 .collect::<Vec<_>>()
         );
         println!("    Risk: {:.4}", max_return_sol.objectives[0]);
@@ -166,16 +166,13 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
     // Show Pareto front statistics
     println!("\n  Pareto front analysis:");
     let avg_crowding = results.stats.average_crowding_distance;
-    println!("    Average crowding distance: {:.4}", avg_crowding);
+    println!("    Average crowding distance: {avg_crowding:.4}");
     println!("    Objective ranges:");
     for (i, (min_val, max_val)) in results.objective_bounds.iter().enumerate() {
         let obj_name = if i == 0 { "Risk" } else { "Return" };
         let display_max = if i == 1 { -min_val } else { *max_val };
         let display_min = if i == 1 { -max_val } else { *min_val };
-        println!(
-            "      {}: [{:.4}, {:.4}]",
-            obj_name, display_min, display_max
-        );
+        println!("      {obj_name}: [{display_min:.4}, {display_max:.4}]");
     }
 
     Ok(())
@@ -251,7 +248,7 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("  Solutions found: {}", results.all_solutions.len());
     println!("  Pareto front size: {}", results.pareto_front.len());
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Show Pareto optimal designs
     println!("\n  Pareto optimal designs:");
@@ -335,7 +332,7 @@ fn network_design_example() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("  Solutions found: {}", results.all_solutions.len());
     println!("  Pareto front size: {}", results.pareto_front.len());
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Show best topologies
     println!("\n  Best network topologies:");
@@ -416,13 +413,13 @@ fn scalarization_comparison_example() -> Result<(), Box<dyn std::error::Error>> 
         let results = optimizer.solve(&model, objective_function.clone(), 2)?;
         let runtime = start.elapsed();
 
-        println!("\n  {} Method:", method_name);
+        println!("\n  {method_name} Method:");
         println!("    Pareto front size: {}", results.pareto_front.len());
         println!(
             "    Avg crowding distance: {:.4}",
             results.stats.average_crowding_distance
         );
-        println!("    Runtime: {:.2?}", runtime);
+        println!("    Runtime: {runtime:.2?}");
 
         if !results.pareto_front.is_empty() {
             let best = &results.pareto_front[0];
@@ -453,15 +450,15 @@ fn quality_metrics_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Calculate spacing metric
     let spacing = QualityMetrics::spacing(&solutions);
-    println!("  Spacing metric: {:.4}", spacing);
+    println!("  Spacing metric: {spacing:.4}");
 
     // Calculate hypervolume with different reference points
-    let reference_points = vec![vec![5.0, 5.0], vec![6.0, 6.0], vec![4.0, 6.0]];
+    let reference_points = [vec![5.0, 5.0], vec![6.0, 6.0], vec![4.0, 6.0]];
 
     for (i, ref_point) in reference_points.iter().enumerate() {
         match QualityMetrics::hypervolume(&solutions, ref_point) {
             Ok(hv) => println!("  Hypervolume (ref {}): {:.4}", i + 1, hv),
-            Err(e) => println!("  Hypervolume calculation failed: {}", e),
+            Err(e) => println!("  Hypervolume calculation failed: {e}"),
         }
     }
 
@@ -521,7 +518,7 @@ fn three_objective_example() -> Result<(), Box<dyn std::error::Error>> {
         let energy = spins
             .iter()
             .enumerate()
-            .map(|(i, &s)| s as f64 * (i as f64 - 3.5) * 0.2)
+            .map(|(i, &s)| f64::from(s) * (i as f64 - 3.5) * 0.2)
             .sum::<f64>();
         let connectivity = spins.windows(2).filter(|pair| pair[0] == pair[1]).count() as f64;
 
@@ -554,7 +551,7 @@ fn three_objective_example() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("  Solutions found: {}", results.all_solutions.len());
     println!("  Pareto front size: {}", results.pareto_front.len());
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Show diverse Pareto optimal solutions
     println!("\n  Pareto optimal solutions:");
@@ -583,7 +580,7 @@ fn three_objective_example() -> Result<(), Box<dyn std::error::Error>> {
             2 => "Fragmentation",
             _ => "Unknown",
         };
-        println!("    {}: [{:.2}, {:.2}]", obj_name, min_val, max_val);
+        println!("    {obj_name}: [{min_val:.2}, {max_val:.2}]");
     }
 
     Ok(())
@@ -619,10 +616,10 @@ fn spins_to_portfolio_weights(spins: &[i8]) -> Vec<f64> {
 
     // Convert 2 bits per asset to weight (0, 0.33, 0.67, 1.0)
     for asset in 0..4 {
-        let bit1 = if spins[asset * 2] > 0 { 1 } else { 0 };
-        let bit2 = if spins[asset * 2 + 1] > 0 { 1 } else { 0 };
+        let bit1 = i32::from(spins[asset * 2] > 0);
+        let bit2 = i32::from(spins[asset * 2 + 1] > 0);
         let level = bit1 * 2 + bit2;
-        weights[asset] = level as f64 / 3.0;
+        weights[asset] = f64::from(level) / 3.0;
     }
 
     // Normalize weights to sum to 1
@@ -660,7 +657,7 @@ fn calculate_average_path_length(edges: &[(usize, usize)], num_nodes: usize) -> 
     let max_edges = (num_nodes * (num_nodes - 1) / 2) as f64;
 
     // Approximate: higher connectivity = lower average path length
-    3.0 - 2.0 * (num_edges / max_edges)
+    2.0f64.mul_add(-(num_edges / max_edges), 3.0)
 }
 
 fn calculate_network_reliability(edges: &[(usize, usize)], num_nodes: usize) -> f64 {

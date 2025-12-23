@@ -13,9 +13,9 @@ use crate::{
     qubit::QubitId,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{s, Array2};
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
 /// Shannon decomposition result for an n-qubit unitary
@@ -302,7 +302,7 @@ impl ShannonDecomposer {
 
     /// Specialized two-qubit decomposition
     fn decompose_two_qubit(
-        &mut self,
+        &self,
         unitary: &Array2<Complex<f64>>,
         qubit_ids: &[QubitId],
     ) -> QuantRS2Result<ShannonDecomposition> {

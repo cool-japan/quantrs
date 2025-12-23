@@ -360,6 +360,13 @@ The QuantRS2 framework has successfully completed policy refinement and document
 - [ ] Create hardware benchmarks using SciRS2 analysis
 - [ ] Add cross-compilation with SciRS2 IR tools
 
+### OptiRS Integration for Variational Algorithms
+- [ ] Re-enable the `optirs` and `optirs-core` workspace members once compilation blockers are resolved
+- [ ] Expose OptiRS optimizers (AdamAX, SPSA, L-BFGS) through the VQE driver API
+- [ ] Add OptiRS-backed QAOA parameter scheduler with warm-start support and batching
+- [ ] Provide cross-crate integration tests validating gradient correctness against OptiRS reference implementations
+- [ ] Document OptiRS usage patterns in `COMPREHENSIVE_EXAMPLES.md` with end-to-end VQE/QAOA workflows
+
 ## Beta.1 Development Goals ✅ COMPLETED
 
 ### SciRS2 Integration Completion ✅

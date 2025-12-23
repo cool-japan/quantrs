@@ -6,7 +6,7 @@
 //! - ML-based optimization
 //! - Fault-tolerant compilation
 //! - Topological quantum circuits
-//! - SciRS2 graph analysis
+//! - `SciRS2` graph analysis
 //! - Circuit-to-simulator interfaces
 
 use quantrs2_circuit::prelude::*;

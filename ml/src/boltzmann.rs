@@ -5,17 +5,17 @@
 //! using quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
-use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, Axis};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
     GateOp,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, Axis};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::{E, PI};
 
@@ -64,8 +64,9 @@ impl QuantumBoltzmannMachine {
         }
 
         // Initialize biases
-        let biases =
-            Array1::from_shape_fn(num_qubits, |_| 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0));
+        let biases = Array1::from_shape_fn(num_qubits, |_| {
+            0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0)
+        });
 
         Ok(Self {
             num_visible,

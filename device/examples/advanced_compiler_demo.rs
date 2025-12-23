@@ -1,7 +1,7 @@
 //! Advanced Compiler Demo
 //!
 //! This example demonstrates the comprehensive hardware-specific compiler passes
-//! with SciRS2 integration, showing multi-platform compilation, advanced optimization,
+//! with `SciRS2` integration, showing multi-platform compilation, advanced optimization,
 //! and performance analysis capabilities.
 
 use quantrs2_circuit::prelude::*;
@@ -18,7 +18,6 @@ use quantrs2_device::{
     topology_analysis::create_standard_topology,
 };
 use std::collections::HashMap;
-use tokio;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -139,7 +138,7 @@ async fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-/// Demonstrate SciRS2 integration for advanced algorithms
+/// Demonstrate `SciRS2` integration for advanced algorithms
 async fn demo_scirs2_integration() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🧮 Demo 3: SciRS2 Integration");
     println!("-----------------------------");
@@ -263,7 +262,7 @@ async fn demo_adaptive_compilation() -> Result<(), Box<dyn std::error::Error>> {
         create_complex_circuit(),
     ];
 
-    let names = vec!["Simple", "Medium", "Complex"];
+    let names = ["Simple", "Medium", "Complex"];
 
     for (i, circuit) in circuits.into_iter().enumerate() {
         println!("🔄 Adaptive compilation for {} circuit...", names[i]);
@@ -300,7 +299,10 @@ fn create_ibm_config() -> CompilerConfig {
     config.target = CompilationTarget::IBMQuantum {
         backend_name: "ibmq_qasm_simulator".to_string(),
         coupling_map: vec![(0, 1), (1, 2), (2, 3), (1, 4)],
-        native_gates: ["rz", "sx", "cx"].iter().map(|s| s.to_string()).collect(),
+        native_gates: ["rz", "sx", "cx"]
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect(),
         basis_gates: vec!["rz".to_string(), "sx".to_string(), "cx".to_string()],
         max_shots: 8192,
         simulator: true,
@@ -315,7 +317,7 @@ fn create_aws_config() -> CompilerConfig {
         provider: BraketProvider::IonQ,
         supported_gates: ["x", "y", "z", "h", "cnot", "swap"]
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| (*s).to_string())
             .collect(),
         max_shots: 1000,
         cost_per_shot: 0.00075,
@@ -331,7 +333,7 @@ fn create_azure_config() -> CompilerConfig {
         provider: AzureProvider::IonQ,
         supported_operations: ["x", "y", "z", "h", "cnot", "swap"]
             .iter()
-            .map(|s| s.to_string())
+            .map(|s| (*s).to_string())
             .collect(),
         resource_estimation: true,
     };

@@ -382,7 +382,7 @@ impl EnhancedQuantumFormatter {
         };
 
         // Format with enhanced information
-        formatted.push_str(&format!("{}", gate_symbol));
+        formatted.push_str(gate_symbol);
 
         // Add qubit information
         if let Some(controls) = gate.control_qubits() {

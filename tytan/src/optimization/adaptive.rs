@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use crate::scirs_stub::scirs2_core::statistics::{MovingAverage, OnlineStats};
 
 /// Adaptive strategy types
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptiveStrategy {
     /// Exponential decay of penalty weights
     ExponentialDecay,
@@ -345,7 +345,7 @@ impl AdaptiveOptimizer {
                     *weight *= 1.0 + self.config.learning_rate;
                 } else {
                     // Decrease penalty if over-penalized
-                    *weight *= 1.0 - self.config.learning_rate * 0.5;
+                    *weight *= self.config.learning_rate.mul_add(-0.5, 1.0);
                 }
 
                 // Apply bounds
@@ -380,7 +380,7 @@ impl AdaptiveOptimizer {
 
             // Update penalty weight (augmented term)
             if let Some(weight) = penalty_weights.get_mut(constraint_name) {
-                *weight = multiplier.abs() + 0.5 * weight.sqrt();
+                *weight = 0.5f64.mul_add(weight.sqrt(), multiplier.abs());
             }
         }
 
@@ -413,7 +413,10 @@ impl AdaptiveOptimizer {
         if let Some(best) = self.population.first() {
             for (key, value) in &best.parameters {
                 if let Some(param) = params.get_mut(key) {
-                    *param = self.config.momentum * *param + (1.0 - self.config.momentum) * value;
+                    *param = self
+                        .config
+                        .momentum
+                        .mul_add(*param, (1.0 - self.config.momentum) * value);
                 }
             }
         }
@@ -601,7 +604,7 @@ impl AdaptiveOptimizer {
         let objective_score = 1.0 / (1.0 + metrics.best_energy.abs());
         let constraint_score = metrics.feasibility_rate;
 
-        Ok(0.7 * objective_score + 0.3 * constraint_score)
+        Ok(0.7f64.mul_add(objective_score, 0.3 * constraint_score))
     }
 
     /// Perturb individual in population

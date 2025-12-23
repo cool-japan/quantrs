@@ -3,10 +3,10 @@
 //! This module provides a tensor-based representation for quantum states
 //! and operations used in the tensor network simulator.
 
-use scirs2_core::ndarray::{Array, ArrayD, Axis, IxDyn};
-use scirs2_core::Complex64;
 use quantrs2_core::error::QuantRS2Result;
+use scirs2_core::ndarray::{Array, ArrayD, Axis, IxDyn};
 use scirs2_core::ndarray_ext::manipulation;
+use scirs2_core::Complex64;
 
 /// A tensor representing a quantum state or operation
 #[derive(Debug, Clone)]
@@ -100,16 +100,15 @@ impl Tensor {
     /// Contract this tensor with another tensor along specified axes
     pub fn contract(
         &self,
-        other: &Tensor,
+        other: &Self,
         self_axis: usize,
         other_axis: usize,
-    ) -> QuantRS2Result<Tensor> {
+    ) -> QuantRS2Result<Self> {
         // Validate axis indices
         if self_axis >= self.rank || other_axis >= other.rank {
             return Err(
                 quantrs2_core::error::QuantRS2Error::CircuitValidationFailed(format!(
-                    "Invalid contraction axes: {} and {}",
-                    self_axis, other_axis
+                    "Invalid contraction axes: {self_axis} and {other_axis}"
                 )),
             );
         }
@@ -137,7 +136,7 @@ impl Tensor {
         left_axes: &[usize],
         right_axes: &[usize],
         max_bond_dim: usize,
-    ) -> QuantRS2Result<(Tensor, Tensor)> {
+    ) -> QuantRS2Result<(Self, Self)> {
         // For simplicity in this implementation, we'll just return a placeholder
         // In a full implementation, we'd perform actual SVD decomposition
 

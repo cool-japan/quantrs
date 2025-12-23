@@ -370,11 +370,15 @@ impl HybridNeuralNetwork {
             // Adjust prediction dimensions to match target if needed
             if prediction.len() != target.len() {
                 let min_len = prediction.len().min(target.len());
-                prediction = prediction.slice(scirs2_core::ndarray::s![..min_len]).to_owned();
+                prediction = prediction
+                    .slice(scirs2_core::ndarray::s![..min_len])
+                    .to_owned();
             }
 
             let adjusted_target = if target.len() > prediction.len() {
-                target.slice(scirs2_core::ndarray::s![..prediction.len()]).to_owned()
+                target
+                    .slice(scirs2_core::ndarray::s![..prediction.len()])
+                    .to_owned()
             } else {
                 target
             };
@@ -409,7 +413,7 @@ impl HybridNeuralNetwork {
 
     // Private methods for different forward pass types
 
-    fn forward_sequential(&mut self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
+    fn forward_sequential(&self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
         // Classical processing first
         let mut classical_output = input.clone();
         for layer in &self.classical_layers {
@@ -426,7 +430,7 @@ impl HybridNeuralNetwork {
         Ok(fused_output)
     }
 
-    fn forward_interleaved(&mut self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
+    fn forward_interleaved(&self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
         let mut current = input.clone();
         let layers_per_stage = self.classical_layers.len().max(1);
 
@@ -447,7 +451,7 @@ impl HybridNeuralNetwork {
         Ok(current)
     }
 
-    fn forward_parallel(&mut self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
+    fn forward_parallel(&self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
         // Classical branch
         let mut classical_output = input.clone();
         for layer in &self.classical_layers {
@@ -464,7 +468,7 @@ impl HybridNeuralNetwork {
         Ok(fused_output)
     }
 
-    fn forward_residual(&mut self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
+    fn forward_residual(&self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
         // Classical processing
         let mut classical_output = input.clone();
         for layer in &self.classical_layers {
@@ -485,7 +489,7 @@ impl HybridNeuralNetwork {
         Ok(residual_output)
     }
 
-    fn forward_attention(&mut self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
+    fn forward_attention(&self, input: &Array1<f64>) -> QuantRS2Result<Array1<f64>> {
         // Classical processing to generate query
         let mut query = input.clone();
         for layer in &self.classical_layers {
@@ -634,8 +638,7 @@ impl HybridNeuralNetwork {
         let mut rng = thread_rng();
         for layer in &mut self.classical_layers {
             for weight in layer.weights.iter_mut() {
-                *weight +=
-                    self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
+                *weight += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
             for bias in layer.biases.iter_mut() {
                 *bias += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
@@ -651,7 +654,7 @@ impl HybridNeuralNetwork {
     }
 
     fn analyze_quantum_advantage(
-        &mut self,
+        &self,
         _training_data: &TrainingData,
     ) -> QuantRS2Result<QuantumAdvantageAnalysis> {
         // Simplified quantum advantage analysis
@@ -725,7 +728,8 @@ impl DenseLayer {
             ActivationFunction::GELU => input.mapv(|x| {
                 0.5 * x
                     * (1.0
-                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044715 * x.powi(3))).tanh())
+                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044_715 * x.powi(3)))
+                            .tanh())
             }),
         };
         Ok(output)

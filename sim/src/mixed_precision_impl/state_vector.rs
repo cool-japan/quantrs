@@ -20,8 +20,8 @@ pub enum MixedPrecisionStateVector {
     Double(Array1<Complex64>),
     /// Adaptive precision with multiple representations
     Adaptive {
-        primary: Box<MixedPrecisionStateVector>,
-        secondary: Option<Box<MixedPrecisionStateVector>>,
+        primary: Box<Self>,
+        secondary: Option<Box<Self>>,
         precision_map: Vec<QuantumPrecision>,
     },
 }
@@ -58,10 +58,7 @@ impl MixedPrecisionStateVector {
             Self::Adaptive {
                 ref mut primary, ..
             } => {
-                *primary = Box::new(Self::computational_basis(
-                    num_qubits,
-                    QuantumPrecision::Single,
-                ));
+                **primary = Self::computational_basis(num_qubits, QuantumPrecision::Single);
             }
         }
 
@@ -84,7 +81,7 @@ impl MixedPrecisionStateVector {
     }
 
     /// Get the current precision of the state vector
-    pub fn precision(&self) -> QuantumPrecision {
+    pub const fn precision(&self) -> QuantumPrecision {
         match self {
             Self::Half(_) => QuantumPrecision::Half,
             Self::Single(_) => QuantumPrecision::Single,
@@ -346,8 +343,7 @@ impl std::fmt::Debug for MixedPrecisionStateVector {
             } => {
                 write!(
                     f,
-                    "Adaptive(primary: {:?}, secondary: {:?})",
-                    primary, secondary
+                    "Adaptive(primary: {primary:?}, secondary: {secondary:?})"
                 )
             }
         }

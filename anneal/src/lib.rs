@@ -63,6 +63,10 @@
 
 // Export modules
 pub mod active_learning_decomposition;
+pub mod adaptive_constraint_handling;
+// Temporarily enabled to fix compilation errors
+pub mod adaptive_schedules;
+pub mod advanced_meta_optimizer;
 pub mod advanced_quantum_algorithms;
 pub mod advanced_testing_framework;
 pub mod applications;
@@ -77,6 +81,8 @@ pub mod continuous_variable;
 pub mod csp_compiler;
 pub mod dsl;
 pub mod dwave;
+// Temporarily enabled to fix compilation errors
+pub mod dynamic_topology_reconfiguration;
 pub mod embedding;
 pub mod enterprise_monitoring;
 pub mod flux_bias;
@@ -89,6 +95,7 @@ pub mod hybrid_solvers;
 pub mod ising;
 pub mod layout_embedding;
 pub mod meta_learning;
+pub mod meta_learning_optimization;
 pub mod multi_chip_embedding;
 pub mod multi_objective;
 pub mod neural_annealing_schedules;
@@ -99,6 +106,8 @@ pub mod photonic_annealing;
 pub mod population_annealing;
 pub mod problem_schedules;
 pub mod qaoa;
+// Temporarily enabled to fix compilation errors
+pub mod qaoa_anneal_bridge;
 pub mod qaoa_circuit_bridge;
 pub mod quantum_advantage_demonstration;
 pub mod quantum_boltzmann_machine;
@@ -123,6 +132,19 @@ pub use active_learning_decomposition::{
     ActiveLearningConfig, ActiveLearningDecomposer, BoundaryEdge, DecompositionMetadata,
     DecompositionResult, DecompositionStrategy as ActiveDecompositionStrategy, ProblemAnalysis,
     Subproblem, SubproblemMetadata,
+};
+pub use adaptive_constraint_handling::{
+    AdaptiveConstraintConfig, AdaptiveConstraintHandler, Constraint as AdaptiveConstraint,
+    ConstraintPriority, ConstraintStatistics, ConstraintType as AdaptiveConstraintType,
+    PenaltyStrategy, RelaxationStrategy, ViolationRecord,
+};
+pub use adaptive_schedules::{
+    AdaptiveScheduleError, AdaptiveScheduleResult, CouplingStatistics, LandscapeFeatures,
+    NeuralAnnealingScheduler as AdaptiveNeuralScheduler,
+    PerformanceMetrics as AdaptivePerformanceMetrics, PerformancePoint, PerformanceStatistics,
+    ProblemContext, ProblemFeatures as AdaptiveProblemFeatures, ProblemType as AdaptiveProblemType,
+    RLAgentConfig, RLStats, ScheduleParameters, SchedulePredictionNetwork, ScheduleRLAgent,
+    ScheduleType, SchedulerConfig, TrainingHistory as AdaptiveTrainingHistory,
 };
 pub use advanced_quantum_algorithms::{
     create_custom_infinite_qaoa, create_custom_zeno_annealer, create_infinite_qaoa_optimizer,
@@ -223,6 +245,12 @@ pub use dwave::{
     // Enhanced Leap types
     SolverType,
 };
+pub use dynamic_topology_reconfiguration::{
+    CouplerStatus, DynamicTopologyConfig, DynamicTopologyManager, EnvironmentalConditions,
+    HardwarePerformanceMetrics, HardwareState, HardwareStateMonitor, PerformanceImpact,
+    PredictedEvent, PredictionOutcome, QubitStatus, ReconfigurationDecision,
+    ReconfigurationStrategy, ReconfigurationTrigger, TopologyPredictionEngine,
+};
 pub use embedding::{Embedding, HardwareGraph, HardwareTopology, MinorMiner};
 pub use enterprise_monitoring::{
     create_example_enterprise_monitoring, EnterpriseMonitoringConfig,
@@ -267,6 +295,27 @@ pub use hybrid_solvers::{
 };
 pub use ising::{IsingError, IsingModel, IsingResult, QuboModel};
 pub use layout_embedding::{LayoutAwareEmbedder, LayoutConfig, LayoutStats, MultiLevelEmbedder};
+pub use meta_learning_optimization::{
+    create_meta_learning_optimizer, AdaptationMechanism, AlgorithmPerformanceStats,
+    AlgorithmType as MetaAlgorithmType, AlternativeStrategy, ApplicabilityConditions,
+    ArchitectureCandidate, ArchitectureSpec as MetaArchitectureSpec,
+    ConvergenceMetrics as MetaConvergenceMetrics, CrossValidationStrategy, DecisionMaker,
+    DomainCharacteristics, EvaluationMetric, ExperienceDatabase,
+    FeatureExtractor as MetaFeatureExtractor, FeatureVector, FrontierStatistics, FrontierUpdate,
+    GenerationMethod as MetaGenerationMethod, Knowledge, MetaLearner, MetaLearningAlgorithm,
+    MetaLearningConfig, MetaLearningOptimizer as MetaOptimizer, MetaLearningStatistics,
+    MetaOptimizationResult, ModelType, NeuralArchitectureSearch as MetaNAS,
+    OptimizationConfiguration as MetaOptimizationConfiguration, OptimizationExperience,
+    OptimizationResults as MetaOptimizationResults, ParetoFrontier as MetaParetoFrontier,
+    PerformanceEvaluator, PerformanceGuarantee, PerformancePredictor as MetaPerformancePredictor,
+    PerformanceRecord as MetaPerformanceRecord, ProblemDomain as MetaProblemDomain,
+    ProblemFeatures as MetaProblemFeatures, QualityMetrics as MetaQualityMetrics,
+    RecommendedStrategy, ResourceAllocation as MetaResourceAllocation,
+    ResourceRequirements as MetaResourceRequirements, ResourceUsage, SearchIteration,
+    SimilarityMethod, SimilarityMetric, SourceDomain, StatisticalTest, SuccessMetrics,
+    TrainingEpisode, TransferLearner as MetaTransferLearner, TransferRecord, TransferStrategy,
+    TransferableModel, UpdateReason, UserPreferences,
+};
 pub use multi_chip_embedding::{
     create_example_multi_chip_system, ChipMetrics, ChipPerformance, ChipStatus, ChipWorkload,
     CommunicationChannel as ChipCommunicationChannel, CommunicationProtocol, ConnectionStatus,
@@ -325,6 +374,13 @@ pub use qaoa::{
     QaoaCircuitStats, QaoaClassicalOptimizer, QaoaConfig, QaoaError, QaoaLayer, QaoaOptimizer,
     QaoaPerformanceMetrics, QaoaResult, QaoaResults, QaoaVariant, QuantumGate as QaoaQuantumGate,
     QuantumState as QaoaQuantumState, QuantumStateStats,
+};
+pub use qaoa_anneal_bridge::{
+    create_example_max_cut_problem, BridgeConfig as QaoaBridgeConfig,
+    HybridOptimizationResult as QaoaHybridResult, MixingType, OptimizationStrategy as QaoaStrategy,
+    PerformanceMetrics as QaoaBridgeMetrics, ProblemFormulation,
+    ProblemMetadata as QaoaProblemMeta, QaoaAnnealBridge, QaoaClause,
+    QaoaParameters as QaoaBridgeParameters, QaoaProblem as QaoaBridgeProblem, UnifiedProblem,
 };
 pub use qaoa_circuit_bridge::{
     create_qaoa_bridge_for_problem, qaoa_parameters_to_circuit_parameters,

@@ -21,19 +21,21 @@ pub use state_vector::MixedPrecisionStateVector;
 use crate::error::Result;
 
 /// Initialize the mixed-precision subsystem
+#[allow(clippy::missing_const_for_fn)] // Cannot be const due to non-const calls in cfg block
 pub fn initialize() -> Result<()> {
     // Perform any necessary initialization
     #[cfg(feature = "advanced_math")]
     {
         // Initialize SciRS2 mixed precision context if available
         let _context = MixedPrecisionContext::new(AdaptiveStrategy::ErrorBased(1e-6));
+        let _ = _context; // Explicitly use to avoid unused variable warning
     }
 
     Ok(())
 }
 
 /// Check if mixed-precision features are available
-pub fn is_available() -> bool {
+pub const fn is_available() -> bool {
     cfg!(feature = "advanced_math")
 }
 
@@ -48,12 +50,12 @@ pub fn get_supported_precisions() -> Vec<QuantumPrecision> {
 }
 
 /// Create a default configuration for accuracy
-pub fn default_accuracy_config() -> MixedPrecisionConfig {
+pub const fn default_accuracy_config() -> MixedPrecisionConfig {
     MixedPrecisionConfig::for_accuracy()
 }
 
 /// Create a default configuration for performance
-pub fn default_performance_config() -> MixedPrecisionConfig {
+pub const fn default_performance_config() -> MixedPrecisionConfig {
     MixedPrecisionConfig::for_performance()
 }
 
@@ -136,7 +138,7 @@ mod tests {
         let config = MixedPrecisionConfig::default();
         assert!(validate_config(&config).is_ok());
 
-        let mut invalid_config = config.clone();
+        let mut invalid_config = config;
         invalid_config.error_tolerance = -1.0;
         assert!(validate_config(&invalid_config).is_err());
     }
@@ -246,7 +248,7 @@ mod tests {
         assert_eq!(metrics.energy_efficiency, 5.0);
 
         let score = metrics.performance_score();
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]

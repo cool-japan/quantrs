@@ -80,7 +80,7 @@ impl GpuProfiler {
     }
 
     /// Enable/disable profiling
-    pub fn set_enabled(&mut self, enabled: bool) {
+    pub const fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
     }
 
@@ -188,8 +188,7 @@ impl GpuProfiler {
                 let avg_time = times.iter().sum::<Duration>() / times.len() as u32;
                 if avg_time > Duration::from_millis(100) {
                     recommendations.push(format!(
-                        "Kernel '{}' has high execution time. Consider optimization or splitting.",
-                        kernel
+                        "Kernel '{kernel}' has high execution time. Consider optimization or splitting."
                     ));
                 }
             }
@@ -264,7 +263,7 @@ impl Default for MemoryAccessAnalyzer {
 
 impl MemoryAccessAnalyzer {
     /// Create new analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             patterns: Vec::new(),
             coalescing_efficiency: 1.0,
@@ -293,8 +292,7 @@ impl MemoryAccessAnalyzer {
         let (common_stride, frequency) = stride_counts
             .iter()
             .max_by_key(|(_, &count)| count)
-            .map(|(&stride, &count)| (stride, count))
-            .unwrap_or((0, 0));
+            .map_or((0, 0), |(&stride, &count)| (stride, count));
 
         self.patterns.push(AccessPattern {
             access_type,
@@ -452,16 +450,8 @@ impl KernelFusionOptimizer {
             deps2.contains(&kernel1.to_string()) || deps1.contains(&kernel2.to_string());
 
         // Check if both kernels are fusable
-        let both_fusable = self
-            .kernel_info
-            .get(kernel1)
-            .map(|k| k.fusable)
-            .unwrap_or(false)
-            && self
-                .kernel_info
-                .get(kernel2)
-                .map(|k| k.fusable)
-                .unwrap_or(false);
+        let both_fusable = self.kernel_info.get(kernel1).is_some_and(|k| k.fusable)
+            && self.kernel_info.get(kernel2).is_some_and(|k| k.fusable);
 
         direct_dep && both_fusable
     }
@@ -519,9 +509,9 @@ fn calculate_stats(times: &[Duration]) -> PerformanceStats {
         .iter()
         .map(|&t| {
             let diff = if t > mean {
-                (t - mean).as_secs_f64()
+                t.checked_sub(mean).unwrap().as_secs_f64()
             } else {
-                (mean - t).as_secs_f64()
+                mean.checked_sub(t).unwrap().as_secs_f64()
             };
             diff * diff
         })

@@ -63,7 +63,7 @@ pub enum FeatureMap {
 
 impl QuantumSVM {
     /// Create new Quantum SVM
-    pub fn new(kernel: KernelType, c: f64) -> Self {
+    pub const fn new(kernel: KernelType, c: f64) -> Self {
         Self {
             kernel,
             c,
@@ -97,7 +97,7 @@ impl QuantumSVM {
         // Solve using quantum sampler
         let results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
-            .map_err(|e| format!("Sampling error: {:?}", e))?;
+            .map_err(|e| format!("Sampling error: {e:?}"))?;
 
         if let Some(best) = results.first() {
             // Extract alphas from solution
@@ -246,7 +246,7 @@ impl QuantumSVM {
         // Create variable mapping
         for i in 0..n {
             for b in 0..n_bits {
-                let var_name = format!("alpha_{}_{}", i, b);
+                let var_name = format!("alpha_{i}_{b}");
                 var_map.insert(var_name, i * n_bits + b);
             }
         }
@@ -328,7 +328,7 @@ impl QuantumSVM {
         for i in 0..n_samples {
             let mut alpha = 0.0;
             for b in 0..n_bits {
-                let var_name = format!("alpha_{}_{}", i, b);
+                let var_name = format!("alpha_{i}_{b}");
                 if let Some(&_var_idx) = var_map.get(&var_name) {
                     if assignments.get(&var_name).copied().unwrap_or(false) {
                         alpha += (1 << b) as f64 / (1 << n_bits) as f64 * self.c;
@@ -394,7 +394,7 @@ impl QuantumBoltzmannMachine {
             n_hidden,
             weights: {
                 let mut weights = Array2::zeros((n_visible, n_hidden));
-                for element in weights.iter_mut() {
+                for element in &mut weights {
                     *element = rng.gen_range(-0.01..0.01);
                 }
                 weights
@@ -450,7 +450,7 @@ impl QuantumBoltzmannMachine {
             losses.push(epoch_loss);
 
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.4}", epoch, epoch_loss);
+                println!("Epoch {epoch}: Loss = {epoch_loss:.4}");
             }
         }
 
@@ -475,7 +475,7 @@ impl QuantumBoltzmannMachine {
             let mut var_map = HashMap::new();
 
             for j in 0..self.n_hidden {
-                var_map.insert(format!("h_{}", j), j);
+                var_map.insert(format!("h_{j}"), j);
 
                 // Linear term
                 let linear = self.hidden_bias[j] + v.dot(&self.weights.column(j));
@@ -485,11 +485,11 @@ impl QuantumBoltzmannMachine {
             // Sample using quantum sampler
             let results = sampler
                 .run_qubo(&(qubo, var_map), 1)
-                .map_err(|e| format!("Sampling error: {:?}", e))?;
+                .map_err(|e| format!("Sampling error: {e:?}"))?;
 
             if let Some(result) = results.first() {
                 for j in 0..self.n_hidden {
-                    let var_name = format!("h_{}", j);
+                    let var_name = format!("h_{j}");
                     hidden[[i, j]] = if result.assignments.get(&var_name).copied().unwrap_or(false)
                     {
                         1.0
@@ -520,7 +520,7 @@ impl QuantumBoltzmannMachine {
             let mut var_map = HashMap::new();
 
             for j in 0..self.n_visible {
-                var_map.insert(format!("v_{}", j), j);
+                var_map.insert(format!("v_{j}"), j);
 
                 // Linear term
                 let linear = self.visible_bias[j] + self.weights.row(j).dot(&h);
@@ -529,11 +529,11 @@ impl QuantumBoltzmannMachine {
 
             let results = sampler
                 .run_qubo(&(qubo, var_map), 1)
-                .map_err(|e| format!("Sampling error: {:?}", e))?;
+                .map_err(|e| format!("Sampling error: {e:?}"))?;
 
             if let Some(result) = results.first() {
                 for j in 0..self.n_visible {
-                    let var_name = format!("v_{}", j);
+                    let var_name = format!("v_{j}");
                     visible[[i, j]] = if result.assignments.get(&var_name).copied().unwrap_or(false)
                     {
                         1.0
@@ -553,7 +553,7 @@ impl QuantumBoltzmannMachine {
         let mut rng = thread_rng();
         let mut hidden = {
             let mut hidden = Array2::zeros((n_samples, self.n_hidden));
-            for element in hidden.iter_mut() {
+            for element in &mut hidden {
                 *element = if rng.gen::<bool>() { 1.0 } else { 0.0 };
             }
             hidden
@@ -590,7 +590,7 @@ pub enum DistanceMetric {
 
 impl QuantumClustering {
     /// Create new quantum clustering
-    pub fn new(n_clusters: usize) -> Self {
+    pub const fn new(n_clusters: usize) -> Self {
         Self {
             n_clusters,
             distance_metric: DistanceMetric::Euclidean,
@@ -599,7 +599,7 @@ impl QuantumClustering {
     }
 
     /// Set distance metric
-    pub fn with_distance_metric(mut self, metric: DistanceMetric) -> Self {
+    pub const fn with_distance_metric(mut self, metric: DistanceMetric) -> Self {
         self.distance_metric = metric;
         self
     }
@@ -621,7 +621,7 @@ impl QuantumClustering {
         // Solve using quantum sampler
         let results = sampler
             .run_qubo(&(qubo, var_map.clone()), 100)
-            .map_err(|e| format!("Sampling error: {:?}", e))?;
+            .map_err(|e| format!("Sampling error: {e:?}"))?;
 
         if let Some(best) = results.first() {
             // Decode cluster assignments
@@ -675,7 +675,7 @@ impl QuantumClustering {
         let norm_y = y.dot(y).sqrt();
 
         let fidelity = (inner_product / (norm_x * norm_y)).abs();
-        (1.0 - fidelity * fidelity).sqrt()
+        fidelity.mul_add(-fidelity, 1.0).sqrt()
     }
 
     /// Create QUBO for clustering
@@ -692,7 +692,7 @@ impl QuantumClustering {
         // Variable mapping: x[i,k] = 1 if sample i is in cluster k
         for i in 0..n_samples {
             for k in 0..self.n_clusters {
-                let var_name = format!("x_{}_{}", i, k);
+                let var_name = format!("x_{i}_{k}");
                 var_map.insert(var_name, i * self.n_clusters + k);
             }
         }
@@ -762,7 +762,7 @@ impl QuantumClustering {
 
         for i in 0..n_samples {
             for k in 0..self.n_clusters {
-                let var_name = format!("x_{}_{}", i, k);
+                let var_name = format!("x_{i}_{k}");
                 if assignments.get(&var_name).copied().unwrap_or(false) {
                     clusters[i] = k;
                     break;
@@ -778,8 +778,8 @@ impl QuantumClustering {
 mod tests {
     use super::*;
     use crate::sampler::SASampler;
-    use scirs2_core::ndarray::array;
     use quantrs2_anneal::simulator::AnnealingParams;
+    use scirs2_core::ndarray::array;
 
     #[test]
     fn test_quantum_svm() {

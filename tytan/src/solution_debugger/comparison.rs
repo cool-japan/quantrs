@@ -153,7 +153,7 @@ impl SolutionComparator {
     }
 
     /// Calculate constraint satisfaction difference
-    fn constraint_satisfaction_diff(&self, _sol1: &Solution, _sol2: &Solution) -> f64 {
+    const fn constraint_satisfaction_diff(&self, _sol1: &Solution, _sol2: &Solution) -> f64 {
         // Placeholder - would need actual constraint satisfaction scores
         0.0
     }
@@ -173,7 +173,7 @@ impl SolutionComparator {
     }
 
     /// Calculate custom metric
-    fn custom_metric(&self, _sol1: &Solution, _sol2: &Solution, _name: &str) -> f64 {
+    const fn custom_metric(&self, _sol1: &Solution, _sol2: &Solution, _name: &str) -> f64 {
         // Placeholder for custom metrics
         0.0
     }
@@ -190,7 +190,7 @@ impl SolutionComparator {
     }
 
     /// Calculate objective impact of variable difference
-    fn calculate_objective_impact(
+    const fn calculate_objective_impact(
         &self,
         _var: &str,
         _val1: bool,
@@ -203,7 +203,7 @@ impl SolutionComparator {
     }
 
     /// Calculate constraint impact of variable difference
-    fn calculate_constraint_impact(
+    const fn calculate_constraint_impact(
         &self,
         _var: &str,
         _val1: bool,

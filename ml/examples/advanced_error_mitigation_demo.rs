@@ -4,7 +4,6 @@
 //! for quantum machine learning, showcasing various mitigation strategies
 //! and their adaptive application.
 
-use scirs2_core::ndarray::{Array1, Array2, Axis};
 use quantrs2_ml::error_mitigation::{
     CDRModel, CliffordCircuit, CorrectionNetwork, CorrelationFunction, EntanglementProtocol,
     FidelityModel, NoisePredictorModel, NoiseSpectrum, QuantumCircuit, QuantumGate,
@@ -12,8 +11,9 @@ use quantrs2_ml::error_mitigation::{
     TrainingDataSet, VerificationCircuit,
 };
 use quantrs2_ml::prelude::*;
-use std::collections::HashMap;
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("=== Advanced Quantum ML Error Mitigation Demo ===\n");
@@ -497,7 +497,7 @@ fn create_mitigation_strategies() -> Result<Vec<MitigationStrategy>> {
     ])
 }
 
-fn get_strategy_name(strategy: &MitigationStrategy) -> &'static str {
+const fn get_strategy_name(strategy: &MitigationStrategy) -> &'static str {
     match strategy {
         MitigationStrategy::ZNE { .. } => "Zero Noise Extrapolation",
         MitigationStrategy::ReadoutErrorMitigation { .. } => "Readout Error Mitigation",
@@ -550,7 +550,7 @@ fn simulate_noisy_measurements(
     for i in 0..num_shots {
         for j in 0..circuit.num_qubits() {
             let ideal_prob = 0.5; // Ideal measurement probability
-            let noise_factor = fastrand::f64() * 0.1 - 0.05; // ±5% noise
+            let noise_factor = fastrand::f64().mul_add(0.1, -0.05); // ±5% noise
             let noisy_prob = (ideal_prob + noise_factor).max(0.0).min(1.0);
             measurements[[i, j]] = if fastrand::f64() < noisy_prob {
                 1.0
@@ -574,7 +574,7 @@ fn simulate_noisy_gradients(
     for i in 0..parameters.len() {
         let ideal_gradient = (i as f64 + 1.0) * 0.1; // Mock ideal gradient
         let noise_std = 0.05; // Gradient noise standard deviation
-        let noise = fastrand::f64() * noise_std * 2.0 - noise_std;
+        let noise = (fastrand::f64() * noise_std).mul_add(2.0, -noise_std);
         gradients[i] = ideal_gradient + noise;
     }
 
@@ -586,7 +586,7 @@ fn assess_noise_level(measurements: &Array2<f64>) -> f64 {
     let bit_flip_rate = measurements
         .iter()
         .zip(measurements.iter().skip(1))
-        .map(|(&a, &b)| if a != b { 1.0 } else { 0.0 })
+        .map(|(&a, &b)| if a == b { 0.0 } else { 1.0 })
         .sum::<f64>()
         / (measurements.len() - 1) as f64;
 
@@ -614,7 +614,7 @@ fn demonstrate_zne_mitigation(
     })
 }
 
-fn demonstrate_readout_mitigation(
+const fn demonstrate_readout_mitigation(
     circuit: &QuantumCircuit,
     noise_model: &NoiseModel,
 ) -> Result<ReadoutResult> {
@@ -625,7 +625,7 @@ fn demonstrate_readout_mitigation(
     })
 }
 
-fn demonstrate_cdr_mitigation(
+const fn demonstrate_cdr_mitigation(
     circuit: &QuantumCircuit,
     noise_model: &NoiseModel,
 ) -> Result<CDRResult> {
@@ -636,7 +636,7 @@ fn demonstrate_cdr_mitigation(
     })
 }
 
-fn demonstrate_virtual_distillation(
+const fn demonstrate_virtual_distillation(
     circuit: &QuantumCircuit,
     noise_model: &NoiseModel,
 ) -> Result<VDResult> {
@@ -647,7 +647,7 @@ fn demonstrate_virtual_distillation(
     })
 }
 
-fn demonstrate_ml_mitigation(
+const fn demonstrate_ml_mitigation(
     circuit: &QuantumCircuit,
     noise_model: &NoiseModel,
 ) -> Result<MLMitigationResult> {
@@ -720,7 +720,7 @@ struct QuantumAdvantageAnalysis {
 
 // Additional helper function implementations
 
-fn create_smart_selection_policy() -> Result<StrategySelectionPolicy> {
+const fn create_smart_selection_policy() -> Result<StrategySelectionPolicy> {
     Ok(StrategySelectionPolicy)
 }
 
@@ -731,7 +731,7 @@ fn create_performance_tracker() -> Result<quantrs2_ml::error_mitigation::Perform
 fn simulate_dynamic_noise(base_noise: &NoiseModel, step: usize) -> Result<NoiseModel> {
     // Simulate time-varying noise
     let mut dynamic_noise = base_noise.clone();
-    let time_factor = 1.0 + 0.1 * (step as f64 * 0.1).sin();
+    let time_factor = 0.1f64.mul_add((step as f64 * 0.1).sin(), 1.0);
 
     for error_model in dynamic_noise.gate_errors.values_mut() {
         error_model.error_rate *= time_factor;
@@ -751,7 +751,7 @@ fn simulate_training_step_measurements(
     for i in 0..num_shots {
         for j in 0..circuit.num_qubits() {
             let step_bias = step as f64 * 0.01;
-            let prob = 0.5 + step_bias + fastrand::f64() * 0.1 - 0.05;
+            let prob = fastrand::f64().mul_add(0.1, 0.5 + step_bias) - 0.05;
             measurements[[i, j]] = if fastrand::f64() < prob.max(0.0).min(1.0) {
                 1.0
             } else {
@@ -785,10 +785,10 @@ fn simulate_inference_measurements(
 
 fn calculate_prediction_confidence(measurements: &Array2<f64>) -> f64 {
     let mean_prob = measurements.mean().unwrap();
-    1.0 - (mean_prob - 0.5).abs() * 2.0
+    (mean_prob - 0.5).abs().mul_add(-2.0, 1.0)
 }
 
-fn simulate_realtime_mitigation(
+const fn simulate_realtime_mitigation(
     circuit: &QuantumCircuit,
     noise_model: &NoiseModel,
 ) -> Result<RealtimeResults> {

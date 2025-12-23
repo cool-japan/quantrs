@@ -1,4 +1,4 @@
-//! Tests for OpenQASM 3.0 import/export functionality
+//! Tests for `OpenQASM` 3.0 import/export functionality
 
 use quantrs2_circuit::builder::CircuitBuilder;
 use quantrs2_circuit::prelude::*;
@@ -21,7 +21,7 @@ fn test_qasm3_export_simple() {
     assert!(qasm.contains("h q[0]"));
     assert!(qasm.contains("cx q[0], q[1]"));
 
-    println!("Generated QASM:\n{}", qasm);
+    println!("Generated QASM:\n{qasm}");
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn test_qasm3_export_with_measurements() {
     assert!(qasm.contains("bit[3] c"));
     assert!(qasm.contains("measure"));
 
-    println!("GHZ circuit QASM:\n{}", qasm);
+    println!("GHZ circuit QASM:\n{qasm}");
 }
 
 #[test]
@@ -95,7 +95,7 @@ measure q -> c;
 
 #[test]
 fn test_qasm3_parse_parametric_gates() {
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 
 qubit[2] q;
@@ -107,7 +107,7 @@ rz(pi/8) q[0];
 
 // Controlled rotation
 crx(pi/3) q[0], q[1];
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse QASM");
     validate_qasm3(&program).expect("Validation failed");
@@ -118,7 +118,7 @@ crx(pi/3) q[0], q[1];
 
 #[test]
 fn test_qasm3_parse_custom_gate() {
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 
 // Define custom bell gate
@@ -131,7 +131,7 @@ qubit[2] q;
 
 // Use custom gate
 bell q[0], q[1];
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse QASM");
     validate_qasm3(&program).expect("Validation failed");
@@ -154,7 +154,7 @@ bell q[0], q[1];
 
 #[test]
 fn test_qasm3_parse_control_flow() {
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 
 qubit[4] q;
@@ -169,7 +169,7 @@ for i in [0:2] {
     h q[0];
     h q[1];
 }
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse QASM");
     validate_qasm3(&program).expect("Validation failed");
@@ -181,33 +181,33 @@ for i in [0:2] {
 #[test]
 fn test_qasm3_validation_errors() {
     // Test undefined register
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 qubit[2] q;
 h r[0];  // r is undefined
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse");
     let result = validate_qasm3(&program);
     assert!(result.is_err());
 
     // Test index out of bounds
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 qubit[2] q;
 h q[5];  // index 5 is out of bounds
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse");
     let result = validate_qasm3(&program);
     assert!(result.is_err());
 
     // Test parameter count mismatch
-    let qasm_code = r#"
+    let qasm_code = r"
 OPENQASM 3.0;
 qubit q;
 rx q;  // rx requires 1 parameter
-"#;
+";
 
     let program = parse_qasm3(qasm_code).expect("Failed to parse");
     let result = validate_qasm3(&program);
@@ -231,7 +231,7 @@ fn test_qasm3_round_trip() {
 
     // Export to QASM
     let qasm = export_qasm3(&original_circuit).expect("Failed to export");
-    println!("Exported QASM:\n{}", qasm);
+    println!("Exported QASM:\n{qasm}");
 
     // Parse back
     let program = parse_qasm3(&qasm).expect("Failed to parse exported QASM");
@@ -296,7 +296,7 @@ mod integration_tests {
         for j in 0..n {
             builder.h(Qubit::new(j)).unwrap();
             for k in (j + 1)..n {
-                let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
+                let angle = std::f64::consts::PI / f64::from(1 << (k - j));
                 builder.cp(Qubit::new(j), Qubit::new(k), angle).unwrap();
             }
         }
@@ -309,7 +309,7 @@ mod integration_tests {
         let circuit = builder.build();
         let qasm = export_qasm3(&circuit).expect("Failed to export QFT circuit");
 
-        println!("QFT Circuit QASM:\n{}", qasm);
+        println!("QFT Circuit QASM:\n{qasm}");
 
         // Verify the QASM can be parsed and validated
         let program = parse_qasm3(&qasm).expect("Failed to parse QFT QASM");

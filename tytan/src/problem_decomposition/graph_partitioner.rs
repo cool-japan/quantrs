@@ -30,7 +30,7 @@ impl Default for GraphPartitioner {
 
 impl GraphPartitioner {
     /// Create new graph partitioner with default settings
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             algorithm: PartitioningAlgorithm::Spectral,
             num_partitions: 2,
@@ -42,7 +42,7 @@ impl GraphPartitioner {
     }
 
     /// Create new graph partitioner with specific settings
-    pub fn with_config(algorithm: PartitioningAlgorithm, num_partitions: usize) -> Self {
+    pub const fn with_config(algorithm: PartitioningAlgorithm, num_partitions: usize) -> Self {
         Self {
             algorithm,
             num_partitions,
@@ -54,25 +54,25 @@ impl GraphPartitioner {
     }
 
     /// Set number of partitions
-    pub fn with_num_partitions(mut self, num_partitions: usize) -> Self {
+    pub const fn with_num_partitions(mut self, num_partitions: usize) -> Self {
         self.num_partitions = num_partitions;
         self
     }
 
     /// Set partitioning algorithm
-    pub fn with_algorithm(mut self, algorithm: PartitioningAlgorithm) -> Self {
+    pub const fn with_algorithm(mut self, algorithm: PartitioningAlgorithm) -> Self {
         self.algorithm = algorithm;
         self
     }
 
     /// Set balance factor
-    pub fn with_balance_factor(mut self, factor: f64) -> Self {
+    pub const fn with_balance_factor(mut self, factor: f64) -> Self {
         self.balance_factor = factor;
         self
     }
 
     /// Set edge cut weight
-    pub fn with_edge_cut_weight(mut self, weight: f64) -> Self {
+    pub const fn with_edge_cut_weight(mut self, weight: f64) -> Self {
         self.edge_cut_weight = weight;
         self
     }
@@ -83,7 +83,7 @@ impl GraphPartitioner {
         let n = qubo.shape()[0];
         let mut var_map = HashMap::new();
         for i in 0..n {
-            var_map.insert(format!("x{}", i), i);
+            var_map.insert(format!("x{i}"), i);
         }
 
         let partitioning = self.partition_qubo(qubo, &var_map)?;
@@ -190,9 +190,7 @@ impl GraphPartitioner {
             if best_gain > min_gain_threshold {
                 if let Some((i, j)) = best_swap {
                     // Perform swap
-                    let temp = partition[i];
-                    partition[i] = partition[j];
-                    partition[j] = temp;
+                    partition.swap(i, j);
                 }
             } else {
                 break; // No improvement
@@ -216,10 +214,10 @@ impl GraphPartitioner {
             let (u, v) = (edge.from, edge.to);
 
             if u == i || u == j || v == i || v == j {
-                let current_cut = if partition[u] != partition[v] {
-                    edge.weight
-                } else {
+                let current_cut = if partition[u] == partition[v] {
                     0.0
+                } else {
+                    edge.weight
                 };
 
                 // Simulate swap
@@ -227,10 +225,10 @@ impl GraphPartitioner {
                 new_partition[i] = partition[j];
                 new_partition[j] = partition[i];
 
-                let new_cut = if new_partition[u] != new_partition[v] {
-                    edge.weight
-                } else {
+                let new_cut = if new_partition[u] == new_partition[v] {
                     0.0
+                } else {
+                    edge.weight
                 };
                 gain += current_cut - new_cut;
             }
@@ -252,7 +250,7 @@ impl GraphPartitioner {
         // Partition based on sign of Fiedler vector
         let mut partition = vec![0; n];
         for i in 0..n {
-            partition[i] = if fiedler_vector[i] >= 0.0 { 0 } else { 1 };
+            partition[i] = usize::from(fiedler_vector[i] < 0.0);
         }
 
         // Extend to k-way if needed
@@ -446,11 +444,11 @@ impl GraphPartitioner {
                     }
                 }
 
-                if best_part != current_part {
+                if best_part == current_part {
+                    partition[i] = current_part;
+                } else {
                     partition[i] = best_part;
                     improved = true;
-                } else {
-                    partition[i] = current_part;
                 }
             }
 
@@ -637,8 +635,8 @@ impl GraphPartitioner {
             for j in i + 1..n {
                 if partition[i] != partition[j] && qubo[[i, j]].abs() > 1e-10 {
                     coupling_terms.push(CouplingTerm {
-                        var1: format!("x{}", i),
-                        var2: format!("x{}", j),
+                        var1: format!("x{i}"),
+                        var2: format!("x{j}"),
                         subproblem1: partition[i],
                         subproblem2: partition[j],
                         weight: qubo[[i, j]],
@@ -708,8 +706,7 @@ impl GraphPartitioner {
                         .edges
                         .iter()
                         .find(|e| (e.from == i && e.to == j) || (e.from == j && e.to == i))
-                        .map(|e| e.weight)
-                        .unwrap_or(0.0);
+                        .map_or(0.0, |e| e.weight);
 
                     let degree_i: f64 = graph
                         .edges
@@ -743,7 +740,7 @@ impl GraphPartitioner {
             part_volumes[partition[edge.to]] += edge.weight;
         }
 
-        let min_volume = part_volumes.iter().cloned().fold(f64::INFINITY, f64::min);
+        let min_volume = part_volumes.iter().copied().fold(f64::INFINITY, f64::min);
 
         if min_volume > 0.0 {
             edge_cut / min_volume

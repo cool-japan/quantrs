@@ -45,7 +45,7 @@ impl MetalGpuSimulator {
     }
 
     /// Get available Metal devices
-    pub fn available_devices() -> Vec<String> {
+    pub const fn available_devices() -> Vec<String> {
         // TODO: Query Metal devices
         // - Apple Silicon GPU
         // - Intel integrated GPU
@@ -54,7 +54,7 @@ impl MetalGpuSimulator {
     }
 
     /// Check if Metal is available on this system
-    pub fn is_available() -> bool {
+    pub const fn is_available() -> bool {
         // TODO: Check for Metal framework availability
         false
     }

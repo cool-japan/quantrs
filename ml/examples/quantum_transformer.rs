@@ -4,9 +4,9 @@
 //! attention mechanisms, position encodings, and applications to different tasks
 //! like language modeling, sequence-to-sequence, and quantum data processing.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -127,7 +127,7 @@ fn attention_mechanisms_demo() -> Result<()> {
     ];
 
     for (name, attention_type) in attention_types {
-        println!("\n   --- {} Attention ---", name);
+        println!("\n   --- {name} Attention ---");
 
         let attention = QuantumMultiHeadAttention::new(4, 256, attention_type, 8)?;
         println!(
@@ -141,7 +141,7 @@ fn attention_mechanisms_demo() -> Result<()> {
         let model_dim = 256;
 
         let query = Array3::from_shape_fn((batch_size, seq_len, model_dim), |(b, s, d)| {
-            0.1 * (b as f64 + s as f64 * 0.1 + d as f64 * 0.01)
+            0.1 * (d as f64).mul_add(0.01, (s as f64).mul_add(0.1, b as f64))
         });
         let key = query.clone();
         let value = query.clone();
@@ -163,22 +163,22 @@ fn attention_mechanisms_demo() -> Result<()> {
         let max_coherence = quantum_info
             .coherence_scores
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
 
-        println!("   Average entanglement: {:.4}", avg_entanglement);
-        println!("   Maximum coherence: {:.4}", max_coherence);
+        println!("   Average entanglement: {avg_entanglement:.4}");
+        println!("   Maximum coherence: {max_coherence:.4}");
 
         // Attention pattern analysis
         let attention_weights = &attention_output.attention_weights;
         let max_attention = attention_weights
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let avg_attention = attention_weights.mean().unwrap_or(0.0);
 
-        println!("   Max attention weight: {:.4}", max_attention);
-        println!("   Average attention: {:.4}", avg_attention);
+        println!("   Max attention weight: {max_attention:.4}");
+        println!("   Average attention: {avg_attention:.4}");
 
         // Check attention sparsity
         let sparsity = attention_weights.iter().filter(|&&x| x < 0.01).count() as f64
@@ -206,7 +206,7 @@ fn position_encoding_demo() -> Result<()> {
     let num_qubits = 8;
 
     for (name, encoding_type) in encoding_types {
-        println!("\n   --- {} Position Encoding ---", name);
+        println!("\n   --- {name} Position Encoding ---");
 
         let pos_enc =
             QuantumPositionEncoding::new(encoding_type, model_dim, max_seq_len, num_qubits)?;
@@ -219,22 +219,23 @@ fn position_encoding_demo() -> Result<()> {
 
         // Analyze position encoding properties
         let encoding_range = {
-            let min_val = encodings.iter().cloned().fold(f64::INFINITY, f64::min);
-            let max_val = encodings.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let min_val = encodings.iter().copied().fold(f64::INFINITY, f64::min);
+            let max_val = encodings.iter().copied().fold(f64::NEG_INFINITY, f64::max);
             max_val - min_val
         };
 
-        println!("   Value range: {:.4}", encoding_range);
+        println!("   Value range: {encoding_range:.4}");
 
         // Check position distinguishability
-        let pos1 = encodings.slice(scirs2_core::ndarray::s![0, 0, ..]).to_owned();
-        let pos2 = encodings.slice(scirs2_core::ndarray::s![0, seq_len - 1, ..]).to_owned();
+        let pos1 = encodings
+            .slice(scirs2_core::ndarray::s![0, 0, ..])
+            .to_owned();
+        let pos2 = encodings
+            .slice(scirs2_core::ndarray::s![0, seq_len - 1, ..])
+            .to_owned();
         let position_distance = (&pos1 - &pos2).mapv(|x| x * x).sum().sqrt();
 
-        println!(
-            "   Distance between first and last position: {:.4}",
-            position_distance
-        );
+        println!("   Distance between first and last position: {position_distance:.4}");
 
         // Analyze periodicity for sinusoidal encodings
         if name == "Sinusoidal" {
@@ -252,14 +253,14 @@ fn position_encoding_demo() -> Result<()> {
             if !periodicities.is_empty() {
                 let avg_period =
                     periodicities.iter().sum::<usize>() as f64 / periodicities.len() as f64;
-                println!("   Average period length: {:.1}", avg_period);
+                println!("   Average period length: {avg_period:.1}");
             }
         }
 
         // Check quantum phase encoding properties
         if name == "Quantum Phase" {
             let phase_variance = encodings.var(0.0);
-            println!("   Phase encoding variance: {:.4}", phase_variance);
+            println!("   Phase encoding variance: {phase_variance:.4}");
         }
     }
 
@@ -297,10 +298,7 @@ fn transformer_forward_demo() -> Result<()> {
     ];
 
     for (batch_size, seq_len, input_dim) in test_sequences {
-        println!(
-            "\n   Testing: batch={}, seq_len={}, input_dim={}",
-            batch_size, seq_len, input_dim
-        );
+        println!("\n   Testing: batch={batch_size}, seq_len={seq_len}, input_dim={input_dim}");
 
         // Create test input
         let input = Array3::from_shape_fn((batch_size, seq_len, input_dim), |(b, s, d)| {
@@ -319,20 +317,19 @@ fn transformer_forward_demo() -> Result<()> {
         let forward_time = start_time.elapsed();
 
         println!("   Output shape: {:?}", output.dim());
-        println!("   Forward pass time: {:.2?}", forward_time);
+        println!("   Forward pass time: {forward_time:.2?}");
 
         // Analyze output properties
         let output_mean = output.mean().unwrap_or(0.0);
         let output_std = output.var(0.0).sqrt();
         let output_range = {
-            let min_val = output.iter().cloned().fold(f64::INFINITY, f64::min);
-            let max_val = output.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let min_val = output.iter().copied().fold(f64::INFINITY, f64::min);
+            let max_val = output.iter().copied().fold(f64::NEG_INFINITY, f64::max);
             max_val - min_val
         };
 
         println!(
-            "   Output statistics: mean={:.4}, std={:.4}, range={:.4}",
-            output_mean, output_std, output_range
+            "   Output statistics: mean={output_mean:.4}, std={output_std:.4}, range={output_range:.4}"
         );
 
         // Check causality (if using causal mask)
@@ -346,7 +343,7 @@ fn transformer_forward_demo() -> Result<()> {
         // Memory efficiency analysis
         let memory_per_token = (transformer.num_parameters() * 8 + output.len() * 8) as f64
             / (batch_size * seq_len) as f64;
-        println!("   Memory per token: {:.1} bytes", memory_per_token);
+        println!("   Memory per token: {memory_per_token:.1} bytes");
     }
 
     Ok(())
@@ -380,14 +377,11 @@ fn language_modeling_demo() -> Result<()> {
         Array3::from_shape_fn((batch_size, seq_len, config.model_dim), |(b, s, d)| {
             // Simulate token embeddings
             let token_id = (b * seq_len + s) % vocab_size;
-            let embedding_val = (token_id as f64 / vocab_size as f64) * 2.0 - 1.0;
-            embedding_val * (1.0 + 0.1 * (d as f64 / config.model_dim as f64))
+            let embedding_val = (token_id as f64 / vocab_size as f64).mul_add(2.0, -1.0);
+            embedding_val * 0.1f64.mul_add(d as f64 / config.model_dim as f64, 1.0)
         });
 
-    println!(
-        "   Processing {} sequences of length {}",
-        batch_size, seq_len
-    );
+    println!("   Processing {batch_size} sequences of length {seq_len}");
 
     // Create causal mask for language modeling
     let causal_mask = create_causal_mask(batch_size, seq_len);
@@ -408,14 +402,15 @@ fn language_modeling_demo() -> Result<()> {
             // Convert to probabilities (simplified softmax)
             let max_logit = current_logits
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max);
             let exp_logits: Array1<f64> = current_logits.mapv(|x| (x - max_logit).exp());
             let sum_exp = exp_logits.sum();
             let probs = exp_logits / sum_exp;
 
             // Simulate target token (next position embedding)
-            let target_embedding = input_tokens.slice(scirs2_core::ndarray::s![batch_idx, pos + 1, ..]);
+            let target_embedding =
+                input_tokens.slice(scirs2_core::ndarray::s![batch_idx, pos + 1, ..]);
             let target_prob = compute_token_probability(&probs, &target_embedding.to_owned())?;
 
             if target_prob > 1e-10 {
@@ -425,7 +420,7 @@ fn language_modeling_demo() -> Result<()> {
         }
 
         if valid_predictions > 0 {
-            let avg_log_likelihood = log_likelihood / valid_predictions as f64;
+            let avg_log_likelihood = log_likelihood / f64::from(valid_predictions);
             let perplexity = (-avg_log_likelihood).exp();
             perplexities.push(perplexity);
         }
@@ -433,7 +428,7 @@ fn language_modeling_demo() -> Result<()> {
 
     if !perplexities.is_empty() {
         let avg_perplexity = perplexities.iter().sum::<f64>() / perplexities.len() as f64;
-        println!("   Average perplexity: {:.2}", avg_perplexity);
+        println!("   Average perplexity: {avg_perplexity:.2}");
 
         // Analyze quantum language model properties
         println!("   Quantum language model analysis:");
@@ -447,18 +442,15 @@ fn language_modeling_demo() -> Result<()> {
         );
 
         // Information flow analysis
-        let first_layer_norm = logits.slice(scirs2_core::ndarray::s![0, .., ..]).var(0.0).sqrt();
-        println!(
-            "   - Output layer standard deviation: {:.4}",
-            first_layer_norm
-        );
+        let first_layer_norm = logits
+            .slice(scirs2_core::ndarray::s![0, .., ..])
+            .var(0.0)
+            .sqrt();
+        println!("   - Output layer standard deviation: {first_layer_norm:.4}");
 
         // Quantum coherence in language representation
         let quantum_coherence = analyze_quantum_language_coherence(&logits)?;
-        println!(
-            "   - Quantum coherence in representations: {:.4}",
-            quantum_coherence
-        );
+        println!("   - Quantum coherence in representations: {quantum_coherence:.4}");
     }
 
     Ok(())
@@ -509,20 +501,17 @@ fn seq2seq_demo() -> Result<()> {
 
     // Source sequence (e.g., English)
     let source = Array3::from_shape_fn((batch_size, src_len, model_dim), |(b, s, d)| {
-        let src_pattern = 0.3 * ((s as f64 * 0.2 + b as f64).sin());
-        src_pattern + 0.1 * (d as f64 / model_dim as f64)
+        let src_pattern = 0.3 * ((s as f64).mul_add(0.2, b as f64).sin());
+        0.1f64.mul_add(d as f64 / model_dim as f64, src_pattern)
     });
 
     // Target sequence (e.g., French)
     let target = Array3::from_shape_fn((batch_size, tgt_len, model_dim), |(b, s, d)| {
-        let tgt_pattern = 0.4 * ((s as f64 * 0.15 + b as f64 * 0.3).cos());
-        tgt_pattern + 0.12 * (d as f64 / model_dim as f64)
+        let tgt_pattern = 0.4 * ((s as f64).mul_add(0.15, b as f64 * 0.3).cos());
+        0.12f64.mul_add(d as f64 / model_dim as f64, tgt_pattern)
     });
 
-    println!(
-        "\n   Processing translation: {} -> {} tokens",
-        src_len, tgt_len
-    );
+    println!("\n   Processing translation: {src_len} -> {tgt_len} tokens");
 
     // Encode source sequence
     let encoder_output = encoder.forward(&source, None)?;
@@ -544,24 +533,21 @@ fn seq2seq_demo() -> Result<()> {
     // Analyze attention alignment
     let max_alignment = cross_attention_scores
         .iter()
-        .cloned()
+        .copied()
         .fold(f64::NEG_INFINITY, f64::max);
     let avg_alignment = cross_attention_scores.mean().unwrap_or(0.0);
 
-    println!("   Max alignment score: {:.4}", max_alignment);
-    println!("   Average alignment: {:.4}", avg_alignment);
+    println!("   Max alignment score: {max_alignment:.4}");
+    println!("   Average alignment: {avg_alignment:.4}");
 
     // Translation quality metrics (simplified)
     let translation_score = evaluate_translation_quality(&source, &target, &decoder_output)?;
-    println!("   Translation quality score: {:.4}", translation_score);
+    println!("   Translation quality score: {translation_score:.4}");
 
     // Quantum entanglement in cross-lingual representations
     let cross_lingual_entanglement =
         analyze_cross_lingual_entanglement(&encoder_output, &decoder_output)?;
-    println!(
-        "   Cross-lingual quantum entanglement: {:.4}",
-        cross_lingual_entanglement
-    );
+    println!("   Cross-lingual quantum entanglement: {cross_lingual_entanglement:.4}");
 
     Ok(())
 }
@@ -605,14 +591,14 @@ fn quantum_data_demo() -> Result<()> {
         if d % 2 == 0 {
             quantum_amplitude + noise
         } else {
-            (2.0 * std::f64::consts::PI * t as f64 / 10.0 + d as f64 * 0.1).cos() + noise
+            (d as f64)
+                .mul_add(0.1, 2.0 * std::f64::consts::PI * t as f64 / 10.0)
+                .cos()
+                + noise
         }
     });
 
-    println!(
-        "   Processing {} quantum sequences of {} measurements each",
-        batch_size, seq_len
-    );
+    println!("   Processing {batch_size} quantum sequences of {seq_len} measurements each");
 
     // Process quantum data
     let output = transformer.forward(&quantum_data, None)?;
@@ -625,8 +611,8 @@ fn quantum_data_demo() -> Result<()> {
     let output_coherence = compute_coherence_measure(&output)?;
     let coherence_preservation = output_coherence / input_coherence;
 
-    println!("   Input coherence: {:.4}", input_coherence);
-    println!("   Output coherence: {:.4}", output_coherence);
+    println!("   Input coherence: {input_coherence:.4}");
+    println!("   Output coherence: {output_coherence:.4}");
     println!(
         "   Coherence preservation: {:.1}%",
         coherence_preservation * 100.0
@@ -728,7 +714,7 @@ fn multiscale_demo() -> Result<()> {
         let transformer = QuantumTransformer::new(config)?;
         let num_params = transformer.num_parameters();
 
-        println!("   {} transformer: {} parameters", scale_name, num_params);
+        println!("   {scale_name} transformer: {num_params} parameters");
         transformers.push((scale_name, transformer));
     }
 
@@ -747,7 +733,7 @@ fn multiscale_demo() -> Result<()> {
         let coarse_component = 0.1 * (s as f64 * 0.02).sin();
 
         let base_signal = fine_component + medium_component + coarse_component;
-        base_signal + 0.05 * (b as f64 + d as f64 * 0.01)
+        0.05f64.mul_add((d as f64).mul_add(0.01, b as f64), base_signal)
     });
 
     // Process at each scale
@@ -757,7 +743,7 @@ fn multiscale_demo() -> Result<()> {
         // Adapt input to transformer's expected dimensions
         let adapted_input = adapt_input_for_scale(&input_data, transformer.config())?;
 
-        println!("   Processing at {} scale...", scale_name);
+        println!("   Processing at {scale_name} scale...");
         println!("   Adapted input shape: {:?}", adapted_input.dim());
 
         let output = transformer.forward(&adapted_input, None)?;
@@ -847,7 +833,7 @@ fn compute_token_probability(probs: &Array1<f64>, _target: &Array1<f64>) -> Resu
 fn analyze_quantum_language_coherence(logits: &Array3<f64>) -> Result<f64> {
     // Compute quantum coherence in language representations
     let variance = logits.var(0.0);
-    let mean_magnitude = logits.mapv(|x| x.abs()).mean().unwrap_or(0.0);
+    let mean_magnitude = logits.mapv(f64::abs).mean().unwrap_or(0.0);
     Ok(variance.sqrt() / (mean_magnitude + 1e-10))
 }
 
@@ -880,7 +866,7 @@ fn evaluate_translation_quality(
     _output: &Array3<f64>,
 ) -> Result<f64> {
     // Simplified translation quality metric
-    Ok(0.75 + 0.2 * fastrand::f64())
+    Ok(0.2f64.mul_add(fastrand::f64(), 0.75))
 }
 
 fn analyze_cross_lingual_entanglement(
@@ -896,7 +882,7 @@ fn analyze_cross_lingual_entanglement(
 
 fn compute_coherence_measure(data: &Array3<f64>) -> Result<f64> {
     // L1 coherence measure
-    let mean_amplitude = data.mapv(|x| x.abs()).mean().unwrap_or(0.0);
+    let mean_amplitude = data.mapv(f64::abs).mean().unwrap_or(0.0);
     Ok(mean_amplitude)
 }
 
@@ -1059,15 +1045,15 @@ fn analyze_scale_patterns(data: &Array3<f64>) -> Result<PatternAnalysis> {
         };
         global_correlations.push(correlation.abs());
     }
-    let global_strength = if !global_correlations.is_empty() {
-        global_correlations.iter().sum::<f64>() / global_correlations.len() as f64
-    } else {
+    let global_strength = if global_correlations.is_empty() {
         0.0
+    } else {
+        global_correlations.iter().sum::<f64>() / global_correlations.len() as f64
     };
 
     // Coherence measure
     let variance = data.var(0.0);
-    let mean_abs = data.mapv(|x| x.abs()).mean().unwrap_or(0.0);
+    let mean_abs = data.mapv(f64::abs).mean().unwrap_or(0.0);
     let coherence = variance.sqrt() / (mean_abs + 1e-10);
 
     Ok(PatternAnalysis {
@@ -1102,7 +1088,7 @@ struct FusionQuality {
 }
 
 fn evaluate_fusion_quality(fused: &Array1<f64>) -> Result<FusionQuality> {
-    let info_preservation = 1.0 - fused.mapv(|x| x.abs()).mean().unwrap_or(0.0).min(1.0);
+    let info_preservation = 1.0 - fused.mapv(f64::abs).mean().unwrap_or(0.0).min(1.0);
     let scale_consistency = 1.0 / (1.0 + fused.var(0.0));
     let quantum_coherence = fused
         .mapv(|x| (x * std::f64::consts::PI).cos().abs())

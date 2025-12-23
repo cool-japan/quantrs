@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("   Embedding created:");
     for (var, chain) in &embedding.chains {
-        println!("     Variable {}: chain {:?}", var, chain);
+        println!("     Variable {var}: chain {chain:?}");
     }
 
     // Step 3: Create an Ising model
@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     params.num_sweeps = 500;
     params.num_repetitions = 20;
 
-    let simulator = ClassicalAnnealingSimulator::new(params.clone())?;
+    let simulator = ClassicalAnnealingSimulator::new(params)?;
     let initial_result = simulator.solve(&ising)?;
 
     println!("   Initial solution:");
@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("   - Optimized chain strengths:");
     for (var, strength) in &stats.chain_strengths {
-        println!("     Variable {}: {:.3}", var, strength);
+        println!("     Variable {var}: {strength:.3}");
     }
 
     // Step 6: Solve with optimized penalties
@@ -117,18 +117,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Convert samples to binary (0/1) format for constraint checking
     let binary_samples: Vec<Vec<i8>> = samples
         .iter()
-        .map(|s| {
-            s.iter()
-                .map(|&spin| if spin == 1 { 1 } else { 0 })
-                .collect()
-        })
+        .map(|s| s.iter().map(|&spin| i8::from(spin == 1)).collect())
         .collect();
 
     let optimized_penalties = constraint_optimizer.optimize_penalties(&binary_samples, 10);
 
     println!("   Constraint penalties:");
     for (name, weight) in &optimized_penalties {
-        println!("     {}: {:.3}", name, weight);
+        println!("     {name}: {weight:.3}");
     }
 
     println!("\n=== Demo Complete ===");

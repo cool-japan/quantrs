@@ -6,8 +6,8 @@
 //! of relativistic quantum field dynamics and many-body quantum systems.
 
 use scirs2_core::ndarray::{Array1, Array4};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
@@ -480,7 +480,7 @@ impl QuantumFieldTheorySimulator {
                 field_configs.insert("psi".to_string(), Array4::zeros(field_shape));
                 // Gauge field A_μ
                 for mu in 0..config.spacetime_dimensions {
-                    field_configs.insert(format!("A_{}", mu), Array4::zeros(field_shape));
+                    field_configs.insert(format!("A_{mu}"), Array4::zeros(field_shape));
                 }
             }
             FieldTheoryType::YangMills | FieldTheoryType::QCD => {
@@ -493,7 +493,7 @@ impl QuantumFieldTheorySimulator {
                 for mu in 0..config.spacetime_dimensions {
                     for a in 0..num_colors.pow(2) - 1 {
                         // SU(N) generators
-                        field_configs.insert(format!("A_{}_{}", mu, a), Array4::zeros(field_shape));
+                        field_configs.insert(format!("A_{mu}_{a}"), Array4::zeros(field_shape));
                     }
                 }
 
@@ -501,7 +501,7 @@ impl QuantumFieldTheorySimulator {
                     // Quark fields
                     for flavor in 0..6 {
                         // 6 quark flavors
-                        field_configs.insert(format!("q_{}", flavor), Array4::zeros(field_shape));
+                        field_configs.insert(format!("q_{flavor}"), Array4::zeros(field_shape));
                     }
                 }
             }
@@ -540,14 +540,14 @@ impl QuantumFieldTheorySimulator {
                 .copied()
                 .unwrap_or(1.0),
             hopping_parameter: 1.0
-                / (2.0
-                    * self
-                        .config
+                / 2.0f64.mul_add(
+                    self.config
                         .coupling_constants
                         .get("m0")
                         .copied()
-                        .unwrap_or(1.0)
-                    + 8.0),
+                        .unwrap_or(1.0),
+                    8.0,
+                ),
             plaquette_size: 1,
         };
 
@@ -652,7 +652,7 @@ impl QuantumFieldTheorySimulator {
                 // U(1) gauge field - single complex phase
                 for mu in 0..self.config.spacetime_dimensions {
                     self.field_configs.insert(
-                        format!("U_{}", mu),
+                        format!("U_{mu}"),
                         Array4::from_elem(field_shape, Complex64::new(1.0, 0.0)),
                     );
                 }
@@ -669,7 +669,7 @@ impl QuantumFieldTheorySimulator {
                             };
 
                             self.field_configs.insert(
-                                format!("U_{}_{}{}", mu, i, j),
+                                format!("U_{mu}_{i}{j}"),
                                 Array4::from_elem(field_shape, initial_value),
                             );
                         }
@@ -790,7 +790,7 @@ impl QuantumFieldTheorySimulator {
 
                     for config in &pi_sampler.sample_history {
                         let corr_value =
-                            self.evaluate_correlator_on_config(&operators, separation, config)?;
+                            self.evaluate_correlator_on_config(operators, separation, config)?;
                         correlator_samples.push(corr_value);
                     }
 
@@ -894,9 +894,9 @@ impl QuantumFieldTheorySimulator {
             let next_site = wilson_loop.path.get(i + 1).unwrap_or(&wilson_loop.path[0]);
 
             // Determine direction of link
-            let mu = if next_site.0 != x { 0 } else { 3 }; // spatial or temporal
+            let mu = if next_site.0 == x { 3 } else { 0 }; // spatial or temporal
 
-            if let Some(gauge_field) = self.field_configs.get(&format!("U_{}", mu)) {
+            if let Some(gauge_field) = self.field_configs.get(&format!("U_{mu}")) {
                 if x < gauge_field.shape()[0] && t < gauge_field.shape()[3] {
                     let link_value = gauge_field[[x, 0, 0, t]];
                     loop_value *= link_value;
@@ -1097,14 +1097,14 @@ impl QuantumFieldTheorySimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_statistics(&self) -> &QFTStats {
+    pub const fn get_statistics(&self) -> &QFTStats {
         &self.stats
     }
 
     /// Export field configurations for visualization
     pub fn export_field_configuration(&self, field_name: &str) -> Result<Array4<Complex64>> {
         self.field_configs.get(field_name).cloned().ok_or_else(|| {
-            SimulatorError::InvalidConfiguration(format!("Field '{}' not found", field_name))
+            SimulatorError::InvalidConfiguration(format!("Field '{field_name}' not found"))
         })
     }
 }
@@ -1244,15 +1244,15 @@ impl ActionEvaluator {
         // Get gauge links around elementary plaquette
         let u_mu = config[[x, y, z, t]]; // U_μ(x)
         let u_nu_shifted = config[[
-            (x + if mu == 0 { 1 } else { 0 }) % shape[0],
-            (y + if mu == 1 { 1 } else { 0 }) % shape[1],
+            (x + usize::from(mu == 0)) % shape[0],
+            (y + usize::from(mu == 1)) % shape[1],
             z,
             t,
         ]]; // U_ν(x+μ)
 
         let u_mu_shifted = config[[
-            (x + if nu == 0 { 1 } else { 0 }) % shape[0],
-            (y + if nu == 1 { 1 } else { 0 }) % shape[1],
+            (x + usize::from(nu == 0)) % shape[0],
+            (y + usize::from(nu == 1)) % shape[1],
             z,
             t,
         ]]; // U_μ(x+ν)

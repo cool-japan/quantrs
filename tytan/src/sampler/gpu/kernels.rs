@@ -1,7 +1,7 @@
 //! OpenCL kernels for GPU-accelerated sampling
 
 /// OpenCL kernel for simulated annealing
-pub const SIMULATED_ANNEALING_KERNEL: &str = r#"
+pub const SIMULATED_ANNEALING_KERNEL: &str = r"
 // Helper function for xorshift RNG
 inline ulong xorshift64(ulong *state) {
     ulong x = *state;
@@ -123,10 +123,10 @@ __kernel void simulated_annealing(
         solutions[gid * n_vars + i] = best_state[i];
     }
 }
-"#;
+";
 
 /// OpenCL kernel for chunk optimization
-pub const OPTIMIZE_CHUNK_KERNEL: &str = r#"
+pub const OPTIMIZE_CHUNK_KERNEL: &str = r"
 __kernel void optimize_chunk(
     const int n_vars,
     __global const float* h_vector,
@@ -225,4 +225,4 @@ __kernel void optimize_chunk(
         result_state[i] = best_state[i];
     }
 }
-"#;
+";

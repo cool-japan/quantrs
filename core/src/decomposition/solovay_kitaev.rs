@@ -8,9 +8,9 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use crate::gate::{single::*, GateOp};
 use crate::matrix_ops::{matrices_approx_equal, DenseMatrix, QuantumMatrix};
 use crate::qubit::QubitId;
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{Array2, ArrayView2};
 use scirs2_core::Complex64;
-use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 /// Configuration for the Solovay-Kitaev algorithm
@@ -331,7 +331,7 @@ impl SolovayKitaev {
 
     /// Apply group commutator correction
     fn group_commutator_correction(
-        &mut self,
+        &self,
         target: &ArrayView2<Complex64>,
         base_seq: &GateSequence,
         base_matrix: &Array2<Complex64>,
@@ -358,7 +358,7 @@ impl SolovayKitaev {
 
     /// Find sequences V and W for group commutator
     fn find_commutator_sequences(
-        &mut self,
+        &self,
         angle: f64,
         _depth: usize,
     ) -> QuantRS2Result<(GateSequence, GateSequence)> {
@@ -476,14 +476,12 @@ pub fn optimize_sequence(sequence: GateSequence) -> GateSequence {
                     None => {
                         // Skip both gates (they cancel)
                         i += 2;
-                        continue;
                     }
                     Some("Z") => {
                         optimized.push(Box::new(PauliZ {
                             target: gate1.qubits()[0],
                         }) as Box<dyn GateOp>);
                         i += 2;
-                        continue;
                     }
                     _ => {
                         // No optimization, keep first gate

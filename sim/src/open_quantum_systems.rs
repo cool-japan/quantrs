@@ -6,8 +6,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use crate::error::Result;
@@ -84,8 +84,7 @@ impl LindladSimulator {
         let dim = 1 << self.num_qubits;
         if rho.shape() != [dim, dim] {
             return Err(SimulatorError::DimensionMismatch(format!(
-                "Expected {}x{} density matrix",
-                dim, dim
+                "Expected {dim}x{dim} density matrix"
             )));
         }
 
@@ -93,8 +92,7 @@ impl LindladSimulator {
         let trace: Complex64 = rho.diag().iter().sum();
         if (trace.re - 1.0).abs() > 1e-10 || trace.im.abs() > 1e-10 {
             return Err(SimulatorError::InvalidInput(format!(
-                "Density matrix not normalized: trace = {}",
-                trace
+                "Density matrix not normalized: trace = {trace}"
             )));
         }
 
@@ -107,8 +105,7 @@ impl LindladSimulator {
         let dim = 1 << self.num_qubits;
         if psi.len() != dim {
             return Err(SimulatorError::DimensionMismatch(format!(
-                "Expected state vector of length {}",
-                dim
+                "Expected state vector of length {dim}"
             )));
         }
 
@@ -129,8 +126,7 @@ impl LindladSimulator {
         let dim = 1 << self.num_qubits;
         if operator.operator.shape() != [dim, dim] {
             return Err(SimulatorError::DimensionMismatch(format!(
-                "Operator must be {}x{}",
-                dim, dim
+                "Operator must be {dim}x{dim}"
             )));
         }
 
@@ -143,8 +139,7 @@ impl LindladSimulator {
         let dim = 1 << self.num_qubits;
         if h.shape() != [dim, dim] {
             return Err(SimulatorError::DimensionMismatch(format!(
-                "Hamiltonian must be {}x{}",
-                dim, dim
+                "Hamiltonian must be {dim}x{dim}"
             )));
         }
 
@@ -153,12 +148,12 @@ impl LindladSimulator {
     }
 
     /// Set time step for integration
-    pub fn set_time_step(&mut self, dt: f64) {
+    pub const fn set_time_step(&mut self, dt: f64) {
         self.time_step = dt;
     }
 
     /// Set integration method
-    pub fn set_integration_method(&mut self, method: IntegrationMethod) {
+    pub const fn set_integration_method(&mut self, method: IntegrationMethod) {
         self.integration_method = method;
     }
 
@@ -300,7 +295,7 @@ impl LindladSimulator {
         // Series expansion up to reasonable order
         for n in 1..=20 {
             term = term.dot(&l_dt) / n as f64;
-            result = result + &term;
+            result += &term;
 
             // Check convergence
             let term_norm: f64 = term.iter().map(|x| x.norm()).sum();
@@ -356,7 +351,7 @@ impl LindladSimulator {
         // Hamiltonian part: -i(H ⊗ I - I ⊗ H^T)
         if let Some(ref h) = self.hamiltonian {
             let eye: Array2<Complex64> = Array2::eye(dim);
-            let h_left = kron(&h, &eye);
+            let h_left = kron(h, &eye);
             let h_t = h.t().to_owned();
             let h_right = kron(&eye, &h_t);
             lindbladian += &((h_left - h_right) * Complex64::new(0.0, -1.0));
@@ -423,7 +418,7 @@ impl LindladSimulator {
     }
 
     /// Get current density matrix
-    pub fn get_density_matrix(&self) -> &Array2<Complex64> {
+    pub const fn get_density_matrix(&self) -> &Array2<Complex64> {
         &self.density_matrix
     }
 
@@ -501,7 +496,7 @@ impl QuantumChannel {
 
         Self {
             kraus_operators: kraus_ops,
-            name: format!("Depolarizing({:.3})", probability),
+            name: format!("Depolarizing({probability:.3})"),
         }
     }
 
@@ -522,7 +517,7 @@ impl QuantumChannel {
 
         Self {
             kraus_operators: kraus_ops,
-            name: format!("AmplitudeDamping({:.3})", gamma),
+            name: format!("AmplitudeDamping({gamma:.3})"),
         }
     }
 
@@ -543,7 +538,7 @@ impl QuantumChannel {
 
         Self {
             kraus_operators: kraus_ops,
-            name: format!("PhaseDamping({:.3})", gamma),
+            name: format!("PhaseDamping({gamma:.3})"),
         }
     }
 
@@ -684,7 +679,7 @@ pub fn quantum_fidelity(rho1: &Array2<Complex64>, rho2: &Array2<Complex64>) -> f
     // For pure states: F = |⟨ψ₁|ψ₂⟩|²
     // For mixed states, approximate with trace distance
     let trace_distance = (rho1 - rho2).iter().map(|x| x.norm()).sum::<f64>();
-    (1.0 - 0.5 * trace_distance).max(0.0)
+    0.5f64.mul_add(-trace_distance, 1.0).max(0.0)
 }
 
 /// Kronecker product of two matrices
@@ -710,6 +705,12 @@ fn kron(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Array2<Complex64> {
 pub struct NoiseModelBuilder {
     channels: HashMap<String, QuantumChannel>,
     application_order: Vec<String>,
+}
+
+impl Default for NoiseModelBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NoiseModelBuilder {

@@ -316,7 +316,7 @@ extern "C" __global__ void texture_memory_sampling(
 /// OpenCL kernel source code
 pub mod opencl {
     /// Optimized OpenCL kernel with local memory
-    pub const OPTIMIZED_ANNEALING: &str = r#"
+    pub const OPTIMIZED_ANNEALING: &str = r"
 // XORShift RNG
 inline ulong xorshift64(ulong x) {
     x ^= x << 13;
@@ -418,10 +418,10 @@ __kernel void optimized_annealing(
     }
     energies[gid] = energy;
 }
-"#;
+";
 
     /// Parallel tempering kernel with workgroup synchronization
-    pub const PARALLEL_TEMPERING: &str = r#"
+    pub const PARALLEL_TEMPERING: &str = r"
 __kernel void parallel_tempering_exchange(
     const int n_vars,
     __global const float* restrict qubo_matrix,
@@ -476,7 +476,7 @@ __kernel void parallel_tempering_exchange(
         }
     }
 }
-"#;
+";
 }
 
 /// Host-side kernel management utilities
@@ -562,22 +562,25 @@ impl KernelManager {
         let kernel = self
             .kernels
             .get(kernel_name)
-            .ok_or_else(|| format!("Kernel {} not found", kernel_name))?;
+            .ok_or_else(|| format!("Kernel {kernel_name} not found"))?;
 
         let block_size = kernel.optimal_block_size;
-        let grid_size = (problem_size + block_size - 1) / block_size;
+        let grid_size = problem_size.div_ceil(block_size);
 
         Ok((grid_size, block_size))
     }
 
     #[cfg(feature = "scirs")]
-    fn determine_optimal_block_size(&self, _kernel: &CompiledKernel) -> Result<usize, String> {
+    const fn determine_optimal_block_size(
+        &self,
+        _kernel: &CompiledKernel,
+    ) -> Result<usize, String> {
         // Heuristic: use 256 threads per block as default
         Ok(256)
     }
 
     #[cfg(feature = "scirs")]
-    fn calculate_shared_memory(&self, _kernel: &CompiledKernel) -> Result<usize, String> {
+    const fn calculate_shared_memory(&self, _kernel: &CompiledKernel) -> Result<usize, String> {
         // Calculate based on kernel requirements
         Ok(4096) // 4KB default
     }

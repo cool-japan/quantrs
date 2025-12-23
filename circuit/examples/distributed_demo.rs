@@ -4,7 +4,14 @@
 //! for running quantum circuits across multiple backends with load balancing,
 //! fault tolerance, and resource management.
 
-use quantrs2_circuit::distributed::{self, *};
+use quantrs2_circuit::distributed::{
+    self, AuthenticationType, BackendCapabilities, BackendPerformance, BackendStatus, BackendType,
+    BackoffStrategy, ClassicalResources, ConnectivityGraph, Credentials, DistributedExecutor,
+    DistributedJob, ErrorCorrectionStrategy, ErrorMitigation, ExecutionBackend,
+    ExecutionParameters, ExecutionStatus, ExecutionTimeModel, GPUInfo, LoadBalancingStrategy,
+    NetworkConfig, NoiseCharacteristics, Priority, QueueInfo, ResultFormat, RetryPolicy,
+    SimulatorType, TimeoutConfig,
+};
 use quantrs2_circuit::prelude::*;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -89,8 +96,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         match executor.submit_job(job.clone()) {
-            Ok(job_id) => println!("  ✅ Submitted successfully: {}", job_id),
-            Err(e) => println!("  ❌ Submission failed: {}", e),
+            Ok(job_id) => println!("  ✅ Submitted successfully: {job_id}"),
+            Err(e) => println!("  ❌ Submission failed: {e}"),
         }
     }
 
@@ -107,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, strategy) in strategies {
         executor.load_balancer.strategy = strategy.clone();
-        println!("  {}: {:?}", name, strategy);
+        println!("  {name}: {strategy:?}");
     }
 
     // Example 6: Backend types and capabilities
@@ -122,23 +129,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 model,
                 location,
             } => {
-                println!("  Type: Hardware ({} {} in {})", vendor, model, location);
+                println!("  Type: Hardware ({vendor} {model} in {location})");
             }
             BackendType::Simulator {
                 simulator_type,
                 host,
             } => {
-                println!("  Type: Simulator ({:?} on {})", simulator_type, host);
+                println!("  Type: Simulator ({simulator_type:?} on {host})");
             }
             BackendType::CloudService {
                 provider,
                 service_name,
                 region,
             } => {
-                println!(
-                    "  Type: Cloud ({} {} in {})",
-                    provider, service_name, region
-                );
+                println!("  Type: Cloud ({provider} {service_name} in {region})");
             }
             BackendType::Hybrid {
                 quantum_backend: _,
@@ -197,7 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, technique) in error_mitigation_techniques {
-        println!("  {}: {:?}", name, technique);
+        println!("  {name}: {technique:?}");
     }
 
     let result_formats = vec![
@@ -209,7 +213,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nResult formats:");
     for (name, format) in result_formats {
-        println!("  {}: {:?}", name, format);
+        println!("  {name}: {format:?}");
     }
 
     // Example 8: Fault tolerance and redundancy
@@ -246,7 +250,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nAvailable error correction strategies:");
     for (name, strategy) in error_correction_strategies {
-        println!("  {}: {:?}", name, strategy);
+        println!("  {name}: {strategy:?}");
     }
 
     // Example 9: Resource management and allocation
@@ -277,14 +281,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .allocation_policies
         .max_qubits_per_user
     {
-        println!("  Max qubits per user: {}", max_qubits);
+        println!("  Max qubits per user: {max_qubits}");
     }
     if let Some(max_time) = executor
         .resource_manager
         .allocation_policies
         .max_execution_time
     {
-        println!("  Max execution time: {:.1} seconds", max_time);
+        println!("  Max execution time: {max_time:.1} seconds");
     }
     println!(
         "  Fair share: {}",
@@ -383,7 +387,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, topology) in topologies {
-        println!("  {}: {:?}", name, topology);
+        println!("  {name}: {topology:?}");
     }
 
     println!("\n✅ Distributed Circuit Execution Demo completed!");

@@ -253,7 +253,7 @@ impl QuantumAwareInterpreter {
 
     /// Standard execution path
     async fn execute_standard(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
@@ -321,7 +321,7 @@ impl QuantumAwareInterpreter {
 
     /// Execute with sparse matrix optimizations
     async fn execute_sparse_optimized(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
@@ -360,7 +360,7 @@ impl QuantumAwareInterpreter {
 
     /// Execute with parallel processing
     async fn execute_parallel_optimized(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
@@ -405,7 +405,7 @@ impl QuantumAwareInterpreter {
 
     /// Execute with memory efficiency optimizations
     async fn execute_memory_efficient(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
@@ -462,7 +462,7 @@ impl QuantumAwareInterpreter {
 
     /// Execute with approximate computation
     async fn execute_approximate_computation(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
     ) -> Result<OperationResult, QuantRS2Error> {
@@ -539,7 +539,7 @@ impl QuantumAwareInterpreter {
 
     /// Additional helper methods for optimization implementations
     async fn execute_cached(
-        &mut self,
+        &self,
         _operation: &dyn GateOp,
         _target_state_id: Uuid,
         _cache_key: &str,
@@ -560,7 +560,7 @@ impl QuantumAwareInterpreter {
     }
 
     async fn execute_distributed(
-        &mut self,
+        &self,
         _operation: &dyn GateOp,
         _target_state_id: Uuid,
         _partition_strategy: &PartitionStrategy,
@@ -581,7 +581,7 @@ impl QuantumAwareInterpreter {
     }
 
     async fn execute_approximate(
-        &mut self,
+        &self,
         _operation: &dyn GateOp,
         _target_state_id: Uuid,
         fidelity_target: f64,

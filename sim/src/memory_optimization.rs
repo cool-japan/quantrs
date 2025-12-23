@@ -64,8 +64,9 @@ impl MemoryStats {
         }
 
         // Update average allocation size
-        let total_size =
-            self.average_allocation_size * (self.total_allocations - 1) as f64 + size as f64;
+        let total_size = self
+            .average_allocation_size
+            .mul_add((self.total_allocations - 1) as f64, size as f64);
         self.average_allocation_size = total_size / self.total_allocations as f64;
 
         // Update size distribution
@@ -80,7 +81,7 @@ impl MemoryStats {
     }
 
     /// Record memory deallocation
-    pub fn record_deallocation(&mut self, size: usize) {
+    pub const fn record_deallocation(&mut self, size: usize) {
         let deallocation_bytes = size * std::mem::size_of::<Complex64>();
         self.current_memory_bytes = self
             .current_memory_bytes
@@ -101,7 +102,7 @@ impl AdvancedMemoryPool {
     }
 
     /// Get optimal size class for a requested size (power of 2 buckets)
-    fn get_size_class(size: usize) -> usize {
+    const fn get_size_class(size: usize) -> usize {
         if size <= 64 {
             64
         } else if size <= 128 {
@@ -137,7 +138,9 @@ impl AdvancedMemoryPool {
         let buffer = {
             let pools = self.size_pools.read().unwrap();
             if let Some(pool) = pools.get(&size_class) {
-                if !pool.is_empty() {
+                if pool.is_empty() {
+                    None
+                } else {
                     cache_hit = true;
                     // Need to get write lock to modify
                     drop(pools);
@@ -145,8 +148,6 @@ impl AdvancedMemoryPool {
                     pools_write
                         .get_mut(&size_class)
                         .and_then(|pool| pool.pop_front())
-                } else {
-                    None
                 }
             } else {
                 None
@@ -184,7 +185,7 @@ impl AdvancedMemoryPool {
         // Only cache if capacity matches size class to avoid memory waste
         if capacity == size_class {
             let mut pools = self.size_pools.write().unwrap();
-            let pool = pools.entry(size_class).or_insert_with(VecDeque::new);
+            let pool = pools.entry(size_class).or_default();
 
             if pool.len() < self.max_buffers_per_size {
                 pool.push_back(buffer);
@@ -246,7 +247,7 @@ impl AdvancedMemoryPool {
         let mut freed_memory = 0u64;
 
         for (_, pool) in pools.iter() {
-            for buffer in pool.iter() {
+            for buffer in pool {
                 freed_memory += (buffer.capacity() * std::mem::size_of::<Complex64>()) as u64;
             }
         }
@@ -345,7 +346,7 @@ pub mod utils {
     use super::*;
 
     /// Estimate memory requirements for a given number of qubits
-    pub fn estimate_memory_requirements(num_qubits: usize) -> u64 {
+    pub const fn estimate_memory_requirements(num_qubits: usize) -> u64 {
         let state_size = 1usize << num_qubits;
         let bytes_per_amplitude = std::mem::size_of::<Complex64>();
         let state_memory = state_size * bytes_per_amplitude;
@@ -356,7 +357,7 @@ pub mod utils {
     }
 
     /// Check if system has sufficient memory for simulation
-    pub fn check_memory_availability(num_qubits: usize) -> bool {
+    pub const fn check_memory_availability(num_qubits: usize) -> bool {
         let required_memory = estimate_memory_requirements(num_qubits);
 
         // Get available system memory (this is a simplified check)
@@ -367,22 +368,21 @@ pub mod utils {
     }
 
     /// Get available system memory (placeholder implementation)
-    fn get_available_memory() -> u64 {
+    const fn get_available_memory() -> u64 {
         // This would use platform-specific APIs in practice
         // For now, return a conservative estimate
         8 * 1024 * 1024 * 1024 // 8 GB
     }
 
     /// Optimize buffer size for cache efficiency
-    pub fn optimize_buffer_size(target_size: usize) -> usize {
+    pub const fn optimize_buffer_size(target_size: usize) -> usize {
         // Align to cache line size (typically 64 bytes)
         let cache_line_size = 64;
         let element_size = std::mem::size_of::<Complex64>();
         let elements_per_cache_line = cache_line_size / element_size;
 
         // Round up to nearest multiple of cache line elements
-        ((target_size + elements_per_cache_line - 1) / elements_per_cache_line)
-            * elements_per_cache_line
+        target_size.div_ceil(elements_per_cache_line) * elements_per_cache_line
     }
 }
 

@@ -62,6 +62,7 @@ pub struct CircuitDag {
 
 impl CircuitDag {
     /// Create a new empty DAG
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -137,26 +138,31 @@ impl CircuitDag {
     }
 
     /// Get all nodes in the DAG
+    #[must_use]
     pub fn nodes(&self) -> &[DagNode] {
         &self.nodes
     }
 
     /// Get all edges in the DAG
+    #[must_use]
     pub fn edges(&self) -> &[DagEdge] {
         &self.edges
     }
 
     /// Get input nodes (no predecessors)
+    #[must_use]
     pub fn input_nodes(&self) -> &[usize] {
         &self.input_nodes
     }
 
     /// Get output nodes (no successors)
+    #[must_use]
     pub fn output_nodes(&self) -> &[usize] {
         &self.output_nodes
     }
 
     /// Get the maximum depth of the DAG
+    #[must_use]
     pub fn max_depth(&self) -> usize {
         self.nodes.iter().map(|n| n.depth).max().unwrap_or(0)
     }
@@ -201,6 +207,7 @@ impl CircuitDag {
     }
 
     /// Get nodes at a specific depth
+    #[must_use]
     pub fn nodes_at_depth(&self, depth: usize) -> Vec<usize> {
         self.nodes
             .iter()
@@ -210,6 +217,7 @@ impl CircuitDag {
     }
 
     /// Find the critical path (longest path) through the DAG
+    #[must_use]
     pub fn critical_path(&self) -> Vec<usize> {
         if self.nodes.is_empty() {
             return Vec::new();
@@ -255,6 +263,7 @@ impl CircuitDag {
     }
 
     /// Get all paths between two nodes
+    #[must_use]
     pub fn paths_between(&self, start: usize, end: usize) -> Vec<Vec<usize>> {
         let mut paths = Vec::new();
         let mut current_path = vec![start];
@@ -292,12 +301,14 @@ impl CircuitDag {
     }
 
     /// Check if two nodes are independent (can be executed in parallel)
+    #[must_use]
     pub fn are_independent(&self, node1: usize, node2: usize) -> bool {
         // Two nodes are independent if there's no path between them
         self.paths_between(node1, node2).is_empty() && self.paths_between(node2, node1).is_empty()
     }
 
     /// Get all nodes that can be executed in parallel with a given node
+    #[must_use]
     pub fn parallel_nodes(&self, node_id: usize) -> Vec<usize> {
         self.nodes
             .iter()
@@ -307,6 +318,7 @@ impl CircuitDag {
     }
 
     /// Convert the DAG to a DOT format string for visualization
+    #[must_use]
     pub fn to_dot(&self) -> String {
         let mut dot = String::from("digraph CircuitDAG {\n");
         dot.push_str("  rankdir=LR;\n");
@@ -325,7 +337,7 @@ impl CircuitDag {
         // Add edges
         for edge in &self.edges {
             let label = match edge.edge_type {
-                EdgeType::QubitDependency(q) => format!("q{}", q),
+                EdgeType::QubitDependency(q) => format!("q{q}"),
                 EdgeType::ClassicalDependency => "classical".to_string(),
                 EdgeType::BarrierDependency => "barrier".to_string(),
             };
@@ -357,6 +369,7 @@ impl fmt::Debug for CircuitDag {
 }
 
 /// Convert a Circuit into a DAG representation
+#[must_use]
 pub fn circuit_to_dag<const N: usize>(circuit: &crate::builder::Circuit<N>) -> CircuitDag {
     let mut dag = CircuitDag::new();
 

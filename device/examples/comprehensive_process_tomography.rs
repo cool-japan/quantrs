@@ -1,10 +1,10 @@
 //! Comprehensive Process Tomography Example
 //!
 //! This example demonstrates the advanced process tomography capabilities
-//! of the quantrs device library with SciRS2 integration.
+//! of the quantrs device library with `SciRS2` integration.
 //!
 //! NOTE: This example is currently commented out because it references types and
-//! functionality that haven't been fully implemented in the process_tomography module.
+//! functionality that haven't been fully implemented in the `process_tomography` module.
 
 fn main() {
     println!("This example is temporarily disabled due to missing types in the process_tomography module.");

@@ -1,6 +1,6 @@
-//! Demonstration of SciRS2 integration in QuantRS2
+//! Demonstration of `SciRS2` integration in `QuantRS2`
 //!
-//! This example shows how QuantRS2 leverages SciRS2's features for:
+//! This example shows how `QuantRS2` leverages `SciRS2`'s features for:
 //! - Enhanced complex number operations
 //! - Memory-efficient state storage
 //! - SIMD-accelerated operations
@@ -33,24 +33,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn demonstrate_complex_operations() -> Result<(), Box<dyn std::error::Error>> {
-    use scirs2_core::Complex64;
     use quantrs2_core::complex_ext::QuantumComplexExt;
+    use scirs2_core::Complex64;
 
     // Create quantum amplitudes
     let amp1 = Complex64::new(0.6, 0.8);
     let amp2 = Complex64::new(0.8, -0.6);
 
     // Use quantum-specific operations
-    println!("  Amplitude 1: {}", amp1);
+    println!("  Amplitude 1: {amp1}");
     println!("  Probability: {}", amp1.probability());
     println!("  Normalized: {}", amp1.normalize());
 
-    println!("\n  Amplitude 2: {}", amp2);
+    println!("\n  Amplitude 2: {amp2}");
     println!("  Fidelity between amp1 and amp2: {}", amp1.fidelity(&amp2));
 
     // Create phase factors
     let phase = quantum_states::phase_factor(std::f64::consts::PI / 4.0);
-    println!("\n  Phase factor e^(iπ/4): {}", phase);
+    println!("\n  Phase factor e^(iπ/4): {phase}");
 
     Ok(())
 }
@@ -61,7 +61,7 @@ fn demonstrate_memory_efficient_storage() -> Result<(), Box<dyn std::error::Erro
         let state = EfficientStateVector::new(n_qubits)?;
         let stats = state.memory_stats();
 
-        println!("  {} qubits:", n_qubits);
+        println!("  {n_qubits} qubits:");
         println!("    - State size: {} amplitudes", stats.num_amplitudes);
         println!("    - Memory usage: {} KB", stats.memory_bytes / 1024);
     }
@@ -71,7 +71,7 @@ fn demonstrate_memory_efficient_storage() -> Result<(), Box<dyn std::error::Erro
     println!("\n  Processing 8-qubit state in chunks:");
 
     state.process_chunks(64, |chunk, start_idx| {
-        println!("    - Processing chunk starting at index {}", start_idx);
+        println!("    - Processing chunk starting at index {start_idx}");
     })?;
 
     Ok(())
@@ -88,19 +88,19 @@ fn demonstrate_simd_operations() -> Result<(), Box<dyn std::error::Error>> {
         Complex64::new(0.5, 0.0),
     ];
 
-    println!("  Initial state: {:?}", state);
+    println!("  Initial state: {state:?}");
 
     // Apply phase rotation using SIMD
     apply_phase_simd(&mut state, std::f64::consts::PI / 2.0);
-    println!("  After phase rotation (π/2): {:?}", state);
+    println!("  After phase rotation (π/2): {state:?}");
 
     // Normalize using SIMD
     normalize_simd(&mut state)?;
-    println!("  After normalization: {:?}", state);
+    println!("  After normalization: {state:?}");
 
     // Compute expectation value
     let expectation = expectation_z_simd(&state, 0, 1);
-    println!("  Expectation value <Z>: {}", expectation);
+    println!("  Expectation value <Z>: {expectation}");
 
     Ok(())
 }

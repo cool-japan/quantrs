@@ -105,85 +105,85 @@ impl std::hash::Hash for InterfaceGateType {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         use std::mem;
         match self {
-            InterfaceGateType::Identity => 0u8.hash(state),
-            InterfaceGateType::PauliX => 1u8.hash(state),
-            InterfaceGateType::X => 2u8.hash(state),
-            InterfaceGateType::PauliY => 3u8.hash(state),
-            InterfaceGateType::PauliZ => 4u8.hash(state),
-            InterfaceGateType::Hadamard => 5u8.hash(state),
-            InterfaceGateType::H => 6u8.hash(state),
-            InterfaceGateType::S => 7u8.hash(state),
-            InterfaceGateType::T => 8u8.hash(state),
-            InterfaceGateType::Phase(angle) => {
+            Self::Identity => 0u8.hash(state),
+            Self::PauliX => 1u8.hash(state),
+            Self::X => 2u8.hash(state),
+            Self::PauliY => 3u8.hash(state),
+            Self::PauliZ => 4u8.hash(state),
+            Self::Hadamard => 5u8.hash(state),
+            Self::H => 6u8.hash(state),
+            Self::S => 7u8.hash(state),
+            Self::T => 8u8.hash(state),
+            Self::Phase(angle) => {
                 9u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::RX(angle) => {
+            Self::RX(angle) => {
                 10u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::RY(angle) => {
+            Self::RY(angle) => {
                 11u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::RZ(angle) => {
+            Self::RZ(angle) => {
                 12u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::U1(angle) => {
+            Self::U1(angle) => {
                 13u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::U2(theta, phi) => {
+            Self::U2(theta, phi) => {
                 14u8.hash(state);
                 theta.to_bits().hash(state);
                 phi.to_bits().hash(state);
             }
-            InterfaceGateType::U3(theta, phi, lambda) => {
+            Self::U3(theta, phi, lambda) => {
                 15u8.hash(state);
                 theta.to_bits().hash(state);
                 phi.to_bits().hash(state);
                 lambda.to_bits().hash(state);
             }
-            InterfaceGateType::CNOT => 16u8.hash(state),
-            InterfaceGateType::CZ => 17u8.hash(state),
-            InterfaceGateType::CY => 18u8.hash(state),
-            InterfaceGateType::SWAP => 19u8.hash(state),
-            InterfaceGateType::ISwap => 20u8.hash(state),
-            InterfaceGateType::CRX(angle) => {
+            Self::CNOT => 16u8.hash(state),
+            Self::CZ => 17u8.hash(state),
+            Self::CY => 18u8.hash(state),
+            Self::SWAP => 19u8.hash(state),
+            Self::ISwap => 20u8.hash(state),
+            Self::CRX(angle) => {
                 21u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::CRY(angle) => {
+            Self::CRY(angle) => {
                 22u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::CRZ(angle) => {
+            Self::CRZ(angle) => {
                 23u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::CPhase(angle) => {
+            Self::CPhase(angle) => {
                 24u8.hash(state);
                 angle.to_bits().hash(state);
             }
-            InterfaceGateType::Toffoli => 25u8.hash(state),
-            InterfaceGateType::Fredkin => 26u8.hash(state),
-            InterfaceGateType::MultiControlledX(n) => {
+            Self::Toffoli => 25u8.hash(state),
+            Self::Fredkin => 26u8.hash(state),
+            Self::MultiControlledX(n) => {
                 27u8.hash(state);
                 n.hash(state);
             }
-            InterfaceGateType::MultiControlledZ(n) => {
+            Self::MultiControlledZ(n) => {
                 28u8.hash(state);
                 n.hash(state);
             }
-            InterfaceGateType::Custom(name, matrix) => {
+            Self::Custom(name, matrix) => {
                 29u8.hash(state);
                 name.hash(state);
                 // Hash matrix shape instead of all elements
                 matrix.shape().hash(state);
             }
-            InterfaceGateType::Measure => 30u8.hash(state),
-            InterfaceGateType::Reset => 31u8.hash(state),
+            Self::Measure => 30u8.hash(state),
+            Self::Reset => 31u8.hash(state),
         }
     }
 }
@@ -210,7 +210,7 @@ pub struct InterfaceGate {
 
 impl InterfaceGate {
     /// Create a new interface gate
-    pub fn new(gate_type: InterfaceGateType, qubits: Vec<usize>) -> Self {
+    pub const fn new(gate_type: InterfaceGateType, qubits: Vec<usize>) -> Self {
         Self {
             gate_type,
             qubits,
@@ -234,7 +234,7 @@ impl InterfaceGate {
     }
 
     /// Create a conditional gate
-    pub fn conditional(mut self, condition: usize) -> Self {
+    pub const fn conditional(mut self, condition: usize) -> Self {
         self.condition = Some(condition);
         self
     }
@@ -501,12 +501,12 @@ impl InterfaceGate {
     }
 
     /// Check if this gate is a measurement
-    pub fn is_measurement(&self) -> bool {
+    pub const fn is_measurement(&self) -> bool {
         matches!(self.gate_type, InterfaceGateType::Measure)
     }
 
     /// Check if this gate is unitary
-    pub fn is_unitary(&self) -> bool {
+    pub const fn is_unitary(&self) -> bool {
         !matches!(
             self.gate_type,
             InterfaceGateType::Measure | InterfaceGateType::Reset
@@ -647,14 +647,14 @@ impl InterfaceCircuit {
     }
 
     /// Extract subcircuit
-    pub fn subcircuit(&self, start: usize, end: usize) -> Result<InterfaceCircuit> {
+    pub fn subcircuit(&self, start: usize, end: usize) -> Result<Self> {
         if start >= end || end > self.gates.len() {
             return Err(SimulatorError::InvalidInput(
                 "Invalid subcircuit range".to_string(),
             ));
         }
 
-        let mut subcircuit = InterfaceCircuit::new(self.num_qubits, self.num_classical);
+        let mut subcircuit = Self::new(self.num_qubits, self.num_classical);
         subcircuit.gates = self.gates[start..end].to_vec();
         subcircuit.update_metadata();
 
@@ -965,9 +965,11 @@ impl CircuitInterface {
         if self.config.enable_circuit_cache {
             let cache = self.circuit_cache.lock().unwrap();
             if let Some(compiled) = cache.get(&circuit_hash) {
-                self.stats.cache_hit_rate =
-                    (self.stats.cache_hit_rate * self.stats.circuits_compiled as f64 + 1.0)
-                        / (self.stats.circuits_compiled + 1) as f64;
+                self.stats.cache_hit_rate = self
+                    .stats
+                    .cache_hit_rate
+                    .mul_add(self.stats.circuits_compiled as f64, 1.0)
+                    / (self.stats.circuits_compiled + 1) as f64;
                 return Ok(compiled.clone());
             }
         }
@@ -1033,7 +1035,7 @@ impl CircuitInterface {
         *self
             .stats
             .backend_selections
-            .entry(format!("{:?}", selected_backend))
+            .entry(format!("{selected_backend:?}"))
             .or_insert(0) += 1;
 
         Ok(compiled)
@@ -1193,19 +1195,19 @@ impl CircuitInterface {
                 for gate in &circuit.gates {
                     match &gate.gate_type {
                         InterfaceGateType::Hadamard => {
-                            clifford_sequence.push(StabilizerOp::H(gate.qubits[0]))
+                            clifford_sequence.push(StabilizerOp::H(gate.qubits[0]));
                         }
                         InterfaceGateType::S => {
-                            clifford_sequence.push(StabilizerOp::S(gate.qubits[0]))
+                            clifford_sequence.push(StabilizerOp::S(gate.qubits[0]));
                         }
                         InterfaceGateType::PauliX => {
-                            clifford_sequence.push(StabilizerOp::X(gate.qubits[0]))
+                            clifford_sequence.push(StabilizerOp::X(gate.qubits[0]));
                         }
                         InterfaceGateType::PauliY => {
-                            clifford_sequence.push(StabilizerOp::Y(gate.qubits[0]))
+                            clifford_sequence.push(StabilizerOp::Y(gate.qubits[0]));
                         }
                         InterfaceGateType::PauliZ => {
-                            clifford_sequence.push(StabilizerOp::Z(gate.qubits[0]))
+                            clifford_sequence.push(StabilizerOp::Z(gate.qubits[0]));
                         }
                         InterfaceGateType::CNOT => clifford_sequence
                             .push(StabilizerOp::CNOT(gate.qubits[0], gate.qubits[1])),
@@ -1390,7 +1392,7 @@ impl CircuitInterface {
         circuit: &InterfaceCircuit,
         backend: SimulationBackend,
     ) -> usize {
-        let base_memory = match backend {
+        match backend {
             SimulationBackend::StateVector => {
                 (1_usize << circuit.num_qubits) * std::mem::size_of::<Complex64>()
             }
@@ -1410,13 +1412,11 @@ impl CircuitInterface {
                 circuit.num_qubits * 64 * std::mem::size_of::<Complex64>() // Bond dimension 64
             }
             SimulationBackend::Auto => 0,
-        };
-
-        base_memory
+        }
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &CircuitInterfaceStats {
+    pub const fn get_stats(&self) -> &CircuitInterfaceStats {
         &self.stats
     }
 
@@ -1529,10 +1529,10 @@ impl CircuitInterfaceUtils {
 
                 results
                     .compilation_times
-                    .push((format!("{}_{}", circuit_type, num_qubits), compilation_time));
+                    .push((format!("{circuit_type}_{num_qubits}"), compilation_time));
                 results
                     .execution_times
-                    .push((format!("{}_{}", circuit_type, num_qubits), execution_time));
+                    .push((format!("{circuit_type}_{num_qubits}"), execution_time));
             }
         }
 

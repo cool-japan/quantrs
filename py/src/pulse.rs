@@ -2,10 +2,10 @@
 //!
 //! This module provides Python access to low-level pulse control for quantum operations.
 
-use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use quantrs2_device::pulse::{
@@ -95,7 +95,7 @@ impl PyPulseShape {
 
     /// Get pulse type as string
     #[getter]
-    fn pulse_type(&self) -> &str {
+    const fn pulse_type(&self) -> &str {
         match &self.inner {
             PulseShape::Gaussian { .. } => "gaussian",
             PulseShape::GaussianDrag { .. } => "gaussian_drag",
@@ -190,7 +190,7 @@ pub struct PyChannel {
 impl PyChannel {
     /// Create a drive channel
     #[staticmethod]
-    fn drive(qubit: u32) -> Self {
+    const fn drive(qubit: u32) -> Self {
         Self {
             inner: ChannelType::Drive(qubit),
         }
@@ -198,7 +198,7 @@ impl PyChannel {
 
     /// Create a measure channel
     #[staticmethod]
-    fn measure(qubit: u32) -> Self {
+    const fn measure(qubit: u32) -> Self {
         Self {
             inner: ChannelType::Measure(qubit),
         }
@@ -206,7 +206,7 @@ impl PyChannel {
 
     /// Create a control channel
     #[staticmethod]
-    fn control(control_qubit: u32, target_qubit: u32) -> Self {
+    const fn control(control_qubit: u32, target_qubit: u32) -> Self {
         Self {
             inner: ChannelType::Control(control_qubit, target_qubit),
         }
@@ -214,7 +214,7 @@ impl PyChannel {
 
     /// Create a readout channel
     #[staticmethod]
-    fn readout(qubit: u32) -> Self {
+    const fn readout(qubit: u32) -> Self {
         Self {
             inner: ChannelType::Readout(qubit),
         }
@@ -222,7 +222,7 @@ impl PyChannel {
 
     /// Create an acquire channel
     #[staticmethod]
-    fn acquire(qubit: u32) -> Self {
+    const fn acquire(qubit: u32) -> Self {
         Self {
             inner: ChannelType::Acquire(qubit),
         }
@@ -230,7 +230,7 @@ impl PyChannel {
 
     /// Get channel type as string
     #[getter]
-    fn channel_type(&self) -> &str {
+    const fn channel_type(&self) -> &str {
         match &self.inner {
             ChannelType::Drive(_) => "drive",
             ChannelType::Measure(_) => "measure",
@@ -254,11 +254,11 @@ impl PyChannel {
 
     fn __repr__(&self) -> String {
         match &self.inner {
-            ChannelType::Drive(q) => format!("Channel.drive({})", q),
-            ChannelType::Measure(q) => format!("Channel.measure({})", q),
-            ChannelType::Control(q1, q2) => format!("Channel.control({}, {})", q1, q2),
-            ChannelType::Readout(q) => format!("Channel.readout({})", q),
-            ChannelType::Acquire(q) => format!("Channel.acquire({})", q),
+            ChannelType::Drive(q) => format!("Channel.drive({q})"),
+            ChannelType::Measure(q) => format!("Channel.measure({q})"),
+            ChannelType::Control(q1, q2) => format!("Channel.control({q1}, {q2})"),
+            ChannelType::Readout(q) => format!("Channel.readout({q})"),
+            ChannelType::Acquire(q) => format!("Channel.acquire({q})"),
         }
     }
 }
@@ -280,7 +280,7 @@ impl PyPulseSchedule {
 
     /// Get schedule duration
     #[getter]
-    fn duration(&self) -> u64 {
+    const fn duration(&self) -> u64 {
         self.inner.duration
     }
 
@@ -345,7 +345,7 @@ impl PyPulseCalibration {
 
     /// Get sampling time (dt)
     #[getter]
-    fn dt(&self) -> f64 {
+    const fn dt(&self) -> f64 {
         self.inner.dt
     }
 
@@ -444,8 +444,7 @@ impl PyPulseBuilder {
     /// Add a barrier to synchronize channels
     fn barrier(&mut self, channels: Vec<PyChannel>) -> PyResult<()> {
         if let Some(builder) = self.builder.take() {
-            let channel_types: Vec<ChannelType> =
-                channels.into_iter().map(|c| c.inner.clone()).collect();
+            let channel_types: Vec<ChannelType> = channels.into_iter().map(|c| c.inner).collect();
             self.builder = Some(builder.barrier(channel_types));
             Ok(())
         } else {
@@ -490,9 +489,9 @@ pub enum PyMeasLevel {
 impl From<PyMeasLevel> for MeasLevel {
     fn from(level: PyMeasLevel) -> Self {
         match level {
-            PyMeasLevel::Raw => MeasLevel::Raw,
-            PyMeasLevel::Kerneled => MeasLevel::Kerneled,
-            PyMeasLevel::Classified => MeasLevel::Classified,
+            PyMeasLevel::Raw => Self::Raw,
+            PyMeasLevel::Kerneled => Self::Kerneled,
+            PyMeasLevel::Classified => Self::Classified,
         }
     }
 }

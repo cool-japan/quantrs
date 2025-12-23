@@ -6,7 +6,9 @@ use std::sync::Arc;
 #[cfg(feature = "ibm")]
 use std::thread::sleep;
 #[cfg(feature = "ibm")]
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
+#[cfg(feature = "ibm")]
+use tokio::sync::RwLock;
 
 #[cfg(feature = "ibm")]
 use reqwest::{header, Client};
@@ -20,7 +22,134 @@ use crate::DeviceResult;
 #[cfg(feature = "ibm")]
 const IBM_QUANTUM_API_URL: &str = "https://api.quantum-computing.ibm.com/api";
 #[cfg(feature = "ibm")]
+const IBM_AUTH_URL: &str = "https://auth.quantum-computing.ibm.com/api";
+#[cfg(feature = "ibm")]
 const DEFAULT_TIMEOUT_SECS: u64 = 90;
+/// Token validity buffer in seconds (refresh 5 minutes before expiry)
+#[cfg(feature = "ibm")]
+const TOKEN_REFRESH_BUFFER_SECS: u64 = 300;
+/// Default token validity period in seconds (1 hour)
+#[cfg(feature = "ibm")]
+const DEFAULT_TOKEN_VALIDITY_SECS: u64 = 3600;
+/// Default maximum retry attempts
+#[cfg(feature = "ibm")]
+const DEFAULT_MAX_RETRIES: u32 = 3;
+/// Default initial retry delay in milliseconds
+#[cfg(feature = "ibm")]
+const DEFAULT_INITIAL_RETRY_DELAY_MS: u64 = 100;
+/// Default maximum retry delay in milliseconds
+#[cfg(feature = "ibm")]
+const DEFAULT_MAX_RETRY_DELAY_MS: u64 = 30000;
+/// Default backoff multiplier
+#[cfg(feature = "ibm")]
+const DEFAULT_BACKOFF_MULTIPLIER: f64 = 2.0;
+
+/// Retry configuration for IBM Quantum API calls
+#[cfg(feature = "ibm")]
+#[derive(Debug, Clone)]
+pub struct IBMRetryConfig {
+    /// Maximum number of retry attempts
+    pub max_attempts: u32,
+    /// Initial delay between retries
+    pub initial_delay: Duration,
+    /// Maximum delay between retries
+    pub max_delay: Duration,
+    /// Backoff multiplier for exponential backoff
+    pub backoff_multiplier: f64,
+    /// Jitter factor (0.0 to 1.0) to randomize delays
+    pub jitter_factor: f64,
+}
+
+#[cfg(feature = "ibm")]
+impl Default for IBMRetryConfig {
+    fn default() -> Self {
+        Self {
+            max_attempts: DEFAULT_MAX_RETRIES,
+            initial_delay: Duration::from_millis(DEFAULT_INITIAL_RETRY_DELAY_MS),
+            max_delay: Duration::from_millis(DEFAULT_MAX_RETRY_DELAY_MS),
+            backoff_multiplier: DEFAULT_BACKOFF_MULTIPLIER,
+            jitter_factor: 0.1,
+        }
+    }
+}
+
+#[cfg(feature = "ibm")]
+impl IBMRetryConfig {
+    /// Create a configuration for aggressive retries (good for transient network errors)
+    pub fn aggressive() -> Self {
+        Self {
+            max_attempts: 5,
+            initial_delay: Duration::from_millis(50),
+            max_delay: Duration::from_secs(10),
+            backoff_multiplier: 2.0,
+            jitter_factor: 0.2,
+        }
+    }
+
+    /// Create a configuration for patient retries (good for rate limiting)
+    pub fn patient() -> Self {
+        Self {
+            max_attempts: 3,
+            initial_delay: Duration::from_secs(1),
+            max_delay: Duration::from_secs(60),
+            backoff_multiplier: 3.0,
+            jitter_factor: 0.3,
+        }
+    }
+}
+
+/// Token information including expiration tracking
+#[cfg(feature = "ibm")]
+#[derive(Debug, Clone)]
+pub struct TokenInfo {
+    /// The access token
+    pub access_token: String,
+    /// When the token was obtained
+    pub obtained_at: Instant,
+    /// Token validity period in seconds
+    pub valid_for_secs: u64,
+}
+
+#[cfg(feature = "ibm")]
+impl TokenInfo {
+    /// Check if the token is expired or about to expire
+    pub fn is_expired(&self) -> bool {
+        let elapsed = self.obtained_at.elapsed().as_secs();
+        elapsed + TOKEN_REFRESH_BUFFER_SECS >= self.valid_for_secs
+    }
+
+    /// Get remaining validity time in seconds
+    pub fn remaining_secs(&self) -> u64 {
+        let elapsed = self.obtained_at.elapsed().as_secs();
+        if elapsed >= self.valid_for_secs {
+            0
+        } else {
+            self.valid_for_secs - elapsed
+        }
+    }
+}
+
+/// Response from IBM Quantum authentication endpoint
+#[cfg(feature = "ibm")]
+#[derive(Debug, Deserialize)]
+struct AuthResponse {
+    /// The access token
+    id: String,
+    /// Token TTL in seconds (if provided)
+    ttl: Option<u64>,
+}
+
+/// Authentication configuration for IBM Quantum
+#[cfg(feature = "ibm")]
+#[derive(Debug, Clone)]
+pub struct IBMAuthConfig {
+    /// The API key (used to obtain access tokens)
+    pub api_key: String,
+    /// Whether to automatically refresh expired tokens
+    pub auto_refresh: bool,
+    /// Custom token validity period (if known)
+    pub token_validity_secs: Option<u64>,
+}
 
 /// Represents the available backends on IBM Quantum
 #[derive(Debug, Clone)]
@@ -158,14 +287,33 @@ pub enum IBMQuantumError {
 
 /// Client for interacting with IBM Quantum
 #[cfg(feature = "ibm")]
-#[derive(Clone)]
 pub struct IBMQuantumClient {
     /// HTTP client for making API requests
     client: Client,
     /// Base URL for the IBM Quantum API
     api_url: String,
-    /// Authentication token
-    token: String,
+    /// Authentication URL
+    auth_url: String,
+    /// Current token information (protected by RwLock for thread-safe refresh)
+    token_info: Arc<RwLock<TokenInfo>>,
+    /// Authentication configuration
+    auth_config: IBMAuthConfig,
+    /// Retry configuration for API calls
+    retry_config: IBMRetryConfig,
+}
+
+#[cfg(feature = "ibm")]
+impl Clone for IBMQuantumClient {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            api_url: self.api_url.clone(),
+            auth_url: self.auth_url.clone(),
+            token_info: Arc::clone(&self.token_info),
+            auth_config: self.auth_config.clone(),
+            retry_config: self.retry_config.clone(),
+        }
+    }
 }
 
 #[cfg(not(feature = "ibm"))]
@@ -174,7 +322,10 @@ pub struct IBMQuantumClient;
 
 #[cfg(feature = "ibm")]
 impl IBMQuantumClient {
-    /// Create a new IBM Quantum client with the given token
+    /// Create a new IBM Quantum client with the given access token (legacy method)
+    ///
+    /// Note: This method does not support automatic token refresh.
+    /// For production use, prefer `new_with_api_key` which supports auto-refresh.
     pub fn new(token: &str) -> DeviceResult<Self> {
         let mut headers = header::HeaderMap::new();
         headers.insert(
@@ -188,19 +339,236 @@ impl IBMQuantumClient {
             .build()
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
 
+        let token_info = TokenInfo {
+            access_token: token.to_string(),
+            obtained_at: Instant::now(),
+            valid_for_secs: DEFAULT_TOKEN_VALIDITY_SECS,
+        };
+
         Ok(Self {
             client,
             api_url: IBM_QUANTUM_API_URL.to_string(),
-            token: token.to_string(),
+            auth_url: IBM_AUTH_URL.to_string(),
+            token_info: Arc::new(RwLock::new(token_info)),
+            auth_config: IBMAuthConfig {
+                api_key: String::new(), // No API key for legacy token-based auth
+                auto_refresh: false,
+                token_validity_secs: None,
+            },
+            retry_config: IBMRetryConfig::default(),
         })
+    }
+
+    /// Create a new IBM Quantum client with an API key
+    ///
+    /// This method exchanges the API key for an access token and supports
+    /// automatic token refresh when the token expires.
+    pub async fn new_with_api_key(api_key: &str) -> DeviceResult<Self> {
+        Self::new_with_config(IBMAuthConfig {
+            api_key: api_key.to_string(),
+            auto_refresh: true,
+            token_validity_secs: None,
+        })
+        .await
+    }
+
+    /// Create a new IBM Quantum client with full authentication configuration
+    pub async fn new_with_config(config: IBMAuthConfig) -> DeviceResult<Self> {
+        Self::new_with_config_and_retry(config, IBMRetryConfig::default()).await
+    }
+
+    /// Create a new IBM Quantum client with authentication and retry configuration
+    pub async fn new_with_config_and_retry(
+        config: IBMAuthConfig,
+        retry_config: IBMRetryConfig,
+    ) -> DeviceResult<Self> {
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json"),
+        );
+
+        let client = Client::builder()
+            .default_headers(headers)
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| DeviceError::Connection(e.to_string()))?;
+
+        // Exchange API key for access token
+        let token_info = Self::exchange_api_key_for_token(&client, &config.api_key).await?;
+
+        Ok(Self {
+            client,
+            api_url: IBM_QUANTUM_API_URL.to_string(),
+            auth_url: IBM_AUTH_URL.to_string(),
+            token_info: Arc::new(RwLock::new(token_info)),
+            auth_config: config,
+            retry_config,
+        })
+    }
+
+    /// Set retry configuration
+    pub fn set_retry_config(&mut self, config: IBMRetryConfig) {
+        self.retry_config = config;
+    }
+
+    /// Get current retry configuration
+    pub fn retry_config(&self) -> &IBMRetryConfig {
+        &self.retry_config
+    }
+
+    /// Execute an async operation with exponential backoff retry
+    async fn with_retry<F, Fut, T>(&self, operation: F) -> DeviceResult<T>
+    where
+        F: Fn() -> Fut,
+        Fut: std::future::Future<Output = DeviceResult<T>>,
+    {
+        use scirs2_core::random::prelude::*;
+
+        let mut attempt = 0;
+        let mut delay = self.retry_config.initial_delay;
+
+        loop {
+            match operation().await {
+                Ok(result) => return Ok(result),
+                Err(err) => {
+                    attempt += 1;
+
+                    // Check if error is retryable
+                    let is_retryable = match &err {
+                        DeviceError::Connection(_) => true,
+                        DeviceError::Timeout(_) => true,
+                        DeviceError::APIError(msg) => {
+                            msg.contains("rate") || msg.contains("5") || msg.contains("503")
+                        }
+                        _ => false,
+                    };
+
+                    if !is_retryable || attempt >= self.retry_config.max_attempts {
+                        return Err(err);
+                    }
+
+                    // Calculate delay with jitter
+                    let jitter = if self.retry_config.jitter_factor > 0.0 {
+                        let mut rng = thread_rng();
+                        let jitter_range =
+                            delay.as_millis() as f64 * self.retry_config.jitter_factor;
+                        Duration::from_millis((rng.gen::<f64>() * jitter_range) as u64)
+                    } else {
+                        Duration::ZERO
+                    };
+
+                    let actual_delay = delay + jitter;
+                    tokio::time::sleep(actual_delay).await;
+
+                    // Calculate next delay with exponential backoff
+                    delay = Duration::from_millis(
+                        (delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64,
+                    )
+                    .min(self.retry_config.max_delay);
+                }
+            }
+        }
+    }
+
+    /// Exchange an API key for an access token
+    async fn exchange_api_key_for_token(client: &Client, api_key: &str) -> DeviceResult<TokenInfo> {
+        let response = client
+            .post(&format!("{}/users/loginWithToken", IBM_AUTH_URL))
+            .json(&serde_json::json!({ "apiToken": api_key }))
+            .send()
+            .await
+            .map_err(|e| {
+                DeviceError::Connection(format!("Authentication request failed: {}", e))
+            })?;
+
+        if !response.status().is_success() {
+            let error_msg = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown authentication error".to_string());
+            return Err(DeviceError::Authentication(error_msg));
+        }
+
+        let auth_response: AuthResponse = response.json().await.map_err(|e| {
+            DeviceError::Deserialization(format!("Failed to parse auth response: {}", e))
+        })?;
+
+        let valid_for_secs = auth_response.ttl.unwrap_or(DEFAULT_TOKEN_VALIDITY_SECS);
+
+        Ok(TokenInfo {
+            access_token: auth_response.id,
+            obtained_at: Instant::now(),
+            valid_for_secs,
+        })
+    }
+
+    /// Refresh the access token if it's expired or about to expire
+    pub async fn refresh_token(&self) -> DeviceResult<()> {
+        if self.auth_config.api_key.is_empty() {
+            return Err(DeviceError::Authentication(
+                "Cannot refresh token: no API key configured. Use new_with_api_key() for auto-refresh support.".to_string()
+            ));
+        }
+
+        let new_token_info =
+            Self::exchange_api_key_for_token(&self.client, &self.auth_config.api_key).await?;
+
+        let mut token_guard = self.token_info.write().await;
+        *token_guard = new_token_info;
+
+        Ok(())
+    }
+
+    /// Get a valid access token, refreshing if necessary
+    async fn get_valid_token(&self) -> DeviceResult<String> {
+        // First check if refresh is needed
+        let needs_refresh = {
+            let token_guard = self.token_info.read().await;
+            token_guard.is_expired()
+        };
+
+        if needs_refresh && self.auth_config.auto_refresh {
+            self.refresh_token().await?;
+        }
+
+        let token_guard = self.token_info.read().await;
+
+        // If still expired after refresh attempt (or auto_refresh disabled), warn but continue
+        if token_guard.is_expired() && !self.auth_config.auto_refresh {
+            // Token is expired but auto-refresh is disabled
+            // Let the API call fail and return appropriate error
+        }
+
+        Ok(token_guard.access_token.clone())
+    }
+
+    /// Check if the current token is valid
+    pub async fn is_token_valid(&self) -> bool {
+        let token_guard = self.token_info.read().await;
+        !token_guard.is_expired()
+    }
+
+    /// Get token expiration information
+    pub async fn token_info(&self) -> TokenInfo {
+        let token_guard = self.token_info.read().await;
+        token_guard.clone()
+    }
+
+    /// List all available backends with automatic retry
+    pub async fn list_backends_with_retry(&self) -> DeviceResult<Vec<IBMBackend>> {
+        self.with_retry(|| async { self.list_backends().await })
+            .await
     }
 
     /// List all available backends
     pub async fn list_backends(&self) -> DeviceResult<Vec<IBMBackend>> {
+        let token = self.get_valid_token().await?;
+
         let response = self
             .client
             .get(&format!("{}/backends", self.api_url))
-            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Authorization", format!("Bearer {}", token))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -223,10 +591,12 @@ impl IBMQuantumClient {
 
     /// Get details about a specific backend
     pub async fn get_backend(&self, backend_name: &str) -> DeviceResult<IBMBackend> {
+        let token = self.get_valid_token().await?;
+
         let response = self
             .client
             .get(&format!("{}/backends/{}", self.api_url, backend_name))
-            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Authorization", format!("Bearer {}", token))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -257,6 +627,8 @@ impl IBMQuantumClient {
         {
             use serde_json::json;
 
+            let token = self.get_valid_token().await?;
+
             let payload = json!({
                 "backend": backend_name,
                 "name": config.name,
@@ -269,7 +641,7 @@ impl IBMQuantumClient {
             let response = self
                 .client
                 .post(&format!("{}/jobs", self.api_url))
-                .header("Authorization", format!("Bearer {}", self.token))
+                .header("Authorization", format!("Bearer {}", token))
                 .json(&payload)
                 .send()
                 .await
@@ -299,10 +671,12 @@ impl IBMQuantumClient {
 
     /// Get the status of a job
     pub async fn get_job_status(&self, job_id: &str) -> DeviceResult<IBMJobStatus> {
+        let token = self.get_valid_token().await?;
+
         let response = self
             .client
             .get(&format!("{}/jobs/{}", self.api_url, job_id))
-            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Authorization", format!("Bearer {}", token))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -325,10 +699,12 @@ impl IBMQuantumClient {
 
     /// Get the results of a completed job
     pub async fn get_job_result(&self, job_id: &str) -> DeviceResult<IBMJobResult> {
+        let token = self.get_valid_token().await?;
+
         let response = self
             .client
             .get(&format!("{}/jobs/{}/result", self.api_url, job_id))
-            .header("Authorization", format!("Bearer {}", self.token))
+            .header("Authorization", format!("Bearer {}", token))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;

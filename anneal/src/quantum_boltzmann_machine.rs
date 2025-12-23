@@ -5,8 +5,8 @@
 //! sampling and training, enabling quantum machine learning applications.
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::SliceRandomExt;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

@@ -4,10 +4,19 @@
 //! quantum ML module, including quantum K-means, DBSCAN, spectral clustering,
 //! fuzzy c-means, and Gaussian mixture models.
 
-use scirs2_core::ndarray::{array, Array1, Array2};
-use quantrs2_ml::clustering::*;
+use quantrs2_ml::clustering::{
+    create_default_quantum_dbscan, create_default_quantum_kmeans, AffinityType,
+    ClusteringAlgorithm, ClusteringEnsembleConfig, CommunityAlgorithm, CovarianceType,
+    DimensionalityReduction, EnsembleCombinationMethod, EntanglementStructure,
+    GraphClusteringConfig, GraphMethod, HighDimClusteringConfig, MeasurementStrategy,
+    QuantumClusterer, QuantumClusteringConfig, QuantumDBSCANConfig, QuantumFuzzyCMeansConfig,
+    QuantumGMMConfig, QuantumKMeansConfig, QuantumNativeConfig, QuantumSpectralConfig,
+    StatePreparationMethod, StreamingClusteringConfig, TimeSeriesClusteringConfig,
+    TimeSeriesDistanceMetric,
+};
 use quantrs2_ml::dimensionality_reduction::{QuantumDistanceMetric, QuantumEnhancementLevel};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{array, Array1, Array2};
 
 fn main() -> Result<()> {
     println!("🌀 Quantum Clustering Algorithms Demo");
@@ -146,7 +155,7 @@ fn demo_quantum_kmeans(data: &Array2<f64>) -> Result<()> {
     ];
 
     for (name, config) in configs {
-        println!("\n📊 Testing: {}", name);
+        println!("\n📊 Testing: {name}");
 
         let mut clusterer = QuantumClusterer::kmeans(config);
         let result = clusterer.fit(data)?;
@@ -165,7 +174,7 @@ fn demo_quantum_kmeans(data: &Array2<f64>) -> Result<()> {
         // Test prediction on new data
         let new_data = array![[1.5, 1.5], [4.5, 4.5]];
         let predictions = clusterer.predict(&new_data)?;
-        println!("   Predictions for new data: {:?}", predictions);
+        println!("   Predictions for new data: {predictions:?}");
     }
 
     Ok(())
@@ -200,7 +209,7 @@ fn demo_quantum_dbscan(data: &Array2<f64>) -> Result<()> {
     ];
 
     for (name, config) in configs {
-        println!("\n📊 Testing: {}", name);
+        println!("\n📊 Testing: {name}");
 
         let mut clusterer = QuantumClusterer::dbscan(config);
         let result = clusterer.fit(data)?;
@@ -210,14 +219,14 @@ fn demo_quantum_dbscan(data: &Array2<f64>) -> Result<()> {
 
         // Count noise points (-1 labels)
         let noise_count = result.labels.iter().filter(|&&x| x == usize::MAX).count(); // Using MAX as noise label
-        println!("   Noise points: {}", noise_count);
+        println!("   Noise points: {noise_count}");
 
         // Count points in each cluster
-        let unique_labels: std::collections::HashSet<_> = result.labels.iter().cloned().collect();
+        let unique_labels: std::collections::HashSet<_> = result.labels.iter().copied().collect();
         for &label in &unique_labels {
             if label != usize::MAX {
                 let cluster_size = result.labels.iter().filter(|&&x| x == label).count();
-                println!("   Cluster {} size: {}", label, cluster_size);
+                println!("   Cluster {label} size: {cluster_size}");
             }
         }
     }
@@ -254,7 +263,7 @@ fn demo_quantum_spectral(data: &Array2<f64>) -> Result<()> {
     ];
 
     for (name, config) in configs {
-        println!("\n📊 Testing: {}", name);
+        println!("\n📊 Testing: {name}");
 
         let mut clusterer = QuantumClusterer::spectral(config);
         let result = clusterer.fit(data)?;
@@ -263,10 +272,10 @@ fn demo_quantum_spectral(data: &Array2<f64>) -> Result<()> {
         println!("   Labels: {:?}", result.labels);
 
         // Analyze cluster distribution
-        let unique_labels: std::collections::HashSet<_> = result.labels.iter().cloned().collect();
+        let unique_labels: std::collections::HashSet<_> = result.labels.iter().copied().collect();
         for &label in &unique_labels {
             let cluster_size = result.labels.iter().filter(|&&x| x == label).count();
-            println!("   Cluster {} size: {}", label, cluster_size);
+            println!("   Cluster {label} size: {cluster_size}");
         }
     }
 
@@ -306,7 +315,7 @@ fn demo_quantum_fuzzy_cmeans(data: &Array2<f64>) -> Result<()> {
     ];
 
     for (name, config) in configs {
-        println!("\n📊 Testing: {}", name);
+        println!("\n📊 Testing: {name}");
 
         let mut clusterer = QuantumClusterer::new(QuantumClusteringConfig {
             algorithm: ClusteringAlgorithm::QuantumFuzzyCMeans,
@@ -372,7 +381,7 @@ fn demo_quantum_gmm(data: &Array2<f64>) -> Result<()> {
     ];
 
     for (name, config) in configs {
-        println!("\n📊 Testing: {}", name);
+        println!("\n📊 Testing: {name}");
 
         let mut clusterer = QuantumClusterer::new(QuantumClusteringConfig {
             algorithm: ClusteringAlgorithm::QuantumGMM,
@@ -399,7 +408,7 @@ fn demo_quantum_gmm(data: &Array2<f64>) -> Result<()> {
             println!("   Posterior probabilities (first 4 points):");
             for i in 0..4.min(probabilities.nrows()) {
                 let row = probabilities.row(i);
-                let prob_str: Vec<String> = row.iter().map(|&p| format!("{:.3}", p)).collect();
+                let prob_str: Vec<String> = row.iter().map(|&p| format!("{p:.3}")).collect();
                 println!("     Point {}: [{}]", i, prob_str.join(", "));
             }
         }
@@ -435,7 +444,7 @@ fn demo_quantum_distance_metrics(data: &Array2<f64>) -> Result<()> {
         let mut clusterer = QuantumClusterer::kmeans(config);
         let result = clusterer.fit(data)?;
 
-        println!("\n📊 Distance Metric: {:?}", metric);
+        println!("\n📊 Distance Metric: {metric:?}");
         println!("   Inertia: {:.4}", result.inertia.unwrap_or(0.0));
         println!("   Labels: {:?}", result.labels);
 
@@ -447,7 +456,7 @@ fn demo_quantum_distance_metrics(data: &Array2<f64>) -> Result<()> {
         let point1 = data.row(0).to_owned();
         let point2 = data.row(1).to_owned();
         let distance = clusterer_ref.compute_quantum_distance(&point1, &point2, metric)?;
-        println!("   Sample distance (points 0-1): {:.4}", distance);
+        println!("   Sample distance (points 0-1): {distance:.4}");
     }
 
     Ok(())
@@ -630,10 +639,7 @@ fn demo_advanced_configurations() -> Result<()> {
     ];
 
     for level in enhancement_levels {
-        println!(
-            "   {:?}: Provides different levels of quantum enhancement",
-            level
-        );
+        println!("   {level:?}: Provides different levels of quantum enhancement");
     }
 
     Ok(())

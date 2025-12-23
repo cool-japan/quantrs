@@ -1,4 +1,3 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::{
@@ -9,6 +8,7 @@ use quantrs2_sim::noise_advanced::{
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 /// Grover's Algorithm with Realistic Noise Models
@@ -27,19 +27,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // The database size is 2^n_qubits
         let db_size = 1 << n_qubits;
 
-        println!(
-            "\n===== Database size: {} (using {} qubits) =====",
-            db_size, n_qubits
-        );
+        println!("\n===== Database size: {db_size} (using {n_qubits} qubits) =====");
 
         // Pick a random item to search for (the marked element)
         let marked_item = thread_rng().gen_range(0..db_size);
-        println!(
-            "Searching for marked item: {} (binary: {:0width$b})",
-            marked_item,
-            marked_item,
-            width = n_qubits
-        );
+        println!("Searching for marked item: {marked_item} (binary: {marked_item:0n_qubits$b})");
 
         // Run without noise first for comparison
         run_grovers(n_qubits, marked_item, None)?;
@@ -68,8 +60,7 @@ fn run_grovers(
 
     if n_qubits > max_supported_qubits {
         return Err(format!(
-            "Number of qubits ({}) exceeds maximum supported ({})",
-            n_qubits, max_supported_qubits
+            "Number of qubits ({n_qubits}) exceeds maximum supported ({max_supported_qubits})"
         )
         .into());
     }
@@ -84,7 +75,7 @@ fn run_grovers(
         4 => run_grovers_with_size::<4>(marked_item, iterations, noise_model),
         5 => run_grovers_with_size::<5>(marked_item, iterations, noise_model),
         6 => run_grovers_with_size::<6>(marked_item, iterations, noise_model),
-        _ => Err(format!("Unsupported number of qubits: {}", n_qubits).into()),
+        _ => Err(format!("Unsupported number of qubits: {n_qubits}").into()),
     }
 }
 
@@ -116,7 +107,7 @@ fn run_grovers_with_size<const N: usize>(
     if let Some(noise) = noise_model {
         let num_channels = noise.num_channels();
         simulator.set_advanced_noise_model(noise);
-        println!("\nRunning with noise model ({} channels)", num_channels);
+        println!("\nRunning with noise model ({num_channels} channels)");
     } else {
         println!("\nRunning without noise (ideal simulation)");
     }
@@ -294,13 +285,16 @@ fn analyze_results<const N: usize>(result: &Register<N>, marked_item: usize) {
     }
 
     // Sort by probability in descending order
-    state_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    state_probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare probabilities (NaN encountered in Grover's algorithm result analysis)")
+    });
 
     // Print the top 5 states
     println!("Top measured states:");
     for (idx, (state, prob)) in state_probs.iter().take(5).enumerate() {
         // Convert to binary string
-        let binary = format!("{:0width$b}", state, width = N);
+        let binary = format!("{state:0N$b}");
 
         let marker = if *state == marked_item {
             " <<< CORRECT"
@@ -339,7 +333,7 @@ fn analyze_results<const N: usize>(result: &Register<N>, marked_item: usize) {
     let ideal_prob = 1.0; // Ideally, Grover's gives certain or near-certain success
     let success_rate = (marked_prob / ideal_prob) * 100.0;
 
-    println!("Success rate: {:.1}%", success_rate);
+    println!("Success rate: {success_rate:.1}%");
 }
 
 /// Create a realistic noise model with the given noise level
@@ -364,13 +358,14 @@ fn create_noise_model(n_qubits: usize, noise_level: f64) -> AdvancedNoiseModel {
         "Creating noise model with level {:.3}%:",
         noise_level * 100.0
     );
-    println!("  - T1 relaxation time: {:.1} μs", t1_us);
-    println!("  - T2 dephasing time: {:.1} μs", t2_us);
-    println!("  - 1-qubit gate error: {:.5}", gate_error_1q);
-    println!("  - 2-qubit gate error: {:.5}", gate_error_2q);
+    println!("  - T1 relaxation time: {t1_us:.1} μs");
+    println!("  - T2 dephasing time: {t2_us:.1} μs");
+    println!("  - 1-qubit gate error: {gate_error_1q:.5}");
+    println!("  - 2-qubit gate error: {gate_error_2q:.5}");
 
     // Create the noise model
-    let noise_model = RealisticNoiseModelBuilder::new(true)
+
+    RealisticNoiseModelBuilder::new(true)
         .with_custom_thermal_relaxation(
             &qubits,
             Duration::from_micros(t1_us as u64),
@@ -378,7 +373,5 @@ fn create_noise_model(n_qubits: usize, noise_level: f64) -> AdvancedNoiseModel {
             Duration::from_nanos(50), // 50ns gate time
         )
         .with_custom_two_qubit_noise(&qubit_pairs, gate_error_2q)
-        .build();
-
-    noise_model
+        .build()
 }

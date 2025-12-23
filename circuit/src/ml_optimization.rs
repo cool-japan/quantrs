@@ -174,7 +174,7 @@ pub enum OptimizationTarget {
 
 /// Feature extractor for circuits
 pub struct FeatureExtractor {
-    /// SciRS2 analyzer for graph features
+    /// `SciRS2` analyzer for graph features
     analyzer: SciRS2CircuitAnalyzer,
     /// Feature cache
     cache: HashMap<String, Vec<f64>>,
@@ -182,8 +182,15 @@ pub struct FeatureExtractor {
     feature_weights: Vec<f64>,
 }
 
+impl Default for FeatureExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeatureExtractor {
     /// Create a new feature extractor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analyzer: SciRS2CircuitAnalyzer::new(),
@@ -254,7 +261,7 @@ impl FeatureExtractor {
         ]
     }
 
-    /// Extract graph-based features using SciRS2
+    /// Extract graph-based features using `SciRS2`
     fn extract_graph_features<const N: usize>(
         &mut self,
         circuit: &Circuit<N>,
@@ -448,6 +455,7 @@ pub struct TreeNode {
 
 impl MLCircuitOptimizer {
     /// Create a new ML optimizer
+    #[must_use]
     pub fn new(strategy: MLStrategy) -> Self {
         Self {
             strategy,
@@ -459,6 +467,7 @@ impl MLCircuitOptimizer {
     }
 
     /// Create optimizer with custom configuration
+    #[must_use]
     pub fn with_config(strategy: MLStrategy, config: MLOptimizerConfig) -> Self {
         Self {
             strategy,
@@ -663,7 +672,7 @@ impl MLCircuitOptimizer {
         // Simplified NN training
         // In a full implementation, this would implement backpropagation
 
-        let input_size = data.first().map(|ex| ex.input.features.len()).unwrap_or(0);
+        let input_size = data.first().map_or(0, |ex| ex.input.features.len());
 
         // Create network layers
         let mut layers = Vec::new();

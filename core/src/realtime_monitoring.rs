@@ -1585,7 +1585,7 @@ impl RealtimeDataStore {
         }
     }
 
-    fn cleanup_old_data(&mut self) {
+    fn cleanup_old_data(&self) {
         // Remove old data based on retention settings
         // Implementation would be more sophisticated in practice
     }

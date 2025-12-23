@@ -6,7 +6,6 @@
 //! - Various SAT problem instances (3-SAT, k-SAT)
 //! - Performance comparison with classical SAT solvers
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -16,6 +15,7 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -32,15 +32,15 @@ struct Literal {
 }
 
 impl Literal {
-    fn new(var: usize, negated: bool) -> Self {
+    const fn new(var: usize, negated: bool) -> Self {
         Self { var, negated }
     }
 
-    fn positive(var: usize) -> Self {
+    const fn positive(var: usize) -> Self {
         Self::new(var, false)
     }
 
-    fn negative(var: usize) -> Self {
+    const fn negative(var: usize) -> Self {
         Self::new(var, true)
     }
 }
@@ -52,7 +52,7 @@ struct Clause {
 }
 
 impl Clause {
-    fn new(literals: Vec<Literal>) -> Self {
+    const fn new(literals: Vec<Literal>) -> Self {
         Self { literals }
     }
 
@@ -77,7 +77,7 @@ struct SatFormula {
 }
 
 impl SatFormula {
-    fn new(num_vars: usize) -> Self {
+    const fn new(num_vars: usize) -> Self {
         Self {
             clauses: Vec::new(),
             num_vars,
@@ -135,7 +135,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
     // Create binary variables for each SAT variable
     let mut vars = Vec::new();
     for i in 0..formula.num_vars {
-        let var = model.add_variable(&format!("x_{}", i))?;
+        let var = model.add_variable(&format!("x_{i}"))?;
         vars.push(var);
     }
 
@@ -164,7 +164,7 @@ fn sat_to_qubo(formula: &SatFormula) -> Result<Model, Box<dyn std::error::Error>
         }
 
         // Create auxiliary variable for this clause
-        let aux_var = model.add_variable(&format!("aux_clause_{}", clause_idx))?;
+        let aux_var = model.add_variable(&format!("aux_clause_{clause_idx}"))?;
 
         // Constraint: aux_var = 1 if clause is satisfied (at least one literal is true)
         // This is implemented as: if clause_expr > 0, then aux_var = 1
@@ -233,7 +233,7 @@ fn run_sat_experiment(
     name: &str,
     formula: &SatFormula,
 ) -> Result<SatSolverResults, Box<dyn std::error::Error>> {
-    println!("\n=== {} ===", name);
+    println!("\n=== {name} ===");
     println!(
         "Variables: {}, Clauses: {}",
         formula.num_vars,
@@ -270,7 +270,7 @@ fn run_sat_experiment(
 
     // Create variable mapping and fill matrix
     for i in 0..n_vars {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
 
         // Get linear term (diagonal)
         if let Ok(linear) = qubo.get_linear(i) {
@@ -354,7 +354,7 @@ fn run_sat_experiment(
             let mut aug_var_map = HashMap::new();
 
             for i in 0..aug_n_vars {
-                aug_var_map.insert(format!("x_{}", i), i);
+                aug_var_map.insert(format!("x_{i}"), i);
                 if let Ok(linear) = augmented_qubo.get_linear(i) {
                     aug_matrix[[i, i]] = linear;
                 }
@@ -386,7 +386,7 @@ fn run_sat_experiment(
                 }
             }
 
-            with_learning_sat_rate = new_satisfying as f64 / new_samples.len() as f64;
+            with_learning_sat_rate = f64::from(new_satisfying) / new_samples.len() as f64;
             println!(
                 "New satisfying assignments: {} / {} ({:.1}%)",
                 new_satisfying,
@@ -421,7 +421,7 @@ fn extract_assignment(
     let mut assignment = vec![false; num_vars];
 
     for i in 0..num_vars {
-        let var_name = format!("x_{}", i);
+        let var_name = format!("x_{i}");
         assignment[i] = sample.assignments.get(&var_name).copied().unwrap_or(false);
     }
 
@@ -528,7 +528,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for &ratio in &ratios {
         let num_clauses = (20.0 * ratio) as usize;
         let formula = generate_random_ksat(20, num_clauses, 3, (ratio * 1000.0) as u64);
-        let result = run_sat_experiment(&format!("Ratio {:.2}", ratio), &formula)?;
+        let result = run_sat_experiment(&format!("Ratio {ratio:.2}"), &formula)?;
         phase_results.push((ratio, result));
     }
 

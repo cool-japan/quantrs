@@ -5,13 +5,13 @@
 //! The implementation automatically selects the best available GPU backend.
 
 use crate::linalg_ops;
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use quantrs2_core::gpu::{GpuConfig, SciRS2GpuBackend};
 use quantrs2_core::prelude::*;
 use quantrs2_core::GpuBackend;
 use scirs2_core::gpu::{GpuBackend as SciRS2GpuBackendTrait, GpuBuffer, GpuContext};
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 /// SciRS2-powered GPU linear algebra operations
@@ -38,7 +38,7 @@ impl GpuLinearAlgebra {
         // let kernel_manager = Arc::new(GpuKernelManager::new(device.clone())?);
 
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
+            "GPU backend API has changed in beta.3. Please use CPU linear algebra for now."
                 .to_string(),
         ));
 
@@ -54,7 +54,7 @@ impl GpuLinearAlgebra {
     pub fn with_config(_config: GpuConfig) -> Result<Self, QuantRS2Error> {
         // TODO: Update to use scirs2_core beta.3 GPU API
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.1. Please use CPU linear algebra for now."
+            "GPU backend API has changed in beta.3. Please use CPU linear algebra for now."
                 .to_string(),
         ));
         // let device = Arc::new(platform.create_device(config.device_id)?);
@@ -72,10 +72,10 @@ impl GpuLinearAlgebra {
 
     /// Create an instance optimized for quantum machine learning
     pub fn new_qml_optimized() -> Result<Self, QuantRS2Error> {
-        // TODO: SciRS2GpuFactory not available in beta.1
+        // TODO: SciRS2GpuFactory not available in beta.3
         // let backend = Arc::new(SciRS2GpuFactory::create_qml_optimized()?);
         Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend not available in beta.1".to_string(),
+            "GPU backend not available in beta.3".to_string(),
         ))
     }
 
@@ -114,7 +114,7 @@ impl GpuLinearAlgebra {
         }
 
         // Use CPU fallback for matrix multiplication
-        // GPU backend API has changed in beta.1
+        // GPU backend API has changed in beta.3
 
         // Convert to ndarray views for SIMD operations
         let a_view = a.view();
@@ -222,9 +222,9 @@ impl GpuLinearAlgebra {
     ) -> Result<f64, QuantRS2Error> {
         let num_qubits = (state.len() as f64).log2() as usize;
 
-        // GPU backend not available in beta.1
+        // GPU backend not available in beta.3
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend not available in beta.1, use CPU implementation".to_string(),
+            "GPU backend not available in beta.3, use CPU implementation".to_string(),
         ));
 
         // Original GPU implementation would be:

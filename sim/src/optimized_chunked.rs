@@ -92,12 +92,12 @@ impl ChunkedStateVector {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
     /// Get the dimension of the state vector
-    pub fn dimension(&self) -> usize {
+    pub const fn dimension(&self) -> usize {
         self.dimension
     }
 
@@ -133,9 +133,10 @@ impl ChunkedStateVector {
     /// * `matrix` - The 2x2 matrix representation of the gate
     /// * `target` - The target qubit index
     pub fn apply_single_qubit_gate(&mut self, matrix: &[Complex64], target: usize) {
-        if target >= self.num_qubits {
-            panic!("Target qubit index out of range");
-        }
+        assert!(
+            (target < self.num_qubits),
+            "Target qubit index out of range"
+        );
 
         // Copy current state as we need to read from old state while writing to new
         let old_chunks = self.chunks.clone();
@@ -211,13 +212,15 @@ impl ChunkedStateVector {
     /// * `control` - The control qubit index
     /// * `target` - The target qubit index
     pub fn apply_cnot(&mut self, control: usize, target: usize) {
-        if control >= self.num_qubits || target >= self.num_qubits {
-            panic!("Qubit indices out of range");
-        }
+        assert!(
+            !(control >= self.num_qubits || target >= self.num_qubits),
+            "Qubit indices out of range"
+        );
 
-        if control == target {
-            panic!("Control and target qubits must be different");
-        }
+        assert!(
+            (control != target),
+            "Control and target qubits must be different"
+        );
 
         // We're using standard qubit ordering where the target/control parameters
         // are used directly with bit operations
@@ -283,13 +286,12 @@ impl ChunkedStateVector {
     /// * `qubit1` - The first qubit index
     /// * `qubit2` - The second qubit index
     pub fn apply_two_qubit_gate(&mut self, matrix: &[Complex64], qubit1: usize, qubit2: usize) {
-        if qubit1 >= self.num_qubits || qubit2 >= self.num_qubits {
-            panic!("Qubit indices out of range");
-        }
+        assert!(
+            !(qubit1 >= self.num_qubits || qubit2 >= self.num_qubits),
+            "Qubit indices out of range"
+        );
 
-        if qubit1 == qubit2 {
-            panic!("Qubit indices must be different");
-        }
+        assert!((qubit1 != qubit2), "Qubit indices must be different");
 
         // Create new chunks to hold the result
         let mut new_chunks = Vec::with_capacity(self.chunks.len());
@@ -347,9 +349,10 @@ impl ChunkedStateVector {
 
     /// Calculate probability of measuring a specific bit string
     pub fn probability(&self, bit_string: &[u8]) -> f64 {
-        if bit_string.len() != self.num_qubits {
-            panic!("Bit string length must match number of qubits");
-        }
+        assert!(
+            (bit_string.len() == self.num_qubits),
+            "Bit string length must match number of qubits"
+        );
 
         // Convert bit string to index
         let mut idx = 0;

@@ -3,10 +3,10 @@
 //! This example demonstrates how to use pre-trained quantum models
 //! and fine-tune them for new tasks with transfer learning.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
     println!("=== Quantum Transfer Learning Demo ===\n");
@@ -60,8 +60,8 @@ fn main() -> Result<()> {
     // Strategy 3: Progressive unfreezing
     println!("   c) Progressive unfreezing (unfreeze one layer every 5 epochs)");
     let transfer_progressive = QuantumTransferLearning::new(
-        pretrained.clone(),
-        new_layers.clone(),
+        pretrained,
+        new_layers,
         TransferStrategy::ProgressiveUnfreezing { unfreeze_rate: 5 },
     )?;
 
@@ -70,7 +70,7 @@ fn main() -> Result<()> {
     let num_samples = 50;
     let num_features = 4;
     let training_data = Array2::from_shape_fn((num_samples, num_features), |(i, j)| {
-        (i as f64 * 0.1 + j as f64 * 0.2).sin()
+        (i as f64).mul_add(0.1, j as f64 * 0.2).sin()
     });
     let labels = Array1::from_shape_fn(num_samples, |i| if i % 2 == 0 { 0.0 } else { 1.0 });
 

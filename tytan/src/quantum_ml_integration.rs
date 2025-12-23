@@ -39,7 +39,6 @@ pub struct QuantumBoltzmannMachine {
 impl QuantumBoltzmannMachine {
     /// Create new Quantum Boltzmann Machine
     pub fn new(n_visible: usize, n_hidden: usize) -> Self {
-        
         use scirs2_core::random::prelude::*;
         let mut rng = StdRng::seed_from_u64(42);
 
@@ -62,19 +61,19 @@ impl QuantumBoltzmannMachine {
     }
 
     /// Set transverse field strength
-    pub fn with_transverse_field(mut self, field: f64) -> Self {
+    pub const fn with_transverse_field(mut self, field: f64) -> Self {
         self.transverse_field = field;
         self
     }
 
     /// Set temperature
-    pub fn with_temperature(mut self, temp: f64) -> Self {
+    pub const fn with_temperature(mut self, temp: f64) -> Self {
         self.temperature = temp;
         self
     }
 
     /// Set learning rate
-    pub fn with_learning_rate(mut self, rate: f64) -> Self {
+    pub const fn with_learning_rate(mut self, rate: f64) -> Self {
         self.learning_rate = rate;
         self
     }
@@ -325,26 +324,28 @@ impl QuantumVAE {
     /// Quantum encoding
     fn quantum_encode(&self, input: &Array1<bool>) -> (Array1<f64>, Array1<f64>) {
         let input_float: Array1<f64> = input.mapv(|x| if x { 1.0 } else { 0.0 });
-        let mut state = input_float.clone();
+        let mut state = input_float;
 
         // Apply quantum layers
         for layer in 0..self.n_layers {
             // Rotation gates
             for i in 0..self.input_dim {
                 let angle = self.encoder_params[[layer, i]];
-                state[i] = state[i] * angle.cos() + (1.0 - state[i]) * angle.sin();
+                state[i] = state[i].mul_add(angle.cos(), (1.0 - state[i]) * angle.sin());
             }
 
             // Entangling gates (simplified)
             for i in 0..self.input_dim - 1 {
                 let temp = state[i];
-                state[i] = state[i] * 0.9 + state[i + 1] * 0.1;
-                state[i + 1] = state[i + 1] * 0.9 + temp * 0.1;
+                state[i] = state[i].mul_add(0.9, state[i + 1] * 0.1);
+                state[i + 1] = state[i + 1].mul_add(0.9, temp * 0.1);
             }
         }
 
         // Extract mean and variance for latent distribution
-        let mean = state.slice(scirs2_core::ndarray::s![..self.latent_dim]).to_owned();
+        let mean = state
+            .slice(scirs2_core::ndarray::s![..self.latent_dim])
+            .to_owned();
         let log_var = state
             .slice(scirs2_core::ndarray::s![
                 self.latent_dim..2 * self.latent_dim.min(self.input_dim)
@@ -361,13 +362,13 @@ impl QuantumVAE {
         // Simple linear encoding
         let encoded = self.encoder_params.dot(&input_float);
 
-        let mean = Array1::from_vec(encoded.iter().take(self.latent_dim).cloned().collect());
+        let mean = Array1::from_vec(encoded.iter().take(self.latent_dim).copied().collect());
         let log_var = Array1::from_vec(
             encoded
                 .iter()
                 .skip(self.latent_dim)
                 .take(self.latent_dim)
-                .cloned()
+                .copied()
                 .collect(),
         );
 
@@ -602,7 +603,7 @@ impl QuantumGenerator {
         // Sample latent vector using simple approach
         let latent = Array1::from_shape_fn(
             self.latent_dim,
-            |_| rng.gen::<f64>() * 2.0 - 1.0, // Sample from [-1, 1]
+            |_| rng.gen::<f64>().mul_add(2.0, -1.0), // Sample from [-1, 1]
         );
 
         // Initialize quantum state
@@ -620,8 +621,8 @@ impl QuantumGenerator {
             for i in 0..self.output_dim - 1 {
                 let coupling = self.params[[layer, self.latent_dim + i]];
                 let temp = state[i];
-                state[i] = state[i] * coupling.cos() + state[i + 1] * coupling.sin();
-                state[i + 1] = state[i + 1] * coupling.cos() - temp * coupling.sin();
+                state[i] = state[i].mul_add(coupling.cos(), state[i + 1] * coupling.sin());
+                state[i + 1] = state[i + 1].mul_add(coupling.cos(), -(temp * coupling.sin()));
             }
         }
 
@@ -652,14 +653,14 @@ impl QuantumDiscriminator {
 
     fn forward(&self, input: &Array1<bool>) -> Result<f64, String> {
         let input_float: Array1<f64> = input.mapv(|x| if x { 1.0 } else { -1.0 });
-        let mut state = input_float.clone();
+        let mut state = input_float;
 
         // Apply quantum circuit
         for layer in 0..self.depth {
             // Rotation gates
             for i in 0..self.input_dim {
                 let angle = self.params[[layer, i]];
-                state[i] = state[i] * angle.cos() + (1.0 - state[i].abs()) * angle.sin();
+                state[i] = state[i].mul_add(angle.cos(), (1.0 - state[i].abs()) * angle.sin());
             }
 
             // Pooling layer (reduce dimension)
@@ -805,12 +806,13 @@ impl QuantumRL {
                 experience.reward
             } else {
                 let next_q_values = self.q_network.forward(&experience.next_state);
-                experience.reward
-                    + self.gamma
-                        * next_q_values
-                            .iter()
-                            .cloned()
-                            .fold(f64::NEG_INFINITY, f64::max)
+                self.gamma.mul_add(
+                    next_q_values
+                        .iter()
+                        .copied()
+                        .fold(f64::NEG_INFINITY, f64::max),
+                    experience.reward,
+                )
             };
 
             // Update Q-network

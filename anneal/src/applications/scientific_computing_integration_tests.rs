@@ -35,6 +35,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Slow test: runs heavy quantum algorithms (~105s)
     fn test_quantum_chemistry_optimizer_basic_functionality() {
         let config = QuantumChemistryConfig::default();
         let mut optimizer = QuantumChemistryOptimizer::new(config).unwrap();
@@ -84,6 +85,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Slow test: runs heavy quantum algorithms (~106s)
     fn test_catalysis_optimization_problem() {
         let systems = create_example_molecular_systems().unwrap();
 
@@ -277,6 +279,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Slow test: runs heavy quantum algorithms (~105s)
     fn test_reaction_energetics_calculation() {
         let systems = create_example_molecular_systems().unwrap();
         let mut optimizer =

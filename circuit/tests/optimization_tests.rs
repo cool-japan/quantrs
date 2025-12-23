@@ -182,7 +182,7 @@ fn test_optimization_utils() {
 fn test_metric_improvement() {
     let initial = CircuitMetrics {
         gate_count: 100,
-        gate_types: Default::default(),
+        gate_types: std::collections::HashMap::default(),
         depth: 50,
         two_qubit_gates: 30,
         num_qubits: 5,
@@ -195,7 +195,7 @@ fn test_metric_improvement() {
 
     let final_metrics = CircuitMetrics {
         gate_count: 80,
-        gate_types: Default::default(),
+        gate_types: std::collections::HashMap::default(),
         depth: 40,
         two_qubit_gates: 20,
         num_qubits: 5,
@@ -209,7 +209,7 @@ fn test_metric_improvement() {
     let improvement = final_metrics.improvement_from(&initial);
     assert_eq!(improvement.gate_count, 20.0); // 20% reduction
     assert_eq!(improvement.depth, 20.0); // 20% reduction
-    assert!((improvement.two_qubit_gates - 33.333333333333336).abs() < 0.00001);
+    assert!((improvement.two_qubit_gates - 33.333_333_333_333_336).abs() < 0.00001);
     // ~33% reduction
 }
 
@@ -218,7 +218,7 @@ fn test_custom_pass_creation() {
     struct TestPass;
 
     impl OptimizationPass for TestPass {
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "Test Pass"
         }
 

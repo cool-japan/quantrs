@@ -384,8 +384,7 @@ pub struct QuantumChemistryOptimizer {
     /// Meta-learning optimizer
     pub meta_learning: MetaLearningOptimizer,
     /// Neural annealing scheduler
-    // TODO: Add back when type is available
-    // pub neural_scheduler: NeuralAnnealingScheduler,
+    pub neural_scheduler: NeuralAnnealingScheduler,
     /// Enterprise monitoring
     pub monitoring: Option<EnterpriseMonitoringSystem>,
     /// Calculated systems cache
@@ -641,8 +640,8 @@ impl QuantumChemistryOptimizer {
         )?;
         let adaptive_qec = RealTimeAdaptiveQec::new(Default::default());
         let meta_learning = MetaLearningOptimizer::new(Default::default());
-        // TODO: Fix NeuralAnnealingScheduler type - seems to be missing
-        // let neural_scheduler = NeuralAnnealingScheduler::new(NeuralSchedulerConfig::default())?;
+        let neural_scheduler = NeuralAnnealingScheduler::new(NeuralSchedulerConfig::default())
+            .map_err(|e| ApplicationError::ConfigurationError(e))?;
 
         let monitoring = if config.monitoring_enabled {
             Some(crate::enterprise_monitoring::create_example_enterprise_monitoring()?)
@@ -656,7 +655,7 @@ impl QuantumChemistryOptimizer {
             error_correction,
             adaptive_qec,
             meta_learning,
-            // neural_scheduler,  // TODO: Add back when type is fixed
+            neural_scheduler,
             monitoring,
             system_cache: HashMap::new(),
         })
@@ -720,6 +719,9 @@ impl QuantumChemistryOptimizer {
         &mut self,
         problem: &CatalysisOptimization,
     ) -> ApplicationResult<CatalysisOptimizationResult> {
+        use std::time::Instant;
+        let start_time = Instant::now();
+
         if let Some(monitoring) = &self.monitoring {
             monitoring.log(
                 LogLevel::Info,
@@ -776,11 +778,13 @@ impl QuantumChemistryOptimizer {
             )?;
         }
 
+        let optimization_time = start_time.elapsed().as_secs_f64();
+
         Ok(CatalysisOptimizationResult {
             best_catalyst,
             best_score,
             evaluated_candidates,
-            optimization_time: 0.0, // TODO: track actual time
+            optimization_time,
         })
     }
 
@@ -830,6 +834,23 @@ impl QuantumChemistryOptimizer {
             0.3 * reaction_energy.abs() + 20.0 // kcal/mol
         };
 
+        // Estimate reaction entropy using empirical formula
+        // ΔS ≈ R * ln(n_products/n_reactants) + contribution from reaction type
+        let gas_constant = 8.314; // J/(mol·K)
+        let n_reactants = reaction.reactants.len() as f64;
+        let n_products = reaction.products.len() as f64;
+
+        // Base entropy change from stoichiometry
+        let stoichiometric_entropy = gas_constant * (n_products / n_reactants).ln();
+
+        // Additional entropy contribution from molecular complexity
+        // More atoms typically correlate with higher entropy
+        let reactant_atoms: usize = reaction.reactants.iter().map(|r| r.atoms.len()).sum();
+        let product_atoms: usize = reaction.products.iter().map(|p| p.atoms.len()).sum();
+        let complexity_entropy = 0.5 * (product_atoms as f64 - reactant_atoms as f64);
+
+        let reaction_entropy = stoichiometric_entropy + complexity_entropy;
+
         Ok(ReactionEnergetics {
             reactant_energies,
             product_energies,
@@ -838,7 +859,7 @@ impl QuantumChemistryOptimizer {
             reaction_energy,
             activation_energy,
             reaction_enthalpy: reaction_energy, // Simplified
-            reaction_entropy: 0.0,              // TODO: calculate entropy changes
+            reaction_entropy,
         })
     }
 
@@ -1013,8 +1034,11 @@ impl QuantumChemistryOptimizer {
                     1.0 / (1.0 + energetics.activation_energy.abs())
                 }
                 CatalysisObjective::MinimizeCost => {
-                    // Simplified cost model
-                    1.0 // TODO: implement actual cost calculation
+                    // Cost estimate based on catalyst binding energy
+                    // Higher binding energy often correlates with rare/expensive catalytic elements
+                    let cost_estimate = energetics.catalyst_binding_energy.unwrap_or(1.0).abs();
+                    // Normalize to 0-1 range for objective function (lower is better)
+                    -cost_estimate / 100.0 // Negative because we minimize
                 }
                 CatalysisObjective::MaximizeStability => {
                     // Stability related to binding energy
@@ -1030,14 +1054,16 @@ impl QuantumChemistryOptimizer {
     fn check_catalysis_constraints(
         &self,
         constraints: &[CatalysisConstraint],
-        _catalyst: &MolecularSystem,
+        catalyst: &MolecularSystem,
         score: f64,
     ) -> ApplicationResult<bool> {
         for constraint in constraints {
             match constraint {
                 CatalysisConstraint::MaxCost(max_cost) => {
-                    // TODO: implement cost calculation
-                    if 1.0 > *max_cost {
+                    // Calculate catalyst cost based on atomic composition
+                    // Rare elements (e.g., Pt, Pd, Rh) have higher costs
+                    let cost = self.calculate_catalyst_cost(catalyst)?;
+                    if cost > *max_cost {
                         return Ok(false);
                     }
                 }
@@ -1046,18 +1072,145 @@ impl QuantumChemistryOptimizer {
                         return Ok(false);
                     }
                 }
-                CatalysisConstraint::Environmental(_requirements) => {
-                    // TODO: check environmental constraints
+                CatalysisConstraint::Environmental(requirements) => {
+                    // Check environmental constraints
+                    let env_score = self.calculate_environmental_impact(catalyst)?;
+                    // Check if toxicity is acceptable (max toxicity = 5.0)
+                    let max_acceptable_toxicity = 5.0;
+                    if env_score > max_acceptable_toxicity
+                        || !self.check_sustainability_requirements(catalyst, requirements)?
+                    {
+                        return Ok(false);
+                    }
                 }
                 CatalysisConstraint::SynthesisComplexity(max_complexity) => {
-                    // TODO: check synthesis complexity
-                    if 1.0 > *max_complexity {
+                    // Calculate synthesis complexity
+                    let complexity = self.calculate_synthesis_complexity(catalyst)?;
+                    if complexity > *max_complexity {
                         return Ok(false);
                     }
                 }
             }
         }
         Ok(true)
+    }
+
+    /// Calculate catalyst cost based on elemental composition
+    fn calculate_catalyst_cost(&self, catalyst: &MolecularSystem) -> ApplicationResult<f64> {
+        // Cost per gram for common catalytic elements (USD/g, approximate)
+        let element_costs: HashMap<String, f64> = [
+            ("H".to_string(), 0.001),
+            ("C".to_string(), 0.05),
+            ("N".to_string(), 0.01),
+            ("O".to_string(), 0.01),
+            ("Fe".to_string(), 0.1),
+            ("Ni".to_string(), 1.0),
+            ("Cu".to_string(), 0.5),
+            ("Pd".to_string(), 50.0),
+            ("Pt".to_string(), 100.0),
+            ("Rh".to_string(), 150.0),
+            ("Ru".to_string(), 20.0),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let mut total_cost = 0.0;
+        for atom in &catalyst.atoms {
+            let cost_per_gram = element_costs.get(&atom.symbol).unwrap_or(&1.0);
+            total_cost += cost_per_gram;
+        }
+
+        Ok(total_cost)
+    }
+
+    /// Calculate environmental impact score
+    fn calculate_environmental_impact(&self, catalyst: &MolecularSystem) -> ApplicationResult<f64> {
+        // Toxicity scores for elements (0 = benign, 10 = highly toxic)
+        let element_toxicity: HashMap<String, f64> = [
+            ("H".to_string(), 0.0),
+            ("C".to_string(), 0.0),
+            ("N".to_string(), 1.0),
+            ("O".to_string(), 0.0),
+            ("Fe".to_string(), 1.0),
+            ("Ni".to_string(), 3.0),
+            ("Cu".to_string(), 2.0),
+            ("Pd".to_string(), 2.0),
+            ("Pt".to_string(), 2.0),
+            ("Rh".to_string(), 3.0),
+            ("Ru".to_string(), 3.0),
+            ("Hg".to_string(), 9.0),
+            ("Pb".to_string(), 8.0),
+            ("Cd".to_string(), 8.0),
+            ("As".to_string(), 9.0),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let mut max_toxicity = 0.0;
+        for atom in &catalyst.atoms {
+            let toxicity = element_toxicity.get(&atom.symbol).unwrap_or(&5.0);
+            if *toxicity > max_toxicity {
+                max_toxicity = *toxicity;
+            }
+        }
+
+        Ok(max_toxicity)
+    }
+
+    /// Check sustainability requirements
+    fn check_sustainability_requirements(
+        &self,
+        catalyst: &MolecularSystem,
+        requirements: &Vec<String>,
+    ) -> ApplicationResult<bool> {
+        // Check if catalyst uses abundant elements
+        let abundant_elements = ["H", "C", "N", "O", "Fe", "Si", "Al"];
+        let total_atoms = catalyst.atoms.len();
+        let abundant_count = catalyst
+            .atoms
+            .iter()
+            .filter(|a| abundant_elements.contains(&a.symbol.as_str()))
+            .count();
+
+        // Check if specific requirements are met
+        for req in requirements {
+            if req == "no_heavy_metals" {
+                let heavy_metals = ["Hg", "Pb", "Cd", "As"];
+                if catalyst
+                    .atoms
+                    .iter()
+                    .any(|a| heavy_metals.contains(&a.symbol.as_str()))
+                {
+                    return Ok(false);
+                }
+            }
+        }
+
+        // At least 70% should be from abundant elements for sustainability
+        Ok(abundant_count as f64 / total_atoms as f64 > 0.7)
+    }
+
+    /// Calculate synthesis complexity
+    fn calculate_synthesis_complexity(&self, catalyst: &MolecularSystem) -> ApplicationResult<f64> {
+        // Complexity based on:
+        // 1. Number of different elements
+        // 2. Total number of atoms
+        // 3. Structural complexity (estimated)
+
+        let mut unique_elements = HashSet::new();
+        for atom in &catalyst.atoms {
+            unique_elements.insert(&atom.symbol);
+        }
+
+        let element_diversity = unique_elements.len() as f64;
+        let size_factor = (catalyst.atoms.len() as f64).sqrt();
+
+        // Simple complexity metric
+        let complexity = element_diversity * 0.5 + size_factor * 0.3;
+
+        Ok(complexity)
     }
 }
 

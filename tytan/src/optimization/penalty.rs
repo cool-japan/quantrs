@@ -35,7 +35,7 @@ pub struct PenaltyConfig {
 }
 
 /// Types of penalty functions
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PenaltyType {
     /// Quadratic penalty: weight * violation^2
     Quadratic,
@@ -190,7 +190,7 @@ impl PenaltyOptimizer {
                 let violation = self.evaluate_constraint_violation(
                     constraint_expr,
                     assignment,
-                    &model.get_variable_map(),
+                    model.get_variable_map(),
                 )?;
 
                 total_violation += violation;
@@ -232,10 +232,10 @@ impl PenaltyOptimizer {
                     f64::INFINITY
                 }
             }
-            PenaltyType::Exponential => value.exp() - 1.0,
+            PenaltyType::Exponential => value.exp_m1(),
             PenaltyType::AugmentedLagrangian => {
                 // Simplified augmented Lagrangian
-                value.powi(2) + value.abs()
+                value.mul_add(value, value.abs())
             }
         })
     }
@@ -336,7 +336,7 @@ impl PenaltyOptimizer {
                 let violation = self.evaluate_constraint_violation(
                     constraint_expr,
                     assignment,
-                    &model.get_variable_map(),
+                    model.get_variable_map(),
                 )?;
 
                 let weight = self
@@ -457,11 +457,11 @@ impl CompiledModel {
         }
     }
 
-    pub fn get_constraints(&self) -> &HashMap<String, ConstraintExpr> {
+    pub const fn get_constraints(&self) -> &HashMap<String, ConstraintExpr> {
         &self.constraints
     }
 
-    pub fn get_variable_map(&self) -> &HashMap<String, usize> {
+    pub const fn get_variable_map(&self) -> &HashMap<String, usize> {
         &self.variable_map
     }
 
@@ -491,7 +491,7 @@ pub fn analyze_penalty_landscape(config: &PenaltyConfig, violations: &[f64]) -> 
     let weights = Array1::linspace(config.min_weight, config.max_weight, 100);
     let mut penalties = Vec::new();
 
-    for &weight in weights.iter() {
+    for &weight in &weights {
         let penalty_values: Vec<f64> = violations
             .iter()
             .map(|&v| calculate_penalty(v, weight, config.penalty_type))
@@ -525,8 +525,8 @@ fn calculate_penalty(violation: f64, weight: f64, penalty_type: PenaltyType) -> 
                     1e10 // Large penalty for infeasible region
                 }
             }
-            PenaltyType::Exponential => violation.exp() - 1.0,
-            PenaltyType::AugmentedLagrangian => violation.powi(2) + violation.abs(),
+            PenaltyType::Exponential => violation.exp_m1(),
+            PenaltyType::AugmentedLagrangian => violation.mul_add(violation, violation.abs()),
         }
 }
 
@@ -539,7 +539,7 @@ fn find_optimal_weight(weights: &Array1<f64>, violations: &[f64], config: &Penal
     let mut best_weight = config.initial_weight;
     let mut best_diff = f64::INFINITY;
 
-    for &weight in weights.iter() {
+    for &weight in weights {
         let total_penalty: f64 = violations
             .iter()
             .map(|&v| calculate_penalty(v, weight, config.penalty_type))

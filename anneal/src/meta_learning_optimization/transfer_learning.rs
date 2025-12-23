@@ -61,9 +61,12 @@ impl TransferLearner {
 
         let mut transferred_models = Vec::new();
 
-        for (domain, similarity) in similar_domains.iter().take(3) { // Top 3 similar domains
+        for (domain, similarity) in similar_domains.iter().take(3) {
+            // Top 3 similar domains
             for strategy in &self.strategies.clone() {
-                if let Ok(model) = self.apply_transfer_strategy(domain, target_features, strategy, *similarity) {
+                if let Ok(model) =
+                    self.apply_transfer_strategy(domain, target_features, strategy, *similarity)
+                {
                     transferred_models.push(model);
                 }
             }
@@ -72,10 +75,17 @@ impl TransferLearner {
         // Record transfer attempt
         let transfer_record = TransferRecord {
             timestamp: Instant::now(),
-            source_domains: similar_domains.iter().map(|(d, _)| d.characteristics.clone()).collect(),
+            source_domains: similar_domains
+                .iter()
+                .map(|(d, _)| d.characteristics.clone())
+                .collect(),
             target_features: target_features.clone(),
             strategies_used: self.strategies.clone(),
-            success_rate: if transferred_models.is_empty() { 0.0 } else { 1.0 },
+            success_rate: if transferred_models.is_empty() {
+                0.0
+            } else {
+                1.0
+            },
             models_transferred: transferred_models.len(),
         };
 
@@ -90,7 +100,7 @@ impl TransferLearner {
     }
 
     fn find_similar_domains(
-        &self,
+        &mut self,
         target_features: &ProblemFeatures,
         target_domain: &ProblemDomain,
     ) -> Result<Vec<(SourceDomain, f64)>, String> {
@@ -108,7 +118,8 @@ impl TransferLearner {
                 target_domain,
             )?;
 
-            if similarity > 0.3 { // Minimum similarity threshold
+            if similarity > 0.3 {
+                // Minimum similarity threshold
                 similarities.push((source_domain.clone(), similarity));
             }
         }
@@ -119,11 +130,15 @@ impl TransferLearner {
         Ok(similarities)
     }
 
-    fn is_domain_compatible(&self, source_domain: &ProblemDomain, target_domain: &ProblemDomain) -> bool {
+    fn is_domain_compatible(
+        &self,
+        source_domain: &ProblemDomain,
+        target_domain: &ProblemDomain,
+    ) -> bool {
         // Allow transfer within same domain or to/from general domains
-        source_domain == target_domain ||
-        matches!(source_domain, ProblemDomain::Combinatorial) ||
-        matches!(target_domain, ProblemDomain::Combinatorial)
+        source_domain == target_domain
+            || matches!(source_domain, ProblemDomain::Combinatorial)
+            || matches!(target_domain, ProblemDomain::Combinatorial)
     }
 
     fn apply_transfer_strategy(
@@ -136,19 +151,19 @@ impl TransferLearner {
         match strategy {
             TransferStrategy::InstanceTransfer => {
                 self.instance_transfer(source_domain, target_features, similarity)
-            },
+            }
             TransferStrategy::FeatureTransfer => {
                 self.feature_transfer(source_domain, target_features, similarity)
-            },
+            }
             TransferStrategy::ParameterTransfer => {
                 self.parameter_transfer(source_domain, target_features, similarity)
-            },
+            }
             TransferStrategy::RelationTransfer => {
                 self.relation_transfer(source_domain, target_features, similarity)
-            },
+            }
             TransferStrategy::ModelTransfer => {
                 self.model_transfer(source_domain, target_features, similarity)
-            },
+            }
         }
     }
 
@@ -159,9 +174,12 @@ impl TransferLearner {
         similarity: f64,
     ) -> Result<TransferableModel, String> {
         // Transfer relevant instances based on similarity
-        let relevant_experiences: Vec<_> = source_domain.experiences.iter()
+        let relevant_experiences: Vec<_> = source_domain
+            .experiences
+            .iter()
             .filter(|exp| {
-                let exp_similarity = self.calculate_experience_similarity(&exp.problem_features, target_features);
+                let exp_similarity =
+                    self.calculate_experience_similarity(&exp.problem_features, target_features);
                 exp_similarity > 0.5
             })
             .cloned()
@@ -187,8 +205,14 @@ impl TransferLearner {
         let mut feature_mappings = HashMap::new();
 
         // Simple feature mapping based on similarity
-        feature_mappings.insert("size_scaling".to_string(), target_features.size as f64 / source_domain.characteristics.avg_problem_size);
-        feature_mappings.insert("density_scaling".to_string(), target_features.density / source_domain.characteristics.avg_density);
+        feature_mappings.insert(
+            "size_scaling".to_string(),
+            target_features.size as f64 / source_domain.characteristics.avg_problem_size,
+        );
+        feature_mappings.insert(
+            "density_scaling".to_string(),
+            target_features.density / source_domain.characteristics.avg_density,
+        );
 
         Ok(TransferableModel {
             model_type: ModelType::FeatureBased,
@@ -225,7 +249,8 @@ impl TransferLearner {
             for (param_name, total) in param_sums {
                 if let Some(&count) = param_counts.get(&param_name) {
                     let avg_value = total / count as f64;
-                    let adapted_value = self.adapt_parameter(&param_name, avg_value, target_features, similarity);
+                    let adapted_value =
+                        self.adapt_parameter(&param_name, avg_value, target_features, similarity);
                     transferred_params.insert(param_name, adapted_value);
                 }
             }
@@ -281,38 +306,53 @@ impl TransferLearner {
         })
     }
 
-    fn adapt_parameter(&self, param_name: &str, value: f64, target_features: &ProblemFeatures, similarity: f64) -> f64 {
+    fn adapt_parameter(
+        &self,
+        param_name: &str,
+        value: f64,
+        target_features: &ProblemFeatures,
+        similarity: f64,
+    ) -> f64 {
         // Simple parameter adaptation based on problem characteristics
         match param_name {
             "initial_temperature" => {
                 // Scale initial temperature based on problem size
                 let size_factor = (target_features.size as f64 / 100.0).sqrt();
                 value * size_factor * similarity
-            },
+            }
             "cooling_rate" => {
                 // Adapt cooling rate based on problem density
                 let density_factor = 1.0 + target_features.density * 0.2;
                 value * density_factor
-            },
+            }
             "num_sweeps" | "max_iterations" => {
                 // Scale iterations based on problem size
                 let size_factor = (target_features.size as f64 / 100.0).ln().max(1.0);
                 value * size_factor
-            },
+            }
             _ => value * similarity, // Default adaptation
         }
     }
 
-    fn calculate_experience_similarity(&self, exp_features: &ProblemFeatures, target_features: &ProblemFeatures) -> f64 {
+    fn calculate_experience_similarity(
+        &self,
+        exp_features: &ProblemFeatures,
+        target_features: &ProblemFeatures,
+    ) -> f64 {
         // Simple similarity calculation
-        let size_similarity = 1.0 - (exp_features.size as f64 - target_features.size as f64).abs() /
-                               exp_features.size.max(target_features.size) as f64;
+        let size_similarity = 1.0
+            - (exp_features.size as f64 - target_features.size as f64).abs()
+                / exp_features.size.max(target_features.size) as f64;
         let density_similarity = 1.0 - (exp_features.density - target_features.density).abs();
 
         (size_similarity + density_similarity) / 2.0
     }
 
-    pub fn adapt_model(&self, model: &mut TransferableModel, target_features: &ProblemFeatures) -> Result<(), String> {
+    pub fn adapt_model(
+        &self,
+        model: &mut TransferableModel,
+        target_features: &ProblemFeatures,
+    ) -> Result<(), String> {
         if !model.adaptation_required {
             return Ok(());
         }
@@ -321,17 +361,23 @@ impl TransferLearner {
             ModelType::ParameterBased => {
                 // Fine-tune parameters for target domain
                 for (param_name, param_value) in model.parameters.iter_mut() {
-                    *param_value = self.adapt_parameter(param_name, *param_value, target_features, model.confidence);
+                    *param_value = self.adapt_parameter(
+                        param_name,
+                        *param_value,
+                        target_features,
+                        model.confidence,
+                    );
                 }
-            },
+            }
             ModelType::InstanceBased => {
                 // Filter instances based on target domain relevance
                 if let Knowledge::Instances(ref mut instances) = model.knowledge {
                     instances.retain(|exp| {
-                        self.calculate_experience_similarity(&exp.problem_features, target_features) > 0.4
+                        self.calculate_experience_similarity(&exp.problem_features, target_features)
+                            > 0.4
                     });
                 }
-            },
+            }
             _ => {
                 // Other adaptation mechanisms would be implemented here
             }
@@ -346,7 +392,9 @@ impl TransferLearner {
             return 0.0;
         }
 
-        let total_success: f64 = self.transfer_history.iter()
+        let total_success: f64 = self
+            .transfer_history
+            .iter()
             .map(|record| record.success_rate)
             .sum();
 
@@ -485,11 +533,13 @@ impl DomainSimilarityAnalyzer {
         target_domain: &ProblemDomain,
     ) -> Result<f64, String> {
         // Create cache key
-        let cache_key = format!("{}_{}_{}_{}",
-            source_characteristics.domain as u8,
+        let cache_key = format!(
+            "{:?}_{}_{}_{}_{:?}",
+            source_characteristics.domain,
             source_characteristics.avg_problem_size as u32,
             target_features.size,
-            target_domain as u8
+            target_features.density,
+            target_domain
         );
 
         // Check cache first
@@ -502,8 +552,9 @@ impl DomainSimilarityAnalyzer {
         // Domain type similarity
         let domain_similarity = if source_characteristics.domain == *target_domain {
             1.0
-        } else if matches!(source_characteristics.domain, ProblemDomain::Combinatorial) ||
-                  matches!(target_domain, ProblemDomain::Combinatorial) {
+        } else if matches!(source_characteristics.domain, ProblemDomain::Combinatorial)
+            || matches!(target_domain, ProblemDomain::Combinatorial)
+        {
             0.7 // Combinatorial problems are somewhat similar to others
         } else {
             0.3
@@ -516,12 +567,14 @@ impl DomainSimilarityAnalyzer {
         similarity_scores.push(size_similarity);
 
         // Density similarity
-        let density_similarity = 1.0 - (source_characteristics.avg_density - target_features.density).abs();
+        let density_similarity =
+            1.0 - (source_characteristics.avg_density - target_features.density).abs();
         similarity_scores.push(density_similarity);
 
         // Calculate overall similarity as weighted average
         let weights = vec![0.4, 0.3, 0.3]; // Domain type is most important
-        let overall_similarity: f64 = similarity_scores.iter()
+        let overall_similarity: f64 = similarity_scores
+            .iter()
             .zip(weights.iter())
             .map(|(score, weight)| score * weight)
             .sum();
@@ -633,7 +686,11 @@ mod tests {
 
         let target_domain = ProblemDomain::Combinatorial;
 
-        let similarity = analyzer.calculate_similarity(&source_characteristics, &target_features, &target_domain);
+        let similarity = analyzer.calculate_similarity(
+            &source_characteristics,
+            &target_features,
+            &target_domain,
+        );
         assert!(similarity.is_ok());
 
         let sim_value = similarity.unwrap();

@@ -151,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match problem.validate() {
         Ok(()) => println!("✅ Problem validation passed"),
-        Err(e) => println!("❌ Problem validation failed: {}", e),
+        Err(e) => println!("❌ Problem validation failed: {e}"),
     }
 
     println!("Total components: {}", problem.data_flow.nodes.len());
@@ -208,7 +208,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (name, schedule_type) in schedules {
         optimizer.learning_rate_schedule.schedule_type = schedule_type.clone();
-        println!("  {}: {:?}", name, schedule_type);
+        println!("  {name}: {schedule_type:?}");
     }
 
     // Example 8: Parallelization configuration
@@ -254,13 +254,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !result.history.objective_values.is_empty() {
         println!("  Objective value history (first 5):");
         for (i, &value) in result.history.objective_values.iter().take(5).enumerate() {
-            println!("    Iteration {}: {:.6}", i, value);
+            println!("    Iteration {i}: {value:.6}");
         }
     }
 
     if !result.history.gradient_norms.is_empty() {
         let final_gradient = result.history.gradient_norms.last().unwrap();
-        println!("  Final gradient norm: {:.2e}", final_gradient);
+        println!("  Final gradient norm: {final_gradient:.2e}");
     }
 
     // Example 10: Specific hybrid algorithm patterns
@@ -323,7 +323,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (dtype, description) in data_types {
-        println!("  {}: {}", dtype, description);
+        println!("  {dtype}: {description}");
     }
 
     println!("\n✅ Quantum-Classical Co-optimization Demo completed!");

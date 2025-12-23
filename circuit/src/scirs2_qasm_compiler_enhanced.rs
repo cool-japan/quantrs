@@ -1,8 +1,8 @@
-//! Enhanced QASM Compiler with Advanced SciRS2 Parsing Tools
+//! Enhanced QASM Compiler with Advanced `SciRS2` Parsing Tools
 //!
 //! This module provides state-of-the-art QASM compilation with ML-based optimization,
 //! multi-version support, semantic analysis, real-time validation, and comprehensive
-//! error recovery powered by SciRS2's parsing and compilation tools.
+//! error recovery powered by `SciRS2`'s parsing and compilation tools.
 
 use quantrs2_core::buffer_pool::BufferPool;
 use quantrs2_core::platform::PlatformCapabilities;
@@ -12,14 +12,14 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 // TODO: Fix scirs2_optimize imports - module not found
 // use scirs2_optimize::parsing::{Parser, ParserConfig, Grammar, AST};
 // use scirs2_optimize::compilation::{Compiler, CompilerPass, IRBuilder};
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use pest::Parser as PestParser;
 use pest_derive::Parser;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;
@@ -34,7 +34,7 @@ pub struct EnhancedQASMConfig {
     /// Enable ML-based optimization
     pub enable_ml_optimization: bool,
 
-    /// Enable multi-version support (QASM 2.0, 3.0, OpenQASM)
+    /// Enable multi-version support (QASM 2.0, 3.0, `OpenQASM`)
     pub enable_multi_version: bool,
 
     /// Enable semantic analysis
@@ -245,6 +245,7 @@ pub struct EnhancedQASMCompiler {
 
 impl EnhancedQASMCompiler {
     /// Create a new enhanced QASM compiler
+    #[must_use]
     pub fn new(config: EnhancedQASMConfig) -> Self {
         let parser = Arc::new(QASMParser::new(config.base_config.qasm_version));
         let semantic_analyzer = Arc::new(SemanticAnalyzer::new());
@@ -432,7 +433,7 @@ impl EnhancedQASMCompiler {
     // Internal methods
 
     /// Lexical analysis
-    fn lexical_analysis(&self, source: &str) -> QuantRS2Result<Vec<Token>> {
+    const fn lexical_analysis(&self, source: &str) -> QuantRS2Result<Vec<Token>> {
         let lexer = QASMLexer::new();
         lexer.tokenize(source)
     }
@@ -571,7 +572,7 @@ impl EnhancedQASMCompiler {
             {
                 errors.push(ValidationError {
                     error_type: ErrorType::HardwareConstraint,
-                    message: format!("No connection between qubits {} and {}", q1, q2),
+                    message: format!("No connection between qubits {q1} and {q2}"),
                     location: None,
                     suggestion: Some("Add SWAP gates or use different qubits".to_string()),
                 });
@@ -584,7 +585,7 @@ impl EnhancedQASMCompiler {
             if !constraints.native_gates.contains(&gate) {
                 errors.push(ValidationError {
                     error_type: ErrorType::HardwareConstraint,
-                    message: format!("Gate '{}' is not native to the hardware", gate),
+                    message: format!("Gate '{gate}' is not native to the hardware"),
                     location: None,
                     suggestion: Some("Decompose to native gates".to_string()),
                 });
@@ -608,13 +609,13 @@ impl EnhancedQASMCompiler {
     }
 
     /// Constant propagation
-    fn propagate_constants(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn propagate_constants(&self, ast: AST) -> QuantRS2Result<AST> {
         let propagator = ConstantPropagator::new();
         propagator.propagate(ast)
     }
 
     /// Loop optimization
-    fn optimize_loops(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn optimize_loops(&self, ast: AST) -> QuantRS2Result<AST> {
         let optimizer = LoopOptimizer::new();
         optimizer.optimize(ast)
     }
@@ -660,7 +661,7 @@ impl EnhancedQASMCompiler {
         Ok(includes)
     }
 
-    fn collect_warnings(&self) -> QuantRS2Result<Vec<CompilationWarning>> {
+    const fn collect_warnings(&self) -> QuantRS2Result<Vec<CompilationWarning>> {
         Ok(Vec::new()) // Placeholder
     }
 
@@ -708,7 +709,7 @@ impl EnhancedQASMCompiler {
 
     // Export implementations
 
-    fn export_quantrs2_native(&self, ast: &AST) -> QuantRS2Result<Vec<u8>> {
+    const fn export_quantrs2_native(&self, ast: &AST) -> QuantRS2Result<Vec<u8>> {
         // TODO: Circuit doesn't implement Serialize due to trait objects
         // let circuit = self.ast_to_circuit(ast)?;
         // Ok(bincode::serialize(&circuit)?)
@@ -735,14 +736,12 @@ impl EnhancedQASMCompiler {
     fn export_qiskit(&self, ast: &AST) -> QuantRS2Result<Vec<u8>> {
         let code = self
             .code_generator
-            .generate(&ast, CompilationTarget::Qiskit)?;
+            .generate(ast, CompilationTarget::Qiskit)?;
         Ok(code.python_code.into_bytes())
     }
 
     fn export_cirq(&self, ast: &AST) -> QuantRS2Result<Vec<u8>> {
-        let code = self
-            .code_generator
-            .generate(&ast, CompilationTarget::Cirq)?;
+        let code = self.code_generator.generate(ast, CompilationTarget::Cirq)?;
         Ok(code.python_code.into_bytes())
     }
 
@@ -784,12 +783,12 @@ impl EnhancedQASMCompiler {
         tokens.iter().filter(|t| t.is_gate()).count()
     }
 
-    fn count_qubits(&self, tokens: &[Token]) -> usize {
+    const fn count_qubits(&self, tokens: &[Token]) -> usize {
         // Simplified implementation
         0
     }
 
-    fn count_classical_bits(&self, tokens: &[Token]) -> usize {
+    const fn count_classical_bits(&self, tokens: &[Token]) -> usize {
         0
     }
 
@@ -805,7 +804,7 @@ impl EnhancedQASMCompiler {
         Ok(HashSet::new()) // Placeholder
     }
 
-    fn extract_two_qubit_gates(&self, ast: &AST) -> QuantRS2Result<Vec<(usize, usize)>> {
+    const fn extract_two_qubit_gates(&self, ast: &AST) -> QuantRS2Result<Vec<(usize, usize)>> {
         Ok(Vec::new()) // Placeholder
     }
 
@@ -813,7 +812,7 @@ impl EnhancedQASMCompiler {
         Ok(HashSet::new()) // Placeholder
     }
 
-    fn detect_ast_version(&self, ast: &AST) -> QuantRS2Result<QASMVersion> {
+    const fn detect_ast_version(&self, ast: &AST) -> QuantRS2Result<QASMVersion> {
         Ok(QASMVersion::QASM3) // Placeholder
     }
 
@@ -840,11 +839,11 @@ struct QASMParser {
 }
 
 impl QASMParser {
-    fn new(version: QASMVersion) -> Self {
+    const fn new(version: QASMVersion) -> Self {
         Self { version }
     }
 
-    fn parse(&self, tokens: &[Token]) -> Result<AST, ParseError> {
+    const fn parse(&self, tokens: &[Token]) -> Result<AST, ParseError> {
         // Parse implementation
         Ok(AST::new())
     }
@@ -854,11 +853,11 @@ impl QASMParser {
 struct QASMLexer;
 
 impl QASMLexer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn tokenize(&self, source: &str) -> QuantRS2Result<Vec<Token>> {
+    const fn tokenize(&self, source: &str) -> QuantRS2Result<Vec<Token>> {
         // Lexer implementation
         Ok(Vec::new())
     }
@@ -876,12 +875,12 @@ impl SemanticAnalyzer {
         }
     }
 
-    fn analyze(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn analyze(&self, ast: AST) -> QuantRS2Result<AST> {
         // Semantic analysis
         Ok(ast)
     }
 
-    fn validate(&self, ast: &AST) -> QuantRS2Result<SemanticValidationResult> {
+    const fn validate(&self, ast: &AST) -> QuantRS2Result<SemanticValidationResult> {
         Ok(SemanticValidationResult {
             errors: Vec::new(),
             warnings: Vec::new(),
@@ -896,14 +895,14 @@ struct QASMOptimizer {
 }
 
 impl QASMOptimizer {
-    fn new(level: OptimizationLevel) -> Self {
+    const fn new(level: OptimizationLevel) -> Self {
         Self {
             level,
             applied_optimizations: Vec::new(),
         }
     }
 
-    fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
         // Optimization implementation
         Ok(ast)
     }
@@ -917,7 +916,7 @@ impl QASMOptimizer {
 struct CodeGenerator;
 
 impl CodeGenerator {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -931,7 +930,7 @@ impl CodeGenerator {
     }
 
     fn generate_qasm(&self, ast: &AST, version: QASMVersion) -> QuantRS2Result<String> {
-        Ok(format!("OPENQASM {:?};\n", version))
+        Ok(format!("OPENQASM {version:?};\n"))
     }
 }
 
@@ -947,7 +946,7 @@ impl MLOptimizer {
         }
     }
 
-    fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
         // ML optimization
         Ok(ast)
     }
@@ -957,11 +956,11 @@ impl MLOptimizer {
 struct ErrorRecovery;
 
 impl ErrorRecovery {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn recover_from_parse_error(
+    const fn recover_from_parse_error(
         &self,
         tokens: &[Token],
         error: &ParseError,
@@ -1022,17 +1021,17 @@ struct TypeChecker {
 }
 
 impl TypeChecker {
-    fn new(level: TypeCheckingLevel) -> Self {
+    const fn new(level: TypeCheckingLevel) -> Self {
         Self { level }
     }
 
-    fn check_node(&self, node: &ASTNode) -> Result<(), TypeError> {
+    const fn check_node(&self, node: &ASTNode) -> Result<(), TypeError> {
         // Type checking implementation
         Ok(())
     }
 
     fn suggest_fix(&self, error: &TypeError) -> String {
-        format!("Type error: {}", error)
+        format!("Type error: {error}")
     }
 }
 
@@ -1044,11 +1043,11 @@ struct VersionConverter {
 }
 
 impl VersionConverter {
-    fn new(source: QASMVersion, target: QASMVersion) -> Self {
+    const fn new(source: QASMVersion, target: QASMVersion) -> Self {
         Self { source, target }
     }
 
-    fn convert(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn convert(&self, ast: AST) -> QuantRS2Result<AST> {
         // Version conversion
         Ok(ast)
     }
@@ -1059,11 +1058,11 @@ impl VersionConverter {
 struct DeadCodeAnalyzer;
 
 impl DeadCodeAnalyzer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn find_dead_code(&self, ast: &AST) -> QuantRS2Result<Vec<NodeId>> {
+    const fn find_dead_code(&self, ast: &AST) -> QuantRS2Result<Vec<NodeId>> {
         Ok(Vec::new())
     }
 }
@@ -1071,11 +1070,11 @@ impl DeadCodeAnalyzer {
 struct ConstantPropagator;
 
 impl ConstantPropagator {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn propagate(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn propagate(&self, ast: AST) -> QuantRS2Result<AST> {
         Ok(ast)
     }
 }
@@ -1083,11 +1082,11 @@ impl ConstantPropagator {
 struct LoopOptimizer;
 
 impl LoopOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
+    const fn optimize(&self, ast: AST) -> QuantRS2Result<AST> {
         Ok(ast)
     }
 }
@@ -1104,15 +1103,15 @@ pub struct Token {
 }
 
 impl Token {
-    fn is_gate(&self) -> bool {
+    const fn is_gate(&self) -> bool {
         matches!(self.token_type, TokenType::Gate(_))
     }
 
-    fn is_function(&self) -> bool {
+    const fn is_function(&self) -> bool {
         matches!(self.token_type, TokenType::Function)
     }
 
-    fn is_include(&self) -> bool {
+    const fn is_include(&self) -> bool {
         matches!(self.token_type, TokenType::Include)
     }
 }
@@ -1153,14 +1152,14 @@ pub enum TokenType {
     EOF,
 }
 
-/// Placeholder AST (would use SciRS2's AST in real implementation)
+/// Placeholder AST (would use `SciRS2`'s AST in real implementation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AST {
     root: ASTNode,
 }
 
 impl AST {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             root: ASTNode::Program(Vec::new()),
         }
@@ -1185,11 +1184,11 @@ impl AST {
         self.nodes().len()
     }
 
-    fn max_depth(&self) -> usize {
+    const fn max_depth(&self) -> usize {
         self.calculate_depth(&self.root)
     }
 
-    fn calculate_depth(&self, node: &ASTNode) -> usize {
+    const fn calculate_depth(&self, node: &ASTNode) -> usize {
         1 // Placeholder
     }
 
@@ -1197,39 +1196,39 @@ impl AST {
         self.nodes().iter().filter(|n| n.is_gate()).count()
     }
 
-    fn circuit_depth(&self) -> usize {
+    const fn circuit_depth(&self) -> usize {
         1 // Placeholder
     }
 
-    fn two_qubit_gate_count(&self) -> usize {
+    const fn two_qubit_gate_count(&self) -> usize {
         0 // Placeholder
     }
 
-    fn parameter_count(&self) -> usize {
+    const fn parameter_count(&self) -> usize {
         0 // Placeholder
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ASTNode {
-    Program(Vec<ASTNode>),
+    Program(Vec<Self>),
     Include(String),
-    GateDecl(String, Vec<String>, Vec<ASTNode>),
-    GateCall(String, Vec<ASTNode>, Vec<usize>),
+    GateDecl(String, Vec<String>, Vec<Self>),
+    GateCall(String, Vec<Self>, Vec<usize>),
     Measure(usize, usize),
     Barrier(Vec<usize>),
-    If(Box<ASTNode>, Box<ASTNode>),
-    For(String, Box<ASTNode>, Box<ASTNode>, Box<ASTNode>),
+    If(Box<Self>, Box<Self>),
+    For(String, Box<Self>, Box<Self>, Box<Self>),
     Expression(Expression),
 }
 
 impl ASTNode {
-    fn location(&self) -> Location {
+    const fn location(&self) -> Location {
         Location { line: 0, column: 0 }
     }
 
-    fn is_gate(&self) -> bool {
-        matches!(self, ASTNode::GateCall(_, _, _))
+    const fn is_gate(&self) -> bool {
+        matches!(self, Self::GateCall(_, _, _))
     }
 }
 
@@ -1238,8 +1237,8 @@ pub enum Expression {
     Identifier(String),
     Integer(i64),
     Float(f64),
-    Binary(Box<Expression>, BinaryOp, Box<Expression>),
-    Unary(UnaryOp, Box<Expression>),
+    Binary(Box<Self>, BinaryOp, Box<Self>),
+    Unary(UnaryOp, Box<Self>),
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -1468,17 +1467,17 @@ trait OptimizationModel: Send + Sync {
 
 impl fmt::Display for CompilationResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Compilation Result:\n")?;
-        write!(f, "  Compilation time: {:?}\n", self.compilation_time)?;
-        write!(f, "  Generated targets: {}\n", self.generated_code.len())?;
-        write!(f, "  Gates: {}\n", self.statistics.gate_count)?;
-        write!(f, "  Qubits: {}\n", self.statistics.qubit_count)?;
-        write!(
+        writeln!(f, "Compilation Result:")?;
+        writeln!(f, "  Compilation time: {:?}", self.compilation_time)?;
+        writeln!(f, "  Generated targets: {}", self.generated_code.len())?;
+        writeln!(f, "  Gates: {}", self.statistics.gate_count)?;
+        writeln!(f, "  Qubits: {}", self.statistics.qubit_count)?;
+        writeln!(
             f,
-            "  Optimizations applied: {}\n",
+            "  Optimizations applied: {}",
             self.optimizations_applied.len()
         )?;
-        write!(f, "  Warnings: {}\n", self.warnings.len())?;
+        writeln!(f, "  Warnings: {}", self.warnings.len())?;
         Ok(())
     }
 }

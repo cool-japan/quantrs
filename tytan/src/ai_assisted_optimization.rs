@@ -1233,7 +1233,7 @@ impl AIAssistedOptimizer {
         // Basic statistics
         features.push(n as f64); // Problem size
 
-        let coeffs: Vec<f64> = qubo.iter().cloned().collect();
+        let coeffs: Vec<f64> = qubo.iter().copied().collect();
         let mean = coeffs.iter().sum::<f64>() / coeffs.len() as f64;
         let variance = coeffs.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / coeffs.len() as f64;
         features.push(mean);
@@ -1357,8 +1357,12 @@ impl AIAssistedOptimizer {
         let frustration_factor =
             ((frustration / (size as f64 * size as f64 / 2.0)) * 100.0).min(1.0); // Better normalization
 
-        let difficulty_score =
-            (0.4 * size_factor + 0.4 * complexity_factor + 0.2 * frustration_factor).min(1.0);
+        let difficulty_score = 0.2f64
+            .mul_add(
+                frustration_factor,
+                0.4f64.mul_add(size_factor, 0.4 * complexity_factor),
+            )
+            .min(1.0);
 
         let mut difficulty_factors = HashMap::new();
         difficulty_factors.insert("size".to_string(), size_factor);
@@ -1524,7 +1528,7 @@ pub struct QualityPredictorTrainingResults {
 
 // Implementation stubs for the complex components
 impl ParameterOptimizationNetwork {
-    pub fn new(config: &AIOptimizerConfig) -> Self {
+    pub const fn new(config: &AIOptimizerConfig) -> Self {
         Self {
             layers: vec![], // Would be initialized with actual layers
             optimizer: Optimizer {
@@ -1594,7 +1598,7 @@ impl ParameterOptimizationNetwork {
 }
 
 impl SamplingStrategyAgent {
-    pub fn new(config: &AIOptimizerConfig) -> Self {
+    pub const fn new(config: &AIOptimizerConfig) -> Self {
         Self {
             q_network: QNetwork {
                 state_encoder: StateEncoder {
@@ -1648,17 +1652,17 @@ impl SamplingStrategyAgent {
     }
 
     /// Get a reference to the Q-network
-    pub fn q_network(&self) -> &QNetwork {
+    pub const fn q_network(&self) -> &QNetwork {
         &self.q_network
     }
 
     /// Get a reference to the replay buffer
-    pub fn replay_buffer(&self) -> &ExperienceReplayBuffer {
+    pub const fn replay_buffer(&self) -> &ExperienceReplayBuffer {
         &self.replay_buffer
     }
 
     /// Get a reference to the training stats
-    pub fn training_stats(&self) -> &RLTrainingStats {
+    pub const fn training_stats(&self) -> &RLTrainingStats {
         &self.training_stats
     }
 }
@@ -2006,7 +2010,7 @@ impl SolutionQualityPredictor {
         })
     }
 
-    pub fn train(
+    pub const fn train(
         &mut self,
         _train_data: &[TrainingExample],
         _val_data: &[TrainingExample],

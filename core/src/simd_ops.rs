@@ -61,7 +61,7 @@ pub fn apply_phase_simd(amplitudes: &mut [Complex64], theta: f64) {
 
 /// Compute the inner product of two quantum state vectors
 ///
-/// This computes ⟨ψ|φ⟩ = Σ conj(ψ[i]) * φ[i]
+/// This computes ⟨ψ|φ⟩ = Σ conj(ψ\[i\]) * φ\[i\]
 pub fn inner_product(state1: &[Complex64], state2: &[Complex64]) -> QuantRS2Result<Complex64> {
     if state1.len() != state2.len() {
         return Err(crate::error::QuantRS2Error::InvalidInput(

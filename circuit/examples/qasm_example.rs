@@ -1,4 +1,4 @@
-//! Example demonstrating OpenQASM 3.0 import/export functionality
+//! Example demonstrating `OpenQASM` 3.0 import/export functionality
 
 use quantrs2_circuit::builder::CircuitBuilder;
 use quantrs2_circuit::prelude::*;
@@ -49,9 +49,9 @@ fn export_example() {
     match export_qasm3(&circuit) {
         Ok(qasm) => {
             println!("Teleportation circuit in OpenQASM 3.0:");
-            println!("{}", qasm);
+            println!("{qasm}");
         }
-        Err(e) => println!("Export error: {}", e),
+        Err(e) => println!("Export error: {e}"),
     }
 
     // Export with custom options
@@ -67,9 +67,9 @@ fn export_example() {
     match exporter.export(&circuit) {
         Ok(qasm) => {
             println!("\nWith custom options:");
-            println!("{}", qasm);
+            println!("{qasm}");
         }
-        Err(e) => println!("Export error: {}", e),
+        Err(e) => println!("Export error: {e}"),
     }
 }
 
@@ -114,9 +114,9 @@ measure q -> c;
 
             // Pretty print the parsed program
             println!("\nReconstructed QASM:");
-            println!("{}", program);
+            println!("{program}");
         }
-        Err(e) => println!("Parse error: {}", e),
+        Err(e) => println!("Parse error: {e}"),
     }
 }
 
@@ -125,7 +125,7 @@ fn validation_example() {
     println!("---------------------------");
 
     // Valid program
-    let valid_qasm = r#"
+    let valid_qasm = r"
 OPENQASM 3.0;
 
 gate mybell a, b {
@@ -141,19 +141,19 @@ mybell q[2], q[3];
 
 measure q[0] -> c[0];
 measure q[2] -> c[1];
-"#;
+";
 
     println!("Validating correct program...");
     match parse_qasm3(valid_qasm) {
         Ok(program) => match validate_qasm3(&program) {
             Ok(()) => println!("✓ Program is valid!"),
-            Err(e) => println!("✗ Validation error: {}", e),
+            Err(e) => println!("✗ Validation error: {e}"),
         },
-        Err(e) => println!("Parse error: {}", e),
+        Err(e) => println!("Parse error: {e}"),
     }
 
     // Program with errors
-    let invalid_qasm = r#"
+    let invalid_qasm = r"
 OPENQASM 3.0;
 
 qubit[2] q;
@@ -167,15 +167,15 @@ cx q[0], q[5];
 
 // Error: wrong number of parameters
 rx q[0];  // Missing angle parameter
-"#;
+";
 
     println!("\nValidating program with errors...");
     match parse_qasm3(invalid_qasm) {
         Ok(program) => match validate_qasm3(&program) {
             Ok(()) => println!("Program is valid (unexpected!)"),
-            Err(e) => println!("✓ Caught validation error: {}", e),
+            Err(e) => println!("✓ Caught validation error: {e}"),
         },
-        Err(e) => println!("Parse error: {}", e),
+        Err(e) => println!("Parse error: {e}"),
     }
 }
 
@@ -219,7 +219,7 @@ fn round_trip_example() {
     match export_qasm3(&original) {
         Ok(qasm) => {
             println!("\nExported QASM:");
-            println!("{}", qasm);
+            println!("{qasm}");
 
             // Parse it back
             match parse_qasm3(&qasm) {
@@ -229,7 +229,7 @@ fn round_trip_example() {
                     // Validate it
                     match validate_qasm3(&program) {
                         Ok(()) => println!("✓ Validation passed!"),
-                        Err(e) => println!("✗ Validation error: {}", e),
+                        Err(e) => println!("✗ Validation error: {e}"),
                     }
 
                     // Count operations
@@ -249,13 +249,13 @@ fn round_trip_example() {
                         .count();
 
                     println!("\nParsed circuit has:");
-                    println!("  - {} gate operations", gate_count);
-                    println!("  - {} measurements", measure_count);
+                    println!("  - {gate_count} gate operations");
+                    println!("  - {measure_count} measurements");
                 }
-                Err(e) => println!("Parse error: {}", e),
+                Err(e) => println!("Parse error: {e}"),
             }
         }
-        Err(e) => println!("Export error: {}", e),
+        Err(e) => println!("Export error: {e}"),
     }
 }
 
@@ -339,16 +339,16 @@ measure q -> c;
             }
 
             println!("\nProgram analysis:");
-            println!("  - {} constants defined", constants);
-            println!("  - {} gates with modifiers", gates_with_modifiers);
-            println!("  - {} control flow statements", control_flow);
+            println!("  - {constants} constants defined");
+            println!("  - {gates_with_modifiers} gates with modifiers");
+            println!("  - {control_flow} control flow statements");
 
             // Validate
             match validate_qasm3(&program) {
                 Ok(()) => println!("\n✓ All advanced features validated successfully!"),
-                Err(e) => println!("\n✗ Validation error: {}", e),
+                Err(e) => println!("\n✗ Validation error: {e}"),
             }
         }
-        Err(e) => println!("Parse error: {}", e),
+        Err(e) => println!("Parse error: {e}"),
     }
 }

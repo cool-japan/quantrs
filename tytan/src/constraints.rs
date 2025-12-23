@@ -108,15 +108,15 @@ pub enum LogicalExpression {
     /// Variable reference
     Var(String),
     /// Negation
-    Not(Box<LogicalExpression>),
+    Not(Box<Self>),
     /// Conjunction
-    And(Vec<LogicalExpression>),
+    And(Vec<Self>),
     /// Disjunction
-    Or(Vec<LogicalExpression>),
+    Or(Vec<Self>),
     /// Implication
-    Implies(Box<LogicalExpression>, Box<LogicalExpression>),
+    Implies(Box<Self>, Box<Self>),
     /// Equivalence
-    Iff(Box<LogicalExpression>, Box<LogicalExpression>),
+    Iff(Box<Self>, Box<Self>),
 }
 
 /// Penalty function types
@@ -166,8 +166,8 @@ impl Domain {
 
     /// Create from specific values
     pub fn from_values(values: Vec<i32>) -> Self {
-        let min = values.iter().min().cloned().unwrap_or(0);
-        let max = values.iter().max().cloned().unwrap_or(0);
+        let min = values.iter().min().copied().unwrap_or(0);
+        let max = values.iter().max().copied().unwrap_or(0);
         Self {
             values: values.into_iter().collect(),
             min,
@@ -186,14 +186,14 @@ impl Domain {
 
     /// Keep only specified values
     pub fn intersect(&mut self, values: &HashSet<i32>) {
-        self.values = self.values.intersection(values).cloned().collect();
+        self.values = self.values.intersection(values).copied().collect();
         self.update_bounds();
     }
 
     /// Update min/max bounds
     fn update_bounds(&mut self) {
-        self.min = self.values.iter().min().cloned().unwrap_or(self.min);
-        self.max = self.values.iter().max().cloned().unwrap_or(self.max);
+        self.min = self.values.iter().min().copied().unwrap_or(self.min);
+        self.max = self.values.iter().max().copied().unwrap_or(self.max);
     }
 
     /// Check if domain is empty
@@ -213,7 +213,7 @@ pub struct AllDifferentPropagator {
 }
 
 impl AllDifferentPropagator {
-    pub fn new(variables: Vec<String>) -> Self {
+    pub const fn new(variables: Vec<String>) -> Self {
         Self { variables }
     }
 }
@@ -243,7 +243,7 @@ impl ConstraintPropagator for AllDifferentPropagator {
                     }
 
                     if domain.is_empty() {
-                        return Err(format!("Domain of {} became empty", var));
+                        return Err(format!("Domain of {var} became empty"));
                     }
                 }
             }
@@ -313,7 +313,7 @@ impl AllDifferentPropagator {
                             }
 
                             if domain.is_empty() {
-                                return Err(format!("Domain of {} became empty", var));
+                                return Err(format!("Domain of {var} became empty"));
                             }
                         }
                     }
@@ -332,7 +332,7 @@ pub struct CumulativePropagator {
 }
 
 impl CumulativePropagator {
-    pub fn new(tasks: Vec<Task>, capacity: i32) -> Self {
+    pub const fn new(tasks: Vec<Task>, capacity: i32) -> Self {
         Self { tasks, capacity }
     }
 
@@ -363,7 +363,7 @@ impl CumulativePropagator {
             }
 
             if min_usage > self.capacity {
-                return Err(format!("Resource overload at time {}", t));
+                return Err(format!("Resource overload at time {t}"));
             }
         }
 
@@ -437,7 +437,7 @@ pub enum SymmetryGroup {
     /// Cyclic group
     Cyclic(usize),
     /// Direct product
-    Product(Box<SymmetryGroup>, Box<SymmetryGroup>),
+    Product(Box<Self>, Box<Self>),
 }
 
 /// Constraint library for common patterns
@@ -446,13 +446,11 @@ pub struct ConstraintLibrary;
 impl ConstraintLibrary {
     /// N-Queens constraint
     pub fn n_queens(n: usize) -> Vec<GlobalConstraint> {
-        let vars: Vec<String> = (0..n).map(|i| format!("queen_{}", i)).collect();
+        let vars: Vec<String> = (0..n).map(|i| format!("queen_{i}")).collect();
 
         let constraints = vec![
             // All queens in different columns
-            GlobalConstraint::AllDifferent {
-                variables: vars.clone(),
-            },
+            GlobalConstraint::AllDifferent { variables: vars },
         ];
 
         // No two queens on same diagonal
@@ -481,13 +479,13 @@ impl ConstraintLibrary {
 
         // Row constraints
         for row in 0..9 {
-            let vars: Vec<String> = (0..9).map(|col| format!("cell_{}_{}", row, col)).collect();
+            let vars: Vec<String> = (0..9).map(|col| format!("cell_{row}_{col}")).collect();
             constraints.push(GlobalConstraint::AllDifferent { variables: vars });
         }
 
         // Column constraints
         for col in 0..9 {
-            let vars: Vec<String> = (0..9).map(|row| format!("cell_{}_{}", row, col)).collect();
+            let vars: Vec<String> = (0..9).map(|row| format!("cell_{row}_{col}")).collect();
             constraints.push(GlobalConstraint::AllDifferent { variables: vars });
         }
 
@@ -517,35 +515,33 @@ pub fn constraints_to_penalties(
     let mut penalty_matrix = Array2::zeros((n, n));
 
     for constraint in constraints {
-        match &constraint.constraint {
-            ConstraintExpression::LinearInequality {
-                coefficients,
-                bound: _,
-            } => {
-                // Convert to quadratic penalty
-                // (sum(ai * xi) - b)^2 if violated
+        if let ConstraintExpression::LinearInequality {
+            coefficients,
+            bound: _,
+        } = &constraint.constraint
+        {
+            // Convert to quadratic penalty
+            // (sum(ai * xi) - b)^2 if violated
 
-                // This is a simplified version
-                // Real implementation would handle inequality properly
-                for (var1, coeff1) in coefficients {
-                    if let Some(&idx1) = variables.get(var1) {
-                        // Linear term
-                        penalty_matrix[[idx1, idx1]] += coeff1 * coeff1;
+            // This is a simplified version
+            // Real implementation would handle inequality properly
+            for (var1, coeff1) in coefficients {
+                if let Some(&idx1) = variables.get(var1) {
+                    // Linear term
+                    penalty_matrix[[idx1, idx1]] += coeff1 * coeff1;
 
-                        // Quadratic terms
-                        for (var2, coeff2) in coefficients {
-                            if var1 != var2 {
-                                if let Some(&idx2) = variables.get(var2) {
-                                    penalty_matrix[[idx1, idx2]] += coeff1 * coeff2;
-                                }
+                    // Quadratic terms
+                    for (var2, coeff2) in coefficients {
+                        if var1 != var2 {
+                            if let Some(&idx2) = variables.get(var2) {
+                                penalty_matrix[[idx1, idx2]] += coeff1 * coeff2;
                             }
                         }
                     }
                 }
             }
-            _ => {
-                // Other constraint types would need specific handling
-            }
+        } else {
+            // Other constraint types would need specific handling
         }
     }
 

@@ -123,10 +123,7 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, epsilon: f64) -> boo
     {
         let diff = (std_amp - opt_amp).norm();
         if diff > epsilon {
-            println!(
-                "Amplitude {} differs: standard={}, optimized={}, diff={}",
-                i, std_amp, opt_amp, diff
-            );
+            println!("Amplitude {i} differs: standard={std_amp}, optimized={opt_amp}, diff={diff}");
             return false;
         }
     }
@@ -151,7 +148,7 @@ mod tests {
         let optimized_result = optimized_sim.run(&circuit).unwrap();
 
         // Expected result: (|00> + |11>) / sqrt(2)
-        let expected_amplitudes = vec![
+        let expected_amplitudes = [
             Complex64::new(FRAC_1_SQRT_2, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
@@ -168,9 +165,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Standard simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Standard simulator: state[{i}] differs by {diff}"
             );
         }
 
@@ -184,9 +179,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Optimized simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Optimized simulator: state[{i}] differs by {diff}"
             );
         }
     }
@@ -204,7 +197,7 @@ mod tests {
         let optimized_result = optimized_sim.run(&circuit).unwrap();
 
         // Expected result: (|000> + |111>) / sqrt(2)
-        let mut expected_amplitudes = vec![Complex64::new(0.0, 0.0); 1 << N];
+        let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 1 << N];
         expected_amplitudes[0] = Complex64::new(FRAC_1_SQRT_2, 0.0);
         expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 
@@ -218,9 +211,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Standard simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Standard simulator: state[{i}] differs by {diff}"
             );
         }
 
@@ -234,9 +225,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Optimized simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Optimized simulator: state[{i}] differs by {diff}"
             );
         }
     }
@@ -508,7 +497,7 @@ mod ultrathink_tests {
         ];
 
         let benefit = predictor.predict_benefit(&gates);
-        assert!(benefit >= 0.0 && benefit <= 1.0);
+        assert!((0.0..=1.0).contains(&benefit));
     }
 
     #[test]
@@ -751,8 +740,7 @@ mod ultrathink_tests {
             let result = QuantumReservoirComputer::new(config);
             assert!(
                 result.is_ok(),
-                "Failed to create reservoir with architecture {:?}",
-                architecture
+                "Failed to create reservoir with architecture {architecture:?}"
             );
         }
     }
@@ -775,8 +763,7 @@ mod ultrathink_tests {
             let result = QuantumReservoirComputer::new(config);
             assert!(
                 result.is_ok(),
-                "Failed to create reservoir with encoding {:?}",
-                encoding
+                "Failed to create reservoir with encoding {encoding:?}"
             );
         }
     }
@@ -799,8 +786,7 @@ mod ultrathink_tests {
             let result = QuantumReservoirComputer::new(config);
             assert!(
                 result.is_ok(),
-                "Failed to create reservoir with measurement {:?}",
-                measurement
+                "Failed to create reservoir with measurement {measurement:?}"
             );
         }
     }
@@ -819,10 +805,10 @@ mod ultrathink_tests {
         assert!(result.is_ok());
 
         let output = result.unwrap();
-        assert!(output.len() > 0);
+        assert!(!output.is_empty());
 
         // Output should be finite
-        for &val in output.iter() {
+        for &val in &output {
             assert!(val.is_finite());
         }
     }
@@ -873,21 +859,17 @@ mod ultrathink_tests {
         assert!(result.is_ok());
 
         let benchmarks = result.unwrap();
-        assert!(benchmarks.len() > 0);
+        assert!(!benchmarks.is_empty());
 
         // Check that benchmark results are reasonable
-        for (name, value) in benchmarks.iter() {
+        for (name, value) in &benchmarks {
             assert!(
                 value.is_finite(),
-                "Benchmark {} returned non-finite value: {}",
-                name,
-                value
+                "Benchmark {name} returned non-finite value: {value}"
             );
             assert!(
                 *value >= 0.0,
-                "Benchmark {} returned negative value: {}",
-                name,
-                value
+                "Benchmark {name} returned negative value: {value}"
             );
         }
     }

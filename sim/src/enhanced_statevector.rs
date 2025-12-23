@@ -51,19 +51,19 @@ impl EnhancedStateVectorSimulator {
     }
 
     /// Set whether to use SIMD operations
-    pub fn set_use_simd(&mut self, use_simd: bool) -> &mut Self {
+    pub const fn set_use_simd(&mut self, use_simd: bool) -> &mut Self {
         self.use_simd = use_simd;
         self
     }
 
     /// Set whether to use memory-efficient storage
-    pub fn set_use_memory_efficient(&mut self, use_memory_efficient: bool) -> &mut Self {
+    pub const fn set_use_memory_efficient(&mut self, use_memory_efficient: bool) -> &mut Self {
         self.use_memory_efficient = use_memory_efficient;
         self
     }
 
     /// Set the threshold for switching to memory-efficient storage
-    pub fn set_memory_efficient_threshold(&mut self, threshold: usize) -> &mut Self {
+    pub const fn set_memory_efficient_threshold(&mut self, threshold: usize) -> &mut Self {
         self.memory_efficient_threshold = threshold;
         self
     }
@@ -111,7 +111,7 @@ impl EnhancedStateVectorSimulator {
 
                     let mut local_state = vec![state[idx0], state[idx1]];
                     linalg_ops::apply_unitary(&gate_matrix.view(), &mut local_state)
-                        .map_err(|e| QuantRS2Error::InvalidInput(e))?;
+                        .map_err(QuantRS2Error::InvalidInput)?;
                     state[idx0] = local_state[0];
                     state[idx1] = local_state[1];
                 }

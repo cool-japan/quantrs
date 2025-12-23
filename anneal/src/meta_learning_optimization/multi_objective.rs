@@ -31,7 +31,10 @@ impl MultiObjectiveOptimizer {
         }
     }
 
-    pub fn optimize(&mut self, candidates: Vec<OptimizationConfiguration>) -> Result<Vec<MultiObjectiveSolution>, String> {
+    pub fn optimize(
+        &mut self,
+        candidates: Vec<OptimizationConfiguration>,
+    ) -> Result<Vec<MultiObjectiveSolution>, String> {
         let mut solutions = Vec::new();
 
         for (i, candidate) in candidates.iter().enumerate() {
@@ -41,7 +44,7 @@ impl MultiObjectiveOptimizer {
                 id: format!("solution_{}", i),
                 objective_values,
                 decision_variables: candidate.clone(),
-                dominance_rank: 0, // Will be calculated later
+                dominance_rank: 0,      // Will be calculated later
                 crowding_distance: 0.0, // Will be calculated later
             };
 
@@ -71,19 +74,19 @@ impl MultiObjectiveOptimizer {
                         AlgorithmType::TabuSearch => 0.7,
                         _ => 0.6,
                     }
-                },
+                }
                 OptimizationObjective::Runtime => {
                     // Estimate runtime (lower is better, so we use negative)
                     -config.resources.time.as_secs_f64() / 3600.0 // Convert to hours
-                },
+                }
                 OptimizationObjective::ResourceUsage => {
                     // Estimate resource usage (lower is better)
                     -(config.resources.memory as f64 / 1024.0 + config.resources.cpu)
-                },
+                }
                 OptimizationObjective::EnergyConsumption => {
                     // Estimate energy consumption (lower is better)
                     -(config.resources.cpu * config.resources.time.as_secs_f64() / 3600.0)
-                },
+                }
                 OptimizationObjective::Robustness => {
                     // Estimate robustness based on algorithm characteristics
                     match config.algorithm {
@@ -91,7 +94,7 @@ impl MultiObjectiveOptimizer {
                         AlgorithmType::SimulatedAnnealing => 0.7,
                         _ => 0.6,
                     }
-                },
+                }
                 OptimizationObjective::Scalability => {
                     // Estimate scalability
                     match config.algorithm {
@@ -99,7 +102,7 @@ impl MultiObjectiveOptimizer {
                         AlgorithmType::QuantumAnnealing => 0.6,
                         _ => 0.7,
                     }
-                },
+                }
                 OptimizationObjective::Custom(_) => 0.5, // Default value
             };
 
@@ -109,9 +112,12 @@ impl MultiObjectiveOptimizer {
         Ok(objective_values)
     }
 
-    fn update_pareto_frontier(&mut self, solutions: &mut Vec<MultiObjectiveSolution>) -> Result<(), String> {
+    fn update_pareto_frontier(
+        &mut self,
+        solutions: &mut Vec<MultiObjectiveSolution>,
+    ) -> Result<(), String> {
         let mut new_solutions = Vec::new();
-        let mut updated_solutions = Vec::new();
+        let mut updated_solutions: Vec<MultiObjectiveSolution> = Vec::new();
 
         // Check each solution for dominance
         for solution in solutions.iter() {
@@ -120,10 +126,16 @@ impl MultiObjectiveOptimizer {
 
             // Compare with existing frontier solutions
             for frontier_solution in &self.pareto_frontier.solutions {
-                if self.dominates(&frontier_solution.objective_values, &solution.objective_values) {
+                if self.dominates(
+                    &frontier_solution.objective_values,
+                    &solution.objective_values,
+                ) {
                     is_dominated = true;
                     break;
-                } else if self.dominates(&solution.objective_values, &frontier_solution.objective_values) {
+                } else if self.dominates(
+                    &solution.objective_values,
+                    &frontier_solution.objective_values,
+                ) {
                     dominated_solutions.push(frontier_solution.id.clone());
                 }
             }
@@ -132,7 +144,9 @@ impl MultiObjectiveOptimizer {
                 new_solutions.push(solution.clone());
 
                 // Remove dominated solutions from frontier
-                self.pareto_frontier.solutions.retain(|s| !dominated_solutions.contains(&s.id));
+                self.pareto_frontier
+                    .solutions
+                    .retain(|s| !dominated_solutions.contains(&s.id));
             }
         }
 
@@ -157,10 +171,10 @@ impl MultiObjectiveOptimizer {
 
         let mut at_least_one_better = false;
         for (v1, v2) in obj1.iter().zip(obj2.iter()) {
-            if v1 < v2 - self.config.pareto_config.dominance_tolerance {
+            if *v1 < *v2 - self.config.pareto_config.dominance_tolerance {
                 return false; // obj1 is worse in this objective
             }
-            if v1 > v2 + self.config.pareto_config.dominance_tolerance {
+            if *v1 > *v2 + self.config.pareto_config.dominance_tolerance {
                 at_least_one_better = true;
             }
         }
@@ -174,10 +188,14 @@ impl MultiObjectiveOptimizer {
 
         // Sort by crowding distance (descending) and keep top solutions
         self.pareto_frontier.solutions.sort_by(|a, b| {
-            b.crowding_distance.partial_cmp(&a.crowding_distance).unwrap()
+            b.crowding_distance
+                .partial_cmp(&a.crowding_distance)
+                .unwrap()
         });
 
-        self.pareto_frontier.solutions.truncate(self.config.pareto_config.max_frontier_size);
+        self.pareto_frontier
+            .solutions
+            .truncate(self.config.pareto_config.max_frontier_size);
 
         Ok(())
     }
@@ -199,7 +217,9 @@ impl MultiObjectiveOptimizer {
         for obj_idx in 0..num_objectives {
             // Sort by objective value
             self.pareto_frontier.solutions.sort_by(|a, b| {
-                a.objective_values[obj_idx].partial_cmp(&b.objective_values[obj_idx]).unwrap()
+                a.objective_values[obj_idx]
+                    .partial_cmp(&b.objective_values[obj_idx])
+                    .unwrap()
             });
 
             // Set boundary solutions to infinite distance
@@ -208,13 +228,16 @@ impl MultiObjectiveOptimizer {
                 self.pareto_frontier.solutions[num_solutions - 1].crowding_distance = f64::INFINITY;
 
                 // Calculate distance for interior solutions
-                let obj_range = self.pareto_frontier.solutions[num_solutions - 1].objective_values[obj_idx] -
-                               self.pareto_frontier.solutions[0].objective_values[obj_idx];
+                let obj_range = self.pareto_frontier.solutions[num_solutions - 1].objective_values
+                    [obj_idx]
+                    - self.pareto_frontier.solutions[0].objective_values[obj_idx];
 
                 if obj_range > 0.0 {
                     for i in 1..num_solutions - 1 {
-                        let distance = (self.pareto_frontier.solutions[i + 1].objective_values[obj_idx] -
-                                       self.pareto_frontier.solutions[i - 1].objective_values[obj_idx]) / obj_range;
+                        let distance = (self.pareto_frontier.solutions[i + 1].objective_values
+                            [obj_idx]
+                            - self.pareto_frontier.solutions[i - 1].objective_values[obj_idx])
+                            / obj_range;
                         self.pareto_frontier.solutions[i].crowding_distance += distance;
                     }
                 }
@@ -240,7 +263,8 @@ impl MultiObjectiveOptimizer {
         self.pareto_frontier.statistics.size = self.pareto_frontier.solutions.len();
 
         // Calculate hypervolume (simplified)
-        self.pareto_frontier.statistics.hypervolume = self.pareto_frontier.solutions.len() as f64 * 0.1;
+        self.pareto_frontier.statistics.hypervolume =
+            self.pareto_frontier.solutions.len() as f64 * 0.1;
 
         // Calculate spread (simplified)
         if self.pareto_frontier.solutions.len() > 1 {
@@ -254,15 +278,23 @@ impl MultiObjectiveOptimizer {
         self.pareto_frontier.statistics.coverage = 0.9;
     }
 
-    pub fn make_decision(&mut self, preferences: Option<UserPreferences>) -> Result<MultiObjectiveSolution, String> {
+    pub fn make_decision(
+        &mut self,
+        preferences: Option<UserPreferences>,
+    ) -> Result<MultiObjectiveSolution, String> {
         if self.pareto_frontier.solutions.is_empty() {
             return Err("No solutions in Pareto frontier".to_string());
         }
 
-        self.decision_maker.make_decision(&self.pareto_frontier.solutions, preferences)
+        self.decision_maker
+            .make_decision(&self.pareto_frontier.solutions, preferences)
     }
 
-    pub fn scalarize(&self, solution: &MultiObjectiveSolution, weights: &[f64]) -> Result<f64, String> {
+    pub fn scalarize(
+        &self,
+        solution: &MultiObjectiveSolution,
+        weights: &[f64],
+    ) -> Result<f64, String> {
         if let Some(scalarizer) = self.scalarizers.first() {
             scalarizer.scalarize(&solution.objective_values, weights)
         } else {
@@ -380,34 +412,48 @@ impl Scalarizer {
         }
 
         match &self.method {
-            ScalarizationMethod::WeightedSum => {
-                Ok(objectives.iter().zip(weights.iter()).map(|(obj, w)| obj * w).sum())
-            },
+            ScalarizationMethod::WeightedSum => Ok(objectives
+                .iter()
+                .zip(weights.iter())
+                .map(|(obj, w)| obj * w)
+                .sum()),
             ScalarizationMethod::WeightedTchebycheff => {
-                let reference = self.reference_point.as_ref()
-                    .unwrap_or(&vec![0.0; objectives.len()]);
+                let default_reference = vec![0.0; objectives.len()];
+                let reference = self.reference_point.as_ref().unwrap_or(&default_reference);
 
-                let mut max_weighted_diff = 0.0;
-                for ((obj, ref_val), weight) in objectives.iter().zip(reference.iter()).zip(weights.iter()) {
+                let mut max_weighted_diff: f64 = 0.0;
+                for ((obj, ref_val), weight) in
+                    objectives.iter().zip(reference.iter()).zip(weights.iter())
+                {
                     let weighted_diff = weight * (ref_val - obj).abs();
                     max_weighted_diff = max_weighted_diff.max(weighted_diff);
                 }
                 Ok(max_weighted_diff)
-            },
+            }
             ScalarizationMethod::AchievementScalarizing => {
                 // Simplified achievement scalarizing function
-                let weighted_sum: f64 = objectives.iter().zip(weights.iter()).map(|(obj, w)| obj * w).sum();
-                let max_objective = objectives.iter().fold(0.0, |acc, &obj| acc.max(obj));
+                let weighted_sum: f64 = objectives
+                    .iter()
+                    .zip(weights.iter())
+                    .map(|(obj, w)| obj * w)
+                    .sum();
+                let max_objective: f64 = objectives.iter().fold(0.0_f64, |acc, &obj| acc.max(obj));
                 Ok(weighted_sum + 0.01 * max_objective)
-            },
+            }
             ScalarizationMethod::PenaltyBoundaryIntersection => {
                 // Simplified PBI
-                let weighted_sum: f64 = objectives.iter().zip(weights.iter()).map(|(obj, w)| obj * w).sum();
+                let weighted_sum: f64 = objectives
+                    .iter()
+                    .zip(weights.iter())
+                    .map(|(obj, w)| obj * w)
+                    .sum();
                 Ok(weighted_sum)
-            },
+            }
             ScalarizationMethod::ReferencePoint => {
                 if let Some(ref_point) = &self.reference_point {
-                    let distance: f64 = objectives.iter().zip(ref_point.iter())
+                    let distance: f64 = objectives
+                        .iter()
+                        .zip(ref_point.iter())
                         .map(|(obj, ref_val)| (obj - ref_val).powi(2))
                         .sum::<f64>()
                         .sqrt();
@@ -415,7 +461,7 @@ impl Scalarizer {
                 } else {
                     Err("Reference point not set for reference point method".to_string())
                 }
-            },
+            }
         }
     }
 }
@@ -510,44 +556,79 @@ impl DecisionMaker {
                 let weights = if let Some(ref prefs) = preferences {
                     prefs.objective_weights.clone()
                 } else {
-                    vec![1.0 / solutions[0].objective_values.len() as f64; solutions[0].objective_values.len()]
+                    vec![
+                        1.0 / solutions[0].objective_values.len() as f64;
+                        solutions[0].objective_values.len()
+                    ]
                 };
 
                 // Find solution with best weighted sum
-                solutions.iter()
+                solutions
+                    .iter()
                     .max_by(|a, b| {
-                        let score_a: f64 = a.objective_values.iter().zip(weights.iter()).map(|(obj, w)| obj * w).sum();
-                        let score_b: f64 = b.objective_values.iter().zip(weights.iter()).map(|(obj, w)| obj * w).sum();
+                        let score_a: f64 = a
+                            .objective_values
+                            .iter()
+                            .zip(weights.iter())
+                            .map(|(obj, w)| obj * w)
+                            .sum();
+                        let score_b: f64 = b
+                            .objective_values
+                            .iter()
+                            .zip(weights.iter())
+                            .map(|(obj, w)| obj * w)
+                            .sum();
                         score_a.partial_cmp(&score_b).unwrap()
                     })
                     .ok_or("Failed to select solution")?
-            },
+            }
             DecisionStrategy::Lexicographic => {
                 // Simplified lexicographic ordering - use first objective
-                solutions.iter()
-                    .max_by(|a, b| a.objective_values[0].partial_cmp(&b.objective_values[0]).unwrap())
+                solutions
+                    .iter()
+                    .max_by(|a, b| {
+                        a.objective_values[0]
+                            .partial_cmp(&b.objective_values[0])
+                            .unwrap()
+                    })
                     .ok_or("Failed to select solution")?
-            },
+            }
             DecisionStrategy::InteractiveMethod => {
                 // Simplified - just return first solution
                 &solutions[0]
-            },
+            }
             DecisionStrategy::GoalProgramming => {
                 // Simplified goal programming - return solution closest to ideal
-                solutions.iter()
+                solutions
+                    .iter()
                     .min_by(|a, b| {
-                        let dist_a: f64 = a.objective_values.iter().map(|obj| (1.0 - obj).powi(2)).sum::<f64>().sqrt();
-                        let dist_b: f64 = b.objective_values.iter().map(|obj| (1.0 - obj).powi(2)).sum::<f64>().sqrt();
+                        let dist_a: f64 = a
+                            .objective_values
+                            .iter()
+                            .map(|obj| (1.0 - obj).powi(2))
+                            .sum::<f64>()
+                            .sqrt();
+                        let dist_b: f64 = b
+                            .objective_values
+                            .iter()
+                            .map(|obj| (1.0 - obj).powi(2))
+                            .sum::<f64>()
+                            .sqrt();
                         dist_a.partial_cmp(&dist_b).unwrap()
                     })
                     .ok_or("Failed to select solution")?
-            },
+            }
             DecisionStrategy::TOPSIS => {
                 // Simplified TOPSIS
-                solutions.iter()
-                    .max_by(|a, b| a.crowding_distance.partial_cmp(&b.crowding_distance).unwrap())
+                solutions
+                    .iter()
+                    .max_by(|a, b| {
+                        a.crowding_distance
+                            .partial_cmp(&b.crowding_distance)
+                            .unwrap()
+                    })
                     .ok_or("Failed to select solution")?
-            },
+            }
         };
 
         // Record decision
@@ -674,25 +755,23 @@ mod tests {
     fn test_decision_maker() {
         let mut decision_maker = DecisionMaker::new();
 
-        let solutions = vec![
-            MultiObjectiveSolution {
-                id: "sol1".to_string(),
-                objective_values: vec![0.8, 0.6],
-                decision_variables: OptimizationConfiguration {
-                    algorithm: AlgorithmType::SimulatedAnnealing,
-                    hyperparameters: HashMap::new(),
-                    architecture: None,
-                    resources: ResourceAllocation {
-                        cpu: 1.0,
-                        memory: 256,
-                        gpu: 0.0,
-                        time: std::time::Duration::from_secs(60),
-                    },
+        let solutions = vec![MultiObjectiveSolution {
+            id: "sol1".to_string(),
+            objective_values: vec![0.8, 0.6],
+            decision_variables: OptimizationConfiguration {
+                algorithm: AlgorithmType::SimulatedAnnealing,
+                hyperparameters: HashMap::new(),
+                architecture: None,
+                resources: ResourceAllocation {
+                    cpu: 1.0,
+                    memory: 256,
+                    gpu: 0.0,
+                    time: std::time::Duration::from_secs(60),
                 },
-                dominance_rank: 1,
-                crowding_distance: 1.0,
             },
-        ];
+            dominance_rank: 1,
+            crowding_distance: 1.0,
+        }];
 
         let result = decision_maker.make_decision(&solutions, None);
         assert!(result.is_ok());

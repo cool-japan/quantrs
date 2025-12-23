@@ -4,9 +4,9 @@
 //! including evolutionary search, reinforcement learning, random search,
 //! Bayesian optimization, and DARTS.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -82,12 +82,12 @@ fn evolutionary_search_demo() -> Result<()> {
     );
 
     if let Some(best) = best_architectures.first() {
-        println!("   - Best architecture: {}", best);
+        println!("   - Best architecture: {best}");
         println!("   - Circuit depth: {}", best.metrics.circuit_depth);
         println!("   - Parameter count: {}", best.metrics.parameter_count);
 
         if let Some(expressivity) = best.properties.expressivity {
-            println!("   - Expressivity: {:.3}", expressivity);
+            println!("   - Expressivity: {expressivity:.3}");
         }
     }
 
@@ -114,9 +114,9 @@ fn random_search_demo() -> Result<()> {
 
     // Generate synthetic evaluation data
     let eval_data = Array2::from_shape_fn((80, 4), |(i, j)| {
-        0.5 * (i as f64).sin() + 0.3 * (j as f64).cos()
+        0.5f64.mul_add((i as f64).sin(), 0.3 * (j as f64).cos())
     });
-    let eval_labels = Array1::from_shape_fn(80, |i| if i % 3 == 0 { 0 } else { 1 });
+    let eval_labels = Array1::from_shape_fn(80, |i| usize::from(i % 3 != 0));
     nas.set_evaluation_data(eval_data, eval_labels);
 
     println!("\n   Running random search...");
@@ -124,9 +124,9 @@ fn random_search_demo() -> Result<()> {
 
     println!("   Random search complete!");
     if let Some(best) = best_architectures.first() {
-        println!("   - Best random architecture: {}", best);
+        println!("   - Best random architecture: {best}");
         if let Some(accuracy) = best.metrics.accuracy {
-            println!("   - Accuracy: {:.3}", accuracy);
+            println!("   - Accuracy: {accuracy:.3}");
         }
     }
 
@@ -157,9 +157,9 @@ fn rl_search_demo() -> Result<()> {
     println!("   - Architectures found: {}", best_architectures.len());
 
     if let Some(best) = best_architectures.first() {
-        println!("   - Best RL architecture: {}", best);
+        println!("   - Best RL architecture: {best}");
         if let Some(entanglement) = best.properties.entanglement_capability {
-            println!("   - Entanglement capability: {:.3}", entanglement);
+            println!("   - Entanglement capability: {entanglement:.3}");
         }
     }
 
@@ -191,9 +191,9 @@ fn bayesian_search_demo() -> Result<()> {
 
     println!("   Bayesian optimization complete!");
     if let Some(best) = best_architectures.first() {
-        println!("   - Best Bayesian architecture: {}", best);
+        println!("   - Best Bayesian architecture: {best}");
         if let Some(hardware_eff) = best.metrics.hardware_efficiency {
-            println!("   - Hardware efficiency: {:.3}", hardware_eff);
+            println!("   - Hardware efficiency: {hardware_eff:.3}");
         }
     }
 
@@ -221,11 +221,11 @@ fn darts_demo() -> Result<()> {
 
     println!("   DARTS search complete!");
     if let Some(best) = best_architectures.first() {
-        println!("   - DARTS architecture: {}", best);
+        println!("   - DARTS architecture: {best}");
         println!("   - Learned through gradient-based optimization");
 
         if let Some(gradient_var) = best.properties.gradient_variance {
-            println!("   - Gradient variance: {:.3}", gradient_var);
+            println!("   - Gradient variance: {gradient_var:.3}");
         }
     }
 
@@ -284,15 +284,15 @@ fn architecture_analysis_demo() -> Result<()> {
         println!("     - Circuit depth: {}", arch.metrics.circuit_depth);
 
         if let Some(expressivity) = arch.properties.expressivity {
-            println!("     - Expressivity: {:.3}", expressivity);
+            println!("     - Expressivity: {expressivity:.3}");
         }
 
         if let Some(entanglement) = arch.properties.entanglement_capability {
-            println!("     - Entanglement: {:.3}", entanglement);
+            println!("     - Entanglement: {entanglement:.3}");
         }
 
         if let Some(barren_plateau) = arch.properties.barren_plateau_score {
-            println!("     - Barren plateau risk: {:.3}", barren_plateau);
+            println!("     - Barren plateau risk: {barren_plateau:.3}");
         }
 
         println!();
@@ -310,7 +310,7 @@ fn architecture_analysis_demo() -> Result<()> {
 /// Generate quantum-inspired synthetic data
 fn generate_quantum_data(samples: usize, features: usize) -> Array2<f64> {
     Array2::from_shape_fn((samples, features), |(i, j)| {
-        let phase = (i as f64 * 0.1 + j as f64 * 0.2).sin();
+        let phase = (i as f64).mul_add(0.1, j as f64 * 0.2).sin();
         let amplitude = (i as f64 / samples as f64).exp() * 0.5;
         amplitude * phase + 0.1 * fastrand::f64()
     })

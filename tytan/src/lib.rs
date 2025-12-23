@@ -3,8 +3,6 @@
 //! This crate provides a high-level interface for formulating and solving
 //! quantum annealing problems, with support for multiple backend solvers.
 //! It is inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library.
-
-#![allow(warnings)]
 //!
 //! # Features
 //!
@@ -30,7 +28,7 @@
 //! use quantrs2_tytan::sampler::{SASampler, Sampler};
 //! use quantrs2_tytan::symbol::symbols;
 //! use quantrs2_tytan::compile::Compile;
-//! use quantrs2_tytan::auto_array::Auto_array;
+//! use quantrs2_tytan::auto_array::AutoArray;
 //!
 //! // Define variables
 //! let mut x = symbols("x");
@@ -38,10 +36,11 @@
 //! let z = symbols("z");
 //!
 //! // Define expression (3 variables, want exactly 2 to be 1)
-//! let h = (x + y + z - 2).pow(2);
+//! let two = 2.into();
+//! let h = (x + y + z - 2).pow(&two);
 //!
 //! // Compile to QUBO
-//! let (qubo, offset) = Compile::new(&h).get_qubo().unwrap();
+//! let (qubo, offset) = Compile::new(h).get_qubo().unwrap();
 //!
 //! // Choose a sampler
 //! let solver = SASampler::new(None);
@@ -89,9 +88,11 @@
 //! ```
 
 // Export modules
+pub mod adaptive_noise_calibration;
 pub mod adaptive_optimization;
 pub mod advanced_error_mitigation;
 pub mod advanced_performance_analysis;
+pub mod advanced_problem_decomposition;
 pub mod advanced_visualization;
 pub mod ai_assisted_optimization;
 pub mod analysis;
@@ -108,8 +109,10 @@ pub mod gpu_kernels;
 pub mod gpu_memory_pool;
 pub mod gpu_performance;
 pub mod gpu_samplers;
+pub mod grover_amplitude_amplification;
 pub mod hybrid_algorithms;
 pub mod ml_guided_sampling;
+pub mod multi_objective_optimization;
 pub mod optimization;
 pub mod optimize;
 pub mod parallel_tempering;
@@ -118,14 +121,19 @@ pub mod performance_optimization;
 pub mod performance_profiler;
 pub mod problem_decomposition;
 pub mod problem_dsl;
+pub mod quantum_adiabatic_path_optimization;
 pub mod quantum_advantage_analysis;
+pub mod quantum_advantage_prediction;
 pub mod quantum_annealing;
+pub mod quantum_circuit_annealing_compiler;
+pub mod quantum_classical_hybrid;
 pub mod quantum_error_correction;
 pub mod quantum_inspired_ml;
 pub mod quantum_ml_integration;
 pub mod quantum_neural_networks;
 pub mod quantum_optimization_extensions;
 pub mod quantum_state_tomography;
+pub mod realtime_performance_dashboard;
 pub mod realtime_quantum_integration;
 pub mod sampler;
 pub mod sampler_framework;
@@ -163,7 +171,13 @@ pub use auto_array::AutoArray;
 pub use compile::{Compile, PieckCompile};
 #[cfg(feature = "gpu")]
 pub use gpu::{gpu_solve_hobo, gpu_solve_qubo, is_available as is_gpu_available_internal};
+pub use grover_amplitude_amplification::{
+    GroverAmplificationConfig, GroverAmplifiedSampler, GroverAmplifiedSolver,
+};
 pub use optimize::{calculate_energy, optimize_hobo, optimize_qubo};
+pub use quantum_adiabatic_path_optimization::{
+    AdiabaticPathConfig, PathInterpolation, QuantumAdiabaticPathOptimizer, QuantumAdiabaticSampler,
+};
 pub use sampler::{ArminSampler, DWaveSampler, GASampler, MIKASAmpler, SASampler};
 pub use scirs_stub::SCIRS2_AVAILABLE;
 #[cfg(feature = "dwave")]
@@ -185,7 +199,7 @@ pub use quantrs2_anneal::{QuboBuilder, QuboError, QuboFormulation, QuboResult};
 /// This function always returns `true` since the module
 /// is available if you can import it.
 #[must_use]
-pub fn is_available() -> bool {
+pub const fn is_available() -> bool {
     true
 }
 
@@ -194,21 +208,13 @@ pub fn is_available() -> bool {
 /// This function checks if GPU acceleration is available and enabled.
 #[cfg(feature = "gpu")]
 pub fn is_gpu_available() -> bool {
-    #[cfg(feature = "ocl")]
-    {
-        // Try to get the first platform and device
-        match ocl::Platform::list().first() {
-            Some(platform) => match ocl::Device::list_all(platform).unwrap_or_default().first() {
-                Some(_) => true,
-                None => false,
-            },
-            None => false,
-        }
-    }
-
-    #[cfg(not(feature = "ocl"))]
-    {
-        false
+    // When gpu feature is enabled, ocl dependency is available
+    // Try to get the first platform and device
+    match ocl::Platform::list().first() {
+        Some(platform) => !ocl::Device::list_all(platform)
+            .unwrap_or_default()
+            .is_empty(),
+        None => false,
     }
 }
 
@@ -220,6 +226,6 @@ pub fn is_gpu_available() -> bool {
 
 /// Print version information
 #[must_use]
-pub fn version() -> &'static str {
+pub const fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }

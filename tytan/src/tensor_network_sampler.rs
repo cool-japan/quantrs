@@ -47,7 +47,7 @@ pub struct TensorNetworkConfig {
 }
 
 /// Types of tensor networks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TensorNetworkType {
     /// Matrix Product State
     MPS { bond_dimension: usize },
@@ -75,7 +75,7 @@ pub enum TensorNetworkType {
 }
 
 /// Tree structure for TTN
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeStructure {
     /// Tree nodes
     pub nodes: Vec<TreeNode>,
@@ -88,7 +88,7 @@ pub struct TreeStructure {
 }
 
 /// Tree node
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeNode {
     /// Node identifier
     pub id: usize,
@@ -101,7 +101,7 @@ pub struct TreeNode {
 }
 
 /// Branching tree for branching MERA
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BranchingTree {
     /// Branching factors at each layer
     pub branching_factors: Vec<usize>,
@@ -125,7 +125,7 @@ pub struct ParallelConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     /// Static load balancing
     Static,
@@ -151,7 +151,7 @@ pub struct MemoryConfig {
 }
 
 /// Cache optimization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheOptimization {
     /// No optimization
     None,
@@ -194,7 +194,7 @@ pub struct Tensor {
 }
 
 /// Index label for tensor indices
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexLabel {
     /// Index name
     pub name: String,
@@ -207,7 +207,7 @@ pub struct IndexLabel {
 }
 
 /// Types of tensor indices
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexType {
     /// Physical index
     Physical,
@@ -231,7 +231,7 @@ pub struct SymmetryAction {
 }
 
 /// Types of symmetries
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymmetryType {
     /// U(1) symmetry
     U1,
@@ -263,7 +263,7 @@ pub struct CompressionInfo {
 }
 
 /// Compression methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompressionMethod {
     /// Singular Value Decomposition
     SVD,
@@ -293,7 +293,7 @@ pub struct NetworkTopology {
 }
 
 /// Types of network topologies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopologyType {
     /// Chain topology
     Chain,
@@ -340,7 +340,7 @@ pub struct GraphNode {
 }
 
 /// Node types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeType {
     /// Physical site
     Physical,
@@ -392,7 +392,7 @@ pub trait TensorSymmetry: Send + Sync + std::fmt::Debug {
 }
 
 /// Canonical forms for tensor networks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CanonicalForm {
     /// Left canonical form
     LeftCanonical,
@@ -435,7 +435,7 @@ pub struct OptimizationConfig {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     /// Density Matrix Renormalization Group
     DMRG,
@@ -482,7 +482,7 @@ pub struct LineSearchConfig {
 }
 
 /// Line search methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LineSearchMethod {
     /// Backtracking line search
     Backtracking,
@@ -585,7 +585,7 @@ pub struct QualityControlConfig {
 }
 
 /// Quality metrics for compression
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityMetric {
     /// Relative error
     RelativeError,
@@ -600,7 +600,7 @@ pub enum QualityMetric {
 }
 
 /// Recovery strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     /// Increase bond dimension
     IncreaseBondDimension,
@@ -651,7 +651,7 @@ pub struct QualityAssessment {
 }
 
 /// Quality ratings
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityRating {
     /// Excellent quality
     Excellent,
@@ -719,17 +719,17 @@ pub enum TensorNetworkError {
 impl std::fmt::Display for TensorNetworkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TensorNetworkError::InvalidDimensions(msg) => write!(f, "Invalid dimensions: {}", msg),
-            TensorNetworkError::CompressionFailed(msg) => write!(f, "Compression failed: {}", msg),
-            TensorNetworkError::OptimizationFailed(msg) => {
-                write!(f, "Optimization failed: {}", msg)
+            Self::InvalidDimensions(msg) => write!(f, "Invalid dimensions: {msg}"),
+            Self::CompressionFailed(msg) => write!(f, "Compression failed: {msg}"),
+            Self::OptimizationFailed(msg) => {
+                write!(f, "Optimization failed: {msg}")
             }
-            TensorNetworkError::MemoryAllocationFailed(msg) => {
-                write!(f, "Memory allocation failed: {}", msg)
+            Self::MemoryAllocationFailed(msg) => {
+                write!(f, "Memory allocation failed: {msg}")
             }
-            TensorNetworkError::SymmetryViolation(msg) => write!(f, "Symmetry violation: {}", msg),
-            TensorNetworkError::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
-            TensorNetworkError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::SymmetryViolation(msg) => write!(f, "Symmetry violation: {msg}"),
+            Self::ConvergenceFailed(msg) => write!(f, "Convergence failed: {msg}"),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {msg}"),
         }
     }
 }
@@ -754,10 +754,7 @@ impl TensorNetworkSampler {
         hamiltonian: &ArrayD<f64>,
         num_samples: usize,
     ) -> Result<Vec<SampleResult>, TensorNetworkError> {
-        println!(
-            "Starting tensor network sampling with {} samples",
-            num_samples
-        );
+        println!("Starting tensor network sampling with {num_samples} samples");
 
         // Step 1: Initialize tensor network from Hamiltonian
         self.initialize_from_hamiltonian(hamiltonian)?;
@@ -850,19 +847,19 @@ impl TensorNetworkSampler {
                 data,
                 indices: vec![
                     IndexLabel {
-                        name: format!("left_{}", i),
+                        name: format!("left_{i}"),
                         index_type: IndexType::Virtual,
                         dimension: left_dim,
                         quantum_numbers: vec![],
                     },
                     IndexLabel {
-                        name: format!("phys_{}", i),
+                        name: format!("phys_{i}"),
                         index_type: IndexType::Physical,
                         dimension: physical_dim,
                         quantum_numbers: vec![],
                     },
                     IndexLabel {
-                        name: format!("right_{}", i),
+                        name: format!("right_{i}"),
                         index_type: IndexType::Virtual,
                         dimension: right_dim,
                         quantum_numbers: vec![],
@@ -918,31 +915,31 @@ impl TensorNetworkSampler {
                     data,
                     indices: vec![
                         IndexLabel {
-                            name: format!("up_{}_{}", i, j),
+                            name: format!("up_{i}_{j}"),
                             index_type: IndexType::Virtual,
                             dimension: up_dim,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("down_{}_{}", i, j),
+                            name: format!("down_{i}_{j}"),
                             index_type: IndexType::Virtual,
                             dimension: down_dim,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("left_{}_{}", i, j),
+                            name: format!("left_{i}_{j}"),
                             index_type: IndexType::Virtual,
                             dimension: left_dim,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("right_{}_{}", i, j),
+                            name: format!("right_{i}_{j}"),
                             index_type: IndexType::Virtual,
                             dimension: right_dim,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("phys_{}_{}", i, j),
+                            name: format!("phys_{i}_{j}"),
                             index_type: IndexType::Physical,
                             dimension: physical_dim,
                             quantum_numbers: vec![],
@@ -994,25 +991,25 @@ impl TensorNetworkSampler {
                     data,
                     indices: vec![
                         IndexLabel {
-                            name: format!("dis_in1_{}_{}", layer, i),
+                            name: format!("dis_in1_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("dis_in2_{}_{}", layer, i),
+                            name: format!("dis_in2_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("dis_out1_{}_{}", layer, i),
+                            name: format!("dis_out1_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("dis_out2_{}_{}", layer, i),
+                            name: format!("dis_out2_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
@@ -1044,19 +1041,19 @@ impl TensorNetworkSampler {
                     data,
                     indices: vec![
                         IndexLabel {
-                            name: format!("iso_in1_{}_{}", layer, i),
+                            name: format!("iso_in1_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("iso_in2_{}_{}", layer, i),
+                            name: format!("iso_in2_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
                         },
                         IndexLabel {
-                            name: format!("iso_out_{}_{}", layer, i),
+                            name: format!("iso_out_{layer}_{i}"),
                             index_type: IndexType::Virtual,
                             dimension: 2,
                             quantum_numbers: vec![],
@@ -1099,12 +1096,12 @@ impl TensorNetworkSampler {
             // Check convergence
             if (old_energy - energy).abs() < self.config.convergence_tolerance {
                 converged = true;
-                println!("Optimization converged at iteration {}", iteration);
+                println!("Optimization converged at iteration {iteration}");
                 break;
             }
 
             if iteration % 10 == 0 {
-                println!("Iteration {}: Energy = {:.8}", iteration, energy);
+                println!("Iteration {iteration}: Energy = {energy:.8}");
             }
         }
 
@@ -1161,7 +1158,7 @@ impl TensorNetworkSampler {
         let mut rng = thread_rng();
         let perturbation_strength = 0.01;
 
-        for value in self.tensor_network.tensors[site].data.iter_mut() {
+        for value in &mut self.tensor_network.tensors[site].data {
             *value += rng.gen_range(-perturbation_strength..perturbation_strength);
         }
 
@@ -1184,7 +1181,7 @@ impl TensorNetworkSampler {
     }
 
     /// Optimize single PEPS tensor
-    fn optimize_peps_tensor(&mut self, tensor_id: usize) -> Result<f64, TensorNetworkError> {
+    fn optimize_peps_tensor(&self, tensor_id: usize) -> Result<f64, TensorNetworkError> {
         // Simplified PEPS tensor optimization
         if tensor_id >= self.tensor_network.tensors.len() {
             return Ok(0.0);
@@ -1210,7 +1207,7 @@ impl TensorNetworkSampler {
     }
 
     /// Optimize single MERA tensor
-    fn optimize_mera_tensor(&mut self, tensor_id: usize) -> Result<f64, TensorNetworkError> {
+    fn optimize_mera_tensor(&self, tensor_id: usize) -> Result<f64, TensorNetworkError> {
         // Simplified MERA tensor optimization
         if tensor_id >= self.tensor_network.tensors.len() {
             return Ok(0.0);
@@ -1318,7 +1315,7 @@ impl TensorNetworkSampler {
 
         // Sequential sampling for MPS
         for _i in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
             sample.push(local_sample);
         }
 
@@ -1328,7 +1325,7 @@ impl TensorNetworkSampler {
             assignments: sample
                 .into_iter()
                 .enumerate()
-                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .map(|(i, val)| (format!("x{i}"), val != 0))
                 .collect(),
             energy,
             occurrences: 1,
@@ -1342,7 +1339,7 @@ impl TensorNetworkSampler {
 
         // Parallel sampling for PEPS (simplified)
         for _ in 0..num_tensors {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
             sample.push(local_sample);
         }
 
@@ -1352,7 +1349,7 @@ impl TensorNetworkSampler {
             assignments: sample
                 .into_iter()
                 .enumerate()
-                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .map(|(i, val)| (format!("x{i}"), val != 0))
                 .collect(),
             energy,
             occurrences: 1,
@@ -1366,7 +1363,7 @@ impl TensorNetworkSampler {
         let mut sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
             sample.push(local_sample);
         }
 
@@ -1376,7 +1373,7 @@ impl TensorNetworkSampler {
             assignments: sample
                 .into_iter()
                 .enumerate()
-                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .map(|(i, val)| (format!("x{i}"), val != 0))
                 .collect(),
             energy,
             occurrences: 1,
@@ -1389,7 +1386,7 @@ impl TensorNetworkSampler {
         let mut sample = Vec::new();
 
         for _ in 0..num_sites {
-            let local_sample = if rng.gen::<f64>() < 0.5 { 0 } else { 1 };
+            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
             sample.push(local_sample);
         }
 
@@ -1399,7 +1396,7 @@ impl TensorNetworkSampler {
             assignments: sample
                 .into_iter()
                 .enumerate()
-                .map(|(i, val)| (format!("x{}", i), val != 0))
+                .map(|(i, val)| (format!("x{i}"), val != 0))
                 .collect(),
             energy,
             occurrences: 1,
@@ -1415,7 +1412,7 @@ impl TensorNetworkSampler {
             energy += sample[i] as f64;
 
             if i > 0 {
-                energy += sample[i] as f64 * sample[i - 1] as f64 * (-1.0);
+                energy += -(sample[i] as f64 * sample[i - 1] as f64);
             }
         }
 
@@ -1438,11 +1435,18 @@ impl TensorNetworkSampler {
         self.metrics.entanglement_measures = self.calculate_entanglement_measures();
 
         // Overall performance
-        self.metrics.overall_performance = self.metrics.compression_efficiency * 0.2
-            + self.metrics.convergence_rate * 0.2
-            + self.metrics.memory_efficiency * 0.2
-            + self.metrics.computational_speed * 0.2
-            + self.metrics.approximation_accuracy * 0.2;
+        self.metrics.overall_performance = self.metrics.approximation_accuracy.mul_add(
+            0.2,
+            self.metrics.computational_speed.mul_add(
+                0.2,
+                self.metrics.memory_efficiency.mul_add(
+                    0.2,
+                    self.metrics
+                        .compression_efficiency
+                        .mul_add(0.2, self.metrics.convergence_rate * 0.2),
+                ),
+            ),
+        );
     }
 
     /// Calculate compression efficiency
@@ -1576,6 +1580,12 @@ impl NetworkTopology {
     }
 }
 
+impl Default for TensorOptimization {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TensorOptimization {
     /// Create new tensor optimization
     pub fn new() -> Self {
@@ -1608,6 +1618,12 @@ impl Default for OptimizationConfig {
                 wolfe_conditions: false,
             },
         }
+    }
+}
+
+impl Default for TensorCompression {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1662,7 +1678,7 @@ impl Default for TensorNetworkMetrics {
 }
 
 /// Create default tensor network configuration
-pub fn create_default_tensor_config() -> TensorNetworkConfig {
+pub const fn create_default_tensor_config() -> TensorNetworkConfig {
     TensorNetworkConfig {
         network_type: TensorNetworkType::MPS { bond_dimension: 64 },
         max_bond_dimension: 128,
@@ -1743,7 +1759,7 @@ impl Sampler for TensorNetworkSampler {
         let (hamiltonian, _var_map) = problem;
 
         // Create a mutable copy for sampling
-        let mut sampler_copy = TensorNetworkSampler::new(self.config.clone());
+        let mut sampler_copy = Self::new(self.config.clone());
 
         match sampler_copy.sample(hamiltonian, num_reads) {
             Ok(results) => Ok(results),

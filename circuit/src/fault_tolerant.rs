@@ -31,23 +31,24 @@ pub enum QECCode {
     BaconShorCode { m: usize, n: usize },
     /// Concatenated code
     ConcatenatedCode {
-        inner_code: Box<QECCode>,
-        outer_code: Box<QECCode>,
+        inner_code: Box<Self>,
+        outer_code: Box<Self>,
         levels: usize,
     },
 }
 
 impl QECCode {
     /// Get the number of physical qubits required
+    #[must_use]
     pub fn physical_qubits(&self) -> usize {
         match self {
-            QECCode::SurfaceCode { distance } => distance * distance,
-            QECCode::ColorCode { distance } => 2 * distance * distance - 2 * distance + 1,
-            QECCode::RepetitionCode { distance } => *distance,
-            QECCode::SteaneCode => 7,
-            QECCode::ShorCode => 9,
-            QECCode::BaconShorCode { m, n } => m * n,
-            QECCode::ConcatenatedCode {
+            Self::SurfaceCode { distance } => distance * distance,
+            Self::ColorCode { distance } => 2 * distance * distance - 2 * distance + 1,
+            Self::RepetitionCode { distance } => *distance,
+            Self::SteaneCode => 7,
+            Self::ShorCode => 9,
+            Self::BaconShorCode { m, n } => m * n,
+            Self::ConcatenatedCode {
                 inner_code, levels, ..
             } => {
                 let base_qubits = inner_code.physical_qubits();
@@ -57,15 +58,16 @@ impl QECCode {
     }
 
     /// Get the code distance
+    #[must_use]
     pub fn distance(&self) -> usize {
         match self {
-            QECCode::SurfaceCode { distance }
-            | QECCode::ColorCode { distance }
-            | QECCode::RepetitionCode { distance } => *distance,
-            QECCode::SteaneCode => 3,
-            QECCode::ShorCode => 3,
-            QECCode::BaconShorCode { m, n } => (*m).min(*n),
-            QECCode::ConcatenatedCode {
+            Self::SurfaceCode { distance }
+            | Self::ColorCode { distance }
+            | Self::RepetitionCode { distance } => *distance,
+            Self::SteaneCode => 3,
+            Self::ShorCode => 3,
+            Self::BaconShorCode { m, n } => (*m).min(*n),
+            Self::ConcatenatedCode {
                 inner_code, levels, ..
             } => {
                 let base_distance = inner_code.distance();
@@ -75,6 +77,7 @@ impl QECCode {
     }
 
     /// Check if the code can correct t errors
+    #[must_use]
     pub fn can_correct(&self, t: usize) -> bool {
         self.distance() > 2 * t
     }
@@ -97,6 +100,7 @@ pub struct LogicalQubit {
 
 impl LogicalQubit {
     /// Create a new logical qubit
+    #[must_use]
     pub fn new(id: usize, code: QECCode) -> Self {
         let num_physical = code.physical_qubits();
         let physical_qubits = (id * num_physical..(id + 1) * num_physical).collect();
@@ -111,6 +115,7 @@ impl LogicalQubit {
     }
 
     /// Get data qubits (excluding ancilla qubits)
+    #[must_use]
     pub fn data_qubits(&self) -> Vec<usize> {
         match &self.code {
             QECCode::SurfaceCode { distance } => {
@@ -147,6 +152,7 @@ impl LogicalQubit {
     }
 
     /// Get ancilla qubits for syndrome measurement
+    #[must_use]
     pub fn ancilla_qubits(&self) -> Vec<usize> {
         let data_qubits = self.data_qubits();
         self.physical_qubits
@@ -201,7 +207,7 @@ pub struct SyndromeMeasurement {
 }
 
 /// Types of syndrome measurements
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyndromeType {
     /// X-type stabilizer measurement
     XStabilizer,
@@ -226,22 +232,24 @@ pub enum MagicState {
 
 impl MagicState {
     /// Get the fidelity threshold required for distillation
-    pub fn fidelity_threshold(&self) -> f64 {
+    #[must_use]
+    pub const fn fidelity_threshold(&self) -> f64 {
         match self {
-            MagicState::TState => 0.95,
-            MagicState::YState => 0.95,
-            MagicState::CCZState => 0.99,
-            MagicState::Custom { fidelity, .. } => *fidelity,
+            Self::TState => 0.95,
+            Self::YState => 0.95,
+            Self::CCZState => 0.99,
+            Self::Custom { fidelity, .. } => *fidelity,
         }
     }
 
     /// Get distillation overhead
-    pub fn distillation_overhead(&self) -> f64 {
+    #[must_use]
+    pub const fn distillation_overhead(&self) -> f64 {
         match self {
-            MagicState::TState => 15.0, // Approximate overhead for T state distillation
-            MagicState::YState => 10.0,
-            MagicState::CCZState => 50.0,
-            MagicState::Custom { .. } => 20.0,
+            Self::TState => 15.0, // Approximate overhead for T state distillation
+            Self::YState => 10.0,
+            Self::CCZState => 50.0,
+            Self::Custom { .. } => 20.0,
         }
     }
 }
@@ -326,6 +334,7 @@ impl Default for CompilationOptions {
 
 impl FaultTolerantCompiler {
     /// Create a new fault-tolerant compiler
+    #[must_use]
     pub fn new(code: QECCode) -> Self {
         let magic_state_factory = MagicStateFactory {
             supported_states: vec![MagicState::TState, MagicState::YState],
@@ -412,8 +421,7 @@ impl FaultTolerantCompiler {
             "S" => self.compile_s_gate(&logical_targets, logical_qubits),
             "X" | "Y" | "Z" => self.compile_pauli_gate(gate_name, &logical_targets, logical_qubits),
             _ => Err(QuantRS2Error::InvalidInput(format!(
-                "Gate {} not supported in fault-tolerant compilation",
-                gate_name
+                "Gate {gate_name} not supported in fault-tolerant compilation"
             ))),
         }
     }
@@ -484,38 +492,36 @@ impl FaultTolerantCompiler {
         let mut physical_gates = Vec::new();
 
         // For surface code, CNOT requires lattice surgery or braiding
-        match (&control_lq.code, &target_lq.code) {
-            (QECCode::SurfaceCode { .. }, QECCode::SurfaceCode { .. }) => {
-                // Implement lattice surgery for CNOT
-                let control_data = control_lq.data_qubits();
-                let target_data = target_lq.data_qubits();
+        if let (QECCode::SurfaceCode { .. }, QECCode::SurfaceCode { .. }) =
+            (&control_lq.code, &target_lq.code)
+        {
+            // Implement lattice surgery for CNOT
+            let control_data = control_lq.data_qubits();
+            let target_data = target_lq.data_qubits();
 
-                // This is a simplified implementation
-                // Real lattice surgery requires careful boundary management
-                for (i, (&c_qubit, &t_qubit)) in
-                    control_data.iter().zip(target_data.iter()).enumerate()
-                {
-                    physical_gates.push(PhysicalGate {
-                        gate_type: "CNOT".to_string(),
-                        qubits: vec![c_qubit, t_qubit],
-                        parameters: vec![],
-                        time: Some(10.0), // Lattice surgery takes longer
-                    });
-                }
+            // This is a simplified implementation
+            // Real lattice surgery requires careful boundary management
+            for (i, (&c_qubit, &t_qubit)) in control_data.iter().zip(target_data.iter()).enumerate()
+            {
+                physical_gates.push(PhysicalGate {
+                    gate_type: "CNOT".to_string(),
+                    qubits: vec![c_qubit, t_qubit],
+                    parameters: vec![],
+                    time: Some(10.0), // Lattice surgery takes longer
+                });
             }
-            _ => {
-                // Simplified implementation for other codes
-                let control_data = control_lq.data_qubits();
-                let target_data = target_lq.data_qubits();
+        } else {
+            // Simplified implementation for other codes
+            let control_data = control_lq.data_qubits();
+            let target_data = target_lq.data_qubits();
 
-                for (&c_qubit, &t_qubit) in control_data.iter().zip(target_data.iter()) {
-                    physical_gates.push(PhysicalGate {
-                        gate_type: "CNOT".to_string(),
-                        qubits: vec![c_qubit, t_qubit],
-                        parameters: vec![],
-                        time: Some(2.0),
-                    });
-                }
+            for (&c_qubit, &t_qubit) in control_data.iter().zip(target_data.iter()) {
+                physical_gates.push(PhysicalGate {
+                    gate_type: "CNOT".to_string(),
+                    qubits: vec![c_qubit, t_qubit],
+                    parameters: vec![],
+                    time: Some(2.0),
+                });
             }
         }
 
@@ -847,6 +853,7 @@ pub struct FaultTolerantCircuit {
 
 impl FaultTolerantCircuit {
     /// Calculate total execution time
+    #[must_use]
     pub fn execution_time(&self) -> f64 {
         let gate_time: f64 = self
             .ft_gates
@@ -861,6 +868,7 @@ impl FaultTolerantCircuit {
     }
 
     /// Estimate resource overhead compared to logical circuit
+    #[must_use]
     pub fn resource_overhead(&self, logical_gates: usize) -> ResourceOverhead {
         let space_overhead = self.physical_qubit_count as f64 / self.logical_qubits.len() as f64;
 

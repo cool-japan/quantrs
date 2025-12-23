@@ -538,7 +538,7 @@ impl ConvergencePlot {
             let initial = best_so_far[0];
 
             // Estimate asymptotic value
-            let estimated = current - (initial - current) * (-rate).exp();
+            let estimated = (initial - current).mul_add(-(-rate).exp(), current);
             Ok(Some(estimated))
         } else {
             Ok(None)

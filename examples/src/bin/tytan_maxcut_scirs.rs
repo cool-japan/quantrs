@@ -1,6 +1,6 @@
-//! Max-Cut Problem Solver with SciRS2 Integration
+//! Max-Cut Problem Solver with `SciRS2` Integration
 //!
-//! This example shows how to use quantrs-tytan with SciRS2 integration
+//! This example shows how to use quantrs-tytan with `SciRS2` integration
 //! to solve the max-cut problem on a graph.
 
 use quantrs2_tytan::sampler::Sampler;
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let n_nodes = graph.len();
 
-    println!("Graph with {} nodes:", n_nodes);
+    println!("Graph with {n_nodes} nodes:");
     for (i, row) in graph.iter().enumerate() {
         println!(
             "Node {}: connected to nodes {:?}",
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(h).get_qubo()?;
-    println!("Compiled to QUBO with offset: {}", offset);
+    println!("Compiled to QUBO with offset: {offset}");
 
     // Solve using different methods and compare
     println!("\nSolving with multiple methods:");
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Energy: {}", best_result.energy);
 
     // Convert to more readable format
-    let arr = AutoArray::new(&best_result);
+    let arr = AutoArray::new(best_result);
     let arr_data = arr.get_ndarray("x{}")?.0;
 
     // Display partition
@@ -138,8 +138,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("Partition 0: {:?}", partition0);
-    println!("Partition 1: {:?}", partition1);
+    println!("Partition 0: {partition0:?}");
+    println!("Partition 1: {partition1:?}");
 
     // Count the number of cut edges
     let mut cut_edges = 0;
@@ -155,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("Number of cut edges: {}", cut_edges);
+    println!("Number of cut edges: {cut_edges}");
 
     // Solution analysis
     println!("\nSolution Analysis:");
@@ -189,8 +189,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            println!("  Example: Partition 0: {:?}", partition0);
-            println!("           Partition 1: {:?}", partition1);
+            println!("  Example: Partition 0: {partition0:?}");
+            println!("           Partition 1: {partition1:?}");
         }
     }
 
@@ -199,11 +199,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nDiversity Metrics:");
 
     if let Some(&avg_distance) = diversity.get("avg_distance") {
-        println!("Average Solution Distance: {:.4}", avg_distance);
+        println!("Average Solution Distance: {avg_distance:.4}");
     }
 
     if let Some(&energy_range) = diversity.get("energy_range") {
-        println!("Energy Range: {:.4}", energy_range);
+        println!("Energy Range: {energy_range:.4}");
     }
 
     Ok(())

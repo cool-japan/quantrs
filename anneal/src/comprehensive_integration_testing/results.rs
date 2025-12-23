@@ -338,7 +338,164 @@ impl TestResultStorage {
         }
     }
 
-    // TODO: Implement storage methods
+    /// Store a test execution result
+    pub fn store_result(
+        &mut self,
+        result: super::execution::TestExecutionResult,
+    ) -> Result<(), String> {
+        let id = result.execution_id.clone();
+        let timestamp = result.start_time;
+
+        // Update statistics
+        self.storage_stats.total_results += 1;
+        self.storage_stats.storage_size += std::mem::size_of_val(&result);
+
+        // Store in cache
+        self.result_cache.insert(id.clone(), result);
+
+        // Update index
+        self.result_index.insert(timestamp, id);
+
+        // Check if cleanup is needed
+        if self.should_cleanup() {
+            self.cleanup_old_results();
+        }
+
+        Ok(())
+    }
+
+    /// Retrieve a test result by execution ID
+    pub fn get_result(&self, execution_id: &str) -> Option<&super::execution::TestExecutionResult> {
+        self.result_cache.get(execution_id)
+    }
+
+    /// Get results by time range
+    pub fn get_results_by_time_range(
+        &self,
+        start: SystemTime,
+        end: SystemTime,
+    ) -> Vec<&super::execution::TestExecutionResult> {
+        self.result_index
+            .range(start..=end)
+            .filter_map(|(_, id)| self.result_cache.get(id))
+            .collect()
+    }
+
+    /// Get the most recent N results
+    pub fn get_recent_results(&self, count: usize) -> Vec<&super::execution::TestExecutionResult> {
+        self.result_index
+            .iter()
+            .rev()
+            .take(count)
+            .filter_map(|(_, id)| self.result_cache.get(id))
+            .collect()
+    }
+
+    /// Get all results for a specific test case
+    pub fn get_results_for_test_case(
+        &self,
+        test_case_id: &str,
+    ) -> Vec<&super::execution::TestExecutionResult> {
+        self.result_cache
+            .values()
+            .filter(|r| r.test_case_id == test_case_id)
+            .collect()
+    }
+
+    /// Clear all stored results
+    pub fn clear_all(&mut self) {
+        self.result_cache.clear();
+        self.result_index.clear();
+        self.storage_stats = StorageStatistics::default();
+    }
+
+    /// Get storage statistics
+    pub fn get_statistics(&self) -> &StorageStatistics {
+        &self.storage_stats
+    }
+
+    /// Check if cleanup is needed
+    fn should_cleanup(&self) -> bool {
+        match &self.storage_config.retention_policy {
+            super::config::RetentionPolicy::KeepLast(max_results) => {
+                self.storage_stats.total_results > *max_results
+            }
+            super::config::RetentionPolicy::KeepForDuration(_) => {
+                // Check if we should do time-based cleanup
+                true
+            }
+            super::config::RetentionPolicy::KeepAll => false,
+            super::config::RetentionPolicy::Custom(_) => false,
+        }
+    }
+
+    /// Cleanup old results
+    fn cleanup_old_results(&mut self) {
+        match &self.storage_config.retention_policy {
+            super::config::RetentionPolicy::KeepLast(max_results) => {
+                // Remove oldest results if we exceed the limit
+                while self.storage_stats.total_results > *max_results {
+                    if let Some((time, id)) = self
+                        .result_index
+                        .iter()
+                        .next()
+                        .map(|(t, i)| (*t, i.clone()))
+                    {
+                        self.result_index.remove(&time);
+                        if let Some(result) = self.result_cache.remove(&id) {
+                            self.storage_stats.total_results =
+                                self.storage_stats.total_results.saturating_sub(1);
+                            self.storage_stats.storage_size = self
+                                .storage_stats
+                                .storage_size
+                                .saturating_sub(std::mem::size_of_val(&result));
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+            super::config::RetentionPolicy::KeepForDuration(duration) => {
+                let cutoff_time = SystemTime::now()
+                    .checked_sub(*duration)
+                    .unwrap_or(SystemTime::UNIX_EPOCH);
+
+                // Remove old entries from index and cache
+                let old_ids: Vec<String> = self
+                    .result_index
+                    .range(..cutoff_time)
+                    .map(|(_, id)| id.clone())
+                    .collect();
+
+                for id in old_ids {
+                    if let Some(result) = self.result_cache.remove(&id) {
+                        self.result_index.remove(&result.start_time);
+                        self.storage_stats.total_results =
+                            self.storage_stats.total_results.saturating_sub(1);
+                        self.storage_stats.storage_size = self
+                            .storage_stats
+                            .storage_size
+                            .saturating_sub(std::mem::size_of_val(&result));
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        self.storage_stats.last_cleanup = SystemTime::now();
+    }
+
+    /// Export results to a file (placeholder)
+    pub fn export_results(&self, _file_path: &str) -> Result<(), String> {
+        // Placeholder for file export functionality
+        Ok(())
+    }
+
+    /// Import results from a file (placeholder)
+    pub fn import_results(&mut self, _file_path: &str) -> Result<usize, String> {
+        // Placeholder for file import functionality
+        Ok(0)
+    }
 }
 
 /// Storage statistics

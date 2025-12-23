@@ -793,7 +793,7 @@ impl FPGAQuantumSimulator {
             .map(|(i, _)| ExternalMemoryInterface {
                 interface_id: i,
                 interface_type: device_info.memory_interfaces[i].interface_type,
-                controller: format!("mem_ctrl_{}", i),
+                controller: format!("mem_ctrl_{i}"),
                 utilization: 0.0,
             })
             .collect();
@@ -936,7 +936,7 @@ impl FPGAQuantumSimulator {
     /// Generate SystemVerilog code for single qubit gates
     fn generate_single_qubit_systemverilog(&self) -> String {
         format!(
-            r#"
+            r"
 // Single Qubit Gate Processing Unit
 // Generated for platform: {:?}
 // Clock frequency: {:.1} MHz
@@ -1035,7 +1035,7 @@ module single_qubit_gate #(
     end
 
 endmodule
-"#,
+",
             self.config.platform,
             self.config.clock_frequency,
             self.config.data_path_width,
@@ -1059,7 +1059,7 @@ endmodule
 
     /// Generate OpenCL code for single qubit gates
     fn generate_single_qubit_opencl(&self) -> String {
-        r#"
+        r"
 // OpenCL kernel for single qubit gates
 __kernel void single_qubit_gate(
     __global float2* state,
@@ -1096,7 +1096,7 @@ __kernel void single_qubit_gate(
         );
     }
 }
-"#
+"
         .to_string()
     }
 
@@ -1441,17 +1441,17 @@ __kernel void single_qubit_gate(
     }
 
     /// Get device information
-    pub fn get_device_info(&self) -> &FPGADeviceInfo {
+    pub const fn get_device_info(&self) -> &FPGADeviceInfo {
         &self.device_info
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &FPGAStats {
+    pub const fn get_stats(&self) -> &FPGAStats {
         &self.stats
     }
 
     /// Get HDL modules
-    pub fn get_hdl_modules(&self) -> &HashMap<String, HDLModule> {
+    pub const fn get_hdl_modules(&self) -> &HashMap<String, HDLModule> {
         &self.hdl_modules
     }
 
@@ -1463,8 +1463,7 @@ __kernel void single_qubit_gate(
             .contains_key(bitstream_name)
         {
             return Err(SimulatorError::InvalidInput(format!(
-                "Bitstream {} not found",
-                bitstream_name
+                "Bitstream {bitstream_name} not found"
             )));
         }
 
@@ -1495,9 +1494,7 @@ __kernel void single_qubit_gate(
         self.hdl_modules
             .get(module_name)
             .map(|module| module.hdl_code.clone())
-            .ok_or_else(|| {
-                SimulatorError::InvalidInput(format!("Module {} not found", module_name))
-            })
+            .ok_or_else(|| SimulatorError::InvalidInput(format!("Module {module_name} not found")))
     }
 }
 
@@ -1546,30 +1543,30 @@ pub fn benchmark_fpga_acceleration() -> Result<HashMap<String, f64>> {
         }
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("fpga_config_{}", i), time);
+        results.insert(format!("fpga_config_{i}"), time);
 
         // Add performance metrics
         let stats = simulator.get_stats();
         results.insert(
-            format!("fpga_config_{}_operations", i),
+            format!("fpga_config_{i}_operations"),
             stats.total_gate_operations as f64,
         );
         results.insert(
-            format!("fpga_config_{}_avg_gate_time", i),
+            format!("fpga_config_{i}_avg_gate_time"),
             stats.avg_gate_time,
         );
         results.insert(
-            format!("fpga_config_{}_utilization", i),
+            format!("fpga_config_{i}_utilization"),
             stats.fpga_utilization,
         );
         results.insert(
-            format!("fpga_config_{}_pipeline_efficiency", i),
+            format!("fpga_config_{i}_pipeline_efficiency"),
             stats.pipeline_efficiency,
         );
 
         let performance_metrics = stats.get_performance_metrics();
         for (key, value) in performance_metrics {
-            results.insert(format!("fpga_config_{}_{}", i, key), value);
+            results.insert(format!("fpga_config_{i}_{key}"), value);
         }
     }
 

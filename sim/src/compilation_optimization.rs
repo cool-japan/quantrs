@@ -200,9 +200,9 @@ impl CompilationOptimizer {
         let use_regex = Regex::new(r"^use\s+([^;]+);").unwrap();
         let mod_regex = Regex::new(r"^(?:pub\s+)?mod\s+(\w+)").unwrap();
 
-        for (module_name, _) in &analysis.module_sizes {
+        for module_name in analysis.module_sizes.keys() {
             let mut module_path = self.config.root_path.clone();
-            module_path.push(format!("{}.rs", module_name));
+            module_path.push(format!("{module_name}.rs"));
 
             if let Ok(content) = fs::read_to_string(&module_path) {
                 let mut dependencies = Vec::new();
@@ -253,8 +253,7 @@ impl CompilationOptimizer {
             let dependency_count = analysis
                 .dependencies
                 .get(module_name)
-                .map(|deps| deps.len())
-                .unwrap_or(0);
+                .map_or(0, |deps| deps.len());
             let dependency_penalty = dependency_count as f64 * 0.1;
 
             // Adjust for known heavy operations (simplified heuristic)
@@ -347,8 +346,7 @@ impl CompilationOptimizer {
                     expected_improvement: (size as f64 - self.config.max_module_size as f64)
                         * 0.001,
                     description: format!(
-                        "Module '{}' has {} lines and should be split into smaller modules",
-                        module_name, size
+                        "Module '{module_name}' has {size} lines and should be split into smaller modules"
                     ),
                     priority: if size > self.config.max_module_size * 2 {
                         RecommendationPriority::High
@@ -367,8 +365,7 @@ impl CompilationOptimizer {
                 modules: vec![heavy_dep.clone()],
                 expected_improvement: compile_time * 0.3, // 30% improvement estimate
                 description: format!(
-                    "Module '{}' has high compilation time ({:.2}s) and could benefit from lazy imports",
-                    heavy_dep, compile_time
+                    "Module '{heavy_dep}' has high compilation time ({compile_time:.2}s) and could benefit from lazy imports"
                 ),
                 priority: RecommendationPriority::Medium,
             });
@@ -470,9 +467,9 @@ impl CompilationOptimizer {
             0
         };
 
-        report.push_str(&format!("- Total modules: {}\n", total_modules));
-        report.push_str(&format!("- Total lines of code: {}\n", total_lines));
-        report.push_str(&format!("- Average module size: {} lines\n", average_size));
+        report.push_str(&format!("- Total modules: {total_modules}\n"));
+        report.push_str(&format!("- Total lines of code: {total_lines}\n"));
+        report.push_str(&format!("- Average module size: {average_size} lines\n"));
         report.push_str(&format!(
             "- Heavy dependencies: {}\n",
             analysis.heavy_dependencies.len()
@@ -488,9 +485,9 @@ impl CompilationOptimizer {
 
         report.push_str("## Largest Modules\n");
         for (module, size) in modules_by_size.iter().take(10) {
-            report.push_str(&format!("- {}: {} lines\n", module, size));
+            report.push_str(&format!("- {module}: {size} lines\n"));
         }
-        report.push_str("\n");
+        report.push('\n');
 
         // Recommendations
         report.push_str("## Optimization Recommendations\n");

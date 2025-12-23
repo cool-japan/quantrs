@@ -85,15 +85,15 @@ fn quadratic_programming_example() -> Result<(), Box<dyn std::error::Error>> {
     println!();
     println!("  Solution found:");
     for (var_name, &value) in &result.variable_values {
-        println!("    {}: {:.4}", var_name, value);
+        println!("    {var_name}: {value:.4}");
     }
     println!("  Objective value: {:.4}", result.objective_value);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Compare with theoretical optimum
     let theoretical_optimum = 1.5;
     let gap = (result.objective_value - theoretical_optimum).abs();
-    println!("  Gap to theoretical optimum: {:.4}", gap);
+    println!("  Gap to theoretical optimum: {gap:.4}");
 
     // Show discretization statistics
     println!("\n  Discretization statistics:");
@@ -103,7 +103,7 @@ fn quadratic_programming_example() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("    Converged: {}", result.stats.converged);
     for (var_name, resolution) in &result.stats.final_resolution {
-        println!("    {} resolution: {:.6}", var_name, resolution);
+        println!("    {var_name} resolution: {resolution:.6}");
     }
 
     Ok(())
@@ -117,7 +117,7 @@ fn constrained_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     let objective = Box::new(|vars: &HashMap<String, f64>| {
         let x = vars["x"];
         let y = vars["y"];
-        (x - 3.0).powi(2) + (y - 2.0).powi(2)
+        (y - 2.0).mul_add(y - 2.0, (x - 3.0).powi(2))
     });
 
     let mut problem = ContinuousOptimizationProblem::new(objective);
@@ -162,26 +162,24 @@ fn constrained_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     println!();
     println!("  Solution found:");
     for (var_name, &value) in &result.variable_values {
-        println!("    {}: {:.4}", var_name, value);
+        println!("    {var_name}: {value:.4}");
     }
     println!("  Objective value: {:.4}", result.objective_value);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Check constraint satisfaction
     println!("\n  Constraint violations:");
     for (constraint_name, violation) in &result.constraint_violations {
-        println!("    {}: {:.6}", constraint_name, violation);
+        println!("    {constraint_name}: {violation:.6}");
     }
 
     // Theoretical solution: x + y = 4, minimize distance to (3,2)
     // Solution is on the line x + y = 4 closest to (3,2), which is (2.5, 1.5)
     let x_optimal = 2.5;
     let y_optimal = 1.5;
-    let optimal_objective = (x_optimal - 3.0f64).powi(2) + (y_optimal - 2.0f64).powi(2);
-    println!(
-        "\n  Theoretical optimum: x={}, y={}, f={:.4}",
-        x_optimal, y_optimal, optimal_objective
-    );
+    let optimal_objective =
+        (y_optimal - 2.0f64).mul_add(y_optimal - 2.0f64, (x_optimal - 3.0f64).powi(2));
+    println!("\n  Theoretical optimum: x={x_optimal}, y={y_optimal}, f={optimal_objective:.4}");
 
     Ok(())
 }
@@ -194,7 +192,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
     let target_return = 0.11;
 
     // Simplified covariance matrix (risk)
-    let covariance = vec![
+    let covariance = [
         vec![0.04, 0.01, 0.02, 0.01],
         vec![0.01, 0.09, 0.03, 0.02],
         vec![0.02, 0.03, 0.16, 0.04],
@@ -203,7 +201,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Objective: minimize portfolio variance
     let objective = Box::new(move |vars: &HashMap<String, f64>| {
-        let weights: Vec<f64> = (0..4).map(|i| vars[&format!("w{}", i)]).collect();
+        let weights: Vec<f64> = (0..4).map(|i| vars[&format!("w{i}")]).collect();
         let mut variance = 0.0;
 
         for i in 0..4 {
@@ -219,14 +217,14 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add weight variables (bounds: each weight between 0 and 1)
     for i in 0..4 {
-        let var = ContinuousVariable::new(format!("w{}", i), 0.0, 1.0, 8)?
-            .with_description(format!("Weight of asset {}", i));
+        let var = ContinuousVariable::new(format!("w{i}"), 0.0, 1.0, 8)?
+            .with_description(format!("Weight of asset {i}"));
         problem.add_variable(var)?;
     }
 
     // Constraint: weights sum to 1
     let sum_constraint_fn = Box::new(|vars: &HashMap<String, f64>| {
-        let sum: f64 = (0..4).map(|i| vars[&format!("w{}", i)]).sum();
+        let sum: f64 = (0..4).map(|i| vars[&format!("w{i}")]).sum();
         (sum - 1.0).abs() - 0.01 // Allow small tolerance
     });
     let sum_constraint =
@@ -237,7 +235,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
     let expected_returns_clone = expected_returns.clone();
     let return_constraint_fn = Box::new(move |vars: &HashMap<String, f64>| {
         let portfolio_return: f64 = (0..4)
-            .map(|i| vars[&format!("w{}", i)] * expected_returns_clone[i])
+            .map(|i| vars[&format!("w{i}")] * expected_returns_clone[i])
             .sum();
         (target_return - portfolio_return).abs() - 0.005 // Allow small tolerance
     });
@@ -265,22 +263,22 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Portfolio Optimization Results:");
     println!("  Assets: 4");
-    println!("  Expected returns: {:?}", expected_returns);
-    println!("  Target return: {:.3}", target_return);
+    println!("  Expected returns: {expected_returns:?}");
+    println!("  Target return: {target_return:.3}");
     println!();
     println!("  Optimal portfolio weights:");
     let mut total_weight = 0.0;
     let mut portfolio_return = 0.0;
     for i in 0..4 {
-        let weight = result.variable_values[&format!("w{}", i)];
+        let weight = result.variable_values[&format!("w{i}")];
         total_weight += weight;
         portfolio_return += weight * expected_returns[i];
         println!("    Asset {}: {:.4} ({:.1}%)", i, weight, weight * 100.0);
     }
     println!();
     println!("  Portfolio statistics:");
-    println!("    Total weight: {:.4}", total_weight);
-    println!("    Portfolio return: {:.4}", portfolio_return);
+    println!("    Total weight: {total_weight:.4}");
+    println!("    Portfolio return: {portfolio_return:.4}");
     println!(
         "    Portfolio risk (variance): {:.6}",
         result.objective_value
@@ -289,12 +287,12 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
         "    Portfolio volatility (std dev): {:.4}",
         result.objective_value.sqrt()
     );
-    println!("    Runtime: {:.2?}", runtime);
+    println!("    Runtime: {runtime:.2?}");
 
     // Check constraints
     println!("\n  Constraint violations:");
     for (constraint_name, violation) in &result.constraint_violations {
-        println!("    {}: {:.6}", constraint_name, violation);
+        println!("    {constraint_name}: {violation:.6}");
     }
 
     Ok(())
@@ -311,10 +309,11 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
         let x3 = vars["inner_radius"];
         let x4 = vars["length"];
 
-        0.6224 * x1 * x3 * x4
-            + 1.7781 * x2 * x3.powi(2)
-            + 3.1661 * x1.powi(2) * x4
-            + 19.84 * x1.powi(2) * x3
+        (19.84 * x1.powi(2)).mul_add(
+            x3,
+            (3.1661 * x1.powi(2))
+                .mul_add(x4, (0.6224 * x1 * x3).mul_add(x4, 1.7781 * x2 * x3.powi(2))),
+        )
     });
 
     let mut problem = ContinuousOptimizationProblem::new(objective);
@@ -341,7 +340,7 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
     let pressure_constraint = Box::new(|vars: &HashMap<String, f64>| {
         let x1 = vars["shell_thickness"];
         let x3 = vars["inner_radius"];
-        -x1 + 0.0193 * x3 // Must be ≤ 0
+        0.0193f64.mul_add(x3, -x1) // Must be ≤ 0
     });
     problem.add_constraint(ContinuousConstraint::new(
         "pressure".to_string(),
@@ -353,7 +352,7 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
     let stress_constraint = Box::new(|vars: &HashMap<String, f64>| {
         let x2 = vars["head_thickness"];
         let x3 = vars["inner_radius"];
-        -x2 + 0.00954 * x3 // Must be ≤ 0
+        0.00954f64.mul_add(x3, -x2) // Must be ≤ 0
     });
     problem.add_constraint(ContinuousConstraint::new(
         "stress".to_string(),
@@ -365,8 +364,8 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
     let volume_constraint = Box::new(|vars: &HashMap<String, f64>| {
         let x3 = vars["inner_radius"];
         let x4 = vars["length"];
-        let volume = std::f64::consts::PI * x3.powi(2) * x4
-            + (4.0 / 3.0) * std::f64::consts::PI * x3.powi(3);
+        let volume = (std::f64::consts::PI * x3.powi(2))
+            .mul_add(x4, (4.0 / 3.0) * std::f64::consts::PI * x3.powi(3));
         1296000.0 - volume // Minimum volume requirement
     });
     problem.add_constraint(ContinuousConstraint::new(
@@ -414,19 +413,19 @@ fn engineering_design_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("    Length: {:.4}", result.variable_values["length"]);
     println!();
     println!("  Cost: {:.2}", result.objective_value);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Calculate final volume
     let x3 = result.variable_values["inner_radius"];
     let x4 = result.variable_values["length"];
-    let volume =
-        std::f64::consts::PI * x3.powi(2) * x4 + (4.0 / 3.0) * std::f64::consts::PI * x3.powi(3);
-    println!("  Final volume: {:.2}", volume);
+    let volume = (std::f64::consts::PI * x3.powi(2))
+        .mul_add(x4, (4.0 / 3.0) * std::f64::consts::PI * x3.powi(3));
+    println!("  Final volume: {volume:.2}");
 
     // Check constraints
     println!("\n  Constraint violations:");
     for (constraint_name, violation) in &result.constraint_violations {
-        println!("    {}: {:.6}", constraint_name, violation);
+        println!("    {constraint_name}: {violation:.6}");
     }
 
     Ok(())
@@ -439,7 +438,7 @@ fn multidimensional_optimization_example() -> Result<(), Box<dyn std::error::Err
     let objective = Box::new(|vars: &HashMap<String, f64>| {
         let x = vars["x"];
         let y = vars["y"];
-        100.0 * (y - x.powi(2)).powi(2) + (1.0 - x).powi(2)
+        (1.0 - x).mul_add(1.0 - x, 100.0 * x.mul_add(-x, y).powi(2))
     });
 
     let mut problem = ContinuousOptimizationProblem::new(objective);
@@ -482,14 +481,14 @@ fn multidimensional_optimization_example() -> Result<(), Box<dyn std::error::Err
     println!("    x: {:.6}", result.variable_values["x"]);
     println!("    y: {:.6}", result.variable_values["y"]);
     println!("  Objective value: {:.6}", result.objective_value);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Distance from global optimum
     let x_error = (result.variable_values["x"] - 1.0).abs();
     let y_error = (result.variable_values["y"] - 1.0).abs();
-    let distance = (x_error.powi(2) + y_error.powi(2)).sqrt();
+    let distance = x_error.hypot(y_error);
 
-    println!("\n  Distance from global optimum: {:.6}", distance);
+    println!("\n  Distance from global optimum: {distance:.6}");
     println!("  Function value gap: {:.6}", result.objective_value);
 
     Ok(())

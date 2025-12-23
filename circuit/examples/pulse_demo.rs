@@ -3,11 +3,11 @@
 //! This example shows how to use low-level pulse control for fine-grained
 //! optimization and hardware-specific calibration.
 
-use nalgebra::Complex;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::multi::CNOT;
 use quantrs2_core::gate::single::{Hadamard, PauliX, RotationZ};
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex;
 use std::f64::consts::PI;
 
 type C64 = Complex<f64>;
@@ -113,7 +113,7 @@ fn demo_pulse_schedules() -> quantrs2_core::error::QuantRS2Result<()> {
     schedule.add_instruction(
         time + 100.0,
         PulseInstruction::Play {
-            waveform: pi_pulse.clone(),
+            waveform: pi_pulse,
             channel: Channel::Drive(1),
             phase: PI,
         },
@@ -139,13 +139,13 @@ fn demo_pulse_schedules() -> quantrs2_core::error::QuantRS2Result<()> {
     for (time, instruction) in &schedule.instructions {
         match instruction {
             PulseInstruction::Play { channel, .. } => {
-                println!("  {:6.1} ns: Play on {:?}", time, channel);
+                println!("  {time:6.1} ns: Play on {channel:?}");
             }
             PulseInstruction::Delay { duration, .. } => {
-                println!("  {:6.1} ns: Delay {} ns", time, duration);
+                println!("  {time:6.1} ns: Delay {duration} ns");
             }
             PulseInstruction::Acquire { channel, .. } => {
-                println!("  {:6.1} ns: Acquire on {:?}", time, channel);
+                println!("  {time:6.1} ns: Acquire on {channel:?}");
             }
             _ => {}
         }
@@ -195,17 +195,14 @@ fn demo_pulse_compilation() -> quantrs2_core::error::QuantRS2Result<()> {
     // Show channel usage
     let mut channel_usage = std::collections::HashMap::new();
     for (_, instruction) in &pulse_schedule.instructions {
-        match instruction {
-            PulseInstruction::Play { channel, .. } => {
-                *channel_usage.entry(format!("{:?}", channel)).or_insert(0) += 1;
-            }
-            _ => {}
+        if let PulseInstruction::Play { channel, .. } = instruction {
+            *channel_usage.entry(format!("{channel:?}")).or_insert(0) += 1;
         }
     }
 
     println!("\nChannel usage:");
     for (channel, count) in channel_usage {
-        println!("  {}: {} pulses", channel, count);
+        println!("  {channel}: {count} pulses");
     }
 
     println!();

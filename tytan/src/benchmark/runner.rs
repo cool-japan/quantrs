@@ -131,7 +131,7 @@ impl BenchmarkRunner {
                     backends.push(Box::new(QuantumBackend::new("simulator".to_string())));
                 }
                 _ => {
-                    eprintln!("Unknown backend: {}", backend_name);
+                    eprintln!("Unknown backend: {backend_name}");
                 }
             }
         }
@@ -189,7 +189,7 @@ impl BenchmarkRunner {
                             let backend = &mut self.backends[backend_idx];
                             Self::run_single_benchmark(
                                 backend.as_mut(),
-                                &sampler_config,
+                                sampler_config,
                                 &matrix,
                                 problem_size,
                                 density,
@@ -204,7 +204,7 @@ impl BenchmarkRunner {
                                 completed += 1;
                             }
                             Err(e) => {
-                                eprintln!("Benchmark failed: {}", e);
+                                eprintln!("Benchmark failed: {e}");
                             }
                         }
 
@@ -222,8 +222,8 @@ impl BenchmarkRunner {
 
         // Save final results
         if let Some(ref output_dir) = self.config.output_dir {
-            self.save_results(&output_dir)?;
-            report.save_to_file(&format!("{}/performance_report.json", output_dir))?;
+            self.save_results(output_dir)?;
+            report.save_to_file(&format!("{output_dir}/performance_report.json"))?;
         }
 
         Ok(report)
@@ -276,7 +276,7 @@ impl BenchmarkRunner {
         metrics.timings = TimingMetrics {
             total_time: avg_time,
             setup_time: Duration::from_millis(10), // Estimate
-            compute_time: avg_time - Duration::from_millis(10),
+            compute_time: avg_time.checked_sub(Duration::from_millis(10)).unwrap(),
             postprocess_time: Duration::ZERO,
             time_per_sample: avg_time / num_reads as u32,
             time_to_solution: Some(timings[0]),
@@ -378,7 +378,7 @@ impl BenchmarkRunner {
     /// Save intermediate results
     fn save_intermediate_results(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref dir) = self.config.output_dir {
-            let path = format!("{}/intermediate_results.json", dir);
+            let path = format!("{dir}/intermediate_results.json");
             let json = serde_json::to_string_pretty(&self.results)?;
             std::fs::write(path, json)?;
         }
@@ -390,12 +390,12 @@ impl BenchmarkRunner {
         std::fs::create_dir_all(output_dir)?;
 
         // Save raw results
-        let results_path = format!("{}/benchmark_results.json", output_dir);
+        let results_path = format!("{output_dir}/benchmark_results.json");
         let json = serde_json::to_string_pretty(&self.results)?;
         std::fs::write(results_path, json)?;
 
         // Save configuration
-        let config_path = format!("{}/benchmark_config.json", output_dir);
+        let config_path = format!("{output_dir}/benchmark_config.json");
         let config_json = serde_json::to_string_pretty(&self.config)?;
         std::fs::write(config_path, config_json)?;
 

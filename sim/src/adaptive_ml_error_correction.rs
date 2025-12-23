@@ -151,7 +151,7 @@ impl SyndromeClassificationNetwork {
             // Xavier initialization
             let scale = (2.0 / (rows + cols) as f64).sqrt();
             let mut weight_matrix = Array2::zeros((rows, cols));
-            for elem in weight_matrix.iter_mut() {
+            for elem in &mut weight_matrix {
                 *elem = (fastrand::f64() - 0.5) * 2.0 * scale;
             }
             weights.push(weight_matrix);
@@ -178,14 +178,14 @@ impl SyndromeClassificationNetwork {
             activation = weight.dot(&activation) + bias;
 
             // Apply ReLU activation (except for output layer)
-            if weight != self.weights.last().unwrap() {
-                activation.mapv_inplace(|x| x.max(0.0));
-            } else {
+            if weight == self.weights.last().unwrap() {
                 // Softmax for output layer
                 let max_val = activation.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
                 activation.mapv_inplace(|x| (x - max_val).exp());
                 let sum = activation.sum();
                 activation.mapv_inplace(|x| x / sum);
+            } else {
+                activation.mapv_inplace(|x| x.max(0.0));
             }
         }
 
@@ -248,14 +248,14 @@ impl SyndromeClassificationNetwork {
             z_values.push(z.clone());
 
             let mut activation = z;
-            if weight != self.weights.last().unwrap() {
-                activation.mapv_inplace(|x| x.max(0.0)); // ReLU
-            } else {
+            if weight == self.weights.last().unwrap() {
                 // Softmax
                 let max_val = activation.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
                 activation.mapv_inplace(|x| (x - max_val).exp());
                 let sum = activation.sum();
                 activation.mapv_inplace(|x| x / sum);
+            } else {
+                activation.mapv_inplace(|x| x.max(0.0)); // ReLU
             }
             activations.push(activation);
         }
@@ -402,7 +402,7 @@ impl ErrorCorrectionAgent {
                 .fold(f64::NEG_INFINITY, |a, &b| a.max(b))
         };
 
-        let td_target = reward + self.discount_factor * next_q_max;
+        let td_target = self.discount_factor.mul_add(next_q_max, reward);
         let td_error = td_target - current_q[action];
 
         let q_values = self.q_table.get_mut(state).unwrap();
@@ -424,7 +424,7 @@ impl ErrorCorrectionAgent {
         correction_cost: f64,
     ) -> f64 {
         let error_reduction = errors_before as f64 - errors_after as f64;
-        let reward = error_reduction * 10.0 - correction_cost;
+        let reward = error_reduction.mul_add(10.0, -correction_cost);
 
         // Bonus for perfect correction
         if errors_after == 0 {
@@ -483,7 +483,7 @@ pub struct FeatureExtractor {
 
 impl FeatureExtractor {
     /// Create new feature extractor
-    pub fn new(method: FeatureExtractionMethod) -> Self {
+    pub const fn new(method: FeatureExtractionMethod) -> Self {
         Self {
             method,
             pca_components: None,
@@ -783,7 +783,7 @@ impl AdaptiveMLErrorCorrection {
         // Record training example
         if self.config.real_time_learning {
             let training_example = TrainingExample {
-                syndrome: features.clone(),
+                syndrome: features,
                 error_type: predicted_error_type,
                 action,
                 reward,
@@ -967,11 +967,11 @@ impl AdaptiveMLErrorCorrection {
 
     /// Count estimated errors in state
     fn count_errors(&self, _state: &Array1<Complex64>, syndrome: &[bool]) -> usize {
-        syndrome.iter().map(|&b| if b { 1 } else { 0 }).sum()
+        syndrome.iter().map(|&b| usize::from(b)).sum()
     }
 
     /// Convert error class to error type
-    fn class_to_error_type(&self, class: usize) -> ErrorType {
+    const fn class_to_error_type(&self, class: usize) -> ErrorType {
         match class {
             0 => ErrorType::Identity,
             1 => ErrorType::BitFlip,
@@ -992,7 +992,7 @@ impl AdaptiveMLErrorCorrection {
     /// Convert quantum state to string representation (simplified)
     fn state_to_string(&self, state: &Array1<Complex64>) -> String {
         let amplitudes: Vec<f64> = state.iter().map(|c| c.norm()).collect();
-        format!("{:.3?}", amplitudes)
+        format!("{amplitudes:.3?}")
     }
 
     /// Update performance metrics
@@ -1011,9 +1011,10 @@ impl AdaptiveMLErrorCorrection {
             self.metrics.false_positives += 1;
         }
 
-        self.metrics.average_confidence = (self.metrics.average_confidence
-            * (self.metrics.total_corrections - 1) as f64
-            + confidence)
+        self.metrics.average_confidence = self
+            .metrics
+            .average_confidence
+            .mul_add((self.metrics.total_corrections - 1) as f64, confidence)
             / self.metrics.total_corrections as f64;
 
         self.metrics.reward_history.push(reward);
@@ -1051,7 +1052,7 @@ impl AdaptiveMLErrorCorrection {
         // Train neural network
         let batch_size = self.config.batch_size.min(inputs.len());
         for chunk in inputs.chunks(batch_size).zip(targets.chunks(batch_size)) {
-            let loss = self.classifier.train_batch(&chunk.0, &chunk.1);
+            let loss = self.classifier.train_batch(chunk.0, chunk.1);
             self.metrics.learning_curve.push(loss);
         }
 
@@ -1059,7 +1060,7 @@ impl AdaptiveMLErrorCorrection {
     }
 
     /// Get current performance metrics
-    pub fn get_metrics(&self) -> &CorrectionMetrics {
+    pub const fn get_metrics(&self) -> &CorrectionMetrics {
         &self.metrics
     }
 
@@ -1127,7 +1128,7 @@ pub fn benchmark_adaptive_ml_error_correction() -> Result<HashMap<String, f64>> 
         }
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("config_{}", i), time);
+        results.insert(format!("config_{i}"), time);
     }
 
     Ok(results)

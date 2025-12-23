@@ -544,14 +544,14 @@ impl QuantumMemoryHierarchy {
     }
 
     fn apply_cache_optimizations(
-        &mut self,
+        &self,
         _optimization: &CacheOptimization,
     ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
     fn apply_prefetch_optimizations(
-        &mut self,
+        &self,
         _optimization: &PrefetchOptimization,
     ) -> Result<(), QuantRS2Error> {
         Ok(())

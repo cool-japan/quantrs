@@ -5,7 +5,7 @@ pub struct Examples;
 
 impl Examples {
     /// Simple binary problem
-    pub const SIMPLE_BINARY: &str = r#"
+    pub const SIMPLE_BINARY: &str = r"
         var x binary;
         var y binary;
 
@@ -13,10 +13,10 @@ impl Examples {
 
         subject to
             x + y >= 1;
-    "#;
+    ";
 
     /// Traveling salesman problem
-    pub const TSP: &str = r#"
+    pub const TSP: &str = r"
         param n = 4;
         param distances = [
             [0, 10, 15, 20],
@@ -33,10 +33,10 @@ impl Examples {
             // Each city visited exactly once
             forall(i in 0..n): sum(j in 0..n: x[i,j]) == 1;
             forall(j in 0..n): sum(i in 0..n: x[i,j]) == 1;
-    "#;
+    ";
 
     /// Graph coloring
-    pub const GRAPH_COLORING: &str = r#"
+    pub const GRAPH_COLORING: &str = r"
         param n_vertices = 5;
         param n_colors = 3;
         param edges = [(0,1), (1,2), (2,3), (3,4), (4,0)];
@@ -52,7 +52,7 @@ impl Examples {
             // Adjacent vertices have different colors
             forall((u,v) in edges, c in 0..n_colors):
                 color[u,c] + color[v,c] <= 1;
-    "#;
+    ";
 }
 
 /// Get example by name

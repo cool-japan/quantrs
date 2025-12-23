@@ -15,9 +15,9 @@ use quantrs2_anneal::{
     },
     simulator::AnnealingParams,
 };
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::Rng;
 use std::time::Instant;
-use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Boltzmann Machine Demo ===\n");
@@ -99,7 +99,7 @@ fn binary_pattern_learning_example() -> Result<(), Box<dyn std::error::Error>> {
         training_data.len()
     );
     println!("  RBM architecture: 4 visible × 3 hidden units");
-    println!("  Training time: {:.2?}", training_time);
+    println!("  Training time: {training_time:.2?}");
 
     // Test pattern reconstruction
     println!("\n  Pattern reconstruction test:");
@@ -204,14 +204,14 @@ fn digit_feature_learning_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Dataset: 3×3 simplified digits (0, 1, 2)");
     println!("  Training samples: {}", training_data.len());
     println!("  RBM architecture: 9 visible × 5 hidden units");
-    println!("  Training time: {:.2?}", training_time);
+    println!("  Training time: {training_time:.2?}");
 
     // Test digit reconstruction
     println!("\n  Digit reconstruction (3×3 grid):");
     for (i, pattern) in digit_patterns.iter().take(3).enumerate() {
         let result = rbm.infer(pattern)?;
 
-        println!("    Original digit {}:", i);
+        println!("    Original digit {i}:");
         print_3x3_pattern(pattern);
 
         println!("    Reconstructed:");
@@ -222,7 +222,7 @@ fn digit_feature_learning_example() -> Result<(), Box<dyn std::error::Error>> {
             result
                 .hidden_activations
                 .iter()
-                .map(|&x| format!("{:.3}", x))
+                .map(|&x| format!("{x:.3}"))
                 .collect::<Vec<_>>()
         );
         println!("    Free energy: {:.4}", result.free_energy);
@@ -301,8 +301,8 @@ fn quantum_vs_classical_comparison() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Architecture: 4 visible × 3 hidden units");
 
     println!("\n  Training Performance:");
-    println!("    Quantum sampling time: {:.2?}", quantum_time);
-    println!("    Classical sampling time: {:.2?}", classical_time);
+    println!("    Quantum sampling time: {quantum_time:.2?}");
+    println!("    Classical sampling time: {classical_time:.2?}");
     println!(
         "    Speedup ratio: {:.2}x",
         classical_time.as_secs_f64() / quantum_time.as_secs_f64()
@@ -329,8 +329,8 @@ fn quantum_vs_classical_comparison() -> Result<(), Box<dyn std::error::Error>> {
         .sum::<f64>()
         / test_pattern.len() as f64;
 
-    println!("    Quantum reconstruction error: {:.6}", quantum_error);
-    println!("    Classical reconstruction error: {:.6}", classical_error);
+    println!("    Quantum reconstruction error: {quantum_error:.6}");
+    println!("    Classical reconstruction error: {classical_error:.6}");
     println!(
         "    Improvement: {:.2}%",
         ((classical_error - quantum_error) / classical_error * 100.0)
@@ -401,7 +401,7 @@ fn gaussian_bernoulli_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Data type: Continuous-valued patterns (normalized to [0,1])");
     println!("  Training samples: {}", training_data.len());
     println!("  Architecture: 4 Gaussian visible × 4 Bernoulli hidden");
-    println!("  Training time: {:.2?}", training_time);
+    println!("  Training time: {training_time:.2?}");
 
     // Test continuous data reconstruction
     println!("\n  Continuous pattern reconstruction:");
@@ -516,7 +516,7 @@ fn generative_modeling_example() -> Result<(), Box<dyn std::error::Error>> {
         training_data.len()
     );
     println!("  Architecture: 6 visible × 8 hidden units");
-    println!("  Training time: {:.2?}", training_time);
+    println!("  Training time: {training_time:.2?}");
 
     // Test denoising capability
     println!("\n  Denoising capability test:");
@@ -713,7 +713,7 @@ fn print_3x3_pattern(pattern: &[f64]) {
         for col in 0..3 {
             let idx = row * 3 + col;
             let symbol = if pattern[idx] > 0.5 { "█" } else { "·" };
-            print!("{} ", symbol);
+            print!("{symbol} ");
         }
         println!();
     }

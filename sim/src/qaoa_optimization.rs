@@ -5,9 +5,9 @@
 //! and hardware-aware optimizations.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -15,6 +15,9 @@ use std::time::{Duration, Instant};
 
 use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateType};
 use crate::error::Result;
+
+#[cfg(feature = "optimize")]
+use crate::optirs_integration::{OptiRSConfig, OptiRSQuantumOptimizer};
 
 /// QAOA problem types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -120,6 +123,9 @@ pub enum QAOAOptimizationStrategy {
     MLGuided,
     /// Adaptive parameter optimization
     Adaptive,
+    /// OptiRS optimization (Adam, SGD, RMSprop, etc.) - requires "optimize" feature
+    #[cfg(feature = "optimize")]
+    OptiRS,
 }
 
 /// QAOA configuration
@@ -304,6 +310,9 @@ pub struct QAOAOptimizer {
     stats: QAOAStats,
     /// Parameter transfer database
     parameter_database: Arc<Mutex<ParameterDatabase>>,
+    /// OptiRS optimizer (optional, for OptiRS strategy)
+    #[cfg(feature = "optimize")]
+    optirs_optimizer: Option<OptiRSQuantumOptimizer>,
 }
 
 /// Parameter transfer database
@@ -357,6 +366,8 @@ impl QAOAOptimizer {
             parameter_database: Arc::new(Mutex::new(ParameterDatabase {
                 parameters: HashMap::new(),
             })),
+            #[cfg(feature = "optimize")]
+            optirs_optimizer: None,
         })
     }
 
@@ -417,6 +428,10 @@ impl QAOAOptimizer {
                 }
                 QAOAOptimizationStrategy::Adaptive => {
                     self.adaptive_parameter_optimization(&cost_history)?;
+                }
+                #[cfg(feature = "optimize")]
+                QAOAOptimizationStrategy::OptiRS => {
+                    self.optirs_parameter_optimization()?;
                 }
             }
 
@@ -701,26 +716,24 @@ impl QAOAOptimizer {
 
         // This is a simplified implementation - would need actual clause encoding
         for constraint in &self.graph.constraints {
-            match constraint {
-                QAOAConstraint::LinearConstraint {
-                    coefficients,
-                    bound,
-                } => {
-                    let angle = gamma * bound;
+            if let QAOAConstraint::LinearConstraint {
+                coefficients,
+                bound,
+            } = constraint
+            {
+                let angle = gamma * bound;
 
-                    // Apply constraint penalty (simplified)
-                    for (i, &coeff) in coefficients.iter().enumerate() {
-                        if i < circuit.num_qubits && coeff.abs() > 1e-10 {
-                            circuit.add_gate(InterfaceGate::new(
-                                InterfaceGateType::RZ(angle * coeff),
-                                vec![i],
-                            ));
-                        }
+                // Apply constraint penalty (simplified)
+                for (i, &coeff) in coefficients.iter().enumerate() {
+                    if i < circuit.num_qubits && coeff.abs() > 1e-10 {
+                        circuit.add_gate(InterfaceGate::new(
+                            InterfaceGateType::RZ(angle * coeff),
+                            vec![i],
+                        ));
                     }
                 }
-                _ => {
-                    // Other constraint types would be handled here
-                }
+            } else {
+                // Other constraint types would be handled here
             }
         }
         Ok(())
@@ -1473,6 +1486,72 @@ impl QAOAOptimizer {
         self.classical_parameter_optimization()
     }
 
+    /// OptiRS parameter optimization using Adam, SGD, RMSprop, etc.
+    ///
+    /// This method uses state-of-the-art ML optimizers from OptiRS to optimize
+    /// QAOA parameters more efficiently than classical gradient descent.
+    #[cfg(feature = "optimize")]
+    fn optirs_parameter_optimization(&mut self) -> Result<()> {
+        // Initialize OptiRS optimizer if not already created
+        if self.optirs_optimizer.is_none() {
+            let config = OptiRSConfig {
+                optimizer_type: crate::optirs_integration::OptiRSOptimizerType::Adam,
+                learning_rate: self.config.learning_rate,
+                convergence_tolerance: self.config.convergence_tolerance,
+                max_iterations: self.config.max_iterations,
+                ..Default::default()
+            };
+            self.optirs_optimizer = Some(OptiRSQuantumOptimizer::new(config)?);
+        }
+
+        // Combine gammas and betas into a single parameter vector
+        let mut all_params = Vec::new();
+        all_params.extend_from_slice(&self.gammas);
+        all_params.extend_from_slice(&self.betas);
+
+        // Calculate gradients using finite differences
+        let epsilon = 1e-4;
+        let mut all_gradients = vec![0.0; all_params.len()];
+        let num_gammas = self.gammas.len();
+
+        // Gradients for gammas
+        for i in 0..num_gammas {
+            let mut gammas_plus = self.gammas.clone();
+            let mut gammas_minus = self.gammas.clone();
+            gammas_plus[i] += epsilon;
+            gammas_minus[i] -= epsilon;
+
+            let cost_plus = self.evaluate_qaoa_cost(&gammas_plus, &self.betas)?;
+            let cost_minus = self.evaluate_qaoa_cost(&gammas_minus, &self.betas)?;
+            all_gradients[i] = (cost_plus - cost_minus) / (2.0 * epsilon);
+        }
+
+        // Gradients for betas
+        for i in 0..self.betas.len() {
+            let mut betas_plus = self.betas.clone();
+            let mut betas_minus = self.betas.clone();
+            betas_plus[i] += epsilon;
+            betas_minus[i] -= epsilon;
+
+            let cost_plus = self.evaluate_qaoa_cost(&self.gammas, &betas_plus)?;
+            let cost_minus = self.evaluate_qaoa_cost(&self.gammas, &betas_minus)?;
+            all_gradients[num_gammas + i] = (cost_plus - cost_minus) / (2.0 * epsilon);
+        }
+
+        // Evaluate current cost
+        let current_cost = self.evaluate_qaoa_cost(&self.gammas, &self.betas)?;
+
+        // OptiRS optimization step
+        let optimizer = self.optirs_optimizer.as_mut().unwrap();
+        let new_params = optimizer.optimize_step(&all_params, &all_gradients, -current_cost)?; // Negate cost for minimization
+
+        // Split updated parameters back into gammas and betas
+        self.gammas = new_params[..num_gammas].to_vec();
+        self.betas = new_params[num_gammas..].to_vec();
+
+        Ok(())
+    }
+
     /// Helper methods
     fn apply_parameter_transfer(&mut self) -> Result<()> {
         // Load similar problem parameters from database
@@ -1492,10 +1571,7 @@ impl QAOAOptimizer {
         let characteristics = self.extract_problem_characteristics()?;
         let mut database = self.parameter_database.lock().unwrap();
 
-        let entry = database
-            .parameters
-            .entry(characteristics)
-            .or_insert_with(Vec::new);
+        let entry = database.parameters.entry(characteristics).or_default();
         entry.push((
             self.best_gammas.clone(),
             self.best_betas.clone(),
@@ -1514,7 +1590,7 @@ impl QAOAOptimizer {
             .graph
             .adjacency_matrix
             .iter()
-            .map(|&x| if x.abs() > 1e-10 { 1 } else { 0 })
+            .map(|&x| usize::from(x.abs() > 1e-10))
             .sum::<usize>();
 
         let max_edges = self.graph.num_vertices * (self.graph.num_vertices - 1) / 2;
@@ -1599,7 +1675,7 @@ impl QAOAOptimizer {
         let mut best_solution = String::new();
         let mut best_cost = f64::NEG_INFINITY;
 
-        for (bitstring, _probability) in probabilities {
+        for bitstring in probabilities.keys() {
             let cost = self.evaluate_classical_cost(bitstring)?;
             if cost > best_cost {
                 best_cost = cost;
@@ -1618,18 +1694,16 @@ impl QAOAOptimizer {
         let cost = self.evaluate_classical_cost(solution)?;
         let feasible = self.check_feasibility(solution)?;
 
-        let optimality_gap = if let Some(classical_opt) = self.classical_optimum {
-            Some((classical_opt - cost) / classical_opt)
-        } else {
-            None
-        };
+        let optimality_gap = self
+            .classical_optimum
+            .map(|classical_opt| (classical_opt - cost) / classical_opt);
 
         Ok(SolutionQuality {
             feasible,
             optimality_gap,
             solution_variance: 0.0, // Would calculate from multiple runs
             confidence: 0.9,        // Would calculate based on probability
-            constraint_violations: if feasible { 0 } else { 1 },
+            constraint_violations: usize::from(!feasible),
         })
     }
 

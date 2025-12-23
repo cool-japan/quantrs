@@ -1,31 +1,34 @@
-//! Python bindings for the QuantRS2 framework.
+//! Python bindings for the `QuantRS2` framework.
 //!
-//! This crate provides Python bindings using PyO3,
-//! allowing QuantRS2 to be used from Python.
+//! This crate provides Python bindings using `PyO3`,
+//! allowing `QuantRS2` to be used from Python.
 //!
 //! ## Recent Updates (v0.1.0-beta.2)
 //!
-//! - Refined SciRS2 v0.1.0-beta.3 integration with unified patterns
+//! - Refined `SciRS2` v0.1.0-beta.3 integration with unified patterns
 //! - Enhanced cross-platform support (macOS, Linux, Windows)
 //! - Improved GPU acceleration with CUDA support
 //! - Advanced quantum ML capabilities with autograd support
 //! - Comprehensive policy documentation for Python quantum computing
 
-use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList};
 use quantrs2_circuit::builder::Simulator;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
+use std::convert::TryFrom;
 use std::time::Duration;
 
 use quantrs2_sim::dynamic::{DynamicCircuit, DynamicResult};
-use quantrs2_sim::noise::{BitFlipChannel, DepolarizingChannel, NoiseModel, PhaseFlipChannel};
+use quantrs2_sim::noise::{BitFlipChannel, DepolarizingChannel, NoiseChannelType};
 use quantrs2_sim::noise_advanced::{
     AdvancedNoiseModel, CrosstalkChannel, RealisticNoiseModelBuilder, ThermalRelaxationChannel,
     TwoQubitDepolarizingChannel,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
+
+// scirs2-numpy provides direct compatibility with scirs2 types
 
 // Include the visualization module
 mod visualization;
@@ -73,6 +76,9 @@ mod anneal;
 #[cfg(feature = "tytan")]
 mod tytan;
 
+// Include the multi-GPU module
+mod multi_gpu;
+
 /// Python wrapper for realistic noise models
 #[pyclass]
 struct PyRealisticNoiseModel {
@@ -89,7 +95,26 @@ struct PyCircuit {
     n_qubits: usize,
 }
 
-/// Dynamic qubit count circuit for Python (alias to PyCircuit for backward compatibility)
+impl PyCircuit {
+    fn checked_qubit(&self, qubit: usize) -> PyResult<QubitId> {
+        if qubit >= self.n_qubits {
+            return Err(PyValueError::new_err(format!(
+                "Qubit index {qubit} out of range for circuit with {} qubits",
+                self.n_qubits
+            )));
+        }
+
+        let id = u32::try_from(qubit).map_err(|_| {
+            PyValueError::new_err(format!(
+                "Qubit index {qubit} exceeds the maximum supported range"
+            ))
+        })?;
+
+        Ok(QubitId::new(id))
+    }
+}
+
+/// Dynamic qubit count circuit for Python (alias to `PyCircuit` for backward compatibility)
 #[pyclass]
 struct PyDynamicCircuit {
     /// The internal circuit
@@ -97,6 +122,7 @@ struct PyDynamicCircuit {
 }
 
 /// Enum to store circuit operations for different gate types
+#[allow(clippy::upper_case_acronyms)]
 enum CircuitOp {
     /// Hadamard gate
     Hadamard(QubitId),
@@ -170,8 +196,7 @@ impl PyCircuit {
             Ok(c) => Some(c),
             Err(e) => {
                 return Err(PyValueError::new_err(format!(
-                    "Error creating circuit: {}",
-                    e
+                    "Error creating circuit: {e}"
                 )))
             }
         };
@@ -180,6 +205,7 @@ impl PyCircuit {
     }
 
     /// Get the number of qubits in the circuit
+    #[allow(clippy::missing_const_for_fn)]
     #[getter]
     fn n_qubits(&self) -> usize {
         self.n_qubits
@@ -187,122 +213,122 @@ impl PyCircuit {
 
     /// Apply a Hadamard gate to the specified qubit
     fn h(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::Hadamard(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::Hadamard(self.checked_qubit(qubit)?))
     }
 
     /// Apply a Pauli-X (NOT) gate to the specified qubit
     fn x(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::PauliX(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::PauliX(self.checked_qubit(qubit)?))
     }
 
     /// Apply a Pauli-Y gate to the specified qubit
     fn y(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::PauliY(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::PauliY(self.checked_qubit(qubit)?))
     }
 
     /// Apply a Pauli-Z gate to the specified qubit
     fn z(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::PauliZ(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::PauliZ(self.checked_qubit(qubit)?))
     }
 
     /// Apply an S gate (phase gate) to the specified qubit
     fn s(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::S(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::S(self.checked_qubit(qubit)?))
     }
 
     /// Apply an S-dagger gate to the specified qubit
     fn sdg(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::SDagger(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::SDagger(self.checked_qubit(qubit)?))
     }
 
     /// Apply a T gate (π/8 gate) to the specified qubit
     fn t(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::T(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::T(self.checked_qubit(qubit)?))
     }
 
     /// Apply a T-dagger gate to the specified qubit
     fn tdg(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::TDagger(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::TDagger(self.checked_qubit(qubit)?))
     }
 
     /// Apply an Rx gate (rotation around X-axis) to the specified qubit
     fn rx(&mut self, qubit: usize, theta: f64) -> PyResult<()> {
-        self.apply_gate(CircuitOp::Rx(QubitId::new(qubit as u32), theta))
+        self.apply_gate(CircuitOp::Rx(self.checked_qubit(qubit)?, theta))
     }
 
     /// Apply an Ry gate (rotation around Y-axis) to the specified qubit
     fn ry(&mut self, qubit: usize, theta: f64) -> PyResult<()> {
-        self.apply_gate(CircuitOp::Ry(QubitId::new(qubit as u32), theta))
+        self.apply_gate(CircuitOp::Ry(self.checked_qubit(qubit)?, theta))
     }
 
     /// Apply an Rz gate (rotation around Z-axis) to the specified qubit
     fn rz(&mut self, qubit: usize, theta: f64) -> PyResult<()> {
-        self.apply_gate(CircuitOp::Rz(QubitId::new(qubit as u32), theta))
+        self.apply_gate(CircuitOp::Rz(self.checked_qubit(qubit)?, theta))
     }
 
     /// Apply a CNOT gate with the specified control and target qubits
     fn cnot(&mut self, control: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::Cnot(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a SWAP gate between the specified qubits
     fn swap(&mut self, qubit1: usize, qubit2: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::Swap(
-            QubitId::new(qubit1 as u32),
-            QubitId::new(qubit2 as u32),
+            self.checked_qubit(qubit1)?,
+            self.checked_qubit(qubit2)?,
         ))
     }
 
     /// Apply a SX gate (square root of X) to the specified qubit
     fn sx(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::SX(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::SX(self.checked_qubit(qubit)?))
     }
 
     /// Apply a SX-dagger gate to the specified qubit
     fn sxdg(&mut self, qubit: usize) -> PyResult<()> {
-        self.apply_gate(CircuitOp::SXDagger(QubitId::new(qubit as u32)))
+        self.apply_gate(CircuitOp::SXDagger(self.checked_qubit(qubit)?))
     }
 
     /// Apply a CY gate (controlled-Y) to the specified qubits
     fn cy(&mut self, control: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::CY(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a CZ gate (controlled-Z) to the specified qubits
     fn cz(&mut self, control: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::CZ(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a CH gate (controlled-H) to the specified qubits
     fn ch(&mut self, control: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::CH(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a CS gate (controlled-S) to the specified qubits
     fn cs(&mut self, control: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::CS(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a CRX gate (controlled-RX) to the specified qubits
     fn crx(&mut self, control: usize, target: usize, theta: f64) -> PyResult<()> {
         self.apply_gate(CircuitOp::CRX(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
             theta,
         ))
     }
@@ -310,8 +336,8 @@ impl PyCircuit {
     /// Apply a CRY gate (controlled-RY) to the specified qubits
     fn cry(&mut self, control: usize, target: usize, theta: f64) -> PyResult<()> {
         self.apply_gate(CircuitOp::CRY(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
             theta,
         ))
     }
@@ -319,8 +345,8 @@ impl PyCircuit {
     /// Apply a CRZ gate (controlled-RZ) to the specified qubits
     fn crz(&mut self, control: usize, target: usize, theta: f64) -> PyResult<()> {
         self.apply_gate(CircuitOp::CRZ(
-            QubitId::new(control as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target)?,
             theta,
         ))
     }
@@ -328,31 +354,31 @@ impl PyCircuit {
     /// Apply a Toffoli gate (CCNOT) to the specified qubits
     fn toffoli(&mut self, control1: usize, control2: usize, target: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::Toffoli(
-            QubitId::new(control1 as u32),
-            QubitId::new(control2 as u32),
-            QubitId::new(target as u32),
+            self.checked_qubit(control1)?,
+            self.checked_qubit(control2)?,
+            self.checked_qubit(target)?,
         ))
     }
 
     /// Apply a Fredkin gate (CSWAP) to the specified qubits
     fn cswap(&mut self, control: usize, target1: usize, target2: usize) -> PyResult<()> {
         self.apply_gate(CircuitOp::Fredkin(
-            QubitId::new(control as u32),
-            QubitId::new(target1 as u32),
-            QubitId::new(target2 as u32),
+            self.checked_qubit(control)?,
+            self.checked_qubit(target1)?,
+            self.checked_qubit(target2)?,
         ))
     }
 
     /// Run the circuit on a state vector simulator
     ///
     /// Args:
-    ///     use_gpu (bool, optional): Whether to use the GPU for simulation if available. Defaults to False.
+    ///     `use_gpu` (bool, optional): Whether to use the GPU for simulation if available. Defaults to `False`.
     ///
     /// Returns:
-    ///     PySimulationResult: The result of the simulation.
+    ///     `PySimulationResult`: The result of the simulation.
     ///
     /// Raises:
-    ///     ValueError: If the GPU is requested but not available, or if there's an error during simulation.
+    ///     `ValueError`: If the GPU is requested but not available, or if there's an error during simulation.
     #[pyo3(signature = (use_gpu=false))]
     fn run(&self, py: Python, use_gpu: bool) -> PyResult<Py<PySimulationResult>> {
         match &self.circuit {
@@ -370,7 +396,7 @@ impl PyCircuit {
                         // Run on GPU
                         println!("QuantRS2: Running simulation on GPU");
                         circuit.run_gpu().map_err(|e| {
-                            PyValueError::new_err(format!("Error running GPU simulation: {}", e))
+                            PyValueError::new_err(format!("Error running GPU simulation: {e}"))
                         })?
                     }
 
@@ -384,7 +410,7 @@ impl PyCircuit {
                     // Use CPU simulation
                     let simulator = StateVectorSimulator::new();
                     circuit.run(&simulator).map_err(|e| {
-                        PyValueError::new_err(format!("Error running CPU simulation: {}", e))
+                        PyValueError::new_err(format!("Error running CPU simulation: {e}"))
                     })?
                 };
 
@@ -402,14 +428,14 @@ impl PyCircuit {
     /// Run the circuit with a noise model
     ///
     /// Args:
-    ///     noise_model (PyRealisticNoiseModel): The noise model to use for simulation
-    ///     use_gpu (bool, optional): Whether to use the GPU for simulation if available. Defaults to False.
+    ///     `noise_model` (`PyRealisticNoiseModel`): The noise model to use for simulation
+    ///     `use_gpu` (bool, optional): Whether to use the GPU for simulation if available. Defaults to `False`.
     ///
     /// Returns:
-    ///     PySimulationResult: The result of the simulation with noise applied.
+    ///     `PySimulationResult`: The result of the simulation with noise applied.
     ///
     /// Raises:
-    ///     ValueError: If there's an error during simulation.
+    ///     `ValueError`: If there's an error during simulation.
     #[pyo3(signature = (noise_model, use_gpu=false))]
     fn simulate_with_noise(
         &self,
@@ -435,7 +461,7 @@ impl PyCircuit {
                         let mut simulator = StateVectorSimulator::new();
                         simulator.set_advanced_noise_model(noise_model.noise_model.clone());
                         circuit.run(&simulator).map_err(|e| {
-                            PyValueError::new_err(format!("Error running noise simulation: {}", e))
+                            PyValueError::new_err(format!("Error running noise simulation: {e}"))
                         })?
                     }
 
@@ -450,7 +476,7 @@ impl PyCircuit {
                     let mut simulator = StateVectorSimulator::new();
                     simulator.set_advanced_noise_model(noise_model.noise_model.clone());
                     circuit.run(&simulator).map_err(|e| {
-                        PyValueError::new_err(format!("Error running noise simulation: {}", e))
+                        PyValueError::new_err(format!("Error running noise simulation: {e}"))
                     })?
                 };
 
@@ -472,7 +498,7 @@ impl PyCircuit {
                 #[cfg(feature = "gpu")]
                 {
                     let result = circuit.run_best().map_err(|e| {
-                        PyValueError::new_err(format!("Error running auto simulation: {}", e))
+                        PyValueError::new_err(format!("Error running auto simulation: {e}"))
                     })?;
 
                     let sim_result = PySimulationResult {
@@ -488,7 +514,7 @@ impl PyCircuit {
                     // On non-GPU builds, run on CPU
                     let simulator = StateVectorSimulator::new();
                     let result = circuit.run(&simulator).map_err(|e| {
-                        PyValueError::new_err(format!("Error running CPU simulation: {}", e))
+                        PyValueError::new_err(format!("Error running CPU simulation: {e}"))
                     })?;
 
                     let sim_result = PySimulationResult {
@@ -505,6 +531,7 @@ impl PyCircuit {
 
     /// Check if GPU acceleration is available
     #[staticmethod]
+    #[allow(clippy::missing_const_for_fn)]
     fn is_gpu_available() -> bool {
         #[cfg(feature = "gpu")]
         {
@@ -518,18 +545,19 @@ impl PyCircuit {
     }
 
     /// Get a text-based visualization of the circuit
+    #[allow(clippy::used_underscore_items)]
     fn draw(&self) -> PyResult<String> {
         Python::with_gil(|py| {
-            let circuit = match &self.circuit {
-                Some(circuit) => circuit,
-                None => return Err(PyValueError::new_err("Circuit not initialized")),
+            let Some(circuit) = &self.circuit else {
+                return Err(PyValueError::new_err("Circuit not initialized"));
             };
 
             // Create visualization directly
             let mut visualizer = PyCircuitVisualizer::new(self.n_qubits)?;
 
             // Add all gates from the circuit (simplified version)
-            for (i, gate) in circuit.get_gate_names().iter().enumerate() {
+            let gate_names = circuit.get_gate_names();
+            for gate in &gate_names {
                 // For simplicity, assume they're all single-qubit gates on qubit 0
                 visualizer.add_gate(gate, vec![0], None)?;
             }
@@ -545,11 +573,11 @@ impl PyCircuit {
     }
 
     /// Get a visualization object for the circuit
-    fn visualize(&self, py: Python) -> PyResult<Py<PyCircuitVisualizer>> {
-        Python::with_gil(|py| Ok(self.get_visualizer()?))
+    fn visualize(&self, _py: Python) -> PyResult<Py<PyCircuitVisualizer>> {
+        self.get_visualizer()
     }
 
-    /// Implements the _repr_html_ method for Jupyter notebook display
+    /// Implements the `_repr_html_` method for Jupyter notebook display
     fn _repr_html_(&self) -> PyResult<String> {
         self.draw_html()
     }
@@ -563,20 +591,17 @@ impl PyCircuit {
             match &self.circuit {
                 Some(circuit) => {
                     // Decompose the circuit
-                    let decomposed = match circuit {
-                        // For each circuit size, decompose and create a new PyCircuit
-                        _ => {
-                            // In a full implementation, we would decompose the circuit here
-                            // For now, just create a copy for demonstration purposes
-                            let mut new_circuit = Self::new(self.n_qubits)?;
+                    let decomposed = {
+                        // In a full implementation, we would decompose the circuit here
+                        // For now, just create a copy for demonstration purposes
+                        let mut new_circuit = Self::new(self.n_qubits)?;
 
-                            // Add basic gates as a simple demonstration
-                            // In reality, we would perform proper decomposition
-                            new_circuit.h(0)?;
-                            new_circuit.cnot(0, 1)?;
+                        // Add basic gates as a simple demonstration
+                        // In reality, we would perform proper decomposition
+                        new_circuit.h(0)?;
+                        new_circuit.cnot(0, 1)?;
 
-                            new_circuit
-                        }
+                        new_circuit
                     };
 
                     Py::new(py, decomposed)
@@ -596,20 +621,17 @@ impl PyCircuit {
             match &self.circuit {
                 Some(circuit) => {
                     // Optimize the circuit
-                    let optimized = match circuit {
-                        // For each circuit size, optimize and create a new PyCircuit
-                        _ => {
-                            // In a full implementation, we would optimize the circuit here
-                            // For now, just create a copy for demonstration purposes
-                            let mut new_circuit = Self::new(self.n_qubits)?;
+                    let optimized = {
+                        // In a full implementation, we would optimize the circuit here
+                        // For now, just create a copy for demonstration purposes
+                        let mut new_circuit = Self::new(self.n_qubits)?;
 
-                            // Add some "optimized" gates for demonstration
-                            // In reality, we would perform proper optimization
-                            new_circuit.h(0)?;
-                            new_circuit.cnot(0, 1)?;
+                        // Add some "optimized" gates for demonstration
+                        // In reality, we would perform proper optimization
+                        new_circuit.h(0)?;
+                        new_circuit.cnot(0, 1)?;
 
-                            new_circuit
-                        }
+                        new_circuit
                     };
 
                     Py::new(py, optimized)
@@ -622,6 +644,7 @@ impl PyCircuit {
 
 impl PyCircuit {
     /// Helper function to get a circuit visualizer based on the current circuit state
+    #[allow(clippy::too_many_lines)]
     fn get_visualizer(&self) -> PyResult<Py<PyCircuitVisualizer>> {
         Python::with_gil(|py| {
             // Gather all operations in the circuit
@@ -689,7 +712,7 @@ impl PyCircuit {
                             operations.push((
                                 "RX".to_string(),
                                 vec![qubit as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
                         "RY" => {
@@ -698,7 +721,7 @@ impl PyCircuit {
                             operations.push((
                                 "RY".to_string(),
                                 vec![qubit as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
                         "RZ" => {
@@ -707,7 +730,7 @@ impl PyCircuit {
                             operations.push((
                                 "RZ".to_string(),
                                 vec![qubit as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
 
@@ -774,7 +797,7 @@ impl PyCircuit {
                             operations.push((
                                 "CRX".to_string(),
                                 vec![control as usize, target as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
                         "CRY" => {
@@ -783,7 +806,7 @@ impl PyCircuit {
                             operations.push((
                                 "CRY".to_string(),
                                 vec![control as usize, target as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
                         "CRZ" => {
@@ -792,7 +815,7 @@ impl PyCircuit {
                             operations.push((
                                 "CRZ".to_string(),
                                 vec![control as usize, target as usize],
-                                Some(format!("{:.2}", theta)),
+                                Some(format!("{theta:.2}")),
                             ));
                         }
 
@@ -818,7 +841,7 @@ impl PyCircuit {
 
                         // Unknown gate
                         _ => {
-                            operations.push((gate.to_string(), vec![0], None));
+                            operations.push((gate.clone(), vec![0], None));
                         }
                     }
                 }
@@ -830,6 +853,7 @@ impl PyCircuit {
     }
 
     /// Helper function to apply a gate to the circuit
+    #[allow(clippy::needless_pass_by_value, clippy::too_many_lines)]
     fn apply_gate(&mut self, op: CircuitOp) -> PyResult<()> {
         match &mut self.circuit {
             Some(circuit) => {
@@ -838,56 +862,56 @@ impl PyCircuit {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::Hadamard { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::PauliX(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::PauliX { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::PauliY(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::PauliY { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::PauliZ(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::PauliZ { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::S(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::Phase { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::SDagger(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::PhaseDagger { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::T(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::T { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::TDagger(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::TDagger { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Rx(qubit, theta) => {
@@ -897,7 +921,7 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Ry(qubit, theta) => {
@@ -907,7 +931,7 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Rz(qubit, theta) => {
@@ -917,63 +941,63 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Cnot(control, target) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::CNOT { control, target })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Swap(qubit1, qubit2) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::SWAP { qubit1, qubit2 })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::SX(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::SqrtX { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::SXDagger(qubit) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::single::SqrtXDagger { target: qubit })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CY(control, target) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::CY { control, target })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CZ(control, target) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::CZ { control, target })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CH(control, target) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::CH { control, target })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CS(control, target) => {
                         circuit
                             .apply_gate(quantrs2_core::gate::multi::CS { control, target })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CRX(control, target, theta) => {
@@ -984,7 +1008,7 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CRY(control, target, theta) => {
@@ -995,7 +1019,7 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::CRZ(control, target, theta) => {
@@ -1006,7 +1030,7 @@ impl PyCircuit {
                                 theta,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Toffoli(control1, control2, target) => {
@@ -1017,7 +1041,7 @@ impl PyCircuit {
                                 target,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                     CircuitOp::Fredkin(control, target1, target2) => {
@@ -1028,7 +1052,7 @@ impl PyCircuit {
                                 target2,
                             })
                             .map_err(|e| {
-                                PyValueError::new_err(format!("Error applying gate: {}", e))
+                                PyValueError::new_err(format!("Error applying gate: {e}"))
                             })?;
                     }
                 }
@@ -1062,6 +1086,7 @@ impl PySimulationResult {
     }
 
     /// Get the number of qubits
+    #[allow(clippy::missing_const_for_fn)]
     #[getter]
     fn n_qubits(&self) -> usize {
         self.n_qubits
@@ -1094,8 +1119,7 @@ impl PySimulationResult {
         for c in operator.chars() {
             if c != 'I' && c != 'X' && c != 'Y' && c != 'Z' {
                 return Err(PyValueError::new_err(format!(
-                    "Invalid Pauli operator: {}. Only I, X, Y, Z are allowed",
-                    c
+                    "Invalid Pauli operator: {c}. Only I, X, Y, Z are allowed"
                 )));
             }
         }
@@ -1107,64 +1131,64 @@ impl PySimulationResult {
     }
 }
 
-/// Implementation of the PyRealisticNoiseModel class
+/// Implementation of the `PyRealisticNoiseModel` class
 #[pymethods]
 impl PyRealisticNoiseModel {
     /// Create a new realistic noise model for IBM quantum devices
     ///
     /// Args:
-    ///     device_name (str): The name of the IBM quantum device (e.g., "ibmq_lima", "ibm_cairo")
+    ///     `device_name` (str): The name of the IBM quantum device (e.g., "`ibmq_lima`", "`ibm_cairo`")
     ///
     /// Returns:
-    ///     PyRealisticNoiseModel: A noise model configured with the specified device parameters
+    ///     `PyRealisticNoiseModel`: A noise model configured with the specified device parameters
     #[staticmethod]
-    fn ibm_device(device_name: &str) -> PyResult<Self> {
+    fn ibm_device(device_name: &str) -> Self {
         // Convert device name to lowercase
         let device_name = device_name.to_lowercase();
 
         // Create a list of qubits from 0 to 31 (max 32 qubits support)
-        let qubits: Vec<QubitId> = (0..32).map(|i| QubitId::new(i)).collect();
+        let qubits: Vec<QubitId> = (0..32).map(QubitId::new).collect();
 
         // Create IBM device noise model
         let noise_model = RealisticNoiseModelBuilder::new(true)
             .with_ibm_device_noise(&qubits, &device_name)
             .build();
 
-        Ok(Self { noise_model })
+        Self { noise_model }
     }
 
     /// Create a new realistic noise model for Rigetti quantum devices
     ///
     /// Args:
-    ///     device_name (str): The name of the Rigetti quantum device (e.g., "Aspen-M-2")
+    ///     `device_name` (str): The name of the Rigetti quantum device (e.g., "Aspen-M-2")
     ///
     /// Returns:
-    ///     PyRealisticNoiseModel: A noise model configured with the specified device parameters
+    ///     `PyRealisticNoiseModel`: A noise model configured with the specified device parameters
     #[staticmethod]
-    fn rigetti_device(device_name: &str) -> PyResult<Self> {
+    fn rigetti_device(device_name: &str) -> Self {
         // Create a list of qubits from 0 to 31 (max 32 qubits support)
-        let qubits: Vec<QubitId> = (0..32).map(|i| QubitId::new(i)).collect();
+        let qubits: Vec<QubitId> = (0..32).map(QubitId::new).collect();
 
         // Create Rigetti device noise model
         let noise_model = RealisticNoiseModelBuilder::new(true)
             .with_rigetti_device_noise(&qubits, device_name)
             .build();
 
-        Ok(Self { noise_model })
+        Self { noise_model }
     }
 
     /// Create a new realistic noise model with custom parameters
     ///
     /// Args:
-    ///     t1_us (float): T1 relaxation time in microseconds
-    ///     t2_us (float): T2 dephasing time in microseconds
-    ///     gate_time_ns (float): Gate time in nanoseconds
-    ///     gate_error_1q (float): Single-qubit gate error rate (0.0 to 1.0)
-    ///     gate_error_2q (float): Two-qubit gate error rate (0.0 to 1.0)
-    ///     readout_error (float): Readout error rate (0.0 to 1.0)
+    ///     `t1_us` (float): T1 relaxation time in microseconds
+    ///     `t2_us` (float): T2 dephasing time in microseconds
+    ///     `gate_time_ns` (float): Gate time in nanoseconds
+    ///     `gate_error_1q` (float): Single-qubit gate error rate (0.0 to 1.0)
+    ///     `gate_error_2q` (float): Two-qubit gate error rate (0.0 to 1.0)
+    ///     `readout_error` (float): Readout error rate (0.0 to 1.0)
     ///
     /// Returns:
-    ///     PyRealisticNoiseModel: A custom noise model with the specified parameters
+    ///     `PyRealisticNoiseModel`: A custom noise model with the specified parameters
     #[staticmethod]
     #[pyo3(signature = (t1_us=100.0, t2_us=50.0, gate_time_ns=40.0, gate_error_1q=0.001, gate_error_2q=0.01, readout_error=0.02))]
     fn custom(
@@ -1174,9 +1198,9 @@ impl PyRealisticNoiseModel {
         gate_error_1q: f64,
         gate_error_2q: f64,
         readout_error: f64,
-    ) -> PyResult<Self> {
+    ) -> Self {
         // Create a list of qubits from 0 to 31 (max 32 qubits support)
-        let qubits: Vec<QubitId> = (0..32).map(|i| QubitId::new(i)).collect();
+        let qubits: Vec<QubitId> = (0..32).map(QubitId::new).collect();
 
         // Create pairs of adjacent qubits for two-qubit noise
         let qubit_pairs: Vec<(QubitId, QubitId)> = (0..31)
@@ -1187,17 +1211,33 @@ impl PyRealisticNoiseModel {
         let noise_model = RealisticNoiseModelBuilder::new(true)
             .with_custom_thermal_relaxation(
                 &qubits,
-                Duration::from_micros(t1_us as u64),
-                Duration::from_micros(t2_us as u64),
-                Duration::from_nanos(gate_time_ns as u64),
+                Duration::from_secs_f64(t1_us * 1e-6),
+                Duration::from_secs_f64(t2_us * 1e-6),
+                Duration::from_secs_f64(gate_time_ns * 1e-9),
             )
             .with_custom_two_qubit_noise(&qubit_pairs, gate_error_2q)
             .build();
 
-        // Add depolarizing noise for single-qubit gates
+        // Add depolarizing noise for single-qubit gates and readout errors
         let mut result = Self { noise_model };
 
-        Ok(result)
+        for &qubit in &qubits {
+            result
+                .noise_model
+                .add_base_channel(NoiseChannelType::Depolarizing(DepolarizingChannel {
+                    target: qubit,
+                    probability: gate_error_1q,
+                }));
+
+            result
+                .noise_model
+                .add_base_channel(NoiseChannelType::BitFlip(BitFlipChannel {
+                    target: qubit,
+                    probability: readout_error,
+                }));
+        }
+
+        result
     }
 
     /// Get the number of noise channels in this model
@@ -1207,7 +1247,7 @@ impl PyRealisticNoiseModel {
     }
 }
 
-/// Implementation for PyDynamicCircuit
+/// Implementation for `PyDynamicCircuit`
 #[pymethods]
 impl PyDynamicCircuit {
     /// Create a new dynamic quantum circuit with the given number of qubits
@@ -1219,6 +1259,7 @@ impl PyDynamicCircuit {
     }
 
     /// Get the number of qubits in the circuit
+    #[allow(clippy::missing_const_for_fn)]
     #[getter]
     fn n_qubits(&self) -> usize {
         self.circuit.n_qubits
@@ -1317,7 +1358,7 @@ impl PyDynamicCircuit {
     }
 }
 
-/// Python module for QuantRS2
+/// Python module for `QuantRS2`
 #[pymodule]
 fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.setattr("__version__", env!("CARGO_PKG_VERSION"))?;
@@ -1330,47 +1371,50 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCircuitVisualizer>()?;
 
     // Register the gates submodule
-    gates::register_module(&m)?;
+    gates::register_module(m)?;
 
     // Register the SciRS2 submodule
-    scirs2_bindings::create_scirs2_module(&m)?;
+    scirs2_bindings::create_scirs2_module(m)?;
     m.add_class::<scirs2_bindings::PyQuantumNumerics>()?;
 
     // Register the parametric module
-    parametric::register_parametric_module(&m)?;
+    parametric::register_parametric_module(m)?;
 
     // Register the optimization module
-    optimization_passes::register_optimization_module(&m)?;
+    optimization_passes::register_optimization_module(m)?;
 
     // Register the Pythonic API module
-    pythonic_api::register_pythonic_module(&m)?;
+    pythonic_api::register_pythonic_module(m)?;
 
     // Register the custom gates module
-    custom_gates::register_custom_gates_module(&m)?;
+    custom_gates::register_custom_gates_module(m)?;
 
     // Register the measurement module
-    measurement::register_measurement_module(&m)?;
+    measurement::register_measurement_module(m)?;
 
     // Register the algorithms module
-    algorithms::register_algorithms_module(&m)?;
+    algorithms::register_algorithms_module(m)?;
 
     // Register the pulse module
-    pulse::register_pulse_module(&m)?;
+    pulse::register_pulse_module(m)?;
 
     // Register the mitigation module
-    mitigation::register_mitigation_module(&m)?;
+    mitigation::register_mitigation_module(m)?;
 
     // Register the ML transfer learning module
     #[cfg(feature = "ml")]
-    ml_transfer::register_ml_transfer_module(&m)?;
+    ml_transfer::register_ml_transfer_module(m)?;
 
     // Register the anneal module
     #[cfg(feature = "anneal")]
-    anneal::register_anneal_module(&m)?;
+    anneal::register_anneal_module(m)?;
 
     // Register the tytan module
     #[cfg(feature = "tytan")]
-    tytan::register_tytan_module(&m)?;
+    tytan::register_tytan_module(m)?;
+
+    // Register the multi-GPU module
+    multi_gpu::register_multi_gpu_module(m)?;
 
     // Add metadata
     m.setattr(

@@ -77,14 +77,14 @@ fn standard_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Approximation ratio: {:.3}", results.approximation_ratio);
     println!("  Converged: {}", results.converged);
     println!("  Function evaluations: {}", results.function_evaluations);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Parameter analysis
     println!("\n  Optimal QAOA parameters:");
     for (i, &param) in results.optimal_parameters.iter().enumerate() {
         let param_type = if i % 2 == 0 { "gamma" } else { "beta" };
         let layer = i / 2;
-        println!("    Layer {} {}: {:.6}", layer, param_type, param);
+        println!("    Layer {layer} {param_type}: {param:.6}");
     }
 
     // Circuit analysis
@@ -160,7 +160,7 @@ fn qaoa_plus_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Approximation ratio: {:.3}", results.approximation_ratio);
     println!("  Converged: {}", results.converged);
     println!("  Function evaluations: {}", results.function_evaluations);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Parameter evolution analysis
     if results.parameter_history.len() > 1 {
@@ -189,9 +189,9 @@ fn qaoa_plus_example() -> Result<(), Box<dyn std::error::Error>> {
         let final_energy = *results.energy_history.last().unwrap();
         let improvement = initial_energy - final_energy;
 
-        println!("    Initial energy: {:.6}", initial_energy);
-        println!("    Final energy: {:.6}", final_energy);
-        println!("    Total improvement: {:.6}", improvement);
+        println!("    Initial energy: {initial_energy:.6}");
+        println!("    Final energy: {final_energy:.6}");
+        println!("    Total improvement: {improvement:.6}");
 
         // Show convergence pattern
         let quarter = results.energy_history.len() / 4;
@@ -243,7 +243,7 @@ fn warm_start_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Warm-Start QAOA Results:");
     println!("  Problem: 5-qubit random sparse Ising model");
-    println!("  Initial solution: {:?}", classical_solution);
+    println!("  Initial solution: {classical_solution:?}");
     println!("  QAOA layers: 2");
     println!("  Optimizer: Nelder-Mead");
     println!("  Best energy: {:.6}", results.best_energy);
@@ -251,7 +251,7 @@ fn warm_start_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Approximation ratio: {:.3}", results.approximation_ratio);
     println!("  Converged: {}", results.converged);
     println!("  Function evaluations: {}", results.function_evaluations);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Compare with classical solution
     let classical_energy = evaluate_ising_energy(&classical_solution, &problem)?;
@@ -259,15 +259,15 @@ fn warm_start_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     let improvement = classical_energy - quantum_energy;
 
     println!("\n  Warm-start analysis:");
-    println!("    Classical energy: {:.6}", classical_energy);
-    println!("    QAOA energy: {:.6}", quantum_energy);
-    println!("    Improvement: {:.6}", improvement);
+    println!("    Classical energy: {classical_energy:.6}");
+    println!("    QAOA energy: {quantum_energy:.6}");
+    println!("    Improvement: {improvement:.6}");
     println!(
         "    Improvement ratio: {:.1}%",
-        if classical_energy != 0.0 {
-            improvement / classical_energy.abs() * 100.0
-        } else {
+        if classical_energy == 0.0 {
             0.0
+        } else {
+            improvement / classical_energy.abs() * 100.0
         }
     );
 
@@ -322,15 +322,15 @@ fn constrained_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Approximation ratio: {:.3}", results.approximation_ratio);
     println!("  Converged: {}", results.converged);
     println!("  Function evaluations: {}", results.function_evaluations);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Constraint satisfaction analysis
     let num_vertices = results.best_solution.iter().filter(|&&x| x == 1).count();
     let covered_edges = count_covered_edges(&results.best_solution);
 
     println!("\n  Constraint analysis:");
-    println!("    Vertices selected: {}/4", num_vertices);
-    println!("    Edges covered: {}/4", covered_edges);
+    println!("    Vertices selected: {num_vertices}/4");
+    println!("    Edges covered: {covered_edges}/4");
     println!(
         "    Constraint satisfaction: {:.1}%",
         covered_edges as f64 / 4.0 * 100.0
@@ -418,7 +418,7 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
         let results = qaoa.solve(&problem)?;
         let runtime = start.elapsed();
 
-        println!("\n  {} Results:", optimizer_name);
+        println!("\n  {optimizer_name} Results:");
         println!("    Best energy: {:.6}", results.best_energy);
         println!(
             "    Approximation ratio: {:.3}",
@@ -426,7 +426,7 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
         );
         println!("    Converged: {}", results.converged);
         println!("    Function evaluations: {}", results.function_evaluations);
-        println!("    Runtime: {:.2?}", runtime);
+        println!("    Runtime: {runtime:.2?}");
 
         // Convergence analysis
         if results.energy_history.len() > 1 {
@@ -435,8 +435,8 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
             let improvement = initial_energy - final_energy;
             let convergence_rate = improvement / results.function_evaluations as f64;
 
-            println!("    Energy improvement: {:.6}", improvement);
-            println!("    Convergence rate: {:.8}/eval", convergence_rate);
+            println!("    Energy improvement: {improvement:.6}");
+            println!("    Convergence rate: {convergence_rate:.8}/eval");
         }
 
         // Parameter statistics
@@ -450,7 +450,7 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
                 .sum::<f64>()
                 / results.optimal_parameters.len() as f64
         };
-        println!("    Parameter variance: {:.6}", param_variance);
+        println!("    Parameter variance: {param_variance:.6}");
     }
 
     println!("\n  Optimizer Selection Guide:");
@@ -499,7 +499,7 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
         let results = qaoa.solve(&problem)?;
         let runtime = start.elapsed();
 
-        println!("\n  Depth {} Results:", depth);
+        println!("\n  Depth {depth} Results:");
         println!("    Parameters: {}", results.optimal_parameters.len());
         println!("    Best energy: {:.6}", results.best_energy);
         println!(
@@ -508,7 +508,7 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
         );
         println!("    Converged: {}", results.converged);
         println!("    Function evaluations: {}", results.function_evaluations);
-        println!("    Runtime: {:.2?}", runtime);
+        println!("    Runtime: {runtime:.2?}");
 
         // Circuit complexity analysis
         println!("    Circuit depth: {}", results.circuit_stats.total_depth);
@@ -531,14 +531,14 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
             let energy_range = results
                 .energy_history
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max)
                 - results
                     .energy_history
                     .iter()
-                    .cloned()
+                    .copied()
                     .fold(f64::INFINITY, f64::min);
-            println!("    Energy range explored: {:.6}", energy_range);
+            println!("    Energy range explored: {energy_range:.6}");
         }
 
         // Optimal parameters pattern
@@ -546,14 +546,14 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
             .optimal_parameters
             .iter()
             .step_by(2)
-            .cloned()
+            .copied()
             .collect();
         let beta_params: Vec<f64> = results
             .optimal_parameters
             .iter()
             .skip(1)
             .step_by(2)
-            .cloned()
+            .copied()
             .collect();
 
         if gamma_params.len() > 1 {
@@ -562,7 +562,7 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|w| w[1] - w[0])
                 .collect::<Vec<f64>>();
             let avg_gamma_change = gamma_trend.iter().sum::<f64>() / gamma_trend.len() as f64;
-            println!("    Gamma parameter trend: {:.6}/layer", avg_gamma_change);
+            println!("    Gamma parameter trend: {avg_gamma_change:.6}/layer");
         }
 
         if beta_params.len() > 1 {
@@ -571,7 +571,7 @@ fn parameter_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
                 beta_params.iter().map(|&p| (p - mean).powi(2)).sum::<f64>()
                     / beta_params.len() as f64
             };
-            println!("    Beta parameter variance: {:.6}", beta_variance);
+            println!("    Beta parameter variance: {beta_variance:.6}");
         }
     }
 
@@ -621,7 +621,7 @@ fn large_scale_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     let runtime = start.elapsed();
 
     println!("Large-Scale QAOA Results:");
-    println!("  Problem: {}-qubit 3-regular graph", problem_size);
+    println!("  Problem: {problem_size}-qubit 3-regular graph");
     println!("  QAOA layers: 3");
     println!("  Shots: 2000");
     println!("  Initialization: Problem-aware");
@@ -630,11 +630,11 @@ fn large_scale_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Approximation ratio: {:.3}", results.approximation_ratio);
     println!("  Converged: {}", results.converged);
     println!("  Function evaluations: {}", results.function_evaluations);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Scaling analysis
     println!("\n  Scaling metrics:");
-    println!("    Qubits: {}", problem_size);
+    println!("    Qubits: {problem_size}");
     println!("    Parameters: {}", results.optimal_parameters.len());
     println!("    Circuit depth: {}", results.circuit_stats.total_depth);
     println!(
@@ -653,7 +653,7 @@ fn large_scale_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
     // Solution quality analysis
     let solution_entropy = calculate_solution_entropy(&results.best_solution);
     println!("\n  Solution analysis:");
-    println!("    Solution entropy: {:.3}", solution_entropy);
+    println!("    Solution entropy: {solution_entropy:.3}");
     println!(
         "    Spin up count: {}",
         results.best_solution.iter().filter(|&&s| s == 1).count()
@@ -691,8 +691,8 @@ fn large_scale_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
         let late_improvement = late_phase[0] - late_phase[late_phase.len() - 1];
 
         println!("\n  Convergence analysis:");
-        println!("    Early phase improvement: {:.6}", early_improvement);
-        println!("    Late phase improvement: {:.6}", late_improvement);
+        println!("    Early phase improvement: {early_improvement:.6}");
+        println!("    Late phase improvement: {late_improvement:.6}");
         println!(
             "    Convergence pattern: {}",
             if early_improvement > late_improvement * 3.0 {
@@ -715,12 +715,12 @@ fn large_scale_qaoa_example() -> Result<(), Box<dyn std::error::Error>> {
             .performance_metrics
             .parameter_sensitivity
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
 
         println!("\n  Parameter sensitivity:");
-        println!("    Average sensitivity: {:.6}", avg_sensitivity);
-        println!("    Maximum sensitivity: {:.6}", max_sensitivity);
+        println!("    Average sensitivity: {avg_sensitivity:.6}");
+        println!("    Maximum sensitivity: {max_sensitivity:.6}");
         println!(
             "    Parameter robustness: {}",
             if max_sensitivity < 0.1 {
@@ -745,13 +745,13 @@ fn evaluate_ising_energy(
 
     // Bias terms
     for i in 0..spins.len() {
-        energy += problem.get_bias(i)? * spins[i] as f64;
+        energy += problem.get_bias(i)? * f64::from(spins[i]);
     }
 
     // Coupling terms
     for i in 0..spins.len() {
         for j in (i + 1)..spins.len() {
-            energy += problem.get_coupling(i, j)? * spins[i] as f64 * spins[j] as f64;
+            energy += problem.get_coupling(i, j)? * f64::from(spins[i]) * f64::from(spins[j]);
         }
     }
 

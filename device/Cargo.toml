@@ -22,12 +22,11 @@ fastrand.workspace = true
 bincode.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-rayon.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 num_cpus.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-stats.workspace = true
@@ -58,6 +57,7 @@ x25519-dalek = { version = "2.0.1", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 
 [features]
 default = ["scheduling", "scirs2", "security", "neutral_atom"]
@@ -77,6 +77,11 @@ neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "de
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
 scirs2 = ["dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["scheduling", "scirs2", "security", "neutral_atom"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true

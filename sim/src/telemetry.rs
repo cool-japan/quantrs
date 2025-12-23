@@ -257,7 +257,7 @@ pub struct TelemetryCollector {
 impl TelemetryCollector {
     /// Create new telemetry collector
     pub fn new(config: TelemetryConfig) -> Self {
-        let collector = Self {
+        Self {
             config: config.clone(),
             metrics_history: Arc::new(RwLock::new(VecDeque::with_capacity(
                 config.max_history_size,
@@ -268,9 +268,7 @@ impl TelemetryCollector {
             system_monitor_handle: None,
             last_export: Arc::new(Mutex::new(Instant::now())),
             custom_handlers: HashMap::new(),
-        };
-
-        collector
+        }
     }
 
     /// Start telemetry collection
@@ -520,7 +518,7 @@ impl TelemetryCollector {
     /// Export telemetry data
     pub fn export_data(&self, path: &str) -> Result<()> {
         std::fs::create_dir_all(path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create export directory: {}", e))
+            SimulatorError::InvalidInput(format!("Failed to create export directory: {e}"))
         })?;
 
         match self.config.export_format {
@@ -665,15 +663,15 @@ impl TelemetryCollector {
     fn export_json(&self, path: &str) -> Result<()> {
         let metrics = self.metrics_history.read().unwrap();
         let data = serde_json::to_string_pretty(&*metrics).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to serialize metrics: {}", e))
+            SimulatorError::InvalidInput(format!("Failed to serialize metrics: {e}"))
         })?;
 
-        let file_path = format!("{}/telemetry.json", path);
+        let file_path = format!("{path}/telemetry.json");
         let mut file = File::create(&file_path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(data.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }
@@ -709,17 +707,16 @@ impl TelemetryCollector {
 
             let tags_str = serde_json::to_string(tags).unwrap_or_default();
             csv_data.push_str(&format!(
-                "{},{},{},{},{}\n",
-                timestamp, name, metric_type, value, tags_str
+                "{timestamp},{name},{metric_type},{value},{tags_str}\n"
             ));
         }
 
-        let file_path = format!("{}/telemetry.csv", path);
+        let file_path = format!("{path}/telemetry.csv");
         let mut file = File::create(&file_path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(csv_data.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }
@@ -737,7 +734,7 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    prometheus_data.push_str(&format!("# TYPE {} counter\n", name));
+                    prometheus_data.push_str(&format!("# TYPE {name} counter\n"));
                     prometheus_data.push_str(&format!(
                         "{}{} {} {}\n",
                         name,
@@ -752,7 +749,7 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    prometheus_data.push_str(&format!("# TYPE {} gauge\n", name));
+                    prometheus_data.push_str(&format!("# TYPE {name} gauge\n"));
                     prometheus_data.push_str(&format!(
                         "{}{} {} {}\n",
                         name,
@@ -765,12 +762,12 @@ impl TelemetryCollector {
             }
         }
 
-        let file_path = format!("{}/telemetry.prom", path);
+        let file_path = format!("{path}/telemetry.prom");
         let mut file = File::create(&file_path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(prometheus_data.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }
@@ -828,12 +825,12 @@ impl TelemetryCollector {
             }
         }
 
-        let file_path = format!("{}/telemetry.influx", path);
+        let file_path = format!("{path}/telemetry.influx");
         let mut file = File::create(&file_path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(influx_data.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }
@@ -850,10 +847,7 @@ impl TelemetryCollector {
             return String::new();
         }
 
-        let labels: Vec<String> = tags
-            .iter()
-            .map(|(k, v)| format!("{}=\"{}\"", k, v))
-            .collect();
+        let labels: Vec<String> = tags.iter().map(|(k, v)| format!("{k}=\"{v}\"")).collect();
 
         format!("{{{}}}", labels.join(","))
     }
@@ -864,7 +858,7 @@ impl TelemetryCollector {
             return String::new();
         }
 
-        let tag_pairs: Vec<String> = tags.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
+        let tag_pairs: Vec<String> = tags.iter().map(|(k, v)| format!("{k}={v}")).collect();
 
         format!(",{}", tag_pairs.join(","))
     }

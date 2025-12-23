@@ -3,9 +3,9 @@
 //! This example demonstrates the benchmarking framework for comparing quantum ML models
 //! across different algorithms, hardware backends, and problem sizes.
 
-use quantrs2_ml::benchmarking::algorithm_benchmarks::*;
-use quantrs2_ml::benchmarking::benchmark_utils::*;
-use quantrs2_ml::benchmarking::*;
+use quantrs2_ml::benchmarking::algorithm_benchmarks::{QAOABenchmark, QNNBenchmark, VQEBenchmark};
+use quantrs2_ml::benchmarking::benchmark_utils::create_benchmark_backends;
+use quantrs2_ml::benchmarking::{Benchmark, BenchmarkConfig, BenchmarkFramework, BenchmarkResults};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::simulator_backends::Backend;
 use std::time::Duration;
@@ -16,7 +16,14 @@ pub struct BenchmarkContext {
     pub config: String,
 }
 
+impl Default for BenchmarkContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BenchmarkContext {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: "default".to_string(),
@@ -108,7 +115,7 @@ fn print_performance_summary(results: &BenchmarkResults) {
 
     // Print summaries for each benchmark
     for (name, summary) in results.summaries() {
-        println!("   {}:", name);
+        println!("   {name}:");
         println!("     - Mean time: {:.3}s", summary.mean_time.as_secs_f64());
         println!("     - Min time:  {:.3}s", summary.min_time.as_secs_f64());
         println!("     - Max time:  {:.3}s", summary.max_time.as_secs_f64());
@@ -145,7 +152,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze VQE scaling
     if !vqe_results.is_empty() {
         println!("   VQE Algorithm Scaling:");
-        vqe_results.sort_by_key(|(name, _)| name.clone());
+        vqe_results.sort_by_key(|(name, _)| (*name).to_string());
         for (name, summary) in vqe_results {
             let qubits = extract_qubit_count(name);
             println!(
@@ -161,7 +168,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze QAOA scaling
     if !qaoa_results.is_empty() {
         println!("   QAOA Algorithm Scaling:");
-        qaoa_results.sort_by_key(|(name, _)| name.clone());
+        qaoa_results.sort_by_key(|(name, _)| (*name).to_string());
         for (name, summary) in qaoa_results {
             let qubits = extract_qubit_count(name);
             println!(
@@ -177,7 +184,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze QNN scaling
     if !qnn_results.is_empty() {
         println!("   QNN Algorithm Scaling:");
-        qnn_results.sort_by_key(|(name, _)| name.clone());
+        qnn_results.sort_by_key(|(name, _)| (*name).to_string());
         for (name, summary) in qnn_results {
             let qubits = extract_qubit_count(name);
             println!(
@@ -256,7 +263,7 @@ fn analyze_backend_performance(results: &BenchmarkResults) {
 
     for (backend, times) in backend_performance {
         let avg_time = times.iter().sum::<f64>() / times.len() as f64;
-        println!("     - {} backend: {:.3}s average", backend, avg_time);
+        println!("     - {backend} backend: {avg_time:.3}s average");
     }
 }
 

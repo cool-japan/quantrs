@@ -1,11 +1,11 @@
-//! Quantum AutoML Framework Demonstration
+//! Quantum `AutoML` Framework Demonstration
 //!
 //! This example demonstrates the comprehensive quantum automated machine learning
 //! framework capabilities, including automated model selection, hyperparameter
 //! optimization, preprocessing pipelines, and ensemble construction.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
     println!("🚀 Quantum AutoML Framework Demo");
@@ -25,10 +25,7 @@ fn main() -> Result<()> {
     .iter()
     .filter(|&&enabled| enabled)
     .count();
-    println!(
-        "Configuration created with {} enabled algorithms in search space",
-        algorithm_count
-    );
+    println!("Configuration created with {algorithm_count} enabled algorithms in search space");
 
     // Initialize Quantum AutoML
     println!("\n🔧 Initializing Quantum AutoML...");
@@ -134,17 +131,14 @@ fn main() -> Result<()> {
             println!("\n🔮 Testing prediction on new data...");
             let test_data = Array2::from_shape_vec(
                 (5, n_features),
-                (0..20).map(|x| x as f64 / 20.0).collect(),
+                (0..20).map(|x| f64::from(x) / 20.0).collect(),
             )?;
 
             match automl.predict(&test_data) {
                 Ok(predictions) => {
-                    println!(
-                        "Predictions: {:?}",
-                        predictions.mapv(|x| format!("{:.2}", x))
-                    );
+                    println!("Predictions: {:?}", predictions.mapv(|x| format!("{x:.2}")));
                 }
-                Err(e) => println!("Prediction failed: {}", e),
+                Err(e) => println!("Prediction failed: {e}"),
             }
 
             // Test model explanation (mock)
@@ -156,8 +150,8 @@ fn main() -> Result<()> {
             println!("Expressibility: 0.853");
         }
         Err(e) => {
-            println!("❌ AutoML pipeline failed: {}", e);
-            return Err(e.into());
+            println!("❌ AutoML pipeline failed: {e}");
+            return Err(e);
         }
     }
 
@@ -195,7 +189,7 @@ fn main() -> Result<()> {
     .iter()
     .filter(|&&enabled| enabled)
     .count();
-    println!("  • {} quantum algorithms", comprehensive_algorithm_count);
+    println!("  • {comprehensive_algorithm_count} quantum algorithms");
     println!("  • 5 encoding methods");
     println!("  • 8 preprocessing methods");
     println!("  • 6 quantum metrics");

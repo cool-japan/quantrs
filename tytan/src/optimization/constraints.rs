@@ -55,7 +55,7 @@ struct EncodingInfo {
 }
 
 /// Integer encoding types
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EncodingType {
     Binary,
     Unary,
@@ -207,7 +207,7 @@ impl ConstraintHandler {
 
         // Create bit variables
         for i in 0..num_bits {
-            bit_variables.push(format!("{}_{}", base_name, i));
+            bit_variables.push(format!("{base_name}_{i}"));
         }
 
         // Store encoding info
@@ -234,17 +234,12 @@ impl ConstraintHandler {
                     let prev_expr: Expression = Variable::new(bit_variables[i - 1].clone()).into();
                     let constraint_expr = expr - prev_expr;
 
-                    self.add_inequality(
-                        format!("{}_unary_{}", name, i),
-                        constraint_expr,
-                        0.0,
-                        true,
-                    )?;
+                    self.add_inequality(format!("{name}_unary_{i}"), constraint_expr, 0.0, true)?;
                 }
             }
             EncodingType::OneHot => {
                 // Exactly one bit active
-                self.add_one_hot(format!("{}_onehot", name), bit_variables.clone())?;
+                self.add_one_hot(format!("{name}_onehot"), bit_variables.clone())?;
             }
             EncodingType::Gray => {
                 // Gray code constraints are implicit in the mapping
@@ -412,7 +407,7 @@ impl ConstraintHandler {
                         break;
                     }
                 }
-                Some(encoding.min_value + count as i32)
+                Some(encoding.min_value + count)
             }
             EncodingType::OneHot => {
                 for (i, bit_var) in encoding.bit_variables.iter().enumerate() {
@@ -508,7 +503,7 @@ trait ExpressionExt {
 impl ExpressionExt for Expression {
     fn zero() -> Self {
         // Placeholder implementation
-        Expression::Constant(0.0)
+        Self::Constant(0.0)
     }
 
     fn get_variables(&self) -> Vec<String> {
@@ -524,7 +519,7 @@ pub struct Variable {
 }
 
 impl Variable {
-    pub fn new(name: String) -> Self {
+    pub const fn new(name: String) -> Self {
         Self { name }
     }
 }
@@ -534,19 +529,19 @@ impl Variable {
 pub enum Expression {
     Constant(f64),
     Variable(String),
-    Add(Box<Expression>, Box<Expression>),
-    Multiply(Box<Expression>, Box<Expression>),
+    Add(Box<Self>, Box<Self>),
+    Multiply(Box<Self>, Box<Self>),
 }
 
 impl From<f64> for Expression {
     fn from(value: f64) -> Self {
-        Expression::Constant(value)
+        Self::Constant(value)
     }
 }
 
 impl From<Variable> for Expression {
     fn from(var: Variable) -> Self {
-        Expression::Variable(var.name)
+        Self::Variable(var.name)
     }
 }
 
@@ -554,7 +549,7 @@ impl std::ops::Add for Expression {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Expression::Add(Box::new(self), Box::new(rhs))
+        Self::Add(Box::new(self), Box::new(rhs))
     }
 }
 
@@ -562,10 +557,10 @@ impl std::ops::Sub for Expression {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Expression::Add(
+        Self::Add(
             Box::new(self),
-            Box::new(Expression::Multiply(
-                Box::new(Expression::Constant(-1.0)),
+            Box::new(Self::Multiply(
+                Box::new(Self::Constant(-1.0)),
                 Box::new(rhs),
             )),
         )
@@ -576,7 +571,7 @@ impl std::ops::Mul for Expression {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Expression::Multiply(Box::new(self), Box::new(rhs))
+        Self::Multiply(Box::new(self), Box::new(rhs))
     }
 }
 

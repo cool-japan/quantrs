@@ -1,9 +1,9 @@
 //! Python bindings for Tytan quantum annealing and visualization
 
-use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use scirs2_numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayMethods};
 use std::collections::HashMap;
 
 #[cfg(feature = "tytan")]
@@ -28,6 +28,7 @@ pub struct PySampleResult {
     pub occurrences: usize,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PySampleResult {
     #[new]
@@ -43,7 +44,7 @@ impl PySampleResult {
 #[cfg(feature = "tytan")]
 impl From<PySampleResult> for SampleResult {
     fn from(py_result: PySampleResult) -> Self {
-        SampleResult {
+        Self {
             assignments: py_result.assignments,
             energy: py_result.energy,
             occurrences: py_result.occurrences,
@@ -55,6 +56,7 @@ impl From<PySampleResult> for SampleResult {
 #[pyclass]
 pub struct PyEnergyLandscapeVisualizer;
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyEnergyLandscapeVisualizer {
     /// Prepare energy landscape data
@@ -75,12 +77,11 @@ impl PyEnergyLandscapeVisualizer {
                 kde_points: kde_points.unwrap_or(200),
             };
 
-            let rust_results: Vec<SampleResult> = results.into_iter().map(|r| r.into()).collect();
+            let rust_results: Vec<SampleResult> =
+                results.into_iter().map(std::convert::Into::into).collect();
 
-            let landscape_data =
-                prepare_energy_landscape(&rust_results, Some(config)).map_err(|e| {
-                    PyValueError::new_err(format!("Failed to prepare landscape: {}", e))
-                })?;
+            let landscape_data = prepare_energy_landscape(&rust_results, Some(config))
+                .map_err(|e| PyValueError::new_err(format!("Failed to prepare landscape: {e}")))?;
 
             let dict = PyDict::new(py);
 
@@ -143,6 +144,7 @@ impl PyEnergyLandscapeVisualizer {
 #[pyclass]
 pub struct PySolutionAnalyzer;
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PySolutionAnalyzer {
     /// Analyze solution distributions
@@ -163,11 +165,12 @@ impl PySolutionAnalyzer {
                 n_components: n_components.unwrap_or(2),
             };
 
-            let rust_results: Vec<SampleResult> = results.into_iter().map(|r| r.into()).collect();
+            let rust_results: Vec<SampleResult> =
+                results.into_iter().map(std::convert::Into::into).collect();
 
             let dist_data =
                 analyze_solution_distribution(&rust_results, Some(config)).map_err(|e| {
-                    PyValueError::new_err(format!("Failed to analyze distribution: {}", e))
+                    PyValueError::new_err(format!("Failed to analyze distribution: {e}"))
                 })?;
 
             let dict = PyDict::new(py);
@@ -182,7 +185,7 @@ impl PySolutionAnalyzer {
             if let Some(correlations) = dist_data.correlations {
                 let corr_dict = PyDict::new(py);
                 for ((var1, var2), value) in correlations {
-                    let key = format!("{}_{}", var1, var2);
+                    let key = format!("{var1}_{var2}");
                     corr_dict.set_item(key, value)?;
                 }
                 dict.set_item("correlations", corr_dict)?;
@@ -192,7 +195,7 @@ impl PySolutionAnalyzer {
             let (rows, cols) = dist_data.solution_matrix.dim();
             let flat_data: Vec<f64> = dist_data.solution_matrix.into_raw_vec();
             let array = scirs2_core::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
-                .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Failed to create array: {e}")))?;
             let py_array = array.into_pyarray(py);
             dict.set_item("solution_matrix", py_array)?;
 
@@ -201,7 +204,9 @@ impl PySolutionAnalyzer {
                 let (rows, cols) = components.dim();
                 let flat_data: Vec<f64> = components.into_raw_vec();
                 let array = scirs2_core::ndarray::Array2::from_shape_vec((rows, cols), flat_data)
-                    .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
+                    .map_err(|e| {
+                    PyValueError::new_err(format!("Failed to create array: {e}"))
+                })?;
                 let py_array = array.into_pyarray(py);
                 dict.set_item("pca_components", py_array)?;
             }
@@ -226,6 +231,7 @@ impl PySolutionAnalyzer {
 #[pyclass]
 pub struct PyProblemVisualizer;
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyProblemVisualizer {
     /// Extract TSP tour from solution
@@ -235,7 +241,7 @@ impl PyProblemVisualizer {
         {
             let rust_result: SampleResult = result.clone().into();
             extract_tsp_tour(&rust_result, n_cities)
-                .map_err(|e| PyValueError::new_err(format!("Failed to extract tour: {}", e)))
+                .map_err(|e| PyValueError::new_err(format!("Failed to extract tour: {e}")))
         }
 
         #[cfg(not(feature = "tytan"))]
@@ -246,6 +252,7 @@ impl PyProblemVisualizer {
 
     /// Extract graph coloring from solution
     #[staticmethod]
+    #[allow(clippy::needless_pass_by_value)]
     fn extract_graph_coloring(
         result: &PySampleResult,
         n_nodes: usize,
@@ -256,7 +263,7 @@ impl PyProblemVisualizer {
         {
             let rust_result: SampleResult = result.clone().into();
             extract_graph_coloring(&rust_result, n_nodes, n_colors, &edges)
-                .map_err(|e| PyValueError::new_err(format!("Failed to extract coloring: {}", e)))
+                .map_err(|e| PyValueError::new_err(format!("Failed to extract coloring: {e}")))
         }
 
         #[cfg(not(feature = "tytan"))]
@@ -267,6 +274,7 @@ impl PyProblemVisualizer {
 
     /// Generate spring layout for graph visualization
     #[staticmethod]
+    #[allow(clippy::needless_pass_by_value)]
     fn spring_layout(
         py: Python,
         n_nodes: usize,
@@ -283,7 +291,7 @@ impl PyProblemVisualizer {
                 .collect();
 
             let array = scirs2_core::ndarray::Array2::from_shape_vec((n_nodes, 2), flat_coords)
-                .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
+                .map_err(|e| PyValueError::new_err(format!("Failed to create array: {e}")))?;
 
             Ok(array.into_pyarray(py).into())
         }
@@ -299,6 +307,7 @@ impl PyProblemVisualizer {
 #[pyclass]
 pub struct PyConvergenceAnalyzer;
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyConvergenceAnalyzer {
     /// Analyze convergence behavior
@@ -313,11 +322,11 @@ impl PyConvergenceAnalyzer {
         {
             let rust_iterations: Vec<Vec<SampleResult>> = iteration_results
                 .into_iter()
-                .map(|iter| iter.into_iter().map(|r| r.into()).collect())
+                .map(|iter| iter.into_iter().map(std::convert::Into::into).collect())
                 .collect();
 
             let conv_data = analyze_convergence(&rust_iterations, ma_window).map_err(|e| {
-                PyValueError::new_err(format!("Failed to analyze convergence: {}", e))
+                PyValueError::new_err(format!("Failed to analyze convergence: {e}"))
             })?;
 
             let dict = PyDict::new(py);

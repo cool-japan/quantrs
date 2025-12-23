@@ -15,10 +15,10 @@
 //! - Basis set optimization for quantum hardware
 //! - Active space selection and orbital optimization
 
+use scirs2_core::ndarray::ndarray_linalg::Norm; // SciRS2 POLICY compliant
 use scirs2_core::ndarray::{Array1, Array2, Array4};
-use ndarray_linalg::Norm;
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -460,14 +460,19 @@ impl QuantumChemistrySimulator {
             && molecule.atomic_numbers[0] == 1
             && molecule.atomic_numbers[1] == 1
         {
-            let bond_length = ((molecule.positions[[0, 0]] - molecule.positions[[1, 0]]).powi(2)
-                + (molecule.positions[[0, 1]] - molecule.positions[[1, 1]]).powi(2)
-                + (molecule.positions[[0, 2]] - molecule.positions[[1, 2]]).powi(2))
-            .sqrt();
+            let bond_length = (molecule.positions[[0, 2]] - molecule.positions[[1, 2]])
+                .mul_add(
+                    molecule.positions[[0, 2]] - molecule.positions[[1, 2]],
+                    (molecule.positions[[0, 1]] - molecule.positions[[1, 1]]).mul_add(
+                        molecule.positions[[0, 1]] - molecule.positions[[1, 1]],
+                        (molecule.positions[[0, 0]] - molecule.positions[[1, 0]]).powi(2),
+                    ),
+                )
+                .sqrt();
 
             // STO-3G parameters for hydrogen
             let overlap = 0.6593 * (-0.1158 * bond_length * bond_length).exp();
-            let kinetic = 0.7618 - 1.2266 * overlap;
+            let kinetic = 1.2266f64.mul_add(-overlap, 0.7618);
             let nuclear_attraction = -1.2266;
 
             integrals[[0, 0]] = kinetic + nuclear_attraction;
@@ -480,15 +485,22 @@ impl QuantumChemistrySimulator {
                 integrals[[i, i]] =
                     -0.5 * molecule.atomic_numbers[i.min(molecule.atomic_numbers.len() - 1)] as f64;
                 for j in i + 1..num_orbitals {
-                    let distance =
-                        if i < molecule.positions.nrows() && j < molecule.positions.nrows() {
-                            ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2)
-                                + (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2)
-                                + (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2))
+                    let distance = if i < molecule.positions.nrows()
+                        && j < molecule.positions.nrows()
+                    {
+                        (molecule.positions[[i, 2]] - molecule.positions[[j, 2]])
+                            .mul_add(
+                                molecule.positions[[i, 2]] - molecule.positions[[j, 2]],
+                                (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).mul_add(
+                                    molecule.positions[[i, 1]] - molecule.positions[[j, 1]],
+                                    (molecule.positions[[i, 0]] - molecule.positions[[j, 0]])
+                                        .powi(2),
+                                ),
+                            )
                             .sqrt()
-                        } else {
-                            1.0
-                        };
+                    } else {
+                        1.0
+                    };
                     let coupling = -0.1 / (1.0 + distance);
                     integrals[[i, j]] = coupling;
                     integrals[[j, i]] = coupling;
@@ -531,10 +543,15 @@ impl QuantumChemistrySimulator {
 
         for i in 0..molecule.atomic_numbers.len() {
             for j in i + 1..molecule.atomic_numbers.len() {
-                let distance = ((molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2)
-                    + (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).powi(2)
-                    + (molecule.positions[[i, 2]] - molecule.positions[[j, 2]]).powi(2))
-                .sqrt();
+                let distance = (molecule.positions[[i, 2]] - molecule.positions[[j, 2]])
+                    .mul_add(
+                        molecule.positions[[i, 2]] - molecule.positions[[j, 2]],
+                        (molecule.positions[[i, 1]] - molecule.positions[[j, 1]]).mul_add(
+                            molecule.positions[[i, 1]] - molecule.positions[[j, 1]],
+                            (molecule.positions[[i, 0]] - molecule.positions[[j, 0]]).powi(2),
+                        ),
+                    )
+                    .sqrt();
 
                 if distance > 1e-10 {
                     nuclear_repulsion +=
@@ -806,17 +823,17 @@ impl QuantumChemistrySimulator {
             let complex_fock: Array2<Complex64> = fock.mapv(|x| Complex64::new(x, 0.0));
             let pool = MemoryPool::new();
             let scirs2_matrix = Matrix::from_array2(&complex_fock.view(), &pool).map_err(|e| {
-                SimulatorError::ComputationError(format!("Failed to create SciRS2 matrix: {}", e))
+                SimulatorError::ComputationError(format!("Failed to create SciRS2 matrix: {e}"))
             })?;
 
             // Perform eigenvalue decomposition
             let eig_result = LAPACK::eig(&scirs2_matrix).map_err(|e| {
-                SimulatorError::ComputationError(format!("Eigenvalue decomposition failed: {}", e))
+                SimulatorError::ComputationError(format!("Eigenvalue decomposition failed: {e}"))
             })?;
 
             // Extract eigenvalues and eigenvectors
             let eigenvalues_complex = eig_result.to_array1().map_err(|e| {
-                SimulatorError::ComputationError(format!("Failed to extract eigenvalues: {}", e))
+                SimulatorError::ComputationError(format!("Failed to extract eigenvalues: {e}"))
             })?;
 
             // Convert back to real (taking real part, imaginary should be ~0 for Hermitian matrices)
@@ -978,7 +995,7 @@ impl QuantumChemistrySimulator {
 
         // VQE optimization loop
         let mut best_energy = std::f64::INFINITY;
-        let mut best_state = initial_state.clone();
+        let mut best_state = initial_state;
         let mut iteration = 0;
 
         while iteration < self.config.vqe_config.max_iterations {
@@ -1228,7 +1245,7 @@ impl QuantumChemistrySimulator {
         // Use the interface circuit application method
         simulator.apply_interface_circuit(circuit)?;
 
-        Ok(Array1::from_vec(simulator.get_state().to_owned()))
+        Ok(Array1::from_vec(simulator.get_state()))
     }
 
     /// Calculate expectation value with Pauli Hamiltonian
@@ -1488,7 +1505,7 @@ impl QuantumChemistrySimulator {
 
     fn run_quantum_ci(&mut self) -> Result<ElectronicStructureResult> {
         // Enhanced quantum configuration interaction using VQE with CI-inspired ansatz
-        let original_ansatz = self.config.vqe_config.ansatz.clone();
+        let original_ansatz = self.config.vqe_config.ansatz;
 
         // Use a configuration interaction inspired ansatz
         self.config.vqe_config.ansatz = ChemistryAnsatz::Adaptive;
@@ -1508,8 +1525,8 @@ impl QuantumChemistrySimulator {
 
     fn run_quantum_coupled_cluster(&mut self) -> Result<ElectronicStructureResult> {
         // Enhanced quantum coupled cluster using UCCSD ansatz with optimized parameters
-        let original_ansatz = self.config.vqe_config.ansatz.clone();
-        let original_optimizer = self.config.vqe_config.optimizer.clone();
+        let original_ansatz = self.config.vqe_config.ansatz;
+        let original_optimizer = self.config.vqe_config.optimizer;
 
         // Use UCCSD ansatz which is specifically designed for coupled cluster
         self.config.vqe_config.ansatz = ChemistryAnsatz::UCCSD;
@@ -1707,7 +1724,7 @@ impl QuantumChemistrySimulator {
     }
 
     /// Get molecule reference
-    pub fn get_molecule(&self) -> Option<&Molecule> {
+    pub const fn get_molecule(&self) -> Option<&Molecule> {
         self.molecule.as_ref()
     }
 
@@ -1842,12 +1859,12 @@ impl FermionMapper {
     }
 
     /// Get method reference
-    pub fn get_method(&self) -> &FermionMapping {
+    pub const fn get_method(&self) -> &FermionMapping {
         &self.method
     }
 
     /// Get number of spin orbitals
-    pub fn get_num_spin_orbitals(&self) -> usize {
+    pub const fn get_num_spin_orbitals(&self) -> usize {
         self.num_spin_orbitals
     }
 }
@@ -1876,11 +1893,11 @@ impl VQEOptimizer {
 
     /// Initialize parameters (public version)
     pub fn initialize_parameters_public(&mut self, num_parameters: usize) {
-        self.initialize_parameters(num_parameters)
+        self.initialize_parameters(num_parameters);
     }
 
     /// Get parameters reference
-    pub fn get_parameters(&self) -> &Array1<f64> {
+    pub const fn get_parameters(&self) -> &Array1<f64> {
         &self.parameters
     }
 
@@ -1890,7 +1907,7 @@ impl VQEOptimizer {
     }
 
     /// Get method reference
-    pub fn get_method(&self) -> &ChemistryOptimizer {
+    pub const fn get_method(&self) -> &ChemistryOptimizer {
         &self.method
     }
 }

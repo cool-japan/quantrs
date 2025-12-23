@@ -5,8 +5,8 @@
 //! entanglement spectrum analysis, and spectral density computations.
 
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -282,10 +282,8 @@ impl SciRS2SpectralAnalyzer {
         };
 
         let results = results?;
-        let (ground_state_energies, energy_gaps, ground_states): (Vec<_>, Vec<_>, Vec<_>) = results
-            .into_iter()
-            .map(|(e, g, gs)| (e, g, gs))
-            .multiunzip();
+        let (ground_state_energies, energy_gaps, ground_states): (Vec<_>, Vec<_>, Vec<_>) =
+            results.into_iter().multiunzip();
 
         // Calculate order parameters (overlap with first ground state)
         let reference_state = &ground_states[0];
@@ -446,7 +444,7 @@ impl SciRS2SpectralAnalyzer {
                         .sum::<f64>()
                         .ln()
             };
-            renyi_entropies.insert(format!("S_{}", n), renyi_n);
+            renyi_entropies.insert(format!("S_{n}"), renyi_n);
         }
 
         // Entanglement gap (difference between largest and second largest eigenvalues)
@@ -457,11 +455,11 @@ impl SciRS2SpectralAnalyzer {
         };
 
         // Participation ratio
-        let participation_ratio = if !nonzero_eigenvalues.is_empty() {
+        let participation_ratio = if nonzero_eigenvalues.is_empty() {
+            0.0
+        } else {
             let sum_p2 = nonzero_eigenvalues.iter().map(|&p| p * p).sum::<f64>();
             1.0 / sum_p2
-        } else {
-            0.0
         };
 
         Ok(EntanglementSpectrumResult {
@@ -539,12 +537,12 @@ impl SciRS2SpectralAnalyzer {
         }
 
         // Calculate density of states from band structure
-        let all_energies: Vec<f64> = energy_bands.iter().cloned().collect();
+        let all_energies: Vec<f64> = energy_bands.iter().copied().collect();
         let energy_range = (
-            all_energies.iter().cloned().fold(f64::INFINITY, f64::min),
+            all_energies.iter().copied().fold(f64::INFINITY, f64::min),
             all_energies
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max),
         );
 
@@ -558,7 +556,7 @@ impl SciRS2SpectralAnalyzer {
         let mut density = Vec::new();
 
         for i in 0..num_energy_points {
-            let energy = energy_min + i as f64 * energy_step;
+            let energy = (i as f64).mul_add(energy_step, energy_min);
             energy_grid.push(energy);
 
             // Count energy eigenvalues within a small window around this energy
@@ -607,7 +605,7 @@ impl SciRS2SpectralAnalyzer {
                 // Numerical second derivative: d²E/dk² ≈ (E(k+dk) - 2E(k) + E(k-dk)) / dk²
                 // Assuming uniform k-spacing
                 let dk = 0.1; // Approximate k-spacing in units of π/a
-                let second_derivative = (e_next - 2.0 * e_curr + e_prev) / (dk * dk);
+                let second_derivative = (2.0f64.mul_add(-e_curr, e_next) + e_prev) / (dk * dk);
 
                 // Effective mass: m* = ħ² / (d²E/dk²)
                 // Using atomic units where ħ = 1
@@ -654,7 +652,7 @@ impl SciRS2SpectralAnalyzer {
             crate::scirs2_sparse::SparseSolverMethod::Arnoldi
         };
 
-        let mut solver = if let Some(_) = &self.backend {
+        let mut solver = if self.backend.is_some() {
             SciRS2SparseSolver::new(config)?.with_backend()?
         } else {
             SciRS2SparseSolver::new(config)?
@@ -989,11 +987,11 @@ impl SciRS2SpectralAnalyzer {
                 let det = (matrix[[0, 0]] * matrix[[1, 1]] - matrix[[0, 1]] * matrix[[1, 0]]).re;
 
                 // Solve characteristic polynomial: λ² - trace*λ + det = 0
-                let discriminant = trace * trace - 4.0 * det;
+                let discriminant = trace.mul_add(trace, -(4.0 * det));
                 if discriminant >= 0.0 {
                     let sqrt_disc = discriminant.sqrt();
                     eigenvalues.clear();
-                    eigenvalues.push((trace + sqrt_disc) / 2.0);
+                    eigenvalues.push(f64::midpoint(trace, sqrt_disc));
                     eigenvalues.push((trace - sqrt_disc) / 2.0);
                 }
             }
@@ -1013,13 +1011,13 @@ impl SciRS2SpectralAnalyzer {
         } else {
             // For larger matrices, suggest using proper LAPACK implementation
             Err(SimulatorError::UnsupportedOperation(
-                format!("Matrix size {} too large. Recommend using ndarray-linalg or LAPACK for proper eigenvalue computation", n)
+                format!("Matrix size {n} too large. Recommend using ndarray-linalg or LAPACK for proper eigenvalue computation")
             ))
         }
     }
 
     /// Get configuration
-    pub fn get_config(&self) -> &SpectralConfig {
+    pub const fn get_config(&self) -> &SpectralConfig {
         &self.config
     }
 
@@ -1047,7 +1045,7 @@ impl QuantumHamiltonianLibrary {
         // ZZ interactions
         for i in 0..num_sites - 1 {
             let mut pauli_string = "I".repeat(num_sites);
-            pauli_string.replace_range(i..i + 1, "Z");
+            pauli_string.replace_range(i..=i, "Z");
             pauli_string.replace_range(i + 1..i + 2, "Z");
             pauli_terms.push((pauli_string, -j));
         }
@@ -1055,7 +1053,7 @@ impl QuantumHamiltonianLibrary {
         // Transverse field
         for i in 0..num_sites {
             let mut pauli_string = "I".repeat(num_sites);
-            pauli_string.replace_range(i..i + 1, "X");
+            pauli_string.replace_range(i..=i, "X");
             pauli_terms.push((pauli_string, -h));
         }
 
@@ -1071,19 +1069,19 @@ impl QuantumHamiltonianLibrary {
         for i in 0..num_sites - 1 {
             // XX interaction
             let mut xx_string = "I".repeat(num_sites);
-            xx_string.replace_range(i..i + 1, "X");
+            xx_string.replace_range(i..=i, "X");
             xx_string.replace_range(i + 1..i + 2, "X");
             pauli_terms.push((xx_string, jx));
 
             // YY interaction
             let mut yy_string = "I".repeat(num_sites);
-            yy_string.replace_range(i..i + 1, "Y");
+            yy_string.replace_range(i..=i, "Y");
             yy_string.replace_range(i + 1..i + 2, "Y");
             pauli_terms.push((yy_string, jy));
 
             // ZZ interaction
             let mut zz_string = "I".repeat(num_sites);
-            zz_string.replace_range(i..i + 1, "Z");
+            zz_string.replace_range(i..=i, "Z");
             zz_string.replace_range(i + 1..i + 2, "Z");
             pauli_terms.push((zz_string, jz));
         }

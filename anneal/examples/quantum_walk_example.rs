@@ -82,12 +82,12 @@ fn continuous_time_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Time steps: 200");
     println!("  Best energy: {:.4}", result.best_energy);
     println!("  Best configuration: {:?}", result.best_spins);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
     println!("  Measurements: {}", result.total_sweeps);
 
     // Analyze the solution
     let cut_edges = count_cut_edges(&result.best_spins, &[(0, 1), (1, 2), (2, 3), (3, 0)]);
-    println!("  Cut edges: {}/4", cut_edges);
+    println!("  Cut edges: {cut_edges}/4");
 
     Ok(())
 }
@@ -121,7 +121,7 @@ fn discrete_time_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Walk steps: 50");
     println!("  Best energy: {:.4}", result.best_energy);
     println!("  Best configuration: {:?}", result.best_spins);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // For triangle, theoretical minimum is -1 (can cut at most 2 edges)
     println!("  Theoretical minimum: -1.0");
@@ -138,7 +138,11 @@ fn adiabatic_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..5 {
         for j in (i + 1)..5 {
             if thread_rng().gen::<f64>() < 0.4 {
-                let coupling = if thread_rng().gen::<bool>() { 1.0 } else { -1.0 };
+                let coupling = if thread_rng().gen::<bool>() {
+                    1.0
+                } else {
+                    -1.0
+                };
                 model.set_coupling(i, j, coupling)?;
             }
         }
@@ -168,7 +172,7 @@ fn adiabatic_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Adiabatic steps: 100");
     println!("  Best energy: {:.4}", result.best_energy);
     println!("  Best configuration: {:?}", result.best_spins);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     Ok(())
 }
@@ -207,16 +211,16 @@ fn qaoa_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("QAOA Quantum Walk Results:");
     println!("  Problem: Complete graph K4 MaxCut");
     println!("  QAOA layers: 4");
-    println!("  Beta schedule: {:?}", beta_schedule);
-    println!("  Gamma schedule: {:?}", gamma_schedule);
+    println!("  Beta schedule: {beta_schedule:?}");
+    println!("  Gamma schedule: {gamma_schedule:?}");
     println!("  Best energy: {:.4}", result.best_energy);
     println!("  Best configuration: {:?}", result.best_spins);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // K4 MaxCut optimal is -4 (can cut 4 out of 6 edges)
     let edges = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)];
     let cut_edges = count_cut_edges(&result.best_spins, &edges);
-    println!("  Cut edges: {}/6", cut_edges);
+    println!("  Cut edges: {cut_edges}/6");
     println!("  Theoretical maximum: 4 edges");
 
     Ok(())
@@ -272,14 +276,14 @@ fn amplitude_amplification_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nWithout Amplitude Amplification:");
     println!("  Best energy: {:.4}", result_no_amp.best_energy);
-    println!("  Runtime: {:.2?}", time_no_amp);
+    println!("  Runtime: {time_no_amp:.2?}");
 
     println!("\nWith Amplitude Amplification:");
     println!("  Best energy: {:.4}", result_with_amp.best_energy);
-    println!("  Runtime: {:.2?}", time_with_amp);
+    println!("  Runtime: {time_with_amp:.2?}");
 
     let improvement = result_no_amp.best_energy - result_with_amp.best_energy;
-    println!("\nImprovement: {:.4}", improvement);
+    println!("\nImprovement: {improvement:.4}");
     println!(
         "Amplification overhead: {:.2?}",
         time_with_amp - time_no_amp
@@ -335,20 +339,20 @@ fn performance_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nQuantum Walk Results:");
     println!("  Best energy: {:.4}", qw_result.best_energy);
-    println!("  Runtime: {:.2?}", qw_time);
+    println!("  Runtime: {qw_time:.2?}");
     println!("  Measurements: {}", qw_result.total_sweeps);
 
     println!("\nClassical Annealing Results:");
     println!("  Best energy: {:.4}", classical_result.best_energy);
-    println!("  Runtime: {:.2?}", classical_time);
+    println!("  Runtime: {classical_time:.2?}");
     println!("  Total sweeps: {}", classical_result.total_sweeps);
 
     println!("\nComparison:");
     let energy_diff = classical_result.best_energy - qw_result.best_energy;
     let speedup = classical_time.as_secs_f64() / qw_time.as_secs_f64();
 
-    println!("  Energy difference: {:.4}", energy_diff);
-    println!("  Speedup: {:.2}x", speedup);
+    println!("  Energy difference: {energy_diff:.4}");
+    println!("  Speedup: {speedup:.2}x");
     println!(
         "  QW advantage: {}",
         if energy_diff > 0.0 {
@@ -404,9 +408,7 @@ fn print_state_info(state: &QuantumState) {
         let prob = amp.norm_sqr();
         println!(
             "      |{:?}⟩: ({:.3} + {:.3}i), P = {:.3}",
-            bits.iter()
-                .map(|&b| if b > 0 { 1 } else { 0 })
-                .collect::<Vec<_>>(),
+            bits.iter().map(|&b| i32::from(b > 0)).collect::<Vec<_>>(),
             amp.re,
             amp.im,
             prob
@@ -418,8 +420,12 @@ fn print_state_info(state: &QuantumState) {
     }
 
     // Calculate and show total probability
-    let total_prob: f64 = state.amplitudes.iter().map(|amp| amp.norm_sqr()).sum();
-    println!("    Total probability: {:.6}", total_prob);
+    let total_prob: f64 = state
+        .amplitudes
+        .iter()
+        .map(scirs2_core::Complex::norm_sqr)
+        .sum();
+    println!("    Total probability: {total_prob:.6}");
 }
 
 /// Count the number of cut edges in a graph

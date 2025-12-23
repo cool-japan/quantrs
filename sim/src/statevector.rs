@@ -1,5 +1,5 @@
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::sync::Mutex;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -217,19 +217,19 @@ impl StateVectorSimulator {
     }
 
     /// Enable or disable SIMD optimizations
-    pub fn set_simd_enabled(&mut self, enabled: bool) -> &mut Self {
+    pub const fn set_simd_enabled(&mut self, enabled: bool) -> &mut Self {
         self.use_simd = enabled;
         self
     }
 
     /// Enable or disable gate fusion optimization
-    pub fn set_gate_fusion_enabled(&mut self, enabled: bool) -> &mut Self {
+    pub const fn set_gate_fusion_enabled(&mut self, enabled: bool) -> &mut Self {
         self.use_gate_fusion = enabled;
         self
     }
 
     /// Get access to buffer pool for testing purposes
-    pub fn get_buffer_pool(&self) -> &Mutex<BufferPool> {
+    pub const fn get_buffer_pool(&self) -> &Mutex<BufferPool> {
         &self.buffer_pool
     }
 
@@ -693,12 +693,12 @@ impl StateVectorSimulator {
                 let bit1 = (i >> q1_idx) & 1;
                 let bit2 = (i >> q2_idx) & 1;
 
-                if bit1 != bit2 {
+                if bit1 == bit2 {
+                    new_state[i] = state[i];
+                } else {
                     let swapped = flip_bit(flip_bit(i, q1_idx), q2_idx);
                     new_state[swapped] = state[i];
                     new_state[i] = state[swapped];
-                } else {
-                    new_state[i] = state[i];
                 }
             }
 
@@ -924,7 +924,7 @@ impl<const N: usize> Simulator<N> for StateVectorSimulator {
 
 impl StateVectorSimulator {
     /// Initialize state with specified number of qubits in |0...0⟩
-    pub fn initialize_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
+    pub const fn initialize_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
         // This is a placeholder - actual initialization would need the circuit framework
         Ok(())
     }
@@ -948,7 +948,7 @@ impl StateVectorSimulator {
     }
 
     /// Apply an interface circuit to the quantum state
-    pub fn apply_interface_circuit(
+    pub const fn apply_interface_circuit(
         &mut self,
         _circuit: &crate::circuit_interfaces::InterfaceCircuit,
     ) -> QuantRS2Result<()> {
@@ -957,25 +957,29 @@ impl StateVectorSimulator {
     }
 
     /// Apply Hadamard gate to qubit
-    pub fn apply_h(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+    pub const fn apply_h(&mut self, _qubit: usize) -> QuantRS2Result<()> {
         // Placeholder - would apply H gate using circuit framework
         Ok(())
     }
 
     /// Apply Pauli-X gate to qubit
-    pub fn apply_x(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+    pub const fn apply_x(&mut self, _qubit: usize) -> QuantRS2Result<()> {
         // Placeholder - would apply X gate using circuit framework
         Ok(())
     }
 
     /// Apply Pauli-Z gate to qubit
-    pub fn apply_z_public(&mut self, _qubit: usize) -> QuantRS2Result<()> {
+    pub const fn apply_z_public(&mut self, _qubit: usize) -> QuantRS2Result<()> {
         // Placeholder - would apply Z gate using circuit framework
         Ok(())
     }
 
     /// Apply CNOT gate (public interface with usize indices)
-    pub fn apply_cnot_public(&mut self, _control: usize, _target: usize) -> QuantRS2Result<()> {
+    pub const fn apply_cnot_public(
+        &mut self,
+        _control: usize,
+        _target: usize,
+    ) -> QuantRS2Result<()> {
         // Placeholder - would apply CNOT gate using circuit framework
         Ok(())
     }
@@ -1103,7 +1107,7 @@ impl StateVectorSimulator {
     }
 
     /// Apply Toffoli (CCNOT) gate (public interface)
-    pub fn apply_toffoli(
+    pub const fn apply_toffoli(
         &mut self,
         control1: QubitId,
         control2: QubitId,
@@ -1114,7 +1118,7 @@ impl StateVectorSimulator {
     }
 
     /// Apply Fredkin (CSWAP) gate (public interface)
-    pub fn apply_fredkin(
+    pub const fn apply_fredkin(
         &mut self,
         control: QubitId,
         target1: QubitId,

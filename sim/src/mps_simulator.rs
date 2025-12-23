@@ -4,8 +4,6 @@
 //! representation, which is particularly effective for simulating quantum systems with
 //! limited entanglement.
 
-use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -13,6 +11,8 @@ use quantrs2_core::{
     prelude::QubitId,
     register::Register,
 };
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView2};
+use scirs2_core::Complex64;
 
 /// MPS tensor for a single qubit
 #[derive(Debug, Clone)]
@@ -94,7 +94,7 @@ impl MPS {
     }
 
     /// Set the truncation threshold for SVD
-    pub fn set_truncation_threshold(&mut self, threshold: f64) {
+    pub const fn set_truncation_threshold(&mut self, threshold: f64) {
         self.truncation_threshold = threshold;
     }
 
@@ -364,7 +364,7 @@ impl MPS {
 
         for (i, &bit) in bitstring.iter().enumerate() {
             let tensor = &self.tensors[i];
-            let idx = if bit { 1 } else { 0 };
+            let idx = i32::from(bit);
 
             // Extract the matrix for this bit value
             let matrix = tensor.data.slice(s![.., idx, ..]);
@@ -440,7 +440,7 @@ fn qr_decomposition(
         for i in 0..j {
             let proj = q.column(i).dot(&v);
             r[[i, j]] = proj;
-            v = v - &(proj * &q.column(i).to_owned());
+            v -= &(proj * &q.column(i).to_owned());
         }
 
         let norm = (v.dot(&v)).sqrt();
@@ -490,7 +490,7 @@ pub struct MPSSimulator {
 
 impl MPSSimulator {
     /// Create a new MPS simulator
-    pub fn new(max_bond_dimension: usize) -> Self {
+    pub const fn new(max_bond_dimension: usize) -> Self {
         Self {
             max_bond_dimension,
             truncation_threshold: 1e-10,
@@ -498,7 +498,7 @@ impl MPSSimulator {
     }
 
     /// Set the truncation threshold
-    pub fn set_truncation_threshold(&mut self, threshold: f64) {
+    pub const fn set_truncation_threshold(&mut self, threshold: f64) {
         self.truncation_threshold = threshold;
     }
 }

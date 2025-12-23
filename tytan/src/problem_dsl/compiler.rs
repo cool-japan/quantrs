@@ -191,8 +191,8 @@ impl Compiler {
                 // Store function definition for later expansion
                 // For now, treat as a complex parameter
                 self.parameters.insert(
-                    format!("func_{}", name),
-                    Value::String(format!("function_{}", name)),
+                    format!("func_{name}"),
+                    Value::String(format!("function_{name}")),
                 );
                 Ok(())
             }
@@ -236,7 +236,7 @@ impl Compiler {
                     qubo[[idx, idx]] += coefficient;
                 } else {
                     return Err(CompileError {
-                        message: format!("Unknown variable: {}", name),
+                        message: format!("Unknown variable: {name}"),
                         context: "add_expression_to_qubo".to_string(),
                     });
                 }
@@ -278,7 +278,7 @@ impl Compiler {
                     }
                     _ => {
                         return Err(CompileError {
-                            message: format!("Unsupported binary operator: {:?}", op),
+                            message: format!("Unsupported binary operator: {op:?}"),
                             context: "add_expression_to_qubo".to_string(),
                         });
                     }
@@ -304,7 +304,7 @@ impl Compiler {
                                 elements.clone()
                             } else {
                                 return Err(CompileError {
-                                    message: format!("Unknown set for aggregation: {}", set_name),
+                                    message: format!("Unknown set for aggregation: {set_name}"),
                                     context: "add_expression_to_qubo".to_string(),
                                 });
                             };
@@ -367,7 +367,7 @@ impl Compiler {
                     }
                     _ => {
                         return Err(CompileError {
-                            message: format!("Unsupported aggregation operator: {:?}", op),
+                            message: format!("Unsupported aggregation operator: {op:?}"),
                             context: "add_expression_to_qubo".to_string(),
                         });
                     }
@@ -395,7 +395,7 @@ impl Compiler {
                 // Replace with indexed variable or direct substitution
                 match value {
                     Value::Number(_n) => {
-                        let indexed_name = format!("{}_{}", var_name, index);
+                        let indexed_name = format!("{var_name}_{index}");
                         self.registry
                             .register_variable(&indexed_name, VariableDomain::Binary);
                         Ok(Expression::Variable(indexed_name))
@@ -499,7 +499,7 @@ impl Compiler {
                     }
                     _ => {
                         return Err(CompileError {
-                            message: format!("Unsupported comparison operator: {:?}", op),
+                            message: format!("Unsupported comparison operator: {op:?}"),
                             context: "add_constraint_penalty".to_string(),
                         });
                     }

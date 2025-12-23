@@ -22,6 +22,7 @@ pub struct CouplingMap {
 
 impl CouplingMap {
     /// Create a new coupling map with the specified number of qubits
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
@@ -45,6 +46,7 @@ impl CouplingMap {
     }
 
     /// Check if two qubits are directly connected
+    #[must_use]
     pub fn are_connected(&self, qubit1: usize, qubit2: usize) -> bool {
         if qubit1 < self.num_qubits && qubit2 < self.num_qubits {
             self.edges[qubit1].contains(&qubit2)
@@ -54,6 +56,7 @@ impl CouplingMap {
     }
 
     /// Get the neighbors of a qubit
+    #[must_use]
     pub fn neighbors(&self, qubit: usize) -> &[usize] {
         if qubit < self.num_qubits {
             &self.edges[qubit]
@@ -63,11 +66,13 @@ impl CouplingMap {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    #[must_use]
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
     /// Get all edges as pairs
+    #[must_use]
     pub fn edges(&self) -> Vec<(usize, usize)> {
         let mut edges = Vec::new();
         for (i, neighbors) in self.edges.iter().enumerate() {
@@ -82,6 +87,7 @@ impl CouplingMap {
     }
 
     /// Compute the distance between two qubits using BFS
+    #[must_use]
     pub fn distance(&self, qubit1: usize, qubit2: usize) -> Distance {
         if qubit1 == qubit2 {
             return 0;
@@ -152,6 +158,7 @@ impl CouplingMap {
     }
 
     /// Get the shortest path between two qubits
+    #[must_use]
     pub fn shortest_path(&self, start: usize, end: usize) -> Option<Vec<usize>> {
         if start == end {
             return Some(vec![start]);
@@ -197,6 +204,7 @@ impl CouplingMap {
     }
 
     /// Check if the graph is connected
+    #[must_use]
     pub fn is_connected(&self) -> bool {
         if self.num_qubits <= 1 {
             return true;
@@ -224,6 +232,7 @@ impl CouplingMap {
     }
 
     /// Get the diameter of the graph (maximum distance between any two nodes)
+    #[must_use]
     pub fn diameter(&self) -> Distance {
         let mut max_distance = 0;
 
@@ -242,6 +251,7 @@ impl CouplingMap {
     /// Create common device topologies
 
     /// Linear topology (1D chain)
+    #[must_use]
     pub fn linear(num_qubits: usize) -> Self {
         let mut coupling_map = Self::new(num_qubits);
         for i in 0..(num_qubits.saturating_sub(1)) {
@@ -252,6 +262,7 @@ impl CouplingMap {
     }
 
     /// Ring topology (circular)
+    #[must_use]
     pub fn ring(num_qubits: usize) -> Self {
         let mut coupling_map = Self::linear(num_qubits);
         if num_qubits > 2 {
@@ -262,6 +273,7 @@ impl CouplingMap {
     }
 
     /// Grid topology (2D)
+    #[must_use]
     pub fn grid(rows: usize, cols: usize) -> Self {
         let num_qubits = rows * cols;
         let mut coupling_map = Self::new(num_qubits);
@@ -287,6 +299,7 @@ impl CouplingMap {
     }
 
     /// All-to-all topology (complete graph)
+    #[must_use]
     pub fn all_to_all(num_qubits: usize) -> Self {
         let mut coupling_map = Self::new(num_qubits);
         for i in 0..num_qubits {
@@ -299,6 +312,7 @@ impl CouplingMap {
     }
 
     /// IBM Lagos device topology
+    #[must_use]
     pub fn ibm_lagos() -> Self {
         let mut coupling_map = Self::new(7);
 
@@ -314,6 +328,7 @@ impl CouplingMap {
     }
 
     /// IBM Nairobi device topology
+    #[must_use]
     pub fn ibm_nairobi() -> Self {
         let mut coupling_map = Self::new(7);
 
@@ -329,6 +344,7 @@ impl CouplingMap {
     }
 
     /// Google Sycamore-like device topology
+    #[must_use]
     pub fn google_sycamore() -> Self {
         let mut coupling_map = Self::new(12);
 
@@ -362,6 +378,7 @@ impl CouplingMap {
     }
 
     /// Load coupling map from adjacency list
+    #[must_use]
     pub fn from_edges(num_qubits: usize, edges: &[(usize, usize)]) -> Self {
         let mut coupling_map = Self::new(num_qubits);
         for &(q1, q2) in edges {

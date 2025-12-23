@@ -4,7 +4,6 @@
 //! both quantum annealing hardware and classical optimization techniques
 //! for solving large-scale optimization problems.
 
-use scirs2_core::random::prelude::*;
 use crate::embedding::Embedding;
 use crate::ising::{IsingError, IsingModel, IsingResult, QuboModel};
 use crate::partitioning::{Partition, SpectralPartitioner};
@@ -12,6 +11,7 @@ use crate::qubo::QuboFormulation;
 use crate::simulator::{
     AnnealingParams, AnnealingSolution, ClassicalAnnealingSimulator, QuantumAnnealingSimulator,
 };
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::Rng;
 use std::collections::HashMap;
 
@@ -463,7 +463,11 @@ impl VariationalHybridSolver {
         for i in 0..n {
             let param_idx = i % parameters.len();
             let prob = parameters[param_idx];
-            solution[i] = if thread_rng().gen::<f64>() < prob { 1 } else { -1 };
+            solution[i] = if thread_rng().gen::<f64>() < prob {
+                1
+            } else {
+                -1
+            };
         }
 
         Ok(solution)

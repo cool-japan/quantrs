@@ -51,8 +51,8 @@ fn boolean_sat_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add boolean variables
     for i in 1..=3 {
-        let var = CspVariable::new(format!("x{}", i), Domain::Boolean)
-            .with_description(format!("Boolean variable {}", i));
+        let var = CspVariable::new(format!("x{i}"), Domain::Boolean)
+            .with_description(format!("Boolean variable {i}"));
         problem.add_variable(var)?;
     }
 
@@ -77,7 +77,7 @@ fn boolean_sat_example() -> Result<(), Box<dyn std::error::Error>> {
         "  Constraints compiled: {}",
         compilation_info.constraints_compiled
     );
-    println!("  Compilation time: {:.2?}", compilation_time);
+    println!("  Compilation time: {compilation_time:.2?}");
 
     // Solve the QUBO
     let qubo_model = qubo_formulation.to_qubo_model();
@@ -95,7 +95,7 @@ fn boolean_sat_example() -> Result<(), Box<dyn std::error::Error>> {
     let solving_time = start.elapsed();
 
     println!("  Solution energy: {:.4}", result.best_energy + offset);
-    println!("  Solving time: {:.2?}", solving_time);
+    println!("  Solving time: {solving_time:.2?}");
 
     // Interpret solution
     println!("  Variable assignments:");
@@ -114,8 +114,8 @@ fn graph_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
     // Add vertices with color domains
     let colors = vec![0, 1, 2]; // 3 colors
     for i in 0..3 {
-        let var = CspVariable::new(format!("vertex_{}", i), Domain::Discrete(colors.clone()))
-            .with_description(format!("Color of vertex {}", i));
+        let var = CspVariable::new(format!("vertex_{i}"), Domain::Discrete(colors.clone()))
+            .with_description(format!("Color of vertex {i}"));
         problem.add_variable(var)?;
     }
 
@@ -174,7 +174,7 @@ fn graph_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
         for color in 0..3 {
             let var_idx = vertex * 3 + color;
             if var_idx < result.best_spins.len() && result.best_spins[var_idx] > 0 {
-                println!("    Vertex {}: Color {}", vertex, color);
+                println!("    Vertex {vertex}: Color {color}");
                 break;
             }
         }
@@ -191,15 +191,15 @@ fn n_queens_example() -> Result<(), Box<dyn std::error::Error>> {
     // Variables: queen[i][j] = 1 if there's a queen at position (i,j)
     for i in 0..n {
         for j in 0..n {
-            let var = CspVariable::new(format!("q_{}_{}", i, j), Domain::Boolean)
-                .with_description(format!("Queen at position ({}, {})", i, j));
+            let var = CspVariable::new(format!("q_{i}_{j}"), Domain::Boolean)
+                .with_description(format!("Queen at position ({i}, {j})"));
             problem.add_variable(var)?;
         }
     }
 
     // Constraint: exactly one queen per row
     for i in 0..n {
-        let row_vars: Vec<String> = (0..n).map(|j| format!("q_{}_{}", i, j)).collect();
+        let row_vars: Vec<String> = (0..n).map(|j| format!("q_{i}_{j}")).collect();
         let constraint = CspConstraint::ExactlyOne {
             variables: row_vars,
         };
@@ -208,7 +208,7 @@ fn n_queens_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Constraint: exactly one queen per column
     for j in 0..n {
-        let col_vars: Vec<String> = (0..n).map(|i| format!("q_{}_{}", i, j)).collect();
+        let col_vars: Vec<String> = (0..n).map(|i| format!("q_{i}_{j}")).collect();
         let constraint = CspConstraint::ExactlyOne {
             variables: col_vars,
         };
@@ -221,7 +221,7 @@ fn n_queens_example() -> Result<(), Box<dyn std::error::Error>> {
     let (qubo_formulation, info) = problem.compile_to_qubo()?;
 
     println!("4-Queens Problem (simplified):");
-    println!("  Board size: {}x{}", n, n);
+    println!("  Board size: {n}x{n}");
     println!("  CSP variables: {}", info.csp_variables);
     println!("  QUBO variables: {}", info.qubo_variables);
     println!("  Constraints: {}", info.constraints_compiled);
@@ -252,7 +252,7 @@ fn n_queens_example() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 "."
             };
-            print!("{} ", symbol);
+            print!("{symbol} ");
         }
         println!();
     }
@@ -267,15 +267,15 @@ fn sudoku_example() -> Result<(), Box<dyn std::error::Error>> {
     // Variables: cell[i][j] with domain {1, 2}
     for i in 0..2 {
         for j in 0..2 {
-            let var = CspVariable::new(format!("cell_{}_{}", i, j), Domain::Discrete(vec![1, 2]))
-                .with_description(format!("Value in cell ({}, {})", i, j));
+            let var = CspVariable::new(format!("cell_{i}_{j}"), Domain::Discrete(vec![1, 2]))
+                .with_description(format!("Value in cell ({i}, {j})"));
             problem.add_variable(var)?;
         }
     }
 
     // Constraint: each row has different values
     for i in 0..2 {
-        let row_vars: Vec<String> = (0..2).map(|j| format!("cell_{}_{}", i, j)).collect();
+        let row_vars: Vec<String> = (0..2).map(|j| format!("cell_{i}_{j}")).collect();
         let constraint = CspConstraint::AllDifferent {
             variables: row_vars,
         };
@@ -284,7 +284,7 @@ fn sudoku_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Constraint: each column has different values
     for j in 0..2 {
-        let col_vars: Vec<String> = (0..2).map(|i| format!("cell_{}_{}", i, j)).collect();
+        let col_vars: Vec<String> = (0..2).map(|i| format!("cell_{i}_{j}")).collect();
         let constraint = CspConstraint::AllDifferent {
             variables: col_vars,
         };
@@ -330,7 +330,7 @@ fn sudoku_example() -> Result<(), Box<dyn std::error::Error>> {
                 0 // No assignment (shouldn't happen in valid solution)
             };
 
-            print!("{} ", value);
+            print!("{value} ");
         }
         println!();
     }
@@ -345,8 +345,8 @@ fn scheduling_example() -> Result<(), Box<dyn std::error::Error>> {
     // Variables: task[i] = time slot for task i
     let time_slots = vec![0, 1]; // Two time slots
     for i in 0..3 {
-        let var = CspVariable::new(format!("task_{}", i), Domain::Discrete(time_slots.clone()))
-            .with_description(format!("Time slot for task {}", i));
+        let var = CspVariable::new(format!("task_{i}"), Domain::Discrete(time_slots.clone()))
+            .with_description(format!("Time slot for task {i}"));
         problem.add_variable(var)?;
     }
 
@@ -389,7 +389,7 @@ fn scheduling_example() -> Result<(), Box<dyn std::error::Error>> {
                 -1 // No assignment
             };
 
-        println!("    Task {}: Time slot {}", task, assigned_slot);
+        println!("    Task {task}: Time slot {assigned_slot}");
     }
 
     Ok(())
@@ -404,8 +404,8 @@ fn map_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
     let regions = ["Region_A", "Region_B", "Region_C"];
 
     for region in &regions {
-        let var = CspVariable::new(region.to_string(), Domain::Categorical(colors.clone()))
-            .with_description(format!("Color of {}", region));
+        let var = CspVariable::new((*region).to_string(), Domain::Categorical(colors.clone()))
+            .with_description(format!("Color of {region}"));
         problem.add_variable(var)?;
     }
 
@@ -413,7 +413,7 @@ fn map_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
     let adjacencies = [("Region_A", "Region_B"), ("Region_B", "Region_C")];
     for (region1, region2) in &adjacencies {
         let constraint = CspConstraint::AllDifferent {
-            variables: vec![region1.to_string(), region2.to_string()],
+            variables: vec![(*region1).to_string(), (*region2).to_string()],
         };
         problem.add_constraint(constraint)?;
     }
@@ -422,7 +422,7 @@ fn map_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Map Coloring with Categorical Variables:");
     println!("  Regions: {}", regions.len());
-    println!("  Colors: {:?}", colors);
+    println!("  Colors: {colors:?}");
     println!("  QUBO variables: {}", info.qubo_variables);
 
     // Solve
@@ -446,7 +446,7 @@ fn map_coloring_example() -> Result<(), Box<dyn std::error::Error>> {
         for (color_idx, color) in colors.iter().enumerate() {
             let var_idx = region_idx * 3 + color_idx;
             if var_idx < result.best_spins.len() && result.best_spins[var_idx] > 0 {
-                println!("    {}: {}", region, color);
+                println!("    {region}: {color}");
                 break;
             }
         }

@@ -550,7 +550,7 @@ impl UniversalQuantumFramework {
     }
 
     fn update_performance_models(
-        &mut self,
+        &self,
         _selection: &PlatformSelection,
         _result: &OptimizedExecutionResult,
     ) -> Result<(), QuantRS2Error> {

@@ -27,35 +27,35 @@ pub enum Precision {
 
 impl Precision {
     /// Get bytes per complex number
-    pub fn bytes_per_complex(&self) -> usize {
+    pub const fn bytes_per_complex(&self) -> usize {
         match self {
-            Precision::Half => 4,      // 2 * f16
-            Precision::Single => 8,    // 2 * f32
-            Precision::Double => 16,   // 2 * f64
-            Precision::Extended => 32, // 2 * f128 (future)
+            Self::Half => 4,      // 2 * f16
+            Self::Single => 8,    // 2 * f32
+            Self::Double => 16,   // 2 * f64
+            Self::Extended => 32, // 2 * f128 (future)
         }
     }
 
     /// Get relative epsilon for this precision
-    pub fn epsilon(&self) -> f64 {
+    pub const fn epsilon(&self) -> f64 {
         match self {
-            Precision::Half => 0.001,     // ~2^-10
-            Precision::Single => 1e-7,    // ~2^-23
-            Precision::Double => 1e-15,   // ~2^-52
-            Precision::Extended => 1e-30, // ~2^-100
+            Self::Half => 0.001,     // ~2^-10
+            Self::Single => 1e-7,    // ~2^-23
+            Self::Double => 1e-15,   // ~2^-52
+            Self::Extended => 1e-30, // ~2^-100
         }
     }
 
     /// Determine minimum precision needed for a given error tolerance
     pub fn from_tolerance(tolerance: f64) -> Self {
         if tolerance >= 0.001 {
-            Precision::Half
+            Self::Half
         } else if tolerance >= 1e-7 {
-            Precision::Single
+            Self::Single
         } else if tolerance >= 1e-15 {
-            Precision::Double
+            Self::Double
         } else {
-            Precision::Extended
+            Self::Extended
         }
     }
 }
@@ -99,11 +99,11 @@ impl ComplexAmplitude for Complex32 {
     }
 
     fn from_complex64(c: Complex64) -> Self {
-        Complex32::new(c.re as f32, c.im as f32)
+        Self::new(c.re as f32, c.im as f32)
     }
 
     fn norm_sqr(&self) -> f64 {
-        (self.re * self.re + self.im * self.im) as f64
+        self.re.mul_add(self.re, self.im * self.im) as f64
     }
 
     fn scale(&mut self, factor: f64) {
@@ -124,7 +124,7 @@ impl ComplexAmplitude for ComplexF16 {
     }
 
     fn from_complex64(c: Complex64) -> Self {
-        ComplexF16 {
+        Self {
             re: f16::from_f64(c.re),
             im: f16::from_f64(c.im),
         }
@@ -133,7 +133,7 @@ impl ComplexAmplitude for ComplexF16 {
     fn norm_sqr(&self) -> f64 {
         let r = self.re.to_f64();
         let i = self.im.to_f64();
-        r * r + i * i
+        r.mul_add(r, i * i)
     }
 
     fn scale(&mut self, factor: f64) {
@@ -171,17 +171,17 @@ impl AdaptiveStateVector {
                     re: f16::from_f64(1.0),
                     im: f16::from_f64(0.0),
                 };
-                Ok(AdaptiveStateVector::Half(state))
+                Ok(Self::Half(state))
             }
             Precision::Single => {
                 let mut state = Array1::zeros(size);
                 state[0] = Complex32::new(1.0, 0.0);
-                Ok(AdaptiveStateVector::Single(state))
+                Ok(Self::Single(state))
             }
             Precision::Double => {
                 let mut state = Array1::zeros(size);
                 state[0] = Complex64::new(1.0, 0.0);
-                Ok(AdaptiveStateVector::Double(state))
+                Ok(Self::Double(state))
             }
             Precision::Extended => Err(SimulatorError::InvalidConfiguration(
                 "Extended precision not yet supported".to_string(),
@@ -190,20 +190,20 @@ impl AdaptiveStateVector {
     }
 
     /// Get current precision
-    pub fn precision(&self) -> Precision {
+    pub const fn precision(&self) -> Precision {
         match self {
-            AdaptiveStateVector::Half(_) => Precision::Half,
-            AdaptiveStateVector::Single(_) => Precision::Single,
-            AdaptiveStateVector::Double(_) => Precision::Double,
+            Self::Half(_) => Precision::Half,
+            Self::Single(_) => Precision::Single,
+            Self::Double(_) => Precision::Double,
         }
     }
 
     /// Get number of qubits
     pub fn num_qubits(&self) -> usize {
         let size = match self {
-            AdaptiveStateVector::Half(v) => v.len(),
-            AdaptiveStateVector::Single(v) => v.len(),
-            AdaptiveStateVector::Double(v) => v.len(),
+            Self::Half(v) => v.len(),
+            Self::Single(v) => v.len(),
+            Self::Double(v) => v.len(),
         };
         (size as f64).log2() as usize
     }
@@ -211,16 +211,16 @@ impl AdaptiveStateVector {
     /// Convert to double precision for computation
     pub fn to_complex64(&self) -> Array1<Complex64> {
         match self {
-            AdaptiveStateVector::Half(v) => v.map(|c| c.to_complex64()),
-            AdaptiveStateVector::Single(v) => v.map(|c| c.to_complex64()),
-            AdaptiveStateVector::Double(v) => v.clone(),
+            Self::Half(v) => v.map(|c| c.to_complex64()),
+            Self::Single(v) => v.map(|c| c.to_complex64()),
+            Self::Double(v) => v.clone(),
         }
     }
 
     /// Update from double precision
     pub fn from_complex64(&mut self, data: &Array1<Complex64>) -> Result<()> {
         match self {
-            AdaptiveStateVector::Half(v) => {
+            Self::Half(v) => {
                 if v.len() != data.len() {
                     return Err(SimulatorError::DimensionMismatch(format!(
                         "Size mismatch: {} vs {}",
@@ -232,7 +232,7 @@ impl AdaptiveStateVector {
                     v[i] = ComplexF16::from_complex64(c);
                 }
             }
-            AdaptiveStateVector::Single(v) => {
+            Self::Single(v) => {
                 if v.len() != data.len() {
                     return Err(SimulatorError::DimensionMismatch(format!(
                         "Size mismatch: {} vs {}",
@@ -244,7 +244,7 @@ impl AdaptiveStateVector {
                     v[i] = Complex32::from_complex64(c);
                 }
             }
-            AdaptiveStateVector::Double(v) => {
+            Self::Double(v) => {
                 v.assign(data);
             }
         }
@@ -255,15 +255,16 @@ impl AdaptiveStateVector {
     pub fn needs_precision_upgrade(&self, threshold: f64) -> bool {
         // Check if small amplitudes might be lost
         let min_amplitude = match self {
-            AdaptiveStateVector::Half(v) => v
-                .iter()
-                .map(|c| c.norm_sqr())
-                .filter(|&n| n > 0.0)
-                .fold(None, |acc, x| match acc {
-                    None => Some(x),
-                    Some(y) => Some(if x < y { x } else { y }),
-                }),
-            AdaptiveStateVector::Single(v) => v
+            Self::Half(v) => {
+                v.iter()
+                    .map(|c| c.norm_sqr())
+                    .filter(|&n| n > 0.0)
+                    .fold(None, |acc, x| match acc {
+                        None => Some(x),
+                        Some(y) => Some(if x < y { x } else { y }),
+                    })
+            }
+            Self::Single(v) => v
                 .iter()
                 .map(|c| c.norm_sqr() as f64)
                 .filter(|&n| n > 0.0)
@@ -271,14 +272,15 @@ impl AdaptiveStateVector {
                     None => Some(x),
                     Some(y) => Some(if x < y { x } else { y }),
                 }),
-            AdaptiveStateVector::Double(v) => v
-                .iter()
-                .map(|c| c.norm_sqr())
-                .filter(|&n| n > 0.0)
-                .fold(None, |acc, x| match acc {
-                    None => Some(x),
-                    Some(y) => Some(if x < y { x } else { y }),
-                }),
+            Self::Double(v) => {
+                v.iter()
+                    .map(|c| c.norm_sqr())
+                    .filter(|&n| n > 0.0)
+                    .fold(None, |acc, x| match acc {
+                        None => Some(x),
+                        Some(y) => Some(if x < y { x } else { y }),
+                    })
+            }
         };
 
         if let Some(min_amp) = min_amplitude {
@@ -320,15 +322,15 @@ impl AdaptiveStateVector {
         // Compute error from downgrade
         let mut max_error: f64 = 0.0;
         match &test_vec {
-            AdaptiveStateVector::Half(_) => {
-                for &c in data.iter() {
+            Self::Half(_) => {
+                for &c in &data {
                     let converted = ComplexF16::from_complex64(c).to_complex64();
                     let error = (c - converted).norm();
                     max_error = max_error.max(error);
                 }
             }
-            AdaptiveStateVector::Single(_) => {
-                for &c in data.iter() {
+            Self::Single(_) => {
+                for &c in &data {
                     let converted = Complex32::from_complex64(c).to_complex64();
                     let error = (c - converted).norm();
                     max_error = max_error.max(error);
@@ -348,9 +350,9 @@ impl AdaptiveStateVector {
     /// Memory usage in bytes
     pub fn memory_usage(&self) -> usize {
         let elements = match self {
-            AdaptiveStateVector::Half(v) => v.len(),
-            AdaptiveStateVector::Single(v) => v.len(),
-            AdaptiveStateVector::Double(v) => v.len(),
+            Self::Half(v) => v.len(),
+            Self::Single(v) => v.len(),
+            Self::Double(v) => v.len(),
         };
         elements * self.precision().bytes_per_complex()
     }
@@ -399,7 +401,7 @@ pub struct PrecisionTracker {
 
 impl PrecisionTracker {
     /// Create a new tracker
-    pub fn new(config: AdaptivePrecisionConfig) -> Self {
+    pub const fn new(config: AdaptivePrecisionConfig) -> Self {
         Self {
             changes: Vec::new(),
             gate_count: 0,
@@ -408,12 +410,12 @@ impl PrecisionTracker {
     }
 
     /// Record a gate application
-    pub fn record_gate(&mut self) {
+    pub const fn record_gate(&mut self) {
         self.gate_count += 1;
     }
 
     /// Check if precision adjustment is needed
-    pub fn should_check_precision(&self) -> bool {
+    pub const fn should_check_precision(&self) -> bool {
         self.gate_count % self.config.check_interval == 0
     }
 
@@ -471,7 +473,7 @@ impl fmt::Display for PrecisionStats {
 
 /// Benchmark different precisions
 pub fn benchmark_precisions(num_qubits: usize) -> Result<()> {
-    println!("\nPrecision Benchmark for {} qubits:", num_qubits);
+    println!("\nPrecision Benchmark for {num_qubits} qubits:");
     println!("{:-<60}", "");
 
     for precision in [Precision::Half, Precision::Single, Precision::Double] {

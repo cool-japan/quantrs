@@ -16,8 +16,8 @@
 //! - Fallback to CPU when GPU is unavailable
 
 use crate::prelude::{SimulatorError, StateVectorSimulator};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -471,7 +471,7 @@ impl AMDOpenCLSimulator {
 
     /// Create single qubit gate kernel
     fn create_single_qubit_kernel(&self) -> OpenCLKernel {
-        let source = r#"
+        let source = r"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
             typedef double2 complex_t;
@@ -513,7 +513,7 @@ impl AMDOpenCLSimulator {
                     state[j] = complex_add(complex_mul(gate_10, state_i), complex_mul(gate_11, state_j));
                 }
             }
-        "#;
+        ";
 
         OpenCLKernel {
             name: "single_qubit_gate".to_string(),
@@ -526,7 +526,7 @@ impl AMDOpenCLSimulator {
 
     /// Create two qubit gate kernel
     fn create_two_qubit_kernel(&self) -> OpenCLKernel {
-        let source = r#"
+        let source = r"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
             typedef double2 complex_t;
@@ -592,7 +592,7 @@ impl AMDOpenCLSimulator {
                 state[state_10] = new_states[2];
                 state[state_11] = new_states[3];
             }
-        "#;
+        ";
 
         OpenCLKernel {
             name: "two_qubit_gate".to_string(),
@@ -605,7 +605,7 @@ impl AMDOpenCLSimulator {
 
     /// Create state vector operations kernel
     fn create_state_vector_kernel(&self) -> OpenCLKernel {
-        let source = r#"
+        let source = r"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
             typedef double2 complex_t;
@@ -673,7 +673,7 @@ impl AMDOpenCLSimulator {
                     partial_results[group_id] = local_data[0];
                 }
             }
-        "#;
+        ";
 
         OpenCLKernel {
             name: "state_vector_ops".to_string(),
@@ -686,7 +686,7 @@ impl AMDOpenCLSimulator {
 
     /// Create measurement kernel
     fn create_measurement_kernel(&self) -> OpenCLKernel {
-        let source = r#"
+        let source = r"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
             typedef double2 complex_t;
@@ -760,7 +760,7 @@ impl AMDOpenCLSimulator {
                     prob_1[group_id] = local_data[1];
                 }
             }
-        "#;
+        ";
 
         OpenCLKernel {
             name: "measurement".to_string(),
@@ -773,7 +773,7 @@ impl AMDOpenCLSimulator {
 
     /// Create expectation value kernel
     fn create_expectation_kernel(&self) -> OpenCLKernel {
-        let source = r#"
+        let source = r"
             #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
             typedef double2 complex_t;
@@ -848,7 +848,7 @@ impl AMDOpenCLSimulator {
                     partial_results[group_id] = local_data[0];
                 }
             }
-        "#;
+        ";
 
         OpenCLKernel {
             name: "expectation_value".to_string(),
@@ -918,8 +918,7 @@ impl AMDOpenCLSimulator {
 
         if !self.kernels.contains_key(kernel_name) {
             return Err(SimulatorError::InvalidInput(format!(
-                "Kernel {} not found",
-                kernel_name
+                "Kernel {kernel_name} not found"
             )));
         }
 
@@ -953,11 +952,10 @@ impl AMDOpenCLSimulator {
 
         // Simulate execution time based on work items and device capabilities
         let device = self.device.as_ref().unwrap();
-        let work_groups =
-            (total_work_items + self.config.work_group_size - 1) / self.config.work_group_size;
+        let work_groups = total_work_items.div_ceil(self.config.work_group_size);
         let parallel_work_groups = device.compute_units as usize;
 
-        let execution_cycles = (work_groups + parallel_work_groups - 1) / parallel_work_groups;
+        let execution_cycles = work_groups.div_ceil(parallel_work_groups);
 
         // Base execution time per cycle (microseconds)
         let base_time_per_cycle = match kernel_name {
@@ -972,7 +970,7 @@ impl AMDOpenCLSimulator {
         let execution_time = execution_cycles as f64 * base_time_per_cycle;
 
         // Add random variation
-        let variation = fastrand::f64() * 0.2 + 0.9; // 90-110% of base time
+        let variation = fastrand::f64().mul_add(0.2, 0.9); // 90-110% of base time
         Ok(execution_time * variation)
     }
 
@@ -1057,18 +1055,18 @@ impl AMDOpenCLSimulator {
         )?;
 
         // Simulate expectation value result
-        let expectation_value = fastrand::f64() * 2.0 - 1.0; // Random value between -1 and 1
+        let expectation_value = fastrand::f64().mul_add(2.0, -1.0); // Random value between -1 and 1
 
         Ok((expectation_value, execution_time))
     }
 
     /// Get device information
-    pub fn get_device_info(&self) -> Option<&OpenCLDevice> {
+    pub const fn get_device_info(&self) -> Option<&OpenCLDevice> {
         self.device.as_ref()
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &OpenCLStats {
+    pub const fn get_stats(&self) -> &OpenCLStats {
         &self.stats
     }
 
@@ -1078,7 +1076,7 @@ impl AMDOpenCLSimulator {
     }
 
     /// Check if OpenCL is available
-    pub fn is_opencl_available(&self) -> bool {
+    pub const fn is_opencl_available(&self) -> bool {
         self.context.is_some() && self.device.is_some()
     }
 
@@ -1192,22 +1190,13 @@ pub fn benchmark_amd_opencl_backend() -> Result<HashMap<String, f64>> {
         }
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("config_{}", i), time);
+        results.insert(format!("config_{i}"), time);
 
         // Add performance metrics
         let stats = simulator.get_stats();
-        results.insert(
-            format!("config_{}_gate_ops", i),
-            stats.gate_operations as f64,
-        );
-        results.insert(
-            format!("config_{}_avg_kernel_time", i),
-            stats.avg_kernel_time,
-        );
-        results.insert(
-            format!("config_{}_gpu_utilization", i),
-            stats.gpu_utilization,
-        );
+        results.insert(format!("config_{i}_gate_ops"), stats.gate_operations as f64);
+        results.insert(format!("config_{i}_avg_kernel_time"), stats.avg_kernel_time);
+        results.insert(format!("config_{i}_gpu_utilization"), stats.gpu_utilization);
     }
 
     Ok(results)
@@ -1377,7 +1366,7 @@ mod tests {
         assert!(result.is_ok());
 
         let (expectation, execution_time) = result.unwrap();
-        assert!(expectation >= -1.0 && expectation <= 1.0);
+        assert!((-1.0..=1.0).contains(&expectation));
         assert!(execution_time > 0.0);
     }
 

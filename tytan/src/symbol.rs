@@ -6,9 +6,9 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "dwave")]
-use scirs2_core::ndarray::Array;
-#[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
+#[cfg(feature = "dwave")]
+use scirs2_core::ndarray::Array;
 use std::fmt::Write;
 use thiserror::Error;
 
@@ -43,13 +43,12 @@ pub type SymbolResult<T> = Result<T, SymbolError>;
 /// # Examples
 ///
 /// ```
-/// use quantrs_tytan::symbols;
+/// use quantrs2_tytan::symbols;
 ///
 /// // Create a single symbol
 /// let mut x = symbols("x");
-///
-/// // Create multiple symbols
-/// let (x, y, z) = symbols("x y z");
+/// let mut y = symbols("y");
+/// let mut z = symbols("z");
 /// ```
 #[cfg(feature = "dwave")]
 pub fn symbols<T: AsRef<str>>(name: T) -> SymEngineExpression {
@@ -79,7 +78,7 @@ pub fn symbols<T: AsRef<str>>(_name: T) {
 /// # Examples
 ///
 /// ```
-/// use quantrs_tytan::symbols_list;
+/// use quantrs2_tytan::symbols_list;
 ///
 /// // Create a 3x3 grid of symbols
 /// let q = symbols_list([3, 3], "q{}_{}");
@@ -139,7 +138,7 @@ fn fill_symbol_array(
         }
 
         // Create the symbol and store it in the array
-        let sym = SymEngineExpression::symbol(symbol_name.clone());
+        let sym = SymEngineExpression::symbol(symbol_name);
         let mut idx = scirs2_core::ndarray::IxDyn(indices);
         array[idx] = sym;
 
@@ -167,10 +166,10 @@ fn fill_symbol_array(
 /// # Examples
 ///
 /// ```
-/// use quantrs_tytan::symbols_define;
+/// use quantrs2_tytan::symbols_define;
 ///
 /// // Generate commands for a 2x2 grid
-/// let commands = symbols_define([2, 2], "q{}_{}");
+/// let commands = symbols_define([2, 2], "q{}_{}").unwrap();
 /// println!("{}", commands);
 /// // Output:
 /// // q0_0 = symbols("q0_0")
@@ -255,7 +254,7 @@ fn generate_symbol_commands(
 /// # Examples
 ///
 /// ```
-/// use quantrs_tytan::symbols_nbit;
+/// use quantrs2_tytan::symbols_nbit;
 ///
 /// // Create an 8-bit variable representing values from 0 to 255
 /// let mut x = symbols_nbit(0, 256, "x{}", 8);

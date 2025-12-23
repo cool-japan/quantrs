@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Export format types
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportFormat {
     /// JSON format
     JSON,
@@ -35,7 +35,7 @@ pub struct VisualizationExporter {
 
 impl VisualizationExporter {
     /// Create new exporter
-    pub fn new(format: ExportFormat) -> Self {
+    pub const fn new(format: ExportFormat) -> Self {
         Self {
             format,
             include_metadata: true,
@@ -44,13 +44,13 @@ impl VisualizationExporter {
     }
 
     /// Enable metadata inclusion
-    pub fn with_metadata(mut self, include: bool) -> Self {
+    pub const fn with_metadata(mut self, include: bool) -> Self {
         self.include_metadata = include;
         self
     }
 
     /// Enable compression
-    pub fn with_compression(mut self, compress: bool) -> Self {
+    pub const fn with_compression(mut self, compress: bool) -> Self {
         self.compression = compress;
         self
     }
@@ -188,7 +188,7 @@ impl VisualizationExporter {
 
             writeln!(cluster_file, "sample_id,cluster_id")?;
             for (i, &cluster) in clusters.iter().enumerate() {
-                writeln!(cluster_file, "{},{}", i, cluster)?;
+                writeln!(cluster_file, "{i},{cluster}")?;
             }
         }
 
@@ -209,7 +209,7 @@ impl VisualizationExporter {
         write!(file, "iteration,objective,best_so_far")?;
         if !data.constraint_names.is_empty() {
             for name in &data.constraint_names {
-                write!(file, ",constraint_{}", name)?;
+                write!(file, ",constraint_{name}")?;
             }
         }
         writeln!(file)?;
@@ -229,7 +229,7 @@ impl VisualizationExporter {
             if let Some(constraints) = &data.constraints {
                 for name in &data.constraint_names {
                     let value = constraints[i].get(name).copied().unwrap_or(0.0);
-                    write!(file, ",{}", value)?;
+                    write!(file, ",{value}")?;
                 }
             }
 
@@ -574,11 +574,9 @@ pub fn export_visualization<T: Serialize>(
             std::fs::write(path, json)?;
         }
         _ => {
-            return Err(format!(
-                "Export format {:?} not implemented for generic data",
-                format
-            )
-            .into());
+            return Err(
+                format!("Export format {format:?} not implemented for generic data").into(),
+            );
         }
     }
 

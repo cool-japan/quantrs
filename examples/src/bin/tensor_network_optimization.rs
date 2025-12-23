@@ -71,16 +71,13 @@ where
     F: Fn(usize, usize) -> Result<Circuit<4>, Box<dyn std::error::Error>>,
 {
     println!("===============================================");
-    println!(
-        "Benchmarking {} with {} qubits, params: {}",
-        name, num_qubits, params
-    );
+    println!("Benchmarking {name} with {num_qubits} qubits, params: {params}");
     println!("===============================================");
 
     let circuit = match circuit_fn(num_qubits, params) {
         Ok(c) => c,
         Err(e) => {
-            println!("Error creating circuit: {}", e);
+            println!("Error creating circuit: {e}");
             return;
         }
     };
@@ -88,24 +85,30 @@ where
     // Standard state vector simulator
     let start = Instant::now();
     let standard_sim = StateVectorSimulator::new();
-    let _standard_result = standard_sim.run(&circuit).unwrap();
+    let _standard_result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with StateVector simulator");
     let standard_duration = start.elapsed();
-    println!("StateVector simulator: {:?}", standard_duration);
+    println!("StateVector simulator: {standard_duration:?}");
 
     // Tensor network with default strategy
     let start = Instant::now();
     let mut tensor_sim = TensorNetworkSimulator::new(num_qubits);
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with TensorNetwork simulator (default strategy)");
     let tensor_duration = start.elapsed();
-    println!("TensorNetwork (default): {:?}", tensor_duration);
+    println!("TensorNetwork (default): {tensor_duration:?}");
 
     // Tensor network with greedy strategy
     let start = Instant::now();
     let mut tensor_sim =
         TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy);
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with TensorNetwork simulator (greedy strategy)");
     let greedy_duration = start.elapsed();
-    println!("TensorNetwork (greedy): {:?}", greedy_duration);
+    println!("TensorNetwork (greedy): {greedy_duration:?}");
 
     // Tensor network with optimal strategy for this circuit type
     let start = Instant::now();
@@ -116,9 +119,11 @@ where
         }
         _ => TensorNetworkSimulator::new(num_qubits).with_strategy(ContractionStrategy::Greedy),
     };
-    let _tensor_result = tensor_sim.run(&circuit).unwrap();
+    let _tensor_result = tensor_sim.run(&circuit).expect(&format!(
+        "Failed to run circuit with TensorNetwork simulator (optimized strategy for {name})"
+    ));
     let optimized_duration = start.elapsed();
-    println!("TensorNetwork (optimized): {:?}", optimized_duration);
+    println!("TensorNetwork (optimized): {optimized_duration:?}");
 
     // Compare performance
     let standard_baseline = standard_duration.as_nanos() as f64;
@@ -127,9 +132,9 @@ where
     let optimized_speedup = standard_baseline / optimized_duration.as_nanos() as f64;
 
     println!("\nPerformance Analysis:");
-    println!("  Tensor Network (default):  {:.2}x", tensor_speedup);
-    println!("  Tensor Network (greedy):   {:.2}x", greedy_speedup);
-    println!("  Tensor Network (optimized): {:.2}x", optimized_speedup);
+    println!("  Tensor Network (default):  {tensor_speedup:.2}x");
+    println!("  Tensor Network (greedy):   {greedy_speedup:.2}x");
+    println!("  Tensor Network (optimized): {optimized_speedup:.2}x");
 
     if tensor_speedup > 1.0 {
         println!("  ✓ Tensor network provides speedup!");
@@ -159,8 +164,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // QAOA Benchmarks
     println!("QUANTUM APPROXIMATE OPTIMIZATION ALGORITHM (QAOA) BENCHMARKS");
     println!("------------------------------------------------------------");
-    benchmark("QAOA", |n, p| create_qaoa_circuit(n, p), medium_qubits, 2);
-    benchmark("QAOA", |n, p| create_qaoa_circuit(n, p), medium_qubits, 4);
+    benchmark("QAOA", create_qaoa_circuit, medium_qubits, 2);
+    benchmark("QAOA", create_qaoa_circuit, medium_qubits, 4);
 
     println!("SUMMARY AND INSIGHTS");
     println!("===================");

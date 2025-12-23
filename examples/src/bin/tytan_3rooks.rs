@@ -14,26 +14,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Define a 3x3 grid of variables
     let q = symbols_list([3, 3], "q{}_{}").expect("Failed to create symbols");
-    println!("Created symbols:\n{:?}", q);
+    println!("Created symbols:\n{q:?}");
 
     // Constraint 1: Each row must have exactly one rook
     let mut h: Expression = 0.into();
+    let two: Expression = 2.into();
     for i in 0..3 {
         let row_sum = q[[i, 0]].clone() + q[[i, 1]].clone() + q[[i, 2]].clone() - 1;
-        h = h + row_sum.pow(2.into());
+        h = h + row_sum.pow(&two);
     }
 
     // Constraint 2: Each column must have exactly one rook
     for j in 0..3 {
         let col_sum = q[[0, j]].clone() + q[[1, j]].clone() + q[[2, j]].clone() - 1;
-        h = h + col_sum.pow(2.into());
+        h = h + col_sum.pow(&two);
     }
 
     println!("Created QUBO expression");
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(h).get_qubo()?;
-    println!("Compiled to QUBO with offset: {}", offset);
+    println!("Compiled to QUBO with offset: {offset}");
 
     // Choose a sampler
     let solver = SASampler::new(Some(42)); // Fixed seed for reproducibility

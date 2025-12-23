@@ -402,7 +402,9 @@ mod tests {
         assert_eq!(cx.name(), "C");
         assert_eq!(cx.qubits(), vec![QubitId(0), QubitId(1)]);
 
-        let matrix = cx.matrix().unwrap();
+        let matrix = cx
+            .matrix()
+            .expect("Failed to get matrix in test_controlled_x_gate");
         assert_eq!(matrix.len(), 16); // 4x4 matrix
 
         // Check CNOT matrix structure
@@ -419,7 +421,9 @@ mod tests {
         assert_eq!(toffoli.name(), "Toffoli");
         assert_eq!(toffoli.qubits().len(), 3);
 
-        let matrix = toffoli.matrix().unwrap();
+        let matrix = toffoli
+            .matrix()
+            .expect("Failed to get matrix in test_toffoli_gate");
         assert_eq!(matrix.len(), 64); // 8x8 matrix
     }
 }

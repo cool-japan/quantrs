@@ -19,7 +19,7 @@ use scirs2_core::gpu;
 
 // Stub functions for missing GPU functionality
 #[cfg(feature = "scirs")]
-fn get_device_count() -> usize {
+const fn get_device_count() -> usize {
     // Placeholder - in reality this would query the GPU backend
     1
 }
@@ -30,7 +30,7 @@ struct GpuContext;
 #[cfg(feature = "scirs")]
 impl GpuContext {
     fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(GpuContext)
+        Ok(Self)
     }
 }
 
@@ -162,7 +162,7 @@ impl<S: Sampler> GpuBenchmark<S> {
 
         // Create output directory
         std::fs::create_dir_all(&self.config.output_dir)
-            .map_err(|e| format!("Failed to create output directory: {}", e))?;
+            .map_err(|e| format!("Failed to create output directory: {e}"))?;
 
         let mut results = BenchmarkResults {
             size_results: HashMap::new(),
@@ -201,7 +201,7 @@ impl<S: Sampler> GpuBenchmark<S> {
 
         for &size in &self.config.problem_sizes {
             if self.config.verbose {
-                println!("  Testing size {}...", size);
+                println!("  Testing size {size}...");
             }
 
             // Generate random QUBO problem
@@ -229,7 +229,7 @@ impl<S: Sampler> GpuBenchmark<S> {
                 }
 
                 if self.config.verbose && rep == 0 {
-                    println!("    First run: {:?}", elapsed);
+                    println!("    First run: {elapsed:?}");
                 }
             }
 
@@ -239,9 +239,9 @@ impl<S: Sampler> GpuBenchmark<S> {
                 .iter()
                 .map(|&t| {
                     let diff = if t > avg_time {
-                        (t - avg_time).as_secs_f64()
+                        t.checked_sub(avg_time).unwrap().as_secs_f64()
                     } else {
-                        (avg_time - t).as_secs_f64()
+                        avg_time.checked_sub(t).unwrap().as_secs_f64()
                     };
                     diff * diff
                 })
@@ -278,7 +278,7 @@ impl<S: Sampler> GpuBenchmark<S> {
 
         for &batch_size in &self.config.batch_sizes {
             if self.config.verbose {
-                println!("  Testing batch size {}...", batch_size);
+                println!("  Testing batch size {batch_size}...");
             }
 
             // Configure sampler with batch size (if supported)
@@ -323,10 +323,10 @@ impl<S: Sampler> GpuBenchmark<S> {
         let (qubo, var_map) = generate_random_qubo(test_size);
 
         for &(initial, final_) in &self.config.temperature_schedules {
-            let schedule_name = format!("{:.1}-{:.2}", initial, final_);
+            let schedule_name = format!("{initial:.1}-{final_:.2}");
 
             if self.config.verbose {
-                println!("  Testing schedule {}...", schedule_name);
+                println!("  Testing schedule {schedule_name}...");
             }
 
             // Would need to configure sampler with temperature schedule
@@ -343,7 +343,7 @@ impl<S: Sampler> GpuBenchmark<S> {
 
             let elapsed = start.elapsed();
 
-            let final_quality = solutions.first().map(|s| s.energy).unwrap_or(f64::INFINITY);
+            let final_quality = solutions.first().map_or(f64::INFINITY, |s| s.energy);
 
             results.temp_results.insert(
                 schedule_name,
@@ -411,8 +411,8 @@ impl<S: Sampler> GpuBenchmark<S> {
 
         // Generate text report
         let report_path = format!("{}/benchmark_report.txt", self.config.output_dir);
-        let mut file = File::create(&report_path)
-            .map_err(|e| format!("Failed to create report file: {}", e))?;
+        let mut file =
+            File::create(&report_path).map_err(|e| format!("Failed to create report file: {e}"))?;
 
         writeln!(file, "GPU Benchmark Report").unwrap();
         writeln!(file, "====================").unwrap();
@@ -451,7 +451,7 @@ impl<S: Sampler> GpuBenchmark<S> {
         }
 
         if self.config.verbose {
-            println!("\nReport saved to: {}", report_path);
+            println!("\nReport saved to: {report_path}");
         }
 
         Ok(())
@@ -587,7 +587,7 @@ fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
     // Create variable map
     let mut var_map = HashMap::new();
     for i in 0..size {
-        var_map.insert(format!("x{}", i), i);
+        var_map.insert(format!("x{i}"), i);
     }
 
     (qubo, var_map)
@@ -622,7 +622,7 @@ struct ComparisonConfig {
 
 impl GpuComparison {
     /// Create new comparison
-    pub fn new(benchmark_config: BenchmarkConfig) -> Self {
+    pub const fn new(benchmark_config: BenchmarkConfig) -> Self {
         Self {
             configs: Vec::new(),
             benchmark_config,

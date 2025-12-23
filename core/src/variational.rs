@@ -9,9 +9,9 @@ use crate::{
     gate::GateOp,
     qubit::QubitId,
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 use std::sync::Arc;
 

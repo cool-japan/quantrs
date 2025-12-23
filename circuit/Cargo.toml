@@ -13,14 +13,13 @@ description = "Quantum circuit representation and DSL for the QuantRS2 framework
 [dependencies]
 quantrs2-core.workspace = true
 # num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
-# ndarray.workspace = true              # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-nalgebra.workspace = true
+# ndarray.workspace = true              # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# nalgebra.workspace = true             # REMOVED: Refactored to use scirs2_core::ndarray (SciRS2 POLICY)
 thiserror.workspace = true
-pyo3.workspace = true
+pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
 # rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 serde.workspace = true
 # SciRS2 foundation dependencies
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 scirs2-graph.workspace = true
@@ -32,10 +31,24 @@ pest.workspace = true
 pest_derive.workspace = true
 regex.workspace = true
 bincode.workspace = true
-rayon.workspace = true
+# rayon.workspace = true                # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 uuid.workspace = true
 
 [dev-dependencies]
 # num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+criterion.workspace = true
+
+[features]
+default = []
+python = ["dep:pyo3"]  # Enable Python interop features
+
+[[bench]]
+name = "circuit_benchmarks"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [lints]
 workspace = true

@@ -68,7 +68,7 @@ pub enum EntanglementPattern {
 }
 
 /// Measurement schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MeasurementScheme {
     /// Computational basis measurement
     Computational,
@@ -83,7 +83,7 @@ pub enum MeasurementScheme {
 }
 
 /// Pauli measurement bases
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PauliBasis {
     X,
     Y,
@@ -91,7 +91,7 @@ pub enum PauliBasis {
 }
 
 /// Postprocessing schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostprocessingScheme {
     /// No postprocessing
     None,
@@ -123,7 +123,7 @@ pub struct QuantumLayer {
 }
 
 /// Types of quantum layers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QuantumLayerType {
     /// Variational layer
     Variational,
@@ -241,7 +241,7 @@ pub struct ClassicalLayer {
 }
 
 /// Types of classical layers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassicalLayerType {
     /// Dense/fully connected
     Dense,
@@ -256,7 +256,7 @@ pub enum ClassicalLayerType {
 }
 
 /// Activation functions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActivationFunction {
     ReLU,
     Sigmoid,
@@ -579,8 +579,9 @@ impl QuantumNeuralNetwork {
 
             let mut epoch_loss = 0.0;
             let mut epoch_accuracy = 0.0;
-            let batch_count = (shuffled_data.len() + self.training_config.batch_size - 1)
-                / self.training_config.batch_size;
+            let batch_count = shuffled_data
+                .len()
+                .div_ceil(self.training_config.batch_size);
 
             for batch_idx in 0..batch_count {
                 let batch_start = batch_idx * self.training_config.batch_size;
@@ -636,7 +637,7 @@ impl QuantumNeuralNetwork {
                 } else {
                     patience_counter += 1;
                     if patience_counter >= self.training_config.early_stopping.patience {
-                        println!("Early stopping at epoch {} due to no improvement", epoch);
+                        println!("Early stopping at epoch {epoch} due to no improvement");
                         break;
                     }
                 }
@@ -644,8 +645,7 @@ impl QuantumNeuralNetwork {
 
             if epoch % 10 == 0 {
                 println!(
-                    "Epoch {}: Loss = {:.6}, Accuracy = {:.3}, Val Loss = {:.6}",
-                    epoch, epoch_loss, epoch_accuracy, validation_loss
+                    "Epoch {epoch}: Loss = {epoch_loss:.6}, Accuracy = {epoch_accuracy:.3}, Val Loss = {validation_loss:.6}"
                 );
             }
         }
@@ -853,7 +853,7 @@ impl QuantumNeuralNetwork {
                     let state_j = state[j];
 
                     new_state[i] = cos_half * state_i + sin_half * state_j;
-                    new_state[j] = -sin_half * state_i + cos_half * state_j;
+                    new_state[j] = (-sin_half).mul_add(state_i, cos_half * state_j);
                 }
             }
         }
@@ -901,7 +901,7 @@ impl QuantumNeuralNetwork {
         nz: f64,
     ) -> Result<Array1<f64>, SamplerError> {
         // Normalize rotation axis
-        let norm = (nx * nx + ny * ny + nz * nz).sqrt();
+        let norm = nz.mul_add(nz, nx.mul_add(nx, ny * ny)).sqrt();
         if norm < 1e-10 {
             return Ok(state.clone());
         }
@@ -1031,7 +1031,7 @@ impl QuantumNeuralNetwork {
                 let mut expectation = 0.0;
                 for i in 0..state.len() {
                     let parity = (i.count_ones() % 2) as f64;
-                    expectation += state[i] * state[i] * (1.0 - 2.0 * parity);
+                    expectation += state[i] * state[i] * 2.0f64.mul_add(-parity, 1.0);
                 }
                 Ok(expectation)
             }
@@ -1114,13 +1114,13 @@ impl QuantumNeuralNetwork {
         let mut total_loss = 0.0;
         let mut gradients = Array1::zeros(self.parameters.quantum_params.len());
 
-        for (_, ((_, target), prediction)) in batch.iter().zip(predictions.iter()).enumerate() {
+        for ((_, target), prediction) in batch.iter().zip(predictions.iter()) {
             let loss = self.compute_loss(prediction, target)?;
             total_loss += loss;
 
             // Compute gradients using parameter shift rule
             let param_gradients = self.compute_parameter_gradients(prediction, target)?;
-            gradients = gradients + &param_gradients;
+            gradients += &param_gradients;
         }
 
         total_loss /= batch.len() as f64;
@@ -1168,13 +1168,13 @@ impl QuantumNeuralNetwork {
             // Forward pass with positive shift
             let mut params_plus = self.parameters.quantum_params.clone();
             params_plus[i] += shift;
-            let prediction_plus = self.forward_with_params(&prediction, &params_plus)?;
+            let prediction_plus = self.forward_with_params(prediction, &params_plus)?;
             let loss_plus = self.compute_loss(&prediction_plus, target)?;
 
             // Forward pass with negative shift
             let mut params_minus = self.parameters.quantum_params.clone();
             params_minus[i] -= shift;
-            let prediction_minus = self.forward_with_params(&prediction, &params_plus)?;
+            let prediction_minus = self.forward_with_params(prediction, &params_plus)?;
             let loss_minus = self.compute_loss(&prediction_minus, target)?;
 
             // Compute gradient
@@ -1301,20 +1301,20 @@ impl QuantumNeuralNetwork {
         match &self.parameters.initialization_scheme {
             ParameterInitializationScheme::RandomUniform { min, max } => {
                 let mut rng = thread_rng();
-                for param in self.parameters.quantum_params.iter_mut() {
+                for param in &mut self.parameters.quantum_params {
                     *param = rng.gen_range(*min..*max);
                 }
             }
             ParameterInitializationScheme::RandomNormal { mean, std } => {
                 let mut rng = thread_rng();
-                for param in self.parameters.quantum_params.iter_mut() {
+                for param in &mut self.parameters.quantum_params {
                     *param = rng.gen::<f64>() * std + mean;
                 }
             }
             _ => {
                 // Default to random uniform [-π, π]
                 let mut rng = thread_rng();
-                for param in self.parameters.quantum_params.iter_mut() {
+                for param in &mut self.parameters.quantum_params {
                     *param = rng.gen_range(-PI..PI);
                 }
             }
@@ -1400,13 +1400,13 @@ impl QuantumNeuralNetwork {
     }
 
     /// Calculate number of quantum parameters
-    fn calculate_quantum_params(architecture: &QNNArchitecture) -> usize {
+    const fn calculate_quantum_params(architecture: &QNNArchitecture) -> usize {
         // Rough estimate: 3 parameters per qubit per layer
         architecture.num_qubits * architecture.circuit_depth * 3
     }
 
     /// Calculate number of classical parameters
-    fn calculate_classical_params(architecture: &QNNArchitecture) -> usize {
+    const fn calculate_classical_params(architecture: &QNNArchitecture) -> usize {
         // Rough estimate based on architecture
         architecture.input_dim * architecture.output_dim
     }

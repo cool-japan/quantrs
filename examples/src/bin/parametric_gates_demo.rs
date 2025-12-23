@@ -1,8 +1,10 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
-use quantrs2_core::parametric::*;
+use quantrs2_core::parametric::{
+    ParametricGate, ParametricRotationX, ParametricRotationY, ParametricU,
+};
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
+use scirs2_core::Complex64;
 
 use std::f64::consts::PI;
 use std::sync::Arc;
@@ -26,7 +28,7 @@ fn main() -> QuantRS2Result<()> {
     let rx_bound = rx_symbolic.bind(&values)?;
 
     println!("\nAfter binding 'theta' to π/2:");
-    if let Some(matrix) = rx_bound.matrix().ok() {
+    if let Ok(matrix) = rx_bound.matrix() {
         println!("Matrix representation:");
         print_matrix(&matrix);
     }
@@ -70,9 +72,9 @@ fn main() -> QuantRS2Result<()> {
         let simulator = StateVectorSimulator::new();
         let result = simulator.run(&param_circuit)?;
 
-        println!("\nWith angle = {}:", angle);
+        println!("\nWith angle = {angle}:");
         println!("Final state:");
-        print_statevector(&result.amplitudes());
+        print_statevector(result.amplitudes());
     }
     // Example 3: Multi-parameter gate (U gate)
     println!("\nExample 3: Multi-Parameter Gate (U Gate)");
@@ -139,10 +141,9 @@ fn print_statevector(state: &[Complex64]) {
     for (i, &amplitude) in state.iter().enumerate() {
         if amplitude.norm() > 1e-10 {
             let probability = amplitude.norm_sqr();
-            let binary = format!("{:b}", i).chars().collect::<Vec<_>>();
+            let binary = format!("{i:b}").chars().collect::<Vec<_>>();
             let padding = state.len().ilog2() as usize - binary.len();
-            let padded_binary: String = std::iter::repeat('0')
-                .take(padding)
+            let padded_binary: String = std::iter::repeat_n('0', padding)
                 .chain(binary.into_iter())
                 .collect();
 

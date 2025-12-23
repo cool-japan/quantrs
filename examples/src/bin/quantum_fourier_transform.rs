@@ -37,12 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..16 {
         let bits = [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1].map(|x| x as u8);
         let amplitude = result.amplitude(&bits)?;
-        let magnitude = (amplitude.re * amplitude.re + amplitude.im * amplitude.im).sqrt();
-        let phase = amplitude.im.atan2(amplitude.re) * 180.0 / PI;
-        println!(
-            "State |{:04b}⟩: magnitude = {:.6}, phase = {:.2}°",
-            i, magnitude, phase
-        );
+        let magnitude = amplitude.re.hypot(amplitude.im);
+        let phase = amplitude.im.atan2(amplitude.re).to_degrees();
+        println!("State |{i:04b}⟩: magnitude = {magnitude:.6}, phase = {phase:.2}°");
     }
 
     // Apply inverse QFT to verify we get back to |0011⟩
@@ -72,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let prob = inverse_result.probability(&bits)?;
         if prob > 0.01 {
             // Only show states with significant probability
-            println!("State |{:04b}⟩: {:.6}", i, prob);
+            println!("State |{i:04b}⟩: {prob:.6}");
         }
     }
 
@@ -80,10 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bits_3 = [0, 0, 1, 1]; // |0011⟩ = 3 in binary
     let prob_3 = inverse_result.probability(&bits_3)?;
     if prob_3 > 0.99 {
-        println!(
-            "\nSuccess! Recovered the original state |0011⟩ with probability {:.6}",
-            prob_3
-        );
+        println!("\nSuccess! Recovered the original state |0011⟩ with probability {prob_3:.6}");
     } else {
         println!("\nFailed to recover the original state |0011⟩");
     }
@@ -99,7 +93,7 @@ fn apply_qft(circuit: &mut Circuit<4>, n: usize) -> Result<(), Box<dyn std::erro
 
         // Apply controlled rotations
         for j in i + 1..n {
-            let angle = PI / (1 << (j - i)) as f64; // PI/2^(j-i)
+            let angle = PI / f64::from(1 << (j - i)); // PI/2^(j-i)
             circuit.crz(QubitId::new(j as u32), QubitId::new(i as u32), angle)?;
         }
     }
@@ -124,7 +118,7 @@ fn apply_inverse_qft(circuit: &mut Circuit<4>, n: usize) -> Result<(), Box<dyn s
     for i in (0..n).rev() {
         // Apply inverse controlled rotations
         for j in (i + 1..n).rev() {
-            let angle = -PI / (1 << (j - i)) as f64; // -PI/2^(j-i)
+            let angle = -PI / f64::from(1 << (j - i)); // -PI/2^(j-i)
             circuit.crz(QubitId::new(j as u32), QubitId::new(i as u32), angle)?;
         }
 

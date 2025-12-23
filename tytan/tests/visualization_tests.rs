@@ -1,9 +1,9 @@
 //! Tests and examples for advanced visualization functionality
 
-use scirs2_core::ndarray::Array;
-use scirs2_core::random::prelude::*;
 use quantrs2_tytan::analysis::visualization::*;
 use quantrs2_tytan::sampler::{SASampler, SampleResult, Sampler};
+use scirs2_core::ndarray::Array;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Create dummy sample results for testing
@@ -20,10 +20,12 @@ fn create_test_results(n: usize) -> Vec<SampleResult> {
         assignments.insert("x3".to_string(), i % 7 == 0);
 
         // Energy is lower for more "aligned" solutions
-        let energy = if i % 2 == 0 { -2.0 } else { -1.0 }
-            + if i % 3 == 0 { -1.5 } else { 0.0 }
-            + if i % 5 == 0 { -1.0 } else { 0.5 }
-            + (i as f64 * 0.1); // Add some variation
+        let energy = (i as f64).mul_add(
+            0.1,
+            if i % 2 == 0 { -2.0 } else { -1.0 }
+                + if i % 3 == 0 { -1.5 } else { 0.0 }
+                + if i % 5 == 0 { -1.0 } else { 0.5 },
+        ); // Add some variation
 
         results.push(SampleResult {
             assignments,
@@ -65,8 +67,8 @@ fn test_solution_distribution_analysis() {
     assert_eq!(dist_data.variable_frequencies.len(), 4);
 
     // Check that frequencies are in [0, 1]
-    for (_, &freq) in &dist_data.variable_frequencies {
-        assert!(freq >= 0.0 && freq <= 1.0);
+    for &freq in dist_data.variable_frequencies.values() {
+        assert!((0.0..=1.0).contains(&freq));
     }
 
     // Check correlations were computed
@@ -104,7 +106,7 @@ fn test_tsp_tour_extraction() {
     assert_eq!(tour[0], 0); // Start at city 0
 
     // Check that all cities are visited
-    let mut visited = vec![false; 4];
+    let mut visited = [false; 4];
     for &city in &tour {
         visited[city] = true;
     }
@@ -163,7 +165,7 @@ fn test_convergence_analysis() {
         let mut iter_samples = Vec::new();
 
         for j in 0..20 {
-            let energy = -1.0 * (i as f64) - 0.1 * (j as f64) + thread_rng().gen::<f64>();
+            let energy = 0.1f64.mul_add(-f64::from(j), -f64::from(i)) + thread_rng().gen::<f64>();
 
             iter_samples.push(SampleResult {
                 assignments: HashMap::new(),
@@ -223,8 +225,8 @@ fn test_spring_layout() {
 
     // Check that all positions are in [0, 1]
     for &(x, y) in &positions {
-        assert!(x >= 0.0 && x <= 1.0);
-        assert!(y >= 0.0 && y <= 1.0);
+        assert!((0.0..=1.0).contains(&x));
+        assert!((0.0..=1.0).contains(&y));
     }
 }
 
@@ -279,7 +281,7 @@ fn example_complete_visualization_workflow() {
         println!("   Significant correlations:");
         for ((var1, var2), corr) in correlations {
             if corr.abs() > 0.3 {
-                println!("     {} <-> {}: {:.3}", var1, var2, corr);
+                println!("     {var1} <-> {var2}: {corr:.3}");
             }
         }
     }
@@ -307,8 +309,8 @@ fn example_complete_visualization_workflow() {
     let tour = extract_tsp_tour(&tsp_result, 4).unwrap();
     let tour_length = calculate_tour_length(&tour, &cities);
 
-    println!("   Tour: {:?}", tour);
-    println!("   Tour length: {:.2}", tour_length);
+    println!("   Tour: {tour:?}");
+    println!("   Tour length: {tour_length:.2}");
 
     // Step 5: Convergence analysis
     println!("\n5. Simulating convergence analysis...");
@@ -318,7 +320,7 @@ fn example_complete_visualization_workflow() {
         let mut iter_samples = create_test_results(50);
         // Simulate improvement over iterations
         for sample in &mut iter_samples {
-            sample.energy -= i as f64 * 0.5;
+            sample.energy -= f64::from(i) * 0.5;
         }
         iteration_results.push(iter_samples);
     }
@@ -346,7 +348,7 @@ fn example_complete_visualization_workflow() {
 fn example_python_plotting_script() {
     println!("\n=== Example Python Plotting Script ===\n");
 
-    let python_script = r#"
+    let python_script = r"
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -376,9 +378,9 @@ plt.colorbar(im, ax=ax2)
 plt.tight_layout()
 plt.savefig('/tmp/quantum_annealing_visualization.png', dpi=150)
 plt.show()
-"#;
+";
 
-    println!("{}", python_script);
+    println!("{python_script}");
 
     // Save the script for user convenience
     std::fs::write("/tmp/plot_visualization.py", python_script).ok();

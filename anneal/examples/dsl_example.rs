@@ -52,10 +52,10 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = OptimizationModel::new("Portfolio Optimization");
 
     // Stock data
-    let stocks = vec!["AAPL", "GOOGL", "MSFT", "AMZN", "META"];
+    let stocks = ["AAPL", "GOOGL", "MSFT", "AMZN", "META"];
     let expected_returns = vec![0.12, 0.15, 0.10, 0.18, 0.14];
     let risks = vec![0.20, 0.25, 0.15, 0.30, 0.28];
-    let correlations = vec![
+    let correlations = [
         vec![1.0, 0.3, 0.2, 0.1, 0.15],
         vec![0.3, 1.0, 0.25, 0.2, 0.35],
         vec![0.2, 0.25, 1.0, 0.15, 0.2],
@@ -105,7 +105,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nOptimization Results:");
     println!("  Best energy: {:.6}", result.best_energy);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Decode solution
     println!("\n  Selected stocks:");
@@ -152,7 +152,7 @@ fn sudoku_solver_example() -> Result<(), Box<dyn std::error::Error>> {
         let mut row_vars = Vec::new();
         for col in 0..4 {
             let cell_vars = model.add_binary_vector(
-                format!("cell_{}_{}", row, col),
+                format!("cell_{row}_{col}"),
                 4, // values 1-4
             )?;
             row_vars.push(cell_vars);
@@ -288,8 +288,8 @@ fn nurse_scheduling_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = OptimizationModel::new("Nurse Scheduling");
 
     // Problem parameters
-    let nurses = vec!["Alice", "Bob", "Carol", "David"];
-    let shifts = vec!["Morning", "Afternoon", "Night"];
+    let nurses = ["Alice", "Bob", "Carol", "David"];
+    let shifts = ["Morning", "Afternoon", "Night"];
     let days = 3; // 3-day schedule
 
     // Nurse preferences (higher = more preferred)
@@ -305,8 +305,7 @@ fn nurse_scheduling_example() -> Result<(), Box<dyn std::error::Error>> {
     for n in 0..nurses.len() {
         let mut nurse_schedule = Vec::new();
         for d in 0..days {
-            let day_shifts =
-                model.add_binary_vector(format!("nurse_{}_day_{}", n, d), shifts.len())?;
+            let day_shifts = model.add_binary_vector(format!("nurse_{n}_day_{d}"), shifts.len())?;
             nurse_schedule.push(day_shifts);
         }
         x.push(nurse_schedule);
@@ -438,8 +437,8 @@ fn knapsack_pattern_example() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("\n  Total value: ${:.0}", total_value);
-    println!("  Total weight: {:.1}kg / {:.1}kg", total_weight, capacity);
+    println!("\n  Total value: ${total_value:.0}");
+    println!("  Total weight: {total_weight:.1}kg / {capacity:.1}kg");
 
     Ok(())
 }
@@ -472,7 +471,7 @@ fn graph_coloring_pattern_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("Graph coloring model:");
     println!("  Vertices: {}", vertices.len());
     println!("  Edges: {}", edges.len());
-    println!("  Available colors: {}", num_colors);
+    println!("  Available colors: {num_colors}");
     println!("  Variables: {}", model.summary().num_variables);
     println!("  Constraints: {}", model.summary().num_constraints);
 
@@ -484,11 +483,11 @@ fn graph_coloring_pattern_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Decode solution
     println!("\nGraph Coloring Solution:");
-    let color_names = vec!["Red", "Blue", "Green", "Yellow"];
+    let color_names = ["Red", "Blue", "Green", "Yellow"];
 
     let mut qubit_idx = 0;
     for (v, vertex) in vertices.iter().enumerate() {
-        print!("  {}: ", vertex);
+        print!("  {vertex}: ");
         for c in 0..num_colors {
             if result.best_spins[qubit_idx] == 1 {
                 print!("{}", color_names[c]);
@@ -549,14 +548,14 @@ fn complex_expression_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add constraints
     model.add_constraint(
-        Expression::Variable(x.clone())
-            .add(Expression::Variable(y.clone()))
+        Expression::Variable(x)
+            .add(Expression::Variable(y))
             .less_than_or_equal(1.0),
     )?;
 
     model.add_constraint(
-        Expression::Variable(z.clone())
-            .add(Expression::Variable(w.clone()))
+        Expression::Variable(z)
+            .add(Expression::Variable(w))
             .greater_than_or_equal(1.0),
     )?;
 
@@ -580,16 +579,24 @@ fn complex_expression_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Decode integer variable w (2 bits)
     let w_value = result.best_spins[3] + 2 * result.best_spins[4];
-    println!("  w = {}", w_value);
+    println!("  w = {w_value}");
 
     // Calculate objective value
-    let obj_value = result.best_spins[0] as f64
-        + 2.0 * result.best_spins[1] as f64
-        + 3.0 * result.best_spins[2] as f64
-        - 1.5 * (result.best_spins[0] * result.best_spins[1]) as f64
-        + 0.5 * w_value as f64;
+    let obj_value = 0.5f64.mul_add(
+        f64::from(w_value),
+        1.5f64.mul_add(
+            -f64::from(result.best_spins[0] * result.best_spins[1]),
+            3.0f64.mul_add(
+                f64::from(result.best_spins[2]),
+                2.0f64.mul_add(
+                    f64::from(result.best_spins[1]),
+                    f64::from(result.best_spins[0]),
+                ),
+            ),
+        ),
+    );
 
-    println!("\n  Objective value: {:.2}", obj_value);
+    println!("\n  Objective value: {obj_value:.2}");
 
     Ok(())
 }
@@ -598,7 +605,7 @@ fn multi_objective_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut model = OptimizationModel::new("Multi-objective Optimization");
 
     // Production planning: maximize profit while minimizing environmental impact
-    let products = vec!["A", "B", "C", "D"];
+    let products = ["A", "B", "C", "D"];
     let profits = vec![100.0, 150.0, 80.0, 120.0];
     let emissions = vec![5.0, 8.0, 3.0, 6.0]; // CO2 emissions
     let resources = vec![2.0, 3.0, 1.5, 2.5]; // Resource usage
@@ -641,7 +648,7 @@ fn multi_objective_example() -> Result<(), Box<dyn std::error::Error>> {
 
     for (i, product) in products.iter().enumerate() {
         if result.best_spins[i] == 1 {
-            println!("  Produce product {}", product);
+            println!("  Produce product {product}");
             println!("    Profit: ${:.0}", profits[i]);
             println!("    Emissions: {:.1} units", emissions[i]);
             println!("    Resources: {:.1} units", resources[i]);
@@ -653,12 +660,9 @@ fn multi_objective_example() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("\n  Totals:");
-    println!("    Total profit: ${:.0}", total_profit);
-    println!("    Total emissions: {:.1} units", total_emissions);
-    println!(
-        "    Total resources: {:.1}/{:.1} units",
-        total_resources, resource_limit
-    );
+    println!("    Total profit: ${total_profit:.0}");
+    println!("    Total emissions: {total_emissions:.1} units");
+    println!("    Total resources: {total_resources:.1}/{resource_limit:.1} units");
 
     println!("\n  Analysis:");
     println!(

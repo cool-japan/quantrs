@@ -12,8 +12,8 @@ use quantrs2_anneal::{
     qubo::QuboBuilder,
     simulator::{ClassicalAnnealingSimulator, QuantumAnnealingSimulator},
 };
-use std::time::Instant;
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Problem-Specific Annealing Schedules Demo ===\n");
@@ -33,12 +33,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut adaptive_optimizer = AdaptiveScheduleOptimizer::new(0.2);
 
     for (name, model) in problems {
-        println!("Problem: {}", name);
+        println!("Problem: {name}");
         println!("Size: {} qubits", model.num_qubits);
 
         // Detect problem type automatically
         let detected_type = scheduler.detect_problem_type(&model)?;
-        println!("Detected type: {:?}", detected_type);
+        println!("Detected type: {detected_type:?}");
 
         // Get problem-specific schedule
         let specific_params = scheduler.create_schedule(&model, detected_type.clone())?;
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("\nProblem-specific schedule results:");
         println!("  Best energy: {:.4}", specific_result.best_energy);
-        println!("  Time: {:.2?}", specific_time);
+        println!("  Time: {specific_time:.2?}");
 
         // Run with default schedule for comparison
         let default_params = Default::default();
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("\nDefault schedule results:");
         println!("  Best energy: {:.4}", default_result.best_energy);
-        println!("  Time: {:.2?}", default_time);
+        println!("  Time: {default_time:.2?}");
 
         // Calculate improvement
         let energy_improvement = (default_result.best_energy - specific_result.best_energy)
@@ -84,8 +84,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             * 100.0;
 
         println!("\nImprovement:");
-        println!("  Energy: {:.1}%", energy_improvement);
-        println!("  Time: {:.1}%", time_improvement);
+        println!("  Energy: {energy_improvement:.1}%");
+        println!("  Time: {time_improvement:.1}%");
 
         // Record performance for adaptive optimization
         adaptive_optimizer.record_performance(
@@ -132,7 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Create a MaxCut problem instance
+/// Create a `MaxCut` problem instance
 fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Error>> {
     let mut model = IsingModel::new(n);
 
@@ -168,7 +168,7 @@ fn create_tsp_problem(n_cities: usize) -> Result<IsingModel, Box<dyn std::error:
     let mut vars = vec![vec![None; n_cities]; n_cities];
     for i in 0..n_cities {
         for j in 0..n_cities {
-            let var_name = format!("x_{}_{}", i, j);
+            let var_name = format!("x_{i}_{j}");
             vars[i][j] = Some(builder.add_variable(var_name)?);
         }
     }
@@ -176,7 +176,10 @@ fn create_tsp_problem(n_cities: usize) -> Result<IsingModel, Box<dyn std::error:
     // Constraint: each city visited exactly once
     builder.set_constraint_weight(10.0)?;
     for i in 0..n_cities {
-        let city_vars: Vec<_> = vars[i].iter().filter_map(|v| v.clone()).collect();
+        let city_vars: Vec<_> = vars[i]
+            .iter()
+            .filter_map(std::clone::Clone::clone)
+            .collect();
         builder.constrain_one_hot(&city_vars)?;
     }
 
@@ -212,7 +215,7 @@ fn create_number_partitioning_problem(n: usize) -> Result<IsingModel, Box<dyn st
 
     // Variables: x[i] = 1 if number i is in first partition
     let vars: Result<Vec<_>, _> = (0..n)
-        .map(|i| builder.add_variable(format!("x_{}", i)))
+        .map(|i| builder.add_variable(format!("x_{i}")))
         .collect();
     let vars = vars?;
 
@@ -220,7 +223,7 @@ fn create_number_partitioning_problem(n: usize) -> Result<IsingModel, Box<dyn st
     for i in 0..n {
         for j in 0..n {
             let coeff = if i == j {
-                numbers[i] * (numbers[i] - 2.0 * target)
+                numbers[i] * 2.0f64.mul_add(-target, numbers[i])
             } else {
                 2.0 * numbers[i] * numbers[j]
             };
@@ -256,7 +259,7 @@ fn create_graph_coloring_problem(n: usize) -> Result<IsingModel, Box<dyn std::er
     let mut vars = vec![vec![None; num_colors]; n];
     for i in 0..n {
         for c in 0..num_colors {
-            let var_name = format!("x_{}_{}", i, c);
+            let var_name = format!("x_{i}_{c}");
             vars[i][c] = Some(builder.add_variable(var_name)?);
         }
     }
@@ -264,7 +267,10 @@ fn create_graph_coloring_problem(n: usize) -> Result<IsingModel, Box<dyn std::er
     // Constraint: each vertex has exactly one color
     builder.set_constraint_weight(10.0)?;
     for i in 0..n {
-        let vertex_vars: Vec<_> = vars[i].iter().filter_map(|v| v.clone()).collect();
+        let vertex_vars: Vec<_> = vars[i]
+            .iter()
+            .filter_map(std::clone::Clone::clone)
+            .collect();
         builder.constrain_one_hot(&vertex_vars)?;
     }
 

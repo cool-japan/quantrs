@@ -1,4 +1,4 @@
-//! Advanced maximum cut example using QuantRS2-Tytan with SciRS2
+//! Advanced maximum cut example using QuantRS2-Tytan with `SciRS2`
 //!
 //! This example demonstrates:
 //! - Sparse matrix representation for large graphs
@@ -6,7 +6,6 @@
 //! - Performance benchmarking across different graph types
 //! - Cut quality analysis and visualization
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::{
     analysis::graph::{
         analyze_graph, generate_complete_graph, generate_graph, generate_grid_graph,
@@ -30,6 +29,7 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+use scirs2_core::ndarray::{Array1, Array2};
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -37,7 +37,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::time::Instant;
 
-/// Convert QuboModel to matrix format for samplers
+/// Convert `QuboModel` to matrix format for samplers
 fn qubo_to_matrix_format(
     qubo: &quantrs2_tytan::QuboModel,
 ) -> Result<(Array2<f64>, HashMap<String, usize>), Box<dyn std::error::Error>> {
@@ -47,7 +47,7 @@ fn qubo_to_matrix_format(
 
     // Create variable mapping
     for i in 0..n {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
     }
 
     // Fill matrix with linear terms (diagonal)
@@ -73,7 +73,7 @@ fn qubo_to_matrix_format(
 
 /// Maximum cut problem formulation
 ///
-/// Given a graph G = (V, E) with edge weights w_ij, partition vertices into two sets
+/// Given a graph G = (V, E) with edge weights `w_ij`, partition vertices into two sets
 /// to maximize the total weight of edges between sets.
 fn create_max_cut_model(
     edges: &[(usize, usize)],
@@ -85,7 +85,7 @@ fn create_max_cut_model(
     // Create binary variables for each node (0 = set A, 1 = set B)
     let mut node_vars = Vec::new();
     for i in 0..n_nodes {
-        let var = model.add_variable(&format!("x_{}", i))?;
+        let var = model.add_variable(&format!("x_{i}"))?;
         node_vars.push(var);
     }
 
@@ -94,7 +94,7 @@ fn create_max_cut_model(
     let mut objective = constant(0.0);
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
-        let weight = weights.map(|w| w[idx]).unwrap_or(1.0);
+        let weight = weights.map_or(1.0, |w| w[idx]);
 
         // Add weight * (x_i + x_j - 2*x_i*x_j)
         objective = objective
@@ -119,7 +119,7 @@ fn calculate_cut_value(
 
     for (idx, &(i, j)) in edges.iter().enumerate() {
         if partition[i] != partition[j] {
-            cut_value += weights.map(|w| w[idx]).unwrap_or(1.0);
+            cut_value += weights.map_or(1.0, |w| w[idx]);
         }
     }
 
@@ -133,9 +133,7 @@ fn analyze_cut_quality(
     weights: Option<&[f64]>,
 ) -> CutAnalysis {
     let mut cut_value = calculate_cut_value(partition, edges, weights);
-    let total_weight: f64 = weights
-        .map(|w| w.iter().sum())
-        .unwrap_or(edges.len() as f64);
+    let total_weight: f64 = weights.map_or(edges.len() as f64, |w| w.iter().sum());
 
     let set_a_size = partition.iter().filter(|&&x| !x).count();
     let set_b_size = partition.iter().filter(|&&x| x).count();
@@ -192,7 +190,7 @@ fn run_max_cut_experiments() -> Result<(), Box<dyn std::error::Error>> {
     let mut all_results = Vec::new();
 
     for (graph_name, edges, weights) in experiments {
-        println!("\n=== {} ===", graph_name);
+        println!("\n=== {graph_name} ===");
 
         // Analyze graph properties
         let n_nodes = edges
@@ -398,7 +396,7 @@ fn extract_partition(sample: &quantrs2_tytan::sampler::SampleResult, n_nodes: us
     let mut partition = vec![false; n_nodes];
 
     for i in 0..n_nodes {
-        let var_name = format!("x_{}", i);
+        let var_name = format!("x_{i}");
         partition[i] = sample.assignments.get(&var_name).copied().unwrap_or(false);
     }
 
@@ -589,7 +587,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\nWeighted Graph Results:");
     println!("  Cut value: {:.2}", analysis.cut_value);
-    println!("  Partition: {:?}", partition);
+    println!("  Partition: {partition:?}");
     println!(
         "  Set sizes: {} vs {}",
         analysis.set_a_size, analysis.set_b_size

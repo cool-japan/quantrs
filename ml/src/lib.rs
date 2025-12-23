@@ -87,8 +87,10 @@ pub mod lstm;
 pub mod meta_learning;
 pub mod model_zoo;
 pub mod onnx_export;
+pub mod performance_profiler;
 pub mod pytorch_api;
 pub mod quantum_advanced_diffusion;
+pub mod quantum_advantage_validator;
 pub mod quantum_continuous_flows;
 pub mod quantum_graph_attention;
 pub mod quantum_implicit_neural_representations;
@@ -112,8 +114,11 @@ pub mod time_series;
 pub mod transfer;
 pub mod tutorials;
 
-// Internal utilities module
-mod utils;
+// Utilities module for calibration, metrics, preprocessing, etc.
+pub mod utils;
+
+// Advanced Quantum-Classical Hybrid AutoML Engine
+pub mod hybrid_automl_engine;
 
 /// Re-export error types for easier access
 pub use error::MLError;
@@ -259,6 +264,10 @@ pub mod prelude {
         QuantumBackendTarget, TargetFramework, UnsupportedOpHandling, ValidationReport,
     };
     pub use crate::optimization::{ObjectiveFunction, OptimizationMethod, Optimizer};
+    pub use crate::performance_profiler::{
+        Bottleneck, BottleneckSeverity, CircuitMetrics, MemorySnapshot, MemoryStats,
+        OperationStats, ProfilerConfig, ProfilingReport, QuantumMLProfiler,
+    };
     pub use crate::pytorch_api::{
         ActivationType as PyTorchActivationType, DataLoader, InitType, MemoryDataLoader, Parameter,
         QuantumActivation, QuantumConv2d, QuantumCrossEntropyLoss, QuantumLinear, QuantumLoss,
@@ -369,6 +378,12 @@ pub mod prelude {
         DenoisingArchitecture, ErrorMitigationStrategy, GenerationMetrics,
         QuantumAdvancedDiffusionConfig, QuantumAdvancedDiffusionModel, QuantumGenerationOutput,
         QuantumNoiseSchedule, QuantumTrainingConfig,
+    };
+
+    pub use crate::quantum_advantage_validator::{
+        ClassicalBaseline, ComparisonMetric, QuantumAdvantage, QuantumAdvantageValidator,
+        QuantumResourceUsage, QuantumResult, ResourceUsage, StatisticalSignificance,
+        ValidationConfig, ValidationReport as AdvantageValidationReport,
     };
 
     pub use crate::quantum_continuous_flows::{

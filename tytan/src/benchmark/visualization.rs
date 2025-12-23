@@ -9,7 +9,7 @@ pub struct BenchmarkVisualizer {
 
 impl BenchmarkVisualizer {
     /// Create new visualizer from performance report
-    pub fn new(report: PerformanceReport) -> Self {
+    pub const fn new(report: PerformanceReport) -> Self {
         Self { report }
     }
 
@@ -59,7 +59,7 @@ impl BenchmarkVisualizer {
             plot.set_title("Scaling Analysis");
             plot.set_xlabel("Problem Size");
             plot.set_ylabel("Time per Sample (s)");
-            plot.save(&format!("{}/scaling_plot.html", output_dir))?;
+            plot.save(&format!("{output_dir}/scaling_plot.html"))?;
         }
 
         // Fallback: generate CSV data
@@ -86,7 +86,7 @@ impl BenchmarkVisualizer {
             }
         }
 
-        let mut file = std::fs::File::create(&format!("{}/scaling_data.csv", output_dir))?;
+        let mut file = std::fs::File::create(format!("{output_dir}/scaling_data.csv"))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -110,7 +110,7 @@ impl BenchmarkVisualizer {
             // Fill matrix from speedup data
             for (i, backend) in backends.iter().enumerate() {
                 for (j, sampler) in samplers.iter().enumerate() {
-                    let mut config = format!("{}-{}", backend, sampler);
+                    let mut config = format!("{backend}-{sampler}");
 
                     // Find efficiency for this configuration
                     if let Some(efficiency) = self
@@ -134,7 +134,7 @@ impl BenchmarkVisualizer {
             let mut plot = Plot::new();
             plot.add_trace(heatmap);
             plot.set_title("Backend-Sampler Efficiency Heatmap");
-            plot.save(&format!("{}/efficiency_heatmap.html", output_dir))?;
+            plot.save(&format!("{output_dir}/efficiency_heatmap.html"))?;
         }
 
         // Fallback: generate CSV
@@ -155,7 +155,7 @@ impl BenchmarkVisualizer {
             csv_content.push_str(&format!("{},{},{}\n", config, efficiency, i + 1));
         }
 
-        let mut file = std::fs::File::create(&format!("{}/efficiency_ranking.csv", output_dir))?;
+        let mut file = std::fs::File::create(format!("{output_dir}/efficiency_ranking.csv"))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -191,8 +191,7 @@ impl BenchmarkVisualizer {
                         .efficiency_ranking
                         .iter()
                         .find(|(c, _)| c == config)
-                        .map(|(_, e)| *e)
-                        .unwrap_or(0.0);
+                        .map_or(0.0, |(_, e)| *e);
                     all_performance.push(perf);
                 }
             }
@@ -238,7 +237,7 @@ impl BenchmarkVisualizer {
             plot.set_title("Quality vs Performance Trade-off");
             plot.set_xlabel("Performance (samples/sec)");
             plot.set_ylabel("Solution Quality");
-            plot.save(&format!("{}/pareto_plot.html", output_dir))?;
+            plot.save(&format!("{output_dir}/pareto_plot.html"))?;
         }
 
         // Fallback: generate CSV
@@ -262,8 +261,7 @@ impl BenchmarkVisualizer {
                 .efficiency_ranking
                 .iter()
                 .find(|(c, _)| c == config)
-                .map(|(_, e)| *e)
-                .unwrap_or(0.0);
+                .map_or(0.0, |(_, e)| *e);
 
             let is_pareto = self
                 .report
@@ -281,7 +279,7 @@ impl BenchmarkVisualizer {
             ));
         }
 
-        let mut file = std::fs::File::create(&format!("{}/pareto_data.csv", output_dir))?;
+        let mut file = std::fs::File::create(format!("{output_dir}/pareto_data.csv"))?;
         file.write_all(csv_content.as_bytes())?;
 
         Ok(())
@@ -309,13 +307,11 @@ impl BenchmarkVisualizer {
                 })
                 .collect();
 
-            plot.add_trace(
-                Bar::new(backend_names.clone(), backend_times).name("Avg Time per Sample"),
-            );
+            plot.add_trace(Bar::new(backend_names, backend_times).name("Avg Time per Sample"));
 
             plot.set_title("Backend Performance Comparison");
             plot.set_ylabel("Time per Sample (s)");
-            plot.save(&format!("{}/comparison_chart.html", output_dir))?;
+            plot.save(&format!("{output_dir}/comparison_chart.html"))?;
         }
 
         Ok(())
@@ -404,7 +400,7 @@ impl BenchmarkVisualizer {
             self.generate_recommendations_html(),
         );
 
-        std::fs::write(&format!("{}/report.html", output_dir), html)?;
+        std::fs::write(format!("{output_dir}/report.html"), html)?;
 
         Ok(())
     }

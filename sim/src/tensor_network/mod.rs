@@ -13,9 +13,9 @@ use quantrs2_core::{
 };
 
 use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::ndarray_ext::manipulation;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 pub mod contraction;
@@ -122,7 +122,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Create a new tensor network simulator with specified bond dimension
-    pub fn with_bond_dimension(mut self, max_bond_dimension: usize) -> Self {
+    pub const fn with_bond_dimension(mut self, max_bond_dimension: usize) -> Self {
         self.max_bond_dimension = max_bond_dimension;
         self.path_optimizer = self
             .path_optimizer
@@ -241,14 +241,8 @@ impl TensorNetworkSimulator {
                 let q1 = qubits[0].id() as usize;
                 let q2 = qubits[1].id() as usize;
 
-                qubit_connections
-                    .entry(q1)
-                    .or_insert_with(std::collections::HashSet::new)
-                    .insert(q2);
-                qubit_connections
-                    .entry(q2)
-                    .or_insert_with(std::collections::HashSet::new)
-                    .insert(q1);
+                qubit_connections.entry(q1).or_default().insert(q2);
+                qubit_connections.entry(q2).or_default().insert(q1);
             } else {
                 // Multi-qubit gate
                 multi_qubit_gates += 1;
@@ -288,7 +282,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Check if the circuit matches a QFT pattern
-    fn is_qft_pattern(
+    const fn is_qft_pattern(
         &self,
         hadamard_count: usize,
         controlled_phase_count: usize,
@@ -310,7 +304,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Check if the circuit matches a QAOA pattern
-    fn is_qaoa_pattern(&self, x_rotation_count: usize, cnot_count: usize) -> bool {
+    const fn is_qaoa_pattern(&self, x_rotation_count: usize, cnot_count: usize) -> bool {
         // QAOA typically has:
         // - X rotations for the mixer Hamiltonian
         // - CNOT gates + Z rotations for the problem Hamiltonian
@@ -339,7 +333,7 @@ fn is_linear_structure(
         .filter(|&i| {
             qubit_connections
                 .get(&i)
-                .map_or(false, |conns| conns.len() == 1)
+                .is_some_and(|conns| conns.len() == 1)
         })
         .count();
 
@@ -863,7 +857,7 @@ impl TensorNetwork {
                     // For larger systems, create non-uniform distribution in parallel
                     let norm = 1.0 / (dim as f64).sqrt();
                     state.par_iter_mut().enumerate().for_each(|(i, amp)| {
-                        *amp = Complex64::new(norm * (1.0 + 0.1 * (i % 3) as f64), 0.0);
+                        *amp = Complex64::new(norm * 0.1f64.mul_add((i % 3) as f64, 1.0), 0.0);
                     });
                     // Normalize the state in parallel
                     let magnitude: f64 = state.par_iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();

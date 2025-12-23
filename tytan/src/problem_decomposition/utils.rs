@@ -43,7 +43,7 @@ pub enum ConflictResolution {
 
 impl SolutionIntegrator {
     /// Create new solution integrator
-    pub fn new(strategy: IntegrationStrategy) -> Self {
+    pub const fn new(strategy: IntegrationStrategy) -> Self {
         Self {
             strategy,
             weight_scheme: WeightScheme::Uniform,
@@ -58,7 +58,7 @@ impl SolutionIntegrator {
     }
 
     /// Set conflict resolution strategy
-    pub fn with_conflict_resolution(mut self, resolution: ConflictResolution) -> Self {
+    pub const fn with_conflict_resolution(mut self, resolution: ConflictResolution) -> Self {
         self.conflict_resolution = resolution;
         self
     }
@@ -357,7 +357,7 @@ impl Default for DecompositionAnalyzer {
 
 impl DecompositionAnalyzer {
     /// Create new decomposition analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             metrics_history: Vec::new(),
         }
@@ -542,17 +542,14 @@ impl DecompositionValidator {
             .cloned()
             .collect();
 
-        if !missing_vars.is_empty() {
+        if missing_vars.is_empty() {
+            None
+        } else {
             Some(ValidationIssue {
                 issue_type: "Missing Variables".to_string(),
-                description: format!(
-                    "Variables not covered by any subproblem: {:?}",
-                    missing_vars
-                ),
+                description: format!("Variables not covered by any subproblem: {missing_vars:?}"),
                 severity: ValidationSeverity::Critical,
             })
-        } else {
-            None
         }
     }
 
@@ -615,7 +612,7 @@ impl DecompositionValidator {
         if inconsistencies > partitioning.coupling_terms.len() / 10 {
             Some(ValidationIssue {
                 issue_type: "Coupling Inconsistency".to_string(),
-                description: format!("{} coupling terms have near-zero weights", inconsistencies),
+                description: format!("{inconsistencies} coupling terms have near-zero weights"),
                 severity: ValidationSeverity::Warning,
             })
         } else {

@@ -21,16 +21,20 @@ fn main() {
     let mut circuit = Circuit::<5>::new();
 
     // Apply Hadamard to create |+⟩ = (|0⟩ + |1⟩)/√2
-    circuit.h(0).unwrap();
+    circuit
+        .h(0)
+        .expect("Failed to apply H gate to create |+⟩ state");
 
     // Run with ideal simulator to verify starting state
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = ideal_sim.run(&circuit).unwrap();
+    let ideal_result = ideal_sim
+        .run(&circuit)
+        .expect("Failed to run initial circuit");
 
     // Display the initial state
     println!("\nInitial state (first 2 amplitudes):");
     for (i, amplitude) in ideal_result.amplitudes().iter().take(2).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -48,30 +52,36 @@ fn main() {
     // Create a circuit that encodes the |+⟩ state
     // First apply the Hadamard
     let mut encoding_circuit = Circuit::<5>::new();
-    encoding_circuit.h(0).unwrap();
+    encoding_circuit
+        .h(0)
+        .expect("Failed to apply H gate to encoding circuit");
 
     // Then add the encoding operations
     let logical_qubits = vec![QubitId::new(0)];
     let ancilla_qubits = vec![QubitId::new(1), QubitId::new(2)];
     let encoder = phase_code
         .encode_circuit(&logical_qubits, &ancilla_qubits)
-        .unwrap();
+        .expect("Failed to create phase flip encoder circuit");
 
     // Transfer gates from the encoder to our main circuit
     for gate in encoder.gates() {
-        encoding_circuit.add_gate_arc(gate.clone()).unwrap();
+        encoding_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to circuit");
     }
 
     // Run the encoding circuit
-    let encoded_result = ideal_sim.run(&encoding_circuit).unwrap();
+    let encoded_result = ideal_sim
+        .run(&encoding_circuit)
+        .expect("Failed to run encoding circuit");
 
     // Display the encoded state
     println!("\nEncoded state (first 8 amplitudes):");
     for (i, amplitude) in encoded_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -99,15 +109,17 @@ fn main() {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding circuit with noise
-    let noisy_result = noisy_sim.run(&encoding_circuit).unwrap();
+    let noisy_result = noisy_sim
+        .run(&encoding_circuit)
+        .expect("Failed to run encoding circuit with noise");
 
     // Display the noisy state
     println!("\nState after noise (first 8 amplitudes):");
     for (i, amplitude) in noisy_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -121,7 +133,9 @@ fn main() {
     // First transfer all gates from encoding circuit
     let mut correction_circuit = Circuit::<5>::new();
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to correction circuit");
     }
 
     // Add syndrome measurement and correction
@@ -131,24 +145,28 @@ fn main() {
     // Get error correction circuit
     let correction = phase_code
         .decode_circuit(&encoded_qubits, &syndrome_qubits)
-        .unwrap();
+        .expect("Failed to create phase flip correction decoder circuit");
 
     // Add correction operations
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to circuit");
     }
 
     // Run the error detection and correction
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_result = clean_sim.run(&correction_circuit).unwrap();
+    let corrected_result = clean_sim
+        .run(&correction_circuit)
+        .expect("Failed to run correction circuit");
 
     // Display the corrected state
     println!("\nCorrected state (first 8 amplitudes):");
     for (i, amplitude) in corrected_result.amplitudes().iter().take(8).enumerate() {
-        let bits = format!("{:05b}", i);
+        let bits = format!("{i:05b}");
         let prob = amplitude.norm_sqr();
         if prob > 1e-10 {
-            println!("|{}⟩: {} (probability: {:.6})", bits, amplitude, prob);
+            println!("|{bits}⟩: {amplitude} (probability: {prob:.6})");
         }
     }
 
@@ -171,14 +189,11 @@ fn main() {
     let prob_1 = logical_state[1].norm_sqr();
 
     println!("\nFor an ideal |+⟩ state, we expect P(|0⟩) ≈ P(|1⟩) ≈ 0.5");
-    println!("Measured: P(|0⟩) = {:.6}, P(|1⟩) = {:.6}", prob_0, prob_1);
+    println!("Measured: P(|0⟩) = {prob_0:.6}, P(|1⟩) = {prob_1:.6}");
 
     // Verify phase relationship (should be approximately +1, not -1)
     let phase = (logical_state[0].conj() * logical_state[1]).re;
-    println!(
-        "Phase relationship: {:.6} (should be positive for |+⟩)",
-        phase
-    );
+    println!("Phase relationship: {phase:.6} (should be positive for |+⟩)");
 
     println!("\nConclusion: The 3-qubit phase flip code successfully protected our");
     println!("quantum state from phase errors, preserving the phase relationship");

@@ -38,3 +38,35 @@ pub struct ConnectivityConstraints {
     /// Routing overhead
     pub routing_overhead: f64,
 }
+
+impl Default for ResourceConstraints {
+    fn default() -> Self {
+        Self {
+            max_physical_qubits: 1000,
+            max_circuit_depth: 10000,
+            max_correction_time: Duration::from_secs(60),
+            memory_constraints: MemoryConstraints::default(),
+            connectivity_constraints: ConnectivityConstraints::default(),
+        }
+    }
+}
+
+impl Default for MemoryConstraints {
+    fn default() -> Self {
+        Self {
+            syndrome_memory: 1024 * 1024, // 1 MB
+            quantum_memory: 1024,
+            lookup_table_memory: 1024 * 1024, // 1 MB
+        }
+    }
+}
+
+impl Default for ConnectivityConstraints {
+    fn default() -> Self {
+        Self {
+            connectivity_graph: vec![],
+            max_interaction_range: 10,
+            routing_overhead: 1.2,
+        }
+    }
+}

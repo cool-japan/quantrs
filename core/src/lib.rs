@@ -19,8 +19,6 @@
 //! - Consistent SciRS2 usage: `scirs2_core::ndarray::*`, `scirs2_core::random::prelude::*`
 //! - Improved developer experience with CLAUDE.md development guidelines
 
-#![allow(clippy::fn_address_comparisons)]
-#![allow(clippy::elided_lifetimes_in_paths)]
 #![allow(clippy::ptr_eq)]
 #![warn(clippy::all)]
 #![allow(dead_code)]
@@ -61,12 +59,15 @@
 
 pub mod adaptive_precision;
 pub mod adiabatic;
+pub mod advanced_error_mitigation;
 pub mod batch;
+pub mod benchmarking_integration;
 pub mod bosonic;
 pub mod buffer_pool;
 pub mod cartan;
 pub mod characterization;
 pub mod circuit_synthesis;
+pub mod cloud_platforms;
 pub mod compilation_cache;
 pub mod complex_ext;
 pub mod controlled;
@@ -92,18 +93,20 @@ pub mod linalg_stubs;
 pub mod matrix_ops;
 pub mod mbqc;
 pub mod memory_efficient;
+pub mod ml_error_mitigation;
 pub mod neutral_atom;
+pub mod noise_characterization;
 pub mod operations;
 pub mod optimization;
 pub mod optimization_stubs;
+pub mod optimizations;
 pub mod optimizations_stable;
-// Temporarily disabled until scirs2-core cache/profiling features are stable
-// pub mod optimizations;
 pub mod parallel_ops_stubs;
 pub mod parametric;
 pub mod photonic;
 pub mod platform;
 pub mod post_quantum_crypto;
+pub mod profiling_advanced;
 pub mod pulse;
 #[cfg(feature = "python")]
 pub mod python_bindings;
@@ -111,10 +114,13 @@ pub mod qaoa;
 pub mod qml;
 pub mod qpca;
 pub mod quantum_algorithm_profiling;
+pub mod quantum_amplitude_estimation;
 pub mod quantum_autodiff;
 pub mod quantum_aware_interpreter;
+pub mod quantum_benchmarking;
 pub mod quantum_cellular_automata;
 pub mod quantum_channels;
+pub mod quantum_classical_hybrid;
 #[cfg(feature = "python")]
 pub mod quantum_complexity_analysis;
 pub mod quantum_counting;
@@ -124,6 +130,7 @@ pub mod quantum_game_theory;
 pub mod quantum_garbage_collection;
 pub mod quantum_hardware_abstraction;
 pub mod quantum_internet;
+pub mod quantum_language_compiler;
 pub mod scirs2_equivalence_checker;
 // pub mod quantum_internet_enhancements;  // Temporarily disabled due to compilation issues
 pub mod quantum_memory_hierarchy;
@@ -135,12 +142,14 @@ pub mod quantum_resource_management;
 pub mod quantum_sensor_networks;
 pub mod quantum_supremacy_algorithms;
 pub mod quantum_universal_framework;
+pub mod quantum_volume_tomography;
 pub mod quantum_walk;
 pub mod qubit;
 pub mod real_time_compilation;
 pub mod realtime_monitoring;
 pub mod register;
 pub mod resource_estimator;
+pub mod rl_circuit_optimization;
 pub mod scirs2_auto_optimizer;
 pub mod scirs2_circuit_verifier;
 pub mod scirs2_circuit_verifier_enhanced;
@@ -153,6 +162,7 @@ pub mod scirs2_quantum_profiler_enhanced;
 pub mod scirs2_resource_estimator_enhanced;
 pub mod shannon;
 pub mod silicon_quantum_dots;
+pub mod simd_enhanced;
 pub mod simd_ops;
 pub mod simd_ops_stubs;
 pub mod symbolic;
@@ -205,6 +215,10 @@ pub mod prelude {
     pub use crate::batch::{
         create_batch, merge_batches, split_batch, BatchConfig, BatchExecutionResult, BatchGateOp,
         BatchMeasurementResult, BatchStateVector,
+    };
+    pub use crate::benchmarking_integration::{
+        ComprehensiveBenchmarkReport, ComprehensiveBenchmarkSuite, MitigationStrategy,
+        NoiseAnalysis, QAOABenchmarkResults,
     };
     pub use crate::bosonic::{
         boson_to_qubit_encoding, BosonHamiltonian, BosonOperator, BosonOperatorType, BosonTerm,
@@ -276,6 +290,12 @@ pub mod prelude {
         AtomSpecies, AtomState, LaserSystem, NeutralAtom, NeutralAtomErrorModel, NeutralAtomGates,
         NeutralAtomQC, OpticalTweezer, Position3D,
     };
+    pub use crate::noise_characterization::{
+        CrossEntropyBenchmarking, CrossEntropyResult, DDPulse, DynamicalDecoupling,
+        ExtrapolationMethod, NoiseModel as CharacterizationNoiseModel,
+        ProbabilisticErrorCancellation, RandomizedBenchmarking, RandomizedBenchmarkingResult,
+        ZeroNoiseExtrapolation,
+    };
     pub use crate::operations::{
         apply_and_sample, sample_outcome, MeasurementOutcome, OperationResult, POVMMeasurement,
         ProjectiveMeasurement, QuantumOperation, Reset,
@@ -341,6 +361,10 @@ pub mod prelude {
     pub use crate::quantum_aware_interpreter::{
         ExecutionStrategy, OperationResult as InterpreterOperationResult, QuantumAwareInterpreter,
         QuantumJITCompiler, QuantumStateTracker, RuntimeOptimizationEngine,
+    };
+    pub use crate::quantum_benchmarking::{
+        BenchmarkConfig, BenchmarkResult, ComparativeBenchmark, DDEffectivenessResult,
+        QAOABenchmarkResult, QuantumBenchmarkSuite, QuantumVolumeBenchmarkResult, ResourceUsage,
     };
     pub use crate::quantum_cellular_automata::{
         BoundaryCondition, QCARule, QCAType, QuantumCellularAutomaton1D,
@@ -421,6 +445,10 @@ pub mod prelude {
         QuantumHardwareRegistry, QuantumPortabilityEngine, UniversalCompilationResult,
         UniversalFrameworkAdvantageReport, UniversalQuantumCircuit, UniversalQuantumCompiler,
         UniversalQuantumFramework,
+    };
+    pub use crate::quantum_volume_tomography::{
+        GateSetModel, GateSetTomography, ProcessMatrix, QuantumProcessTomography, QuantumVolume,
+        QuantumVolumeResult,
     };
     pub use crate::quantum_walk::{
         CoinOperator, ContinuousQuantumWalk, DecoherentQuantumWalk, DiscreteQuantumWalk, Graph,

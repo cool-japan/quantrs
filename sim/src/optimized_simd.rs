@@ -8,9 +8,9 @@ use crate::scirs2_complex_simd::{
     apply_single_qubit_gate_complex_simd, ComplexSimdOps, ComplexSimdVector,
 };
 use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::simd_ops::SimdUnifiedOps;
+use scirs2_core::Complex64;
 
 /// Simplified SIMD-like structure for complex operations
 /// NOTE: This is being deprecated in favor of SciRS2 SIMD operations.
@@ -37,7 +37,7 @@ impl ComplexVec4 {
     }
 
     /// Create a new ComplexVec4 where all elements have the same value
-    pub fn splat(value: Complex64) -> Self {
+    pub const fn splat(value: Complex64) -> Self {
         Self {
             re: [value.re, value.re, value.re, value.re],
             im: [value.im, value.im, value.im, value.im],
@@ -51,23 +51,23 @@ impl ComplexVec4 {
     }
 
     /// Multiply by another ComplexVec4
-    pub fn mul(&self, other: &ComplexVec4) -> ComplexVec4 {
-        let mut result = ComplexVec4 {
+    pub fn mul(&self, other: &Self) -> Self {
+        let mut result = Self {
             re: [0.0; 4],
             im: [0.0; 4],
         };
 
         for i in 0..4 {
-            result.re[i] = self.re[i] * other.re[i] - self.im[i] * other.im[i];
-            result.im[i] = self.re[i] * other.im[i] + self.im[i] * other.re[i];
+            result.re[i] = self.re[i].mul_add(other.re[i], -(self.im[i] * other.im[i]));
+            result.im[i] = self.re[i].mul_add(other.im[i], self.im[i] * other.re[i]);
         }
 
         result
     }
 
     /// Add another ComplexVec4
-    pub fn add(&self, other: &ComplexVec4) -> ComplexVec4 {
-        let mut result = ComplexVec4 {
+    pub fn add(&self, other: &Self) -> Self {
+        let mut result = Self {
             re: [0.0; 4],
             im: [0.0; 4],
         };
@@ -81,8 +81,8 @@ impl ComplexVec4 {
     }
 
     /// Subtract another ComplexVec4
-    pub fn sub(&self, other: &ComplexVec4) -> ComplexVec4 {
-        let mut result = ComplexVec4 {
+    pub fn sub(&self, other: &Self) -> Self {
+        let mut result = Self {
             re: [0.0; 4],
             im: [0.0; 4],
         };
@@ -96,8 +96,8 @@ impl ComplexVec4 {
     }
 
     /// Negate all elements
-    pub fn neg(&self) -> ComplexVec4 {
-        let mut result = ComplexVec4 {
+    pub fn neg(&self) -> Self {
+        let mut result = Self {
             re: [0.0; 4],
             im: [0.0; 4],
         };
@@ -792,7 +792,7 @@ pub struct GateFusion {
 
 impl GateFusion {
     /// Create a new gate fusion starting with an identity gate
-    pub fn new(target: usize) -> Self {
+    pub const fn new(target: usize) -> Self {
         Self {
             fused_matrix: [
                 Complex64::new(1.0, 0.0), // I[0,0]

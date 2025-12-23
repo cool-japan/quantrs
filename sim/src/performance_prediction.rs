@@ -9,13 +9,13 @@ use crate::{
     error::{Result, SimulatorError},
     scirs2_integration::{Matrix, SciRS2Backend, Vector},
 };
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
@@ -480,7 +480,7 @@ impl PerformancePredictionEngine {
     fn count_two_qubit_gates<const N: usize>(&self, circuit: &Circuit<N>) -> Result<usize> {
         let mut count = 0;
         let gates = circuit.gates_as_boxes();
-        for gate in gates.iter() {
+        for gate in &gates {
             let qubits = self.get_gate_qubits(gate.as_ref())?;
             if qubits.len() >= 2 {
                 count += 1;
@@ -497,7 +497,7 @@ impl PerformancePredictionEngine {
     }
 
     /// Estimate memory requirement for simulation
-    fn estimate_memory_requirement(&self, qubit_count: usize) -> usize {
+    const fn estimate_memory_requirement(&self, qubit_count: usize) -> usize {
         // 2^N complex numbers, each 16 bytes (8 bytes real + 8 bytes imag)
         let state_vector_size = (1usize << qubit_count) * 16;
         // Add overhead for intermediate calculations
@@ -578,7 +578,7 @@ impl PerformancePredictionEngine {
         let mut distribution = HashMap::new();
 
         let gates = circuit.gates_as_boxes();
-        for gate in gates.iter() {
+        for gate in &gates {
             let gate_type = self.get_gate_type_name(gate.as_ref());
             *distribution.entry(gate_type).or_insert(0) += 1;
         }
@@ -758,22 +758,27 @@ impl PerformancePredictionEngine {
             let static_weight = 0.3;
             let ml_weight = 0.7;
 
-            let combined_seconds = static_pred.predicted_time.as_secs_f64() * static_weight
-                + ml_pred.predicted_time.as_secs_f64() * ml_weight;
+            let combined_seconds = static_pred.predicted_time.as_secs_f64().mul_add(
+                static_weight,
+                ml_pred.predicted_time.as_secs_f64() * ml_weight,
+            );
 
             let predicted_time = Duration::from_secs_f64(combined_seconds);
-            let confidence =
-                static_pred.confidence * static_weight + ml_pred.confidence * ml_weight;
+            let confidence = static_pred
+                .confidence
+                .mul_add(static_weight, ml_pred.confidence * ml_weight);
 
             // Combined prediction interval
-            let lower_combined = Duration::from_secs_f64(
-                static_pred.prediction_interval.0.as_secs_f64() * static_weight
-                    + ml_pred.prediction_interval.0.as_secs_f64() * ml_weight,
-            );
-            let upper_combined = Duration::from_secs_f64(
-                static_pred.prediction_interval.1.as_secs_f64() * static_weight
-                    + ml_pred.prediction_interval.1.as_secs_f64() * ml_weight,
-            );
+            let lower_combined =
+                Duration::from_secs_f64(static_pred.prediction_interval.0.as_secs_f64().mul_add(
+                    static_weight,
+                    ml_pred.prediction_interval.0.as_secs_f64() * ml_weight,
+                ));
+            let upper_combined =
+                Duration::from_secs_f64(static_pred.prediction_interval.1.as_secs_f64().mul_add(
+                    static_weight,
+                    ml_pred.prediction_interval.1.as_secs_f64() * ml_weight,
+                ));
 
             Ok(PredictionResult {
                 predicted_time,
@@ -869,7 +874,7 @@ impl PerformancePredictionEngine {
 
         // Apply model coefficients
         let gate_factor =
-            model.parameters.get(0).unwrap_or(&1.0) * (complexity.gate_count as f64).ln();
+            model.parameters.first().unwrap_or(&1.0) * (complexity.gate_count as f64).ln();
         let depth_factor =
             model.parameters.get(1).unwrap_or(&1.0) * complexity.circuit_depth as f64;
         let qubit_factor =
@@ -903,7 +908,7 @@ impl PerformancePredictionEngine {
     }
 
     /// Update prediction accuracy statistics
-    fn update_prediction_accuracy(&mut self, data_point: &ExecutionDataPoint) {
+    const fn update_prediction_accuracy(&mut self, data_point: &ExecutionDataPoint) {
         // This would compare actual vs predicted times
         // Simplified implementation
         if data_point.success {
@@ -948,13 +953,13 @@ impl PerformancePredictionEngine {
     }
 
     /// Update timing statistics
-    fn update_timing_stats(&mut self, elapsed: Duration) {
+    const fn update_timing_stats(&mut self, elapsed: Duration) {
         // Update timing statistics
         // Simplified implementation
     }
 
     /// Get prediction engine statistics
-    pub fn get_statistics(&self) -> &PredictionStatistics {
+    pub const fn get_statistics(&self) -> &PredictionStatistics {
         &self.prediction_stats
     }
 
@@ -962,7 +967,7 @@ impl PerformancePredictionEngine {
     pub fn export_models(&self) -> Result<Vec<u8>> {
         // Serialize models for storage
         let serialized = serde_json::to_vec(&self.trained_models)
-            .map_err(|e| SimulatorError::ComputationError(format!("Serialization error: {}", e)))?;
+            .map_err(|e| SimulatorError::ComputationError(format!("Serialization error: {e}")))?;
         Ok(serialized)
     }
 

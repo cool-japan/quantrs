@@ -126,13 +126,11 @@ impl RealTimeQuantumCompiler {
         let start_time = Instant::now();
 
         // Check cache first
-        if let Some(cached_result) = self
-            .check_cache(gate.as_ref(), &target_hardware, &optimization_level)
-            .await
+        if let Some(cached_result) =
+            self.check_cache(gate.as_ref(), &target_hardware, &optimization_level)
         {
             self.performance_monitor
-                .record_cache_hit(start_time.elapsed())
-                .await;
+                .record_cache_hit(start_time.elapsed());
             return Ok(cached_result);
         }
 
@@ -180,31 +178,27 @@ impl RealTimeQuantumCompiler {
                     &target_hardware,
                     &optimization_level,
                     &compiled_gate,
-                )
-                .await;
+                );
 
                 // Record performance metrics
-                self.performance_monitor
-                    .record_compilation_success(
-                        start_time.elapsed(),
-                        compiled_gate.estimated_fidelity,
-                        compiled_gate.gate_sequence.len(),
-                    )
-                    .await;
+                self.performance_monitor.record_compilation_success(
+                    start_time.elapsed(),
+                    compiled_gate.estimated_fidelity,
+                    compiled_gate.gate_sequence.len(),
+                );
 
                 Ok(compiled_gate)
             }
             Err(e) => {
                 self.performance_monitor
-                    .record_compilation_failure(start_time.elapsed())
-                    .await;
+                    .record_compilation_failure(start_time.elapsed());
                 Err(e)
             }
         }
     }
 
     /// Check compilation cache
-    async fn check_cache(
+    fn check_cache(
         &self,
         gate: &dyn GateOp,
         target_hardware: &str,
@@ -216,7 +210,7 @@ impl RealTimeQuantumCompiler {
     }
 
     /// Cache compilation result
-    async fn cache_compilation_result(
+    fn cache_compilation_result(
         &self,
         gate: &dyn GateOp,
         target_hardware: &str,
@@ -336,9 +330,8 @@ impl RealTimeQuantumCompiler {
                 // No optimization
             }
             OptimizationLevel::Basic => {
-                compiled_gate = self
-                    .apply_basic_optimizations(compiled_gate, hardware, deadline)
-                    .await?;
+                compiled_gate =
+                    self.apply_basic_optimizations(compiled_gate, hardware, deadline)?;
             }
             OptimizationLevel::Aggressive => {
                 compiled_gate = self
@@ -361,7 +354,7 @@ impl RealTimeQuantumCompiler {
     }
 
     /// Apply basic optimizations
-    async fn apply_basic_optimizations(
+    fn apply_basic_optimizations(
         &self,
         mut compiled_gate: CompiledGate,
         _hardware: &Arc<dyn HardwareTarget>,
@@ -393,9 +386,7 @@ impl RealTimeQuantumCompiler {
         deadline: Option<Instant>,
     ) -> Result<CompiledGate, QuantRS2Error> {
         // Start with basic optimizations
-        compiled_gate = self
-            .apply_basic_optimizations(compiled_gate, hardware, deadline)
-            .await?;
+        compiled_gate = self.apply_basic_optimizations(compiled_gate, hardware, deadline)?;
 
         // Advanced circuit optimizations
         compiled_gate.gate_sequence = self.optimize_circuit_depth(&compiled_gate.gate_sequence)?;
@@ -426,14 +417,12 @@ impl RealTimeQuantumCompiler {
         deadline: Option<Instant>,
     ) -> Result<CompiledGate, QuantRS2Error> {
         // Analyze current performance metrics
-        let current_metrics = self.performance_monitor.get_current_metrics().await;
+        let current_metrics = self.performance_monitor.get_current_metrics();
 
         // Decide optimization strategy based on metrics and hints
         if current_metrics.average_compilation_time > Duration::from_millis(100) {
             // Fast compilation path
-            compiled_gate = self
-                .apply_basic_optimizations(compiled_gate, hardware, deadline)
-                .await?;
+            compiled_gate = self.apply_basic_optimizations(compiled_gate, hardware, deadline)?;
         } else if context
             .optimization_hints
             .contains(&OptimizationHint::MaximizeFidelity)
@@ -820,7 +809,7 @@ impl PerformanceMonitor {
         }
     }
 
-    pub async fn record_compilation_success(
+    pub fn record_compilation_success(
         &self,
         compilation_time: Duration,
         fidelity: f64,
@@ -842,17 +831,17 @@ impl PerformanceMonitor {
             (metrics.average_gate_count * (n - 1.0) + gate_count as f64) / n;
     }
 
-    pub async fn record_compilation_failure(&self, _compilation_time: Duration) {
+    pub fn record_compilation_failure(&self, _compilation_time: Duration) {
         let mut metrics = self.metrics.lock().unwrap();
         metrics.total_compilations += 1;
     }
 
-    pub async fn record_cache_hit(&self, _access_time: Duration) {
+    pub fn record_cache_hit(&self, _access_time: Duration) {
         let mut metrics = self.metrics.lock().unwrap();
         metrics.cache_hits += 1;
     }
 
-    pub async fn get_current_metrics(&self) -> CompilationMetrics {
+    pub fn get_current_metrics(&self) -> CompilationMetrics {
         self.metrics.lock().unwrap().clone()
     }
 }
@@ -1074,11 +1063,9 @@ mod tests {
     async fn test_performance_monitor() {
         let monitor = PerformanceMonitor::new();
 
-        monitor
-            .record_compilation_success(Duration::from_millis(10), 0.99, 5)
-            .await;
+        monitor.record_compilation_success(Duration::from_millis(10), 0.99, 5);
 
-        let metrics = monitor.get_current_metrics().await;
+        let metrics = monitor.get_current_metrics();
         assert_eq!(metrics.successful_compilations, 1);
         assert_eq!(metrics.average_fidelity, 0.99);
     }

@@ -5,17 +5,17 @@
 //! to quantum circuits.
 
 use crate::autodiff::optimizers::Optimizer;
-use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork};
-use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
     GateOp,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 

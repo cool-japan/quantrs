@@ -154,7 +154,11 @@ pub struct SensitivityAnalyzer<S: Sampler> {
 
 impl<S: Sampler> SensitivityAnalyzer<S> {
     /// Create new sensitivity analyzer
-    pub fn new(sampler: S, parameters: Vec<ParameterType>, method: SensitivityMethod) -> Self {
+    pub const fn new(
+        sampler: S,
+        parameters: Vec<ParameterType>,
+        method: SensitivityMethod,
+    ) -> Self {
         Self {
             sampler,
             parameters,
@@ -165,7 +169,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
 
     /// Set number of reads per evaluation
-    pub fn with_reads_per_eval(mut self, num_reads: usize) -> Self {
+    pub const fn with_reads_per_eval(mut self, num_reads: usize) -> Self {
         self.num_reads_per_eval = num_reads;
         self
     }
@@ -244,7 +248,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let (optimal_value, _) = response_curve
                 .iter()
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                .cloned()
+                .copied()
                 .unwrap_or((baseline_params[&param_name], baseline_objective));
 
             sensitivities.insert(
@@ -349,8 +353,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                     constraint_impact: 0.0,
                     optimal_value: 0.0, // Not applicable for Morris
                     confidence_interval: (
-                        mean_effect - 2.0 * std_effect,
-                        mean_effect + 2.0 * std_effect,
+                        2.0f64.mul_add(-std_effect, mean_effect),
+                        2.0f64.mul_add(std_effect, mean_effect),
                     ),
                     response_curve: Vec::new(),
                 },
@@ -601,7 +605,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             ParameterType::SamplerParameter { name, .. } => name.clone(),
             ParameterType::PenaltyWeight {
                 constraint_name, ..
-            } => format!("penalty_{}", constraint_name),
+            } => format!("penalty_{constraint_name}"),
             ParameterType::FormulationParameter { name, .. } => name.clone(),
             ParameterType::DiscreteChoice { name, .. } => name.clone(),
         }
@@ -646,7 +650,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
 
     /// Apply parameters to sampler
-    fn apply_parameters(&mut self, _params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
+    fn apply_parameters(&self, _params: &HashMap<String, f64>) -> Result<(), Box<dyn Error>> {
         // This would need to be implemented based on the specific sampler
         // For now, we assume parameters are applied externally
         Ok(())
@@ -690,14 +694,14 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             variance.sqrt()
         };
 
-        (mean - 2.0 * std, mean + 2.0 * std)
+        (2.0f64.mul_add(-std, mean), 2.0f64.mul_add(std, mean))
     }
 
     // Additional helper methods would be implemented here...
 
     #[cfg(feature = "dwave")]
     fn compute_interaction_effects(
-        &mut self,
+        &self,
         _problem: &CompiledModel,
         _baseline_params: &HashMap<String, f64>,
     ) -> Result<HashMap<(String, String), f64>, Box<dyn Error>> {
@@ -729,9 +733,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             constraint_satisfaction_prob: 1.0, // Placeholder
             worst_case_objective: all_objectives
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max),
-            best_case_objective: all_objectives.iter().cloned().fold(f64::INFINITY, f64::min),
+            best_case_objective: all_objectives.iter().copied().fold(f64::INFINITY, f64::min),
             stability_regions: HashMap::new(), // Placeholder
         }
     }
@@ -806,7 +810,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let mean_a = y_a.iter().sum::<f64>() / n;
         let mean_b = y_b.iter().sum::<f64>() / n;
 
-        (mean_product - mean_a * mean_b) / var_total
+        mean_a.mul_add(-mean_b, mean_product) / var_total
     }
 
     fn compute_total_index(&self, y_a: &[f64], y_ab_i: &[f64], var_total: f64) -> f64 {
@@ -823,7 +827,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
 
     #[cfg(feature = "dwave")]
     fn compute_second_order_indices(
-        &mut self,
+        &self,
         _problem: &CompiledModel,
         _sample_a: &[HashMap<String, f64>],
         _sample_b: &[HashMap<String, f64>],
@@ -836,7 +840,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
     }
 
     fn compute_robustness_from_samples(&self, y_a: &[f64], y_b: &[f64]) -> RobustnessMetrics {
-        let all_y: Vec<f64> = y_a.iter().chain(y_b.iter()).cloned().collect();
+        let all_y: Vec<f64> = y_a.iter().chain(y_b.iter()).copied().collect();
 
         let mean_y = all_y.iter().sum::<f64>() / all_y.len() as f64;
         let std_y = {
@@ -848,8 +852,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         RobustnessMetrics {
             objective_cv: std_y / mean_y.abs().max(1.0),
             constraint_satisfaction_prob: 1.0,
-            worst_case_objective: all_y.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-            best_case_objective: all_y.iter().cloned().fold(f64::INFINITY, f64::min),
+            worst_case_objective: all_y.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+            best_case_objective: all_y.iter().copied().fold(f64::INFINITY, f64::min),
             stability_regions: HashMap::new(),
         }
     }
@@ -878,13 +882,12 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let mut sample = HashMap::new();
 
             for (j, param) in self.parameters.iter().enumerate() {
-                let name = self.get_parameter_name(&param);
-                let (min_val, max_val) = self.get_parameter_range(&param);
+                let name = self.get_parameter_name(param);
+                let (min_val, max_val) = self.get_parameter_range(param);
 
                 let level = permutations[j][i];
-                let value = min_val
-                    + (level as f64 + rng.gen::<f64>()) / num_samples as f64
-                        * (max_val - min_val);
+                let value = ((level as f64 + rng.gen::<f64>()) / num_samples as f64)
+                    .mul_add(max_val - min_val, min_val);
 
                 sample.insert(name, value);
             }
@@ -951,8 +954,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         RobustnessMetrics {
             objective_cv: std_obj / mean_obj.abs().max(1.0),
             constraint_satisfaction_prob: 1.0,
-            worst_case_objective: objectives.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-            best_case_objective: objectives.iter().cloned().fold(f64::INFINITY, f64::min),
+            worst_case_objective: objectives.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+            best_case_objective: objectives.iter().copied().fold(f64::INFINITY, f64::min),
             stability_regions: HashMap::new(),
         }
     }
@@ -979,9 +982,10 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 idx /= levels_per_factor;
 
                 let value = if levels_per_factor == 1 {
-                    (min_val + max_val) / 2.0
+                    f64::midpoint(min_val, max_val)
                 } else {
-                    min_val + level as f64 / (levels_per_factor - 1) as f64 * (max_val - min_val)
+                    (level as f64 / (levels_per_factor - 1) as f64)
+                        .mul_add(max_val - min_val, min_val)
                 };
 
                 config.insert(name, value);
@@ -1080,7 +1084,7 @@ pub mod visualization {
             let mut params: Vec<_> = results.main_effects.iter().collect();
             params.sort_by(|a, b| b.1.abs().partial_cmp(&a.1.abs()).unwrap());
 
-            let names: Vec<String> = params.iter().map(|(k, _)| k.to_string()).collect();
+            let names: Vec<String> = params.iter().map(|(k, _)| (*k).clone()).collect();
             let values: Vec<f64> = params.iter().map(|(_, v)| **v).collect();
 
             let bar = Bar::new(names, values).name("Sensitivity");
@@ -1138,8 +1142,7 @@ fn simple_linear_regression(x: &[f64], y: &[f64]) -> f64 {
     let sum_xy: f64 = x.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
     let sum_x2: f64 = x.iter().map(|a| a * a).sum();
 
-    let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
-    slope
+    n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x2, -(sum_x * sum_x))
 }
 
 #[cfg(test)]

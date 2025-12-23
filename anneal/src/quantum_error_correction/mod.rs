@@ -14,8 +14,8 @@
 //! - Fault-tolerant annealing procedures
 //! - Active error correction during annealing evolution
 
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -30,6 +30,7 @@ pub mod error_mitigation;
 pub mod logical_encoding;
 pub mod logical_operations;
 pub mod noise_resilient_protocols;
+pub mod qec_annealer;
 pub mod resource_constraints;
 pub mod syndrome_detection;
 
@@ -41,9 +42,6 @@ pub use error_mitigation::*;
 pub use logical_encoding::*;
 pub use logical_operations::*;
 pub use noise_resilient_protocols::*;
+pub use qec_annealer::*;
 pub use resource_constraints::*;
 pub use syndrome_detection::*;
-
-// TODO: Add implementation structs and functions that were in the original file
-// This would include the QuantumErrorCorrectionAnnealer struct and its implementation
-// For now, this refactoring focuses on organizing the configuration types

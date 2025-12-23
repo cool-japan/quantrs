@@ -464,7 +464,7 @@ impl QuantumProcessIsolation {
     }
 
     fn create_security_domain(
-        &mut self,
+        &self,
         requirements: &SecurityRequirements,
     ) -> Result<SecurityDomain, QuantRS2Error> {
         Ok(SecurityDomain {
@@ -480,7 +480,7 @@ impl QuantumProcessIsolation {
     }
 
     fn allocate_virtual_quantum_machine(
-        &mut self,
+        &self,
         config: &ProcessConfiguration,
     ) -> Result<VirtualQuantumMachine, QuantRS2Error> {
         Ok(VirtualQuantumMachine {
@@ -497,7 +497,7 @@ impl QuantumProcessIsolation {
     }
 
     fn configure_quantum_sandbox(
-        &mut self,
+        &self,
         _config: &ProcessConfiguration,
         _requirements: &SecurityRequirements,
     ) -> Result<SandboxConfiguration, QuantRS2Error> {
@@ -505,7 +505,7 @@ impl QuantumProcessIsolation {
     }
 
     fn apply_security_policies(
-        &mut self,
+        &self,
         _process: &IsolatedQuantumProcess,
         _requirements: &SecurityRequirements,
     ) -> Result<(), QuantRS2Error> {
@@ -533,7 +533,7 @@ impl QuantumProcessIsolation {
     }
 
     fn apply_post_execution_security(
-        &mut self,
+        &self,
         _process: &IsolatedQuantumProcess,
         _result: &ExecutionResult,
     ) -> Result<(), QuantRS2Error> {

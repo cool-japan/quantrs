@@ -25,7 +25,7 @@ pub struct DomainDecomposer<S: Sampler> {
 
 impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     /// Create new domain decomposer
-    pub fn new(base_sampler: S) -> Self {
+    pub const fn new(base_sampler: S) -> Self {
         Self {
             base_sampler,
             strategy: DecompositionStrategy::Schwarz,
@@ -37,19 +37,19 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     }
 
     /// Set decomposition strategy
-    pub fn with_strategy(mut self, strategy: DecompositionStrategy) -> Self {
+    pub const fn with_strategy(mut self, strategy: DecompositionStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     /// Set coordination strategy
-    pub fn with_coordination(mut self, coordination: CoordinationStrategy) -> Self {
+    pub const fn with_coordination(mut self, coordination: CoordinationStrategy) -> Self {
         self.coordination = coordination;
         self
     }
 
     /// Set maximum coordination iterations
-    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
+    pub const fn with_max_iterations(mut self, max_iterations: usize) -> Self {
         self.max_coordination_iterations = max_iterations;
         self
     }
@@ -285,25 +285,22 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         state: &mut CoordinationState,
         domains: &[Domain],
     ) -> Result<(), String> {
-        match &self.coordination {
-            CoordinationStrategy::ADMM { .. } => {
-                let mut lagrange_multipliers = HashMap::new();
-                let mut consensus_variables = HashMap::new();
+        if let CoordinationStrategy::ADMM { .. } = &self.coordination {
+            let mut lagrange_multipliers = HashMap::new();
+            let mut consensus_variables = HashMap::new();
 
-                // Initialize Lagrange multipliers and consensus variables
-                for domain in domains {
-                    for &boundary_var in &domain.boundary_vars {
-                        lagrange_multipliers.insert((domain.id, boundary_var), 0.0);
-                        consensus_variables.insert(boundary_var, false);
-                    }
+            // Initialize Lagrange multipliers and consensus variables
+            for domain in domains {
+                for &boundary_var in &domain.boundary_vars {
+                    lagrange_multipliers.insert((domain.id, boundary_var), 0.0);
+                    consensus_variables.insert(boundary_var, false);
                 }
+            }
 
-                state.lagrange_multipliers = Some(lagrange_multipliers);
-                state.consensus_variables = Some(consensus_variables);
-            }
-            _ => {
-                // Other coordination strategies would be initialized here
-            }
+            state.lagrange_multipliers = Some(lagrange_multipliers);
+            state.consensus_variables = Some(consensus_variables);
+        } else {
+            // Other coordination strategies would be initialized here
         }
 
         Ok(())
@@ -350,7 +347,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
         let results_vec = self
             .base_sampler
             .run_qubo(&(modified_qubo, domain.var_map.clone()), shots)
-            .map_err(|e| format!("Sampler error: {:?}", e))?;
+            .map_err(|e| format!("Sampler error: {e:?}"))?;
 
         // Take the best result (first one, since they're sorted by energy)
         let results = results_vec
@@ -372,32 +369,26 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     ) -> Result<Array2<f64>, String> {
         let mut modified_qubo = domain.qubo.clone();
 
-        match &self.coordination {
-            CoordinationStrategy::ADMM { rho } => {
-                if let (Some(lagrange), Some(consensus)) = (
-                    &coordination.lagrange_multipliers,
-                    &coordination.consensus_variables,
-                ) {
-                    // Add augmented Lagrangian terms
-                    for &boundary_var in &domain.boundary_vars {
-                        if let Some(local_idx) =
-                            domain.var_map.values().find(|&&v| v == boundary_var)
-                        {
-                            let lambda = lagrange.get(&(domain.id, boundary_var)).unwrap_or(&0.0);
-                            let z = if *consensus.get(&boundary_var).unwrap_or(&false) {
-                                1.0
-                            } else {
-                                0.0
-                            };
+        if let CoordinationStrategy::ADMM { rho } = &self.coordination {
+            if let (Some(lagrange), Some(consensus)) = (
+                &coordination.lagrange_multipliers,
+                &coordination.consensus_variables,
+            ) {
+                // Add augmented Lagrangian terms
+                for &boundary_var in &domain.boundary_vars {
+                    if let Some(local_idx) = domain.var_map.values().find(|&&v| v == boundary_var) {
+                        let lambda = lagrange.get(&(domain.id, boundary_var)).unwrap_or(&0.0);
+                        let z = if *consensus.get(&boundary_var).unwrap_or(&false) {
+                            1.0
+                        } else {
+                            0.0
+                        };
 
-                            // Add (rho/2)||x - z||^2 + lambda^T(x - z)
-                            modified_qubo[[*local_idx, *local_idx]] +=
-                                rho + 2.0 * lambda * (1.0 - z);
-                        }
+                        // Add (rho/2)||x - z||^2 + lambda^T(x - z)
+                        modified_qubo[[*local_idx, *local_idx]] += rho + 2.0 * lambda * (1.0 - z);
                     }
                 }
             }
-            _ => {}
         }
 
         Ok(modified_qubo)
@@ -466,10 +457,10 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
                     consensus.insert(boundary_var, new_consensus);
 
                     // Track residual
-                    let residual = if new_consensus != old_consensus {
-                        1.0
-                    } else {
+                    let residual = if new_consensus == old_consensus {
                         0.0
+                    } else {
+                        1.0
                     };
                     max_residual = max_residual.max(residual);
                 }
@@ -493,7 +484,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
 
                                     let lambda_key = (domain.id, boundary_var);
                                     let old_lambda = *lagrange.get(&lambda_key).unwrap_or(&0.0);
-                                    let new_lambda = old_lambda + rho * (x_val - z_val);
+                                    let new_lambda = rho.mul_add(x_val - z_val, old_lambda);
                                     lagrange.insert(lambda_key, new_lambda);
                                 }
                             }
@@ -537,7 +528,7 @@ impl<S: Sampler + Send + Sync + Clone> DomainDecomposer<S> {
     }
 
     /// Check coordination convergence
-    fn check_convergence(&self, state: &CoordinationState) -> bool {
+    const fn check_convergence(&self, state: &CoordinationState) -> bool {
         // Simplified convergence check
         state.iteration >= self.max_coordination_iterations / 2
     }

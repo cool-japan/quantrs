@@ -54,7 +54,7 @@ impl SASampler {
     /// * `seed` - An optional random seed for reproducibility
     /// * `params` - Custom annealing parameters
     #[must_use]
-    pub fn with_params(seed: Option<u64>, params: AnnealingParams) -> Self {
+    pub const fn with_params(seed: Option<u64>, params: AnnealingParams) -> Self {
         let mut params = params;
 
         // Override seed if provided
@@ -75,7 +75,7 @@ impl SASampler {
     }
 
     /// Set number of sweeps
-    pub fn with_sweeps(mut self, sweeps: usize) -> Self {
+    pub const fn with_sweeps(mut self, sweeps: usize) -> Self {
         self.params.num_sweeps = sweeps;
         self
     }
@@ -227,12 +227,11 @@ impl SASampler {
             .collect();
 
         // Create RNG with seed if provided
-        let mut rng = match self.seed {
-            Some(seed) => StdRng::seed_from_u64(seed),
-            None => {
-                let seed: u64 = thread_rng().random();
-                StdRng::seed_from_u64(seed)
-            }
+        let mut rng = if let Some(seed) = self.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let seed: u64 = thread_rng().random();
+            StdRng::seed_from_u64(seed)
         };
 
         // Store solutions and their frequencies
@@ -240,12 +239,12 @@ impl SASampler {
 
         // Maximum parallel runs
         #[cfg(feature = "parallel")]
-        let num_threads = rayon::current_num_threads();
+        let num_threads = scirs2_core::parallel_ops::current_num_threads();
         #[cfg(not(feature = "parallel"))]
         let num_threads = 1;
 
         // Divide shots across threads
-        let shots_per_thread = shots / num_threads + if shots % num_threads > 0 { 1 } else { 0 };
+        let shots_per_thread = shots / num_threads + usize::from(shots % num_threads > 0);
         let total_runs = shots_per_thread * num_threads;
 
         // Set up annealing parameters
@@ -260,7 +259,10 @@ impl SASampler {
             // We'll match based on tensor dimension to handle differently
             // Handle the tensor processing based on its dimensions
             if tensor.ndim() == 3 {
-                let tensor3d = tensor.to_owned().into_dimensionality::<scirs2_core::ndarray::Ix3>().ok();
+                let tensor3d = tensor
+                    .to_owned()
+                    .into_dimensionality::<scirs2_core::ndarray::Ix3>()
+                    .ok();
                 if let Some(t) = tensor3d {
                     // Calculate energy for 3D tensor
                     for i in 0..std::cmp::min(n_vars, t.dim().0) {
@@ -303,8 +305,7 @@ impl SASampler {
                     // This should be specialized for other tensor dimensions if needed
                     if !tensor.is_empty() {
                         println!(
-                            "Warning: Processing tensor with shape {:?} not specifically optimized",
-                            shape
+                            "Warning: Processing tensor with shape {shape:?} not specifically optimized"
                         );
                     }
                 }
@@ -418,8 +419,8 @@ impl SASampler {
                         let delta_e = new_energy - energy;
 
                         // Metropolis acceptance criterion
-                        let accept = delta_e <= 0.0
-                            || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
+                        let accept =
+                            delta_e <= 0.0 || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
 
                         if accept {
                             energy = new_energy;
@@ -481,7 +482,10 @@ impl SASampler {
 impl Sampler for SASampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&qubo.0, &qubo.1, shots)
@@ -489,7 +493,10 @@ impl Sampler for SASampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         self.run_generic(&hobo.0, &hobo.1, shots)

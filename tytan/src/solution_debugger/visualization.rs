@@ -279,7 +279,7 @@ impl SolutionVisualizer {
 
         // Create nodes for constraints
         for (i, constraint) in problem_info.constraints.iter().enumerate() {
-            let constraint_id = format!("constraint_{}", i);
+            let constraint_id = format!("constraint_{i}");
             nodes.push(Node {
                 id: constraint_id.clone(),
                 label: constraint.name.as_ref().unwrap_or(&constraint_id).clone(),

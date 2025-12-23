@@ -3,10 +3,12 @@
 //! This example demonstrates basic quantum clustering functionality
 //! with the working APIs in the quantum ML module.
 
-use scirs2_core::ndarray::{array, Array2};
-use quantrs2_ml::clustering::*;
+use quantrs2_ml::clustering::{
+    AffinityType, QuantumClusterer, QuantumDBSCANConfig, QuantumKMeansConfig, QuantumSpectralConfig,
+};
 use quantrs2_ml::dimensionality_reduction::{QuantumDistanceMetric, QuantumEnhancementLevel};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{array, Array2};
 
 fn main() -> Result<()> {
     println!("🌀 Simple Quantum Clustering Demo");
@@ -78,7 +80,7 @@ fn demo_quantum_kmeans(data: &Array2<f64>) -> Result<()> {
     // Test prediction on new data
     let new_data = array![[1.5, 1.5], [4.5, 4.5]];
     let predictions = clusterer.predict(&new_data)?;
-    println!("   Predictions for new data: {:?}", predictions);
+    println!("   Predictions for new data: {predictions:?}");
 
     Ok(())
 }
@@ -106,7 +108,7 @@ fn demo_quantum_dbscan(data: &Array2<f64>) -> Result<()> {
 
     // Count noise points (using MAX as noise label)
     let noise_count = result.labels.iter().filter(|&&x| x == usize::MAX).count();
-    println!("   Noise points: {}", noise_count);
+    println!("   Noise points: {noise_count}");
 
     Ok(())
 }

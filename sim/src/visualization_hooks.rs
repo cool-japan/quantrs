@@ -280,7 +280,7 @@ impl VisualizationManager {
     ) -> Result<()> {
         let num_qubits = (state.len() as f64).log2().round() as usize;
         let labels =
-            qubit_labels.unwrap_or_else(|| (0..num_qubits).map(|i| format!("q{}", i)).collect());
+            qubit_labels.unwrap_or_else(|| (0..num_qubits).map(|i| format!("q{i}")).collect());
 
         // Calculate entanglement matrix (simplified)
         let entanglement_matrix = self.calculate_entanglement_matrix(state, num_qubits)?;
@@ -362,7 +362,7 @@ impl VisualizationManager {
     /// Export all visualization data
     pub fn export_all(&self, base_path: &str) -> Result<()> {
         std::fs::create_dir_all(base_path).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to create export directory: {}", e))
+            SimulatorError::InvalidInput(format!("Failed to create export directory: {e}"))
         })?;
 
         for (i, hook) in self.hooks.iter().enumerate() {
@@ -392,7 +392,7 @@ impl VisualizationManager {
     fn generate_basis_labels(&self, state_size: usize) -> Vec<String> {
         let num_qubits = (state_size as f64).log2().round() as usize;
         (0..state_size)
-            .map(|i| format!("|{:0width$b}⟩", i, width = num_qubits))
+            .map(|i| format!("|{i:0num_qubits$b}⟩"))
             .collect()
     }
 
@@ -456,7 +456,7 @@ impl VisualizationManager {
     }
 
     /// Calculate mutual information between two qubits (simplified)
-    fn calculate_mutual_information(
+    const fn calculate_mutual_information(
         &self,
         _state: &Array1<Complex64>,
         _qubit_i: usize,
@@ -508,7 +508,7 @@ impl VisualizationManager {
     }
 
     /// Get file extension for visualization framework
-    fn get_file_extension(&self, framework: VisualizationFramework) -> &str {
+    const fn get_file_extension(&self, framework: VisualizationFramework) -> &str {
         match framework {
             VisualizationFramework::Matplotlib => "py",
             VisualizationFramework::Plotly => "html",
@@ -530,7 +530,7 @@ pub struct JSONVisualizationHook {
 }
 
 impl JSONVisualizationHook {
-    pub fn new(config: VisualizationConfig) -> Self {
+    pub const fn new(config: VisualizationConfig) -> Self {
         Self {
             data: Vec::new(),
             config,
@@ -551,15 +551,14 @@ impl VisualizationHook for JSONVisualizationHook {
     }
 
     fn export(&self, path: &str) -> Result<()> {
-        let json_data = serde_json::to_string_pretty(&self.data).map_err(|e| {
-            SimulatorError::InvalidInput(format!("Failed to serialize data: {}", e))
-        })?;
+        let json_data = serde_json::to_string_pretty(&self.data)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to serialize data: {e}")))?;
 
         let mut file = File::create(path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(json_data.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }
@@ -665,16 +664,16 @@ impl VisualizationHook for ASCIIVisualizationHook {
         output.push_str("==========================\n\n");
 
         for (i, state) in self.recent_states.iter().enumerate() {
-            output.push_str(&format!("State {}:\n", i));
+            output.push_str(&format!("State {i}:\n"));
             output.push_str(&self.state_to_ascii(state));
             output.push('\n');
         }
 
         let mut file = File::create(path)
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to create file: {e}")))?;
 
         file.write_all(output.as_bytes())
-            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| SimulatorError::InvalidInput(format!("Failed to write file: {e}")))?;
 
         Ok(())
     }

@@ -7,9 +7,9 @@
 
 use crate::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
 use scirs2_core::ndarray::{Array, Array1, Array2, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng, Distribution, RandNormal};
+use scirs2_core::random::{Distribution, RandNormal, Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 type Normal<T> = RandNormal<T>;
@@ -42,7 +42,7 @@ pub struct CIMSimulator {
 
 impl CIMSimulator {
     /// Create new CIM simulator
-    pub fn new(n_spins: usize) -> Self {
+    pub const fn new(n_spins: usize) -> Self {
         Self {
             n_spins,
             pump_parameter: 1.0,
@@ -58,49 +58,49 @@ impl CIMSimulator {
     }
 
     /// Set pump parameter (controls oscillation amplitude)
-    pub fn with_pump_parameter(mut self, pump: f64) -> Self {
+    pub const fn with_pump_parameter(mut self, pump: f64) -> Self {
         self.pump_parameter = pump;
         self
     }
 
     /// Set detuning (frequency offset)
-    pub fn with_detuning(mut self, detuning: f64) -> Self {
+    pub const fn with_detuning(mut self, detuning: f64) -> Self {
         self.detuning = detuning;
         self
     }
 
     /// Set time step
-    pub fn with_time_step(mut self, dt: f64) -> Self {
+    pub const fn with_time_step(mut self, dt: f64) -> Self {
         self.dt = dt;
         self
     }
 
     /// Set evolution time
-    pub fn with_evolution_time(mut self, time: f64) -> Self {
+    pub const fn with_evolution_time(mut self, time: f64) -> Self {
         self.evolution_time = time;
         self
     }
 
     /// Set noise strength
-    pub fn with_noise_strength(mut self, noise: f64) -> Self {
+    pub const fn with_noise_strength(mut self, noise: f64) -> Self {
         self.noise_strength = noise;
         self
     }
 
     /// Set coupling scale
-    pub fn with_coupling_scale(mut self, scale: f64) -> Self {
+    pub const fn with_coupling_scale(mut self, scale: f64) -> Self {
         self.coupling_scale = scale;
         self
     }
 
     /// Set random seed
-    pub fn with_seed(mut self, seed: u64) -> Self {
+    pub const fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
 
     /// Enable/disable measurement feedback
-    pub fn with_feedback(mut self, use_feedback: bool) -> Self {
+    pub const fn with_feedback(mut self, use_feedback: bool) -> Self {
         self.use_feedback = use_feedback;
         self
     }
@@ -394,7 +394,7 @@ pub enum RampType {
 
 impl AdvancedCIM {
     /// Create new advanced CIM
-    pub fn new(n_spins: usize) -> Self {
+    pub const fn new(n_spins: usize) -> Self {
         Self {
             base_cim: CIMSimulator::new(n_spins),
             pulse_shape: PulseShape::Gaussian {
@@ -425,13 +425,13 @@ impl AdvancedCIM {
     }
 
     /// Set bifurcation control
-    pub fn with_bifurcation_control(mut self, control: BifurcationControl) -> Self {
+    pub const fn with_bifurcation_control(mut self, control: BifurcationControl) -> Self {
         self.bifurcation_control = control;
         self
     }
 
     /// Set number of rounds
-    pub fn with_num_rounds(mut self, rounds: usize) -> Self {
+    pub const fn with_num_rounds(mut self, rounds: usize) -> Self {
         self.num_rounds = rounds;
         self
     }
@@ -504,18 +504,18 @@ impl AdvancedCIM {
         let final_param = self.bifurcation_control.final_param;
 
         match self.bifurcation_control.ramp_type {
-            RampType::Linear => initial + (final_param - initial) * progress,
+            RampType::Linear => (final_param - initial).mul_add(progress, initial),
             RampType::Exponential => {
-                initial + (final_param - initial) * (1.0 - (-5.0 * progress).exp())
+                (final_param - initial).mul_add(1.0 - (-5.0 * progress).exp(), initial)
             }
             RampType::Sigmoid => {
                 let x = 10.0 * (progress - 0.5);
                 let sigmoid = 1.0 / (1.0 + (-x).exp());
-                initial + (final_param - initial) * sigmoid
+                (final_param - initial).mul_add(sigmoid, initial)
             }
             RampType::Adaptive => {
                 // Adaptive based on convergence
-                initial + (final_param - initial) * progress.powf(2.0)
+                (final_param - initial).mul_add(progress.powi(2), initial)
             }
         }
     }
@@ -547,11 +547,7 @@ impl Sampler for AdvancedCIM {
         let mut aggregated: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
         for result in all_results {
-            let state: Vec<bool> = qubo
-                .1
-                .iter()
-                .map(|(var, _)| result.assignments[var])
-                .collect();
+            let state: Vec<bool> = qubo.1.keys().map(|var| result.assignments[var]).collect();
 
             let entry = aggregated.entry(state).or_insert((result.energy, 0));
             entry.1 += result.occurrences;
@@ -643,13 +639,13 @@ impl NetworkedCIM {
     }
 
     /// Set synchronization scheme
-    pub fn with_sync_scheme(mut self, scheme: SynchronizationScheme) -> Self {
+    pub const fn with_sync_scheme(mut self, scheme: SynchronizationScheme) -> Self {
         self.sync_scheme = scheme;
         self
     }
 
     /// Set communication delay
-    pub fn with_comm_delay(mut self, delay: f64) -> Self {
+    pub const fn with_comm_delay(mut self, delay: f64) -> Self {
         self.comm_delay = delay;
         self
     }

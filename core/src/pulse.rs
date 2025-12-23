@@ -8,9 +8,9 @@ use crate::{
     gate::GateOp,
     qubit::QubitId,
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::Array1;
 use scirs2_core::Complex64;
-use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
 /// Pulse envelope function types

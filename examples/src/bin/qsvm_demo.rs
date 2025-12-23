@@ -1,8 +1,8 @@
 //! Quantum Support Vector Machine demonstration
 
-use scirs2_core::ndarray::{array, Array1, Array2};
 use quantrs2_ml::prelude::*;
-use scirs2_core::random::{Rng, thread_rng};
+use scirs2_core::ndarray::{array, Array1, Array2};
+use scirs2_core::random::{thread_rng, Rng};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("=== Quantum Support Vector Machine Demo ===\n");
@@ -54,13 +54,13 @@ fn basic_classification_demo() -> std::result::Result<(), Box<dyn std::error::Er
 
     println!("\nTraining QSVM...");
     qsvm.fit(&x_train, &y_train)
-        .map_err(|e| format!("Training failed: {}", e))?;
+        .map_err(|e| format!("Training failed: {e}"))?;
 
     println!("✓ Training complete!");
     println!("  Support vectors: {}", qsvm.n_support_vectors());
 
     // Predict on test set
-    let predictions = qsvm.predict(&x_test).map_err(|e| e)?;
+    let predictions = qsvm.predict(&x_test)?;
 
     // Calculate accuracy
     let mut correct = 0;
@@ -70,11 +70,11 @@ fn basic_classification_demo() -> std::result::Result<(), Box<dyn std::error::Er
         }
     }
 
-    let accuracy = correct as f64 / y_test.len() as f64;
+    let accuracy = f64::from(correct) / y_test.len() as f64;
     println!("\nTest accuracy: {:.2}%", accuracy * 100.0);
 
     // Show decision values for a few samples
-    let decision_values = qsvm.decision_function(&x_test).map_err(|e| e)?;
+    let decision_values = qsvm.decision_function(&x_test)?;
     println!("\nSample predictions:");
     for i in 0..5.min(x_test.nrows()) {
         println!(
@@ -124,8 +124,8 @@ fn feature_map_comparison_demo() -> std::result::Result<(), Box<dyn std::error::
         let mut qsvm = QSVM::new(params);
 
         match qsvm.fit(&x, &y) {
-            Ok(_) => {
-                let predictions = qsvm.predict(&x).map_err(|e| e)?;
+            Ok(()) => {
+                let predictions = qsvm.predict(&x)?;
                 let accuracy = calculate_accuracy(&predictions, &y);
                 println!(
                     "  {}: Support vectors={}, Training accuracy={:.1}%",
@@ -135,7 +135,7 @@ fn feature_map_comparison_demo() -> std::result::Result<(), Box<dyn std::error::
                 );
             }
             Err(e) => {
-                println!("  {}: Failed - {}", name, e);
+                println!("  {name}: Failed - {e}");
             }
         }
     }
@@ -166,7 +166,7 @@ fn kernel_visualization_demo() -> std::result::Result<(), Box<dyn std::error::Er
         print!("[{:.1},{:.1}]", points[[i, 0]], points[[i, 1]]);
         for j in 0..points.nrows() {
             let k_val = kernel.compute(&points.row(i).to_owned(), &points.row(j).to_owned());
-            print!("  {:.3}", k_val);
+            print!("  {k_val:.3}");
         }
         println!();
     }
@@ -230,8 +230,8 @@ fn generate_xor_dataset(n_samples: usize) -> (Array2<f64>, Array1<i32>) {
     let mut y = Array1::zeros(n_samples);
 
     for i in 0..n_samples {
-        let x1 = rng.gen::<f64>() * 2.0 - 1.0;
-        let x2 = rng.gen::<f64>() * 2.0 - 1.0;
+        let x1 = rng.gen::<f64>().mul_add(2.0, -1.0);
+        let x2 = rng.gen::<f64>().mul_add(2.0, -1.0);
 
         x[[i, 0]] = x1;
         x[[i, 1]] = x2;
@@ -258,7 +258,7 @@ fn calculate_accuracy(predictions: &Array1<i32>, labels: &Array1<i32>) -> f64 {
             correct += 1;
         }
     }
-    correct as f64 / labels.len() as f64
+    f64::from(correct) / labels.len() as f64
 }
 
 /// Bonus: Quantum kernel ridge regression demo
@@ -274,14 +274,14 @@ fn quantum_kernel_ridge_demo() -> std::result::Result<(), Box<dyn std::error::Er
     for i in 0..n_samples {
         let xi = i as f64 / n_samples as f64 * 2.0 * std::f64::consts::PI;
         x[[i, 0]] = xi;
-        y[i] = xi.sin() + 0.1 * thread_rng().gen::<f64>();
+        y[i] = 0.1f64.mul_add(thread_rng().gen::<f64>(), xi.sin());
     }
 
     // Train quantum kernel ridge regression
     let mut qkr = QuantumKernelRidge::new(FeatureMapType::AngleEncoding, 1, 0.1);
 
     match qkr.fit(&x, &y) {
-        Ok(_) => {
+        Ok(()) => {
             println!("✓ Quantum kernel ridge regression trained");
 
             // Test on a few points
@@ -305,10 +305,10 @@ fn quantum_kernel_ridge_demo() -> std::result::Result<(), Box<dyn std::error::Er
                         );
                     }
                 }
-                Err(e) => println!("Prediction failed: {}", e),
+                Err(e) => println!("Prediction failed: {e}"),
             }
         }
-        Err(e) => println!("Training failed: {}", e),
+        Err(e) => println!("Training failed: {e}"),
     }
 
     Ok(())

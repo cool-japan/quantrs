@@ -2,15 +2,20 @@
 //!
 //! This example showcases the full capabilities of the quantum optimization framework.
 
-use scirs2_core::ndarray::{array, Array1, Array2};
-use quantrs2_tytan::applications::finance::*;
-use quantrs2_tytan::coherent_ising_machine::*;
-use quantrs2_tytan::performance_profiler::*;
-use quantrs2_tytan::problem_decomposition::*;
-use quantrs2_tytan::problem_dsl::*;
+use quantrs2_tytan::applications::finance::PortfolioOptimizer;
+use quantrs2_tytan::coherent_ising_machine::CIMSimulator;
+use quantrs2_tytan::performance_profiler::{PerformanceProfiler, ProfilerConfig};
+use quantrs2_tytan::problem_decomposition::{
+    GraphPartitioner, HierarchicalSolver, PartitioningAlgorithm,
+};
+use quantrs2_tytan::problem_dsl::ProblemDSL;
 use quantrs2_tytan::sampler::Sampler;
-use quantrs2_tytan::solution_debugger::*;
-use quantrs2_tytan::*;
+use quantrs2_tytan::solution_debugger::{DebuggerConfig, ProblemInfo, Solution, SolutionDebugger};
+use quantrs2_tytan::{
+    applications, is_gpu_available, profile, quantum_ml_integration, testing_framework,
+    topological_optimization, GASampler, SASampler,
+};
+use scirs2_core::ndarray::{array, Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -54,7 +59,7 @@ fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
     let mut dsl = ProblemDSL::new();
 
     // Define a graph coloring problem
-    let problem_code = r#"
+    let problem_code = r"
         // Graph coloring with 4 nodes and 3 colors
         param n_nodes = 4;
         param n_colors = 3;
@@ -82,7 +87,7 @@ fn demo_problem_dsl() -> Result<(), Box<dyn std::error::Error>> {
 
         // Symmetry breaking hint
         hint symmetry permutation(color_used);
-    "#;
+    ";
 
     let ast = dsl.parse(problem_code)?;
     println!("  ✓ Parsed graph coloring problem");
@@ -111,7 +116,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
         .with_noise_strength(0.05)
         .with_seed(42);
 
-    let results = cim.run_qubo(&(qubo.clone(), var_map.clone()), 100)?;
+    let results = cim.run_qubo(&(qubo, var_map.clone()), 100)?;
     println!("    ✓ CIM found {} unique solutions", results.len());
     if let Some(best) = results.first() {
         println!("    ✓ Best energy: {:.4}", best.energy);
@@ -119,7 +124,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Quantum ML Integration
     println!("  b. Quantum ML Integration");
-    use crate::quantum_ml_integration::*;
+    use quantrs2_tytan::quantum_ml_integration::*;
 
     // Note: QuantumNeuralNetwork was removed in refactoring
     // Using placeholder for demonstration
@@ -129,7 +134,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Topological Optimization
     println!("  c. Topological Optimization");
-    use crate::topological_optimization::*;
+    use quantrs2_tytan::topological_optimization::{AnyonType, TopologicalOptimizer};
 
     let mut topo_solver = TopologicalOptimizer::new(3, AnyonType::Fibonacci);
 
@@ -192,7 +197,7 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
 
     // Logistics optimization
     println!("  b. Vehicle Routing");
-    use crate::applications::logistics::*;
+    use quantrs2_tytan::applications::logistics::VehicleRoutingOptimizer;
 
     // Create a simple VRP optimizer example
     let mut distance_matrix = Array2::from_shape_vec(
@@ -214,7 +219,7 @@ fn demo_industry_applications() -> Result<(), Box<dyn std::error::Error>> {
 
     // Drug discovery
     println!("  c. Molecular Design");
-    use crate::applications::drug_discovery::*;
+    use quantrs2_tytan::applications::drug_discovery::*;
 
     println!("    ✓ Drug discovery optimization capabilities available");
 
@@ -272,7 +277,7 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
             }
             rev
         },
-        qubo: qubo.clone(),
+        qubo,
         constraints: vec![],
         optimal_solution: None,
         metadata: HashMap::new(),
@@ -306,7 +311,10 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
 
     // 3. Testing Framework
     println!("  c. Automated Testing");
-    use crate::testing_framework::*;
+    use quantrs2_tytan::testing_framework::{
+        Difficulty, OutputConfig, ProblemType, ReportFormat, SamplerConfig, TestCategory,
+        TestConfig, TestingFramework, ValidationConfig,
+    };
 
     let mut test_framework = TestingFramework::new(TestConfig {
         seed: Some(42),
@@ -350,8 +358,7 @@ fn demo_development_tools() -> Result<(), Box<dyn std::error::Error>> {
 fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "gpu")]
     {
-        use crate::gpu_samplers::*;
-        use crate::sampler::genetic_algorithm::GASampler;
+        use quantrs2_tytan::gpu_samplers::*;
         use scirs2_core::RandomExt;
 
         println!("  a. GPU Availability");
@@ -368,7 +375,7 @@ fn demo_gpu_acceleration() -> Result<(), Box<dyn std::error::Error>> {
             for size in sizes {
                 let qubo = scirs2_core::ndarray::Array2::random(
                     (size, size),
-                    scirs2_core::ndarray::distributions::Uniform::new(-1.0, 1.0),
+                    scirs2_core::ndarray::distributions::Uniform::new(-1.0, 1.0).unwrap(),
                 );
 
                 let start = std::time::Instant::now();
@@ -397,7 +404,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Define problem with DSL
     let mut dsl = ProblemDSL::new();
     let problem = dsl.parse(
-        r#"
+        r"
         param n_assets = 5;
         param returns[n_assets];
         param risk[n_assets, n_assets];
@@ -415,7 +422,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
             sum(i in 0..n_assets: allocation[i]) <= budget;
             forall(i in 0..n_assets): allocation[i] <= x[i];
             sum(i in 0..n_assets: x[i]) <= 3;  // Max 3 assets
-    "#,
+    ",
     )?;
 
     println!("    ✓ Defined portfolio optimization problem");
@@ -439,7 +446,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
     let mut best_energy = f64::INFINITY;
 
     for (name, sampler) in algorithms {
-        println!("    → Solving with {}", name);
+        println!("    → Solving with {name}");
 
         // Would solve here in real implementation
         // let results = sampler.run_qubo(&qubo_problem, 100)?;
@@ -465,7 +472,7 @@ fn demo_complete_workflow() -> Result<(), Box<dyn std::error::Error>> {
 
     // 5. Debug the solution
     if let Some(solution) = best_solution {
-        println!("    ✓ Best solution found with energy: {:.4}", best_energy);
+        println!("    ✓ Best solution found with energy: {best_energy:.4}");
 
         // Would debug here in real implementation
         // let debug_report = debugger.debug_solution(&solution);

@@ -39,7 +39,7 @@ impl std::error::Error for TypeError {}
 
 impl From<TypeError> for ParseError {
     fn from(type_error: TypeError) -> Self {
-        ParseError {
+        Self {
             message: type_error.message,
             line: 0,
             column: 0,

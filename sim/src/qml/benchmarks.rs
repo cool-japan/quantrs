@@ -33,7 +33,7 @@ pub fn benchmark_quantum_ml_algorithms() -> Result<HashMap<String, f64>> {
     for &algorithm in &algorithms {
         for &hardware in &hardware_archs {
             let benchmark_time = benchmark_algorithm_hardware_combination(algorithm, hardware)?;
-            results.insert(format!("{:?}_{:?}", algorithm, hardware), benchmark_time);
+            results.insert(format!("{algorithm:?}_{hardware:?}"), benchmark_time);
         }
     }
 
@@ -62,7 +62,7 @@ fn benchmark_algorithm_hardware_combination(
     let circuit = create_test_circuit(config.num_qubits)?;
     let parameters = Array1::from_vec(vec![0.1; config.num_parameters]);
     let parameter_names = (0..config.num_parameters)
-        .map(|i| format!("param_{}", i))
+        .map(|i| format!("param_{i}"))
         .collect();
 
     let pqc = ParameterizedQuantumCircuit::new(circuit, parameters, parameter_names, hardware);
@@ -138,8 +138,7 @@ fn benchmark_gradient_method(method: &str) -> Result<f64> {
         }
         _ => {
             return Err(crate::error::SimulatorError::InvalidInput(format!(
-                "Unknown gradient method: {}",
-                method
+                "Unknown gradient method: {method}"
             )))
         }
     }
@@ -263,8 +262,7 @@ fn benchmark_optimizer(optimizer: &str) -> Result<f64> {
             }
             _ => {
                 return Err(crate::error::SimulatorError::InvalidInput(format!(
-                    "Unknown optimizer: {}",
-                    optimizer
+                    "Unknown optimizer: {optimizer}"
                 )))
             }
         }

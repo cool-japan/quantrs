@@ -5,9 +5,9 @@
 //! that leverages quantum interference effects.
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -370,7 +370,7 @@ impl QuantumWalkOptimizer {
 
     /// Adiabatic quantum walk evolution
     fn adiabatic_evolution(
-        &mut self,
+        &self,
         model: &IsingModel,
         state: &mut QuantumState,
         initial_ham: &AdiabaticHamiltonian,
@@ -407,7 +407,7 @@ impl QuantumWalkOptimizer {
 
     /// QAOA with quantum walk evolution
     fn qaoa_walk_evolution(
-        &mut self,
+        &self,
         model: &IsingModel,
         state: &mut QuantumState,
         layers: usize,
@@ -634,7 +634,7 @@ impl QuantumWalkOptimizer {
 
     /// Amplitude amplification to boost good solutions
     fn amplitude_amplification(
-        &mut self,
+        &self,
         model: &IsingModel,
         state: &mut QuantumState,
     ) -> QuantumWalkResult<()> {

@@ -1,4 +1,4 @@
-//! # Next-Generation Quantum ML UltraThink Showcase
+//! # Next-Generation Quantum ML `UltraThink` Showcase
 //!
 //! This showcase demonstrates the integration and capabilities of all cutting-edge quantum ML algorithms
 //! implemented in the QuantRS2-ML framework, representing the forefront of quantum machine learning research.
@@ -7,7 +7,7 @@
 //!
 //! 1. **Quantum Advanced Diffusion Models** - Revolutionary generative modeling with quantum enhancement
 //! 2. **Quantum Continuous Normalization Flows** - Advanced probabilistic modeling with quantum advantages
-//! 3. **Quantum Neural Radiance Fields (QNeRF)** - 3D scene representation with quantum superiority
+//! 3. **Quantum Neural Radiance Fields (`QNeRF`)** - 3D scene representation with quantum superiority
 //! 4. **Quantum In-Context Learning** - Zero-shot adaptation without parameter updates
 //! 5. **Quantum Mixture of Experts** - Scalable conditional computation with quantum parallelism
 //!
@@ -18,13 +18,13 @@
 //! - Advanced optimization landscapes via quantum tunneling
 //! - Next-generation representational capacity
 
-use scirs2_core::ndarray::{Array1, Array2, Array3};
-use scirs2_core::Complex64;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::quantum_neural_radiance_fields::SceneBounds;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::Instant;
-use scirs2_core::random::prelude::*;
 
 /// Comprehensive showcase configuration
 #[derive(Debug, Clone)]
@@ -373,7 +373,7 @@ impl NextGenQuantumMLShowcase {
         ];
 
         for (name, algorithm_type) in algorithms {
-            println!("   🔬 Benchmarking: {}", name);
+            println!("   🔬 Benchmarking: {name}");
 
             let benchmark_result = match algorithm_type {
                 AlgorithmType::Diffusion => self.benchmark_diffusion(&benchmark_data)?,
@@ -419,7 +419,7 @@ impl NextGenQuantumMLShowcase {
         ];
 
         for (name, scenario_type) in scenarios {
-            println!("   🎯 Interactive Scenario: {}", name);
+            println!("   🎯 Interactive Scenario: {name}");
             let scenario_result = self.run_interactive_scenario(scenario_type)?;
             results.add_result(scenario_result);
         }
@@ -566,7 +566,7 @@ impl NextGenQuantumMLShowcase {
             latency: execution_time.as_millis() as f64 / flow_outputs.len() as f64,
         };
 
-        let quantum_advantage_factor = 1.0 + avg_entanglement * 2.0 + avg_fidelity;
+        let quantum_advantage_factor = avg_entanglement.mul_add(2.0, 1.0) + avg_fidelity;
 
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Continuous Normalization Flows".to_string(),
@@ -862,7 +862,8 @@ impl NextGenQuantumMLShowcase {
             latency: execution_time.as_millis() as f64 / test_inputs.len() as f64,
         };
 
-        let quantum_advantage_factor = 1.0 + avg_entanglement * 2.0 + statistics.quantum_coherence;
+        let quantum_advantage_factor =
+            avg_entanglement.mul_add(2.0, 1.0) + statistics.quantum_coherence;
 
         Ok(DemonstrationResult {
             algorithm_name: "Quantum Mixture of Experts".to_string(),
@@ -898,10 +899,12 @@ impl NextGenQuantumMLShowcase {
         // Generate synthetic data with multiple modalities
         let mut rng = fastrand::Rng::new();
 
-        let visual_data = Array2::from_shape_fn((num_samples, dim), |_| rng.f64() * 2.0 - 1.0);
-        let textual_data = Array2::from_shape_fn((num_samples, dim / 2), |_| rng.f64() * 2.0 - 1.0);
+        let visual_data =
+            Array2::from_shape_fn((num_samples, dim), |_| rng.f64().mul_add(2.0, -1.0));
+        let textual_data =
+            Array2::from_shape_fn((num_samples, dim / 2), |_| rng.f64().mul_add(2.0, -1.0));
         let temporal_data =
-            Array2::from_shape_fn((num_samples, dim / 4), |_| rng.f64() * 2.0 - 1.0);
+            Array2::from_shape_fn((num_samples, dim / 4), |_| rng.f64().mul_add(2.0, -1.0));
 
         Ok(MultiModalDataset {
             visual_data,
@@ -1012,14 +1015,14 @@ impl NextGenQuantumMLShowcase {
         let mut rng = fastrand::Rng::new();
         Ok(Array2::from_shape_fn(
             (size, self.config.data_dimensions),
-            |_| rng.f64() * 2.0 - 1.0,
+            |_| rng.f64().mul_add(2.0, -1.0),
         ))
     }
 
     fn generate_3d_coordinates(&self, num_points: usize) -> Result<Array2<f64>> {
         let mut rng = fastrand::Rng::new();
         Ok(Array2::from_shape_fn((num_points, 3), |_| {
-            rng.f64() * 2.0 - 1.0
+            rng.f64().mul_add(2.0, -1.0)
         }))
     }
 
@@ -1061,7 +1064,7 @@ impl NextGenQuantumMLShowcase {
                 output: Array1::from_vec(vec![i as f64]),
                 metadata: ContextMetadata {
                     task_type: "classification".to_string(),
-                    difficulty_level: 0.3 + i as f64 * 0.1,
+                    difficulty_level: (i as f64).mul_add(0.1, 0.3),
                     modality: ContextModality::Tabular,
                     timestamp: i,
                     importance_weight: 1.0,
@@ -1255,7 +1258,7 @@ impl QuantumAdvantageAnalyzer {
         })
     }
 
-    pub fn estimate_diffusion_advantage(
+    pub const fn estimate_diffusion_advantage(
         &self,
         _output: &QuantumGenerationOutput,
         _metrics: &QuantumMetrics,
@@ -1314,8 +1317,15 @@ pub struct ShowcaseResults {
     pub total_execution_time: std::time::Duration,
 }
 
+impl Default for ShowcaseResults {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ShowcaseResults {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             demonstration_results: Vec::new(),
             quantum_advantage_summary: None,
@@ -1327,6 +1337,7 @@ impl ShowcaseResults {
         self.demonstration_results.push(result);
     }
 
+    #[must_use]
     pub fn average_quantum_advantage(&self) -> f64 {
         if self.demonstration_results.is_empty() {
             return 1.0;
@@ -1345,6 +1356,7 @@ impl ShowcaseResults {
             .fold(0.0, f64::max)
     }
 
+    #[must_use]
     pub fn total_memory_usage(&self) -> f64 {
         self.demonstration_results
             .iter()

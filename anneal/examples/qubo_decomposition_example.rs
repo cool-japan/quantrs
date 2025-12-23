@@ -77,7 +77,7 @@ fn block_decomposition_example() -> Result<(), Box<dyn std::error::Error>> {
         result.stats.min_subproblem_size, result.stats.max_subproblem_size
     );
     println!("  Best objective value: {:.4}", result.objective_value);
-    println!("  Total solving time: {:.2?}", solving_time);
+    println!("  Total solving time: {solving_time:.2?}");
     println!(
         "  Decomposition time: {:.2?}",
         result.stats.decomposition_time
@@ -119,7 +119,7 @@ fn spectral_decomposition_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Problem size: {} variables", qubo.num_variables);
     println!("  Number of partitions: {}", result.stats.num_subproblems);
     println!("  Best objective value: {:.4}", result.objective_value);
-    println!("  Total solving time: {:.2?}", solving_time);
+    println!("  Total solving time: {solving_time:.2?}");
     println!(
         "  Convergence: {}",
         if result.stats.converged { "Yes" } else { "No" }
@@ -132,7 +132,7 @@ fn spectral_decomposition_example() -> Result<(), Box<dyn std::error::Error>> {
         .map(|sol| sol.values.len())
         .collect();
     let size_variance = calculate_variance(&sizes);
-    println!("  Sub-problem size variance: {:.2}", size_variance);
+    println!("  Sub-problem size variance: {size_variance:.2}");
 
     Ok(())
 }
@@ -168,7 +168,7 @@ fn hierarchical_decomposition_example() -> Result<(), Box<dyn std::error::Error>
         result.stats.avg_subproblem_size
     );
     println!("  Best objective value: {:.4}", result.objective_value);
-    println!("  Total solving time: {:.2?}", solving_time);
+    println!("  Total solving time: {solving_time:.2?}");
 
     Ok(())
 }
@@ -201,7 +201,7 @@ fn clustering_decomposition_example() -> Result<(), Box<dyn std::error::Error>> 
         result.stats.num_subproblems
     );
     println!("  Best objective value: {:.4}", result.objective_value);
-    println!("  Total solving time: {:.2?}", solving_time);
+    println!("  Total solving time: {solving_time:.2?}");
 
     // Show cluster sizes
     println!("  Cluster sizes:");
@@ -250,20 +250,20 @@ fn comparison_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("Comparison results:");
     println!("Decomposition approach:");
     println!("  Objective value: {:.4}", decomp_result.objective_value);
-    println!("  Solving time: {:.2?}", decomp_time);
+    println!("  Solving time: {decomp_time:.2?}");
     println!("  Sub-problems: {}", decomp_result.stats.num_subproblems);
 
     println!("Direct approach:");
-    println!("  Objective value: {:.4}", direct_objective);
-    println!("  Solving time: {:.2?}", direct_time);
+    println!("  Objective value: {direct_objective:.4}");
+    println!("  Solving time: {direct_time:.2?}");
     println!("  Repetitions: {}", direct_result.repetitions);
 
     let objective_diff = (decomp_result.objective_value - direct_objective).abs();
     let speedup = direct_time.as_secs_f64() / decomp_time.as_secs_f64();
 
     println!("Comparison:");
-    println!("  Objective difference: {:.6}", objective_diff);
-    println!("  Speedup: {:.2}x", speedup);
+    println!("  Objective difference: {objective_diff:.6}");
+    println!("  Speedup: {speedup:.2}x");
 
     Ok(())
 }
@@ -296,7 +296,7 @@ fn portfolio_optimization_example() -> Result<(), Box<dyn std::error::Error>> {
         "  Assets selected: {}",
         result.variable_values.values().filter(|&&v| v).count()
     );
-    println!("  Total solving time: {:.2?}", solving_time);
+    println!("  Total solving time: {solving_time:.2?}");
     println!("  Sub-portfolios: {}", result.stats.num_subproblems);
 
     // Analyze the final portfolio
@@ -326,18 +326,18 @@ fn create_chain_qubo(
 
     // Create variables
     let vars: Vec<_> = (0..n)
-        .map(|i| builder.add_variable(format!("x{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("x{i}")).unwrap())
         .collect();
 
     // Add linear terms (random costs)
     for i in 0..n {
-        let cost = thread_rng().gen::<f64>() * 2.0 - 1.0; // Range [-1, 1]
+        let cost = thread_rng().gen::<f64>().mul_add(2.0, -1.0); // Range [-1, 1]
         builder.set_linear_term(&vars[i], cost)?;
     }
 
     // Add chain interactions
     for i in 0..(n - 1) {
-        let interaction = -(thread_rng().gen::<f64>() * 2.0 + 1.0); // Range [-3, -1]
+        let interaction = -thread_rng().gen::<f64>().mul_add(2.0, 1.0); // Range [-3, -1]
         builder.set_quadratic_term(&vars[i], &vars[i + 1], interaction)?;
     }
 
@@ -364,7 +364,7 @@ fn create_grid_qubo(
 
     // Create variables
     let vars: Vec<_> = (0..n)
-        .map(|i| builder.add_variable(format!("x{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("x{i}")).unwrap())
         .collect();
 
     // Add linear terms
@@ -405,7 +405,7 @@ fn create_hierarchical_qubo(
 
     // Create variables
     let vars: Vec<_> = (0..n)
-        .map(|i| builder.add_variable(format!("x{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("x{i}")).unwrap())
         .collect();
 
     // Add linear terms
@@ -424,7 +424,7 @@ fn create_hierarchical_qubo(
 
         for i in start..end {
             for j in (i + 1)..end {
-                let interaction = -(thread_rng().gen::<f64>() * 2.0 + 1.0);
+                let interaction = -thread_rng().gen::<f64>().mul_add(2.0, 1.0);
                 builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
             }
         }
@@ -456,7 +456,7 @@ fn create_clustered_qubo(
 
     // Create variables
     let vars: Vec<_> = (0..n)
-        .map(|i| builder.add_variable(format!("x{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("x{i}")).unwrap())
         .collect();
 
     // Add linear terms
@@ -474,7 +474,7 @@ fn create_clustered_qubo(
         for i in start..end {
             for j in (i + 1)..end {
                 if thread_rng().gen::<f64>() < 0.7 {
-                    let interaction = -(thread_rng().gen::<f64>() * 1.5 + 0.5);
+                    let interaction = -thread_rng().gen::<f64>().mul_add(1.5, 0.5);
                     builder.set_quadratic_term(&vars[i], &vars[j], interaction)?;
                 }
             }
@@ -506,7 +506,7 @@ fn create_portfolio_qubo(
 
     // Create asset variables
     let assets: Vec<_> = (0..n_assets)
-        .map(|i| builder.add_variable(format!("asset_{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("asset_{i}")).unwrap())
         .collect();
 
     // Random returns and risks
@@ -519,7 +519,7 @@ fn create_portfolio_qubo(
 
     // Objective: maximize returns - risk penalty
     for i in 0..n_assets {
-        let coefficient = -returns[i] + risks[i] * 2.0; // Risk aversion
+        let coefficient = risks[i].mul_add(2.0, -returns[i]); // Risk aversion
         builder.set_linear_term(&assets[i], coefficient)?;
     }
 
@@ -541,7 +541,7 @@ fn create_portfolio_qubo(
     // Linear terms: add -2 * target_count * weight to existing terms
     for (i, asset) in assets.iter().enumerate() {
         // Get existing coefficient and add constraint term
-        let existing_coeff = -returns[i] + risks[i] * 2.0; // From above objective
+        let existing_coeff = risks[i].mul_add(2.0, -returns[i]); // From above objective
         let constraint_term = -2.0 * target_count as f64 * constraint_weight;
         builder.set_linear_term(asset, existing_coeff + constraint_term)?;
     }
@@ -553,7 +553,7 @@ fn create_portfolio_qubo(
             builder.set_quadratic_term(
                 &assets[i],
                 &assets[j],
-                current_quad + 2.0 * constraint_weight,
+                2.0f64.mul_add(constraint_weight, current_quad),
             )?;
         }
     }

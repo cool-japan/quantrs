@@ -44,6 +44,7 @@ pub mod fault_tolerant_synthesis;
 pub mod fermionic_simulation;
 pub mod fpga_acceleration;
 pub mod fusion;
+pub mod gpu_kernel_optimization;
 pub mod hardware_aware_qml;
 pub mod holographic_quantum_error_correction;
 pub mod jit_compilation;
@@ -54,6 +55,7 @@ pub mod memory_optimization;
 pub mod memory_prefetching_optimization;
 pub mod mixed_precision;
 pub mod mixed_precision_impl;
+pub mod mpi_distributed_simulation;
 pub mod mps_basic;
 #[cfg(feature = "mps")]
 pub mod mps_enhanced;
@@ -62,6 +64,8 @@ pub mod noise_extrapolation;
 pub mod open_quantum_systems;
 pub mod opencl_amd_backend;
 pub mod operation_cache;
+#[cfg(feature = "optimize")]
+pub mod optirs_integration;
 pub mod parallel_tensor_optimization;
 pub mod path_integral;
 pub mod pauli;
@@ -88,6 +92,7 @@ pub mod quantum_reservoir_computing;
 pub mod quantum_reservoir_computing_enhanced;
 pub mod quantum_supremacy;
 pub mod quantum_volume;
+pub mod realtime_hardware_integration;
 pub mod scirs2_complex_simd;
 pub mod scirs2_eigensolvers;
 pub mod scirs2_integration;
@@ -110,8 +115,8 @@ pub mod visualization_hooks;
 #[cfg(feature = "advanced_math")]
 pub mod tensor_network;
 pub mod utils;
-// pub mod optimized;  // Temporarily disabled due to implementation issues
-// pub mod optimized_simulator;  // Temporarily disabled due to implementation issues
+// Beta.3: Optimization modules refactored into specialized implementations:
+// optimized_chunked, optimized_simd, optimized_simple, optimized_simulator, etc.
 pub mod auto_optimizer;
 pub mod benchmark;
 pub mod circuit_optimization;
@@ -621,6 +626,6 @@ pub mod gpu_linalg_metal;
 #[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;
 
-// Temporarily disabled features
-// pub use crate::optimized::*;
-// pub use crate::optimized_simulator::*;
+// Beta.3: Old monolithic optimization modules have been refactored into specialized implementations
+// (optimized_chunked, optimized_simd, optimized_simple, optimized_simulator, etc.)
+// These comments preserved for reference - the functionality is available through the new modules

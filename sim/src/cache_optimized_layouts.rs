@@ -333,7 +333,7 @@ impl CacheOptimizedStateVector {
         let stride = 8; // SIMD width
         let mut indices = Vec::with_capacity(size);
 
-        for group in 0..(size + stride - 1) / stride {
+        for group in 0..size.div_ceil(stride) {
             for offset in 0..stride {
                 let index = group * stride + offset;
                 if index < size {
@@ -352,7 +352,7 @@ impl CacheOptimizedStateVector {
 
         let mut indices = Vec::with_capacity(size);
 
-        for l2_block in 0..(size + l2_block_size - 1) / l2_block_size {
+        for l2_block in 0..size.div_ceil(l2_block_size) {
             let l2_start = l2_block * l2_block_size;
             let l2_end = std::cmp::min(l2_start + l2_block_size, size);
 
@@ -718,11 +718,11 @@ impl CacheOptimizedStateVector {
             temporal_locality: pattern.temporal_locality,
             spatial_locality: pattern.spatial_locality,
             total_cache_lines_accessed: pattern.line_access_counts.len(),
-            average_accesses_per_line: if !pattern.line_access_counts.is_empty() {
+            average_accesses_per_line: if pattern.line_access_counts.is_empty() {
+                0.0
+            } else {
                 pattern.line_access_counts.values().sum::<u64>() as f64
                     / pattern.line_access_counts.len() as f64
-            } else {
-                0.0
             },
             detected_strides: pattern.detected_strides.clone(),
             current_layout: self.layout,
@@ -789,12 +789,12 @@ impl CacheOptimizedStateVector {
     }
 
     /// Get the current layout
-    pub fn layout(&self) -> CacheOptimizedLayout {
+    pub const fn layout(&self) -> CacheOptimizedLayout {
         self.layout
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 }
@@ -953,8 +953,8 @@ mod tests {
         assert_eq!(indices.len(), 16);
 
         // Should maintain all indices
-        let mut sorted_indices = indices.clone();
-        sorted_indices.sort();
+        let mut sorted_indices = indices;
+        sorted_indices.sort_unstable();
         assert_eq!(sorted_indices, (0..16).collect::<Vec<_>>());
     }
 

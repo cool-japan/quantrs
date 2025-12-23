@@ -129,7 +129,7 @@ struct SolutionPostprocessor {
 
 impl NECVectorAnnealingSampler {
     /// Create new NEC Vector Annealing sampler
-    pub fn new(config: NECVectorConfig) -> Self {
+    pub const fn new(config: NECVectorConfig) -> Self {
         Self {
             config,
             preprocessor: ProblemPreprocessor {
@@ -146,14 +146,14 @@ impl NECVectorAnnealingSampler {
     }
 
     /// Enable preprocessing optimizations
-    pub fn with_preprocessing(mut self, enable: bool) -> Self {
+    pub const fn with_preprocessing(mut self, enable: bool) -> Self {
         self.preprocessor.variable_fixing = enable;
         self.preprocessor.constraint_tightening = enable;
         self
     }
 
     /// Enable postprocessing optimizations
-    pub fn with_postprocessing(mut self, enable: bool) -> Self {
+    pub const fn with_postprocessing(mut self, enable: bool) -> Self {
         self.postprocessor.local_search = enable;
         self.postprocessor.diversity_filtering = enable;
         self
@@ -264,7 +264,7 @@ impl NECVectorAnnealingSampler {
     }
 
     /// Local search refinement
-    fn local_search_refinement(&self, _result: &mut SampleResult, _qubo: &Array2<f64>) {
+    const fn local_search_refinement(&self, _result: &mut SampleResult, _qubo: &Array2<f64>) {
         // Simple 1-flip local search
         // In practice, would implement more sophisticated search
     }

@@ -3,10 +3,10 @@
 //! This example demonstrates various continual learning strategies for quantum neural networks,
 //! including Elastic Weight Consolidation, Experience Replay, Progressive Networks, and more.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -100,10 +100,7 @@ fn ewc_demo() -> Result<()> {
                 .sum::<f64>()
                 / i as f64;
 
-            println!(
-                "   - Average accuracy on previous tasks: {:.3}",
-                avg_prev_accuracy
-            );
+            println!("   - Average accuracy on previous tasks: {avg_prev_accuracy:.3}");
         }
     }
 
@@ -171,7 +168,7 @@ fn experience_replay_demo() -> Result<()> {
         if i > 0 {
             let all_accuracies = learner.evaluate_all_tasks()?;
             let retention_rate = all_accuracies.values().sum::<f64>() / all_accuracies.len() as f64;
-            println!("   - Average retention: {:.3}", retention_rate);
+            println!("   - Average retention: {retention_rate:.3}");
         }
     }
 
@@ -230,11 +227,11 @@ fn progressive_networks_demo() -> Result<()> {
         learning_speeds.push(learning_time);
 
         println!("   - Task accuracy: {:.3}", metrics.current_accuracy);
-        println!("   - Learning time: {:.2?}", learning_time);
+        println!("   - Learning time: {learning_time:.2?}");
 
         if i > 0 {
             let speedup = learning_speeds[0].as_secs_f64() / learning_time.as_secs_f64();
-            println!("   - Learning speedup: {:.2}x", speedup);
+            println!("   - Learning speedup: {speedup:.2}x");
         }
     }
 
@@ -289,9 +286,9 @@ fn lwf_demo() -> Result<()> {
 
         if i > 0 {
             // Simulate distillation loss tracking
-            let distillation_loss = 0.1 + 0.3 * fastrand::f64();
+            let distillation_loss = 0.3f64.mul_add(fastrand::f64(), 0.1);
             distillation_losses.push(distillation_loss);
-            println!("   - Distillation loss: {:.3}", distillation_loss);
+            println!("   - Distillation loss: {distillation_loss:.3}");
 
             let all_accuracies = learner.evaluate_all_tasks()?;
             let stability = all_accuracies
@@ -423,7 +420,7 @@ fn task_sequence_demo() -> Result<()> {
     );
 
     for (strategy_name, strategy) in strategies {
-        println!("\n   --- {} ---", strategy_name);
+        println!("\n   --- {strategy_name} ---");
 
         let layers = vec![
             QNNLayerType::EncodingLayer { num_features: 4 },
@@ -545,17 +542,17 @@ fn forgetting_analysis_demo() -> Result<()> {
     }
 
     let avg_forgetting = if num_comparisons > 0 {
-        total_forgetting / num_comparisons as f64
+        total_forgetting / f64::from(num_comparisons)
     } else {
         0.0
     };
 
-    println!("   - Average forgetting: {:.3}", avg_forgetting);
+    println!("   - Average forgetting: {avg_forgetting:.3}");
 
     // Compute final average accuracy
     if let Some(final_row) = accuracy_matrix.last() {
         let final_avg = final_row.iter().sum::<f64>() / final_row.len() as f64;
-        println!("   - Final average accuracy: {:.3}", final_avg);
+        println!("   - Final average accuracy: {final_avg:.3}");
         println!(
             "   - Continual learning effectiveness: {:.1}%",
             (1.0 - avg_forgetting) * 100.0
@@ -586,32 +583,31 @@ fn generate_diverse_tasks(
                 0 => {
                     // Gaussian-like distribution
                     let center = i as f64 * 0.2;
-                    center + 0.2 * (fastrand::f64() - 0.5)
+                    0.2f64.mul_add(fastrand::f64() - 0.5, center)
                 }
                 1 => {
                     // Sinusoidal pattern
                     let freq = (i + 1) as f64;
-                    0.5 + 0.3 * (freq * row as f64 * 0.1 + col as f64 * 0.2).sin()
+                    0.3f64.mul_add(
+                        (freq * row as f64).mul_add(0.1, col as f64 * 0.2).sin(),
+                        0.5,
+                    )
                 }
                 _ => {
                     // Random with task-specific bias
                     let bias = i as f64 * 0.1;
-                    bias + fastrand::f64() * 0.6
+                    fastrand::f64().mul_add(0.6, bias)
                 }
             }
         });
 
         let labels = Array1::from_shape_fn(samples_per_task, |row| {
             let features_sum = data.row(row).sum();
-            if features_sum > feature_dim as f64 * 0.5 {
-                1
-            } else {
-                0
-            }
+            usize::from(features_sum > feature_dim as f64 * 0.5)
         });
 
         let task = create_continual_task(
-            format!("{}_{}", task_type, i),
+            format!("{task_type}_{i}"),
             TaskType::Classification { num_classes: 2 },
             data,
             labels,
@@ -635,11 +631,11 @@ fn generate_related_tasks(
 
     for i in 0..num_tasks {
         // Each task is a variation of the base pattern
-        let variation_strength = 0.1 + i as f64 * 0.1;
+        let variation_strength = (i as f64).mul_add(0.1, 0.1);
 
         let data = Array2::from_shape_fn((samples_per_task, feature_dim), |(row, col)| {
             let base_value = base_pattern[col];
-            let variation = variation_strength * (row as f64 * 0.05 + col as f64 * 0.1).cos();
+            let variation = variation_strength * (row as f64).mul_add(0.05, col as f64 * 0.1).cos();
             let noise = 0.05 * (fastrand::f64() - 0.5);
             (base_value + variation + noise).max(0.0).min(1.0)
         });
@@ -651,15 +647,11 @@ fn generate_related_tasks(
                 .zip(base_pattern.iter())
                 .map(|(&x, &y)| x * y)
                 .sum::<f64>();
-            if correlation > 0.5 {
-                1
-            } else {
-                0
-            }
+            usize::from(correlation > 0.5)
         });
 
         let task = create_continual_task(
-            format!("related_task_{}", i),
+            format!("related_task_{i}"),
             TaskType::Classification { num_classes: 2 },
             data,
             labels,
@@ -697,7 +689,7 @@ fn generate_varying_complexity_tasks(
                     }
                 } // Simple linear
                 1 => {
-                    if x * x + y * y > 0.25 {
+                    if x.mul_add(x, y * y) > 0.25 {
                         1.0
                     } else {
                         0.0
@@ -712,7 +704,9 @@ fn generate_varying_complexity_tasks(
                 } // Sinusoidal
                 _ => {
                     // Very complex pattern
-                    let pattern = (x * 8.0).sin() * (y * 8.0).cos() + (x * y * 16.0).sin();
+                    let pattern = (x * 8.0)
+                        .sin()
+                        .mul_add((y * 8.0).cos(), (x * y * 16.0).sin());
                     if pattern > 0.0 {
                         1.0
                     } else {
@@ -721,7 +715,7 @@ fn generate_varying_complexity_tasks(
                 }
             };
 
-            value + 0.1 * (fastrand::f64() - 0.5) // Add noise
+            0.1f64.mul_add(fastrand::f64() - 0.5, value) // Add noise
         });
 
         let labels = Array1::from_shape_fn(samples_per_task, |row| {
@@ -730,18 +724,14 @@ fn generate_varying_complexity_tasks(
             let decision_value = features
                 .iter()
                 .enumerate()
-                .map(|(j, &x)| x * (1.0 + j as f64 * complexity * 0.1))
+                .map(|(j, &x)| x * (j as f64 * complexity).mul_add(0.1, 1.0))
                 .sum::<f64>();
 
-            if decision_value > feature_dim as f64 * 0.5 {
-                1
-            } else {
-                0
-            }
+            usize::from(decision_value > feature_dim as f64 * 0.5)
         });
 
         let task = create_continual_task(
-            format!("complex_task_{}", i),
+            format!("complex_task_{i}"),
             TaskType::Classification { num_classes: 2 },
             data,
             labels,
@@ -770,30 +760,30 @@ fn generate_challenging_sequence(
             match challenge_type {
                 0 => {
                     // High-frequency patterns
-                    let freq = 10.0 + i as f64 * 2.0;
-                    0.5 + 0.4 * (freq * row as f64 * 0.01).sin()
+                    let freq = (i as f64).mul_add(2.0, 10.0);
+                    0.4f64.mul_add((freq * row as f64 * 0.01).sin(), 0.5)
                 }
                 1 => {
                     // Overlapping distributions
-                    let center1 = 0.3 + i as f64 * 0.05;
-                    let center2 = 0.7 - i as f64 * 0.05;
+                    let center1 = (i as f64).mul_add(0.05, 0.3);
+                    let center2 = (i as f64).mul_add(-0.05, 0.7);
                     if row % 2 == 0 {
-                        center1 + 0.15 * (fastrand::f64() - 0.5)
+                        0.15f64.mul_add(fastrand::f64() - 0.5, center1)
                     } else {
-                        center2 + 0.15 * (fastrand::f64() - 0.5)
+                        0.15f64.mul_add(fastrand::f64() - 0.5, center2)
                     }
                 }
                 2 => {
                     // Non-linear patterns
                     let x = row as f64 / samples_per_task as f64;
                     let y = col as f64 / feature_dim as f64;
-                    let pattern = (x * x - y * y + i as f64 * 0.1).tanh();
-                    0.5 + 0.3 * pattern
+                    let pattern = (i as f64).mul_add(0.1, x.mul_add(x, -(y * y))).tanh();
+                    0.3f64.mul_add(pattern, 0.5)
                 }
                 _ => {
                     // Sparse patterns
                     if fastrand::f64() < 0.2 {
-                        0.8 + 0.2 * fastrand::f64()
+                        0.2f64.mul_add(fastrand::f64(), 0.8)
                     } else {
                         0.1 * fastrand::f64()
                     }
@@ -804,45 +794,22 @@ fn generate_challenging_sequence(
         let labels = Array1::from_shape_fn(samples_per_task, |row| {
             let features = data.row(row);
             match challenge_type {
-                0 => {
-                    if features.sum() > feature_dim as f64 * 0.5 {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                1 => {
-                    if features[0] > 0.5 {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                2 => {
-                    if features
+                0 => usize::from(features.sum() > feature_dim as f64 * 0.5),
+                1 => usize::from(features[0] > 0.5),
+                2 => usize::from(
+                    features
                         .iter()
                         .enumerate()
                         .map(|(j, &x)| x * (j as f64 + 1.0))
                         .sum::<f64>()
-                        > 2.0
-                    {
-                        1
-                    } else {
-                        0
-                    }
-                }
-                _ => {
-                    if features.iter().filter(|&&x| x > 0.5).count() > feature_dim / 2 {
-                        1
-                    } else {
-                        0
-                    }
-                }
+                        > 2.0,
+                ),
+                _ => usize::from(features.iter().filter(|&&x| x > 0.5).count() > feature_dim / 2),
             }
         });
 
         let task = create_continual_task(
-            format!("challenge_{}", i),
+            format!("challenge_{i}"),
             TaskType::Classification { num_classes: 2 },
             data,
             labels,
@@ -876,7 +843,7 @@ fn generate_increasing_difficulty_tasks(
             let base_pattern = (x * pattern_complexity * std::f64::consts::PI).sin()
                 * (y * pattern_complexity * std::f64::consts::PI).cos();
 
-            let pattern_value = 0.5 + 0.3 * base_pattern;
+            let pattern_value = 0.3f64.mul_add(base_pattern, 0.5);
             let noise = noise_level * (fastrand::f64() - 0.5);
 
             (pattern_value + noise).max(0.0).min(1.0)
@@ -896,11 +863,7 @@ fn generate_increasing_difficulty_tasks(
                 .sum::<f64>();
 
             let threshold = feature_dim as f64 * 0.5 * (1.0 + difficulty * 0.1);
-            if decision_value > threshold {
-                1
-            } else {
-                0
-            }
+            usize::from(decision_value > threshold)
         });
 
         let task = create_continual_task(

@@ -132,49 +132,94 @@ ndarray, num-traits, etc. (Core Rust Scientific Stack)
 #### `scirs2-vision` - COMPUTER VISION
 - **Status**: ❌ UNLIKELY - Not applicable to quantum computing
 
+## 🚨 SciRS2 DEPENDENCY ABSTRACTION POLICY
+
+### Core Principle: NO Direct External Dependencies in QuantRS2
+
+**Applies to:** ALL QuantRS2 crates
+- All QuantRS2 packages (quantrs2-core, quantrs2-sim, quantrs2-ml, etc.)
+- All tests, examples, benchmarks in all crates
+- All integration tests and documentation examples
+
+#### Prohibited Direct Dependencies in Cargo.toml:
+```toml
+# ❌ FORBIDDEN in QuantRS2 crates (these are POLICY VIOLATIONS)
+[dependencies]
+rand = { workspace = true }              # ❌ Use scirs2-core instead
+rand_distr = { workspace = true }        # ❌ Use scirs2-core instead
+rand_core = { workspace = true }         # ❌ Use scirs2-core instead
+rand_chacha = { workspace = true }       # ❌ Use scirs2-core instead
+ndarray = { workspace = true }           # ❌ Use scirs2-core instead
+ndarray-rand = { workspace = true }      # ❌ Use scirs2-core instead
+ndarray-stats = { workspace = true }     # ❌ Use scirs2-core instead
+num-traits = { workspace = true }        # ❌ Use scirs2-core instead
+num-complex = { workspace = true }       # ❌ Use scirs2-core instead
+num-integer = { workspace = true }       # ❌ Use scirs2-core instead
+nalgebra = { workspace = true }          # ❌ Use scirs2-core instead
+```
+
+#### Required SciRS2 Dependencies:
+```toml
+# ✅ REQUIRED in QuantRS2 crates
+[dependencies]
+scirs2-core = { workspace = true, features = ["array", "random"] }
+# Additional SciRS2 crates as needed per module requirements
+```
+
 ## 🏆 PROVEN SUCCESSFUL PATTERNS
 
 ### Array Import Patterns - **CRITICAL GUIDANCE**
 
 ```rust
-// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN)
+// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-beta.4+)
 use scirs2_core::ndarray::*;  // Complete unified access
 // Or selective:
 use scirs2_core::ndarray::{Array1, Array2, array, s, Axis};
 
-// ❌ WRONG - Fragmented SciRS2 usage (DEPRECATED PATTERNS)
-use scirs2_autograd::ndarray::{Array2, array};  // Fragmented - DON'T USE
-use scirs2_core::ndarray_ext::{ArrayView};      // Missing macros - DON'T USE
+// ❌ WRONG - Fragmented SciRS2 usage (DEPRECATED - DO NOT USE)
+use scirs2_autograd::ndarray::{Array2, array};  // Fragmented - DEPRECATED
+use scirs2_core::ndarray_ext::{ArrayView};      // Missing macros - DEPRECATED
 
 // ❌ POLICY VIOLATION: Never use ndarray directly
-use ndarray::{Array, array};  // Will cause compilation errors in SciRS2 environment
+use ndarray::{Array, array};  // FORBIDDEN - Policy violation
 ```
 
+**Complete Dependency Mapping:**
+| External Crate | SciRS2-Core Module | Usage in QuantRS2 |
+|----------------|-------------------|------------------|
+| `ndarray` | `scirs2_core::ndarray` | All array operations |
+| `ndarray-rand` | `scirs2_core::ndarray` | Via `array` feature |
+| `ndarray-stats` | `scirs2_core::ndarray` | Via `array` feature |
+| `rand` | `scirs2_core::random` | All RNG operations |
+| `rand_distr` | `scirs2_core::random` | All distributions |
+| `num-complex` | `scirs2_core` (root) | Complex numbers |
+| `num-traits` | `scirs2_core::numeric` | All traits |
+
 **Key Decision Points**:
-- **ALL use cases** → Use `scirs2_core::ndarray::*` or selective imports from `scirs2_core::ndarray::{...}`
-- **NEVER** use `scirs2_autograd::ndarray` (fragmented approach)
-- **NEVER** use `scirs2_core::ndarray_ext` (missing macros)
-- **NEVER** import `ndarray` directly
+- **ALL array operations** → Use `scirs2_core::ndarray::*` or selective imports from `scirs2_core::ndarray::{...}`
+- **NEVER** use `scirs2_autograd::ndarray` (deprecated fragmented approach)
+- **NEVER** use `scirs2_core::ndarray_ext` (deprecated, missing macros)
+- **NEVER** import `ndarray`, `rand`, or `num-complex` directly
 
 ### Complex Number Integration - **QUANTUM-SPECIFIC**
 
 ```rust
-// ✅ CORRECT: Complex numbers for quantum amplitudes
-use scirs2_core::complex::{Complex64, Complex32};
-use scirs2_core::complex::ComplexFloat;
+// ✅ CORRECT: Complex numbers for quantum amplitudes (direct from scirs2-core root)
+use scirs2_core::{Complex64, Complex32};  // Import from root (v0.1.0-beta.4+)
+use scirs2_core::complex::ComplexFloat;   // Traits
 
 // ✅ CORRECT: Quantum state representation
 type QuantumState = Array1<Complex64>;
 type DensityMatrix = Array2<Complex64>;
 
-// ❌ WRONG: Using num-complex directly
-use num_complex::Complex64;  // Violates SciRS2 policy
+// ❌ WRONG: Using num-complex directly (POLICY VIOLATION)
+use num_complex::Complex64;  // FORBIDDEN - Violates SciRS2 policy
 ```
 
 ### Random Number Generation - **QUANTUM MEASUREMENT**
 
 ```rust
-// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN)
+// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-beta.4+)
 use scirs2_core::random::prelude::*;  // Common distributions & RNG
 // Or selective:
 use scirs2_core::random::{thread_rng, Normal as RandNormal, RandBeta, StudentT};
@@ -197,6 +242,10 @@ impl QuantumSimulator {
         Self { rng: seeded_rng(seed) }  // Reproducible if needed
     }
 }
+
+// ❌ WRONG: Direct rand usage (POLICY VIOLATION)
+use rand::{Rng, thread_rng};  // FORBIDDEN
+use rand_distr::Normal;       // FORBIDDEN
 ```
 
 ### SIMD Operations - **PERFORMANCE CRITICAL**
@@ -241,11 +290,15 @@ impl QuantumCircuit {
 
 ### quantrs2-core
 ```rust
-use scirs2_core::{Complex64, Complex32};        // Quantum amplitudes
-use scirs2_core::ndarray::{Array1, Array2};     // State vectors (unified access)
-use scirs2_core::random::prelude::*;            // Quantum measurements
-use scirs2_core::simd_ops;                      // SIMD acceleration
-use scirs2_core::parallel_ops;                  // Parallel processing
+// Complex numbers (direct from root)
+use scirs2_core::{Complex64, Complex32};
+// Arrays (unified access)
+use scirs2_core::ndarray::{Array1, Array2, array, s};
+// Random (unified interface)
+use scirs2_core::random::prelude::*;
+// Performance
+use scirs2_core::simd_ops;
+use scirs2_core::parallel_ops;
 ```
 
 ### quantrs2-sim
@@ -254,126 +307,144 @@ use scirs2_linalg;                              // Matrix operations
 use scirs2_sparse;                              // Sparse state representation
 use scirs2_core::gpu;                           // GPU acceleration
 use scirs2_fft;                                 // Quantum Fourier Transform
+use scirs2_core::ndarray::{Array2, ArrayView2}; // Unified array access
 ```
 
 ### quantrs2-ml
 ```rust
 use scirs2_neural;                              // Quantum neural networks
-use scirs2_autograd;                            // Gradient computation
+use scirs2_autograd;                            // Gradient computation (NOT for arrays)
 use scirs2_optimize;                            // Parameter optimization
 use optirs;                                     // Advanced optimizers
+use scirs2_core::ndarray::{Array1, Array2};     // Unified array access
 ```
 
 ### quantrs2-circuit
 ```rust
 use scirs2_graph;                               // Graph state circuits
-use scirs2_core::complex::Complex64;            // Gate matrices
+use scirs2_core::{Complex64, Complex32};        // Gate matrices (from root)
 use scirs2_linalg::unitary;                     // Unitary verification
+use scirs2_core::ndarray::{Array2, array};      // Unified array access
 ```
 
 ### quantrs2-anneal
 ```rust
 use scirs2_optimize;                            // Annealing optimization
 use scirs2_stats;                               // Statistical analysis
-use scirs2_core::random;                        // Monte Carlo sampling
+use scirs2_core::random::prelude::*;            // Monte Carlo sampling (unified)
+use scirs2_core::ndarray::{Array1, Array2};     // Unified array access
 ```
 
 ### quantrs2-device
 ```rust
 use scirs2_stats;                               // Measurement statistics
 use scirs2_metrics;                             // Fidelity metrics
-use scirs2_core::random;                        // Noise simulation
+use scirs2_core::random::prelude::*;            // Noise simulation (unified)
+use scirs2_core::ndarray::Array1;               // Unified array access
 ```
 
 ## 📋 STANDARD RESOLUTION WORKFLOW
 
-### Proven 5-Step Migration Process (Adapted from ToRSh/SkleaRS Success)
+### Proven 5-Step Migration Process (SciRS2 v0.1.0-beta.4+ Compliance)
 
 1. **Cargo.toml Cleanup**
    ```toml
-   # ❌ REMOVE: Direct dependencies violating SciRS2 POLICY
-   # rand = "0.9.2"         # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
-   # ndarray = "0.16"       # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-   # num-complex = "0.4"    # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+   # ❌ REMOVE: All direct dependencies violating SciRS2 POLICY
+   # rand = { workspace = true }           # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+   # rand_distr = { workspace = true }     # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+   # ndarray = { workspace = true }        # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+   # num-complex = { workspace = true }    # REMOVED: Use scirs2_core (root) (SciRS2 POLICY)
+   # num-traits = { workspace = true }     # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 
    # ✅ SciRS2 POLICY COMPLIANT dependencies
-   scirs2-core = { workspace = true }
-   scirs2-autograd = { workspace = true }
+   scirs2-core = { workspace = true, features = ["array", "random"] }
+   # Additional SciRS2 crates as needed
    ```
 
 2. **Import Path Migration**
    ```rust
    // ❌ OLD PATTERN (violated SciRS2 POLICY)
    use rand::{thread_rng, Rng};
-   use ndarray::{Array, Array1, Array2};
+   use rand_distr::Normal;
+   use ndarray::{Array, Array1, Array2, array, s};
    use num_complex::Complex64;
 
-   // ✅ NEW PATTERN (SciRS2 compliant)
-   use scirs2_core::random::{CoreRandom, thread_rng};
-   use scirs2_autograd::ndarray::{Array, Array1, Array2, array};
-   use scirs2_core::complex::Complex64;
+   // ✅ NEW PATTERN (SciRS2 v0.1.0-beta.4+ compliant - UNIFIED APPROACH)
+   use scirs2_core::random::prelude::*;                  // Unified random
+   use scirs2_core::ndarray::{Array, Array1, Array2, array, s};  // Unified arrays
+   use scirs2_core::{Complex64, Complex32};              // Complex from root
    ```
 
 3. **Type Declaration Fixes**
    ```rust
-   // ❌ OLD: Direct types
+   // ❌ OLD: Direct external types
    struct QuantumState {
        amplitudes: Array1<Complex<f64>>,
        rng: ThreadRng,
    }
 
-   // ✅ NEW: SciRS2 types
+   // ✅ NEW: SciRS2 unified types
+   use scirs2_core::{Complex64};
+   use scirs2_core::ndarray::Array1;
+   use scirs2_core::random::ThreadRng;
+
    struct QuantumState {
        amplitudes: Array1<Complex64>,
-       rng: CoreRandom<StdRng>,
+       rng: ThreadRng,
    }
    ```
 
 4. **Initialization Updates**
    ```rust
-   // ❌ OLD: Incorrect initialization
+   // ❌ OLD: Direct external initialization
    Self { rng: rand::thread_rng() }
 
-   // ✅ NEW: SciRS2 canonical patterns
-   Self { rng: seeded_rng(42) }      // For deterministic behavior
-   Self { rng: thread_rng() }        // For fast, non-deterministic
+   // ✅ NEW: SciRS2 unified patterns
+   use scirs2_core::random::{thread_rng, seeded_rng};
+
+   Self { rng: thread_rng() }      // For fast, non-deterministic
+   Self { rng: seeded_rng(42) }    // For reproducible behavior
    ```
 
 5. **Compilation Validation**
-   - Test individual package compilation
-   - Verify no remaining rand/ndarray/num-complex direct dependencies
-   - Ensure consistent patterns across codebase
+   - Remove ALL direct rand/ndarray/num-complex/num-traits dependencies from Cargo.toml
+   - Test individual package compilation: `cargo build --package <package-name>`
+   - Verify unified patterns: `scirs2_core::ndarray::*`, `scirs2_core::random::*`, `scirs2_core::{Complex64, Complex32}`
+   - Ensure consistent SciRS2 usage across all modules
 
 ## Current Workspace Integration
 
-### SciRS2 Dependencies (v0.1.0-beta.3)
+### SciRS2 Dependencies (v0.1.0-rc.4)
 ```toml
 [workspace.dependencies]
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-scirs2 = { version = "0.1.0-beta.3", features = ["standard", "linalg", "complex"], default-features = false }
-scirs2-core = { version = "0.1.0-beta.3", default-features = false }
+scirs2 = { version = "0.1.0-rc.4", features = ["standard", "linalg", "complex"], default-features = false }
+scirs2-core = { version = "0.1.0-rc.4", default-features = false }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.1.0-beta.3", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.0-beta.3", default-features = false }
-scirs2-optimize = { version = "0.1.0-beta.3", default-features = false }
-scirs2-special = { version = "0.1.0-beta.3", default-features = false }
-scirs2-sparse = { version = "0.1.0-beta.3", default-features = false }
-scirs2-fft = { version = "0.1.0-beta.3", default-features = false }
+scirs2-autograd = { version = "0.1.0-rc.4", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.1.0-rc.4", default-features = false }
+scirs2-optimize = { version = "0.1.0-rc.4", default-features = false }
+scirs2-special = { version = "0.1.0-rc.4", default-features = false }
+scirs2-sparse = { version = "0.1.0-rc.4", default-features = false }
+scirs2-fft = { version = "0.1.0-rc.4", default-features = false }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.1.0-beta.3", default-features = false }
-scirs2-signal = { version = "0.1.0-beta.3", default-features = false }
-scirs2-metrics = { version = "0.1.0-beta.3", default-features = false }
-scirs2-stats = { version = "0.1.0-beta.3", default-features = false }
-scirs2-cluster = { version = "0.1.0-beta.3", default-features = false }
-scirs2-graph = { version = "0.1.0-beta.3", default-features = false }
-scirs2-spatial = { version = "0.1.0-beta.3", default-features = false }
+scirs2-neural = { version = "0.1.0-rc.4", default-features = false }
+scirs2-signal = { version = "0.1.0-rc.4", default-features = false }
+scirs2-metrics = { version = "0.1.0-rc.4", default-features = false }
+scirs2-stats = { version = "0.1.0-rc.4", default-features = false }
+scirs2-cluster = { version = "0.1.0-rc.4", default-features = false }
+scirs2-graph = { version = "0.1.0-rc.4", default-features = false }
+scirs2-spatial = { version = "0.1.0-rc.4", default-features = false }
 
 # DOMAIN-SPECIFIC (Optional)
-scirs2-series = { version = "0.1.0-beta.3", default-features = false }
-scirs2-datasets = { version = "0.1.0-beta.3", default-features = false }
+scirs2-series = { version = "0.1.0-rc.4", default-features = false }
+scirs2-datasets = { version = "0.1.0-rc.4", default-features = false }
+
+# Python bindings support (REQUIRED for quantrs2-py)
+scirs2-numpy = { version = "0.1.0-rc.4" }  # SciRS2-compatible numpy bindings with ndarray 0.17+ support
 
 # OptiRS integration for advanced optimization (VQE, QAOA)
 optirs = { path = "../optirs/optirs", default-features = false }
@@ -453,21 +524,24 @@ let measurement_prob: f64 = rng.sample(Uniform::new(0.0, 1.0));
 
 ## Anti-Patterns to Avoid
 
-### ❌ Common Mistakes
+### ❌ Common Mistakes (POLICY VIOLATIONS)
 ```rust
-// ❌ WRONG - Direct dependencies (POLICY VIOLATIONS)
-use ndarray::{Array2, array};
-use rand::{Rng, thread_rng};
-use num_complex::Complex64;
+// ❌ WRONG - Direct external dependencies (FORBIDDEN)
+use ndarray::{Array2, array};           // Policy violation
+use rand::{Rng, thread_rng};            // Policy violation
+use rand_distr::Normal;                 // Policy violation
+use num_complex::Complex64;             // Policy violation
+use num_traits::Float;                  // Policy violation
 
-// ❌ WRONG - Nested type confusion
-rng: CoreRandom<scirs2_core::Random<StdRng>>
+// ❌ WRONG - Deprecated fragmented SciRS2 usage
+use scirs2_autograd::ndarray::{Array2, array};  // Deprecated
+use scirs2_core::ndarray_ext::{ArrayView};      // Deprecated
 
-// ❌ WRONG - Incorrect complex number usage
-use num_traits::complex::Complex;
+// ❌ WRONG - Incorrect complex number import
+use scirs2_core::complex::{Complex64};  // Should use root import
 ```
 
-### ✅ Correct Patterns
+### ✅ Correct Patterns (SciRS2 v0.1.0-beta.4+ Unified Approach)
 ```rust
 // ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERNS)
 use scirs2_core::ndarray::*;  // Complete unified access
@@ -481,11 +555,12 @@ use scirs2_core::random::{thread_rng, Normal as RandNormal, RandBeta, StudentT};
 // ✅ CORRECT - Enhanced unified interface
 use scirs2_core::random::distributions_unified::{UnifiedNormal, UnifiedBeta};
 
-// ✅ CORRECT - Complex numbers
+// ✅ CORRECT - Complex numbers (from root)
 use scirs2_core::{Complex64, Complex32};
 
 // ✅ CORRECT - Clean types
-rng: ThreadRng  // Or seeded_rng(42) when needed
+use scirs2_core::random::ThreadRng;
+let rng: ThreadRng = thread_rng();  // Or seeded_rng(42) when needed
 ```
 
 ## Enforcement & Quality Assurance
@@ -527,14 +602,27 @@ rng: ThreadRng  // Or seeded_rng(42) when needed
 
 ## Conclusion
 
-This policy ensures QuantRS2 properly leverages SciRS2's scientific computing foundation while maintaining high-performance quantum computing capabilities. **QuantRS2 must use SciRS2 as its computational foundation, but intelligently and purposefully.**
+This policy ensures QuantRS2 properly leverages SciRS2's scientific computing foundation while maintaining high-performance quantum computing capabilities.
 
-The proven patterns from ToRSh's 96.7% success rate and SkleaRS's systematic approach provide a reliable integration path for quantum computing requirements.
+### Core Policy Enforcement
+1. **NO direct external dependencies** (rand, ndarray, num-complex, etc.) in QuantRS2 crates
+2. **ONLY use SciRS2 abstractions** from scirs2-core and other SciRS2 crates
+3. **Unified patterns ONLY**: `scirs2_core::ndarray::*`, `scirs2_core::random::*`, `scirs2_core::{Complex64, Complex32}`
+4. **NEVER use deprecated patterns**: No scirs2_autograd::ndarray, no scirs2_core::ndarray_ext
+
+### Benefits of Strict Policy Compliance
+- **Type Safety**: Consistent types across the quantum computing ecosystem
+- **Maintainability**: Single source of truth for scientific computing primitives
+- **Performance**: Optimizations from SciRS2 automatically available
+- **Version Control**: Simplified dependency management
+- **Portability**: Platform-specific code isolated in SciRS2-core
 
 ---
 
-**Document Version**: 1.0 - Initial Comprehensive Policy
-**Last Updated**: 2025-09-29
-**Next Review**: Q1 2026
+**Document Version**: 2.0 - SciRS2 Dependency Abstraction Policy Enforcement
+**Last Updated**: 2025-10-04
+**Based on**: Official SciRS2 Policy v3.0.0 (~/work/scirs/SCIRS2_POLICY.md)
+**SciRS2 Version**: v0.1.0-rc.4 (Release Candidate with unified patterns)
+**NumRS2 Version**: v0.1.0-rc.3
+**Next Review**: Q2 2026
 **Owner**: QuantRS2 Architecture Team
-**Based on**: ToRSh SciRS2 Integration Policy v2.0 & SkleaRS Policy v1.0 (proven patterns)

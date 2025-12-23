@@ -7,8 +7,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -651,7 +651,7 @@ impl QuantumAdvantageDemonstrator {
         // Test each problem size
         let problem_sizes = self.config.problem_sizes.clone();
         for problem_size in problem_sizes {
-            println!("Testing problem size: {}", problem_size);
+            println!("Testing problem size: {problem_size}");
 
             let detailed_result = self.test_problem_size(problem_size)?;
 
@@ -723,8 +723,7 @@ impl QuantumAdvantageDemonstrator {
                 .hypothesis_tests
                 .iter()
                 .find(|t| t.test_name == "quantum_advantage")
-                .map(|t| 1.0 - t.p_value)
-                .unwrap_or(0.0),
+                .map_or(0.0, |t| 1.0 - t.p_value),
             confidence_interval: (overall_speedup * 0.9, overall_speedup * 1.1), // Simplified
             scaling_analysis,
         };
@@ -847,7 +846,7 @@ impl QuantumAdvantageDemonstrator {
                 let hamiltonian = Array2::from_shape_fn((1 << size, 1 << size), |(i, j)| {
                     if i == j {
                         Complex64::new(thread_rng().gen::<f64>(), 0.0)
-                    } else if (i ^ j).count_ones() == 1 {
+                    } else if (i ^ j).is_power_of_two() {
                         Complex64::new(thread_rng().gen::<f64>() * 0.1, 0.0)
                     } else {
                         Complex64::new(0.0, 0.0)
@@ -891,9 +890,15 @@ impl QuantumAdvantageDemonstrator {
             // Single-qubit gates
             for qubit in 0..num_qubits {
                 let gate_type = match layer % 3 {
-                    0 => InterfaceGateType::RX(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
-                    1 => InterfaceGateType::RY(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
-                    _ => InterfaceGateType::RZ(thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI),
+                    0 => InterfaceGateType::RX(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
+                    1 => InterfaceGateType::RY(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
+                    _ => InterfaceGateType::RZ(
+                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                    ),
                 };
                 circuit.add_gate(InterfaceGate::new(gate_type, vec![qubit]));
             }
@@ -1005,7 +1010,7 @@ impl QuantumAdvantageDemonstrator {
             .sum::<f64>();
         let sum_x2 = log_sizes.iter().map(|x| x * x).sum::<f64>();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x2, -(sum_x * sum_x));
         Ok(slope)
     }
 
@@ -1151,7 +1156,7 @@ impl QuantumAdvantageDemonstrator {
             + operational_costs.personnel
             + operational_costs.infrastructure;
 
-        let total_cost_ownership = quantum_hardware_cost + daily_operational_cost * 365.0;
+        let total_cost_ownership = daily_operational_cost.mul_add(365.0, quantum_hardware_cost);
 
         let num_solutions = results.len() as f64;
         let cost_per_solution = total_cost_ownership / num_solutions;
@@ -1309,7 +1314,7 @@ impl QuantumAdvantageDemonstrator {
         database
             .results
             .entry(key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(result.clone());
         Ok(())
     }
@@ -1358,7 +1363,7 @@ impl QuantumAlgorithm for RandomCircuitSamplingAlgorithm {
         1.0 // Linear in qubits
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Random Circuit Sampling"
     }
 }
@@ -1402,7 +1407,7 @@ impl QuantumAlgorithm for QAOAAlgorithm {
         1.0 // Linear scaling
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QAOA"
     }
 }
@@ -1445,7 +1450,7 @@ impl ClassicalAlgorithm for MonteCarloAlgorithm {
         2.0 // Quadratic scaling
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Monte Carlo"
     }
 }
@@ -1506,7 +1511,7 @@ impl ClassicalAlgorithm for BruteForceAlgorithm {
         2.0_f64.ln() // Exponential scaling (base 2)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Brute Force"
     }
 }

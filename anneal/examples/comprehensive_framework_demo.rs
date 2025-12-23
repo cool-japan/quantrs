@@ -21,9 +21,9 @@
 //! cargo run --example comprehensive_framework_demo --all-features
 //! ```
 
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use scirs2_core::random::prelude::*;
 
 // Core framework imports
 use quantrs2_anneal::{
@@ -143,7 +143,7 @@ fn demo_problem_formulations() -> Result<(), Box<dyn std::error::Error>> {
     ising_model.set_coupling(2, 0, -1.0)?;
 
     let energy = ising_model.energy(&[1, -1, 1])?;
-    println!("  Ising energy for solution [1, -1, 1]: {}", energy);
+    println!("  Ising energy for solution [1, -1, 1]: {energy}");
 
     // 2. QUBO Formulation
     println!("2. QUBO Formulation (Asset selection with constraints):");
@@ -152,19 +152,19 @@ fn demo_problem_formulations() -> Result<(), Box<dyn std::error::Error>> {
     // Create variables
     let mut variables = Vec::new();
     for i in 0..4 {
-        variables.push(qubo.add_variable(format!("asset_{}", i)).unwrap());
+        variables.push(qubo.add_variable(format!("asset_{i}")).unwrap());
     }
 
     // Objective: maximize utility (minimize negative utility)
-    let utilities = vec![0.8, 0.6, 0.9, 0.7];
+    let utilities = [0.8, 0.6, 0.9, 0.7];
     for (i, &utility) in utilities.iter().enumerate() {
-        let _ = qubo.set_linear_term(&variables[i], -utility).unwrap(); // Negative for maximization
+        let () = qubo.set_linear_term(&variables[i], -utility).unwrap(); // Negative for maximization
     }
 
     // Constraint: select exactly 2 assets (simplified)
     for i in 0..4 {
         for j in (i + 1)..4 {
-            let _ = qubo
+            let () = qubo
                 .add_coupling(variables[i].index, variables[j].index, 5.0)
                 .unwrap(); // Penalty for selecting too many
         }
@@ -217,7 +217,7 @@ fn demo_classical_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     let classical_time = start.elapsed();
 
     println!("  Best energy: {:.6}", classical_result.best_energy);
-    println!("  Time: {:?}", classical_time);
+    println!("  Time: {classical_time:?}");
     println!("  Total sweeps: {}", classical_result.total_sweeps);
 
     // 2. Population Annealing
@@ -235,14 +235,14 @@ fn demo_classical_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     let pop_time = start.elapsed();
 
     println!("  Best energy: {:.6}", pop_result.best_energy);
-    println!("  Time: {:?}", pop_time);
+    println!("  Time: {pop_time:?}");
     println!("  Number of resamplings: {}", pop_result.num_resamplings);
 
     // Compare results
     let improvement = ((classical_result.best_energy - pop_result.best_energy)
         / classical_result.best_energy.abs())
         * 100.0;
-    println!("  Quality improvement: {:.2}%", improvement);
+    println!("  Quality improvement: {improvement:.2}%");
 
     Ok(())
 }
@@ -280,7 +280,7 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
     let cim_time = start.elapsed();
 
     println!("  Best energy: {:.6}", cim_result.best_energy);
-    println!("  Time: {:?}", cim_time);
+    println!("  Time: {cim_time:?}");
     println!("  Converged: {}", cim_result.converged);
 
     // 2. Reverse Annealing (if available)
@@ -333,12 +333,12 @@ fn demo_embedding_techniques() -> Result<(), Box<dyn std::error::Error>> {
             println!("  ✓ Embedding found!");
 
             for (logical_var, physical_chain) in &embedding.chains {
-                println!("    Variable {}: chain {:?}", logical_var, physical_chain);
+                println!("    Variable {logical_var}: chain {physical_chain:?}");
             }
 
-            let total_qubits: usize = embedding.chains.values().map(|chain| chain.len()).sum();
+            let total_qubits: usize = embedding.chains.values().map(std::vec::Vec::len).sum();
 
-            println!("  Physical qubits used: {}/32", total_qubits);
+            println!("  Physical qubits used: {total_qubits}/32");
 
             let avg_chain_length: f64 = embedding
                 .chains
@@ -347,10 +347,10 @@ fn demo_embedding_techniques() -> Result<(), Box<dyn std::error::Error>> {
                 .sum::<f64>()
                 / embedding.chains.len() as f64;
 
-            println!("  Average chain length: {:.2}", avg_chain_length);
+            println!("  Average chain length: {avg_chain_length:.2}");
         }
         Err(e) => {
-            println!("  ⚠ Embedding failed: {}", e);
+            println!("  ⚠ Embedding failed: {e}");
             println!("  (This is normal for complex graphs on small hardware)");
         }
     }
@@ -543,8 +543,8 @@ fn demo_real_world_applications() -> Result<(), Box<dyn std::error::Error>> {
         .map(|(i, &power)| power * grid_optimizer.get_cost_coefficient(i % 3))
         .sum();
 
-    println!("  Sample 4-hour schedule: {:?} MW", sample_schedule);
-    println!("  Estimated cost: ${:.0}", total_cost);
+    println!("  Sample 4-hour schedule: {sample_schedule:?} MW");
+    println!("  Estimated cost: ${total_cost:.0}");
     println!("  [Real optimization would include storage, renewables, demand response]");
 
     // 2. Portfolio Optimization
@@ -570,7 +570,7 @@ fn demo_real_world_applications() -> Result<(), Box<dyn std::error::Error>> {
     let portfolio_optimizer = PortfolioOptimizer::new(portfolio_constraints);
 
     // Sample expected returns and risk matrix
-    let expected_returns = vec![0.12, 0.08, 0.15, 0.10, 0.09, 0.11, 0.07, 0.13, 0.06, 0.14];
+    let expected_returns = [0.12, 0.08, 0.15, 0.10, 0.09, 0.11, 0.07, 0.13, 0.06, 0.14];
     let sample_portfolio = vec![1, 0, 1, 1, 0, 1, 0, 1, 0, 0]; // Binary selection
 
     let selected_returns: Vec<f64> = sample_portfolio
@@ -587,7 +587,7 @@ fn demo_real_world_applications() -> Result<(), Box<dyn std::error::Error>> {
         "  Sample portfolio return: {:.1}%",
         portfolio_return * 100.0
     );
-    println!("  Selected assets: {:?}", sample_portfolio);
+    println!("  Selected assets: {sample_portfolio:?}");
     println!("  [Real optimization would include full covariance matrix]");
 
     // 3. Vehicle Routing Optimization
@@ -599,7 +599,11 @@ fn demo_real_world_applications() -> Result<(), Box<dyn std::error::Error>> {
         depot_location: (0.0, 0.0),
         customer_demands: vec![1.0; 20], // Unit demand per customer
         distance_matrix: (0..21)
-            .map(|i| (0..21).map(|j| (i as f64 - j as f64).abs()).collect())
+            .map(|i| {
+                (0..21)
+                    .map(|j| (f64::from(i) - f64::from(j)).abs())
+                    .collect()
+            })
             .collect(),
         time_windows: vec![(0.0, 8.0); 21], // 8 hour windows
     };
@@ -623,7 +627,7 @@ fn demo_real_world_applications() -> Result<(), Box<dyn std::error::Error>> {
         .map(|route| routing_optimizer.calculate_route_distance(route))
         .sum();
 
-    println!("  Sample routes: {} total distance", total_distance);
+    println!("  Sample routes: {total_distance} total distance");
     println!("  [Real optimization minimizes distance while respecting constraints]");
 
     Ok(())
@@ -640,17 +644,17 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
         Algorithm::CoherentIsingMachine,
     ];
 
-    println!("  Problem sizes: {:?}", problem_sizes);
+    println!("  Problem sizes: {problem_sizes:?}");
     println!("  Algorithms: {} variants", algorithms.len());
 
     let mut benchmark_results = Vec::new();
 
     for &size in &problem_sizes {
-        println!("  Testing size {}: ", size);
+        println!("  Testing size {size}: ");
 
         // Create random problem
         let mut model = IsingModel::new(size);
-            let mut rng = thread_rng();
+        let mut rng = thread_rng();
 
         for i in 0..size {
             for j in (i + 1)..size {
@@ -700,7 +704,7 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
     // Analyze results
     println!("  Results Summary:");
     for &size in &problem_sizes {
-        println!("    Size {}:", size);
+        println!("    Size {size}:");
 
         let size_results: Vec<_> = benchmark_results
             .iter()
@@ -714,10 +718,7 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
         for (_, algorithm, energy, time) in size_results {
             let quality = if energy == &best_energy { "★" } else { " " };
-            println!(
-                "      {:?}: {:.6} ({:?}) {}",
-                algorithm, energy, time, quality
-            );
+            println!("      {algorithm:?}: {energy:.6} ({time:?}) {quality}");
         }
     }
 
@@ -753,7 +754,7 @@ fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> {
     let initial_penalty = 1.0;
     let optimized_penalty = initial_penalty * 2.0; // Placeholder optimization
 
-    println!("  Optimized penalty: {:.2}", optimized_penalty);
+    println!("  Optimized penalty: {optimized_penalty:.2}");
     println!("  Expected constraint satisfaction: 95%");
 
     // 2. Multi-Objective Optimization
@@ -809,7 +810,7 @@ fn demo_visualization_analysis() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let gap = energies[1].2 - energies[0].2;
-    println!("  Energy gap: {:.3}", gap);
+    println!("  Energy gap: {gap:.3}");
 
     // 2. Convergence Analysis
     println!("2. Convergence Analysis:");
@@ -823,8 +824,8 @@ fn demo_visualization_analysis() -> Result<(), Box<dyn std::error::Error>> {
         // Simulate exponential convergence with noise
         let target = energies[0].2; // Ground state energy
         let decay = 0.95;
-        current_energy =
-            target + (current_energy - target) * decay + (thread_rng().gen::<f64>() - 0.5) * 0.1;
+        current_energy = (thread_rng().gen::<f64>() - 0.5)
+            .mul_add(0.1, (current_energy - target).mul_add(decay, target));
         trace.push((step, current_energy));
     }
 
@@ -869,8 +870,8 @@ fn demo_visualization_analysis() -> Result<(), Box<dyn std::error::Error>> {
         .count() as f64
         / trial_results.len() as f64;
 
-    println!("  Trials: {}", num_trials);
-    println!("  Mean energy: {:.3} ± {:.3}", mean_energy, std_energy);
+    println!("  Trials: {num_trials}");
+    println!("  Mean energy: {mean_energy:.3} ± {std_energy:.3}");
     println!(
         "  Ground state probability: {:.1}%",
         ground_state_prob * 100.0
@@ -912,7 +913,7 @@ struct PortfolioOptimizer {
 }
 
 impl PortfolioOptimizer {
-    fn new(constraints: PortfolioConstraints) -> Self {
+    const fn new(constraints: PortfolioConstraints) -> Self {
         Self { constraints }
     }
 }
@@ -922,7 +923,7 @@ struct VehicleRoutingOptimizer {
 }
 
 impl VehicleRoutingOptimizer {
-    fn new(problem: RoutingProblem) -> Self {
+    const fn new(problem: RoutingProblem) -> Self {
         Self { problem }
     }
 

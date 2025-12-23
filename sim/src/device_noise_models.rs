@@ -112,7 +112,7 @@ impl DeviceTopology {
         let positions = (0..num_qubits).map(|i| (i as f64, 0.0, 0.0)).collect();
 
         let frequencies = (0..num_qubits)
-            .map(|i| 5.0 + 0.1 * i as f64) // GHz, with detuning
+            .map(|i| 0.1f64.mul_add(i as f64, 5.0)) // GHz, with detuning
             .collect();
 
         Self {
@@ -159,7 +159,7 @@ impl DeviceTopology {
             .collect();
 
         let frequencies = (0..num_qubits)
-            .map(|i| 5.0 + 0.1 * (i % 7) as f64) // Frequency comb to avoid crosstalk
+            .map(|i| 0.1f64.mul_add((i % 7) as f64, 5.0)) // Frequency comb to avoid crosstalk
             .collect();
 
         Self {
@@ -183,7 +183,9 @@ impl DeviceTopology {
             connectivity,
             positions: (0..num_qubits).map(|i| (i as f64, 0.0, 0.0)).collect(),
             coupling_strengths: HashMap::new(),
-            frequencies: (0..num_qubits).map(|i| 5.0 + 0.1 * i as f64).collect(),
+            frequencies: (0..num_qubits)
+                .map(|i| 0.1f64.mul_add(i as f64, 5.0))
+                .collect(),
         }
     }
 
@@ -198,7 +200,12 @@ impl DeviceTopology {
     pub fn distance(&self, qubit1: usize, qubit2: usize) -> f64 {
         let pos1 = &self.positions[qubit1];
         let pos2 = &self.positions[qubit2];
-        ((pos1.0 - pos2.0).powi(2) + (pos1.1 - pos2.1).powi(2) + (pos1.2 - pos2.2).powi(2)).sqrt()
+        (pos1.2 - pos2.2)
+            .mul_add(
+                pos1.2 - pos2.2,
+                (pos1.1 - pos2.1).mul_add(pos1.1 - pos2.1, (pos1.0 - pos2.0).powi(2)),
+            )
+            .sqrt()
     }
 }
 
@@ -354,13 +361,13 @@ impl SuperconductingNoiseModel {
         // Initialize coherence parameters based on typical superconducting values
         let coherence_params = CoherenceParameters {
             t1_times: (0..num_qubits)
-                .map(|_| 50.0 + fastrand::f64() * 50.0)
+                .map(|_| fastrand::f64().mul_add(50.0, 50.0))
                 .collect(), // 50-100 μs
             t2_times: (0..num_qubits)
-                .map(|_| 20.0 + fastrand::f64() * 30.0)
+                .map(|_| fastrand::f64().mul_add(30.0, 20.0))
                 .collect(), // 20-50 μs
             t2_star_times: (0..num_qubits)
-                .map(|_| 10.0 + fastrand::f64() * 10.0)
+                .map(|_| fastrand::f64().mul_add(10.0, 10.0))
                 .collect(), // 10-20 μs
             temperature_scaling: Self::calculate_temperature_scaling(config.temperature),
         };
@@ -368,7 +375,7 @@ impl SuperconductingNoiseModel {
         // Initialize gate error rates
         let gate_errors = GateErrorRates {
             single_qubit: (0..num_qubits)
-                .map(|_| 1e-4 + fastrand::f64() * 1e-3)
+                .map(|_| fastrand::f64().mul_add(1e-3, 1e-4))
                 .collect(), // 0.01-0.1%
             two_qubit: HashMap::new(), // Will be populated based on connectivity
             depolarizing: (0..num_qubits).map(|_| 1e-5).collect(),
@@ -886,7 +893,7 @@ impl DeviceNoiseSimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_stats(&self) -> &NoiseSimulationStats {
+    pub const fn get_stats(&self) -> &NoiseSimulationStats {
         &self.stats
     }
 

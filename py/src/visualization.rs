@@ -1,8 +1,9 @@
-use scirs2_core::Complex64;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyString};
+use scirs2_core::Complex64;
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Write as FmtWrite;
 
 /// Internal representation of a circuit for visualization
 #[derive(Default, Clone)]
@@ -35,6 +36,7 @@ struct GateOperation {
 
 /// Enum for gate types
 #[derive(Clone, PartialEq)]
+#[allow(clippy::upper_case_acronyms)] // Standard quantum gate names
 enum GateType {
     H,
     X,
@@ -67,39 +69,39 @@ impl GateType {
     /// Get the symbol for this gate type
     fn symbol(&self) -> &str {
         match self {
-            GateType::H => "H",
-            GateType::X => "X",
-            GateType::Y => "Y",
-            GateType::Z => "Z",
-            GateType::S => "S",
-            GateType::SDG => "S†",
-            GateType::T => "T",
-            GateType::TDG => "T†",
-            GateType::SX => "√X",
-            GateType::SXDG => "√X†",
-            GateType::RX => "Rx",
-            GateType::RY => "Ry",
-            GateType::RZ => "Rz",
-            GateType::CNOT => "●─┼─X",
-            GateType::CY => "●─┼─Y",
-            GateType::CZ => "●─┼─Z",
-            GateType::CH => "●─┼─H",
-            GateType::CS => "●─┼─S",
-            GateType::SWAP => "⨯―⨯",
-            GateType::CRX => "●─┼─Rx",
-            GateType::CRY => "●─┼─Ry",
-            GateType::CRZ => "●─┼─Rz",
-            GateType::Toffoli => "●─●─X",
-            GateType::Fredkin => "●─⨯─⨯",
-            GateType::Custom(s) => s,
+            Self::H => "H",
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::Z => "Z",
+            Self::S => "S",
+            Self::SDG => "S†",
+            Self::T => "T",
+            Self::TDG => "T†",
+            Self::SX => "√X",
+            Self::SXDG => "√X†",
+            Self::RX => "Rx",
+            Self::RY => "Ry",
+            Self::RZ => "Rz",
+            Self::CNOT => "●─┼─X",
+            Self::CY => "●─┼─Y",
+            Self::CZ => "●─┼─Z",
+            Self::CH => "●─┼─H",
+            Self::CS => "●─┼─S",
+            Self::SWAP => "⨯―⨯",
+            Self::CRX => "●─┼─Rx",
+            Self::CRY => "●─┼─Ry",
+            Self::CRZ => "●─┼─Rz",
+            Self::Toffoli => "●─●─X",
+            Self::Fredkin => "●─⨯─⨯",
+            Self::Custom(s) => s,
         }
     }
 }
 
 impl CircuitVisualization {
     /// Create a new circuit visualization
-    pub fn new(n_qubits: usize) -> Self {
-        CircuitVisualization {
+    pub const fn new(n_qubits: usize) -> Self {
+        Self {
             n_qubits,
             operations: Vec::new(),
             depth: 0,
@@ -168,7 +170,7 @@ impl CircuitVisualization {
         // Add qubit labels
         let mut result = String::new();
         for q in 0..self.n_qubits {
-            result.push_str(&format!("q{}:", q));
+            write!(result, "q{q}:").unwrap();
             // Padding to align all circuits
             for _ in 0..3 {
                 result.push(' ');
@@ -191,7 +193,6 @@ impl CircuitVisualization {
         // Find operations in this column that affect this qubit
         let mut has_gate = false;
         let mut gate_symbol = String::new();
-        let mut control_type = None;
 
         for op in &self.operations {
             if op.column != column {
@@ -205,7 +206,7 @@ impl CircuitVisualization {
                     // Single-qubit gate
                     gate_symbol = op.gate_type.symbol().to_string();
                     if let Some(params) = &op.params {
-                        gate_symbol.push_str(&format!("({})", params));
+                        write!(gate_symbol, "({params})").unwrap();
                     }
                 } else {
                     // Multi-qubit gate
@@ -221,7 +222,6 @@ impl CircuitVisualization {
                             // Control or target?
                             if op.qubits[0] == qubit {
                                 gate_symbol = "●".to_string();
-                                control_type = Some("control");
                             } else {
                                 match op.gate_type {
                                     GateType::CNOT => gate_symbol = "X".to_string(),
@@ -232,46 +232,40 @@ impl CircuitVisualization {
                                     GateType::CRX => {
                                         gate_symbol = "Rx".to_string();
                                         if let Some(params) = &op.params {
-                                            gate_symbol.push_str(&format!("({})", params));
+                                            write!(gate_symbol, "({params})").unwrap();
                                         }
                                     }
                                     GateType::CRY => {
                                         gate_symbol = "Ry".to_string();
                                         if let Some(params) = &op.params {
-                                            gate_symbol.push_str(&format!("({})", params));
+                                            write!(gate_symbol, "({params})").unwrap();
                                         }
                                     }
                                     GateType::CRZ => {
                                         gate_symbol = "Rz".to_string();
                                         if let Some(params) = &op.params {
-                                            gate_symbol.push_str(&format!("({})", params));
+                                            write!(gate_symbol, "({params})").unwrap();
                                         }
                                     }
                                     _ => unreachable!(),
                                 }
-                                control_type = Some("target");
                             }
                         }
                         GateType::SWAP => {
                             gate_symbol = "⨯".to_string();
-                            control_type = Some("swap");
                         }
                         GateType::Toffoli => {
                             if op.qubits[0] == qubit || op.qubits[1] == qubit {
                                 gate_symbol = "●".to_string();
-                                control_type = Some("control");
                             } else {
                                 gate_symbol = "X".to_string();
-                                control_type = Some("target");
                             }
                         }
                         GateType::Fredkin => {
                             if op.qubits[0] == qubit {
                                 gate_symbol = "●".to_string();
-                                control_type = Some("control");
                             } else {
                                 gate_symbol = "⨯".to_string();
-                                control_type = Some("swap");
                             }
                         }
                         _ => {
@@ -288,7 +282,7 @@ impl CircuitVisualization {
                 // Truncate long gate symbols
                 format!("{:<5}", &gate_symbol[0..5])
             } else {
-                format!("{:<5}", gate_symbol)
+                format!("{gate_symbol:<5}")
             }
         } else {
             "─────".to_string()
@@ -332,7 +326,7 @@ impl CircuitVisualization {
         }
 
         let mut html = String::from(
-            r#"
+            r"
         <style>
             .qc-container {
                 font-family: monospace;
@@ -429,7 +423,7 @@ impl CircuitVisualization {
                 margin: 10px 0;
             }
         </style>
-        "#,
+        ",
         );
 
         // Create the container with CSS variables for qubit count and depth
@@ -441,10 +435,7 @@ impl CircuitVisualization {
         // Add qubit labels
         html.push_str("  <div class=\"qc-qubit-labels\">\n");
         for q in 0..self.n_qubits {
-            html.push_str(&format!(
-                "    <div class=\"qc-qubit-label\">q{}:</div>\n",
-                q
-            ));
+            html.push_str(&format!("    <div class=\"qc-qubit-label\">q{q}:</div>\n"));
         }
         html.push_str("  </div>\n");
 
@@ -539,8 +530,8 @@ impl CircuitVisualization {
                             }
 
                             // Add connections between control and target qubits
-                            let min_q = *op.qubits.iter().min().unwrap();
-                            let max_q = *op.qubits.iter().max().unwrap();
+                            let min_q = *op.qubits.iter().min().expect("Failed to find min qubit in circuit visualization (op.qubits should not be empty)");
+                            let max_q = *op.qubits.iter().max().expect("Failed to find max qubit in circuit visualization (op.qubits should not be empty)");
 
                             if op.qubits.len() == 2 && min_q < max_q && (q == min_q || q == max_q) {
                                 let top = if q == min_q { "50%" } else { "0" };
@@ -551,8 +542,7 @@ impl CircuitVisualization {
                                 };
 
                                 html.push_str(&format!(
-                                    "      <div class=\"qc-connection\" style=\"top:{}; height:{};\"></div>\n",
-                                    top, height
+                                    "      <div class=\"qc-connection\" style=\"top:{top}; height:{height};\"></div>\n"
                                 ));
                             }
                         }
@@ -588,7 +578,7 @@ pub struct PyCircuitVisualizer {
 impl PyCircuitVisualizer {
     /// Create a new circuit visualizer for a circuit with the given number of qubits
     #[new]
-    pub fn new(n_qubits: usize) -> PyResult<Self> {
+    pub const fn new(n_qubits: usize) -> PyResult<Self> {
         Ok(Self {
             visualization: CircuitVisualization::new(n_qubits),
         })
@@ -648,13 +638,13 @@ impl PyCircuitVisualizer {
         self.visualization.to_html()
     }
 
-    /// Display the circuit in a Jupyter notebook (implement _repr_html_)
+    /// Display the circuit in a Jupyter notebook (implement _`repr_html`_)
     pub fn _repr_html_(&self) -> String {
         self.visualization.to_html()
     }
 }
 
-/// Visualizer factory for PyCircuit
+/// Visualizer factory for `PyCircuit`
 pub fn create_visualizer_from_operations(
     py: Python,
     n_qubits: usize,

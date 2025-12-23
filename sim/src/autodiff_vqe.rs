@@ -4,14 +4,17 @@
 //! for variational quantum algorithms, including parameter-shift rule, finite differences,
 //! and optimization strategies for VQE.
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::random::prelude::*;
-use scirs2_core::Complex64;
-use std::f64::consts::PI;
 use crate::error::{Result, SimulatorError};
 use crate::pauli::{PauliOperatorSum, PauliString};
 use crate::statevector::StateVectorSimulator;
 use quantrs2_core::gate::GateOp;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
+use std::f64::consts::PI;
+
+#[cfg(feature = "optimize")]
+use crate::optirs_integration::{OptiRSConfig, OptiRSQuantumOptimizer};
 
 /// Gradient computation method
 #[derive(Debug, Clone, Copy)]
@@ -47,7 +50,7 @@ impl AutoDiffContext {
         let num_params = parameters.len();
         Self {
             parameters,
-            parameter_names: (0..num_params).map(|i| format!("θ{}", i)).collect(),
+            parameter_names: (0..num_params).map(|i| format!("θ{i}")).collect(),
             method,
             gradients: vec![0.0; num_params],
             grad_evaluations: 0,
@@ -83,8 +86,7 @@ impl AutoDiffContext {
             Ok(())
         } else {
             Err(SimulatorError::InvalidInput(format!(
-                "Parameter '{}' not found",
-                name
+                "Parameter '{name}' not found"
             )))
         }
     }
@@ -136,7 +138,7 @@ pub struct ParametricRX {
 }
 
 impl ParametricGate for ParametricRX {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "RX"
     }
 
@@ -188,7 +190,7 @@ pub struct ParametricRY {
 }
 
 impl ParametricGate for ParametricRY {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "RY"
     }
 
@@ -239,7 +241,7 @@ pub struct ParametricRZ {
 }
 
 impl ParametricGate for ParametricRZ {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "RZ"
     }
 
@@ -537,7 +539,7 @@ impl VQEWithAutodiff {
     }
 
     /// Set convergence criteria
-    pub fn with_convergence(mut self, convergence: ConvergenceCriteria) -> Self {
+    pub const fn with_convergence(mut self, convergence: ConvergenceCriteria) -> Self {
         self.convergence = convergence;
         self
     }
@@ -624,6 +626,83 @@ impl VQEWithAutodiff {
         let gradient_converged = current.gradient_norm < self.convergence.gradient_tolerance;
 
         Ok(energy_converged && gradient_converged)
+    }
+
+    /// Run VQE optimization using OptiRS optimizers (Adam, SGD, RMSprop, etc.)
+    ///
+    /// This method provides state-of-the-art optimization using OptiRS's advanced
+    /// machine learning optimizers, which typically converge faster and more robustly
+    /// than basic gradient descent.
+    ///
+    /// # Arguments
+    /// * `config` - OptiRS optimizer configuration
+    ///
+    /// # Returns
+    /// * `VQEResult` - Optimization result with optimal parameters and energy
+    ///
+    /// # Example
+    /// ```ignore
+    /// use quantrs2_sim::autodiff_vqe::*;
+    /// use quantrs2_sim::optirs_integration::*;
+    ///
+    /// let mut vqe = VQEWithAutodiff::new(...);
+    /// let config = OptiRSConfig {
+    ///     optimizer_type: OptiRSOptimizerType::Adam,
+    ///     learning_rate: 0.01,
+    ///     ..Default::default()
+    /// };
+    /// let result = vqe.optimize_with_optirs(config)?;
+    /// ```
+    #[cfg(feature = "optimize")]
+    pub fn optimize_with_optirs(&mut self, config: OptiRSConfig) -> Result<VQEResult> {
+        use std::time::Instant;
+
+        let start_time = Instant::now();
+        let mut optimizer = OptiRSQuantumOptimizer::new(config)?;
+
+        while !self.is_converged()? && !optimizer.has_converged() {
+            // Evaluate energy and gradients
+            let energy = self.evaluate_energy()?;
+            let gradients = self.compute_gradient()?;
+
+            // OptiRS optimization step
+            let new_params =
+                optimizer.optimize_step(&self.context.parameters, &gradients, energy)?;
+
+            // Update parameters
+            self.context.parameters = new_params;
+
+            // Record iteration
+            let gradient_norm = gradients.iter().map(|g| g * g).sum::<f64>().sqrt();
+            let iteration = VQEIteration {
+                iteration: self.history.len(),
+                parameters: self.context.parameters.clone(),
+                energy,
+                gradient_norm,
+                func_evals: self.context.func_evaluations,
+                grad_evals: self.context.grad_evaluations,
+            };
+            self.history.push(iteration);
+
+            // Check maximum iterations (use VQE's convergence criteria)
+            if self.history.len() >= self.convergence.max_iterations {
+                break;
+            }
+            if self.context.func_evaluations >= self.convergence.max_func_evals {
+                break;
+            }
+        }
+
+        let optimization_time = start_time.elapsed();
+        let final_iteration = self.history.last().unwrap();
+
+        Ok(VQEResult {
+            optimal_parameters: final_iteration.parameters.clone(),
+            optimal_energy: final_iteration.energy,
+            iterations: self.history.len(),
+            converged: self.is_converged()?,
+            history: self.history.clone(),
+        })
     }
 }
 

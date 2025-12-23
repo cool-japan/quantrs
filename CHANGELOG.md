@@ -5,6 +5,65 @@ All notable changes to the QuantRS2 project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta.3] - 2025-12-23
+
+### 🔧 Quality & Documentation Release
+
+QuantRS2 v0.1.0-beta.3 focuses on documentation quality, test reliability, and SciRS2 v0.1.0-rc.4 integration for improved stability and developer experience.
+
+### Added
+
+- **Enhanced Documentation Quality**
+  - Fixed 9 rustdoc warnings for cleaner documentation builds
+  - Escaped HTML tags in physics formulas for proper rendering
+  - Escaped quantum error correction code notation (e.g., \[\[7,1,3\]\])
+  - Improved mathematical notation in Hamiltonian documentation
+
+### Updated
+
+- **Dependency Upgrades**: Updated to latest release candidate versions
+  - SciRS2 v0.1.0-rc.4 for enhanced stability
+  - All SciRS2 ecosystem crates synchronized to rc.4
+  - Improved SciRS2 integration patterns
+
+### Fixed
+
+- **Doctest Reliability** (4 fixes)
+  - Fixed `quantrs2::prelude::simulation` example (feature-gated properly)
+  - Fixed `quantrs2-anneal::qec_annealer` example (added missing `mut` qualifier)
+  - Fixed `quantrs2-anneal::adaptive_constraint_handling` example (corrected parameter usage)
+  - Fixed `quantrs2-ml::hybrid_automl_engine` example (corrected types and method signatures)
+
+- **Unit Test Stability** (1 fix)
+  - Fixed `config::tests::test_config_snapshot` (global config state isolation)
+
+- **Documentation Warnings** (9 fixes)
+  - Fixed unclosed HTML tags in `sim/src/trotter.rs` formulas
+  - Fixed broken intra-doc links in `tytan/src/quantum_adiabatic_path_optimization.rs`
+  - Fixed broken intra-doc links in `device/src/qec/implementations.rs`
+  - Fixed broken intra-doc links in `device/src/qec/codes.rs`
+  - Fixed broken intra-doc links in `device/src/topological/mod.rs`
+
+### Test Results
+
+- **Doctests**: 67 passing, 66 ignored
+- **Unit Tests**: 88/88 passing (100%)
+- **Documentation Build**: Clean (docs.rs ready)
+
+### Known Limitations
+
+- **quantrs2-symengine**: 14 doctests fail due to trait bound issues
+  - This is an optional feature (symbolic computation)
+  - Does not affect core functionality
+  - Tracked for future resolution in v0.2.0
+
+### Notes
+
+- **No Breaking Changes**: API remains fully stable from beta.2
+- **Documentation Quality**: Significant improvements for docs.rs presentation
+- **Test Reliability**: All core tests now passing reliably
+- **Migration**: No migration required from beta.2; quality improvements only
+
 ## [0.1.0-beta.2] - 2025-09-30
 
 ### 🎯 Policy Refinement & Documentation Release

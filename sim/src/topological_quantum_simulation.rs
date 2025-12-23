@@ -169,7 +169,7 @@ impl AnyonType {
 
     /// Create tau anyon (Fibonacci model)
     pub fn tau() -> Self {
-        let golden_ratio = (1.0 + 5.0_f64.sqrt()) / 2.0;
+        let golden_ratio = f64::midpoint(1.0, 5.0_f64.sqrt());
         let mut fusion_rules = HashMap::new();
         fusion_rules.insert(
             "tau".to_string(),
@@ -606,12 +606,14 @@ impl TopologicalQuantumSimulator {
         for y in 0..height {
             for x in 0..width {
                 let x_pos = x as f64 * 1.5;
-                let y_pos = y as f64 * 3.0_f64.sqrt()
-                    + if x % 2 == 1 {
+                let y_pos = (y as f64).mul_add(
+                    3.0_f64.sqrt(),
+                    if x % 2 == 1 {
                         3.0_f64.sqrt() / 2.0
                     } else {
                         0.0
-                    };
+                    },
+                );
                 sites.push(vec![x_pos, y_pos]);
             }
         }
@@ -685,7 +687,7 @@ impl TopologicalQuantumSimulator {
 
                 // B sublattice
                 let x_b = x as f64 * 3.0 / 2.0 + 1.0;
-                let y_b = y as f64 * 3.0_f64.sqrt() + 3.0_f64.sqrt() / 3.0;
+                let y_b = (y as f64).mul_add(3.0_f64.sqrt(), 3.0_f64.sqrt() / 3.0);
                 sites.push(vec![x_b, y_b]);
             }
         }
@@ -878,7 +880,7 @@ impl TopologicalQuantumSimulator {
             AnyonModel::Fibonacci => {
                 // Fibonacci anyons: exponential degeneracy
                 let num_qubits = lattice.sites.len() / 2;
-                let golden_ratio = (1.0 + 5.0_f64.sqrt()) / 2.0;
+                let golden_ratio = f64::midpoint(1.0, 5.0_f64.sqrt());
                 (golden_ratio.powi(num_qubits as i32) / 5.0_f64.sqrt()).round() as usize
             }
             AnyonModel::Ising => {
@@ -1093,7 +1095,7 @@ impl TopologicalQuantumSimulator {
         }
 
         // Apply braiding to quantum state
-        for amplitude in self.state.amplitudes.iter_mut() {
+        for amplitude in &mut self.state.amplitudes {
             *amplitude *= braiding_phase;
         }
 
@@ -1110,9 +1112,10 @@ impl TopologicalQuantumSimulator {
 
         // Update statistics
         self.stats.braiding_operations += 1;
-        self.stats.avg_braiding_time_ms = (self.stats.avg_braiding_time_ms
-            * (self.stats.braiding_operations - 1) as f64
-            + execution_time)
+        self.stats.avg_braiding_time_ms = self
+            .stats
+            .avg_braiding_time_ms
+            .mul_add((self.stats.braiding_operations - 1) as f64, execution_time)
             / self.stats.braiding_operations as f64;
 
         Ok(braiding_phase)
@@ -1365,7 +1368,7 @@ impl TopologicalQuantumSimulator {
     }
 
     /// Get current topological state
-    pub fn get_state(&self) -> &TopologicalState {
+    pub const fn get_state(&self) -> &TopologicalState {
         &self.state
     }
 
@@ -1375,7 +1378,7 @@ impl TopologicalQuantumSimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_stats(&self) -> &TopologicalSimulationStats {
+    pub const fn get_stats(&self) -> &TopologicalSimulationStats {
         &self.stats
     }
 
@@ -1393,6 +1396,12 @@ impl TopologicalQuantumSimulator {
 /// Abelian anyon model
 pub struct AbelianAnyons {
     anyon_types: Vec<AnyonType>,
+}
+
+impl Default for AbelianAnyons {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AbelianAnyons {
@@ -1436,7 +1445,7 @@ impl AnyonModelImplementation for AbelianAnyons {
         true
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Abelian Anyons"
     }
 }
@@ -1444,6 +1453,12 @@ impl AnyonModelImplementation for AbelianAnyons {
 /// Non-Abelian anyon model (generic)
 pub struct NonAbelianAnyons {
     anyon_types: Vec<AnyonType>,
+}
+
+impl Default for NonAbelianAnyons {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NonAbelianAnyons {
@@ -1502,7 +1517,7 @@ impl AnyonModelImplementation for NonAbelianAnyons {
         false
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Non-Abelian Anyons"
     }
 }
@@ -1510,6 +1525,12 @@ impl AnyonModelImplementation for NonAbelianAnyons {
 /// Fibonacci anyon model
 pub struct FibonacciAnyons {
     anyon_types: Vec<AnyonType>,
+}
+
+impl Default for FibonacciAnyons {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FibonacciAnyons {
@@ -1527,7 +1548,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
     fn fusion_coefficients(&self, a: &AnyonType, b: &AnyonType, c: &AnyonType) -> Complex64 {
         // Fibonacci fusion rules: τ × τ = 1 + τ
         match (a.label.as_str(), b.label.as_str(), c.label.as_str()) {
-            ("tau", "tau", "vacuum") | ("tau", "tau", "tau") => Complex64::new(1.0, 0.0),
+            ("tau", "tau", "vacuum" | "tau") => Complex64::new(1.0, 0.0),
             ("vacuum", _, label) | (_, "vacuum", label) if label == a.label || label == b.label => {
                 Complex64::new(1.0, 0.0)
             }
@@ -1537,7 +1558,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
 
     fn braiding_matrix(&self, a: &AnyonType, b: &AnyonType) -> Array2<Complex64> {
         if a.label == "tau" && b.label == "tau" {
-            let phi = (1.0 + 5.0_f64.sqrt()) / 2.0; // Golden ratio
+            let phi = f64::midpoint(1.0, 5.0_f64.sqrt()); // Golden ratio
             let phase = Complex64::new(0.0, 1.0) * (4.0 * PI / 5.0).exp();
 
             Array2::from_shape_vec(
@@ -1563,7 +1584,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
         _d: &AnyonType,
     ) -> Array2<Complex64> {
         // Fibonacci F-matrix
-        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
+        let phi = f64::midpoint(1.0, 5.0_f64.sqrt());
         let inv_phi = 1.0 / phi;
 
         Array2::from_shape_vec(
@@ -1582,7 +1603,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
         false
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Fibonacci Anyons"
     }
 }
@@ -1590,6 +1611,12 @@ impl AnyonModelImplementation for FibonacciAnyons {
 /// Ising anyon model (Majorana fermions)
 pub struct IsingAnyons {
     anyon_types: Vec<AnyonType>,
+}
+
+impl Default for IsingAnyons {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IsingAnyons {
@@ -1618,7 +1645,7 @@ impl AnyonModelImplementation for IsingAnyons {
     fn fusion_coefficients(&self, a: &AnyonType, b: &AnyonType, c: &AnyonType) -> Complex64 {
         // Ising fusion rules
         match (a.label.as_str(), b.label.as_str(), c.label.as_str()) {
-            ("sigma", "sigma", "vacuum") | ("sigma", "sigma", "psi") => Complex64::new(1.0, 0.0),
+            ("sigma", "sigma", "vacuum" | "psi") => Complex64::new(1.0, 0.0),
             ("psi", "psi", "vacuum") => Complex64::new(1.0, 0.0),
             ("sigma", "psi", "sigma") | ("psi", "sigma", "sigma") => Complex64::new(1.0, 0.0),
             ("vacuum", _, label) | (_, "vacuum", label) if label == a.label || label == b.label => {
@@ -1673,7 +1700,7 @@ impl AnyonModelImplementation for IsingAnyons {
         false
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Ising Anyons"
     }
 }
@@ -1681,6 +1708,12 @@ impl AnyonModelImplementation for IsingAnyons {
 // Placeholder implementations for other anyon models
 pub struct ParafermionAnyons {
     anyon_types: Vec<AnyonType>,
+}
+
+impl Default for ParafermionAnyons {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ParafermionAnyons {
@@ -1713,7 +1746,7 @@ impl AnyonModelImplementation for ParafermionAnyons {
     fn is_abelian(&self) -> bool {
         false
     }
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Parafermion Anyons"
     }
 }
@@ -1754,7 +1787,7 @@ impl AnyonModelImplementation for ChernSimonsAnyons {
     fn is_abelian(&self) -> bool {
         self.level <= 2
     }
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Chern-Simons Anyons"
     }
 }
@@ -1805,15 +1838,15 @@ impl TopologicalUtils {
         let configs = vec![
             (
                 "toric_code",
-                TopologicalUtils::create_predefined_config("toric_code", 4),
+                Self::create_predefined_config("toric_code", 4),
             ),
             (
                 "fibonacci",
-                TopologicalUtils::create_predefined_config("fibonacci_system", 3),
+                Self::create_predefined_config("fibonacci_system", 3),
             ),
             (
                 "majorana",
-                TopologicalUtils::create_predefined_config("majorana_system", 3),
+                Self::create_predefined_config("majorana_system", 3),
             ),
         ];
 

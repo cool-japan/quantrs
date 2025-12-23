@@ -97,11 +97,12 @@ impl Default for HardwareAwareConfig {
 }
 
 /// Hardware optimization levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HardwareOptimizationLevel {
     /// Minimal optimization for fast compilation
     Fast,
     /// Balanced optimization
+    #[default]
     Balanced,
     /// Aggressive optimization for best performance
     Aggressive,
@@ -109,12 +110,6 @@ pub enum HardwareOptimizationLevel {
     ArchitectureSpecific,
     /// Custom optimization strategy
     Custom,
-}
-
-impl Default for HardwareOptimizationLevel {
-    fn default() -> Self {
-        Self::Balanced
-    }
 }
 
 /// Hardware metrics for optimization decisions
@@ -549,7 +544,7 @@ impl HardwareAwareQMLOptimizer {
 
         // Generate ansatz layers
         for layer in 0..num_layers {
-            self.add_ansatz_layer(&mut circuit, &optimal_pattern, layer)?;
+            self.add_ansatz_layer(&mut circuit, optimal_pattern, layer)?;
         }
 
         Ok(circuit)
@@ -949,7 +944,11 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Check if gate is directly executable on hardware
-    fn is_gate_directly_executable(&self, gate_type: &InterfaceGateType, qubits: &[usize]) -> bool {
+    const fn is_gate_directly_executable(
+        &self,
+        gate_type: &InterfaceGateType,
+        qubits: &[usize],
+    ) -> bool {
         match self.config.target_architecture {
             HardwareArchitecture::IBMQuantum => {
                 matches!(
@@ -1340,8 +1339,10 @@ impl HardwareAwareQMLOptimizer {
             .circuit_compiler
             .compilation_stats
             .avg_compilation_time_ms
-            * (self.circuit_compiler.compilation_stats.total_compilations - 1) as f64
-            + compilation_time_ms as f64;
+            .mul_add(
+                (self.circuit_compiler.compilation_stats.total_compilations - 1) as f64,
+                compilation_time_ms as f64,
+            );
 
         self.circuit_compiler
             .compilation_stats
@@ -1365,9 +1366,7 @@ impl HardwareAwareQMLOptimizer {
 
                 // Weighted combination of scores
                 let total_score =
-                    pattern.hardware_efficiency * 0.4 +
-                    connectivity_score * 0.3 +
-                    gate_fidelity_score * 0.2 +
+                    gate_fidelity_score.mul_add(0.2, pattern.hardware_efficiency.mul_add(0.4, connectivity_score * 0.3)) +
                     depth_efficiency_score * 0.1;
 
                 (pattern, total_score)
@@ -1451,11 +1450,11 @@ impl HardwareAwareQMLOptimizer {
         Ok(TrainingDataAnalysis::default())
     }
 
-    fn optimize_batch_size(&self, _analysis: &TrainingDataAnalysis) -> Result<usize> {
+    const fn optimize_batch_size(&self, _analysis: &TrainingDataAnalysis) -> Result<usize> {
         Ok(32) // Default batch size
     }
 
-    fn should_enable_mixed_precision(&self) -> Result<bool> {
+    const fn should_enable_mixed_precision(&self) -> Result<bool> {
         Ok(true) // Enable for noise-aware optimization
     }
 
@@ -1482,7 +1481,7 @@ impl HardwareAwareQMLOptimizer {
         }
     }
 
-    fn determine_adaptation_action(
+    const fn determine_adaptation_action(
         trigger: &AdaptationTrigger,
         _performance: &PerformanceMetrics,
     ) -> Result<AdaptationAction> {
@@ -1537,7 +1536,7 @@ impl HardwareAwareQMLOptimizer {
         }
 
         for gate_type in &pattern.gate_sequence {
-            let gate_name = format!("{:?}", gate_type);
+            let gate_name = format!("{gate_type:?}");
             let error_rate = self
                 .device_metrics
                 .gate_error_rates
@@ -1593,7 +1592,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Check if gate is directly executable (public version)
-    pub fn is_gate_directly_executable_public(
+    pub const fn is_gate_directly_executable_public(
         &self,
         gate_type: &InterfaceGateType,
         qubits: &[usize],
@@ -1631,7 +1630,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Get performance monitor reference
-    pub fn get_performance_monitor(&self) -> &PerformanceMonitoringData {
+    pub const fn get_performance_monitor(&self) -> &PerformanceMonitoringData {
         &self.performance_monitor
     }
 }
@@ -1855,6 +1854,6 @@ mod tests {
             HardwareArchitecture::GoogleQuantumAI,
         );
 
-        assert!(compatibility >= 0.0 && compatibility <= 1.0);
+        assert!((0.0..=1.0).contains(&compatibility));
     }
 }

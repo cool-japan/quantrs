@@ -1,8 +1,5 @@
 //! Comprehensive tests for advanced features.
 
-use scirs2_core::ndarray::{array, Array, Array1, Array2};
-use scirs2_core::RandomExt;
-use scirs2_core::ndarray::distributions::Uniform;
 use quantrs2_tytan::applications::finance::*;
 use quantrs2_tytan::applications::logistics::*;
 use quantrs2_tytan::coherent_ising_machine::*;
@@ -14,6 +11,9 @@ use quantrs2_tytan::sampler::Sampler;
 use quantrs2_tytan::solution_debugger::*;
 use quantrs2_tytan::testing_framework::*;
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::distributions::Uniform;
+use scirs2_core::ndarray::{array, Array, Array1, Array2};
+use scirs2_core::RandomExt;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -34,7 +34,7 @@ mod cim_tests {
 
         let mut var_map = HashMap::new();
         for i in 0..3 {
-            var_map.insert(format!("x{}", i), i);
+            var_map.insert(format!("x{i}"), i);
         }
 
         let results = cim.run_qubo(&(qubo, var_map), 10).unwrap();
@@ -147,10 +147,7 @@ mod decomposition_tests {
     #[test]
     fn test_domain_decomposer() {
         let size = 12;
-        let mut qubo = Array2::random(
-            (size, size),
-            Uniform::new(-1.0, 1.0),
-        );
+        let mut qubo = Array2::random((size, size), Uniform::new(-1.0, 1.0).unwrap());
 
         let mut sampler = SASampler::new(None);
         let mut decomposer = DomainDecomposer::new(sampler);
@@ -539,7 +536,7 @@ mod testing_framework_tests {
         solution.insert("x".to_string(), true);
         solution.insert("y".to_string(), false);
 
-        let constraints = vec![(
+        let constraints = [(
             "x".to_string(),
             "y".to_string(),
             solution_debugger::ConstraintType::AtMostOne,

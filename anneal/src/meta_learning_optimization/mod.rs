@@ -18,47 +18,47 @@
 
 pub mod config;
 pub mod feature_extraction;
+pub mod meta_learning;
+pub mod multi_objective;
 pub mod neural_architecture_search;
 pub mod portfolio_management;
-pub mod multi_objective;
 pub mod transfer_learning;
-pub mod meta_learning;
 
 // Re-export main types for public API
 pub use config::*;
 pub use feature_extraction::{
-    FeatureExtractor, ExperienceDatabase, ProblemFeatures, FeatureVector,
-    OptimizationExperience, OptimizationConfiguration, OptimizationResults,
-    AlgorithmType, ArchitectureSpec, ResourceAllocation, QualityMetrics,
-    ResourceUsage, ConvergenceMetrics, ProblemDomain, SuccessMetrics
-};
-pub use neural_architecture_search::{
-    NeuralArchitectureSearch, SearchIteration, PerformancePredictor,
-    ArchitectureCandidate, GenerationMethod, ResourceRequirements
-};
-pub use portfolio_management::{
-    AlgorithmPortfolio, Algorithm, PortfolioComposition, PerformanceRecord,
-    AlgorithmPerformanceStats, ApplicabilityConditions, PerformanceGuarantee, GuaranteeType
-};
-pub use multi_objective::{
-    MultiObjectiveOptimizer, ParetoFrontier, MultiObjectiveSolution, DecisionMaker,
-    FrontierStatistics, FrontierUpdate, UpdateReason, UserPreferences
-};
-pub use transfer_learning::{
-    TransferLearner, SourceDomain, DomainCharacteristics, TransferableModel,
-    TransferRecord, ModelType, Knowledge, SimilarityMetric, SimilarityMethod,
-    TransferStrategy, AdaptationMechanism
+    AlgorithmType, ArchitectureSpec, ConvergenceMetrics, ExperienceDatabase, FeatureExtractor,
+    FeatureVector, OptimizationConfiguration, OptimizationExperience, OptimizationResults,
+    ProblemDomain, ProblemFeatures, QualityMetrics, ResourceAllocation, ResourceUsage,
+    SuccessMetrics,
 };
 pub use meta_learning::{
-    MetaLearner, MetaLearningOptimizer, MetaOptimizationResult,
-    MetaLearningAlgorithm, TrainingEpisode, PerformanceEvaluator,
-    EvaluationMetric, CrossValidationStrategy, StatisticalTest
+    CrossValidationStrategy, EvaluationMetric, MetaLearner, MetaLearningAlgorithm,
+    MetaLearningOptimizer, MetaOptimizationResult, PerformanceEvaluator, StatisticalTest,
+    TrainingEpisode,
+};
+pub use multi_objective::{
+    DecisionMaker, FrontierStatistics, FrontierUpdate, MultiObjectiveOptimizer,
+    MultiObjectiveSolution, ParetoFrontier, UpdateReason, UserPreferences,
+};
+pub use neural_architecture_search::{
+    ArchitectureCandidate, GenerationMethod, NeuralArchitectureSearch, PerformancePredictor,
+    ResourceRequirements, SearchIteration,
+};
+pub use portfolio_management::{
+    Algorithm, AlgorithmPerformanceStats, AlgorithmPortfolio, ApplicabilityConditions,
+    GuaranteeType, PerformanceGuarantee, PerformanceRecord, PortfolioComposition,
+};
+pub use transfer_learning::{
+    AdaptationMechanism, DomainCharacteristics, Knowledge, ModelType, SimilarityMethod,
+    SimilarityMetric, SourceDomain, TransferLearner, TransferRecord, TransferStrategy,
+    TransferableModel,
 };
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};

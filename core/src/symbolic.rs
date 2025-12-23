@@ -8,8 +8,8 @@
 pub use quantrs2_symengine::{Expression as SymEngine, SymEngineError, SymEngineResult};
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
+use scirs2_core::num_traits::{One, Zero}; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
-use num_traits::{One, Zero};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -864,7 +864,9 @@ mod tests {
         vars.insert("x".to_string(), 2.0);
 
         let var_expr = SymbolicExpression::variable("x");
-        let result = var_expr.evaluate(&vars).unwrap();
+        let result = var_expr
+            .evaluate(&vars)
+            .expect("Failed to evaluate expression in test_symbolic_evaluation");
         assert_eq!(result, 2.0);
     }
 
@@ -881,7 +883,8 @@ mod tests {
     #[cfg(feature = "symbolic")]
     #[test]
     fn test_symengine_integration() {
-        let expr = SymbolicExpression::parse("x^2").unwrap();
+        let expr = SymbolicExpression::parse("x^2")
+            .expect("Failed to parse expression in test_symengine_integration");
         match expr {
             SymbolicExpression::SymEngine(_) => {
                 // Test SymEngine functionality

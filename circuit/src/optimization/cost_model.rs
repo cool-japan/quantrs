@@ -15,7 +15,7 @@ pub trait CostModel: Send + Sync {
     /// Calculate the total cost of a circuit (using gate list)
     fn circuit_cost_from_gates(&self, gates: &[Box<dyn GateOp>]) -> f64;
 
-    /// Calculate the total cost of a list of gates (alias for circuit_cost_from_gates)
+    /// Calculate the total cost of a list of gates (alias for `circuit_cost_from_gates`)
     fn gates_cost(&self, gates: &[Box<dyn GateOp>]) -> f64 {
         self.circuit_cost_from_gates(gates)
     }
@@ -81,12 +81,13 @@ pub struct AbstractCostModel {
 
 impl AbstractCostModel {
     /// Create a new abstract cost model
+    #[must_use]
     pub fn new(weights: CostWeights) -> Self {
         Self {
             weights,
             native_gates: vec!["H", "X", "Y", "Z", "S", "T", "RX", "RY", "RZ", "CNOT", "CZ"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
         }
     }
@@ -133,6 +134,7 @@ pub struct HardwareCostModel {
 
 impl HardwareCostModel {
     /// Create a cost model for a specific backend
+    #[must_use]
     pub fn for_backend(backend: &str) -> Self {
         let (weights, gate_costs, gate_errors, native_gates) = match backend {
             "ibm" => Self::ibm_config(),
@@ -180,7 +182,7 @@ impl HardwareCostModel {
 
         let native_gates = vec!["X", "Y", "Z", "H", "S", "T", "RZ", "CNOT", "CZ"]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
 
         (weights, gate_costs, gate_errors, native_gates)
@@ -214,7 +216,7 @@ impl HardwareCostModel {
 
         let native_gates = vec!["X", "Y", "Z", "H", "RZ", "SQRT_X", "CZ"]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
 
         (weights, gate_costs, gate_errors, native_gates)
@@ -249,7 +251,7 @@ impl HardwareCostModel {
 
         let native_gates = vec!["X", "Y", "Z", "H", "RX", "RY", "RZ", "CNOT", "CZ"]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
 
         (weights, gate_costs, gate_errors, native_gates)
@@ -266,7 +268,7 @@ impl HardwareCostModel {
         let gate_errors = HashMap::new();
         let native_gates = vec!["H", "X", "Y", "Z", "S", "T", "RX", "RY", "RZ", "CNOT", "CZ"]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
 
         (weights, gate_costs, gate_errors, native_gates)

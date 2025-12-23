@@ -1,14 +1,16 @@
-//! SciRS2 Python bindings integration for numerical operations.
+//! `SciRS2` Python bindings integration for numerical operations.
 //!
-//! This module provides Python bindings for SciRS2 numerical operations,
+//! This module provides Python bindings for `SciRS2` numerical operations,
 //! including linear algebra, optimization, and statistical functions.
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyTuple};
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
+use scirs2_numpy::{
+    IntoPyArray, PyArray1, PyArray2, PyArrayDyn, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2,
+};
 
 // SciRS2 stub types (would be replaced with actual SciRS2 imports)
 #[derive(Debug)]
@@ -27,35 +29,39 @@ struct SciRS2LinearAlgebra;
 impl SciRS2LinearAlgebra {
     fn svd(matrix: &Array2<f64>) -> (Array2<f64>, Array1<f64>, Array2<f64>) {
         // Stub implementation
-        let m = matrix.nrows();
-        let n = matrix.ncols();
-        let k = m.min(n);
+        let row_count = matrix.nrows();
+        let column_count = matrix.ncols();
+        let min_dimension = row_count.min(column_count);
 
-        let u = Array2::eye(m);
-        let s = Array1::ones(k);
-        let vt = Array2::eye(n);
+        let left_singular_vectors = Array2::eye(row_count);
+        let singular_values = Array1::ones(min_dimension);
+        let right_singular_vectors = Array2::eye(column_count);
 
-        (u, s, vt)
+        (
+            left_singular_vectors,
+            singular_values,
+            right_singular_vectors,
+        )
     }
 
     fn eig(matrix: &Array2<Complex64>) -> (Array1<Complex64>, Array2<Complex64>) {
         // Stub implementation
-        let n = matrix.nrows();
-        let eigenvalues = Array1::zeros(n);
-        let eigenvectors = Array2::eye(n);
+        let dimension = matrix.nrows();
+        let eigenvalues = Array1::zeros(dimension);
+        let eigenvectors = Array2::eye(dimension);
 
         (eigenvalues, eigenvectors)
     }
 
     fn qr(matrix: &Array2<f64>) -> (Array2<f64>, Array2<f64>) {
         // Stub implementation
-        let m = matrix.nrows();
-        let n = matrix.ncols();
+        let row_count = matrix.nrows();
+        let column_count = matrix.ncols();
 
-        let q = Array2::eye(m);
-        let r = Array2::zeros((m, n));
+        let orthogonal_matrix = Array2::eye(row_count);
+        let upper_triangular = Array2::zeros((row_count, column_count));
 
-        (q, r)
+        (orthogonal_matrix, upper_triangular)
     }
 }
 
@@ -89,14 +95,14 @@ impl SciRS2Optimizer {
     }
 }
 
-/// SciRS2 Linear Algebra operations for Python
+/// `SciRS2` Linear Algebra operations for Python
 #[pyclass(name = "SciRS2LinAlg")]
 pub struct PySciRS2LinAlg;
 
 #[pymethods]
 impl PySciRS2LinAlg {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -124,8 +130,8 @@ impl PySciRS2LinAlg {
         py: Python<'py>,
         matrix: PyReadonlyArray2<'py, Complex64>,
     ) -> PyResult<(Py<PyArray1<Complex64>>, Py<PyArray2<Complex64>>)> {
-        let mat = matrix.as_array();
-        let (eigenvalues, eigenvectors) = SciRS2LinearAlgebra::eig(&mat.to_owned());
+        let mat = matrix.as_array().to_owned();
+        let (eigenvalues, eigenvectors) = SciRS2LinearAlgebra::eig(&mat);
 
         Ok((
             eigenvalues.into_pyarray(py).into(),
@@ -195,7 +201,7 @@ impl PySciRS2LinAlg {
     }
 }
 
-/// SciRS2 Optimization for Python
+/// `SciRS2` Optimization for Python
 #[pyclass(name = "SciRS2Optimizer")]
 pub struct PySciRS2Optimizer {
     tolerance: f64,
@@ -206,7 +212,7 @@ pub struct PySciRS2Optimizer {
 impl PySciRS2Optimizer {
     #[new]
     #[pyo3(signature = (tolerance=1e-8, max_iterations=1000))]
-    fn new(tolerance: f64, max_iterations: usize) -> Self {
+    const fn new(tolerance: f64, max_iterations: usize) -> Self {
         Self {
             tolerance,
             max_iterations,
@@ -263,14 +269,14 @@ impl PySciRS2Optimizer {
     }
 }
 
-/// SciRS2 Statistical functions for Python
+/// `SciRS2` Statistical functions for Python
 #[pyclass(name = "SciRS2Stats")]
 pub struct PySciRS2Stats;
 
 #[pymethods]
 impl PySciRS2Stats {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -361,14 +367,14 @@ impl PySciRS2Stats {
     }
 }
 
-/// SciRS2 Fast Fourier Transform for Python
+/// `SciRS2` Fast Fourier Transform for Python
 #[pyclass(name = "SciRS2FFT")]
 pub struct PySciRS2FFT;
 
 #[pymethods]
 impl PySciRS2FFT {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -432,7 +438,7 @@ impl PySciRS2FFT {
     }
 }
 
-/// Initialize the SciRS2 bindings submodule
+/// Initialize the `SciRS2` bindings submodule
 pub fn create_scirs2_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let submodule = PyModule::new(m.py(), "scirs2")?;
 
@@ -445,14 +451,14 @@ pub fn create_scirs2_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Quantum-specific numerical operations using SciRS2
+/// Quantum-specific numerical operations using `SciRS2`
 #[pyclass(name = "QuantumNumerics")]
 pub struct PyQuantumNumerics;
 
 #[pymethods]
 impl PyQuantumNumerics {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
@@ -486,7 +492,7 @@ impl PyQuantumNumerics {
         let n_qubits = (psi.len() as f64).log2() as usize;
 
         // Extract partition
-        let subsystem_a: Vec<usize> = Vec::extract_bound(partition)?;
+        let subsystem_a: Vec<usize> = partition.extract()?;
         if subsystem_a.is_empty() || subsystem_a.len() >= n_qubits {
             return Err(PyValueError::new_err("Invalid partition"));
         }

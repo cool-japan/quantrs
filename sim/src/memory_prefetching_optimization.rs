@@ -312,8 +312,7 @@ impl AccessPatternPredictor {
                 .stride_patterns
                 .iter()
                 .max_by_key(|(_, &count)| count)
-                .map(|(&stride, _)| stride)
-                .unwrap_or(0);
+                .map_or(0, |(&stride, _)| stride);
             features[5] = dominant_stride as f64 / 1000.0;
         }
 
@@ -495,9 +494,10 @@ impl MemoryPrefetcher {
                     s.average_latency = if s.total_requests == 1 {
                         latency
                     } else {
-                        Duration::from_nanos(
-                            ((s.average_latency.as_nanos() + latency.as_nanos()) / 2) as u64,
-                        )
+                        Duration::from_nanos(u128::midpoint(
+                            s.average_latency.as_nanos(),
+                            latency.as_nanos(),
+                        ) as u64)
                     };
                 }
             } else {
@@ -557,7 +557,7 @@ impl MemoryPrefetcher {
     }
 
     /// Determine appropriate prefetch hint based on address and distance
-    fn determine_prefetch_hint(&self, _address: usize, distance: usize) -> PrefetchHint {
+    const fn determine_prefetch_hint(&self, _address: usize, distance: usize) -> PrefetchHint {
         match distance {
             0..=2 => PrefetchHint::L1,
             3..=6 => PrefetchHint::L2,
@@ -773,7 +773,7 @@ impl DataLocalityOptimizer {
             self.access_analyzer
                 .spatial_patterns
                 .entry(page)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(address);
         }
 
@@ -947,11 +947,11 @@ impl DataLocalityOptimizer {
             let cache_line = address / cache_line_size;
             let cache_set = cache_line % cache_lines;
 
-            if cache_state.contains_key(&cache_set) {
-                cache_hits += 1;
-            } else {
+            if let std::collections::hash_map::Entry::Vacant(e) = cache_state.entry(cache_set) {
                 cache_misses += 1;
-                cache_state.insert(cache_set, cache_line);
+                e.insert(cache_line);
+            } else {
+                cache_hits += 1;
             }
         }
 
@@ -1014,9 +1014,12 @@ impl DataLocalityOptimizer {
         let numa = self.optimize_numa_topology(state_vector, access_pattern)?;
 
         // Weighted combination
-        let locality_improvement = temporal.locality_improvement * 0.4
-            + spatial.locality_improvement * 0.4
-            + numa.locality_improvement * 0.2;
+        let locality_improvement = numa.locality_improvement.mul_add(
+            0.2,
+            temporal
+                .locality_improvement
+                .mul_add(0.4, spatial.locality_improvement * 0.4),
+        );
 
         Ok(OptimizationResult {
             locality_improvement,

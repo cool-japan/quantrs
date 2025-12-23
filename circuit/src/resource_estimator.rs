@@ -1,18 +1,18 @@
-//! Resource estimator using SciRS2 complexity analysis
+//! Resource estimator using `SciRS2` complexity analysis
 //!
 //! This module provides comprehensive resource estimation for quantum circuits,
 //! including gate counts, circuit depth, memory requirements, and execution time
-//! estimation using SciRS2's advanced complexity analysis capabilities.
+//! estimation using `SciRS2`'s advanced complexity analysis capabilities.
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
-use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -30,7 +30,7 @@ pub struct ResourceEstimate {
     pub execution_time: ExecutionTimeEstimate,
     /// Hardware-specific requirements
     pub hardware_requirements: HardwareRequirements,
-    /// SciRS2 graph analysis metrics
+    /// `SciRS2` graph analysis metrics
     pub graph_metrics: Option<GraphMetrics>,
     /// Scalability analysis
     pub scalability_analysis: ScalabilityAnalysis,
@@ -410,7 +410,7 @@ pub enum ComplexityLevel {
 pub struct ResourceEstimatorConfig {
     /// Enable detailed analysis
     pub enable_detailed_analysis: bool,
-    /// Enable SciRS2 graph analysis
+    /// Enable `SciRS2` graph analysis
     pub enable_graph_analysis: bool,
     /// Enable scalability analysis
     pub enable_scalability_analysis: bool,
@@ -422,7 +422,7 @@ pub struct ResourceEstimatorConfig {
     pub analysis_depth: AnalysisDepth,
     /// Include optimization suggestions
     pub include_optimizations: bool,
-    /// SciRS2 analyzer configuration
+    /// `SciRS2` analyzer configuration
     pub scirs2_config: Option<AnalyzerConfig>,
 }
 
@@ -501,6 +501,7 @@ pub struct PlatformCharacteristics {
 
 impl ResourceEstimator {
     /// Create a new resource estimator
+    #[must_use]
     pub fn new(config: ResourceEstimatorConfig) -> Self {
         let scirs2_analyzer = if config.enable_graph_analysis {
             Some(SciRS2CircuitAnalyzer::new())
@@ -519,7 +520,8 @@ impl ResourceEstimator {
         estimator
     }
 
-    /// Create resource estimator with custom SciRS2 configuration
+    /// Create resource estimator with custom `SciRS2` configuration
+    #[must_use]
     pub fn with_scirs2_config(
         config: ResourceEstimatorConfig,
         scirs2_config: AnalyzerConfig,
@@ -696,7 +698,7 @@ impl ResourceEstimator {
         let circuit_depth = self.calculate_circuit_depth(circuit)?;
 
         // Estimate quantum volume
-        let quantum_volume = (N as f64).min(circuit_depth as f64).powf(2.0);
+        let quantum_volume = (N as f64).min(circuit_depth as f64).powi(2);
 
         // Estimate fidelity
         let fidelity_estimate = self.estimate_circuit_fidelity(circuit, &gate_counts)?;
@@ -792,7 +794,7 @@ impl ResourceEstimator {
             (metrics.two_qubit_gates as f64) / (metrics.total_gates as f64).max(1.0);
 
         // Classical simulation complexity
-        let classical_simulation_complexity = 2.0_f64.powf(N as f64);
+        let classical_simulation_complexity = (N as f64).exp2();
 
         // Quantum advantage factor (simplified estimation)
         let quantum_advantage_factor = if classical_simulation_complexity > 1e6 {
@@ -1132,7 +1134,7 @@ impl ResourceEstimator {
         modifications
     }
 
-    /// Get SciRS2 graph metrics
+    /// Get `SciRS2` graph metrics
     fn get_graph_metrics<const N: usize>(
         &mut self,
         circuit: &Circuit<N>,
@@ -1251,7 +1253,7 @@ impl ResourceEstimator {
         predictions.insert(
             "gates".to_string(),
             ScalingPrediction {
-                problem_sizes: problem_sizes.clone(),
+                problem_sizes,
                 predicted_values: gate_predictions,
                 confidence_intervals: gate_confidence,
                 model: "Linear scaling".to_string(),

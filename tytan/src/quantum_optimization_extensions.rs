@@ -58,7 +58,7 @@ impl AdaptQAOA {
     }
 
     /// Set gradient threshold
-    pub fn with_gradient_threshold(mut self, threshold: f64) -> Self {
+    pub const fn with_gradient_threshold(mut self, threshold: f64) -> Self {
         self.gradient_threshold = threshold;
         self
     }
@@ -70,7 +70,7 @@ impl AdaptQAOA {
     }
 
     /// Enable/disable commutator screening
-    pub fn with_commutator_screening(mut self, use_screening: bool) -> Self {
+    pub const fn with_commutator_screening(mut self, use_screening: bool) -> Self {
         self.use_commutator_screening = use_screening;
         self
     }
@@ -221,7 +221,7 @@ pub struct AdaptCircuit {
 }
 
 impl AdaptCircuit {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             operators: Vec::new(),
             parameters: Vec::new(),
@@ -253,7 +253,7 @@ impl OperatorPool {
             single_qubit_ops.push(PauliOperator {
                 pauli_string: vec![pauli],
                 coefficient: 1.0,
-                label: format!("R{}", pauli),
+                label: format!("R{pauli}"),
             });
         }
 
@@ -262,7 +262,7 @@ impl OperatorPool {
             two_qubit_ops.push(PauliOperator {
                 pauli_string: vec![p1, p2],
                 coefficient: 1.0,
-                label: format!("{}{}", p1, p2),
+                label: format!("{p1}{p2}"),
             });
         }
 
@@ -290,7 +290,7 @@ impl OperatorPool {
         }
     }
 
-    fn remove_operator(&mut self, _idx: usize) {
+    const fn remove_operator(&self, _idx: usize) {
         // Mark operator as used (simplified)
     }
 
@@ -377,7 +377,7 @@ impl QAOAPlus {
     }
 
     /// Set constraint strategy
-    pub fn with_constraints(mut self, constraints: ConstraintStrategy) -> Self {
+    pub const fn with_constraints(mut self, constraints: ConstraintStrategy) -> Self {
         self.constraints = constraints;
         self
     }
@@ -445,7 +445,7 @@ pub enum AggregationMethod {
 
 impl RecursiveQAOA {
     /// Create new recursive QAOA
-    pub fn new(
+    pub const fn new(
         base_depth: usize,
         recursion_depth: usize,
         decomposition: DecompositionStrategy,
@@ -597,7 +597,7 @@ pub enum SymmetryType {
 
 impl MultiAngleQAOA {
     /// Create new multi-angle QAOA
-    pub fn new(p: usize) -> Self {
+    pub const fn new(p: usize) -> Self {
         Self {
             p,
             parameterization: AngleParameterization::FullyParameterized,
@@ -607,7 +607,7 @@ impl MultiAngleQAOA {
     }
 
     /// Set angle parameterization
-    pub fn with_parameterization(mut self, param: AngleParameterization) -> Self {
+    pub const fn with_parameterization(mut self, param: AngleParameterization) -> Self {
         self.parameterization = param;
         self
     }
@@ -653,7 +653,7 @@ impl MultiAngleQAOA {
 
                 if idx + 1 < control_points.len() {
                     angles[layer][qubit] =
-                        control_points[idx] * (1.0 - frac) + control_points[idx + 1] * frac;
+                        control_points[idx].mul_add(1.0 - frac, control_points[idx + 1] * frac);
                 } else {
                     angles[layer][qubit] = control_points[idx];
                 }

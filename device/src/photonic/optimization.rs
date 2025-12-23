@@ -415,7 +415,8 @@ impl PhotonicOptimizer {
             // Random mutation
             if !candidate.gates.is_empty() {
                 let mutation_strength = 0.1;
-                candidate.total_fidelity *= 1.0 + (thread_rng().gen::<f64>() - 0.5) * mutation_strength;
+                candidate.total_fidelity *=
+                    1.0 + (thread_rng().gen::<f64>() - 0.5) * mutation_strength;
                 candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
             }
 

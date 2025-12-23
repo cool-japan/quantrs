@@ -4,7 +4,6 @@
 //! visualize quantum annealing results including energy landscapes,
 //! solution distributions, and convergence plots.
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     sampler::{SASampler, SampleResult, Sampler},
     visualization::{
@@ -15,6 +14,7 @@ use quantrs2_tytan::{
         solution_analysis::{ClusteringMethod, DistributionConfig, SolutionDistribution},
     },
 };
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -103,7 +103,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
     // Create variable map
     let mut var_map = HashMap::new();
     for i in 0..n_nodes {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
     }
 
     MaxCutProblem {
@@ -112,7 +112,7 @@ fn create_max_cut_problem() -> MaxCutProblem {
         adjacency,
         node_names: vec!["A", "B", "C", "D", "E", "F"]
             .into_iter()
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .collect(),
     }
 }
@@ -281,7 +281,7 @@ fn visualize_convergence(samples: &[SampleResult]) -> Result<(), Box<dyn std::er
     println!("  Total iterations: {}", analysis.total_iterations);
 
     if let Some(conv_iter) = analysis.convergence_iteration {
-        println!("  Converged at iteration: {}", conv_iter);
+        println!("  Converged at iteration: {conv_iter}");
     }
 
     println!(
@@ -332,7 +332,7 @@ fn visualize_max_cut_solution(
     // Extract partition
     let mut partition = Vec::new();
     for i in 0..problem.node_names.len() {
-        let var_name = format!("x_{}", i);
+        let var_name = format!("x_{i}");
         partition.push(
             best_sample
                 .assignments
@@ -353,7 +353,7 @@ fn visualize_max_cut_solution(
     }
 
     println!("Best Max-Cut solution:");
-    println!("  Cut weight: {:.1}", cut_weight);
+    println!("  Cut weight: {cut_weight:.1}");
     println!(
         "  Partition A: {:?}",
         problem

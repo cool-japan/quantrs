@@ -20,8 +20,8 @@ use quantrs2_core::{
 // use scirs2_core::communication::{MessagePassing, NetworkTopology};
 // use scirs2_core::load_balancing::{LoadBalancer, WorkDistribution};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -320,7 +320,7 @@ pub struct NodeCapabilities {
 }
 
 /// Node status
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NodeStatus {
     /// Node is active and available
     Active,
@@ -852,28 +852,28 @@ impl DistributedQuantumSimulator {
     }
 
     /// Detect available system memory
-    fn detect_available_memory() -> usize {
+    const fn detect_available_memory() -> usize {
         // Simple heuristic: assume 80% of system memory is available
         8 * 1024 * 1024 * 1024 // 8GB default
     }
 
     /// Detect CPU frequency
-    fn detect_cpu_frequency() -> f64 {
+    const fn detect_cpu_frequency() -> f64 {
         3.0 // 3GHz default
     }
 
     /// Detect network bandwidth
-    fn detect_network_bandwidth() -> f64 {
+    const fn detect_network_bandwidth() -> f64 {
         1000.0 // 1Gbps default
     }
 
     /// Detect GPU availability
-    fn detect_gpu_availability() -> bool {
+    const fn detect_gpu_availability() -> bool {
         false // Default to no GPU
     }
 
     /// Calculate maximum qubits based on available memory
-    fn calculate_max_qubits(available_memory: usize) -> usize {
+    const fn calculate_max_qubits(available_memory: usize) -> usize {
         // Each qubit requires 2^n complex numbers (16 bytes each)
         // Calculate maximum qubits that fit in available memory
         let complex_size = 16; // bytes per Complex64
@@ -943,13 +943,13 @@ impl DistributedQuantumSimulator {
     }
 
     /// Establish connections to cluster nodes
-    fn establish_connections(&mut self) -> QuantRS2Result<()> {
+    const fn establish_connections(&mut self) -> QuantRS2Result<()> {
         // Implementation would establish TCP connections to other nodes
         Ok(())
     }
 
     /// Start background services (heartbeat, load balancing, etc.)
-    fn start_background_services(&mut self) -> QuantRS2Result<()> {
+    const fn start_background_services(&mut self) -> QuantRS2Result<()> {
         // Implementation would start background threads for:
         // - Heartbeat monitoring
         // - Load balancing
@@ -960,11 +960,11 @@ impl DistributedQuantumSimulator {
 
     /// Distribute initial quantum state across cluster
     fn distribute_initial_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
-        let state_size = 1 << num_qubits;
-        let num_nodes = self.cluster_nodes.read().unwrap().len() + 1; // +1 for local node
+        let state_size: usize = 1 << num_qubits;
+        let num_nodes: usize = self.cluster_nodes.read().unwrap().len() + 1; // +1 for local node
 
         // Calculate chunk size per node
-        let chunk_size = (state_size + num_nodes - 1) / num_nodes;
+        let chunk_size = state_size.div_ceil(num_nodes);
 
         // Create state chunks
         let mut chunks = Vec::new();
@@ -981,13 +981,13 @@ impl DistributedQuantumSimulator {
                     owner_node: if i == 0 {
                         self.local_node.node_id
                     } else {
-                        self.cluster_nodes
+                        *self
+                            .cluster_nodes
                             .read()
                             .unwrap()
                             .keys()
                             .nth(i - 1)
                             .unwrap()
-                            .clone()
                     },
                     backup_nodes: vec![],
                     metadata: ChunkMetadata {
@@ -1035,7 +1035,7 @@ impl DistributedQuantumSimulator {
         let operation = DistributedGateOperation {
             operation_id: Uuid::new_v4(),
             target_qubits: affected_qubits.clone(),
-            affected_nodes: affected_nodes.clone(),
+            affected_nodes,
             communication_requirements: self
                 .calculate_communication_requirements(&affected_qubits)?,
             priority: OperationPriority::Normal,
@@ -1068,7 +1068,7 @@ impl DistributedQuantumSimulator {
     }
 
     /// Calculate communication requirements for gate operation
-    fn calculate_communication_requirements(
+    const fn calculate_communication_requirements(
         &self,
         qubits: &[QubitId],
     ) -> QuantRS2Result<CommunicationRequirements> {
@@ -1208,9 +1208,9 @@ impl LoadBalancer {
             return false;
         }
 
-        let loads: Vec<f64> = self.node_loads.values().cloned().collect();
-        let max_load = loads.iter().cloned().fold(0.0, f64::max);
-        let min_load = loads.iter().cloned().fold(1.0, f64::min);
+        let loads: Vec<f64> = self.node_loads.values().copied().collect();
+        let max_load = loads.iter().copied().fold(0.0, f64::max);
+        let min_load = loads.iter().copied().fold(1.0, f64::min);
 
         (max_load - min_load) > threshold
     }

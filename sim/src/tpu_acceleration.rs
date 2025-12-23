@@ -283,15 +283,15 @@ pub enum TPUDataType {
 
 impl TPUDataType {
     /// Get size in bytes
-    pub fn size_bytes(&self) -> usize {
+    pub const fn size_bytes(&self) -> usize {
         match self {
-            TPUDataType::Float32 => 4,
-            TPUDataType::Float64 => 8,
-            TPUDataType::BFloat16 => 2,
-            TPUDataType::Complex64 => 8,
-            TPUDataType::Complex128 => 16,
-            TPUDataType::Int32 => 4,
-            TPUDataType::Int64 => 8,
+            Self::Float32 => 4,
+            Self::Float64 => 8,
+            Self::BFloat16 => 2,
+            Self::Complex64 => 8,
+            Self::Complex128 => 16,
+            Self::Int32 => 4,
+            Self::Int64 => 8,
         }
     }
 }
@@ -1101,7 +1101,7 @@ impl TPUQuantumSimulator {
         for (i, state) in states.iter().enumerate() {
             for (j, _observable) in observables.iter().enumerate() {
                 // Simulate expectation value computation
-                let expectation = fastrand::f64() * 2.0 - 1.0; // Random value between -1 and 1
+                let expectation = fastrand::f64().mul_add(2.0, -1.0); // Random value between -1 and 1
                 results[[i, j]] = expectation;
             }
         }
@@ -1114,12 +1114,12 @@ impl TPUQuantumSimulator {
     }
 
     /// Get device information
-    pub fn get_device_info(&self) -> &TPUDeviceInfo {
+    pub const fn get_device_info(&self) -> &TPUDeviceInfo {
         &self.device_info
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &TPUStats {
+    pub const fn get_stats(&self) -> &TPUStats {
         &self.stats
     }
 
@@ -1134,7 +1134,7 @@ impl TPUQuantumSimulator {
     }
 
     /// Get memory usage
-    pub fn get_memory_usage(&self) -> (usize, usize) {
+    pub const fn get_memory_usage(&self) -> (usize, usize) {
         (
             self.memory_manager.used_memory,
             self.memory_manager.total_memory,
@@ -1223,26 +1223,23 @@ pub fn benchmark_tpu_acceleration() -> Result<HashMap<String, f64>> {
             simulator.compute_expectation_values_tpu(&initial_states, &observables)?;
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("tpu_config_{}", i), time);
+        results.insert(format!("tpu_config_{i}"), time);
 
         // Add performance metrics
         let stats = simulator.get_stats();
         results.insert(
-            format!("tpu_config_{}_operations", i),
+            format!("tpu_config_{i}_operations"),
             stats.total_operations as f64,
         );
+        results.insert(format!("tpu_config_{i}_avg_time"), stats.avg_operation_time);
         results.insert(
-            format!("tpu_config_{}_avg_time", i),
-            stats.avg_operation_time,
-        );
-        results.insert(
-            format!("tpu_config_{}_total_flops", i),
+            format!("tpu_config_{i}_total_flops"),
             stats.total_flops as f64,
         );
 
         let performance_metrics = stats.get_performance_metrics();
         for (key, value) in performance_metrics {
-            results.insert(format!("tpu_config_{}_{}", i, key), value);
+            results.insert(format!("tpu_config_{i}_{key}"), value);
         }
     }
 

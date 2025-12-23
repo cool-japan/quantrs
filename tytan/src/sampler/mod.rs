@@ -43,7 +43,10 @@ pub trait Sampler {
     /// A vector of sample results, sorted by energy (best solutions first)
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>>;
 
@@ -59,7 +62,10 @@ pub trait Sampler {
     /// A vector of sample results, sorted by energy (best solutions first)
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>>;
 }

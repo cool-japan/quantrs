@@ -1,8 +1,8 @@
 //! Data preprocessing for quantum anomaly detection
 
 use crate::error::{MLError, Result};
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, Axis};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::Rng;
 
 use super::config::{
@@ -310,31 +310,19 @@ impl DataPreprocessor {
     fn compute_correlation_scores(&self, data: &Array2<f64>) -> Array1<f64> {
         // Placeholder: compute feature correlations
         let n_features = data.ncols();
-        Array1::from_vec(
-            (0..n_features)
-                .map(|_| thread_rng().gen::<f64>())
-                .collect(),
-        )
+        Array1::from_vec((0..n_features).map(|_| thread_rng().gen::<f64>()).collect())
     }
 
     fn compute_mutual_information_scores(&self, data: &Array2<f64>) -> Array1<f64> {
         // Placeholder: compute mutual information
         let n_features = data.ncols();
-        Array1::from_vec(
-            (0..n_features)
-                .map(|_| thread_rng().gen::<f64>())
-                .collect(),
-        )
+        Array1::from_vec((0..n_features).map(|_| thread_rng().gen::<f64>()).collect())
     }
 
     fn compute_quantum_information_scores(&self, data: &Array2<f64>) -> Array1<f64> {
         // Placeholder: compute quantum information scores
         let n_features = data.ncols();
-        Array1::from_vec(
-            (0..n_features)
-                .map(|_| thread_rng().gen::<f64>())
-                .collect(),
-        )
+        Array1::from_vec((0..n_features).map(|_| thread_rng().gen::<f64>()).collect())
     }
 
     // Helper methods for dimensionality reduction

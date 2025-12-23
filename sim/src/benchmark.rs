@@ -5,8 +5,8 @@
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
 use crate::optimized_simulator::OptimizedSimulator;
@@ -61,7 +61,7 @@ impl BenchmarkResult {
         };
 
         let notes = if let Some(ref notes) = self.notes {
-            format!(" ({})", notes)
+            format!(" ({notes})")
         } else {
             String::new()
         };
@@ -266,10 +266,7 @@ fn benchmark_circuit_size<const N: usize>(
     gates_per_qubit: usize,
     two_qubit_ratio: f64,
 ) {
-    println!(
-        "\n=== {} Circuit Tests (up to {} qubits) ===",
-        size_name, max_qubits
-    );
+    println!("\n=== {size_name} Circuit Tests (up to {max_qubits} qubits) ===");
 
     // Only proceed if the template parameter is big enough
     if N < max_qubits {
@@ -285,7 +282,7 @@ fn benchmark_circuit_size<const N: usize>(
         max_qubits,
     ] {
         let num_gates = qubits * gates_per_qubit;
-        println!("\nCircuit with {} qubits and {} gates:", qubits, num_gates);
+        println!("\nCircuit with {qubits} qubits and {num_gates} gates:");
 
         // Generate the circuit
         let circuit = generate_benchmark_circuit::<N>(num_gates, two_qubit_ratio);
@@ -307,10 +304,7 @@ fn benchmark_large_circuit<const N: usize>(
     gates_per_qubit: usize,
     two_qubit_ratio: f64,
 ) {
-    println!(
-        "\n=== {} Circuit Tests ({} qubits) ===",
-        size_name, max_qubits
-    );
+    println!("\n=== {size_name} Circuit Tests ({max_qubits} qubits) ===");
 
     // Only proceed if the template parameter is big enough
     if N < max_qubits {
@@ -319,10 +313,7 @@ fn benchmark_large_circuit<const N: usize>(
     }
 
     let num_gates = max_qubits * gates_per_qubit;
-    println!(
-        "\nCircuit with {} qubits and {} gates:",
-        max_qubits, num_gates
-    );
+    println!("\nCircuit with {max_qubits} qubits and {num_gates} gates:");
 
     // Generate the circuit
     let circuit = generate_benchmark_circuit::<N>(num_gates, two_qubit_ratio);

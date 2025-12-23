@@ -35,7 +35,7 @@ fn main() -> quantrs2_core::error::QuantRS2Result<()> {
     // Test different noise models
     demo_uniform_noise(&circuit)?;
     demo_ibm_noise(&circuit)?;
-    demo_noise_aware_cost_model(&circuit)?;
+    demo_noise_aware_cost_model(&circuit);
     demo_noise_optimization_passes(&circuit)?;
 
     Ok(())
@@ -61,11 +61,11 @@ fn demo_uniform_noise(circuit: &Circuit<4>) -> quantrs2_core::error::QuantRS2Res
     println!("  CNOT gate time: {:.1} ns", noise_model.gate_time("CNOT"));
 
     let original_fidelity = optimizer.estimate_fidelity(circuit);
-    println!("\nOriginal circuit fidelity: {:.4}", original_fidelity);
+    println!("\nOriginal circuit fidelity: {original_fidelity:.4}");
 
     let optimized = optimizer.optimize(circuit)?;
     let optimized_fidelity = optimizer.estimate_fidelity(&optimized);
-    println!("Optimized circuit fidelity: {:.4}", optimized_fidelity);
+    println!("Optimized circuit fidelity: {optimized_fidelity:.4}");
 
     if optimized_fidelity > original_fidelity {
         println!(
@@ -100,11 +100,11 @@ fn demo_ibm_noise(circuit: &Circuit<4>) -> quantrs2_core::error::QuantRS2Result<
     println!("  CNOT gate time: {:.1} ns", noise_model.gate_time("CNOT"));
 
     let original_fidelity = optimizer.estimate_fidelity(circuit);
-    println!("\nOriginal circuit fidelity: {:.4}", original_fidelity);
+    println!("\nOriginal circuit fidelity: {original_fidelity:.4}");
 
     let optimized = optimizer.optimize(circuit)?;
     let optimized_fidelity = optimizer.estimate_fidelity(&optimized);
-    println!("Optimized circuit fidelity: {:.4}", optimized_fidelity);
+    println!("Optimized circuit fidelity: {optimized_fidelity:.4}");
 
     println!("Available optimization passes:");
     for pass in optimizer.get_passes() {
@@ -115,7 +115,7 @@ fn demo_ibm_noise(circuit: &Circuit<4>) -> quantrs2_core::error::QuantRS2Result<
     Ok(())
 }
 
-fn demo_noise_aware_cost_model(circuit: &Circuit<4>) -> quantrs2_core::error::QuantRS2Result<()> {
+fn demo_noise_aware_cost_model(circuit: &Circuit<4>) {
     println!("--- Noise-Aware Cost Analysis ---");
 
     let uniform_noise = NoiseModel::uniform(4);
@@ -128,8 +128,8 @@ fn demo_noise_aware_cost_model(circuit: &Circuit<4>) -> quantrs2_core::error::Qu
     let ibm_cost = ibm_cost_model.circuit_cost(circuit);
 
     println!("Circuit costs with different noise models:");
-    println!("  Uniform noise model: {:.2}", uniform_cost);
-    println!("  IBM-like noise model: {:.2}", ibm_cost);
+    println!("  Uniform noise model: {uniform_cost:.2}");
+    println!("  IBM-like noise model: {ibm_cost:.2}");
 
     // Analyze individual gate costs
     println!("\nGate-by-gate cost analysis (IBM model):");
@@ -139,7 +139,6 @@ fn demo_noise_aware_cost_model(circuit: &Circuit<4>) -> quantrs2_core::error::Qu
     }
 
     println!();
-    Ok(())
 }
 
 fn demo_noise_optimization_passes(
@@ -162,7 +161,7 @@ fn demo_noise_optimization_passes(
     }
 
     // Test noise-aware mapping
-    let mapping_opt = NoiseAwareMapping::new(noise_model.clone(), coupling_map.clone());
+    let mapping_opt = NoiseAwareMapping::new(noise_model.clone(), coupling_map);
     if mapping_opt.should_apply() {
         let mapping_result = mapping_opt.apply(circuit, &cost_model)?;
         println!("✓ Noise-aware mapping applied");
@@ -171,7 +170,7 @@ fn demo_noise_optimization_passes(
     }
 
     // Test dynamical decoupling
-    let dd_opt = DynamicalDecoupling::new(noise_model.clone());
+    let dd_opt = DynamicalDecoupling::new(noise_model);
     if dd_opt.should_apply() {
         let dd_result = dd_opt.apply(circuit, &cost_model)?;
         println!("✓ Dynamical decoupling applied");
@@ -213,12 +212,12 @@ fn demo_fidelity_comparison() -> quantrs2_core::error::QuantRS2Result<()> {
             _ => "Unknown",
         };
 
-        print!("{:<12}", circuit_name);
+        print!("{circuit_name:<12}");
 
         for (_, noise_model) in &noise_models {
             let optimizer = NoiseAwareOptimizer::new(noise_model.clone());
             let fidelity = optimizer.estimate_fidelity(circuit);
-            print!(" {:<8.4}", fidelity);
+            print!(" {fidelity:<8.4}");
         }
         println!();
     }

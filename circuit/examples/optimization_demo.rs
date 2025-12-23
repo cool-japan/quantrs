@@ -71,7 +71,7 @@ fn demo_optimization_levels(circuit: &Circuit<4>) {
     ];
 
     for level in levels {
-        println!("\nOptimization Level: {:?}", level);
+        println!("\nOptimization Level: {level:?}");
 
         let start = Instant::now();
         let mut optimizer = CircuitOptimizer2::<4>::with_level(level);
@@ -79,14 +79,14 @@ fn demo_optimization_levels(circuit: &Circuit<4>) {
         match optimizer.optimize(circuit) {
             Ok(report) => {
                 let duration = start.elapsed();
-                println!("  Optimization time: {:?}", duration);
+                println!("  Optimization time: {duration:?}");
                 println!("  Initial gates: {}", report.initial_metrics.gate_count);
                 println!("  Final gates: {}", report.final_metrics.gate_count);
                 println!("  Gate reduction: {:.1}%", report.improvement().gate_count);
                 println!("  Applied passes: {:?}", report.applied_passes);
             }
             Err(e) => {
-                println!("  Optimization failed: {:?}", e);
+                println!("  Optimization failed: {e:?}");
             }
         }
     }
@@ -100,7 +100,7 @@ fn demo_hardware_optimization(circuit: &Circuit<4>) {
     let backends = ["ibm", "google", "aws"];
 
     for backend in backends {
-        println!("\nBackend: {}", backend);
+        println!("\nBackend: {backend}");
 
         let mut optimizer = CircuitOptimizer2::<4>::for_hardware(backend);
 
@@ -121,7 +121,7 @@ fn demo_hardware_optimization(circuit: &Circuit<4>) {
                 );
             }
             Err(e) => {
-                println!("  Optimization failed: {:?}", e);
+                println!("  Optimization failed: {e:?}");
             }
         }
     }
@@ -160,7 +160,7 @@ fn demo_custom_optimization(circuit: &Circuit<4>) {
             report.print_summary();
         }
         Err(e) => {
-            println!("Custom optimization failed: {:?}", e);
+            println!("Custom optimization failed: {e:?}");
         }
     }
 }
@@ -180,7 +180,7 @@ fn demo_gate_properties() {
             _ => continue,
         };
 
-        println!("\n{} Gate Properties:", gate_name);
+        println!("\n{gate_name} Gate Properties:");
         println!("  Native: {}", props.is_native);
         println!("  Duration: {:.1} ns", props.cost.duration_ns);
         println!("  Error rate: {:.6}", props.error.error_rate);
@@ -240,10 +240,10 @@ fn benchmark_optimization_passes(circuit: &Circuit<4>) {
         match pass.apply(circuit, &cost_model) {
             Ok(_) => {
                 let duration = start.elapsed();
-                println!("  {}: {:?}", name, duration);
+                println!("  {name}: {duration:?}");
             }
             Err(e) => {
-                println!("  {} failed: {:?}", name, e);
+                println!("  {name} failed: {e:?}");
             }
         }
     }
@@ -256,7 +256,7 @@ fn benchmark_optimization_passes(circuit: &Circuit<4>) {
     match optimizer.optimize(circuit) {
         Ok(report) => {
             let duration = start.elapsed();
-            println!("  Total time: {:?}", duration);
+            println!("  Total time: {duration:?}");
             println!(
                 "  Gates reduced: {} → {}",
                 report.initial_metrics.gate_count, report.final_metrics.gate_count
@@ -267,7 +267,7 @@ fn benchmark_optimization_passes(circuit: &Circuit<4>) {
             println!("{}", report.detailed_report());
         }
         Err(e) => {
-            println!("  Benchmark failed: {:?}", e);
+            println!("  Benchmark failed: {e:?}");
         }
     }
 }
@@ -276,7 +276,7 @@ fn benchmark_optimization_passes(circuit: &Circuit<4>) {
 struct MyCustomPass;
 
 impl OptimizationPass for MyCustomPass {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "My Custom Pass"
     }
 

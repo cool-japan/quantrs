@@ -59,6 +59,7 @@ pub struct GatePool {
 
 impl GatePool {
     /// Create a new gate pool with common gates pre-allocated
+    #[must_use]
     pub fn new() -> Self {
         let mut gates = HashMap::with_capacity(16);
 
@@ -68,27 +69,27 @@ impl GatePool {
 
             // Common single-qubit gates
             gates.insert(
-                format!("H_{}", qubit_id),
+                format!("H_{qubit_id}"),
                 Arc::new(Hadamard { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("X_{}", qubit_id),
+                format!("X_{qubit_id}"),
                 Arc::new(PauliX { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("Y_{}", qubit_id),
+                format!("Y_{qubit_id}"),
                 Arc::new(PauliY { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("Z_{}", qubit_id),
+                format!("Z_{qubit_id}"),
                 Arc::new(PauliZ { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("S_{}", qubit_id),
+                format!("S_{qubit_id}"),
                 Arc::new(Phase { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
             gates.insert(
-                format!("T_{}", qubit_id),
+                format!("T_{qubit_id}"),
                 Arc::new(T { target: qubit }) as Arc<dyn GateOp + Send + Sync>,
             );
         }
@@ -186,6 +187,7 @@ impl<const N: usize> fmt::Debug for Circuit<N> {
 
 impl<const N: usize> Circuit<N> {
     /// Create a new empty circuit with N qubits
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gates: Vec::with_capacity(64), // Pre-allocate capacity for better performance
@@ -194,6 +196,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Create a new circuit with estimated capacity
+    #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             gates: Vec::with_capacity(capacity),
@@ -248,11 +251,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get all gates in the circuit
+    #[must_use]
     pub fn gates(&self) -> &[Arc<dyn GateOp + Send + Sync>] {
         &self.gates
     }
 
     /// Get gates as Vec for compatibility with existing optimization code
+    #[must_use]
     pub fn gates_as_boxes(&self) -> Vec<Box<dyn GateOp>> {
         self.gates
             .iter()
@@ -263,6 +268,7 @@ impl<const N: usize> Circuit<N> {
     /// Circuit introspection methods for optimization
 
     /// Count gates by type
+    #[must_use]
     pub fn count_gates_by_type(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
         for gate in &self.gates {
@@ -272,6 +278,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Calculate circuit depth (longest sequential path)
+    #[must_use]
     pub fn calculate_depth(&self) -> usize {
         if self.gates.is_empty() {
             return 0;
@@ -305,6 +312,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Count two-qubit gates
+    #[must_use]
     pub fn count_two_qubit_gates(&self) -> usize {
         self.gates
             .iter()
@@ -313,6 +321,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Count multi-qubit gates (3 or more qubits)
+    #[must_use]
     pub fn count_multi_qubit_gates(&self) -> usize {
         self.gates
             .iter()
@@ -321,11 +330,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Calculate the critical path length (same as depth for now, but could be enhanced)
+    #[must_use]
     pub fn calculate_critical_path(&self) -> usize {
         self.calculate_depth()
     }
 
     /// Calculate gate density (gates per qubit)
+    #[must_use]
     pub fn calculate_gate_density(&self) -> f64 {
         if N == 0 {
             0.0
@@ -335,6 +346,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get all unique qubits used in the circuit
+    #[must_use]
     pub fn get_used_qubits(&self) -> HashSet<QubitId> {
         let mut used_qubits = HashSet::new();
         for gate in &self.gates {
@@ -346,11 +358,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Check if the circuit uses all available qubits
+    #[must_use]
     pub fn uses_all_qubits(&self) -> bool {
         self.get_used_qubits().len() == N
     }
 
     /// Get gates that operate on a specific qubit
+    #[must_use]
     pub fn gates_on_qubit(&self, target_qubit: QubitId) -> Vec<&Arc<dyn GateOp + Send + Sync>> {
         self.gates
             .iter()
@@ -359,6 +373,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get gates between two indices (inclusive)
+    #[must_use]
     pub fn gates_in_range(&self, start: usize, end: usize) -> &[Arc<dyn GateOp + Send + Sync>] {
         let end = end.min(self.gates.len().saturating_sub(1));
         let start = start.min(end);
@@ -366,11 +381,13 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Check if circuit is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.gates.is_empty()
     }
 
     /// Get circuit statistics summary
+    #[must_use]
     pub fn get_stats(&self) -> CircuitStats {
         let gate_counts = self.count_gates_by_type();
         let depth = self.calculate_depth();
@@ -392,16 +409,19 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get the number of qubits in the circuit
-    pub fn num_qubits(&self) -> usize {
+    #[must_use]
+    pub const fn num_qubits(&self) -> usize {
         N
     }
 
     /// Get the number of gates in the circuit
+    #[must_use]
     pub fn num_gates(&self) -> usize {
         self.gates.len()
     }
 
     /// Get the names of all gates in the circuit
+    #[must_use]
     pub fn get_gate_names(&self) -> Vec<String> {
         self.gates
             .iter()
@@ -410,6 +430,7 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Get a qubit for a specific single-qubit gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> pyo3::PyResult<u32> {
         self.find_gate_by_type_and_index(gate_type, index)
             .and_then(|gate| {
@@ -421,13 +442,13 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a single-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a single-qubit gate"
                 ))
             })
     }
 
     /// Get rotation parameters (qubit, angle) for a specific gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -446,13 +467,13 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a rotation gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a rotation gate"
                 ))
             })
     }
 
     /// Get two-qubit parameters (control, target) for a specific gate by gate type and index
+    #[cfg(feature = "python")]
     pub fn get_two_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -468,13 +489,13 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a two-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a two-qubit gate"
                 ))
             })
     }
 
     /// Get controlled rotation parameters (control, target, angle) for a specific gate
+    #[cfg(feature = "python")]
     pub fn get_controlled_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -493,13 +514,13 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a controlled rotation gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a controlled rotation gate"
                 ))
             })
     }
 
     /// Get three-qubit parameters for gates like Toffoli or Fredkin
+    #[cfg(feature = "python")]
     pub fn get_three_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -519,8 +540,7 @@ impl<const N: usize> Circuit<N> {
             })
             .ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Gate {} at index {} not found or is not a three-qubit gate",
-                    gate_type, index
+                    "Gate {gate_type} at index {index} not found or is not a three-qubit gate"
                 ))
             })
     }
@@ -865,7 +885,8 @@ impl<const N: usize> Circuit<N> {
     }
 
     /// Build the circuit (for compatibility - returns self)
-    pub fn build(self) -> Self {
+    #[must_use]
+    pub const fn build(self) -> Self {
         self
     }
 
@@ -916,19 +937,19 @@ impl<const N: usize> Circuit<N> {
         // Convert the specific gate types to Arc using match
         if let Some(h_gate) = cloned_gate.as_any().downcast_ref::<Hadamard>() {
             self.gates
-                .push(Arc::new(h_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+                .push(Arc::new(*h_gate) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(x_gate) = cloned_gate.as_any().downcast_ref::<PauliX>() {
             self.gates
-                .push(Arc::new(x_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+                .push(Arc::new(*x_gate) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(y_gate) = cloned_gate.as_any().downcast_ref::<PauliY>() {
             self.gates
-                .push(Arc::new(y_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+                .push(Arc::new(*y_gate) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(z_gate) = cloned_gate.as_any().downcast_ref::<PauliZ>() {
             self.gates
-                .push(Arc::new(z_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+                .push(Arc::new(*z_gate) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(cnot_gate) = cloned_gate.as_any().downcast_ref::<CNOT>() {
             self.gates
-                .push(Arc::new(cnot_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
+                .push(Arc::new(*cnot_gate) as Arc<dyn GateOp + Send + Sync>);
         } else if let Some(measure_gate) = cloned_gate.as_any().downcast_ref::<Measure>() {
             self.gates
                 .push(Arc::new(measure_gate.clone()) as Arc<dyn GateOp + Send + Sync>);
@@ -1014,7 +1035,8 @@ impl<const N: usize> Circuit<N> {
         Ok(self)
     }
 
-    /// Convert this circuit to a ClassicalCircuit with classical control support
+    /// Convert this circuit to a `ClassicalCircuit` with classical control support
+    #[must_use]
     pub fn with_classical_control(self) -> crate::classical::ClassicalCircuit<N> {
         let mut classical_circuit = crate::classical::ClassicalCircuit::new();
 
@@ -1031,6 +1053,323 @@ impl<const N: usize> Circuit<N> {
 
         classical_circuit
     }
+
+    // Batch operations for improved ergonomics
+
+    /// Apply Hadamard gates to multiple qubits at once
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<5>::new();
+    /// circuit.h_all(&[0, 1, 2])?; // Apply H to qubits 0, 1, and 2
+    /// ```
+    pub fn h_all(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.h(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply Pauli-X gates to multiple qubits at once
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<5>::new();
+    /// circuit.x_all(&[0, 2, 4])?; // Apply X to qubits 0, 2, and 4
+    /// ```
+    pub fn x_all(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.x(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply Pauli-Y gates to multiple qubits at once
+    pub fn y_all(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.y(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply Pauli-Z gates to multiple qubits at once
+    pub fn z_all(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.z(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply Hadamard gates to a range of qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<5>::new();
+    /// circuit.h_range(0..3)?; // Apply H to qubits 0, 1, and 2
+    /// ```
+    pub fn h_range(&mut self, range: std::ops::Range<u32>) -> QuantRS2Result<&mut Self> {
+        for qubit in range {
+            self.h(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply Pauli-X gates to a range of qubits
+    pub fn x_range(&mut self, range: std::ops::Range<u32>) -> QuantRS2Result<&mut Self> {
+        for qubit in range {
+            self.x(QubitId::new(qubit))?;
+        }
+        Ok(self)
+    }
+
+    // Common quantum state preparation patterns
+
+    /// Prepare a Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2 on two qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<2>::new();
+    /// circuit.bell_state(0, 1)?; // Prepare Bell state on qubits 0 and 1
+    /// ```
+    pub fn bell_state(&mut self, qubit1: u32, qubit2: u32) -> QuantRS2Result<&mut Self> {
+        self.h(QubitId::new(qubit1))?;
+        self.cnot(QubitId::new(qubit1), QubitId::new(qubit2))?;
+        Ok(self)
+    }
+
+    /// Prepare a GHZ state (|000...⟩ + |111...⟩)/√2 on specified qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<3>::new();
+    /// circuit.ghz_state(&[0, 1, 2])?; // Prepare GHZ state on qubits 0, 1, and 2
+    /// ```
+    pub fn ghz_state(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.is_empty() {
+            return Ok(self);
+        }
+
+        // Apply Hadamard to first qubit
+        self.h(QubitId::new(qubits[0]))?;
+
+        // Apply CNOT gates to entangle all qubits
+        for i in 1..qubits.len() {
+            self.cnot(QubitId::new(qubits[0]), QubitId::new(qubits[i]))?;
+        }
+
+        Ok(self)
+    }
+
+    /// Prepare a W state on specified qubits
+    ///
+    /// W state: (|100...⟩ + |010...⟩ + |001...⟩ + ...)/√n
+    ///
+    /// This is an approximation using rotation gates.
+    pub fn w_state(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.is_empty() {
+            return Ok(self);
+        }
+
+        let n = qubits.len() as f64;
+
+        // For n qubits, prepare W state using controlled rotations
+        // This is a simplified implementation
+        self.ry(QubitId::new(qubits[0]), 2.0 * (1.0 / n.sqrt()).acos())?;
+
+        for i in 1..qubits.len() {
+            let angle = 2.0 * (1.0 / (n - i as f64).sqrt()).acos();
+            self.cry(QubitId::new(qubits[i - 1]), QubitId::new(qubits[i]), angle)?;
+        }
+
+        // Apply X gates to ensure proper state preparation
+        for i in 0..qubits.len() - 1 {
+            self.cnot(QubitId::new(qubits[i + 1]), QubitId::new(qubits[i]))?;
+        }
+
+        Ok(self)
+    }
+
+    /// Prepare a product state |++++...⟩ by applying Hadamard to all qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<4>::new();
+    /// circuit.plus_state_all()?; // Prepare |+⟩ on all 4 qubits
+    /// ```
+    pub fn plus_state_all(&mut self) -> QuantRS2Result<&mut Self> {
+        for i in 0..N {
+            self.h(QubitId::new(i as u32))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply a rotation gate to multiple qubits with the same angle
+    pub fn rx_all(&mut self, qubits: &[u32], theta: f64) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.rx(QubitId::new(qubit), theta)?;
+        }
+        Ok(self)
+    }
+
+    /// Apply RY rotation to multiple qubits
+    pub fn ry_all(&mut self, qubits: &[u32], theta: f64) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.ry(QubitId::new(qubit), theta)?;
+        }
+        Ok(self)
+    }
+
+    /// Apply RZ rotation to multiple qubits
+    pub fn rz_all(&mut self, qubits: &[u32], theta: f64) -> QuantRS2Result<&mut Self> {
+        for &qubit in qubits {
+            self.rz(QubitId::new(qubit), theta)?;
+        }
+        Ok(self)
+    }
+
+    /// Create a ladder of CNOT gates connecting adjacent qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<4>::new();
+    /// circuit.cnot_ladder(&[0, 1, 2, 3])?; // Creates: CNOT(0,1), CNOT(1,2), CNOT(2,3)
+    /// ```
+    pub fn cnot_ladder(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.len() < 2 {
+            return Ok(self);
+        }
+
+        for i in 0..qubits.len() - 1 {
+            self.cnot(QubitId::new(qubits[i]), QubitId::new(qubits[i + 1]))?;
+        }
+
+        Ok(self)
+    }
+
+    /// Create a ring of CNOT gates connecting qubits in a cycle
+    ///
+    /// Like CNOT ladder but also connects last to first qubit.
+    pub fn cnot_ring(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.len() < 2 {
+            return Ok(self);
+        }
+
+        // Add ladder
+        self.cnot_ladder(qubits)?;
+
+        // Close the ring by connecting last to first
+        let last_idx = qubits.len() - 1;
+        self.cnot(QubitId::new(qubits[last_idx]), QubitId::new(qubits[0]))?;
+
+        Ok(self)
+    }
+
+    /// Create a ladder of SWAP gates connecting adjacent qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<4>::new();
+    /// circuit.swap_ladder(&[0, 1, 2, 3])?; // Creates: SWAP(0,1), SWAP(1,2), SWAP(2,3)
+    /// ```
+    pub fn swap_ladder(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.len() < 2 {
+            return Ok(self);
+        }
+
+        for i in 0..qubits.len() - 1 {
+            self.swap(QubitId::new(qubits[i]), QubitId::new(qubits[i + 1]))?;
+        }
+
+        Ok(self)
+    }
+
+    /// Create a ladder of CZ gates connecting adjacent qubits
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<4>::new();
+    /// circuit.cz_ladder(&[0, 1, 2, 3])?; // Creates: CZ(0,1), CZ(1,2), CZ(2,3)
+    /// ```
+    pub fn cz_ladder(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        if qubits.len() < 2 {
+            return Ok(self);
+        }
+
+        for i in 0..qubits.len() - 1 {
+            self.cz(QubitId::new(qubits[i]), QubitId::new(qubits[i + 1]))?;
+        }
+
+        Ok(self)
+    }
+
+    /// Apply SWAP gates to multiple qubit pairs
+    ///
+    /// # Arguments
+    /// * `pairs` - Slice of (control, target) qubit pairs
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<6>::new();
+    /// circuit.swap_all(&[(0, 1), (2, 3), (4, 5)])?; // Swap three pairs simultaneously
+    /// ```
+    pub fn swap_all(&mut self, pairs: &[(u32, u32)]) -> QuantRS2Result<&mut Self> {
+        for &(q1, q2) in pairs {
+            self.swap(QubitId::new(q1), QubitId::new(q2))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply CZ gates to multiple qubit pairs
+    ///
+    /// # Arguments
+    /// * `pairs` - Slice of (control, target) qubit pairs
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<6>::new();
+    /// circuit.cz_all(&[(0, 1), (2, 3), (4, 5)])?; // Apply CZ to three pairs
+    /// ```
+    pub fn cz_all(&mut self, pairs: &[(u32, u32)]) -> QuantRS2Result<&mut Self> {
+        for &(q1, q2) in pairs {
+            self.cz(QubitId::new(q1), QubitId::new(q2))?;
+        }
+        Ok(self)
+    }
+
+    /// Apply CNOT gates to multiple qubit pairs
+    ///
+    /// # Arguments
+    /// * `pairs` - Slice of (control, target) qubit pairs
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<6>::new();
+    /// circuit.cnot_all(&[(0, 1), (2, 3), (4, 5)])?; // Apply CNOT to three pairs
+    /// ```
+    pub fn cnot_all(&mut self, pairs: &[(u32, u32)]) -> QuantRS2Result<&mut Self> {
+        for &(control, target) in pairs {
+            self.cnot(QubitId::new(control), QubitId::new(target))?;
+        }
+        Ok(self)
+    }
+
+    /// Add barriers to multiple qubits
+    ///
+    /// Barriers prevent optimization across them and can be used to
+    /// visualize circuit structure.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let mut circuit = Circuit::<5>::new();
+    /// circuit.h_all(&[0, 1, 2])?;
+    /// circuit.barrier_all(&[0, 1, 2])?; // Prevent optimization across this point
+    /// circuit.cnot_ladder(&[0, 1, 2])?;
+    /// ```
+    pub fn barrier_all(&mut self, qubits: &[u32]) -> QuantRS2Result<&mut Self> {
+        let qubit_ids: Vec<QubitId> = qubits.iter().map(|&q| QubitId::new(q)).collect();
+        self.barrier(&qubit_ids)?;
+        Ok(self)
+    }
 }
 
 impl<const N: usize> Default for Circuit<N> {
@@ -1043,4 +1382,377 @@ impl<const N: usize> Default for Circuit<N> {
 pub trait Simulator<const N: usize> {
     /// Run a quantum circuit and return the final register state
     fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<Register<N>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_h_all() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.h_all(&[0, 1, 2]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "H");
+        }
+    }
+
+    #[test]
+    fn test_x_all() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.x_all(&[0, 2, 4]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "X");
+        }
+    }
+
+    #[test]
+    fn test_y_all() {
+        let mut circuit = Circuit::<3>::new();
+        circuit.y_all(&[0, 1, 2]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "Y");
+        }
+    }
+
+    #[test]
+    fn test_z_all() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.z_all(&[1, 3]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 2);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "Z");
+        }
+    }
+
+    #[test]
+    fn test_h_range() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.h_range(0..3).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "H");
+        }
+    }
+
+    #[test]
+    fn test_x_range() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.x_range(1..4).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "X");
+        }
+    }
+
+    #[test]
+    fn test_bell_state() {
+        let mut circuit = Circuit::<2>::new();
+        circuit.bell_state(0, 1).unwrap();
+
+        assert_eq!(circuit.gates().len(), 2);
+        assert_eq!(circuit.gates()[0].name(), "H");
+        assert_eq!(circuit.gates()[1].name(), "CNOT");
+    }
+
+    #[test]
+    fn test_ghz_state() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.ghz_state(&[0, 1, 2, 3]).unwrap();
+
+        // Should have 1 H + 3 CNOTs
+        assert_eq!(circuit.gates().len(), 4);
+        assert_eq!(circuit.gates()[0].name(), "H");
+        for i in 1..4 {
+            assert_eq!(circuit.gates()[i].name(), "CNOT");
+        }
+    }
+
+    #[test]
+    fn test_ghz_state_empty() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.ghz_state(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_w_state() {
+        let mut circuit = Circuit::<3>::new();
+        circuit.w_state(&[0, 1, 2]).unwrap();
+
+        // W state requires RY + CRY + CNOT gates
+        assert!(circuit.gates().len() > 0);
+        // At least one rotation gate
+        assert!(circuit
+            .gates()
+            .iter()
+            .any(|g| g.name() == "RY" || g.name() == "CRY"));
+    }
+
+    #[test]
+    fn test_w_state_empty() {
+        let mut circuit = Circuit::<3>::new();
+        circuit.w_state(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_plus_state_all() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.plus_state_all().unwrap();
+
+        assert_eq!(circuit.gates().len(), 4);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "H");
+        }
+    }
+
+    #[test]
+    fn test_rx_all() {
+        let mut circuit = Circuit::<4>::new();
+        let theta = std::f64::consts::PI / 4.0;
+        circuit.rx_all(&[0, 1, 2], theta).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "RX");
+        }
+    }
+
+    #[test]
+    fn test_ry_all() {
+        let mut circuit = Circuit::<4>::new();
+        let theta = std::f64::consts::PI / 3.0;
+        circuit.ry_all(&[0, 2], theta).unwrap();
+
+        assert_eq!(circuit.gates().len(), 2);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "RY");
+        }
+    }
+
+    #[test]
+    fn test_rz_all() {
+        let mut circuit = Circuit::<5>::new();
+        let theta = std::f64::consts::PI / 2.0;
+        circuit.rz_all(&[1, 2, 3], theta).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "RZ");
+        }
+    }
+
+    #[test]
+    fn test_cnot_ladder() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.cnot_ladder(&[0, 1, 2, 3]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "CNOT");
+        }
+    }
+
+    #[test]
+    fn test_cnot_ladder_too_small() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.cnot_ladder(&[0]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_cnot_ring() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.cnot_ring(&[0, 1, 2, 3]).unwrap();
+
+        // Should have 4 CNOTs (3 for ladder + 1 to close ring)
+        assert_eq!(circuit.gates().len(), 4);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "CNOT");
+        }
+    }
+
+    #[test]
+    fn test_cnot_ring_too_small() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.cnot_ring(&[0]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_combined_patterns() {
+        let mut circuit = Circuit::<5>::new();
+
+        // Initialize all qubits to |+⟩
+        circuit.plus_state_all().unwrap();
+
+        // Create entanglement with CNOT ladder
+        circuit.cnot_ladder(&[0, 1, 2, 3, 4]).unwrap();
+
+        // Apply phase to some qubits
+        circuit.z_all(&[0, 2, 4]).unwrap();
+
+        let stats = circuit.get_stats();
+        assert_eq!(stats.total_gates, 5 + 4 + 3); // 5 H + 4 CNOT + 3 Z
+        assert_eq!(stats.total_qubits, 5);
+    }
+
+    #[test]
+    fn test_swap_ladder() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.swap_ladder(&[0, 1, 2, 3]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3); // SWAP(0,1), SWAP(1,2), SWAP(2,3)
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "SWAP");
+        }
+    }
+
+    #[test]
+    fn test_swap_ladder_empty() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.swap_ladder(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_swap_ladder_single() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.swap_ladder(&[0]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_cz_ladder() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.cz_ladder(&[0, 1, 2, 3]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3); // CZ(0,1), CZ(1,2), CZ(2,3)
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "CZ");
+        }
+    }
+
+    #[test]
+    fn test_cz_ladder_empty() {
+        let mut circuit = Circuit::<4>::new();
+        circuit.cz_ladder(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_swap_all() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.swap_all(&[(0, 1), (2, 3), (4, 5)]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "SWAP");
+        }
+    }
+
+    #[test]
+    fn test_swap_all_empty() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.swap_all(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_cz_all() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.cz_all(&[(0, 1), (2, 3), (4, 5)]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "CZ");
+        }
+    }
+
+    #[test]
+    fn test_cz_all_empty() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.cz_all(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_cnot_all() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.cnot_all(&[(0, 1), (2, 3), (4, 5)]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 3);
+        for gate in circuit.gates() {
+            assert_eq!(gate.name(), "CNOT");
+        }
+    }
+
+    #[test]
+    fn test_cnot_all_empty() {
+        let mut circuit = Circuit::<6>::new();
+        circuit.cnot_all(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_barrier_all() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.h_all(&[0, 1, 2]).unwrap();
+        circuit.barrier_all(&[0, 1, 2]).unwrap();
+        circuit.cnot_ladder(&[0, 1, 2]).unwrap();
+
+        // Barriers don't currently add gates (they're implicit in the optimization framework)
+        // Should have 3 H + 2 CNOT
+        assert_eq!(circuit.gates().len(), 5);
+    }
+
+    #[test]
+    fn test_barrier_all_empty() {
+        let mut circuit = Circuit::<5>::new();
+        circuit.barrier_all(&[]).unwrap();
+
+        assert_eq!(circuit.gates().len(), 0);
+    }
+
+    #[test]
+    fn test_advanced_entanglement_patterns() {
+        let mut circuit = Circuit::<6>::new();
+
+        // Create superposition
+        circuit.h_all(&[0, 1, 2, 3, 4, 5]).unwrap();
+
+        // Add barrier to prevent optimization (implicit, doesn't add gates)
+        circuit.barrier_all(&[0, 1, 2, 3, 4, 5]).unwrap();
+
+        // Create entanglement with CZ ladder
+        circuit.cz_ladder(&[0, 1, 2, 3, 4, 5]).unwrap();
+
+        // Add more entanglement with CNOT pairs
+        circuit.cnot_all(&[(0, 3), (1, 4), (2, 5)]).unwrap();
+
+        let stats = circuit.get_stats();
+        // 6 H + 5 CZ + 3 CNOT = 14 gates (barriers are implicit)
+        assert_eq!(stats.total_gates, 14);
+        assert_eq!(stats.total_qubits, 6);
+    }
 }

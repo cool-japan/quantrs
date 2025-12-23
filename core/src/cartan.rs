@@ -15,9 +15,9 @@ use crate::{
     qubit::QubitId,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 use std::f64::consts::PI;
 
 /// Result of Cartan decomposition for a two-qubit unitary
@@ -88,7 +88,10 @@ impl CartanCoefficients {
             (self.yy.abs(), self.yy, 1),
             (self.zz.abs(), self.zz, 2),
         ];
-        vals.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        vals.sort_by(|a, b| {
+            b.0.partial_cmp(&a.0)
+                .expect("Failed to compare Cartan coefficients in CartanCoefficients::canonicalize")
+        });
 
         self.xx = vals[0].1;
         self.yy = vals[1].1;
@@ -195,7 +198,7 @@ impl CartanDecomposer {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("Failed to create magic basis matrix in CartanDecomposer::get_magic_basis")
             / Complex::new(sqrt2, 0.0)
     }
 
@@ -570,7 +573,7 @@ impl OptimizedCartanDecomposer {
                 Complex::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create CNOT matrix in OptimizedCartanDecomposer::is_cnot");
 
         self.matrices_equal(u, &cnot)
     }
@@ -598,7 +601,7 @@ impl OptimizedCartanDecomposer {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create CZ matrix in OptimizedCartanDecomposer::is_cz");
 
         self.matrices_equal(u, &cz)
     }
@@ -626,7 +629,7 @@ impl OptimizedCartanDecomposer {
                 Complex::new(1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create SWAP matrix in OptimizedCartanDecomposer::is_swap");
 
         self.matrices_equal(u, &swap)
     }
@@ -659,7 +662,9 @@ impl OptimizedCartanDecomposer {
     /// Decomposition for CNOT
     fn cnot_decomposition(&self) -> CartanDecomposition {
         let ident = Array2::eye(2);
-        let ident_decomp = decompose_single_qubit_zyz(&ident.view()).unwrap();
+        let ident_decomp = decompose_single_qubit_zyz(&ident.view()).expect(
+            "Failed to decompose identity in OptimizedCartanDecomposer::cnot_decomposition",
+        );
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
@@ -672,7 +677,8 @@ impl OptimizedCartanDecomposer {
     /// Decomposition for CZ
     fn cz_decomposition(&self) -> CartanDecomposition {
         let ident = Array2::eye(2);
-        let ident_decomp = decompose_single_qubit_zyz(&ident.view()).unwrap();
+        let ident_decomp = decompose_single_qubit_zyz(&ident.view())
+            .expect("Failed to decompose identity in OptimizedCartanDecomposer::cz_decomposition");
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
@@ -685,7 +691,9 @@ impl OptimizedCartanDecomposer {
     /// Decomposition for SWAP
     fn swap_decomposition(&self) -> CartanDecomposition {
         let ident = Array2::eye(2);
-        let ident_decomp = decompose_single_qubit_zyz(&ident.view()).unwrap();
+        let ident_decomp = decompose_single_qubit_zyz(&ident.view()).expect(
+            "Failed to decompose identity in OptimizedCartanDecomposer::swap_decomposition",
+        );
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
@@ -761,9 +769,11 @@ mod tests {
                 Complex::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create CNOT matrix in test_cartan_cnot");
 
-        let decomp = decomposer.decompose(&cnot).unwrap();
+        let decomp = decomposer
+            .decompose(&cnot)
+            .expect("Failed to decompose CNOT in test_cartan_cnot");
 
         // CNOT should have specific interaction coefficients
         assert!(decomp.interaction.cnot_count(1e-10) <= 1);
@@ -795,9 +805,11 @@ mod tests {
                 Complex::new(1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create SWAP matrix in test_optimized_special_cases");
 
-        let decomp = opt_decomposer.decompose(&swap).unwrap();
+        let decomp = opt_decomposer
+            .decompose(&swap)
+            .expect("Failed to decompose SWAP in test_optimized_special_cases");
 
         // SWAP requires exactly 3 CNOTs
         assert_eq!(decomp.interaction.cnot_count(1e-10), 3);
@@ -811,7 +823,9 @@ mod tests {
         let identity = Array2::eye(4);
         let identity_complex = identity.mapv(|x| Complex::new(x, 0.0));
 
-        let decomp = decomposer.decompose(&identity_complex).unwrap();
+        let decomp = decomposer
+            .decompose(&identity_complex)
+            .expect("Failed to decompose identity in test_cartan_identity");
 
         // Identity should have zero interaction
         assert!(decomp.interaction.is_identity(1e-10));

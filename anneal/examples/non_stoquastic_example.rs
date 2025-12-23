@@ -9,12 +9,17 @@
 //! 6. Examine quantum advantages in non-stoquastic systems
 //! 7. Convert between different Hamiltonian representations
 
-use scirs2_core::Complex as NComplex;
 use quantrs2_anneal::{
     ising::IsingModel,
-    non_stoquastic::*,
+    non_stoquastic::{
+        create_frustrated_xy_triangle, create_tfxy_model, create_xy_chain,
+        xy_to_ising_approximation, ComplexCoupling, HamiltonianType, InteractionType,
+        NonStoquasticHamiltonian, NonStoquasticQMCConfig, NonStoquasticSimulator,
+        SignMitigationStrategy,
+    },
     simulator::{AnnealingParams, ClassicalAnnealingSimulator},
 };
+use scirs2_core::Complex as NComplex;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -91,7 +96,7 @@ fn xy_model_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check sign problem severity
     let sign_severity = xy_hamiltonian.sign_problem_severity();
-    println!("\n    Sign problem severity: {:.2}", sign_severity);
+    println!("\n    Sign problem severity: {sign_severity:.2}");
 
     if sign_severity > 0.5 {
         println!("      ⚠️  Severe sign problem - advanced methods required");
@@ -111,7 +116,7 @@ fn xy_model_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n    Added transverse fields:");
     for (site, &field) in tfxy.local_fields.iter().enumerate() {
         if field.abs() > 1e-10 {
-            println!("      Site {}: field = {:.3}", site, field);
+            println!("      Site {site}: field = {field:.3}");
         }
     }
 
@@ -123,7 +128,7 @@ fn xy_model_example() -> Result<(), Box<dyn std::error::Error>> {
         let matrix_time = start.elapsed();
 
         println!("      Matrix size: {}×{}", matrix.len(), matrix[0].len());
-        println!("      Computation time: {:.2?}", matrix_time);
+        println!("      Computation time: {matrix_time:.2?}");
 
         // Check Hermiticity
         let mut max_hermiticity_error: f64 = 0.0;
@@ -133,10 +138,7 @@ fn xy_model_example() -> Result<(), Box<dyn std::error::Error>> {
                 max_hermiticity_error = max_hermiticity_error.max(error);
             }
         }
-        println!(
-            "      Hermiticity check: max error = {:.2e}",
-            max_hermiticity_error
-        );
+        println!("      Hermiticity check: max error = {max_hermiticity_error:.2e}");
 
         // Sample matrix elements
         println!("      Sample matrix elements:");
@@ -170,7 +172,7 @@ fn xyz_model_example() -> Result<(), Box<dyn std::error::Error>> {
     let xyz_hamiltonian = NonStoquasticHamiltonian::xyz_model(num_qubits, j_x, j_y, j_z)?;
 
     println!("    XYZ Model Parameters:");
-    println!("      J_x = {:.2}, J_y = {:.2}, J_z = {:.2}", j_x, j_y, j_z);
+    println!("      J_x = {j_x:.2}, J_y = {j_y:.2}, J_z = {j_z:.2}");
     println!("      Anisotropy ratio (J_z/J_x): {:.2}", j_z / j_x);
 
     // Classify the model
@@ -194,7 +196,7 @@ fn xyz_model_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n    Interaction breakdown:");
     for (interaction_type, count) in interaction_counts {
-        println!("      {}: {} terms", interaction_type, count);
+        println!("      {interaction_type}: {count} terms");
     }
 
     // Analyze different parameter regimes
@@ -213,10 +215,7 @@ fn xyz_model_example() -> Result<(), Box<dyn std::error::Error>> {
         let sign_severity = test_hamiltonian.sign_problem_severity();
         let is_stoquastic = test_hamiltonian.is_stoquastic();
 
-        println!(
-            "      {}: sign problem = {:.2}, stoquastic = {}",
-            name, sign_severity, is_stoquastic
-        );
+        println!("      {name}: sign problem = {sign_severity:.2}, stoquastic = {is_stoquastic}");
     }
 
     Ok(())
@@ -313,10 +312,7 @@ fn sign_problem_analysis_example() -> Result<(), Box<dyn std::error::Error>> {
         let xy_hamiltonian = NonStoquasticHamiltonian::xy_model(4, 1.0, delta)?;
         let sign_severity = xy_hamiltonian.sign_problem_severity();
 
-        println!(
-            "      δ = {:.1}: sign problem severity = {:.3}",
-            delta, sign_severity
-        );
+        println!("      δ = {delta:.1}: sign problem severity = {sign_severity:.3}");
     }
 
     // System size scaling
@@ -328,8 +324,7 @@ fn sign_problem_analysis_example() -> Result<(), Box<dyn std::error::Error>> {
         let sign_severity = xy_hamiltonian.sign_problem_severity();
 
         println!(
-            "      N = {:2}: {} couplings, sign severity = {:.3}",
-            size, coupling_count, sign_severity
+            "      N = {size:2}: {coupling_count} couplings, sign severity = {sign_severity:.3}"
         );
     }
 
@@ -343,7 +338,7 @@ fn quantum_monte_carlo_example() -> Result<(), Box<dyn std::error::Error>> {
     let num_qubits = 6;
     let xy_hamiltonian = NonStoquasticHamiltonian::xy_model(num_qubits, 1.0, 0.8)?;
 
-    println!("    System: XY chain with {} qubits", num_qubits);
+    println!("    System: XY chain with {num_qubits} qubits");
     println!("    Couplings: J_x = 1.0, J_y = 0.8");
 
     // Test different simulation strategies
@@ -430,7 +425,7 @@ fn quantum_monte_carlo_example() -> Result<(), Box<dyn std::error::Error>> {
         "      Sign problem severity: {:.3}",
         detailed_result.sign_problem_severity
     );
-    println!("      Total runtime: {:.2?}", detailed_runtime);
+    println!("      Total runtime: {detailed_runtime:.2?}");
 
     // QMC Statistics
     let stats = &detailed_result.qmc_statistics;
@@ -451,7 +446,7 @@ fn quantum_monte_carlo_example() -> Result<(), Box<dyn std::error::Error>> {
     if !stats.population_evolution.is_empty() {
         println!(
             "        Population evolution: {} → {} → {} → ...",
-            stats.population_evolution.get(0).unwrap_or(&0),
+            stats.population_evolution.first().unwrap_or(&0),
             stats.population_evolution.get(1).unwrap_or(&0),
             stats.population_evolution.get(2).unwrap_or(&0)
         );
@@ -462,7 +457,7 @@ fn quantum_monte_carlo_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n      Convergence Analysis:");
     println!("        Converged: {}", conv.converged);
     if let Some(step) = conv.convergence_step {
-        println!("        Convergence step: {}", step);
+        println!("        Convergence step: {step}");
     }
 
     if conv.energy_history.len() > 5 {
@@ -585,7 +580,7 @@ fn stoquastic_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
     let num_qubits = 5;
     let xy_hamiltonian = NonStoquasticHamiltonian::xy_model(num_qubits, 1.0, 0.8)?;
 
-    println!("    Original system: XY model with {} qubits", num_qubits);
+    println!("    Original system: XY model with {num_qubits} qubits");
 
     // Convert to stoquastic approximation
     let ising_approx = xy_to_ising_approximation(&xy_hamiltonian)?;
@@ -639,7 +634,7 @@ fn stoquastic_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
 
     let energy_diff = (ns_result.ground_state_energy.re - classical_result.best_energy).abs();
     println!("\n    Analysis:");
-    println!("      Energy difference: {:.6}", energy_diff);
+    println!("      Energy difference: {energy_diff:.6}");
 
     if energy_diff < 0.01 {
         println!("      ✅ Stoquastic approximation is very accurate");
@@ -663,7 +658,7 @@ fn stoquastic_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n    Ground state analysis:");
 
     if let Some(ref ns_ground_state) = ns_result.ground_state {
-        println!("      Non-stoquastic ground state: {:?}", ns_ground_state);
+        println!("      Non-stoquastic ground state: {ns_ground_state:?}");
     }
 
     println!(
@@ -685,7 +680,7 @@ fn stoquastic_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
             .sum::<f64>()
             / ns_gs.len() as f64;
 
-        println!("      Ground state overlap: {:.2}", overlap);
+        println!("      Ground state overlap: {overlap:.2}");
 
         if overlap > 0.9 {
             println!("      ✅ Ground states are very similar");
@@ -705,10 +700,7 @@ fn complex_hamiltonian_example() -> Result<(), Box<dyn std::error::Error>> {
     let num_qubits = 4;
     let mut complex_hamiltonian = NonStoquasticHamiltonian::complex_ising_model(num_qubits);
 
-    println!(
-        "    Creating complex Ising model with {} qubits",
-        num_qubits
-    );
+    println!("    Creating complex Ising model with {num_qubits} qubits");
 
     // Add complex couplings
     let complex_couplings = vec![
@@ -756,7 +748,7 @@ fn complex_hamiltonian_example() -> Result<(), Box<dyn std::error::Error>> {
 
     // Analyze the complexity
     let sign_severity = complex_hamiltonian.sign_problem_severity();
-    println!("    Sign problem severity: {:.3}", sign_severity);
+    println!("    Sign problem severity: {sign_severity:.3}");
 
     // Add complex local fields
     for site in 0..num_qubits {
@@ -767,7 +759,7 @@ fn complex_hamiltonian_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n    Local magnetic fields:");
     for (site, &field) in complex_hamiltonian.local_fields.iter().enumerate() {
         if field.abs() > 1e-10 {
-            println!("      Site {}: h = {:.2}", site, field);
+            println!("      Site {site}: h = {field:.2}");
         }
     }
 
@@ -776,7 +768,7 @@ fn complex_hamiltonian_example() -> Result<(), Box<dyn std::error::Error>> {
     let matrix = complex_hamiltonian.to_matrix()?;
     let dim = matrix.len();
 
-    println!("      Matrix dimension: {}×{}", dim, dim);
+    println!("      Matrix dimension: {dim}×{dim}");
 
     // Analyze matrix properties
     let mut max_real: f64 = 0.0;
@@ -800,14 +792,14 @@ fn complex_hamiltonian_example() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("      Matrix statistics:");
-    println!("        Max real part: {:.4}", max_real);
-    println!("        Max imaginary part: {:.4}", max_imag);
+    println!("        Max real part: {max_real:.4}");
+    println!("        Max imaginary part: {max_imag:.4}");
     println!(
         "        Non-zero elements: {} ({:.1}%)",
         nnz_count,
-        100.0 * nnz_count as f64 / (dim * dim) as f64
+        100.0 * f64::from(nnz_count) / (dim * dim) as f64
     );
-    println!("        Hermiticity error: {:.2e}", hermiticity_error);
+    println!("        Hermiticity error: {hermiticity_error:.2e}");
 
     if hermiticity_error < 1e-10 {
         println!("        ✅ Matrix is Hermitian (as expected)");
@@ -863,7 +855,7 @@ fn frustrated_systems_example() -> Result<(), Box<dyn std::error::Error>> {
     // 3. XY model with disorder
     let mut disordered_xy =
         NonStoquasticHamiltonian::new(4, HamiltonianType::XYModel { j_x: 1.0, j_y: 1.0 });
-    let disorder_strengths = vec![1.2, 0.8, 1.5, 0.6]; // Random disorder
+    let disorder_strengths = [1.2, 0.8, 1.5, 0.6]; // Random disorder
     for i in 0..3 {
         let j_random = disorder_strengths[i];
         disordered_xy.add_complex_coupling(ComplexCoupling {

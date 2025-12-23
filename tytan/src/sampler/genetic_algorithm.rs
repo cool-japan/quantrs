@@ -52,7 +52,7 @@ impl GASampler {
     ///
     /// * `seed` - An optional random seed for reproducibility
     #[must_use]
-    pub fn new(seed: Option<u64>) -> Self {
+    pub const fn new(seed: Option<u64>) -> Self {
         Self {
             seed,
             max_generations: 1000,
@@ -68,7 +68,11 @@ impl GASampler {
     /// * `max_generations` - Maximum number of generations to evolve
     /// * `population_size` - Size of the population
     #[must_use]
-    pub fn with_params(seed: Option<u64>, max_generations: usize, population_size: usize) -> Self {
+    pub const fn with_params(
+        seed: Option<u64>,
+        max_generations: usize,
+        population_size: usize,
+    ) -> Self {
         Self {
             seed,
             max_generations,
@@ -77,20 +81,20 @@ impl GASampler {
     }
 
     /// Set population size
-    pub fn with_population_size(mut self, size: usize) -> Self {
+    pub const fn with_population_size(mut self, size: usize) -> Self {
         self.population_size = size;
         self
     }
 
     /// Set elite fraction (placeholder method)
-    pub fn with_elite_fraction(self, _fraction: f64) -> Self {
+    pub const fn with_elite_fraction(self, _fraction: f64) -> Self {
         // Note: Elite fraction not currently implemented in struct
         // This is a placeholder to satisfy compilation
         self
     }
 
     /// Set mutation rate (placeholder method)
-    pub fn with_mutation_rate(self, _rate: f64) -> Self {
+    pub const fn with_mutation_rate(self, _rate: f64) -> Self {
         // Note: Mutation rate not currently implemented in struct
         // This is a placeholder to satisfy compilation
         self
@@ -105,7 +109,7 @@ impl GASampler {
     /// * `population_size` - Size of the population
     /// * `crossover` - Crossover strategy to use
     /// * `mutation` - Mutation strategy to use
-    pub fn with_advanced_params(
+    pub const fn with_advanced_params(
         seed: Option<u64>,
         max_generations: usize,
         population_size: usize,
@@ -252,7 +256,7 @@ impl GASampler {
             MutationStrategy::Annealing(initial_rate, final_rate) => {
                 // Annealing mutation (decreasing rate)
                 let progress = generation as f64 / max_generations as f64;
-                let current_rate = initial_rate + (final_rate - initial_rate) * progress;
+                let current_rate = (final_rate - initial_rate).mul_add(progress, initial_rate);
 
                 for bit in individual.iter_mut() {
                     if rng.gen_bool(current_rate) {
@@ -264,7 +268,7 @@ impl GASampler {
                 // Adaptive mutation based on diversity
                 if let Some(diversity) = diversity {
                     // High diversity -> low mutation rate, low diversity -> high mutation rate
-                    let rate = min_rate + (max_rate - min_rate) * (1.0 - diversity);
+                    let rate = (max_rate - min_rate).mul_add(1.0 - diversity, min_rate);
 
                     for bit in individual.iter_mut() {
                         if rng.gen_bool(rate) {
@@ -273,7 +277,7 @@ impl GASampler {
                     }
                 } else {
                     // Default to average if no diversity metric available
-                    let rate = (min_rate + max_rate) / 2.0;
+                    let rate = f64::midpoint(min_rate, max_rate);
                     for bit in individual.iter_mut() {
                         if rng.gen_bool(rate) {
                             *bit = !*bit;
@@ -320,7 +324,10 @@ impl GASampler {
 impl Sampler for GASampler {
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Extract matrix and variable mapping
@@ -339,12 +346,11 @@ impl Sampler for GASampler {
             .collect();
 
         // Initialize random number generator
-        let mut rng = match self.seed {
-            Some(seed) => StdRng::seed_from_u64(seed),
-            None => {
-                let seed: u64 = thread_rng().random();
-                StdRng::seed_from_u64(seed)
-            }
+        let mut rng = if let Some(seed) = self.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let seed: u64 = thread_rng().random();
+            StdRng::seed_from_u64(seed)
         };
 
         // Handle small population size cases to avoid empty range errors
@@ -531,7 +537,10 @@ impl Sampler for GASampler {
 
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Extract matrix and variable mapping
@@ -550,12 +559,11 @@ impl Sampler for GASampler {
             .collect();
 
         // Initialize random number generator
-        let mut rng = match self.seed {
-            Some(seed) => StdRng::seed_from_u64(seed),
-            None => {
-                let seed: u64 = thread_rng().random();
-                StdRng::seed_from_u64(seed)
-            }
+        let mut rng = if let Some(seed) = self.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let seed: u64 = thread_rng().random();
+            StdRng::seed_from_u64(seed)
         };
 
         // Handle edge cases

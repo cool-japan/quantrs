@@ -1,7 +1,7 @@
 //! Tests for the compile module.
 
-use scirs2_core::ndarray::Array;
 use quantrs2_tytan::*;
+use scirs2_core::ndarray::Array;
 
 #[cfg(feature = "dwave")]
 use quantrs2_tytan::compile::Compile;
@@ -49,7 +49,7 @@ fn test_compile_quadratic_expression() {
     let y = symbols("y");
 
     // Quadratic expression: x*y + x^2 (which is just x for binary variables)
-    let expr = x.clone() * y.clone() + x.clone().pow(quantrs2_symengine::Expression::from(2));
+    let expr = x.clone() * y.clone() + x.clone().pow(&quantrs2_symengine::Expression::from(2));
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
@@ -84,7 +84,8 @@ fn test_compile_constraint_expression() {
     let z = symbols("z");
 
     // Constraint: (x + y + z - 1)^2
-    let expr = (x.clone() + y.clone() + z.clone() - 1).pow(quantrs2_symengine::Expression::from(2));
+    let expr =
+        (x.clone() + y.clone() + z.clone() - 1).pow(&quantrs2_symengine::Expression::from(2));
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();

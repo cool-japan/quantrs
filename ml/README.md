@@ -56,7 +56,7 @@ The `quantrs2-ml` crate is included in the main QuantRS2 workspace. To use it in
 
 ```toml
 [dependencies]
-quantrs2-ml = "0.1.0-beta.2"
+quantrs2-ml = "0.1.0-beta.3"
 ```
 
 ## Usage Examples
@@ -166,7 +166,7 @@ The `quantrs2-ml` crate supports GPU acceleration for quantum machine learning t
 
 ```toml
 [dependencies]
-quantrs2-ml = { version = "0.1.0-beta.2", features = ["gpu"] }
+quantrs2-ml = { version = "0.1.0-beta.3", features = ["gpu"] }
 ```
 
 ## License

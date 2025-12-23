@@ -192,9 +192,88 @@ impl ChainBreakResolver {
         hardware_solution: &HardwareSolution,
         embedding: &Embedding,
     ) -> IsingResult<ResolvedSolution> {
-        // For now, use simple majority vote
-        // TODO: Implement proper weighted majority using coupling strengths
-        self.resolve_majority_vote(hardware_solution, embedding)
+        // Weighted majority voting: weight each qubit's vote by the number of
+        // other qubits in the chain that agree with it. This gives more influence
+        // to qubits that are part of a larger consensus.
+
+        let num_vars = embedding.chains.len();
+        let mut logical_spins = vec![0i8; num_vars];
+        let mut chain_breaks = 0;
+
+        for var in 0..num_vars {
+            if let Some(chain) = embedding.chains.get(&var) {
+                if chain.is_empty() {
+                    return Err(IsingError::InvalidValue(format!(
+                        "Empty chain for variable {}",
+                        var
+                    )));
+                }
+
+                if chain.len() == 1 {
+                    // Single qubit chain - no possibility of chain break
+                    logical_spins[var] = hardware_solution.spins[chain[0]];
+                    continue;
+                }
+
+                // Calculate weighted votes for +1 and -1
+                let mut weight_plus = 0.0;
+                let mut weight_minus = 0.0;
+                let mut has_disagreement = false;
+
+                for &qubit_i in chain {
+                    let spin_i = hardware_solution.spins[qubit_i];
+
+                    // Calculate weight: count how many qubits in the chain agree with this one
+                    let mut agreement_count = 0.0;
+                    for &qubit_j in chain {
+                        if qubit_i != qubit_j && hardware_solution.spins[qubit_j] == spin_i {
+                            agreement_count += 1.0;
+                        }
+                    }
+
+                    // Weight is: 1.0 (base) + agreement_count (bonus for consensus)
+                    let weight = 1.0 + agreement_count;
+
+                    if spin_i == 1 {
+                        weight_plus += weight;
+                    } else if spin_i == -1 {
+                        weight_minus += weight;
+                    }
+
+                    // Check for disagreement
+                    if hardware_solution.spins[chain[0]] != spin_i {
+                        has_disagreement = true;
+                    }
+                }
+
+                // Choose the spin value with higher weighted vote
+                if weight_plus > weight_minus {
+                    logical_spins[var] = 1;
+                } else if weight_minus > weight_plus {
+                    logical_spins[var] = -1;
+                } else {
+                    // Tie - use random or first qubit
+                    if self.tie_break_random {
+                        use scirs2_core::random::{thread_rng, Rng};
+                        let mut rng = thread_rng();
+                        logical_spins[var] = if rng.gen::<bool>() { 1 } else { -1 };
+                    } else {
+                        logical_spins[var] = hardware_solution.spins[chain[0]];
+                    }
+                }
+
+                if has_disagreement {
+                    chain_breaks += 1;
+                }
+            }
+        }
+
+        Ok(ResolvedSolution {
+            logical_spins,
+            chain_breaks,
+            energy: hardware_solution.energy,
+            hardware_solution: hardware_solution.clone(),
+        })
     }
 
     /// Resolve by minimizing energy of logical problem

@@ -1,6 +1,6 @@
-//! SciRS2 statistical tools for circuit benchmarking
+//! `SciRS2` statistical tools for circuit benchmarking
 //!
-//! This module leverages SciRS2's advanced statistical analysis capabilities to provide
+//! This module leverages `SciRS2`'s advanced statistical analysis capabilities to provide
 //! comprehensive benchmarking, performance analysis, and statistical insights for quantum circuits.
 
 use crate::builder::Circuit;
@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 // Placeholder types representing SciRS2 statistical interface
 // In the real implementation, these would be imported from SciRS2
 
-/// Statistical distribution types supported by SciRS2
+/// Statistical distribution types supported by `SciRS2`
 #[derive(Debug, Clone, PartialEq)]
 pub enum Distribution {
     /// Normal distribution
@@ -39,7 +39,7 @@ pub enum Distribution {
 }
 
 /// Statistical test types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalTest {
     /// Kolmogorov-Smirnov test
     KolmogorovSmirnov,
@@ -145,7 +145,7 @@ impl Default for BenchmarkConfig {
     }
 }
 
-/// Circuit benchmarking suite using SciRS2 statistical tools
+/// Circuit benchmarking suite using `SciRS2` statistical tools
 pub struct CircuitBenchmark {
     /// Benchmark configuration
     config: BenchmarkConfig,
@@ -313,7 +313,7 @@ pub struct BaselineComparison {
 }
 
 /// Practical significance assessment
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PracticalSignificance {
     /// Negligible difference
     Negligible,
@@ -343,7 +343,7 @@ pub struct PerformanceInsight {
 }
 
 /// Performance insight categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InsightCategory {
     /// Performance degradation detected
     PerformanceDegradation,
@@ -363,7 +363,8 @@ pub enum InsightCategory {
 
 impl CircuitBenchmark {
     /// Create a new circuit benchmark suite
-    pub fn new(config: BenchmarkConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: BenchmarkConfig) -> Self {
         Self {
             config,
             benchmark_data: Vec::new(),
@@ -492,7 +493,7 @@ impl CircuitBenchmark {
     }
 
     /// Get current memory usage (placeholder)
-    fn get_memory_usage(&self) -> usize {
+    const fn get_memory_usage(&self) -> usize {
         // In real implementation, this would use system APIs to get memory usage
         0
     }
@@ -525,13 +526,13 @@ impl CircuitBenchmark {
                 .filter_map(|run| run.memory_usage.map(|m| m as f64))
                 .collect();
 
-            if !memory_data.is_empty() {
+            if memory_data.is_empty() {
+                None
+            } else {
                 Some(
                     self.stats_analyzer
                         .calculate_descriptive_stats(&memory_data)?,
                 )
-            } else {
-                None
             }
         } else {
             None
@@ -736,12 +737,13 @@ impl CircuitBenchmark {
     }
 }
 
-/// Statistical analyzer using SciRS2 capabilities
+/// Statistical analyzer using `SciRS2` capabilities
 pub struct StatisticalAnalyzer;
 
 impl StatisticalAnalyzer {
     /// Create a new statistical analyzer
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -762,7 +764,7 @@ impl StatisticalAnalyzer {
         let max = sorted_data[count - 1];
 
         let median = if count % 2 == 0 {
-            (sorted_data[count / 2 - 1] + sorted_data[count / 2]) / 2.0
+            f64::midpoint(sorted_data[count / 2 - 1], sorted_data[count / 2])
         } else {
             sorted_data[count / 2]
         };
@@ -841,7 +843,7 @@ impl StatisticalAnalyzer {
         let denominator: f64 = x_values.iter().map(|x| (x - x_mean).powi(2)).sum();
 
         let slope = numerator / denominator;
-        let intercept = y_mean - slope * x_mean;
+        let intercept = slope.mul_add(-x_mean, y_mean);
 
         // Calculate R-squared
         let ss_tot: f64 = data.iter().map(|y| (y - y_mean).powi(2)).sum();
@@ -934,8 +936,8 @@ impl StatisticalAnalyzer {
     /// Detect outliers using IQR method
     fn detect_outliers_iqr(&self, data: &[f64], multiplier: f64) -> Vec<usize> {
         let stats = self.calculate_descriptive_stats(data).unwrap();
-        let lower_bound = stats.q1 - multiplier * stats.iqr;
-        let upper_bound = stats.q3 + multiplier * stats.iqr;
+        let lower_bound = multiplier.mul_add(-stats.iqr, stats.q1);
+        let upper_bound = multiplier.mul_add(stats.iqr, stats.q3);
 
         data.iter()
             .enumerate()

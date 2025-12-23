@@ -304,6 +304,27 @@ try:
 except ImportError:
     pass
 
+# Try to import framework converter modules
+try:
+    from . import qiskit_converter
+except ImportError:
+    pass
+
+try:
+    from . import cirq_converter
+except ImportError:
+    pass
+
+try:
+    from . import myqlm_converter
+except ImportError:
+    pass
+
+try:
+    from . import projectq_converter
+except ImportError:
+    pass
+
 # Import common utilities
 from .utils import (
     bell_state as create_bell_state,
@@ -1446,3 +1467,133 @@ except ImportError:
 # Convenience aliases
 Circuit = PyCircuit
 SimulationResult = PySimulationResult
+# Framework converters (v0.1.0-beta.3)
+try:
+    from .qiskit_converter import QiskitConverter, convert_from_qiskit, convert_to_qiskit
+except ImportError:
+    pass
+
+try:
+    from .cirq_converter import CirqConverter, convert_from_cirq, convert_to_cirq
+except ImportError:
+    pass
+
+try:
+    from .myqlm_converter import MyQLMConverter, convert_from_myqlm, convert_to_myqlm
+except ImportError:
+    pass
+
+try:
+    from .projectq_converter import ProjectQConverter, convert_from_projectq, convert_to_projectq, ProjectQBackend
+except ImportError:
+    pass
+
+# Performance benchmarking (v0.1.0-beta.3)
+try:
+    from .benchmarking import PerformanceBenchmark, BenchmarkType
+except ImportError:
+    pass
+
+# Try to import auto-updater module (v0.1.0-beta.3)
+try:
+    from . import auto_updater
+except ImportError:
+    pass
+
+# Import auto-updater functions (if available)
+try:
+    from .auto_updater import (
+        UpdatePolicy,
+        UpdateChannel,
+        VersionInfo,
+        UpdateInfo,
+        UpdaterConfig,
+        QuantRS2Updater,
+        get_updater,
+        check_for_updates,
+        install_update,
+        configure_updater,
+        get_current_version,
+        list_versions
+    )
+except ImportError:
+    pass
+
+# Try to import telemetry module (v0.1.0-beta.3)
+try:
+    from . import telemetry
+except ImportError:
+    pass
+
+# Import telemetry functions (if available)
+try:
+    from .telemetry import (
+        TelemetryLevel,
+        TelemetryEvent,
+        SystemInfo,
+        TelemetryConfig,
+        TelemetryCollector,
+        get_collector,
+        enable_telemetry,
+        disable_telemetry,
+        is_enabled as telemetry_is_enabled,
+        record_event as record_telemetry_event,
+        flush_telemetry,
+        get_statistics as get_telemetry_statistics,
+        clear_data as clear_telemetry_data
+    )
+except ImportError:
+    pass
+
+# Try to import developer utilities module (v0.1.0-beta.3)
+try:
+    from . import dev_utils
+except ImportError:
+    pass
+
+# Import developer utilities functions (if available)
+try:
+    from .dev_utils import (
+        profile,
+        profile_to_dict,
+        retry,
+        debug_mode,
+        is_debug_mode,
+        debug_print,
+        analyze_circuit,
+        print_circuit_analysis,
+        validate_unitary,
+        validate_state_vector,
+        quick_test_bell_state,
+        quick_test_ghz_state,
+        run_quick_tests,
+        DevConfig,
+        get_dev_config,
+        format_exception,
+        safe_execute,
+        compare_implementations,
+        print_comparison
+    )
+except ImportError:
+    pass
+
+# Try to import health check module (v0.1.0-beta.3)
+try:
+    from . import health_check
+except ImportError:
+    pass
+
+# Import health check functions (if available)
+try:
+    from .health_check import (
+        HealthLevel,
+        HealthCheckResult,
+        HealthStatus,
+        HealthChecker,
+        run_health_check,
+        print_health_status,
+        export_health_check,
+        generate_html_report
+    )
+except ImportError:
+    pass

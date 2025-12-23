@@ -5,8 +5,8 @@
 //! machine code for dramatic performance improvements.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -66,7 +66,7 @@ pub enum JITOptimizationLevel {
 }
 
 /// Gate sequence pattern for compilation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GateSequencePattern {
     /// Gate types in the sequence
     pub gate_types: Vec<InterfaceGateType>,
@@ -1610,7 +1610,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD complex multiplication
-    fn execute_simd_complex_mul(
+    const fn execute_simd_complex_mul(
         &self,
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
@@ -1620,7 +1620,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD complex addition
-    fn execute_simd_complex_add(
+    const fn execute_simd_complex_add(
         &self,
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
@@ -1630,7 +1630,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD rotation
-    fn execute_simd_rotation(
+    const fn execute_simd_rotation(
         &self,
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
@@ -1640,7 +1640,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD gate application
-    fn execute_simd_gate_application(
+    const fn execute_simd_gate_application(
         &self,
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
@@ -1672,6 +1672,12 @@ pub struct PatternAnalyzer {
     complexity_analyzer: ComplexityAnalyzer,
     /// Pattern optimization suggestions
     optimization_suggestions: Vec<OptimizationSuggestion>,
+}
+
+impl Default for PatternAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PatternAnalyzer {
@@ -1817,6 +1823,12 @@ pub struct ComplexityAnalyzer {
     gate_costs: HashMap<InterfaceGateType, f64>,
 }
 
+impl Default for ComplexityAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComplexityAnalyzer {
     pub fn new() -> Self {
         let mut gate_costs = HashMap::new();
@@ -1868,7 +1880,7 @@ impl ComplexityAnalyzer {
                     | InterfaceGateType::CRY(_)
                     | InterfaceGateType::CRZ(_)
                     | InterfaceGateType::CPhase(_) => 12.0,
-                    _ => self.gate_costs.get(&gate.gate_type).cloned().unwrap_or(1.0),
+                    _ => self.gate_costs.get(&gate.gate_type).copied().unwrap_or(1.0),
                 }
             })
             .sum()
@@ -1997,6 +2009,12 @@ pub struct RuntimeProfiler {
     stats: RuntimeProfilerStats,
 }
 
+impl Default for RuntimeProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuntimeProfiler {
     pub fn new() -> Self {
         Self {
@@ -2034,27 +2052,27 @@ impl RuntimeProfiler {
                 .execution_times
                 .iter()
                 .min()
-                .cloned()
+                .copied()
                 .unwrap_or(Duration::from_secs(0));
             self.stats.max_execution_time = self
                 .execution_times
                 .iter()
                 .max()
-                .cloned()
+                .copied()
                 .unwrap_or(Duration::from_secs(0));
         }
 
         if !self.memory_usage.is_empty() {
             self.stats.average_memory_usage =
                 self.memory_usage.iter().sum::<usize>() / self.memory_usage.len();
-            self.stats.peak_memory_usage = self.memory_usage.iter().max().cloned().unwrap_or(0);
+            self.stats.peak_memory_usage = self.memory_usage.iter().max().copied().unwrap_or(0);
         }
 
         self.stats.sample_count = self.execution_times.len();
     }
 
     /// Get current statistics
-    pub fn get_stats(&self) -> &RuntimeProfilerStats {
+    pub const fn get_stats(&self) -> &RuntimeProfilerStats {
         &self.stats
     }
 }
@@ -2441,12 +2459,12 @@ impl JITQuantumSimulator {
     }
 
     /// Get current state vector
-    pub fn get_state(&self) -> &Array1<Complex64> {
+    pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
     /// Get simulator statistics
-    pub fn get_stats(&self) -> &JITSimulatorStats {
+    pub const fn get_stats(&self) -> &JITSimulatorStats {
         &self.stats
     }
 
@@ -2661,33 +2679,29 @@ pub struct JITBenchmarkResults {
 
 impl fmt::Display for JITBenchmarkResults {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "JIT Compilation Benchmark Results:\n")?;
-        write!(f, "  Total sequences: {}\n", self.total_sequences)?;
-        write!(f, "  Compiled sequences: {}\n", self.compiled_sequences)?;
-        write!(
+        writeln!(f, "JIT Compilation Benchmark Results:")?;
+        writeln!(f, "  Total sequences: {}", self.total_sequences)?;
+        writeln!(f, "  Compiled sequences: {}", self.compiled_sequences)?;
+        writeln!(f, "  Interpreted sequences: {}", self.interpreted_sequences)?;
+        writeln!(
             f,
-            "  Interpreted sequences: {}\n",
-            self.interpreted_sequences
-        )?;
-        write!(
-            f,
-            "  Average compilation time: {:?}\n",
+            "  Average compilation time: {:?}",
             self.average_compilation_time
         )?;
-        write!(
+        writeln!(
             f,
-            "  Average execution time (compiled): {:?}\n",
+            "  Average execution time (compiled): {:?}",
             self.average_execution_time_compiled
         )?;
-        write!(
+        writeln!(
             f,
-            "  Average execution time (interpreted): {:?}\n",
+            "  Average execution time (interpreted): {:?}",
             self.average_execution_time_interpreted
         )?;
-        write!(f, "  Speedup factor: {:.2}x\n", self.speedup_factor)?;
-        write!(
+        writeln!(f, "  Speedup factor: {:.2}x", self.speedup_factor)?;
+        writeln!(
             f,
-            "  Compilation success rate: {:.1}%\n",
+            "  Compilation success rate: {:.1}%",
             self.compilation_success_rate * 100.0
         )?;
         write!(

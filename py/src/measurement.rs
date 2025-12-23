@@ -7,13 +7,16 @@
 //! - Measurement error mitigation
 
 use crate::{PyCircuit, PySimulationResult};
-use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
+use scirs2_numpy::{
+    IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2,
+    PyUntypedArrayMethods,
+};
 use std::collections::HashMap;
 
 /// Measurement outcomes from repeated circuit executions
@@ -119,7 +122,7 @@ impl PyMeasurementResult {
         &self,
         py: Python,
         error_matrix: PyReadonlyArray2<f64>,
-    ) -> PyResult<Py<PyMeasurementResult>> {
+    ) -> PyResult<Py<Self>> {
         let error_mat = error_matrix.as_array();
         let n_states = 1 << self.n_qubits;
 
@@ -137,7 +140,8 @@ impl PyMeasurementResult {
         let total = self.shots as f64;
 
         for (bitstring, count) in &self.counts {
-            let index = usize::from_str_radix(bitstring, 2).unwrap();
+            let index = usize::from_str_radix(bitstring, 2)
+                .expect("Failed to parse binary bitstring in PyMeasurementResult::mitigate_errors");
             prob_vec[index] = *count as f64 / total;
         }
 
@@ -159,7 +163,7 @@ impl PyMeasurementResult {
 
         Py::new(
             py,
-            PyMeasurementResult {
+            Self {
                 counts: new_counts,
                 shots: self.shots,
                 n_qubits: self.n_qubits,
@@ -177,13 +181,13 @@ pub struct PyStateTomography {
 #[pymethods]
 impl PyStateTomography {
     #[new]
-    fn new(n_qubits: usize) -> Self {
+    const fn new(n_qubits: usize) -> Self {
         Self { n_qubits }
     }
 
     /// Generate measurement circuits for state tomography
     fn measurement_circuits(&self, py: Python) -> PyResult<PyObject> {
-        let bases = vec!["X", "Y", "Z"];
+        let bases = ["X", "Y", "Z"];
         let n_bases = bases.len();
         let n_circuits = n_bases.pow(self.n_qubits as u32);
 
@@ -241,8 +245,8 @@ impl PyStateTomography {
         let mut measurement_data = Vec::new();
         for item in measurements {
             let dict = item.downcast::<PyDict>()?;
-            let basis: String = dict.get_item("basis")?.unwrap().extract()?;
-            let result: PyRef<PyMeasurementResult> = dict.get_item("result")?.unwrap().extract()?;
+            let basis: String = dict.get_item("basis")?.expect("Missing 'basis' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
+            let result: PyRef<PyMeasurementResult> = dict.get_item("result")?.expect("Missing 'result' key in measurement data in PyStateTomography::reconstruct_state").extract()?;
             measurement_data.push((basis, result));
         }
 
@@ -254,7 +258,9 @@ impl PyStateTomography {
             if basis.chars().all(|c| c == 'Z') {
                 // Use Z-basis measurements to estimate diagonal elements
                 for (bitstring, count) in &result.counts {
-                    let idx = usize::from_str_radix(bitstring, 2).unwrap();
+                    let idx = usize::from_str_radix(bitstring, 2).expect(
+                        "Failed to parse binary bitstring in PyStateTomography::reconstruct_state",
+                    );
                     let prob = *count as f64 / result.shots as f64;
                     density_matrix[[idx, idx]] = Complex64::new(prob, 0.0);
                 }
@@ -309,7 +315,7 @@ pub struct PyProcessTomography {
 #[pymethods]
 impl PyProcessTomography {
     #[new]
-    fn new(n_qubits: usize) -> Self {
+    const fn new(n_qubits: usize) -> Self {
         Self { n_qubits }
     }
 
@@ -318,7 +324,7 @@ impl PyProcessTomography {
         let states = PyList::empty(py);
 
         // Standard input states: |0>, |1>, |+>, |->, |+i>, |-i> per qubit
-        let state_names = vec!["0", "1", "+", "-", "+i", "-i"];
+        let state_names = ["0", "1", "+", "-", "+i", "-i"];
         let n_states = state_names.len();
         let n_configs = n_states.pow(self.n_qubits as u32);
 
@@ -425,7 +431,7 @@ pub struct PyMeasurementSampler {}
 #[pymethods]
 impl PyMeasurementSampler {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
@@ -440,7 +446,11 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
+        let probs: Vec<f64> = result
+            .amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
 
         // Sample measurements
         for _ in 0..shots {
@@ -479,7 +489,11 @@ impl PyMeasurementSampler {
         let mut counts = HashMap::new();
 
         // Get probabilities
-        let probs: Vec<f64> = result.amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
+        let probs: Vec<f64> = result
+            .amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
 
         // Sample measurements
         for _ in 0..shots {

@@ -27,11 +27,110 @@ impl TestRegistry {
 
     pub fn register_test_case(&mut self, test_case: IntegrationTestCase) -> Result<(), String> {
         let id = test_case.id.clone();
-        self.test_cases.insert(id, test_case);
+        let category = test_case.category.clone();
+
+        self.test_cases.insert(id.clone(), test_case);
+
+        // Add to category index
+        self.categories
+            .entry(category)
+            .or_insert_with(Vec::new)
+            .push(id);
+
         Ok(())
     }
 
-    // TODO: Implement other registry methods
+    /// Register a test suite
+    pub fn register_test_suite(&mut self, test_suite: TestSuite) -> Result<(), String> {
+        let id = test_suite.id.clone();
+        self.test_suites.insert(id, test_suite);
+        Ok(())
+    }
+
+    /// Unregister a test case
+    pub fn unregister_test_case(&mut self, test_case_id: &str) -> Result<(), String> {
+        self.test_cases
+            .remove(test_case_id)
+            .ok_or_else(|| format!("Test case {} not found", test_case_id))?;
+
+        // Remove from dependencies
+        self.dependencies.remove(test_case_id);
+
+        Ok(())
+    }
+
+    /// Get a test case by ID
+    pub fn get_test_case(&self, test_case_id: &str) -> Option<&IntegrationTestCase> {
+        self.test_cases.get(test_case_id)
+    }
+
+    /// Get a test suite by ID
+    pub fn get_test_suite(&self, test_suite_id: &str) -> Option<&TestSuite> {
+        self.test_suites.get(test_suite_id)
+    }
+
+    /// Get all test cases in a category
+    pub fn get_test_cases_by_category(&self, category: &TestCategory) -> Vec<&IntegrationTestCase> {
+        if let Some(ids) = self.categories.get(category) {
+            ids.iter()
+                .filter_map(|id| self.test_cases.get(id))
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Add a dependency between test cases
+    pub fn add_dependency(&mut self, test_case_id: String, dependency_id: String) {
+        self.dependencies
+            .entry(test_case_id)
+            .or_insert_with(Vec::new)
+            .push(dependency_id);
+    }
+
+    /// Get dependencies for a test case
+    pub fn get_dependencies(&self, test_case_id: &str) -> Vec<&str> {
+        self.dependencies
+            .get(test_case_id)
+            .map(|deps| deps.iter().map(|s| s.as_str()).collect())
+            .unwrap_or_default()
+    }
+
+    /// List all test cases
+    pub fn list_test_cases(&self) -> Vec<&IntegrationTestCase> {
+        self.test_cases.values().collect()
+    }
+
+    /// List all test suites
+    pub fn list_test_suites(&self) -> Vec<&TestSuite> {
+        self.test_suites.values().collect()
+    }
+
+    /// Get test case count
+    pub fn test_case_count(&self) -> usize {
+        self.test_cases.len()
+    }
+
+    /// Get test suite count
+    pub fn test_suite_count(&self) -> usize {
+        self.test_suites.len()
+    }
+
+    /// Clear all test cases and suites
+    pub fn clear_all(&mut self) {
+        self.test_cases.clear();
+        self.test_suites.clear();
+        self.dependencies.clear();
+        self.categories.clear();
+    }
+
+    /// Find test cases by name pattern
+    pub fn find_test_cases(&self, pattern: &str) -> Vec<&IntegrationTestCase> {
+        self.test_cases
+            .values()
+            .filter(|tc| tc.name.contains(pattern) || tc.description.contains(pattern))
+            .collect()
+    }
 }
 
 /// Integration test case definition

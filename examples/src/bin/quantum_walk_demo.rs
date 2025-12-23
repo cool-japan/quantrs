@@ -1,14 +1,14 @@
 //! Quantum Walk Algorithms Demonstration
 //!
-//! This example demonstrates various quantum walk algorithms implemented in QuantRS2:
+//! This example demonstrates various quantum walk algorithms implemented in `QuantRS2`:
 //! - Discrete-time quantum walk on a line graph
 //! - Continuous-time quantum walk on a complete graph
 //! - Quantum walk search algorithm
 
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use quantrs2_core::prelude::*;
 use quantrs2_core::quantum_walk::{CoinOperator, SearchOracle};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 fn main() {
@@ -51,13 +51,13 @@ fn discrete_walk_example() {
         let (max_pos, max_prob) = probs
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .max_by(|(_, a), (_, b)| {
+                a.partial_cmp(b)
+                    .expect("Failed to compare probabilities (NaN encountered)")
+            })
+            .expect("Failed to find maximum probability position in quantum walk");
 
-        println!(
-            "  Step {}: Most probable position = {} (p = {:.3})",
-            step, max_pos, max_prob
-        );
+        println!("  Step {step}: Most probable position = {max_pos} (p = {max_prob:.3})");
     }
 
     // Show final probability distribution
@@ -66,7 +66,7 @@ fn discrete_walk_example() {
     for (pos, prob) in final_probs.iter().enumerate() {
         if *prob > 0.01 {
             // Only show significant probabilities
-            println!("  Position {}: {:.3}", pos, prob);
+            println!("  Position {pos}: {prob:.3}");
         }
     }
     println!();
@@ -97,18 +97,15 @@ fn continuous_walk_example() {
         // Get vertex probabilities
         let probs = walk.vertex_probabilities();
 
-        println!("\n  Time t = {}:", t);
+        println!("\n  Time t = {t}:");
         for (vertex, prob) in probs.iter().enumerate() {
-            println!("    Vertex {}: {:.3}", vertex, prob);
+            println!("    Vertex {vertex}: {prob:.3}");
         }
     }
 
     // Demonstrate transport probability
     let transport_prob = walk.transport_probability(0, 4, PI);
-    println!(
-        "\nTransport probability from vertex 0 to 4 at t=π: {:.3}",
-        transport_prob
-    );
+    println!("\nTransport probability from vertex 0 to 4 at t=π: {transport_prob:.3}");
     println!();
 }
 
@@ -133,20 +130,17 @@ fn quantum_search_example() {
     let (found_vertex, success_prob, steps) = search.run(100); // max 100 steps
 
     println!("Search results:");
-    println!("  Found vertex: {}", found_vertex);
-    println!("  Success probability: {:.3}", success_prob);
-    println!("  Number of steps: {}", steps);
+    println!("  Found vertex: {found_vertex}");
+    println!("  Success probability: {success_prob:.3}");
+    println!("  Number of steps: {steps}");
 
     // Compare with classical random walk
     let classical_expected_steps = 16.0 / 2.0; // Expected steps for classical search
     let speedup = classical_expected_steps / (steps as f64);
 
     println!("\nComparison with classical search:");
-    println!(
-        "  Classical expected steps: {:.1}",
-        classical_expected_steps
-    );
-    println!("  Quantum speedup: {:.2}x", speedup);
+    println!("  Classical expected steps: {classical_expected_steps:.1}");
+    println!("  Quantum speedup: {speedup:.2}x");
 
     // Show probability distribution at marked vertices
     println!("\nFinal probability distribution at marked vertices:");
@@ -176,7 +170,7 @@ fn custom_coin_example() {
             Complex64::new(-theta.cos(), 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 coin matrix for custom coin operator");
 
     let custom_coin = CoinOperator::Custom(coin_matrix);
 
@@ -198,8 +192,8 @@ fn custom_coin_example() {
     let right_prob: f64 = probs[5..10].iter().sum();
 
     println!("\nAfter 20 steps:");
-    println!("  Probability on left side (0-4): {:.3}", left_prob);
-    println!("  Probability on right side (5-9): {:.3}", right_prob);
+    println!("  Probability on left side (0-4): {left_prob:.3}");
+    println!("  Probability on right side (5-9): {right_prob:.3}");
     println!(
         "  Bias direction: {}",
         if right_prob > left_prob {

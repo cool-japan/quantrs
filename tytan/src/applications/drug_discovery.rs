@@ -355,7 +355,7 @@ impl MolecularDesignOptimizer {
         // Create variable mapping
         for p in 0..positions {
             for f in 0..fragments {
-                let var_name = format!("x_{}_{}", f, p);
+                let var_name = format!("x_{f}_{p}");
                 var_map.insert(var_name, p * fragments + f);
             }
         }
@@ -394,7 +394,7 @@ impl MolecularDesignOptimizer {
         // Position variables
         for i in 0..max_positions {
             for f in 0..fragments {
-                let var_name = format!("x_{}_{}", f, i);
+                let var_name = format!("x_{f}_{i}");
                 var_map.insert(var_name, i * fragments + f);
             }
         }
@@ -403,7 +403,7 @@ impl MolecularDesignOptimizer {
         let mut var_idx = position_vars;
         for i in 0..max_positions {
             for j in i + 1..max_positions {
-                let var_name = format!("y_{}_{}", i, j);
+                let var_name = format!("y_{i}_{j}");
                 var_map.insert(var_name, var_idx);
                 var_idx += 1;
             }
@@ -432,7 +432,7 @@ impl MolecularDesignOptimizer {
 
         for p in 0..positions {
             for f in 0..self.fragment_library.fragments.len() {
-                let var_name = format!("x_{}_{}", f, p);
+                let var_name = format!("x_{f}_{p}");
                 if let Some(&var_idx) = var_map.get(&var_name) {
                     // Fragment score
                     let score = self
@@ -498,7 +498,7 @@ impl MolecularDesignOptimizer {
                 if total_mw < min_mw || total_mw > max_mw {
                     // Penalize out-of-range combinations
                     for p in 0..core.attachment_points.len() {
-                        let var_name = format!("x_{}_{}", f, p);
+                        let var_name = format!("x_{f}_{p}");
                         if let Some(&var_idx) = var_map.get(&var_name) {
                             qubo[[var_idx, var_idx]] += penalty;
                         }
@@ -533,7 +533,7 @@ impl MolecularDesignOptimizer {
 
                 if total_logp < min_logp || total_logp > max_logp {
                     for p in 0..core.attachment_points.len() {
-                        let var_name = format!("x_{}_{}", f, p);
+                        let var_name = format!("x_{f}_{p}");
                         if let Some(&var_idx) = var_map.get(&var_name) {
                             qubo[[var_idx, var_idx]] += penalty * 0.5;
                         }
@@ -563,7 +563,7 @@ impl MolecularDesignOptimizer {
 
                 if total_hbd < min_hbd || total_hbd > max_hbd {
                     for p in 0..core.attachment_points.len() {
-                        let var_name = format!("x_{}_{}", f, p);
+                        let var_name = format!("x_{f}_{p}");
                         if let Some(&var_idx) = var_map.get(&var_name) {
                             qubo[[var_idx, var_idx]] += penalty * 0.3;
                         }
@@ -589,8 +589,8 @@ impl MolecularDesignOptimizer {
             for p2 in p1 + 1..positions {
                 for f1 in 0..self.fragment_library.fragments.len() {
                     for f2 in 0..self.fragment_library.fragments.len() {
-                        let var1 = format!("x_{}_{}", f1, p1);
-                        let var2 = format!("x_{}_{}", f2, p2);
+                        let var1 = format!("x_{f1}_{p1}");
+                        let var2 = format!("x_{f2}_{p2}");
 
                         if let (Some(&idx1), Some(&idx2)) = (var_map.get(&var1), var_map.get(&var2))
                         {
@@ -635,8 +635,8 @@ impl MolecularDesignOptimizer {
             // or just penalize multiple selections
             for f1 in 0..fragments {
                 for f2 in f1 + 1..fragments {
-                    let var1 = format!("x_{}_{}", f1, p);
-                    let var2 = format!("x_{}_{}", f2, p);
+                    let var1 = format!("x_{f1}_{p}");
+                    let var2 = format!("x_{f2}_{p}");
 
                     if let (Some(&idx1), Some(&idx2)) = (var_map.get(&var1), var_map.get(&var2)) {
                         qubo[[idx1, idx2]] += penalty;
@@ -658,7 +658,7 @@ impl MolecularDesignOptimizer {
         // Favor molecules with good fragment scores
         for i in 0..max_positions {
             for f in 0..self.fragment_library.fragments.len() {
-                let var_name = format!("x_{}_{}", f, i);
+                let var_name = format!("x_{f}_{i}");
                 if let Some(&var_idx) = var_map.get(&var_name) {
                     let score = self
                         .fragment_library
@@ -678,7 +678,7 @@ impl MolecularDesignOptimizer {
         // Favor connected molecules
         for i in 0..max_positions {
             for j in i + 1..max_positions {
-                let conn_var = format!("y_{}_{}", i, j);
+                let conn_var = format!("y_{i}_{j}");
                 if let Some(&conn_idx) = var_map.get(&conn_var) {
                     // Small penalty for connections (want some but not too many)
                     qubo[[conn_idx, conn_idx]] += 0.1;
@@ -702,16 +702,16 @@ impl MolecularDesignOptimizer {
         for i in 0..max_positions {
             // Connection indicator for position i
             for f in 0..self.fragment_library.fragments.len() {
-                let frag_var = format!("x_{}_{}", f, i);
+                let frag_var = format!("x_{f}_{i}");
                 if let Some(&frag_idx) = var_map.get(&frag_var) {
                     // Must have at least one connection if fragment present
                     let mut _has_connection = false;
                     for j in 0..max_positions {
                         if i != j {
                             let conn_var = if i < j {
-                                format!("y_{}_{}", i, j)
+                                format!("y_{i}_{j}")
                             } else {
-                                format!("y_{}_{}", j, i)
+                                format!("y_{j}_{i}")
                             };
 
                             if let Some(&conn_idx) = var_map.get(&conn_var) {
@@ -742,12 +742,12 @@ impl MolecularDesignOptimizer {
         // If positions i and j are connected, fragments must be compatible
         for i in 0..max_positions {
             for j in i + 1..max_positions {
-                let conn_var = format!("y_{}_{}", i, j);
+                let conn_var = format!("y_{i}_{j}");
                 if let Some(&conn_idx) = var_map.get(&conn_var) {
                     for f1 in 0..self.fragment_library.fragments.len() {
                         for f2 in 0..self.fragment_library.fragments.len() {
-                            let var1 = format!("x_{}_{}", f1, i);
-                            let var2 = format!("x_{}_{}", f2, j);
+                            let var1 = format!("x_{f1}_{i}");
+                            let var2 = format!("x_{f2}_{j}");
 
                             if let (Some(&idx1), Some(&idx2)) =
                                 (var_map.get(&var1), var_map.get(&var2))
@@ -789,7 +789,7 @@ impl MolecularDesignOptimizer {
         if let Some((_min_mw, max_mw)) = self.target_properties.molecular_weight {
             for i in 0..max_positions {
                 for f in 0..self.fragment_library.fragments.len() {
-                    let var_name = format!("x_{}_{}", f, i);
+                    let var_name = format!("x_{f}_{i}");
                     if let Some(&var_idx) = var_map.get(&var_name) {
                         let mw = self.fragment_library.fragments[f]
                             .properties
@@ -955,7 +955,7 @@ impl MolecularDesignOptimizer {
                 if let Some((min, max)) = self.target_properties.molecular_weight {
                     if props.molecular_weight < min || props.molecular_weight > max {
                         score += weights.get("mw_penalty").unwrap_or(&0.0)
-                            * (props.molecular_weight - (min + max) / 2.0).abs();
+                            * (props.molecular_weight - f64::midpoint(min, max)).abs();
                     }
                 }
 

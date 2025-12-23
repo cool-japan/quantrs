@@ -105,7 +105,7 @@ impl Default for VisualizationConfig {
 
 impl ProblemVisualizer {
     /// Create new problem visualizer
-    pub fn new(problem_type: VisualizationType, config: VisualizationConfig) -> Self {
+    pub const fn new(problem_type: VisualizationType, config: VisualizationConfig) -> Self {
         Self {
             problem_type,
             samples: Vec::new(),
@@ -144,7 +144,7 @@ impl ProblemVisualizer {
                 time_horizon,
             } => self.visualize_job_shop(*n_jobs, *n_machines, *time_horizon)?,
             VisualizationType::NumberPartition { numbers } => {
-                self.visualize_number_partition(numbers)?
+                self.visualize_number_partition(numbers)?;
             }
             VisualizationType::Knapsack {
                 weights,
@@ -286,7 +286,7 @@ impl ProblemVisualizer {
 
             for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
                 if !is_visited {
-                    let edge_var = format!("x_{}_{}", current, j);
+                    let edge_var = format!("x_{current}_{j}");
                     if sample.assignments.get(&edge_var).copied().unwrap_or(false) {
                         next_city = Some(j);
                         break;
@@ -423,7 +423,7 @@ impl ProblemVisualizer {
 
         for (i, color) in colors.iter_mut().enumerate().take(n_nodes) {
             for c in 0..max_colors {
-                let var_name = format!("node_{}_color_{}", i, c);
+                let var_name = format!("node_{i}_color_{c}");
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
                     *color = c;
                     break;
@@ -502,7 +502,7 @@ impl ProblemVisualizer {
                     .set_fontsize(8);
             }
 
-            ax.set_title(&format!("Max Cut: Weight = {:.2}", cut_weight));
+            ax.set_title(&format!("Max Cut: Weight = {cut_weight:.2}"));
             ax.set_aspect("equal");
             ax.axis("off");
 
@@ -521,7 +521,7 @@ impl ProblemVisualizer {
         let mut partition = vec![false; n_nodes];
 
         for (i, part) in partition.iter_mut().enumerate().take(n_nodes) {
-            let var_name = format!("x_{}", i);
+            let var_name = format!("x_{i}");
             *part = sample.assignments.get(&var_name).copied().unwrap_or(false);
         }
 
@@ -557,7 +557,7 @@ impl ProblemVisualizer {
                 ax.barh(&[y], &[*duration as f64], &[*start as f64], 0.8)
                     .set_color(color)
                     .set_edgecolor("black")
-                    .set_label(&format!("Job {}", job));
+                    .set_label(&format!("Job {job}"));
             }
 
             ax.set_xlabel("Time");
@@ -568,11 +568,7 @@ impl ProblemVisualizer {
 
             // Set y-ticks
             ax.set_yticks(&(0..n_machines).map(|i| i as f64).collect::<Vec<_>>());
-            ax.set_yticklabels(
-                &(0..n_machines)
-                    .map(|i| format!("M{}", i))
-                    .collect::<Vec<_>>(),
-            );
+            ax.set_yticklabels(&(0..n_machines).map(|i| format!("M{i}")).collect::<Vec<_>>());
 
             // Remove duplicate labels in legend
             ax.legend_unique();
@@ -598,7 +594,7 @@ impl ProblemVisualizer {
         for j in 0..n_jobs {
             for m in 0..n_machines {
                 for t in 0..time_horizon {
-                    let var_name = format!("x_{}_{}_{}", j, m, t);
+                    let var_name = format!("x_{j}_{m}_{t}");
                     if sample.assignments.get(&var_name).copied().unwrap_or(false) {
                         // Find duration (would need problem-specific logic)
                         let duration = 5; // Placeholder
@@ -644,21 +640,21 @@ impl ProblemVisualizer {
 
             // Create bar chart
             let mut x_pos = vec![1.0, 2.0];
-            let mut heights = vec![sum1, sum2];
-            let mut labels = vec!["Set 1", "Set 2"];
+            let mut heights = [sum1, sum2];
+            let mut labels = ["Set 1", "Set 2"];
 
             // Draw each bar with its own color
             ax.bar(&[x_pos[0]], &[heights[0]]).set_color("blue");
             ax.bar(&[x_pos[1]], &[heights[1]]).set_color("orange");
 
             // Add value labels on bars
-            for (x, h, nums) in [(1.0, sum1, &set1), (2.0, sum2, &set2)].iter() {
-                ax.text(*x, *h + 0.5, &format!("{:.2}", h)).set_ha("center");
+            for (x, h, nums) in &[(1.0, sum1, &set1), (2.0, sum2, &set2)] {
+                ax.text(*x, *h + 0.5, &format!("{h:.2}")).set_ha("center");
 
                 // Show individual numbers
                 let nums_str = nums
                     .iter()
-                    .map(|n| format!("{:.1}", n))
+                    .map(|n| format!("{n:.1}"))
                     .collect::<Vec<_>>()
                     .join(", ");
                 ax.text(*x, -2.0, &nums_str)
@@ -667,7 +663,7 @@ impl ProblemVisualizer {
             }
 
             ax.set_xticks(&x_pos);
-            let string_labels: Vec<String> = labels.iter().map(|s| s.to_string()).collect();
+            let string_labels: Vec<String> = labels.iter().map(|s| (*s).to_string()).collect();
             ax.set_xticklabels(&string_labels);
             ax.set_ylabel("Sum");
             ax.set_title(&format!(
@@ -699,7 +695,7 @@ impl ProblemVisualizer {
         let mut total_value = 0.0;
 
         for i in 0..n_items {
-            let var_name = format!("x_{}", i);
+            let var_name = format!("x_{i}");
             if best_sample
                 .assignments
                 .get(&var_name)
@@ -732,7 +728,7 @@ impl ProblemVisualizer {
 
             // Add weight labels
             for (i, (&w, &v)) in weights.iter().zip(values.iter()).enumerate() {
-                ax1.text(i as f64, v + 0.5, &format!("w={:.1}", w))
+                ax1.text(i as f64, v + 0.5, &format!("w={w:.1}"))
                     .set_ha("center")
                     .set_fontsize(8);
             }
@@ -740,8 +736,7 @@ impl ProblemVisualizer {
             ax1.set_xlabel("Item");
             ax1.set_ylabel("Value");
             ax1.set_title(&format!(
-                "Selected Items (Green): Value = {:.2}, Weight = {:.2}/{:.2}",
-                total_value, total_weight, capacity
+                "Selected Items (Green): Value = {total_value:.2}, Weight = {total_weight:.2}/{capacity:.2}"
             ));
 
             // Capacity utilization
@@ -893,10 +888,11 @@ impl ProblemVisualizer {
                 nonzero_weights.len()
             );
 
+            let _: () = ax4.trans_axes();
             ax4.text(0.1, 0.9, &summary_text)
                 .set_fontsize(12)
                 .set_verticalalignment("top")
-                .set_transform(ax4.trans_axes());
+                .set_transform(());
             ax4.axis("off");
 
             fig.suptitle("Portfolio Optimization Results");
@@ -922,14 +918,14 @@ impl ProblemVisualizer {
         // Simple binary allocation example
         let total_selected = (0..n_assets)
             .filter(|&i| {
-                let var_name = format!("x_{}", i);
+                let var_name = format!("x_{i}");
                 sample.assignments.get(&var_name).copied().unwrap_or(false)
             })
             .count();
 
         if total_selected > 0 {
             for (i, weight) in weights.iter_mut().enumerate().take(n_assets) {
-                let var_name = format!("x_{}", i);
+                let var_name = format!("x_{i}");
                 if sample.assignments.get(&var_name).copied().unwrap_or(false) {
                     *weight = 1.0 / total_selected as f64;
                 }
@@ -946,10 +942,7 @@ impl ProblemVisualizer {
         metadata: &HashMap<String, String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // This would call a user-provided plotting function
-        println!(
-            "Custom visualization: {} with metadata: {:?}",
-            plot_function, metadata
-        );
+        println!("Custom visualization: {plot_function} with metadata: {metadata:?}");
         Ok(())
     }
 

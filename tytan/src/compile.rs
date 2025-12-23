@@ -168,6 +168,13 @@ enum Constraint {
 }
 
 #[cfg(feature = "dwave")]
+impl Default for Model {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "dwave")]
 impl Model {
     /// Create a new empty model
     pub fn new() -> Self {
@@ -247,6 +254,7 @@ impl Model {
                     let diff = expr.clone() - Expr::from(*value);
                     final_expr = final_expr + Expr::from(penalty_weight) * diff.clone() * diff;
                 }
+                #[cfg(feature = "dwave")]
                 Constraint::LessEqual { expr, value, .. } => {
                     // max(0, expr - value)^2 penalty
                     // For simplicity, we'll use a quadratic penalty
@@ -707,7 +715,13 @@ impl Compile {
     /// - An offset value that should be added to all energy values
     pub fn get_qubo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         #[cfg(feature = "scirs")]
         {
             self.get_qubo_scirs()
@@ -721,7 +735,13 @@ impl Compile {
     /// Standard QUBO compilation without SciRS2
     fn get_qubo_standard(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Expand the expression to simplify
         let mut expr = self.expr.expand();
 
@@ -750,7 +770,13 @@ impl Compile {
     #[cfg(feature = "scirs")]
     fn get_qubo_scirs(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Get standard result
         let ((matrix, var_map), offset) = self.get_qubo_standard()?;
 
@@ -772,7 +798,13 @@ impl Compile {
     /// - An offset value that should be added to all energy values
     pub fn get_hobo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Expand the expression to simplify
         let mut expr = self.expr.expand();
 
@@ -869,7 +901,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     }
 
     // Check for other compound expressions by trying to parse them
-    let expr_str = format!("{}", expr);
+    let expr_str = format!("{expr}");
     if expr_str.contains('+') || expr_str.contains('-') {
         // It's a sum-like expression but not recognized as ADD
         // Parse the string to find the highest degree term
@@ -877,7 +909,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
         let mut max_degree = 0;
 
         // Split by + and - (keeping the sign)
-        let parts: Vec<&str> = expr_str.split(|c| c == '+' || c == '-').collect();
+        let parts: Vec<&str> = expr_str.split(['+', '-']).collect();
 
         for part in parts {
             let part = part.trim();
@@ -886,13 +918,13 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
             }
 
             // Count degree based on what the term contains
-            let degree = if part.contains("**") || part.contains("^") {
+            let degree = if part.contains("**") || part.contains('^') {
                 // Power term like x**2 or y**3
                 // Extract the exponent
                 let exp_str = part
                     .split("**")
                     .nth(1)
-                    .or_else(|| part.split("^").nth(1))
+                    .or_else(|| part.split('^').nth(1))
                     .unwrap_or("2")
                     .trim();
                 exp_str.parse::<usize>().unwrap_or(2)
@@ -925,8 +957,7 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     // Default case - for simplicity, we'll say degree is 0
     // but for a complete implementation, we'd need to handle all cases
     Err(CompileError::InvalidExpression(format!(
-        "Can't determine degree of: {}",
-        expr
+        "Can't determine degree of: {expr}"
     )))
 }
 
@@ -963,7 +994,7 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 
         // For other power expressions, recursively replace
         let new_base = replace_squared_terms(&base)?;
-        return Ok(new_base.pow(exp));
+        return Ok(new_base.pow(&exp));
     }
 
     // If it's a product (like x*y or x*x)
@@ -1021,7 +1052,7 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
         }
     } else {
         // Check if it's a sum-like expression that wasn't detected as ADD
-        let expr_str = format!("{}", expr);
+        let expr_str = format!("{expr}");
         if expr_str.contains('+') || expr_str.contains('-') {
             // Use regex to split properly maintaining signs
             // This is a more robust workaround for symengine type detection issues
@@ -1039,11 +1070,11 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
                 let sign_mult = if sign == "-" { -1.0 } else { 1.0 };
 
                 // Handle x**2 or x^2 (becomes just x for binary)
-                if term.contains("**") || term.contains("^") {
+                if term.contains("**") || term.contains('^') {
                     let base = if term.contains("**") {
                         term.split("**").next().unwrap_or(term)
                     } else {
-                        term.split("^").next().unwrap_or(term)
+                        term.split('^').next().unwrap_or(term)
                     }
                     .trim();
 
@@ -1166,8 +1197,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
             } else {
                 // More complex factors not supported in this example
                 return Err(CompileError::InvalidExpression(format!(
-                    "Unsupported term in product: {}",
-                    factor
+                    "Unsupported term in product: {factor}"
                 )));
             }
         }
@@ -1175,12 +1205,11 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
         // Sort variables for consistent ordering
         vars.sort();
 
-        if !vars.is_empty() {
-            coeffs.insert(vars, coeff);
-        } else {
+        if vars.is_empty() {
             // If there are no variables, it's a constant term
             return Ok((coeffs, coeff));
         }
+        coeffs.insert(vars, coeff);
 
         return Ok((coeffs, 0.0));
     }
@@ -1188,15 +1217,13 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
     // If it's a power operation (like x^2), should have been simplified earlier
     if term.is_pow() {
         return Err(CompileError::InvalidExpression(format!(
-            "Unexpected power term after simplification: {}",
-            term
+            "Unexpected power term after simplification: {term}"
         )));
     }
 
     // Unsupported term type
     Err(CompileError::InvalidExpression(format!(
-        "Unsupported term: {}",
-        term
+        "Unsupported term: {term}"
     )))
 }
 
@@ -1204,7 +1231,10 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 #[allow(dead_code)]
 fn build_qubo_matrix(
     coeffs: &HashMap<Vec<String>, f64>,
-) -> CompileResult<(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>)> {
+) -> CompileResult<(
+    Array<f64, scirs2_core::ndarray::Ix2>,
+    HashMap<String, usize>,
+)> {
     // Collect all unique variable names
     let mut all_vars = HashSet::new();
     for vars in coeffs.keys() {
@@ -1274,7 +1304,10 @@ fn build_qubo_matrix(
 fn build_hobo_tensor(
     coeffs: &HashMap<Vec<String>, f64>,
     max_degree: usize,
-) -> CompileResult<(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>)> {
+) -> CompileResult<(
+    Array<f64, scirs2_core::ndarray::IxDyn>,
+    HashMap<String, usize>,
+)> {
     // Collect all unique variable names
     let mut all_vars = HashSet::new();
     for vars in coeffs.keys() {
@@ -1320,7 +1353,7 @@ fn build_hobo_tensor(
         let mut indices: Vec<usize> = vars.iter().map(|var| *var_map.get(var).unwrap()).collect();
 
         // Sort indices (canonical ordering)
-        indices.sort();
+        indices.sort_unstable();
 
         // Pad indices to match tensor order if necessary
         while indices.len() < max_degree {
@@ -1360,7 +1393,13 @@ impl PieckCompile {
     /// Compile the expression to a QUBO model optimized for one-hot constraints
     pub fn get_qubo(
         &self,
-    ) -> CompileResult<((Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>), f64)> {
+    ) -> CompileResult<(
+        (
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
+        f64,
+    )> {
         // Implementation will compile the expression using specialized techniques
         // For now, call the regular compiler
         Compile::new(self.expr.clone()).get_qubo()

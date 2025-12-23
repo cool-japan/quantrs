@@ -97,7 +97,7 @@ pub struct ReadoutError {
 }
 
 /// Crosstalk model between qubits
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CrosstalkModel {
     /// Coupling matrix (symmetric)
     pub coupling_matrix: Vec<Vec<f64>>,
@@ -138,6 +138,7 @@ pub struct NoiseAnalyzer {
 
 impl NoiseAnalyzer {
     /// Create a new noise analyzer
+    #[must_use]
     pub fn new() -> Self {
         let mut analyzer = Self {
             noise_models: HashMap::new(),
@@ -154,6 +155,7 @@ impl NoiseAnalyzer {
     }
 
     /// Get available noise models
+    #[must_use]
     pub fn available_models(&self) -> Vec<String> {
         self.noise_models.keys().cloned().collect()
     }
@@ -167,7 +169,7 @@ impl NoiseAnalyzer {
         let noise_model = self
             .noise_models
             .get(device)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {}", device)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown device: {device}")))?;
 
         let mut total_error = 0.0;
         let mut gate_errors = Vec::new();
@@ -303,13 +305,11 @@ impl NoiseAnalyzer {
                 1 => noise_model
                     .single_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.duration)
-                    .unwrap_or(10.0), // Default 10ns
+                    .map_or(10.0, |e| e.duration), // Default 10ns
                 2 => noise_model
                     .two_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.duration)
-                    .unwrap_or(200.0), // Default 200ns
+                    .map_or(200.0, |e| e.duration), // Default 200ns
                 _ => 500.0, // Multi-qubit gates take longer
             };
 
@@ -405,7 +405,7 @@ pub struct NoiseAnalysisResult {
     pub total_error: f64,
     /// Overall circuit fidelity
     pub total_fidelity: f64,
-    /// Individual gate errors (index, gate_name, error)
+    /// Individual gate errors (index, `gate_name`, error)
     pub gate_errors: Vec<(usize, String, f64)>,
     /// Decoherence contribution
     pub decoherence_error: f64,
@@ -418,7 +418,7 @@ pub struct NoiseAnalysisResult {
 }
 
 /// Primary sources of quantum errors
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorSource {
     GateErrors,
     Decoherence,
@@ -428,6 +428,7 @@ pub enum ErrorSource {
 
 impl NoiseModel {
     /// Create IBM Quantum noise model based on typical device characteristics
+    #[must_use]
     pub fn ibm_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
 
@@ -516,6 +517,7 @@ impl NoiseModel {
     }
 
     /// Create Google Quantum AI noise model
+    #[must_use]
     pub fn google_quantum() -> Self {
         let mut single_qubit_errors = HashMap::new();
 
@@ -602,6 +604,7 @@ impl NoiseModel {
     }
 
     /// Create AWS Braket noise model
+    #[must_use]
     pub fn aws_braket() -> Self {
         // Simplified model that varies by backend
         let mut single_qubit_errors = HashMap::new();
@@ -672,17 +675,6 @@ impl NoiseModel {
             }),
             leakage_errors: HashMap::new(),
             calibration_time: std::time::SystemTime::now(),
-        }
-    }
-}
-
-impl Default for CrosstalkModel {
-    fn default() -> Self {
-        Self {
-            coupling_matrix: Vec::new(),
-            zz_coupling: HashMap::new(),
-            xy_coupling: HashMap::new(),
-            frequency_shifts: HashMap::new(),
         }
     }
 }

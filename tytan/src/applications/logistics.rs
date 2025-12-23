@@ -128,7 +128,7 @@ impl VehicleRoutingOptimizer {
         for v in 0..self.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
-                    let var_name = format!("x_{}_{}_{}", v, i, j);
+                    let var_name = format!("x_{v}_{i}_{j}");
                     var_map.insert(var_name, var_idx);
                     var_idx += 1;
                 }
@@ -168,7 +168,7 @@ impl VehicleRoutingOptimizer {
             for i in 0..self.distance_matrix.shape()[0] {
                 for j in 0..self.distance_matrix.shape()[1] {
                     if i != j {
-                        let var_name = format!("x_{}_{}_{}", v, i, j);
+                        let var_name = format!("x_{v}_{i}_{j}");
                         if let Some(&var_idx) = var_map.get(&var_name) {
                             qubo[[var_idx, var_idx]] += self.distance_matrix[[i, j]];
                         }
@@ -196,7 +196,7 @@ impl VehicleRoutingOptimizer {
             for v1 in 0..self.num_vehicles {
                 for i1 in 0..n_locations {
                     if i1 != j {
-                        let var1 = format!("x_{}_{}_{}", v1, i1, j);
+                        let var1 = format!("x_{v1}_{i1}_{j}");
                         if let Some(&idx1) = var_map.get(&var1) {
                             // Linear term
                             qubo[[idx1, idx1]] -= 2.0 * penalty;
@@ -205,7 +205,7 @@ impl VehicleRoutingOptimizer {
                             for v2 in 0..self.num_vehicles {
                                 for i2 in 0..n_locations {
                                     if i2 != j {
-                                        let var2 = format!("x_{}_{}_{}", v2, i2, j);
+                                        let var2 = format!("x_{v2}_{i2}_{j}");
                                         if let Some(&idx2) = var_map.get(&var2) {
                                             qubo[[idx1, idx2]] += penalty;
                                         }
@@ -224,11 +224,11 @@ impl VehicleRoutingOptimizer {
                 // sum_j x_{v,i,j} = sum_j x_{v,j,i}
                 for j1 in 0..n_locations {
                     if j1 != i {
-                        let var_out = format!("x_{}_{}_{}", v, i, j1);
+                        let var_out = format!("x_{v}_{i}_{j1}");
                         if let Some(&idx_out) = var_map.get(&var_out) {
                             for j2 in 0..n_locations {
                                 if j2 != i {
-                                    let var_in = format!("x_{}_{}_{}", v, j2, i);
+                                    let var_in = format!("x_{v}_{j2}_{i}");
                                     if let Some(&idx_in) = var_map.get(&var_in) {
                                         qubo[[idx_out, idx_in]] -= penalty;
                                     }
@@ -274,7 +274,7 @@ impl VehicleRoutingOptimizer {
             for i in 0..n_locations {
                 for j in 1..n_locations {
                     // Skip depot
-                    let var = format!("x_{}_{}_{}", v, i, j);
+                    let var = format!("x_{v}_{i}_{j}");
                     if let Some(&idx) = var_map.get(&var) {
                         // Penalize if demand exceeds capacity
                         if route_demand + self.demands[j] > self.vehicle_capacity {
@@ -303,7 +303,7 @@ impl VehicleRoutingOptimizer {
                 for i in 0..n_locations {
                     for j in 0..n_locations {
                         if i != j {
-                            let var = format!("x_{}_{}_{}", v, i, j);
+                            let var = format!("x_{v}_{i}_{j}");
                             if let Some(&idx) = var_map.get(&var) {
                                 // Travel time
                                 let travel_time = self.distance_matrix[[i, j]];
@@ -347,7 +347,7 @@ impl VehicleRoutingOptimizer {
             for &depot in depots {
                 for j in 0..self.distance_matrix.shape()[0] {
                     if !depots.contains(&j) {
-                        let var = format!("x_{}_{}_{}", v, depot, j);
+                        let var = format!("x_{v}_{depot}_{j}");
                         if let Some(&idx) = var_map.get(&var) {
                             qubo[[idx, idx]] -= penalty * 0.1; // Encourage depot start
                         }
@@ -383,7 +383,7 @@ impl VehicleRoutingOptimizer {
 
                 for j in 0..n_locations {
                     if !visited.contains(&j) {
-                        let var = format!("x_{}_{}_{}", v, current, j);
+                        let var = format!("x_{v}_{current}_{j}");
                         if *solution.get(&var).unwrap_or(&false) {
                             next_location = Some(j);
                             break;
@@ -527,7 +527,7 @@ pub struct VehicleRoutingProblem {
 }
 
 impl VehicleRoutingProblem {
-    pub fn new(optimizer: VehicleRoutingOptimizer) -> Self {
+    pub const fn new(optimizer: VehicleRoutingOptimizer) -> Self {
         Self { optimizer }
     }
 
@@ -602,7 +602,7 @@ pub struct BinaryVehicleRoutingProblem {
 }
 
 impl BinaryVehicleRoutingProblem {
-    pub fn new(optimizer: VehicleRoutingOptimizer) -> Self {
+    pub const fn new(optimizer: VehicleRoutingOptimizer) -> Self {
         Self {
             inner: VehicleRoutingProblem::new(optimizer),
         }
@@ -626,7 +626,7 @@ impl BinaryVehicleRoutingProblem {
         let mut rng = thread_rng();
         let n_vars = self.num_variables();
         (0..n_vars)
-            .map(|_| if rng.gen::<f64>() > 0.8 { 1 } else { 0 })
+            .map(|_| i8::from(rng.gen::<f64>() > 0.8))
             .collect()
     }
 
@@ -639,7 +639,7 @@ impl BinaryVehicleRoutingProblem {
         for v in 0..self.inner.optimizer.num_vehicles {
             for i in 0..n_locations {
                 for j in 0..n_locations {
-                    let var_name = format!("x_{}_{}_{}", v, i, j);
+                    let var_name = format!("x_{v}_{i}_{j}");
                     bool_solution.insert(var_name, solution[var_idx] == 1);
                     var_idx += 1;
                 }
@@ -700,9 +700,9 @@ pub fn create_benchmark_problems() -> Vec<BinaryVehicleRoutingProblem> {
 
     // Capacitated VRP with time windows
     let cvrptw_optimizer = VehicleRoutingOptimizer::new(
-        small_distances.clone(),
+        small_distances,
         40.0, // Tighter capacity
-        small_demands.clone(),
+        small_demands,
         2,
     )
     .unwrap()
@@ -814,7 +814,7 @@ impl TSPOptimizer {
         // Create variable mapping
         for i in 0..n {
             for t in 0..n {
-                let var_name = format!("x_{}_{}", i, t);
+                let var_name = format!("x_{i}_{t}");
                 var_map.insert(var_name, i * n + t);
             }
         }
@@ -880,7 +880,7 @@ impl TSPOptimizer {
         for s in 0..num_salesmen {
             for i in 0..n {
                 for t in 0..n {
-                    let var_name = format!("x_{}_{}_{}", s, i, t);
+                    let var_name = format!("x_{s}_{i}_{t}");
                     var_map.insert(var_name, s * n * n + i * n + t);
                 }
             }
@@ -899,7 +899,7 @@ impl TSPOptimizer {
 
         for i in 0..n {
             for t in 0..n {
-                let var_name = format!("x_{}_{}", i, t);
+                let var_name = format!("x_{i}_{t}");
                 if *solution.get(&var_name).unwrap_or(&false) {
                     tour[t] = i;
                 }
@@ -981,7 +981,7 @@ pub struct TransportLink {
     pub lead_time: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeType {
     Supplier,
     Warehouse,
@@ -1371,7 +1371,11 @@ pub struct WarehouseGoals {
 
 impl WarehouseOptimizer {
     /// Create new warehouse optimizer
-    pub fn new(layout: WarehouseLayout, policies: StoragePolicies, orders: Vec<Order>) -> Self {
+    pub const fn new(
+        layout: WarehouseLayout,
+        policies: StoragePolicies,
+        orders: Vec<Order>,
+    ) -> Self {
         Self {
             layout,
             policies,
@@ -1462,7 +1466,7 @@ impl WarehouseOptimizer {
         }
 
         // Remove duplicates
-        pick_locations.sort();
+        pick_locations.sort_unstable();
         pick_locations.dedup();
 
         // Build distance matrix including picking station
@@ -1509,10 +1513,15 @@ impl WarehouseOptimizer {
                     + (pos1.1 as i32 - pos2.1 as i32).abs()
                     + (pos1.2 as i32 - pos2.2 as i32).abs()) as f64
             }
-            DistanceType::Euclidean => ((pos1.0 as f64 - pos2.0 as f64).powi(2)
-                + (pos1.1 as f64 - pos2.1 as f64).powi(2)
-                + (pos1.2 as f64 - pos2.2 as f64).powi(2))
-            .sqrt(),
+            DistanceType::Euclidean => (pos1.2 as f64 - pos2.2 as f64)
+                .mul_add(
+                    pos1.2 as f64 - pos2.2 as f64,
+                    (pos1.1 as f64 - pos2.1 as f64).mul_add(
+                        pos1.1 as f64 - pos2.1 as f64,
+                        (pos1.0 as f64 - pos2.0 as f64).powi(2),
+                    ),
+                )
+                .sqrt(),
             _ => 0.0,
         }
     }

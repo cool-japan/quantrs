@@ -58,33 +58,29 @@ impl EncodedVariable {
     /// Generate binary variable names based on encoding
     fn generate_binary_vars(name: &str, scheme: &EncodingScheme) -> Vec<String> {
         match scheme {
-            EncodingScheme::OneHot { num_values } => (0..*num_values)
-                .map(|i| format!("{}_{}", name, i))
-                .collect(),
+            EncodingScheme::OneHot { num_values } => {
+                (0..*num_values).map(|i| format!("{name}_{i}")).collect()
+            }
             EncodingScheme::Binary { num_values } => {
                 let num_bits = (*num_values as f64).log2().ceil() as usize;
-                (0..num_bits)
-                    .map(|i| format!("{}_bit{}", name, i))
-                    .collect()
+                (0..num_bits).map(|i| format!("{name}_bit{i}")).collect()
             }
             EncodingScheme::GrayCode { num_values } => {
                 let num_bits = (*num_values as f64).log2().ceil() as usize;
-                (0..num_bits)
-                    .map(|i| format!("{}_gray{}", name, i))
-                    .collect()
+                (0..num_bits).map(|i| format!("{name}_gray{i}")).collect()
             }
             EncodingScheme::DomainWall { num_values } => (0..*num_values - 1)
-                .map(|i| format!("{}_dw{}", name, i))
+                .map(|i| format!("{name}_dw{i}"))
                 .collect(),
             EncodingScheme::Unary { num_values } => (0..*num_values - 1)
-                .map(|i| format!("{}_u{}", name, i))
+                .map(|i| format!("{name}_u{i}"))
                 .collect(),
             EncodingScheme::OrderEncoding {
                 min_value,
                 max_value,
             } => {
                 let range = max_value - min_value;
-                (0..range).map(|i| format!("{}_ord{}", name, i)).collect()
+                (0..range).map(|i| format!("{name}_ord{i}")).collect()
             }
             EncodingScheme::Direct => vec![name.to_string()],
         }
@@ -156,9 +152,7 @@ impl EncodedVariable {
                 }
                 Some(value - 1)
             }
-            EncodingScheme::Direct => binary_values
-                .get(&self.name)
-                .map(|&b| if b { 1 } else { 0 }),
+            EncodingScheme::Direct => binary_values.get(&self.name).map(|&b| i32::from(b)),
         }
     }
 
@@ -333,7 +327,7 @@ impl EncodingOptimizer {
 
         for (var, &(min_val, max_val)) in &self.domains {
             let domain_size = (max_val - min_val + 1) as usize;
-            let neighbors = self.constraint_graph.get(var).map(|v| v.len()).unwrap_or(0);
+            let neighbors = self.constraint_graph.get(var).map_or(0, |v| v.len());
 
             // Heuristics for encoding selection
             let encoding = if domain_size == 2 {
@@ -381,7 +375,7 @@ impl EncodingOptimizer {
     }
 
     /// Check if variable has ordering constraints
-    fn has_ordering_constraints(&self, _var: &str) -> bool {
+    const fn has_ordering_constraints(&self, _var: &str) -> bool {
         // Simplified: would check actual constraint types
         false
     }

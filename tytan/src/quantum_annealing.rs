@@ -59,7 +59,7 @@ impl AnnealingSchedule {
         match self {
             Self::Linear => t,
             Self::Quadratic => t * t,
-            Self::Exponential => (t.exp() - 1.0) / (1_f64.exp() - 1.0),
+            Self::Exponential => t.exp_m1() / 1_f64.exp_m1(),
             Self::Custom { times, values } => {
                 // Linear interpolation between control points
                 if t <= times[0] {
@@ -70,7 +70,7 @@ impl AnnealingSchedule {
                     for i in 1..times.len() {
                         if t <= times[i] {
                             let frac = (t - times[i - 1]) / (times[i] - times[i - 1]);
-                            return values[i - 1] + frac * (values[i] - values[i - 1]);
+                            return frac.mul_add(values[i] - values[i - 1], values[i - 1]);
                         }
                     }
                     values[values.len() - 1]
@@ -168,12 +168,12 @@ pub struct Complex64 {
 }
 
 impl Complex64 {
-    pub fn new(re: f64, im: f64) -> Self {
+    pub const fn new(re: f64, im: f64) -> Self {
         Self { re, im }
     }
 
     pub fn norm_squared(&self) -> f64 {
-        self.re * self.re + self.im * self.im
+        self.re.mul_add(self.re, self.im * self.im)
     }
 
     pub fn conj(&self) -> Self {
@@ -293,8 +293,8 @@ impl QuantumAnnealingSampler {
             let energy = h_total[[i, i]];
             let phase = Complex64::new((energy * dt).cos(), -(energy * dt).sin());
             amp = Complex64::new(
-                amp.re * phase.re - amp.im * phase.im,
-                amp.re * phase.im + amp.im * phase.re,
+                amp.re.mul_add(phase.re, -(amp.im * phase.im)),
+                amp.re.mul_add(phase.im, amp.im * phase.re),
             );
 
             // Off-diagonal terms (simplified)
@@ -317,7 +317,7 @@ impl QuantumAnnealingSampler {
             .sum::<f64>()
             .sqrt();
 
-        for amp in new_amplitudes.iter_mut() {
+        for amp in &mut new_amplitudes {
             amp.re /= norm;
             amp.im /= norm;
         }
@@ -337,13 +337,12 @@ impl QuantumAnnealingSampler {
 
             // Dephasing noise
             if noise.dephasing_rate > 0.0 {
-                for amp in state.amplitudes.iter_mut() {
-                    let phase_noise =
-                        rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
+                for amp in &mut state.amplitudes {
+                    let phase_noise = rng.gen_range(-1.0..1.0) * (noise.dephasing_rate * dt).sqrt();
                     let phase = Complex64::new(phase_noise.cos(), phase_noise.sin());
                     let new_amp = Complex64::new(
-                        amp.re * phase.re - amp.im * phase.im,
-                        amp.re * phase.im + amp.im * phase.re,
+                        amp.re.mul_add(phase.re, -(amp.im * phase.im)),
+                        amp.re.mul_add(phase.im, amp.im * phase.re),
                     );
                     *amp = new_amp;
                 }
@@ -366,12 +365,12 @@ impl QuantumAnnealingSampler {
                         let amp_j = state.amplitudes[j];
 
                         state.amplitudes[i] = Complex64::new(
-                            cos_a * amp_i.re + sin_a * amp_j.re,
-                            cos_a * amp_i.im + sin_a * amp_j.im,
+                            cos_a.mul_add(amp_i.re, sin_a * amp_j.re),
+                            cos_a.mul_add(amp_i.im, sin_a * amp_j.im),
                         );
                         state.amplitudes[j] = Complex64::new(
-                            -sin_a * amp_i.re + cos_a * amp_j.re,
-                            -sin_a * amp_i.im + cos_a * amp_j.im,
+                            (-sin_a).mul_add(amp_i.re, cos_a * amp_j.re),
+                            (-sin_a).mul_add(amp_i.im, cos_a * amp_j.im),
                         );
                     }
                 }
@@ -395,7 +394,11 @@ impl QuantumAnnealingSampler {
                 let h_ij = h_problem[[i, j]];
 
                 // ⟨ψ|H|ψ⟩ = Σ_ij ψ*_i H_ij ψ_j
-                energy += (amp_i.conj().re * amp_j.re + amp_i.conj().im * amp_j.im) * h_ij;
+                energy += amp_i
+                    .conj()
+                    .re
+                    .mul_add(amp_j.re, amp_i.conj().im * amp_j.im)
+                    * h_ij;
             }
         }
 
@@ -409,7 +412,7 @@ impl QuantumAnnealingSampler {
         let mut cumulative = 0.0;
 
         // Compute probabilities
-        for amp in state.amplitudes.iter() {
+        for amp in &state.amplitudes {
             cumulative += amp.norm_squared();
             probabilities.push(cumulative);
         }
@@ -434,7 +437,10 @@ impl QuantumAnnealingSampler {
 impl Sampler for QuantumAnnealingSampler {
     fn run_qubo(
         &self,
-        qubo: &(Array<f64, scirs2_core::ndarray::Ix2>, HashMap<String, usize>),
+        qubo: &(
+            Array<f64, scirs2_core::ndarray::Ix2>,
+            HashMap<String, usize>,
+        ),
         num_reads: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix, var_map) = qubo;
@@ -504,7 +510,10 @@ impl Sampler for QuantumAnnealingSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         let (matrix_dyn, var_map) = hobo;
@@ -565,7 +574,7 @@ pub mod advanced {
     }
 
     impl DiabaticAnalyzer {
-        pub fn new() -> Self {
+        pub const fn new() -> Self {
             Self {
                 min_gap: f64::INFINITY,
                 gap_history: Vec::new(),

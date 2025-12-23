@@ -734,7 +734,7 @@ pub enum ActionType {
     /// Layout change
     LayoutChange,
     /// Bulk operation
-    BulkOperation(Vec<ActionType>),
+    BulkOperation(Vec<Self>),
 }
 
 impl VisualProblemBuilder {
@@ -809,7 +809,7 @@ impl VisualProblemBuilder {
     ) -> Result<String, String> {
         // Check if variable already exists
         if self.problem.variables.iter().any(|v| v.name == name) {
-            return Err(format!("Variable '{}' already exists", name));
+            return Err(format!("Variable '{name}' already exists"));
         }
 
         let id = format!("var_{}", self.problem.variables.len());
@@ -852,7 +852,7 @@ impl VisualProblemBuilder {
             ActionType::AddVariable(id.clone()),
             &before_state,
             &current_problem,
-            &format!("Added variable '{}'", name),
+            &format!("Added variable '{name}'"),
         );
 
         if self.config.real_time_validation {
@@ -869,7 +869,7 @@ impl VisualProblemBuilder {
             .variables
             .iter()
             .position(|v| v.id == variable_id)
-            .ok_or_else(|| format!("Variable '{}' not found", variable_id))?;
+            .ok_or_else(|| format!("Variable '{variable_id}' not found"))?;
 
         let before_state = self.problem.clone();
         let variable = self.problem.variables.remove(pos);
@@ -909,7 +909,7 @@ impl VisualProblemBuilder {
         // Validate that all variables exist
         for var_id in &variables {
             if !self.problem.variables.iter().any(|v| &v.id == var_id) {
-                return Err(format!("Variable '{}' not found", var_id));
+                return Err(format!("Variable '{var_id}' not found"));
             }
         }
 
@@ -940,7 +940,7 @@ impl VisualProblemBuilder {
             ActionType::AddConstraint(id.clone()),
             &before_state,
             &current_problem,
-            &format!("Added constraint '{}'", name),
+            &format!("Added constraint '{name}'"),
         );
 
         if self.config.real_time_validation {
@@ -983,7 +983,7 @@ impl VisualProblemBuilder {
             ActionType::SetObjective,
             &before_state,
             &current_problem,
-            &format!("Set objective function '{}'", name),
+            &format!("Set objective function '{name}'"),
         );
 
         if self.config.real_time_validation {
@@ -1017,7 +1017,7 @@ impl VisualProblemBuilder {
             ActionType::LayoutChange,
             &before_state,
             &current_problem,
-            &format!("Applied {:?} layout", algorithm),
+            &format!("Applied {algorithm:?} layout"),
         );
 
         Ok(())
@@ -1074,14 +1074,14 @@ impl VisualProblemBuilder {
     }
 
     /// Get current problem
-    pub fn get_problem(&self) -> &VisualProblem {
+    pub const fn get_problem(&self) -> &VisualProblem {
         &self.problem
     }
 
     /// Load problem from JSON
     pub fn load_problem(&mut self, json: &str) -> Result<(), String> {
         let problem: VisualProblem =
-            serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+            serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {e}"))?;
 
         let before_state = self.problem.clone();
         let _old_problem = self.problem.clone();
@@ -1101,7 +1101,7 @@ impl VisualProblemBuilder {
     /// Save problem to JSON
     pub fn save_problem(&self) -> Result<String, String> {
         serde_json::to_string_pretty(&self.problem)
-            .map_err(|e| format!("Failed to serialize to JSON: {}", e))
+            .map_err(|e| format!("Failed to serialize to JSON: {e}"))
     }
 
     // TODO: Fix AST building - requires proper access to compiler internals
@@ -1204,7 +1204,7 @@ impl VisualProblemBuilder {
                 for j in i + 1..n {
                     let dx = positions[i].0 - positions[j].0;
                     let dy = positions[i].1 - positions[j].1;
-                    let dist = (dx * dx + dy * dy).sqrt().max(1.0);
+                    let dist = dx.hypot(dy).max(1.0);
 
                     let force = 1000.0 / (dist * dist);
                     let fx = force * dx / dist;
@@ -1233,7 +1233,7 @@ impl VisualProblemBuilder {
                         ) {
                             let dx = positions[idx1].0 - positions[idx2].0;
                             let dy = positions[idx1].1 - positions[idx2].1;
-                            let dist = (dx * dx + dy * dy).sqrt().max(1.0);
+                            let dist = dx.hypot(dy).max(1.0);
 
                             let force = 0.1 * dist;
                             let fx = force * dx / dist;
@@ -1367,7 +1367,7 @@ impl ProblemValidator {
                     let count = problem.variables.len();
                     if count < *min || count > *max {
                         self.errors.push(ValidationError {
-                            id: format!("var_count_{}", count),
+                            id: format!("var_count_{count}"),
                             error_type: rule.rule_type.clone(),
                             severity: rule.severity.clone(),
                             message: rule
@@ -1428,7 +1428,7 @@ impl CodeGenerator {
         templates.insert(
             ExportFormat::Python,
             CodeTemplate {
-                template: r#"
+                template: r"
 # Generated quantum optimization problem
 import numpy as np
 from quantrs2_tytan import *
@@ -1444,7 +1444,7 @@ from quantrs2_tytan import *
 
 # Build and solve
 {solve_code}
-"#
+"
                 .to_string(),
                 placeholders: vec![
                     "variables".to_string(),
@@ -1464,7 +1464,7 @@ from quantrs2_tytan import *
         templates.insert(
             ExportFormat::Rust,
             CodeTemplate {
-                template: r#"
+                template: r"
 // Generated quantum optimization problem
 use quantrs2_tytan::*;
 
@@ -1483,7 +1483,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     Ok(())
 }}
-"#
+"
                 .to_string(),
                 placeholders: vec![
                     "variables".to_string(),
@@ -1511,7 +1511,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ) -> Result<String, String> {
         match format {
             ExportFormat::JSON => serde_json::to_string_pretty(problem)
-                .map_err(|e| format!("JSON generation error: {}", e)),
+                .map_err(|e| format!("JSON generation error: {e}")),
             ExportFormat::Python => self.generate_python_code(problem),
             ExportFormat::Rust => self.generate_rust_code(problem),
             _ => Err("Format not supported yet".to_string()),
@@ -1548,15 +1548,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
                             if *coef == 1.0 {
                                 var.clone()
                             } else {
-                                format!("{} * {}", coef, var)
+                                format!("{coef} * {var}")
                             }
                         })
                         .collect();
 
-                    if *constant != 0.0 {
-                        format!("h = {} + {}", terms.join(" + "), constant)
-                    } else {
+                    if *constant == 0.0 {
                         format!("h = {}", terms.join(" + "))
+                    } else {
+                        format!("h = {} + {}", terms.join(" + "), constant)
                     }
                 }
                 _ => "h = 0  # Complex objective not implemented".to_string(),
@@ -1574,7 +1574,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {{
             .join("\n");
 
         // Generate solve code
-        let solve_code = r#"
+        let solve_code = r"
 # Compile to QUBO
 qubo, offset = Compile(h).get_qubo()
 
@@ -1587,7 +1587,7 @@ result = solver.run_qubo(qubo, 100)
 # Display results
 for r in result:
     print(r)
-"#
+"
         .to_string();
 
         code = code.replace("{variables}", &variables_code);
@@ -1649,7 +1649,7 @@ for r in result:
 
 impl ProblemHistory {
     /// Create new history
-    pub fn new(max_size: usize) -> Self {
+    pub const fn new(max_size: usize) -> Self {
         Self {
             history: Vec::new(),
             current: 0,

@@ -3,8 +3,8 @@
 //! This module provides advanced error handling, performance diagnostics,
 //! and system health monitoring for the quantum simulation framework.
 
-use scirs2_core::Complex64;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -411,7 +411,7 @@ impl SimulationDiagnostics {
 
         // Analyze performance patterns
         if let Ok(monitor) = self.performance_monitor.lock() {
-            if monitor.gate_performance.len() > 0 {
+            if !monitor.gate_performance.is_empty() {
                 let avg_gate_time: Duration = monitor
                     .gate_performance
                     .values()
@@ -474,13 +474,13 @@ impl SimulationDiagnostics {
         let error_score = if error_summary.total_errors == 0 {
             1.0
         } else {
-            1.0 - (error_summary.error_rate.min(0.5) * 2.0)
+            error_summary.error_rate.min(0.5).mul_add(-2.0, 1.0)
         };
 
         let performance_score = (performance_summary.gates_per_second / 1000.0).min(1.0);
         let memory_score = memory_summary.buffer_pool_efficiency;
 
-        (error_score * 0.4 + performance_score * 0.3 + memory_score * 0.3) * 100.0
+        memory_score.mul_add(0.3, error_score * 0.4 + performance_score * 0.3) * 100.0
     }
 }
 
@@ -565,14 +565,14 @@ impl PerformanceMonitor {
     }
 
     fn generate_summary(&self) -> PerformanceSummary {
-        let average_gate_time = if !self.gate_performance.is_empty() {
+        let average_gate_time = if self.gate_performance.is_empty() {
+            0.0
+        } else {
             self.gate_performance
                 .values()
                 .map(|stats| stats.average_time.as_nanos() as f64)
                 .sum::<f64>()
                 / self.gate_performance.len() as f64
-        } else {
-            0.0
         };
 
         let gates_per_second = if average_gate_time > 0.0 {

@@ -17,7 +17,7 @@ use std::f64::consts::PI;
 
 use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
-use crate::scirs2_integration::{SciRS2QuboModel, SciRS2GraphAnalyzer};
+use crate::scirs2_integration::{SciRS2GraphAnalyzer, SciRS2QuboModel};
 
 /// Bridge between QAOA circuits and quantum annealing
 pub struct QaoaAnnealBridge {
@@ -40,9 +40,12 @@ impl QaoaAnnealBridge {
     }
 
     /// Convert QAOA problem to QUBO formulation for annealing
-    pub fn qaoa_to_qubo(&mut self, qaoa_problem: &QaoapProblem) -> ApplicationResult<SciRS2QuboModel> {
+    pub fn qaoa_to_qubo(
+        &mut self,
+        qaoa_problem: &QaoaProblem,
+    ) -> ApplicationResult<SciRS2QuboModel> {
         let num_vars = qaoa_problem.num_qubits;
-        let mut qubo = SciRS2QuboModel::new(num_vars);
+        let mut qubo = SciRS2QuboModel::new(num_vars)?;
 
         // Convert QAOA cost Hamiltonian to QUBO terms
         for clause in &qaoa_problem.cost_clauses {
@@ -53,11 +56,15 @@ impl QaoaAnnealBridge {
                     let current = qubo.linear_terms[*qubit];
                     qubo.set_linear(*qubit, current - 2.0 * weight)?;
                 }
-                QaoaClause::TwoQubit { qubit1, qubit2, weight } => {
+                QaoaClause::TwoQubit {
+                    qubit1,
+                    qubit2,
+                    weight,
+                } => {
                     // Convert ZZ term to QUBO quadratic term
                     // Z_i * Z_j -> (1 - 2*x_i)(1 - 2*x_j) = 1 - 2*x_i - 2*x_j + 4*x_i*x_j
                     let current_linear1 = qubo.linear_terms[*qubit1];
-                    let current_linear2 = qubit.linear_terms[*qubit2];
+                    let current_linear2 = qubo.linear_terms[*qubit2];
                     qubo.set_linear(*qubit1, current_linear1 - 2.0 * weight)?;
                     qubo.set_linear(*qubit2, current_linear2 - 2.0 * weight)?;
                     qubo.set_quadratic(*qubit1, *qubit2, 4.0 * weight)?;
@@ -72,17 +79,23 @@ impl QaoaAnnealBridge {
 
         // Analyze the resulting problem graph
         let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
-        println!("QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}",
-                 analysis.metrics.num_nodes, analysis.metrics.num_edges, analysis.embedding_difficulty);
+        println!(
+            "QAOA->QUBO conversion: {} qubits, {} edges, difficulty: {:?}",
+            analysis.metrics.num_nodes, analysis.metrics.num_edges, analysis.embedding_difficulty
+        );
 
         Ok(qubo)
     }
 
     /// Convert annealing solution back to QAOA circuit parameters
-    pub fn solution_to_qaoa_params(&self, solution: &[i8], qaoa_problem: &QaoaaProblem) -> ApplicationResult<QaoaParameters> {
+    pub fn solution_to_qaoa_params(
+        &self,
+        solution: &[i8],
+        qaoa_problem: &QaoaProblem,
+    ) -> ApplicationResult<QaoaParameters> {
         if solution.len() != qaoa_problem.num_qubits {
             return Err(ApplicationError::InvalidConfiguration(
-                "Solution length mismatch".to_string()
+                "Solution length mismatch".to_string(),
             ));
         }
 
@@ -94,7 +107,8 @@ impl QaoaAnnealBridge {
         let num_layers = self.config.default_qaoa_layers;
         for layer in 0..num_layers {
             // Map solution bits to mixing angles (beta)
-            let beta_sum: f64 = solution.iter()
+            let beta_sum: f64 = solution
+                .iter()
                 .skip(layer * solution.len() / num_layers)
                 .take(solution.len() / num_layers)
                 .map(|&x| x as f64)
@@ -103,7 +117,8 @@ impl QaoaAnnealBridge {
             beta_params.push(beta);
 
             // Map to cost angles (gamma)
-            let gamma_sum: f64 = solution.iter()
+            let gamma_sum: f64 = solution
+                .iter()
                 .rev()
                 .skip(layer * solution.len() / num_layers)
                 .take(solution.len() / num_layers)
@@ -121,7 +136,10 @@ impl QaoaAnnealBridge {
     }
 
     /// Hybrid optimization using both QAOA and annealing
-    pub fn hybrid_optimize(&mut self, problem: &UnifiedProblem) -> ApplicationResult<HybridOptimizationResult> {
+    pub fn hybrid_optimize(
+        &mut self,
+        problem: &UnifiedProblem,
+    ) -> ApplicationResult<HybridOptimizationResult> {
         let start_time = std::time::Instant::now();
 
         // Step 1: Convert to QAOA problem if needed
@@ -138,22 +156,17 @@ impl QaoaAnnealBridge {
         let analysis = self.graph_analyzer.analyze_problem_graph(&qubo)?;
         let strategy = self.select_optimization_strategy(&analysis)?;
 
-        println!("Selected strategy: {:?} for problem with {} variables", strategy, qubo.num_variables);
+        println!(
+            "Selected strategy: {:?} for problem with {} variables",
+            strategy, qubo.num_variables
+        );
 
         // Step 4: Execute chosen strategy
         let result = match strategy {
-            OptimizationStrategy::AnnealingOnly => {
-                self.solve_with_annealing(&qubo)?
-            }
-            OptimizationStrategy::QaoaOnly => {
-                self.solve_with_qaoa(&qaoa_problem)?
-            }
-            OptimizationStrategy::Sequential => {
-                self.solve_sequential(&qaoa_problem, &qubo)?
-            }
-            OptimizationStrategy::Parallel => {
-                self.solve_parallel(&qaoa_problem, &qubo)?
-            }
+            OptimizationStrategy::AnnealingOnly => self.solve_with_annealing(&qubo)?,
+            OptimizationStrategy::QaoaOnly => self.solve_with_qaoa(&qaoa_problem)?,
+            OptimizationStrategy::Sequential => self.solve_sequential(&qaoa_problem, &qubo)?,
+            OptimizationStrategy::Parallel => self.solve_parallel(&qaoa_problem, &qubo)?,
         };
 
         let duration = start_time.elapsed();
@@ -172,7 +185,12 @@ impl QaoaAnnealBridge {
     }
 
     /// Reduce multi-qubit terms using auxiliary variables
-    fn reduce_multi_qubit_term(&self, qubo: &mut SciRS2QuboModel, qubits: &[usize], weight: f64) -> ApplicationResult<()> {
+    fn reduce_multi_qubit_term(
+        &self,
+        qubo: &mut SciRS2QuboModel,
+        qubits: &[usize],
+        weight: f64,
+    ) -> ApplicationResult<()> {
         if qubits.len() <= 2 {
             return Ok(());
         }
@@ -181,8 +199,8 @@ impl QaoaAnnealBridge {
         // More sophisticated reduction methods could be implemented
         let pair_weight = weight / (qubits.len() - 1) as f64;
 
-        for i in 0..qubits.len()-1 {
-            qubo.set_quadratic(qubits[i], qubits[i+1], pair_weight)?;
+        for i in 0..qubits.len() - 1 {
+            qubo.set_quadratic(qubits[i], qubits[i + 1], pair_weight)?;
         }
 
         Ok(())
@@ -191,18 +209,21 @@ impl QaoaAnnealBridge {
     fn qubo_to_qaoa(&self, _qubo: &SciRS2QuboModel) -> ApplicationResult<QaoaProblem> {
         // Simplified conversion - would implement proper QUBO to QAOA mapping
         Err(ApplicationError::InvalidConfiguration(
-            "QUBO to QAOA conversion not yet implemented".to_string()
+            "QUBO to QAOA conversion not yet implemented".to_string(),
         ))
     }
 
     fn ising_to_qaoa(&self, _ising: &IsingModel) -> ApplicationResult<QaoaProblem> {
         // Simplified conversion - would implement proper Ising to QAOA mapping
         Err(ApplicationError::InvalidConfiguration(
-            "Ising to QAOA conversion not yet implemented".to_string()
+            "Ising to QAOA conversion not yet implemented".to_string(),
         ))
     }
 
-    fn select_optimization_strategy(&self, analysis: &crate::scirs2_integration::GraphAnalysisResult) -> ApplicationResult<OptimizationStrategy> {
+    fn select_optimization_strategy(
+        &self,
+        analysis: &crate::scirs2_integration::GraphAnalysisResult,
+    ) -> ApplicationResult<OptimizationStrategy> {
         use crate::scirs2_integration::EmbeddingDifficulty;
 
         match analysis.embedding_difficulty {
@@ -238,8 +259,8 @@ impl QaoaAnnealBridge {
         let energy = -1.0; // Placeholder
 
         let qaoa_params = QaoaParameters {
-            beta: vec![PI/4.0; self.config.default_qaoa_layers],
-            gamma: vec![PI/2.0; self.config.default_qaoa_layers],
+            beta: vec![PI / 4.0; self.config.default_qaoa_layers],
+            gamma: vec![PI / 2.0; self.config.default_qaoa_layers],
             num_layers: self.config.default_qaoa_layers,
         };
 
@@ -252,7 +273,11 @@ impl QaoaAnnealBridge {
         })
     }
 
-    fn solve_sequential(&self, qaoa_problem: &QaoaProblem, qubo: &SciRS2QuboModel) -> ApplicationResult<SolutionResult> {
+    fn solve_sequential(
+        &self,
+        qaoa_problem: &QaoaProblem,
+        qubo: &SciRS2QuboModel,
+    ) -> ApplicationResult<SolutionResult> {
         // First try QAOA, then refine with annealing
         let qaoa_result = self.solve_with_qaoa(qaoa_problem)?;
 
@@ -263,7 +288,11 @@ impl QaoaAnnealBridge {
         }
     }
 
-    fn solve_parallel(&self, qaoa_problem: &QaoaProblem, qubo: &SciRS2QuboModel) -> ApplicationResult<SolutionResult> {
+    fn solve_parallel(
+        &self,
+        qaoa_problem: &QaoaProblem,
+        qubo: &SciRS2QuboModel,
+    ) -> ApplicationResult<SolutionResult> {
         // Run both approaches and return the better result
         let qaoa_result = self.solve_with_qaoa(qaoa_problem)?;
         let annealing_result = self.solve_with_annealing(qubo)?;
@@ -314,9 +343,19 @@ pub struct QaoaProblem {
 /// QAOA Hamiltonian clause
 #[derive(Debug, Clone)]
 pub enum QaoaClause {
-    SingleQubit { qubit: usize, weight: f64 },
-    TwoQubit { qubit1: usize, qubit2: usize, weight: f64 },
-    MultiQubit { qubits: Vec<usize>, weight: f64 },
+    SingleQubit {
+        qubit: usize,
+        weight: f64,
+    },
+    TwoQubit {
+        qubit1: usize,
+        qubit2: usize,
+        weight: f64,
+    },
+    MultiQubit {
+        qubits: Vec<usize>,
+        weight: f64,
+    },
 }
 
 /// Type of mixing Hamiltonian
@@ -432,7 +471,8 @@ impl PerformanceMetrics {
 
     /// Get most used strategy
     pub fn most_used_strategy(&self) -> Option<OptimizationStrategy> {
-        self.strategy_counts.iter()
+        self.strategy_counts
+            .iter()
             .max_by_key(|(_, &count)| count)
             .map(|(&strategy, _)| strategy)
     }
@@ -448,7 +488,7 @@ pub fn create_example_max_cut_problem(num_vertices: usize) -> UnifiedProblem {
         clauses.push(QaoaClause::TwoQubit {
             qubit1: i,
             qubit2: j,
-            weight: 1.0
+            weight: 1.0,
         });
     }
 
@@ -470,6 +510,7 @@ pub fn create_example_max_cut_problem(num_vertices: usize) -> UnifiedProblem {
 }
 
 #[cfg(test)]
+use scirs2_sparse::SparseArray;
 mod tests {
     use super::*;
 
@@ -503,7 +544,7 @@ mod tests {
 
             let qubo = result.unwrap();
             assert_eq!(qubo.num_variables, 3);
-            assert_eq!(qubo.quadratic_terms.len(), 3); // 3 edges in ring
+            assert_eq!(qubo.quadratic_matrix.nnz() / 2, 3); // 3 edges in ring
         }
     }
 
@@ -517,6 +558,7 @@ mod tests {
 
         let opt_result = result.unwrap();
         assert_eq!(opt_result.best_solution.len(), 6);
-        assert!(opt_result.execution_time.as_millis() > 0);
+        // Use microseconds for fast operations (millis may be 0 for very fast tests)
+        assert!(opt_result.execution_time.as_micros() > 0);
     }
 }

@@ -32,7 +32,7 @@ pub struct EnergyLandscapeConfig {
 }
 
 /// Projection methods for dimensionality reduction
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProjectionMethod {
     /// Principal Component Analysis
     PCA,
@@ -66,7 +66,7 @@ pub struct EnergyLandscape {
 
 impl EnergyLandscape {
     /// Create new energy landscape analyzer
-    pub fn new(config: EnergyLandscapeConfig) -> Self {
+    pub const fn new(config: EnergyLandscapeConfig) -> Self {
         Self {
             config,
             samples: Vec::new(),
@@ -96,7 +96,7 @@ impl EnergyLandscape {
         let mut bin_centers = Vec::new();
 
         for i in 0..self.config.bins {
-            bin_centers.push(min_energy + (i as f64 + 0.5) * bin_width);
+            bin_centers.push((i as f64 + 0.5).mul_add(bin_width, min_energy));
         }
 
         for &energy in &energies {
@@ -232,7 +232,6 @@ impl EnergyLandscape {
         data: &Array2<f64>,
         n_components: usize,
     ) -> Result<Array2<f64>, Box<dyn std::error::Error>> {
-        
         use scirs2_core::random::prelude::*;
 
         let n_features = data.ncols();
@@ -276,8 +275,7 @@ impl EnergyLandscape {
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| a.energy.partial_cmp(&b.energy).unwrap())
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .map_or(0, |(i, _)| i);
 
         let best_solution = data.row(best_idx);
 
@@ -324,8 +322,8 @@ impl EnergyLandscape {
 
         for i in 0..self.config.resolution {
             for j in 0..self.config.resolution {
-                let gx = x_min + (i as f64 / self.config.resolution as f64) * x_range;
-                let gy = y_min + (j as f64 / self.config.resolution as f64) * y_range;
+                let gx = (i as f64 / self.config.resolution as f64).mul_add(x_range, x_min);
+                let gy = (j as f64 / self.config.resolution as f64).mul_add(y_range, y_min);
 
                 grid_x.push(gx);
                 grid_y.push(gy);

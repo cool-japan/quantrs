@@ -6,12 +6,12 @@
 //! for efficient data structures and operations.
 
 use crate::simulator::{Simulator, SimulatorResult};
-use scirs2_core::ndarray::{Array2, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::GateOp;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array2, ArrayView2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -239,49 +239,46 @@ impl StabilizerTableau {
             }
         }
 
-        match anticommuting_row {
-            Some(p) => {
-                // Random outcome case
-                // Set the p-th stabilizer to Z_qubit
-                for j in 0..self.num_qubits {
-                    self.x_matrix[[p, j]] = false;
-                    self.z_matrix[[p, j]] = j == qubit;
-                }
-
-                // Random measurement outcome
-                let mut rng = thread_rng();
-                let outcome = rng.gen_bool(0.5);
-                self.phase[p] = outcome;
-
-                // Update other stabilizers that anticommute
-                for i in 0..self.num_qubits {
-                    if i != p && self.x_matrix[[i, qubit]] {
-                        // Multiply by stabilizer p
-                        for j in 0..self.num_qubits {
-                            self.x_matrix[[i, j]] ^= self.x_matrix[[p, j]];
-                            self.z_matrix[[i, j]] ^= self.z_matrix[[p, j]];
-                        }
-                        // Update phase
-                        self.phase[i] ^= self.phase[p];
-                    }
-                }
-
-                Ok(outcome) // Measurement outcome
+        if let Some(p) = anticommuting_row {
+            // Random outcome case
+            // Set the p-th stabilizer to Z_qubit
+            for j in 0..self.num_qubits {
+                self.x_matrix[[p, j]] = false;
+                self.z_matrix[[p, j]] = j == qubit;
             }
-            None => {
-                // Deterministic outcome
-                // Check if Z_qubit is in the stabilizer group
-                let mut outcome = false;
 
-                for i in 0..self.num_qubits {
-                    if self.z_matrix[[i, qubit]] && !self.x_matrix[[i, qubit]] {
-                        outcome = self.phase[i];
-                        break;
+            // Random measurement outcome
+            let mut rng = thread_rng();
+            let outcome = rng.gen_bool(0.5);
+            self.phase[p] = outcome;
+
+            // Update other stabilizers that anticommute
+            for i in 0..self.num_qubits {
+                if i != p && self.x_matrix[[i, qubit]] {
+                    // Multiply by stabilizer p
+                    for j in 0..self.num_qubits {
+                        self.x_matrix[[i, j]] ^= self.x_matrix[[p, j]];
+                        self.z_matrix[[i, j]] ^= self.z_matrix[[p, j]];
                     }
+                    // Update phase
+                    self.phase[i] ^= self.phase[p];
                 }
-
-                Ok(outcome)
             }
+
+            Ok(outcome) // Measurement outcome
+        } else {
+            // Deterministic outcome
+            // Check if Z_qubit is in the stabilizer group
+            let mut outcome = false;
+
+            for i in 0..self.num_qubits {
+                if self.z_matrix[[i, qubit]] && !self.x_matrix[[i, qubit]] {
+                    outcome = self.phase[i];
+                    break;
+                }
+            }
+
+            Ok(outcome)
         }
     }
 
@@ -371,7 +368,7 @@ impl StabilizerSimulator {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.tableau.num_qubits
     }
 
@@ -488,7 +485,7 @@ impl Simulator for StabilizerSimulator {
         circuit: &Circuit<N>,
     ) -> crate::error::Result<SimulatorResult<N>> {
         // Create a new simulator instance
-        let mut sim = StabilizerSimulator::new(N);
+        let mut sim = Self::new(N);
 
         // Apply all gates in the circuit
         for gate in circuit.gates() {
@@ -513,7 +510,7 @@ pub struct CliffordCircuitBuilder {
 
 impl CliffordCircuitBuilder {
     /// Create a new Clifford circuit builder
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             gates: Vec::new(),
             num_qubits,

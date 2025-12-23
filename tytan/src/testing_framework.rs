@@ -136,7 +136,7 @@ pub struct TestCategory {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemType {
     /// Max-cut problem
     MaxCut,
@@ -729,7 +729,7 @@ impl TestingFramework {
     }
 
     /// Load baseline results from file
-    fn load_baseline(&self, _filename: &str) -> Result<Vec<TestResult>, String> {
+    const fn load_baseline(&self, _filename: &str) -> Result<Vec<TestResult>, String> {
         // Simplified implementation - in practice would load from JSON/CSV
         Ok(Vec::new())
     }
@@ -748,7 +748,7 @@ impl TestingFramework {
         let failures = Arc::new(Mutex::new(Vec::new()));
 
         let total_start = Instant::now();
-        let chunk_size = (test_cases.len() + num_threads - 1) / num_threads;
+        let chunk_size = test_cases.len().div_ceil(num_threads);
 
         let mut handles = Vec::new();
 
@@ -819,7 +819,7 @@ impl TestingFramework {
         // Run sampler
         let sample_result = sampler
             .run_qubo(&(test_case.qubo.clone(), test_case.var_map.clone()), 100)
-            .map_err(|e| format!("Sampler error: {:?}", e))?;
+            .map_err(|e| format!("Sampler error: {e:?}"))?;
 
         let solve_time = solve_start.elapsed();
 
@@ -908,7 +908,7 @@ impl TestingFramework {
             0.0
         };
 
-        (constraint_score * 0.4 + success_score * 0.4 + quality_score * 0.2) * 100.0
+        (constraint_score.mul_add(0.4, success_score * 0.4) + quality_score * 0.2) * 100.0
     }
 
     /// Add stress test cases
@@ -960,7 +960,7 @@ impl TestingFramework {
             "csv" => self.export_csv(),
             "json" => self.generate_json_report(),
             "xml" => self.export_xml(),
-            _ => Err(format!("Unsupported export format: {}", format)),
+            _ => Err(format!("Unsupported export format: {format}")),
         }
     }
 
@@ -1273,7 +1273,7 @@ impl TestingFramework {
                 &(test_case.qubo.clone(), test_case.var_map.clone()),
                 self.config.samplers[0].num_samples,
             )
-            .map_err(|e| format!("Sampler error: {:?}", e))?;
+            .map_err(|e| format!("Sampler error: {e:?}"))?;
 
         let solve_time = solve_start.elapsed();
 
@@ -1486,39 +1486,39 @@ impl TestingFramework {
 
         // Summary section
         json.push_str("  \"summary\": {\n");
-        write!(
+        writeln!(
             &mut json,
-            "    \"total_tests\": {},\n",
+            "    \"total_tests\": {},",
             self.results.summary.total_tests
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"passed\": {},\n",
+            "    \"passed\": {},",
             self.results.summary.passed
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"failed\": {},\n",
+            "    \"failed\": {},",
             self.results.summary.failed
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"skipped\": {},\n",
+            "    \"skipped\": {},",
             self.results.summary.skipped
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"success_rate\": {},\n",
+            "    \"success_rate\": {},",
             self.results.summary.success_rate
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"avg_runtime_ms\": {}\n",
+            "    \"avg_runtime_ms\": {}",
             self.results.summary.avg_runtime.as_millis()
         )
         .unwrap();
@@ -1526,33 +1526,33 @@ impl TestingFramework {
 
         // Quality metrics
         json.push_str("  \"quality_metrics\": {\n");
-        write!(
+        writeln!(
             &mut json,
-            "    \"avg_quality\": {},\n",
+            "    \"avg_quality\": {},",
             self.results.summary.quality_metrics.avg_quality
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"best_quality\": {},\n",
+            "    \"best_quality\": {},",
             self.results.summary.quality_metrics.best_quality
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"worst_quality\": {},\n",
+            "    \"worst_quality\": {},",
             self.results.summary.quality_metrics.worst_quality
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"std_dev\": {},\n",
+            "    \"std_dev\": {},",
             self.results.summary.quality_metrics.std_dev
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"constraint_satisfaction_rate\": {}\n",
+            "    \"constraint_satisfaction_rate\": {}",
             self.results
                 .summary
                 .quality_metrics
@@ -1563,9 +1563,9 @@ impl TestingFramework {
 
         // Performance data
         json.push_str("  \"performance\": {\n");
-        write!(
+        writeln!(
             &mut json,
-            "    \"total_time_ms\": {},\n",
+            "    \"total_time_ms\": {},",
             self.results
                 .performance
                 .runtime_stats
@@ -1573,9 +1573,9 @@ impl TestingFramework {
                 .as_millis()
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"solving_time_ms\": {},\n",
+            "    \"solving_time_ms\": {},",
             self.results
                 .performance
                 .runtime_stats
@@ -1583,9 +1583,9 @@ impl TestingFramework {
                 .as_millis()
         )
         .unwrap();
-        write!(
+        writeln!(
             &mut json,
-            "    \"validation_time_ms\": {}\n",
+            "    \"validation_time_ms\": {}",
             self.results
                 .performance
                 .runtime_stats
@@ -1599,29 +1599,29 @@ impl TestingFramework {
         json.push_str("  \"test_results\": [\n");
         for (i, result) in self.results.test_results.iter().enumerate() {
             json.push_str("    {\n");
-            write!(&mut json, "      \"test_id\": \"{}\",\n", result.test_id).unwrap();
-            write!(&mut json, "      \"sampler\": \"{}\",\n", result.sampler).unwrap();
-            write!(
+            writeln!(&mut json, "      \"test_id\": \"{}\",", result.test_id).unwrap();
+            writeln!(&mut json, "      \"sampler\": \"{}\",", result.sampler).unwrap();
+            writeln!(
                 &mut json,
-                "      \"objective_value\": {},\n",
+                "      \"objective_value\": {},",
                 result.objective_value
             )
             .unwrap();
-            write!(
+            writeln!(
                 &mut json,
-                "      \"constraints_satisfied\": {},\n",
+                "      \"constraints_satisfied\": {},",
                 result.constraints_satisfied
             )
             .unwrap();
-            write!(
+            writeln!(
                 &mut json,
-                "      \"runtime_ms\": {},\n",
+                "      \"runtime_ms\": {},",
                 result.runtime.as_millis()
             )
             .unwrap();
-            write!(
+            writeln!(
                 &mut json,
-                "      \"is_valid\": {}\n",
+                "      \"is_valid\": {}",
                 result.validation.is_valid
             )
             .unwrap();
@@ -1637,17 +1637,17 @@ impl TestingFramework {
         json.push_str("  \"failures\": [\n");
         for (i, failure) in self.results.failures.iter().enumerate() {
             json.push_str("    {\n");
-            write!(&mut json, "      \"test_id\": \"{}\",\n", failure.test_id).unwrap();
-            write!(
+            writeln!(&mut json, "      \"test_id\": \"{}\",", failure.test_id).unwrap();
+            writeln!(
                 &mut json,
-                "      \"failure_type\": \"{:?}\",\n",
+                "      \"failure_type\": \"{:?}\",",
                 failure.failure_type
             )
             .unwrap();
-            write!(
+            writeln!(
                 &mut json,
-                "      \"message\": \"{}\"\n",
-                failure.message.replace("\"", "\\\"")
+                "      \"message\": \"{}\"",
+                failure.message.replace('"', "\\\"")
             )
             .unwrap();
             json.push_str("    }");
@@ -1786,10 +1786,9 @@ impl TestingFramework {
     /// Save report to file
     pub fn save_report(&self, filename: &str) -> Result<(), String> {
         let report = self.generate_report()?;
-        let mut file =
-            File::create(filename).map_err(|e| format!("Failed to create file: {}", e))?;
+        let mut file = File::create(filename).map_err(|e| format!("Failed to create file: {e}"))?;
         file.write_all(report.as_bytes())
-            .map_err(|e| format!("Failed to write file: {}", e))?;
+            .map_err(|e| format!("Failed to write file: {e}"))?;
         Ok(())
     }
 }
@@ -1826,7 +1825,7 @@ impl Validator for ConstraintValidator {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "ConstraintValidator"
     }
 }
@@ -1915,7 +1914,7 @@ impl Validator for ObjectiveValidator {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "ObjectiveValidator"
     }
 }
@@ -1975,10 +1974,7 @@ impl Validator for BoundsValidator {
         checks.push(ValidationCheck {
             name: "Variable count".to_string(),
             passed: expected_vars == actual_vars,
-            message: format!(
-                "Expected {} variables, found {}",
-                expected_vars, actual_vars
-            ),
+            message: format!("Expected {expected_vars} variables, found {actual_vars}"),
             details: None,
         });
 
@@ -1989,7 +1985,7 @@ impl Validator for BoundsValidator {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "BoundsValidator"
     }
 }
@@ -2013,7 +2009,7 @@ impl Validator for SymmetryValidator {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "SymmetryValidator"
     }
 }
@@ -2062,7 +2058,7 @@ impl TestGenerator for MaxCutGenerator {
         let mut var_map = HashMap::new();
 
         for i in 0..n {
-            var_map.insert(format!("x_{}", i), i);
+            var_map.insert(format!("x_{i}"), i);
         }
 
         // Generate edges
@@ -2092,7 +2088,7 @@ impl TestGenerator for MaxCutGenerator {
                 generation_method: "Random graph".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(100),
-                notes: format!("Edge probability: {}", edge_probability),
+                notes: format!("Edge probability: {edge_probability}"),
                 tags: vec!["graph".to_string(), "maxcut".to_string()],
             },
         });
@@ -2100,7 +2096,7 @@ impl TestGenerator for MaxCutGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "MaxCutGenerator"
     }
 
@@ -2137,7 +2133,7 @@ impl TestGenerator for TSPGenerator {
                 if i != j {
                     let dx: f64 = cities[i].0 - cities[j].0;
                     let dy: f64 = cities[i].1 - cities[j].1;
-                    distances[[i, j]] = (dx * dx + dy * dy).sqrt();
+                    distances[[i, j]] = dx.hypot(dy);
                 }
             }
         }
@@ -2151,7 +2147,7 @@ impl TestGenerator for TSPGenerator {
         for i in 0..n_cities {
             for j in 0..n_cities {
                 let idx = i * n_cities + j;
-                var_map.insert(format!("x_{}_{}", i, j), idx);
+                var_map.insert(format!("x_{i}_{j}"), idx);
             }
         }
 
@@ -2173,7 +2169,7 @@ impl TestGenerator for TSPGenerator {
 
         // Each city visited exactly once
         for i in 0..n_cities {
-            let vars: Vec<_> = (0..n_cities).map(|j| format!("x_{}_{}", i, j)).collect();
+            let vars: Vec<_> = (0..n_cities).map(|j| format!("x_{i}_{j}")).collect();
 
             constraints.push(Constraint {
                 constraint_type: ConstraintType::ExactlyK { k: 1 },
@@ -2185,7 +2181,7 @@ impl TestGenerator for TSPGenerator {
 
         // Each position has exactly one city
         for j in 0..n_cities {
-            let vars: Vec<_> = (0..n_cities).map(|i| format!("x_{}_{}", i, j)).collect();
+            let vars: Vec<_> = (0..n_cities).map(|i| format!("x_{i}_{j}")).collect();
 
             constraints.push(Constraint {
                 constraint_type: ConstraintType::ExactlyK { k: 1 },
@@ -2211,7 +2207,7 @@ impl TestGenerator for TSPGenerator {
                 generation_method: "Random cities".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(500),
-                notes: format!("{} cities", n_cities),
+                notes: format!("{n_cities} cities"),
                 tags: vec!["routing".to_string(), "tsp".to_string()],
             },
         });
@@ -2219,7 +2215,7 @@ impl TestGenerator for TSPGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "TSPGenerator"
     }
 
@@ -2236,26 +2232,24 @@ impl TSPGenerator {
         constraints: &[Constraint],
     ) -> Result<(), String> {
         for constraint in constraints {
-            match &constraint.constraint_type {
-                ConstraintType::ExactlyK { k } => {
-                    // (sum x_i - k)^2
-                    for v1 in &constraint.variables {
-                        if let Some(&idx1) = var_map.get(v1) {
-                            // Linear term: -2k
-                            qubo[[idx1, idx1]] += constraint.penalty * (1.0 - 2.0 * *k as f64);
+            if let ConstraintType::ExactlyK { k } = &constraint.constraint_type {
+                // (sum x_i - k)^2
+                for v1 in &constraint.variables {
+                    if let Some(&idx1) = var_map.get(v1) {
+                        // Linear term: -2k
+                        qubo[[idx1, idx1]] +=
+                            constraint.penalty * 2.0f64.mul_add(-(*k as f64), 1.0);
 
-                            // Quadratic terms
-                            for v2 in &constraint.variables {
-                                if v1 != v2 {
-                                    if let Some(&idx2) = var_map.get(v2) {
-                                        qubo[[idx1, idx2]] += constraint.penalty * 2.0;
-                                    }
+                        // Quadratic terms
+                        for v2 in &constraint.variables {
+                            if v1 != v2 {
+                                if let Some(&idx2) = var_map.get(v2) {
+                                    qubo[[idx1, idx2]] += constraint.penalty * 2.0;
                                 }
                             }
                         }
                     }
                 }
-                _ => {}
             }
         }
 
@@ -2305,7 +2299,7 @@ impl TestGenerator for GraphColoringGenerator {
         for v in 0..n_vertices {
             for c in 0..n_colors {
                 let idx = v * n_colors + c;
-                var_map.insert(format!("x_{}_{}", v, c), idx);
+                var_map.insert(format!("x_{v}_{c}"), idx);
             }
         }
 
@@ -2323,7 +2317,7 @@ impl TestGenerator for GraphColoringGenerator {
 
         // Each vertex has exactly one color
         for v in 0..n_vertices {
-            let vars: Vec<_> = (0..n_colors).map(|c| format!("x_{}_{}", v, c)).collect();
+            let vars: Vec<_> = (0..n_colors).map(|c| format!("x_{v}_{c}")).collect();
 
             constraints.push(Constraint {
                 constraint_type: ConstraintType::ExactlyK { k: 1 },
@@ -2375,7 +2369,7 @@ impl TestGenerator for GraphColoringGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "GraphColoringGenerator"
     }
 
@@ -2415,7 +2409,7 @@ impl TestGenerator for KnapsackGenerator {
         let mut var_map = HashMap::new();
 
         for i in 0..n_items {
-            var_map.insert(format!("x_{}", i), i);
+            var_map.insert(format!("x_{i}"), i);
             // Maximize value (negative in minimization)
             qubo[[i, i]] -= values[i];
         }
@@ -2440,7 +2434,7 @@ impl TestGenerator for KnapsackGenerator {
                 generation_method: "Random items".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(100),
-                notes: format!("{} items, capacity: {:.1}", n_items, capacity),
+                notes: format!("{n_items} items, capacity: {capacity:.1}"),
                 tags: vec!["optimization".to_string(), "knapsack".to_string()],
             },
         });
@@ -2448,7 +2442,7 @@ impl TestGenerator for KnapsackGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "KnapsackGenerator"
     }
 
@@ -2496,7 +2490,7 @@ impl TestGenerator for RandomQuboGenerator {
 
         let mut var_map = HashMap::new();
         for i in 0..n {
-            var_map.insert(format!("x_{}", i), i);
+            var_map.insert(format!("x_{i}"), i);
         }
 
         test_cases.push(TestCase {
@@ -2514,7 +2508,7 @@ impl TestGenerator for RandomQuboGenerator {
                 generation_method: "Random generation".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(50),
-                notes: format!("Density: {}", density),
+                notes: format!("Density: {density}"),
                 tags: vec!["random".to_string(), "qubo".to_string()],
             },
         });
@@ -2522,7 +2516,7 @@ impl TestGenerator for RandomQuboGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "RandomQuboGenerator"
     }
 
@@ -2556,7 +2550,7 @@ impl TestGenerator for FinanceTestGenerator {
         let mut var_map = HashMap::new();
 
         for i in 0..n_assets {
-            var_map.insert(format!("asset_{}", i), i);
+            var_map.insert(format!("asset_{i}"), i);
 
             // Expected return (negative for minimization)
             let expected_return = rng.gen_range(0.05..0.15);
@@ -2585,7 +2579,7 @@ impl TestGenerator for FinanceTestGenerator {
             optimal_value: None,
             constraints: vec![Constraint {
                 constraint_type: ConstraintType::LinearEquality { target: 1.0 },
-                variables: (0..n_assets).map(|i| format!("asset_{}", i)).collect(),
+                variables: (0..n_assets).map(|i| format!("asset_{i}")).collect(),
                 parameters: HashMap::new(),
                 penalty: 1000.0,
             }],
@@ -2593,7 +2587,7 @@ impl TestGenerator for FinanceTestGenerator {
                 generation_method: "Random portfolio".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(200),
-                notes: format!("{} assets", n_assets),
+                notes: format!("{n_assets} assets"),
                 tags: vec!["finance".to_string(), "portfolio".to_string()],
             },
         });
@@ -2601,7 +2595,7 @@ impl TestGenerator for FinanceTestGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "FinanceTestGenerator"
     }
 
@@ -2636,7 +2630,7 @@ impl TestGenerator for LogisticsTestGenerator {
             for i in 0..n_locations {
                 for j in 0..n_locations {
                     let idx = v * n_locations * n_locations + i * n_locations + j;
-                    var_map.insert(format!("x_{}_{}_{}", v, i, j), idx);
+                    var_map.insert(format!("x_{v}_{i}_{j}"), idx);
                 }
             }
         }
@@ -2667,7 +2661,7 @@ impl TestGenerator for LogisticsTestGenerator {
                 generation_method: "Random VRP".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(500),
-                notes: format!("{} vehicles, {} locations", n_vehicles, n_locations),
+                notes: format!("{n_vehicles} vehicles, {n_locations} locations"),
                 tags: vec!["logistics".to_string(), "vrp".to_string()],
             },
         });
@@ -2675,7 +2669,7 @@ impl TestGenerator for LogisticsTestGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "LogisticsTestGenerator"
     }
 
@@ -2709,7 +2703,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         for j in 0..n_jobs {
             for m in 0..n_machines {
                 let idx = j * n_machines + m;
-                var_map.insert(format!("job_{}_machine_{}", j, m), idx);
+                var_map.insert(format!("job_{j}_machine_{m}"), idx);
             }
         }
 
@@ -2726,7 +2720,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         let mut constraints = Vec::new();
         for j in 0..n_jobs {
             let vars: Vec<_> = (0..n_machines)
-                .map(|m| format!("job_{}_machine_{}", j, m))
+                .map(|m| format!("job_{j}_machine_{m}"))
                 .collect();
             constraints.push(Constraint {
                 constraint_type: ConstraintType::ExactlyK { k: 1 },
@@ -2752,7 +2746,7 @@ impl TestGenerator for ManufacturingTestGenerator {
                 generation_method: "Random job scheduling".to_string(),
                 difficulty: config.difficulty.clone(),
                 expected_runtime: Duration::from_millis(300),
-                notes: format!("{} jobs, {} machines", n_jobs, n_machines),
+                notes: format!("{n_jobs} jobs, {n_machines} machines"),
                 tags: vec!["manufacturing".to_string(), "scheduling".to_string()],
             },
         });
@@ -2760,7 +2754,7 @@ impl TestGenerator for ManufacturingTestGenerator {
         Ok(test_cases)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "ManufacturingTestGenerator"
     }
 

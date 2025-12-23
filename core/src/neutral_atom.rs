@@ -12,9 +12,9 @@ use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
-use rustc_hash::FxHashMap;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -41,10 +41,10 @@ impl AtomSpecies {
     /// Get atomic mass in atomic mass units
     pub fn mass(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 86.909183,
-            AtomSpecies::Cs133 => 132.905447,
-            AtomSpecies::Sr88 => 87.905614,
-            AtomSpecies::Yb171 => 170.936426,
+            AtomSpecies::Rb87 => 86.909_183,
+            AtomSpecies::Cs133 => 132.905_447,
+            AtomSpecies::Sr88 => 87.905_614,
+            AtomSpecies::Yb171 => 170.936_426,
             AtomSpecies::Custom { mass, .. } => *mass,
         }
     }

@@ -3,11 +3,11 @@
 //! This example shows how to use tensor network methods to compress
 //! and analyze quantum circuits efficiently.
 
-use nalgebra::Complex;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::multi::CNOT;
 use quantrs2_core::gate::single::{Hadamard, RotationZ, T};
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex;
 
 type C64 = Complex<f64>;
 
@@ -102,7 +102,7 @@ fn demo_circuit_compression() -> quantrs2_core::error::QuantRS2Result<()> {
 
     // Check fidelity
     let fidelity = compressed.fidelity(&circuit)?;
-    println!("Fidelity with original: {:.6}", fidelity);
+    println!("Fidelity with original: {fidelity:.6}");
 
     println!();
     Ok(())
@@ -142,7 +142,7 @@ fn demo_mps_representation() -> quantrs2_core::error::QuantRS2Result<()> {
         mps_copy.compress(max_bond, 1e-10)?;
 
         // In a real implementation, would calculate actual compression metrics
-        println!("Max bond dimension {}: compression successful", max_bond);
+        println!("Max bond dimension {max_bond}: compression successful");
     }
 
     println!();
@@ -181,7 +181,7 @@ fn demo_compression_methods() -> quantrs2_core::error::QuantRS2Result<()> {
 
         let compressed = compressor.compress(&circuit)?;
 
-        println!("\n{:?} compression:", method);
+        println!("\n{method:?} compression:");
         println!(
             "  Compression ratio: {:.2}%",
             compressed.compression_ratio() * 100.0

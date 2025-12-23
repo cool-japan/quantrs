@@ -2,8 +2,8 @@
 //!
 //! This example demonstrates quantum data compression using a QVAE.
 
-use scirs2_core::Complex64 as Complex;
 use quantrs2_ml::vae::{ClassicalAutoencoder, HybridAutoencoder, QVAE};
+use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Perfect reconstruction test
     let fidelity = qvae.reconstruction_fidelity(&test_state, &test_state)?;
-    println!("   Perfect reconstruction fidelity: {:.6}", fidelity);
+    println!("   Perfect reconstruction fidelity: {fidelity:.6}");
 
     // Imperfect reconstruction test
     let noisy_state = vec![
@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Complex::new(0.51, 0.0),
     ];
     let noisy_fidelity = qvae.reconstruction_fidelity(&test_state, &noisy_state)?;
-    println!("   Noisy reconstruction fidelity: {:.6}", noisy_fidelity);
+    println!("   Noisy reconstruction fidelity: {noisy_fidelity:.6}");
 
     // 5. Classical autoencoder comparison
     println!("\n5. Classical Autoencoder Comparison:");
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|(a, b)| (a - b).powi(2))
         .sum::<f64>()
         / classical_input.len() as f64;
-    println!("   Mean squared error: {:.6}", mse);
+    println!("   Mean squared error: {mse:.6}");
 
     // 6. Hybrid quantum-classical autoencoder
     println!("\n6. Hybrid Quantum-Classical Autoencoder:");
@@ -106,24 +106,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 8. Loss computation
     println!("\n8. Loss Function Evaluation:");
-    let test_inputs = vec![test_state.clone(); 5];
+    let test_inputs = vec![test_state; 5];
     let lambda = 0.01; // Regularization parameter
     let loss = qvae.compute_loss(&test_inputs, lambda)?;
-    println!(
-        "   Average loss (with L2 regularization λ={}): {:.6}",
-        lambda, loss
-    );
+    println!("   Average loss (with L2 regularization λ={lambda}): {loss:.6}");
 
     // 9. Compression analysis
     println!("\n9. Quantum Data Compression Analysis:");
     let data_bits = 1 << qvae.num_data_qubits;
     let latent_bits = 1 << qvae.num_latent_qubits;
-    println!("   Data space dimension: {}", data_bits);
-    println!("   Latent space dimension: {}", latent_bits);
+    println!("   Data space dimension: {data_bits}");
+    println!("   Latent space dimension: {latent_bits}");
     println!("   Compression factor: {}x", data_bits / latent_bits);
     println!(
         "   Information retention: {:.1}%",
-        (latent_bits as f64 / data_bits as f64) * 100.0
+        (f64::from(latent_bits) / f64::from(data_bits)) * 100.0
     );
 
     // 10. Quantum advantage discussion

@@ -37,6 +37,7 @@ pub struct CircuitOptimizer2<const N: usize> {
 
 impl<const N: usize> CircuitOptimizer2<N> {
     /// Create a new optimizer with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pass_manager: PassManager::default(),
@@ -46,6 +47,7 @@ impl<const N: usize> CircuitOptimizer2<N> {
     }
 
     /// Create an optimizer with a specific optimization level
+    #[must_use]
     pub fn with_level(level: OptimizationLevel) -> Self {
         Self {
             pass_manager: PassManager::with_level(level),
@@ -55,6 +57,7 @@ impl<const N: usize> CircuitOptimizer2<N> {
     }
 
     /// Create an optimizer for specific hardware
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         Self {
             pass_manager: PassManager::for_hardware(hardware),

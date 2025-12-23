@@ -1,10 +1,9 @@
-//! Quantum Machine Learning UltraThink Showcase
+//! Quantum Machine Learning `UltraThink` Showcase
 //!
 //! This comprehensive demonstration showcases the most advanced quantum machine learning
 //! algorithms available in QuantRS2-ML, including cutting-edge techniques that push the
 //! boundaries of quantum advantage in machine learning.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::prelude::{DataEncodingType, FeatureMapType};
 use quantrs2_ml::quantum_graph_attention::benchmark_qgat_vs_classical;
@@ -19,8 +18,9 @@ use quantrs2_ml::quantum_reservoir_computing::{
     EncodingType, FeatureMapping, HamiltonianType, NormalizationType, QRCTrainingConfig,
     TemporalConfig,
 };
-use std::collections::HashMap;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("🚀 === Quantum ML UltraThink Showcase === 🚀\n");
@@ -92,12 +92,12 @@ fn quantum_neural_odes_demonstration() -> Result<()> {
 
     // Analyze convergence
     let history = qnode.get_training_history();
-    let final_loss = history.last().map(|m| 0.01).unwrap_or(0.0);
-    let final_fidelity = history.last().map(|m| 0.95).unwrap_or(0.0);
+    let final_loss = history.last().map_or(0.0, |m| 0.01);
+    let final_fidelity = history.last().map_or(0.0, |m| 0.95);
 
     println!("   ✅ QNODE Training Complete!");
-    println!("      Final Loss: {:.6}", final_loss);
-    println!("      Quantum Fidelity: {:.4}", final_fidelity);
+    println!("      Final Loss: {final_loss:.6}");
+    println!("      Quantum Fidelity: {final_fidelity:.4}");
     println!("      Integration Method: Adaptive Dormand-Prince");
 
     // Test on new data
@@ -185,8 +185,8 @@ fn quantum_pinns_demonstration() -> Result<()> {
     );
     println!(
         "      Solution range: [{:.4}, {:.4}]",
-        solution.iter().cloned().fold(f64::INFINITY, f64::min),
-        solution.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+        solution.iter().copied().fold(f64::INFINITY, f64::min),
+        solution.iter().copied().fold(f64::NEG_INFINITY, f64::max)
     );
 
     Ok(())
@@ -256,7 +256,7 @@ fn quantum_reservoir_computing_demonstration() -> Result<()> {
 
     // Test prediction
     let test_sequence =
-        Array2::from_shape_vec((15, 6), (0..90).map(|x| x as f64 * 0.01).collect())?;
+        Array2::from_shape_vec((15, 6), (0..90).map(|x| f64::from(x) * 0.01).collect())?;
     let prediction = qrc.predict(&test_sequence)?;
     println!("      Test prediction shape: {:?}", prediction.shape());
 
@@ -331,7 +331,7 @@ fn quantum_graph_attention_demonstration() -> Result<()> {
     // Graph representation learning
     let graph_embeddings = qgat.forward(sample_graph)?;
     let embedding_norm = graph_embeddings.iter().map(|x| x * x).sum::<f64>().sqrt();
-    println!("      Graph embedding norm: {:.4}", embedding_norm);
+    println!("      Graph embedding norm: {embedding_norm:.4}");
 
     Ok(())
 }
@@ -368,10 +368,7 @@ fn advanced_integration_showcase() -> Result<()> {
     // Step 4: QNODE for continuous optimization
     println!("   Stage 4: QNODE continuous optimization");
     let optimization_result = optimize_with_qnode(&graph_insights)?;
-    println!(
-        "      Optimization converged to: {:.6}",
-        optimization_result
-    );
+    println!("      Optimization converged to: {optimization_result:.6}");
 
     println!("   ✅ Multi-Algorithm Pipeline Complete!");
     println!("      Successfully integrated 4 cutting-edge quantum algorithms");
@@ -439,10 +436,7 @@ fn comprehensive_benchmarking() -> Result<()> {
         / 3.0;
 
     println!("   ✅ Comprehensive Benchmarking Complete!");
-    println!(
-        "      Average Quantum Advantage: {:.2}x",
-        avg_quantum_advantage
-    );
+    println!("      Average Quantum Advantage: {avg_quantum_advantage:.2}x");
     println!("      All algorithms demonstrate quantum superiority");
 
     Ok(())
@@ -455,19 +449,13 @@ fn real_world_applications() -> Result<()> {
     // Application 1: Drug Discovery with QPINN
     println!("   Application 1: Drug Discovery - Molecular Dynamics");
     let drug_discovery_result = simulate_drug_discovery_qpinn()?;
-    println!(
-        "      Molecular binding affinity predicted: {:.4}",
-        drug_discovery_result
-    );
+    println!("      Molecular binding affinity predicted: {drug_discovery_result:.4}");
     println!("      Quantum advantage in molecular simulation: 10x faster convergence");
 
     // Application 2: Financial Portfolio with QRC
     println!("   Application 2: Financial Portfolio - Market Dynamics");
     let portfolio_result = simulate_portfolio_qrc()?;
-    println!(
-        "      Portfolio optimization score: {:.4}",
-        portfolio_result
-    );
+    println!("      Portfolio optimization score: {portfolio_result:.4}");
     println!("      Quantum advantage in temporal correlation: 15x better memory");
 
     // Application 3: Social Network Analysis with QGAT
@@ -500,8 +488,8 @@ fn real_world_applications() -> Result<()> {
 fn generate_complex_temporal_data() -> Result<Vec<(Array1<f64>, Array1<f64>)>> {
     let mut data = Vec::new();
     for i in 0..20 {
-        let input = Array1::from_shape_fn(6, |j| (i as f64 * 0.1 + j as f64 * 0.05).sin());
-        let target = Array1::from_shape_fn(6, |j| (input[j] * 2.0 + 0.1).cos());
+        let input = Array1::from_shape_fn(6, |j| f64::from(i).mul_add(0.1, j as f64 * 0.05).sin());
+        let target = Array1::from_shape_fn(6, |j| input[j].mul_add(2.0, 0.1).cos());
         data.push((input, target));
     }
     Ok(data)
@@ -565,7 +553,7 @@ fn generate_complex_graphs(num_graphs: usize) -> Result<Vec<Graph>> {
         let node_features = Array2::from_shape_fn((num_nodes, 64), |(i, j)| {
             let node_factor = i as f64 * 0.1;
             let feature_factor = j as f64 * 0.05;
-            (node_factor + feature_factor).sin() + fastrand::f64() * 0.1
+            fastrand::f64().mul_add(0.1, (node_factor + feature_factor).sin())
         });
 
         // Generate edge indices (ensuring valid connections)
@@ -622,7 +610,7 @@ fn analyze_with_qgat(graph: &Graph) -> Result<Array1<f64>> {
     // Simulate QGAT analysis
     Ok(Array1::from_shape_fn(graph.num_nodes, |i| {
         let neighbors = graph.get_neighbors(i);
-        neighbors.len() as f64 * 0.1 + fastrand::f64() * 0.05
+        (neighbors.len() as f64).mul_add(0.1, fastrand::f64() * 0.05)
     }))
 }
 
@@ -649,20 +637,20 @@ fn generate_benchmark_graphs() -> Result<Vec<Graph>> {
 
 fn simulate_drug_discovery_qpinn() -> Result<f64> {
     // Simulate molecular binding affinity prediction
-    Ok(0.85 + fastrand::f64() * 0.1)
+    Ok(fastrand::f64().mul_add(0.1, 0.85))
 }
 
 fn simulate_portfolio_qrc() -> Result<f64> {
     // Simulate portfolio optimization score
-    Ok(0.92 + fastrand::f64() * 0.05)
+    Ok(fastrand::f64().mul_add(0.05, 0.92))
 }
 
 fn simulate_social_qgat() -> Result<f64> {
     // Simulate social network influence prediction
-    Ok(0.88 + fastrand::f64() * 0.08)
+    Ok(fastrand::f64().mul_add(0.08, 0.88))
 }
 
 fn simulate_climate_qnode() -> Result<f64> {
     // Simulate climate model accuracy
-    Ok(0.91 + fastrand::f64() * 0.06)
+    Ok(fastrand::f64().mul_add(0.06, 0.91))
 }

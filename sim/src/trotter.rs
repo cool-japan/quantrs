@@ -107,7 +107,7 @@ pub struct Hamiltonian {
 
 impl Hamiltonian {
     /// Create a new Hamiltonian
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             terms: Vec::new(),
             num_qubits,
@@ -181,7 +181,7 @@ impl Hamiltonian {
     }
 
     /// Get the number of qubits
-    pub fn get_num_qubits(&self) -> usize {
+    pub const fn get_num_qubits(&self) -> usize {
         self.num_qubits
     }
 
@@ -242,8 +242,7 @@ impl Hamiltonian {
                     }))?,
                     _ => {
                         return Err(SimulatorError::InvalidInput(format!(
-                            "Unknown Pauli operator: {}",
-                            pauli
+                            "Unknown Pauli operator: {pauli}"
                         )))
                     }
                 }
@@ -364,8 +363,7 @@ impl Hamiltonian {
             }
             _ => {
                 return Err(SimulatorError::InvalidInput(format!(
-                    "Unknown Pauli operator: {}",
-                    pauli
+                    "Unknown Pauli operator: {pauli}"
                 )))
             }
         }
@@ -398,7 +396,7 @@ pub struct TrotterDecomposer {
 
 impl TrotterDecomposer {
     /// Create a new decomposer
-    pub fn new(method: TrotterMethod, num_steps: usize) -> Self {
+    pub const fn new(method: TrotterMethod, num_steps: usize) -> Self {
         Self { method, num_steps }
     }
 
@@ -468,7 +466,7 @@ impl TrotterDecomposer {
 
         // S4(t) = S2(s*t)*S2(s*t)*S2((1-4s)*t)*S2(s*t)*S2(s*t)
         // where s = 1/(4 - 4^(1/3))
-        let s = 1.0 / (4.0 - 4.0_f64.powf(1.0 / 3.0));
+        let s = 1.0 / (4.0 - 4.0_f64.cbrt());
 
         // Apply S2(s*dt) twice
         for _ in 0..2 {
@@ -479,7 +477,7 @@ impl TrotterDecomposer {
         }
 
         // Apply S2((1-4s)*dt)
-        let middle_step = self.second_order_step(hamiltonian, (1.0 - 4.0 * s) * dt)?;
+        let middle_step = self.second_order_step(hamiltonian, 4.0f64.mul_add(-s, 1.0) * dt)?;
         for gate in middle_step.gates() {
             circuit.add_gate(gate.clone())?;
         }
@@ -500,8 +498,8 @@ impl TrotterDecomposer {
         let mut circuit = DynamicCircuit::new(hamiltonian.num_qubits);
 
         // Sixth-order coefficients
-        let w1 = 1.0 / (2.0 - 2.0_f64.powf(1.0 / 5.0));
-        let w0 = 1.0 - 2.0 * w1;
+        let w1: f64 = 1.0 / (2.0 - (1.0_f64 / 5.0).exp2());
+        let w0 = 2.0f64.mul_add(-w1, 1.0);
 
         // Apply S4(w1*dt) twice
         for _ in 0..2 {
@@ -594,7 +592,7 @@ impl TrotterDecomposer {
 pub struct HamiltonianLibrary;
 
 impl HamiltonianLibrary {
-    /// Transverse field Ising model: H = -J∑_<ij> Z_i Z_j - h∑_i X_i
+    /// Transverse field Ising model: H = -J∑\<ij\> Z_i Z_j - h∑_i X_i
     pub fn transverse_ising_1d(
         num_qubits: usize,
         j: f64,
@@ -621,7 +619,7 @@ impl HamiltonianLibrary {
         Ok(ham)
     }
 
-    /// Heisenberg model: H = J∑_<ij> (X_i X_j + Y_i Y_j + Δ Z_i Z_j)
+    /// Heisenberg model: H = J∑\<ij\> (X_i X_j + Y_i Y_j + Δ Z_i Z_j)
     pub fn heisenberg_1d(
         num_qubits: usize,
         j: f64,
@@ -645,7 +643,7 @@ impl HamiltonianLibrary {
         Ok(ham)
     }
 
-    /// XY model: H = J∑_<ij> (X_i X_j + Y_i Y_j)
+    /// XY model: H = J∑\<ij\> (X_i X_j + Y_i Y_j)
     pub fn xy_model(num_qubits: usize, j: f64, periodic: bool) -> Result<Hamiltonian> {
         Self::heisenberg_1d(num_qubits, j, 0.0, periodic)
     }

@@ -458,7 +458,7 @@ mod tests {
                 basis_set: "STO-3G".to_string(),
             };
 
-            simulator.set_molecule(h2.clone()).unwrap();
+            simulator.set_molecule(h2).unwrap();
             // Test that molecule was set successfully
             let molecule_result = simulator.get_molecule();
             assert!(molecule_result.is_some());
@@ -847,7 +847,7 @@ mod tests {
                 HardwareArchitecture::GoogleQuantumAI,
             );
 
-            assert!(compatibility >= 0.0 && compatibility <= 1.0);
+            assert!((0.0..=1.0).contains(&compatibility));
 
             // Self-compatibility should be high
             let self_compatibility = optimizer.get_cross_device_compatibility(

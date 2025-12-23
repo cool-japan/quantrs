@@ -1,10 +1,10 @@
-//! UltraThink Mode Demonstration
-//! This demonstrates the quantum advantage capabilities of the UltraThink system
+//! `UltraThink` Mode Demonstration
+//! This demonstrates the quantum advantage capabilities of the `UltraThink` system
 
-use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
 use quantrs2_core::qubit::QubitId;
 use quantrs2_core::ultrathink_core::UltraThinkQuantumComputer;
+use scirs2_core::ndarray::Array1;
+use scirs2_core::Complex64;
 use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             );
         }
-        Err(e) => println!("   ❌ Holonomic execution failed: {:?}", e),
+        Err(e) => println!("   ❌ Holonomic execution failed: {e:?}"),
     }
 
     // Demonstrate Quantum ML Acceleration
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             println!("   ⏱️  Execution time: {:?}", result.execution_time);
         }
-        Err(e) => println!("   ❌ Quantum ML execution failed: {:?}", e),
+        Err(e) => println!("   ❌ Quantum ML execution failed: {e:?}"),
     }
 
     // Demonstrate Quantum Memory Storage
@@ -79,11 +79,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match quantum_computer.store_quantum_state(quantum_state, coherence_time) {
         Ok(state_id) => {
             println!("   ⚡ Quantum state stored successfully!");
-            println!("   🔑 State ID: {}", state_id);
-            println!("   ⏰ Coherence time: {:?}", coherence_time);
+            println!("   🔑 State ID: {state_id}");
+            println!("   ⏰ Coherence time: {coherence_time:?}");
             println!("   🛡️  Error correction: Applied (Steane code)");
         }
-        Err(e) => println!("   ❌ Quantum memory storage failed: {:?}", e),
+        Err(e) => println!("   ❌ Quantum memory storage failed: {e:?}"),
     }
 
     // Demonstrate Overall Quantum Advantage

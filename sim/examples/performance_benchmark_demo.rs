@@ -1,7 +1,7 @@
 //! Performance Benchmark Demo
 //!
 //! This example demonstrates the comprehensive performance benchmarking
-//! capabilities of the QuantRS2 simulation framework.
+//! capabilities of the `QuantRS2` simulation framework.
 
 use quantrs2_core::error::QuantRS2Result;
 use quantrs2_sim::performance_benchmark::{
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("\n💾 Results exported to JSON ({} bytes)", json_data.len());
             // In a real application, you would save this to a file
         }
-        Err(e) => println!("⚠️ Failed to export JSON: {}", e),
+        Err(e) => println!("⚠️ Failed to export JSON: {e}"),
     }
 
     // Generate final report

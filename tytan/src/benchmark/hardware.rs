@@ -28,7 +28,7 @@ pub struct BackendCapabilities {
 }
 
 /// Precision modes for computation
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrecisionMode {
     /// Single precision (f32)
     Single,
@@ -41,7 +41,7 @@ pub enum PrecisionMode {
 }
 
 /// SIMD optimization levels
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SimdLevel {
     /// No SIMD
     None,
@@ -116,7 +116,7 @@ impl CpuBackend {
 }
 
 impl HardwareBackend for CpuBackend {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CPU Backend"
     }
 
@@ -161,7 +161,7 @@ impl HardwareBackend for CpuBackend {
         let num_vars = matrix.shape()[0];
         let mut var_map = HashMap::new();
         for i in 0..num_vars {
-            var_map.insert(format!("x_{}", i), i);
+            var_map.insert(format!("x_{i}"), i);
         }
 
         Ok(self
@@ -223,7 +223,7 @@ impl CpuBackend {
             let num_vars = matrix.shape()[0];
             let mut var_map = HashMap::new();
             for i in 0..num_vars {
-                var_map.insert(format!("x_{}", i), i);
+                var_map.insert(format!("x_{i}"), i);
             }
 
             Ok(self
@@ -264,7 +264,7 @@ impl GpuBackend {
 
 #[cfg(feature = "gpu")]
 impl HardwareBackend for GpuBackend {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "GPU Backend"
     }
 

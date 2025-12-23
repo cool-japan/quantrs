@@ -75,7 +75,7 @@ pub enum ConnectivityType {
 
 impl FujitsuDigitalAnnealerSampler {
     /// Create new Fujitsu Digital Annealer sampler
-    pub fn new(config: FujitsuConfig) -> Self {
+    pub const fn new(config: FujitsuConfig) -> Self {
         Self {
             config,
             max_variables: 8192, // Current DA3 limit
@@ -84,7 +84,7 @@ impl FujitsuDigitalAnnealerSampler {
     }
 
     /// Set connectivity type
-    pub fn with_connectivity(mut self, connectivity: ConnectivityType) -> Self {
+    pub const fn with_connectivity(mut self, connectivity: ConnectivityType) -> Self {
         self.connectivity = connectivity;
         self
     }

@@ -24,7 +24,7 @@ pub struct AnalysisConfig {
 }
 
 /// Levels of metrics collection
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetricsLevel {
     /// Basic metrics only
     Basic,
@@ -37,7 +37,7 @@ pub enum MetricsLevel {
 }
 
 /// Analysis depth levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalysisDepth {
     /// Surface-level analysis
     Surface,
@@ -95,7 +95,7 @@ pub struct VisualizationConfig {
 }
 
 /// Export formats for results
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportFormat {
     CSV,
     JSON,

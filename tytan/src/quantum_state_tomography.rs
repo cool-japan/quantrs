@@ -49,7 +49,7 @@ pub struct TomographyConfig {
 }
 
 /// Types of tomography
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TomographyType {
     /// Full quantum state tomography
     QuantumState,
@@ -79,7 +79,7 @@ pub struct MeasurementBasis {
 }
 
 /// Types of measurement bases
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BasisType {
     /// Computational basis (Z measurements)
     Computational,
@@ -98,7 +98,7 @@ pub enum BasisType {
 }
 
 /// Pauli operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PauliOperator {
     I, // Identity
     X, // Pauli-X
@@ -107,7 +107,7 @@ pub enum PauliOperator {
 }
 
 /// Reconstruction method types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReconstructionMethodType {
     /// Maximum likelihood estimation
     MaximumLikelihood,
@@ -156,7 +156,7 @@ pub struct NoiseCharacterizationConfig {
 }
 
 /// Error correction protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorCorrectionProtocol {
     /// Zero noise extrapolation
     ZeroNoiseExtrapolation,
@@ -216,7 +216,7 @@ pub struct ConstraintConfig {
 }
 
 /// Physical constraints
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PhysicalConstraint {
     /// Unit trace
     UnitTrace,
@@ -231,7 +231,7 @@ pub enum PhysicalConstraint {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     /// Gradient descent
     GradientDescent,
@@ -263,7 +263,7 @@ pub struct ValidationConfig {
 }
 
 /// Validation metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationMetric {
     /// Fidelity with known state
     Fidelity,
@@ -280,7 +280,7 @@ pub enum ValidationMetric {
 }
 
 /// Statistical tests
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalTest {
     /// Chi-squared goodness of fit
     ChiSquared,
@@ -401,7 +401,7 @@ pub struct NoiseModel {
 }
 
 /// Types of noise models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseModelType {
     /// Depolarizing noise
     Depolarizing,
@@ -726,14 +726,14 @@ pub enum TomographyError {
 impl std::fmt::Display for TomographyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TomographyError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
-            TomographyError::ReconstructionFailed(msg) => {
-                write!(f, "Reconstruction failed: {}", msg)
+            Self::InsufficientData(msg) => write!(f, "Insufficient data: {msg}"),
+            Self::ReconstructionFailed(msg) => {
+                write!(f, "Reconstruction failed: {msg}")
             }
-            TomographyError::InvalidBasis(msg) => write!(f, "Invalid basis: {}", msg),
-            TomographyError::ConvergenceFailed(msg) => write!(f, "Convergence failed: {}", msg),
-            TomographyError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            TomographyError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::InvalidBasis(msg) => write!(f, "Invalid basis: {msg}"),
+            Self::ConvergenceFailed(msg) => write!(f, "Convergence failed: {msg}"),
+            Self::ValidationFailed(msg) => write!(f, "Validation failed: {msg}"),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {msg}"),
         }
     }
 }
@@ -859,7 +859,7 @@ impl QuantumStateTomography {
             }
 
             measurements.push(MeasurementBasis {
-                name: format!("pauli_{}", measurement_index),
+                name: format!("pauli_{measurement_index}"),
                 operators,
                 angles: vec![0.0; self.num_qubits],
                 basis_type: BasisType::Pauli,
@@ -895,7 +895,7 @@ impl QuantumStateTomography {
             }
 
             measurements.push(MeasurementBasis {
-                name: format!("shadow_{}", shadow_idx),
+                name: format!("shadow_{shadow_idx}"),
                 operators,
                 angles,
                 basis_type: BasisType::RandomPauli,
@@ -928,7 +928,7 @@ impl QuantumStateTomography {
             }
 
             measurements.push(MeasurementBasis {
-                name: format!("compressed_sensing_{}", measurement_idx),
+                name: format!("compressed_sensing_{measurement_idx}"),
                 operators,
                 angles: vec![0.0; self.num_qubits],
                 basis_type: BasisType::RandomPauli,
@@ -950,7 +950,7 @@ impl QuantumStateTomography {
             operators[optimal_idx] = PauliOperator::X;
 
             measurements.push(MeasurementBasis {
-                name: format!("adaptive_{}", optimal_idx),
+                name: format!("adaptive_{optimal_idx}"),
                 operators,
                 angles: vec![PI / 4.0; self.num_qubits],
                 basis_type: BasisType::Adaptive,
@@ -976,7 +976,7 @@ impl QuantumStateTomography {
                 // Simulate measurement outcomes
                 for _qubit in 0..self.num_qubits {
                     // Random outcome for simulation
-                    outcome.push(if rng.gen::<f64>() < 0.5 { 0 } else { 1 });
+                    outcome.push(u8::from(rng.gen::<f64>() >= 0.5));
                 }
 
                 outcomes.push(outcome);
@@ -1208,7 +1208,7 @@ impl QuantumStateTomography {
         // Ensure Hermiticity
         for i in 0..matrix.nrows() {
             for j in i..matrix.ncols() {
-                let avg = (matrix[[i, j]] + matrix[[j, i]]) / 2.0;
+                let avg = f64::midpoint(matrix[[i, j]], matrix[[j, i]]);
                 matrix[[i, j]] = avg;
                 matrix[[j, i]] = avg;
             }
@@ -1218,7 +1218,7 @@ impl QuantumStateTomography {
         let (mut eigenvals, eigenvecs) = self.compute_eigendecomposition(&matrix)?;
 
         // Clip negative eigenvalues
-        for eigenval in eigenvals.iter_mut() {
+        for eigenval in &mut eigenvals {
             *eigenval = eigenval.max(0.0);
         }
 
@@ -1361,10 +1361,10 @@ impl QuantumStateTomography {
             let d = matrix[[1, 1]];
 
             let trace = a + d;
-            let det = a * d - b * c;
-            let discriminant = (trace * trace - 4.0 * det).sqrt();
+            let det = a.mul_add(d, -(b * c));
+            let discriminant = trace.mul_add(trace, -(4.0 * det)).sqrt();
 
-            let eigenval1 = (trace + discriminant) / 2.0;
+            let eigenval1 = f64::midpoint(trace, discriminant);
             let eigenval2 = (trace - discriminant) / 2.0;
 
             let eigenvals = Array1::from_vec(vec![eigenval1.max(0.0), eigenval2.max(0.0)]);
@@ -1419,7 +1419,7 @@ impl QuantumStateTomography {
             });
 
         let mut entropy = 0.0;
-        for &eigenval in eigenvals.iter() {
+        for &eigenval in &eigenvals {
             if eigenval > 1e-15 {
                 entropy -= eigenval * eigenval.ln();
             }
@@ -1563,10 +1563,15 @@ impl QuantumStateTomography {
             .unwrap_or(0.0);
 
         // Overall quality score
-        self.metrics.overall_quality = self.metrics.reconstruction_accuracy * 0.4
-            + self.metrics.computational_efficiency * 0.2
-            + self.metrics.statistical_power * 0.2
-            + self.metrics.robustness_score * 0.2;
+        self.metrics.overall_quality = self.metrics.robustness_score.mul_add(
+            0.2,
+            self.metrics.statistical_power.mul_add(
+                0.2,
+                self.metrics
+                    .reconstruction_accuracy
+                    .mul_add(0.4, self.metrics.computational_efficiency * 0.2),
+            ),
+        );
     }
 }
 

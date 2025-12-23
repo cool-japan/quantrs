@@ -1,8 +1,11 @@
 //! Advanced CIM demonstration with quantum noise and adaptive pumping.
 
-use scirs2_core::ndarray::{Array1, Array2};
-use quantrs2_tytan::coherent_ising_machine::*;
+use quantrs2_tytan::coherent_ising_machine::{
+    AdvancedCIM, CIMSimulator, ErrorCorrectionScheme, NetworkTopology, NetworkedCIM, PulseShape,
+    SynchronizationScheme,
+};
 use quantrs2_tytan::sampler::Sampler;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut biases = Array1::zeros(n);
 
     println!("Problem: Frustrated triangular lattice");
-    println!("  Nodes: {}", n);
+    println!("  Nodes: {n}");
     println!("  Antiferromagnetic couplings: {}\n", edges.len());
 
     // 1. Basic CIM
@@ -159,8 +162,8 @@ fn run_networked_cim() -> Result<(), Box<dyn std::error::Error>> {
         .with_comm_delay(0.1);
 
     println!("  Network topology: Ring");
-    println!("  Modules: {}", modules);
-    println!("  Spins per module: {}", spins_per_module);
+    println!("  Modules: {modules}");
+    println!("  Spins per module: {spins_per_module}");
     println!("  Synchronization: Block synchronous");
 
     // Would solve a problem here in full implementation
@@ -189,7 +192,7 @@ fn run_bifurcation_controlled_cim(
 
     if let Some(best) = results.first() {
         println!("  Best energy: {:.4}", best.energy);
-        analyze_solution(&best, coupling.shape()[0]);
+        analyze_solution(best, coupling.shape()[0]);
     }
 
     Ok(())
@@ -205,7 +208,7 @@ fn ising_to_qubo(
 
     // Convert Ising to QUBO: x_i = (s_i + 1) / 2
     for i in 0..n {
-        var_map.insert(format!("s{}", i), i);
+        var_map.insert(format!("s{i}"), i);
 
         // Linear terms
         let mut linear = h_vector[i];
@@ -230,7 +233,7 @@ fn analyze_solution(result: &quantrs2_tytan::sampler::SampleResult, n: usize) {
     // Analyze frustration in the solution
     let spins: Vec<i32> = (0..n)
         .map(|i| {
-            let var = format!("s{}", i);
+            let var = format!("s{i}");
             if result.assignments.get(&var).copied().unwrap_or(false) {
                 1
             } else {
@@ -240,7 +243,7 @@ fn analyze_solution(result: &quantrs2_tytan::sampler::SampleResult, n: usize) {
         .collect();
 
     // Check triangles for frustration
-    let triangles = vec![(0, 1, 2), (3, 4, 5)];
+    let triangles = [(0, 1, 2), (3, 4, 5)];
 
     println!("\n  Solution analysis:");
     for (i, (a, b, c)) in triangles.iter().enumerate() {

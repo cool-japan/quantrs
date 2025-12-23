@@ -448,7 +448,7 @@ impl CrystalStructurePredictor {
 
         for param in &params {
             for i in 0..resolution {
-                let var_name = format!("lattice_{}_{}", param, i);
+                let var_name = format!("lattice_{param}_{i}");
                 var_map.insert(var_name, var_idx);
                 var_idx += 1;
             }
@@ -470,7 +470,7 @@ impl CrystalStructurePredictor {
         for atom in 0..n_atoms {
             for coord in ["x", "y", "z"] {
                 for i in 0..resolution {
-                    let var_name = format!("pos_{}_{}_{}", atom, coord, i);
+                    let var_name = format!("pos_{atom}_{coord}_{i}");
                     var_map.insert(var_name, var_idx);
                     var_idx += 1;
                 }
@@ -508,21 +508,18 @@ impl CrystalStructurePredictor {
         parameters: &HashMap<String, f64>,
     ) -> Result<(), String> {
         // Lennard-Jones example
-        match potential {
-            EmpiricalPotential::LennardJones => {
-                let epsilon = parameters.get("epsilon").unwrap_or(&1.0);
-                let sigma = parameters.get("sigma").unwrap_or(&3.4);
+        if matches!(potential, EmpiricalPotential::LennardJones) {
+            let epsilon = parameters.get("epsilon").unwrap_or(&1.0);
+            let sigma = parameters.get("sigma").unwrap_or(&3.4);
 
-                // Add pairwise interactions
-                for i in 0..self.composition.total_atoms {
-                    for j in i + 1..self.composition.total_atoms {
-                        // This would compute LJ potential based on distance
-                        // Simplified: add distance-dependent terms
-                        self.add_pairwise_energy(qubo, var_map, i, j, *epsilon, *sigma)?;
-                    }
+            // Add pairwise interactions
+            for i in 0..self.composition.total_atoms {
+                for j in i + 1..self.composition.total_atoms {
+                    // This would compute LJ potential based on distance
+                    // Simplified: add distance-dependent terms
+                    self.add_pairwise_energy(qubo, var_map, i, j, *epsilon, *sigma)?;
                 }
             }
-            _ => {}
         }
 
         Ok(())
@@ -544,8 +541,8 @@ impl CrystalStructurePredictor {
         for coord in ["x", "y", "z"] {
             for i in 0..20 {
                 // position resolution
-                let var1 = format!("pos_{}_{}_{}", atom1, coord, i);
-                let var2 = format!("pos_{}_{}_{}", atom2, coord, i);
+                let var1 = format!("pos_{atom1}_{coord}_{i}");
+                let var2 = format!("pos_{atom2}_{coord}_{i}");
 
                 if let (Some(&idx1), Some(&idx2)) = (var_map.get(&var1), var_map.get(&var2)) {
                     // Same position = zero distance contribution
@@ -599,7 +596,7 @@ impl CrystalStructurePredictor {
                 // This is highly simplified
                 for coord in ["x", "y", "z"] {
                     for pos in 0..20 {
-                        let var_name = format!("pos_{}_{}_{}", i, coord, pos);
+                        let var_name = format!("pos_{i}_{coord}_{pos}");
                         if let Some(&idx) = var_map.get(&var_name) {
                             // Favor middle positions (simplified)
                             let deviation = (pos as f64 - 10.0).abs();
@@ -637,8 +634,8 @@ impl CrystalStructurePredictor {
                     // Add to QUBO (simplified)
                     for coord in ["x", "y", "z"] {
                         for pos in 0..20 {
-                            let var1 = format!("pos_{}_{}_{}", i, coord, pos);
-                            let var2 = format!("pos_{}_{}_{}", j, coord, pos);
+                            let var1 = format!("pos_{i}_{coord}_{pos}");
+                            let var2 = format!("pos_{j}_{coord}_{pos}");
 
                             if let (Some(&idx1), Some(&idx2)) =
                                 (var_map.get(&var1), var_map.get(&var2))
@@ -669,8 +666,8 @@ impl CrystalStructurePredictor {
         for param in ["a", "b", "c", "alpha", "beta", "gamma"] {
             for i in 0..resolution {
                 for j in i + 1..resolution {
-                    let var1 = format!("lattice_{}_{}", param, i);
-                    let var2 = format!("lattice_{}_{}", param, j);
+                    let var1 = format!("lattice_{param}_{i}");
+                    let var2 = format!("lattice_{param}_{j}");
 
                     if let (Some(&idx1), Some(&idx2)) = (var_map.get(&var1), var_map.get(&var2)) {
                         qubo[[idx1, idx2]] += penalty;
@@ -701,9 +698,9 @@ impl CrystalStructurePredictor {
             LatticeType::Cubic => {
                 // a = b = c, α = β = γ = 90°
                 for i in 0..resolution {
-                    let var_a = format!("lattice_a_{}", i);
-                    let var_b = format!("lattice_b_{}", i);
-                    let var_c = format!("lattice_c_{}", i);
+                    let var_a = format!("lattice_a_{i}");
+                    let var_b = format!("lattice_b_{i}");
+                    let var_c = format!("lattice_c_{i}");
 
                     // Encourage a = b = c
                     if let (Some(&idx_a), Some(&idx_b), Some(&idx_c)) = (
@@ -721,7 +718,7 @@ impl CrystalStructurePredictor {
                 // Fix angles at 90°
                 let angle_90_idx = resolution / 2; // Assuming middle index represents 90°
                 for angle in ["alpha", "beta", "gamma"] {
-                    let var_name = format!("lattice_{}_{}", angle, angle_90_idx);
+                    let var_name = format!("lattice_{angle}_{angle_90_idx}");
                     if let Some(&idx) = var_map.get(&var_name) {
                         qubo[[idx, idx]] -= penalty * 2.0;
                     }
@@ -755,8 +752,8 @@ impl CrystalStructurePredictor {
                     for j in i + 1..self.composition.total_atoms {
                         for coord in ["x", "y", "z"] {
                             for pos in 0..20 {
-                                let var1 = format!("pos_{}_{}_{}", i, coord, pos);
-                                let var2 = format!("pos_{}_{}_{}", j, coord, pos);
+                                let var1 = format!("pos_{i}_{coord}_{pos}");
+                                let var2 = format!("pos_{j}_{coord}_{pos}");
 
                                 if let (Some(&idx1), Some(&idx2)) =
                                     (var_map.get(&var1), var_map.get(&var2))
@@ -793,7 +790,7 @@ impl CrystalStructurePredictor {
                 for coord in ["x", "y", "z"] {
                     for special_pos in [0, 10, 19] {
                         // 0, 0.5, 1 in fractional
-                        let var_name = format!("pos_{}_{}_{}", i, coord, special_pos);
+                        let var_name = format!("pos_{i}_{coord}_{special_pos}");
                         if let Some(&idx) = var_map.get(&var_name) {
                             qubo[[idx, idx]] += symmetry_bonus;
                         }
@@ -813,7 +810,7 @@ impl CrystalStructurePredictor {
         let mut var_map = HashMap::new();
 
         for i in 0..genome_length {
-            var_map.insert(format!("gene_{}", i), i);
+            var_map.insert(format!("gene_{i}"), i);
         }
 
         // Add fitness function
@@ -872,12 +869,12 @@ impl CrystalStructurePredictor {
         for param in ["a", "b", "c", "alpha", "beta", "gamma"] {
             for i in 0..10 {
                 // resolution
-                let var_name = format!("lattice_{}_{}", param, i);
+                let var_name = format!("lattice_{param}_{i}");
                 if *solution.get(&var_name).unwrap_or(&false) {
                     // Map index to value
                     let value = match param {
-                        "a" | "b" | "c" => 3.0 + i as f64 * 0.5,             // 3-8 Å
-                        "alpha" | "beta" | "gamma" => 60.0 + i as f64 * 6.0, // 60-120°
+                        "a" | "b" | "c" => (i as f64).mul_add(0.5, 3.0), // 3-8 Å
+                        "alpha" | "beta" | "gamma" => (i as f64).mul_add(6.0, 60.0), // 60-120°
                         _ => 0.0,
                     };
                     params.insert(param.to_string(), value);
@@ -911,7 +908,7 @@ impl CrystalStructurePredictor {
 
             for (i, coord) in ["x", "y", "z"].iter().enumerate() {
                 for pos in 0..20 {
-                    let var_name = format!("pos_{}_{}_{}", atom, coord, pos);
+                    let var_name = format!("pos_{atom}_{coord}_{pos}");
                     if *solution.get(&var_name).unwrap_or(&false) {
                         coords[i] = pos as f64 / 19.0; // Fractional coordinates
                         break;
@@ -993,16 +990,25 @@ pub struct Lattice {
 impl Lattice {
     /// Calculate unit cell volume
     pub fn volume(&self) -> f64 {
-        let alpha_rad = self.alpha * PI / 180.0;
-        let beta_rad = self.beta * PI / 180.0;
-        let gamma_rad = self.gamma * PI / 180.0;
+        let alpha_rad = self.alpha.to_radians();
+        let beta_rad = self.beta.to_radians();
+        let gamma_rad = self.gamma.to_radians();
 
         self.a
             * self.b
             * self.c
-            * (1.0 - alpha_rad.cos().powi(2) - beta_rad.cos().powi(2) - gamma_rad.cos().powi(2)
-                + 2.0 * alpha_rad.cos() * beta_rad.cos() * gamma_rad.cos())
-            .sqrt()
+            * (2.0 * alpha_rad.cos() * beta_rad.cos())
+                .mul_add(
+                    gamma_rad.cos(),
+                    gamma_rad.cos().mul_add(
+                        -gamma_rad.cos(),
+                        beta_rad.cos().mul_add(
+                            -beta_rad.cos(),
+                            alpha_rad.cos().mul_add(-alpha_rad.cos(), 1.0),
+                        ),
+                    ),
+                )
+                .sqrt()
     }
 
     /// Determine lattice type
@@ -1048,9 +1054,9 @@ impl Lattice {
 
     /// Get transformation matrix
     pub fn transformation_matrix(&self) -> Array2<f64> {
-        let alpha_rad = self.alpha * PI / 180.0;
-        let beta_rad = self.beta * PI / 180.0;
-        let gamma_rad = self.gamma * PI / 180.0;
+        let alpha_rad = self.alpha.to_radians();
+        let beta_rad = self.beta.to_radians();
+        let gamma_rad = self.gamma.to_radians();
 
         let mut matrix = Array2::zeros((3, 3));
 
@@ -1061,14 +1067,23 @@ impl Lattice {
         matrix[[1, 0]] = 0.0;
         matrix[[1, 1]] = self.b * gamma_rad.sin();
         matrix[[1, 2]] =
-            self.c * (alpha_rad.cos() - beta_rad.cos() * gamma_rad.cos()) / gamma_rad.sin();
+            self.c * beta_rad.cos().mul_add(-gamma_rad.cos(), alpha_rad.cos()) / gamma_rad.sin();
 
         matrix[[2, 0]] = 0.0;
         matrix[[2, 1]] = 0.0;
         matrix[[2, 2]] = self.c
-            * (1.0 - alpha_rad.cos().powi(2) - beta_rad.cos().powi(2) - gamma_rad.cos().powi(2)
-                + 2.0 * alpha_rad.cos() * beta_rad.cos() * gamma_rad.cos())
-            .sqrt()
+            * (2.0 * alpha_rad.cos() * beta_rad.cos())
+                .mul_add(
+                    gamma_rad.cos(),
+                    gamma_rad.cos().mul_add(
+                        -gamma_rad.cos(),
+                        beta_rad.cos().mul_add(
+                            -beta_rad.cos(),
+                            alpha_rad.cos().mul_add(-alpha_rad.cos(), 1.0),
+                        ),
+                    ),
+                )
+                .sqrt()
             / gamma_rad.sin();
 
         matrix
@@ -1127,7 +1142,7 @@ impl CrystalStructure {
             ("Fe", 55.845),
         ]
         .iter()
-        .cloned()
+        .copied()
         .collect();
 
         self.composition
@@ -1138,7 +1153,7 @@ impl CrystalStructure {
     }
 
     /// Generate supercell
-    pub fn supercell(&self, nx: usize, ny: usize, nz: usize) -> CrystalStructure {
+    pub fn supercell(&self, nx: usize, ny: usize, nz: usize) -> Self {
         let mut new_positions = Vec::new();
 
         for i in 0..nx {
@@ -1163,7 +1178,7 @@ impl CrystalStructure {
         }
         new_composition.total_atoms *= nx * ny * nz;
 
-        CrystalStructure {
+        Self {
             composition: new_composition,
             lattice: Lattice {
                 a: self.lattice.a * nx as f64,

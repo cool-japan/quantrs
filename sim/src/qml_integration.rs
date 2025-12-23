@@ -8,8 +8,8 @@
 
 use crate::prelude::{InterfaceGate, InterfaceGateType, SimulatorError};
 use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -357,7 +357,7 @@ impl QMLIntegration {
                 } else {
                     patience_counter += 1;
                     if patience_counter >= patience {
-                        println!("Early stopping at epoch {} due to no improvement", epoch);
+                        println!("Early stopping at epoch {epoch} due to no improvement");
                         break;
                     }
                 }
@@ -404,7 +404,7 @@ impl QMLIntegration {
     ) -> Result<f64> {
         let mut total_loss = 0.0;
         let batch_size = qnn.training_config.batch_size;
-        let num_batches = (training_data.len() + batch_size - 1) / batch_size;
+        let num_batches = training_data.len().div_ceil(batch_size);
 
         for batch_idx in 0..num_batches {
             let start_idx = batch_idx * batch_size;
@@ -435,7 +435,7 @@ impl QMLIntegration {
     ) -> Result<f64> {
         let mut total_loss = 0.0;
         let batch_size = qnn.training_config.batch_size;
-        let num_batches = (validation_data.len() + batch_size - 1) / batch_size;
+        let num_batches = validation_data.len().div_ceil(batch_size);
 
         for batch_idx in 0..num_batches {
             let start_idx = batch_idx * batch_size;
@@ -476,9 +476,11 @@ impl QMLIntegration {
         }
 
         let eval_time = start_time.elapsed().as_secs_f64() * 1000.0;
-        self.stats.avg_circuit_time_ms =
-            (self.stats.avg_circuit_time_ms * self.stats.circuit_evaluations as f64 + eval_time)
-                / (self.stats.circuit_evaluations + batch.len()) as f64;
+        self.stats.avg_circuit_time_ms = self
+            .stats
+            .avg_circuit_time_ms
+            .mul_add(self.stats.circuit_evaluations as f64, eval_time)
+            / (self.stats.circuit_evaluations + batch.len()) as f64;
         self.stats.circuit_evaluations += batch.len();
 
         Ok((predictions, total_loss / batch.len() as f64))
@@ -504,9 +506,11 @@ impl QMLIntegration {
         }
 
         let grad_time = start_time.elapsed().as_secs_f64() * 1000.0;
-        self.stats.avg_gradient_time_ms =
-            (self.stats.avg_gradient_time_ms * self.stats.gradient_computations as f64 + grad_time)
-                / (self.stats.gradient_computations + 1) as f64;
+        self.stats.avg_gradient_time_ms = self
+            .stats
+            .avg_gradient_time_ms
+            .mul_add(self.stats.gradient_computations as f64, grad_time)
+            / (self.stats.gradient_computations + 1) as f64;
         self.stats.gradient_computations += 1;
 
         // Cache gradients
@@ -824,8 +828,7 @@ impl QMLIntegration {
         }
 
         Err(SimulatorError::InvalidInput(format!(
-            "Parameter index {} out of bounds",
-            param_idx
+            "Parameter index {param_idx} out of bounds"
         )))
     }
 
@@ -895,7 +898,7 @@ impl QMLIntegration {
     }
 
     /// Get training statistics
-    pub fn get_stats(&self) -> &QMLTrainingStats {
+    pub const fn get_stats(&self) -> &QMLTrainingStats {
         &self.stats
     }
 
@@ -995,10 +998,10 @@ impl QMLOptimizer for AdamOptimizer {
 
                 for (i, &grad) in grads.iter().enumerate() {
                     // Update biased first moment estimate
-                    m[i] = self.beta1 * m[i] + (1.0 - self.beta1) * grad;
+                    m[i] = self.beta1.mul_add(m[i], (1.0 - self.beta1) * grad);
 
                     // Update biased second moment estimate
-                    v[i] = self.beta2 * v[i] + (1.0 - self.beta2) * grad * grad;
+                    v[i] = self.beta2.mul_add(v[i], (1.0 - self.beta2) * grad * grad);
 
                     // Compute bias-corrected first moment estimate
                     let m_hat = m[i] / (1.0 - self.beta1.powi(self.step as i32));
@@ -1052,8 +1055,7 @@ impl AdamOptimizer {
         }
 
         Err(SimulatorError::InvalidInput(format!(
-            "Parameter {} not found",
-            param_name
+            "Parameter {param_name} not found"
         )))
     }
 }
@@ -1095,7 +1097,9 @@ impl QMLOptimizer for SGDOptimizer {
 
                 for (i, &grad) in grads.iter().enumerate() {
                     // Update velocity with momentum
-                    velocity[i] = self.momentum * velocity[i] - self.learning_rate * grad;
+                    velocity[i] = self
+                        .momentum
+                        .mul_add(velocity[i], -(self.learning_rate * grad));
                     updates.push((i, velocity[i]));
                 }
             }
@@ -1140,8 +1144,7 @@ impl SGDOptimizer {
         }
 
         Err(SimulatorError::InvalidInput(format!(
-            "Parameter {} not found",
-            param_name
+            "Parameter {param_name} not found"
         )))
     }
 }
@@ -1172,11 +1175,11 @@ impl QMLUtils {
             let parameters = (0..num_params)
                 .map(|_| fastrand::f64() * 2.0 * std::f64::consts::PI)
                 .collect();
-            let parameter_names = (0..num_params).map(|i| format!("param_{}", i)).collect();
+            let parameter_names = (0..num_params).map(|i| format!("param_{i}")).collect();
 
             layers.push(QMLLayer {
                 layer_type: QMLLayerType::VariationalCircuit,
-                name: format!("var_layer_{}", layer_idx),
+                name: format!("var_layer_{layer_idx}"),
                 num_qubits,
                 parameters,
                 parameter_names,
@@ -1289,7 +1292,7 @@ impl QMLUtils {
             let _result = integration.train_qnn(qnn, &training_data, None)?;
             let time = start.elapsed().as_secs_f64() * 1000.0;
 
-            results.training_times.push((format!("config_{}", i), time));
+            results.training_times.push((format!("config_{i}"), time));
         }
 
         Ok(results)
@@ -1350,7 +1353,7 @@ mod tests {
 
     #[test]
     fn test_qml_layer_types() {
-        let layer_types = vec![
+        let layer_types = [
             QMLLayerType::VariationalCircuit,
             QMLLayerType::DataEncoding,
             QMLLayerType::Measurement,

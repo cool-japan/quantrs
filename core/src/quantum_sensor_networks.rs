@@ -783,7 +783,7 @@ impl QuantumSensorNetwork {
                     positioning_accuracy: 0.01, // 1cm accuracy
                     local_environment: EnvironmentalConditions {
                         temperature: 293.15,
-                        pressure: 101325.0,
+                        pressure: 101_325.0,
                         humidity: 50.0,
                         magnetic_field: 5e-5,
                         electromagnetic_noise: -80.0,
@@ -842,11 +842,11 @@ impl QuantumSensorNetwork {
     }
 
     // Placeholder implementations for complex operations
-    fn initialize_sensor_calibration(&mut self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
+    fn initialize_sensor_calibration(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn configure_data_fusion_protocols(&mut self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
+    fn configure_data_fusion_protocols(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 

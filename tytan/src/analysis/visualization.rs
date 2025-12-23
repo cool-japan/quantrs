@@ -104,7 +104,7 @@ pub fn prepare_energy_landscape(
     let mut histogram_counts = vec![0; config.num_bins];
 
     for i in 0..=config.num_bins {
-        histogram_bins.push(min_energy + i as f64 * bin_width);
+        histogram_bins.push((i as f64).mul_add(bin_width, min_energy));
     }
 
     for &energy in &energies {
@@ -295,7 +295,7 @@ pub fn extract_tsp_tour(result: &SampleResult, n_cities: usize) -> Visualization
         // Look for edge from current city
         for (j, &is_visited) in visited.iter().enumerate().take(n_cities) {
             if !is_visited {
-                let var_name = format!("x_{}_{}", current, j);
+                let var_name = format!("x_{current}_{j}");
                 if let Some(&value) = result.assignments.get(&var_name) {
                     if value {
                         next = Some(j);
@@ -333,7 +333,7 @@ pub fn calculate_tour_length(tour: &[usize], cities: &[(f64, f64)]) -> f64 {
         let j = (i + 1) % tour.len();
         let (x1, y1) = cities[tour[i]];
         let (x2, y2) = cities[tour[j]];
-        let dist = ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt();
+        let dist = (x2 - x1).hypot(y2 - y1);
         length += dist;
     }
 
@@ -352,7 +352,7 @@ pub fn extract_graph_coloring(
     // Extract color assignments
     for (node, node_color) in node_colors.iter_mut().enumerate().take(n_nodes) {
         for color in 0..n_colors {
-            let var_name = format!("x_{}_{}", node, color);
+            let var_name = format!("x_{node}_{color}");
             if let Some(&value) = result.assignments.get(&var_name) {
                 if value {
                     *node_color = color;
@@ -453,7 +453,7 @@ pub fn export_to_csv(data: &EnergyLandscapeData, output_path: &str) -> Visualiza
 
     // Write data
     for (i, (&idx, &energy)) in data.indices.iter().zip(&data.energies).enumerate() {
-        writeln!(file, "{},{},{}", i, idx, energy)?;
+        writeln!(file, "{i},{idx},{energy}")?;
     }
 
     Ok(())
@@ -469,13 +469,13 @@ pub fn export_solution_matrix(
     // Write header
     write!(file, "sample")?;
     for var_name in &data.variable_names {
-        write!(file, ",{}", var_name)?;
+        write!(file, ",{var_name}")?;
     }
     writeln!(file)?;
 
     // Write data
     for i in 0..data.solution_matrix.nrows() {
-        write!(file, "{}", i)?;
+        write!(file, "{i}")?;
         for j in 0..data.solution_matrix.ncols() {
             write!(file, ",{}", data.solution_matrix[[i, j]])?;
         }
@@ -501,7 +501,7 @@ fn compute_kde(
     let mut y_points = Vec::new();
 
     for i in 0..n_points {
-        let x = min_val + (i as f64 / (n_points - 1) as f64) * range;
+        let x = (i as f64 / (n_points - 1) as f64).mul_add(range, min_val);
         let mut density = 0.0;
 
         for &val in values {
@@ -613,7 +613,7 @@ fn moving_average(values: &[f64], window: usize) -> Vec<f64> {
     let mut result = Vec::new();
 
     for i in (window - 1)..values.len() {
-        let sum: f64 = values[(i + 1 - window)..(i + 1)].iter().sum();
+        let sum: f64 = values[(i + 1 - window)..=i].iter().sum();
         result.push(sum / window as f64);
     }
 
@@ -644,7 +644,7 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
             for j in (i + 1)..n_nodes {
                 let dx = positions[i].0 - positions[j].0;
                 let dy = positions[i].1 - positions[j].1;
-                let dist = (dx * dx + dy * dy).sqrt().max(0.01);
+                let dist = dx.hypot(dy).max(0.01);
 
                 let force = k * k / dist;
                 forces[i].0 += force * dx / dist;
@@ -658,7 +658,7 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
         for &(u, v) in edges {
             let dx = positions[u].0 - positions[v].0;
             let dy = positions[u].1 - positions[v].1;
-            let dist = (dx * dx + dy * dy).sqrt();
+            let dist = dx.hypot(dy);
 
             let force = dist / k;
             forces[u].0 -= force * dx / dist;
@@ -700,7 +700,12 @@ pub fn spring_layout(n_nodes: usize, edges: &[(usize, usize)]) -> Vec<(f64, f64)
 
     positions
         .iter()
-        .map(|&(x, y)| ((x - min_x) * scale_x + 0.05, (y - min_y) * scale_y + 0.05))
+        .map(|&(x, y)| {
+            (
+                (x - min_x).mul_add(scale_x, 0.05),
+                (y - min_y).mul_add(scale_y, 0.05),
+            )
+        })
         .collect()
 }
 

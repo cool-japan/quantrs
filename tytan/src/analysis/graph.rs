@@ -12,7 +12,7 @@ pub fn generate_graph(
     n_nodes: usize,
     edge_probability: f64,
 ) -> Result<Vec<(usize, usize)>, Box<dyn std::error::Error>> {
-    if edge_probability < 0.0 || edge_probability > 1.0 {
+    if !(0.0..=1.0).contains(&edge_probability) {
         return Err("Edge probability must be between 0 and 1".into());
     }
 
@@ -90,7 +90,7 @@ pub fn generate_bipartite_graph(
     right_nodes: usize,
     edge_probability: f64,
 ) -> Result<Vec<(usize, usize)>, Box<dyn std::error::Error>> {
-    if edge_probability < 0.0 || edge_probability > 1.0 {
+    if !(0.0..=1.0).contains(&edge_probability) {
         return Err("Edge probability must be between 0 and 1".into());
     }
 

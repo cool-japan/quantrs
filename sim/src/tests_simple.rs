@@ -118,10 +118,7 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, epsilon: f64) -> boo
     {
         let diff = (std_amp - opt_amp).norm();
         if diff > epsilon {
-            println!(
-                "Amplitude {} differs: standard={}, optimized={}, diff={}",
-                i, std_amp, opt_amp, diff
-            );
+            println!("Amplitude {i} differs: standard={std_amp}, optimized={opt_amp}, diff={diff}");
             return false;
         }
     }
@@ -146,7 +143,7 @@ mod tests {
         let optimized_result = optimized_sim.run(&circuit).unwrap();
 
         // Expected result: (|00> + |11>) / sqrt(2)
-        let expected_amplitudes = vec![
+        let expected_amplitudes = [
             Complex64::new(FRAC_1_SQRT_2, 0.0),
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
@@ -163,9 +160,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Standard simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Standard simulator: state[{i}] differs by {diff}"
             );
         }
 
@@ -179,9 +174,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Optimized simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Optimized simulator: state[{i}] differs by {diff}"
             );
         }
     }
@@ -199,7 +192,7 @@ mod tests {
         let optimized_result = optimized_sim.run(&circuit).unwrap();
 
         // Expected result: (|000> + |111>) / sqrt(2)
-        let mut expected_amplitudes = vec![Complex64::new(0.0, 0.0); 1 << N];
+        let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 1 << N];
         expected_amplitudes[0] = Complex64::new(FRAC_1_SQRT_2, 0.0);
         expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 
@@ -213,9 +206,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Standard simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Standard simulator: state[{i}] differs by {diff}"
             );
         }
 
@@ -229,9 +220,7 @@ mod tests {
             let diff = (actual - expected).norm();
             assert!(
                 diff < 1e-10,
-                "Optimized simulator: state[{}] differs by {}",
-                i,
-                diff
+                "Optimized simulator: state[{i}] differs by {diff}"
             );
         }
     }

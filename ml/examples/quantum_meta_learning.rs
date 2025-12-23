@@ -1,12 +1,12 @@
 //! Quantum Meta-Learning Example
 //!
 //! This example demonstrates various quantum meta-learning algorithms including
-//! MAML, Reptile, ProtoMAML, Meta-SGD, and ANIL for few-shot learning tasks.
+//! MAML, Reptile, `ProtoMAML`, Meta-SGD, and ANIL for few-shot learning tasks.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<()> {
     println!("=== Quantum Meta-Learning Demo ===\n");
@@ -95,7 +95,7 @@ fn maml_demo() -> Result<()> {
     println!(
         "   Parameter adaptation magnitude: {:.4}",
         (&adapted_params - meta_learner.meta_params())
-            .mapv(|x| x.abs())
+            .mapv(f64::abs)
             .mean()
             .unwrap()
     );
@@ -143,10 +143,7 @@ fn reptile_demo() -> Result<()> {
     for (i, task) in tasks.iter().take(3).enumerate() {
         if let Some(amplitude) = task.metadata.get("amplitude") {
             if let Some(phase) = task.metadata.get("phase") {
-                println!(
-                    "   Task {}: amplitude={:.2}, phase={:.2}",
-                    i, amplitude, phase
-                );
+                println!("   Task {i}: amplitude={amplitude:.2}, phase={phase:.2}");
             }
         }
     }
@@ -154,7 +151,7 @@ fn reptile_demo() -> Result<()> {
     Ok(())
 }
 
-/// ProtoMAML demonstration
+/// `ProtoMAML` demonstration
 fn protomaml_demo() -> Result<()> {
     let layers = vec![
         QNNLayerType::EncodingLayer { num_features: 8 },
@@ -237,11 +234,11 @@ fn metasgd_demo() -> Result<()> {
         println!("\n   Learned per-parameter learning rates:");
         println!(
             "   - Min LR: {:.4}",
-            lr.iter().cloned().fold(f64::INFINITY, f64::min)
+            lr.iter().copied().fold(f64::INFINITY, f64::min)
         );
         println!(
             "   - Max LR: {:.4}",
-            lr.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+            lr.iter().copied().fold(f64::NEG_INFINITY, f64::max)
         );
         println!("   - Mean LR: {:.4}", lr.mean().unwrap());
     }
@@ -367,16 +364,16 @@ fn task_distribution_demo() -> Result<()> {
     println!("   Rotation Task Distribution:");
     let angles: Vec<f64> = rotation_tasks
         .iter()
-        .filter_map(|t| t.metadata.get("rotation_angle").cloned())
+        .filter_map(|t| t.metadata.get("rotation_angle").copied())
         .collect();
 
     if !angles.is_empty() {
         let mean_angle = angles.iter().sum::<f64>() / angles.len() as f64;
-        println!("   - Mean rotation angle: {:.2} rad", mean_angle);
+        println!("   - Mean rotation angle: {mean_angle:.2} rad");
         println!(
             "   - Angle range: [{:.2}, {:.2}] rad",
-            angles.iter().cloned().fold(f64::INFINITY, f64::min),
-            angles.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+            angles.iter().copied().fold(f64::INFINITY, f64::min),
+            angles.iter().copied().fold(f64::NEG_INFINITY, f64::max)
         );
     }
 
@@ -384,16 +381,16 @@ fn task_distribution_demo() -> Result<()> {
     println!("\n   Sinusoid Task Distribution:");
     let amplitudes: Vec<f64> = sinusoid_tasks
         .iter()
-        .filter_map(|t| t.metadata.get("amplitude").cloned())
+        .filter_map(|t| t.metadata.get("amplitude").copied())
         .collect();
 
     if !amplitudes.is_empty() {
         let mean_amp = amplitudes.iter().sum::<f64>() / amplitudes.len() as f64;
-        println!("   - Mean amplitude: {:.2}", mean_amp);
+        println!("   - Mean amplitude: {mean_amp:.2}");
         println!(
             "   - Amplitude range: [{:.2}, {:.2}]",
-            amplitudes.iter().cloned().fold(f64::INFINITY, f64::min),
-            amplitudes.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
+            amplitudes.iter().copied().fold(f64::INFINITY, f64::min),
+            amplitudes.iter().copied().fold(f64::NEG_INFINITY, f64::max)
         );
     }
 

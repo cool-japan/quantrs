@@ -50,7 +50,7 @@ pub enum SamplerError {
 
 impl From<String> for SamplerError {
     fn from(s: String) -> Self {
-        SamplerError::InvalidParameter(s)
+        Self::InvalidParameter(s)
     }
 }
 

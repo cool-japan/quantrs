@@ -4,8 +4,6 @@
 //! including process tomography, state tomography, randomized benchmarking, and advanced
 //! SciRS2-powered noise analysis for comprehensive hardware understanding.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -15,6 +13,8 @@ use quantrs2_core::{
     },
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 

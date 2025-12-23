@@ -69,15 +69,15 @@ pub enum QuantumCodeType {
     QuantumLDPC { parity_check_matrix: Array2<u8> },
     /// Concatenated codes
     ConcatenatedCode {
-        inner_code: Box<QuantumCodeType>,
-        outer_code: Box<QuantumCodeType>,
+        inner_code: Box<Self>,
+        outer_code: Box<Self>,
     },
     /// Subsystem codes
     SubsystemCode { gauge_group: Vec<String> },
 }
 
 /// Lattice types for surface codes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LatticeType {
     /// Square lattice
     Square,
@@ -90,7 +90,7 @@ pub enum LatticeType {
 }
 
 /// Color schemes for color codes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorScheme {
     /// Three-colorable graph
     ThreeColor,
@@ -101,7 +101,7 @@ pub enum ColorScheme {
 }
 
 /// Topological code families
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopologicalFamily {
     /// Toric code
     ToricCode,
@@ -114,7 +114,7 @@ pub enum TopologicalFamily {
 }
 
 /// Syndrome extraction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyndromeExtractionMethod {
     /// Standard syndrome extraction
     Standard,
@@ -129,7 +129,7 @@ pub enum SyndromeExtractionMethod {
 }
 
 /// Decoding algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodingAlgorithm {
     /// Minimum weight perfect matching
     MWPM,
@@ -150,7 +150,7 @@ pub enum DecodingAlgorithm {
 }
 
 /// Machine learning model types for decoding
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MLModelType {
     /// Recurrent neural network
     RNN,
@@ -172,7 +172,7 @@ pub enum MLModelType {
 }
 
 /// Error mitigation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorMitigationMethod {
     ZeroNoiseExtrapolation,
     ReadoutErrorCorrection,
@@ -255,7 +255,7 @@ pub struct ErrorAmplificationConfig {
 }
 
 /// Amplification strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AmplificationStrategy {
     /// Linear amplification
     Linear,
@@ -322,7 +322,7 @@ pub struct ThresholdEstimationConfig {
 }
 
 /// Threshold estimation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThresholdEstimationMethod {
     /// Monte Carlo estimation
     MonteCarlo,
@@ -460,7 +460,7 @@ pub enum QuantumGate {
 }
 
 /// Measurement basis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MeasurementBasis {
     Z,
     X,
@@ -541,7 +541,7 @@ pub struct SyndromePattern {
 }
 
 /// Error types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     /// Single qubit error
     SingleQubit {
@@ -674,7 +674,7 @@ pub struct NoiseCharacterization {
 }
 
 /// Noise model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseModelType {
     /// Depolarizing noise
     Depolarizing,
@@ -939,17 +939,17 @@ pub enum QECError {
 impl std::fmt::Display for QECError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            QECError::InvalidCodeParameters(msg) => write!(f, "Invalid code parameters: {}", msg),
-            QECError::SyndromeExtractionFailed(msg) => {
-                write!(f, "Syndrome extraction failed: {}", msg)
+            Self::InvalidCodeParameters(msg) => write!(f, "Invalid code parameters: {msg}"),
+            Self::SyndromeExtractionFailed(msg) => {
+                write!(f, "Syndrome extraction failed: {msg}")
             }
-            QECError::DecodingFailed(msg) => write!(f, "Decoding failed: {}", msg),
-            QECError::InsufficientCorrection(msg) => write!(f, "Insufficient correction: {}", msg),
-            QECError::ThresholdExceeded(msg) => write!(f, "Threshold exceeded: {}", msg),
-            QECError::ResourceEstimationFailed(msg) => {
-                write!(f, "Resource estimation failed: {}", msg)
+            Self::DecodingFailed(msg) => write!(f, "Decoding failed: {msg}"),
+            Self::InsufficientCorrection(msg) => write!(f, "Insufficient correction: {msg}"),
+            Self::ThresholdExceeded(msg) => write!(f, "Threshold exceeded: {msg}"),
+            Self::ResourceEstimationFailed(msg) => {
+                write!(f, "Resource estimation failed: {msg}")
             }
-            QECError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            Self::NumericalError(msg) => write!(f, "Numerical error: {msg}"),
         }
     }
 }
@@ -1120,7 +1120,7 @@ impl QuantumErrorCorrection {
         }
 
         // Threshold beliefs to get binary error estimate
-        let error_estimate = beliefs.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let error_estimate = beliefs.mapv(|x| u8::from(x > 0.5));
         Ok(error_estimate)
     }
 
@@ -1146,7 +1146,7 @@ impl QuantumErrorCorrection {
         let output = w2.dot(&hidden).mapv(|x| 1.0 / (1.0 + (-x).exp())); // Sigmoid
 
         // Threshold to binary
-        let error_estimate = output.mapv(|x| if x > 0.5 { 1 } else { 0 });
+        let error_estimate = output.mapv(|x| u8::from(x > 0.5));
         Ok(error_estimate)
     }
 
@@ -1212,9 +1212,10 @@ impl QuantumErrorCorrection {
         let mut output = Array1::zeros(self.num_physical_qubits);
 
         // Process syndrome sequentially
-        for &syndrome_bit in syndrome.iter() {
+        for &syndrome_bit in syndrome {
             // Update hidden state (simplified LSTM-like operation)
-            hidden_state = hidden_state.mapv(|h: f64| 0.5 * h + 0.5 * (syndrome_bit as f64));
+            hidden_state =
+                hidden_state.mapv(|h: f64| 0.5f64.mul_add(h, 0.5 * (syndrome_bit as f64)));
         }
 
         // Generate output from final hidden state
@@ -1250,13 +1251,7 @@ impl QuantumErrorCorrection {
         // Map to error estimate
         let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
-                .map(|i| {
-                    if convolved[i % convolved.len()] > 0.5 {
-                        1
-                    } else {
-                        0
-                    }
-                })
+                .map(|i| u8::from(convolved[i % convolved.len()] > 0.5))
                 .collect(),
         );
 
@@ -1291,13 +1286,7 @@ impl QuantumErrorCorrection {
         // Map to error estimate
         let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
-                .map(|i| {
-                    if attention_output[i % attention_output.len()] > 0.5 {
-                        1
-                    } else {
-                        0
-                    }
-                })
+                .map(|i| u8::from(attention_output[i % attention_output.len()] > 0.5))
                 .collect(),
         );
 
@@ -1328,7 +1317,7 @@ impl QuantumErrorCorrection {
 
                 if neighbor_count > 0 {
                     new_features[i] =
-                        (node_features[i] + neighbor_sum / neighbor_count as f64) / 2.0;
+                        f64::midpoint(node_features[i], neighbor_sum / neighbor_count as f64);
                 }
             }
 
@@ -1338,13 +1327,7 @@ impl QuantumErrorCorrection {
         // Map to error estimate
         let error_estimate = Array1::from_vec(
             (0..self.num_physical_qubits)
-                .map(|i| {
-                    if node_features[i % node_features.len()] > 0.5 {
-                        1
-                    } else {
-                        0
-                    }
-                })
+                .map(|i| u8::from(node_features[i % node_features.len()] > 0.5))
                 .collect(),
         );
 
@@ -1374,7 +1357,7 @@ impl QuantumErrorCorrection {
         let mut error_estimate = Array1::zeros(self.num_physical_qubits);
         for i in 0..self.num_physical_qubits {
             let latent_idx = i % latent_dim;
-            error_estimate[i] = if latent[latent_idx] > 0.5 { 1 } else { 0 };
+            error_estimate[i] = u8::from(latent[latent_idx] > 0.5);
         }
 
         Ok(error_estimate)
@@ -1454,16 +1437,16 @@ impl QuantumErrorCorrection {
         original_state: &Array1<f64>,
     ) -> Result<bool, QECError> {
         // Simple verification: check if syndrome is reduced
-        let original_syndrome = if !self.codes.is_empty() {
-            self.codes[0].extract_syndrome(original_state)?
-        } else {
+        let original_syndrome = if self.codes.is_empty() {
             Array1::zeros(1)
+        } else {
+            self.codes[0].extract_syndrome(original_state)?
         };
 
-        let corrected_syndrome = if !self.codes.is_empty() {
-            self.codes[0].extract_syndrome(corrected_state)?
-        } else {
+        let corrected_syndrome = if self.codes.is_empty() {
             Array1::zeros(1)
+        } else {
+            self.codes[0].extract_syndrome(corrected_state)?
         };
 
         let original_syndrome_weight = original_syndrome.iter().map(|&x| x as usize).sum::<usize>();
@@ -1482,7 +1465,7 @@ impl QuantumErrorCorrection {
 
         // Apply simple denoising
         let noise_threshold = 0.01;
-        for value in mitigated_state.iter_mut() {
+        for value in &mut mitigated_state {
             if value.abs() < noise_threshold {
                 *value = 0.0;
             }
@@ -1521,19 +1504,22 @@ impl QuantumErrorCorrection {
         self.metrics.logical_error_rate = error_weight / total_qubits;
 
         // Update overall performance
-        self.metrics.overall_performance = self.metrics.syndrome_fidelity * 0.3
-            + self.metrics.decoding_success_rate * 0.4
-            + (1.0 - self.metrics.logical_error_rate) * 0.3;
+        self.metrics.overall_performance = (1.0 - self.metrics.logical_error_rate).mul_add(
+            0.3,
+            self.metrics
+                .syndrome_fidelity
+                .mul_add(0.3, self.metrics.decoding_success_rate * 0.4),
+        );
     }
 
     /// Helper function to check if qubits are connected
-    fn are_connected(&self, qubit1: usize, qubit2: usize) -> bool {
+    const fn are_connected(&self, qubit1: usize, qubit2: usize) -> bool {
         // Simplified connectivity: nearest neighbors in 1D
         (qubit1 as i32 - qubit2 as i32).abs() == 1
     }
 
     /// Helper function to check if syndrome positions are connected
-    fn are_syndrome_connected(&self, pos1: usize, pos2: usize) -> bool {
+    const fn are_syndrome_connected(&self, pos1: usize, pos2: usize) -> bool {
         // Simplified: positions are connected if they're within distance 2
         (pos1 as i32 - pos2 as i32).abs() <= 2
     }
@@ -1547,7 +1533,7 @@ impl QuantumErrorCorrection {
     }
 
     /// Estimate number of physical qubits needed
-    fn estimate_physical_qubits(num_logical: usize, config: &QECConfig) -> usize {
+    const fn estimate_physical_qubits(num_logical: usize, config: &QECConfig) -> usize {
         match &config.code_type {
             QuantumCodeType::SurfaceCode { .. } => {
                 // Surface code: roughly d^2 physical qubits per logical qubit

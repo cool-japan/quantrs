@@ -63,7 +63,7 @@ impl ParallelTemperingSampler {
             let mut chains: Vec<Vec<i32>> = (0..self.num_chains)
                 .map(|_| {
                     (0..n)
-                        .map(|_| if self.rng.gen::<f64>() < 0.5 { 0 } else { 1 })
+                        .map(|_| i32::from(self.rng.gen::<f64>() >= 0.5))
                         .collect()
                 })
                 .collect();
@@ -133,8 +133,7 @@ impl ParallelTemperingSampler {
 
             let delta_energy = new_energy - old_energy;
 
-            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp()
-            {
+            if delta_energy <= 0.0 || self.rng.gen::<f64>() < (-delta_energy / temperature).exp() {
                 chain[idx] = new_value;
             }
         }

@@ -6,8 +6,8 @@
 //! where quantum information in a boundary theory is protected by geometry in the bulk.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -324,7 +324,7 @@ impl HolographicQECSimulator {
 
         // Rindler transformation factor with phase shift to avoid zeros
         let factor = (rindler_horizon * bulk_position).cosh()
-            * (2.0 * PI * boundary_position + PI / 4.0).cos();
+            * (2.0 * PI).mul_add(boundary_position, PI / 4.0).cos();
 
         factor.abs().max(1e-10)
     }
@@ -362,7 +362,7 @@ impl HolographicQECSimulator {
 
         // Minimal surface area calculation
         let radial_distance = (bulk_position - boundary_position).abs();
-        let ads_factor = self.config.ads_radius / (1.0 + radial_distance.powi(2));
+        let ads_factor = self.config.ads_radius / radial_distance.mul_add(radial_distance, 1.0);
 
         ads_factor * self.config.central_charge
     }
@@ -381,7 +381,10 @@ impl HolographicQECSimulator {
 
         // Von Neumann entropy approximation with improved bounds
         if region_size > 0.01 && region_size < 0.99 {
-            -region_size * region_size.ln() - (1.0 - region_size) * (1.0 - region_size).ln()
+            (-region_size).mul_add(
+                region_size.ln(),
+                -((1.0 - region_size) * (1.0 - region_size).ln()),
+            )
         } else {
             // Return a small positive entropy instead of zero
             0.1
@@ -508,7 +511,10 @@ impl HolographicQECSimulator {
 
         // Boundary is typically flat, but can have induced curvature
         // Ensure positive curvature to avoid division by zero
-        (1.0 + 0.1 * (2.0 * PI * position).sin()).abs().max(0.1)
+        0.1f64
+            .mul_add((2.0 * PI * position).sin(), 1.0)
+            .abs()
+            .max(0.1)
     }
 
     /// Create tensor network encoding
@@ -551,7 +557,7 @@ impl HolographicQECSimulator {
         let num_legs = if is_bulk { 4 } else { 2 }; // Bulk tensors have more legs
 
         for i in 0..num_legs {
-            let leg_value = ((index >> i) & 1) as f64 * 2.0 - 1.0; // Convert to {-1, 1}
+            let leg_value = (((index >> i) & 1) as f64).mul_add(2.0, -1.0); // Convert to {-1, 1}
             legs.push(leg_value);
         }
 
@@ -859,7 +865,7 @@ impl HolographicQECSimulator {
             let bulk_field_value = self.calculate_bulk_field_value(i);
             duality
                 .holographic_dictionary
-                .insert(format!("bulk_field_{}", i), format!("{}", bulk_field_value));
+                .insert(format!("bulk_field_{i}"), format!("{bulk_field_value}"));
         }
 
         // Initialize boundary operators in the boundary theory
@@ -868,7 +874,7 @@ impl HolographicQECSimulator {
             duality
                 .boundary_theory
                 .operator_dimensions
-                .insert(format!("operator_{}", i), boundary_field_value);
+                .insert(format!("operator_{i}"), boundary_field_value);
         }
 
         self.holographic_duality = Some(duality);
@@ -1001,7 +1007,7 @@ impl HolographicQECSimulator {
     }
 
     /// Calculate stabilizer value
-    fn calculate_stabilizer_value(&self, generator_index: usize, state_index: usize) -> f64 {
+    const fn calculate_stabilizer_value(&self, generator_index: usize, state_index: usize) -> f64 {
         let generator_mask = 1 << generator_index;
         let parity = (state_index & generator_mask).count_ones() % 2;
 
@@ -1163,10 +1169,9 @@ impl HolographicQECSimulator {
         let geodesic_distance = self.calculate_geodesic_length(bulk_index, boundary_index);
 
         let conformal_dimension = self.calculate_conformal_dimension();
-        let kernel = radial_bulk.powf(conformal_dimension)
-            / (1.0 + geodesic_distance / self.config.ads_radius).powf(2.0 * conformal_dimension);
 
-        kernel
+        radial_bulk.powf(conformal_dimension)
+            / (1.0 + geodesic_distance / self.config.ads_radius).powf(2.0 * conformal_dimension)
     }
 
     /// Decode entanglement wedge errors
@@ -1624,7 +1629,7 @@ impl HolographicQECSimulator {
     }
 
     /// Calculate holographic complexity
-    fn calculate_holographic_complexity(&self) -> f64 {
+    const fn calculate_holographic_complexity(&self) -> f64 {
         if let Some(duality) = &self.holographic_duality {
             duality.entanglement_structure.holographic_complexity
         } else {
@@ -1719,7 +1724,7 @@ impl HolographicQECSimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_stats(&self) -> &HolographicQECStats {
+    pub const fn get_stats(&self) -> &HolographicQECStats {
         &self.stats
     }
 }
@@ -2491,10 +2496,7 @@ mod tests {
         let bulk_dim = 1 << 3; // 8
 
         println!("Testing holographic encoding matrix creation...");
-        println!(
-            "Boundary dimension: {}, Bulk dimension: {}",
-            boundary_dim, bulk_dim
-        );
+        println!("Boundary dimension: {boundary_dim}, Bulk dimension: {bulk_dim}");
 
         // Test matrix creation
         let matrix_result = simulator.create_holographic_encoding_matrix(boundary_dim, bulk_dim);
@@ -2511,7 +2513,7 @@ mod tests {
         let mut non_zero_count = 0;
         let mut max_magnitude = 0.0;
 
-        for element in matrix.iter() {
+        for element in &matrix {
             let magnitude = element.norm();
             if magnitude < 1e-10 {
                 zero_count += 1;
@@ -2524,9 +2526,9 @@ mod tests {
         }
 
         println!("Matrix statistics:");
-        println!("  Zero elements: {}", zero_count);
-        println!("  Non-zero elements: {}", non_zero_count);
-        println!("  Max magnitude: {}", max_magnitude);
+        println!("  Zero elements: {zero_count}");
+        println!("  Non-zero elements: {non_zero_count}");
+        println!("  Max magnitude: {max_magnitude}");
         println!("  Total elements: {}", matrix.len());
 
         // Print sample elements
@@ -2543,8 +2545,8 @@ mod tests {
         let rindler_factor = simulator.calculate_rindler_factor(1, 1);
         let entanglement_factor = simulator.calculate_entanglement_factor(1, 1);
 
-        println!("Rindler factor (1,1): {}", rindler_factor);
-        println!("Entanglement factor (1,1): {}", entanglement_factor);
+        println!("Rindler factor (1,1): {rindler_factor}");
+        println!("Entanglement factor (1,1): {entanglement_factor}");
 
         // Check for problematic values
         assert!(!rindler_factor.is_nan(), "Rindler factor should not be NaN");
@@ -2582,8 +2584,7 @@ mod tests {
                     let product = rf * ef;
                     if i < 2 && j < 2 {
                         println!(
-                            "  ({}, {}): Rindler={:.6}, Entanglement={:.6}, Product={:.6}",
-                            i, j, rf, ef, product
+                            "  ({i}, {j}): Rindler={rf:.6}, Entanglement={ef:.6}, Product={product:.6}"
                         );
                     }
                 }
@@ -2598,8 +2599,7 @@ mod tests {
             let boundary_position = (j as f64) / (1 << simulator.config.boundary_qubits) as f64;
             let cos_value = (2.0 * PI * boundary_position).cos();
             println!(
-                "  boundary_index {}: position={:.3}, cos(2π*pos)={:.6}",
-                j, boundary_position, cos_value
+                "  boundary_index {j}: position={boundary_position:.3}, cos(2π*pos)={cos_value:.6}"
             );
         }
 
@@ -2608,8 +2608,7 @@ mod tests {
             let bulk_position = (i as f64) / (1 << simulator.config.bulk_qubits) as f64;
             let cosh_value = (simulator.config.ads_radius * bulk_position).cosh();
             println!(
-                "  bulk_index {}: position={:.3}, cosh(ads_radius*pos)={:.6}",
-                i, bulk_position, cosh_value
+                "  bulk_index {i}: position={bulk_position:.3}, cosh(ads_radius*pos)={cosh_value:.6}"
             );
         }
 

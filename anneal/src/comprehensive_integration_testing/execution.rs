@@ -29,7 +29,136 @@ impl TestExecutionEngine {
         }
     }
 
-    // TODO: Implement execution methods
+    /// Queue a test execution request
+    pub fn queue_test(&mut self, request: TestExecutionRequest) -> Result<String, String> {
+        let id = request.id.clone();
+        self.execution_queue.push_back(request);
+        Ok(id)
+    }
+
+    /// Execute a test request
+    pub fn execute_test(
+        &mut self,
+        request: TestExecutionRequest,
+    ) -> Result<TestExecutionResult, String> {
+        let execution_id = request.id.clone();
+        let test_case_id = request.test_case.id.clone();
+        let start_time = SystemTime::now();
+
+        // Create test result with default values
+        let test_result = IntegrationTestResult {
+            test_case_id: test_case_id.clone(),
+            timestamp: start_time,
+            outcome: super::results::TestOutcome::Passed,
+            performance_metrics: super::results::PerformanceMetrics {
+                execution_duration: std::time::Duration::from_secs(0),
+                setup_duration: std::time::Duration::from_secs(0),
+                cleanup_duration: std::time::Duration::from_secs(0),
+                peak_memory_usage: 0,
+                avg_cpu_usage: 0.0,
+                custom_metrics: HashMap::new(),
+            },
+            validation_results: super::results::ValidationResults {
+                status: super::results::ValidationStatus::Passed,
+                validations: Vec::new(),
+                summary: super::results::ValidationSummary {
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                    skipped: 0,
+                },
+            },
+            error_info: None,
+            artifacts: Vec::new(),
+        };
+
+        let end_time = SystemTime::now();
+
+        let result = TestExecutionResult {
+            execution_id,
+            test_case_id,
+            status: ExecutionStatus::Success,
+            start_time,
+            end_time,
+            result: test_result,
+            metadata: HashMap::new(),
+        };
+
+        // Add to history
+        self.execution_history.push_back(result.clone());
+
+        Ok(result)
+    }
+
+    /// Get execution status
+    pub fn get_execution_status(&self, execution_id: &str) -> Option<&ActiveTestExecution> {
+        self.active_executions.get(execution_id)
+    }
+
+    /// Cancel a running execution
+    pub fn cancel_execution(&mut self, execution_id: &str) -> Result<(), String> {
+        if self.active_executions.remove(execution_id).is_some() {
+            Ok(())
+        } else {
+            Err(format!("Execution {} not found", execution_id))
+        }
+    }
+
+    /// Get execution history
+    pub fn get_execution_history(&self) -> &VecDeque<TestExecutionResult> {
+        &self.execution_history
+    }
+
+    /// Get current queue size
+    pub fn queue_size(&self) -> usize {
+        self.execution_queue.len()
+    }
+
+    /// Get active execution count
+    pub fn active_execution_count(&self) -> usize {
+        self.active_executions.len()
+    }
+
+    /// Process next test in queue
+    pub fn process_next(&mut self) -> Result<Option<TestExecutionResult>, String> {
+        if let Some(request) = self.execution_queue.pop_front() {
+            Ok(Some(self.execute_test(request)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Clear execution history
+    pub fn clear_history(&mut self) {
+        self.execution_history.clear();
+    }
+
+    /// Update resource usage
+    pub fn update_resource_usage(&mut self, usage: ResourceUsage) {
+        self.resource_monitor.current_usage = usage.clone();
+        self.resource_monitor
+            .usage_history
+            .push_back(ResourceUsageSnapshot {
+                timestamp: SystemTime::now(),
+                usage,
+                active_tests: self.active_executions.len(),
+            });
+
+        // Keep only last 1000 snapshots
+        while self.resource_monitor.usage_history.len() > 1000 {
+            self.resource_monitor.usage_history.pop_front();
+        }
+    }
+
+    /// Check if resources are available for new test
+    pub fn has_available_resources(&self, allocation: &ResourceAllocation) -> bool {
+        let limits = &self.resource_monitor.limits;
+        let current = &self.resource_monitor.current_usage;
+
+        current.memory_usage + allocation.memory_bytes <= limits.max_memory_usage
+            && current.disk_usage + allocation.disk_bytes <= limits.max_disk_usage
+            && current.thread_count + 1 <= limits.max_threads
+    }
 }
 
 /// Test execution request

@@ -17,15 +17,21 @@ fn main() {
 
     // Create a simple circuit: prepare a Bell state
     let mut circuit = Circuit::<2>::new();
-    circuit.h(0).unwrap().cnot(0, 1).unwrap();
+    circuit
+        .h(0)
+        .expect("Failed to apply H gate to qubit 0")
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT from qubit 0 to qubit 1");
 
     // Run with ideal (noise-free) simulator first
     let ideal_sim = StateVectorSimulator::sequential();
-    let ideal_result = circuit.run(ideal_sim).unwrap();
+    let ideal_result = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal Bell state circuit");
 
     println!("Ideal Bell State (no noise):");
     for (i, amplitude) in ideal_result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -64,11 +70,13 @@ fn run_with_bit_flip_noise(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with bit flip noise");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -99,11 +107,13 @@ fn run_with_phase_flip_noise(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with phase flip noise");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -128,11 +138,13 @@ fn run_with_depolarizing_noise(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with depolarizing noise");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -159,11 +171,13 @@ fn run_with_amplitude_damping(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with amplitude damping noise");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -188,11 +202,13 @@ fn run_with_phase_damping(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with phase damping noise");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -235,11 +251,13 @@ fn run_with_combined_noise(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with combined noise model");
 
     // Print the result
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -254,7 +272,7 @@ fn run_with_combined_noise(circuit: &Circuit<2>) {
     // Display the probabilities
     println!("\nFinal state probabilities:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!("|{}⟩: {:.6}", bits, amplitude.norm_sqr());
     }
     println!("\nNotice how the Bell state has degraded from the ideal (50/50 in |00⟩/|11⟩) due to noise.");
@@ -316,12 +334,14 @@ fn run_with_realistic_ibm_noise(circuit: &Circuit<2>) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the circuit with noise
-    let result = circuit.run(noisy_sim).unwrap();
+    let result = circuit
+        .run(noisy_sim)
+        .expect("Failed to run circuit with realistic IBM noise model");
 
     // Display the full quantum state
     println!("\nFull quantum state:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (probability: {:.6})",
             bits,
@@ -333,7 +353,7 @@ fn run_with_realistic_ibm_noise(circuit: &Circuit<2>) {
     // Display just the probabilities
     println!("\nFinal state probabilities:");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!("|{}⟩: {:.6}", bits, amplitude.norm_sqr());
     }
 

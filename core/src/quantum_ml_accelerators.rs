@@ -578,7 +578,7 @@ impl QuantumKernelOptimizer {
     }
 
     /// Update feature map parameters
-    fn update_feature_map_parameters(&mut self, _params: &Array1<f64>) {
+    fn update_feature_map_parameters(&self, _params: &Array1<f64>) {
         // Implementation depends on specific feature map type
         // Would update angles, depths, etc.
     }

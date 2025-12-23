@@ -8,9 +8,9 @@ use crate::error::{MLError, Result};
 use crate::simulator_backends::{
     BackendCapabilities, DynamicCircuit, Observable, SimulatorBackend, StatevectorBackend,
 };
-use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use std::collections::HashMap;
 use std::sync::Arc;
 

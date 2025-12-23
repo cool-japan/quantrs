@@ -1,8 +1,8 @@
 //! State and action representations and feature extraction
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashMap;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
@@ -462,7 +462,7 @@ impl StateActionProcessor {
 
     /// Apply continuous action to embedding
     fn apply_continuous_action(
-        embedding: &mut Embedding,
+        embedding: &Embedding,
         action: &ContinuousEmbeddingAction,
     ) -> RLEmbeddingResult<()> {
         // Apply chain strength adjustments

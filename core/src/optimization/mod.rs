@@ -97,41 +97,18 @@ pub fn gates_can_commute(gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
     if gate1.qubits().len() == 1 && gate2.qubits().len() == 1 && gate1.qubits() == gate2.qubits() {
         match (gate1.name(), gate2.name()) {
             // Z-basis gates commute with each other
-            ("Z", "Z")
-            | ("Z", "S")
-            | ("Z", "S†")
-            | ("Z", "T")
-            | ("Z", "T†")
-            | ("S", "Z")
-            | ("S", "S")
-            | ("S", "S†")
-            | ("S", "T")
-            | ("S", "T†")
-            | ("S†", "Z")
-            | ("S†", "S")
-            | ("S†", "S†")
-            | ("S†", "T")
-            | ("S†", "T†")
-            | ("T", "Z")
-            | ("T", "S")
-            | ("T", "S†")
-            | ("T", "T")
-            | ("T", "T†")
-            | ("T†", "Z")
-            | ("T†", "S")
-            | ("T†", "S†")
-            | ("T†", "T")
-            | ("T†", "T†")
-            | ("RZ", "RZ")
-            | ("RZ", "Z")
-            | ("RZ", "S")
-            | ("RZ", "T") => true,
+            ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "Z")
+            | ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "S")
+            | ("Z" | "S" | "S†" | "T" | "T†", "S†")
+            | ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "T")
+            | ("Z" | "S" | "S†" | "T" | "T†", "T†")
+            | ("RZ", "RZ") => true,
 
             // X-basis gates commute with each other
-            ("X", "X") | ("RX", "RX") | ("RX", "X") | ("X", "RX") => true,
+            ("X" | "RX", "X") | ("RX" | "X", "RX") => true,
 
             // Y-basis gates commute with each other
-            ("Y", "Y") | ("RY", "RY") | ("RY", "Y") | ("Y", "RY") => true,
+            ("Y" | "RY", "Y") | ("RY" | "Y", "RY") => true,
 
             _ => false,
         }

@@ -1,7 +1,7 @@
 //! Circuit Optimization Demo
 //!
 //! This example demonstrates the quantum circuit optimization capabilities
-//! of the QuantRS2 simulation framework, including gate fusion, redundant
+//! of the `QuantRS2` simulation framework, including gate fusion, redundant
 //! gate elimination, and parallelization opportunities.
 
 use quantrs2_circuit::builder::Circuit;
@@ -138,7 +138,7 @@ fn demonstrate_optimization_strategies() -> Result<(), Box<dyn std::error::Error
         let _optimized = optimizer.optimize(&complex_circuit)?;
         let stats = optimizer.get_statistics();
 
-        println!("📈 {} Strategy:", name);
+        println!("📈 {name} Strategy:");
         println!("  Gate Reduction: {:.1}%", stats.gate_count_reduction());
         println!("  Depth Reduction: {:.1}%", stats.depth_reduction());
         println!("  Gates Fused: {}", stats.gates_fused);

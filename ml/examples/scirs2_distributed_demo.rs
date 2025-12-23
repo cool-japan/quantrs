@@ -1,14 +1,14 @@
-//! SciRS2 Distributed Training Example
+//! `SciRS2` Distributed Training Example
 //!
-//! This example demonstrates the SciRS2 integration capabilities including
+//! This example demonstrates the `SciRS2` integration capabilities including
 //! distributed training, tensor operations, and scientific computing features.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::scirs2_integration::{
     SciRS2Array, SciRS2DataLoader, SciRS2Dataset, SciRS2Device, SciRS2DistributedTrainer,
     SciRS2Optimizer, SciRS2Serializer,
 };
+use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayD, Axis, IxDyn};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {
@@ -151,10 +151,11 @@ fn main() -> Result<()> {
         }
 
         // Collect metrics across all workers
-        let avg_loss = distributed_trainer.all_reduce_scalar(epoch_loss / num_batches as f64)?;
+        let avg_loss =
+            distributed_trainer.all_reduce_scalar(epoch_loss / f64::from(num_batches))?;
         training_metrics.record_epoch(epoch, avg_loss);
 
-        println!("   Epoch {} completed: avg_loss = {:.6}", epoch, avg_loss);
+        println!("   Epoch {epoch} completed: avg_loss = {avg_loss:.6}");
     }
 
     // Step 7: Distributed evaluation
@@ -200,15 +201,15 @@ fn main() -> Result<()> {
     // Quantum-specific operations
     let quantum_state = SciRS2Array::quantum_observable("pauli_z_all", 4)?;
     // Placeholder for quantum evolution
-    let evolved_state = quantum_state.clone();
+    let evolved_state = quantum_state;
     let fidelity = 0.95; // Mock fidelity
 
-    println!("   - Quantum state evolution fidelity: {:.6}", fidelity);
+    println!("   - Quantum state evolution fidelity: {fidelity:.6}");
 
     // Placeholder for distributed tensor operations
-    let distributed_tensor = tensor_a.clone();
+    let distributed_tensor = tensor_a;
     let local_computation = distributed_tensor.sum(None)?;
-    let global_result = local_computation.clone();
+    let global_result = local_computation;
 
     println!(
         "   - Distributed computation result shape: {:?}",
@@ -221,7 +222,7 @@ fn main() -> Result<()> {
     // Numerical integration for quantum expectation values
     let observable = create_quantum_observable(4)?;
     let expectation_value = 0.5; // Mock expectation value
-    println!("   - Quantum expectation value: {:.6}", expectation_value);
+    println!("   - Quantum expectation value: {expectation_value:.6}");
 
     // Optimization with scientific methods
     let mut optimization_result = OptimizationResult {
@@ -339,7 +340,10 @@ fn compute_quantum_loss(
     let diff = &outputs_array.data - &targets_array.data;
     let mse_data = &diff * &diff;
     let mse_loss = SciRS2Array::new(
-        mse_data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap().into_dyn(),
+        mse_data
+            .mean_axis(scirs2_core::ndarray::Axis(0))
+            .unwrap()
+            .into_dyn(),
         false,
     );
     Ok(mse_loss)
@@ -372,9 +376,9 @@ fn evaluate_distributed_model(
     }
 
     // Average across all workers
-    let avg_loss = trainer.all_reduce_scalar(total_loss / num_batches as f64)?;
-    let avg_accuracy = trainer.all_reduce_scalar(total_accuracy / num_batches as f64)?;
-    let avg_fidelity = trainer.all_reduce_scalar(total_fidelity / num_batches as f64)?;
+    let avg_loss = trainer.all_reduce_scalar(total_loss / f64::from(num_batches))?;
+    let avg_accuracy = trainer.all_reduce_scalar(total_accuracy / f64::from(num_batches))?;
+    let avg_fidelity = trainer.all_reduce_scalar(total_fidelity / f64::from(num_batches))?;
 
     Ok(EvaluationResults {
         loss: avg_loss,
@@ -385,7 +389,7 @@ fn evaluate_distributed_model(
 
 fn create_quantum_observable(num_qubits: usize) -> Result<SciRS2Array> {
     // Create Pauli-Z observable for all qubits
-    Ok(SciRS2Array::quantum_observable("pauli_z_all", num_qubits)?)
+    SciRS2Array::quantum_observable("pauli_z_all", num_qubits)
 }
 
 fn compute_quantum_energy(params: &dyn SciRS2Tensor) -> Result<f64> {
@@ -393,7 +397,7 @@ fn compute_quantum_energy(params: &dyn SciRS2Tensor) -> Result<f64> {
     let params_array = params.to_scirs2()?;
     let norm_squared = params_array.data.iter().map(|x| x * x).sum::<f64>();
     let sum_abs = params_array.data.iter().sum::<f64>().abs();
-    let energy = norm_squared + 0.5 * sum_abs;
+    let energy = 0.5f64.mul_add(sum_abs, norm_squared);
     Ok(energy)
 }
 
@@ -432,7 +436,7 @@ struct SciRS2TrainingMetrics {
 }
 
 impl SciRS2TrainingMetrics {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             losses: Vec::new(),
             epochs: Vec::new(),
@@ -457,7 +461,7 @@ struct DistributedQuantumModel {
 }
 
 impl DistributedQuantumModel {
-    fn new(
+    const fn new(
         num_qubits: usize,
         num_layers: usize,
         ansatz_type: &str,
@@ -473,14 +477,14 @@ impl DistributedQuantumModel {
     fn forward(&self, input: &dyn SciRS2Tensor) -> Result<SciRS2Array> {
         // Mock forward pass
         let batch_size = input.shape()[0];
-        Ok(SciRS2Array::randn(vec![batch_size, 2], SciRS2Device::CPU)?)
+        SciRS2Array::randn(vec![batch_size, 2], SciRS2Device::CPU)
     }
 
     fn num_parameters(&self) -> usize {
         self.parameters.data.len()
     }
 
-    fn is_distributed(&self) -> bool {
+    const fn is_distributed(&self) -> bool {
         true
     }
 

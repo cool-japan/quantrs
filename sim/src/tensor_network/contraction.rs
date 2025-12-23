@@ -28,7 +28,7 @@ pub struct ContractionPath {
 
 impl ContractionPath {
     /// Create a new contraction path
-    pub fn new(steps: Vec<(usize, usize)>, estimated_cost: f64) -> Self {
+    pub const fn new(steps: Vec<(usize, usize)>, estimated_cost: f64) -> Self {
         Self {
             steps,
             estimated_cost,
@@ -41,7 +41,7 @@ impl ContractionPath {
     }
 
     /// Get the estimated cost of this contraction path
-    pub fn estimated_cost(&self) -> f64 {
+    pub const fn estimated_cost(&self) -> f64 {
         self.estimated_cost
     }
 }
@@ -77,7 +77,7 @@ pub fn calculate_greedy_contraction_path(
 
     // Step 3: Greedy algorithm: repeatedly find the pair of tensors that,
     // when contracted, minimizes the size of the resulting tensor
-    let mut remaining_tensors: HashSet<usize> = tensors.keys().cloned().collect();
+    let mut remaining_tensors: HashSet<usize> = tensors.keys().copied().collect();
     let mut steps = Vec::new();
     let mut total_cost = 0.0;
 
@@ -170,8 +170,8 @@ pub fn calculate_greedy_contraction_path(
             tensor_dims.insert(new_id, (tensor_dims[&t1] * tensor_dims[&t2]) / 2);
         } else {
             // No connected tensors found, just contract the first two remaining
-            let mut remaining_vec: Vec<_> = remaining_tensors.iter().cloned().collect();
-            remaining_vec.sort();
+            let mut remaining_vec: Vec<_> = remaining_tensors.iter().copied().collect();
+            remaining_vec.sort_unstable();
 
             if remaining_vec.len() >= 2 {
                 let t1 = remaining_vec[0];
@@ -238,8 +238,8 @@ fn identify_circuit_structure(
     }
 
     // Get a sorted list of tensor IDs
-    let mut tensor_ids: Vec<usize> = tensors.keys().cloned().collect();
-    tensor_ids.sort();
+    let mut tensor_ids: Vec<usize> = tensors.keys().copied().collect();
+    tensor_ids.sort_unstable();
 
     // Pattern 1: Linear Circuit (CNOT chain)
     // In a linear circuit, most tensors connect to exactly 2 others,
@@ -279,9 +279,9 @@ fn identify_circuit_structure(
                 id != central
                     && tensor_connections
                         .get(&id)
-                        .map_or(false, |conns| conns.contains(&central))
+                        .is_some_and(|conns| conns.contains(&central))
             })
-            .cloned()
+            .copied()
             .collect();
 
         for leaf in leaf_tensors {
@@ -366,8 +366,8 @@ fn optimize_qft_circuit(
 
     // Build the tensor IDs in the desired contraction order
     let mut ordered_tensors: Vec<usize> = Vec::new();
-    let mut tensor_ids: Vec<usize> = tensors.keys().cloned().collect();
-    tensor_ids.sort();
+    let mut tensor_ids: Vec<usize> = tensors.keys().copied().collect();
+    tensor_ids.sort_unstable();
 
     // Sort tensors by their connectivity pattern
     // In a QFT, we want to contract from bottom to top for optimal efficiency
@@ -420,7 +420,7 @@ fn identify_qft_layers(
     }
 
     // Order the groups by degree (descending)
-    let mut degrees: Vec<usize> = degree_groups.keys().cloned().collect();
+    let mut degrees: Vec<usize> = degree_groups.keys().copied().collect();
     degrees.sort_by(|a, b| b.cmp(a));
 
     // Create layers based on degree groups
@@ -472,7 +472,7 @@ fn optimize_qaoa_circuit(
     // (typically ZZ interactions) before the mixer Hamiltonian terms (X rotations)
 
     // First, sort tensors by rank (higher rank first)
-    let mut tensor_ids: Vec<usize> = tensors.keys().cloned().collect();
+    let mut tensor_ids: Vec<usize> = tensors.keys().copied().collect();
     tensor_ids.sort_by(|a, b| {
         if let (Some(tensor_a), Some(tensor_b)) = (tensors.get(a), tensors.get(b)) {
             tensor_b.rank.cmp(&tensor_a.rank) // Higher rank first
@@ -501,7 +501,7 @@ fn optimize_qaoa_circuit(
                 // Check if these tensors are connected
                 if tensor_connections
                     .get(&id1)
-                    .map_or(false, |conns| conns.contains(&id2))
+                    .is_some_and(|conns| conns.contains(&id2))
                 {
                     steps.push((id1, id2));
                     cost += 64.0; // Higher cost for two-qubit gate contraction (2^3 * 2^3)
@@ -517,7 +517,7 @@ fn optimize_qaoa_circuit(
                 // Check if these tensors are connected
                 if tensor_connections
                     .get(&id1)
-                    .map_or(false, |conns| conns.contains(&id2))
+                    .is_some_and(|conns| conns.contains(&id2))
                 {
                     steps.push((id1, id2));
                     cost += 16.0; // Lower cost for single-qubit gate contraction (2^2 * 2^2)
@@ -575,9 +575,9 @@ fn order_linear_circuit(
         .find(|&&id| {
             tensor_connections
                 .get(&id)
-                .map_or(false, |conns| conns.len() == 1)
+                .is_some_and(|conns| conns.len() == 1)
         })
-        .cloned();
+        .copied();
 
     if let Some(start) = current {
         // Start from this endpoint
@@ -591,7 +591,7 @@ fn order_linear_circuit(
                 let next = connections
                     .iter()
                     .find(|&&next_id| !visited.contains(&next_id))
-                    .cloned();
+                    .copied();
 
                 if let Some(next_id) = next {
                     result.push(next_id);

@@ -4,10 +4,10 @@
 //! for complex number arithmetic in quantum state vector operations.
 //! It leverages SciRS2's SimdUnifiedOps for maximum performance.
 
-use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
-use scirs2_core::Complex64;
 use quantrs2_core::platform::PlatformCapabilities;
+use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
 use scirs2_core::simd_ops::SimdUnifiedOps;
+use scirs2_core::Complex64;
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -62,8 +62,8 @@ impl ComplexSimdVector {
     }
 
     /// Align length to SIMD boundary
-    fn align_length(length: usize, simd_width: usize) -> usize {
-        ((length + simd_width - 1) / simd_width) * simd_width
+    const fn align_length(length: usize, simd_width: usize) -> usize {
+        length.div_ceil(simd_width) * simd_width
     }
 
     /// Get real part as array view
@@ -77,12 +77,12 @@ impl ComplexSimdVector {
     }
 
     /// Get length
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.length
     }
 
     /// Check if empty
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.length == 0
     }
 }
@@ -351,9 +351,7 @@ pub fn apply_cnot_complex_simd(
         if (i & control_mask) != 0 {
             let swapped_i = i ^ target_mask;
             if swapped_i < dim {
-                let temp = state[i];
-                state[i] = state[swapped_i];
-                state[swapped_i] = temp;
+                state.swap(i, swapped_i);
             }
         }
     }
@@ -378,7 +376,7 @@ pub fn benchmark_complex_simd_operations() -> std::collections::HashMap<String, 
             ComplexSimdOps::complex_mul_simd(&a, &b, &mut c);
         }
         let mul_time = start.elapsed().as_nanos() as f64 / 1000.0;
-        results.insert(format!("complex_mul_simd_{}", size), mul_time);
+        results.insert(format!("complex_mul_simd_{size}"), mul_time);
 
         // Benchmark complex addition
         let start = Instant::now();
@@ -386,7 +384,7 @@ pub fn benchmark_complex_simd_operations() -> std::collections::HashMap<String, 
             ComplexSimdOps::complex_add_simd(&a, &b, &mut c);
         }
         let add_time = start.elapsed().as_nanos() as f64 / 1000.0;
-        results.insert(format!("complex_add_simd_{}", size), add_time);
+        results.insert(format!("complex_add_simd_{size}"), add_time);
 
         // Benchmark scalar multiplication
         let scalar = Complex64::new(2.0, 1.0);
@@ -395,7 +393,7 @@ pub fn benchmark_complex_simd_operations() -> std::collections::HashMap<String, 
             ComplexSimdOps::complex_scalar_mul_simd(&a, scalar, &mut c);
         }
         let scalar_mul_time = start.elapsed().as_nanos() as f64 / 1000.0;
-        results.insert(format!("complex_scalar_mul_simd_{}", size), scalar_mul_time);
+        results.insert(format!("complex_scalar_mul_simd_{size}"), scalar_mul_time);
     }
 
     results
@@ -425,14 +423,10 @@ mod tests {
 
     #[test]
     fn test_complex_multiplication_simd() {
-        let a = ComplexSimdVector::from_slice(&vec![
-            Complex64::new(1.0, 2.0),
-            Complex64::new(3.0, 4.0),
-        ]);
-        let b = ComplexSimdVector::from_slice(&vec![
-            Complex64::new(5.0, 6.0),
-            Complex64::new(7.0, 8.0),
-        ]);
+        let a =
+            ComplexSimdVector::from_slice(&[Complex64::new(1.0, 2.0), Complex64::new(3.0, 4.0)]);
+        let b =
+            ComplexSimdVector::from_slice(&[Complex64::new(5.0, 6.0), Complex64::new(7.0, 8.0)]);
         let mut c = ComplexSimdVector::new(2);
 
         ComplexSimdOps::complex_mul_simd(&a, &b, &mut c);

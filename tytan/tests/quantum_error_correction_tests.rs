@@ -2,9 +2,9 @@
 
 #[cfg(test)]
 mod tests {
-    use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
     use quantrs2_tytan::quantum_error_correction::*;
     use quantrs2_tytan::sampler::{SampleResult, Sampler, SamplerError, SamplerResult};
+    use scirs2_core::ndarray::{Array1, Array2, Array3, Array4};
     use std::collections::HashMap;
 
     /// Test basic QEC configuration

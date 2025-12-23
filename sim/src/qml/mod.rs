@@ -26,13 +26,13 @@ pub use trainer::{
 use crate::error::Result;
 
 /// Initialize the QML subsystem
-pub fn initialize() -> Result<()> {
+pub const fn initialize() -> Result<()> {
     // Perform any necessary initialization
     Ok(())
 }
 
 /// Check if hardware-aware optimization is available
-pub fn is_hardware_optimization_available() -> bool {
+pub const fn is_hardware_optimization_available() -> bool {
     // In practice, this would check for hardware-specific libraries
     true
 }
@@ -100,7 +100,7 @@ pub fn create_hardware_config(hardware: HardwareArchitecture) -> QMLConfig {
 pub fn validate_config(config: &QMLConfig) -> Result<()> {
     config
         .validate()
-        .map_err(|e| crate::error::SimulatorError::InvalidInput(e))
+        .map_err(crate::error::SimulatorError::InvalidInput)
 }
 
 #[cfg(test)]
@@ -201,7 +201,7 @@ mod tests {
         let circuit = InterfaceCircuit::new(config.num_qubits, 0);
         let parameters = Array1::zeros(config.num_parameters);
         let parameter_names = (0..config.num_parameters)
-            .map(|i| format!("param_{}", i))
+            .map(|i| format!("param_{i}"))
             .collect();
 
         let pqc = ParameterizedQuantumCircuit::new(

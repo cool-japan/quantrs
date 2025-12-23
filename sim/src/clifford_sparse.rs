@@ -4,7 +4,20 @@
 //! simulation of large Clifford circuits, providing better memory usage and
 //! performance for circuits with many qubits.
 
-use nalgebra_sparse::{CooMatrix, CsrMatrix};
+// POLICY EXCEPTION: Uses nalgebra_sparse (not scirs2_sparse)
+//
+// REASON: scirs2_sparse v0.1.0-rc.1 requires Float trait bounds (f32/f64),
+//         but this module uses u8 for binary Pauli operator representations.
+//
+// TECHNICAL JUSTIFICATION:
+// - Memory efficiency: u8 (1 byte) vs f64 (8 bytes) = 8x savings for large qubit counts
+// - Semantic correctness: Values are truly binary (0/1), not floating point
+// - Performance: Integer operations faster than FP arithmetic
+//
+// MIGRATION PATH: Will migrate when scirs2_sparse adds integer type support
+//
+// See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md for detailed analysis
+use nalgebra_sparse::{CooMatrix, CsrMatrix}; // POLICY EXCEPTION (see above)
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
 
@@ -561,7 +574,7 @@ impl SparseCliffordSimulator {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.tableau.num_qubits
     }
 }

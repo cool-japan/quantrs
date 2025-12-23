@@ -4,11 +4,11 @@
 //! where quantum circuits and classical processing are interleaved and optimized together.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// A hybrid quantum-classical optimization problem
@@ -60,7 +60,7 @@ pub struct ClassicalProcessingStep {
 }
 
 /// Types of classical processing steps
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassicalStepType {
     /// Linear algebra operations
     LinearAlgebra(LinearAlgebraOp),
@@ -79,7 +79,7 @@ pub enum ClassicalStepType {
 }
 
 /// Linear algebra operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LinearAlgebraOp {
     MatrixMultiplication,
     Eigendecomposition,
@@ -90,7 +90,7 @@ pub enum LinearAlgebraOp {
 }
 
 /// Machine learning model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MLModelType {
     NeuralNetwork,
     SupportVectorMachine,
@@ -101,7 +101,7 @@ pub enum MLModelType {
 }
 
 /// Optimization methods for classical subroutines
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationMethod {
     GradientDescent,
     BFGS,
@@ -112,7 +112,7 @@ pub enum OptimizationMethod {
 }
 
 /// Data preprocessing operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataProcessingOp {
     Normalization,
     Standardization,
@@ -123,7 +123,7 @@ pub enum DataProcessingOp {
 }
 
 /// Control flow types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlFlowType {
     Conditional,
     Loop,
@@ -132,7 +132,7 @@ pub enum ControlFlowType {
 }
 
 /// Parameter update rules
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpdateRule {
     GradientBased,
     MomentumBased,
@@ -147,7 +147,7 @@ pub enum UpdateRule {
 pub struct DataFlowGraph {
     /// Nodes in the graph (component IDs)
     pub nodes: Vec<String>,
-    /// Edges representing data flow (source, target, data_type)
+    /// Edges representing data flow (source, target, `data_type`)
     pub edges: Vec<(String, String, DataType)>,
     /// Execution order constraints
     pub execution_order: Vec<Vec<String>>,
@@ -195,7 +195,7 @@ pub enum ObjectiveFunctionType {
     /// Minimize cost function
     CostFunction,
     /// Multi-objective optimization
-    MultiObjective(Vec<ObjectiveFunctionType>),
+    MultiObjective(Vec<Self>),
     /// Custom objective
     Custom(String),
 }
@@ -212,7 +212,7 @@ pub struct RegularizationTerm {
 }
 
 /// Types of regularization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegularizationType {
     L1,
     L2,
@@ -304,7 +304,7 @@ pub struct HybridOptimizer {
 }
 
 /// Hybrid optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HybridOptimizationAlgorithm {
     /// Coordinate descent (alternate quantum and classical optimization)
     CoordinateDescent,
@@ -330,7 +330,7 @@ pub struct LearningRateSchedule {
 }
 
 /// Types of learning rate schedules
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScheduleType {
     Constant,
     LinearDecay,
@@ -354,7 +354,7 @@ pub struct ParallelizationConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     WorkStealing,
@@ -364,6 +364,7 @@ pub enum LoadBalancingStrategy {
 
 impl<const N: usize> HybridOptimizationProblem<N> {
     /// Create a new hybrid optimization problem
+    #[must_use]
     pub fn new() -> Self {
         Self {
             quantum_circuits: Vec::new(),
@@ -445,14 +446,12 @@ impl<const N: usize> HybridOptimizationProblem<N> {
         // Validate that source and target exist
         if !self.data_flow.nodes.contains(&source) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Source component '{}' not found",
-                source
+                "Source component '{source}' not found"
             )));
         }
         if !self.data_flow.nodes.contains(&target) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Target component '{}' not found",
-                target
+                "Target component '{target}' not found"
             )));
         }
 
@@ -476,8 +475,7 @@ impl<const N: usize> HybridOptimizationProblem<N> {
         for &idx in &parameter_indices {
             if idx >= self.global_parameters.len() {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Parameter index {} out of range",
-                    idx
+                    "Parameter index {idx} out of range"
                 )));
             }
         }
@@ -498,14 +496,12 @@ impl<const N: usize> HybridOptimizationProblem<N> {
             let (source, target, _) = edge;
             if !self.data_flow.nodes.contains(source) {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Data flow edge references non-existent source '{}'",
-                    source
+                    "Data flow edge references non-existent source '{source}'"
                 )));
             }
             if !self.data_flow.nodes.contains(target) {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Data flow edge references non-existent target '{}'",
-                    target
+                    "Data flow edge references non-existent target '{target}'"
                 )));
             }
         }
@@ -541,6 +537,7 @@ impl Default for HybridOptimizationProblem<4> {
 
 impl HybridOptimizer {
     /// Create a new hybrid optimizer
+    #[must_use]
     pub fn new(algorithm: HybridOptimizationAlgorithm) -> Self {
         Self {
             algorithm,
@@ -642,7 +639,7 @@ impl HybridOptimizer {
     }
 
     /// Evaluate the objective function (simplified)
-    fn evaluate_objective<const N: usize>(
+    const fn evaluate_objective<const N: usize>(
         &self,
         _problem: &HybridOptimizationProblem<N>,
         _parameters: &[f64],

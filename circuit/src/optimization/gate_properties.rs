@@ -21,7 +21,8 @@ pub struct GateCost {
 
 impl GateCost {
     /// Create a new gate cost
-    pub fn new(duration_ns: f64, gate_count: u32, computational_cost: f64) -> Self {
+    #[must_use]
+    pub const fn new(duration_ns: f64, gate_count: u32, computational_cost: f64) -> Self {
         Self {
             duration_ns,
             gate_count,
@@ -30,10 +31,12 @@ impl GateCost {
     }
 
     /// Total cost (weighted sum)
+    #[must_use]
     pub fn total_cost(&self, time_weight: f64, count_weight: f64, comp_weight: f64) -> f64 {
-        time_weight * self.duration_ns
-            + count_weight * self.gate_count as f64
-            + comp_weight * self.computational_cost
+        comp_weight.mul_add(
+            self.computational_cost,
+            time_weight.mul_add(self.duration_ns, count_weight * f64::from(self.gate_count)),
+        )
     }
 }
 
@@ -50,7 +53,8 @@ pub struct GateError {
 
 impl GateError {
     /// Create new gate error info
-    pub fn new(fidelity: f64, error_rate: f64, coherent_error: f64) -> Self {
+    #[must_use]
+    pub const fn new(fidelity: f64, error_rate: f64, coherent_error: f64) -> Self {
         Self {
             fidelity,
             error_rate,
@@ -59,6 +63,7 @@ impl GateError {
     }
 
     /// Combined error metric
+    #[must_use]
     pub fn total_error(&self) -> f64 {
         1.0 - self.fidelity + self.error_rate + self.coherent_error
     }
@@ -104,6 +109,7 @@ pub struct GateProperties {
 
 impl GateProperties {
     /// Create properties for a single-qubit gate
+    #[must_use]
     pub fn single_qubit(name: &str) -> Self {
         match name {
             "H" => Self {
@@ -209,6 +215,7 @@ impl GateProperties {
     }
 
     /// Create properties for a two-qubit gate
+    #[must_use]
     pub fn two_qubit(name: &str) -> Self {
         match name {
             "CNOT" => Self {
@@ -262,6 +269,7 @@ impl GateProperties {
     }
 
     /// Create properties for a multi-qubit gate
+    #[must_use]
     pub fn multi_qubit(name: &str, num_qubits: usize) -> Self {
         match name {
             "Toffoli" => Self {
@@ -351,6 +359,7 @@ pub struct CommutationTable {
 
 impl CommutationTable {
     /// Create a new commutation table
+    #[must_use]
     pub fn new() -> Self {
         let mut table = HashMap::new();
 
@@ -368,7 +377,7 @@ impl CommutationTable {
         // Diagonal gates commute
         for diag1 in &["Z", "S", "T", "RZ"] {
             for diag2 in &["Z", "S", "T", "RZ"] {
-                table.insert((diag1.to_string(), diag2.to_string()), true);
+                table.insert(((*diag1).to_string(), (*diag2).to_string()), true);
             }
         }
 
@@ -379,6 +388,7 @@ impl CommutationTable {
     }
 
     /// Check if two gates commute
+    #[must_use]
     pub fn commutes(&self, gate1: &str, gate2: &str) -> bool {
         if let Some(&result) = self.table.get(&(gate1.to_string(), gate2.to_string())) {
             result

@@ -796,7 +796,7 @@ pub enum AlertCondition {
         window: Duration,
     },
     Composite {
-        conditions: Vec<AlertCondition>,
+        conditions: Vec<Self>,
         operator: LogicalOperator,
     },
 }
@@ -2223,7 +2223,7 @@ impl RealtimeQuantumManager {
     pub fn register_device(&mut self, device_info: DeviceInfo) -> Result<(), String> {
         let monitor = Arc::new(Mutex::new(HardwareMonitor::new(device_info.clone())));
         self.hardware_monitors
-            .insert(device_info.device_id.clone(), monitor);
+            .insert(device_info.device_id, monitor);
         Ok(())
     }
 
@@ -2271,7 +2271,7 @@ impl RealtimeQuantumManager {
             loop {
                 if let Ok(mut monitor_guard) = monitor.lock() {
                     if let Err(e) = monitor_guard.update_metrics() {
-                        eprintln!("Error updating metrics for device {}: {}", device_id, e);
+                        eprintln!("Error updating metrics for device {device_id}: {e}");
                     }
 
                     // Update system state
@@ -2298,7 +2298,7 @@ impl RealtimeQuantumManager {
         thread::spawn(move || loop {
             if let Ok(mut analytics_guard) = analytics.write() {
                 if let Err(e) = analytics_guard.update_analytics() {
-                    eprintln!("Error updating analytics: {}", e);
+                    eprintln!("Error updating analytics: {e}");
                 }
             }
 
@@ -2319,7 +2319,7 @@ impl RealtimeQuantumManager {
                 if let Ok(mut detector) = fault_detector.lock() {
                     if let Ok(state) = system_state.read() {
                         if let Err(e) = detector.check_for_faults(&state, &config) {
-                            eprintln!("Error in fault detection: {}", e);
+                            eprintln!("Error in fault detection: {e}");
                         }
                     }
                 }
@@ -2557,7 +2557,7 @@ impl PerformanceAnalytics {
         }
     }
 
-    pub fn update_analytics(&mut self) -> Result<(), String> {
+    pub const fn update_analytics(&mut self) -> Result<(), String> {
         // Update analytics models and predictions
         Ok(())
     }
@@ -2605,6 +2605,12 @@ impl PerformanceAnalytics {
                 },
             },
         })
+    }
+}
+
+impl Default for FaultDetectionSystem {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2661,8 +2667,8 @@ impl FaultDetectionSystem {
         Ok(())
     }
 
-    fn check_hardware_issues(
-        &mut self,
+    const fn check_hardware_issues(
+        &self,
         _system_state: &SystemState,
         _config: &RealtimeConfig,
     ) -> Result<(), String> {
@@ -2701,11 +2707,17 @@ impl FaultDetectionSystem {
     fn attempt_recovery(&mut self, fault_type: &FaultType) -> Result<(), String> {
         if let Some(_procedure) = self.recovery_procedures.get(fault_type) {
             // Execute recovery procedure
-            println!("Executing recovery procedure for fault: {:?}", fault_type);
+            println!("Executing recovery procedure for fault: {fault_type:?}");
             // Implementation would execute actual recovery steps
             self.recovery_stats.successful_recoveries += 1;
         }
         Ok(())
+    }
+}
+
+impl Default for SystemState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2886,6 +2898,12 @@ impl Default for RecoveryStatistics {
     }
 }
 
+impl Default for ResourcePredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourcePredictor {
     pub fn new() -> Self {
         Self {
@@ -2893,6 +2911,12 @@ impl ResourcePredictor {
             prediction_models: HashMap::new(),
             forecast_horizon: Duration::from_secs(3600),
         }
+    }
+}
+
+impl Default for LoadBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2904,6 +2928,12 @@ impl LoadBalancer {
             health_checks: HashMap::new(),
             load_metrics: HashMap::new(),
         }
+    }
+}
+
+impl Default for MetricsCollector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2931,6 +2961,12 @@ impl MetricsCollector {
     }
 }
 
+impl Default for RealtimeDashboard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RealtimeDashboard {
     pub fn new() -> Self {
         Self {
@@ -2951,6 +2987,12 @@ impl RealtimeDashboard {
     }
 }
 
+impl Default for PerformancePredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformancePredictor {
     pub fn new() -> Self {
         Self {
@@ -2958,6 +3000,12 @@ impl PerformancePredictor {
             feature_extractors: vec![],
             prediction_cache: HashMap::new(),
         }
+    }
+}
+
+impl Default for AnomalyDetector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let annealing_result = simulator.solve(&model)?;
 
     // Convert solutions to proper format (generate samples from best solution)
-    let samples: Vec<Vec<i8>> = vec![annealing_result.best_spins.clone(); 10];
+    let samples: Vec<Vec<i8>> = vec![annealing_result.best_spins; 10];
 
     // Configure flux bias optimization
     let config = FluxBiasConfig {
@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display optimized flux biases
     println!("\nOptimized flux biases:");
     for (qubit, flux_bias) in &flux_result.flux_biases {
-        println!("  Qubit {}: {:.4}", qubit, flux_bias);
+        println!("  Qubit {qubit}: {flux_bias:.4}");
     }
 
     // If D-Wave is available, submit with optimized flux biases
@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(learned_biases) = ml_optimizer.apply_learned_patterns("ferromagnetic_chain", 6) {
         println!("\nLearned flux bias pattern can be applied to similar problems:");
         for (qubit, bias) in learned_biases {
-            println!("  Qubit {}: {:.4}", qubit, bias);
+            println!("  Qubit {qubit}: {bias:.4}");
         }
     }
 

@@ -84,10 +84,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-anneal = "0.1.0-beta.2"
+quantrs2-anneal = "0.1.0-beta.3"
 
 # Optional features for cloud integration
-quantrs2-anneal = { version = "0.1.0-beta.2", features = ["dwave", "braket", "fujitsu"] }
+quantrs2-anneal = { version = "0.1.0-beta.3", features = ["dwave", "braket", "fujitsu"] }
 ```
 
 ## 🎯 Feature Flags

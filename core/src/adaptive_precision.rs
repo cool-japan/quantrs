@@ -373,7 +373,7 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn update_monitoring(
-        &mut self,
+        &self,
         result: &AdaptiveResult,
         _comp_type: ComputationType,
     ) -> QuantRS2Result<()> {

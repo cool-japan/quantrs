@@ -79,7 +79,7 @@ fn basic_population_annealing() -> Result<(), Box<dyn std::error::Error>> {
     println!("Results:");
     println!("  Best energy: {:.4}", result.best_energy);
     println!("  Best configuration: {:?}", result.best_configuration);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
     println!("  Number of resamplings: {}", result.num_resamplings);
     println!(
         "  Final ESS: {:.2}",
@@ -131,7 +131,7 @@ fn large_population_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Problem size: {} spins", model.num_qubits);
     println!("  Population size: {}", result.final_population.len());
     println!("  Best energy: {:.4}", result.best_energy);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
     println!("  Resamplings: {}", result.num_resamplings);
 
     // Analyze final population diversity
@@ -144,8 +144,8 @@ fn large_population_example() -> Result<(), Box<dyn std::error::Error>> {
     let mean_energy = final_energies.iter().sum::<f64>() / final_energies.len() as f64;
 
     println!("  Final population diversity:");
-    println!("    Energy range: [{:.4}, {:.4}]", min_energy, max_energy);
-    println!("    Mean energy: {:.4}", mean_energy);
+    println!("    Energy range: [{min_energy:.4}, {max_energy:.4}]");
+    println!("    Mean energy: {mean_energy:.4}");
     println!(
         "    Ground state copies: {}",
         final_energies
@@ -197,7 +197,7 @@ fn comparison_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("Comparison results:");
     println!("Population Annealing:");
     println!("  Best energy: {:.4}", pop_result.best_energy);
-    println!("  Runtime: {:.2?}", pop_time);
+    println!("  Runtime: {pop_time:.2?}");
     println!(
         "  Final ESS: {:.2}",
         pop_result.ess_history.last().unwrap_or(&0.0)
@@ -205,14 +205,11 @@ fn comparison_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Standard Annealing:");
     println!("  Best energy: {:.4}", std_result.best_energy);
-    println!("  Runtime: {:.2?}", std_time);
+    println!("  Runtime: {std_time:.2?}");
     println!("  Repetitions: {}", std_result.repetitions);
 
     let energy_improvement = std_result.best_energy - pop_result.best_energy;
-    println!(
-        "Population annealing improvement: {:.4}",
-        energy_improvement
-    );
+    println!("Population annealing improvement: {energy_improvement:.4}");
 
     Ok(())
 }
@@ -296,8 +293,8 @@ fn complex_landscape_example() -> Result<(), Box<dyn std::error::Error>> {
     let mean_ess = result.ess_history.iter().sum::<f64>() / result.ess_history.len() as f64;
 
     println!("  ESS statistics:");
-    println!("    Range: [{:.1}, {:.1}]", min_ess, max_ess);
-    println!("    Mean: {:.1}", mean_ess);
+    println!("    Range: [{min_ess:.1}, {max_ess:.1}]");
+    println!("    Mean: {mean_ess:.1}");
 
     // Check for temperature steps with low ESS
     let low_ess_count = result
@@ -324,7 +321,11 @@ fn create_random_spin_glass(
     for i in 0..n {
         for j in (i + 1)..n {
             if thread_rng().gen::<f64>() < density {
-                let coupling = if thread_rng().gen::<bool>() { 1.0 } else { -1.0 };
+                let coupling = if thread_rng().gen::<bool>() {
+                    1.0
+                } else {
+                    -1.0
+                };
                 model.set_coupling(i, j, coupling)?;
             }
         }
@@ -333,7 +334,7 @@ fn create_random_spin_glass(
     Ok(model)
 }
 
-/// Create a MaxCut problem instance
+/// Create a `MaxCut` problem instance
 fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Error>> {
     let mut model = IsingModel::new(n);
 

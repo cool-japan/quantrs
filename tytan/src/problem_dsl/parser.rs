@@ -17,7 +17,7 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new parser
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             tokens: Vec::new(),
             position: 0,

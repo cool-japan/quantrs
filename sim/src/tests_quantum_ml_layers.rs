@@ -549,8 +549,8 @@ mod tests {
         // Check that parameters are within bounds
         for layer in framework.get_layers() {
             let params = layer.get_parameters();
-            for &param in params.iter() {
-                assert!(param >= -PI && param <= PI);
+            for &param in &params {
+                assert!((-PI..=PI).contains(&param));
             }
         }
     }
@@ -580,7 +580,7 @@ mod tests {
         ];
 
         let accuracy = QMLUtils::evaluate_accuracy(&predictions, &targets, 0.1);
-        assert!(accuracy >= 0.0 && accuracy <= 1.0);
+        assert!((0.0..=1.0).contains(&accuracy));
 
         // Test circuit complexity computation
         let complexity = QMLUtils::compute_circuit_complexity(4, 2, 10);

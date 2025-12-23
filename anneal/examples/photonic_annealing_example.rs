@@ -7,9 +7,17 @@
 //! 4. Analyze photonic annealing results
 //! 5. Compare different photonic configurations
 
-use quantrs2_anneal::{ising::IsingModel, photonic_annealing::*};
-use std::time::Instant;
+use quantrs2_anneal::{
+    ising::IsingModel,
+    photonic_annealing::{
+        create_low_noise_config, create_measurement_based_config, create_realistic_config,
+        create_temporal_multiplexing_config, ConnectivityType, InitialStateType,
+        MeasurementStrategy, PhotonicAnnealer, PhotonicAnnealingConfig, PhotonicArchitecture,
+        PumpPowerSchedule,
+    },
+};
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Photonic Annealing Systems Demo ===\n");
@@ -93,7 +101,7 @@ fn basic_photonic_annealing_example() -> Result<(), Box<dyn std::error::Error>> 
     println!("  Evolution time: 0.1 s");
     println!("  Best energy: {:.6}", results.best_energy);
     println!("  Best solution: {:?}", results.best_solution);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze energy distribution
     println!("\n  Energy distribution:");
@@ -169,7 +177,7 @@ fn temporal_multiplexing_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Repetition rate: 10 GHz");
     println!("  Pump schedule: Exponential decay");
     println!("  Best energy: {:.6}", results.best_energy);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze evolution history
     println!("\n  Evolution analysis:");
@@ -372,7 +380,7 @@ fn measurement_based_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Resource state size: 12");
     println!("  Measurement type: Adaptive");
     println!("  Best energy: {:.6}", results.best_energy);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze measurement outcomes
     println!("\n  Measurement outcome analysis:");
@@ -387,9 +395,9 @@ fn measurement_based_example() -> Result<(), Box<dyn std::error::Error>> {
     let max_fidelity = fidelities[0];
     let min_fidelity = fidelities[fidelities.len() - 1];
 
-    println!("    Average fidelity: {:.3}", avg_fidelity);
-    println!("    Max fidelity: {:.3}", max_fidelity);
-    println!("    Min fidelity: {:.3}", min_fidelity);
+    println!("    Average fidelity: {avg_fidelity:.3}");
+    println!("    Max fidelity: {max_fidelity:.3}");
+    println!("    Min fidelity: {min_fidelity:.3}");
 
     // Solution quality distribution
     let mut solution_qualities: Vec<f64> = results
@@ -409,7 +417,7 @@ fn measurement_based_example() -> Result<(), Box<dyn std::error::Error>> {
     solution_qualities.sort_by(|a, b| b.partial_cmp(a).unwrap());
 
     println!("\n  Solution quality distribution:");
-    let bins = vec![1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
+    let bins = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
     for i in 0..bins.len() - 1 {
         let count = solution_qualities
             .iter()
@@ -464,7 +472,7 @@ fn realistic_experimental_example() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n  Results:");
     println!("    Best energy: {:.6}", results.best_energy);
-    println!("    Runtime: {:.2?}", runtime);
+    println!("    Runtime: {runtime:.2?}");
     println!(
         "    Effective temperature: {:.2e} K",
         results.metrics.effective_temperature
@@ -499,7 +507,7 @@ fn realistic_experimental_example() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Evolution history comparison
-    if results.evolution_history.purity.len() > 0 {
+    if !results.evolution_history.purity.is_empty() {
         let initial_purity = results.evolution_history.purity[0];
         let final_purity = results.evolution_history.purity.last().unwrap();
         println!(

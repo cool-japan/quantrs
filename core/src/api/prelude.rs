@@ -1,9 +1,10 @@
 //! Organized prelude modules for different use cases
 
-/// Essential types for basic quantum programming
-/// This is the recommended starting point for most users
 pub mod essentials {
-    //! Core types needed for basic quantum circuit programming
+    //! Essential types for basic quantum programming
+    //!
+    //! This is the recommended starting point for most users.
+    //! Provides core types needed for basic quantum circuit programming.
 
     // Fundamental quantum types
     pub use crate::api::quantum::{GateOp, QubitId, Register};
@@ -20,8 +21,9 @@ pub mod essentials {
     pub use scirs2_core::Complex64;
 }
 
-/// Complete API for quantum algorithm development
 pub mod algorithms {
+    //! Complete API for quantum algorithm development
+    //!
     //! Everything needed for developing quantum algorithms
 
     pub use super::essentials::*;
@@ -42,8 +44,9 @@ pub mod algorithms {
     pub use crate::api::symbolic::*;
 }
 
-/// Hardware programming and device interfaces
 pub mod hardware {
+    //! Hardware programming and device interfaces
+    //!
     //! Types for programming quantum hardware
 
     pub use super::essentials::*;
@@ -58,8 +61,9 @@ pub mod hardware {
     pub use crate::api::error_correction::*;
 }
 
-/// Advanced simulation and research tools
 pub mod research {
+    //! Advanced simulation and research tools
+    //!
     //! Advanced features for quantum computing research
 
     pub use super::algorithms::*;
@@ -80,8 +84,9 @@ pub mod research {
     pub use crate::api::batch::*;
 }
 
-/// Developer tools and debugging utilities
 pub mod dev_tools {
+    //! Developer tools and debugging utilities
+    //!
     //! Tools for debugging and development
 
     pub use super::essentials::*;
@@ -93,24 +98,24 @@ pub mod dev_tools {
     pub use crate::api::scirs2::*;
 }
 
-/// Python integration (when feature enabled)
 #[cfg(feature = "python")]
 pub mod python {
+    //! Python integration (when feature enabled)
+    //!
     //! Python bindings and Jupyter notebook integration
 
     pub use crate::api::python::*;
 }
 
-/// Legacy compatibility - provides the old flat API
-///
-/// This module re-exports all types in the old flat structure
-/// for backward compatibility. Use is discouraged for new code.
 #[deprecated(
     since = "1.0.0",
     note = "Use organized modules like `essentials`, `algorithms`, etc."
 )]
 pub mod legacy {
-    //! Backward compatibility exports
+    //! Legacy compatibility - provides the old flat API
+    //!
+    //! This module re-exports all types in the old flat structure
+    //! for backward compatibility. Use is discouraged for new code.
     //!
     //! This module provides the old flat API structure for compatibility.
     //! New code should use the organized modules instead.
@@ -138,11 +143,12 @@ pub mod legacy {
     pub use crate::api::python::*;
 }
 
-/// Full API re-export (non-deprecated flat access)
-///
-/// This provides access to all functionality in a flat namespace
-/// while maintaining the new naming conventions
 pub mod full {
+    //! Full API re-export (non-deprecated flat access)
+    //!
+    //! This provides access to all functionality in a flat namespace
+    //! while maintaining the new naming conventions.
+    //!
     //! Complete API access with new naming conventions
 
     pub use crate::api::algorithms::*;

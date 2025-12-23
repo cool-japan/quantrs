@@ -362,7 +362,7 @@ impl QuantumDebugger {
 
     /// Apply gate with debugging information
     fn apply_gate_with_debugging(
-        &mut self,
+        &self,
         gate: &QuantumGate,
         state: &mut Vec<Complex64>,
         _step: usize,

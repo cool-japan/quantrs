@@ -677,7 +677,7 @@ impl ResourceEstimator {
             "O(n)".to_string()
         };
 
-        let space_complexity = format!("O(2^n)"); // Exponential in number of qubits
+        let space_complexity = "O(2^n)".to_string(); // Exponential in number of qubits
 
         Ok(ScalingAnalysis {
             time_complexity,

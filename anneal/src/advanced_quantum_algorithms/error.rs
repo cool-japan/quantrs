@@ -49,6 +49,10 @@ pub enum AdvancedQuantumError {
     /// Algorithm not found
     #[error("Algorithm not found: {0}")]
     AlgorithmNotFound(String),
+
+    /// Invalid algorithm
+    #[error("Invalid algorithm: {0}")]
+    InvalidAlgorithm(String),
 }
 
 /// Result type for advanced quantum algorithms

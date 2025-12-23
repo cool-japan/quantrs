@@ -15,25 +15,25 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.0-beta.2 🎉
+**Current Version**: v0.1.0-beta.3 🎉
 
-## 🚀 What's New in Beta.2 - Policy Refinement & Documentation
+## 🚀 What's New in Beta.3 - Quality & Documentation
 
-QuantRS2 v0.1.0-beta.2 focuses on comprehensive policy documentation, SciRS2 integration refinement, and improved developer experience through extensive documentation.
+QuantRS2 v0.1.0-beta.3 focuses on documentation quality, test reliability, and SciRS2 v0.1.0-rc.4 integration for improved stability and developer experience.
 
-### 📚 Comprehensive Documentation (NEW!)
-- **SCIRS2_INTEGRATION_POLICY.md**: Complete 540-line SciRS2 integration guide
-  - Quantum computing patterns with unified SciRS2 APIs
-  - Complex number operations, array handling, RNG patterns
-  - Module-specific guidelines and migration checklists
-- **CLAUDE.md**: 390-line AI-assisted development guide
-  - Project architecture and development workflows
-  - Critical SciRS2 policy requirements and best practices
+### 🔧 Enhanced Quality
+- **Documentation Improvements**: Fixed 9 rustdoc warnings for cleaner docs.rs builds
+- **Test Reliability**: Fixed 4 doctests and 1 unit test for 100% passing rate (88/88 unit tests)
+- **Clean Documentation**: Proper escaping of mathematical notation and QEC code notation
 
-### 🔧 SciRS2 Integration Refinement
-- **Unified Import Patterns**: Standardized across all modules
-- **Enhanced Distributions**: `UnifiedNormal`, `UnifiedBeta` for consistent API
-- **Dependency Updates**: SciRS2 v0.1.0-beta.3, NumRS2 v0.1.0-beta.2
+### 📦 Dependency Updates
+- **SciRS2 v0.1.0-rc.4**: Latest release candidate for enhanced stability
+- **Synchronized Ecosystem**: All SciRS2 crates updated to rc.4
+
+### ✅ Test Results
+- **Doctests**: 67 passing, 66 ignored
+- **Unit Tests**: 88/88 passing (100%)
+- **Documentation**: Clean builds (docs.rs ready)
 
 ### ⚠️ From Beta.1 - Production Ready Framework
 
@@ -61,7 +61,7 @@ QuantRS2 v0.1.0-beta.2 focuses on comprehensive policy documentation, SciRS2 int
 - **📊 Performance Analytics**: Real-time optimization recommendations
 
 ### 🔧 External Dependencies
-**Note**: QuantRS2 beta.2 integrates with SciRS2 v0.1.0-beta.3 for enhanced scientific computing capabilities. All core functionality is fully operational with optimal performance and comprehensive feature set.
+**Note**: QuantRS2 beta.3 integrates with SciRS2 v0.1.0-rc.4 for enhanced scientific computing capabilities. All core functionality is fully operational with optimal performance and comprehensive feature set.
 
 ### 🏆 Production Readiness
 ✅ **Ready for Production Use**:
@@ -109,9 +109,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-beta.2"
-quantrs2-circuit = "0.1.0-beta.2"
-quantrs2-sim = "0.1.0-beta.2"
+quantrs2-core = "0.1.0-beta.3"
+quantrs2-circuit = "0.1.0-beta.3"
+quantrs2-sim = "0.1.0-beta.3"
 ```
 
 ### Creating a Bell State
@@ -332,8 +332,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-beta.2", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.0-beta.2", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.0-beta.3", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.0-beta.3", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -342,7 +342,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-beta.2", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.0-beta.3", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -387,7 +387,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.0-beta.2", features = ["ibm"] }
+quantrs2-device = { version = "0.1.0-beta.3", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -413,7 +413,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.0-beta.2", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.0-beta.3", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.

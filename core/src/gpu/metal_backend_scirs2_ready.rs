@@ -54,7 +54,7 @@ pub mod scirs2_metal_placeholder {
 use self::scirs2_metal_placeholder::*;
 
 /// Metal shader library for quantum operations
-pub const METAL_QUANTUM_SHADERS: &str = r#"
+pub const METAL_QUANTUM_SHADERS: &str = r"
 #include <metal_stdlib>
 using namespace metal;
 
@@ -116,7 +116,7 @@ kernel void compute_probabilities(
     Complex amp = state[gid];
     probabilities[gid] = amp.real * amp.real + amp.imag * amp.imag;
 }
-"#;
+";
 
 /// Metal-accelerated quantum state vector
 pub struct MetalQuantumState {

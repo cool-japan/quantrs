@@ -476,7 +476,7 @@ pub struct AdvancedNoiseModel {
 
 impl AdvancedNoiseModel {
     /// Create a new empty noise model
-    pub fn new(per_gate: bool) -> Self {
+    pub const fn new(per_gate: bool) -> Self {
         Self {
             channels: Vec::new(),
             per_gate,
@@ -557,7 +557,7 @@ pub struct RealisticNoiseModelBuilder {
 
 impl RealisticNoiseModelBuilder {
     /// Create a new noise model builder
-    pub fn new(per_gate: bool) -> Self {
+    pub const fn new(per_gate: bool) -> Self {
         Self {
             model: AdvancedNoiseModel::new(per_gate),
         }

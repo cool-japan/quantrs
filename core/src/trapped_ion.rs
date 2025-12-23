@@ -505,7 +505,7 @@ impl TrappedIonSystem {
     }
 
     /// Apply red sideband transition (cooling)
-    fn apply_red_sideband(&mut self, mode: &mut MotionalMode, eta: f64) -> QuantRS2Result<()> {
+    fn apply_red_sideband(&self, mode: &mut MotionalMode, eta: f64) -> QuantRS2Result<()> {
         let mut new_state = Array1::zeros(mode.max_phonons + 1);
 
         for n in 1..=mode.max_phonons {
@@ -531,7 +531,7 @@ impl TrappedIonSystem {
     }
 
     /// Apply blue sideband transition (heating)
-    fn apply_blue_sideband(&mut self, mode: &mut MotionalMode, eta: f64) -> QuantRS2Result<()> {
+    fn apply_blue_sideband(&self, mode: &mut MotionalMode, eta: f64) -> QuantRS2Result<()> {
         let mut new_state = Array1::zeros(mode.max_phonons + 1);
 
         for n in 0..mode.max_phonons {

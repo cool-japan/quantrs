@@ -1,8 +1,8 @@
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::{Circuit, Simulator};
 use quantrs2_core::{gate::multi::CRZ, qubit::QubitId, register::Register};
 use quantrs2_sim::noise_advanced::{RealisticNoiseModelBuilder, ThermalRelaxationChannel};
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 use std::time::Duration;
 
@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The actual phase we want to estimate (phi = 0.25 = 1/4)
     let true_phase = 0.25;
-    println!("True phase: {:.6} (= 1/4 = 0.25)", true_phase);
+    println!("True phase: {true_phase:.6} (= 1/4 = 0.25)");
 
     // Run the ideal QPE algorithm without noise
     run_ideal_qpe(precision_bits, true_phase)?;
@@ -42,10 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Run the Quantum Phase Estimation algorithm without noise
 fn run_ideal_qpe(precision_bits: usize, phase: f64) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "\nRunning ideal QPE with {} precision qubits:",
-        precision_bits
-    );
+    println!("\nRunning ideal QPE with {precision_bits} precision qubits:");
 
     let total_qubits = precision_bits + 1;
     let target_qubit = total_qubits - 1;
@@ -66,7 +63,7 @@ fn run_ideal_qpe(precision_bits: usize, phase: f64) -> Result<(), Box<dyn std::e
     // U is a phase rotation by 2π*phase
     // We use controlled-RZ gates as our U operator with appropriate angles
     for i in 0..precision_bits {
-        let angle = 2.0 * PI * phase * (1 << (precision_bits - 1 - i)) as f64;
+        let angle = 2.0 * PI * phase * f64::from(1 << (precision_bits - 1 - i));
         circuit.add_gate(CRZ {
             control: QubitId::new(i as u32),
             target: QubitId::new(target_qubit as u32),
@@ -115,7 +112,7 @@ fn run_noisy_qpe(
 
     // Apply controlled-U operations with increasing powers
     for i in 0..precision_bits {
-        let angle = 2.0 * PI * phase * (1 << (precision_bits - 1 - i)) as f64;
+        let angle = 2.0 * PI * phase * f64::from(1 << (precision_bits - 1 - i));
         circuit.add_gate(CRZ {
             control: QubitId::new(i as u32),
             target: QubitId::new(target_qubit as u32),
@@ -127,7 +124,7 @@ fn run_noisy_qpe(
     inverse_qft(&mut circuit, 0, precision_bits)?;
 
     // Create a custom noise model with realistic parameters
-    let qubits: Vec<QubitId> = (0..8).map(|i| QubitId::new(i)).collect();
+    let qubits: Vec<QubitId> = (0..8).map(QubitId::new).collect();
 
     // Scale the noise model parameters based on the noise level
     let t1_us = 100.0 / noise_level.sqrt(); // Higher noise = lower T1
@@ -174,7 +171,7 @@ fn inverse_qft(
 
         // Apply controlled phase rotations
         for j in (start..i).rev() {
-            let angle = -PI / ((1 << (i - j)) as f64);
+            let angle = -PI / f64::from(1 << (i - j));
             circuit.add_gate(CRZ {
                 control: QubitId::new(j as u32),
                 target: QubitId::new(i as u32),
@@ -206,7 +203,10 @@ fn analyze_qpe_result(result: &Register<8>, precision_bits: usize, true_phase: f
     }
 
     // Sort by probability in descending order
-    state_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    state_probs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .expect("Failed to compare probabilities (NaN encountered in QPE result analysis)")
+    });
 
     // Print the top 5 states (or fewer if there aren't 5)
     for (idx, (state, prob)) in state_probs.iter().take(5).enumerate() {
@@ -214,10 +214,10 @@ fn analyze_qpe_result(result: &Register<8>, precision_bits: usize, true_phase: f
         let est_bits = (*state & ((1 << precision_bits) - 1)) as u32;
 
         // Convert to binary string
-        let binary = format!("{:0width$b}", est_bits, width = precision_bits);
+        let binary = format!("{est_bits:0precision_bits$b}");
 
         // Convert binary measurement to phase estimate
-        let measured_phase = est_bits as f64 / (1 << precision_bits) as f64;
+        let measured_phase = f64::from(est_bits) / f64::from(1 << precision_bits);
 
         // Calculate error
         let error = (measured_phase - true_phase).abs();
@@ -240,7 +240,7 @@ fn analyze_qpe_result(result: &Register<8>, precision_bits: usize, true_phase: f
         // Only consider states with non-negligible probability
         if *prob > 1e-6 {
             let est_bits = (*state & ((1 << precision_bits) - 1)) as u32;
-            let phase = est_bits as f64 / (1 << precision_bits) as f64;
+            let phase = f64::from(est_bits) / f64::from(1 << precision_bits);
             expected_phase += phase * prob;
             total_prob += prob;
         }
@@ -254,7 +254,7 @@ fn analyze_qpe_result(result: &Register<8>, precision_bits: usize, true_phase: f
     // Calculate error
     let overall_error = (expected_phase - true_phase).abs();
 
-    println!("Expected phase from measurements: {:.6}", expected_phase);
-    println!("Error in phase estimation: {:.6}", overall_error);
+    println!("Expected phase from measurements: {expected_phase:.6}");
+    println!("Error in phase estimation: {overall_error:.6}");
     println!("Success rate: {:.2}%", 100.0 * (1.0 - overall_error / 0.5));
 }

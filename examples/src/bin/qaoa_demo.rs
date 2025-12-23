@@ -34,12 +34,12 @@ fn solve_triangle_maxcut() {
     let edges = vec![(0, 1), (1, 2), (2, 0)];
     let num_qubits = 3;
 
-    println!("Graph edges: {:?}", edges);
+    println!("Graph edges: {edges:?}");
     println!("Optimal Max-Cut value: 2");
 
     // Try different number of QAOA layers
     for p in 1..=3 {
-        println!("\nRunning QAOA with p = {} layers", p);
+        println!("\nRunning QAOA with p = {p} layers");
 
         let start = Instant::now();
 
@@ -62,11 +62,11 @@ fn solve_triangle_maxcut() {
         let state = optimizer.execute_circuit();
         let solution = optimizer.get_solution(&state);
 
-        println!("  Optimization time: {:?}", elapsed);
-        println!("  Final cost: {:.4}", final_cost);
-        println!("  Solution: {:?}", solution);
+        println!("  Optimization time: {elapsed:?}");
+        println!("  Final cost: {final_cost:.4}");
+        println!("  Solution: {solution:?}");
         println!("  Cut size: {}", calculate_cut_size(&edges, &solution));
-        println!("  Optimized params: {:?}", optimized_params);
+        println!("  Optimized params: {optimized_params:?}");
     }
 }
 
@@ -75,11 +75,11 @@ fn solve_square_maxcut() {
     let edges = vec![(0, 1), (1, 2), (2, 3), (3, 0)];
     let num_qubits = 4;
 
-    println!("Graph edges: {:?}", edges);
+    println!("Graph edges: {edges:?}");
     println!("Optimal Max-Cut value: 4");
 
     let p = 3; // Use 3 layers for better results
-    println!("\nRunning QAOA with p = {} layers", p);
+    println!("\nRunning QAOA with p = {p} layers");
 
     let start = Instant::now();
 
@@ -99,9 +99,9 @@ fn solve_square_maxcut() {
     let state = optimizer.execute_circuit();
     let solution = optimizer.get_solution(&state);
 
-    println!("  Optimization time: {:?}", elapsed);
-    println!("  Final cost: {:.4}", final_cost);
-    println!("  Solution: {:?}", solution);
+    println!("  Optimization time: {elapsed:?}");
+    println!("  Final cost: {final_cost:.4}");
+    println!("  Solution: {solution:?}");
     println!("  Cut size: {}", calculate_cut_size(&edges, &solution));
 }
 
@@ -119,7 +119,7 @@ fn solve_k5_maxcut() {
     println!("Optimal Max-Cut value: 6");
 
     let p = 4; // Use 4 layers for this harder problem
-    println!("\nRunning QAOA with p = {} layers", p);
+    println!("\nRunning QAOA with p = {p} layers");
 
     let start = Instant::now();
 
@@ -139,9 +139,9 @@ fn solve_k5_maxcut() {
     let state = optimizer.execute_circuit();
     let solution = optimizer.get_solution(&state);
 
-    println!("  Optimization time: {:?}", elapsed);
-    println!("  Final cost: {:.4}", final_cost);
-    println!("  Solution: {:?}", solution);
+    println!("  Optimization time: {elapsed:?}");
+    println!("  Final cost: {final_cost:.4}");
+    println!("  Solution: {solution:?}");
     println!("  Cut size: {}", calculate_cut_size(&edges, &solution));
 }
 
@@ -156,10 +156,10 @@ fn solve_weighted_maxcut() {
     ];
     let num_qubits = 4;
 
-    println!("Weighted graph edges: {:?}", weighted_edges);
+    println!("Weighted graph edges: {weighted_edges:?}");
 
     let p = 3;
-    println!("\nRunning QAOA with p = {} layers", p);
+    println!("\nRunning QAOA with p = {p} layers");
 
     let start = Instant::now();
 
@@ -179,9 +179,9 @@ fn solve_weighted_maxcut() {
     let state = optimizer.execute_circuit();
     let solution = optimizer.get_solution(&state);
 
-    println!("  Optimization time: {:?}", elapsed);
-    println!("  Final cost: {:.4}", final_cost);
-    println!("  Solution: {:?}", solution);
+    println!("  Optimization time: {elapsed:?}");
+    println!("  Final cost: {final_cost:.4}");
+    println!("  Solution: {solution:?}");
     println!(
         "  Weighted cut value: {:.2}",
         calculate_weighted_cut(&weighted_edges, &solution)

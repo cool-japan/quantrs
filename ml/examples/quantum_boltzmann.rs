@@ -3,8 +3,8 @@
 //! This example demonstrates quantum Boltzmann machines for unsupervised learning,
 //! including RBMs and deep Boltzmann machines.
 
-use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -63,8 +63,8 @@ fn basic_qbm_demo() -> Result<()> {
     println!("\n   Generated samples:");
     for (i, sample) in samples.outer_iter().enumerate() {
         print!("   Sample {}: [", i + 1);
-        for val in sample.iter() {
-            print!("{:.0} ", val);
+        for val in sample {
+            print!("{val:.0} ");
         }
         println!("]");
     }
@@ -101,7 +101,7 @@ fn rbm_demo() -> Result<()> {
     // Analyze training
     let improvement = (losses[0] - losses.last().unwrap()) / losses[0] * 100.0;
     println!("   Training statistics:");
-    println!("   - Loss reduction: {:.1}%", improvement);
+    println!("   - Loss reduction: {improvement:.1}%");
     println!("   - Final temperature: 0.5");
 
     // Test reconstruction
@@ -111,12 +111,12 @@ fn rbm_demo() -> Result<()> {
     println!("\n   Reconstruction quality:");
     for i in 0..3 {
         print!("   Original:      [");
-        for val in test_data.row(i).iter() {
-            print!("{:.0} ", val);
+        for val in test_data.row(i) {
+            print!("{val:.0} ");
         }
         print!("]  →  Reconstructed: [");
-        for val in reconstructed.row(i).iter() {
-            print!("{:.0} ", val);
+        for val in reconstructed.row(i) {
+            print!("{val:.0} ");
         }
         println!("]");
     }
@@ -135,7 +135,7 @@ fn deep_boltzmann_demo() -> Result<()> {
     )?;
 
     println!("   Created Deep Boltzmann Machine:");
-    println!("   - Architecture: {:?}", layer_sizes);
+    println!("   - Architecture: {layer_sizes:?}");
     println!("   - Total layers: {}", dbm.rbms().len());
 
     // Generate hierarchical data
@@ -167,7 +167,7 @@ fn energy_landscape_demo() -> Result<()> {
     println!("   Analyzing energy landscape of 2-unit system");
 
     // Compute energy for all 4 possible states
-    let states = vec![
+    let states = [
         Array1::from_vec(vec![0.0, 0.0]),
         Array1::from_vec(vec![0.0, 1.0]),
         Array1::from_vec(vec![1.0, 0.0]),
@@ -222,8 +222,8 @@ fn pattern_completion_demo() -> Result<()> {
     corrupted[5] = 1.0 - corrupted[5]; // Flip another
 
     print!("   Corrupted:  [");
-    for val in corrupted.iter() {
-        print!("{:.0} ", val);
+    for val in &corrupted {
+        print!("{val:.0} ");
     }
     println!("]");
 
@@ -231,14 +231,14 @@ fn pattern_completion_demo() -> Result<()> {
     let completed = complete_pattern(&rbm, &corrupted)?;
 
     print!("   Completed:  [");
-    for val in completed.iter() {
-        print!("{:.0} ", val);
+    for val in &completed {
+        print!("{val:.0} ");
     }
     println!("]");
 
     print!("   Original:   [");
-    for val in patterns.row(0).iter() {
-        print!("{:.0} ", val);
+    for val in patterns.row(0) {
+        print!("{val:.0} ");
     }
     println!("]");
 

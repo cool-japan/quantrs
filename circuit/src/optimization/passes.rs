@@ -62,13 +62,14 @@ pub struct GateCancellation {
 }
 
 impl GateCancellation {
-    pub fn new(aggressive: bool) -> Self {
+    #[must_use]
+    pub const fn new(aggressive: bool) -> Self {
         Self { aggressive }
     }
 }
 
 impl OptimizationPass for GateCancellation {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Gate Cancellation"
     }
 
@@ -184,6 +185,7 @@ pub struct GateCommutation {
 }
 
 impl GateCommutation {
+    #[must_use]
     pub fn new(max_lookahead: usize) -> Self {
         Self {
             max_lookahead,
@@ -207,15 +209,13 @@ impl GateCommutation {
             ("I", _) | (_, "I") => true,
 
             // Phase/T gates commute with Z
-            ("S", "Z") | ("Z", "S") | ("T", "Z") | ("Z", "T") => true,
+            ("S" | "T", "Z") | ("Z", "S" | "T") => true,
 
             // Same-axis rotations commute
             ("RX", "RX") | ("RY", "RY") | ("RZ", "RZ") => true,
 
             // RZ commutes with Z-like gates
-            ("RZ", "Z") | ("Z", "RZ") | ("RZ", "S") | ("S", "RZ") | ("RZ", "T") | ("T", "RZ") => {
-                true
-            }
+            ("RZ", "Z" | "S" | "T") | ("Z" | "S" | "T", "RZ") => true,
 
             _ => false,
         }
@@ -253,7 +253,7 @@ impl GateCommutation {
 }
 
 impl OptimizationPass for GateCommutation {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Gate Commutation"
     }
 
@@ -300,9 +300,7 @@ impl OptimizationPass for GateCommutation {
                     optimized.swap(i, i + 1);
                     changed = true;
                     // Don't increment i to check if we can swap further back
-                    if i > 0 {
-                        i -= 1;
-                    }
+                    i = i.saturating_sub(1);
                 } else {
                     i += 1;
                 }
@@ -325,7 +323,8 @@ pub struct GateMerging {
 }
 
 impl GateMerging {
-    pub fn new(merge_rotations: bool, merge_threshold: f64) -> Self {
+    #[must_use]
+    pub const fn new(merge_rotations: bool, merge_threshold: f64) -> Self {
         Self {
             merge_rotations,
             merge_threshold,
@@ -334,7 +333,7 @@ impl GateMerging {
 }
 
 impl OptimizationPass for GateMerging {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Gate Merging"
     }
 
@@ -360,12 +359,7 @@ impl OptimizationPass for GateMerging {
                             None
                         }
                         // Different axis rotations might be mergeable using Euler decomposition
-                        ("RZ", "RX")
-                        | ("RX", "RZ")
-                        | ("RY", "RX")
-                        | ("RX", "RY")
-                        | ("RZ", "RY")
-                        | ("RY", "RZ")
+                        ("RZ" | "RY", "RX") | ("RX" | "RY", "RZ") | ("RX" | "RZ", "RY")
                             if self.merge_threshold > 0.0 =>
                         {
                             // Complex merging would require matrix multiplication
@@ -373,7 +367,7 @@ impl OptimizationPass for GateMerging {
                             None
                         }
                         // Phase gates (S, T) can sometimes be merged with RZ
-                        ("S", "RZ") | ("RZ", "S") | ("T", "RZ") | ("RZ", "T") => {
+                        ("S" | "T", "RZ") | ("RZ", "S" | "T") => {
                             // S = RZ(π/2), T = RZ(π/4)
                             // These could be merged but need special handling
                             None
@@ -442,14 +436,15 @@ pub struct RotationMerging {
 }
 
 impl RotationMerging {
-    pub fn new(tolerance: f64) -> Self {
+    #[must_use]
+    pub const fn new(tolerance: f64) -> Self {
         Self { tolerance }
     }
 
     /// Check if angle is effectively zero (or 2π multiple)
     fn is_zero_rotation(&self, angle: f64) -> bool {
         let normalized = angle % (2.0 * PI);
-        normalized.abs() < self.tolerance || (normalized - 2.0 * PI).abs() < self.tolerance
+        normalized.abs() < self.tolerance || 2.0f64.mul_add(-PI, normalized).abs() < self.tolerance
     }
 
     /// Merge two rotation angles
@@ -457,9 +452,9 @@ impl RotationMerging {
         let merged = angle1 + angle2;
         let normalized = merged % (2.0 * PI);
         if normalized > PI {
-            normalized - 2.0 * PI
+            2.0f64.mul_add(-PI, normalized)
         } else if normalized < -PI {
-            normalized + 2.0 * PI
+            2.0f64.mul_add(PI, normalized)
         } else {
             normalized
         }
@@ -467,7 +462,7 @@ impl RotationMerging {
 }
 
 impl OptimizationPass for RotationMerging {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Rotation Merging"
     }
 
@@ -497,16 +492,15 @@ impl OptimizationPass for RotationMerging {
                                     // Skip both gates if the merged rotation is effectively zero
                                     i += 2;
                                     continue;
-                                } else {
-                                    // Create a new merged rotation gate
-                                    optimized.push(Box::new(single::RotationX {
-                                        target: rx1.target,
-                                        theta: merged_angle,
-                                    })
-                                        as Box<dyn GateOp>);
-                                    i += 2;
-                                    continue;
                                 }
+                                // Create a new merged rotation gate
+                                optimized.push(Box::new(single::RotationX {
+                                    target: rx1.target,
+                                    theta: merged_angle,
+                                })
+                                    as Box<dyn GateOp>);
+                                i += 2;
+                                continue;
                             }
                         }
                         "RY" => {
@@ -518,15 +512,14 @@ impl OptimizationPass for RotationMerging {
                                 if self.is_zero_rotation(merged_angle) {
                                     i += 2;
                                     continue;
-                                } else {
-                                    optimized.push(Box::new(single::RotationY {
-                                        target: ry1.target,
-                                        theta: merged_angle,
-                                    })
-                                        as Box<dyn GateOp>);
-                                    i += 2;
-                                    continue;
                                 }
+                                optimized.push(Box::new(single::RotationY {
+                                    target: ry1.target,
+                                    theta: merged_angle,
+                                })
+                                    as Box<dyn GateOp>);
+                                i += 2;
+                                continue;
                             }
                         }
                         "RZ" => {
@@ -538,15 +531,14 @@ impl OptimizationPass for RotationMerging {
                                 if self.is_zero_rotation(merged_angle) {
                                     i += 2;
                                     continue;
-                                } else {
-                                    optimized.push(Box::new(single::RotationZ {
-                                        target: rz1.target,
-                                        theta: merged_angle,
-                                    })
-                                        as Box<dyn GateOp>);
-                                    i += 2;
-                                    continue;
                                 }
+                                optimized.push(Box::new(single::RotationZ {
+                                    target: rz1.target,
+                                    theta: merged_angle,
+                                })
+                                    as Box<dyn GateOp>);
+                                i += 2;
+                                continue;
                             }
                         }
                         _ => {}
@@ -570,26 +562,28 @@ pub struct DecompositionOptimization {
 }
 
 impl DecompositionOptimization {
-    pub fn new(target_gate_set: HashSet<String>, prefer_native: bool) -> Self {
+    #[must_use]
+    pub const fn new(target_gate_set: HashSet<String>, prefer_native: bool) -> Self {
         Self {
             target_gate_set,
             prefer_native,
         }
     }
 
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let target_gate_set = match hardware {
             "ibm" => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "CNOT", "CZ"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             "google" => vec!["X", "Y", "Z", "H", "RZ", "CZ", "SQRT_X"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             _ => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "CNOT"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
         };
 
@@ -601,7 +595,7 @@ impl DecompositionOptimization {
 }
 
 impl OptimizationPass for DecompositionOptimization {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Decomposition Optimization"
     }
 
@@ -673,14 +667,14 @@ impl DecompositionOptimization {
         let gate_name = gate.name();
 
         // Always decompose if gate is not in target set
-        if !self.target_gate_set.contains(gate_name) {
+        if self.target_gate_set.contains(gate_name) {
+            false
+        } else {
             // Only decompose gates we know how to decompose
             matches!(
                 gate_name,
                 "Toffoli" | "Fredkin" | "CSWAP" | "SWAP" | "CRX" | "CRY" | "CRZ"
             )
-        } else {
-            false
         }
     }
 
@@ -700,7 +694,10 @@ impl DecompositionOptimization {
         let target = qubits[2];
 
         // Standard Toffoli decomposition using CNOT and T gates
-        use quantrs2_core::gate::{multi::*, single::*};
+        use quantrs2_core::gate::{
+            multi::CNOT,
+            single::{Hadamard, TDagger, T},
+        };
 
         gates.push(Box::new(Hadamard { target }));
         gates.push(Box::new(CNOT {
@@ -755,7 +752,7 @@ impl DecompositionOptimization {
         let target2 = qubits[2];
 
         // Fredkin decomposition using CNOT gates
-        use quantrs2_core::gate::multi::*;
+        use quantrs2_core::gate::multi::CNOT;
 
         gates.push(Box::new(CNOT {
             control: target2,
@@ -796,7 +793,7 @@ impl DecompositionOptimization {
         let q2 = qubits[1];
 
         // SWAP decomposition using 3 CNOT gates
-        use quantrs2_core::gate::multi::*;
+        use quantrs2_core::gate::multi::CNOT;
 
         gates.push(Box::new(CNOT {
             control: q1,
@@ -831,7 +828,10 @@ impl DecompositionOptimization {
 
         // Simplified decomposition - in reality, we'd extract the angle parameter
         // For now, we'll use a generic decomposition with placeholder angles
-        use quantrs2_core::gate::{multi::*, single::*};
+        use quantrs2_core::gate::{
+            multi::CNOT,
+            single::{RotationX, RotationY, RotationZ},
+        };
 
         match gate.name() {
             "CRX" => {
@@ -897,7 +897,8 @@ pub enum CostTarget {
 }
 
 impl CostBasedOptimization {
-    pub fn new(target: CostTarget, max_iterations: usize) -> Self {
+    #[must_use]
+    pub const fn new(target: CostTarget, max_iterations: usize) -> Self {
         Self {
             optimization_target: target,
             max_iterations,
@@ -906,7 +907,7 @@ impl CostBasedOptimization {
 }
 
 impl OptimizationPass for CostBasedOptimization {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Cost-Based Optimization"
     }
 
@@ -948,7 +949,8 @@ impl CostBasedOptimization {
                 let error = self.calculate_total_error(gates);
                 let time = self.calculate_execution_time(gates);
 
-                0.3 * gate_count + 0.3 * depth + 0.2 * error * 1000.0 + 0.2 * time / 1000.0
+                (0.2 * error).mul_add(1000.0, 0.3f64.mul_add(gate_count, 0.3 * depth))
+                    + 0.2 * time / 1000.0
             }
         }
     }
@@ -1058,9 +1060,7 @@ impl CostBasedOptimization {
             if self.are_inverse_gates(&gates[i], &gates[i + 1]) {
                 gates.remove(i + 1);
                 gates.remove(i);
-                if i > 0 {
-                    i -= 1;
-                }
+                i = i.saturating_sub(1);
             } else {
                 i += 1;
             }
@@ -1089,14 +1089,11 @@ impl CostBasedOptimization {
     fn reduce_error_gates(&self, gates: &mut Vec<Box<dyn GateOp>>) -> QuantRS2Result<()> {
         // Replace high-error gates with lower-error alternatives where possible
         for i in 0..gates.len() {
-            match gates[i].name() {
-                "Toffoli" => {
-                    // Could decompose Toffoli to reduce error in some cases
-                    // (would need to check if total error is actually lower)
-                }
-                _ => {
-                    // Keep other gates as-is for now
-                }
+            if gates[i].name() == "Toffoli" {
+                // Could decompose Toffoli to reduce error in some cases
+                // (would need to check if total error is actually lower)
+            } else {
+                // Keep other gates as-is for now
             }
         }
         Ok(())
@@ -1105,13 +1102,10 @@ impl CostBasedOptimization {
     fn optimize_for_speed(&self, gates: &mut Vec<Box<dyn GateOp>>) -> QuantRS2Result<()> {
         // Replace slow gates with faster alternatives where possible
         for i in 0..gates.len() {
-            match gates[i].name() {
-                "Toffoli" => {
-                    // Could use a faster Toffoli implementation if available
-                }
-                _ => {
-                    // Keep other gates as-is for now
-                }
+            if gates[i].name() == "Toffoli" {
+                // Could use a faster Toffoli implementation if available
+            } else {
+                // Keep other gates as-is for now
             }
         }
         Ok(())
@@ -1125,7 +1119,8 @@ pub struct TwoQubitOptimization {
 }
 
 impl TwoQubitOptimization {
-    pub fn new(use_kak_decomposition: bool, optimize_cnots: bool) -> Self {
+    #[must_use]
+    pub const fn new(use_kak_decomposition: bool, optimize_cnots: bool) -> Self {
         Self {
             use_kak_decomposition,
             optimize_cnots,
@@ -1134,7 +1129,7 @@ impl TwoQubitOptimization {
 }
 
 impl OptimizationPass for TwoQubitOptimization {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Two-Qubit Optimization"
     }
 
@@ -1162,6 +1157,7 @@ pub struct PeepholePattern {
 }
 
 impl PeepholeOptimization {
+    #[must_use]
     pub fn new(window_size: usize) -> Self {
         let patterns = vec![
             // Pattern: X-Y-X = -Y
@@ -1245,13 +1241,12 @@ impl PeepholeOptimization {
                                     let combined_angle = rz1.theta + rz2.theta;
                                     if combined_angle.abs() < 1e-10 {
                                         return Some(vec![]); // Identity
-                                    } else {
-                                        return Some(vec![Box::new(single::RotationZ {
-                                            target: rz1.target,
-                                            theta: combined_angle,
-                                        })
-                                            as Box<dyn GateOp>]);
                                     }
+                                    return Some(vec![Box::new(single::RotationZ {
+                                        target: rz1.target,
+                                        theta: combined_angle,
+                                    })
+                                        as Box<dyn GateOp>]);
                                 }
                             }
                         }
@@ -1345,7 +1340,7 @@ impl PeepholeOptimization {
 }
 
 impl OptimizationPass for PeepholeOptimization {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Peephole Optimization"
     }
 
@@ -1401,6 +1396,7 @@ pub struct CircuitTemplate {
 }
 
 impl TemplateMatching {
+    #[must_use]
     pub fn new() -> Self {
         let templates = vec![
             CircuitTemplate {
@@ -1426,13 +1422,14 @@ impl TemplateMatching {
         Self { templates }
     }
 
-    pub fn with_templates(templates: Vec<CircuitTemplate>) -> Self {
+    #[must_use]
+    pub const fn with_templates(templates: Vec<CircuitTemplate>) -> Self {
         Self { templates }
     }
 }
 
 impl OptimizationPass for TemplateMatching {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Template Matching"
     }
 
@@ -1588,7 +1585,7 @@ impl TemplateMatching {
         // For simple patterns, just use the first qubit found in the mapping
         let qubits: Vec<QubitId> = qubit_mapping
             .values()
-            .flat_map(|v| v.iter().cloned())
+            .flat_map(|v| v.iter().copied())
             .collect();
         let mut unique_qubits: Vec<QubitId> = Vec::new();
         for qubit in qubits {
@@ -1691,6 +1688,7 @@ impl TemplateMatching {
     }
 
     /// Create an advanced template matcher with more sophisticated patterns
+    #[must_use]
     pub fn with_advanced_templates() -> Self {
         let templates = vec![
             // Basis change patterns
@@ -1751,6 +1749,7 @@ impl TemplateMatching {
     }
 
     /// Create a template matcher for specific hardware
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let templates = match hardware {
             "ibm" => vec![
@@ -1800,7 +1799,8 @@ pub struct RewriteRule {
 }
 
 impl CircuitRewriting {
-    pub fn new(max_rewrites: usize) -> Self {
+    #[must_use]
+    pub const fn new(max_rewrites: usize) -> Self {
         let rules = vec![
             // Add rewrite rules here
         ];
@@ -1813,7 +1813,7 @@ impl CircuitRewriting {
 }
 
 impl OptimizationPass for CircuitRewriting {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Circuit Rewriting"
     }
 
@@ -1829,7 +1829,7 @@ impl OptimizationPass for CircuitRewriting {
 
 /// Helper functions for optimization passes
 pub mod utils {
-    use super::*;
+    use super::{get_gate_properties, GateOp, HashMap, OptimizationPass};
 
     /// Check if two gates cancel each other
     pub fn gates_cancel(gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
@@ -1858,6 +1858,7 @@ pub mod utils {
     }
 
     /// Calculate circuit depth
+    #[must_use]
     pub fn calculate_depth(gates: &[Box<dyn GateOp>]) -> usize {
         let mut qubit_depths: HashMap<u32, usize> = HashMap::new();
         let mut max_depth = 0;

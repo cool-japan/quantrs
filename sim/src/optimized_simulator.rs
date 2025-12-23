@@ -20,7 +20,7 @@ pub struct OptimizedSimulator {
 
 impl OptimizedSimulator {
     /// Create a new optimized simulator with default settings
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             _use_simd: cfg!(feature = "simd"),
             memory_efficient: cfg!(feature = "memory_efficient"),
@@ -29,7 +29,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new optimized simulator with custom settings
-    pub fn with_options(
+    pub const fn with_options(
         use_simd: bool,
         memory_efficient: bool,
         memory_efficient_threshold: usize,
@@ -42,7 +42,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new simulator optimized for maximum performance
-    pub fn high_performance() -> Self {
+    pub const fn high_performance() -> Self {
         Self {
             _use_simd: true,
             memory_efficient: true,
@@ -51,7 +51,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new simulator optimized for memory efficiency
-    pub fn memory_efficient() -> Self {
+    pub const fn memory_efficient() -> Self {
         Self {
             _use_simd: true,
             memory_efficient: true,

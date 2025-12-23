@@ -1,4 +1,4 @@
-//! Hardware topology analysis using SciRS2 graph algorithms
+//! Hardware topology analysis using `SciRS2` graph algorithms
 //!
 //! This module provides tools for analyzing quantum hardware topologies,
 //! finding optimal qubit mappings, and identifying connectivity constraints.
@@ -110,8 +110,7 @@ impl HardwareTopology {
             "ibm_5q" => Ok(Self::ibm_topology()),
             "google_sycamore" => Ok(Self::create_sycamore_subset()),
             _ => Err(TopologyError::UnsupportedTopology(format!(
-                "Unknown topology: {}",
-                topology_type
+                "Unknown topology: {topology_type}"
             ))),
         }
     }
@@ -130,7 +129,7 @@ impl HardwareTopology {
                 single_qubit_gate_error: 0.001,
                 gate_error_1q: 0.001,
                 readout_error: 0.01,
-                frequency: 5.0 + 0.1 * i as f64,
+                frequency: 0.1f64.mul_add(i as f64, 5.0),
             });
         }
 
@@ -160,12 +159,12 @@ impl HardwareTopology {
             topo.add_qubit(QubitProperties {
                 id: i as u32,
                 index: i as u32,
-                t1: 45.0 + 5.0 * fastrand::f64(),
-                t2: 60.0 + 10.0 * fastrand::f64(),
-                single_qubit_gate_error: 0.001 * (1.0 + 0.2 * fastrand::f64()),
-                gate_error_1q: 0.001 * (1.0 + 0.2 * fastrand::f64()),
-                readout_error: 0.01 * (1.0 + 0.3 * fastrand::f64()),
-                frequency: 5.0 + 0.2 * fastrand::f64(),
+                t1: 5.0f64.mul_add(fastrand::f64(), 45.0),
+                t2: 10.0f64.mul_add(fastrand::f64(), 60.0),
+                single_qubit_gate_error: 0.001 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                gate_error_1q: 0.001 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                readout_error: 0.01 * 0.3f64.mul_add(fastrand::f64(), 1.0),
+                frequency: 0.2f64.mul_add(fastrand::f64(), 5.0),
             });
         }
 
@@ -178,8 +177,8 @@ impl HardwareTopology {
                     q1,
                     q2,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 180.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 180.0),
                         gate_type: "CZ".to_string(),
                     },
                 );
@@ -195,8 +194,8 @@ impl HardwareTopology {
                     q1,
                     q2,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 180.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 180.0),
                         gate_type: "CZ".to_string(),
                     },
                 );
@@ -228,7 +227,7 @@ impl HardwareTopology {
                 single_qubit_gate_error: err_1q,
                 gate_error_1q: err_1q,
                 readout_error: err_ro,
-                frequency: 5.0 + 0.05 * i as f64,
+                frequency: 0.05f64.mul_add(i as f64, 5.0),
             });
         }
 
@@ -241,7 +240,7 @@ impl HardwareTopology {
                 q2,
                 GateProperties {
                     error_rate: err,
-                    duration: 200.0 + 20.0 * fastrand::f64(),
+                    duration: 20.0f64.mul_add(fastrand::f64(), 200.0),
                     gate_type: "CNOT".to_string(),
                 },
             );
@@ -260,12 +259,12 @@ impl HardwareTopology {
             topo.add_qubit(QubitProperties {
                 id: i as u32,
                 index: i as u32,
-                t1: 15.0 + 2.0 * fastrand::f64(),
-                t2: 20.0 + 3.0 * fastrand::f64(),
-                single_qubit_gate_error: 0.0015 * (1.0 + 0.1 * fastrand::f64()),
-                gate_error_1q: 0.0015 * (1.0 + 0.1 * fastrand::f64()),
-                readout_error: 0.008 * (1.0 + 0.2 * fastrand::f64()),
-                frequency: 5.5 + 0.1 * fastrand::f64(),
+                t1: 2.0f64.mul_add(fastrand::f64(), 15.0),
+                t2: 3.0f64.mul_add(fastrand::f64(), 20.0),
+                single_qubit_gate_error: 0.0015 * 0.1f64.mul_add(fastrand::f64(), 1.0),
+                gate_error_1q: 0.0015 * 0.1f64.mul_add(fastrand::f64(), 1.0),
+                readout_error: 0.008 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                frequency: 0.1f64.mul_add(fastrand::f64(), 5.5),
             });
         }
 
@@ -287,8 +286,8 @@ impl HardwareTopology {
                 q1,
                 q2,
                 GateProperties {
-                    error_rate: 0.006 * (1.0 + 0.15 * fastrand::f64()),
-                    duration: 25.0 + 5.0 * fastrand::f64(),
+                    error_rate: 0.006 * 0.15f64.mul_add(fastrand::f64(), 1.0),
+                    duration: 5.0f64.mul_add(fastrand::f64(), 25.0),
                     gate_type: "sqrt_ISWAP".to_string(),
                 },
             );
@@ -306,12 +305,12 @@ impl HardwareTopology {
             topo.add_qubit(QubitProperties {
                 id: i as u32,
                 index: i as u32,
-                t1: 50.0 + 10.0 * fastrand::f64(),
-                t2: 70.0 + 15.0 * fastrand::f64(),
-                single_qubit_gate_error: 0.001 * (1.0 + 0.2 * fastrand::f64()),
-                gate_error_1q: 0.001 * (1.0 + 0.2 * fastrand::f64()),
-                readout_error: 0.015 * (1.0 + 0.3 * fastrand::f64()),
-                frequency: 5.0 + 0.2 * fastrand::f64(),
+                t1: 10.0f64.mul_add(fastrand::f64(), 50.0),
+                t2: 15.0f64.mul_add(fastrand::f64(), 70.0),
+                single_qubit_gate_error: 0.001 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                gate_error_1q: 0.001 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                readout_error: 0.015 * 0.3f64.mul_add(fastrand::f64(), 1.0),
+                frequency: 0.2f64.mul_add(fastrand::f64(), 5.0),
             });
         }
 
@@ -325,8 +324,8 @@ impl HardwareTopology {
                     i,
                     i + 1,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 200.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                         gate_type: "CNOT".to_string(),
                     },
                 );
@@ -338,8 +337,8 @@ impl HardwareTopology {
                     i,
                     i + 1,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 200.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                         gate_type: "CNOT".to_string(),
                     },
                 );
@@ -351,8 +350,8 @@ impl HardwareTopology {
                     i,
                     i + 1,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 200.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                         gate_type: "CNOT".to_string(),
                     },
                 );
@@ -364,8 +363,8 @@ impl HardwareTopology {
                     i,
                     i + 1,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 200.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                         gate_type: "CNOT".to_string(),
                     },
                 );
@@ -377,8 +376,8 @@ impl HardwareTopology {
                     i,
                     i + 1,
                     GateProperties {
-                        error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                        duration: 200.0 + 40.0 * fastrand::f64(),
+                        error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                        duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                         gate_type: "CNOT".to_string(),
                     },
                 );
@@ -408,8 +407,8 @@ impl HardwareTopology {
                         a as u32,
                         b as u32,
                         GateProperties {
-                            error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                            duration: 200.0 + 40.0 * fastrand::f64(),
+                            error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                            duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                             gate_type: "CNOT".to_string(),
                         },
                     );
@@ -425,8 +424,8 @@ impl HardwareTopology {
                         a as u32,
                         b as u32,
                         GateProperties {
-                            error_rate: 0.01 * (1.0 + 0.2 * fastrand::f64()),
-                            duration: 200.0 + 40.0 * fastrand::f64(),
+                            error_rate: 0.01 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                            duration: 40.0f64.mul_add(fastrand::f64(), 200.0),
                             gate_type: "CNOT".to_string(),
                         },
                     );
@@ -446,12 +445,12 @@ impl HardwareTopology {
             topo.add_qubit(QubitProperties {
                 id: i as u32,
                 index: i as u32,
-                t1: 15.0 + 3.0 * fastrand::f64(),
-                t2: 20.0 + 5.0 * fastrand::f64(),
-                single_qubit_gate_error: 0.0015 * (1.0 + 0.2 * fastrand::f64()),
-                gate_error_1q: 0.0015 * (1.0 + 0.2 * fastrand::f64()),
-                readout_error: 0.008 * (1.0 + 0.2 * fastrand::f64()),
-                frequency: 5.5 + 0.1 * fastrand::f64(),
+                t1: 3.0f64.mul_add(fastrand::f64(), 15.0),
+                t2: 5.0f64.mul_add(fastrand::f64(), 20.0),
+                single_qubit_gate_error: 0.0015 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                gate_error_1q: 0.0015 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                readout_error: 0.008 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                frequency: 0.1f64.mul_add(fastrand::f64(), 5.5),
             });
         }
 
@@ -472,7 +471,7 @@ impl HardwareTopology {
                             q1 as u32,
                             q2 as u32,
                             GateProperties {
-                                error_rate: 0.006 * (1.0 + 0.15 * fastrand::f64()),
+                                error_rate: 0.006 * 0.15f64.mul_add(fastrand::f64(), 1.0),
                                 duration: 12.0,
                                 gate_type: "sqrt_ISwap".to_string(),
                             },
@@ -493,7 +492,7 @@ impl HardwareTopology {
                                 q1 as u32,
                                 q2 as u32,
                                 GateProperties {
-                                    error_rate: 0.006 * (1.0 + 0.15 * fastrand::f64()),
+                                    error_rate: 0.006 * 0.15f64.mul_add(fastrand::f64(), 1.0),
                                     duration: 12.0,
                                     gate_type: "sqrt_ISwap".to_string(),
                                 },
@@ -516,12 +515,12 @@ impl HardwareTopology {
             topo.add_qubit(QubitProperties {
                 id: i as u32,
                 index: i as u32,
-                t1: 15.0 + 3.0 * fastrand::f64(),
-                t2: 20.0 + 5.0 * fastrand::f64(),
-                single_qubit_gate_error: 0.0015 * (1.0 + 0.2 * fastrand::f64()),
-                gate_error_1q: 0.0015 * (1.0 + 0.2 * fastrand::f64()),
-                readout_error: 0.03 * (1.0 + 0.2 * fastrand::f64()),
-                frequency: 5.5 + 0.1 * fastrand::f64(),
+                t1: 3.0f64.mul_add(fastrand::f64(), 15.0),
+                t2: 5.0f64.mul_add(fastrand::f64(), 20.0),
+                single_qubit_gate_error: 0.0015 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                gate_error_1q: 0.0015 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                readout_error: 0.03 * 0.2f64.mul_add(fastrand::f64(), 1.0),
+                frequency: 0.1f64.mul_add(fastrand::f64(), 5.5),
             });
         }
 
@@ -546,7 +545,7 @@ impl HardwareTopology {
                 q1,
                 q2,
                 GateProperties {
-                    error_rate: 0.006 * (1.0 + 0.3 * fastrand::f64()),
+                    error_rate: 0.006 * 0.3f64.mul_add(fastrand::f64(), 1.0),
                     duration: 12.0,
                     gate_type: "sqrt_ISwap".to_string(),
                 },
@@ -561,7 +560,7 @@ impl HardwareTopology {
                 q1,
                 q2,
                 GateProperties {
-                    error_rate: 0.008 * (1.0 + 0.3 * fastrand::f64()),
+                    error_rate: 0.008 * 0.3f64.mul_add(fastrand::f64(), 1.0),
                     duration: 12.0,
                     gate_type: "sqrt_ISwap".to_string(),
                 },
@@ -572,7 +571,7 @@ impl HardwareTopology {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
@@ -622,7 +621,7 @@ impl HardwareTopology {
 
         // Use Dijkstra to find shortest path
         let distances = dijkstra(&self.connectivity, node1, Some(node2), |e| *e.weight());
-        distances.get(&node2).cloned()
+        distances.get(&node2).copied()
     }
 
     /// Simple connectivity analysis
@@ -662,7 +661,7 @@ impl HardwareTopology {
 
         for node in self.connectivity.node_indices() {
             let distances = dijkstra(&self.connectivity, node, None, |e| *e.weight());
-            for (&target, &dist) in distances.iter() {
+            for (&target, &dist) in &distances {
                 let src_idx = self.connectivity[node] as usize;
                 let tgt_idx = self.connectivity[target] as usize;
                 all_distances[src_idx][tgt_idx] = Some(dist);
@@ -681,7 +680,7 @@ impl HardwareTopology {
             }
         }
         let avg_distance = if count > 0 {
-            total_dist / count as f64
+            total_dist / f64::from(count)
         } else {
             0.0
         };
@@ -756,13 +755,13 @@ impl HardwareTopology {
                 }
 
                 let possible = k * (k - 1) / 2;
-                total_coeff += triangles as f64 / possible as f64;
+                total_coeff += f64::from(triangles) / possible as f64;
                 count += 1;
             }
         }
 
         if count > 0 {
-            total_coeff / count as f64
+            total_coeff / f64::from(count)
         } else {
             0.0
         }
@@ -967,7 +966,7 @@ impl TopologyAnalysis {
         report.push_str(&format!("  MST weight: {:.3}\n", self.mst_weight));
 
         if let Some(q) = self.most_connected_qubit {
-            report.push_str(&format!("  Most connected qubit: {}\n", q));
+            report.push_str(&format!("  Most connected qubit: {q}\n"));
         }
 
         report.push_str("\nQuality metrics:\n");
@@ -980,11 +979,11 @@ impl TopologyAnalysis {
             self.avg_coherence_time
         ));
 
-        report.push_str(&format!("\nDegree distribution:\n"));
+        report.push_str("\nDegree distribution:\n");
         let mut degrees: Vec<_> = self.degree_distribution.iter().collect();
         degrees.sort_by_key(|&(k, _)| k);
         for (degree, count) in degrees {
-            report.push_str(&format!("  {} connections: {} qubits\n", degree, count));
+            report.push_str(&format!("  {degree} connections: {count} qubits\n"));
         }
 
         report
@@ -1047,6 +1046,6 @@ mod tests {
                 break;
             }
         }
-        assert!(connected, "Subset {:?} is not connected", subset);
+        assert!(connected, "Subset {subset:?} is not connected");
     }
 }

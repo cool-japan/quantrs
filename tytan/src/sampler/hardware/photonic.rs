@@ -282,7 +282,7 @@ impl PhotonicIsingMachineSampler {
         // Set injection gains based on linear terms
         for i in 0..n {
             self.optical_network.borrow_mut().gain_loss[i] =
-                pump_power * (1.0 + 0.1 * qubo[[i, i]].tanh());
+                pump_power * 0.1f64.mul_add(qubo[[i, i]].tanh(), 1.0);
         }
 
         // Set mutual coupling based on quadratic terms
@@ -300,14 +300,14 @@ impl PhotonicIsingMachineSampler {
     }
 
     /// Configure spatial photonic network
-    fn configure_spatial_network(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
+    const fn configure_spatial_network(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
         // Map QUBO to spatial light modulator patterns
         // This would involve hologram computation
         Ok(())
     }
 
     /// Configure quantum photonic network
-    fn configure_quantum_network(
+    const fn configure_quantum_network(
         &self,
         _qubo: &Array2<f64>,
         _squeezing: f64,

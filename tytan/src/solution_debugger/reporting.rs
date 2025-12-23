@@ -112,7 +112,7 @@ impl DebugReport {
     pub fn generate_text_summary(&self) -> String {
         let mut summary = String::new();
 
-        summary.push_str(&format!("=== Solution Debug Report ===\n"));
+        summary.push_str("=== Solution Debug Report ===\n");
         summary.push_str(&format!(
             "Overall Score: {:.2}\n",
             self.summary.overall_score
@@ -256,7 +256,7 @@ impl DebugReport {
 
         // Summary section
         html.push_str("<div class='summary'>\n");
-        html.push_str(&format!("<h2>Summary</h2>\n"));
+        html.push_str("<h2>Summary</h2>\n");
         html.push_str(&format!(
             "<p><strong>Overall Score:</strong> {:.2}</p>\n",
             self.summary.overall_score

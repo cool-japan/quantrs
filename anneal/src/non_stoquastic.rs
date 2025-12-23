@@ -15,9 +15,9 @@
 //! - Quantum advantage detection and analysis
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::Complex as NComplex;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex as NComplex;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::time::{Duration, Instant};

@@ -4,8 +4,8 @@
 //! in large quantum circuit processing by centralizing buffer pools and
 //! implementing intelligent allocation strategies.
 
-use scirs2_core::Complex64;
 use quantrs2_core::buffer_pool::BufferPool;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -111,7 +111,7 @@ impl GlobalBufferManager {
 
         // Only pool common sizes to prevent excessive memory usage
         if size <= 1024 {
-            let pool = self.vector_pools.entry(size).or_insert_with(Vec::new);
+            let pool = self.vector_pools.entry(size).or_default();
             if pool.len() < 10 {
                 // Limit pool size
                 pool.push(vector);
@@ -154,7 +154,7 @@ impl GlobalBufferManager {
     }
 
     /// Get current memory statistics
-    pub fn get_stats(&self) -> &MemoryStats {
+    pub const fn get_stats(&self) -> &MemoryStats {
         &self.stats
     }
 
@@ -163,7 +163,7 @@ impl GlobalBufferManager {
         self.stats = MemoryStats::default();
     }
 
-    fn update_peak_usage(&mut self) {
+    const fn update_peak_usage(&mut self) {
         if self.stats.total_allocated > self.stats.peak_usage {
             self.stats.peak_usage = self.stats.total_allocated;
         }
@@ -182,6 +182,7 @@ impl BufferManager {
     }
 
     /// Allocate an f64 buffer through the global pool
+    #[must_use]
     pub fn alloc_f64_buffer(size: usize) -> Vec<f64> {
         Self::instance().lock().unwrap().get_f64_buffer(size)
     }
@@ -192,6 +193,7 @@ impl BufferManager {
     }
 
     /// Allocate a complex buffer through the global pool
+    #[must_use]
     pub fn alloc_complex_buffer(size: usize) -> Vec<Complex64> {
         Self::instance().lock().unwrap().get_complex_buffer(size)
     }
@@ -205,6 +207,7 @@ impl BufferManager {
     }
 
     /// Allocate a parameter buffer for gate operations
+    #[must_use]
     pub fn alloc_parameter_buffer(size: usize) -> Vec<f64> {
         Self::instance().lock().unwrap().get_parameter_buffer(size)
     }
@@ -218,6 +221,7 @@ impl BufferManager {
     }
 
     /// Get memory usage statistics
+    #[must_use]
     pub fn get_memory_stats() -> MemoryStats {
         Self::instance().lock().unwrap().get_stats().clone()
     }
@@ -240,6 +244,7 @@ pub struct ManagedF64Buffer {
 
 impl ManagedF64Buffer {
     /// Create a managed buffer that will be automatically returned to pool
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             buffer: Some(BufferManager::alloc_f64_buffer(size)),
@@ -247,16 +252,18 @@ impl ManagedF64Buffer {
     }
 
     /// Get mutable access to the buffer
-    pub fn as_mut(&mut self) -> &mut Vec<f64> {
+    pub const fn as_mut(&mut self) -> &mut Vec<f64> {
         self.buffer.as_mut().unwrap()
     }
 
     /// Get immutable access to the buffer
-    pub fn as_ref(&self) -> &Vec<f64> {
+    #[must_use]
+    pub const fn as_ref(&self) -> &Vec<f64> {
         self.buffer.as_ref().unwrap()
     }
 
     /// Take ownership of the buffer (preventing automatic return)
+    #[must_use]
     pub fn take(mut self) -> Vec<f64> {
         self.buffer.take().unwrap()
     }
@@ -276,20 +283,23 @@ pub struct ManagedComplexBuffer {
 }
 
 impl ManagedComplexBuffer {
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             buffer: Some(BufferManager::alloc_complex_buffer(size)),
         }
     }
 
-    pub fn as_mut(&mut self) -> &mut Vec<Complex64> {
+    pub const fn as_mut(&mut self) -> &mut Vec<Complex64> {
         self.buffer.as_mut().unwrap()
     }
 
-    pub fn as_ref(&self) -> &Vec<Complex64> {
+    #[must_use]
+    pub const fn as_ref(&self) -> &Vec<Complex64> {
         self.buffer.as_ref().unwrap()
     }
 
+    #[must_use]
     pub fn take(mut self) -> Vec<Complex64> {
         self.buffer.take().unwrap()
     }

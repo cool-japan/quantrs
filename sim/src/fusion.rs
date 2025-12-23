@@ -103,7 +103,7 @@ pub struct GateFusion {
 
 impl GateFusion {
     /// Create a new gate fusion optimizer
-    pub fn new(strategy: FusionStrategy) -> Self {
+    pub const fn new(strategy: FusionStrategy) -> Self {
         Self {
             strategy,
             max_fusion_qubits: 4,
@@ -113,7 +113,12 @@ impl GateFusion {
     }
 
     /// Configure fusion parameters
-    pub fn with_params(mut self, max_qubits: usize, min_gates: usize, threshold: f64) -> Self {
+    pub const fn with_params(
+        mut self,
+        max_qubits: usize,
+        min_gates: usize,
+        threshold: f64,
+    ) -> Self {
         self.max_fusion_qubits = max_qubits;
         self.min_fusion_gates = min_gates;
         self.cost_threshold = threshold;
@@ -133,7 +138,7 @@ impl GateFusion {
             // Start a new group
             let mut group = GateGroup {
                 gate_indices: vec![i],
-                qubits: gates[i].qubits().to_vec(),
+                qubits: gates[i].qubits().clone(),
                 fusable: false,
                 fusion_cost: 0.0,
             };
@@ -188,8 +193,8 @@ impl GateFusion {
     /// Check if a gate can be fused with a group
     fn can_fuse_with_group(&self, group: &GateGroup, gate: &dyn GateOp) -> bool {
         // Gate must share at least one qubit with the group
-        let gate_qubits: HashSet<_> = gate.qubits().iter().cloned().collect();
-        let group_qubits: HashSet<_> = group.qubits.iter().cloned().collect();
+        let gate_qubits: HashSet<_> = gate.qubits().iter().copied().collect();
+        let group_qubits: HashSet<_> = group.qubits.iter().copied().collect();
 
         match self.strategy {
             FusionStrategy::Aggressive => {
@@ -203,7 +208,7 @@ impl GateFusion {
             FusionStrategy::DepthOptimized => {
                 // Fuse if it doesn't increase qubit count too much
                 let combined_qubits: HashSet<_> =
-                    gate_qubits.union(&group_qubits).cloned().collect();
+                    gate_qubits.union(&group_qubits).copied().collect();
                 combined_qubits.len() <= self.max_fusion_qubits
             }
             FusionStrategy::Custom => {
@@ -216,8 +221,8 @@ impl GateFusion {
     /// Check if a gate blocks fusion
     fn blocks_fusion(&self, group: &GateGroup, gate: &dyn GateOp) -> bool {
         // A gate blocks fusion if it acts on some but not all qubits of the group
-        let gate_qubits: HashSet<_> = gate.qubits().iter().cloned().collect();
-        let group_qubits: HashSet<_> = group.qubits.iter().cloned().collect();
+        let gate_qubits: HashSet<_> = gate.qubits().iter().copied().collect();
+        let group_qubits: HashSet<_> = group.qubits.iter().copied().collect();
 
         let intersection = gate_qubits.intersection(&group_qubits).count();
         intersection > 0 && intersection < group_qubits.len()
@@ -418,7 +423,7 @@ impl GateFusion {
         for group in &groups {
             if group.fusable && group.gate_indices.len() > 1 {
                 // Fuse this group
-                let fused = self.fuse_group(&group, &gates, num_qubits)?;
+                let fused = self.fuse_group(group, &gates, num_qubits)?;
                 let fused_idx = optimized_gates.len();
                 optimized_gates.push(OptimizedGate::Fused(fused));
 
@@ -577,7 +582,7 @@ pub fn benchmark_fusion_strategies(gates: Vec<Box<dyn GateOp>>, num_qubits: usiz
         let optimized = fusion.optimize_circuit(gates.clone(), num_qubits)?;
         let elapsed = start.elapsed();
 
-        println!("\n{:?} Strategy:", strategy);
+        println!("\n{strategy:?} Strategy:");
         println!("  Gates after fusion: {}", optimized.gate_count());
         println!(
             "  Fusion ratio: {:.2}%",
@@ -591,7 +596,7 @@ pub fn benchmark_fusion_strategies(gates: Vec<Box<dyn GateOp>>, num_qubits: usiz
             "  Memory usage: {:.2} MB",
             optimized.memory_usage() as f64 / 1e6
         );
-        println!("  Optimization time: {:?}", elapsed);
+        println!("  Optimization time: {elapsed:?}");
     }
 
     Ok(())

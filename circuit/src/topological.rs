@@ -39,31 +39,34 @@ pub enum AnyonType {
 
 impl AnyonType {
     /// Get the quantum dimension of the anyon
+    #[must_use]
     pub fn quantum_dimension(&self) -> f64 {
         match self {
-            AnyonType::Vacuum => 1.0,
-            AnyonType::Ising => (2.0_f64).sqrt(),
-            AnyonType::Fibonacci => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
-            AnyonType::Majorana => (2.0_f64).sqrt(),
-            AnyonType::SU2 { level } => (*level as f64 + 1.0).sqrt(),
-            AnyonType::Parafermion { n } => (2.0 * (*n as f64)).sqrt(),
-            AnyonType::Custom {
+            Self::Vacuum => 1.0,
+            Self::Ising => (2.0_f64).sqrt(),
+            Self::Fibonacci => f64::midpoint(1.0, 5.0_f64.sqrt()), // Golden ratio
+            Self::Majorana => (2.0_f64).sqrt(),
+            Self::SU2 { level } => (*level as f64 + 1.0).sqrt(),
+            Self::Parafermion { n } => (2.0 * (*n as f64)).sqrt(),
+            Self::Custom {
                 quantum_dimension, ..
             } => *quantum_dimension,
         }
     }
 
     /// Check if this anyon type is Abelian
-    pub fn is_abelian(&self) -> bool {
-        matches!(self, AnyonType::Vacuum)
+    #[must_use]
+    pub const fn is_abelian(&self) -> bool {
+        matches!(self, Self::Vacuum)
     }
 
     /// Check if this anyon type supports universal quantum computation
-    pub fn is_universal(&self) -> bool {
+    #[must_use]
+    pub const fn is_universal(&self) -> bool {
         match self {
-            AnyonType::Fibonacci => true,
-            AnyonType::SU2 { level } => *level >= 3,
-            AnyonType::Parafermion { n } => *n >= 3,
+            Self::Fibonacci => true,
+            Self::SU2 { level } => *level >= 3,
+            Self::Parafermion { n } => *n >= 3,
             _ => false,
         }
     }
@@ -93,7 +96,8 @@ pub struct Anyon {
 
 impl Anyon {
     /// Create a new anyon
-    pub fn new(id: usize, anyon_type: AnyonType, position: (f64, f64)) -> Self {
+    #[must_use]
+    pub const fn new(id: usize, anyon_type: AnyonType, position: (f64, f64)) -> Self {
         Self {
             id,
             anyon_type,
@@ -103,7 +107,8 @@ impl Anyon {
     }
 
     /// Check if this anyon can fuse with another
-    pub fn can_fuse_with(&self, other: &Anyon) -> bool {
+    #[must_use]
+    pub fn can_fuse_with(&self, other: &Self) -> bool {
         // For now, allow fusion between same types or with vacuum
         self.anyon_type == other.anyon_type
             || self.anyon_type == AnyonType::Vacuum
@@ -125,7 +130,7 @@ pub struct BraidingOperation {
 }
 
 /// Types of braiding operations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BraidingType {
     /// Clockwise braiding
     Clockwise,
@@ -173,7 +178,7 @@ pub enum TopologicalGate {
 }
 
 /// Fusion measurement basis
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FusionBasis {
     /// Vacuum channel
     Vacuum,
@@ -238,7 +243,7 @@ pub struct Path {
 }
 
 /// Types of braiding paths
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathType {
     /// Straight line
     Straight,
@@ -273,6 +278,7 @@ pub struct AnyonModel {
 
 impl AnyonModel {
     /// Create Fibonacci anyon model
+    #[must_use]
     pub fn fibonacci() -> Self {
         let fusion_rules = vec![(
             AnyonType::Fibonacci,
@@ -296,6 +302,7 @@ impl AnyonModel {
     }
 
     /// Create Ising anyon model
+    #[must_use]
     pub fn ising() -> Self {
         let fusion_rules = vec![(
             AnyonType::Ising,
@@ -334,7 +341,7 @@ pub struct BraidingOptimizer {
 }
 
 /// Optimization strategies for braiding
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationStrategy {
     /// Minimize total braiding length
     MinimizeLength,
@@ -359,7 +366,8 @@ pub struct LayoutOptimizer {
 
 impl TopologicalCompiler {
     /// Create a new topological compiler
-    pub fn new(anyon_model: AnyonModel) -> Self {
+    #[must_use]
+    pub const fn new(anyon_model: AnyonModel) -> Self {
         Self {
             default_anyon_model: anyon_model,
             braiding_optimizer: BraidingOptimizer {
@@ -443,8 +451,7 @@ impl TopologicalCompiler {
             "CNOT" => self.compile_cnot_gate(&qubits, anyons),
             "T" => self.compile_t_gate(&qubits, anyons),
             _ => Err(QuantRS2Error::InvalidInput(format!(
-                "Gate {} not supported in topological compilation",
-                gate_name
+                "Gate {gate_name} not supported in topological compilation"
             ))),
         }
     }
@@ -625,7 +632,7 @@ impl TopologicalCompiler {
 
     /// Create layout for the topological circuit
     fn create_layout(&self, num_qubits: usize) -> QuantRS2Result<TopologicalLayout> {
-        let width = (num_qubits as f64 * 2.0 + 2.0).max(10.0);
+        let width = (num_qubits as f64).mul_add(2.0, 2.0).max(10.0);
         let height = 10.0;
 
         Ok(TopologicalLayout {
@@ -680,31 +687,43 @@ impl TopologicalCompiler {
     }
 
     /// Count braiding crossings
-    fn count_braiding_crossings(&self, braidings: &[BraidingOperation]) -> usize {
+    const fn count_braiding_crossings(&self, braidings: &[BraidingOperation]) -> usize {
         // Simplified crossing count
         braidings.len()
     }
 
     /// Optimize for minimum length
-    fn optimize_for_length(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_length(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement length optimization
         Ok(())
     }
 
     /// Optimize for minimum crossings
-    fn optimize_for_crossings(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_crossings(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement crossing optimization
         Ok(())
     }
 
     /// Optimize for minimum time
-    fn optimize_for_time(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_for_time(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement time optimization
         Ok(())
     }
 
     /// Balanced optimization
-    fn optimize_balanced(&self, braidings: &mut Vec<BraidingOperation>) -> QuantRS2Result<()> {
+    const fn optimize_balanced(
+        &self,
+        braidings: &mut Vec<BraidingOperation>,
+    ) -> QuantRS2Result<()> {
         // Implement balanced optimization
         Ok(())
     }
@@ -723,6 +742,7 @@ pub struct OptimizationStats {
 
 impl TopologicalCircuit {
     /// Calculate the total number of braiding operations
+    #[must_use]
     pub fn total_braiding_operations(&self) -> usize {
         self.braiding_sequence
             .iter()
@@ -731,11 +751,13 @@ impl TopologicalCircuit {
     }
 
     /// Get the number of anyons
+    #[must_use]
     pub fn anyon_count(&self) -> usize {
         self.anyons.len()
     }
 
     /// Check if the circuit uses universal anyons
+    #[must_use]
     pub fn is_universal(&self) -> bool {
         self.anyons
             .values()
@@ -743,6 +765,7 @@ impl TopologicalCircuit {
     }
 
     /// Calculate circuit depth in terms of braiding layers
+    #[must_use]
     pub fn braiding_depth(&self) -> usize {
         // Simplified depth calculation
         self.braiding_sequence.len()

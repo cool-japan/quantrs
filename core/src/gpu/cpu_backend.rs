@@ -3,8 +3,6 @@
 //! This provides a CPU-based fallback implementation of the GPU backend
 //! interface, useful for testing and systems without GPU support.
 
-#![allow(clippy::elided_lifetimes_in_paths)]
-
 use super::{GpuBackend, GpuBuffer, GpuKernel};
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
@@ -372,7 +370,9 @@ impl GpuBackend for CpuBackend {
     }
 
     fn device_info(&self) -> String {
-        format!("CPU backend with {} threads", rayon::current_num_threads())
+        // Use scirs2_core::parallel_ops (SciRS2 POLICY compliant)
+        use scirs2_core::parallel_ops::current_num_threads;
+        format!("CPU backend with {} threads", current_num_threads())
     }
 
     fn allocate_state_vector(&self, n_qubits: usize) -> QuantRS2Result<Box<dyn GpuBuffer>> {

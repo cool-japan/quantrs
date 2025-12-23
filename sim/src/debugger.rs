@@ -338,8 +338,7 @@ impl<const N: usize> QuantumDebugger<N> {
     pub fn remove_watchpoint(&mut self, id: &str) -> Result<()> {
         if self.watchpoints.remove(id).is_none() {
             return Err(SimulatorError::InvalidInput(format!(
-                "Watchpoint '{}' not found",
-                id
+                "Watchpoint '{id}' not found"
             )));
         }
         Ok(())
@@ -434,7 +433,7 @@ impl<const N: usize> QuantumDebugger<N> {
     pub fn run(&mut self) -> Result<StepResult> {
         loop {
             match self.step()? {
-                StepResult::Continue => continue,
+                StepResult::Continue => {}
                 result => return Ok(result),
             }
         }
@@ -446,7 +445,7 @@ impl<const N: usize> QuantumDebugger<N> {
         if let Some(ref mps) = self.mps_simulator {
             return mps
                 .to_statevector()
-                .map_err(|e| SimulatorError::UnsupportedOperation(format!("MPS error: {}", e)));
+                .map_err(|e| SimulatorError::UnsupportedOperation(format!("MPS error: {e}")));
         }
 
         // Return the state from the state vector simulator
@@ -474,7 +473,7 @@ impl<const N: usize> QuantumDebugger<N> {
         if let Some(ref mps) = self.mps_simulator {
             return mps
                 .expectation_value_pauli(pauli_string)
-                .map_err(|e| SimulatorError::UnsupportedOperation(format!("MPS error: {}", e)));
+                .map_err(|e| SimulatorError::UnsupportedOperation(format!("MPS error: {e}")));
         }
 
         let state = self.get_current_state()?;
@@ -482,12 +481,12 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Get performance metrics
-    pub fn get_metrics(&self) -> &PerformanceMetrics {
+    pub const fn get_metrics(&self) -> &PerformanceMetrics {
         &self.metrics
     }
 
     /// Get all snapshots
-    pub fn get_snapshots(&self) -> &VecDeque<ExecutionSnapshot> {
+    pub const fn get_snapshots(&self) -> &VecDeque<ExecutionSnapshot> {
         &self.snapshots
     }
 
@@ -497,22 +496,22 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Get all watchpoints
-    pub fn get_watchpoints(&self) -> &HashMap<String, Watchpoint> {
+    pub const fn get_watchpoints(&self) -> &HashMap<String, Watchpoint> {
         &self.watchpoints
     }
 
     /// Check if execution is finished
-    pub fn is_finished(&self) -> bool {
+    pub const fn is_finished(&self) -> bool {
         matches!(self.execution_state, ExecutionState::Finished)
     }
 
     /// Check if execution is paused
-    pub fn is_paused(&self) -> bool {
+    pub const fn is_paused(&self) -> bool {
         matches!(self.execution_state, ExecutionState::Paused { .. })
     }
 
     /// Get current execution state
-    pub fn get_execution_state(&self) -> &ExecutionState {
+    pub const fn get_execution_state(&self) -> &ExecutionState {
         &self.execution_state
     }
 
@@ -565,15 +564,14 @@ impl<const N: usize> QuantumDebugger<N> {
             match breakpoint {
                 BreakCondition::GateIndex(target) => {
                     if self.current_gate == *target {
-                        return Ok(Some(format!("Reached gate index {}", target)));
+                        return Ok(Some(format!("Reached gate index {target}")));
                     }
                 }
                 BreakCondition::EntanglementThreshold { cut, threshold } => {
                     let entropy = self.get_entanglement_entropy(*cut)?;
                     if entropy > *threshold {
                         return Ok(Some(format!(
-                            "Entanglement entropy {:.4} > {:.4} at cut {}",
-                            entropy, threshold, cut
+                            "Entanglement entropy {entropy:.4} > {threshold:.4} at cut {cut}"
                         )));
                     }
                 }
@@ -590,8 +588,7 @@ impl<const N: usize> QuantumDebugger<N> {
                     };
                     if hit {
                         return Ok(Some(format!(
-                            "Observable {} = {:.4} crossed threshold {:.4}",
-                            observable, expectation, threshold
+                            "Observable {observable} = {expectation:.4} crossed threshold {threshold:.4}"
                         )));
                     }
                 }
@@ -660,7 +657,7 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(entropies)
     }
 
-    fn analyze_entanglement(&self) -> EntanglementAnalysis {
+    const fn analyze_entanglement(&self) -> EntanglementAnalysis {
         // Analyze entanglement patterns from snapshots and watchpoints
         EntanglementAnalysis {
             max_entropy: self.metrics.max_entanglement,
@@ -669,7 +666,7 @@ impl<const N: usize> QuantumDebugger<N> {
         }
     }
 
-    fn analyze_state(&self) -> StateAnalysis {
+    const fn analyze_state(&self) -> StateAnalysis {
         // Analyze quantum state properties
         StateAnalysis {
             is_separable: false,      // Would compute this
@@ -770,7 +767,10 @@ fn compute_entanglement_entropy(
 }
 
 /// Compute Pauli expectation value from state vector
-fn compute_pauli_expectation(state: &Array1<Complex64>, pauli_string: &str) -> Result<Complex64> {
+const fn compute_pauli_expectation(
+    state: &Array1<Complex64>,
+    pauli_string: &str,
+) -> Result<Complex64> {
     // Simplified implementation - would need proper Pauli string evaluation
     Ok(Complex64::new(0.0, 0.0))
 }

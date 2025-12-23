@@ -128,7 +128,7 @@ impl Eq for LogicalGateType {}
 impl std::hash::Hash for LogicalGateType {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::mem::discriminant(self).hash(state);
-        if let LogicalGateType::LogicalRotation(angle) = self {
+        if let Self::LogicalRotation(angle) = self {
             // Convert float to bits for consistent hashing
             angle.to_bits().hash(state);
         }
@@ -362,13 +362,10 @@ impl FaultTolerantSynthesizer {
         };
 
         // Initialize based on error correction code
-        match config.error_correction_code {
-            ErrorCorrectionCode::SurfaceCode => {
-                synthesizer.surface_code = Some(synthesizer.create_surface_code()?);
-            }
-            _ => {
-                // Initialize other codes as needed
-            }
+        if config.error_correction_code == ErrorCorrectionCode::SurfaceCode {
+            synthesizer.surface_code = Some(synthesizer.create_surface_code()?);
+        } else {
+            // Initialize other codes as needed
         }
 
         // Initialize magic state protocols
@@ -480,8 +477,7 @@ impl FaultTolerantSynthesizer {
                 self.synthesize_logical_rotation(logical_qubits, angle)
             }
             _ => Err(SimulatorError::InvalidConfiguration(format!(
-                "Unsupported logical gate type: {:?}",
-                gate_type
+                "Unsupported logical gate type: {gate_type:?}"
             ))),
         }
     }
@@ -1372,7 +1368,7 @@ impl FaultTolerantSynthesizer {
                 time_steps: num_t_gates * 2,
                 ancilla_qubits: 10,
             },
-            error_rate: 0.001 * (1.0 + num_t_gates as f64 * 0.001),
+            error_rate: 0.001 * (num_t_gates as f64).mul_add(0.001, 1.0),
         })
     }
 
@@ -1382,7 +1378,7 @@ impl FaultTolerantSynthesizer {
         total: &mut ResourceRequirements,
         gate: &ResourceRequirements,
     ) {
-        self.update_resources(total, gate)
+        self.update_resources(total, gate);
     }
 
     /// Calculate optimal distance (public version)

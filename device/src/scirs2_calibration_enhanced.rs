@@ -9,17 +9,16 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use rayon::prelude::*;
-// use scirs2_core::parallel_ops::*;
-// use scirs2_core::memory::BufferPool;
-// use scirs2_core::platform::PlatformCapabilities;
-// use scirs2_optimize::system_identification::{SystemIdentifier, ModelType, EstimationMethod};
-// use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
-// use scirs2_sparse::CSRMatrix;
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+                                  // use scirs2_core::memory::BufferPool;
+                                  // use scirs2_core::platform::PlatformCapabilities;
+                                  // use scirs2_optimize::system_identification::{SystemIdentifier, ModelType, EstimationMethod};
+                                  // use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
+                                  // use scirs2_sparse::CSRMatrix;
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView2};
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::{Distribution, RandNormal};
+use scirs2_core::Complex64;
 // Alias for backward compatibility
 type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};

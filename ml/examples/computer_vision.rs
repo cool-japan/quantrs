@@ -4,9 +4,9 @@
 //! various tasks including classification, object detection, segmentation,
 //! and feature extraction using quantum circuits and quantum machine learning.
 
-use scirs2_core::ndarray::{Array2, Array3, Array4};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qcnn::PoolingType;
+use scirs2_core::ndarray::{Array2, Array3, Array4};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -74,7 +74,7 @@ fn image_encoding_demo() -> Result<()> {
     let test_image = create_test_image(1, 3, 64, 64)?;
 
     for (name, method) in encoding_methods {
-        println!("\n   --- {} ---", name);
+        println!("\n   --- {name} ---");
 
         let encoder = QuantumImageEncoder::new(method, 12)?;
 
@@ -206,7 +206,7 @@ fn vision_backbone_demo() -> Result<()> {
     ];
 
     for (name, config) in backbones {
-        println!("\n   --- {} Backbone ---", name);
+        println!("\n   --- {name} Backbone ---");
 
         let mut pipeline = QuantumVisionPipeline::new(config)?;
 
@@ -214,15 +214,13 @@ fn vision_backbone_demo() -> Result<()> {
         let test_images = create_test_image(2, 3, 224, 224)?;
         let output = pipeline.forward(&test_images)?;
 
-        match &output {
-            TaskOutput::Classification {
-                logits,
-                probabilities,
-            } => {
-                println!("   Output shape: {:?}", logits.dim());
-                println!("   Probability shape: {:?}", probabilities.dim());
-            }
-            _ => {}
+        if let TaskOutput::Classification {
+            logits,
+            probabilities,
+        } = &output
+        {
+            println!("   Output shape: {:?}", logits.dim());
+            println!("   Probability shape: {:?}", probabilities.dim());
         }
 
         // Get metrics
@@ -309,25 +307,21 @@ fn classification_demo() -> Result<()> {
     let test_images = create_test_image(5, 3, 224, 224)?;
     let predictions = pipeline.forward(&test_images)?;
 
-    match predictions {
-        TaskOutput::Classification { probabilities, .. } => {
-            for (i, prob_row) in probabilities.outer_iter().enumerate() {
-                let (predicted_class, confidence) = prob_row
-                    .iter()
-                    .enumerate()
-                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                    .map(|(idx, &prob)| (idx, prob))
-                    .unwrap_or((0, 0.0));
+    if let TaskOutput::Classification { probabilities, .. } = predictions {
+        for (i, prob_row) in probabilities.outer_iter().enumerate() {
+            let (predicted_class, confidence) = prob_row
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .map_or((0, 0.0), |(idx, &prob)| (idx, prob));
 
-                println!(
-                    "   Image {}: Class {} (confidence: {:.2}%)",
-                    i + 1,
-                    predicted_class,
-                    confidence * 100.0
-                );
-            }
+            println!(
+                "   Image {}: Class {} (confidence: {:.2}%)",
+                i + 1,
+                predicted_class,
+                confidence * 100.0
+            );
         }
-        _ => {}
     }
 
     // Analyze quantum advantage
@@ -368,44 +362,49 @@ fn object_detection_demo() -> Result<()> {
     // Run detection
     let detections = pipeline.forward(&test_images)?;
 
-    match detections {
-        TaskOutput::Detection {
-            boxes,
-            scores,
-            classes,
-        } => {
-            println!("   Detection results:");
+    if let TaskOutput::Detection {
+        boxes,
+        scores,
+        classes,
+    } = detections
+    {
+        println!("   Detection results:");
 
-            for batch_idx in 0..boxes.dim().0 {
-                println!("\n   Image {}:", batch_idx + 1);
+        for batch_idx in 0..boxes.dim().0 {
+            println!("\n   Image {}:", batch_idx + 1);
 
-                // Filter detections by score threshold
-                let threshold = 0.5;
-                let mut num_detections = 0;
+            // Filter detections by score threshold
+            let threshold = 0.5;
+            let mut num_detections = 0;
 
-                for det_idx in 0..boxes.dim().1 {
-                    let score = scores[[batch_idx, det_idx]];
+            for det_idx in 0..boxes.dim().1 {
+                let score = scores[[batch_idx, det_idx]];
 
-                    if score > threshold {
-                        let class_id = classes[[batch_idx, det_idx]];
-                        let bbox = boxes.slice(scirs2_core::ndarray::s![batch_idx, det_idx, ..]);
+                if score > threshold {
+                    let class_id = classes[[batch_idx, det_idx]];
+                    let bbox = boxes.slice(scirs2_core::ndarray::s![batch_idx, det_idx, ..]);
 
-                        println!("   - Object {}: Class {}, Score {:.3}, Box [{:.1}, {:.1}, {:.1}, {:.1}]",
-                            num_detections + 1, class_id, score,
-                            bbox[0], bbox[1], bbox[2], bbox[3]);
+                    println!(
+                        "   - Object {}: Class {}, Score {:.3}, Box [{:.1}, {:.1}, {:.1}, {:.1}]",
+                        num_detections + 1,
+                        class_id,
+                        score,
+                        bbox[0],
+                        bbox[1],
+                        bbox[2],
+                        bbox[3]
+                    );
 
-                        num_detections += 1;
-                    }
-                }
-
-                if num_detections == 0 {
-                    println!("   - No objects detected above threshold");
-                } else {
-                    println!("   Total objects detected: {}", num_detections);
+                    num_detections += 1;
                 }
             }
+
+            if num_detections == 0 {
+                println!("   - No objects detected above threshold");
+            } else {
+                println!("   Total objects detected: {num_detections}");
+            }
         }
-        _ => {}
     }
 
     // Analyze detection performance
@@ -433,37 +432,35 @@ fn segmentation_demo() -> Result<()> {
     // Run segmentation
     let segmentation = pipeline.forward(&test_images)?;
 
-    match segmentation {
-        TaskOutput::Segmentation {
-            masks,
-            class_scores,
-        } => {
-            println!("   Segmentation results:");
-            println!("   - Mask shape: {:?}", masks.dim());
-            println!("   - Class scores shape: {:?}", class_scores.dim());
+    if let TaskOutput::Segmentation {
+        masks,
+        class_scores,
+    } = segmentation
+    {
+        println!("   Segmentation results:");
+        println!("   - Mask shape: {:?}", masks.dim());
+        println!("   - Class scores shape: {:?}", class_scores.dim());
 
-            // Analyze segmentation quality
-            let seg_metrics = analyze_segmentation_quality(&masks, &class_scores)?;
-            println!("\n   Segmentation metrics:");
-            println!("   - Mean IoU: {:.3}", seg_metrics.mean_iou);
-            println!(
-                "   - Pixel accuracy: {:.1}%",
-                seg_metrics.pixel_accuracy * 100.0
-            );
-            println!(
-                "   - Boundary precision: {:.3}",
-                seg_metrics.boundary_precision
-            );
+        // Analyze segmentation quality
+        let seg_metrics = analyze_segmentation_quality(&masks, &class_scores)?;
+        println!("\n   Segmentation metrics:");
+        println!("   - Mean IoU: {:.3}", seg_metrics.mean_iou);
+        println!(
+            "   - Pixel accuracy: {:.1}%",
+            seg_metrics.pixel_accuracy * 100.0
+        );
+        println!(
+            "   - Boundary precision: {:.3}",
+            seg_metrics.boundary_precision
+        );
 
-            // Class distribution
-            println!("\n   Predicted class distribution:");
-            let class_counts = compute_class_distribution(&masks)?;
-            for (class_id, count) in class_counts.iter().take(5) {
-                let percentage = *count as f64 / (512.0 * 512.0) * 100.0;
-                println!("   - Class {}: {:.1}% of pixels", class_id, percentage);
-            }
+        // Class distribution
+        println!("\n   Predicted class distribution:");
+        let class_counts = compute_class_distribution(&masks)?;
+        for (class_id, count) in class_counts.iter().take(5) {
+            let percentage = *count as f64 / (512.0 * 512.0) * 100.0;
+            println!("   - Class {class_id}: {percentage:.1}% of pixels");
         }
-        _ => {}
     }
 
     // Quantum advantages for segmentation
@@ -514,51 +511,49 @@ fn feature_extraction_demo() -> Result<()> {
     let num_images = 10;
     let test_images = create_test_image(num_images, 3, 224, 224)?;
 
-    println!("   Extracting features from {} images...", num_images);
+    println!("   Extracting features from {num_images} images...");
 
     let features_output = pipeline.forward(&test_images)?;
 
-    match features_output {
-        TaskOutput::Features {
-            features,
-            attention_maps,
-        } => {
-            println!("   Feature extraction results:");
-            println!("   - Feature dimension: {}", features.dim().1);
-            println!("   - Features normalized: Yes");
+    if let TaskOutput::Features {
+        features,
+        attention_maps,
+    } = features_output
+    {
+        println!("   Feature extraction results:");
+        println!("   - Feature dimension: {}", features.dim().1);
+        println!("   - Features normalized: Yes");
 
-            // Compute feature statistics
-            let feature_stats = compute_feature_statistics(&features)?;
-            println!("\n   Feature statistics:");
-            println!("   - Mean magnitude: {:.4}", feature_stats.mean_magnitude);
-            println!("   - Variance: {:.4}", feature_stats.variance);
-            println!("   - Sparsity: {:.1}%", feature_stats.sparsity * 100.0);
+        // Compute feature statistics
+        let feature_stats = compute_feature_statistics(&features)?;
+        println!("\n   Feature statistics:");
+        println!("   - Mean magnitude: {:.4}", feature_stats.mean_magnitude);
+        println!("   - Variance: {:.4}", feature_stats.variance);
+        println!("   - Sparsity: {:.1}%", feature_stats.sparsity * 100.0);
 
-            // Compute pairwise similarities
-            println!("\n   Feature similarity matrix (first 5 images):");
-            let similarities = compute_cosine_similarities(&features)?;
+        // Compute pairwise similarities
+        println!("\n   Feature similarity matrix (first 5 images):");
+        let similarities = compute_cosine_similarities(&features)?;
 
-            print!("       ");
-            for i in 0..5.min(num_images) {
-                print!("Img{}  ", i + 1);
+        print!("       ");
+        for i in 0..5.min(num_images) {
+            print!("Img{}  ", i + 1);
+        }
+        println!();
+
+        for i in 0..5.min(num_images) {
+            print!("   Img{} ", i + 1);
+            for j in 0..5.min(num_images) {
+                print!("{:.3} ", similarities[[i, j]]);
             }
             println!();
-
-            for i in 0..5.min(num_images) {
-                print!("   Img{} ", i + 1);
-                for j in 0..5.min(num_images) {
-                    print!("{:.3} ", similarities[[i, j]]);
-                }
-                println!();
-            }
-
-            // Quantum feature properties
-            println!("\n   Quantum feature properties:");
-            println!("   - Entanglement enhances discriminative power");
-            println!("   - Quantum superposition encodes multiple views");
-            println!("   - Phase information captures subtle variations");
         }
-        _ => {}
+
+        // Quantum feature properties
+        println!("\n   Quantum feature properties:");
+        println!("   - Entanglement enhances discriminative power");
+        println!("   - Quantum superposition encodes multiple views");
+        println!("   - Phase information captures subtle variations");
     }
 
     Ok(())
@@ -616,7 +611,7 @@ fn multitask_demo() -> Result<()> {
     let test_images = create_test_image(2, 3, 416, 416)?;
 
     for (task_name, task_config) in tasks {
-        println!("\n   --- {} Task ---", task_name);
+        println!("\n   --- {task_name} Task ---");
 
         let mut config = base_config.clone();
         config.task_config = task_config;
@@ -739,13 +734,10 @@ fn performance_analysis_demo() -> Result<()> {
     println!("   -----------|----------------|------------");
 
     for size in image_sizes {
-        let inference_time = 5.0 + (size as f64 / 100.0).powi(2);
+        let inference_time = (f64::from(size) / 100.0).mul_add(f64::from(size) / 100.0, 5.0);
         let throughput = 1000.0 / inference_time;
 
-        println!(
-            "   {}x{}   | {:.1}ms        | {:.0} img/s",
-            size, size, inference_time, throughput
-        );
+        println!("   {size}x{size}   | {inference_time:.1}ms        | {throughput:.0} img/s");
     }
 
     // Quantum advantages summary
@@ -778,8 +770,8 @@ fn create_test_image(
         (batch, channels, height, width),
         |(b, c, h, w)| {
             // Create synthetic image with patterns
-            let pattern1 = ((h as f64 * 0.1).sin() + 1.0) / 2.0;
-            let pattern2 = ((w as f64 * 0.1).cos() + 1.0) / 2.0;
+            let pattern1 = f64::midpoint((h as f64 * 0.1).sin(), 1.0);
+            let pattern2 = f64::midpoint((w as f64 * 0.1).cos(), 1.0);
             let noise = 0.1 * (fastrand::f64() - 0.5);
 
             (pattern1 * pattern2 + noise) * (c as f64 + 1.0) / (channels as f64)
@@ -845,7 +837,7 @@ struct ClassificationAdvantage {
     training_speedup: f64,
 }
 
-fn analyze_classification_quantum_advantage(
+const fn analyze_classification_quantum_advantage(
     _pipeline: &QuantumVisionPipeline,
 ) -> Result<ClassificationAdvantage> {
     Ok(ClassificationAdvantage {
@@ -862,7 +854,7 @@ struct SegmentationMetrics {
     boundary_precision: f64,
 }
 
-fn analyze_segmentation_quality(
+const fn analyze_segmentation_quality(
     _masks: &Array4<f64>,
     _scores: &Array4<f64>,
 ) -> Result<SegmentationMetrics> {
@@ -887,7 +879,7 @@ struct FeatureStats {
 }
 
 fn compute_feature_statistics(features: &Array2<f64>) -> Result<FeatureStats> {
-    let mean_magnitude = features.mapv(|x| x.abs()).mean().unwrap_or(0.0);
+    let mean_magnitude = features.mapv(f64::abs).mean().unwrap_or(0.0);
     let variance = features.var(0.0);
     let num_zeros = features.iter().filter(|&&x| x.abs() < 1e-10).count();
     let sparsity = num_zeros as f64 / features.len() as f64;

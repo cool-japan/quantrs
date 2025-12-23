@@ -4,7 +4,11 @@
 
 use crate::builder::Circuit;
 use crate::optimization::cost_model::{CircuitCostExt, CostModel};
-use crate::optimization::passes::{OptimizationPassExt, *};
+use crate::optimization::passes::{
+    CircuitRewriting, CostBasedOptimization, CostTarget, DecompositionOptimization,
+    GateCancellation, GateCommutation, GateMerging, OptimizationPass, OptimizationPassExt,
+    PeepholeOptimization, RotationMerging, TemplateMatching, TwoQubitOptimization,
+};
 use quantrs2_core::error::QuantRS2Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -63,11 +67,13 @@ pub struct PassManager {
 
 impl PassManager {
     /// Create a new pass manager with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::with_level(OptimizationLevel::Medium)
     }
 
     /// Create a pass manager with a specific optimization level
+    #[must_use]
     pub fn with_level(level: OptimizationLevel) -> Self {
         let config = PassConfig {
             level,
@@ -84,6 +90,7 @@ impl PassManager {
     }
 
     /// Create a pass manager optimized for specific hardware
+    #[must_use]
     pub fn for_hardware(hardware: &str) -> Self {
         let mut config = PassConfig {
             level: OptimizationLevel::Medium,
@@ -95,15 +102,15 @@ impl PassManager {
         config.target_gates = match hardware {
             "ibm" => vec!["X", "Y", "Z", "H", "S", "T", "RZ", "CNOT", "CZ"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             "google" => vec!["X", "Y", "Z", "H", "RZ", "CZ", "SQRT_X"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             "aws" => vec!["X", "Y", "Z", "H", "RZ", "RX", "RY", "CNOT", "CZ"]
                 .into_iter()
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .collect(),
             _ => HashSet::new(),
         };
@@ -172,6 +179,7 @@ impl PassManager {
     }
 
     /// Get the list of applied passes
+    #[must_use]
     pub fn get_applied_passes(&self) -> Vec<String> {
         self.applied_passes.clone()
     }

@@ -33,7 +33,7 @@ impl Default for CpuMonitor {
 }
 
 impl CpuMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { active: false }
     }
 }
@@ -61,7 +61,7 @@ impl PerformanceMonitor for CpuMonitor {
         Ok(metrics)
     }
 
-    fn get_monitor_name(&self) -> &str {
+    fn get_monitor_name(&self) -> &'static str {
         "CPU Monitor"
     }
 
@@ -83,7 +83,7 @@ impl Default for MemoryMonitor {
 }
 
 impl MemoryMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { active: false }
     }
 }
@@ -111,7 +111,7 @@ impl PerformanceMonitor for MemoryMonitor {
         Ok(metrics)
     }
 
-    fn get_monitor_name(&self) -> &str {
+    fn get_monitor_name(&self) -> &'static str {
         "Memory Monitor"
     }
 
@@ -133,7 +133,7 @@ impl Default for IoMonitor {
 }
 
 impl IoMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { active: false }
     }
 }
@@ -161,7 +161,7 @@ impl PerformanceMonitor for IoMonitor {
         Ok(metrics)
     }
 
-    fn get_monitor_name(&self) -> &str {
+    fn get_monitor_name(&self) -> &'static str {
         "I/O Monitor"
     }
 
@@ -183,7 +183,7 @@ impl Default for NetworkMonitor {
 }
 
 impl NetworkMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { active: false }
     }
 }
@@ -211,7 +211,7 @@ impl PerformanceMonitor for NetworkMonitor {
         Ok(metrics)
     }
 
-    fn get_monitor_name(&self) -> &str {
+    fn get_monitor_name(&self) -> &'static str {
         "Network Monitor"
     }
 

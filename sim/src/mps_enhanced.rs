@@ -4,19 +4,19 @@
 //! with proper SVD decomposition, comprehensive gate support, and performance optimizations.
 
 use crate::scirs2_integration::SciRS2Backend;
-use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
-use ndarray_linalg::{qr::QR, svd::SVD};
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
 };
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::ndarray::ndarray_linalg::{QR, SVD}; // SciRS2 POLICY compliant
+use scirs2_core::ndarray::{array, s, Array1, Array2, Array3, Array4};
 use scirs2_core::parallel_ops::*;
-use std::f64::consts::{PI, SQRT_2};
 use scirs2_core::random::prelude::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
+use std::f64::consts::{PI, SQRT_2};
 
 /// Configuration for MPS simulator
 #[derive(Debug, Clone)]
@@ -35,7 +35,7 @@ pub struct MPSConfig {
 
 impl Default for MPSConfig {
     fn default() -> Self {
-        MPSConfig {
+        Self {
             max_bond_dim: 64,
             svd_threshold: 1e-10,
             use_randomized_svd: true,
@@ -273,7 +273,10 @@ impl EnhancedMPS {
     /// Apply two-qubit gate and decompose using SVD
     fn apply_and_decompose_two_qubit_gate(
         &mut self,
-        gate_array: &scirs2_core::ndarray::ArrayBase<scirs2_core::ndarray::OwnedRepr<Complex64>, scirs2_core::ndarray::Dim<[usize; 4]>>,
+        gate_array: &scirs2_core::ndarray::ArrayBase<
+            scirs2_core::ndarray::OwnedRepr<Complex64>,
+            scirs2_core::ndarray::Dim<[usize; 4]>,
+        >,
         left_qubit: usize,
         right_qubit: usize,
     ) -> QuantRS2Result<()> {
@@ -328,19 +331,16 @@ impl EnhancedMPS {
             "DEBUG apply_and_decompose: matrix shape = {:?}",
             matrix.shape()
         );
-        eprintln!("DEBUG apply_and_decompose: matrix = {:?}", matrix);
+        eprintln!("DEBUG apply_and_decompose: matrix = {matrix:?}");
 
         // Perform SVD with truncation
         let (u, s, vt) = self.truncated_svd(&matrix)?;
 
-        eprintln!(
-            "DEBUG apply_and_decompose: singular values before truncation = {:?}",
-            s
-        );
+        eprintln!("DEBUG apply_and_decompose: singular values before truncation = {s:?}");
 
         // Update tensors
         let new_bond = s.len();
-        eprintln!("DEBUG apply_and_decompose: new_bond = {}", new_bond);
+        eprintln!("DEBUG apply_and_decompose: new_bond = {new_bond}");
         self.tensors[left_qubit] = MPSTensor::new(u.into_shape((left_dim, 2, new_bond))?);
 
         // Absorb singular values into right tensor with parallel processing
@@ -392,7 +392,10 @@ impl EnhancedMPS {
         for i in 0..num_keep {
             accumulated_weight += s[i] * s[i];
             if accumulated_weight / total_weight
-                > 1.0 - self.config.svd_threshold * self.config.svd_threshold
+                > self
+                    .config
+                    .svd_threshold
+                    .mul_add(-self.config.svd_threshold, 1.0)
             {
                 num_keep = i + 1;
                 break;
@@ -444,13 +447,13 @@ impl EnhancedMPS {
             } else {
                 // Right-canonicalize from right
                 for i in (target + 1..self.num_qubits).rev() {
-                    eprintln!("DEBUG: Right canonicalizing site {}", i);
+                    eprintln!("DEBUG: Right canonicalizing site {i}");
                     self.right_canonicalize_site(i)?;
                 }
             }
             // Left-canonicalize from left
             for i in 0..target {
-                eprintln!("DEBUG: Left canonicalizing site {}", i);
+                eprintln!("DEBUG: Left canonicalizing site {i}");
                 self.left_canonicalize_site(i)?;
             }
             self.orthogonality_center = target as i32;
@@ -474,7 +477,7 @@ impl EnhancedMPS {
         } else if current > target {
             // Move left
             for i in (target + 1..=current).rev() {
-                eprintln!("DEBUG: Moving center left from site {}", i);
+                eprintln!("DEBUG: Moving center left from site {i}");
                 self.move_center_left(i)?;
                 eprintln!(
                     "DEBUG: After move, tensor shapes = {:?}",
@@ -506,7 +509,7 @@ impl EnhancedMPS {
         // QR decomposition
         let (q, r) = matrix
             .qr()
-            .map_err(|e| QuantRS2Error::LinalgError(format!("QR decomposition failed: {}", e)))?;
+            .map_err(|e| QuantRS2Error::LinalgError(format!("QR decomposition failed: {e}")))?;
 
         // Update current tensor
         let q_cols = q.shape()[1];
@@ -525,7 +528,11 @@ impl EnhancedMPS {
                 }
             }
             // Check dimensions before multiplication
-            if r.shape()[1] != next_matrix.shape()[0] {
+            if r.shape()[1] == next_matrix.shape()[0] {
+                let new_next = r.dot(&next_matrix);
+                self.tensors[site + 1] =
+                    MPSTensor::new(new_next.into_shape((r.shape()[0], 2, next.right_dim))?);
+            } else {
                 // Dimension mismatch - need to handle rank-deficient case
                 // Create an identity extension or use compatible dimensions
                 let r_cols = r.shape()[1];
@@ -555,10 +562,6 @@ impl EnhancedMPS {
                     self.tensors[site + 1] =
                         MPSTensor::new(new_next.into_shape((r.shape()[0], 2, next.right_dim))?);
                 }
-            } else {
-                let new_next = r.dot(&next_matrix);
-                self.tensors[site + 1] =
-                    MPSTensor::new(new_next.into_shape((r.shape()[0], 2, next.right_dim))?);
             }
         }
 
@@ -582,7 +585,7 @@ impl EnhancedMPS {
         // QR decomposition
         let (q, r) = matrix
             .qr()
-            .map_err(|e| QuantRS2Error::LinalgError(format!("QR decomposition failed: {}", e)))?;
+            .map_err(|e| QuantRS2Error::LinalgError(format!("QR decomposition failed: {e}")))?;
 
         // Update current tensor
         // Q has shape (left_dim * 2, new_bond) where new_bond = rank
@@ -624,16 +627,16 @@ impl EnhancedMPS {
                 }
             }
 
-            if prev_matrix.shape()[1] != r.shape()[0] {
+            if prev_matrix.shape()[1] == r.shape()[0] {
+                let new_prev = prev_matrix.dot(&r);
+                self.tensors[site - 1] =
+                    MPSTensor::new(new_prev.into_shape((prev.left_dim, 2, r.shape()[1]))?);
+            } else {
                 return Err(QuantRS2Error::InvalidInput(format!(
                     "Bond dimension mismatch: expected {} but got {}",
                     prev_matrix.shape()[1],
                     r.shape()[0]
                 )));
-            } else {
-                let new_prev = prev_matrix.dot(&r);
-                self.tensors[site - 1] =
-                    MPSTensor::new(new_prev.into_shape((prev.left_dim, 2, r.shape()[1]))?);
             }
         } else if site > 0 && tensor.right_dim == 1 {
             // For the rightmost tensor, we don't absorb R to preserve entanglement structure
@@ -660,7 +663,7 @@ impl EnhancedMPS {
         let gate_name = gate.name();
         if gate_name.starts_with("RX(") {
             // Parse theta from string like "RX(1.5708)"
-            let theta_str = gate_name.trim_start_matches("RX(").trim_end_matches(")");
+            let theta_str = gate_name.trim_start_matches("RX(").trim_end_matches(')');
             if let Ok(theta) = theta_str.parse::<f64>() {
                 let cos_half = (theta / 2.0).cos();
                 let sin_half = (theta / 2.0).sin();
@@ -672,7 +675,7 @@ impl EnhancedMPS {
         }
 
         if gate_name.starts_with("RY(") {
-            let theta_str = gate_name.trim_start_matches("RY(").trim_end_matches(")");
+            let theta_str = gate_name.trim_start_matches("RY(").trim_end_matches(')');
             if let Ok(theta) = theta_str.parse::<f64>() {
                 let cos_half = (theta / 2.0).cos();
                 let sin_half = (theta / 2.0).sin();
@@ -684,7 +687,7 @@ impl EnhancedMPS {
         }
 
         if gate_name.starts_with("RZ(") {
-            let theta_str = gate_name.trim_start_matches("RZ(").trim_end_matches(")");
+            let theta_str = gate_name.trim_start_matches("RZ(").trim_end_matches(')');
             if let Ok(theta) = theta_str.parse::<f64>() {
                 let exp_pos = Complex64::from_polar(1.0, theta / 2.0);
                 let exp_neg = Complex64::from_polar(1.0, -theta / 2.0);
@@ -701,7 +704,7 @@ impl EnhancedMPS {
             } else {
                 "PHASE("
             };
-            let phi_str = gate_name.trim_start_matches(prefix).trim_end_matches(")");
+            let phi_str = gate_name.trim_start_matches(prefix).trim_end_matches(')');
             if let Ok(phi) = phi_str.parse::<f64>() {
                 let phase = Complex64::from_polar(1.0, phi);
                 return Ok(array![
@@ -712,7 +715,7 @@ impl EnhancedMPS {
         }
 
         // Map gate names to matrices for non-parametric gates
-        let matrix = match gate.name().as_ref() {
+        let matrix = match gate.name() {
             "I" => array![
                 [Complex64::new(1., 0.), Complex64::new(0., 0.)],
                 [Complex64::new(0., 0.), Complex64::new(1., 0.)]
@@ -876,7 +879,7 @@ impl EnhancedMPS {
 
         for (i, &bit) in bitstring.iter().enumerate() {
             let tensor = &self.tensors[i];
-            let physical_idx = if bit { 1 } else { 0 };
+            let physical_idx = i32::from(bit);
 
             // Extract matrix for this physical index
             let matrix = tensor.data.slice(s![.., physical_idx, ..]);
@@ -982,7 +985,7 @@ impl EnhancedMPS {
             // Contract the MPS to get the full state vector
             let mut psi = Array1::<Complex64>::zeros(4);
             for i in 0..4 {
-                let b0 = (i >> 0) & 1;
+                let b0 = i & 1;
                 let b1 = (i >> 1) & 1;
 
                 // Contract tensors
@@ -996,7 +999,7 @@ impl EnhancedMPS {
                 }
             }
 
-            eprintln!("DEBUG: Full state vector: {:?}", psi);
+            eprintln!("DEBUG: Full state vector: {psi:?}");
 
             // Compute reduced density matrix for first qubit
             let mut rho = Array2::<Complex64>::zeros((2, 2));
@@ -1005,22 +1008,19 @@ impl EnhancedMPS {
             rho[[1, 0]] = psi[1] * psi[0].conj() + psi[3] * psi[2].conj(); // |10⟩⟨00| + |11⟩⟨01|
             rho[[1, 1]] = psi[1] * psi[1].conj() + psi[3] * psi[3].conj(); // |10⟩⟨10| + |11⟩⟨11|
 
-            eprintln!("DEBUG: Reduced density matrix: {:?}", rho);
+            eprintln!("DEBUG: Reduced density matrix: {rho:?}");
 
             // Compute eigenvalues
-            use ndarray_linalg::Eigh;
-            let (eigenvalues, _) = rho.eigh(ndarray_linalg::UPLO::Lower).map_err(|e| {
-                QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {}", e))
+            use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO}; // SciRS2 POLICY compliant
+            let (eigenvalues, _) = rho.eigh(UPLO::Lower).map_err(|e| {
+                QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {e}"))
             })?;
 
-            eprintln!(
-                "DEBUG: Eigenvalues of reduced density matrix: {:?}",
-                eigenvalues
-            );
+            eprintln!("DEBUG: Eigenvalues of reduced density matrix: {eigenvalues:?}");
 
             // Compute von Neumann entropy
             let mut entropy = 0.0;
-            for &lambda in eigenvalues.iter() {
+            for &lambda in &eigenvalues {
                 if lambda > 1e-12 {
                     entropy -= lambda * lambda.ln();
                 }
@@ -1037,6 +1037,7 @@ impl EnhancedMPS {
         let tensor = &self.tensors[cut_position];
 
         // Reshape and compute SVD
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
         let mut matrix = Array2::<Complex64>::zeros((tensor.left_dim * 2, tensor.right_dim));
         for l in 0..tensor.left_dim {
             for p in 0..2 {
@@ -1048,11 +1049,11 @@ impl EnhancedMPS {
 
         let (_u, s, _vt) = matrix
             .svd(false, false)
-            .map_err(|e| QuantRS2Error::LinalgError(format!("SVD failed: {}", e)))?;
+            .map_err(|e| QuantRS2Error::LinalgError(format!("SVD failed: {e}")))?;
 
         // Compute von Neumann entropy
         let mut entropy = 0.0;
-        for &singular_value in s.iter() {
+        for &singular_value in &s {
             if singular_value > 1e-12 {
                 let p = singular_value * singular_value;
                 entropy -= p * p.ln();
@@ -1185,8 +1186,7 @@ impl EnhancedMPS {
                     }
                     _ => {
                         return Err(QuantRS2Error::InvalidInput(format!(
-                            "Invalid Pauli operator: {}",
-                            pauli_char
+                            "Invalid Pauli operator: {pauli_char}"
                         )))
                     }
                 }
@@ -1283,7 +1283,7 @@ impl EnhancedMPS {
         &self,
         matrix: &Array2<Complex64>,
     ) -> Result<(Array2<Complex64>, Array1<f64>, Array2<Complex64>), QuantRS2Error> {
-        use ndarray_linalg::SVD;
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
 
         // Perform SVD using ndarray-linalg
         let (u, s, vt) = matrix
@@ -1323,13 +1323,13 @@ impl EnhancedMPSSimulator {
     }
 
     /// Set maximum bond dimension
-    pub fn with_bond_dimension(mut self, max_bond: usize) -> Self {
+    pub const fn with_bond_dimension(mut self, max_bond: usize) -> Self {
         self.config.max_bond_dim = max_bond;
         self
     }
 
     /// Set SVD truncation threshold
-    pub fn with_threshold(mut self, threshold: f64) -> Self {
+    pub const fn with_threshold(mut self, threshold: f64) -> Self {
         self.config.svd_threshold = threshold;
         self
     }

@@ -29,7 +29,7 @@ fn demo_basic_measurement() -> quantrs2_core::error::QuantRS2Result<()> {
 
     // Measure qubit 0
     let bit0 = circuit.measure(QubitId(0))?;
-    println!("Measured qubit 0 -> classical bit {}", bit0);
+    println!("Measured qubit 0 -> classical bit {bit0}");
 
     // Apply X gate to qubit 1 conditioned on measurement
     let condition = ClassicalCondition::register_equals("default", 1);
@@ -69,7 +69,7 @@ fn demo_feed_forward() -> quantrs2_core::error::QuantRS2Result<()> {
     println!("Has feed-forward: {}", deps.has_feed_forward());
 
     for (meas_idx, ff_idx) in &deps.feed_forward_deps {
-        println!("Operation {} depends on measurement {}", ff_idx, meas_idx);
+        println!("Operation {ff_idx} depends on measurement {meas_idx}");
     }
 
     println!();
@@ -228,7 +228,7 @@ fn demo_measurement_statistics() -> quantrs2_core::error::QuantRS2Result<()> {
         .collect();
 
     println!("Created GHZ state and measured all qubits");
-    println!("Measurement results stored in bits: {:?}", bits);
+    println!("Measurement results stored in bits: {bits:?}");
 
     // In a real quantum computer, we would run this multiple times
     // and collect statistics showing 50% |0000⟩ and 50% |1111⟩

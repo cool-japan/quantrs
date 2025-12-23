@@ -64,7 +64,7 @@ pub struct CriticalMetric {
 }
 
 /// Severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SeverityLevel {
     Info,
     Warning,
@@ -73,7 +73,7 @@ pub enum SeverityLevel {
 }
 
 /// Health status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Warning,
@@ -101,7 +101,7 @@ pub struct OptimizationRecommendation {
 }
 
 /// Priority levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PriorityLevel {
     Critical,
     High,
@@ -346,7 +346,7 @@ impl AdvancedPerformanceAnalyzer {
         let xy_sum: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let x2_sum: f64 = (0..values.len()).map(|i| (i as f64).powi(2)).sum();
 
-        let slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum.powi(2));
+        let slope = n.mul_add(xy_sum, -(x_sum * y_sum)) / x_sum.mul_add(-x_sum, n * x2_sum);
 
         if slope > 0.01 {
             TrendDirection::Improving

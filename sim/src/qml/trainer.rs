@@ -421,17 +421,17 @@ impl QuantumMLTrainer {
     }
 
     /// Get current parameters
-    pub fn get_parameters(&self) -> &Array1<f64> {
+    pub const fn get_parameters(&self) -> &Array1<f64> {
         &self.optimizer_state.parameters
     }
 
     /// Get training history
-    pub fn get_training_history(&self) -> &TrainingHistory {
+    pub const fn get_training_history(&self) -> &TrainingHistory {
         &self.training_history
     }
 
     /// Set learning rate
-    pub fn set_learning_rate(&mut self, lr: f64) {
+    pub const fn set_learning_rate(&mut self, lr: f64) {
         self.optimizer_state.learning_rate = lr;
     }
 
@@ -472,7 +472,7 @@ impl HardwareAwareCompiler {
     }
 
     /// Get compilation statistics
-    pub fn get_stats(&self) -> &CompilationStats {
+    pub const fn get_stats(&self) -> &CompilationStats {
         &self.compilation_stats
     }
 }

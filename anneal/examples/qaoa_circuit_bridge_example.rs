@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let circuit = optimizer.build_optimized_circuit(&problem, &parameters, 2)?; // 2 layers
         let cost = optimizer.estimate_circuit_cost(&circuit);
 
-        println!("Optimization level: {:?}", level);
+        println!("Optimization level: {level:?}");
         println!(
             "  - Gates: {}, Depth: {}, Time: {:.3} ms",
             cost.total_gates, cost.estimated_depth, cost.estimated_execution_time_ms
@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bridge = QaoaCircuitBridge::new(3);
 
     // Convert various QAOA gates
-    let qaoa_gates = vec![
+    let qaoa_gates = [
         QaoaGate::RX {
             qubit: 0,
             angle: PI / 2.0,
@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let multi_params = vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]; // 3 layers × 2 params per layer
 
     let multi_circuit = bridge.build_optimizable_qaoa_circuit(&problem, &multi_params, layers)?;
-    println!("Multi-layer QAOA circuit ({} layers):", layers);
+    println!("Multi-layer QAOA circuit ({layers} layers):");
     println!("  - Total gates: {}", multi_circuit.gates.len());
     println!(
         "  - Parameter references: {}",
@@ -189,8 +189,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             quantrs2_anneal::qaoa_circuit_bridge::ParameterType::Beta => beta_count += 1,
         }
     }
-    println!("  - Gamma parameters: {}", gamma_count);
-    println!("  - Beta parameters: {}", beta_count);
+    println!("  - Gamma parameters: {gamma_count}");
+    println!("  - Beta parameters: {beta_count}");
 
     // Example 6: Problem representation for circuit optimization
     println!("\n6. Problem Representation");
@@ -270,8 +270,8 @@ fn demonstrate_parameter_extraction() -> Result<(), Box<dyn std::error::Error>> 
     let circuit = bridge.build_optimizable_qaoa_circuit(&problem, &parameters, 1)?;
     let extracted = bridge.extract_qaoa_parameters(&circuit);
 
-    println!("Original parameters: {:?}", parameters);
-    println!("Extracted parameters: {:?}", extracted);
+    println!("Original parameters: {parameters:?}");
+    println!("Extracted parameters: {extracted:?}");
 
     Ok(())
 }

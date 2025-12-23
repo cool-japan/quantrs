@@ -4,8 +4,8 @@
 //! to solve optimization problems formulated as Ising models or QUBO problems.
 
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -612,7 +612,7 @@ mod tests {
         invalid_params.initial_temperature = 0.0;
         assert!(invalid_params.validate().is_err());
 
-        let mut invalid_params = params.clone();
+        invalid_params = params.clone();
         invalid_params.num_sweeps = 0;
         assert!(invalid_params.validate().is_err());
     }

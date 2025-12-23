@@ -629,8 +629,7 @@ impl QuantumAdvantageAnalyzer {
         Ok(ProblemCharacteristics {
             problem_type: metadata
                 .as_ref()
-                .map(|m| m.problem_type.clone())
-                .unwrap_or_else(|| "Unknown".to_string()),
+                .map_or_else(|| "Unknown".to_string(), |m| m.problem_type.clone()),
             num_variables,
             density,
             connectivity,
@@ -696,7 +695,7 @@ impl QuantumAdvantageAnalyzer {
         let mut difficulty_metrics = HashMap::new();
 
         // Compute coefficient variance as a measure of heterogeneity
-        let coeffs: Vec<f64> = qubo.iter().cloned().collect();
+        let coeffs: Vec<f64> = qubo.iter().copied().collect();
         let mean = coeffs.iter().sum::<f64>() / coeffs.len() as f64;
         let variance = coeffs.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / coeffs.len() as f64;
         difficulty_metrics.insert("coefficient_variance".to_string(), variance);
@@ -867,18 +866,18 @@ impl QuantumAdvantageAnalyzer {
                 .values()
                 .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             {
-                noise_thresholds.insert(format!("{:?}", alg), *min_threshold);
+                noise_thresholds.insert(format!("{alg:?}"), *min_threshold);
             }
         }
 
         // Hardware thresholds
         for (alg, perf) in quantum_perf {
             hardware_thresholds.insert(
-                format!("{:?}_qubits", alg),
+                format!("{alg:?}_qubits"),
                 perf.hardware_requirements.min_qubits as f64,
             );
             hardware_thresholds.insert(
-                format!("{:?}_fidelity", alg),
+                format!("{alg:?}_fidelity"),
                 perf.hardware_requirements.gate_fidelity_threshold,
             );
         }
@@ -921,13 +920,13 @@ impl QuantumAdvantageAnalyzer {
             })
         {
             recommendations.push(AlgorithmRecommendation {
-                algorithm: format!("{:?}", best_classical_alg),
+                algorithm: format!("{best_classical_alg:?}"),
                 algorithm_type: AlgorithmType::Classical,
                 confidence: 0.8,
                 expected_performance: best_classical_perf.clone(),
                 justification: "Best performing classical algorithm for this problem type"
                     .to_string(),
-                alternatives: classical_perf.keys().map(|k| format!("{:?}", k)).collect(),
+                alternatives: classical_perf.keys().map(|k| format!("{k:?}")).collect(),
             });
         }
 
@@ -943,12 +942,12 @@ impl QuantumAdvantageAnalyzer {
                 })
             {
                 recommendations.push(AlgorithmRecommendation {
-                    algorithm: format!("{:?}", best_quantum_alg),
+                    algorithm: format!("{best_quantum_alg:?}"),
                     algorithm_type: AlgorithmType::Quantum,
                     confidence: advantage_analysis.confidence,
                     expected_performance: best_quantum_perf.base_metrics.clone(),
                     justification: "Quantum advantage detected for this problem".to_string(),
-                    alternatives: quantum_perf.keys().map(|k| format!("{:?}", k)).collect(),
+                    alternatives: quantum_perf.keys().map(|k| format!("{k:?}")).collect(),
                 });
             }
         }
@@ -1005,7 +1004,7 @@ impl QuantumAdvantageAnalyzer {
     ) -> Result<String, String> {
         match format {
             ExportFormat::JSON => serde_json::to_string_pretty(results)
-                .map_err(|e| format!("JSON export failed: {}", e)),
+                .map_err(|e| format!("JSON export failed: {e}")),
             ExportFormat::Python => {
                 // Generate Python code for visualization and further analysis
                 Ok(self.generate_python_analysis_code(results))
@@ -1454,7 +1453,7 @@ impl QuantumSupremacyBenchmarker {
     }
 
     fn run_size_benchmark(
-        &mut self,
+        &self,
         size: usize,
         _config: &AnalysisConfig,
     ) -> Result<SizeBenchmarkResult, String> {
@@ -1476,8 +1475,7 @@ impl QuantumSupremacyBenchmarker {
         let advantage_threshold = results
             .iter()
             .find(|r| r.advantage_detected)
-            .map(|r| r.problem_size)
-            .unwrap_or(usize::MAX);
+            .map_or(usize::MAX, |r| r.problem_size);
 
         Ok(BenchmarkSummary {
             total_benchmarks: results.len(),
@@ -1524,7 +1522,10 @@ pub enum ExportFormat {
 // Additional trait implementations for missing partial comparisons
 impl PartialOrd for ComplexityFunction {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        use ComplexityFunction::*;
+        use ComplexityFunction::{
+            Constant, Cubic, Exponential, Factorial, Linear, Linearithmic, Logarithmic, Polynomial,
+            Quadratic,
+        };
         match (self, other) {
             (Constant, Constant) => Some(std::cmp::Ordering::Equal),
             (Constant, _) => Some(std::cmp::Ordering::Less),

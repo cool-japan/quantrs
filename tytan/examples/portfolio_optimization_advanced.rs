@@ -7,7 +7,6 @@
 //! - Sector allocation constraints
 //! - Comparison with classical optimization methods
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -21,6 +20,7 @@ use quantrs2_tytan::{
         solution_analysis::analyze_solution_distribution,
     },
 };
+use scirs2_core::ndarray::{Array1, Array2};
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 

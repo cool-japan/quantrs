@@ -28,14 +28,16 @@ fn demo_bell_state() {
     let mut circuit = Circuit::<2>::new();
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("Failed to apply H gate to qubit 0 for Bell state")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap();
+        .expect("Failed to apply CNOT from qubit 0 to qubit 1 for Bell state");
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
     let start = Instant::now();
-    let result = standard_sim.run(&circuit).unwrap();
+    let result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run Bell state circuit with standard simulator");
     let duration = start.elapsed();
 
     println!("Standard simulator: {:.3} seconds", duration.as_secs_f64());
@@ -44,7 +46,9 @@ fn demo_bell_state() {
     // Run with optimized simulator
     let optimized_sim = OptimizedSimulator::new();
     let start = Instant::now();
-    let result = optimized_sim.run(&circuit).unwrap();
+    let result = optimized_sim
+        .run(&circuit)
+        .expect("Failed to run Bell state circuit with optimized simulator");
     let duration = start.elapsed();
 
     println!("Optimized simulator: {:.3} seconds", duration.as_secs_f64());
@@ -62,18 +66,28 @@ fn demo_small_circuit() {
 
     // Apply Hadamard to first 3 qubits only (to keep the output small)
     for i in 0..3 {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .unwrap_or_else(|_| panic!("Failed to apply H gate to qubit {i}"));
     }
 
     // Apply CNOT gates between a few qubits
-    circuit.cnot(QubitId::new(0), QubitId::new(3)).unwrap();
-    circuit.cnot(QubitId::new(1), QubitId::new(4)).unwrap();
-    circuit.cnot(QubitId::new(2), QubitId::new(5)).unwrap();
+    circuit
+        .cnot(QubitId::new(0), QubitId::new(3))
+        .expect("Failed to apply CNOT from qubit 0 to qubit 3");
+    circuit
+        .cnot(QubitId::new(1), QubitId::new(4))
+        .expect("Failed to apply CNOT from qubit 1 to qubit 4");
+    circuit
+        .cnot(QubitId::new(2), QubitId::new(5))
+        .expect("Failed to apply CNOT from qubit 2 to qubit 5");
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
     let start = Instant::now();
-    let result = standard_sim.run(&circuit).unwrap();
+    let result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run 10-qubit circuit with standard simulator");
     let duration = start.elapsed();
 
     println!("Standard simulator: {:.3} seconds", duration.as_secs_f64());
@@ -95,7 +109,9 @@ fn demo_small_circuit() {
     // Run with optimized simulator
     let optimized_sim = OptimizedSimulator::new();
     let start = Instant::now();
-    let result = optimized_sim.run(&circuit).unwrap();
+    let result = optimized_sim
+        .run(&circuit)
+        .expect("Failed to run 10-qubit circuit with optimized simulator");
     let duration = start.elapsed();
 
     println!("Optimized simulator: {:.3} seconds", duration.as_secs_f64());

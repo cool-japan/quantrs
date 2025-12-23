@@ -71,7 +71,7 @@ pub enum ClassicalOptimizer {
 
 impl VQE {
     /// Create new VQE solver
-    pub fn new(n_qubits: usize, ansatz: AnsatzType, optimizer: ClassicalOptimizer) -> Self {
+    pub const fn new(n_qubits: usize, ansatz: AnsatzType, optimizer: ClassicalOptimizer) -> Self {
         Self {
             n_qubits,
             ansatz,
@@ -82,13 +82,13 @@ impl VQE {
     }
 
     /// Set maximum iterations
-    pub fn with_max_iterations(mut self, iterations: usize) -> Self {
+    pub const fn with_max_iterations(mut self, iterations: usize) -> Self {
         self.max_iterations = iterations;
         self
     }
 
     /// Set convergence threshold
-    pub fn with_convergence_threshold(mut self, threshold: f64) -> Self {
+    pub const fn with_convergence_threshold(mut self, threshold: f64) -> Self {
         self.convergence_threshold = threshold;
         self
     }
@@ -187,7 +187,7 @@ impl VQE {
                 let gradient = self.compute_gradient(&current_params, hamiltonian)?;
 
                 // Update with momentum
-                let mut new_params = current_params.clone();
+                let mut new_params = current_params;
                 for i in 0..new_params.len() {
                     new_params[i] -= learning_rate * gradient[i];
                 }
@@ -365,7 +365,7 @@ pub enum InitialState {
 
 impl QAOA {
     /// Create new QAOA solver
-    pub fn new(p: usize, optimizer: ClassicalOptimizer) -> Self {
+    pub const fn new(p: usize, optimizer: ClassicalOptimizer) -> Self {
         Self {
             p,
             optimizer,
@@ -456,19 +456,16 @@ impl QAOA {
         params.extend_from_slice(gammas);
 
         // Update using optimizer
-        match &self.optimizer {
-            ClassicalOptimizer::GradientDescent { learning_rate, .. } => {
-                // Compute gradients
-                let gradient = self.compute_qaoa_gradient(&params, hamiltonian)?;
+        if let ClassicalOptimizer::GradientDescent { learning_rate, .. } = &self.optimizer {
+            // Compute gradients
+            let gradient = self.compute_qaoa_gradient(&params, hamiltonian)?;
 
-                // Update
-                for i in 0..params.len() {
-                    params[i] -= learning_rate * gradient[i];
-                }
+            // Update
+            for i in 0..params.len() {
+                params[i] -= learning_rate * gradient[i];
             }
-            _ => {
-                // Other optimizers
-            }
+        } else {
+            // Other optimizers
         }
 
         // Split back into betas and gammas
@@ -575,7 +572,7 @@ impl WarmStartStrategy {
         let classical_results = self
             .pre_solver
             .run_qubo(&qubo_tuple, self.classical_iterations)
-            .map_err(|e| format!("Classical solver error: {:?}", e))?;
+            .map_err(|e| format!("Classical solver error: {e:?}"))?;
 
         // Extract best solution
         let mut best_solution = classical_results
@@ -707,7 +704,7 @@ impl IterativeRefinement {
             let quantum_results = self
                 .quantum_solver
                 .run_qubo(&qubo_tuple, initial_shots)
-                .map_err(|e| format!("Quantum solver error: {:?}", e))?;
+                .map_err(|e| format!("Quantum solver error: {e:?}"))?;
 
             // Apply classical refinement
             let refined_results =
@@ -722,14 +719,8 @@ impl IterativeRefinement {
             }
 
             history.push(IterationResult {
-                quantum_energy: quantum_results
-                    .first()
-                    .map(|r| r.energy)
-                    .unwrap_or(f64::INFINITY),
-                refined_energy: refined_results
-                    .first()
-                    .map(|r| r.energy)
-                    .unwrap_or(f64::INFINITY),
+                quantum_energy: quantum_results.first().map_or(f64::INFINITY, |r| r.energy),
+                refined_energy: refined_results.first().map_or(f64::INFINITY, |r| r.energy),
                 improvement: 0.0, // Calculate actual improvement
             });
 
@@ -783,10 +774,7 @@ impl IterativeRefinement {
 
         for result in results.iter().take(10) {
             // Convert to binary vector
-            let mut state: Vec<bool> = var_map
-                .iter()
-                .map(|(var, _)| result.assignments[var])
-                .collect();
+            let mut state: Vec<bool> = var_map.keys().map(|var| result.assignments[var]).collect();
 
             let mut best_state = state.clone();
             let mut best_energy = result.energy;

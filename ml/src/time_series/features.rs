@@ -485,7 +485,10 @@ impl QuantumFourierFeatures {
     }
 
     /// Estimate dominant frequency in a signal
-    fn estimate_dominant_frequency(&self, signal: &scirs2_core::ndarray::ArrayView1<f64>) -> Result<f64> {
+    fn estimate_dominant_frequency(
+        &self,
+        signal: &scirs2_core::ndarray::ArrayView1<f64>,
+    ) -> Result<f64> {
         // Simplified frequency estimation (in practice would use FFT)
         let n = signal.len();
         let mut max_power = 0.0;

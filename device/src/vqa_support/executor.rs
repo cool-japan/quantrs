@@ -3,7 +3,6 @@
 //! This module provides the main execution engine for variational
 //! quantum algorithms with comprehensive orchestration capabilities.
 
-use scirs2_core::random::prelude::*;
 use super::{
     circuits::ParametricCircuit,
     hardware::HardwareConfig,
@@ -13,6 +12,7 @@ use super::{
 };
 use crate::DeviceResult;
 use scirs2_core::ndarray::Array1;
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

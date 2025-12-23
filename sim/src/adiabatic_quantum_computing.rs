@@ -224,8 +224,7 @@ impl AdiabaticQuantumComputer {
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .map_or(0, |(idx, _)| idx);
 
         // Set state to ground state
         self.state = eigenvectors.column(ground_idx).to_owned();
@@ -318,14 +317,14 @@ impl AdiabaticQuantumComputer {
             ScheduleType::Linear => s,
             ScheduleType::Quadratic => s * s,
             ScheduleType::Cubic => s * s * s,
-            ScheduleType::Exponential => (s.exp() - 1.0) / (1f64.exp() - 1.0),
+            ScheduleType::Exponential => s.exp_m1() / 1f64.exp_m1(),
             ScheduleType::Polynomial(n) => s.powi(n as i32),
             ScheduleType::LandauZener => {
                 // Landau-Zener formula: optimized for avoiding diabatic transitions
                 if s < 0.5 {
                     2.0 * s * s
                 } else {
-                    1.0 - 2.0 * (1.0 - s) * (1.0 - s)
+                    (2.0 * (1.0 - s)).mul_add(-(1.0 - s), 1.0)
                 }
             }
             ScheduleType::Optimal => {
@@ -587,8 +586,7 @@ impl AdiabaticQuantumComputer {
             )
             .unwrap()),
             _ => Err(SimulatorError::InvalidInput(format!(
-                "Unknown Pauli operator: {}",
-                pauli
+                "Unknown Pauli operator: {pauli}"
             ))),
         }
     }
@@ -655,7 +653,7 @@ impl AdiabaticQuantumComputer {
             term = term.dot(&scaled_matrix) / (n as f64);
             let term_norm: f64 = term.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
 
-            result = result + &term;
+            result += &term;
 
             // Check convergence
             if term_norm < 1e-15 {
@@ -700,12 +698,13 @@ impl AdiabaticQuantumComputer {
         }
 
         let gap_count = self.gap_history.len() as f64;
-        self.stats.avg_gap = (self.stats.avg_gap * gap_count + gap) / (gap_count + 1.0);
+        self.stats.avg_gap = self.stats.avg_gap.mul_add(gap_count, gap) / (gap_count + 1.0);
 
         let computation_time = start_time.elapsed().as_secs_f64() * 1000.0;
-        self.stats.avg_eigenvalue_time_ms = (self.stats.avg_eigenvalue_time_ms
-            * self.stats.eigenvalue_computations as f64
-            + computation_time)
+        self.stats.avg_eigenvalue_time_ms = self
+            .stats
+            .avg_eigenvalue_time_ms
+            .mul_add(self.stats.eigenvalue_computations as f64, computation_time)
             / (self.stats.eigenvalue_computations + 1) as f64;
         self.stats.eigenvalue_computations += 1;
 
@@ -816,8 +815,7 @@ impl AdiabaticQuantumComputer {
                     .iter()
                     .enumerate()
                     .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                    .map(|(idx, _)| idx)
-                    .unwrap_or(0);
+                    .map_or(0, |(idx, _)| idx);
 
                 let ground_state = eigenvectors.column(ground_idx).to_owned();
 
@@ -939,7 +937,7 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Get current state
-    pub fn get_state(&self) -> &Array1<Complex64> {
+    pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
@@ -954,7 +952,7 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Get statistics
-    pub fn get_stats(&self) -> &AdiabaticStats {
+    pub const fn get_stats(&self) -> &AdiabaticStats {
         &self.stats
     }
 
@@ -1030,7 +1028,7 @@ impl AdiabaticUtils {
         let max_var = clauses
             .iter()
             .flat_map(|clause| clause.iter())
-            .map(|&lit| lit.abs() as usize)
+            .map(|&lit| lit.unsigned_abs() as usize)
             .max()
             .unwrap_or(0)
             + 1;
@@ -1048,8 +1046,8 @@ impl AdiabaticUtils {
             // For now, add pairwise interactions between variables in the clause
             for i in 0..clause.len() {
                 for j in i + 1..clause.len() {
-                    let var1 = clause[i].abs() as usize;
-                    let var2 = clause[j].abs() as usize;
+                    let var1 = clause[i].unsigned_abs() as usize;
+                    let var2 = clause[j].unsigned_abs() as usize;
 
                     // Add weak coupling between variables in the same clause
                     if var1 < max_var && var2 < max_var {
@@ -1136,7 +1134,7 @@ impl AdiabaticUtils {
                 let result = adiabatic_qc.evolve()?;
                 let execution_time = start.elapsed().as_secs_f64() * 1000.0;
 
-                let key = format!("{}q_{:?}", num_qubits, schedule_type);
+                let key = format!("{num_qubits}q_{schedule_type:?}");
                 results.execution_times.push((key.clone(), execution_time));
                 results
                     .success_probabilities

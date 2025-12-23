@@ -30,8 +30,8 @@ use crate::{
     noise_model::{CalibrationNoiseModel, CrosstalkNoise},
     DeviceError, DeviceResult,
 };
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::{error::QuantRS2Result, qubit::QubitId};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 /// Statistical noise analysis results

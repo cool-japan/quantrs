@@ -6,7 +6,6 @@
 //! - Subtour elimination constraints
 //! - Route visualization and analysis
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -20,6 +19,7 @@ use quantrs2_tytan::{
         problem_specific::{ProblemVisualizer, VisualizationConfig, VisualizationType},
     },
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -52,24 +52,26 @@ impl City {
     }
 
     /// Calculate distance to another city
-    fn distance_to(&self, other: &City, metric: DistanceMetric) -> f64 {
+    fn distance_to(&self, other: &Self, metric: DistanceMetric) -> f64 {
         match metric {
             DistanceMetric::Euclidean => {
                 let dx = self.longitude - other.longitude;
                 let dy = self.latitude - other.latitude;
-                (dx * dx + dy * dy).sqrt()
+                dx.hypot(dy)
             }
             DistanceMetric::Haversine => {
                 // Haversine formula for great-circle distance
                 let r = 6371.0; // Earth radius in km
 
-                let lat1 = self.latitude * PI / 180.0;
-                let lat2 = other.latitude * PI / 180.0;
-                let dlat = (other.latitude - self.latitude) * PI / 180.0;
-                let dlon = (other.longitude - self.longitude) * PI / 180.0;
+                let lat1 = self.latitude.to_radians();
+                let lat2 = other.latitude.to_radians();
+                let dlat = (other.latitude - self.latitude).to_radians();
+                let dlon = (other.longitude - self.longitude).to_radians();
 
-                let a = (dlat / 2.0).sin().powi(2)
-                    + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+                let a = (dlat / 2.0).sin().mul_add(
+                    (dlat / 2.0).sin(),
+                    lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2),
+                );
                 let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
 
                 r * c
@@ -104,7 +106,7 @@ fn create_tsp_model(
     for i in 0..n {
         for j in 0..n {
             if i != j {
-                let var = model.add_variable(&format!("x_{}_{}", i, j))?;
+                let var = model.add_variable(&format!("x_{i}_{j}"))?;
                 x_vars.insert((i, j), var);
             }
         }
@@ -118,7 +120,7 @@ fn create_tsp_model(
                 incoming.push(x_vars[&(i, j)].clone());
             }
         }
-        model.add_constraint_eq_one(&format!("incoming_{}", j), incoming)?;
+        model.add_constraint_eq_one(&format!("incoming_{j}"), incoming)?;
     }
 
     // Constraint 2: Each city must be left exactly once (outgoing)
@@ -129,7 +131,7 @@ fn create_tsp_model(
                 outgoing.push(x_vars[&(i, j)].clone());
             }
         }
-        model.add_constraint_eq_one(&format!("outgoing_{}", i), outgoing)?;
+        model.add_constraint_eq_one(&format!("outgoing_{i}"), outgoing)?;
     }
 
     // Constraint 3: Subtour elimination using position variables
@@ -139,7 +141,7 @@ fn create_tsp_model(
         // u_i is encoded as sum of binary variables
         let mut u_bits = Vec::new();
         for bit in 0..((n as f64).log2().ceil() as usize) {
-            let var = model.add_variable(&format!("u_{}_{}", i, bit))?;
+            let var = model.add_variable(&format!("u_{i}_{bit}"))?;
             u_bits.push(var);
         }
         u_vars.push(u_bits);
@@ -176,7 +178,7 @@ fn extract_tour(
 
         for j in 0..n_cities {
             if current != j && !visited[j] {
-                let var_name = format!("x_{}_{}", current, j);
+                let var_name = format!("x_{current}_{j}");
                 if solution
                     .assignments
                     .get(&var_name)
@@ -256,9 +258,9 @@ fn run_tsp_experiments() -> Result<(), Box<dyn std::error::Error>> {
             let row = i / 3;
             let col = i % 3;
             City::new(
-                &format!("Grid_{}{}", row, col),
-                row as f64 * 10.0,
-                col as f64 * 10.0,
+                &format!("Grid_{row}{col}"),
+                f64::from(row) * 10.0,
+                f64::from(col) * 10.0,
             )
         })
         .collect();
@@ -275,7 +277,7 @@ fn solve_tsp(
     problem_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let n = cities.len();
-    println!("\nSolving TSP for {} cities using {:?} distance", n, metric);
+    println!("\nSolving TSP for {n} cities using {metric:?} distance");
 
     // Create model
     let (model, distances) = create_tsp_model(cities, metric)?;
@@ -340,7 +342,7 @@ fn solve_tsp(
     let mut var_map = HashMap::new();
 
     for i in 0..n_vars {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
         if let Ok(linear) = qubo.get_linear(i) {
             matrix[[i, i]] = linear;
         }
@@ -387,7 +389,7 @@ fn solve_tsp(
     println!("  Solution time: {:.2}s", elapsed.as_secs_f64());
 
     if let Some(tour) = best_tour {
-        println!("  Best tour length: {:.2} km", best_length);
+        println!("  Best tour length: {best_length:.2} km");
         println!("  Tour: ");
         for &city_idx in &tour {
             println!("    -> {}", cities[city_idx].name);
@@ -407,9 +409,9 @@ fn solve_tsp(
         let min_segment = segment_lengths.iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
         println!("\n  Segment statistics:");
-        println!("    Average: {:.2} km", avg_segment);
-        println!("    Min: {:.2} km", min_segment);
-        println!("    Max: {:.2} km", max_segment);
+        println!("    Average: {avg_segment:.2} km");
+        println!("    Min: {min_segment:.2} km");
+        println!("    Max: {max_segment:.2} km");
 
         // Visualize
         let problem_type = VisualizationType::TSP {
@@ -432,13 +434,13 @@ fn solve_tsp(
             tour_length: best_length,
             distance_metric: metric,
             computation_time: elapsed.as_secs_f64(),
-            valid_tour_ratio: valid_count as f64 / samples.len() as f64,
+            valid_tour_ratio: f64::from(valid_count) / samples.len() as f64,
         };
 
         let json = serde_json::to_string_pretty(&results)?;
         let filename = format!("tsp_{}.json", problem_name.to_lowercase().replace(' ', "_"));
         std::fs::write(&filename, json)?;
-        println!("\n  Results saved to {}", filename);
+        println!("\n  Results saved to {filename}");
     } else {
         println!("  No valid tour found!");
     }
@@ -478,9 +480,9 @@ impl serde::Serialize for DistanceMetric {
         S: serde::Serializer,
     {
         serializer.serialize_str(match self {
-            DistanceMetric::Euclidean => "Euclidean",
-            DistanceMetric::Haversine => "Haversine",
-            DistanceMetric::Manhattan => "Manhattan",
+            Self::Euclidean => "Euclidean",
+            Self::Haversine => "Haversine",
+            Self::Manhattan => "Manhattan",
         })
     }
 }
@@ -514,7 +516,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for perm in perms {
         let mut length = calculate_tour_length(&perm, &distances);
-        println!("  Tour {:?}: length = {:.3}", perm, length);
+        println!("  Tour {perm:?}: length = {length:.3}");
     }
 
     // Now solve with our method

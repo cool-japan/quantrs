@@ -1,9 +1,12 @@
-//! Export QuantRS2 circuits to OpenQASM 3.0 format
+//! Export `QuantRS2` circuits to `OpenQASM` 3.0 format
 
-use super::ast::*;
+use super::ast::{
+    ClassicalRef, Declaration, Expression, GateDefinition, Literal, Measurement, QasmGate,
+    QasmProgram, QasmRegister, QasmStatement, QubitRef,
+};
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::sync::Arc;
@@ -42,7 +45,7 @@ pub struct ExportOptions {
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        ExportOptions {
+        Self {
             include_stdgates: true,
             decompose_custom: true,
             include_gate_comments: false,
@@ -73,8 +76,9 @@ struct GateInfo {
 
 impl QasmExporter {
     /// Create a new exporter with options
+    #[must_use]
     pub fn new(options: ExportOptions) -> Self {
-        QasmExporter {
+        Self {
             options,
             custom_gates: HashMap::new(),
             qubit_usage: HashSet::new(),
@@ -125,7 +129,7 @@ impl QasmExporter {
     fn is_standard_gate(&self, gate: &dyn GateOp) -> bool {
         let name = gate.name();
         matches!(
-            name.as_ref(),
+            name,
             "I" | "X"
                 | "Y"
                 | "Z"
@@ -182,7 +186,7 @@ impl QasmExporter {
     /// Get QASM name for a gate
     fn gate_qasm_name(&self, gate: &dyn GateOp) -> String {
         let name = gate.name();
-        match name.as_ref() {
+        match name {
             "I" => "id".to_string(),
             "X" => "x".to_string(),
             "Y" => "y".to_string(),
@@ -216,7 +220,7 @@ impl QasmExporter {
     fn count_gate_params(&self, gate: &dyn GateOp) -> usize {
         // This is a simplified version - would need gate trait extension
         let name = gate.name();
-        match name.as_ref() {
+        match name {
             "RX" | "RY" | "RZ" | "Phase" | "U1" => 1,
             "U2" => 2,
             "U" | "U3" => 3,
@@ -253,7 +257,7 @@ impl QasmExporter {
 
         // Add custom gate definitions
         if self.options.decompose_custom {
-            for (_, gate_info) in &self.custom_gates {
+            for gate_info in self.custom_gates.values() {
                 if let Some(def) = self.generate_gate_definition(gate_info)? {
                     declarations.push(Declaration::GateDefinition(def));
                 }
@@ -281,7 +285,7 @@ impl QasmExporter {
     }
 
     /// Generate gate definition for custom gate
-    fn generate_gate_definition(
+    const fn generate_gate_definition(
         &self,
         gate_info: &GateInfo,
     ) -> Result<Option<GateDefinition>, ExportError> {
@@ -297,7 +301,7 @@ impl QasmExporter {
     ) -> Result<QasmStatement, ExportError> {
         let gate_name = gate.name();
 
-        match gate_name.as_ref() {
+        match gate_name {
             "measure" => {
                 // Convert measurement
                 let qubits: Vec<QubitRef> = gate

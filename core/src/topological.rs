@@ -275,7 +275,7 @@ impl AnyonModel for IsingModel {
             // Vacuum fusion rules
             (0, x, y) | (x, 0, y) if x == y => 1,
             // σ × σ = 1 + ψ
-            (1, 1, 0) | (1, 1, 2) => 1,
+            (1, 1, 0 | 2) => 1,
             // σ × ψ = σ
             (1, 2, 1) | (2, 1, 1) => 1,
             // ψ × ψ = 1

@@ -1,6 +1,8 @@
+use quantrs2_sim::holographic_quantum_error_correction::{
+    HolographicCodeType, HolographicQECConfig, HolographicQECSimulator,
+};
 use scirs2_core::ndarray::Array2;
 use scirs2_core::Complex64;
-use quantrs2_sim::holographic_quantum_error_correction::*;
 
 fn main() {
     // Create a simple configuration
@@ -20,10 +22,7 @@ fn main() {
     let bulk_dim = 1 << 3; // 8
 
     println!("Testing holographic encoding matrix creation...");
-    println!(
-        "Boundary dimension: {}, Bulk dimension: {}",
-        boundary_dim, bulk_dim
-    );
+    println!("Boundary dimension: {boundary_dim}, Bulk dimension: {bulk_dim}");
 
     match simulator.create_holographic_encoding_matrix(boundary_dim, bulk_dim) {
         Ok(matrix) => {
@@ -37,7 +36,7 @@ fn main() {
             let mut non_zero_count = 0;
             let mut max_magnitude = 0.0;
 
-            for element in matrix.iter() {
+            for element in &matrix {
                 let magnitude = element.norm();
                 if magnitude < 1e-10 {
                     zero_count += 1;
@@ -50,9 +49,9 @@ fn main() {
             }
 
             println!("Matrix statistics:");
-            println!("  Zero elements: {}", zero_count);
-            println!("  Non-zero elements: {}", non_zero_count);
-            println!("  Max magnitude: {}", max_magnitude);
+            println!("  Zero elements: {zero_count}");
+            println!("  Non-zero elements: {non_zero_count}");
+            println!("  Max magnitude: {max_magnitude}");
             println!("  Total elements: {}", matrix.len());
 
             // Print first few elements
@@ -71,7 +70,7 @@ fn main() {
             }
         }
         Err(e) => {
-            println!("❌ Error creating matrix: {:?}", e);
+            println!("❌ Error creating matrix: {e:?}");
         }
     }
 
@@ -83,8 +82,8 @@ fn main() {
     // Test AdS-Rindler encoding
     println!("\nTesting AdS-Rindler encoding...");
     match simulator.create_ads_rindler_encoding(&mut test_matrix) {
-        Ok(_) => {
-            let norm: f64 = test_matrix.iter().map(|x| x.norm_sqr()).sum();
+        Ok(()) => {
+            let norm: f64 = test_matrix.iter().map(scirs2_core::Complex::norm_sqr).sum();
             println!("AdS-Rindler encoding matrix norm: {}", norm.sqrt());
             if norm < 1e-10 {
                 println!("❌ AdS-Rindler matrix is effectively zero");
@@ -93,7 +92,7 @@ fn main() {
             }
         }
         Err(e) => {
-            println!("❌ Error in AdS-Rindler encoding: {:?}", e);
+            println!("❌ Error in AdS-Rindler encoding: {e:?}");
         }
     }
 
@@ -102,8 +101,8 @@ fn main() {
     let rindler_factor = simulator.calculate_rindler_factor(1, 1);
     let entanglement_factor = simulator.calculate_entanglement_factor(1, 1);
 
-    println!("Rindler factor (1,1): {}", rindler_factor);
-    println!("Entanglement factor (1,1): {}", entanglement_factor);
+    println!("Rindler factor (1,1): {rindler_factor}");
+    println!("Entanglement factor (1,1): {entanglement_factor}");
 
     if rindler_factor.is_nan() || rindler_factor.is_infinite() {
         println!("❌ Rindler factor is NaN or infinite");
@@ -118,10 +117,7 @@ fn main() {
         for j in 0..boundary_dim {
             let rf = simulator.calculate_rindler_factor(i, j);
             let ef = simulator.calculate_entanglement_factor(i, j);
-            println!(
-                "  ({}, {}): Rindler={:.6}, Entanglement={:.6}",
-                i, j, rf, ef
-            );
+            println!("  ({i}, {j}): Rindler={rf:.6}, Entanglement={ef:.6}");
         }
     }
 }

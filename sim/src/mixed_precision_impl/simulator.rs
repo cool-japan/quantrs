@@ -4,10 +4,10 @@
 //! manages precision levels for optimal performance and accuracy.
 
 use crate::adaptive_gate_fusion::{FusedGateBlock, GateType, QuantumGate};
-use scirs2_core::random::prelude::*;
 use crate::error::{Result, SimulatorError};
 use crate::prelude::SciRS2Backend;
 use scirs2_core::ndarray::Array1;
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -159,7 +159,7 @@ impl MixedPrecisionSimulator {
     }
 
     /// Get the current state vector
-    pub fn get_state(&self) -> Option<&MixedPrecisionStateVector> {
+    pub const fn get_state(&self) -> Option<&MixedPrecisionStateVector> {
         self.state.as_ref()
     }
 
@@ -202,8 +202,7 @@ impl MixedPrecisionSimulator {
                     }
                     _ => {
                         return Err(SimulatorError::InvalidInput(format!(
-                            "Invalid Pauli operator: {}",
-                            pauli
+                            "Invalid Pauli operator: {pauli}"
                         )))
                     }
                 }
@@ -223,7 +222,7 @@ impl MixedPrecisionSimulator {
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &MixedPrecisionStats {
+    pub const fn get_stats(&self) -> &MixedPrecisionStats {
         &self.stats
     }
 
@@ -293,7 +292,7 @@ impl MixedPrecisionSimulator {
     }
 
     /// Select optimal precision for a fused gate block
-    fn select_block_precision(&self, _block: &FusedGateBlock) -> Result<QuantumPrecision> {
+    const fn select_block_precision(&self, _block: &FusedGateBlock) -> Result<QuantumPrecision> {
         // For fused blocks, use a conservative approach
         if self.config.adaptive_precision {
             Ok(QuantumPrecision::Single)

@@ -137,17 +137,17 @@ pub mod utils {
                 continue;
             }
 
-            if op.name() == "H" && op.qubits().len() >= 1 {
+            if op.name() == "H" && !op.qubits().is_empty() {
                 let _ = result.h(op.qubits()[0]);
-            } else if op.name() == "X" && op.qubits().len() >= 1 {
+            } else if op.name() == "X" && !op.qubits().is_empty() {
                 let _ = result.x(op.qubits()[0]);
-            } else if op.name() == "Y" && op.qubits().len() >= 1 {
+            } else if op.name() == "Y" && !op.qubits().is_empty() {
                 let _ = result.y(op.qubits()[0]);
-            } else if op.name() == "Z" && op.qubits().len() >= 1 {
+            } else if op.name() == "Z" && !op.qubits().is_empty() {
                 let _ = result.z(op.qubits()[0]);
-            } else if op.name() == "S" && op.qubits().len() >= 1 {
+            } else if op.name() == "S" && !op.qubits().is_empty() {
                 let _ = result.s(op.qubits()[0]);
-            } else if op.name() == "T" && op.qubits().len() >= 1 {
+            } else if op.name() == "T" && !op.qubits().is_empty() {
                 let _ = result.t(op.qubits()[0]);
             } else if op.name() == "CNOT" && op.qubits().len() >= 2 {
                 let _ = result.cnot(op.qubits()[0], op.qubits()[1]);
@@ -167,13 +167,13 @@ pub mod utils {
                 continue;
             }
 
-            if op.name() == "H" && op.qubits().len() >= 1 {
+            if op.name() == "H" && !op.qubits().is_empty() {
                 let _ = result.h(op.qubits()[0]);
-            } else if op.name() == "X" && op.qubits().len() >= 1 {
+            } else if op.name() == "X" && !op.qubits().is_empty() {
                 let _ = result.x(op.qubits()[0]);
-            } else if op.name() == "Y" && op.qubits().len() >= 1 {
+            } else if op.name() == "Y" && !op.qubits().is_empty() {
                 let _ = result.y(op.qubits()[0]);
-            } else if op.name() == "Z" && op.qubits().len() >= 1 {
+            } else if op.name() == "Z" && !op.qubits().is_empty() {
                 let _ = result.z(op.qubits()[0]);
             } else if op.name() == "CNOT" && op.qubits().len() >= 2 {
                 let _ = result.cnot(op.qubits()[0], op.qubits()[1]);
@@ -193,13 +193,13 @@ pub mod utils {
                 continue;
             }
 
-            if op.name() == "H" && op.qubits().len() >= 1 {
+            if op.name() == "H" && !op.qubits().is_empty() {
                 let _ = result.h(op.qubits()[0]);
-            } else if op.name() == "X" && op.qubits().len() >= 1 {
+            } else if op.name() == "X" && !op.qubits().is_empty() {
                 let _ = result.x(op.qubits()[0]);
-            } else if op.name() == "Y" && op.qubits().len() >= 1 {
+            } else if op.name() == "Y" && !op.qubits().is_empty() {
                 let _ = result.y(op.qubits()[0]);
-            } else if op.name() == "Z" && op.qubits().len() >= 1 {
+            } else if op.name() == "Z" && !op.qubits().is_empty() {
                 let _ = result.z(op.qubits()[0]);
             } else if op.name() == "CNOT" && op.qubits().len() >= 2 {
                 let _ = result.cnot(op.qubits()[0], op.qubits()[1]);

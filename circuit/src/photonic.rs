@@ -23,7 +23,8 @@ pub struct PhotonicMode {
 }
 
 impl PhotonicMode {
-    pub fn new(id: u32) -> Self {
+    #[must_use]
+    pub const fn new(id: u32) -> Self {
         Self {
             id,
             polarization: Polarization::Horizontal,
@@ -31,12 +32,14 @@ impl PhotonicMode {
         }
     }
 
-    pub fn with_polarization(mut self, polarization: Polarization) -> Self {
+    #[must_use]
+    pub const fn with_polarization(mut self, polarization: Polarization) -> Self {
         self.polarization = polarization;
         self
     }
 
-    pub fn with_frequency(mut self, frequency: f64) -> Self {
+    #[must_use]
+    pub const fn with_frequency(mut self, frequency: f64) -> Self {
         self.frequency = Some(frequency);
         self
     }
@@ -108,14 +111,15 @@ pub enum PhotonicGate {
 
 impl PhotonicGate {
     /// Get the modes involved in this gate
+    #[must_use]
     pub fn modes(&self) -> Vec<PhotonicMode> {
         match self {
-            PhotonicGate::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
-            PhotonicGate::PhaseShifter { mode, .. } => vec![*mode],
-            PhotonicGate::PolarizationRotator { mode, .. } => vec![*mode],
-            PhotonicGate::HalfWavePlate { mode, .. } => vec![*mode],
-            PhotonicGate::QuarterWavePlate { mode, .. } => vec![*mode],
-            PhotonicGate::PolarizingBeamSplitter {
+            Self::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
+            Self::PhaseShifter { mode, .. } => vec![*mode],
+            Self::PolarizationRotator { mode, .. } => vec![*mode],
+            Self::HalfWavePlate { mode, .. } => vec![*mode],
+            Self::QuarterWavePlate { mode, .. } => vec![*mode],
+            Self::PolarizingBeamSplitter {
                 input,
                 h_output,
                 v_output,
@@ -123,7 +127,7 @@ impl PhotonicGate {
             } => {
                 vec![*input, *h_output, *v_output]
             }
-            PhotonicGate::MachZehnder {
+            Self::MachZehnder {
                 input1,
                 input2,
                 output1,
@@ -132,8 +136,8 @@ impl PhotonicGate {
             } => {
                 vec![*input1, *input2, *output1, *output2]
             }
-            PhotonicGate::HongOuMandel { mode1, mode2, .. } => vec![*mode1, *mode2],
-            PhotonicGate::PhotonicCNOT {
+            Self::HongOuMandel { mode1, mode2, .. } => vec![*mode1, *mode2],
+            Self::PhotonicCNOT {
                 control,
                 target,
                 ancilla,
@@ -143,23 +147,24 @@ impl PhotonicGate {
                 modes.extend(ancilla);
                 modes
             }
-            PhotonicGate::KerrGate { mode, .. } => vec![*mode],
+            Self::KerrGate { mode, .. } => vec![*mode],
         }
     }
 
     /// Get gate name
-    pub fn name(&self) -> &'static str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         match self {
-            PhotonicGate::BeamSplitter { .. } => "BS",
-            PhotonicGate::PhaseShifter { .. } => "PS",
-            PhotonicGate::PolarizationRotator { .. } => "PR",
-            PhotonicGate::HalfWavePlate { .. } => "HWP",
-            PhotonicGate::QuarterWavePlate { .. } => "QWP",
-            PhotonicGate::PolarizingBeamSplitter { .. } => "PBS",
-            PhotonicGate::MachZehnder { .. } => "MZ",
-            PhotonicGate::HongOuMandel { .. } => "HOM",
-            PhotonicGate::PhotonicCNOT { .. } => "PCNOT",
-            PhotonicGate::KerrGate { .. } => "KERR",
+            Self::BeamSplitter { .. } => "BS",
+            Self::PhaseShifter { .. } => "PS",
+            Self::PolarizationRotator { .. } => "PR",
+            Self::HalfWavePlate { .. } => "HWP",
+            Self::QuarterWavePlate { .. } => "QWP",
+            Self::PolarizingBeamSplitter { .. } => "PBS",
+            Self::MachZehnder { .. } => "MZ",
+            Self::HongOuMandel { .. } => "HOM",
+            Self::PhotonicCNOT { .. } => "PCNOT",
+            Self::KerrGate { .. } => "KERR",
         }
     }
 }
@@ -218,6 +223,7 @@ pub struct PhotonicCircuit {
 
 impl PhotonicCircuit {
     /// Create a new photonic circuit
+    #[must_use]
     pub fn new(num_modes: usize) -> Self {
         Self {
             num_modes,
@@ -250,6 +256,7 @@ impl PhotonicCircuit {
     }
 
     /// Get circuit depth (simplified)
+    #[must_use]
     pub fn depth(&self) -> usize {
         // For photonic circuits, depth is more complex due to parallelism
         // This is a simplified calculation
@@ -287,6 +294,7 @@ pub struct PhotonicCircuitBuilder {
 
 impl PhotonicCircuitBuilder {
     /// Create a new builder
+    #[must_use]
     pub fn new(num_modes: usize) -> Self {
         Self {
             circuit: PhotonicCircuit::new(num_modes),
@@ -451,8 +459,7 @@ impl PhotonicConverter {
             }
             _ => {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Gate {} not supported in photonic conversion",
-                    gate_name
+                    "Gate {gate_name} not supported in photonic conversion"
                 )));
             }
         }
@@ -528,7 +535,8 @@ pub enum CVMeasurement {
 
 impl CVCircuit {
     /// Create new CV circuit
-    pub fn new(num_modes: usize) -> Self {
+    #[must_use]
+    pub const fn new(num_modes: usize) -> Self {
         Self {
             num_modes,
             gates: Vec::new(),

@@ -3,9 +3,9 @@
 //! This example demonstrates quantum reinforcement learning algorithms
 //! for continuous action spaces, including QDDPG and QSAC.
 
-use scirs2_core::ndarray::Array1;
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::Array1;
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -59,7 +59,7 @@ fn test_pendulum_dynamics() -> Result<()> {
             "     Next: [θ_cos={:.3}, θ_sin={:.3}, θ_dot={:.3}]",
             next_state[0], next_state[1], next_state[2]
         );
-        println!("     Reward: {:.3}, Done: {}", reward, done);
+        println!("     Reward: {reward:.3}, Done: {done}");
     }
 
     Ok(())
@@ -91,7 +91,7 @@ fn train_qddpg_pendulum() -> Result<()> {
 
     // Train for a few episodes (reduced for demo)
     let episodes = 50;
-    println!("   Training QDDPG for {} episodes...", episodes);
+    println!("   Training QDDPG for {episodes} episodes...");
 
     let rewards = agent.train(
         &mut env,
@@ -105,8 +105,8 @@ fn train_qddpg_pendulum() -> Result<()> {
     let avg_final = rewards[rewards.len() - 10..].iter().sum::<f64>() / 10.0;
 
     println!("\n   Training Statistics:");
-    println!("   - Average initial reward: {:.2}", avg_initial);
-    println!("   - Average final reward: {:.2}", avg_final);
+    println!("   - Average initial reward: {avg_initial:.2}");
+    println!("   - Average final reward: {avg_final:.2}");
     println!("   - Improvement: {:.2}", avg_final - avg_initial);
 
     // Test trained agent
@@ -146,8 +146,8 @@ fn test_trained_agent(agent: &QuantumDDPG, env: &mut dyn ContinuousEnvironment) 
         );
     }
 
-    let avg_test = test_rewards.iter().sum::<f64>() / test_episodes as f64;
-    println!("   Average test reward: {:.2}", avg_test);
+    let avg_test = test_rewards.iter().sum::<f64>() / f64::from(test_episodes);
+    println!("   Average test reward: {avg_test:.2}");
 
     Ok(())
 }
@@ -168,7 +168,7 @@ fn compare_policies() -> Result<()> {
 
         while !done {
             // Random action in bounds
-            let action = Array1::from_vec(vec![4.0 * thread_rng().gen::<f64>() - 2.0]);
+            let action = Array1::from_vec(vec![4.0f64.mul_add(thread_rng().gen::<f64>(), -2.0)]);
 
             let (next_state, reward, is_done) = env.step(action)?;
             state = next_state;
@@ -179,8 +179,8 @@ fn compare_policies() -> Result<()> {
         random_rewards.push(episode_reward);
     }
 
-    let avg_random = random_rewards.iter().sum::<f64>() / episodes as f64;
-    println!("   Average random policy reward: {:.2}", avg_random);
+    let avg_random = random_rewards.iter().sum::<f64>() / f64::from(episodes);
+    println!("   Average random policy reward: {avg_random:.2}");
 
     // Simple control policy (proportional control)
     println!("\n   Simple Control Policy Performance:");
@@ -205,12 +205,12 @@ fn compare_policies() -> Result<()> {
         control_rewards.push(episode_reward);
     }
 
-    let avg_control = control_rewards.iter().sum::<f64>() / episodes as f64;
-    println!("   Average control policy reward: {:.2}", avg_control);
+    let avg_control = control_rewards.iter().sum::<f64>() / f64::from(episodes);
+    println!("   Average control policy reward: {avg_control:.2}");
 
     println!("\n   Performance Summary:");
-    println!("   - Random policy: {:.2}", avg_random);
-    println!("   - Simple control: {:.2}", avg_control);
+    println!("   - Random policy: {avg_random:.2}");
+    println!("   - Simple control: {avg_control:.2}");
     println!("   - Improvement: {:.2}", avg_control - avg_random);
 
     Ok(())
@@ -257,9 +257,7 @@ fn custom_environment_demo() -> Result<()> {
             self.position = &self.position + &action;
 
             // Compute distance to goal
-            let distance = ((self.position[0] - self.goal[0]).powi(2)
-                + (self.position[1] - self.goal[1]).powi(2))
-            .sqrt();
+            let distance = (self.position[0] - self.goal[0]).hypot(self.position[1] - self.goal[1]);
 
             // Reward is negative distance (closer is better)
             let reward = -distance;
@@ -272,8 +270,8 @@ fn custom_environment_demo() -> Result<()> {
 
         fn reset(&mut self) -> Array1<f64> {
             self.position = Array1::from_vec(vec![
-                10.0 * thread_rng().gen::<f64>() - 5.0,
-                10.0 * thread_rng().gen::<f64>() - 5.0,
+                10.0f64.mul_add(thread_rng().gen::<f64>(), -5.0),
+                10.0f64.mul_add(thread_rng().gen::<f64>(), -5.0),
             ]);
             self.current_step = 0;
             self.state()
@@ -300,8 +298,8 @@ fn custom_environment_demo() -> Result<()> {
     println!("\n   Taking some steps:");
     for i in 0..3 {
         let action = Array1::from_vec(vec![
-            0.5 * (2.0 * thread_rng().gen::<f64>() - 1.0),
-            0.5 * (2.0 * thread_rng().gen::<f64>() - 1.0),
+            0.5 * 2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+            0.5 * 2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
         ]);
 
         let (next_state, reward, done) = nav_env.step(action.clone())?;

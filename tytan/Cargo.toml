@@ -18,14 +18,14 @@ thiserror.workspace = true
 # rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 # rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 # rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
-# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
-num-bigint.workspace = true
-num-integer.workspace = true
-num.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# num-bigint.workspace = true  # REMOVED: Unused dependency (SciRS2 POLICY CLEANUP)
+# num-integer.workspace = true  # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
+# num.workspace = true  # REMOVED: Use scirs2_core::Complex64 (SciRS2 POLICY)
 chrono.workspace = true
 quantrs2-symengine = { workspace = true, optional = true }
 quantrs2-symengine-sys = { workspace = true, optional = true }
-num-traits.workspace = true
+# num-traits.workspace = true  # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 regex = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
@@ -34,7 +34,6 @@ plotters = { workspace = true, optional = true }
 colored.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core = { workspace = true, default-features = false, features = ["gpu", "parallel", "simd"] }
 scirs2-autograd.workspace = true
 scirs2-optimize.workspace = true
@@ -43,12 +42,14 @@ scirs2-linalg = { workspace = true, optional = true }
 scirs2-cluster = { workspace = true, optional = true }
 
 # Optional dependencies
-rayon = { workspace = true, optional = true }
+# rayon = { workspace = true, optional = true }  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
 ocl = { workspace = true, optional = true }
 
 [features]
-default = ["parallel"]
-parallel = ["dep:rayon"]
+default = []  # parallel feature removed per SciRS2 POLICY - use scirs2-core parallel_ops directly
+# parallel = ["dep:rayon"]  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+# NOTE: parallel feature references in code use scirs2_core::parallel_ops directly
+parallel = []  # Feature flag for backward compatibility - actual parallelism uses scirs2-core
 gpu = ["dep:ocl"]
 # The dwave feature is optional and requires symengine to be installed
 dwave = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys", "dep:regex"]
@@ -56,8 +57,14 @@ scirs = ["dep:scirs2-linalg", "dep:scirs2-cluster"]
 advanced_optimization = ["scirs"]
 clustering = ["dep:scirs2-cluster"]
 # Combined accelerated features
-gpu_accelerated = ["gpu", "scirs", "parallel"]
+gpu_accelerated = ["gpu", "scirs"]  # parallel removed per SciRS2 POLICY - use scirs2-core parallel_ops directly
 plotters = ["dep:plotters"]
+# Hardware backend features (for future implementation)
+ibm_quantum = []
+azure_quantum = []
+amazon_braket = []
+# SIMD feature flag (actual SIMD ops use scirs2-core SIMD support)
+simd = []
 
 [dev-dependencies]
 criterion.workspace = true
@@ -68,5 +75,11 @@ colored.workspace = true
 # [[bench]]
 # name = "performance_benchmark"
 # harness = false
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["parallel", "scirs"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [lints]
 workspace = true

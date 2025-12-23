@@ -1,8 +1,8 @@
 //! Quantum Convolutional Neural Network demonstration
 
-use scirs2_core::Complex64 as Complex;
 use quantrs2_ml::error::MLError;
 use quantrs2_ml::qcnn::{QuantumImageEncoder, QCNN};
+use scirs2_core::Complex64 as Complex;
 
 fn main() -> Result<(), MLError> {
     println!("Quantum Convolutional Neural Network Demo");
@@ -19,7 +19,7 @@ fn main() -> Result<(), MLError> {
     println!("\nInput image (4x4):");
     for row in &image {
         for &val in row {
-            print!("{:.2} ", val);
+            print!("{val:.2} ");
         }
         println!();
     }
@@ -71,8 +71,8 @@ fn main() -> Result<(), MLError> {
     let output = qcnn.forward(&input_state)?;
 
     println!("\nOutput state statistics:");
-    let output_norm: f64 = output.iter().map(|c| c.norm_sqr()).sum();
-    println!("  Total probability: {:.6}", output_norm);
+    let output_norm: f64 = output.iter().map(scirs2_core::Complex::norm_sqr).sum();
+    println!("  Total probability: {output_norm:.6}");
 
     // Find the most probable outcomes
     let mut outcomes: Vec<(usize, f64)> = output
@@ -81,7 +81,11 @@ fn main() -> Result<(), MLError> {
         .map(|(i, c)| (i, c.norm_sqr()))
         .filter(|(_, p)| *p > 1e-6)
         .collect();
-    outcomes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    outcomes.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1).expect(
+            "Failed to compare outcome probabilities (NaN encountered in QCNN forward pass)",
+        )
+    });
 
     println!("\nTop 5 measurement outcomes:");
     for (idx, (state, prob)) in outcomes.iter().take(5).enumerate() {

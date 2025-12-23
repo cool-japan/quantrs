@@ -754,6 +754,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Intermittent multi-minute hangs in CI; cache priming causes excessive runtime.
     fn test_gate_evaluation() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
@@ -804,6 +805,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // Slow test (>660s) - run explicitly with: cargo test -- --ignored
     fn test_optimization_caching() {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();

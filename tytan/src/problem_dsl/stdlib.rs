@@ -217,7 +217,7 @@ impl StandardLibrary {
                         default: None,
                     },
                 ],
-                body: r#"
+                body: r"
                     param n = {n_cities};
                     param distances = {distance_matrix};
 
@@ -228,7 +228,7 @@ impl StandardLibrary {
                     subject to
                         forall(i in 0..n): sum(j in 0..n: x[i,j]) == 1;
                         forall(j in 0..n): sum(i in 0..n: x[i,j]) == 1;
-                "#
+                "
                 .to_string(),
             },
         );
@@ -256,7 +256,7 @@ impl StandardLibrary {
                         default: None,
                     },
                 ],
-                body: r#"
+                body: r"
                     param n_vertices = {n_vertices};
                     param n_colors = {n_colors};
                     param edges = {edges};
@@ -268,7 +268,7 @@ impl StandardLibrary {
                     subject to
                         forall(v in 0..n_vertices): sum(c in 0..n_colors: color[v,c]) == 1;
                         forall((u,v) in edges, c in 0..n_colors): color[u,c] + color[v,c] <= 1;
-                "#
+                "
                 .to_string(),
             },
         );
@@ -301,7 +301,7 @@ impl StandardLibrary {
                         default: Some(Value::Number(100.0)),
                     },
                 ],
-                body: r#"
+                body: r"
                     param n = {n_items};
                     param weights = {weights};
                     param values = {values};
@@ -313,7 +313,7 @@ impl StandardLibrary {
 
                     subject to
                         sum(i in 0..n: weights[i] * x[i]) <= capacity;
-                "#
+                "
                 .to_string(),
             },
         );
@@ -341,7 +341,7 @@ impl StandardLibrary {
                         default: None,
                     },
                 ],
-                body: r#"
+                body: r"
                     param n = {n_vertices};
                     param edges = {edges};
                     param weights = {weights};
@@ -349,7 +349,7 @@ impl StandardLibrary {
                     var x[n] binary;
 
                     maximize sum((i,j,w) in zip(edges, weights): w * (x[i] + x[j] - 2*x[i]*x[j]));
-                "#
+                "
                 .to_string(),
             },
         );

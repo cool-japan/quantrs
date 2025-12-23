@@ -1,4 +1,4 @@
-//! Demonstration of hardware topology analysis using SciRS2 graphs
+//! Demonstration of hardware topology analysis using `SciRS2` graphs
 //!
 //! This example shows how to analyze quantum hardware topologies,
 //! find optimal qubit subsets, and identify critical connections.
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, description) in topologies {
-        println!("Testing {}", description);
+        println!("Testing {description}");
         println!("{}", "-".repeat(50));
 
         let topology = HardwareTopology::load_standard(name)?;
@@ -32,13 +32,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Find critical qubits
         let critical = topology.find_critical_qubits();
         if !critical.is_empty() {
-            println!("Critical qubits (removal disconnects): {:?}", critical);
+            println!("Critical qubits (removal disconnects): {critical:?}");
         }
 
         // Find optimal subset for 3-qubit circuit
         if topology.num_qubits >= 3 {
             let subset = topology.find_optimal_subset(3)?;
-            println!("Optimal 3-qubit subset: {:?}", subset);
+            println!("Optimal 3-qubit subset: {subset:?}");
         }
 
         println!();
@@ -55,12 +55,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         heavy_hex.add_qubit(QubitProperties {
             id: i as u32,
             index: i as u32,
-            t1: 30.0 + 20.0 * fastrand::f64(),
-            t2: 40.0 + 30.0 * fastrand::f64(),
-            single_qubit_gate_error: 0.001 * (1.0 + 0.5 * fastrand::f64()),
-            gate_error_1q: 0.001 * (1.0 + 0.5 * fastrand::f64()),
-            readout_error: 0.02 * (1.0 + 0.3 * fastrand::f64()),
-            frequency: 4.5 + 0.5 * fastrand::f64(),
+            t1: 20.0f64.mul_add(fastrand::f64(), 30.0),
+            t2: 30.0f64.mul_add(fastrand::f64(), 40.0),
+            single_qubit_gate_error: 0.001 * 0.5f64.mul_add(fastrand::f64(), 1.0),
+            gate_error_1q: 0.001 * 0.5f64.mul_add(fastrand::f64(), 1.0),
+            readout_error: 0.02 * 0.3f64.mul_add(fastrand::f64(), 1.0),
+            frequency: 0.5f64.mul_add(fastrand::f64(), 4.5),
         });
     }
 
@@ -90,8 +90,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             q1,
             q2,
             GateProperties {
-                error_rate: 0.005 * (1.0 + 0.5 * fastrand::f64()),
-                duration: 150.0 + 50.0 * fastrand::f64(),
+                error_rate: 0.005 * 0.5f64.mul_add(fastrand::f64(), 1.0),
+                duration: 50.0f64.mul_add(fastrand::f64(), 150.0),
                 gate_type: "CZ".to_string(),
             },
         );
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nFinding optimal subsets for different circuit sizes:");
     for size in [4, 6, 8] {
         let subset = heavy_hex.find_optimal_subset(size)?;
-        println!("  {} qubits: {:?}", size, subset);
+        println!("  {size} qubits: {subset:?}");
 
         // Calculate subset quality
         let mut total_error = 0.0;

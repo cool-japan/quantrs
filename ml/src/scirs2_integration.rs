@@ -179,7 +179,10 @@ impl SciRS2Array {
     /// Reduction sum
     pub fn sum(&self, axis: Option<usize>) -> Result<SciRS2Array> {
         let result_data = match axis {
-            Some(ax) => self.data.sum_axis(scirs2_core::ndarray::Axis(ax)).into_dyn(),
+            Some(ax) => self
+                .data
+                .sum_axis(scirs2_core::ndarray::Axis(ax))
+                .into_dyn(),
             None => {
                 let sum_val = self.data.sum();
                 ArrayD::from_elem(IxDyn(&[]), sum_val)
@@ -237,7 +240,11 @@ impl SciRS2Tensor for SciRS2Array {
 
     fn mean(&self, axis: Option<usize>) -> Result<SciRS2Array> {
         let result_data = match axis {
-            Some(ax) => self.data.mean_axis(scirs2_core::ndarray::Axis(ax)).unwrap().into_dyn(),
+            Some(ax) => self
+                .data
+                .mean_axis(scirs2_core::ndarray::Axis(ax))
+                .unwrap()
+                .into_dyn(),
             None => {
                 let mean_val = self.data.mean().unwrap();
                 ArrayD::from_elem(IxDyn(&[]), mean_val)

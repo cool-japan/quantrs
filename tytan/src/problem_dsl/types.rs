@@ -12,11 +12,11 @@ pub enum VarType {
     Continuous,
     Spin,
     Array {
-        element_type: Box<VarType>,
+        element_type: Box<Self>,
         dimensions: Vec<usize>,
     },
     Matrix {
-        element_type: Box<VarType>,
+        element_type: Box<Self>,
         rows: usize,
         cols: usize,
     },
@@ -271,7 +271,7 @@ impl TypeChecker {
             super::ast::Expression::Variable(name) => {
                 if !self.var_types.contains_key(name) {
                     self.errors.push(TypeError {
-                        message: format!("Undefined variable: {}", name),
+                        message: format!("Undefined variable: {name}"),
                         location: name.clone(),
                     });
                 }
@@ -279,7 +279,7 @@ impl TypeChecker {
             super::ast::Expression::IndexedVar { name, indices } => {
                 if !self.var_types.contains_key(name) {
                     self.errors.push(TypeError {
-                        message: format!("Undefined variable: {}", name),
+                        message: format!("Undefined variable: {name}"),
                         location: name.clone(),
                     });
                 }
@@ -309,7 +309,7 @@ impl TypeChecker {
                     }
                 } else {
                     self.errors.push(TypeError {
-                        message: format!("Undefined function: {}", name),
+                        message: format!("Undefined function: {name}"),
                         location: name.clone(),
                     });
                 }
@@ -339,7 +339,7 @@ impl TypeChecker {
             super::ast::Statement::Assignment { target, value } => {
                 if !self.var_types.contains_key(target) {
                     self.errors.push(TypeError {
-                        message: format!("Undefined variable: {}", target),
+                        message: format!("Undefined variable: {target}"),
                         location: target.clone(),
                     });
                 }
@@ -375,30 +375,30 @@ impl TypeChecker {
             super::ast::Value::Boolean(_) => VarType::Binary,
             super::ast::Value::String(_) => VarType::Continuous, // Treat as parameter
             super::ast::Value::Array(elements) => {
-                if !elements.is_empty() {
+                if elements.is_empty() {
+                    VarType::Array {
+                        element_type: Box::new(VarType::Continuous),
+                        dimensions: vec![0],
+                    }
+                } else {
                     let element_type = self.infer_value_type(&elements[0]);
                     VarType::Array {
                         element_type: Box::new(element_type),
                         dimensions: vec![elements.len()],
-                    }
-                } else {
-                    VarType::Array {
-                        element_type: Box::new(VarType::Continuous),
-                        dimensions: vec![0],
                     }
                 }
             }
             super::ast::Value::Tuple(elements) => {
-                if !elements.is_empty() {
+                if elements.is_empty() {
+                    VarType::Array {
+                        element_type: Box::new(VarType::Continuous),
+                        dimensions: vec![0],
+                    }
+                } else {
                     let element_type = self.infer_value_type(&elements[0]);
                     VarType::Array {
                         element_type: Box::new(element_type),
                         dimensions: vec![elements.len()],
-                    }
-                } else {
-                    VarType::Array {
-                        element_type: Box::new(VarType::Continuous),
-                        dimensions: vec![0],
                     }
                 }
             }

@@ -478,7 +478,7 @@ pub struct SteaneCodeConfig {
 /// Steane code parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteaneParameters {
-    /// Code is [7,1,3]
+    /// Code is \[7,1,3\]
     pub n: usize, // 7
     pub k: usize, // 1
     pub d: usize, // 3
@@ -529,7 +529,7 @@ pub enum ErrorType {
 /// Shor code configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShorCodeConfig {
-    /// Shor code parameters [9,1,3]
+    /// Shor code parameters \[9,1,3\]
     pub parameters: ShorParameters,
     /// Bit flip code structure
     pub bit_flip_structure: BitFlipStructure,

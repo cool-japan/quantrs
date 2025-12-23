@@ -41,7 +41,7 @@ pub fn is_available() -> bool {
         // For SciRS2 GPU integration
         #[cfg(feature = "scirs")]
         {
-            return anneal_gpu_available();
+            anneal_gpu_available()
         }
 
         // For plain OCL
@@ -364,8 +364,8 @@ pub fn gpu_solve_hobo(
         // Generate random solution for placeholder
         let mut rng = thread_rng();
         let assignments: HashMap<String, bool> = var_map
-            .iter()
-            .map(|(name, _)| (name.clone(), rng.gen::<bool>()))
+            .keys()
+            .map(|name| (name.clone(), rng.gen::<bool>()))
             .collect();
 
         // Create sample result

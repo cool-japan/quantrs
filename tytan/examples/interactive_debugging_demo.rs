@@ -1,8 +1,10 @@
 //! Interactive debugging demonstration.
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::sampler::{SASampler, Sampler};
-use quantrs2_tytan::solution_debugger::*;
+use quantrs2_tytan::solution_debugger::{
+    ConstraintInfo, ConstraintType, DebuggerConfig, ProblemInfo, Solution, SolutionDebugger,
+};
+use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use std::io::{self, Write};
 
@@ -122,7 +124,7 @@ fn create_test_problem() -> ProblemInfo {
 
     // Penalty for adjacent nodes having same color
     let edges = vec![(0, 1), (1, 2), (2, 3), (0, 2)];
-    for (n1, n2) in edges.iter() {
+    for (n1, n2) in &edges {
         for color in 0..n_colors {
             let var1 = n1 * n_colors + color;
             let var2 = n2 * n_colors + color;
@@ -136,7 +138,7 @@ fn create_test_problem() -> ProblemInfo {
     let mut reverse_var_map = HashMap::new();
     for node in 0..n_nodes {
         for color in 0..n_colors {
-            let var_name = format!("x_{}_{}", node, color);
+            let var_name = format!("x_{node}_{color}");
             let idx = node * n_colors + color;
             var_map.insert(var_name.clone(), idx);
             reverse_var_map.insert(idx, var_name);
@@ -148,10 +150,10 @@ fn create_test_problem() -> ProblemInfo {
 
     // One color per node constraints
     for node in 0..n_nodes {
-        let variables: Vec<String> = (0..n_colors).map(|c| format!("x_{}_{}", node, c)).collect();
+        let variables: Vec<String> = (0..n_colors).map(|c| format!("x_{node}_{c}")).collect();
 
         constraints.push(ConstraintInfo {
-            name: Some(format!("one_color_node_{}", node)),
+            name: Some(format!("one_color_node_{node}")),
             constraint_type: ConstraintType::ExactlyOne,
             variables,
             parameters: HashMap::new(),
@@ -164,7 +166,7 @@ fn create_test_problem() -> ProblemInfo {
     for (n1, n2) in &edges {
         for color in 0..n_colors {
             constraints.push(ConstraintInfo {
-                name: Some(format!("edge_{}_{}_{}", n1, n2, color)),
+                name: Some(format!("edge_{n1}_{n2}_{color}")),
                 constraint_type: ConstraintType::AtMostOne,
                 variables: vec![format!("x_{}_{}", n1, color), format!("x_{}_{}", n2, color)],
                 parameters: HashMap::new(),
@@ -200,7 +202,7 @@ fn solve_problem() -> Result<Solution, Box<dyn std::error::Error>> {
     // Simple valid coloring: node 0=color0, node 1=color1, node 2=color2, node 3=color0
     for node in 0..4 {
         for color in 0..3 {
-            let var_name = format!("x_{}_{}", node, color);
+            let var_name = format!("x_{node}_{color}");
             let should_assign = match node {
                 0 => color == 0, // node 0 gets color 0
                 1 => color == 1, // node 1 gets color 1

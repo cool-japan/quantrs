@@ -11,10 +11,12 @@
 //! - Memory-optimized data structures with SciRS2 allocators
 //! - GPU-ready abstractions for heterogeneous computing
 
-use scirs2_core::ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2};
-use ndarray_linalg::Norm;
 #[cfg(feature = "advanced_math")]
 use ndrustfft::FftHandler;
+use scirs2_core::ndarray::ndarray_linalg::Norm; // SciRS2 POLICY compliant
+use scirs2_core::ndarray::{
+    s, Array1, Array2, ArrayView1, ArrayView2, ArrayViewMut1, ArrayViewMut2,
+};
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -22,11 +24,8 @@ use std::sync::{Arc, Mutex};
 
 // Core SciRS2 integration imports
 use quantrs2_core::prelude::QuantRS2Error as SciRS2Error;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::simd_ops::SimdUnifiedOps;
-
-// Import rayon for parallel processing
-use rayon::prelude::*;
 
 use crate::error::{Result, SimulatorError};
 use scirs2_core::random::prelude::*;
@@ -49,7 +48,7 @@ impl SciRS2Matrix {
     }
 
     /// Create matrix from existing array data
-    pub fn from_array2(array: Array2<Complex64>) -> Self {
+    pub const fn from_array2(array: Array2<Complex64>) -> Self {
         Self {
             data: array,
             simd_aligned: false,
@@ -100,7 +99,7 @@ impl SciRS2Vector {
     }
 
     /// Create vector from existing array data
-    pub fn from_array1(array: Array1<Complex64>) -> Self {
+    pub const fn from_array1(array: Array1<Complex64>) -> Self {
         Self {
             data: array,
             simd_aligned: false,
@@ -337,7 +336,7 @@ impl SciRS2VectorizedFFT {
         {
             let mut handler = FftHandler::<f64>::new(data.len());
             let mut output = data.clone();
-            ndrustfft::ndfft(&data, &mut output, &mut handler, 0);
+            ndrustfft::ndfft(&data, &mut output, &handler, 0);
             Ok(SciRS2Vector::from_array1(output))
         }
 
@@ -369,7 +368,7 @@ impl SciRS2VectorizedFFT {
         {
             let mut handler = FftHandler::<f64>::new(data.len());
             let mut output = data.clone();
-            ndrustfft::ndifft(&data, &mut output, &mut handler, 0);
+            ndrustfft::ndifft(&data, &mut output, &handler, 0);
             Ok(SciRS2Vector::from_array1(output))
         }
 
@@ -399,18 +398,18 @@ pub struct SciRS2ParallelContext {
     /// Number of worker threads
     pub num_threads: usize,
     /// Thread pool for parallel execution
-    pub thread_pool: rayon::ThreadPool,
+    pub thread_pool: ThreadPool, // SciRS2 POLICY compliant
     /// NUMA topology awareness
     pub numa_aware: bool,
 }
 
 impl Default for SciRS2ParallelContext {
     fn default() -> Self {
-        let num_threads = rayon::current_num_threads();
-        let thread_pool = rayon::ThreadPoolBuilder::new()
+        let num_threads = current_num_threads(); // SciRS2 POLICY compliant
+        let thread_pool = ThreadPoolBuilder::new() // SciRS2 POLICY compliant
             .num_threads(num_threads)
             .build()
-            .unwrap_or_else(|_| rayon::ThreadPoolBuilder::new().build().unwrap());
+            .unwrap_or_else(|_| ThreadPoolBuilder::new().build().unwrap());
 
         Self {
             num_threads,
@@ -499,12 +498,12 @@ impl SciRS2Backend {
     }
 
     /// Check if the backend is available and functional
-    pub fn is_available(&self) -> bool {
+    pub const fn is_available(&self) -> bool {
         self.available && self.simd_context.supports_complex_simd
     }
 
     /// Get SIMD capabilities information
-    pub fn get_simd_info(&self) -> &SciRS2SimdContext {
+    pub const fn get_simd_info(&self) -> &SciRS2SimdContext {
         &self.simd_context
     }
 
@@ -622,8 +621,8 @@ impl SciRS2Backend {
                         let br = b_real[b_idx];
                         let bi = b_imag[b_idx];
 
-                        real_sum += ar * br - ai * bi;
-                        imag_sum += ar * bi + ai * br;
+                        real_sum += ar.mul_add(br, -(ai * bi));
+                        imag_sum += ar.mul_add(bi, ai * br);
                     }
                 } else {
                     // Fallback to scalar operations for small matrices
@@ -634,8 +633,8 @@ impl SciRS2Backend {
                         let br = b_real[b_idx];
                         let bi = b_imag[b_idx];
 
-                        real_sum += ar * br - ai * bi;
-                        imag_sum += ar * bi + ai * br;
+                        real_sum += ar.mul_add(br, -(ai * bi));
+                        imag_sum += ar.mul_add(bi, ai * br);
                     }
                 }
 
@@ -685,8 +684,8 @@ impl SciRS2Backend {
                         let xr = x_real[j];
                         let xi = x_imag[j];
 
-                        real_sum += ar * xr - ai * xi;
-                        imag_sum += ar * xi + ai * xr;
+                        real_sum += ar.mul_add(xr, -(ai * xi));
+                        imag_sum += ar.mul_add(xi, ai * xr);
                     }
                 }
 
@@ -698,8 +697,8 @@ impl SciRS2Backend {
                     let xr = x_real[j];
                     let xi = x_imag[j];
 
-                    real_sum += ar * xr - ai * xi;
-                    imag_sum += ar * xi + ai * xr;
+                    real_sum += ar.mul_add(xr, -(ai * xi));
+                    imag_sum += ar.mul_add(xi, ai * xr);
                 }
             } else {
                 // Fallback to scalar operations
@@ -710,8 +709,8 @@ impl SciRS2Backend {
                     let xr = x_real[j];
                     let xi = x_imag[j];
 
-                    real_sum += ar * xr - ai * xi;
-                    imag_sum += ar * xi + ai * xr;
+                    real_sum += ar.mul_add(xr, -(ai * xi));
+                    imag_sum += ar.mul_add(xi, ai * xr);
                 }
             }
 
@@ -760,13 +759,20 @@ impl Default for SciRS2Backend {
 #[cfg(feature = "advanced_math")]
 #[derive(Debug)]
 pub struct MemoryPool {
-    // TODO: SciRS2MemoryPool not available in beta.1, using placeholder
+    // TODO: SciRS2MemoryPool not available in beta.3, using placeholder
     _placeholder: (),
 }
 
 #[cfg(feature = "advanced_math")]
+impl Default for MemoryPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "advanced_math")]
 impl MemoryPool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             // TODO: Implement memory pool when SciRS2MemoryPool is available
             _placeholder: (),
@@ -779,8 +785,15 @@ impl MemoryPool {
 pub struct MemoryPool;
 
 #[cfg(not(feature = "advanced_math"))]
+impl Default for MemoryPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(feature = "advanced_math"))]
 impl MemoryPool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -791,8 +804,15 @@ impl MemoryPool {
 pub struct FftEngine;
 
 #[cfg(feature = "advanced_math")]
+impl Default for FftEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "advanced_math")]
 impl FftEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -804,7 +824,7 @@ impl FftEngine {
         let mut handler = FftHandler::new(array.len());
         let mut fft_result = array.clone();
 
-        ndfft(&array, &mut fft_result, &mut handler, 0);
+        ndfft(&array, &mut fft_result, &handler, 0);
 
         Vector::from_array1(&fft_result.view(), &MemoryPool::new())
     }
@@ -817,7 +837,7 @@ impl FftEngine {
         let mut handler = FftHandler::new(array.len());
         let mut ifft_result = array.clone();
 
-        ndifft(&array, &mut ifft_result, &mut handler, 0);
+        ndifft(&array, &mut ifft_result, &handler, 0);
 
         Vector::from_array1(&ifft_result.view(), &MemoryPool::new())
     }
@@ -828,8 +848,15 @@ impl FftEngine {
 pub struct FftEngine;
 
 #[cfg(not(feature = "advanced_math"))]
+impl Default for FftEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(feature = "advanced_math"))]
 impl FftEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -1026,13 +1053,14 @@ impl SparseMatrix {
             values.to_vec(),
         )
         .map_err(|e| {
-            SimulatorError::ComputationError(format!("Failed to create CSR matrix: {}", e))
+            SimulatorError::ComputationError(format!("Failed to create CSR matrix: {e}"))
         })?;
 
         Ok(Self { csr_matrix })
     }
 
     pub fn matvec(&self, vector: &Vector, result: &mut Vector) -> Result<()> {
+        // TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
 
         // Convert our Vector to nalgebra DVector
@@ -1063,7 +1091,7 @@ impl SparseMatrix {
     }
 
     pub fn solve(&self, rhs: &Vector) -> Result<Vector> {
-        // Improved sparse solver using nalgebra-sparse capabilities
+        // TEMPORARY: Using nalgebra-sparse until refactored to scirs2_sparse (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
         use nalgebra_sparse::SparseEntry;
         use sprs::CsMat;
@@ -1089,14 +1117,13 @@ impl SparseMatrix {
             for i in 0..solution.len() {
                 if i < self.csr_matrix.nrows() {
                     // Get diagonal element
-                    let diag = self
-                        .csr_matrix
-                        .get_entry(i, i)
-                        .map(|entry| match entry {
-                            SparseEntry::NonZero(v) => *v,
-                            SparseEntry::Zero => Complex::new(0.0, 0.0),
-                        })
-                        .unwrap_or(Complex::new(1.0, 0.0));
+                    let diag =
+                        self.csr_matrix
+                            .get_entry(i, i)
+                            .map_or(Complex::new(1.0, 0.0), |entry| match entry {
+                                SparseEntry::NonZero(v) => *v,
+                                SparseEntry::Zero => Complex::new(0.0, 0.0),
+                            });
 
                     if diag.norm() > 1e-14 {
                         new_solution[i] = rhs_array[i] / diag;
@@ -1227,7 +1254,7 @@ pub struct LAPACK;
 impl LAPACK {
     pub fn svd(matrix: &Matrix) -> Result<SvdResult> {
         // Use ndarray-linalg SVD for complex matrices
-        use ndarray_linalg::SVD;
+        use scirs2_core::ndarray::ndarray_linalg::SVD; // SciRS2 POLICY compliant
 
         let svd_result = matrix
             .data
@@ -1256,7 +1283,7 @@ impl LAPACK {
 
     pub fn eig(matrix: &Matrix) -> Result<EigResult> {
         // Eigenvalue decomposition using SciRS2
-        use ndarray_linalg::Eig;
+        use scirs2_core::ndarray::ndarray_linalg::Eig; // SciRS2 POLICY compliant
 
         let eig_result = matrix.data.eig().map_err(|_| {
             SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string())
@@ -1323,7 +1350,7 @@ impl LAPACK {
 
     pub fn qr(matrix: &Matrix) -> Result<(Matrix, Matrix)> {
         // QR decomposition using ndarray-linalg
-        use ndarray_linalg::QR;
+        use scirs2_core::ndarray::ndarray_linalg::QR; // SciRS2 POLICY compliant
 
         let (q, r) = matrix
             .data
@@ -1385,11 +1412,11 @@ impl EigResult {
         self.values.to_array1()
     }
 
-    pub fn eigenvalues(&self) -> &Vector {
+    pub const fn eigenvalues(&self) -> &Vector {
         &self.values
     }
 
-    pub fn eigenvectors(&self) -> &Matrix {
+    pub const fn eigenvectors(&self) -> &Matrix {
         &self.vectors
     }
 }
@@ -1402,15 +1429,15 @@ impl SvdResult {
         })
     }
 
-    pub fn u_matrix(&self) -> &Matrix {
+    pub const fn u_matrix(&self) -> &Matrix {
         &self.u
     }
 
-    pub fn singular_values(&self) -> &Vector {
+    pub const fn singular_values(&self) -> &Vector {
         &self.s
     }
 
-    pub fn vt_matrix(&self) -> &Matrix {
+    pub const fn vt_matrix(&self) -> &Matrix {
         &self.vt
     }
 }
@@ -1460,7 +1487,7 @@ impl AdvancedFFT {
             let row = input.row(i).to_owned();
             let mut row_out = row.clone();
             let mut handler = FftHandler::new(cols);
-            ndfft(&row, &mut row_out, &mut handler, 0);
+            ndfft(&row, &mut row_out, &handler, 0);
             result.row_mut(i).assign(&row_out);
         }
 
@@ -1468,7 +1495,7 @@ impl AdvancedFFT {
             let col = result.column(j).to_owned();
             let mut col_out = col.clone();
             let mut handler = FftHandler::new(rows);
-            ndfft(&col, &mut col_out, &mut handler, 0);
+            ndfft(&col, &mut col_out, &handler, 0);
             result.column_mut(j).assign(&col_out);
         }
 
@@ -1508,7 +1535,7 @@ impl AdvancedFFT {
                 // Compute FFT
                 let mut handler = FftHandler::new(window_size);
                 let mut fft_result = windowed.clone();
-                ndrustfft::ndfft(&windowed, &mut fft_result, &mut handler, 0);
+                ndrustfft::ndfft(&windowed, &mut fft_result, &handler, 0);
 
                 row.assign(&fft_result);
             }
@@ -1535,8 +1562,8 @@ impl AdvancedFFT {
         let mut handler = FftHandler::new(fft_size);
         let mut a_fft = a_padded.clone();
         let mut b_fft = b_padded.clone();
-        ndrustfft::ndfft(&a_padded, &mut a_fft, &mut handler, 0);
-        ndrustfft::ndfft(&b_padded, &mut b_fft, &mut handler, 0);
+        ndrustfft::ndfft(&a_padded, &mut a_fft, &handler, 0);
+        ndrustfft::ndfft(&b_padded, &mut b_fft, &handler, 0);
 
         // Multiply in frequency domain
         let mut product = Array1::zeros(fft_size);
@@ -1546,7 +1573,7 @@ impl AdvancedFFT {
 
         // IFFT
         let mut result = product.clone();
-        ndrustfft::ndifft(&product, &mut result, &mut handler, 0);
+        ndrustfft::ndifft(&product, &mut result, &handler, 0);
 
         // Truncate to correct size and create Vector
         let truncated = result.slice(s![..n]).to_owned();
@@ -1569,6 +1596,7 @@ impl SparseSolvers {
         tolerance: f64,
         max_iterations: usize,
     ) -> Result<Vector> {
+        // TEMPORARY: Using nalgebra until refactored to scirs2_linalg (VIOLATES SciRS2 POLICY)
         use nalgebra::{Complex, DVector};
 
         let b_array = b.to_array1()?;
@@ -1828,7 +1856,12 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
+                .map(|_| {
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
+                })
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
@@ -1923,7 +1956,12 @@ impl AdvancedEigensolvers {
         // Initialize random starting vector
         let mut q = Array1::from_vec(
             (0..n)
-                .map(|_| Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5))
+                .map(|_| {
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
+                })
                 .collect(),
         );
         q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
@@ -1994,7 +2032,7 @@ pub struct AdvancedLinearAlgebra;
 impl AdvancedLinearAlgebra {
     /// QR decomposition with pivoting
     pub fn qr_decomposition(matrix: &Matrix) -> Result<QRResult> {
-        use ndarray_linalg::QR;
+        use scirs2_core::ndarray::ndarray_linalg::QR; // SciRS2 POLICY compliant
 
         let qr_result = matrix
             .data
@@ -2010,14 +2048,11 @@ impl AdvancedLinearAlgebra {
 
     /// Cholesky decomposition for positive definite matrices
     pub fn cholesky_decomposition(matrix: &Matrix) -> Result<Matrix> {
-        use ndarray_linalg::Cholesky;
+        use scirs2_core::ndarray::ndarray_linalg::{Cholesky, UPLO}; // SciRS2 POLICY compliant
 
-        let chol_result = matrix
-            .data
-            .cholesky(ndarray_linalg::UPLO::Lower)
-            .map_err(|_| {
-                SimulatorError::ComputationError("Cholesky decomposition failed".to_string())
-            })?;
+        let chol_result = matrix.data.cholesky(UPLO::Lower).map_err(|_| {
+            SimulatorError::ComputationError("Cholesky decomposition failed".to_string())
+        })?;
 
         Matrix::from_array2(&chol_result.view(), &MemoryPool::new())
     }
@@ -2033,7 +2068,7 @@ impl AdvancedLinearAlgebra {
         // Simple series expansion (would use more sophisticated methods in production)
         for k in 1..20 {
             term = term.dot(&scaled_matrix) / Complex64::new(k as f64, 0.0);
-            result = result + &term;
+            result += &term;
 
             if term.norm_l2() < 1e-12 {
                 break;
@@ -2074,7 +2109,7 @@ impl AdvancedLinearAlgebra {
         let mut min_singular = f64::INFINITY;
         let mut max_singular: f64 = 0.0;
 
-        for &sigma in s.iter() {
+        for &sigma in &s {
             let sigma_norm = sigma.norm();
             if sigma_norm > 1e-15 {
                 min_singular = min_singular.min(sigma_norm);

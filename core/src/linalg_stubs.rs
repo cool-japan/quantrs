@@ -1,5 +1,5 @@
-//! Temporary linear algebra stubs to replace scirs2_linalg types
-//! TODO: Replace with scirs2_linalg when regex dependency issue is fixed
+//! Linear algebra utilities using SciRS2-Linalg
+//! Compliant with SciRS2 POLICY - uses scirs2_linalg for all operations
 
 use crate::error::QuantRS2Result;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
@@ -74,25 +74,19 @@ pub struct SvdResult {
     pub vt: Array2<f64>,
 }
 
-/// Compute SVD
+/// Compute SVD using SciRS2-Linalg (SciRS2 POLICY compliant)
 pub fn svd(
     matrix: &ArrayView2<f64>,
     full_matrices: bool,
     compute_uv: Option<bool>,
 ) -> QuantRS2Result<(Array2<f64>, Array1<f64>, Array2<f64>)> {
-    use ndarray_linalg::SVD;
+    // Use scirs2_linalg for SVD computation (SciRS2 POLICY)
+    // svd returns (u, singular_values, vt) tuple
+    let (u, s, vt) = scirs2_linalg::svd(matrix, true, None).map_err(|e| {
+        crate::error::QuantRS2Error::ComputationError(format!("SVD failed: {:?}", e))
+    })?;
 
-    let compute = compute_uv.unwrap_or(true);
-    let (u, s, vt) = matrix
-        .to_owned()
-        .svd(compute, compute)
-        .map_err(|e| crate::error::QuantRS2Error::ComputationError(format!("SVD failed: {}", e)))?;
-
-    Ok((
-        u.unwrap_or_else(|| Array2::zeros((matrix.nrows(), matrix.nrows()))),
-        s,
-        vt.unwrap_or_else(|| Array2::zeros((matrix.ncols(), matrix.ncols()))),
-    ))
+    Ok((u, s, vt))
 }
 
 /// Compute SVD (simplified version)

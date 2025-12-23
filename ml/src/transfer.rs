@@ -5,17 +5,17 @@
 //! efficient learning with limited data and quantum resources.
 
 use crate::autodiff::optimizers::Optimizer;
-use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::optimization::OptimizationMethod;
 use crate::qnn::{QNNLayerType, QuantumNeuralNetwork, TrainingResult};
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::gate::{
     single::{RotationX, RotationY, RotationZ},
     GateOp,
 };
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 
 /// Transfer learning strategies

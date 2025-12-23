@@ -3,10 +3,10 @@
 //! This example demonstrates the full ecosystem of QuantRS2-ML integrations,
 //! showcasing how all components work together in a real-world workflow.
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use quantrs2_ml::prelude::*;
-use std::collections::HashMap;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("=== QuantRS2-ML Complete Integration Showcase ===\n");
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
     );
 
     // Preprocess data - convert to dynamic dimensions first
-    let raw_returns_dyn = raw_returns.clone().into_dyn();
+    let raw_returns_dyn = raw_returns.into_dyn();
     let processed_data_dyn = preprocessing_pipeline.transform(&raw_returns_dyn)?;
     let processed_data = processed_data_dyn.into_dimensionality::<scirs2_core::ndarray::Ix2>()?;
     println!("   - Data preprocessed with hybrid pipeline");
@@ -84,20 +84,20 @@ fn main() -> Result<()> {
     let pytorch_model = train_pytorch_style(&processed_data, &expected_returns)?;
     let pytorch_accuracy =
         evaluate_pytorch_model(&pytorch_model, &processed_data, &expected_returns)?;
-    println!("      PyTorch API accuracy: {:.3}", pytorch_accuracy);
+    println!("      PyTorch API accuracy: {pytorch_accuracy:.3}");
 
     // TensorFlow Quantum style training
     println!("   b) TensorFlow Quantum training...");
     let tfq_model = train_tensorflow_style(&processed_data, &expected_returns)?;
     let tfq_accuracy = evaluate_tfq_model(&tfq_model, &processed_data, &expected_returns)?;
-    println!("      TFQ API accuracy: {:.3}", tfq_accuracy);
+    println!("      TFQ API accuracy: {tfq_accuracy:.3}");
 
     // Scikit-learn style training
     println!("   c) Scikit-learn pipeline training...");
     let sklearn_model = train_sklearn_style(&processed_data, &expected_returns)?;
     let sklearn_accuracy =
         evaluate_sklearn_model(&sklearn_model, &processed_data, &expected_returns)?;
-    println!("      Sklearn API accuracy: {:.3}", sklearn_accuracy);
+    println!("      Sklearn API accuracy: {sklearn_accuracy:.3}");
 
     // Step 5: Model comparison and selection
     println!("\n5. Model comparison and selection...");
@@ -109,7 +109,7 @@ fn main() -> Result<()> {
     };
 
     let best_model = select_best_model(&model_comparison)?;
-    println!("   - Best performing API: {}", best_model);
+    println!("   - Best performing API: {best_model}");
 
     // Step 6: Distributed training with SciRS2
     println!("\n6. Distributed training with SciRS2...");
@@ -206,7 +206,7 @@ fn main() -> Result<()> {
             println!("   - Loaded existing QAOA model for comparison");
             let qaoa_accuracy =
                 evaluate_generic_model(existing_model, &processed_data, &expected_returns)?;
-            println!("   - QAOA model accuracy: {:.3}", qaoa_accuracy);
+            println!("   - QAOA model accuracy: {qaoa_accuracy:.3}");
         }
         Err(_) => {
             println!("   - QAOA model not found in zoo");
@@ -291,7 +291,7 @@ fn main() -> Result<()> {
     analytics.track_resource_utilization(&ecosystem)?;
 
     let dashboard_url = analytics.generate_dashboard("showcase_dashboard.html")?;
-    println!("   - Performance dashboard generated: {}", dashboard_url);
+    println!("   - Performance dashboard generated: {dashboard_url}");
 
     // Step 13: Integration health check
     println!("\n13. Integration health check...");
@@ -332,7 +332,7 @@ fn generate_financial_data(days: usize, assets: usize) -> Result<(Array2<f64>, A
     let returns = Array2::from_shape_fn((days, assets), |(i, j)| {
         let trend = (i as f64 / days as f64) * 0.1;
         let volatility = 0.02;
-        let noise = fastrand::f64() * volatility - volatility / 2.0;
+        let noise = fastrand::f64().mul_add(volatility, -(volatility / 2.0));
         let asset_factor = (j as f64 / assets as f64) * 0.05;
         trend + asset_factor + noise
     });
@@ -353,7 +353,7 @@ fn train_pytorch_style(data: &Array2<f64>, targets: &Array1<f64>) -> Result<PyTo
     Ok(model)
 }
 
-fn evaluate_pytorch_model(
+const fn evaluate_pytorch_model(
     _model: &PyTorchQuantumModel,
     _data: &Array2<f64>,
     _targets: &Array1<f64>,
@@ -371,7 +371,7 @@ fn train_tensorflow_style(data: &Array2<f64>, targets: &Array1<f64>) -> Result<T
     Ok(model)
 }
 
-fn evaluate_tfq_model(
+const fn evaluate_tfq_model(
     _model: &TFQQuantumModel,
     _data: &Array2<f64>,
     _targets: &Array1<f64>,
@@ -391,7 +391,7 @@ fn train_sklearn_style(data: &Array2<f64>, targets: &Array1<f64>) -> Result<Skle
     Ok(model)
 }
 
-fn evaluate_sklearn_model(
+const fn evaluate_sklearn_model(
     _model: &SklearnQuantumModel,
     _data: &Array2<f64>,
     _targets: &Array1<f64>,
@@ -406,7 +406,7 @@ struct ModelComparison {
 }
 
 fn select_best_model(comparison: &ModelComparison) -> Result<String> {
-    let accuracies = vec![
+    let accuracies = [
         ("PyTorch", comparison.pytorch_accuracy),
         ("TensorFlow Quantum", comparison.tfq_accuracy),
         ("Scikit-learn", comparison.sklearn_accuracy),
@@ -475,7 +475,7 @@ fn print_health_check_results(health_check: &IntegrationHealthCheck) {
     if !health_check.issues.is_empty() {
         println!("   - Issues found: {}", health_check.issues.len());
         for issue in &health_check.issues {
-            println!("     * {}", issue);
+            println!("     * {issue}");
         }
     }
 }
@@ -525,7 +525,7 @@ fn print_integration_roadmap(roadmap: &IntegrationRoadmap) {
         roadmap.improvements.len()
     );
     for improvement in &roadmap.improvements {
-        println!("     * {}", improvement);
+        println!("     * {improvement}");
     }
     println!(
         "   - Estimated timeline: {} months",
@@ -550,7 +550,7 @@ struct EcosystemConfig {
 }
 
 impl QuantumMLEcosystem {
-    fn new(config: EcosystemConfig) -> Result<Self> {
+    const fn new(config: EcosystemConfig) -> Result<Self> {
         Ok(Self { config })
     }
 
@@ -579,11 +579,11 @@ impl QuantumMLEcosystem {
         HybridPipelineManager::new()
     }
 
-    fn distributed_training_available(&self) -> bool {
+    const fn distributed_training_available(&self) -> bool {
         self.config.enable_distributed_training
     }
 
-    fn scirs2_integration(&self) -> SciRS2Integration {
+    const fn scirs2_integration(&self) -> SciRS2Integration {
         SciRS2Integration::new()
     }
 
@@ -599,15 +599,15 @@ impl QuantumMLEcosystem {
         ONNXExporter::new()
     }
 
-    fn pytorch_api(&self) -> PyTorchAPI {
+    const fn pytorch_api(&self) -> PyTorchAPI {
         PyTorchAPI::new()
     }
 
-    fn tensorflow_compatibility(&self) -> TensorFlowCompatibility {
+    const fn tensorflow_compatibility(&self) -> TensorFlowCompatibility {
         TensorFlowCompatibility::new()
     }
 
-    fn sklearn_compatibility(&self) -> SklearnCompatibility {
+    const fn sklearn_compatibility(&self) -> SklearnCompatibility {
         SklearnCompatibility::new()
     }
 
@@ -619,7 +619,7 @@ impl QuantumMLEcosystem {
         IndustryExampleManager::new()
     }
 
-    fn run_health_check(&self) -> Result<IntegrationHealthCheck> {
+    const fn run_health_check(&self) -> Result<IntegrationHealthCheck> {
         Ok(IntegrationHealthCheck {
             overall_healthy: true,
             working_integrations: 4,
@@ -687,11 +687,11 @@ struct IntegrationRoadmap {
 struct PerformanceAnalytics;
 
 impl PerformanceAnalytics {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 
-    fn track_model_performance(
+    const fn track_model_performance(
         &self,
         _model: &str,
         _results: &ComprehensiveBenchmarkResults,
@@ -699,11 +699,11 @@ impl PerformanceAnalytics {
         Ok(())
     }
 
-    fn track_framework_comparison(&self, _comparison: &ModelComparison) -> Result<()> {
+    const fn track_framework_comparison(&self, _comparison: &ModelComparison) -> Result<()> {
         Ok(())
     }
 
-    fn track_resource_utilization(&self, _ecosystem: &QuantumMLEcosystem) -> Result<()> {
+    const fn track_resource_utilization(&self, _ecosystem: &QuantumMLEcosystem) -> Result<()> {
         Ok(())
     }
 
@@ -771,12 +771,7 @@ impl QuantumModel for PyTorchQuantumModel {
     where
         Self: Sized,
     {
-        Ok(Box::new(PyTorchQuantumModel::new(
-            10,
-            vec![16, 8],
-            1,
-            true,
-        )?))
+        Ok(Box::new(Self::new(10, vec![16, 8], 1, true)?))
     }
 
     fn architecture(&self) -> String {
@@ -816,7 +811,7 @@ impl SklearnQuantumModel {
 // Additional supporting structures
 struct SciRS2Integration;
 impl SciRS2Integration {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
     fn create_distributed_trainer(
@@ -830,30 +825,30 @@ impl SciRS2Integration {
 
 struct PyTorchAPI;
 impl PyTorchAPI {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
-    fn save_model(&self, _model: &str, _path: &str) -> Result<()> {
+    const fn save_model(&self, _model: &str, _path: &str) -> Result<()> {
         Ok(())
     }
 }
 
 struct TensorFlowCompatibility;
 impl TensorFlowCompatibility {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
-    fn export_savedmodel(&self, _model: &str, _path: &str) -> Result<()> {
+    const fn export_savedmodel(&self, _model: &str, _path: &str) -> Result<()> {
         Ok(())
     }
 }
 
 struct SklearnCompatibility;
 impl SklearnCompatibility {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
-    fn save_model(&self, _model: &str, _path: &str) -> Result<()> {
+    const fn save_model(&self, _model: &str, _path: &str) -> Result<()> {
         Ok(())
     }
 }

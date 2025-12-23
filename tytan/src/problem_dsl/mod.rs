@@ -65,7 +65,7 @@ impl ProblemDSL {
     }
 
     /// Set compiler options
-    pub fn with_options(mut self, options: compiler::CompilerOptions) -> Self {
+    pub const fn with_options(mut self, options: compiler::CompilerOptions) -> Self {
         self.options = options;
         self
     }

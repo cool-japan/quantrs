@@ -701,7 +701,9 @@ impl TransferLearningEngine {
     ) -> DeviceResult<scirs2_core::ndarray::Array1<f64>> {
         // Simplified feature transferability analysis
         let n_features = 5; // latency, confidence, timestamp, success_rate, error_rate
-        Ok(scirs2_core::ndarray::Array1::from_vec(vec![0.8, 0.7, 0.6, 0.9, 0.8]))
+        Ok(scirs2_core::ndarray::Array1::from_vec(vec![
+            0.8, 0.7, 0.6, 0.9, 0.8,
+        ]))
     }
 }
 

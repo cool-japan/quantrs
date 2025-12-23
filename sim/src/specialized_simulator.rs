@@ -3,8 +3,8 @@
 //! This simulator automatically detects and uses specialized gate implementations
 //! for improved performance compared to general matrix multiplication.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -97,7 +97,7 @@ impl SpecializedStateVectorSimulator {
     }
 
     /// Get specialization statistics
-    pub fn get_stats(&self) -> &SpecializationStats {
+    pub const fn get_stats(&self) -> &SpecializationStats {
         &self.stats
     }
 
@@ -233,7 +233,7 @@ impl SpecializedStateVectorSimulator {
         let mut reordered = gates.to_vec();
 
         // Sort by first qubit to improve cache locality
-        reordered.sort_by_key(|gate| gate.qubits().get(0).map(|q| q.id()).unwrap_or(0));
+        reordered.sort_by_key(|gate| gate.qubits().first().map_or(0, |q| q.id()));
 
         Ok(reordered)
     }
@@ -364,8 +364,7 @@ impl SpecializedStateVectorSimulator {
 
         if matrix.len() != gate_dim * gate_dim {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Invalid matrix size for {}-qubit gate",
-                gate_qubits
+                "Invalid matrix size for {gate_qubits}-qubit gate"
             )));
         }
 
@@ -413,9 +412,10 @@ pub fn benchmark_specialization(
 
     // For benchmark purposes, we'll use a fixed-size circuit
     // In practice, you'd want to handle different sizes more elegantly
-    if n_qubits != 8 {
-        panic!("Benchmark currently only supports 8 qubits");
-    }
+    assert!(
+        (n_qubits == 8),
+        "Benchmark currently only supports 8 qubits"
+    );
 
     let mut circuit = Circuit::<8>::new();
 
@@ -499,7 +499,7 @@ mod tests {
             spec_time * 1000.0,
             base_time * 1000.0
         );
-        println!("Stats: {:?}", stats);
+        println!("Stats: {stats:?}");
 
         // Specialized should generally be faster
         assert!(spec_time <= base_time * 1.1); // Allow 10% margin

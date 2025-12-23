@@ -28,11 +28,18 @@
 //!
 //! - `static`: Link SymEngine statically
 //! - `system-deps`: Use pkg-config to find system dependencies
+//!
+//! ## Documentation
+//!
+//! For comprehensive API documentation, see the [`api_docs`] module.
 
 use std::os::raw::{c_char, c_int};
 
 // Include generated bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+// Comprehensive API documentation
+pub mod api_docs;
 
 /// SymEngine error codes
 pub mod error_codes {
@@ -81,31 +88,95 @@ pub enum SymEngineError {
 impl std::fmt::Display for SymEngineError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SymEngineError::NoException => write!(f, "No exception"),
-            SymEngineError::RuntimeError(msg) => write!(f, "Runtime error: {}", msg),
-            SymEngineError::DivisionByZero => write!(f, "Division by zero"),
-            SymEngineError::NotImplemented => write!(f, "Operation not implemented"),
-            SymEngineError::DomainError => write!(f, "Domain error"),
-            SymEngineError::ParseError => write!(f, "Parse error"),
-            SymEngineError::Unknown(code) => write!(f, "Unknown error code: {}", code),
+            SymEngineError::NoException => write!(f, "No exception occurred"),
+            SymEngineError::RuntimeError(msg) => {
+                write!(f, "SymEngine runtime error: {}", msg)
+            }
+            SymEngineError::DivisionByZero => {
+                write!(f, "Division by zero in symbolic computation")
+            }
+            SymEngineError::NotImplemented => {
+                write!(
+                    f,
+                    "Operation not implemented in SymEngine for this type or configuration"
+                )
+            }
+            SymEngineError::DomainError => {
+                write!(
+                    f,
+                    "Domain error: operation outside valid mathematical domain"
+                )
+            }
+            SymEngineError::ParseError => {
+                write!(f, "Parse error: failed to parse symbolic expression")
+            }
+            SymEngineError::Unknown(code) => {
+                write!(f, "Unknown SymEngine error (code: {})", code)
+            }
         }
     }
 }
 
-impl std::error::Error for SymEngineError {}
+impl std::error::Error for SymEngineError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+
+    fn description(&self) -> &str {
+        match self {
+            SymEngineError::NoException => "No exception occurred",
+            SymEngineError::RuntimeError(_) => "SymEngine runtime error",
+            SymEngineError::DivisionByZero => "Division by zero",
+            SymEngineError::NotImplemented => "Operation not implemented",
+            SymEngineError::DomainError => "Domain error",
+            SymEngineError::ParseError => "Parse error",
+            SymEngineError::Unknown(_) => "Unknown error",
+        }
+    }
+}
 
 impl From<c_int> for SymEngineError {
     fn from(code: c_int) -> Self {
         match code {
             error_codes::SYMENGINE_NO_EXCEPTION => SymEngineError::NoException,
             error_codes::SYMENGINE_RUNTIME_ERROR => {
-                SymEngineError::RuntimeError("Runtime error".to_string())
+                SymEngineError::RuntimeError("SymEngine encountered a runtime error".to_string())
             }
             error_codes::SYMENGINE_DIV_BY_ZERO => SymEngineError::DivisionByZero,
             error_codes::SYMENGINE_NOT_IMPLEMENTED => SymEngineError::NotImplemented,
             error_codes::SYMENGINE_DOMAIN_ERROR => SymEngineError::DomainError,
             error_codes::SYMENGINE_PARSE_ERROR => SymEngineError::ParseError,
             _ => SymEngineError::Unknown(code),
+        }
+    }
+}
+
+impl SymEngineError {
+    /// Create a runtime error with a custom message
+    pub fn runtime_error(msg: impl Into<String>) -> Self {
+        SymEngineError::RuntimeError(msg.into())
+    }
+
+    /// Check if this error represents a successful operation (no exception)
+    pub fn is_ok(&self) -> bool {
+        matches!(self, SymEngineError::NoException)
+    }
+
+    /// Check if this is an error (not NoException)
+    pub fn is_err(&self) -> bool {
+        !self.is_ok()
+    }
+
+    /// Get the error code as an integer
+    pub fn code(&self) -> c_int {
+        match self {
+            SymEngineError::NoException => error_codes::SYMENGINE_NO_EXCEPTION,
+            SymEngineError::RuntimeError(_) => error_codes::SYMENGINE_RUNTIME_ERROR,
+            SymEngineError::DivisionByZero => error_codes::SYMENGINE_DIV_BY_ZERO,
+            SymEngineError::NotImplemented => error_codes::SYMENGINE_NOT_IMPLEMENTED,
+            SymEngineError::DomainError => error_codes::SYMENGINE_DOMAIN_ERROR,
+            SymEngineError::ParseError => error_codes::SYMENGINE_PARSE_ERROR,
+            SymEngineError::Unknown(code) => *code,
         }
     }
 }
@@ -124,19 +195,20 @@ pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-// Additional function declarations that might not be in the generated bindings
-extern "C" {
-    // CVecBasic functions (for handling argument vectors)
-    pub fn vecbasic_new() -> *mut CVecBasic;
-    pub fn vecbasic_free(self_: *mut CVecBasic);
-    pub fn vecbasic_push_back(self_: *mut CVecBasic, value: *const basic_struct) -> c_int;
-    pub fn vecbasic_get(self_: *mut CVecBasic, n: usize, result: *mut basic_struct) -> c_int;
-    pub fn vecbasic_size(self_: *const CVecBasic) -> usize;
-
-    // Symbol operations
-    pub fn function_symbol_get_name(basic: *const basic_struct) -> *mut c_char;
-    // Note: basic_get_args, basic_str_free, basic_pow, and basic_get_type are already in the generated bindings
-}
+// Note: All function bindings are now generated automatically by bindgen
+// from the SymEngine C wrapper API (cwrapper.h). The following functions
+// are now available through the generated bindings:
+//
+// - CVecBasic functions: vecbasic_new, vecbasic_free, vecbasic_push_back, etc.
+// - CMapBasicBasic functions: mapbasicbasic_new, mapbasicbasic_free, mapbasicbasic_insert, etc.
+// - Substitution: basic_subs, basic_subs2
+// - Complex numbers: complex_base_real_part, complex_base_imaginary_part, basic_conjugate
+// - Special functions: basic_atan2, basic_kronecker_delta, basic_lowergamma, basic_uppergamma, etc.
+// - Number theory: ntheory_gcd, ntheory_lcm, ntheory_mod, ntheory_factorial, etc.
+// - Matrix operations: dense_matrix_*, sparse_matrix_*
+// - Calculus: basic_diff, dense_matrix_jacobian, etc.
+//
+// All of these are automatically generated and available for use.
 
 /// Check if SymEngine is available at runtime
 pub fn is_symengine_available() -> bool {
@@ -154,9 +226,46 @@ mod tests {
         assert_eq!(SymEngineError::from(0), SymEngineError::NoException);
         assert_eq!(
             SymEngineError::from(1),
-            SymEngineError::RuntimeError("Runtime error".to_string())
+            SymEngineError::RuntimeError("SymEngine encountered a runtime error".to_string())
         );
         assert_eq!(SymEngineError::from(2), SymEngineError::DivisionByZero);
+        assert_eq!(SymEngineError::from(3), SymEngineError::NotImplemented);
+        assert_eq!(SymEngineError::from(4), SymEngineError::DomainError);
+        assert_eq!(SymEngineError::from(5), SymEngineError::ParseError);
+        assert_eq!(SymEngineError::from(99), SymEngineError::Unknown(99));
+    }
+
+    #[test]
+    fn test_error_methods() {
+        let ok_err = SymEngineError::NoException;
+        assert!(ok_err.is_ok());
+        assert!(!ok_err.is_err());
+        assert_eq!(ok_err.code(), 0);
+
+        let div_err = SymEngineError::DivisionByZero;
+        assert!(!div_err.is_ok());
+        assert!(div_err.is_err());
+        assert_eq!(div_err.code(), 2);
+
+        let custom_err = SymEngineError::runtime_error("Custom error message");
+        assert!(!custom_err.is_ok());
+        assert!(custom_err.is_err());
+        assert_eq!(custom_err.code(), 1);
+        match custom_err {
+            SymEngineError::RuntimeError(msg) => assert_eq!(msg, "Custom error message"),
+            _ => panic!("Expected RuntimeError"),
+        }
+    }
+
+    #[test]
+    fn test_error_display() {
+        let err = SymEngineError::DivisionByZero;
+        let display = format!("{}", err);
+        assert!(display.contains("Division by zero"));
+
+        let runtime_err = SymEngineError::runtime_error("test");
+        let runtime_display = format!("{}", runtime_err);
+        assert!(runtime_display.contains("test"));
     }
 
     #[test]
@@ -187,5 +296,91 @@ mod tests {
         // Note: This test might fail in CI environments without SymEngine
         let _available = is_symengine_available();
         // Just verify the function doesn't panic
+    }
+
+    #[test]
+    fn test_vecbasic_operations() {
+        unsafe {
+            let vec = vecbasic_new();
+            assert!(!vec.is_null());
+
+            // Test that vecbasic_size works
+            let size = vecbasic_size(vec);
+            assert_eq!(size, 0);
+
+            vecbasic_free(vec);
+        }
+    }
+
+    #[test]
+    fn test_mapbasicbasic_operations() {
+        unsafe {
+            let map = mapbasicbasic_new();
+            assert!(!map.is_null());
+
+            // Test that mapbasicbasic_size works
+            let size = mapbasicbasic_size(map);
+            assert_eq!(size, 0);
+
+            mapbasicbasic_free(map);
+        }
+    }
+
+    #[test]
+    fn test_dense_matrix_creation() {
+        unsafe {
+            let mat = dense_matrix_new();
+            assert!(!mat.is_null());
+            dense_matrix_free(mat);
+
+            let mat2 = dense_matrix_new_rows_cols(2, 2);
+            assert!(!mat2.is_null());
+            dense_matrix_free(mat2);
+        }
+    }
+
+    #[test]
+    fn test_type_sizes() {
+        // Verify all major types have reasonable sizes
+        assert!(std::mem::size_of::<basic_struct>() > 0);
+        assert!(std::mem::size_of::<basic_struct>() < 1024);
+
+        // Pointer types should be the size of a pointer
+        assert_eq!(
+            std::mem::size_of::<*mut CVecBasic>(),
+            std::mem::size_of::<usize>()
+        );
+        assert_eq!(
+            std::mem::size_of::<*mut CMapBasicBasic>(),
+            std::mem::size_of::<usize>()
+        );
+        assert_eq!(
+            std::mem::size_of::<*mut CDenseMatrix>(),
+            std::mem::size_of::<usize>()
+        );
+    }
+
+    #[test]
+    fn test_error_codes() {
+        // Verify error code constants
+        assert_eq!(error_codes::SYMENGINE_NO_EXCEPTION, 0);
+        assert_eq!(error_codes::SYMENGINE_RUNTIME_ERROR, 1);
+        assert_eq!(error_codes::SYMENGINE_DIV_BY_ZERO, 2);
+        assert_eq!(error_codes::SYMENGINE_NOT_IMPLEMENTED, 3);
+        assert_eq!(error_codes::SYMENGINE_DOMAIN_ERROR, 4);
+        assert_eq!(error_codes::SYMENGINE_PARSE_ERROR, 5);
+    }
+
+    #[test]
+    fn test_type_codes() {
+        // Verify type code constants
+        assert_eq!(type_codes::SYMENGINE_SYMBOL, 1);
+        assert_eq!(type_codes::SYMENGINE_ADD, 2);
+        assert_eq!(type_codes::SYMENGINE_MUL, 3);
+        assert_eq!(type_codes::SYMENGINE_POW, 4);
+        assert_eq!(type_codes::SYMENGINE_INTEGER, 5);
+        assert_eq!(type_codes::SYMENGINE_RATIONAL, 6);
+        assert_eq!(type_codes::SYMENGINE_REAL_DOUBLE, 7);
+        assert_eq!(type_codes::SYMENGINE_COMPLEX_DOUBLE, 8);
     }
 }

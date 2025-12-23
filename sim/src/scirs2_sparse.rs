@@ -165,7 +165,7 @@ pub struct SparseMatrix {
 
 impl SparseMatrix {
     /// Create new sparse matrix
-    pub fn new(shape: (usize, usize), format: SparseFormat) -> Self {
+    pub const fn new(shape: (usize, usize), format: SparseFormat) -> Self {
         Self {
             shape,
             format,
@@ -261,7 +261,7 @@ impl SparseMatrix {
     }
 
     /// Check if matrix is square
-    pub fn is_square(&self) -> bool {
+    pub const fn is_square(&self) -> bool {
         self.shape.0 == self.shape.1
     }
 
@@ -939,7 +939,7 @@ impl SciRS2SparseSolver {
     }
 
     /// Get execution statistics
-    pub fn get_stats(&self) -> &SparseSolverStats {
+    pub const fn get_stats(&self) -> &SparseSolverStats {
         &self.stats
     }
 
@@ -949,7 +949,7 @@ impl SciRS2SparseSolver {
     }
 
     /// Set configuration
-    pub fn set_config(&mut self, config: SparseSolverConfig) {
+    pub const fn set_config(&mut self, config: SparseSolverConfig) {
         self.config = config;
     }
 }
@@ -1004,8 +1004,7 @@ impl SparseMatrixUtils {
                         }
                         _ => {
                             return Err(SimulatorError::InvalidInput(format!(
-                                "Invalid Pauli character: {}",
-                                pauli_char
+                                "Invalid Pauli character: {pauli_char}"
                             )));
                         }
                     }

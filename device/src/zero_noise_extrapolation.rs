@@ -4,9 +4,9 @@
 //! in quantum computations by extrapolating to the zero-noise limit.
 
 use crate::{CircuitResult, DeviceError, DeviceResult};
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::GateOp;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::thread_rng;
 use std::collections::HashMap;
 

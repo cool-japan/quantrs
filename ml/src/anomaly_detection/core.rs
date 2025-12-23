@@ -1,8 +1,8 @@
 //! Core quantum anomaly detection functionality
 
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::builder::Circuit;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::{HashMap, VecDeque};
 
 use super::config::*;

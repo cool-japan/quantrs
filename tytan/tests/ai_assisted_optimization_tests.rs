@@ -1,7 +1,7 @@
 //! Comprehensive tests for AI-assisted quantum optimization.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::ai_assisted_optimization::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -297,8 +297,8 @@ fn test_parameter_optimization() {
     let crossover_rate = ga_params["crossover_rate"];
 
     assert!(pop_size > 0.0);
-    assert!(mutation_rate >= 0.0 && mutation_rate <= 1.0);
-    assert!(crossover_rate >= 0.0 && crossover_rate <= 1.0);
+    assert!((0.0..=1.0).contains(&mutation_rate));
+    assert!((0.0..=1.0).contains(&crossover_rate));
 
     println!("Parameter optimization tests passed");
 }
@@ -493,10 +493,10 @@ fn test_comprehensive_optimization_workflow() {
     ];
 
     for (name, qubo) in test_cases {
-        println!("\nTesting workflow on: {}", name);
+        println!("\nTesting workflow on: {name}");
 
         let result = optimizer.optimize(&qubo, Some(0.8), Some(Duration::from_secs(60)));
-        assert!(result.is_ok(), "Optimization failed for {}", name);
+        assert!(result.is_ok(), "Optimization failed for {name}");
 
         let optimization_result = result.unwrap();
 
@@ -572,7 +572,7 @@ fn test_activation_functions() {
     for activation in activations {
         // Just test that they can be created and cloned
         let _cloned = activation.clone();
-        println!("Activation function: {:?}", activation);
+        println!("Activation function: {activation:?}");
     }
 
     println!("Activation functions tests passed");
@@ -587,14 +587,14 @@ fn test_ensemble_methods() {
 
     for method in methods {
         let _cloned = method.clone();
-        println!("Ensemble method: {:?}", method);
+        println!("Ensemble method: {method:?}");
     }
 
     // Test stacking with nested box
     let stacking = Stacking {
         meta_learner: Box::new(RegressionModel::LinearRegression),
     };
-    let _cloned = stacking.clone();
+    let _cloned = stacking;
 
     println!("Ensemble methods tests passed");
 }

@@ -5,10 +5,10 @@
 //! switching for quantum ML algorithms.
 
 use crate::error::{MLError, Result};
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::Complex64;
 // GpuStateVectorSimulator import removed - not used in this file
 // The GPUBackend is a placeholder that doesn't use the actual GPU simulator yet
 use quantrs2_sim::prelude::{MPSSimulator, PauliString, StateVectorSimulator};

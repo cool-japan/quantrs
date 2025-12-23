@@ -14,8 +14,8 @@ use quantrs2_anneal::{
         LandscapeAnalyzer,
     },
 };
-use std::fs;
 use scirs2_core::random::prelude::*;
+use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Energy Landscape Visualization Demo ===\n");
@@ -96,20 +96,20 @@ fn analyze_and_visualize(
     );
 
     if let Some(gap) = stats.energy_gap {
-        println!("  Energy gap: {:.4}", gap);
+        println!("  Energy gap: {gap:.4}");
     }
 
     // Identify basins
     let basin_analyzer = BasinAnalyzer::new(0.1, 2);
     let num_basins = basin_analyzer.identify_basins(&mut points)?;
-    println!("  Number of energy basins: {}", num_basins);
+    println!("  Number of energy basins: {num_basins}");
 
     // Export landscape data
-    let landscape_path = format!("landscape_outputs/{}_landscape.csv", name);
+    let landscape_path = format!("landscape_outputs/{name}_landscape.csv");
     plot_energy_landscape(&points, &landscape_path, title)?;
 
     // Export energy histogram
-    let histogram_path = format!("landscape_outputs/{}_histogram.csv", name);
+    let histogram_path = format!("landscape_outputs/{name}_histogram.csv");
     plot_energy_histogram(&points, &histogram_path, 20)?;
 
     Ok(())
@@ -200,7 +200,7 @@ fn create_random_problem(n: usize, density: f64) -> Result<IsingModel, Box<dyn s
     Ok(model)
 }
 
-/// Create a MaxCut problem instance
+/// Create a `MaxCut` problem instance
 fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Error>> {
     let mut model = IsingModel::new(n);
 
@@ -219,7 +219,7 @@ fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Err
 
 /// Create a Number Partitioning problem as Ising model
 fn _create_number_partitioning() -> Result<IsingModel, Box<dyn std::error::Error>> {
-    let numbers = vec![3.0, 1.0, 1.0, 2.0, 2.0, 1.0];
+    let numbers = [3.0, 1.0, 1.0, 2.0, 2.0, 1.0];
     let n = numbers.len();
     let target = numbers.iter().sum::<f64>() / 2.0;
 

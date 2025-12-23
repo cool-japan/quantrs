@@ -229,7 +229,9 @@ impl ConstraintAnalyzer {
             .filter(|var| assignments.get(*var).copied().unwrap_or(false))
             .count();
 
-        if true_count != 1 {
+        if true_count == 1 {
+            None
+        } else {
             let violation_amount = (true_count as i32 - 1).abs() as f64;
             Some(ConstraintViolation {
                 constraint: constraint.clone(),
@@ -237,8 +239,6 @@ impl ConstraintAnalyzer {
                 violating_variables: constraint.variables.clone(),
                 suggested_fixes: self.generate_exactly_one_fixes(constraint, assignments),
             })
-        } else {
-            None
         }
     }
 
@@ -442,7 +442,7 @@ impl ConstraintAnalyzer {
                 }
 
                 fixes.push(SuggestedFix {
-                    description: format!("Keep only {} set to true", keep_var),
+                    description: format!("Keep only {keep_var} set to true"),
                     variable_changes: changes,
                     expected_improvement: (true_vars.len() - 1) as f64 * constraint.penalty,
                     complexity: if true_vars.len() == 2 {
@@ -478,7 +478,7 @@ impl ConstraintAnalyzer {
                 changes.insert(var.clone(), true);
 
                 fixes.push(SuggestedFix {
-                    description: format!("Set {} to true", var),
+                    description: format!("Set {var} to true"),
                     variable_changes: changes,
                     expected_improvement: constraint.penalty,
                     complexity: FixComplexity::Simple,
@@ -501,7 +501,7 @@ impl ConstraintAnalyzer {
                 }
 
                 fixes.push(SuggestedFix {
-                    description: format!("Keep only {} set to true", keep_var),
+                    description: format!("Keep only {keep_var} set to true"),
                     variable_changes: changes,
                     expected_improvement: (true_vars.len() - 1) as f64 * constraint.penalty,
                     complexity: if true_vars.len() == 2 {

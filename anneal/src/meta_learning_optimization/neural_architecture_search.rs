@@ -3,6 +3,9 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
+use scirs2_core::rand_prelude::IndexedRandom;
+use scirs2_core::random::thread_rng;
+
 use super::config::*;
 use super::feature_extraction::*;
 
@@ -31,7 +34,10 @@ impl NeuralArchitectureSearch {
         }
     }
 
-    pub fn search_architecture(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    pub fn search_architecture(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         match self.config.search_strategy {
             SearchStrategy::DifferentiableNAS => self.differentiable_search(problem_features),
             SearchStrategy::EvolutionarySearch => self.evolutionary_search(problem_features),
@@ -42,12 +48,17 @@ impl NeuralArchitectureSearch {
         }
     }
 
-    fn differentiable_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn differentiable_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         // Simplified differentiable NAS implementation
         let candidate = self.generate_random_architecture(problem_features)?;
 
         // Evaluate and update
-        let performance = self.performance_predictor.predict(&candidate.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::GradientBased;
@@ -56,7 +67,10 @@ impl NeuralArchitectureSearch {
         Ok(improved_candidate)
     }
 
-    fn evolutionary_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn evolutionary_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         // Simplified evolutionary search
         if self.current_architectures.is_empty() {
             return self.random_search(problem_features);
@@ -70,7 +84,9 @@ impl NeuralArchitectureSearch {
         offspring = self.mutate(offspring)?;
 
         // Evaluate
-        let performance = self.performance_predictor.predict(&offspring.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&offspring.architecture)?;
         offspring.estimated_performance = performance;
         offspring.generation_method = GenerationMethod::Mutation;
 
@@ -78,12 +94,17 @@ impl NeuralArchitectureSearch {
         Ok(offspring)
     }
 
-    fn rl_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn rl_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         // Simplified RL-based search
         let candidate = self.generate_random_architecture(problem_features)?;
 
         // Apply RL policy (simplified)
-        let performance = self.performance_predictor.predict(&candidate.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::ReinforcementLearning;
@@ -92,11 +113,16 @@ impl NeuralArchitectureSearch {
         Ok(improved_candidate)
     }
 
-    fn bayesian_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn bayesian_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         // Simplified Bayesian optimization
         let candidate = self.generate_random_architecture(problem_features)?;
 
-        let performance = self.performance_predictor.predict(&candidate.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
         improved_candidate.generation_method = GenerationMethod::GradientBased;
@@ -105,17 +131,25 @@ impl NeuralArchitectureSearch {
         Ok(improved_candidate)
     }
 
-    fn random_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn random_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         let candidate = self.generate_random_architecture(problem_features)?;
         self.current_architectures.push(candidate.clone());
         Ok(candidate)
     }
 
-    fn progressive_search(&mut self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn progressive_search(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         // Simplified progressive search
         let candidate = self.generate_random_architecture(problem_features)?;
 
-        let performance = self.performance_predictor.predict(&candidate.architecture)?;
+        let performance = self
+            .performance_predictor
+            .predict(&candidate.architecture)?;
         let mut improved_candidate = candidate;
         improved_candidate.estimated_performance = performance;
 
@@ -123,25 +157,41 @@ impl NeuralArchitectureSearch {
         Ok(improved_candidate)
     }
 
-    fn generate_random_architecture(&self, problem_features: &ProblemFeatures) -> Result<ArchitectureCandidate, String> {
+    fn generate_random_architecture(
+        &self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<ArchitectureCandidate, String> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         // Determine architecture size based on problem features
-        let num_layers = rng.gen_range(self.search_space.num_layers_range.0..=self.search_space.num_layers_range.1);
+        let num_layers = rng
+            .gen_range(self.search_space.num_layers_range.0..=self.search_space.num_layers_range.1);
         let input_dim = problem_features.size.min(512);
 
         let mut layers = Vec::new();
         let mut current_dim = input_dim;
 
         for i in 0..num_layers {
-            let layer_type = self.search_space.layer_types.choose(&mut rng)
+            let layer_type = self
+                .search_space
+                .layer_types
+                .choose(&mut rng)
                 .ok_or("No layer types available")?;
-            let hidden_dim = self.search_space.hidden_dims.choose(&mut rng)
+            let hidden_dim = self
+                .search_space
+                .hidden_dims
+                .choose(&mut rng)
                 .ok_or("No hidden dimensions available")?;
-            let activation = self.search_space.activations.choose(&mut rng)
+            let activation = self
+                .search_space
+                .activations
+                .choose(&mut rng)
                 .ok_or("No activations available")?;
-            let dropout = self.search_space.dropout_rates.choose(&mut rng)
+            let dropout = self
+                .search_space
+                .dropout_rates
+                .choose(&mut rng)
                 .ok_or("No dropout rates available")?;
 
             let output_dim = if i == num_layers - 1 { 1 } else { *hidden_dim };
@@ -157,6 +207,10 @@ impl NeuralArchitectureSearch {
 
             current_dim = output_dim;
         }
+
+        let num_layers = layers.len();
+        let total_params: usize = layers.iter().map(|l| l.input_dim * l.output_dim).sum();
+        let total_flops: usize = layers.iter().map(|l| l.input_dim * l.output_dim * 2).sum();
 
         let architecture = ArchitectureSpec {
             layers,
@@ -177,10 +231,10 @@ impl NeuralArchitectureSearch {
         };
 
         let resource_requirements = ResourceRequirements {
-            memory: layers.len() * 64, // MB
+            memory: num_layers * 64, // MB
             compute_time: Duration::from_secs(60),
-            parameters: layers.iter().map(|l| l.input_dim * l.output_dim).sum(),
-            flops: layers.iter().map(|l| l.input_dim * l.output_dim * 2).sum::<usize>() as u64,
+            parameters: total_params,
+            flops: total_flops as u64,
         };
 
         Ok(ArchitectureCandidate {
@@ -205,20 +259,35 @@ impl NeuralArchitectureSearch {
 
         for _ in 0..count {
             let tournament_size = 3.min(self.current_architectures.len());
-            let mut tournament: Vec<_> = self.current_architectures.choose_multiple(&mut rng, tournament_size).collect();
-            tournament.sort_by(|a, b| b.estimated_performance.partial_cmp(&a.estimated_performance).unwrap());
+            let mut tournament: Vec<_> = self
+                .current_architectures
+                .choose_multiple(&mut rng, tournament_size)
+                .collect();
+            tournament.sort_by(|a, b| {
+                b.estimated_performance
+                    .partial_cmp(&a.estimated_performance)
+                    .unwrap()
+            });
             parents.push(tournament[0].clone());
         }
 
         Ok(parents)
     }
 
-    fn crossover(&self, parent1: &ArchitectureCandidate, parent2: &ArchitectureCandidate) -> Result<ArchitectureCandidate, String> {
+    fn crossover(
+        &self,
+        parent1: &ArchitectureCandidate,
+        parent2: &ArchitectureCandidate,
+    ) -> Result<ArchitectureCandidate, String> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
         // Simple layer-wise crossover
-        let min_layers = parent1.architecture.layers.len().min(parent2.architecture.layers.len());
+        let min_layers = parent1
+            .architecture
+            .layers
+            .len()
+            .min(parent2.architecture.layers.len());
         let mut child_layers = Vec::new();
 
         for i in 0..min_layers {
@@ -246,7 +315,10 @@ impl NeuralArchitectureSearch {
         })
     }
 
-    fn mutate(&self, mut candidate: ArchitectureCandidate) -> Result<ArchitectureCandidate, String> {
+    fn mutate(
+        &self,
+        mut candidate: ArchitectureCandidate,
+    ) -> Result<ArchitectureCandidate, String> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
@@ -285,8 +357,11 @@ impl NeuralArchitectureSearch {
     }
 
     pub fn get_best_architecture(&self) -> Option<&ArchitectureCandidate> {
-        self.current_architectures.iter()
-            .max_by(|a, b| a.estimated_performance.partial_cmp(&b.estimated_performance).unwrap())
+        self.current_architectures.iter().max_by(|a, b| {
+            a.estimated_performance
+                .partial_cmp(&b.estimated_performance)
+                .unwrap()
+        })
     }
 }
 
@@ -365,12 +440,15 @@ impl PerformancePredictor {
     pub fn predict(&self, architecture: &ArchitectureSpec) -> Result<f64, String> {
         // Simplified prediction based on architecture complexity
         let complexity = architecture.layers.len() as f64;
-        let total_params: f64 = architecture.layers.iter()
+        let total_params: f64 = architecture
+            .layers
+            .iter()
             .map(|l| (l.input_dim * l.output_dim) as f64)
             .sum();
 
         // Simple heuristic: balance complexity and size
-        let performance = (0.8 - complexity * 0.05).max(0.1) * (1.0 - (total_params / 1000000.0).min(0.5));
+        let performance =
+            (0.8 - complexity * 0.05).max(0.1) * (1.0 - (total_params / 1000000.0).min(0.5));
 
         Ok(performance.max(0.1).min(1.0))
     }
@@ -406,7 +484,7 @@ pub enum PredictorModel {
 }
 
 /// Resource requirements for architectures
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ResourceRequirements {
     /// Memory requirements (MB)
     pub memory: usize,

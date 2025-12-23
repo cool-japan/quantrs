@@ -64,3 +64,18 @@ use super::{
     annealing_integration::AnnealingIntegration, codes::CodeParameters, codes::ErrorCorrectionCode,
     logical_operations::LogicalOperation, resource_constraints::ResourceConstraints,
 };
+
+impl Default for QECConfig {
+    fn default() -> Self {
+        Self {
+            code_type: ErrorCorrectionCode::RepetitionCode,
+            code_parameters: CodeParameters::default(),
+            error_threshold: 0.01,
+            correction_frequency: 1000.0,
+            logical_operations: Vec::new(),
+            fault_tolerance_level: 1,
+            resource_constraints: ResourceConstraints::default(),
+            annealing_integration: AnnealingIntegration::default(),
+        }
+    }
+}

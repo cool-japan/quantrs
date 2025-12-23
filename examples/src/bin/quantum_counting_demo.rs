@@ -5,9 +5,9 @@
 //! - Quantum Counting for search problems
 //! - Quantum Amplitude Estimation
 
+use quantrs2_core::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
-use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
 
 fn main() {
@@ -49,7 +49,7 @@ fn phase_estimation_demo() {
             Complex64::new((angle / 2.0).cos(), (angle / 2.0).sin()),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 unitary matrix for Z-axis rotation in phase estimation");
 
     // Test with different precision levels
     for precision in [3, 4, 5] {
@@ -78,7 +78,7 @@ fn quantum_counting_demo() {
         if n < 2 {
             return false;
         }
-        for i in 2..((n as f64).sqrt() as usize + 1) {
+        for i in 2..=((n as f64).sqrt() as usize) {
             if n % i == 0 {
                 return false;
             }
@@ -90,7 +90,7 @@ fn quantum_counting_demo() {
     let actual_primes: Vec<usize> = (0..n_items).filter(|&x| is_prime(x)).collect();
 
     println!("Counting prime numbers in range 0-31:");
-    println!("Actual primes: {:?}", actual_primes);
+    println!("Actual primes: {actual_primes:?}");
     println!("Actual count: {}", actual_primes.len());
 
     // Run quantum counting with different precision levels
@@ -123,7 +123,7 @@ fn amplitude_estimation_demo() {
             Complex64::new(0.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 state preparation matrix for amplitude estimation");
 
     // Oracle marks state |1⟩
     let oracle = Array2::from_shape_vec(
@@ -135,7 +135,7 @@ fn amplitude_estimation_demo() {
             Complex64::new(1.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 oracle matrix for amplitude estimation (marking state |1⟩)");
 
     println!("State preparation: |ψ⟩ = 0.8|0⟩ + 0.6|1⟩");
     println!("Oracle marks state |1⟩");
@@ -170,7 +170,7 @@ fn database_search_demo() {
     // Count matching entries classically
     let matches: Vec<usize> = (0..database_size).filter(|&x| search_criteria(x)).collect();
 
-    println!("Database size: {}", database_size);
+    println!("Database size: {database_size}");
     println!("Search criteria: binary representation has exactly 3 ones");
     println!("Matching entries: {:?}", &matches[..5.min(matches.len())]);
     if matches.len() > 5 {
@@ -183,7 +183,7 @@ fn database_search_demo() {
     let quantum_estimate = counter.count();
 
     println!("\nQuantum counting result:");
-    println!("  Estimated matches: {:.1}", quantum_estimate);
+    println!("  Estimated matches: {quantum_estimate:.1}");
     println!(
         "  Error: {:.1}",
         (quantum_estimate - matches.len() as f64).abs()
@@ -194,8 +194,8 @@ fn database_search_demo() {
     let grover_iterations = (PI / 4.0) * (database_size as f64 / matches.len() as f64).sqrt();
 
     println!("\nGrover's algorithm analysis:");
-    println!("  Success probability: {:.3}", success_prob);
-    println!("  Optimal iterations: {:.1}", grover_iterations);
+    println!("  Success probability: {success_prob:.3}");
+    println!("  Optimal iterations: {grover_iterations:.1}");
     println!(
         "  Classical average searches: {:.1}",
         database_size as f64 / 2.0
@@ -215,7 +215,7 @@ fn multi_amplitude_estimation_demo() {
 
     // Create a non-uniform superposition
     let mut state_prep = Array2::zeros((n, n));
-    let amplitudes = vec![0.5, 0.3, 0.4, 0.2, 0.1, 0.3, 0.2, 0.4];
+    let amplitudes = [0.5, 0.3, 0.4, 0.2, 0.1, 0.3, 0.2, 0.4];
 
     // Normalize
     let norm: f64 = amplitudes.iter().map(|&a| a * a).sum::<f64>().sqrt();
@@ -230,23 +230,22 @@ fn multi_amplitude_estimation_demo() {
         oracle[[marked, marked]] = Complex64::new(1.0, 0.0);
     }
 
-    let marked_amplitude =
-        ((amplitudes[1].powi(2) + amplitudes[3].powi(2) + amplitudes[5].powi(2)) / norm.powi(2))
-            .sqrt();
+    let marked_amplitude = (amplitudes[5].mul_add(
+        amplitudes[5],
+        amplitudes[3].mul_add(amplitudes[3], amplitudes[1].powi(2)),
+    ) / norm.powi(2))
+    .sqrt();
 
     println!("State amplitudes (normalized):");
     for i in 0..n {
         println!("  |{}⟩: {:.3}", i, amplitudes[i] / norm);
     }
     println!("Marked states: 1, 3, 5");
-    println!(
-        "True total amplitude of marked states: {:.3}",
-        marked_amplitude
-    );
+    println!("True total amplitude of marked states: {marked_amplitude:.3}");
 
     let qae = QuantumAmplitudeEstimation::new(state_prep, oracle, 5);
     let estimated = qae.estimate();
 
-    println!("Estimated amplitude: {:.3}", estimated);
+    println!("Estimated amplitude: {estimated:.3}");
     println!("Error: {:.3}", (estimated - marked_amplitude).abs());
 }

@@ -4,12 +4,12 @@
 //! quantum supremacy claims, including cross-entropy benchmarking, Porter-Thomas
 //! distribution analysis, and linear cross-entropy benchmarking (Linear XEB).
 
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
-use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -369,7 +369,7 @@ impl QuantumSupremacyVerifier {
     }
 
     /// Generate custom gate set layer
-    fn generate_custom_layer(
+    const fn generate_custom_layer(
         &mut self,
         _layer_idx: usize,
         _gates: &[String],
@@ -411,7 +411,7 @@ impl QuantumSupremacyVerifier {
     }
 
     /// Apply gate to simulator
-    fn apply_gate_to_simulator(
+    const fn apply_gate_to_simulator(
         &self,
         _simulator: &mut StateVectorSimulator,
         _gate: &QuantumGate,
@@ -444,7 +444,7 @@ impl QuantumSupremacyVerifier {
         for _ in 0..self.params.samples_per_circuit {
             let mut sample = Vec::with_capacity(self.num_qubits);
             for _ in 0..self.num_qubits {
-                sample.push(if self.rng.gen::<bool>() { 1 } else { 0 });
+                sample.push(u8::from(self.rng.gen::<bool>()));
             }
             samples.push(sample);
         }
@@ -667,7 +667,7 @@ impl QuantumSupremacyVerifier {
     }
 
     /// Compute statistical confidence
-    fn compute_statistical_confidence(
+    const fn compute_statistical_confidence(
         &self,
         _ideal_amplitudes: &[Array1<Complex64>],
         _quantum_samples: &[Vec<Vec<u8>>],
@@ -684,11 +684,11 @@ impl QuantumSupremacyVerifier {
         let gate_time = 100e-9; // 100 ns per gate
         let readout_time = 1e-6; // 1 μs readout
 
-        Ok(total_gates as f64 * gate_time + self.params.num_circuits as f64 * readout_time)
+        Ok((total_gates as f64).mul_add(gate_time, self.params.num_circuits as f64 * readout_time))
     }
 
     /// Estimate classical memory usage
-    fn estimate_classical_memory(&self) -> usize {
+    const fn estimate_classical_memory(&self) -> usize {
         let state_size = (1 << self.num_qubits) * std::mem::size_of::<Complex64>();
         state_size * self.params.num_circuits
     }

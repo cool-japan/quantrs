@@ -15,13 +15,13 @@ pub mod memory_optimization;
 pub mod profiling_integration;
 
 pub use gate_cache::{
-    QuantumGateCache, QuantumGateCacheStats, GateKey, CachedGateMatrix, global_gate_cache
+    global_gate_cache, CachedGateMatrix, GateKey, QuantumGateCache, QuantumGateCacheStats,
 };
 pub use memory_optimization::{
-    QuantumBufferPool, StateVectorManager, optimized_state_vector_allocation
+    optimized_state_vector_allocation, QuantumBufferPool, StateVectorManager,
 };
 pub use profiling_integration::{
-    QuantumProfiler, QuantumOperationProfile, enable_quantum_profiling
+    enable_quantum_profiling, QuantumOperationProfile, QuantumProfiler,
 };
 
 /// Initialize all optimization systems

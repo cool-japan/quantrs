@@ -13,8 +13,8 @@ use quantrs2_anneal::{
     qubo::{QuboBuilder, QuboFormulation},
     simulator::{AnnealingParams, QuantumAnnealingSimulator},
 };
-use std::time::Instant;
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 #[cfg(feature = "fujitsu")]
 #[tokio::main]
@@ -160,7 +160,9 @@ fn create_portfolio_optimization(
     let mut builder = QuboBuilder::new();
 
     // Generate random returns and risks
-    let returns: Vec<f64> = (0..n_assets).map(|_| thread_rng().gen::<f64>() * 0.1).collect();
+    let returns: Vec<f64> = (0..n_assets)
+        .map(|_| thread_rng().gen::<f64>() * 0.1)
+        .collect();
     let risks: Vec<f64> = (0..n_assets)
         .map(|_| thread_rng().gen::<f64>() * 0.05)
         .collect();

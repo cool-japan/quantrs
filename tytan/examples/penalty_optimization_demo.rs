@@ -1,9 +1,8 @@
-//! Demonstration of penalty function optimization with SciRS2
+//! Demonstration of penalty function optimization with `SciRS2`
 //!
 //! This example shows how to use the penalty optimization module
 //! to automatically tune penalty weights for constrained QUBO problems.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_tytan::{
     optimization::{
         adaptive::{AdaptiveConfig, AdaptiveOptimizer},
@@ -12,6 +11,7 @@ use quantrs2_tytan::{
     },
     sampler::{SASampler, Sampler},
 };
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -47,8 +47,8 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
     let mut qubo = Array2::zeros((2, 2));
 
     // Linear terms: x^2 + y^2 - penalty*(2x + 2y)
-    qubo[[0, 0]] = 1.0 - 2.0 * initial_penalty; // x coefficient
-    qubo[[1, 1]] = 1.0 - 2.0 * initial_penalty; // y coefficient
+    qubo[[0, 0]] = 2.0f64.mul_add(-initial_penalty, 1.0); // x coefficient
+    qubo[[1, 1]] = 2.0f64.mul_add(-initial_penalty, 1.0); // y coefficient
 
     // Quadratic term: penalty * 2xy
     qubo[[0, 1]] = 2.0 * initial_penalty;
@@ -99,10 +99,7 @@ fn quadratic_penalty_demo() -> Result<(), Box<dyn Error>> {
             0.0
         };
         let constraint_violation = (x_val + y_val - 1.0).abs();
-        println!(
-            "   - Constraint violation |x + y - 1|: {:.6}",
-            constraint_violation
-        );
+        println!("   - Constraint violation |x + y - 1|: {constraint_violation:.6}");
         println!("   - Constraint satisfied: {}", constraint_violation < 1e-3);
     }
 
@@ -156,7 +153,7 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
     ];
 
     for strategy in strategies {
-        println!("\n   Strategy: {:?}", strategy);
+        println!("\n   Strategy: {strategy:?}");
 
         let config = AdaptiveConfig {
             strategy,
@@ -204,14 +201,8 @@ fn adaptive_penalty_demo() -> Result<(), Box<dyn Error>> {
             let constraint1_violation = (x_val + y_val + z_val - 1.0).abs();
             let constraint2_violation = (y_val + z_val - 1.0).max(0.0);
 
-            println!(
-                "   - One-hot constraint violation: {:.6}",
-                constraint1_violation
-            );
-            println!(
-                "   - Inequality constraint violation: {:.6}",
-                constraint2_violation
-            );
+            println!("   - One-hot constraint violation: {constraint1_violation:.6}");
+            println!("   - Inequality constraint violation: {constraint2_violation:.6}");
             println!(
                 "   - Constraints satisfied: {}",
                 constraint1_violation < 1e-3 && constraint2_violation < 1e-3
@@ -248,7 +239,7 @@ fn parameter_tuning_demo() -> Result<(), Box<dyn Error>> {
     println!("\n   Testing different parameter configurations:");
 
     for (config_name, num_samples) in parameter_configs {
-        println!("\n   Configuration: {}", config_name);
+        println!("\n   Configuration: {config_name}");
 
         let mut sampler = SASampler::new(None);
         let samples = sampler.run_qubo(&(qubo.clone(), var_map.clone()), num_samples)?;
@@ -265,10 +256,10 @@ fn parameter_tuning_demo() -> Result<(), Box<dyn Error>> {
                 variance.sqrt()
             };
 
-            println!("   - Samples: {}", num_samples);
+            println!("   - Samples: {num_samples}");
             println!("   - Best energy: {:.4}", best.energy);
-            println!("   - Average energy: {:.4}", avg_energy);
-            println!("   - Energy std dev: {:.4}", energy_std);
+            println!("   - Average energy: {avg_energy:.4}");
+            println!("   - Energy std dev: {energy_std:.4}");
             println!(
                 "   - Unique solutions: {}",
                 samples

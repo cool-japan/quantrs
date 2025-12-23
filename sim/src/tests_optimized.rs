@@ -3,9 +3,9 @@
 //! This module provides a test suite for the optimized simulator implementations
 //! to verify correctness and benchmark performance.
 
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::f64::consts::FRAC_1_SQRT_2;
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
@@ -51,14 +51,10 @@ fn test_bell_state_all_simulators() {
     ];
 
     // Check that all simulators produce the expected result
-    assert_state_vector_close(&standard_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(&simple_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(
-        &chunked_opt_result.amplitudes(),
-        &expected_amplitudes,
-        1e-10,
-    );
-    assert_state_vector_close(&full_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(standard_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(simple_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(chunked_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(full_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
 }
 
 /// Test the GHZ state circuit with different simulator implementations
@@ -94,14 +90,10 @@ fn test_ghz_state_all_simulators() {
     expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 
     // Check that all simulators produce the expected result
-    assert_state_vector_close(&standard_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(&simple_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(
-        &chunked_opt_result.amplitudes(),
-        &expected_amplitudes,
-        1e-10,
-    );
-    assert_state_vector_close(&full_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(standard_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(simple_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(chunked_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(full_opt_result.amplitudes(), &expected_amplitudes, 1e-10);
 }
 
 /// Test a quantum fourier transform-like circuit
@@ -126,18 +118,18 @@ fn test_qft_like_circuit() {
 
     // Check that all simulators produce equivalent results
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &simple_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        simple_opt_result.amplitudes(),
         1e-10,
     );
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &chunked_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        chunked_opt_result.amplitudes(),
         1e-10,
     );
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &full_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        full_opt_result.amplitudes(),
         1e-10,
     );
 }
@@ -168,18 +160,18 @@ fn test_random_circuit_consistency() {
 
     // Check that all simulators produce equivalent results
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &simple_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        simple_opt_result.amplitudes(),
         1e-10,
     );
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &chunked_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        chunked_opt_result.amplitudes(),
         1e-10,
     );
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &full_opt_result.amplitudes(),
+        standard_result.amplitudes(),
+        full_opt_result.amplitudes(),
         1e-10,
     );
 }
@@ -223,8 +215,8 @@ fn test_larger_circuit() {
 
     // For a larger circuit, we focus on consistency between optimized simulators
     assert_state_vector_close(
-        &simple_opt_result.amplitudes(),
-        &full_opt_result.amplitudes(),
+        simple_opt_result.amplitudes(),
+        full_opt_result.amplitudes(),
         1e-10,
     );
 }

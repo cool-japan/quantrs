@@ -78,7 +78,7 @@ pub enum MemoryOptimization {
 }
 
 /// Tensor contraction strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContractionStrategy {
     Greedy,
     DynamicProgramming,
@@ -103,7 +103,7 @@ pub struct CompilationTarget {
 }
 
 /// Circuit optimization levels for compilation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationLevel {
     /// No optimization
     None,
@@ -116,7 +116,7 @@ pub enum OptimizationLevel {
 }
 
 /// Supported instruction sets
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstructionSet {
     /// Universal gate set
     Universal,
@@ -175,7 +175,7 @@ pub enum CompiledInstruction {
     },
     /// Batched operations
     Batch {
-        instructions: Vec<CompiledInstruction>,
+        instructions: Vec<Self>,
         parallel: bool,
     },
     /// Measurement
@@ -183,7 +183,7 @@ pub enum CompiledInstruction {
     /// Conditional operation
     Conditional {
         condition: ClassicalCondition,
-        instruction: Box<CompiledInstruction>,
+        instruction: Box<Self>,
     },
     /// Barrier/synchronization
     Barrier { qubits: Vec<usize> },
@@ -200,7 +200,7 @@ pub struct ClassicalCondition {
 }
 
 /// Comparison operators for classical conditions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonOp {
     Equal,
     NotEqual,
@@ -274,7 +274,7 @@ pub enum BackendData {
 }
 
 /// Measurement strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MeasurementStrategy {
     /// Measure all qubits at the end
     EndMeasurement,
@@ -383,7 +383,7 @@ impl OptimizationPass for GateFusionPass {
         Ok(())
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "GateFusion"
     }
 
@@ -392,8 +392,15 @@ impl OptimizationPass for GateFusionPass {
     }
 }
 
+impl Default for CircuitCompiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitCompiler {
     /// Create a new circuit compiler
+    #[must_use]
     pub fn new() -> Self {
         Self {
             targets: Vec::new(),
@@ -535,8 +542,7 @@ impl CircuitCompiler {
         // Check if gate is supported by instruction set
         if !self.is_gate_supported(&name, &target.instruction_set) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Gate {} not supported by instruction set",
-                name
+                "Gate {name} not supported by instruction set"
             )));
         }
 
@@ -708,7 +714,7 @@ impl CircuitCompiler {
                 contraction_order: (0..N).collect(),
             }),
             SimulatorBackend::External { name, .. } => Ok(BackendData::External {
-                serialized_circuit: format!("circuit_for_{}", name),
+                serialized_circuit: format!("circuit_for_{name}"),
                 format: "qasm".to_string(),
             }),
             _ => Ok(BackendData::StateVector {
@@ -758,6 +764,7 @@ impl CircuitCompiler {
     }
 
     /// Get compilation statistics
+    #[must_use]
     pub fn get_stats(&self) -> GlobalCompilationStats {
         self.stats_collector
             .lock()

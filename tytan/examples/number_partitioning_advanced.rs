@@ -6,7 +6,6 @@
 //! - Constraint formulations for different objectives
 //! - Performance analysis on various problem instances
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     compile::Model,
     constraints::PenaltyFunction,
@@ -20,6 +19,7 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, ClusteringMethod, DistributionConfig},
     },
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -53,7 +53,7 @@ fn generate_instance(n: usize, distribution: &str, seed: u64) -> Vec<i32> {
             let std = 15.0;
             (0..n)
                 .map(|_| {
-                    let val: f64 = rng.gen::<f64>() * std * 2.0 - std + mean;
+                    let val: f64 = (rng.gen::<f64>() * std).mul_add(2.0, -std) + mean;
                     val.max(1.0) as i32
                 })
                 .collect()
@@ -78,20 +78,20 @@ fn generate_instance(n: usize, distribution: &str, seed: u64) -> Vec<i32> {
 fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std::error::Error>> {
     let n = numbers.len();
     let total_sum: i32 = numbers.iter().sum();
-    let target_sum = total_sum as f64 / 2.0;
+    let target_sum = f64::from(total_sum) / 2.0;
 
     let mut model = Model::new();
 
     // Binary variables: x_i = 1 if number i is in partition 0
     let mut vars = Vec::new();
     for i in 0..n {
-        vars.push(model.add_variable(&format!("x_{}", i))?);
+        vars.push(model.add_variable(&format!("x_{i}"))?);
     }
 
     // Objective: minimize (sum_partition_0 - target)^2
     let mut partition_sum = constant(0.0);
     for i in 0..n {
-        partition_sum = partition_sum + constant(numbers[i] as f64) * vars[i].clone();
+        partition_sum = partition_sum + constant(f64::from(numbers[i])) * vars[i].clone();
     }
 
     // (partition_sum - target)^2
@@ -102,7 +102,7 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
     // Add partition_sum^2 term
     for i in 0..n {
         for j in 0..n {
-            let coeff = numbers[i] as f64 * numbers[j] as f64;
+            let coeff = f64::from(numbers[i]) * f64::from(numbers[j]);
             if i == j {
                 // x_i^2 = x_i for binary
                 objective = objective + constant(coeff) * vars[i].clone();
@@ -114,7 +114,8 @@ fn create_two_way_partition_model(numbers: &[i32]) -> Result<Model, Box<dyn std:
 
     // Add -2*partition_sum*target term
     for i in 0..n {
-        objective = objective + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[i].clone();
+        objective =
+            objective + constant(-2.0 * f64::from(numbers[i]) * target_sum) * vars[i].clone();
     }
 
     model.set_objective(objective);
@@ -129,7 +130,7 @@ fn create_k_way_partition_model(
 ) -> Result<Model, Box<dyn std::error::Error>> {
     let n = numbers.len();
     let total_sum: i32 = numbers.iter().sum();
-    let target_sum = total_sum as f64 / k as f64;
+    let target_sum = f64::from(total_sum) / k as f64;
 
     let mut model = Model::new();
 
@@ -137,7 +138,7 @@ fn create_k_way_partition_model(
     let mut vars = HashMap::new();
     for i in 0..n {
         for p in 0..k {
-            let var = model.add_variable(&format!("x_{}_{}", i, p))?;
+            let var = model.add_variable(&format!("x_{i}_{p}"))?;
             vars.insert((i, p), var);
         }
     }
@@ -148,7 +149,7 @@ fn create_k_way_partition_model(
         for p in 0..k {
             partition_vars.push(vars[&(i, p)].clone());
         }
-        model.add_constraint_eq_one(&format!("assign_{}", i), partition_vars)?;
+        model.add_constraint_eq_one(&format!("assign_{i}"), partition_vars)?;
     }
 
     // Objective: minimize sum of squared deviations from target
@@ -158,7 +159,7 @@ fn create_k_way_partition_model(
         // Calculate partition sum
         let mut partition_sum = constant(0.0);
         for i in 0..n {
-            partition_sum = partition_sum + constant(numbers[i] as f64) * vars[&(i, p)].clone();
+            partition_sum = partition_sum + constant(f64::from(numbers[i])) * vars[&(i, p)].clone();
         }
 
         // Add (partition_sum - target)^2 to objective
@@ -167,7 +168,7 @@ fn create_k_way_partition_model(
 
         for i in 0..n {
             for j in 0..n {
-                let coeff = numbers[i] as f64 * numbers[j] as f64;
+                let coeff = f64::from(numbers[i]) * f64::from(numbers[j]);
                 if i == j {
                     objective = objective + constant(coeff) * vars[&(i, p)].clone();
                 } else {
@@ -178,8 +179,8 @@ fn create_k_way_partition_model(
         }
 
         for i in 0..n {
-            objective =
-                objective + constant(-2.0 * numbers[i] as f64 * target_sum) * vars[&(i, p)].clone();
+            objective = objective
+                + constant(-2.0 * f64::from(numbers[i]) * target_sum) * vars[&(i, p)].clone();
         }
     }
 
@@ -240,7 +241,7 @@ fn extract_partition(
         PartitioningType::TwoWayEqual => {
             let mut partition = vec![0; n];
             for i in 0..n {
-                let var_name = format!("x_{}", i);
+                let var_name = format!("x_{i}");
                 if solution
                     .assignments
                     .get(&var_name)
@@ -258,7 +259,7 @@ fn extract_partition(
             let mut partition = vec![0; n];
             for i in 0..n {
                 for p in 0..k {
-                    let var_name = format!("x_{}_{}", i, p);
+                    let var_name = format!("x_{i}_{p}");
                     if solution
                         .assignments
                         .get(&var_name)
@@ -289,15 +290,15 @@ fn analyze_partition(numbers: &[i32], partition: &[usize], k: usize) -> Partitio
     }
 
     let total_sum: i32 = numbers.iter().sum();
-    let target_sum = total_sum as f64 / k as f64;
+    let target_sum = f64::from(total_sum) / k as f64;
 
     let max_sum = *sums.iter().max().unwrap_or(&0);
     let min_sum = *sums.iter().min().unwrap_or(&0);
-    let imbalance = (max_sum - min_sum) as f64;
+    let imbalance = f64::from(max_sum - min_sum);
 
     let deviation: f64 = sums
         .iter()
-        .map(|&s| (s as f64 - target_sum).powi(2))
+        .map(|&s| (f64::from(s) - target_sum).powi(2))
         .sum::<f64>()
         .sqrt();
 
@@ -331,8 +332,8 @@ fn run_partition_experiment(
     numbers: &[i32],
     partition_type: PartitioningType,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("\n=== {} ===", name);
-    println!("Numbers: {:?}", numbers);
+    println!("\n=== {name} ===");
+    println!("Numbers: {numbers:?}");
     println!("Total sum: {}", numbers.iter().sum::<i32>());
 
     // Create model based on type
@@ -369,7 +370,7 @@ fn run_partition_experiment(
 
     // Create variable mapping and fill matrix
     for i in 0..n_vars {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
 
         // Get linear term (diagonal)
         if let Ok(linear) = qubo.get_linear(i) {
@@ -433,7 +434,7 @@ fn run_partition_experiment(
     println!("  Time: {:.3}s", ga_time.as_secs_f64());
 
     // For 2-way partition, compare with DP solution
-    if let PartitioningType::TwoWayEqual = partition_type {
+    if matches!(partition_type, PartitioningType::TwoWayEqual) {
         println!("\nDynamic Programming comparison:");
         let mut dp_start = Instant::now();
         match solve_partition_dp(numbers) {
@@ -455,7 +456,7 @@ fn run_partition_experiment(
                 ];
 
                 println!("  Optimal partition exists!");
-                println!("  Partition sums: {:?}", dp_sums);
+                println!("  Partition sums: {dp_sums:?}");
                 println!("  Time: {:.6}s", dp_time.as_secs_f64());
 
                 let sa_optimal = sa_analysis
@@ -467,8 +468,8 @@ fn run_partition_experiment(
                     .iter()
                     .all(|&s| s == target || s == ga_analysis.total_sum - target);
 
-                println!("  SA found optimal: {}", sa_optimal);
-                println!("  GA found optimal: {}", ga_optimal);
+                println!("  SA found optimal: {sa_optimal}");
+                println!("  GA found optimal: {ga_optimal}");
             }
             None => {
                 println!("  No equal partition exists");
@@ -567,7 +568,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut var_map = HashMap::new();
 
         for i in 0..n_vars {
-            var_map.insert(format!("x_{}", i), i);
+            var_map.insert(format!("x_{i}"), i);
             if let Ok(linear) = qubo.get_linear(i) {
                 matrix[[i, i]] = linear;
             }

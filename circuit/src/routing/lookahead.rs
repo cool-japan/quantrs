@@ -30,7 +30,8 @@ pub struct LookaheadConfig {
 
 impl LookaheadConfig {
     /// Create a new lookahead configuration with specified depth
-    pub fn new(depth: usize) -> Self {
+    #[must_use]
+    pub const fn new(depth: usize) -> Self {
         Self {
             lookahead_depth: depth,
             max_swap_candidates: 20,
@@ -55,7 +56,8 @@ pub struct LookaheadRouter {
 
 impl LookaheadRouter {
     /// Create a new lookahead router
-    pub fn new(coupling_map: CouplingMap, config: LookaheadConfig) -> Self {
+    #[must_use]
+    pub const fn new(coupling_map: CouplingMap, config: LookaheadConfig) -> Self {
         Self {
             coupling_map,
             config,
@@ -199,7 +201,7 @@ impl LookaheadRouter {
         }
 
         let mut qubit_vec: Vec<usize> = qubits.into_iter().collect();
-        qubit_vec.sort();
+        qubit_vec.sort_unstable();
         qubit_vec
     }
 
@@ -389,7 +391,7 @@ impl LookaheadRouter {
                 break;
             }
 
-            layers.push(current_layer.iter().cloned().collect());
+            layers.push(current_layer.iter().copied().collect());
             processed.extend(&current_layer);
 
             let mut next_layer = HashSet::new();
@@ -419,7 +421,7 @@ impl LookaheadRouter {
     /// Generate SWAP candidates
     fn generate_swap_candidates(&self, mapping: &HashMap<usize, usize>) -> Vec<(usize, usize)> {
         let mut candidates = Vec::new();
-        let mapped_physical: HashSet<usize> = mapping.values().cloned().collect();
+        let mapped_physical: HashSet<usize> = mapping.values().copied().collect();
 
         for &p1 in &mapped_physical {
             for &p2 in self.coupling_map.neighbors(p1) {
@@ -499,8 +501,7 @@ impl LookaheadRouter {
                 physical_qubits.push(QubitId::new(physical as u32));
             } else {
                 return Err(QuantRS2Error::RoutingError(format!(
-                    "Logical qubit {} not mapped",
-                    logical
+                    "Logical qubit {logical} not mapped"
                 )));
             }
         }

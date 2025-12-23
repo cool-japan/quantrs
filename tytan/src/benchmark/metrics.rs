@@ -62,7 +62,7 @@ pub struct TimingMetrics {
 }
 
 /// Memory-related metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryMetrics {
     /// Peak memory usage in bytes
     pub peak_memory: usize,
@@ -198,18 +198,6 @@ impl Default for TimingMetrics {
     }
 }
 
-impl Default for MemoryMetrics {
-    fn default() -> Self {
-        Self {
-            peak_memory: 0,
-            avg_memory: 0,
-            allocated: 0,
-            deallocated: 0,
-            cache_misses: None,
-        }
-    }
-}
-
 impl Default for QualityMetrics {
     fn default() -> Self {
         Self {
@@ -317,7 +305,7 @@ pub mod statistics {
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let median = if sorted.len() % 2 == 0 {
-            (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
+            f64::midpoint(sorted[sorted.len() / 2 - 1], sorted[sorted.len() / 2])
         } else {
             sorted[sorted.len() / 2]
         };
@@ -342,7 +330,7 @@ pub mod statistics {
         if c >= sorted.len() {
             sorted[sorted.len() - 1]
         } else {
-            sorted[f] + (k - f as f64) * (sorted[c] - sorted[f])
+            (k - f as f64).mul_add(sorted[c] - sorted[f], sorted[f])
         }
     }
 

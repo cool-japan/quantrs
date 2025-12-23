@@ -178,7 +178,7 @@ impl QuantumGate {
                 .unwrap()
             }
             GateType::RotationX => {
-                let theta = parameters.get(0).copied().unwrap_or(0.0);
+                let theta = parameters.first().copied().unwrap_or(0.0);
                 let cos_half = (theta / 2.0).cos();
                 let sin_half = (theta / 2.0).sin();
                 Array2::from_shape_vec(
@@ -193,7 +193,7 @@ impl QuantumGate {
                 .unwrap()
             }
             GateType::RotationY => {
-                let theta = parameters.get(0).copied().unwrap_or(0.0);
+                let theta = parameters.first().copied().unwrap_or(0.0);
                 let cos_half = (theta / 2.0).cos();
                 let sin_half = (theta / 2.0).sin();
                 Array2::from_shape_vec(
@@ -208,7 +208,7 @@ impl QuantumGate {
                 .unwrap()
             }
             GateType::RotationZ => {
-                let theta = parameters.get(0).copied().unwrap_or(0.0);
+                let theta = parameters.first().copied().unwrap_or(0.0);
                 let exp_neg = Complex64::new(0.0, -theta / 2.0).exp();
                 let exp_pos = Complex64::new(0.0, theta / 2.0).exp();
                 Array2::from_shape_vec(
@@ -268,7 +268,7 @@ impl QuantumGate {
     }
 
     /// Check if this gate commutes with another gate
-    pub fn commutes_with(&self, other: &QuantumGate) -> bool {
+    pub fn commutes_with(&self, other: &Self) -> bool {
         // Check if gates act on disjoint qubits
         let self_qubits: HashSet<_> = self.qubits.iter().collect();
         let other_qubits: HashSet<_> = other.qubits.iter().collect();
@@ -286,7 +286,7 @@ impl QuantumGate {
     }
 
     /// Check specific commutation rules for gates on same qubits
-    fn check_specific_commutation(&self, other: &QuantumGate) -> bool {
+    const fn check_specific_commutation(&self, other: &Self) -> bool {
         match (&self.gate_type, &other.gate_type) {
             // Pauli gates commute with themselves
             (GateType::PauliX, GateType::PauliX)
@@ -315,7 +315,7 @@ impl QuantumGate {
     }
 
     /// Check if this gate can be fused with another gate
-    pub fn can_fuse_with(&self, other: &QuantumGate) -> bool {
+    pub fn can_fuse_with(&self, other: &Self) -> bool {
         // Gates must act on the same qubits to be fusable
         if self.qubits != other.qubits {
             return false;
@@ -335,7 +335,7 @@ impl QuantumGate {
     }
 
     /// Check if two-qubit gates can be fused
-    fn check_two_qubit_fusion_compatibility(&self, other: &QuantumGate) -> bool {
+    const fn check_two_qubit_fusion_compatibility(&self, other: &Self) -> bool {
         match (&self.gate_type, &other.gate_type) {
             // CNOTs can be fused in certain patterns
             (GateType::CNOT, GateType::CNOT) => true,
@@ -404,7 +404,7 @@ impl FusedGateBlock {
             qubits.extend(&gate.qubits);
         }
         let mut qubit_vec: Vec<usize> = qubits.into_iter().collect();
-        qubit_vec.sort();
+        qubit_vec.sort_unstable();
 
         // Calculate combined matrix
         let combined_matrix = Self::calculate_combined_matrix(&gates, &qubit_vec)?;
@@ -465,8 +465,7 @@ impl FusedGateBlock {
                 qubit_mapping.insert(gate_pos, all_pos);
             } else {
                 return Err(SimulatorError::InvalidInput(format!(
-                    "Gate qubit {} not found in qubit list",
-                    qubit
+                    "Gate qubit {qubit} not found in qubit list"
                 )));
             }
         }
@@ -621,7 +620,7 @@ impl FusionPatternKey {
             }
         }
 
-        Ok(FusionPatternKey {
+        Ok(Self {
             gate_types,
             num_qubits,
             parameter_hash,
@@ -845,7 +844,7 @@ impl AdaptiveGateFusion {
         }
 
         // Create opportunity description
-        let qubits: HashSet<usize> = window.iter().flat_map(|g| &g.qubits).cloned().collect();
+        let qubits: HashSet<usize> = window.iter().flat_map(|g| &g.qubits).copied().collect();
         let gate_types: Vec<String> = window
             .iter()
             .map(|g| format!("{:?}", g.gate_type))
@@ -925,7 +924,7 @@ impl AdaptiveGateFusion {
         // Check for common beneficial patterns
         if gates.len() == 2 {
             // Adjacent rotation gates of same type
-            if let (Some(g1), Some(g2)) = (gates.get(0), gates.get(1)) {
+            if let (Some(g1), Some(g2)) = (gates.first(), gates.get(1)) {
                 match (&g1.gate_type, &g2.gate_type) {
                     (GateType::RotationX, GateType::RotationX)
                     | (GateType::RotationY, GateType::RotationY)
@@ -1106,7 +1105,7 @@ impl AdaptiveGateFusion {
     }
 
     /// Calculate circuit depth after fusion
-    fn calculate_fused_circuit_depth(
+    const fn calculate_fused_circuit_depth(
         &self,
         blocks: &[FusedGateBlock],
         gates: &[QuantumGate],
@@ -1134,7 +1133,7 @@ impl AdaptiveGateFusion {
         }
     }
 
-    fn calculate_cache_hit_rate(&self) -> f64 {
+    const fn calculate_cache_hit_rate(&self) -> f64 {
         // This would be tracked during actual execution
         0.0 // Placeholder
     }
@@ -1249,6 +1248,12 @@ pub struct FusionStats {
     pub average_improvement: f64,
 }
 
+impl Default for MLFusionPredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLFusionPredictor {
     /// Create a new ML predictor
     pub fn new() -> Self {
@@ -1348,8 +1353,8 @@ impl MLFusionPredictor {
         let mut adjacent_count = 0;
 
         for i in 0..gates.len() - 1 {
-            let current_qubits: HashSet<_> = gates[i].qubits.iter().cloned().collect();
-            let next_qubits: HashSet<_> = gates[i + 1].qubits.iter().cloned().collect();
+            let current_qubits: HashSet<_> = gates[i].qubits.iter().copied().collect();
+            let next_qubits: HashSet<_> = gates[i + 1].qubits.iter().copied().collect();
 
             if current_qubits.intersection(&next_qubits).count() > 0 {
                 locality_score += 1.0;
@@ -1370,8 +1375,8 @@ impl MLFusionPredictor {
 
         for i in 0..gates.len() - 1 {
             for j in i + 1..gates.len() {
-                let qubits_i: HashSet<_> = gates[i].qubits.iter().cloned().collect();
-                let qubits_j: HashSet<_> = gates[j].qubits.iter().cloned().collect();
+                let qubits_i: HashSet<_> = gates[i].qubits.iter().copied().collect();
+                let qubits_j: HashSet<_> = gates[j].qubits.iter().copied().collect();
 
                 // Non-overlapping gates likely commute
                 if qubits_i.intersection(&qubits_j).count() == 0 {
@@ -1472,6 +1477,12 @@ impl MLFusionPredictor {
     }
 }
 
+impl Default for CircuitPatternAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitPatternAnalyzer {
     /// Create a new pattern analyzer
     pub fn new() -> Self {
@@ -1554,10 +1565,10 @@ impl CircuitPatternAnalyzer {
     /// Learn from successful fusion
     pub fn learn_pattern(&mut self, pattern: String, observed_benefit: f64) {
         // Update or add pattern with exponential moving average
-        let alpha = 0.1; // Learning rate
+        let alpha: f64 = 0.1; // Learning rate
 
         if let Some(current_benefit) = self.beneficial_patterns.get_mut(&pattern) {
-            *current_benefit = (1.0 - alpha) * *current_benefit + alpha * observed_benefit;
+            *current_benefit = (1.0 - alpha).mul_add(*current_benefit, alpha * observed_benefit);
         } else {
             self.beneficial_patterns.insert(pattern, observed_benefit);
         }
@@ -1630,7 +1641,7 @@ impl FusionUtils {
             let mut fusion_engine = AdaptiveGateFusion::new(config)?;
             let analysis = fusion_engine.analyze_circuit(gates)?;
 
-            results.insert(format!("{:?}", strategy), analysis);
+            results.insert(format!("{strategy:?}"), analysis);
         }
 
         Ok(results)

@@ -68,3 +68,30 @@ pub struct AdaptationParameters {
     /// Maximum adaptation steps
     pub max_adaptation_steps: usize,
 }
+
+impl Default for AnnealingIntegration {
+    fn default() -> Self {
+        Self {
+            integration_strategy: IntegrationStrategy::Adaptive,
+            logical_schedule: LogicalAnnealingSchedule {
+                logical_hamiltonian_schedule: vec![],
+                logical_mixer_schedule: vec![],
+                correction_intervals: vec![],
+                adaptation_rate: 0.1,
+            },
+            correction_timing: CorrectionTiming {
+                correction_period: 1.0,
+                adaptive_timing: true,
+                error_rate_threshold: 0.01,
+                min_correction_interval: 0.1,
+                max_correction_interval: 10.0,
+            },
+            adaptation_parameters: AdaptationParameters {
+                learning_rate: 0.01,
+                history_window: 100,
+                adaptation_threshold: 0.05,
+                max_adaptation_steps: 10,
+            },
+        }
+    }
+}

@@ -2,17 +2,17 @@
 //!
 //! This provides a simplified MPS implementation that doesn't require ndarray-linalg
 
-use scirs2_core::ndarray::{array, s, Array2, Array3};
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     register::Register,
 };
-use scirs2_core::random::{thread_rng, Rng};
-use std::f64::consts::SQRT_2;
+use scirs2_core::ndarray::{array, s, Array2, Array3};
 use scirs2_core::random::prelude::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
+use std::f64::consts::SQRT_2;
 
 /// Configuration for basic MPS simulator
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ pub struct BasicMPSConfig {
 
 impl Default for BasicMPSConfig {
     fn default() -> Self {
-        BasicMPSConfig {
+        Self {
             max_bond_dim: 64,
             svd_threshold: 1e-10,
         }
@@ -221,7 +221,7 @@ impl BasicMPS {
 
         for (i, &bit) in bitstring.iter().enumerate() {
             let tensor = &self.tensors[i];
-            let physical_idx = if bit { 1 } else { 0 };
+            let physical_idx = i32::from(bit);
 
             // Extract matrix for this physical index
             let matrix = tensor.data.slice(s![.., physical_idx, ..]);
@@ -282,7 +282,7 @@ pub struct BasicMPSSimulator {
 
 impl BasicMPSSimulator {
     /// Create a new basic MPS simulator
-    pub fn new(config: BasicMPSConfig) -> Self {
+    pub const fn new(config: BasicMPSConfig) -> Self {
         Self { config }
     }
 
@@ -299,7 +299,7 @@ impl<const N: usize> Simulator<N> for BasicMPSSimulator {
 
         // Apply gates from circuit
         for gate in circuit.gates() {
-            match gate.name().as_ref() {
+            match gate.name() {
                 "H" => {
                     let h_matrix = {
                         let h = 1.0 / SQRT_2;

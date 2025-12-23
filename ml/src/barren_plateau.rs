@@ -66,7 +66,9 @@ impl BarrenPlateauDetector {
         // Sample random parameter configurations
         for _ in 0..self.num_samples {
             // Generate random parameters
-            let params: Vec<f64> = (0..num_params).map(|_| rng.gen::<f64>() * 2.0 * PI).collect();
+            let params: Vec<f64> = (0..num_params)
+                .map(|_| rng.gen::<f64>() * 2.0 * PI)
+                .collect();
 
             // Compute gradients for this configuration
             let gradients = self.compute_gradients(&circuit_builder, &params)?;
@@ -289,7 +291,9 @@ impl BarrenPlateauMitigation {
         let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(42);
 
         // Initialize with small random values
-        (0..num_params).map(|_| (rng.gen::<f64>() - 0.5) * 0.1).collect()
+        (0..num_params)
+            .map(|_| (rng.gen::<f64>() - 0.5) * 0.1)
+            .collect()
     }
 
     /// Layer-wise pre-training strategy

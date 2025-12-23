@@ -1,25 +1,25 @@
-//! Quantum circuit debugger with SciRS2 visualization tools
+//! Quantum circuit debugger with `SciRS2` visualization tools
 //!
 //! This module provides comprehensive debugging capabilities for quantum circuits,
 //! including step-by-step execution, state inspection, performance monitoring,
-//! and advanced visualization using SciRS2's analysis capabilities.
+//! and advanced visualization using `SciRS2`'s analysis capabilities.
 
 use crate::builder::Circuit;
 use crate::scirs2_integration::{AnalyzerConfig, GraphMetrics, SciRS2CircuitAnalyzer};
 // StateVector is represented as Array1<Complex64>
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Comprehensive quantum circuit debugger with SciRS2 integration
+/// Comprehensive quantum circuit debugger with `SciRS2` integration
 pub struct QuantumDebugger<const N: usize> {
     /// Circuit being debugged
     circuit: Circuit<N>,
@@ -27,7 +27,7 @@ pub struct QuantumDebugger<const N: usize> {
     execution_state: Arc<RwLock<ExecutionState<N>>>,
     /// Debugger configuration
     config: DebuggerConfig,
-    /// SciRS2 analyzer for advanced analysis
+    /// `SciRS2` analyzer for advanced analysis
     analyzer: SciRS2CircuitAnalyzer,
     /// Breakpoints manager
     breakpoints: Arc<RwLock<BreakpointManager>>,
@@ -1169,6 +1169,7 @@ pub enum CorrelationType {
 
 impl<const N: usize> QuantumDebugger<N> {
     /// Create a new quantum debugger
+    #[must_use]
     pub fn new(circuit: Circuit<N>) -> Self {
         let config = DebuggerConfig::default();
         let analyzer = SciRS2CircuitAnalyzer::with_config(AnalyzerConfig::default());
@@ -1325,6 +1326,7 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Create debugger with custom configuration
+    #[must_use]
     pub fn with_config(circuit: Circuit<N>, config: DebuggerConfig) -> Self {
         let mut debugger = Self::new(circuit);
         debugger.config = config;
@@ -1507,6 +1509,7 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     /// Get execution status
+    #[must_use]
     pub fn get_execution_status(&self) -> ExecutionStatus {
         let state = self.execution_state.read().unwrap();
         state.status.clone()
@@ -1544,12 +1547,12 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(())
     }
 
-    fn start_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn start_profiling(&mut self) -> QuantRS2Result<()> {
         // Start performance profiling
         Ok(())
     }
 
-    fn initialize_visualization(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_visualization(&mut self) -> QuantRS2Result<()> {
         // Initialize visualization engine
         Ok(())
     }
@@ -1570,12 +1573,12 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(false)
     }
 
-    fn pre_execution_analysis(&mut self, _gate_index: usize) -> QuantRS2Result<()> {
+    const fn pre_execution_analysis(&mut self, _gate_index: usize) -> QuantRS2Result<()> {
         // Perform pre-execution analysis
         Ok(())
     }
 
-    fn execute_gate_with_monitoring(
+    const fn execute_gate_with_monitoring(
         &mut self,
         _gate_index: usize,
     ) -> QuantRS2Result<GateExecutionResult> {
@@ -1588,7 +1591,7 @@ impl<const N: usize> QuantumDebugger<N> {
         })
     }
 
-    fn post_execution_analysis(
+    const fn post_execution_analysis(
         &mut self,
         _gate_index: usize,
         _result: &GateExecutionResult,
@@ -1597,12 +1600,12 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(())
     }
 
-    fn calculate_current_depth(&self) -> QuantRS2Result<usize> {
+    const fn calculate_current_depth(&self) -> QuantRS2Result<usize> {
         // Calculate current circuit depth
         Ok(0)
     }
 
-    fn update_visualizations(&mut self) -> QuantRS2Result<()> {
+    const fn update_visualizations(&mut self) -> QuantRS2Result<()> {
         // Update all active visualizations
         Ok(())
     }
@@ -1625,17 +1628,17 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(state.memory_usage.clone())
     }
 
-    fn export_json(&self, _path: &str) -> QuantRS2Result<()> {
+    const fn export_json(&self, _path: &str) -> QuantRS2Result<()> {
         // Export session data as JSON
         Ok(())
     }
 
-    fn export_html(&self, _path: &str) -> QuantRS2Result<()> {
+    const fn export_html(&self, _path: &str) -> QuantRS2Result<()> {
         // Export session data as HTML report
         Ok(())
     }
 
-    fn export_csv(&self, _path: &str) -> QuantRS2Result<()> {
+    const fn export_csv(&self, _path: &str) -> QuantRS2Result<()> {
         // Export session data as CSV
         Ok(())
     }

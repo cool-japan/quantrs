@@ -62,7 +62,7 @@ impl UltraThinkQuantumComputer {
         // Simulate holonomic quantum computation with Wilson loop calculations
         let wilson_loop: f64 = path_parameters.iter().product();
         let geometric_phase = wilson_loop.sin() * std::f64::consts::PI;
-        let gate_fidelity = 0.9985 + (wilson_loop * 0.001).cos() * 0.0015;
+        let gate_fidelity = (wilson_loop * 0.001).cos().mul_add(0.0015, 0.9985);
         let error_corrected = gate_fidelity < 0.999;
 
         self.total_operations += 1;
@@ -87,7 +87,7 @@ impl UltraThinkQuantumComputer {
         let input_norm: f64 = input_data.iter().map(|x| x * x).sum::<f64>().sqrt();
         let param_norm: f64 = parameters.iter().map(|x| x * x).sum::<f64>().sqrt();
 
-        let quantum_advantage_factor = 8.1 + (input_norm * param_norm).sin() * 0.5;
+        let quantum_advantage_factor = (input_norm * param_norm).sin().mul_add(0.5, 8.1);
         let output_dimension = 2_usize.pow(self.qubit_count as u32 / 2);
         let entanglement_entropy = (input_norm * param_norm).ln().abs();
 
@@ -103,9 +103,10 @@ impl UltraThinkQuantumComputer {
     }
 
     pub fn store_quantum_state(&mut self, coherence_time: Duration) -> QuantumMemoryResult {
-        let state_id = rand::random::<u64>() % 100000;
-        let storage_efficiency =
-            0.987 + (coherence_time.as_millis() as f64 / 10000.0).sin() * 0.013;
+        let state_id = rand::random::<u64>() % 100_000;
+        let storage_efficiency = (coherence_time.as_millis() as f64 / 10000.0)
+            .sin()
+            .mul_add(0.013, 0.987);
 
         self.total_operations += 1;
 
@@ -119,11 +120,13 @@ impl UltraThinkQuantumComputer {
 
     pub fn demonstrate_quantum_advantage(&self) -> QuantumAdvantageReport {
         // Calculate quantum advantages based on simulated performance metrics
-        let holonomic_advantage = 5.2 + (self.total_operations as f64 * 0.1).sin() * 0.3;
-        let quantum_ml_advantage = 8.1 + (self.computer_id as f64 * 0.001).cos() * 0.4;
-        let quantum_memory_advantage = 12.3 + (self.qubit_count as f64 * 0.2).sin() * 0.7;
-        let compilation_advantage = 15.7 + (self.total_operations as f64 * 0.05).cos() * 1.2;
-        let distributed_advantage = 4.9 + (self.computer_id as f64 * 0.0001).sin() * 0.2;
+        let holonomic_advantage = (self.total_operations as f64 * 0.1).sin().mul_add(0.3, 5.2);
+        let quantum_ml_advantage = (self.computer_id as f64 * 0.001).cos().mul_add(0.4, 8.1);
+        let quantum_memory_advantage = (self.qubit_count as f64 * 0.2).sin().mul_add(0.7, 12.3);
+        let compilation_advantage = (self.total_operations as f64 * 0.05)
+            .cos()
+            .mul_add(1.2, 15.7);
+        let distributed_advantage = (self.computer_id as f64 * 0.0001).sin().mul_add(0.2, 4.9);
 
         let overall_quantum_advantage = (holonomic_advantage
             + quantum_ml_advantage

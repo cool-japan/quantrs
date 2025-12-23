@@ -36,7 +36,8 @@ pub struct CircuitMetrics {
 
 impl CircuitMetrics {
     /// Calculate improvement percentage compared to another metric
-    pub fn improvement_from(&self, other: &CircuitMetrics) -> MetricImprovement {
+    #[must_use]
+    pub fn improvement_from(&self, other: &Self) -> MetricImprovement {
         MetricImprovement {
             gate_count: Self::percent_change(other.gate_count as f64, self.gate_count as f64),
             depth: Self::percent_change(other.depth as f64, self.depth as f64),
@@ -76,7 +77,8 @@ pub struct CircuitAnalyzer {
 
 impl CircuitAnalyzer {
     /// Create a new circuit analyzer
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             analyze_parallelism: true,
             analyze_critical_path: true,
@@ -169,6 +171,7 @@ impl CircuitAnalyzer {
     }
 
     /// Analyze gate sequence (helper for when we have gate list)
+    #[must_use]
     pub fn analyze_gates(&self, gates: &[Box<dyn GateOp>], num_qubits: usize) -> CircuitMetrics {
         let mut gate_types = HashMap::new();
         let mut two_qubit_gates = 0;
@@ -301,6 +304,7 @@ pub struct OptimizationReport {
 
 impl OptimizationReport {
     /// Get improvement metrics
+    #[must_use]
     pub fn improvement(&self) -> MetricImprovement {
         self.final_metrics.improvement_from(&self.initial_metrics)
     }
@@ -342,11 +346,12 @@ impl OptimizationReport {
         println!();
         println!("Applied Passes:");
         for pass in &self.applied_passes {
-            println!("  - {}", pass);
+            println!("  - {pass}");
         }
     }
 
     /// Generate a detailed report as string
+    #[must_use]
     pub fn detailed_report(&self) -> String {
         let mut report = String::new();
 
@@ -356,15 +361,15 @@ impl OptimizationReport {
         report.push_str("Gate Type Breakdown:\n");
         report.push_str("Initial:\n");
         for (gate_type, count) in &self.initial_metrics.gate_types {
-            report.push_str(&format!("  {}: {}\n", gate_type, count));
+            report.push_str(&format!("  {gate_type}: {count}\n"));
         }
         report.push_str("Final:\n");
         for (gate_type, count) in &self.final_metrics.gate_types {
-            report.push_str(&format!("  {}: {}\n", gate_type, count));
+            report.push_str(&format!("  {gate_type}: {count}\n"));
         }
 
         // Additional metrics
-        report.push_str(&format!("\nGate Density:\n"));
+        report.push_str("\nGate Density:\n");
         report.push_str(&format!(
             "  Initial: {:.2} gates/qubit\n",
             self.initial_metrics.gate_density
@@ -374,7 +379,7 @@ impl OptimizationReport {
             self.final_metrics.gate_density
         ));
 
-        report.push_str(&format!("\nParallelism Factor:\n"));
+        report.push_str("\nParallelism Factor:\n");
         report.push_str(&format!(
             "  Initial: {:.2}\n",
             self.initial_metrics.parallelism

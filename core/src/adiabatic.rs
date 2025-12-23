@@ -8,12 +8,12 @@
 //! - Annealing schedules and gap analysis
 //! - Performance monitoring and optimization
 
-#![allow(clippy::fn_address_comparisons)]
+#![allow(unpredictable_function_pointer_comparisons)]
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Types of optimization problems for adiabatic quantum computing
@@ -459,7 +459,10 @@ impl AdiabaticQuantumComputer {
         // This is a placeholder - in practice you'd use a proper eigenvalue solver
         let dim = hamiltonian.nrows();
         let mut eigenvalues: Vec<f64> = (0..dim).map(|i| hamiltonian[[i, i]].re).collect();
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("Failed to compare eigenvalues in compute_eigenvalues")
+        });
         Ok(eigenvalues)
     }
 
@@ -669,7 +672,8 @@ impl ProblemGenerator {
             }
         }
 
-        QUBOProblem::new(q_matrix).unwrap()
+        QUBOProblem::new(q_matrix)
+            .expect("Failed to create QUBO problem in random_qubo (matrix should be square)")
     }
 
     /// Generate MaxCut problem on a random graph
@@ -690,7 +694,8 @@ impl ProblemGenerator {
             }
         }
 
-        IsingProblem::new(h_fields, j_couplings).unwrap()
+        IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in max_cut (matrix dimensions should match)")
     }
 
     /// Generate Number Partitioning problem
@@ -708,7 +713,7 @@ impl ProblemGenerator {
             }
         }
 
-        IsingProblem::new(h_fields, j_couplings).unwrap()
+        IsingProblem::new(h_fields, j_couplings).expect("Failed to create Ising problem in number_partitioning (matrix dimensions should match)")
     }
 }
 
@@ -740,7 +745,7 @@ mod tests {
         q_matrix[[0, 1]] = -2.0;
         q_matrix[[1, 0]] = -2.0;
 
-        let qubo = QUBOProblem::new(q_matrix).unwrap();
+        let qubo = QUBOProblem::new(q_matrix).expect("Failed to create QUBO in test_qubo_problem");
 
         // Test evaluations
         // For Q = [[1, -2], [-2, 1]]:
@@ -748,10 +753,26 @@ mod tests {
         // [1,1]: 1*1*1 + 1*(-2)*1 + 1*(-2)*1 + 1*1*1 = 1 - 2 - 2 + 1 = -2
         // [1,0]: 1*1*1 + 1*(-2)*0 + 0*(-2)*1 + 0*1*0 = 1
         // [0,1]: 0*1*0 + 0*(-2)*1 + 1*(-2)*0 + 1*1*1 = 1
-        assert_eq!(qubo.evaluate(&[0, 0]).unwrap(), 0.0);
-        assert_eq!(qubo.evaluate(&[1, 1]).unwrap(), -2.0);
-        assert_eq!(qubo.evaluate(&[1, 0]).unwrap(), 1.0);
-        assert_eq!(qubo.evaluate(&[0, 1]).unwrap(), 1.0);
+        assert_eq!(
+            qubo.evaluate(&[0, 0])
+                .expect("Failed to evaluate [0,0] in test_qubo_problem"),
+            0.0
+        );
+        assert_eq!(
+            qubo.evaluate(&[1, 1])
+                .expect("Failed to evaluate [1,1] in test_qubo_problem"),
+            -2.0
+        );
+        assert_eq!(
+            qubo.evaluate(&[1, 0])
+                .expect("Failed to evaluate [1,0] in test_qubo_problem"),
+            1.0
+        );
+        assert_eq!(
+            qubo.evaluate(&[0, 1])
+                .expect("Failed to evaluate [0,1] in test_qubo_problem"),
+            1.0
+        );
     }
 
     #[test]
@@ -761,15 +782,36 @@ mod tests {
         j_couplings[[0, 1]] = 1.0;
         j_couplings[[1, 0]] = 1.0;
 
-        let ising = IsingProblem::new(h_fields, j_couplings).unwrap();
+        let ising = IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in test_ising_problem");
 
         // Test evaluations
         // Energy = -∑_i h_i s_i - ∑_{i<j} J_{ij} s_i s_j
         // With h = [0.5, -0.5] and J_{01} = 1.0:
-        assert_eq!(ising.evaluate(&[-1, -1]).unwrap(), -1.0); // -(0.5*(-1) + (-0.5)*(-1)) - 1*(-1)*(-1) = -(-0.5 + 0.5) - 1 = -1
-        assert_eq!(ising.evaluate(&[1, 1]).unwrap(), -1.0); // -(0.5*1 + (-0.5)*1) - 1*1*1 = -(0.5 - 0.5) - 1 = -1
-        assert_eq!(ising.evaluate(&[1, -1]).unwrap(), 0.0); // -(0.5*1 + (-0.5)*(-1)) - 1*1*(-1) = -(0.5 + 0.5) - (-1) = -1 + 1 = 0
-        assert_eq!(ising.evaluate(&[-1, 1]).unwrap(), 2.0); // -(0.5*(-1) + (-0.5)*1) - 1*(-1)*1 = -(-0.5 - 0.5) - (-1) = 1 + 1 = 2
+        assert_eq!(
+            ising
+                .evaluate(&[-1, -1])
+                .expect("Failed to evaluate [-1,-1] in test_ising_problem"),
+            -1.0
+        ); // -(0.5*(-1) + (-0.5)*(-1)) - 1*(-1)*(-1) = -(-0.5 + 0.5) - 1 = -1
+        assert_eq!(
+            ising
+                .evaluate(&[1, 1])
+                .expect("Failed to evaluate [1,1] in test_ising_problem"),
+            -1.0
+        ); // -(0.5*1 + (-0.5)*1) - 1*1*1 = -(0.5 - 0.5) - 1 = -1
+        assert_eq!(
+            ising
+                .evaluate(&[1, -1])
+                .expect("Failed to evaluate [1,-1] in test_ising_problem"),
+            0.0
+        ); // -(0.5*1 + (-0.5)*(-1)) - 1*1*(-1) = -(0.5 + 0.5) - (-1) = -1 + 1 = 0
+        assert_eq!(
+            ising
+                .evaluate(&[-1, 1])
+                .expect("Failed to evaluate [-1,1] in test_ising_problem"),
+            2.0
+        ); // -(0.5*(-1) + (-0.5)*1) - 1*(-1)*1 = -(-0.5 - 0.5) - (-1) = 1 + 1 = 2
     }
 
     #[test]
@@ -778,7 +820,8 @@ mod tests {
         q_matrix[[0, 1]] = 1.0;
         q_matrix[[1, 0]] = 1.0;
 
-        let qubo = QUBOProblem::new(q_matrix).unwrap();
+        let qubo = QUBOProblem::new(q_matrix)
+            .expect("Failed to create QUBO in test_qubo_to_ising_conversion");
         let ising = qubo.to_ising();
 
         // Verify the conversion maintains the same optimal solutions
@@ -794,7 +837,8 @@ mod tests {
     fn test_adiabatic_computer_initialization() {
         let h_fields = Array1::from(vec![0.0, 0.0]);
         let j_couplings = Array2::eye(2);
-        let ising = IsingProblem::new(h_fields, j_couplings).unwrap();
+        let ising = IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in test_adiabatic_computer_initialization");
 
         let adiabatic = AdiabaticQuantumComputer::new(
             &ising,
@@ -818,7 +862,8 @@ mod tests {
     fn test_adiabatic_evolution_step() {
         let h_fields = Array1::zeros(1);
         let j_couplings = Array2::zeros((1, 1));
-        let ising = IsingProblem::new(h_fields, j_couplings).unwrap();
+        let ising = IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in test_adiabatic_evolution_step");
 
         let mut adiabatic = AdiabaticQuantumComputer::new(
             &ising,
@@ -828,7 +873,9 @@ mod tests {
         );
 
         let initial_time = adiabatic.current_time;
-        adiabatic.step().unwrap();
+        adiabatic
+            .step()
+            .expect("Failed to step adiabatic evolution in test_adiabatic_evolution_step");
 
         assert!(adiabatic.current_time > initial_time);
         assert!(adiabatic.current_time <= adiabatic.total_time);
@@ -848,7 +895,9 @@ mod tests {
             AnnealingSchedule::Linear,
         );
 
-        let (solution, energy) = annealer.optimize().unwrap();
+        let (solution, energy) = annealer
+            .optimize()
+            .expect("Failed to optimize in test_quantum_annealer");
 
         assert_eq!(solution.len(), 3);
         assert!(solution.iter().all(|&s| s == -1 || s == 1));
@@ -887,7 +936,9 @@ mod tests {
             AnnealingSchedule::Linear,
         );
 
-        let (solution, energy) = annealer.optimize_multiple_runs(3).unwrap();
+        let (solution, energy) = annealer
+            .optimize_multiple_runs(3)
+            .expect("Failed to optimize multiple runs in test_multiple_annealing_runs");
 
         assert_eq!(solution.len(), 2);
         assert!(solution.iter().all(|&s| s == -1 || s == 1));
@@ -907,16 +958,24 @@ mod tests {
         // Check annealing parameter at different times
         assert_eq!(computer.annealing_parameter(), 0.0);
 
-        computer.step().unwrap();
+        computer
+            .step()
+            .expect("Failed to step (1) in test_annealing_parameter_progression");
         assert!((computer.annealing_parameter() - 0.25).abs() < 1e-10);
 
-        computer.step().unwrap();
+        computer
+            .step()
+            .expect("Failed to step (2) in test_annealing_parameter_progression");
         assert!((computer.annealing_parameter() - 0.5).abs() < 1e-10);
 
-        computer.step().unwrap();
+        computer
+            .step()
+            .expect("Failed to step (3) in test_annealing_parameter_progression");
         assert!((computer.annealing_parameter() - 0.75).abs() < 1e-10);
 
-        computer.step().unwrap();
+        computer
+            .step()
+            .expect("Failed to step (4) in test_annealing_parameter_progression");
         assert!((computer.annealing_parameter() - 1.0).abs() < 1e-10);
     }
 
@@ -924,11 +983,14 @@ mod tests {
     fn test_energy_gap_calculation() {
         let h_fields = Array1::from(vec![1.0]);
         let j_couplings = Array2::zeros((1, 1));
-        let ising = IsingProblem::new(h_fields, j_couplings).unwrap();
+        let ising = IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in test_energy_gap_calculation");
 
         let computer = AdiabaticQuantumComputer::new(&ising, 1.0, 0.1, AnnealingSchedule::Linear);
 
-        let gap = computer.energy_gap().unwrap();
+        let gap = computer
+            .energy_gap()
+            .expect("Failed to calculate energy gap in test_energy_gap_calculation");
         assert!(gap >= 0.0);
     }
 
@@ -936,7 +998,8 @@ mod tests {
     fn test_measurement_probabilities() {
         let h_fields = Array1::zeros(1);
         let j_couplings = Array2::zeros((1, 1));
-        let ising = IsingProblem::new(h_fields, j_couplings).unwrap();
+        let ising = IsingProblem::new(h_fields, j_couplings)
+            .expect("Failed to create Ising problem in test_measurement_probabilities");
 
         let computer = AdiabaticQuantumComputer::new(&ising, 1.0, 0.1, AnnealingSchedule::Linear);
 

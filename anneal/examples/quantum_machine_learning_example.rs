@@ -10,7 +10,15 @@
 //! 7. Use Quantum Autoencoders for dimensionality reduction
 //! 8. Compare quantum vs classical performance
 
-use quantrs2_anneal::{ising::IsingModel, quantum_machine_learning::*};
+use quantrs2_anneal::{
+    ising::IsingModel,
+    quantum_machine_learning::{
+        EntanglementType, Experience, FeatureMapType, KernelMethodType, QAutoencoderConfig,
+        QGanConfig, QRLConfig, QnnConfig, QuantumAutoencoder, QuantumFeatureMap, QuantumGAN,
+        QuantumKernelMethod, QuantumNeuralNetwork, QuantumRLAgent, TrainingSample,
+        VariationalQuantumClassifier, VqcConfig,
+    },
+};
 use scirs2_core::random::prelude::*;
 use std::time::Instant;
 
@@ -67,7 +75,7 @@ fn variational_quantum_classifier_example() -> Result<(), Box<dyn std::error::Er
         let x4 = rng.gen_range(-2.0..2.0);
 
         // Simple classification rule: sum > 0 -> class 1, else class 0
-        let label = if x1 + x2 + x3 + x4 > 0.0 { 1 } else { 0 };
+        let label = usize::from(x1 + x2 + x3 + x4 > 0.0);
 
         training_data.push(TrainingSample {
             features: vec![x1, x2, x3, x4],
@@ -97,13 +105,13 @@ fn variational_quantum_classifier_example() -> Result<(), Box<dyn std::error::Er
     let prediction = vqc.predict(&test_sample)?;
     let probabilities = vqc.predict_proba(&test_sample)?;
 
-    println!("    Training completed in {:.2?}", training_time);
+    println!("    Training completed in {training_time:.2?}");
     println!("    Training samples: {}", training_data.len());
     println!(
         "    Final loss: {:.6}",
         vqc.training_history.losses.last().unwrap_or(&0.0)
     );
-    println!("    Test prediction: class {}", prediction);
+    println!("    Test prediction: class {prediction}");
     println!(
         "    Class probabilities: [{:.3}, {:.3}]",
         probabilities[0], probabilities[1]
@@ -118,7 +126,7 @@ fn variational_quantum_classifier_example() -> Result<(), Box<dyn std::error::Er
             correct += 1;
         }
     }
-    let accuracy = correct as f64 / 20.0;
+    let accuracy = f64::from(correct) / 20.0;
     println!("    Training accuracy (subset): {:.1}%", accuracy * 100.0);
 
     Ok(())
@@ -137,7 +145,7 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
         let x3: f64 = rng.gen_range(-1.0..1.0);
 
         // Target function: y = sin(x1) + cos(x2) + x3^2
-        let y1 = x1.sin() + x2.cos() + x3 * x3;
+        let y1 = x3.mul_add(x3, x1.sin() + x2.cos());
         let y2 = (x1 * x2).cos() + x3.sin();
 
         training_data.push((vec![x1, x2, x3], vec![y1, y2]));
@@ -163,7 +171,7 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
     let test_input = vec![0.5, -0.3, 0.8];
     let output = qnn.forward(&test_input)?;
 
-    println!("    Training completed in {:.2?}", training_time);
+    println!("    Training completed in {training_time:.2?}");
     println!("    Architecture: 3 -> 6 -> 2");
     println!("    Training samples: {}", training_data.len());
     println!(
@@ -177,8 +185,8 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("    Test output: [{:.3}, {:.3}]", output[0], output[1]);
 
     // Expected output for comparison
-    let expected = vec![
-        test_input[0].sin() + test_input[1].cos() + test_input[2] * test_input[2],
+    let expected = [
+        test_input[2].mul_add(test_input[2], test_input[0].sin() + test_input[1].cos()),
         (test_input[0] * test_input[1]).cos() + test_input[2].sin(),
     ];
     println!("    Expected: [{:.3}, {:.3}]", expected[0], expected[1]);
@@ -189,7 +197,7 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
         .map(|(o, e)| (o - e).abs())
         .sum::<f64>()
         / output.len() as f64;
-    println!("    Mean absolute error: {:.3}", error);
+    println!("    Mean absolute error: {error:.3}");
 
     Ok(())
 }
@@ -232,11 +240,11 @@ fn quantum_feature_maps_example() -> Result<(), Box<dyn std::error::Error>> {
 
         let encoded_str = encoded
             .iter()
-            .map(|x| format!("{:.3}", x))
+            .map(|x| format!("{x:.3}"))
             .collect::<Vec<_>>()
             .join(", ");
 
-        println!("      {}: [{}]", name, encoded_str);
+        println!("      {name}: [{encoded_str}]");
         println!("        Circuit depth: {}", feature_map.circuit.depth);
         println!("        Parameters: {}", feature_map.circuit.num_parameters);
     }
@@ -260,9 +268,9 @@ fn quantum_feature_maps_example() -> Result<(), Box<dyn std::error::Error>> {
     let k13 = kernel_method.quantum_kernel(&x1, &x3)?;
     let k23 = kernel_method.quantum_kernel(&x2, &x3)?;
 
-    println!("      K(x1, x2) = {:.3}", k12);
-    println!("      K(x1, x3) = {:.3}", k13);
-    println!("      K(x2, x3) = {:.3}", k23);
+    println!("      K(x1, x2) = {k12:.3}");
+    println!("      K(x1, x3) = {k13:.3}");
+    println!("      K(x2, x3) = {k23:.3}");
 
     Ok(())
 }
@@ -300,7 +308,7 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, method_type) in kernel_methods {
-        println!("    Training {} with quantum kernels...", name);
+        println!("    Training {name} with quantum kernels...");
 
         let feature_map = QuantumFeatureMap::new(
             2,
@@ -328,9 +336,9 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let accuracy = correct as f64 / test_samples.len() as f64;
+        let accuracy = f64::from(correct) / test_samples.len() as f64;
 
-        println!("      Training time: {:.2?}", training_time);
+        println!("      Training time: {training_time:.2?}");
         println!("      Training samples: {}", training_data.len());
         println!(
             "      Support vectors: {}",
@@ -341,7 +349,7 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
         // Test prediction
         let test_point = vec![0.5, 0.5];
         let prediction = kernel_method.predict(&test_point)?;
-        println!("      Prediction for [0.5, 0.5]: {:.3}", prediction);
+        println!("      Prediction for [0.5, 0.5]: {prediction:.3}");
     }
 
     Ok(())
@@ -385,7 +393,7 @@ fn quantum_gan_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut gen_rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(999);
     let generated_samples = qgan.generate_samples(10, &mut gen_rng)?;
 
-    println!("    Training completed in {:.2?}", training_time);
+    println!("    Training completed in {training_time:.2?}");
     println!("    Real data samples: {}", real_data.len());
     println!(
         "    Generator architecture: {} -> {} -> {}",
@@ -427,11 +435,8 @@ fn quantum_gan_example() -> Result<(), Box<dyn std::error::Error>> {
     let gen_mean_y: f64 =
         generated_samples.iter().map(|s| s[1]).sum::<f64>() / generated_samples.len() as f64;
 
-    println!(
-        "    Real data mean: [{:.3}, {:.3}]",
-        real_mean_x, real_mean_y
-    );
-    println!("    Generated mean: [{:.3}, {:.3}]", gen_mean_x, gen_mean_y);
+    println!("    Real data mean: [{real_mean_x:.3}, {real_mean_y:.3}]");
+    println!("    Generated mean: [{gen_mean_x:.3}, {gen_mean_y:.3}]");
 
     Ok(())
 }
@@ -524,7 +529,7 @@ fn quantum_reinforcement_learning_example() -> Result<(), Box<dyn std::error::Er
         "      Test state: [{:.2}, {:.2}, {:.2}, {:.2}]",
         test_state[0], test_state[1], test_state[2], test_state[3]
     );
-    println!("      Selected action: {}", test_action);
+    println!("      Selected action: {test_action}");
 
     // Performance statistics
     let avg_reward: f64 =
@@ -535,8 +540,8 @@ fn quantum_reinforcement_learning_example() -> Result<(), Box<dyn std::error::Er
         .iter()
         .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-    println!("      Average episode reward: {:.2}", avg_reward);
-    println!("      Best episode reward: {:.2}", max_reward);
+    println!("      Average episode reward: {avg_reward:.2}");
+    println!("      Best episode reward: {max_reward:.2}");
     println!(
         "      Experience buffer utilization: {:.1}%",
         agent.experience_buffer.len() as f64 / agent.config.buffer_capacity as f64 * 100.0
@@ -564,8 +569,8 @@ fn quantum_autoencoder_example() -> Result<(), Box<dyn std::error::Error>> {
             z1 * z2,
             z1.sin(),
             z2.cos(),
-            (z1 + z2) / 2.0,
-            z1.powi(2) - z2.powi(2),
+            f64::midpoint(z1, z2),
+            z2.mul_add(-z2, z1.powi(2)),
             (z1 * z2).tanh(),
         ];
 
@@ -594,7 +599,7 @@ fn quantum_autoencoder_example() -> Result<(), Box<dyn std::error::Error>> {
     let encoded = autoencoder.encode(test_sample)?;
     let reconstructed = autoencoder.decode(&encoded)?;
 
-    println!("    Training completed in {:.2?}", training_time);
+    println!("    Training completed in {training_time:.2?}");
     println!(
         "    Architecture: 8 -> 3 -> 8 (compression ratio: {:.1}x)",
         8.0 / 3.0
@@ -624,32 +629,29 @@ fn quantum_autoencoder_example() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let avg_reconstruction_error = total_error / test_samples.len() as f64;
-    println!(
-        "    Average reconstruction error: {:.4}",
-        avg_reconstruction_error
-    );
+    println!("    Average reconstruction error: {avg_reconstruction_error:.4}");
 
     // Show example encoding/decoding
     println!("    Example encoding/decoding:");
     let input_str = test_sample
         .iter()
-        .map(|x| format!("{:.2}", x))
+        .map(|x| format!("{x:.2}"))
         .collect::<Vec<_>>()
         .join(", ");
     let encoded_str = encoded
         .iter()
-        .map(|x| format!("{:.2}", x))
+        .map(|x| format!("{x:.2}"))
         .collect::<Vec<_>>()
         .join(", ");
     let reconstructed_str = reconstructed
         .iter()
-        .map(|x| format!("{:.2}", x))
+        .map(|x| format!("{x:.2}"))
         .collect::<Vec<_>>()
         .join(", ");
 
-    println!("      Input (8D):        [{}]", input_str);
-    println!("      Encoded (3D):      [{}]", encoded_str);
-    println!("      Reconstructed (8D): [{}]", reconstructed_str);
+    println!("      Input (8D):        [{input_str}]");
+    println!("      Encoded (3D):      [{encoded_str}]");
+    println!("      Reconstructed (8D): [{reconstructed_str}]");
 
     Ok(())
 }
@@ -667,11 +669,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
         let x3: f64 = rng.gen_range(-1.0..1.0);
 
         // Complex nonlinear decision boundary
-        let label = if x1 * x1 + x2 * x2 - x3.sin() > 0.0 {
-            1
-        } else {
-            0
-        };
+        let label = usize::from(x1.mul_add(x1, x2 * x2) - x3.sin() > 0.0);
 
         dataset.push(TrainingSample {
             features: vec![x1, x2, x3],
@@ -711,7 +709,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
             quantum_correct += 1;
         }
     }
-    let quantum_accuracy = quantum_correct as f64 / test_data.len() as f64;
+    let quantum_accuracy = f64::from(quantum_correct) / test_data.len() as f64;
 
     // Classical "Neural Network" (simplified)
     println!("    Training Classical NN (simplified)...");
@@ -736,12 +734,12 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
     let mut classical_correct = 0;
     for sample in test_data {
         let prediction = classical_predict(&sample.features, &classical_weights);
-        let predicted_class = if prediction > 0.5 { 1 } else { 0 };
+        let predicted_class = usize::from(prediction > 0.5);
         if predicted_class == sample.label {
             classical_correct += 1;
         }
     }
-    let classical_accuracy = classical_correct as f64 / test_data.len() as f64;
+    let classical_accuracy = f64::from(classical_correct) / test_data.len() as f64;
 
     // Comparison results
     println!("\n    Performance Comparison:");
@@ -765,7 +763,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
     // Performance analysis
     let quantum_advantage = quantum_accuracy / classical_accuracy;
     println!("\n    Analysis:");
-    println!("      Quantum advantage ratio: {:.2}x", quantum_advantage);
+    println!("      Quantum advantage ratio: {quantum_advantage:.2}x");
 
     if quantum_advantage > 1.1 {
         println!("      ✓ Quantum method shows significant advantage");
@@ -797,7 +795,11 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
 
 // Helper functions
 
-fn simulate_cartpole_step(state: &[f64], action: usize, rng: &mut scirs2_core::random::ChaCha8Rng) -> Vec<f64> {
+fn simulate_cartpole_step(
+    state: &[f64],
+    action: usize,
+    rng: &mut scirs2_core::random::ChaCha8Rng,
+) -> Vec<f64> {
     let pos = state[0];
     let vel = state[1];
     let angle = state[2];
@@ -807,7 +809,10 @@ fn simulate_cartpole_step(state: &[f64], action: usize, rng: &mut scirs2_core::r
     let force = if action == 1 { 1.0 } else { -1.0 };
     let dt = 0.02;
 
-    let new_ang_vel = ang_vel + (angle.sin() * 9.8 - force * angle.cos()) * dt;
+    let new_ang_vel = angle
+        .sin()
+        .mul_add(9.8, -(force * angle.cos()))
+        .mul_add(dt, ang_vel);
     let new_angle = angle + new_ang_vel * dt;
     let new_vel = vel + force * dt;
     let new_pos = pos + new_vel * dt;
@@ -829,7 +834,7 @@ fn calculate_cartpole_reward(state: &[f64]) -> f64 {
     let angle_reward = 1.0 - angle.abs() / 0.5;
     let position_reward = 1.0 - pos.abs() / 1.0;
 
-    (angle_reward + position_reward) / 2.0
+    f64::midpoint(angle_reward, position_reward)
 }
 
 fn classical_predict(features: &[f64], weights: &[f64]) -> f64 {

@@ -124,7 +124,7 @@ pub struct Recommendation {
     pub details: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationCategory {
     Configuration,
     Hardware,
@@ -132,7 +132,7 @@ pub enum RecommendationCategory {
     Optimization,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImpactLevel {
     High,
     Medium,
@@ -299,8 +299,7 @@ impl PerformanceReport {
                     (*size, avg_perf)
                 })
                 .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                .map(|(size, _)| size)
-                .unwrap_or(0);
+                .map_or(0, |(size, _)| size);
 
             // Calculate efficiency by size
             let efficiency_by_size: HashMap<usize, f64> = size_performance
@@ -489,8 +488,8 @@ impl PerformanceReport {
         let sum_xy: f64 = data.iter().map(|(x, y)| x * y).sum();
         let sum_x2: f64 = data.iter().map(|(x, _)| x * x).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
-        let intercept = (sum_y - slope * sum_x) / n;
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x2, -(sum_x * sum_x));
+        let intercept = slope.mul_add(-sum_x, sum_y) / n;
 
         // Calculate R²
         let mean_y = sum_y / n;
@@ -684,7 +683,7 @@ impl PerformanceReport {
     pub fn generate_summary(&self) -> String {
         let mut summary = String::new();
 
-        summary.push_str(&format!("# Performance Benchmark Report\n\n"));
+        summary.push_str("# Performance Benchmark Report\n\n");
         summary.push_str(&format!("Generated: {:?}\n", self.metadata.generated_at));
         summary.push_str(&format!(
             "Total benchmarks: {}\n",

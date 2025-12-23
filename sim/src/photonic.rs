@@ -7,8 +7,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -96,7 +96,7 @@ pub struct FockState {
 
 impl FockState {
     /// Create new Fock state
-    pub fn new(photon_numbers: Vec<usize>) -> Self {
+    pub const fn new(photon_numbers: Vec<usize>) -> Self {
         Self { photon_numbers }
     }
 
@@ -278,7 +278,7 @@ impl PhotonicSimulator {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
-                    for amp in state_vector.iter_mut() {
+                    for amp in &mut state_vector {
                         *amp /= norm;
                     }
                 }
@@ -335,7 +335,7 @@ impl PhotonicSimulator {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
-                    for amp in state_vector.iter_mut() {
+                    for amp in &mut state_vector {
                         *amp /= norm;
                     }
                 }
@@ -410,7 +410,7 @@ impl PhotonicSimulator {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
-                    for amp in new_state.iter_mut() {
+                    for amp in &mut new_state {
                         *amp /= norm;
                     }
                 }
@@ -461,7 +461,7 @@ impl PhotonicSimulator {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
-                    for amp in new_state.iter_mut() {
+                    for amp in &mut new_state {
                         *amp /= norm;
                     }
                 }
@@ -815,14 +815,12 @@ impl PhotonicSimulator {
         let tanh_r = r.tanh();
         let sech_r = 1.0 / r.cosh();
 
-        let amplitude = sech_r.sqrt()
+        sech_r.sqrt()
             * (-tanh_r).powi(m as i32)
             * Complex64::new(0.0, m as f64 * phi).exp()
             * Self::double_factorial(2 * m - 1)
             / Self::factorial(m)
-            * tanh_r.powf(m as f64);
-
-        amplitude
+            * tanh_r.powf(m as f64)
     }
 
     fn build_displacement_matrix(
@@ -883,7 +881,7 @@ impl PhotonicSimulator {
         Ok(state.clone())
     }
 
-    fn calculate_parity_expectation(&self, state: &Array1<Complex64>) -> Result<f64> {
+    const fn calculate_parity_expectation(&self, state: &Array1<Complex64>) -> Result<f64> {
         // Simplified parity calculation
         Ok(0.5)
     }
@@ -928,7 +926,8 @@ impl PhotonicSimulator {
                 let q = -range + 2.0 * range * i as f64 / (grid_size - 1) as f64;
                 let p = -range + 2.0 * range * j as f64 / (grid_size - 1) as f64;
 
-                let gaussian = (-(q - q0).powi(2) - (p - p0).powi(2)).exp() / std::f64::consts::PI;
+                let gaussian =
+                    (p - p0).mul_add(-(p - p0), -(q - q0).powi(2)).exp() / std::f64::consts::PI;
                 function_values[[i, j]] = Complex64::new(gaussian, 0.0);
             }
         }
@@ -970,17 +969,17 @@ impl PhotonicSimulator {
     }
 
     /// Get current state
-    pub fn get_state(&self) -> &PhotonicState {
+    pub const fn get_state(&self) -> &PhotonicState {
         &self.state
     }
 
     /// Get configuration
-    pub fn get_config(&self) -> &PhotonicConfig {
+    pub const fn get_config(&self) -> &PhotonicConfig {
         &self.config
     }
 
     /// Set configuration
-    pub fn set_config(&mut self, config: PhotonicConfig) {
+    pub const fn set_config(&mut self, config: PhotonicConfig) {
         self.config = config;
     }
 }

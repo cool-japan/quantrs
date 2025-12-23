@@ -1,4 +1,4 @@
-//! SABRE (SWAP-based BidiREctional) routing algorithm
+//! SABRE (SWAP-based `BidiREctional`) routing algorithm
 //!
 //! Based on the paper "Tackling the Qubit Mapping Problem for NISQ-Era Quantum Devices"
 //! by Gushu Li et al. This implementation provides efficient routing for quantum circuits
@@ -47,7 +47,8 @@ impl Default for SabreConfig {
 
 impl SabreConfig {
     /// Create a basic configuration with minimal overhead
-    pub fn basic() -> Self {
+    #[must_use]
+    pub const fn basic() -> Self {
         Self {
             max_iterations: 100,
             lookahead_depth: 5,
@@ -59,6 +60,7 @@ impl SabreConfig {
     }
 
     /// Create a stochastic configuration for multiple trials
+    #[must_use]
     pub fn stochastic() -> Self {
         Self {
             stochastic: true,
@@ -75,7 +77,8 @@ pub struct SabreRouter {
 
 impl SabreRouter {
     /// Create a new SABRE router
-    pub fn new(coupling_map: CouplingMap, config: SabreConfig) -> Self {
+    #[must_use]
+    pub const fn new(coupling_map: CouplingMap, config: SabreConfig) -> Self {
         Self {
             coupling_map,
             config,
@@ -208,7 +211,7 @@ impl SabreRouter {
         }
 
         let mut qubit_vec: Vec<usize> = qubits.into_iter().collect();
-        qubit_vec.sort();
+        qubit_vec.sort_unstable();
         qubit_vec
     }
 
@@ -290,8 +293,7 @@ impl SabreRouter {
                 physical_qubits.push(QubitId::new(physical as u32));
             } else {
                 return Err(QuantRS2Error::RoutingError(format!(
-                    "Logical qubit {} not mapped to physical qubit",
-                    logical
+                    "Logical qubit {logical} not mapped to physical qubit"
                 )));
             }
         }
@@ -394,10 +396,10 @@ impl SabreRouter {
         } else {
             // Deterministic selection of best SWAP
             sorted_swaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-            if !sorted_swaps.is_empty() {
-                Ok(vec![sorted_swaps[0].0])
-            } else {
+            if sorted_swaps.is_empty() {
                 Ok(Vec::new())
+            } else {
+                Ok(vec![sorted_swaps[0].0])
             }
         }
     }
@@ -451,7 +453,7 @@ impl SabreRouter {
 
     /// Get currently mapped physical qubits
     fn get_mapped_physical_qubits(&self, mapping: &HashMap<usize, usize>) -> Vec<usize> {
-        mapping.values().cloned().collect()
+        mapping.values().copied().collect()
     }
 
     /// Calculate score for a SWAP operation
@@ -486,12 +488,11 @@ impl SabreRouter {
         }
 
         // Count newly executable gates in front layer
-        let mut score = 0.0;
 
         // TODO: Implement proper gate execution checking with temp_mapping
         // This is a simplified version
 
-        score
+        0.0
     }
 
     /// Calculate circuit depth

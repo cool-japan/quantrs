@@ -107,7 +107,7 @@ pub struct ComplexityAnalysis {
 }
 
 /// Complexity function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplexityFunction {
     Constant,
     Linear,
@@ -231,7 +231,7 @@ pub struct ProblemCharacteristics {
 }
 
 /// Problem structure types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemStructure {
     Random,
     Regular,
@@ -244,7 +244,7 @@ pub enum ProblemStructure {
 }
 
 /// Symmetry types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymmetryType {
     Translation,
     Rotation,
@@ -311,7 +311,7 @@ pub struct MemoryRequirements {
 }
 
 /// Memory access patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemoryAccessPattern {
     Sequential,
     Random,
@@ -356,7 +356,7 @@ pub struct StorageRequirements {
 }
 
 /// Storage types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageType {
     HDD,
     SSD,
@@ -376,7 +376,7 @@ impl Default for QuboEvaluationBenchmark {
 }
 
 impl QuboEvaluationBenchmark {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -439,11 +439,11 @@ impl Benchmark for QuboEvaluationBenchmark {
         })
     }
 
-    fn get_benchmark_name(&self) -> &str {
+    fn get_benchmark_name(&self) -> &'static str {
         "QUBO Evaluation Benchmark"
     }
 
-    fn get_description(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "Benchmarks QUBO matrix evaluation performance"
     }
 
@@ -463,7 +463,7 @@ impl Default for SamplingBenchmark {
 }
 
 impl SamplingBenchmark {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -514,11 +514,11 @@ impl Benchmark for SamplingBenchmark {
         })
     }
 
-    fn get_benchmark_name(&self) -> &str {
+    fn get_benchmark_name(&self) -> &'static str {
         "Sampling Benchmark"
     }
 
-    fn get_description(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "Benchmarks quantum annealing sampling performance"
     }
 
@@ -538,7 +538,7 @@ impl Default for ConvergenceBenchmark {
 }
 
 impl ConvergenceBenchmark {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -589,11 +589,11 @@ impl Benchmark for ConvergenceBenchmark {
         })
     }
 
-    fn get_benchmark_name(&self) -> &str {
+    fn get_benchmark_name(&self) -> &'static str {
         "Convergence Benchmark"
     }
 
-    fn get_description(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "Benchmarks algorithm convergence characteristics"
     }
 

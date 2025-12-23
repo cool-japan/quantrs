@@ -3,9 +3,9 @@
 //! This example demonstrates quantum diffusion models for generative modeling,
 //! including DDPM-style models and score-based diffusion.
 
-use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -70,7 +70,7 @@ fn compare_noise_schedules() -> Result<()> {
 
     for t in (0..=100).step_by(20) {
         let t_idx = (t * (num_timesteps - 1) / 100).min(num_timesteps - 1);
-        print!("   t={:3}%: ", t);
+        print!("   t={t:3}%: ");
 
         for (_, schedule) in &schedules {
             let model = QuantumDiffusionModel::new(2, 4, num_timesteps, *schedule)?;
@@ -88,7 +88,7 @@ fn train_diffusion_model() -> Result<()> {
     let num_samples = 200;
     let data = generate_two_moons(num_samples);
 
-    println!("   Generated {} samples of 2D two-moons data", num_samples);
+    println!("   Generated {num_samples} samples of 2D two-moons data");
 
     // Create diffusion model
     let mut model = QuantumDiffusionModel::new(
@@ -109,7 +109,7 @@ fn train_diffusion_model() -> Result<()> {
     let epochs = 100;
     let batch_size = 32;
 
-    println!("\n   Training for {} epochs...", epochs);
+    println!("\n   Training for {epochs} epochs...");
     let losses = model.train(&data, &mut optimizer, epochs, batch_size)?;
 
     // Print training statistics
@@ -139,7 +139,7 @@ fn generate_samples() -> Result<()> {
 
     // Generate samples
     let num_samples = 10;
-    println!("   Generating {} samples...", num_samples);
+    println!("   Generating {num_samples} samples...");
 
     let samples = model.generate(num_samples)?;
 
@@ -183,7 +183,7 @@ fn score_diffusion_demo() -> Result<()> {
     let score = model.estimate_score(&x, noise_level)?;
     println!("\n   Score estimation:");
     println!("   - Input: [{:.3}, {:.3}]", x[0], x[1]);
-    println!("   - Noise level: {:.3}", noise_level);
+    println!("   - Noise level: {noise_level:.3}");
     println!("   - Estimated score: [{:.3}, {:.3}]", score[0], score[1]);
 
     // Langevin sampling
@@ -201,7 +201,7 @@ fn score_diffusion_demo() -> Result<()> {
     );
     println!(
         "   - Distance moved: {:.3}",
-        ((sample[0] - init[0]).powi(2) + (sample[1] - init[1]).powi(2)).sqrt()
+        (sample[0] - init[0]).hypot(sample[1] - init[1])
     );
 
     Ok(())
@@ -239,8 +239,8 @@ fn visualize_diffusion_process() -> Result<()> {
 
     // Start from noise
     let mut xt = Array1::from_vec(vec![
-        2.0 * thread_rng().gen::<f64>() - 1.0,
-        2.0 * thread_rng().gen::<f64>() - 1.0,
+        2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+        2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
     ]);
 
     println!("   t=19 (pure noise): [{:.3}, {:.3}]", xt[0], xt[1]);
@@ -267,16 +267,22 @@ fn generate_two_moons(n_samples: usize) -> Array2<f64> {
     // First moon
     for i in 0..n_samples_per_moon {
         let angle = std::f64::consts::PI * i as f64 / n_samples_per_moon as f64;
-        data[[i, 0]] = angle.cos() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
-        data[[i, 1]] = angle.sin() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+        data[[i, 0]] = 0.1f64.mul_add(2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0), angle.cos());
+        data[[i, 1]] = 0.1f64.mul_add(2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0), angle.sin());
     }
 
     // Second moon (shifted and flipped)
     for i in 0..n_samples_per_moon {
         let idx = n_samples_per_moon + i;
         let angle = std::f64::consts::PI * i as f64 / n_samples_per_moon as f64;
-        data[[idx, 0]] = 1.0 - angle.cos() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
-        data[[idx, 1]] = 0.5 - angle.sin() + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+        data[[idx, 0]] = 0.1f64.mul_add(
+            2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+            1.0 - angle.cos(),
+        );
+        data[[idx, 1]] = 0.1f64.mul_add(
+            2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+            0.5 - angle.sin(),
+        );
     }
 
     data

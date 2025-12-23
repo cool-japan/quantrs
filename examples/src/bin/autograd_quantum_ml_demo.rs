@@ -1,13 +1,13 @@
 //! Automatic Differentiation for Quantum Machine Learning
 //!
-//! This example demonstrates how to use SciRS2's automatic differentiation
+//! This example demonstrates how to use `SciRS2`'s automatic differentiation
 //! capabilities for computing gradients in quantum machine learning algorithms.
 //!
 //! Note: This requires the `scirs2-autograd` feature to be enabled.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Example quantum neural network layer using parameterized gates
@@ -112,7 +112,7 @@ fn quantum_autograd_example() {
 
     for epoch in 0..num_epochs {
         // Compute gradients
-        let gradients = qnn.compute_gradients(&loss_fn);
+        let gradients = qnn.compute_gradients(loss_fn);
 
         // Update parameters (gradient descent)
         for i in 0..qnn.params.len() {
@@ -149,7 +149,7 @@ fn hybrid_optimization_demo() {
         let expectation = params
             .iter()
             .enumerate()
-            .map(|(i, &p)| (p - PI / 4.0 * (i as f64 + 1.0)).powi(2))
+            .map(|(i, &p)| (PI / 4.0).mul_add(-(i as f64 + 1.0), p).powi(2))
             .sum::<f64>();
 
         expectation
@@ -211,16 +211,16 @@ fn quantum_kernel_gradients() {
     // Kernel function (simplified)
     let kernel_fn = |params: &[f64], x1: f64, x2: f64| -> f64 {
         // In practice, this would involve quantum circuit simulation
-        let phi1 = params[0] * x1 + params[1] * x1.powi(2);
-        let phi2 = params[0] * x2 + params[1] * x2.powi(2);
+        let phi1 = params[0].mul_add(x1, params[1] * x1.powi(2));
+        let phi2 = params[0].mul_add(x2, params[1] * x2.powi(2));
         let scale = params[2];
 
         scale * (phi1 - phi2).cos()
     };
 
     // Sample data points
-    let x_train = vec![0.0, 0.5, 1.0];
-    let y_train = vec![0.0, 1.0, 0.0];
+    let x_train = [0.0, 0.5, 1.0];
+    let y_train = [0.0, 1.0, 0.0];
 
     // Loss function for kernel alignment
     let loss_fn = |params: &[f64]| -> f64 {
@@ -251,9 +251,9 @@ fn quantum_kernel_gradients() {
         gradients[i] = (loss_fn(&params_plus) - loss_fn(&params_minus)) / (2.0 * epsilon);
     }
 
-    println!("Kernel parameters: {:?}", feature_params);
+    println!("Kernel parameters: {feature_params:?}");
     println!("Loss: {:.4}", loss_fn(&feature_params));
-    println!("Gradients: {:?}", gradients);
+    println!("Gradients: {gradients:?}");
 
     // Optimize kernel parameters
     let learning_rate = 0.1;
@@ -270,7 +270,7 @@ fn quantum_kernel_gradients() {
         }
     }
 
-    println!("\nOptimized kernel parameters: {:?}", feature_params);
+    println!("\nOptimized kernel parameters: {feature_params:?}");
     println!("Final loss: {:.4}", loss_fn(&feature_params));
 }
 

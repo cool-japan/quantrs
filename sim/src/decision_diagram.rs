@@ -93,7 +93,7 @@ struct OrderedFloat(u64);
 
 impl From<f64> for OrderedFloat {
     fn from(f: f64) -> Self {
-        OrderedFloat(f.to_bits())
+        Self(f.to_bits())
     }
 }
 
@@ -150,9 +150,10 @@ impl DecisionDiagram {
 
     /// Create a computational basis state |x₁x₂...xₙ⟩
     pub fn create_computational_basis_state(&mut self, bits: &[bool]) -> Edge {
-        if bits.len() != self.num_variables {
-            panic!("Bit string length must match number of variables");
-        }
+        assert!(
+            (bits.len() == self.num_variables),
+            "Bit string length must match number of variables"
+        );
 
         let mut current = Edge {
             target: 1, // One terminal
@@ -253,7 +254,7 @@ impl DecisionDiagram {
     }
 
     /// Get zero edge
-    fn zero_edge(&self) -> Edge {
+    const fn zero_edge(&self) -> Edge {
         Edge {
             target: 0, // Zero terminal
             weight: Complex64::new(1.0, 0.0),
@@ -454,7 +455,7 @@ impl DecisionDiagram {
     }
 
     /// Apply conditional X gate (helper for CNOT)
-    fn apply_conditional_x(
+    const fn apply_conditional_x(
         &mut self,
         edge: Edge,
         target: usize,
@@ -557,7 +558,7 @@ impl DecisionDiagram {
     }
 
     /// Compute inner product ⟨ψ₁|ψ₂⟩
-    pub fn inner_product(&self, other: &DecisionDiagram) -> Complex64 {
+    pub fn inner_product(&self, other: &Self) -> Complex64 {
         self.inner_product_recursive(&self.root, &other.root, 0)
     }
 
@@ -741,7 +742,7 @@ impl DDSimulator {
     }
 
     /// Get simulation statistics
-    pub fn get_stats(&self) -> &DDStats {
+    pub const fn get_stats(&self) -> &DDStats {
         &self.stats
     }
 
@@ -764,7 +765,7 @@ impl DDSimulator {
         // Simple heuristic based on number of nodes
         let nodes = self.diagram.node_count() as f64;
         let max_nodes = (1 << self.num_qubits) as f64;
-        nodes.log2() / max_nodes.log2()
+        nodes.log(max_nodes)
     }
 }
 
@@ -788,7 +789,7 @@ impl DDOptimizer {
     }
 
     /// Minimize number of nodes using reduction rules
-    pub fn minimize_diagram(&mut self, _dd: &mut DecisionDiagram) -> Result<()> {
+    pub const fn minimize_diagram(&mut self, _dd: &mut DecisionDiagram) -> Result<()> {
         // Would implement sophisticated minimization algorithms
         Ok(())
     }

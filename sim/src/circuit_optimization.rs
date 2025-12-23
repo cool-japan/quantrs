@@ -3,13 +3,13 @@
 //! This module provides various optimization techniques for quantum circuits
 //! to reduce gate count, improve parallelization, and enhance simulation performance.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::{multi::*, single::*, GateOp},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Circuit optimization configuration
@@ -221,7 +221,7 @@ impl CircuitOptimizer {
     }
 
     /// Get optimization statistics
-    pub fn get_statistics(&self) -> &OptimizationStatistics {
+    pub const fn get_statistics(&self) -> &OptimizationStatistics {
         &self.statistics
     }
 
@@ -256,11 +256,7 @@ impl CircuitOptimizer {
 
             // Track qubit usage
             for &qubit in &qubits {
-                graph
-                    .qubit_usage
-                    .entry(qubit)
-                    .or_insert_with(Vec::new)
-                    .push(pos);
+                graph.qubit_usage.entry(qubit).or_default().push(pos);
             }
 
             // Build dependencies based on qubit conflicts
@@ -373,7 +369,7 @@ impl CircuitOptimizer {
             gates_eliminated: gates_fused,
             gates_modified: candidates_count,
             depth_improvement: 0,
-            description: format!("Fused {} single-qubit gate sequences", candidates_count),
+            description: format!("Fused {candidates_count} single-qubit gate sequences"),
         })
     }
 
@@ -390,10 +386,7 @@ impl CircuitOptimizer {
             let qubits = gate.qubits();
             if qubits.len() == 1 {
                 let qubit = qubits[0];
-                qubit_gate_sequences
-                    .entry(qubit)
-                    .or_insert_with(Vec::new)
-                    .push(pos);
+                qubit_gate_sequences.entry(qubit).or_default().push(pos);
             } else {
                 // Two-qubit gate breaks the sequence for all involved qubits
                 for &qubit in &qubits {
@@ -484,8 +477,7 @@ impl CircuitOptimizer {
             gates_modified: reordering_opportunities,
             depth_improvement: (reordering_opportunities / 2) as i32, // Conservative estimate
             description: format!(
-                "Found {} gate reordering opportunities for parallelization",
-                reordering_opportunities
+                "Found {reordering_opportunities} gate reordering opportunities for parallelization"
             ),
         })
     }
@@ -552,8 +544,7 @@ impl CircuitOptimizer {
             gates_modified: optimization_count,
             depth_improvement: optimization_count as i32,
             description: format!(
-                "Found {} two-qubit gate optimization opportunities",
-                optimization_count
+                "Found {optimization_count} two-qubit gate optimization opportunities"
             ),
         })
     }
@@ -610,7 +601,7 @@ impl OptimizationStatistics {
     /// Generate optimization summary report
     pub fn generate_report(&self) -> String {
         format!(
-            r#"
+            r"
 📊 Circuit Optimization Report
 ==============================
 
@@ -633,7 +624,7 @@ impl OptimizationStatistics {
 
 ✅ Summary
 Circuit optimization {} with {:.1}% gate reduction and {:.1}% depth reduction.
-"#,
+",
             self.original_gate_count,
             self.optimized_gate_count,
             self.gate_count_reduction(),

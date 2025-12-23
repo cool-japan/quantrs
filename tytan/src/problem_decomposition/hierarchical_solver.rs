@@ -23,7 +23,7 @@ pub struct HierarchicalSolver<S: Sampler> {
 
 impl<S: Sampler> HierarchicalSolver<S> {
     /// Create new hierarchical solver
-    pub fn new(base_sampler: S) -> Self {
+    pub const fn new(base_sampler: S) -> Self {
         Self {
             base_sampler,
             strategy: HierarchicalStrategy::CoarsenSolve,
@@ -35,19 +35,19 @@ impl<S: Sampler> HierarchicalSolver<S> {
     }
 
     /// Set hierarchical strategy
-    pub fn with_strategy(mut self, strategy: HierarchicalStrategy) -> Self {
+    pub const fn with_strategy(mut self, strategy: HierarchicalStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     /// Set coarsening strategy
-    pub fn with_coarsening(mut self, coarsening: CoarseningStrategy) -> Self {
+    pub const fn with_coarsening(mut self, coarsening: CoarseningStrategy) -> Self {
         self.coarsening = coarsening;
         self
     }
 
     /// Set minimum problem size
-    pub fn with_min_problem_size(mut self, size: usize) -> Self {
+    pub const fn with_min_problem_size(mut self, size: usize) -> Self {
         self.min_problem_size = size;
         self
     }
@@ -85,7 +85,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                 &(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()),
                 shots,
             )
-            .map_err(|e| format!("Sampler error: {:?}", e))?;
+            .map_err(|e| format!("Sampler error: {e:?}"))?;
 
         // Take the best result (first one, since they're sorted by energy)
         let coarse_result = coarse_results
@@ -107,7 +107,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let initial_results = self
             .base_sampler
             .run_qubo(&(qubo.clone(), var_map.clone()), shots / 4)
-            .map_err(|e| format!("Initial sampler error: {:?}", e))?;
+            .map_err(|e| format!("Initial sampler error: {e:?}"))?;
 
         // Take the best result (first one, since they're sorted by energy)
         let mut current_solution = initial_results
@@ -161,7 +161,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
                     &(coarsest_level.qubo.clone(), coarsest_level.var_map.clone()),
                     shots,
                 )
-                .map_err(|e| format!("Coarse sampler error: {:?}", e))?;
+                .map_err(|e| format!("Coarse sampler error: {e:?}"))?;
 
             // Take the best result (first one, since they're sorted by energy)
             current_solution = coarse_results
@@ -294,7 +294,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         // Build variable mapping
         let mut coarse_var_map = HashMap::new();
         for (ci, _cluster) in clusters.iter().enumerate() {
-            let var_name = format!("cluster_{}", ci);
+            let var_name = format!("cluster_{ci}");
             coarse_var_map.insert(var_name, ci);
         }
 
@@ -470,7 +470,7 @@ impl<S: Sampler> HierarchicalSolver<S> {
         let results = self
             .base_sampler
             .run_qubo(&(qubo.clone(), var_map.clone()), shots)
-            .map_err(|e| format!("Refinement sampler error: {:?}", e))?;
+            .map_err(|e| format!("Refinement sampler error: {e:?}"))?;
 
         // Take the best result (first one, since they're sorted by energy)
         results
@@ -484,7 +484,7 @@ impl Default for SampleResult {
     fn default() -> Self {
         // Simplified default implementation
         // In practice, this would create a proper empty SampleResult
-        SampleResult {
+        Self {
             assignments: HashMap::new(),
             energy: 0.0,
             occurrences: 0,
@@ -494,7 +494,7 @@ impl Default for SampleResult {
 
 impl SampleResult {
     /// Get best sample (simplified implementation)
-    pub fn best_sample(&self) -> Option<&HashMap<String, bool>> {
+    pub const fn best_sample(&self) -> Option<&HashMap<String, bool>> {
         Some(&self.assignments)
     }
 }

@@ -1,12 +1,11 @@
-//! Advanced graph coloring example using QuantRS2-Tytan with SciRS2
+//! Advanced graph coloring example using QuantRS2-Tytan with `SciRS2`
 //!
 //! This example demonstrates:
-//! - Graph generation using SciRS2 graph algorithms
+//! - Graph generation using `SciRS2` graph algorithms
 //! - QUBO formulation for graph coloring
 //! - Advanced visualization and analysis
 //! - Performance comparison across different samplers
 
-use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::{
     analysis::graph::generate_graph,
     auto_array,
@@ -24,6 +23,7 @@ use quantrs2_tytan::{
         solution_analysis::{analyze_solution_distribution, DistributionConfig},
     },
 };
+use scirs2_core::ndarray::Array2;
 
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
@@ -106,10 +106,7 @@ fn run_graph_coloring_experiment(
     edge_probability: f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n=== Advanced Graph Coloring Example ===");
-    println!(
-        "Nodes: {}, Max Colors: {}, Edge Probability: {:.2}",
-        n_nodes, n_colors, edge_probability
-    );
+    println!("Nodes: {n_nodes}, Max Colors: {n_colors}, Edge Probability: {edge_probability:.2}");
 
     // Create the model
     let (mut model, edges) = create_graph_coloring_model(n_nodes, n_colors, edge_probability)?;
@@ -180,7 +177,7 @@ fn run_graph_coloring_experiment(
     let mut var_map = HashMap::new();
 
     for i in 0..n_vars {
-        var_map.insert(format!("x_{}", i), i);
+        var_map.insert(format!("x_{i}"), i);
         if let Ok(linear) = qubo.get_linear(i) {
             matrix[[i, i]] = linear;
         }
@@ -236,8 +233,8 @@ fn run_graph_coloring_experiment(
     // Verify solution
     let (valid, colors_used) = verify_coloring(&coloring, &edges, n_colors);
     println!("\nSolution validation:");
-    println!("  Valid coloring: {}", valid);
-    println!("  Colors used: {}", colors_used);
+    println!("  Valid coloring: {valid}");
+    println!("  Colors used: {colors_used}");
 
     // Visualizations
     println!("\n=== Generating Visualizations ===");
@@ -245,7 +242,7 @@ fn run_graph_coloring_experiment(
     // 1. Problem-specific visualization
     let problem_type = VisualizationType::GraphColoring {
         adjacency_matrix: edges_to_adjacency(&edges, n_nodes),
-        node_names: Some((0..n_nodes).map(|i| format!("N{}", i)).collect()),
+        node_names: Some((0..n_nodes).map(|i| format!("N{i}")).collect()),
         max_colors: n_colors,
     };
     let config = quantrs2_tytan::visualization::problem_specific::VisualizationConfig::default();
@@ -293,7 +290,7 @@ fn run_graph_coloring_experiment(
         n_nodes,
         n_colors,
         edge_probability,
-        edges: edges.clone(),
+        edges,
         best_coloring: coloring,
         colors_used,
         sa_best_energy: sa_best.energy,
@@ -363,7 +360,10 @@ fn verify_coloring(
 }
 
 /// Convert edge list to adjacency matrix
-fn edges_to_adjacency(edges: &[(usize, usize)], n_nodes: usize) -> scirs2_core::ndarray::Array2<bool> {
+fn edges_to_adjacency(
+    edges: &[(usize, usize)],
+    n_nodes: usize,
+) -> scirs2_core::ndarray::Array2<bool> {
     use scirs2_core::ndarray::Array2;
     let mut adjacency = Array2::from_elem((n_nodes, n_nodes), false);
 

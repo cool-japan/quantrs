@@ -49,7 +49,7 @@ mod tests {
                 EntanglementPattern::Full => assert!(true),
                 EntanglementPattern::Circular => assert!(true),
                 EntanglementPattern::Random { connectivity } => {
-                    assert!(connectivity >= 0.0 && connectivity <= 1.0);
+                    assert!((0.0..=1.0).contains(&connectivity));
                 }
                 EntanglementPattern::HardwareEfficient => assert!(true),
                 EntanglementPattern::ProblemAdapted => assert!(true),

@@ -3,14 +3,14 @@
 //! This module demonstrates how to leverage scirs2-core beta.3 caching capabilities
 //! to optimize quantum gate matrix computations.
 
-use scirs2_core::Complex64;
+use crate::error::QuantRS2Result;
 use scirs2_core::cache::{CacheConfig, TTLSizedCache};
+use scirs2_core::memory::{global_buffer_pool, BufferPool};
 use scirs2_core::profiling::{Profiler, Timer};
-use scirs2_core::memory::{BufferPool, global_buffer_pool};
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, OnceLock};
-use crate::error::QuantRS2Result;
 
 /// Hash key for gate matrix caching
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -99,7 +99,7 @@ impl QuantumGateCache {
     {
         // Check cache first
         if let Ok(mut cache) = self.matrix_cache.lock() {
-            if let Some(cached) = cache.cache_get(&key) {
+            if let Some(cached) = cache.get(&key) {
                 *self.cache_hits.lock().unwrap() += 1;
                 return Ok(cached.matrix.clone());
             }
@@ -124,7 +124,7 @@ impl QuantumGateCache {
 
                 // Store in cache
                 if let Ok(mut cache) = self.matrix_cache.lock() {
-                    cache.cache_set(key, cached_matrix);
+                    cache.insert(key, cached_matrix);
                 }
 
                 Ok(matrix)
@@ -148,11 +148,7 @@ impl QuantumGateCache {
                 0.0
             },
             total_computation_time_us: total_time,
-            average_computation_time_us: if misses > 0 {
-                total_time / misses
-            } else {
-                0
-            },
+            average_computation_time_us: if misses > 0 { total_time / misses } else { 0 },
         }
     }
 
@@ -201,7 +197,7 @@ impl QuantumGateCache {
     /// Clear cache and reset statistics
     pub fn clear_cache(&self) {
         if let Ok(mut cache) = self.matrix_cache.lock() {
-            cache.cache_clear();
+            cache.clear();
         }
         *self.cache_hits.lock().unwrap() = 0;
         *self.cache_misses.lock().unwrap() = 0;
@@ -248,14 +244,16 @@ mod tests {
         let key = GateKey::new("test_gate", &[1.0], 1);
 
         // First call should be a cache miss
-        let matrix1 = cache.get_or_compute_matrix(key.clone(), || {
-            Ok(vec![Complex64::new(1.0, 0.0); 4])
-        }).unwrap();
+        let matrix1 = cache
+            .get_or_compute_matrix(key.clone(), || Ok(vec![Complex64::new(1.0, 0.0); 4]))
+            .unwrap();
 
         // Second call should be a cache hit
-        let matrix2 = cache.get_or_compute_matrix(key, || {
-            panic!("Should not be called due to cache hit");
-        }).unwrap();
+        let matrix2 = cache
+            .get_or_compute_matrix(key, || {
+                panic!("Should not be called due to cache hit");
+            })
+            .unwrap();
 
         assert_eq!(matrix1, matrix2);
 
@@ -296,9 +294,11 @@ mod tests {
 
         // Now test a common gate - should be a cache hit
         let key = GateKey::new("hadamard", &[], 1);
-        let _matrix = cache.get_or_compute_matrix(key, || {
-            panic!("Should be a cache hit");
-        }).unwrap();
+        let _matrix = cache
+            .get_or_compute_matrix(key, || {
+                panic!("Should be a cache hit");
+            })
+            .unwrap();
 
         let final_stats = cache.get_performance_stats();
         assert!(final_stats.cache_hits > 0);

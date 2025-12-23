@@ -239,7 +239,7 @@ impl FPGASampler {
             FPGAAlgorithm::DigitalAnnealing { .. } => Ok("digital_annealing_v3.bit".to_string()),
             FPGAAlgorithm::MomentumAnnealing { .. } => Ok("momentum_annealing_v1.bit".to_string()),
             FPGAAlgorithm::ParallelTempering { .. } => Ok("parallel_tempering_v2.bit".to_string()),
-            FPGAAlgorithm::Custom { name, .. } => Ok(format!("{}_custom.bit", name)),
+            FPGAAlgorithm::Custom { name, .. } => Ok(format!("{name}_custom.bit")),
         }
     }
 
@@ -285,7 +285,7 @@ impl FPGASampler {
     }
 
     /// Transfer problem to device memory
-    fn transfer_problem_to_device(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
+    const fn transfer_problem_to_device(&self, _qubo: &Array2<f64>) -> Result<(), SamplerError> {
         // In real implementation:
         // 1. Convert QUBO to fixed-point representation
         // 2. Transfer to HBM/DDR

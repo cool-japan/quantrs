@@ -560,7 +560,7 @@ mod tests {
 
             let mut framework = QuantumInspiredFramework::new(config).unwrap();
             let result = framework.optimize();
-            assert!(result.is_ok(), "Failed for objective: {:?}", objective);
+            assert!(result.is_ok(), "Failed for objective: {objective:?}");
         }
     }
 
@@ -790,7 +790,7 @@ mod tests {
             config.num_variables = 2;
 
             let result = benchmark_quantum_inspired_algorithms(&config);
-            assert!(result.is_ok(), "Failed for algorithm: {:?}", algorithm);
+            assert!(result.is_ok(), "Failed for algorithm: {algorithm:?}");
         }
     }
 
@@ -829,8 +829,7 @@ mod tests {
 
             assert!(
                 result.is_err(),
-                "Expected error for unimplemented algorithm: {:?}",
-                algorithm
+                "Expected error for unimplemented algorithm: {algorithm:?}"
             );
             if let Err(e) = result {
                 match e {
@@ -873,7 +872,7 @@ mod tests {
             };
 
             let framework = QuantumInspiredFramework::new(config);
-            assert!(framework.is_ok(), "Failed for category: {:?}", category);
+            assert!(framework.is_ok(), "Failed for category: {category:?}");
         }
     }
 

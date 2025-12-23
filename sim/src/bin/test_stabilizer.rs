@@ -8,16 +8,21 @@ fn main() {
     // Test 1: Bell State
     println!("1. Bell State:");
     let mut sim = StabilizerSimulator::new(2);
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
+    sim.apply_gate(StabilizerGate::H(0))
+        .expect("Failed to apply H gate");
+    sim.apply_gate(StabilizerGate::CNOT(0, 1))
+        .expect("Failed to apply CNOT gate");
     println!("Stabilizers: {:?}\n", sim.get_stabilizers());
 
     // Test 2: GHZ State
     println!("2. GHZ State:");
     let mut sim = StabilizerSimulator::new(3);
-    sim.apply_gate(StabilizerGate::H(0)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-    sim.apply_gate(StabilizerGate::CNOT(1, 2)).unwrap();
+    sim.apply_gate(StabilizerGate::H(0))
+        .expect("Failed to apply H gate");
+    sim.apply_gate(StabilizerGate::CNOT(0, 1))
+        .expect("Failed to apply CNOT gate");
+    sim.apply_gate(StabilizerGate::CNOT(1, 2))
+        .expect("Failed to apply CNOT gate");
     println!("Stabilizers: {:?}\n", sim.get_stabilizers());
 
     println!("=== Test Complete ===");

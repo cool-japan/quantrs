@@ -92,10 +92,7 @@ impl ArminSampler {
 
         // Display progress if verbose
         if self.verbose {
-            println!(
-                "Initializing GPU with {} variables and {} shots",
-                n_vars, num_shots
-            );
+            println!("Initializing GPU with {n_vars} variables and {num_shots} shots");
         }
 
         // Set up OpenCL environment
@@ -104,7 +101,7 @@ impl ArminSampler {
             Platform::list()
                 .into_iter()
                 .find(|p| p.name().unwrap_or_default().to_lowercase().contains("cpu"))
-                .unwrap_or_else(|| Platform::default())
+                .unwrap_or_else(Platform::default)
         } else {
             // Default platform (typically GPU)
             Platform::default()
@@ -170,7 +167,7 @@ impl ArminSampler {
             .build()?;
 
         let solutions_buffer = Buffer::<u8>::builder()
-            .queue(queue.clone())
+            .queue(queue)
             .flags(flags::MEM_WRITE_ONLY)
             .len(num_shots * n_vars)
             .build()?;
@@ -195,10 +192,7 @@ impl ArminSampler {
         };
 
         if self.verbose {
-            println!(
-                "Running {} sweeps with temperature range [{}, {}]",
-                sweeps, final_temp, init_temp
-            );
+            println!("Running {sweeps} sweeps with temperature range [{final_temp}, {init_temp}]");
         }
 
         // Create a seed based on input seed or random value
@@ -216,7 +210,7 @@ impl ArminSampler {
             .arg(num_shots as i32)
             .arg(init_temp)
             .arg(final_temp)
-            .arg(sweeps as i32)
+            .arg(sweeps)
             .arg(seed_val)
             .build()?;
 
@@ -255,32 +249,27 @@ impl ArminSampler {
         // into smaller subproblems and solve iteratively
 
         if self.verbose {
-            println!(
-                "Using chunked approach for large problem: {} variables",
-                n_vars
-            );
+            println!("Using chunked approach for large problem: {n_vars} variables");
         }
 
         // Maximum number of variables to process in a single chunk
         const MAX_CHUNK_SIZE: usize = 1024;
 
         // Calculate number of chunks needed
-        let num_chunks = (n_vars + MAX_CHUNK_SIZE - 1) / MAX_CHUNK_SIZE;
+        let num_chunks = n_vars.div_ceil(MAX_CHUNK_SIZE);
 
         if self.verbose {
             println!(
-                "Processing in {} chunks of at most {} variables each",
-                num_chunks, MAX_CHUNK_SIZE
+                "Processing in {num_chunks} chunks of at most {MAX_CHUNK_SIZE} variables each"
             );
         }
 
         // Initialize random number generator
-        let mut rng = match self.seed {
-            Some(seed) => StdRng::seed_from_u64(seed),
-            None => {
-                let seed: u64 = thread_rng().gen();
-                StdRng::seed_from_u64(seed)
-            }
+        let mut rng = if let Some(seed) = self.seed {
+            StdRng::seed_from_u64(seed)
+        } else {
+            let seed: u64 = thread_rng().gen();
+            StdRng::seed_from_u64(seed)
         };
 
         // Initialize random solutions for all shots
@@ -341,10 +330,8 @@ impl ArminSampler {
                 // Add contributions from fixed variables
                 for i in start_var..end_var {
                     for j in 0..n_vars {
-                        if j < start_var || j >= end_var {
-                            if solutions[sol_idx][j] {
-                                adjusted_h[i - start_var] += j_matrix[i * n_vars + j];
-                            }
+                        if (j < start_var || j >= end_var) && solutions[sol_idx][j] {
+                            adjusted_h[i - start_var] += j_matrix[i * n_vars + j];
                         }
                     }
                 }
@@ -356,16 +343,13 @@ impl ArminSampler {
                 }
 
                 // Optimize just this chunk using GPU
-                let optimized_chunk = match self.optimize_chunk(
+                let optimized_chunk = self.optimize_chunk(
                     &chunk_solution,
                     &adjusted_h,
                     &chunk_j,
                     chunk_size,
                     self.seed.map(|s| s + sol_idx as u64),
-                ) {
-                    Ok(result) => result,
-                    Err(e) => return Err(e),
-                };
+                )?;
 
                 // Update the original solution with optimized chunk
                 for (i, &val) in optimized_chunk.iter().enumerate() {
@@ -380,7 +364,7 @@ impl ArminSampler {
 
         // Sort solutions by energy
         let mut solution_pairs: Vec<(Vec<bool>, f64)> =
-            solutions.into_iter().zip(energies.into_iter()).collect();
+            solutions.into_iter().zip(energies).collect();
         solution_pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
 
         // Return sorted solutions
@@ -438,7 +422,7 @@ impl ArminSampler {
             .build()?;
 
         let result_buffer = Buffer::<u8>::builder()
-            .queue(queue.clone())
+            .queue(queue)
             .flags(flags::MEM_WRITE_ONLY)
             .len(n_vars)
             .build()?;
@@ -446,10 +430,7 @@ impl ArminSampler {
         // Convert data types
         let h_vec_f32: Vec<f32> = h_vector.iter().map(|&x| x as f32).collect();
         let j_mat_f32: Vec<f32> = j_matrix.iter().map(|&x| x as f32).collect();
-        let initial_u8: Vec<u8> = initial_state
-            .iter()
-            .map(|&b| if b { 1 } else { 0 })
-            .collect();
+        let initial_u8: Vec<u8> = initial_state.iter().map(|&b| u8::from(b)).collect();
 
         // Transfer data to device
         h_buffer.write(&h_vec_f32).enq()?;
@@ -550,8 +531,8 @@ impl Sampler for ArminSampler {
         };
 
         if self.verbose {
-            println!("{}", device_info);
-            println!("Problem size: {} variables", n_vars);
+            println!("{device_info}");
+            println!("Problem size: {n_vars} variables");
         }
 
         // Convert QUBO matrix to appropriate format for OpenCL
@@ -566,10 +547,10 @@ impl Sampler for ArminSampler {
         // Extract off-diagonal (quadratic) terms
         for i in 0..n_vars {
             for j in 0..n_vars {
-                if i != j {
-                    j_matrix.push(matrix[[i, j]]);
-                } else {
+                if i == j {
                     j_matrix.push(0.0); // Zero on diagonal in J matrix
+                } else {
+                    j_matrix.push(matrix[[i, j]]);
                 }
             }
         }
@@ -642,7 +623,10 @@ impl Sampler for ArminSampler {
 
     fn run_hobo(
         &self,
-        hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         // Handle QUBO case directly
@@ -698,7 +682,10 @@ impl Sampler for ArminSampler {
 
     fn run_hobo(
         &self,
-        _hobo: &(Array<f64, scirs2_core::ndarray::IxDyn>, HashMap<String, usize>),
+        _hobo: &(
+            Array<f64, scirs2_core::ndarray::IxDyn>,
+            HashMap<String, usize>,
+        ),
         _shots: usize,
     ) -> SamplerResult<Vec<SampleResult>> {
         Err(SamplerError::GpuError(

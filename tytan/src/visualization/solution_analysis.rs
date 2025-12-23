@@ -35,7 +35,7 @@ pub struct DistributionConfig {
 }
 
 /// Clustering methods
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClusteringMethod {
     KMeans,
     DBSCAN,
@@ -44,7 +44,7 @@ pub enum ClusteringMethod {
 }
 
 /// Distance metrics
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistanceMetric {
     Hamming,
     Euclidean,
@@ -148,7 +148,7 @@ pub struct CorrelationAnalysis {
 
 impl SolutionDistribution {
     /// Create new solution distribution analyzer
-    pub fn new(config: DistributionConfig) -> Self {
+    pub const fn new(config: DistributionConfig) -> Self {
         Self {
             config,
             samples: Vec::new(),
@@ -178,10 +178,10 @@ impl SolutionDistribution {
         let diversity_metrics = self.compute_diversity_metrics()?;
 
         // Perform clustering if requested
-        let cluster_info = if self.config.clustering_method != ClusteringMethod::None {
-            Some(self.perform_clustering()?)
-        } else {
+        let cluster_info = if self.config.clustering_method == ClusteringMethod::None {
             None
+        } else {
+            Some(self.perform_clustering()?)
         };
 
         // Analyze quality distribution
@@ -215,14 +215,14 @@ impl SolutionDistribution {
         let max_energy = energies.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
         // Compute quantiles
-        let mut sorted_energies = energies.clone();
+        let mut sorted_energies = energies;
         sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let mut energy_quantiles = HashMap::new();
         for &q in &[25, 50, 75] {
             let idx = (q as f64 / 100.0 * sorted_energies.len() as f64) as usize;
             let idx = idx.min(sorted_energies.len() - 1);
-            energy_quantiles.insert(format!("q{}", q), sorted_energies[idx]);
+            energy_quantiles.insert(format!("q{q}"), sorted_energies[idx]);
         }
 
         // Find most frequent solution
@@ -235,8 +235,7 @@ impl SolutionDistribution {
         let (_most_frequent, frequency) = solution_counts
             .iter()
             .max_by_key(|&(_, count)| count)
-            .map(|(sol, &count)| (sol.clone(), count))
-            .unwrap_or((String::new(), 0));
+            .map_or((String::new(), 0), |(sol, &count)| (sol.clone(), count));
 
         // Count unique solutions
         let n_unique = solution_counts.len();
@@ -473,7 +472,7 @@ impl SolutionDistribution {
         #[cfg(not(feature = "scirs"))]
         {
             // Simple random assignment as fallback
-            
+
             use scirs2_core::random::prelude::*;
             let mut rng = StdRng::seed_from_u64(42);
 
@@ -720,7 +719,7 @@ impl SolutionDistribution {
         let mut bin_counts = vec![0; n_bins];
 
         for i in 0..n_bins {
-            energy_bins.push(min_energy + (i as f64 + 0.5) * bin_width);
+            energy_bins.push((i as f64 + 0.5).mul_add(bin_width, min_energy));
         }
 
         for &energy in &energies {
@@ -740,11 +739,11 @@ impl SolutionDistribution {
         }
 
         // Calculate percentiles
-        let mut sorted_energies = energies.clone();
+        let mut sorted_energies = energies;
         sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let mut percentile_values = HashMap::new();
-        for p in [1, 5, 10, 25, 50, 75, 90, 95, 99].iter() {
+        for p in &[1, 5, 10, 25, 50, 75, 90, 95, 99] {
             let idx = ((*p as f64 / 100.0) * sorted_energies.len() as f64) as usize;
             let idx = idx.min(sorted_energies.len() - 1);
             percentile_values.insert(*p, sorted_energies[idx]);

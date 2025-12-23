@@ -1,4 +1,4 @@
-//! Tests for the auto_array module.
+//! Tests for the `auto_array` module.
 
 use quantrs2_tytan::sampler::SampleResult;
 use quantrs2_tytan::*;

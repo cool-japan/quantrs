@@ -28,7 +28,7 @@ fn main() {
 
     // Step 1: Create a superposition state on qubit 0
     println!("1. Preparing the logical qubit in the |+⟩ state");
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply H gate to qubit 0");
 
     // Step 2: Encode using the 5-qubit code
     println!("2. Encoding the state using the 5-qubit perfect code");
@@ -46,14 +46,18 @@ fn main() {
     let encoder = code.encode_circuit(&logical_qubits, &ancilla_qubits);
 
     // Transfer the encoding gates to our main circuit
-    let encoder = encoder.unwrap();
+    let encoder = encoder.expect("Failed to create encoding circuit");
     for gate in encoder.gates() {
-        circuit.add_gate_arc(gate.clone()).unwrap();
+        circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to circuit");
     }
 
     // Run with ideal simulator to verify the encoded state
     let ideal_sim = StateVectorSimulator::sequential();
-    let encoded_state = circuit.run(ideal_sim).unwrap();
+    let encoded_state = circuit
+        .run(ideal_sim)
+        .expect("Failed to run ideal encoding circuit");
 
     // Step 3: Apply different types of errors and attempt correction
     run_with_bit_flip(&circuit, &code);
@@ -87,14 +91,18 @@ fn run_with_bit_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding with noise
-    let noisy_state = encoding_circuit.run(noisy_sim).unwrap();
+    let noisy_state = encoding_circuit
+        .run(noisy_sim)
+        .expect("Failed to run encoding circuit with bit flip noise");
 
     // Now apply error correction
     let mut correction_circuit = Circuit::<9>::new();
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to bit flip correction circuit");
     }
 
     // Add the syndrome measurement and correction
@@ -115,14 +123,18 @@ fn run_with_bit_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
-    let correction = correction.unwrap();
+    let correction = correction.expect("Failed to create bit flip correction circuit");
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to bit flip correction circuit");
     }
 
     // Run the full circuit on a clean simulator
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_state = correction_circuit.run(clean_sim).unwrap();
+    let corrected_state = correction_circuit
+        .run(clean_sim)
+        .expect("Failed to run bit flip correction circuit");
 
     // Analyze the logical state (qubit 0) before and after correction
     let before_correction = analyze_logical_state(&noisy_state);
@@ -158,14 +170,18 @@ fn run_with_phase_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding with noise
-    let noisy_state = encoding_circuit.run(noisy_sim).unwrap();
+    let noisy_state = encoding_circuit
+        .run(noisy_sim)
+        .expect("Failed to run encoding circuit with phase flip noise");
 
     // Now apply error correction
     let mut correction_circuit = Circuit::<9>::new();
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to phase flip correction circuit");
     }
 
     // Add the syndrome measurement and correction
@@ -186,14 +202,18 @@ fn run_with_phase_flip(encoding_circuit: &Circuit<9>, code: &FiveQubitCode) {
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
-    let correction = correction.unwrap();
+    let correction = correction.expect("Failed to create phase flip correction circuit");
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to phase flip correction circuit");
     }
 
     // Run the full circuit on a clean simulator
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_state = correction_circuit.run(clean_sim).unwrap();
+    let corrected_state = correction_circuit
+        .run(clean_sim)
+        .expect("Failed to run phase flip correction circuit");
 
     // Analyze the logical state (qubit 0) before and after correction
     let before_correction = analyze_logical_state(&noisy_state);
@@ -229,14 +249,18 @@ fn run_with_depolarizing_noise(encoding_circuit: &Circuit<9>, code: &FiveQubitCo
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding with noise
-    let noisy_state = encoding_circuit.run(noisy_sim).unwrap();
+    let noisy_state = encoding_circuit
+        .run(noisy_sim)
+        .expect("Failed to run encoding circuit with depolarizing noise");
 
     // Now apply error correction
     let mut correction_circuit = Circuit::<9>::new();
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to depolarizing noise correction circuit");
     }
 
     // Add the syndrome measurement and correction
@@ -257,14 +281,18 @@ fn run_with_depolarizing_noise(encoding_circuit: &Circuit<9>, code: &FiveQubitCo
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
-    let correction = correction.unwrap();
+    let correction = correction.expect("Failed to create depolarizing noise correction circuit");
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to depolarizing noise correction circuit");
     }
 
     // Run the full circuit on a clean simulator
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_state = correction_circuit.run(clean_sim).unwrap();
+    let corrected_state = correction_circuit
+        .run(clean_sim)
+        .expect("Failed to run depolarizing noise correction circuit");
 
     // Analyze the logical state (qubit 0) before and after correction
     let before_correction = analyze_logical_state(&noisy_state);
@@ -304,14 +332,18 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
     let noisy_sim = StateVectorSimulator::with_noise(noise_model);
 
     // Run the encoding with noise
-    let noisy_state = encoding_circuit.run(noisy_sim).unwrap();
+    let noisy_state = encoding_circuit
+        .run(noisy_sim)
+        .expect("Failed to run encoding circuit with multiple errors");
 
     // Now apply error correction
     let mut correction_circuit = Circuit::<9>::new();
 
     // First transfer the encoding circuit + noise
     for gate in encoding_circuit.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add encoding gate to multiple errors correction circuit");
     }
 
     // Add the syndrome measurement and correction
@@ -332,14 +364,18 @@ fn run_with_multiple_errors(encoding_circuit: &Circuit<9>, code: &FiveQubitCode)
     let correction = code.decode_circuit(&encoded_qubits, &syndrome_qubits);
 
     // Add correction operations
-    let correction = correction.unwrap();
+    let correction = correction.expect("Failed to create multiple errors correction circuit");
     for gate in correction.gates() {
-        correction_circuit.add_gate_arc(gate.clone()).unwrap();
+        correction_circuit
+            .add_gate_arc(gate.clone())
+            .expect("Failed to add correction gate to multiple errors correction circuit");
     }
 
     // Run the full circuit on a clean simulator
     let clean_sim = StateVectorSimulator::sequential();
-    let corrected_state = correction_circuit.run(clean_sim).unwrap();
+    let corrected_state = correction_circuit
+        .run(clean_sim)
+        .expect("Failed to run multiple errors correction circuit");
 
     // Analyze the logical state (qubit 0) before and after correction
     let before_correction = analyze_logical_state(&noisy_state);
@@ -378,7 +414,7 @@ fn analyze_logical_state(state: &quantrs2_core::register::Register<9>) -> (f64, 
 
     // Count probabilities based on the first qubit
     for (i, amplitude) in amplitudes.iter().enumerate() {
-        let first_bit = (i >> 0) & 1;
+        let first_bit = i & 1;
         if first_bit == 0 {
             prob_0 += amplitude.norm_sqr();
             amplitude_0 += *amplitude;

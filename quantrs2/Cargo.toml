@@ -23,6 +23,9 @@ quantrs2-ml = { workspace = true, optional = true }
 quantrs2-tytan = { workspace = true, optional = true }
 quantrs2-symengine = { workspace = true, optional = true }
 
+# Facade crate dependencies
+num_cpus = { workspace = true }
+
 [features]
 default = []
 
@@ -45,6 +48,18 @@ full = [
     "tytan",
     "symengine",
 ]
+
+[dev-dependencies]
+# For SciRS2 integration example
+scirs2-core = { workspace = true }
+
+[build-dependencies]
+chrono = { workspace = true }
+rustc_version = "0.4"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true

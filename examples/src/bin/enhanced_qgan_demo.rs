@@ -3,10 +3,10 @@
 //! This example demonstrates advanced quantum GAN implementations including
 //! Wasserstein QGAN and Conditional QGAN.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::enhanced_gan::{
     ConditionalQGAN, EnhancedQuantumDiscriminator, EnhancedQuantumGenerator, WassersteinQGAN,
 };
+use scirs2_core::ndarray::{Array1, Array2};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Enhanced Quantum GAN Demo ===\n");
@@ -27,8 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Parameters: {}", generator.params.len());
 
     // Generate samples
-    let latent_vectors =
-        Array2::from_shape_fn((5, 2), |(i, j)| (i as f64 * 0.2 + j as f64 * 0.1) - 0.5);
+    let latent_vectors = Array2::from_shape_fn((5, 2), |(i, j)| {
+        (i as f64).mul_add(0.2, j as f64 * 0.1) - 0.5
+    });
 
     let samples = generator.generate(&latent_vectors)?;
     println!(
@@ -82,18 +83,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fake_scores = Array1::from_vec(vec![0.2, 0.15, 0.25, 0.3, 0.18]);
 
     let w_loss = wqgan.wasserstein_loss(&real_scores, &fake_scores);
-    println!("\n   Wasserstein distance: {:.4}", w_loss);
+    println!("\n   Wasserstein distance: {w_loss:.4}");
 
     // Generate fake samples for gradient penalty
-    let real_samples =
-        Array2::from_shape_fn((5, 4), |(i, j)| ((i + j) as f64 * 0.1).sin() * 0.5 + 0.5);
+    let real_samples = Array2::from_shape_fn((5, 4), |(i, j)| {
+        ((i + j) as f64 * 0.1).sin().mul_add(0.5, 0.5)
+    });
     let fake_samples = wqgan.generator.generate(&latent_vectors)?;
 
     let gp = wqgan.gradient_penalty(&real_samples, &fake_samples)?;
-    println!("   Gradient penalty: {:.4}", gp);
+    println!("   Gradient penalty: {gp:.4}");
     println!(
         "   Total critic loss: {:.4}",
-        -w_loss + wqgan.lambda_gp * gp
+        wqgan.lambda_gp.mul_add(gp, -w_loss)
     );
 
     // 4. Conditional QGAN
@@ -132,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let max = class_samples.fold(f64::NEG_INFINITY, |a, &b| a.max(b));
         let min = class_samples.fold(f64::INFINITY, |a, &b| a.min(b));
 
-        println!("       Mean: {:.4}, Min: {:.4}, Max: {:.4}", mean, min, max);
+        println!("       Mean: {mean:.4}, Min: {min:.4}, Max: {max:.4}");
     }
 
     // 5. Circuit Analysis
@@ -158,9 +160,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for epoch in 0..epochs {
         // Simulate losses
-        let gen_loss = 2.0 * (-(epoch as f64 / epochs as f64)).exp();
-        let disc_loss = 0.5 + 0.3 * (-(epoch as f64 / epochs as f64 * 2.0)).exp();
-        let w_dist = 1.0 - 0.8 * (epoch as f64 / epochs as f64);
+        let gen_loss = 2.0 * (-(f64::from(epoch) / f64::from(epochs))).exp();
+        let disc_loss = 0.3f64.mul_add((-(f64::from(epoch) / f64::from(epochs) * 2.0)).exp(), 0.5);
+        let w_dist = 0.8f64.mul_add(-(f64::from(epoch) / f64::from(epochs)), 1.0);
 
         println!(
             "   {:5} | {:8.4} | {:9.4} | {:10.4}",
@@ -180,8 +182,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let total_samples = num_modes * samples_per_mode;
 
     // Generate many samples
-    let large_latent =
-        Array2::from_shape_fn((total_samples, 2), |(_, j)| fastrand::f64() * 2.0 - 1.0);
+    let large_latent = Array2::from_shape_fn((total_samples, 2), |(_, j)| {
+        fastrand::f64().mul_add(2.0, -1.0)
+    });
     let generated = generator.generate(&large_latent)?;
 
     // Simple mode detection (based on which quadrant the samples fall into)
@@ -201,8 +204,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("   Mode distribution (ideal: ~25% each):");
     for (i, &count) in mode_counts.iter().enumerate() {
-        let percentage = count as f64 / total_samples as f64 * 100.0;
-        println!("     Mode {}: {} samples ({:.1}%)", i, count, percentage);
+        let percentage = f64::from(count) / total_samples as f64 * 100.0;
+        println!("     Mode {i}: {count} samples ({percentage:.1}%)");
     }
 
     // 8. Quantum Advantage Discussion

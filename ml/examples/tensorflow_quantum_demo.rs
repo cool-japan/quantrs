@@ -3,13 +3,13 @@
 //! This example demonstrates the TensorFlow Quantum (TFQ) compatibility layer,
 //! showing how to use TFQ-style APIs, PQC layers, and quantum datasets.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
 use quantrs2_circuit::prelude::{Circuit, CircuitBuilder};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::simulator_backends::DynamicCircuit;
+use scirs2_core::ndarray::{Array1, Array2, Array3, Axis};
+use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
-use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
     println!("=== TensorFlow Quantum Compatibility Demo ===\n");
@@ -22,7 +22,7 @@ fn main() -> Result<()> {
         "   - Created {} parameterized quantum circuits",
         circuits.len()
     );
-    println!("   - Circuit symbols: {:?}", circuit_symbols);
+    println!("   - Circuit symbols: {circuit_symbols:?}");
 
     // Step 2: Build TFQ-style model with PQC layers
     println!("\n2. Building TFQ-compatible model...");
@@ -166,7 +166,7 @@ fn main() -> Result<()> {
     // Step 9: Quantum expectation values
     println!("\n9. Computing quantum expectation values...");
 
-    let observables = vec![Observable::PauliZ(vec![0]), Observable::PauliZ(vec![1])];
+    let observables = [Observable::PauliZ(vec![0]), Observable::PauliZ(vec![1])];
 
     // let expectation_values = model.compute_expectation_values(&sample_input, &observables)?;
     // println!("   Expectation Values:");
@@ -196,7 +196,7 @@ fn main() -> Result<()> {
     //     &classical_data,
     //     DataEncodingType::Angle
     // )?;
-    let encoded_circuits = vec![tfq_utils::create_data_encoding_circuit(
+    let encoded_circuits = [tfq_utils::create_data_encoding_circuit(
         4,
         DataEncodingType::Angle,
     )?];
@@ -208,7 +208,7 @@ fn main() -> Result<()> {
     // Step 11: Compare with TensorFlow classical model
     println!("\n11. Comparing with TensorFlow classical equivalent...");
 
-    let classical_model = create_tensorflow_classical_model()?;
+    create_tensorflow_classical_model()?;
     // let classical_accuracy = train_classical_tensorflow_model(classical_model, &quantum_dataset)?;
     //
     // let quantum_accuracy = evaluation_results.get("accuracy").unwrap_or(&0.0);
@@ -300,7 +300,7 @@ fn create_tfq_quantum_dataset() -> Result<QuantumDataset> {
     // Create classical data
     let classical_data = Array2::from_shape_fn((num_samples, num_features), |(i, j)| {
         let noise = fastrand::f64() * 0.1;
-        ((i as f64 * 0.01) + (j as f64 * 0.1)).sin() + noise
+        (i as f64).mul_add(0.01, j as f64 * 0.1).sin() + noise
     });
 
     // Create labels (binary classification)
@@ -340,7 +340,7 @@ fn create_tfq_test_dataset() -> Result<QuantumDataset> {
 
     let test_data = Array2::from_shape_fn((num_samples, num_features), |(i, j)| {
         let noise = fastrand::f64() * 0.1;
-        ((i as f64 * 0.015) + (j as f64 * 0.12)).sin() + noise
+        (i as f64).mul_add(0.015, j as f64 * 0.12).sin() + noise
     });
 
     let test_labels = Array1::from_shape_fn(num_samples, |i| {
@@ -372,13 +372,13 @@ fn compute_gradient_variance(gradients: &[f64]) -> f64 {
     variance
 }
 
-fn create_tensorflow_classical_model() -> Result<()> {
+const fn create_tensorflow_classical_model() -> Result<()> {
     // Placeholder for classical TensorFlow model creation
     Ok(())
 }
 
 // Placeholder function for remaining code
-fn placeholder_function() -> Result<()> {
+const fn placeholder_function() -> Result<()> {
     // Ok(TensorFlowClassicalModel::new(vec![
     //     TFLayer::Dense { units: 8, activation: "relu" },
     //     TFLayer::Dense { units: 4, activation: "relu" },
@@ -443,7 +443,7 @@ struct TensorFlowClassicalModel {
 }
 
 impl TensorFlowClassicalModel {
-    fn new(layers: Vec<TFLayer>) -> Self {
+    const fn new(layers: Vec<TFLayer>) -> Self {
         Self { layers }
     }
 

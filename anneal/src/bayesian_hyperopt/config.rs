@@ -2,8 +2,8 @@
 
 use super::gaussian_process::{GaussianProcessSurrogate, KernelFunction};
 use crate::ising::IsingError;
-use scirs2_core::random::Rng;
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::Rng;
 use thiserror::Error;
 
 /// Errors that can occur in Bayesian optimization

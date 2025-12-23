@@ -3,11 +3,11 @@
 //! This module provides comprehensive profiling capabilities for quantum
 //! computations using the advanced profiling features in scirs2-core beta.1.
 
-use scirs2_core::profiling::{Profiler, Timer, MemoryTracker};
+use crate::error::QuantRS2Result;
+use scirs2_core::profiling::{MemoryTracker, Profiler, Timer};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use crate::error::QuantRS2Result;
 
 /// Quantum operation profiling data
 #[derive(Debug, Clone, serde::Serialize)]
@@ -118,8 +118,9 @@ impl QuantumProfiler {
 
             // Update profile
             let mut profiles = self.profiles.lock().unwrap();
-            let profile = profiles.entry(operation_name.to_string()).or_insert_with(|| {
-                QuantumOperationProfile {
+            let profile = profiles
+                .entry(operation_name.to_string())
+                .or_insert_with(|| QuantumOperationProfile {
                     operation_name: operation_name.to_string(),
                     execution_count: 0,
                     total_time: Duration::ZERO,
@@ -128,8 +129,7 @@ impl QuantumProfiler {
                     max_time: Duration::ZERO,
                     memory_usage: 0,
                     gate_count: 0,
-                }
-            });
+                });
 
             profile.execution_count += 1;
             profile.total_time += execution_time;
@@ -182,8 +182,10 @@ impl QuantumProfiler {
         let mut sorted_profiles: Vec<_> = profiles.values().collect();
         sorted_profiles.sort_by(|a, b| b.total_time.cmp(&a.total_time));
 
-        report.push_str(&format!("{:<30} {:<10} {:<12} {:<12} {:<12} {:<12} {:<10}\n",
-            "Operation", "Count", "Total (ms)", "Avg (ms)", "Min (ms)", "Max (ms)", "Gates"));
+        report.push_str(&format!(
+            "{:<30} {:<10} {:<12} {:<12} {:<12} {:<12} {:<10}\n",
+            "Operation", "Count", "Total (ms)", "Avg (ms)", "Min (ms)", "Max (ms)", "Gates"
+        ));
         report.push_str(&"-".repeat(110));
         report.push('\n');
 
@@ -212,13 +214,11 @@ impl QuantumProfiler {
         }
 
         // Find the most frequent operation
-        let most_frequent = sorted_profiles.iter()
-            .max_by_key(|p| p.execution_count);
+        let most_frequent = sorted_profiles.iter().max_by_key(|p| p.execution_count);
         if let Some(frequent) = most_frequent {
             report.push_str(&format!(
                 "Most frequent operation: {} ({} executions)\n",
-                frequent.operation_name,
-                frequent.execution_count
+                frequent.operation_name, frequent.execution_count
             ));
         }
 
@@ -245,8 +245,7 @@ impl QuantumProfiler {
     /// Export profiling data to JSON
     pub fn export_json(&self) -> QuantRS2Result<String> {
         let profiles = self.get_profiles();
-        serde_json::to_string_pretty(&profiles)
-            .map_err(|e| e.into()) // Use the existing From<serde_json::Error> implementation
+        serde_json::to_string_pretty(&profiles).map_err(|e| e.into()) // Use the existing From<serde_json::Error> implementation
     }
 }
 
@@ -277,8 +276,11 @@ pub fn is_profiling_active() -> bool {
 #[macro_export]
 macro_rules! profile_quantum_operation {
     ($operation_name:expr, $gate_count:expr, $operation:expr) => {{
-        $crate::optimizations::profiling_integration::global_quantum_profiler()
-            .profile_operation($operation_name, $gate_count, || $operation)
+        $crate::optimizations::profiling_integration::global_quantum_profiler().profile_operation(
+            $operation_name,
+            $gate_count,
+            || $operation,
+        )
     }};
 }
 
@@ -286,8 +288,11 @@ macro_rules! profile_quantum_operation {
 #[macro_export]
 macro_rules! profile_gate_operation {
     ($gate_name:expr, $operation:expr) => {{
-        $crate::optimizations::profiling_integration::global_quantum_profiler()
-            .profile_operation($gate_name, 1, || $operation)
+        $crate::optimizations::profiling_integration::global_quantum_profiler().profile_operation(
+            $gate_name,
+            1,
+            || $operation,
+        )
     }};
 }
 
@@ -352,9 +357,7 @@ mod tests {
         let profiler = QuantumProfiler::new();
         // Don't enable profiling
 
-        let result = profiler.profile_operation("test_gate", 1, || {
-            42
-        });
+        let result = profiler.profile_operation("test_gate", 1, || 42);
 
         assert_eq!(result, 42);
 

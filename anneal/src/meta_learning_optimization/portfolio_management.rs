@@ -3,6 +3,9 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
+use scirs2_core::rand_prelude::IndexedRandom;
+use scirs2_core::random::thread_rng;
+
 use super::config::*;
 use super::feature_extraction::*;
 
@@ -46,7 +49,10 @@ impl AlgorithmPortfolio {
                     ("initial_temperature".to_string(), 10.0),
                     ("final_temperature".to_string(), 0.1),
                     ("cooling_rate".to_string(), 0.95),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 architecture: None,
                 resources: ResourceAllocation {
                     cpu: 1.0,
@@ -73,7 +79,8 @@ impl AlgorithmPortfolio {
             },
         };
 
-        self.algorithms.insert("simulated_annealing".to_string(), sa_algorithm);
+        self.algorithms
+            .insert("simulated_annealing".to_string(), sa_algorithm);
 
         // Add quantum annealing
         let qa_algorithm = Algorithm {
@@ -85,7 +92,10 @@ impl AlgorithmPortfolio {
                     ("annealing_time".to_string(), 20.0),
                     ("num_reads".to_string(), 1000.0),
                     ("chain_strength".to_string(), 1.0),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 architecture: None,
                 resources: ResourceAllocation {
                     cpu: 0.5,
@@ -112,7 +122,8 @@ impl AlgorithmPortfolio {
             },
         };
 
-        self.algorithms.insert("quantum_annealing".to_string(), qa_algorithm);
+        self.algorithms
+            .insert("quantum_annealing".to_string(), qa_algorithm);
 
         // Add tabu search
         let ts_algorithm = Algorithm {
@@ -124,7 +135,10 @@ impl AlgorithmPortfolio {
                     ("tabu_size".to_string(), 50.0),
                     ("max_iterations".to_string(), 1000.0),
                     ("aspiration_criteria".to_string(), 1.0),
-                ].iter().cloned().collect(),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
                 architecture: None,
                 resources: ResourceAllocation {
                     cpu: 1.0,
@@ -151,21 +165,40 @@ impl AlgorithmPortfolio {
             },
         };
 
-        self.algorithms.insert("tabu_search".to_string(), ts_algorithm);
+        self.algorithms
+            .insert("tabu_search".to_string(), ts_algorithm);
     }
 
-    pub fn select_algorithm(&mut self, problem_features: &ProblemFeatures) -> Result<String, String> {
+    pub fn select_algorithm(
+        &mut self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<String, String> {
         match &self.selection_strategy {
-            AlgorithmSelectionStrategy::MultiArmedBandit => self.multi_armed_bandit_selection(problem_features),
-            AlgorithmSelectionStrategy::UpperConfidenceBound => self.ucb_selection(problem_features),
-            AlgorithmSelectionStrategy::ThompsonSampling => self.thompson_sampling_selection(problem_features),
-            AlgorithmSelectionStrategy::EpsilonGreedy(epsilon) => self.epsilon_greedy_selection(problem_features, *epsilon),
-            AlgorithmSelectionStrategy::CollaborativeFiltering => self.collaborative_filtering_selection(problem_features),
-            AlgorithmSelectionStrategy::MetaLearningBased => self.meta_learning_selection(problem_features),
+            AlgorithmSelectionStrategy::MultiArmedBandit => {
+                self.multi_armed_bandit_selection(problem_features)
+            }
+            AlgorithmSelectionStrategy::UpperConfidenceBound => {
+                self.ucb_selection(problem_features)
+            }
+            AlgorithmSelectionStrategy::ThompsonSampling => {
+                self.thompson_sampling_selection(problem_features)
+            }
+            AlgorithmSelectionStrategy::EpsilonGreedy(epsilon) => {
+                self.epsilon_greedy_selection(problem_features, *epsilon)
+            }
+            AlgorithmSelectionStrategy::CollaborativeFiltering => {
+                self.collaborative_filtering_selection(problem_features)
+            }
+            AlgorithmSelectionStrategy::MetaLearningBased => {
+                self.meta_learning_selection(problem_features)
+            }
         }
     }
 
-    fn multi_armed_bandit_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
+    fn multi_armed_bandit_selection(
+        &self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<String, String> {
         // Simplified multi-armed bandit using average performance
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
 
@@ -173,10 +206,19 @@ impl AlgorithmPortfolio {
             return Err("No applicable algorithms found".to_string());
         }
 
-        let best_algorithm = applicable_algorithms.iter()
+        let best_algorithm = applicable_algorithms
+            .iter()
             .max_by(|a, b| {
-                let perf_a = self.algorithms.get(*a).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
-                let perf_b = self.algorithms.get(*b).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
+                let perf_a = self
+                    .algorithms
+                    .get(*a)
+                    .map(|alg| alg.performance_stats.mean_performance)
+                    .unwrap_or(0.0);
+                let perf_b = self
+                    .algorithms
+                    .get(*b)
+                    .map(|alg| alg.performance_stats.mean_performance)
+                    .unwrap_or(0.0);
                 perf_a.partial_cmp(&perf_b).unwrap()
             })
             .ok_or("Failed to select algorithm")?;
@@ -192,17 +234,36 @@ impl AlgorithmPortfolio {
         }
 
         // Simplified UCB calculation
-        let total_trials: f64 = self.performance_history.values()
+        let total_trials: f64 = self
+            .performance_history
+            .values()
             .map(|history| history.len() as f64)
             .sum();
 
-        let best_algorithm = applicable_algorithms.iter()
+        let best_algorithm = applicable_algorithms
+            .iter()
             .max_by(|a, b| {
-                let history_a = self.performance_history.get(*a).map(|h| h.len()).unwrap_or(0);
-                let history_b = self.performance_history.get(*b).map(|h| h.len()).unwrap_or(0);
+                let history_a = self
+                    .performance_history
+                    .get(*a)
+                    .map(|h| h.len())
+                    .unwrap_or(0);
+                let history_b = self
+                    .performance_history
+                    .get(*b)
+                    .map(|h| h.len())
+                    .unwrap_or(0);
 
-                let mean_a = self.algorithms.get(*a).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
-                let mean_b = self.algorithms.get(*b).map(|alg| alg.performance_stats.mean_performance).unwrap_or(0.0);
+                let mean_a = self
+                    .algorithms
+                    .get(*a)
+                    .map(|alg| alg.performance_stats.mean_performance)
+                    .unwrap_or(0.0);
+                let mean_b = self
+                    .algorithms
+                    .get(*b)
+                    .map(|alg| alg.performance_stats.mean_performance)
+                    .unwrap_or(0.0);
 
                 let confidence_a = if history_a > 0 {
                     (2.0 * total_trials.ln() / history_a as f64).sqrt()
@@ -226,7 +287,10 @@ impl AlgorithmPortfolio {
         Ok(best_algorithm.clone())
     }
 
-    fn thompson_sampling_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
+    fn thompson_sampling_selection(
+        &self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<String, String> {
         // Simplified Thompson sampling - just return the algorithm with highest variance
         let applicable_algorithms = self.get_applicable_algorithms(problem_features);
 
@@ -234,10 +298,19 @@ impl AlgorithmPortfolio {
             return Err("No applicable algorithms found".to_string());
         }
 
-        let best_algorithm = applicable_algorithms.iter()
+        let best_algorithm = applicable_algorithms
+            .iter()
             .max_by(|a, b| {
-                let var_a = self.algorithms.get(*a).map(|alg| alg.performance_stats.performance_variance).unwrap_or(0.0);
-                let var_b = self.algorithms.get(*b).map(|alg| alg.performance_stats.performance_variance).unwrap_or(0.0);
+                let var_a = self
+                    .algorithms
+                    .get(*a)
+                    .map(|alg| alg.performance_stats.performance_variance)
+                    .unwrap_or(0.0);
+                let var_b = self
+                    .algorithms
+                    .get(*b)
+                    .map(|alg| alg.performance_stats.performance_variance)
+                    .unwrap_or(0.0);
                 var_a.partial_cmp(&var_b).unwrap()
             })
             .ok_or("Failed to select algorithm")?;
@@ -245,7 +318,11 @@ impl AlgorithmPortfolio {
         Ok(best_algorithm.clone())
     }
 
-    fn epsilon_greedy_selection(&self, problem_features: &ProblemFeatures, epsilon: f64) -> Result<String, String> {
+    fn epsilon_greedy_selection(
+        &self,
+        problem_features: &ProblemFeatures,
+        epsilon: f64,
+    ) -> Result<String, String> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
@@ -257,7 +334,8 @@ impl AlgorithmPortfolio {
 
         if rng.gen_bool(epsilon) {
             // Explore: random selection
-            let algorithm = applicable_algorithms.choose(&mut rng)
+            let algorithm = applicable_algorithms
+                .choose(&mut rng)
                 .ok_or("Failed to randomly select algorithm")?;
             Ok(algorithm.clone())
         } else {
@@ -266,22 +344,29 @@ impl AlgorithmPortfolio {
         }
     }
 
-    fn collaborative_filtering_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
+    fn collaborative_filtering_selection(
+        &self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<String, String> {
         // Simplified collaborative filtering based on problem similarity
         self.multi_armed_bandit_selection(problem_features)
     }
 
-    fn meta_learning_selection(&self, problem_features: &ProblemFeatures) -> Result<String, String> {
+    fn meta_learning_selection(
+        &self,
+        problem_features: &ProblemFeatures,
+    ) -> Result<String, String> {
         // Simplified meta-learning selection
         self.multi_armed_bandit_selection(problem_features)
     }
 
     fn get_applicable_algorithms(&self, problem_features: &ProblemFeatures) -> Vec<String> {
-        self.algorithms.iter()
+        self.algorithms
+            .iter()
             .filter(|(_, algorithm)| {
                 // Check size range
-                problem_features.size >= algorithm.applicability.size_range.0 &&
-                problem_features.size <= algorithm.applicability.size_range.1
+                problem_features.size >= algorithm.applicability.size_range.0
+                    && problem_features.size <= algorithm.applicability.size_range.1
             })
             .map(|(id, _)| id.clone())
             .collect()
@@ -293,9 +378,38 @@ impl AlgorithmPortfolio {
             .or_insert_with(VecDeque::new)
             .push_back(record.clone());
 
-        // Update algorithm statistics
-        if let Some(algorithm) = self.algorithms.get_mut(algorithm_id) {
-            self.update_algorithm_stats(algorithm, &record);
+        // Update algorithm statistics - extract algorithm to avoid double mutable borrow
+        let algorithm_id_string = algorithm_id.to_string();
+        if self.algorithms.contains_key(algorithm_id) {
+            // Get the performance history first
+            let history = self.performance_history.get(&algorithm_id_string).cloned();
+            if let Some(algorithm) = self.algorithms.get_mut(algorithm_id) {
+                if let Some(history) = history {
+                    if !history.is_empty() {
+                        // Update mean performance
+                        let total_performance: f64 = history.iter().map(|r| r.performance).sum();
+                        algorithm.performance_stats.mean_performance =
+                            total_performance / history.len() as f64;
+
+                        // Update variance
+                        let variance: f64 = history
+                            .iter()
+                            .map(|r| {
+                                (r.performance - algorithm.performance_stats.mean_performance)
+                                    .powi(2)
+                            })
+                            .sum::<f64>()
+                            / history.len() as f64;
+                        algorithm.performance_stats.performance_variance = variance;
+
+                        // Update success rate (consider performance > 0.5 as success)
+                        let successful_runs =
+                            history.iter().filter(|r| r.performance > 0.5).count();
+                        algorithm.performance_stats.success_rate =
+                            successful_runs as f64 / history.len() as f64;
+                    }
+                }
+            }
         }
 
         // Limit history size
@@ -315,9 +429,11 @@ impl AlgorithmPortfolio {
             algorithm.performance_stats.mean_performance = total_performance / history.len() as f64;
 
             // Update variance
-            let variance: f64 = history.iter()
+            let variance: f64 = history
+                .iter()
                 .map(|r| (r.performance - algorithm.performance_stats.mean_performance).powi(2))
-                .sum::<f64>() / history.len() as f64;
+                .sum::<f64>()
+                / history.len() as f64;
             algorithm.performance_stats.performance_variance = variance;
 
             // Update success rate (simplified: performance > 0.5)
@@ -513,15 +629,19 @@ impl DiversityAnalyzer {
         };
 
         // Calculate performance diversity
-        let performances: Vec<f64> = portfolio.algorithms.values()
+        let performances: Vec<f64> = portfolio
+            .algorithms
+            .values()
             .map(|alg| alg.performance_stats.mean_performance)
             .collect();
 
         let performance_diversity = if performances.len() > 1 {
             let mean_perf = performances.iter().sum::<f64>() / performances.len() as f64;
-            let variance = performances.iter()
+            let variance = performances
+                .iter()
                 .map(|p| (p - mean_perf).powi(2))
-                .sum::<f64>() / performances.len() as f64;
+                .sum::<f64>()
+                / performances.len() as f64;
             variance.sqrt()
         } else {
             0.0

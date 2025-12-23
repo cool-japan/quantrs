@@ -1690,7 +1690,7 @@ impl AdaptiveCompiler {
     }
 
     fn cache_compilation(
-        &mut self,
+        &self,
         problem: &IsingModel,
         parameters: &CompilationParameters,
     ) -> ApplicationResult<()> {

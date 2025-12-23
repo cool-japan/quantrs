@@ -8,12 +8,14 @@
 //! - Quantum Phase Estimation (QPE)
 
 use crate::{PyCircuit, PySimulationResult};
-use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
-use numpy::{IntoPyArray, PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::Complex64;
+use scirs2_numpy::{
+    IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2,
+};
 use std::collections::HashMap;
 
 /// Variational Quantum Eigensolver (VQE)
@@ -90,11 +92,11 @@ pub struct PyQAOA {
 #[pymethods]
 impl PyQAOA {
     #[new]
-    fn new(n_qubits: usize, p: usize) -> Self {
+    const fn new(n_qubits: usize, p: usize) -> Self {
         Self { n_qubits, p }
     }
 
-    /// Create QAOA circuit for MaxCut problem
+    /// Create QAOA circuit for `MaxCut` problem
     fn maxcut_circuit(
         &self,
         py: Python,
@@ -145,7 +147,7 @@ pub struct PyQFT {}
 #[pymethods]
 impl PyQFT {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
@@ -160,7 +162,7 @@ impl PyQFT {
             for j in (0..n_qubits).rev() {
                 // Controlled phase rotations
                 for k in (j + 1..n_qubits).rev() {
-                    let angle = -std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = -std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(k, j, angle)?;
                 }
                 // Hadamard
@@ -179,7 +181,7 @@ impl PyQFT {
 
                 // Controlled phase rotations
                 for k in j + 1..n_qubits {
-                    let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(k, j, angle)?;
                 }
             }
@@ -207,7 +209,7 @@ impl PyQFT {
             // Inverse QFT on specified qubits
             for j in (0..n).rev() {
                 for k in (j + 1..n).rev() {
-                    let angle = -std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = -std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(qubits[k], qubits[j], angle)?;
                 }
                 circuit.h(qubits[j])?;
@@ -222,7 +224,7 @@ impl PyQFT {
                 circuit.h(qubits[j])?;
 
                 for k in j + 1..n {
-                    let angle = std::f64::consts::PI / (1 << (k - j)) as f64;
+                    let angle = std::f64::consts::PI / f64::from(1 << (k - j));
                     circuit.crz(qubits[k], qubits[j], angle)?;
                 }
             }
@@ -249,7 +251,7 @@ impl PyGrover {
     fn new(n_qubits: usize) -> Self {
         // Calculate optimal number of iterations
         let n_items = 1 << n_qubits;
-        let n_iterations = ((std::f64::consts::PI / 4.0) * (n_items as f64).sqrt()) as usize;
+        let n_iterations = ((std::f64::consts::PI / 4.0) * f64::from(n_items).sqrt()) as usize;
 
         Self {
             n_qubits,
@@ -355,7 +357,7 @@ pub struct PyQPE {}
 #[pymethods]
 impl PyQPE {
     #[new]
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
@@ -420,8 +422,10 @@ fn create_ising_hamiltonian(
     j_coupling: f64,
     h_field: f64,
 ) -> PyResult<Py<PyArray2<Complex64>>> {
+    use scirs2_core::ndarray::Array2;
+
     let dim = 1 << n_qubits;
-    let mut h_matrix = Array2::zeros((dim, dim));
+    let mut h_matrix = Array2::<Complex64>::zeros((dim, dim));
 
     // Add ZZ coupling terms
     for i in 0..n_qubits - 1 {

@@ -4,12 +4,11 @@
 //! computers, including random circuit generation, ideal simulation, heavy output
 //! probability calculation, and quantum volume determination.
 
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
-use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::{ChaCha8Rng, Rng as RngTrait, SeedableRng}; // Rename to avoid conflict
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -355,7 +354,7 @@ impl QuantumVolumeCalculator {
         state[0] = Complex64::new(1.0, 0.0); // |0...0⟩
 
         // Apply gates layer by layer
-        for layer in 0..gates.iter().map(|g| g.layer).max().unwrap_or(0) + 1 {
+        for layer in 0..=gates.iter().map(|g| g.layer).max().unwrap_or(0) {
             let layer_gates: Vec<&QVGate> = gates.iter().filter(|g| g.layer == layer).collect();
 
             // Apply all gates in this layer (they commute since they act on disjoint qubits)
@@ -548,13 +547,14 @@ impl QuantumVolumeCalculator {
         let x = x.abs();
 
         let t = 1.0 / (1.0 + p * x);
-        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+        let y = ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+            .mul_add(-(-x * x).exp(), 1.0);
 
         sign * y
     }
 
     /// Estimate memory usage
-    fn estimate_memory_usage(&self, width: usize) -> usize {
+    const fn estimate_memory_usage(&self, width: usize) -> usize {
         let state_vector_size = (1 << width) * std::mem::size_of::<Complex64>();
         let circuit_storage = 1000 * std::mem::size_of::<QVGate>(); // Rough estimate
         state_vector_size + circuit_storage
@@ -565,7 +565,7 @@ impl QuantumVolumeCalculator {
         let mut results = Vec::new();
 
         for width in 2..=self.params.max_width {
-            println!("Testing quantum volume for width {}", width);
+            println!("Testing quantum volume for width {width}");
 
             let result = self.calculate_quantum_volume(width)?;
 
@@ -583,20 +583,6 @@ impl QuantumVolumeCalculator {
         }
 
         Ok(results)
-    }
-}
-
-/// Utility trait for shuffling
-trait SliceMutExt<T> {
-    fn shuffle(&mut self, rng: &mut impl Rng);
-}
-
-impl<T> SliceMutExt<T> for [T] {
-    fn shuffle(&mut self, rng: &mut impl Rng) {
-        for i in (1..self.len()).rev() {
-            let j = rng.gen_range(0..=i);
-            self.swap(i, j);
-        }
     }
 }
 

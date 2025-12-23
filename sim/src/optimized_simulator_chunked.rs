@@ -18,7 +18,7 @@ pub struct OptimizedSimulatorChunked;
 
 impl OptimizedSimulatorChunked {
     /// Create a new optimized simulator for large qubit counts
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }

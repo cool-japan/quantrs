@@ -407,7 +407,7 @@ impl InteractiveDebugger {
             "watch" => {
                 format!("Watched variables: {:?}", self.watch_variables)
             }
-            _ => format!("Unknown command: {}", command),
+            _ => format!("Unknown command: {command}"),
         }
     }
 }

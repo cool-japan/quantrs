@@ -533,7 +533,8 @@ impl QuboModel {
 
     /// Convert to dense QUBO matrix for sampler compatibility
     pub fn to_dense_matrix(&self) -> scirs2_core::ndarray::Array2<f64> {
-        let mut matrix = scirs2_core::ndarray::Array2::zeros((self.num_variables, self.num_variables));
+        let mut matrix =
+            scirs2_core::ndarray::Array2::zeros((self.num_variables, self.num_variables));
 
         // Set linear terms on diagonal
         for (var, value) in self.linear_terms.iter() {
@@ -679,16 +680,56 @@ mod tests {
         assert!(model.set_coupling(1, 2, 0.5).is_ok());
 
         // Check biases
-        assert_eq!(model.get_bias(0).unwrap(), 1.0);
-        assert_eq!(model.get_bias(1).unwrap(), -0.5);
-        assert_eq!(model.get_bias(2).unwrap(), 0.0);
+        assert_eq!(
+            model
+                .get_bias(0)
+                .expect("Failed to get bias for qubit 0 in test"),
+            1.0
+        );
+        assert_eq!(
+            model
+                .get_bias(1)
+                .expect("Failed to get bias for qubit 1 in test"),
+            -0.5
+        );
+        assert_eq!(
+            model
+                .get_bias(2)
+                .expect("Failed to get bias for qubit 2 in test"),
+            0.0
+        );
 
         // Check couplings
-        assert_eq!(model.get_coupling(0, 1).unwrap(), -1.0);
-        assert_eq!(model.get_coupling(1, 0).unwrap(), -1.0); // Should be symmetric
-        assert_eq!(model.get_coupling(1, 2).unwrap(), 0.5);
-        assert_eq!(model.get_coupling(2, 1).unwrap(), 0.5); // Should be symmetric
-        assert_eq!(model.get_coupling(0, 2).unwrap(), 0.0); // No coupling
+        assert_eq!(
+            model
+                .get_coupling(0, 1)
+                .expect("Failed to get coupling(0,1) in test"),
+            -1.0
+        );
+        assert_eq!(
+            model
+                .get_coupling(1, 0)
+                .expect("Failed to get coupling(1,0) in test"),
+            -1.0
+        ); // Should be symmetric
+        assert_eq!(
+            model
+                .get_coupling(1, 2)
+                .expect("Failed to get coupling(1,2) in test"),
+            0.5
+        );
+        assert_eq!(
+            model
+                .get_coupling(2, 1)
+                .expect("Failed to get coupling(2,1) in test"),
+            0.5
+        ); // Should be symmetric
+        assert_eq!(
+            model
+                .get_coupling(0, 2)
+                .expect("Failed to get coupling(0,2) in test"),
+            0.0
+        ); // No coupling
     }
 
     #[test]
@@ -697,19 +738,31 @@ mod tests {
         let mut model = IsingModel::new(3);
 
         // Set biases
-        model.set_bias(0, 1.0).unwrap();
-        model.set_bias(1, -0.5).unwrap();
+        model
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0 in energy test");
+        model
+            .set_bias(1, -0.5)
+            .expect("Failed to set bias for qubit 1 in energy test");
 
         // Set couplings
-        model.set_coupling(0, 1, -1.0).unwrap();
-        model.set_coupling(1, 2, 0.5).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling(0,1) in energy test");
+        model
+            .set_coupling(1, 2, 0.5)
+            .expect("Failed to set coupling(1,2) in energy test");
 
         // Check energy for [+1, +1, +1]
-        let energy = model.energy(&[1, 1, 1]).unwrap();
+        let energy = model
+            .energy(&[1, 1, 1])
+            .expect("Failed to calculate energy for [+1,+1,+1]");
         assert_eq!(energy, 1.0 - 0.5 + (-1.0) * 1.0 * 1.0 + 0.5 * 1.0 * 1.0);
 
         // Check energy for [+1, -1, +1]
-        let energy = model.energy(&[1, -1, 1]).unwrap();
+        let energy = model
+            .energy(&[1, -1, 1])
+            .expect("Failed to calculate energy for [+1,-1,+1]");
         assert_eq!(
             energy,
             1.0 * 1.0 + (-0.5) * (-1.0) + (-1.0) * 1.0 * (-1.0) + 0.5 * (-1.0) * 1.0
@@ -732,16 +785,56 @@ mod tests {
         model.offset = 1.5;
 
         // Check linear terms
-        assert_eq!(model.get_linear(0).unwrap(), 2.0);
-        assert_eq!(model.get_linear(1).unwrap(), -1.0);
-        assert_eq!(model.get_linear(2).unwrap(), 0.0);
+        assert_eq!(
+            model
+                .get_linear(0)
+                .expect("Failed to get linear term for variable 0 in test"),
+            2.0
+        );
+        assert_eq!(
+            model
+                .get_linear(1)
+                .expect("Failed to get linear term for variable 1 in test"),
+            -1.0
+        );
+        assert_eq!(
+            model
+                .get_linear(2)
+                .expect("Failed to get linear term for variable 2 in test"),
+            0.0
+        );
 
         // Check quadratic terms
-        assert_eq!(model.get_quadratic(0, 1).unwrap(), -4.0);
-        assert_eq!(model.get_quadratic(1, 0).unwrap(), -4.0); // Should be symmetric
-        assert_eq!(model.get_quadratic(1, 2).unwrap(), 2.0);
-        assert_eq!(model.get_quadratic(2, 1).unwrap(), 2.0); // Should be symmetric
-        assert_eq!(model.get_quadratic(0, 2).unwrap(), 0.0); // No coupling
+        assert_eq!(
+            model
+                .get_quadratic(0, 1)
+                .expect("Failed to get quadratic term(0,1) in test"),
+            -4.0
+        );
+        assert_eq!(
+            model
+                .get_quadratic(1, 0)
+                .expect("Failed to get quadratic term(1,0) in test"),
+            -4.0
+        ); // Should be symmetric
+        assert_eq!(
+            model
+                .get_quadratic(1, 2)
+                .expect("Failed to get quadratic term(1,2) in test"),
+            2.0
+        );
+        assert_eq!(
+            model
+                .get_quadratic(2, 1)
+                .expect("Failed to get quadratic term(2,1) in test"),
+            2.0
+        ); // Should be symmetric
+        assert_eq!(
+            model
+                .get_quadratic(0, 2)
+                .expect("Failed to get quadratic term(0,2) in test"),
+            0.0
+        ); // No coupling
     }
 
     #[test]
@@ -750,20 +843,32 @@ mod tests {
         let mut model = QuboModel::new(3);
 
         // Set linear terms
-        model.set_linear(0, 2.0).unwrap();
-        model.set_linear(1, -1.0).unwrap();
+        model
+            .set_linear(0, 2.0)
+            .expect("Failed to set linear term for variable 0 in objective test");
+        model
+            .set_linear(1, -1.0)
+            .expect("Failed to set linear term for variable 1 in objective test");
 
         // Set quadratic terms
-        model.set_quadratic(0, 1, -4.0).unwrap();
-        model.set_quadratic(1, 2, 2.0).unwrap();
+        model
+            .set_quadratic(0, 1, -4.0)
+            .expect("Failed to set quadratic term(0,1) in objective test");
+        model
+            .set_quadratic(1, 2, 2.0)
+            .expect("Failed to set quadratic term(1,2) in objective test");
         model.offset = 1.5;
 
         // Check objective for [true, true, true] (all 1s)
-        let obj = model.objective(&[true, true, true]).unwrap();
+        let obj = model
+            .objective(&[true, true, true])
+            .expect("Failed to calculate objective for [true,true,true]");
         assert_eq!(obj, 2.0 + (-1.0) + (-4.0) + 2.0 + 1.5);
 
         // Check objective for [true, false, true] (x0=1, x1=0, x2=1)
-        let obj = model.objective(&[true, false, true]).unwrap();
+        let obj = model
+            .objective(&[true, false, true])
+            .expect("Failed to calculate objective for [true,false,true]");
         assert_eq!(obj, 2.0 + 0.0 + 0.0 + 0.0 + 1.5);
     }
 
@@ -773,12 +878,20 @@ mod tests {
         let mut ising = IsingModel::new(3);
 
         // Set biases
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_bias(1, -0.5).unwrap();
+        ising
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0 in Ising-to-QUBO conversion test");
+        ising
+            .set_bias(1, -0.5)
+            .expect("Failed to set bias for qubit 1 in Ising-to-QUBO conversion test");
 
         // Set couplings
-        ising.set_coupling(0, 1, -1.0).unwrap();
-        ising.set_coupling(1, 2, 0.5).unwrap();
+        ising
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling(0,1) in Ising-to-QUBO conversion test");
+        ising
+            .set_coupling(1, 2, 0.5)
+            .expect("Failed to set coupling(1,2) in Ising-to-QUBO conversion test");
 
         // Convert to QUBO
         let qubo = ising.to_qubo();
@@ -797,13 +910,33 @@ mod tests {
         );
 
         // Check QUBO linear terms - updated based on actual implementation
-        assert_eq!(qubo.get_linear(0).unwrap(), 4.0); // Updated
-        assert_eq!(qubo.get_linear(1).unwrap(), 0.0); // Updated to match actual output
-        assert_eq!(qubo.get_linear(2).unwrap(), -1.0); // Updated
+        assert_eq!(
+            qubo.get_linear(0)
+                .expect("Failed to get QUBO linear term for variable 0"),
+            4.0
+        ); // Updated
+        assert_eq!(
+            qubo.get_linear(1)
+                .expect("Failed to get QUBO linear term for variable 1"),
+            0.0
+        ); // Updated to match actual output
+        assert_eq!(
+            qubo.get_linear(2)
+                .expect("Failed to get QUBO linear term for variable 2"),
+            -1.0
+        ); // Updated
 
         // Check QUBO quadratic terms
-        assert_eq!(qubo.get_quadratic(0, 1).unwrap(), -4.0);
-        assert_eq!(qubo.get_quadratic(1, 2).unwrap(), 2.0);
+        assert_eq!(
+            qubo.get_quadratic(0, 1)
+                .expect("Failed to get QUBO quadratic term(0,1)"),
+            -4.0
+        );
+        assert_eq!(
+            qubo.get_quadratic(1, 2)
+                .expect("Failed to get QUBO quadratic term(1,2)"),
+            2.0
+        );
         assert_eq!(qubo.offset, 0.5); // Updated
     }
 
@@ -813,12 +946,18 @@ mod tests {
         let mut qubo = QuboModel::new(3);
 
         // Set linear terms
-        qubo.set_linear(0, 2.0).unwrap();
-        qubo.set_linear(1, -1.0).unwrap();
+        qubo.set_linear(0, 2.0).expect(
+            "Failed to set QUBO linear term for variable 0 in QUBO-to-Ising conversion test",
+        );
+        qubo.set_linear(1, -1.0).expect(
+            "Failed to set QUBO linear term for variable 1 in QUBO-to-Ising conversion test",
+        );
 
         // Set quadratic terms
-        qubo.set_quadratic(0, 1, -4.0).unwrap();
-        qubo.set_quadratic(1, 2, 2.0).unwrap();
+        qubo.set_quadratic(0, 1, -4.0)
+            .expect("Failed to set QUBO quadratic term(0,1) in QUBO-to-Ising conversion test");
+        qubo.set_quadratic(1, 2, 2.0)
+            .expect("Failed to set QUBO quadratic term(1,2) in QUBO-to-Ising conversion test");
         qubo.offset = 1.5;
 
         // Convert to Ising
@@ -839,13 +978,38 @@ mod tests {
         );
 
         // Check Ising biases - updating expected values based on the actual values from our conversion
-        assert_eq!(ising.get_bias(0).unwrap(), 3.0);
-        assert_eq!(ising.get_bias(1).unwrap(), 0.5); // Updated based on the actual output
-        assert_eq!(ising.get_bias(2).unwrap(), -1.0); // Updated based on the actual output
+        assert_eq!(
+            ising
+                .get_bias(0)
+                .expect("Failed to get Ising bias for qubit 0"),
+            3.0
+        );
+        assert_eq!(
+            ising
+                .get_bias(1)
+                .expect("Failed to get Ising bias for qubit 1"),
+            0.5
+        ); // Updated based on the actual output
+        assert_eq!(
+            ising
+                .get_bias(2)
+                .expect("Failed to get Ising bias for qubit 2"),
+            -1.0
+        ); // Updated based on the actual output
 
         // Check Ising couplings
-        assert_eq!(ising.get_coupling(0, 1).unwrap(), -1.0);
-        assert_eq!(ising.get_coupling(1, 2).unwrap(), 0.5);
+        assert_eq!(
+            ising
+                .get_coupling(0, 1)
+                .expect("Failed to get Ising coupling(0,1)"),
+            -1.0
+        );
+        assert_eq!(
+            ising
+                .get_coupling(1, 2)
+                .expect("Failed to get Ising coupling(1,2)"),
+            0.5
+        );
 
         // Check that converting back to QUBO gives the expected result
         let qubo2 = ising.to_qubo();
@@ -857,10 +1021,35 @@ mod tests {
         );
 
         // The values here should match what our implementation produces
-        assert_eq!(qubo2.get_linear(0).unwrap(), 8.0); // Updated based on actual output
-        assert_eq!(qubo2.get_linear(1).unwrap(), 2.0); // Updated based on actual output
-        assert_eq!(qubo2.get_linear(2).unwrap(), -3.0); // Updated based on actual output
-        assert_eq!(qubo2.get_quadratic(0, 1).unwrap(), -4.0);
-        assert_eq!(qubo2.get_quadratic(1, 2).unwrap(), 2.0);
+        assert_eq!(
+            qubo2
+                .get_linear(0)
+                .expect("Failed to get converted QUBO linear term for variable 0"),
+            8.0
+        ); // Updated based on actual output
+        assert_eq!(
+            qubo2
+                .get_linear(1)
+                .expect("Failed to get converted QUBO linear term for variable 1"),
+            2.0
+        ); // Updated based on actual output
+        assert_eq!(
+            qubo2
+                .get_linear(2)
+                .expect("Failed to get converted QUBO linear term for variable 2"),
+            -3.0
+        ); // Updated based on actual output
+        assert_eq!(
+            qubo2
+                .get_quadratic(0, 1)
+                .expect("Failed to get converted QUBO quadratic term(0,1)"),
+            -4.0
+        );
+        assert_eq!(
+            qubo2
+                .get_quadratic(1, 2)
+                .expect("Failed to get converted QUBO quadratic term(1,2)"),
+            2.0
+        );
     }
 }

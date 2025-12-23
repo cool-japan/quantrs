@@ -3,10 +3,10 @@
 //! This example demonstrates how to use quantum few-shot learning algorithms
 //! to learn from very limited training examples.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -29,17 +29,19 @@ fn main() -> Result<()> {
 
             // Create class-specific patterns
             for feat in 0..num_features {
-                data[[idx, feat]] =
-                    (class_id as f64 * 0.5 + feat as f64 * 0.3 + sample_idx as f64 * 0.1).sin()
-                        + 0.1 * (2.0 * thread_rng().gen::<f64>() - 1.0);
+                data[[idx, feat]] = 0.1f64.mul_add(
+                    2.0f64.mul_add(thread_rng().gen::<f64>(), -1.0),
+                    (sample_idx as f64)
+                        .mul_add(0.1, (class_id as f64).mul_add(0.5, feat as f64 * 0.3))
+                        .sin(),
+                );
             }
             labels[idx] = class_id;
         }
     }
 
     println!(
-        "   Dataset created: {} samples, {} features, {} classes",
-        total_samples, num_features, num_classes
+        "   Dataset created: {total_samples} samples, {num_features} features, {num_classes} classes"
     );
 
     // Step 2: Create quantum model for few-shot learning
@@ -72,7 +74,7 @@ fn main() -> Result<()> {
 
     // Step 4: Compare performance across different shot values
     println!("\n4. Performance comparison across different K-shot values:");
-    compare_shot_performance(&data, &labels, qnn.clone())?;
+    compare_shot_performance(&data, &labels, qnn)?;
 
     println!("\n=== Few-Shot Learning Demo Complete ===");
 
@@ -166,7 +168,7 @@ fn compare_shot_performance(
     let k_values = vec![1, 3, 5, 10];
 
     for k in k_values {
-        println!("\n   Testing {}-shot learning:", k);
+        println!("\n   Testing {k}-shot learning:");
 
         let mut learner = FewShotLearner::new(FewShotMethod::PrototypicalNetworks, qnn.clone());
 

@@ -29,7 +29,7 @@ fn run_text_classification() -> Result<()> {
     let embedding_dim = 16;
     let embedding_strategy = EmbeddingStrategy::from(64); // Was max_seq_length before
 
-    println!("Creating quantum language model with {} qubits", num_qubits);
+    println!("Creating quantum language model with {num_qubits} qubits");
     let mut model = QuantumLanguageModel::new(
         num_qubits,
         embedding_dim,
@@ -61,7 +61,7 @@ fn run_text_classification() -> Result<()> {
     // Build vocabulary
     println!("Building vocabulary from training texts...");
     let vocab_size = model.build_vocabulary(&training_texts)?;
-    println!("Vocabulary size: {}", vocab_size);
+    println!("Vocabulary size: {vocab_size}");
 
     // Train embeddings
     println!("Training word embeddings...");
@@ -86,11 +86,8 @@ fn run_text_classification() -> Result<()> {
         let start = Instant::now();
         let (category, confidence) = model.classify(text)?;
 
-        println!("Text: \"{}\"", text);
-        println!(
-            "Classification: {} (confidence: {:.2})",
-            category, confidence
-        );
+        println!("Text: \"{text}\"");
+        println!("Classification: {category} (confidence: {confidence:.2})");
         println!("Classification time: {:.2?}\n", start.elapsed());
     }
 
@@ -103,10 +100,7 @@ fn run_sentiment_analysis() -> Result<()> {
 
     // Create sentiment analyzer
     let num_qubits = 6;
-    println!(
-        "Creating quantum sentiment analyzer with {} qubits",
-        num_qubits
-    );
+    println!("Creating quantum sentiment analyzer with {num_qubits} qubits");
     let analyzer = quantrs2_ml::nlp::SentimentAnalyzer::new(num_qubits)?;
 
     // Test sentiment analysis
@@ -122,8 +116,8 @@ fn run_sentiment_analysis() -> Result<()> {
         let start = Instant::now();
         let (sentiment, confidence) = analyzer.analyze(text)?;
 
-        println!("Text: \"{}\"", text);
-        println!("Sentiment: {} (confidence: {:.2})", sentiment, confidence);
+        println!("Text: \"{text}\"");
+        println!("Sentiment: {sentiment} (confidence: {confidence:.2})");
         println!("Analysis time: {:.2?}\n", start.elapsed());
     }
 
@@ -136,17 +130,14 @@ fn run_text_summarization() -> Result<()> {
 
     // Create text summarizer
     let num_qubits = 8;
-    println!(
-        "Creating quantum text summarizer with {} qubits",
-        num_qubits
-    );
+    println!("Creating quantum text summarizer with {num_qubits} qubits");
     let summarizer = quantrs2_ml::nlp::TextSummarizer::new(num_qubits)?;
 
     // Text to summarize
     let long_text = "Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers. While traditional computers use bits as the smallest unit of data, quantum computers use quantum bits or qubits. Qubits can represent numerous possible combinations of 1 and 0 at the same time through a property called superposition. This allows quantum computers to consider and manipulate many combinations of information simultaneously, making them well suited to specific types of complex calculations. Another key property of quantum computing is entanglement, which allows qubits that are separated by great distances to still be connected. Changing the state of one entangled qubit will instantaneously change the state of its partner regardless of how far apart they are. Quantum computers excel at solving certain types of problems, such as factoring very large numbers, searching unsorted databases, and simulating quantum systems like molecules for drug development. However, they are not expected to replace classical computers for most everyday tasks. Major technology companies including IBM, Google, Microsoft, Amazon, and several startups are racing to build practical quantum computers. In 2019, Google claimed to have achieved quantum supremacy, performing a calculation that would be practically impossible for a classical computer. While current quantum computers are still limited by high error rates and the need for extreme cooling, they represent one of the most promising frontier technologies of the 21st century.";
 
     println!("\nOriginal text ({} characters):", long_text.len());
-    println!("{}\n", long_text);
+    println!("{long_text}\n");
 
     // Generate summary
     println!("Generating quantum summary...");
@@ -155,11 +146,11 @@ fn run_text_summarization() -> Result<()> {
     println!("Summarization completed in {:.2?}", start.elapsed());
 
     println!("\nSummary ({} characters):", summary.len());
-    println!("{}", summary);
+    println!("{summary}");
 
     // Calculate compression ratio
     let compression = 100.0 * (1.0 - (summary.len() as f64) / (long_text.len() as f64));
-    println!("\nCompression ratio: {:.1}%", compression);
+    println!("\nCompression ratio: {compression:.1}%");
 
     Ok(())
 }

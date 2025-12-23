@@ -116,6 +116,6 @@ pub type Result<T> = std::result::Result<T, SimulatorError>;
 
 impl From<scirs2_core::ndarray::ShapeError> for SimulatorError {
     fn from(err: scirs2_core::ndarray::ShapeError) -> Self {
-        SimulatorError::DimensionMismatch(err.to_string())
+        Self::DimensionMismatch(err.to_string())
     }
 }

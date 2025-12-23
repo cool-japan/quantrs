@@ -232,7 +232,7 @@ pub enum EvaluationMetric {
     Custom { name: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SelectionConstraints {
     /// Minimum features
     pub min_features: Option<usize>,
@@ -312,7 +312,7 @@ impl QuantumFeatureSelector {
 
         // Create variable mapping
         for (i, _name) in self.features.feature_names.iter().enumerate() {
-            var_map.insert(format!("feature_{}", i), i);
+            var_map.insert(format!("feature_{i}"), i);
         }
 
         // Add objective based on method
@@ -412,11 +412,7 @@ impl QuantumFeatureSelector {
 
         // Compute joint and marginal probabilities
         let mut joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
-        for (_i, (f, t)) in feature_discrete
-            .iter()
-            .zip(target_discrete.iter())
-            .enumerate()
-        {
+        for (f, t) in feature_discrete.iter().zip(target_discrete.iter()) {
             joint_counts[[*f, *t]] += 1.0;
         }
 
@@ -672,8 +668,8 @@ impl QuantumFeatureSelector {
         }
 
         // Bonus for selecting from different groups
-        for (_, group1) in &type_groups {
-            for (_, group2) in &type_groups {
+        for group1 in type_groups.values() {
+            for group2 in type_groups.values() {
                 if group1 != group2 {
                     for &i in group1 {
                         for &j in group2 {
@@ -736,7 +732,7 @@ impl QuantumFeatureSelector {
         let mut selected_names = Vec::new();
 
         for (i, name) in self.features.feature_names.iter().enumerate() {
-            let var_name = format!("feature_{}", i);
+            let var_name = format!("feature_{i}");
             if *solution.get(&var_name).unwrap_or(&false) {
                 selected_indices.push(i);
                 selected_names.push(name.clone());
@@ -746,8 +742,8 @@ impl QuantumFeatureSelector {
         SelectedFeatures {
             indices: selected_indices,
             names: selected_names,
-            performance_estimate: self.estimate_performance(&solution),
-            importance_scores: self.calculate_importance_scores(&solution),
+            performance_estimate: self.estimate_performance(solution),
+            importance_scores: self.calculate_importance_scores(solution),
         }
     }
 
@@ -758,7 +754,7 @@ impl QuantumFeatureSelector {
         let mut count = 0;
 
         for (i, _) in self.features.feature_names.iter().enumerate() {
-            let var_name = format!("feature_{}", i);
+            let var_name = format!("feature_{i}");
             if *solution.get(&var_name).unwrap_or(&false) {
                 total_score += self.features.statistics.target_correlations[i].abs();
                 count += 1;
@@ -780,7 +776,7 @@ impl QuantumFeatureSelector {
         let mut scores = HashMap::new();
 
         for (i, name) in self.features.feature_names.iter().enumerate() {
-            let var_name = format!("feature_{}", i);
+            let var_name = format!("feature_{i}");
             if *solution.get(&var_name).unwrap_or(&false) {
                 let score = self.features.statistics.target_correlations[i].abs();
                 scores.insert(name.clone(), score);
@@ -788,20 +784,6 @@ impl QuantumFeatureSelector {
         }
 
         scores
-    }
-}
-
-impl Default for SelectionConstraints {
-    fn default() -> Self {
-        Self {
-            min_features: None,
-            max_features: None,
-            must_include: Vec::new(),
-            must_exclude: Vec::new(),
-            feature_groups: Vec::new(),
-            feature_costs: None,
-            max_cost: None,
-        }
     }
 }
 
@@ -1011,7 +993,7 @@ impl HyperparameterOptimizer {
         // Create variables for each parameter value combination
         for (param_idx, param_name) in discretized.parameters.iter().enumerate() {
             for (value_idx, _) in discretized.grid_points[param_idx].iter().enumerate() {
-                let var_name = format!("param_{}_{}", param_name, value_idx);
+                let var_name = format!("param_{param_name}_{value_idx}");
                 var_map.insert(var_name, var_idx);
                 var_idx += 1;
             }

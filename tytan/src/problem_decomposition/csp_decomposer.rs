@@ -23,7 +23,7 @@ impl Default for ConstraintSatisfactionDecomposer {
 
 impl ConstraintSatisfactionDecomposer {
     /// Create new CSP decomposer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             strategy: CSPDecompositionStrategy::TreeDecomposition,
             variable_ordering: VariableOrderingHeuristic::MinWidth,
@@ -33,13 +33,13 @@ impl ConstraintSatisfactionDecomposer {
     }
 
     /// Set decomposition strategy
-    pub fn with_strategy(mut self, strategy: CSPDecompositionStrategy) -> Self {
+    pub const fn with_strategy(mut self, strategy: CSPDecompositionStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     /// Set variable ordering heuristic
-    pub fn with_variable_ordering(mut self, ordering: VariableOrderingHeuristic) -> Self {
+    pub const fn with_variable_ordering(mut self, ordering: VariableOrderingHeuristic) -> Self {
         self.variable_ordering = ordering;
         self
     }
@@ -158,7 +158,7 @@ impl ConstraintSatisfactionDecomposer {
             }
 
             // Connect neighbors (make clique)
-            let bag_vars: Vec<_> = bag_indices.iter().cloned().collect();
+            let bag_vars: Vec<_> = bag_indices.iter().copied().collect();
             for i in 0..bag_vars.len() {
                 for j in i + 1..bag_vars.len() {
                     let var_i = bag_vars[i];
@@ -223,10 +223,9 @@ impl ConstraintSatisfactionDecomposer {
             let mut best_var = 0;
 
             for &var in &remaining {
-                let degree = adjacency
-                    .get(&var)
-                    .map(|adj| adj.iter().filter(|&&v| remaining.contains(&v)).count())
-                    .unwrap_or(0);
+                let degree = adjacency.get(&var).map_or(0, |adj| {
+                    adj.iter().filter(|&&v| remaining.contains(&v)).count()
+                });
 
                 if degree < min_degree {
                     min_degree = degree;
@@ -242,7 +241,7 @@ impl ConstraintSatisfactionDecomposer {
                 let active_neighbors: Vec<_> = neighbors
                     .iter()
                     .filter(|&&v| remaining.contains(&v))
-                    .cloned()
+                    .copied()
                     .collect();
 
                 for i in 0..active_neighbors.len() {
@@ -321,7 +320,7 @@ impl ConstraintSatisfactionDecomposer {
                 let active_neighbors: Vec<_> = neighbors
                     .iter()
                     .filter(|&&v| remaining.contains(&v))
-                    .cloned()
+                    .copied()
                     .collect();
 
                 for i in 0..active_neighbors.len() {
@@ -350,7 +349,7 @@ impl ConstraintSatisfactionDecomposer {
             .map(|adj| {
                 adj.iter()
                     .filter(|&&v| remaining.contains(&v))
-                    .cloned()
+                    .copied()
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
@@ -364,8 +363,7 @@ impl ConstraintSatisfactionDecomposer {
                 // Check if edge already exists
                 if !adjacency
                     .get(&var_i)
-                    .map(|adj| adj.contains(&var_j))
-                    .unwrap_or(false)
+                    .is_some_and(|adj| adj.contains(&var_j))
                 {
                     fill_in_count += 1;
                 }

@@ -64,31 +64,31 @@ impl PathOptimizer {
     }
 
     /// Set the maximum optimization time
-    pub fn with_max_time(mut self, time: Duration) -> Self {
+    pub const fn with_max_time(mut self, time: Duration) -> Self {
         self.max_optimization_time = time;
         self
     }
 
     /// Set the contraction method
-    pub fn with_method(mut self, method: ContractionOptMethod) -> Self {
+    pub const fn with_method(mut self, method: ContractionOptMethod) -> Self {
         self.method = method;
         self
     }
 
     /// Set the maximum number of slices
-    pub fn with_max_slices(mut self, slices: usize) -> Self {
+    pub const fn with_max_slices(mut self, slices: usize) -> Self {
         self.max_slices = slices;
         self
     }
 
     /// Set the maximum bond dimension
-    pub fn with_max_bond_dimension(mut self, dim: usize) -> Self {
+    pub const fn with_max_bond_dimension(mut self, dim: usize) -> Self {
         self.max_bond_dimension = dim;
         self
     }
 
     /// Enable or disable memory estimation
-    pub fn with_memory_estimates(mut self, use_estimates: bool) -> Self {
+    pub const fn with_memory_estimates(mut self, use_estimates: bool) -> Self {
         self.use_memory_estimates = use_estimates;
         self
     }
@@ -137,7 +137,7 @@ impl PathOptimizer {
         }
 
         // Set up for greedy algorithm
-        let mut remaining_tensors: HashSet<usize> = tensors.keys().cloned().collect();
+        let mut remaining_tensors: HashSet<usize> = tensors.keys().copied().collect();
         let mut steps = Vec::new();
         let mut total_cost = 0.0;
 
@@ -228,8 +228,8 @@ impl PathOptimizer {
             } else {
                 // No connected pairs left, just contract any two
                 if remaining_tensors.len() >= 2 {
-                    let mut ids: Vec<_> = remaining_tensors.iter().cloned().collect();
-                    ids.sort();
+                    let mut ids: Vec<_> = remaining_tensors.iter().copied().collect();
+                    ids.sort_unstable();
                     let t1 = ids[0];
                     let t2 = ids[1];
 
@@ -316,6 +316,12 @@ pub struct OptimizedTensorNetwork {
     optimizer: PathOptimizer,
 }
 
+impl Default for OptimizedTensorNetwork {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OptimizedTensorNetwork {
     /// Create a new optimized tensor network
     pub fn new() -> Self {
@@ -328,7 +334,7 @@ impl OptimizedTensorNetwork {
     }
 
     /// Set the path optimization method
-    pub fn with_optimization_method(mut self, method: ContractionOptMethod) -> Self {
+    pub const fn with_optimization_method(mut self, method: ContractionOptMethod) -> Self {
         self.optimizer = self.optimizer.with_method(method);
         self
     }
@@ -378,11 +384,11 @@ impl OptimizedTensorNetwork {
         for (id1, id2) in path.steps() {
             // Find the tensors to contract
             let tensor1 = working_tensors.remove(id1).ok_or_else(|| {
-                QuantRS2Error::CircuitValidationFailed(format!("Tensor with ID {} not found", id1))
+                QuantRS2Error::CircuitValidationFailed(format!("Tensor with ID {id1} not found"))
             })?;
 
             let tensor2 = working_tensors.remove(id2).ok_or_else(|| {
-                QuantRS2Error::CircuitValidationFailed(format!("Tensor with ID {} not found", id2))
+                QuantRS2Error::CircuitValidationFailed(format!("Tensor with ID {id2} not found"))
             })?;
 
             // Find the shared indices to contract over
@@ -431,7 +437,7 @@ fn count_common_indices(
 }
 
 /// Helper function to estimate the size of a tensor after contraction
-fn estimate_contraction_size(size1: usize, size2: usize, common_indices: usize) -> usize {
+const fn estimate_contraction_size(size1: usize, size2: usize, common_indices: usize) -> usize {
     // This is a simplified estimate
     // In a real implementation, we would use the actual tensor dimensions
     let common_dim = 2usize.pow(common_indices as u32);
@@ -485,7 +491,11 @@ pub struct ContractionPlan {
 
 impl ContractionPlan {
     /// Create a new contraction plan
-    pub fn new(pairs: Vec<(usize, usize)>, flop_estimate: f64, memory_estimate: usize) -> Self {
+    pub const fn new(
+        pairs: Vec<(usize, usize)>,
+        flop_estimate: f64,
+        memory_estimate: usize,
+    ) -> Self {
         Self {
             pairs,
             flop_estimate,
@@ -499,12 +509,12 @@ impl ContractionPlan {
     }
 
     /// Get the estimated computational cost
-    pub fn flop_estimate(&self) -> f64 {
+    pub const fn flop_estimate(&self) -> f64 {
         self.flop_estimate
     }
 
     /// Get the estimated peak memory usage
-    pub fn memory_estimate(&self) -> usize {
+    pub const fn memory_estimate(&self) -> usize {
         self.memory_estimate
     }
 }
@@ -613,7 +623,7 @@ pub fn generate_contraction_plan(
         }
 
         // Simulate the contractions to get the current state
-        let mut remaining = tensors.keys().cloned().collect::<HashSet<_>>();
+        let mut remaining = tensors.keys().copied().collect::<HashSet<_>>();
         let mut current_graph = tensor_graph.clone();
         let mut current_sizes = tensor_sizes.clone();
 

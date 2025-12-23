@@ -167,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 9: Try advanced gradient-based optimization
     println!("\n9. Applying gradient-based penalty optimization...");
-    let mut advanced_optimizer = AdvancedPenaltyOptimizer::new(penalty_config.clone());
+    let mut advanced_optimizer = AdvancedPenaltyOptimizer::new(penalty_config);
     let advanced_stats = advanced_optimizer.optimize_with_gradients(
         &mut ising,
         &layout_embedding,
@@ -178,7 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Advanced optimization complete:");
     println!("   - Final chain strengths:");
     for (var, strength) in &advanced_stats.chain_strengths {
-        println!("     Variable {}: {:.3}", var, strength);
+        println!("     Variable {var}: {strength:.3}");
     }
 
     println!("\n=== Demo Complete ===");

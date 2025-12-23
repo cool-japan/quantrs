@@ -10,10 +10,11 @@ use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulat
 
 use super::config::*;
 use super::feature_extraction::*;
+use super::multi_objective::*;
 use super::neural_architecture_search::*;
 use super::portfolio_management::*;
-use super::multi_objective::*;
 use super::transfer_learning::*;
+use super::{AlternativeStrategy, MetaLearningStatistics, RecommendedStrategy};
 
 /// Main meta-learning optimization engine
 pub struct MetaLearningOptimizer {
@@ -39,77 +40,118 @@ impl MetaLearningOptimizer {
     pub fn new(config: MetaLearningConfig) -> Self {
         Self {
             experience_db: Arc::new(RwLock::new(ExperienceDatabase::new())),
-            feature_extractor: Arc::new(Mutex::new(FeatureExtractor::new(config.feature_config.clone()))),
+            feature_extractor: Arc::new(Mutex::new(FeatureExtractor::new(
+                config.feature_config.clone(),
+            ))),
             meta_learner: Arc::new(Mutex::new(MetaLearner::new())),
-            nas_engine: Arc::new(Mutex::new(NeuralArchitectureSearch::new(config.nas_config.clone()))),
-            portfolio_manager: Arc::new(Mutex::new(AlgorithmPortfolio::new(config.portfolio_config.clone()))),
-            multi_objective_optimizer: Arc::new(Mutex::new(MultiObjectiveOptimizer::new(config.multi_objective_config.clone()))),
+            nas_engine: Arc::new(Mutex::new(NeuralArchitectureSearch::new(
+                config.nas_config.clone(),
+            ))),
+            portfolio_manager: Arc::new(Mutex::new(AlgorithmPortfolio::new(
+                config.portfolio_config.clone(),
+            ))),
+            multi_objective_optimizer: Arc::new(Mutex::new(MultiObjectiveOptimizer::new(
+                config.multi_objective_config.clone(),
+            ))),
             transfer_learner: Arc::new(Mutex::new(TransferLearner::new())),
             config,
         }
     }
 
     /// Recommend optimization strategy for a given problem
-    pub fn recommend_strategy(&mut self, problem: &IsingModel) -> ApplicationResult<RecommendedStrategy> {
+    pub fn recommend_strategy(
+        &mut self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<RecommendedStrategy> {
         // Extract problem features
         let features = {
-            let mut extractor = self.feature_extractor.lock().map_err(|_| ApplicationError::InternalError("Failed to lock feature extractor".to_string()))?;
+            let mut extractor = self.feature_extractor.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock feature extractor".to_string())
+            })?;
             extractor.extract_features(problem)?
         };
 
         // Find similar experiences
         let similar_experiences = {
-            let db = self.experience_db.read().map_err(|_| ApplicationError::InternalError("Failed to lock experience database".to_string()))?;
+            let db = self.experience_db.read().map_err(|_| {
+                ApplicationError::ConfigurationError(
+                    "Failed to lock experience database".to_string(),
+                )
+            })?;
             db.find_similar_experiences(&features, 10)?
         };
 
         // Apply transfer learning if enabled
         let transferred_knowledge = if self.config.enable_transfer_learning {
-            let mut transfer_learner = self.transfer_learner.lock().map_err(|_| ApplicationError::InternalError("Failed to lock transfer learner".to_string()))?;
+            let mut transfer_learner = self.transfer_learner.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock transfer learner".to_string())
+            })?;
             let domain = self.infer_problem_domain(&features);
-            transfer_learner.transfer_knowledge(&features, &domain).unwrap_or_default()
+            transfer_learner
+                .transfer_knowledge(&features, &domain)
+                .unwrap_or_default()
         } else {
             Vec::new()
         };
 
         // Get meta-learning recommendation
         let meta_recommendation = {
-            let mut meta_learner = self.meta_learner.lock().map_err(|_| ApplicationError::InternalError("Failed to lock meta learner".to_string()))?;
+            let mut meta_learner = self.meta_learner.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock meta learner".to_string())
+            })?;
             meta_learner.recommend_strategy(&features, &similar_experiences)?
         };
 
         // Select algorithm from portfolio
         let algorithm_id = {
-            let mut portfolio = self.portfolio_manager.lock().map_err(|_| ApplicationError::InternalError("Failed to lock portfolio manager".to_string()))?;
-            portfolio.select_algorithm(&features)?
+            let mut portfolio = self.portfolio_manager.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock portfolio manager".to_string())
+            })?;
+            portfolio
+                .select_algorithm(&features)
+                .map_err(|e| ApplicationError::ConfigurationError(e))?
         };
 
         // Get algorithm configuration
         let algorithm_config = {
-            let portfolio = self.portfolio_manager.lock().map_err(|_| ApplicationError::InternalError("Failed to lock portfolio manager".to_string()))?;
-            portfolio.algorithms.get(&algorithm_id)
+            let portfolio = self.portfolio_manager.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock portfolio manager".to_string())
+            })?;
+            portfolio
+                .algorithms
+                .get(&algorithm_id)
                 .map(|alg| alg.default_config.clone())
-                .ok_or_else(|| ApplicationError::InternalError("Algorithm not found in portfolio".to_string()))?
+                .ok_or_else(|| {
+                    ApplicationError::ConfigurationError(
+                        "Algorithm not found in portfolio".to_string(),
+                    )
+                })?
         };
 
         // Apply neural architecture search if needed
-        let optimized_config = if self.config.nas_config.enable_nas &&
-                                 algorithm_config.architecture.is_some() {
-            let mut nas = self.nas_engine.lock().map_err(|_| ApplicationError::InternalError("Failed to lock NAS engine".to_string()))?;
-            if let Ok(architecture_candidate) = nas.search_architecture(&features) {
-                let mut config = algorithm_config;
-                config.architecture = Some(architecture_candidate.architecture);
-                config
+        let optimized_config =
+            if self.config.nas_config.enable_nas && algorithm_config.architecture.is_some() {
+                let mut nas = self.nas_engine.lock().map_err(|_| {
+                    ApplicationError::ConfigurationError("Failed to lock NAS engine".to_string())
+                })?;
+                if let Ok(architecture_candidate) = nas.search_architecture(&features) {
+                    let mut config = algorithm_config;
+                    config.architecture = Some(architecture_candidate.architecture);
+                    config
+                } else {
+                    algorithm_config
+                }
             } else {
                 algorithm_config
-            }
-        } else {
-            algorithm_config
-        };
+            };
 
         // Apply multi-objective optimization if enabled
         let final_config = if self.config.multi_objective_config.enable_multi_objective {
-            let mut mo_optimizer = self.multi_objective_optimizer.lock().map_err(|_| ApplicationError::InternalError("Failed to lock multi-objective optimizer".to_string()))?;
+            let mut mo_optimizer = self.multi_objective_optimizer.lock().map_err(|_| {
+                ApplicationError::ConfigurationError(
+                    "Failed to lock multi-objective optimizer".to_string(),
+                )
+            })?;
             let candidates = vec![optimized_config.clone()];
             if let Ok(solutions) = mo_optimizer.optimize(candidates) {
                 if let Ok(best_solution) = mo_optimizer.make_decision(None) {
@@ -125,7 +167,7 @@ impl MetaLearningOptimizer {
         };
 
         // Combine recommendations and create final strategy
-        let mut final_hyperparameters = meta_recommendation.configuration.hyperparameters;
+        let mut final_hyperparameters = meta_recommendation.hyperparameters.clone();
 
         // Merge with transferred knowledge
         for model in &transferred_knowledge {
@@ -145,7 +187,8 @@ impl MetaLearningOptimizer {
         let recommended_strategy = RecommendedStrategy {
             algorithm: algorithm_id,
             hyperparameters: final_hyperparameters,
-            confidence: self.calculate_recommendation_confidence(&similar_experiences, &transferred_knowledge),
+            confidence: self
+                .calculate_recommendation_confidence(&similar_experiences, &transferred_knowledge),
             expected_performance: meta_recommendation.expected_performance,
             alternatives: self.generate_alternative_strategies(&features)?,
         };
@@ -154,22 +197,35 @@ impl MetaLearningOptimizer {
     }
 
     /// Record optimization experience for learning
-    pub fn record_experience(&mut self, experience: OptimizationExperience) -> ApplicationResult<()> {
+    pub fn record_experience(
+        &mut self,
+        experience: OptimizationExperience,
+    ) -> ApplicationResult<()> {
         // Add to experience database
         {
-            let mut db = self.experience_db.write().map_err(|_| ApplicationError::InternalError("Failed to lock experience database".to_string()))?;
+            let mut db = self.experience_db.write().map_err(|_| {
+                ApplicationError::ConfigurationError(
+                    "Failed to lock experience database".to_string(),
+                )
+            })?;
             db.add_experience(experience.clone());
         }
 
         // Update meta-learner
         {
-            let mut meta_learner = self.meta_learner.lock().map_err(|_| ApplicationError::InternalError("Failed to lock meta learner".to_string()))?;
+            let mut meta_learner = self.meta_learner.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock meta learner".to_string())
+            })?;
             meta_learner.add_training_episode(experience.clone())?;
         }
 
         // Update portfolio performance
-        if let Some(algorithm_name) = self.algorithm_type_to_name(&experience.configuration.algorithm) {
-            let mut portfolio = self.portfolio_manager.lock().map_err(|_| ApplicationError::InternalError("Failed to lock portfolio manager".to_string()))?;
+        if let Some(algorithm_name) =
+            self.algorithm_type_to_name(&experience.configuration.algorithm)
+        {
+            let mut portfolio = self.portfolio_manager.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock portfolio manager".to_string())
+            })?;
 
             let performance_record = PerformanceRecord {
                 timestamp: experience.timestamp,
@@ -185,10 +241,12 @@ impl MetaLearningOptimizer {
 
         // Update transfer learning
         if self.config.enable_transfer_learning {
-            let mut transfer_learner = self.transfer_learner.lock().map_err(|_| ApplicationError::InternalError("Failed to lock transfer learner".to_string()))?;
+            let mut transfer_learner = self.transfer_learner.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock transfer learner".to_string())
+            })?;
             let domain_characteristics = self.create_domain_characteristics(&experience);
             let source_domain = SourceDomain {
-                id: format!("domain_{}", experience.domain as u8),
+                id: format!("domain_{:?}", experience.domain),
                 characteristics: domain_characteristics,
                 experiences: vec![experience],
                 models: Vec::new(),
@@ -203,12 +261,18 @@ impl MetaLearningOptimizer {
     /// Get meta-learning statistics
     pub fn get_statistics(&self) -> ApplicationResult<MetaLearningStatistics> {
         let db_stats = {
-            let db = self.experience_db.read().map_err(|_| ApplicationError::InternalError("Failed to lock experience database".to_string()))?;
+            let db = self.experience_db.read().map_err(|_| {
+                ApplicationError::ConfigurationError(
+                    "Failed to lock experience database".to_string(),
+                )
+            })?;
             db.statistics.clone()
         };
 
         let transfer_success_rate = if self.config.enable_transfer_learning {
-            let transfer_learner = self.transfer_learner.lock().map_err(|_| ApplicationError::InternalError("Failed to lock transfer learner".to_string()))?;
+            let transfer_learner = self.transfer_learner.lock().map_err(|_| {
+                ApplicationError::ConfigurationError("Failed to lock transfer learner".to_string())
+            })?;
             transfer_learner.evaluate_transfer_success()
         } else {
             0.0
@@ -249,13 +313,20 @@ impl MetaLearningOptimizer {
         let transfer_confidence = if transferred_knowledge.is_empty() {
             0.0
         } else {
-            transferred_knowledge.iter().map(|m| m.confidence).sum::<f64>() / transferred_knowledge.len() as f64
+            transferred_knowledge
+                .iter()
+                .map(|m| m.confidence)
+                .sum::<f64>()
+                / transferred_knowledge.len() as f64
         };
 
         (experience_confidence + transfer_confidence * 0.3).min(1.0)
     }
 
-    fn generate_alternative_strategies(&self, features: &ProblemFeatures) -> ApplicationResult<Vec<AlternativeStrategy>> {
+    fn generate_alternative_strategies(
+        &self,
+        features: &ProblemFeatures,
+    ) -> ApplicationResult<Vec<AlternativeStrategy>> {
         let mut alternatives = Vec::new();
 
         // Generate alternatives based on problem size
@@ -289,7 +360,10 @@ impl MetaLearningOptimizer {
         }
     }
 
-    fn create_domain_characteristics(&self, experience: &OptimizationExperience) -> DomainCharacteristics {
+    fn create_domain_characteristics(
+        &self,
+        experience: &OptimizationExperience,
+    ) -> DomainCharacteristics {
         DomainCharacteristics {
             domain: experience.domain.clone(),
             avg_problem_size: experience.problem_features.size as f64,
@@ -327,14 +401,21 @@ impl MetaLearner {
             parameters: Vec::new(),
             training_history: VecDeque::new(),
             evaluator: PerformanceEvaluator {
-                metrics: vec![EvaluationMetric::MeanSquaredError, EvaluationMetric::Accuracy],
+                metrics: vec![
+                    EvaluationMetric::MeanSquaredError,
+                    EvaluationMetric::Accuracy,
+                ],
                 cv_strategy: CrossValidationStrategy::KFold(5),
                 statistical_tests: vec![StatisticalTest::TTest],
             },
         }
     }
 
-    pub fn recommend_strategy(&mut self, features: &ProblemFeatures, experiences: &[OptimizationExperience]) -> ApplicationResult<RecommendedStrategy> {
+    pub fn recommend_strategy(
+        &mut self,
+        features: &ProblemFeatures,
+        experiences: &[OptimizationExperience],
+    ) -> ApplicationResult<RecommendedStrategy> {
         // Simple strategy recommendation based on problem size
         let algorithm = if features.size < 100 {
             AlgorithmType::SimulatedAnnealing
@@ -348,14 +429,18 @@ impl MetaLearner {
 
         // Set hyperparameters based on experiences
         if !experiences.is_empty() {
-            let avg_initial_temp = experiences.iter()
+            let avg_initial_temp = experiences
+                .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("initial_temperature"))
-                .sum::<f64>() / experiences.len() as f64;
+                .sum::<f64>()
+                / experiences.len() as f64;
             hyperparameters.insert("initial_temperature".to_string(), avg_initial_temp.max(1.0));
 
-            let avg_final_temp = experiences.iter()
+            let avg_final_temp = experiences
+                .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("final_temperature"))
-                .sum::<f64>() / experiences.len() as f64;
+                .sum::<f64>()
+                / experiences.len() as f64;
             hyperparameters.insert("final_temperature".to_string(), avg_final_temp.max(0.01));
         } else {
             // Default hyperparameters
@@ -363,7 +448,10 @@ impl MetaLearner {
             hyperparameters.insert("final_temperature".to_string(), 0.1);
         }
 
-        hyperparameters.insert("num_sweeps".to_string(), (features.size as f64 * 10.0).min(10000.0));
+        hyperparameters.insert(
+            "num_sweeps".to_string(),
+            (features.size as f64 * 10.0).min(10000.0),
+        );
 
         let configuration = OptimizationConfiguration {
             algorithm,
@@ -388,7 +476,10 @@ impl MetaLearner {
         })
     }
 
-    pub fn add_training_episode(&mut self, experience: OptimizationExperience) -> ApplicationResult<()> {
+    pub fn add_training_episode(
+        &mut self,
+        experience: OptimizationExperience,
+    ) -> ApplicationResult<()> {
         let episode = TrainingEpisode {
             id: experience.id.clone(),
             support_set: vec![experience.clone()],

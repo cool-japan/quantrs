@@ -81,13 +81,13 @@ impl CachedData {
     /// Estimate memory usage of cached data
     pub fn estimate_size(&self) -> usize {
         match self {
-            CachedData::SingleQubitMatrix(_) => 4 * std::mem::size_of::<Complex64>(),
-            CachedData::TwoQubitMatrix(_) => 16 * std::mem::size_of::<Complex64>(),
-            CachedData::Matrix(m) => m.len() * std::mem::size_of::<Complex64>(),
-            CachedData::StateVector(v) => v.len() * std::mem::size_of::<Complex64>(),
-            CachedData::ExpectationValue(_) => std::mem::size_of::<Complex64>(),
-            CachedData::Probabilities(p) => p.len() * std::mem::size_of::<f64>(),
-            CachedData::Custom(data) => data.len(),
+            Self::SingleQubitMatrix(_) => 4 * std::mem::size_of::<Complex64>(),
+            Self::TwoQubitMatrix(_) => 16 * std::mem::size_of::<Complex64>(),
+            Self::Matrix(m) => m.len() * std::mem::size_of::<Complex64>(),
+            Self::StateVector(v) => v.len() * std::mem::size_of::<Complex64>(),
+            Self::ExpectationValue(_) => std::mem::size_of::<Complex64>(),
+            Self::Probabilities(p) => p.len() * std::mem::size_of::<f64>(),
+            Self::Custom(data) => data.len(),
         }
     }
 }
@@ -180,8 +180,9 @@ impl CacheStats {
         }
 
         // Update average access time
-        let total_time =
-            self.average_access_time_ns * (self.total_requests - 1) as f64 + access_time_ns as f64;
+        let total_time = self
+            .average_access_time_ns
+            .mul_add((self.total_requests - 1) as f64, access_time_ns as f64);
         self.average_access_time_ns = total_time / self.total_requests as f64;
 
         // Update efficiency by operation type
@@ -191,9 +192,9 @@ impl CacheStats {
             .or_insert(0.0);
         // Simplified efficiency calculation
         if hit {
-            *type_stats = (*type_stats + 1.0) / 2.0;
+            *type_stats = f64::midpoint(*type_stats, 1.0);
         } else {
-            *type_stats = *type_stats / 2.0;
+            *type_stats /= 2.0;
         }
     }
 }
@@ -514,7 +515,7 @@ impl QuantumOperationCache {
     }
 
     /// Get cache configuration
-    pub fn get_config(&self) -> &CacheConfig {
+    pub const fn get_config(&self) -> &CacheConfig {
         &self.config
     }
 }
@@ -523,6 +524,12 @@ impl QuantumOperationCache {
 pub struct GateMatrixCache {
     /// Internal operation cache
     cache: QuantumOperationCache,
+}
+
+impl Default for GateMatrixCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GateMatrixCache {
@@ -549,7 +556,7 @@ impl GateMatrixCache {
         parameters: &[f64],
     ) -> Option<Array2<Complex64>> {
         let key = OperationKey {
-            operation_type: format!("single_qubit_{}", gate_name),
+            operation_type: format!("single_qubit_{gate_name}"),
             parameters: parameters.to_vec(),
             qubits: vec![],
             metadata: HashMap::new(),
@@ -570,7 +577,7 @@ impl GateMatrixCache {
         matrix: Array2<Complex64>,
     ) {
         let key = OperationKey {
-            operation_type: format!("single_qubit_{}", gate_name),
+            operation_type: format!("single_qubit_{gate_name}"),
             parameters: parameters.to_vec(),
             qubits: vec![],
             metadata: HashMap::new(),
@@ -586,7 +593,7 @@ impl GateMatrixCache {
         parameters: &[f64],
     ) -> Option<Array2<Complex64>> {
         let key = OperationKey {
-            operation_type: format!("two_qubit_{}", gate_name),
+            operation_type: format!("two_qubit_{gate_name}"),
             parameters: parameters.to_vec(),
             qubits: vec![],
             metadata: HashMap::new(),
@@ -607,7 +614,7 @@ impl GateMatrixCache {
         matrix: Array2<Complex64>,
     ) {
         let key = OperationKey {
-            operation_type: format!("two_qubit_{}", gate_name),
+            operation_type: format!("two_qubit_{gate_name}"),
             parameters: parameters.to_vec(),
             qubits: vec![],
             metadata: HashMap::new(),
@@ -692,7 +699,7 @@ mod tests {
         // Fill cache to capacity
         for i in 0..3 {
             let key = OperationKey {
-                operation_type: format!("test_{}", i),
+                operation_type: format!("test_{i}"),
                 parameters: vec![i as f64],
                 qubits: vec![i],
                 metadata: HashMap::new(),

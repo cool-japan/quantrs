@@ -14,7 +14,8 @@ use crate::parallel_ops_stubs::*;
 use crate::buffer_pool::BufferPool;
 use crate::platform::PlatformCapabilities;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
-use ndarray_linalg::{Eigh, Norm, SVD};
+// For complex matrices, use ndarray-linalg traits via scirs2_core (SciRS2 POLICY)
+use scirs2_core::ndarray::ndarray_linalg::{Eigh, Norm, SVD, UPLO};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, Mutex};

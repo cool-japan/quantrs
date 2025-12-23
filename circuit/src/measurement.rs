@@ -26,7 +26,8 @@ pub struct Measurement {
 
 impl Measurement {
     /// Create a new measurement operation
-    pub fn new(qubit: QubitId, target_bit: usize) -> Self {
+    #[must_use]
+    pub const fn new(qubit: QubitId, target_bit: usize) -> Self {
         Self {
             qubit,
             target_bit,
@@ -35,6 +36,7 @@ impl Measurement {
     }
 
     /// Add a label to the measurement
+    #[must_use]
     pub fn with_label(mut self, label: String) -> Self {
         self.label = Some(label);
         self
@@ -54,6 +56,7 @@ pub struct FeedForward {
 
 impl FeedForward {
     /// Create a new feed-forward operation
+    #[must_use]
     pub fn new(condition: ClassicalCondition, gate: Box<dyn GateOp>) -> Self {
         Self {
             condition,
@@ -63,6 +66,7 @@ impl FeedForward {
     }
 
     /// Add an else gate to apply if condition is not met
+    #[must_use]
     pub fn with_else(mut self, else_gate: Box<dyn GateOp>) -> Self {
         self.else_gate = Some(else_gate);
         self
@@ -96,8 +100,15 @@ pub struct MeasurementCircuit<const N: usize> {
     current_bit: usize,
 }
 
+impl<const N: usize> Default for MeasurementCircuit<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> MeasurementCircuit<N> {
     /// Create a new measurement-enabled circuit
+    #[must_use]
     pub fn new() -> Self {
         let mut classical_registers = HashMap::new();
         classical_registers.insert(
@@ -213,16 +224,19 @@ impl<const N: usize> MeasurementCircuit<N> {
     }
 
     /// Get the number of operations
+    #[must_use]
     pub fn num_operations(&self) -> usize {
         self.operations.len()
     }
 
     /// Get the number of measurements
-    pub fn num_measurements(&self) -> usize {
+    #[must_use]
+    pub const fn num_measurements(&self) -> usize {
         self.measurement_count
     }
 
     /// Get all operations
+    #[must_use]
     pub fn operations(&self) -> &[CircuitOp] {
         &self.operations
     }
@@ -258,6 +272,7 @@ impl<const N: usize> MeasurementCircuit<N> {
     }
 
     /// Analyze the circuit for measurement dependencies
+    #[must_use]
     pub fn analyze_dependencies(&self) -> MeasurementDependencies {
         let mut deps = MeasurementDependencies::new();
         let mut measurement_map = HashMap::new();
@@ -291,12 +306,12 @@ impl<const N: usize> MeasurementCircuit<N> {
 pub struct MeasurementDependencies {
     /// List of (index, measurement) pairs
     pub measurements: Vec<(usize, Measurement)>,
-    /// List of (measurement_index, feedforward_index) dependencies
+    /// List of (`measurement_index`, `feedforward_index`) dependencies
     pub feed_forward_deps: Vec<(usize, usize)>,
 }
 
 impl MeasurementDependencies {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             measurements: Vec::new(),
             feed_forward_deps: Vec::new(),
@@ -304,11 +319,13 @@ impl MeasurementDependencies {
     }
 
     /// Check if there are any feed-forward operations
+    #[must_use]
     pub fn has_feed_forward(&self) -> bool {
         !self.feed_forward_deps.is_empty()
     }
 
     /// Get the number of measurements
+    #[must_use]
     pub fn num_measurements(&self) -> usize {
         self.measurements.len()
     }
@@ -319,8 +336,15 @@ pub struct MeasurementCircuitBuilder<const N: usize> {
     circuit: MeasurementCircuit<N>,
 }
 
+impl<const N: usize> Default for MeasurementCircuitBuilder<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> MeasurementCircuitBuilder<N> {
     /// Create a new builder
+    #[must_use]
     pub fn new() -> Self {
         Self {
             circuit: MeasurementCircuit::new(),
@@ -373,6 +397,7 @@ impl<const N: usize> MeasurementCircuitBuilder<N> {
     }
 
     /// Build the circuit
+    #[must_use]
     pub fn build(self) -> MeasurementCircuit<N> {
         self.circuit
     }

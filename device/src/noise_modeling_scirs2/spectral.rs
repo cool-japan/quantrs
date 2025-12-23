@@ -5,9 +5,9 @@
 
 use crate::{DeviceError, DeviceResult};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use std::collections::HashMap;
-use scirs2_core::random::prelude::*;
 
 /// Spectral noise analysis result
 #[derive(Debug, Clone)]

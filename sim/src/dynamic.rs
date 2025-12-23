@@ -1,6 +1,7 @@
 use crate::simulator::Simulator; // Local simulator trait
-use scirs2_core::Complex64;
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
+#[cfg(feature = "python")]
 use pyo3::PyResult;
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator; // Circuit simulator trait
@@ -8,6 +9,7 @@ use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
 };
+use scirs2_core::Complex64;
 
 // Unused imports
 #[allow(unused_imports)]
@@ -57,20 +59,20 @@ impl DynamicCircuit {
     /// Create a new dynamic circuit with the specified number of qubits
     pub fn new(n_qubits: usize) -> QuantRS2Result<Self> {
         match n_qubits {
-            2 => Ok(DynamicCircuit::Q2(Circuit::<2>::new())),
-            3 => Ok(DynamicCircuit::Q3(Circuit::<3>::new())),
-            4 => Ok(DynamicCircuit::Q4(Circuit::<4>::new())),
-            5 => Ok(DynamicCircuit::Q5(Circuit::<5>::new())),
-            6 => Ok(DynamicCircuit::Q6(Circuit::<6>::new())),
-            7 => Ok(DynamicCircuit::Q7(Circuit::<7>::new())),
-            8 => Ok(DynamicCircuit::Q8(Circuit::<8>::new())),
-            9 => Ok(DynamicCircuit::Q9(Circuit::<9>::new())),
-            10 => Ok(DynamicCircuit::Q10(Circuit::<10>::new())),
-            12 => Ok(DynamicCircuit::Q12(Circuit::<12>::new())),
-            16 => Ok(DynamicCircuit::Q16(Circuit::<16>::new())),
-            20 => Ok(DynamicCircuit::Q20(Circuit::<20>::new())),
-            24 => Ok(DynamicCircuit::Q24(Circuit::<24>::new())),
-            32 => Ok(DynamicCircuit::Q32(Circuit::<32>::new())),
+            2 => Ok(Self::Q2(Circuit::<2>::new())),
+            3 => Ok(Self::Q3(Circuit::<3>::new())),
+            4 => Ok(Self::Q4(Circuit::<4>::new())),
+            5 => Ok(Self::Q5(Circuit::<5>::new())),
+            6 => Ok(Self::Q6(Circuit::<6>::new())),
+            7 => Ok(Self::Q7(Circuit::<7>::new())),
+            8 => Ok(Self::Q8(Circuit::<8>::new())),
+            9 => Ok(Self::Q9(Circuit::<9>::new())),
+            10 => Ok(Self::Q10(Circuit::<10>::new())),
+            12 => Ok(Self::Q12(Circuit::<12>::new())),
+            16 => Ok(Self::Q16(Circuit::<16>::new())),
+            20 => Ok(Self::Q20(Circuit::<20>::new())),
+            24 => Ok(Self::Q24(Circuit::<24>::new())),
+            32 => Ok(Self::Q32(Circuit::<32>::new())),
             _ => Err(QuantRS2Error::UnsupportedQubits(
                 n_qubits,
                 "Supported qubit counts are 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 20, 24, and 32."
@@ -95,94 +97,94 @@ impl DynamicCircuit {
     // This method is duplicated later in the file, removing it here
 
     /// Get the number of qubits in the circuit
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         match self {
-            DynamicCircuit::Q2(_) => 2,
-            DynamicCircuit::Q3(_) => 3,
-            DynamicCircuit::Q4(_) => 4,
-            DynamicCircuit::Q5(_) => 5,
-            DynamicCircuit::Q6(_) => 6,
-            DynamicCircuit::Q7(_) => 7,
-            DynamicCircuit::Q8(_) => 8,
-            DynamicCircuit::Q9(_) => 9,
-            DynamicCircuit::Q10(_) => 10,
-            DynamicCircuit::Q12(_) => 12,
-            DynamicCircuit::Q16(_) => 16,
-            DynamicCircuit::Q20(_) => 20,
-            DynamicCircuit::Q24(_) => 24,
-            DynamicCircuit::Q32(_) => 32,
+            Self::Q2(_) => 2,
+            Self::Q3(_) => 3,
+            Self::Q4(_) => 4,
+            Self::Q5(_) => 5,
+            Self::Q6(_) => 6,
+            Self::Q7(_) => 7,
+            Self::Q8(_) => 8,
+            Self::Q9(_) => 9,
+            Self::Q10(_) => 10,
+            Self::Q12(_) => 12,
+            Self::Q16(_) => 16,
+            Self::Q20(_) => 20,
+            Self::Q24(_) => 24,
+            Self::Q32(_) => 32,
         }
     }
 
     /// Get the gate names in the circuit
     pub fn get_gate_names(&self) -> Vec<String> {
         match self {
-            DynamicCircuit::Q2(c) => c
+            Self::Q2(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q3(c) => c
+            Self::Q3(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q4(c) => c
+            Self::Q4(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q5(c) => c
+            Self::Q5(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q6(c) => c
+            Self::Q6(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q7(c) => c
+            Self::Q7(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q8(c) => c
+            Self::Q8(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q9(c) => c
+            Self::Q9(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q10(c) => c
+            Self::Q10(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q12(c) => c
+            Self::Q12(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q16(c) => c
+            Self::Q16(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q20(c) => c
+            Self::Q20(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q24(c) => c
+            Self::Q24(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
                 .collect(),
-            DynamicCircuit::Q32(c) => c
+            Self::Q32(c) => c
                 .gates()
                 .iter()
                 .map(|gate| gate.name().to_string())
@@ -191,6 +193,7 @@ impl DynamicCircuit {
     }
 
     /// Get the qubit for single-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_single_qubit_for_gate(&self, gate_type: &str, index: usize) -> PyResult<u32> {
         // Placeholder for visualization - in a real implementation, we would track this information
         let gate_name = gate_type.to_string();
@@ -203,7 +206,7 @@ impl DynamicCircuit {
                 if count == index {
                     // Return a placeholder qubit ID - in a real implementation this would be accurate
                     match self {
-                        DynamicCircuit::Q2(c) => {
+                        Self::Q2(c) => {
                             if let Some(gate) = c.gates().get(i) {
                                 if gate.qubits().len() == 1 {
                                     return Ok(gate.qubits()[0].id());
@@ -219,12 +222,12 @@ impl DynamicCircuit {
         }
 
         Err(PyValueError::new_err(format!(
-            "Gate {} at index {} not found",
-            gate_type, index
+            "Gate {gate_type} at index {index} not found"
         )))
     }
 
     /// Get the parameters for a rotation gate
+    #[cfg(feature = "python")]
     pub fn get_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -236,7 +239,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for name in gates.iter() {
+        for name in &gates {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -247,12 +250,12 @@ impl DynamicCircuit {
         }
 
         Err(PyValueError::new_err(format!(
-            "Gate {} at index {} not found",
-            gate_type, index
+            "Gate {gate_type} at index {index} not found"
         )))
     }
 
     /// Get the parameters for a two-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_two_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -264,7 +267,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for name in gates.iter() {
+        for name in &gates {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -275,12 +278,12 @@ impl DynamicCircuit {
         }
 
         Err(PyValueError::new_err(format!(
-            "Gate {} at index {} not found",
-            gate_type, index
+            "Gate {gate_type} at index {index} not found"
         )))
     }
 
     /// Get the parameters for a controlled rotation gate
+    #[cfg(feature = "python")]
     pub fn get_controlled_rotation_params_for_gate(
         &self,
         gate_type: &str,
@@ -292,7 +295,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for name in gates.iter() {
+        for name in &gates {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -303,12 +306,12 @@ impl DynamicCircuit {
         }
 
         Err(PyValueError::new_err(format!(
-            "Gate {} at index {} not found",
-            gate_type, index
+            "Gate {gate_type} at index {index} not found"
         )))
     }
 
     /// Get the parameters for a three-qubit gate
+    #[cfg(feature = "python")]
     pub fn get_three_qubit_params_for_gate(
         &self,
         gate_type: &str,
@@ -320,7 +323,7 @@ impl DynamicCircuit {
 
         // Find the Nth occurrence of this gate type
         let mut count = 0;
-        for name in gates.iter() {
+        for name in &gates {
             if name == &gate_name {
                 if count == index {
                     // Return placeholder values - in a real implementation these would be accurate
@@ -331,8 +334,7 @@ impl DynamicCircuit {
         }
 
         Err(PyValueError::new_err(format!(
-            "Gate {} at index {} not found",
-            gate_type, index
+            "Gate {gate_type} at index {index} not found"
         )))
     }
 
@@ -342,118 +344,118 @@ impl DynamicCircuit {
         gate: G,
     ) -> QuantRS2Result<()> {
         match self {
-            DynamicCircuit::Q2(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q3(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q4(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q5(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q6(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q7(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q8(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q9(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q10(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q12(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q16(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q20(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q24(c) => c.add_gate(gate).map(|_| ()),
-            DynamicCircuit::Q32(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q2(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q3(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q4(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q5(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q6(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q7(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q8(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q9(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q10(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q12(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q16(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q20(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q24(c) => c.add_gate(gate).map(|_| ()),
+            Self::Q32(c) => c.add_gate(gate).map(|_| ()),
         }
     }
 
     /// Run the circuit on a CPU simulator
     pub fn run(&self, simulator: &StateVectorSimulator) -> QuantRS2Result<DynamicResult> {
         match self {
-            DynamicCircuit::Q2(c) => {
+            Self::Q2(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 2,
                 })
             }
-            DynamicCircuit::Q3(c) => {
+            Self::Q3(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 3,
                 })
             }
-            DynamicCircuit::Q4(c) => {
+            Self::Q4(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 4,
                 })
             }
-            DynamicCircuit::Q5(c) => {
+            Self::Q5(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 5,
                 })
             }
-            DynamicCircuit::Q6(c) => {
+            Self::Q6(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 6,
                 })
             }
-            DynamicCircuit::Q7(c) => {
+            Self::Q7(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 7,
                 })
             }
-            DynamicCircuit::Q8(c) => {
+            Self::Q8(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 8,
                 })
             }
-            DynamicCircuit::Q9(c) => {
+            Self::Q9(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 9,
                 })
             }
-            DynamicCircuit::Q10(c) => {
+            Self::Q10(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 10,
                 })
             }
-            DynamicCircuit::Q12(c) => {
+            Self::Q12(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 12,
                 })
             }
-            DynamicCircuit::Q16(c) => {
+            Self::Q16(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 16,
                 })
             }
-            DynamicCircuit::Q20(c) => {
+            Self::Q20(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 20,
                 })
             }
-            DynamicCircuit::Q24(c) => {
+            Self::Q24(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
                     num_qubits: 24,
                 })
             }
-            DynamicCircuit::Q32(c) => {
+            Self::Q32(c) => {
                 let result = simulator.run(c)?;
                 Ok(DynamicResult {
                     amplitudes: result.amplitudes().to_vec(),
@@ -616,7 +618,7 @@ impl DynamicCircuit {
 
     /// Check if GPU acceleration is available (stub for macOS)
     #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
-    pub fn is_gpu_available() -> bool {
+    pub const fn is_gpu_available() -> bool {
         false
     }
 
@@ -674,7 +676,7 @@ impl DynamicResult {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 }

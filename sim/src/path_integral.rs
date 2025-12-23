@@ -7,8 +7,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -648,7 +648,7 @@ impl PathIntegralSimulator {
                 let grid_index = remaining_index % grid_points;
                 remaining_index /= grid_points;
 
-                let position = -5.0 + grid_index as f64 * grid_spacing;
+                let position = (grid_index as f64).mul_add(grid_spacing, -5.0);
                 path.coordinates[[t, 0]] = position;
             }
 
@@ -670,7 +670,7 @@ impl PathIntegralSimulator {
             for d in 0..self.dimensions {
                 if t == 0 {
                     // Initial position
-                    path.coordinates[[t, d]] = fastrand::f64() * 10.0 - 5.0;
+                    path.coordinates[[t, d]] = fastrand::f64().mul_add(10.0, -5.0);
                 } else {
                     // Random walk step
                     let step = (fastrand::f64() - 0.5) * 2.0 * self.config.time_step.sqrt();
@@ -726,17 +726,17 @@ impl PathIntegralSimulator {
     }
 
     /// Set random seed
-    pub fn set_seed(&mut self, seed: u64) {
+    pub const fn set_seed(&mut self, seed: u64) {
         self.rng_seed = seed;
     }
 
     /// Get configuration
-    pub fn get_config(&self) -> &PathIntegralConfig {
+    pub const fn get_config(&self) -> &PathIntegralConfig {
         &self.config
     }
 
     /// Set configuration
-    pub fn set_config(&mut self, config: PathIntegralConfig) {
+    pub const fn set_config(&mut self, config: PathIntegralConfig) {
         self.config = config;
     }
 }
@@ -760,7 +760,7 @@ impl PathIntegralUtils {
         move |position: &ArrayView1<f64>, _time: f64| -> f64 {
             let x = position[0];
             let a = well_separation / 2.0;
-            barrier_height * ((x * x - a * a) / a).powi(2)
+            barrier_height * (x.mul_add(x, -(a * a)) / a).powi(2)
         }
     }
 
@@ -942,7 +942,7 @@ mod tests {
             .evolve_system(initial_state, hamiltonian, 0.5)
             .unwrap();
 
-        assert!(result.amplitudes.len() > 0);
+        assert!(!result.amplitudes.is_empty());
         assert!(result.convergence_stats.converged);
     }
 }

@@ -4,12 +4,45 @@
 //! including parameterized quantum circuits, data encoding strategies,
 //! and common QML layer patterns.
 
+pub mod advanced_algorithms;
 pub mod encoding;
 pub mod generative_adversarial;
 pub mod layers;
 pub mod nlp;
 pub mod reinforcement_learning;
 pub mod training;
+
+// New cutting-edge quantum ML modules
+pub mod quantum_contrastive;
+pub mod quantum_memory_networks;
+pub mod quantum_meta_learning;
+pub mod quantum_reservoir;
+pub mod quantum_transformer;
+
+// Advanced quantum ML: Privacy, Security, and Distributed Learning
+pub mod quantum_boltzmann;
+pub mod quantum_federated;
+
+// Re-export advanced QML algorithms
+pub use advanced_algorithms::{
+    FeatureMapType, QMLMetrics, QuantumEnsemble, QuantumKernel, QuantumKernelConfig, QuantumSVM,
+    QuantumTransferLearning, TransferLearningConfig, VotingStrategy,
+};
+
+// Re-export new modules
+pub use quantum_contrastive::{
+    QuantumAugmentation, QuantumContrastiveConfig, QuantumContrastiveLearner,
+};
+pub use quantum_memory_networks::{MemoryInitStrategy, QuantumMemoryConfig, QuantumMemoryNetwork};
+pub use quantum_meta_learning::{
+    QuantumMAML, QuantumMetaLearningConfig, QuantumReptile, QuantumTask,
+};
+pub use quantum_reservoir::{QuantumReservoirComputer, QuantumReservoirConfig};
+pub use quantum_transformer::{QuantumAttention, QuantumTransformer, QuantumTransformerConfig};
+
+// Re-export advanced quantum ML modules
+pub use quantum_boltzmann::{DeepQuantumBoltzmannMachine, QRBMConfig, QuantumRBM};
+pub use quantum_federated::{AggregationStrategy, QuantumFederatedConfig, QuantumFederatedServer};
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

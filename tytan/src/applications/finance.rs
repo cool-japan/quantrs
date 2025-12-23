@@ -24,7 +24,7 @@ pub struct PortfolioOptimizer {
     method: OptimizationMethod,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PortfolioConstraints {
     /// Minimum investment per asset
     min_investment: Option<Array1<f64>>,
@@ -126,7 +126,7 @@ impl PortfolioOptimizer {
         // Create variable mapping
         for i in 0..n_assets {
             for j in 0..num_bits_per_asset {
-                let var_name = format!("asset_{}_bit_{}", i, j);
+                let var_name = format!("asset_{i}_bit_{j}");
                 var_map.insert(var_name, i * num_bits_per_asset + j);
             }
         }
@@ -442,7 +442,7 @@ impl PortfolioOptimizer {
         for i in 0..n_assets {
             let mut weight = 0.0;
             for j in 0..bits_per_asset {
-                let var_name = format!("asset_{}_bit_{}", i, j);
+                let var_name = format!("asset_{i}_bit_{j}");
                 if *solution.get(&var_name).unwrap_or(&false) {
                     weight += (1 << j) as f64 / ((1 << bits_per_asset) - 1) as f64;
                 }
@@ -529,21 +529,6 @@ impl PortfolioOptimizer {
     }
 }
 
-impl Default for PortfolioConstraints {
-    fn default() -> Self {
-        Self {
-            min_investment: None,
-            max_investment: None,
-            target_return: None,
-            max_risk: None,
-            sector_constraints: None,
-            cardinality: None,
-            transaction_costs: None,
-            current_portfolio: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct PortfolioMetrics {
     pub expected_return: f64,
@@ -569,7 +554,7 @@ pub struct RiskParityOptimizer {
 
 impl RiskParityOptimizer {
     /// Create new risk parity optimizer
-    pub fn new(covariance: Array2<f64>) -> Self {
+    pub const fn new(covariance: Array2<f64>) -> Self {
         Self {
             covariance,
             target_contributions: None,
@@ -598,7 +583,7 @@ impl RiskParityOptimizer {
         // Create variable mapping
         for i in 0..n_assets {
             for j in 0..num_bits_per_asset {
-                let var_name = format!("rp_asset_{}_bit_{}", i, j);
+                let var_name = format!("rp_asset_{i}_bit_{j}");
                 var_map.insert(var_name, i * num_bits_per_asset + j);
             }
         }
@@ -809,7 +794,7 @@ pub enum TransactionCostModel {
 
 impl TransactionCostOptimizer {
     /// Create new transaction cost optimizer
-    pub fn new(
+    pub const fn new(
         current_weights: Array1<f64>,
         target_optimizer: PortfolioOptimizer,
         cost_model: TransactionCostModel,
@@ -845,29 +830,26 @@ impl TransactionCostOptimizer {
     ) -> Result<(), String> {
         let n_assets = self.current_weights.len();
 
-        match &self.cost_model {
-            TransactionCostModel::Linear { rates } => {
-                // Cost = sum_i rate_i * |w_i - w_i^current|
-                // Approximate with quadratic penalty
+        if let TransactionCostModel::Linear { rates } = &self.cost_model {
+            // Cost = sum_i rate_i * |w_i - w_i^current|
+            // Approximate with quadratic penalty
 
-                for i in 0..n_assets {
-                    let current_w = self.current_weights[i];
-                    let rate = rates[i];
+            for i in 0..n_assets {
+                let current_w = self.current_weights[i];
+                let rate = rates[i];
 
-                    for k in 0..bits_per_asset {
-                        let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
-                        let var_name = format!("asset_{}_bit_{}", i, k);
+                for k in 0..bits_per_asset {
+                    let weight = (1 << k) as f64 / ((1 << bits_per_asset) - 1) as f64;
+                    let var_name = format!("asset_{i}_bit_{k}");
 
-                        if let Some(&var_idx) = var_map.get(&var_name) {
-                            // Penalize deviation from current weight
-                            qubo[[var_idx, var_idx]] += rate * (weight - current_w).powi(2);
-                        }
+                    if let Some(&var_idx) = var_map.get(&var_name) {
+                        // Penalize deviation from current weight
+                        qubo[[var_idx, var_idx]] += rate * (weight - current_w).powi(2);
                     }
                 }
             }
-            _ => {
-                // Other cost models
-            }
+        } else {
+            // Other cost models
         }
 
         Ok(())
@@ -908,7 +890,7 @@ pub enum RebalancingTrigger {
 
 impl RebalancingScheduler {
     /// Create new rebalancing scheduler
-    pub fn new(frequency: RebalancingFrequency) -> Self {
+    pub const fn new(frequency: RebalancingFrequency) -> Self {
         Self {
             frequency,
             triggers: Vec::new(),

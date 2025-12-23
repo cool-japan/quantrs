@@ -476,7 +476,7 @@ impl QuantumGarbageCollector {
     }
 
     fn execute_collection_process(
-        &mut self,
+        &self,
         candidates: &[CollectionCandidate],
     ) -> Result<CollectionStatistics, QuantRS2Error> {
         Ok(CollectionStatistics {

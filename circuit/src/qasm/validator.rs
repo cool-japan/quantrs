@@ -1,6 +1,9 @@
-//! Validator for OpenQASM 3.0 programs
+//! Validator for `OpenQASM` 3.0 programs
 
-use super::ast::*;
+use super::ast::{
+    BinaryOp, ClassicalRef, Condition, Declaration, Expression, Literal, Measurement, QasmGate,
+    QasmProgram, QasmStatement, QubitRef, UnaryOp,
+};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
@@ -95,14 +98,21 @@ enum ValueType {
 pub struct QasmValidator {
     /// Symbol table
     symbols: HashMap<String, Symbol>,
-    /// Standard gates (name -> (param_count, qubit_count))
+    /// Standard gates (name -> (`param_count`, `qubit_count`))
     standard_gates: HashMap<String, (usize, usize)>,
     /// Current scope for nested blocks
     scope_stack: Vec<HashMap<String, Symbol>>,
 }
 
+impl Default for QasmValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QasmValidator {
     /// Create a new validator
+    #[must_use]
     pub fn new() -> Self {
         let mut standard_gates = HashMap::new();
 
@@ -154,7 +164,7 @@ impl QasmValidator {
         standard_gates.insert("ccx".to_string(), (0, 3));
         standard_gates.insert("cswap".to_string(), (0, 3));
 
-        QasmValidator {
+        Self {
             symbols: HashMap::new(),
             standard_gates,
             scope_stack: vec![],
@@ -316,17 +326,16 @@ impl QasmValidator {
                 if let Some(symbol) = self.lookup_symbol(var) {
                     match symbol {
                         Symbol::Variable { typ: var_typ } => {
-                            if !self.types_compatible(&var_typ, &typ) {
+                            if !self.types_compatible(var_typ, &typ) {
                                 return Err(ValidationError::TypeMismatch {
-                                    expected: format!("{:?}", var_typ),
-                                    found: format!("{:?}", typ),
+                                    expected: format!("{var_typ:?}"),
+                                    found: format!("{typ:?}"),
                                 });
                             }
                         }
                         _ => {
                             return Err(ValidationError::SemanticError(format!(
-                                "{} is not a variable",
-                                var
+                                "{var} is not a variable"
                             )))
                         }
                     }
@@ -368,7 +377,7 @@ impl QasmValidator {
                     if step_typ != ValueType::Int {
                         return Err(ValidationError::TypeMismatch {
                             expected: "int".to_string(),
-                            found: format!("{:?}", step_typ),
+                            found: format!("{step_typ:?}"),
                         });
                     }
                 }
@@ -404,7 +413,7 @@ impl QasmValidator {
                 if dur_typ != ValueType::Duration && dur_typ != ValueType::Float {
                     return Err(ValidationError::TypeMismatch {
                         expected: "duration".to_string(),
-                        found: format!("{:?}", dur_typ),
+                        found: format!("{dur_typ:?}"),
                     });
                 }
 
@@ -447,7 +456,7 @@ impl QasmValidator {
             if typ != ValueType::Float && typ != ValueType::Angle && typ != ValueType::Int {
                 return Err(ValidationError::TypeMismatch {
                     expected: "numeric".to_string(),
-                    found: format!("{:?}", typ),
+                    found: format!("{typ:?}"),
                 });
             }
         }
@@ -631,7 +640,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "numeric".to_string(),
-                                found: format!("{:?} and {:?}", left_typ, right_typ),
+                                found: format!("{left_typ:?} and {right_typ:?}"),
                             })
                         }
                     }
@@ -646,7 +655,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "int".to_string(),
-                                found: format!("{:?} and {:?}", left_typ, right_typ),
+                                found: format!("{left_typ:?} and {right_typ:?}"),
                             })
                         }
                     }
@@ -656,7 +665,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "bool".to_string(),
-                                found: format!("{:?} and {:?}", left_typ, right_typ),
+                                found: format!("{left_typ:?} and {right_typ:?}"),
                             })
                         }
                     }
@@ -674,7 +683,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "numeric".to_string(),
-                                found: format!("{:?} and {:?}", left_typ, right_typ),
+                                found: format!("{left_typ:?} and {right_typ:?}"),
                             })
                         }
                     }
@@ -690,7 +699,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "numeric".to_string(),
-                                found: format!("{:?}", typ),
+                                found: format!("{typ:?}"),
                             })
                         }
                     }
@@ -700,7 +709,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "bool".to_string(),
-                                found: format!("{:?}", typ),
+                                found: format!("{typ:?}"),
                             })
                         }
                     }
@@ -710,7 +719,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "int".to_string(),
-                                found: format!("{:?}", typ),
+                                found: format!("{typ:?}"),
                             })
                         }
                     }
@@ -728,7 +737,7 @@ impl QasmValidator {
                         } else {
                             Err(ValidationError::TypeMismatch {
                                 expected: "numeric".to_string(),
-                                found: format!("{:?}", typ),
+                                found: format!("{typ:?}"),
                             })
                         }
                     }
@@ -749,7 +758,7 @@ impl QasmValidator {
                 if idx_typ != ValueType::Int {
                     return Err(ValidationError::TypeMismatch {
                         expected: "int".to_string(),
-                        found: format!("{:?}", idx_typ),
+                        found: format!("{idx_typ:?}"),
                     });
                 }
 
@@ -770,8 +779,8 @@ impl QasmValidator {
         // For comparisons, types should be compatible
         if !self.types_compatible(&left_typ, &right_typ) {
             return Err(ValidationError::TypeMismatch {
-                expected: format!("{:?}", left_typ),
-                found: format!("{:?}", right_typ),
+                expected: format!("{left_typ:?}"),
+                found: format!("{right_typ:?}"),
             });
         }
 
@@ -836,7 +845,7 @@ mod tests {
 
     #[test]
     fn test_validate_simple_circuit() {
-        let input = r#"
+        let input = r"
 OPENQASM 3.0;
 
 qubit[2] q;
@@ -845,7 +854,7 @@ bit[2] c;
 h q[0];
 cx q[0], q[1];
 measure q -> c;
-"#;
+";
 
         let program = parse_qasm3(input).unwrap();
         let result = validate_qasm3(&program);
@@ -854,14 +863,14 @@ measure q -> c;
 
     #[test]
     fn test_validate_undefined_register() {
-        let input = r#"
+        let input = r"
 OPENQASM 3.0;
 
 qubit[2] q;
 
 h q[0];
 cx q[0], r[1];  // r is undefined
-"#;
+";
 
         let program = parse_qasm3(input).unwrap();
         let result = validate_qasm3(&program);
@@ -870,13 +879,13 @@ cx q[0], r[1];  // r is undefined
 
     #[test]
     fn test_validate_index_out_of_bounds() {
-        let input = r#"
+        let input = r"
 OPENQASM 3.0;
 
 qubit[2] q;
 
 h q[5];  // Index 5 is out of bounds
-"#;
+";
 
         let program = parse_qasm3(input).unwrap();
         let result = validate_qasm3(&program);
@@ -888,14 +897,14 @@ h q[5];  // Index 5 is out of bounds
 
     #[test]
     fn test_validate_gate_parameters() {
-        let input = r#"
+        let input = r"
 OPENQASM 3.0;
 
 qubit q;
 
 rx(pi/2) q;  // Correct
 rx q;        // Missing parameter
-"#;
+";
 
         let program = parse_qasm3(input).unwrap();
         let result = validate_qasm3(&program);

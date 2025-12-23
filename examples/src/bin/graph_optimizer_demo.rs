@@ -1,8 +1,8 @@
 //! Demonstration of graph-based circuit optimization
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::Complex64;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Graph-Based Circuit Optimizer Demo ===\n");
@@ -198,7 +198,7 @@ fn dag_analysis_demo() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get topological ordering
     let order = dag.optimized_topological_sort();
-    println!("\nOptimized execution order: {:?}", order);
+    println!("\nOptimized execution order: {order:?}");
 
     println!("✓ DAG ensures correct gate ordering while maximizing parallelism\n");
 

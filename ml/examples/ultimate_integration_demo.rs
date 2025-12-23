@@ -4,8 +4,8 @@
 //! framework integrations, advanced error mitigation, and production-ready features.
 //! This is the definitive showcase of the entire quantum ML framework.
 
-use scirs2_core::ndarray::{Array1, Array2, Axis};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, Axis};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {
@@ -460,7 +460,7 @@ struct EcosystemHealthCheck {
 struct InferenceEngine;
 
 impl InferenceEngine {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -528,7 +528,7 @@ fn create_portfolio_optimization_problem(
             "Sector concentration: <30%".to_string(),
             "Total leverage: <1.5x".to_string(),
         ],
-        expected_returns: Array1::from_shape_fn(num_assets, |i| 0.08 + (i as f64) * 0.01),
+        expected_returns: Array1::from_shape_fn(num_assets, |i| (i as f64).mul_add(0.01, 0.08)),
         covariance_matrix: Array2::eye(num_assets) * 0.04,
     })
 }
@@ -574,7 +574,7 @@ fn count_mitigation_strategies(mitigation: &ProductionErrorMitigation) -> usize 
     mitigation.strategies.len()
 }
 
-fn create_pytorch_quantum_model(
+const fn create_pytorch_quantum_model(
     problem: &PortfolioOptimizationProblem,
 ) -> Result<PyTorchQuantumModel> {
     Ok(PyTorchQuantumModel {
@@ -592,7 +592,7 @@ fn create_tensorflow_quantum_model(
     })
 }
 
-fn create_sklearn_quantum_pipeline(
+const fn create_sklearn_quantum_pipeline(
     problem: &PortfolioOptimizationProblem,
 ) -> Result<SklearnQuantumPipeline> {
     Ok(SklearnQuantumPipeline {
@@ -600,7 +600,9 @@ fn create_sklearn_quantum_pipeline(
     })
 }
 
-fn create_keras_quantum_model(problem: &PortfolioOptimizationProblem) -> Result<KerasQuantumModel> {
+const fn create_keras_quantum_model(
+    problem: &PortfolioOptimizationProblem,
+) -> Result<KerasQuantumModel> {
     Ok(KerasQuantumModel { quantum_layers: 3 })
 }
 
@@ -645,7 +647,7 @@ fn compile_models_for_hardware(
     ])
 }
 
-fn run_comprehensive_training(
+const fn run_comprehensive_training(
     models: &[CompiledModel],
     problem: &PortfolioOptimizationProblem,
     mitigation: &ProductionErrorMitigation,
@@ -719,7 +721,7 @@ fn print_benchmark_results(results: &ComprehensiveBenchmarkResults) {
     );
 }
 
-fn analyze_quantum_advantage(
+const fn analyze_quantum_advantage(
     benchmark_results: &ComprehensiveBenchmarkResults,
     training_results: &ComprehensiveTrainingResults,
     mitigation: &ProductionErrorMitigation,
@@ -773,37 +775,37 @@ impl QuantumModel for TensorFlowQuantumModel {}
 
 // Implementation methods for the model types
 impl PyTorchQuantumModel {
-    fn num_layers(&self) -> usize {
+    const fn num_layers(&self) -> usize {
         self.layers
     }
-    fn num_parameters(&self) -> usize {
+    const fn num_parameters(&self) -> usize {
         self.parameters
     }
 }
 
 impl TensorFlowQuantumModel {
-    fn num_qubits(&self) -> usize {
+    const fn num_qubits(&self) -> usize {
         self.qubits
     }
-    fn num_layers(&self) -> usize {
+    const fn num_layers(&self) -> usize {
         self.layers
     }
 }
 
 impl SklearnQuantumPipeline {
-    fn num_steps(&self) -> usize {
+    const fn num_steps(&self) -> usize {
         self.steps
     }
 }
 
 impl KerasQuantumModel {
-    fn num_quantum_layers(&self) -> usize {
+    const fn num_quantum_layers(&self) -> usize {
         self.quantum_layers
     }
 }
 
 impl SciRS2DistributedTrainer {
-    fn num_workers(&self) -> usize {
+    const fn num_workers(&self) -> usize {
         self.workers
     }
     fn backend(&self) -> &str {
@@ -890,7 +892,7 @@ fn create_comprehensive_hybrid_pipeline(
     Ok(HybridPipelineManager::new())
 }
 
-fn run_hybrid_analysis(
+const fn run_hybrid_analysis(
     pipeline: &HybridPipelineManager,
     training_results: &ComprehensiveTrainingResults,
 ) -> Result<HybridAnalysisResults> {
@@ -920,7 +922,9 @@ fn export_models_to_onnx(models: &[CompiledModel]) -> Result<Vec<String>> {
     Ok(models.iter().map(|m| format!("{}.onnx", m.name)).collect())
 }
 
-fn test_framework_interoperability(onnx_models: &[String]) -> Result<InteroperabilityResults> {
+const fn test_framework_interoperability(
+    onnx_models: &[String],
+) -> Result<InteroperabilityResults> {
     Ok(InteroperabilityResults {
         frameworks_supported: 6,
         export_success_rate: 0.98,
@@ -940,14 +944,14 @@ fn print_interoperability_results(results: &InteroperabilityResults) {
     );
 }
 
-fn create_production_inference_engine(
+const fn create_production_inference_engine(
     _mitigation: &ProductionErrorMitigation,
 ) -> Result<InferenceEngine> {
     // Simplified inference engine for demonstration
     Ok(InferenceEngine::new())
 }
 
-fn run_realtime_inference_demo(
+const fn run_realtime_inference_demo(
     engine: &InferenceEngine,
     model: &CompiledModel,
     problem: &PortfolioOptimizationProblem,
@@ -977,7 +981,9 @@ fn print_inference_results(results: &InferenceResults) {
     );
 }
 
-fn create_comprehensive_learning_path(tutorial_system: &TutorialManager) -> Result<LearningPath> {
+const fn create_comprehensive_learning_path(
+    tutorial_system: &TutorialManager,
+) -> Result<LearningPath> {
     Ok(LearningPath {
         tutorials: 45,
         exercises: 120,
@@ -1052,7 +1058,7 @@ fn perform_scaling_analysis(
     })
 }
 
-fn optimize_resource_allocation(scaling: &ScalingAnalysis) -> Result<ResourceOptimization> {
+const fn optimize_resource_allocation(scaling: &ScalingAnalysis) -> Result<ResourceOptimization> {
     Ok(ResourceOptimization {
         cpu_optimization: 0.85,
         memory_optimization: 0.78,
@@ -1115,7 +1121,7 @@ fn print_future_roadmap(roadmap: &FutureRoadmap) {
     );
 }
 
-fn generate_ultimate_integration_report(
+const fn generate_ultimate_integration_report(
     ecosystem: &QuantumMLEcosystem,
     training_results: &ComprehensiveTrainingResults,
     benchmark_results: &ComprehensiveBenchmarkResults,

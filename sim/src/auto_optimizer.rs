@@ -23,6 +23,7 @@ use quantrs2_core::{
 
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::SciRS2GpuStateVectorSimulator;
+use scirs2_core::parallel_ops::current_num_threads; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -260,7 +261,7 @@ impl AutoOptimizer {
         };
 
         let parallel_config = AutoParallelConfig {
-            max_threads: rayon::current_num_threads(),
+            max_threads: current_num_threads(), // SciRS2 POLICY compliant
             min_gates_for_parallel: 20,
             strategy: crate::automatic_parallelization::ParallelizationStrategy::Hybrid,
             ..Default::default()
@@ -316,7 +317,7 @@ impl AutoOptimizer {
 
         let analysis_time = start_time.elapsed();
         if self.config.enable_profiling {
-            println!("Circuit analysis completed in {:?}", analysis_time);
+            println!("Circuit analysis completed in {analysis_time:?}");
         }
 
         Ok(CircuitCharacteristics {
@@ -386,7 +387,7 @@ impl AutoOptimizer {
         // Record performance metrics
         if self.config.enable_profiling {
             self.record_performance_metrics(circuit, recommendation.backend_type, execution_time);
-            println!("Execution completed in {:?}", execution_time);
+            println!("Execution completed in {execution_time:?}");
         }
 
         Ok(result)
@@ -446,7 +447,7 @@ impl AutoOptimizer {
     }
 
     /// Estimate memory requirement for circuit simulation
-    fn estimate_memory_requirement(&self, num_qubits: usize, num_gates: usize) -> usize {
+    const fn estimate_memory_requirement(&self, num_qubits: usize, num_gates: usize) -> usize {
         // State vector memory: 2^n complex numbers
         let state_vector_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
 
@@ -522,11 +523,11 @@ impl AutoOptimizer {
                     for j in (i + 1)..qubits.len() {
                         qubit_connections
                             .entry(qubits[i])
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(qubits[j]);
                         qubit_connections
                             .entry(qubits[j])
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(qubits[i]);
                     }
                 }
@@ -625,17 +626,14 @@ impl AutoOptimizer {
     ) -> Option<&PerformanceHistory> {
         // Simple cache lookup based on circuit characteristics
         // In practice, would use more sophisticated similarity matching
-        for entry in &self.performance_cache {
-            // Check if characteristics are similar (simplified)
-            if self.are_characteristics_similar(characteristics, entry) {
-                return Some(entry);
-            }
-        }
-        None
+        self.performance_cache
+            .iter()
+            .find(|&entry| self.are_characteristics_similar(characteristics, entry))
+            .map(|v| v as _)
     }
 
     /// Check if circuit characteristics are similar to cached entry
-    fn are_characteristics_similar(
+    const fn are_characteristics_similar(
         &self,
         characteristics: &CircuitCharacteristics,
         entry: &PerformanceHistory,
@@ -807,7 +805,7 @@ impl AutoOptimizer {
         };
 
         // Apply complexity factor
-        let complexity_factor = (1.0 + characteristics.complexity_score * 2.0) as u64;
+        let complexity_factor = characteristics.complexity_score.mul_add(2.0, 1.0) as u64;
         Duration::from_millis(base_time_ms * complexity_factor)
     }
 
@@ -946,7 +944,7 @@ impl AutoOptimizer {
     }
 
     /// Get human-readable backend type name
-    fn backend_type_name(&self, backend_type: BackendType) -> &'static str {
+    const fn backend_type_name(&self, backend_type: BackendType) -> &'static str {
         match backend_type {
             BackendType::StateVector => "CPU StateVector",
             BackendType::SciRS2Gpu => "SciRS2 GPU",
@@ -978,12 +976,9 @@ impl AutoOptimizer {
                     acc
                 });
 
-        let mut summary = format!("AutoOptimizer Performance Summary\n");
-        summary.push_str(&format!("Total circuits processed: {}\n", total_circuits));
-        summary.push_str(&format!(
-            "Average execution time: {}ms\n",
-            avg_execution_time
-        ));
+        let mut summary = "AutoOptimizer Performance Summary\n".to_string();
+        summary.push_str(&format!("Total circuits processed: {total_circuits}\n"));
+        summary.push_str(&format!("Average execution time: {avg_execution_time}ms\n"));
         summary.push_str("Backend usage:\n");
 
         for (backend, count) in backend_usage {
@@ -1008,7 +1003,7 @@ impl Default for AutoOptimizer {
 
 impl SciRS2CircuitAnalyzer {
     /// Analyze circuit using SciRS2 tools (placeholder for future SciRS2 integration)
-    fn analyze_circuit_with_scirs2<const N: usize>(
+    const fn analyze_circuit_with_scirs2<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
     ) -> QuantRS2Result<f64> {

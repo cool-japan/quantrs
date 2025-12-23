@@ -5,8 +5,8 @@
 //! strategies, data locality optimizations, and NUMA-aware memory management.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
 use std::ptr::NonNull;
@@ -153,7 +153,7 @@ pub struct MemoryPool {
 
 impl MemoryPool {
     /// Create a new memory pool
-    pub fn new(block_size: usize, max_blocks: usize) -> Result<Self> {
+    pub const fn new(block_size: usize, max_blocks: usize) -> Result<Self> {
         Ok(Self {
             blocks: Mutex::new(Vec::new()),
             block_size,
@@ -287,7 +287,7 @@ impl OptimizedStateVector {
     ) -> Result<Vec<Complex64>> {
         let element_size = std::mem::size_of::<Complex64>();
         let elements_per_line = config.cache_line_size / element_size;
-        let padded_size = ((size + elements_per_line - 1) / elements_per_line) * elements_per_line;
+        let padded_size = size.div_ceil(elements_per_line) * elements_per_line;
 
         let mut data = Vec::with_capacity(padded_size);
         data.resize(size, Complex64::new(0.0, 0.0));
@@ -303,7 +303,7 @@ impl OptimizedStateVector {
 
         // Reorganize data in cache-friendly blocks
         let block_size = config.block_size / std::mem::size_of::<Complex64>();
-        let num_blocks = (size + block_size - 1) / block_size;
+        let num_blocks = size.div_ceil(block_size);
 
         let mut blocked_data = Vec::with_capacity(size);
         for block_idx in 0..num_blocks {
@@ -386,7 +386,7 @@ impl OptimizedStateVector {
         mask: usize,
     ) -> Result<()> {
         let block_size = self.block_size / std::mem::size_of::<Complex64>();
-        let num_blocks = (self.data.len() + block_size - 1) / block_size;
+        let num_blocks = self.data.len().div_ceil(block_size);
 
         for block_idx in 0..num_blocks {
             let start = block_idx * block_size;
@@ -485,7 +485,7 @@ impl OptimizedStateVector {
         // TODO: Use scirs2_core's platform-agnostic prefetch operations when API is stabilized
         // For now, use a volatile read as a simple prefetch hint
         unsafe {
-            let _ = std::ptr::read_volatile(addr as *const _ as *const u8);
+            let _ = std::ptr::read_volatile(std::ptr::from_ref(addr).cast::<u8>());
         }
     }
 
@@ -527,7 +527,7 @@ impl OptimizedStateVector {
         gate_matrix: &Array2<Complex64>,
     ) -> Result<()> {
         let block_size = self.block_size / std::mem::size_of::<Complex64>();
-        let num_blocks = (self.data.len() + block_size - 1) / block_size;
+        let num_blocks = self.data.len().div_ceil(block_size);
 
         for block_idx in 0..num_blocks {
             let start = block_idx * block_size;
@@ -929,8 +929,7 @@ mod tests {
         // Should be padded to cache line boundary
         let element_size = std::mem::size_of::<Complex64>();
         let elements_per_line = config.cache_line_size / element_size;
-        let expected_padded =
-            ((100 + elements_per_line - 1) / elements_per_line) * elements_per_line;
+        let expected_padded = 100_usize.div_ceil(elements_per_line) * elements_per_line;
 
         assert_eq!(data.len(), expected_padded);
     }

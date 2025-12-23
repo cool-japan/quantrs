@@ -50,19 +50,19 @@ impl VQF {
     }
 
     /// Set penalty strength
-    pub fn with_penalty_strength(mut self, strength: f64) -> Self {
+    pub const fn with_penalty_strength(mut self, strength: f64) -> Self {
         self.penalty_strength = strength;
         self
     }
 
     /// Enable/disable preprocessing
-    pub fn with_preprocessing(mut self, use_preprocessing: bool) -> Self {
+    pub const fn with_preprocessing(mut self, use_preprocessing: bool) -> Self {
         self.use_preprocessing = use_preprocessing;
         self
     }
 
     /// Enable/disable symmetry reduction
-    pub fn with_symmetry_reduction(mut self, use_symmetry: bool) -> Self {
+    pub const fn with_symmetry_reduction(mut self, use_symmetry: bool) -> Self {
         self.use_symmetry_reduction = use_symmetry;
         self
     }
@@ -223,14 +223,14 @@ impl VQF {
 
             // Extract p
             for (i, &param) in params.iter().enumerate().take(self.n_qubits_p) {
-                if rng.gen_bool(0.5 + 0.4 * param.sin()) {
+                if rng.gen_bool(0.4f64.mul_add(param.sin(), 0.5)) {
                     p |= 1u64 << i;
                 }
             }
 
             // Extract q
             for j in 0..self.n_qubits_q {
-                if rng.gen_bool(0.5 + 0.4 * params[self.n_qubits_p + j].sin()) {
+                if rng.gen_bool(0.4f64.mul_add(params[self.n_qubits_p + j].sin(), 0.5)) {
                     q |= 1u64 << j;
                 }
             }
@@ -305,13 +305,13 @@ impl EnhancedVQF {
     }
 
     /// Enable carry handling
-    pub fn with_carry_handling(mut self, use_carry: bool) -> Self {
+    pub const fn with_carry_handling(mut self, use_carry: bool) -> Self {
         self.use_carry_handling = use_carry;
         self
     }
 
     /// Enable modular constraints
-    pub fn with_modular_constraints(mut self, use_modular: bool) -> Self {
+    pub const fn with_modular_constraints(mut self, use_modular: bool) -> Self {
         self.use_modular_constraints = use_modular;
         self
     }
@@ -405,7 +405,7 @@ impl EnhancedVQF {
     }
 
     /// Wheel factorization
-    fn wheel_factorization(&self, n: u64) -> Option<u64> {
+    const fn wheel_factorization(&self, n: u64) -> Option<u64> {
         // Use 2-3-5 wheel
         let wheel = [4, 2, 4, 2, 4, 6, 2, 6];
         let mut k = 7u64;
@@ -452,7 +452,7 @@ impl EnhancedVQF {
     }
 
     /// Multi-level factorization for larger numbers
-    fn multilevel_factorization(&mut self) -> Result<EnhancedFactorizationResult, String> {
+    fn multilevel_factorization(&self) -> Result<EnhancedFactorizationResult, String> {
         // Implement hierarchical factorization
         // Break down into smaller subproblems
         Err("Multilevel factorization not yet implemented".to_string())
@@ -468,7 +468,7 @@ impl EnhancedVQF {
     }
 
     /// Estimate circuit depth
-    fn estimate_circuit_depth(&self) -> usize {
+    const fn estimate_circuit_depth(&self) -> usize {
         let n_qubits = self.base_vqf.n_qubits_p + self.base_vqf.n_qubits_q;
         n_qubits * 10 // Rough estimate
     }
@@ -494,7 +494,7 @@ pub struct ShorsAlgorithm {
 
 impl ShorsAlgorithm {
     /// Create new Shor's algorithm instance
-    pub fn new(n: u64) -> Self {
+    pub const fn new(n: u64) -> Self {
         Self {
             n,
             use_quantum_period_finding: true,
@@ -552,7 +552,7 @@ impl ShorsAlgorithm {
                     return Ok(ShorsResult {
                         factors: vec![factor1, self.n / factor1],
                         period,
-                        success_probability: 0.9 - 0.05 * attempt as f64,
+                        success_probability: 0.05f64.mul_add(-(attempt as f64), 0.9),
                     });
                 }
 
@@ -560,7 +560,7 @@ impl ShorsAlgorithm {
                     return Ok(ShorsResult {
                         factors: vec![factor2, self.n / factor2],
                         period,
-                        success_probability: 0.9 - 0.05 * attempt as f64,
+                        success_probability: 0.05f64.mul_add(-(attempt as f64), 0.9),
                     });
                 }
             }
@@ -646,7 +646,7 @@ pub struct ShorsResult {
 }
 
 /// Helper functions
-fn gcd(mut a: u64, mut b: u64) -> u64 {
+const fn gcd(mut a: u64, mut b: u64) -> u64 {
     while b != 0 {
         let temp = b;
         b = a % b;
@@ -655,7 +655,7 @@ fn gcd(mut a: u64, mut b: u64) -> u64 {
     a
 }
 
-fn mod_exp(base: u64, exp: u64, modulus: u64) -> u64 {
+const fn mod_exp(base: u64, exp: u64, modulus: u64) -> u64 {
     let mut result = 1u64;
     let mut base = base % modulus;
     let mut exp = exp;

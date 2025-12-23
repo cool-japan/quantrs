@@ -31,7 +31,7 @@ pub struct Bottleneck {
 }
 
 /// Types of bottlenecks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BottleneckType {
     CPU,
     Memory,
@@ -226,7 +226,7 @@ pub struct DependencyEdge {
 }
 
 /// Types of dependencies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DependencyType {
     DataDependency,
     ControlDependency,
@@ -275,7 +275,7 @@ pub struct ParallelizationOpportunity {
 }
 
 /// Parallelization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParallelizationStrategy {
     TaskParallelism,
     DataParallelism,
@@ -284,7 +284,7 @@ pub enum ParallelizationStrategy {
 }
 
 /// Complexity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplexityLevel {
     Low,
     Medium,
@@ -308,7 +308,7 @@ pub struct OptimizationOpportunity {
 }
 
 /// Types of optimizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationType {
     AlgorithmOptimization,
     DataStructureOptimization,
@@ -320,7 +320,7 @@ pub enum OptimizationType {
 }
 
 /// Effort levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EffortLevel {
     Minimal,
     Low,
@@ -330,7 +330,7 @@ pub enum EffortLevel {
 }
 
 /// Risk levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskLevel {
     VeryLow,
     Low,
@@ -418,7 +418,7 @@ pub struct TimelineEvent {
 }
 
 /// Event types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EventType {
     CodeChange,
     ConfigurationChange,
@@ -444,7 +444,7 @@ pub struct PerformanceCorrelation {
 }
 
 /// Correlation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CorrelationType {
     Positive,
     Negative,
@@ -468,7 +468,7 @@ pub struct ChangePoint {
 }
 
 /// Types of changes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeType {
     LevelShift,
     TrendChange,

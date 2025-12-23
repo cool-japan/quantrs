@@ -1,7 +1,7 @@
-//! OpenQASM 3.0 import/export functionality
+//! `OpenQASM` 3.0 import/export functionality
 //!
-//! This module provides support for converting between QuantRS2 circuits
-//! and OpenQASM 3.0 format, enabling interoperability with other quantum
+//! This module provides support for converting between `QuantRS2` circuits
+//! and `OpenQASM` 3.0 format, enabling interoperability with other quantum
 //! computing frameworks.
 
 pub mod ast;

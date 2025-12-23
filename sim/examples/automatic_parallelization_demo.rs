@@ -1,8 +1,8 @@
 //! Automatic Parallelization Demo
 //!
 //! This example demonstrates the automatic parallelization capabilities
-//! of QuantRS2, showing how circuits can be analyzed for parallelization
-//! opportunities and executed efficiently using SciRS2 parallel operations.
+//! of `QuantRS2`, showing how circuits can be analyzed for parallelization
+//! opportunities and executed efficiently using `SciRS2` parallel operations.
 
 use quantrs2_circuit::builder::Circuit;
 use quantrs2_sim::{
@@ -105,7 +105,7 @@ fn create_demo_circuits() -> Result<Vec<Circuit<16>>, Box<dyn std::error::Error>
 
     // Parameterized rotations
     for i in 0..8 {
-        let angle = std::f64::consts::PI * (i as f64) / 8.0;
+        let angle = std::f64::consts::PI * f64::from(i) / 8.0;
         circuit4.ry(i, angle)?;
         circuit4.rz(i, angle / 2.0)?;
     }
@@ -163,8 +163,8 @@ fn test_parallelization_strategies(
                 Ok(analysis) => {
                     let analysis_time = start_time.elapsed();
 
-                    println!("  {} Strategy:", strategy_name);
-                    println!("    • Analysis time: {:?}", analysis_time);
+                    println!("  {strategy_name} Strategy:");
+                    println!("    • Analysis time: {analysis_time:?}");
                     println!("    • Parallel tasks: {}", analysis.tasks.len());
                     println!("    • Max parallelism: {}", analysis.max_parallelism);
                     println!("    • Efficiency: {:.2}%", analysis.efficiency * 100.0);
@@ -181,7 +181,7 @@ fn test_parallelization_strategies(
                     }
                 }
                 Err(e) => {
-                    println!("  {} Strategy: Failed - {:?}", strategy_name, e);
+                    println!("  {strategy_name} Strategy: Failed - {e:?}");
                 }
             }
             println!();
@@ -210,7 +210,7 @@ fn benchmark_parallelization(circuits: &[Circuit<16>]) -> Result<(), Box<dyn std
 
     println!("Benchmark Results:");
     println!("-----------------");
-    println!("Total benchmark time: {:?}", benchmark_time);
+    println!("Total benchmark time: {benchmark_time:?}");
     println!(
         "Average efficiency: {:.2}%",
         results.average_efficiency * 100.0
@@ -300,7 +300,7 @@ fn demonstrate_parallel_execution() -> Result<(), Box<dyn std::error::Error>> {
     let _result = engine.execute_parallel(&circuit, &mut simulator);
 
     let execution_time = execution_start.elapsed();
-    println!("Execution completed in: {:?}", execution_time);
+    println!("Execution completed in: {execution_time:?}");
 
     // Display resource utilization predictions
     println!("\nResource Utilization Predictions:");
@@ -354,14 +354,11 @@ fn compare_execution_performance() -> Result<(), Box<dyn std::error::Error>> {
     for size in circuit_sizes {
         // Simulated performance data (in a real implementation,
         // this would measure actual execution times)
-        let sequential_time = size as f64 * 0.1; // ms
+        let sequential_time = f64::from(size) * 0.1; // ms
         let parallel_time = sequential_time / 3.5; // Simulated speedup
         let speedup = sequential_time / parallel_time;
 
-        println!(
-            "{:11} | {:9.1}ms | {:7.1}ms | {:5.1}x",
-            size, sequential_time, parallel_time, speedup
-        );
+        println!("{size:11} | {sequential_time:9.1}ms | {parallel_time:7.1}ms | {speedup:5.1}x");
     }
 
     Ok(())

@@ -12,10 +12,10 @@
 //! - Decoherence-resistant annealing strategies
 //! - Multi-level error correction integration
 
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -652,9 +652,102 @@ impl NoiseResilientAnnealingProtocol {
         &self,
         problem: &crate::ising::QuboModel,
     ) -> QECResult<crate::ising::QuboModel> {
-        // For now, return a copy of the original problem
-        // TODO: Implement actual error correction encoding
-        Ok(crate::ising::QuboModel::new(problem.num_variables))
+        // Convert QUBO to Ising for encoding
+        let ising = IsingModel::from_qubo(problem);
+
+        // Create logical encoder with appropriate error correction code
+        use super::codes::{CodeParameters, ErrorCorrectionCode};
+        use super::logical_encoding::{
+            EncodingOptimizationStrategy, HardwareIntegrationMode, LogicalEncoderConfig,
+        };
+
+        let code = ErrorCorrectionCode::SurfaceCode; // Use surface code for robust error correction
+        let num_logical = problem.num_variables;
+        let parameters = CodeParameters {
+            distance: 3, // Code distance for error detection/correction
+            num_logical_qubits: num_logical,
+            num_physical_qubits: num_logical * 9, // 9 physical qubits per logical qubit for [[9,1,3]] code
+            num_ancilla_qubits: num_logical * 8, // 8 ancilla qubits per logical for syndrome measurement
+            code_rate: 1.0 / 9.0,                // k/n ratio
+            threshold_probability: 0.01,         // Error threshold for surface code
+        };
+
+        let config = LogicalEncoderConfig {
+            enable_monitoring: self.config.enable_real_time_correction,
+            target_fidelity: 1.0 - self.config.error_threshold,
+            max_encoding_overhead: 10.0, // Allow up to 10x overhead for error correction
+            optimization_strategy: EncodingOptimizationStrategy::Balanced,
+            hardware_integration: HardwareIntegrationMode::HardwareAware,
+        };
+
+        let mut encoder = LogicalAnnealingEncoder::new(code, parameters, config)?;
+
+        // Encode the Ising problem
+        let encoded_ising = encoder.encode_ising_problem(&ising)?;
+
+        // Get the number of physical qubits needed
+        let num_physical_qubits = encoded_ising.physical_implementation.num_physical_qubits;
+
+        // Convert back to QUBO
+        let mut encoded_qubo = crate::ising::QuboModel::new(num_physical_qubits);
+
+        // Map the encoded Ising model to QUBO format
+        // For each logical variable, we now have multiple physical qubits
+        // Add penalty terms to ensure physical qubits in the same logical chain agree
+        let chain_strength = 2.0
+            * problem
+                .linear_terms()
+                .iter()
+                .map(|(_, v)| v.abs())
+                .fold(0.0, f64::max);
+
+        for (logical_var, physical_qubits) in &encoded_ising.encoding_map.logical_to_physical {
+            // Add strong coupling between qubits in the same chain
+            for i in 0..physical_qubits.len() {
+                for j in (i + 1)..physical_qubits.len() {
+                    let phys_i = physical_qubits[i];
+                    let phys_j = physical_qubits[j];
+
+                    // Add ferromagnetic coupling to encourage agreement
+                    // In QUBO: -J * x_i * x_j encourages both to be 0 or both to be 1
+                    if phys_i < encoded_qubo.num_variables && phys_j < encoded_qubo.num_variables {
+                        let current = encoded_qubo.get_quadratic(phys_i, phys_j).unwrap_or(0.0);
+                        let _ =
+                            encoded_qubo.set_quadratic(phys_i, phys_j, current - chain_strength);
+                    }
+                }
+            }
+
+            // Map original problem terms to first qubit in each chain
+            if let Some(&first_phys) = physical_qubits.first() {
+                if first_phys < encoded_qubo.num_variables {
+                    // Map linear terms
+                    if *logical_var < problem.num_variables {
+                        let linear_coeff = problem.get_linear(*logical_var).unwrap_or(0.0);
+                        if linear_coeff.abs() > 1e-10 {
+                            let _ = encoded_qubo.set_linear(first_phys, linear_coeff);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Map quadratic terms
+        for (var1, var2, coeff) in problem.quadratic_terms() {
+            if let (Some(chain1), Some(chain2)) = (
+                encoded_ising.encoding_map.logical_to_physical.get(&var1),
+                encoded_ising.encoding_map.logical_to_physical.get(&var2),
+            ) {
+                if let (Some(&phys1), Some(&phys2)) = (chain1.first(), chain2.first()) {
+                    if phys1 < encoded_qubo.num_variables && phys2 < encoded_qubo.num_variables {
+                        let current = encoded_qubo.get_quadratic(phys1, phys2).unwrap_or(0.0);
+                        let _ = encoded_qubo.set_quadratic(phys1, phys2, current + coeff);
+                    }
+                }
+            }
+        }
+
+        Ok(encoded_qubo)
     }
 
     /// Select optimal protocol for current conditions

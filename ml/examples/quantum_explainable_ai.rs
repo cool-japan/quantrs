@@ -4,9 +4,9 @@
 //! for quantum neural networks, including feature attribution, circuit analysis,
 //! quantum state analysis, and concept activation vectors.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 
 fn main() -> Result<()> {
@@ -119,14 +119,15 @@ fn feature_attribution_demo() -> Result<()> {
         let mut xai = QuantumExplainableAI::new(model.clone(), vec![method]);
 
         // Set background data for gradient SHAP
-        let background_data =
-            Array2::from_shape_fn((20, 4), |(_, j)| 0.5 + 0.3 * (j as f64 * 0.2).sin());
+        let background_data = Array2::from_shape_fn((20, 4), |(_, j)| {
+            0.3f64.mul_add((j as f64 * 0.2).sin(), 0.5)
+        });
         xai.set_background_data(background_data);
 
         let explanation = xai.explain(&test_input)?;
 
         if let Some(ref attributions) = explanation.feature_attributions {
-            println!("\n   {} Attribution:", method_name);
+            println!("\n   {method_name} Attribution:");
             for (i, &attr) in attributions.iter().enumerate() {
                 println!(
                     "     Feature {}: {:+.4} {}",
@@ -149,8 +150,7 @@ fn feature_attribution_demo() -> Result<()> {
                 .iter()
                 .enumerate()
                 .max_by(|a, b| a.1.abs().partial_cmp(&b.1.abs()).unwrap())
-                .map(|(i, _)| i)
-                .unwrap_or(0);
+                .map_or(0, |(i, _)| i);
 
             println!(
                 "     → Most important feature: Feature {} ({:.4})",
@@ -197,12 +197,9 @@ fn circuit_analysis_demo() -> Result<()> {
         println!("   Parameter Importance Scores:");
         for (i, &importance) in circuit.parameter_importance.iter().enumerate() {
             if importance > 0.5 {
-                println!("     Parameter {}: {:.3} (high importance)", i, importance);
+                println!("     Parameter {i}: {importance:.3} (high importance)");
             } else if importance > 0.2 {
-                println!(
-                    "     Parameter {}: {:.3} (medium importance)",
-                    i, importance
-                );
+                println!("     Parameter {i}: {importance:.3} (medium importance)");
             }
         }
 
@@ -249,7 +246,7 @@ fn circuit_analysis_demo() -> Result<()> {
             if i > 0 {
                 print!(" → ");
             }
-            print!("P{}", param_idx);
+            print!("P{param_idx}");
         }
         println!();
 
@@ -285,7 +282,7 @@ fn quantum_state_demo() -> Result<()> {
     println!("   Analyzing quantum state properties...");
 
     // Test different inputs to see state evolution
-    let test_inputs = vec![
+    let test_inputs = [
         Array1::from_vec(vec![0.0, 0.0, 0.0]),
         Array1::from_vec(vec![1.0, 0.0, 0.0]),
         Array1::from_vec(vec![0.5, 0.5, 0.5]),
@@ -312,20 +309,20 @@ fn quantum_state_demo() -> Result<()> {
 
             // Coherence measures
             for (measure_name, &value) in &state.coherence_measures {
-                println!("     - {}: {:.3}", measure_name, value);
+                println!("     - {measure_name}: {value:.3}");
             }
 
             // Superposition analysis
             let max_component = state
                 .superposition_components
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max);
-            println!("     - Max superposition component: {:.3}", max_component);
+            println!("     - Max superposition component: {max_component:.3}");
 
             // Measurement probabilities
             let total_prob = state.measurement_probabilities.sum();
-            println!("     - Total measurement probability: {:.3}", total_prob);
+            println!("     - Total measurement probability: {total_prob:.3}");
 
             // Most likely measurement outcome
             let most_likely = state
@@ -333,8 +330,7 @@ fn quantum_state_demo() -> Result<()> {
                 .iter()
                 .enumerate()
                 .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .map(|(idx, &prob)| (idx, prob))
-                .unwrap_or((0, 0.0));
+                .map_or((0, 0.0), |(idx, &prob)| (idx, prob));
 
             println!(
                 "     - Most likely outcome: state {} with prob {:.3}",
@@ -345,13 +341,10 @@ fn quantum_state_demo() -> Result<()> {
             if let Some(highest_fidelity) = state
                 .state_fidelities
                 .values()
-                .cloned()
+                .copied()
                 .fold(None, |acc, x| Some(acc.map_or(x, |y| f64::max(x, y))))
             {
-                println!(
-                    "     - Highest basis state fidelity: {:.3}",
-                    highest_fidelity
-                );
+                println!("     - Highest basis state fidelity: {highest_fidelity:.3}");
             }
 
             // Interpretation
@@ -415,22 +408,20 @@ fn saliency_mapping_demo() -> Result<()> {
         let explanation = xai.explain(&test_input)?;
 
         if let Some(ref saliency) = explanation.saliency_map {
-            println!("\n   {} Saliency Map:", method_name);
+            println!("\n   {method_name} Saliency Map:");
 
             // Analyze saliency for each output
             for output_idx in 0..saliency.ncols() {
-                println!("     Output {}:", output_idx);
+                println!("     Output {output_idx}:");
                 for input_idx in 0..saliency.nrows() {
                     let saliency_score = saliency[[input_idx, output_idx]];
                     if saliency_score > 0.1 {
                         println!(
-                            "       Feature {} → Output {}: {:.3} (important)",
-                            input_idx, output_idx, saliency_score
+                            "       Feature {input_idx} → Output {output_idx}: {saliency_score:.3} (important)"
                         );
                     } else if saliency_score > 0.05 {
                         println!(
-                            "       Feature {} → Output {}: {:.3} (moderate)",
-                            input_idx, output_idx, saliency_score
+                            "       Feature {input_idx} → Output {output_idx}: {saliency_score:.3} (moderate)"
                         );
                     }
                 }
@@ -500,7 +491,7 @@ fn quantum_lime_demo() -> Result<()> {
         let explanation = xai.explain(&test_input)?;
 
         if let Some(ref attributions) = explanation.feature_attributions {
-            println!("\n   LIME with {}:", model_name);
+            println!("\n   LIME with {model_name}:");
 
             for (i, &attr) in attributions.iter().enumerate() {
                 let impact = if attr.abs() > 0.3 {
@@ -511,7 +502,7 @@ fn quantum_lime_demo() -> Result<()> {
                     "low"
                 };
 
-                println!("     Feature {}: {:+.3} ({} impact)", i, attr, impact);
+                println!("     Feature {i}: {attr:+.3} ({impact} impact)");
             }
 
             // Local model interpretation
@@ -530,10 +521,7 @@ fn quantum_lime_demo() -> Result<()> {
 
             // Compute local fidelity (simplified)
             let local_complexity = attributions.iter().map(|x| x.abs()).sum::<f64>();
-            println!(
-                "     → Local explanation complexity: {:.3}",
-                local_complexity
-            );
+            println!("     → Local explanation complexity: {local_complexity:.3}");
         }
     }
 
@@ -560,14 +548,15 @@ fn quantum_shap_demo() -> Result<()> {
     let mut xai = QuantumExplainableAI::new(model, vec![method]);
 
     // Set background data for SHAP
-    let background_data =
-        Array2::from_shape_fn((50, 3), |(i, j)| 0.5 + 0.3 * ((i + j) as f64 * 0.1).sin());
+    let background_data = Array2::from_shape_fn((50, 3), |(i, j)| {
+        0.3f64.mul_add(((i + j) as f64 * 0.1).sin(), 0.5)
+    });
     xai.set_background_data(background_data);
 
     println!("   Quantum SHAP: SHapley Additive exPlanations");
 
     // Test multiple inputs
-    let test_inputs = vec![
+    let test_inputs = [
         Array1::from_vec(vec![0.1, 0.5, 0.9]),
         Array1::from_vec(vec![0.8, 0.3, 0.6]),
         Array1::from_vec(vec![0.4, 0.7, 0.2]),
@@ -590,10 +579,10 @@ fn quantum_shap_demo() -> Result<()> {
             let mut total_shap = 0.0;
             for (j, &value) in shap_values.iter().enumerate() {
                 total_shap += value;
-                println!("     - Feature {}: {:+.4}", j, value);
+                println!("     - Feature {j}: {value:+.4}");
             }
 
-            println!("     - Sum of SHAP values: {:.4}", total_shap);
+            println!("     - Sum of SHAP values: {total_shap:.4}");
 
             // Feature ranking
             let mut indexed_shap: Vec<(usize, f64)> = shap_values
@@ -671,7 +660,7 @@ fn quantum_lrp_demo() -> Result<()> {
         let explanation = xai.explain(&test_input)?;
 
         if let Some(ref relevance) = explanation.feature_attributions {
-            println!("\n   LRP with {}:", rule_name);
+            println!("\n   LRP with {rule_name}:");
 
             let total_relevance = relevance.sum();
 
@@ -682,13 +671,10 @@ fn quantum_lrp_demo() -> Result<()> {
                     0.0
                 };
 
-                println!(
-                    "     Feature {}: {:.4} ({:.1}% of total relevance)",
-                    i, rel, percentage
-                );
+                println!("     Feature {i}: {rel:.4} ({percentage:.1}% of total relevance)");
             }
 
-            println!("     Total relevance: {:.4}", total_relevance);
+            println!("     Total relevance: {total_relevance:.4}");
 
             // Rule-specific interpretation
             match rule_name {
@@ -763,8 +749,9 @@ fn comprehensive_explanation_demo() -> Result<()> {
     );
 
     // Set background data
-    let background_data =
-        Array2::from_shape_fn((30, 4), |(i, j)| 0.3 + 0.4 * ((i * j) as f64 * 0.15).sin());
+    let background_data = Array2::from_shape_fn((30, 4), |(i, j)| {
+        0.4f64.mul_add(((i * j) as f64 * 0.15).sin(), 0.3)
+    });
     xai.set_background_data(background_data);
 
     println!("   Comprehensive Quantum Model Explanation");
@@ -786,7 +773,7 @@ fn comprehensive_explanation_demo() -> Result<()> {
     if let Some(ref attributions) = explanation.feature_attributions {
         println!("\n   Feature Attributions:");
         for (i, &attr) in attributions.iter().enumerate() {
-            println!("   - Feature {}: {:+.3}", i, attr);
+            println!("   - Feature {i}: {attr:+.3}");
         }
     }
 
@@ -794,7 +781,7 @@ fn comprehensive_explanation_demo() -> Result<()> {
     if let Some(ref circuit) = explanation.circuit_explanation {
         println!("\n   Circuit Analysis Summary:");
         let avg_importance = circuit.parameter_importance.mean().unwrap_or(0.0);
-        println!("   - Average parameter importance: {:.3}", avg_importance);
+        println!("   - Average parameter importance: {avg_importance:.3}");
         println!(
             "   - Number of analyzed layers: {}",
             circuit.layer_analysis.len()
@@ -817,12 +804,9 @@ fn comprehensive_explanation_demo() -> Result<()> {
         let max_measurement_prob = state
             .measurement_probabilities
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
-        println!(
-            "   - Max measurement probability: {:.3}",
-            max_measurement_prob
-        );
+        println!("   - Max measurement probability: {max_measurement_prob:.3}");
     }
 
     // Concept activations
@@ -836,17 +820,14 @@ fn comprehensive_explanation_demo() -> Result<()> {
             } else {
                 "low"
             };
-            println!(
-                "   - {}: {:.3} ({} similarity)",
-                concept, activation, similarity
-            );
+            println!("   - {concept}: {activation:.3} ({similarity} similarity)");
         }
     }
 
     // Confidence scores
     println!("\n   Explanation Confidence Scores:");
     for (component, &confidence) in &explanation.confidence_scores {
-        println!("   - {}: {:.3}", component, confidence);
+        println!("   - {component}: {confidence:.3}");
     }
 
     // Textual explanation
@@ -861,8 +842,7 @@ fn comprehensive_explanation_demo() -> Result<()> {
             .iter()
             .enumerate()
             .max_by(|a, b| a.1.abs().partial_cmp(&b.1.abs()).unwrap())
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .map_or(0, |(i, _)| i);
 
         println!(
             "   • Most influential feature: Feature {} ({:.3})",
@@ -878,7 +858,7 @@ fn comprehensive_explanation_demo() -> Result<()> {
         let coherence_level = state
             .coherence_measures
             .values()
-            .cloned()
+            .copied()
             .fold(0.0, f64::max);
         if coherence_level > 0.5 {
             println!("   • High quantum coherence detected");
@@ -890,7 +870,7 @@ fn comprehensive_explanation_demo() -> Result<()> {
             concepts.iter().max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
         {
             if max_activation > 0.5 {
-                println!("   • Input strongly matches concept: {}", best_concept);
+                println!("   • Input strongly matches concept: {best_concept}");
             }
         }
     }
@@ -904,16 +884,16 @@ fn comprehensive_explanation_demo() -> Result<()> {
 fn format_layer_type(layer_type: &QNNLayerType) -> String {
     match layer_type {
         QNNLayerType::EncodingLayer { num_features } => {
-            format!("Encoding Layer ({} features)", num_features)
+            format!("Encoding Layer ({num_features} features)")
         }
         QNNLayerType::VariationalLayer { num_params } => {
-            format!("Variational Layer ({} parameters)", num_params)
+            format!("Variational Layer ({num_params} parameters)")
         }
         QNNLayerType::EntanglementLayer { connectivity } => {
-            format!("Entanglement Layer ({})", connectivity)
+            format!("Entanglement Layer ({connectivity})")
         }
         QNNLayerType::MeasurementLayer { measurement_basis } => {
-            format!("Measurement Layer ({})", measurement_basis)
+            format!("Measurement Layer ({measurement_basis})")
         }
     }
 }

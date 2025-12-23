@@ -1,8 +1,8 @@
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::hep::{CollisionEvent, HEPQuantumClassifier, ParticleFeatures, ParticleType};
 use quantrs2_ml::prelude::*;
-use std::time::Instant;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<()> {
     println!("Quantum High-Energy Physics Classification Example");
@@ -13,10 +13,7 @@ fn main() -> Result<()> {
     let feature_dim = 8;
     let num_classes = 2;
 
-    println!(
-        "Creating HEP quantum classifier with {} qubits...",
-        num_qubits
-    );
+    println!("Creating HEP quantum classifier with {num_qubits} qubits...");
     let mut classifier = HEPQuantumClassifier::new(
         num_qubits,
         feature_dim,
@@ -79,10 +76,7 @@ fn main() -> Result<()> {
 
     println!("Event classification results:");
     for (i, (class, confidence)) in classifications.iter().enumerate() {
-        println!(
-            "  Particle {}: {} (confidence: {:.2})",
-            i, class, confidence
-        );
+        println!("  Particle {i}: {class} (confidence: {confidence:.2})");
     }
 
     // Create a Higgs detector
@@ -94,7 +88,7 @@ fn main() -> Result<()> {
 
     println!("Higgs detection results:");
     let higgs_count = higgs_detections.iter().filter(|&&x| x).count();
-    println!("  Found {} potential Higgs particles", higgs_count);
+    println!("  Found {higgs_count} potential Higgs particles");
 
     Ok(())
 }
@@ -123,7 +117,7 @@ fn generate_synthetic_data(num_samples: usize) -> (Vec<ParticleFeatures>, Vec<us
         // Generate synthetic four-momentum
         // Higgs particles have higher energy
         let energy_base = if is_higgs { 125.0 } else { 50.0 };
-        let energy = energy_base + thread_rng().gen::<f64>() * 10.0;
+        let energy = thread_rng().gen::<f64>().mul_add(10.0, energy_base);
         let px = (thread_rng().gen::<f64>() - 0.5) * 20.0;
         let py = (thread_rng().gen::<f64>() - 0.5) * 20.0;
         let pz = (thread_rng().gen::<f64>() - 0.5) * 50.0;
@@ -142,7 +136,7 @@ fn generate_synthetic_data(num_samples: usize) -> (Vec<ParticleFeatures>, Vec<us
         };
 
         particles.push(particle);
-        labels.push(if is_higgs { 1 } else { 0 });
+        labels.push(usize::from(is_higgs));
     }
 
     (particles, labels)

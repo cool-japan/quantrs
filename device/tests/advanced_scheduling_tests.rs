@@ -61,7 +61,7 @@ async fn test_ml_enhanced_job_configuration() {
     // Should succeed with optimized configuration
     match job_result {
         Ok(_) => {}
-        Err(e) => panic!("Job submission failed: {:?}", e),
+        Err(e) => panic!("Job submission failed: {e:?}"),
     }
 }
 
@@ -87,7 +87,7 @@ async fn test_multi_objective_backend_selection() {
         .await;
     match selected_backend {
         Ok(_) => {}
-        Err(e) => panic!("Backend selection failed: {:?}", e),
+        Err(e) => panic!("Backend selection failed: {e:?}"),
     }
 }
 
@@ -107,10 +107,7 @@ async fn test_predictive_queue_time_estimation() {
     // Predictions should be reasonable (not negative, not extremely large)
     for (backend, prediction) in queue_predictions {
         assert!(prediction.as_secs() < 3600); // Less than 1 hour
-        println!(
-            "Backend {:?}: predicted queue time {:?}",
-            backend, prediction
-        );
+        println!("Backend {backend:?}: predicted queue time {prediction:?}");
     }
 }
 
@@ -291,10 +288,7 @@ async fn test_advanced_scheduling_strategies() {
         // Test that scheduler initializes with different strategies
         // TODO: Test using public API once available
         // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
-        println!(
-            "Successfully initialized scheduler with strategy: {:?}",
-            strategy
-        );
+        println!("Successfully initialized scheduler with strategy: {strategy:?}");
     }
 }
 
@@ -324,10 +318,7 @@ async fn test_resource_allocation_strategies() {
         // Test that scheduler initializes with different allocation strategies
         // TODO: Test using public API once available
         // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
-        println!(
-            "Successfully initialized scheduler with allocation strategy: {:?}",
-            strategy
-        );
+        println!("Successfully initialized scheduler with allocation strategy: {strategy:?}");
     }
 }
 
@@ -362,10 +353,7 @@ async fn test_ml_algorithm_configurations() {
         // Test that scheduler initializes with different ML algorithms
         // TODO: Test using public API once available
         // assert!(scheduler.core_scheduler.backends.read().unwrap().is_empty());
-        println!(
-            "Successfully initialized scheduler with ML algorithm: {:?}",
-            algorithm
-        );
+        println!("Successfully initialized scheduler with ML algorithm: {algorithm:?}");
     }
 }
 
@@ -446,7 +434,7 @@ async fn test_comprehensive_workflow() {
 
     // Test comprehensive monitoring and optimization
     let queue_predictions = scheduler.predict_queue_times().await.unwrap();
-    println!("Queue predictions: {:?}", queue_predictions);
+    println!("Queue predictions: {queue_predictions:?}");
 
     let compliance_report = scheduler.monitor_sla_compliance().await.unwrap();
     println!(
@@ -566,7 +554,7 @@ async fn test_performance_under_load() {
                 };
 
                 // Simplified test - return OK result
-                Ok(format!("job_{}", i))
+                Ok(format!("job_{i}"))
             });
         handles.push(handle);
     }
@@ -585,7 +573,7 @@ async fn test_performance_under_load() {
 
     let elapsed = start_time.elapsed();
 
-    println!("Submitted {} jobs in {:?}", successful_submissions, elapsed);
+    println!("Submitted {successful_submissions} jobs in {elapsed:?}");
     println!("Average submission time: {:?}", elapsed / num_jobs);
 
     assert!(successful_submissions > 0);

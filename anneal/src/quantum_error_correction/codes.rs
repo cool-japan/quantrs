@@ -39,3 +39,16 @@ pub struct CodeParameters {
     /// Threshold probability
     pub threshold_probability: f64,
 }
+
+impl Default for CodeParameters {
+    fn default() -> Self {
+        Self {
+            distance: 3,
+            num_logical_qubits: 1,
+            num_physical_qubits: 9,
+            num_ancilla_qubits: 4,
+            code_rate: 0.11,
+            threshold_probability: 0.01,
+        }
+    }
+}

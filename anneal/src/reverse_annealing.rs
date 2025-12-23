@@ -7,8 +7,8 @@
 
 use crate::ising::{IsingError, IsingModel, IsingResult};
 use crate::simulator::{AnnealingError, AnnealingResult, AnnealingSolution};
-use scirs2_core::random::{thread_rng, Rng, SeedableRng};
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{thread_rng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
 /// Reverse annealing schedule configuration
@@ -243,7 +243,7 @@ impl ReverseAnnealingSimulator {
     }
 
     /// Apply local search mask for targeted reverse annealing
-    fn apply_local_search_mask(&mut self, state: &mut [i8], radius: usize) {
+    fn apply_local_search_mask(&mut self, state: &[i8], radius: usize) {
         // In targeted reverse annealing, only spins within radius are allowed to change
         // This is typically implemented using anneal_offsets in hardware
         // For simulation, we'll mark which spins can be updated

@@ -13,13 +13,13 @@
 //! - Multi-objective schedule optimization
 //! - Transfer learning across problem types
 
+use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{thread_rng, Rng, SeedableRng};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
-use scirs2_core::random::{Rng, SeedableRng};
-use scirs2_core::random::ChaCha8Rng;
 
-use crate::ising::{IsingModel, IsingError};
+use crate::ising::{IsingError, IsingModel};
 use crate::simulator::{AnnealingParams, AnnealingSolution, TemperatureSchedule};
 
 /// Errors that can occur in adaptive scheduling
@@ -427,8 +427,8 @@ impl NeuralAnnealingScheduler {
     pub fn new(config: SchedulerConfig) -> AdaptiveScheduleResult<Self> {
         let network = SchedulePredictionNetwork::new(&config.network_layers, config.seed)?;
         let rl_agent = ScheduleRLAgent::new(RLAgentConfig {
-            action_space_size: 10, // Number of discrete actions
-            state_space_size: config.network_layers[0],
+            action_space_size: 10,                          // Number of discrete actions
+            state_space_size: config.network_layers[0] + 4, // Features + 4 schedule parameters
             batch_size: 32,
             target_update_frequency: 100,
             epsilon_decay: 0.995,
@@ -459,7 +459,10 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Generate optimal annealing schedule for a given problem
-    pub fn generate_schedule(&mut self, problem: &IsingModel) -> AdaptiveScheduleResult<AnnealingParams> {
+    pub fn generate_schedule(
+        &mut self,
+        problem: &IsingModel,
+    ) -> AdaptiveScheduleResult<AnnealingParams> {
         let start_time = Instant::now();
 
         // Extract problem features
@@ -489,7 +492,10 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Extract features from an Ising model
-    fn extract_problem_features(&self, problem: &IsingModel) -> AdaptiveScheduleResult<ProblemFeatures> {
+    fn extract_problem_features(
+        &self,
+        problem: &IsingModel,
+    ) -> AdaptiveScheduleResult<ProblemFeatures> {
         let size = problem.num_qubits;
 
         // Calculate connectivity density
@@ -497,7 +503,7 @@ impl NeuralAnnealingScheduler {
         let mut coupling_values = Vec::new();
 
         for i in 0..size {
-            for j in (i+1)..size {
+            for j in (i + 1)..size {
                 if let Ok(coupling) = problem.get_coupling(i, j) {
                     if coupling.abs() > 1e-10 {
                         num_couplings += 1;
@@ -513,9 +519,11 @@ impl NeuralAnnealingScheduler {
         // Calculate coupling statistics
         let coupling_stats = if !coupling_values.is_empty() {
             let mean = coupling_values.iter().sum::<f64>() / coupling_values.len() as f64;
-            let variance = coupling_values.iter()
+            let variance = coupling_values
+                .iter()
                 .map(|x| (x - mean).powi(2))
-                .sum::<f64>() / coupling_values.len() as f64;
+                .sum::<f64>()
+                / coupling_values.len() as f64;
             let std = variance.sqrt();
             let max_abs = coupling_values.iter().fold(0.0f64, |a, &b| a.max(b));
             let min_val = coupling_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
@@ -523,9 +531,11 @@ impl NeuralAnnealingScheduler {
 
             // Simple skewness calculation
             let skewness = if std > 1e-10 {
-                coupling_values.iter()
+                coupling_values
+                    .iter()
                     .map(|x| ((x - mean) / std).powi(3))
-                    .sum::<f64>() / coupling_values.len() as f64
+                    .sum::<f64>()
+                    / coupling_values.len() as f64
             } else {
                 0.0
             };
@@ -562,7 +572,7 @@ impl NeuralAnnealingScheduler {
             ruggedness: coupling_stats.std / coupling_stats.mean.max(1e-10),
             energy_connectivity: connectivity_density,
             barrier_heights: vec![coupling_stats.mean; 5], // Simplified
-            funnel_structure: 1.0 - connectivity_density, // Simplified metric
+            funnel_structure: 1.0 - connectivity_density,  // Simplified metric
         };
 
         Ok(ProblemFeatures {
@@ -579,10 +589,12 @@ impl NeuralAnnealingScheduler {
     fn check_feature_cache(&self, features: &ProblemFeatures) -> Option<AnnealingParams> {
         // Simple similarity matching (in practice, would use more sophisticated matching)
         for (_, cached_features) in &self.feature_cache {
-            if (cached_features.size as f64 - features.size as f64).abs() / features.size as f64 < 0.1 &&
-               (cached_features.connectivity_density - features.connectivity_density).abs() < 0.1 &&
-               cached_features.problem_type == features.problem_type {
-
+            if (cached_features.size as f64 - features.size as f64).abs() / (features.size as f64)
+                < 0.1
+                && (cached_features.connectivity_density - features.connectivity_density).abs()
+                    < 0.1
+                && cached_features.problem_type == features.problem_type
+            {
                 // Return a default schedule for now (would return cached optimized schedule)
                 return Some(AnnealingParams {
                     num_sweeps: 1000 + features.size * 10,
@@ -596,7 +608,10 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Use neural network to predict schedule parameters
-    fn predict_schedule_parameters(&self, features: &ProblemFeatures) -> AdaptiveScheduleResult<ScheduleParameters> {
+    fn predict_schedule_parameters(
+        &self,
+        features: &ProblemFeatures,
+    ) -> AdaptiveScheduleResult<ScheduleParameters> {
         // Convert features to input vector
         let input = self.features_to_input_vector(features);
 
@@ -604,9 +619,17 @@ impl NeuralAnnealingScheduler {
         let output = self.network.forward(&input)?;
 
         // Convert output to schedule parameters
+        let initial_temp = output[0].max(1.0).min(100.0);
+        let mut final_temp = output[1].max(0.001).min(1.0);
+
+        // Ensure initial_temp > final_temp
+        if initial_temp <= final_temp {
+            final_temp = initial_temp * 0.01; // Make final_temp 1% of initial
+        }
+
         let schedule_params = ScheduleParameters {
-            initial_temp: output[0].max(0.1).min(100.0),
-            final_temp: output[1].max(0.001).min(1.0),
+            initial_temp,
+            final_temp,
             num_sweeps: (output[2].max(100.0).min(100000.0)) as usize,
             cooling_rate: output[3].max(0.01).min(0.99),
             schedule_type: ScheduleType::Exponential, // Default
@@ -639,7 +662,11 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Use RL agent to refine schedule parameters
-    fn refine_with_rl(&mut self, features: &ProblemFeatures, initial_params: ScheduleParameters) -> AdaptiveScheduleResult<ScheduleParameters> {
+    fn refine_with_rl(
+        &mut self,
+        features: &ProblemFeatures,
+        initial_params: ScheduleParameters,
+    ) -> AdaptiveScheduleResult<ScheduleParameters> {
         // Convert to state representation
         let state = self.create_rl_state(features, &initial_params);
 
@@ -668,39 +695,48 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Apply RL action to modify parameters
-    fn apply_rl_action(&self, mut params: ScheduleParameters, action: usize) -> AdaptiveScheduleResult<ScheduleParameters> {
+    fn apply_rl_action(
+        &self,
+        mut params: ScheduleParameters,
+        action: usize,
+    ) -> AdaptiveScheduleResult<ScheduleParameters> {
         match action {
-            0 => params.initial_temp *= 1.2,     // Increase initial temp
-            1 => params.initial_temp *= 0.8,     // Decrease initial temp
-            2 => params.final_temp *= 1.5,       // Increase final temp
-            3 => params.final_temp *= 0.7,       // Decrease final temp
+            0 => params.initial_temp *= 1.2, // Increase initial temp
+            1 => params.initial_temp *= 0.8, // Decrease initial temp
+            2 => params.final_temp *= 1.5,   // Increase final temp
+            3 => params.final_temp *= 0.7,   // Decrease final temp
             4 => params.num_sweeps = (params.num_sweeps as f64 * 1.3) as usize, // Increase sweeps
             5 => params.num_sweeps = (params.num_sweeps as f64 * 0.8) as usize, // Decrease sweeps
-            6 => params.cooling_rate = (params.cooling_rate * 1.1).min(0.99),  // Slower cooling
-            7 => params.cooling_rate = (params.cooling_rate * 0.9).max(0.01),  // Faster cooling
-            8 => { // Change schedule type
+            6 => params.cooling_rate = (params.cooling_rate * 1.1).min(0.99), // Slower cooling
+            7 => params.cooling_rate = (params.cooling_rate * 0.9).max(0.01), // Faster cooling
+            8 => {
+                // Change schedule type
                 params.schedule_type = ScheduleType::Linear;
-            },
-            9 => { // Change schedule type
+            }
+            9 => {
+                // Change schedule type
                 params.schedule_type = ScheduleType::Logarithmic;
-            },
-            _ => {}, // No action
+            }
+            _ => {} // No action
         }
 
         Ok(params)
     }
 
     /// Convert schedule parameters to AnnealingParams
-    fn convert_to_annealing_params(&self, params: ScheduleParameters) -> AdaptiveScheduleResult<AnnealingParams> {
+    fn convert_to_annealing_params(
+        &self,
+        params: ScheduleParameters,
+    ) -> AdaptiveScheduleResult<AnnealingParams> {
         Ok(AnnealingParams {
             num_sweeps: params.num_sweeps,
             initial_temperature: params.initial_temp,
             final_temperature: params.final_temp,
             temperature_schedule: match params.schedule_type {
                 ScheduleType::Linear => TemperatureSchedule::Linear,
-                ScheduleType::Exponential => TemperatureSchedule::Exponential,
-                ScheduleType::Logarithmic => TemperatureSchedule::Logarithmic,
-                _ => TemperatureSchedule::Exponential,
+                ScheduleType::Exponential => TemperatureSchedule::Exponential(1.0),
+                ScheduleType::Logarithmic => TemperatureSchedule::Exponential(0.5), // Fallback to Exponential with slower cooling
+                _ => TemperatureSchedule::Exponential(1.0),
             },
             ..Default::default()
         })
@@ -708,13 +744,19 @@ impl NeuralAnnealingScheduler {
 
     /// Cache schedule for similar problems
     fn cache_schedule(&mut self, features: &ProblemFeatures, schedule: AnnealingParams) {
-        let cache_key = format!("{}_{:.2}_{:?}", features.size, features.connectivity_density, features.problem_type);
+        let cache_key = format!(
+            "{}_{:.2}_{:?}",
+            features.size, features.connectivity_density, features.problem_type
+        );
         self.feature_cache.insert(cache_key, features.clone());
     }
 
     /// Train the scheduler on historical data
     pub fn train(&mut self, training_data: &[TrainingExample]) -> AdaptiveScheduleResult<()> {
-        println!("Training neural annealing scheduler with {} examples", training_data.len());
+        println!(
+            "Training neural annealing scheduler with {} examples",
+            training_data.len()
+        );
 
         for epoch in 0..self.config.training_epochs {
             let start_time = Instant::now();
@@ -728,11 +770,15 @@ impl NeuralAnnealingScheduler {
             // Update training history
             self.training_history.network_losses.push(network_loss);
             self.training_history.rl_rewards.push(rl_reward);
-            self.training_history.training_times.push(start_time.elapsed());
+            self.training_history
+                .training_times
+                .push(start_time.elapsed());
 
             if epoch % 10 == 0 {
-                println!("Epoch {}: Network Loss = {:.6}, RL Reward = {:.6}",
-                        epoch, network_loss, rl_reward);
+                println!(
+                    "Epoch {}: Network Loss = {:.6}, RL Reward = {:.6}",
+                    epoch, network_loss, rl_reward
+                );
             }
         }
 
@@ -740,7 +786,10 @@ impl NeuralAnnealingScheduler {
     }
 
     /// Train network for one epoch
-    fn train_network_epoch(&mut self, training_data: &[TrainingExample]) -> AdaptiveScheduleResult<f64> {
+    fn train_network_epoch(
+        &mut self,
+        training_data: &[TrainingExample],
+    ) -> AdaptiveScheduleResult<f64> {
         let mut total_loss = 0.0;
 
         for example in training_data {
@@ -751,10 +800,12 @@ impl NeuralAnnealingScheduler {
             let prediction = self.network.forward(&input)?;
 
             // Calculate loss (simplified MSE)
-            let loss: f64 = prediction.iter()
+            let loss: f64 = prediction
+                .iter()
                 .zip(target.iter())
                 .map(|(pred, targ)| (pred - targ).powi(2))
-                .sum::<f64>() / prediction.len() as f64;
+                .sum::<f64>()
+                / prediction.len() as f64;
 
             total_loss += loss;
 
@@ -833,7 +884,7 @@ impl SchedulePredictionNetwork {
     pub fn new(layer_sizes: &[usize], seed: Option<u64>) -> AdaptiveScheduleResult<Self> {
         if layer_sizes.len() < 2 {
             return Err(AdaptiveScheduleError::ConfigurationError(
-                "Network must have at least input and output layers".to_string()
+                "Network must have at least input and output layers".to_string(),
             ));
         }
 
@@ -844,7 +895,7 @@ impl SchedulePredictionNetwork {
 
         let mut layers = Vec::new();
 
-        for i in 0..layer_sizes.len()-1 {
+        for i in 0..layer_sizes.len() - 1 {
             let input_size = layer_sizes[i];
             let output_size = layer_sizes[i + 1];
 
@@ -912,12 +963,17 @@ impl SchedulePredictionNetwork {
     }
 
     /// Forward pass through a single layer
-    fn layer_forward(&self, input: &[f64], layer: &NetworkLayer) -> AdaptiveScheduleResult<Vec<f64>> {
+    fn layer_forward(
+        &self,
+        input: &[f64],
+        layer: &NetworkLayer,
+    ) -> AdaptiveScheduleResult<Vec<f64>> {
         if input.len() != layer.weights[0].len() {
-            return Err(AdaptiveScheduleError::NeuralNetworkError(
-                format!("Input size {} doesn't match layer input size {}",
-                       input.len(), layer.weights[0].len())
-            ));
+            return Err(AdaptiveScheduleError::NeuralNetworkError(format!(
+                "Input size {} doesn't match layer input size {}",
+                input.len(),
+                layer.weights[0].len()
+            )));
         }
 
         let mut output = Vec::new();
@@ -936,8 +992,12 @@ impl SchedulePredictionNetwork {
                 ActivationFunction::Tanh => activation.tanh(),
                 ActivationFunction::Linear => activation,
                 ActivationFunction::LeakyReLU(alpha) => {
-                    if activation > 0.0 { activation } else { alpha * activation }
-                },
+                    if activation > 0.0 {
+                        activation
+                    } else {
+                        alpha * activation
+                    }
+                }
             };
 
             output.push(activation);
@@ -947,7 +1007,12 @@ impl SchedulePredictionNetwork {
     }
 
     /// Backward pass (simplified implementation)
-    pub fn backward(&mut self, _input: &[f64], _target: &[f64], _prediction: &[f64]) -> AdaptiveScheduleResult<()> {
+    pub fn backward(
+        &mut self,
+        _input: &[f64],
+        _target: &[f64],
+        _prediction: &[f64],
+    ) -> AdaptiveScheduleResult<()> {
         // Simplified backward pass - in practice would implement full backpropagation
         // For now, just update training state
         self.training_state.epoch += 1;
@@ -960,7 +1025,7 @@ impl ScheduleRLAgent {
     pub fn new(config: RLAgentConfig) -> AdaptiveScheduleResult<Self> {
         let q_network = SchedulePredictionNetwork::new(
             &[config.state_space_size, 64, 32, config.action_space_size],
-            None
+            None,
         )?;
         let target_network = q_network.clone();
 
@@ -989,7 +1054,8 @@ impl ScheduleRLAgent {
         } else {
             // Greedy action selection
             let q_values = self.q_network.forward(state)?;
-            let best_action = q_values.iter()
+            let best_action = q_values
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .map(|(idx, _)| idx)
@@ -1101,7 +1167,13 @@ mod tests {
 
     #[test]
     fn test_schedule_generation() {
-        let mut scheduler = create_neural_scheduler().unwrap();
+        // Create scheduler with correct input size (10 features)
+        let mut scheduler = create_custom_neural_scheduler(
+            vec![10, 16, 8, 4], // Match the 10 features from features_to_input_vector
+            0.001,
+            0.1,
+        )
+        .unwrap();
         let mut ising = IsingModel::new(5);
         ising.set_bias(0, 1.0).unwrap();
         ising.set_coupling(0, 1, -0.5).unwrap();

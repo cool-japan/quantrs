@@ -29,16 +29,27 @@ fn optimize_basic_circuit() {
     let mut circuit = Circuit::<4>::new();
 
     // Add some gates that can be optimized
-    circuit.h(QubitId::new(0)).unwrap()
-        .x(QubitId::new(0)).unwrap()
-        .x(QubitId::new(0)).unwrap()  // X·X = I (redundant)
-        .h(QubitId::new(1)).unwrap()
-        .h(QubitId::new(1)).unwrap()  // H·H = I (redundant)
-        .cnot(QubitId::new(0), QubitId::new(1)).unwrap()
-        .z(QubitId::new(2)).unwrap()
-        .z(QubitId::new(2)).unwrap()  // Z·Z = I (redundant)
-        .s(QubitId::new(3)).unwrap()
-        .sdg(QubitId::new(3)).unwrap(); // S·S† = I (redundant)
+    circuit
+        .h(QubitId::new(0))
+        .expect("Failed to apply H gate to qubit 0")
+        .x(QubitId::new(0))
+        .expect("Failed to apply first X gate to qubit 0")
+        .x(QubitId::new(0))
+        .expect("Failed to apply second X gate to qubit 0") // X·X = I (redundant)
+        .h(QubitId::new(1))
+        .expect("Failed to apply first H gate to qubit 1")
+        .h(QubitId::new(1))
+        .expect("Failed to apply second H gate to qubit 1") // H·H = I (redundant)
+        .cnot(QubitId::new(0), QubitId::new(1))
+        .expect("Failed to apply CNOT gate")
+        .z(QubitId::new(2))
+        .expect("Failed to apply first Z gate to qubit 2")
+        .z(QubitId::new(2))
+        .expect("Failed to apply second Z gate to qubit 2") // Z·Z = I (redundant)
+        .s(QubitId::new(3))
+        .expect("Failed to apply S gate to qubit 3")
+        .sdg(QubitId::new(3))
+        .expect("Failed to apply S† gate to qubit 3"); // S·S† = I (redundant)
 
     println!("Original circuit created with intentional redundancies");
 
@@ -50,7 +61,7 @@ fn optimize_basic_circuit() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Optimization completed in {:?}", elapsed);
+    println!("Optimization completed in {elapsed:?}");
     result.print_summary();
 }
 
@@ -61,25 +72,41 @@ fn optimize_complex_circuit() {
     // Build a circuit with various optimization opportunities
     circuit
         // Prepare Bell pairs
-        .h(QubitId::new(0)).unwrap()
-        .cnot(QubitId::new(0), QubitId::new(1)).unwrap()
-        .h(QubitId::new(2)).unwrap()
-        .cnot(QubitId::new(2), QubitId::new(3)).unwrap()
+        .h(QubitId::new(0))
+        .expect("Failed to apply H gate to qubit 0 for first Bell pair")
+        .cnot(QubitId::new(0), QubitId::new(1))
+        .expect("Failed to apply CNOT for first Bell pair")
+        .h(QubitId::new(2))
+        .expect("Failed to apply H gate to qubit 2 for second Bell pair")
+        .cnot(QubitId::new(2), QubitId::new(3))
+        .expect("Failed to apply CNOT for second Bell pair")
         // Some redundant operations
-        .x(QubitId::new(4)).unwrap()
-        .y(QubitId::new(4)).unwrap()
-        .z(QubitId::new(4)).unwrap()
-        .x(QubitId::new(4)).unwrap()
-        .y(QubitId::new(4)).unwrap()
-        .z(QubitId::new(4)).unwrap()
+        .x(QubitId::new(4))
+        .expect("Failed to apply first X gate to qubit 4")
+        .y(QubitId::new(4))
+        .expect("Failed to apply first Y gate to qubit 4")
+        .z(QubitId::new(4))
+        .expect("Failed to apply first Z gate to qubit 4")
+        .x(QubitId::new(4))
+        .expect("Failed to apply second X gate to qubit 4")
+        .y(QubitId::new(4))
+        .expect("Failed to apply second Y gate to qubit 4")
+        .z(QubitId::new(4))
+        .expect("Failed to apply second Z gate to qubit 4")
         // Gates that can be reordered
-        .h(QubitId::new(0)).unwrap()
-        .z(QubitId::new(1)).unwrap()
-        .h(QubitId::new(0)).unwrap()  // H·H = I
+        .h(QubitId::new(0))
+        .expect("Failed to apply third H gate to qubit 0")
+        .z(QubitId::new(1))
+        .expect("Failed to apply Z gate to qubit 1")
+        .h(QubitId::new(0))
+        .expect("Failed to apply fourth H gate to qubit 0") // H·H = I
         // More complex patterns
-        .h(QubitId::new(5)).unwrap()
-        .x(QubitId::new(5)).unwrap()
-        .h(QubitId::new(5)).unwrap(); // H·X·H = Z
+        .h(QubitId::new(5))
+        .expect("Failed to apply first H gate to qubit 5")
+        .x(QubitId::new(5))
+        .expect("Failed to apply X gate to qubit 5")
+        .h(QubitId::new(5))
+        .expect("Failed to apply second H gate to qubit 5"); // H·X·H = Z
 
     println!("Complex circuit created with multiple optimization opportunities");
 
@@ -91,7 +118,7 @@ fn optimize_complex_circuit() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Optimization completed in {:?}", elapsed);
+    println!("Optimization completed in {elapsed:?}");
     result.print_summary();
 }
 
@@ -102,17 +129,17 @@ fn optimize_with_custom_passes() {
     // Build circuit
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("Failed to apply initial H gate to qubit 0")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap()
+        .expect("Failed to apply CNOT between qubits 0 and 1")
         .cnot(QubitId::new(1), QubitId::new(2))
-        .unwrap()
+        .expect("Failed to apply CNOT between qubits 1 and 2")
         .cnot(QubitId::new(2), QubitId::new(3))
-        .unwrap()
+        .expect("Failed to apply CNOT between qubits 2 and 3")
         .cnot(QubitId::new(3), QubitId::new(4))
-        .unwrap()
+        .expect("Failed to apply CNOT between qubits 3 and 4")
         .h(QubitId::new(4))
-        .unwrap();
+        .expect("Failed to apply final H gate to qubit 4");
 
     println!("Circuit created for custom optimization");
 
@@ -133,7 +160,7 @@ fn optimize_with_custom_passes() {
     let result = optimizer.optimize(&circuit);
     let elapsed = start.elapsed();
 
-    println!("Custom optimization completed in {:?}", elapsed);
+    println!("Custom optimization completed in {elapsed:?}");
     result.print_summary();
 }
 

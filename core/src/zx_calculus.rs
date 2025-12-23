@@ -563,7 +563,7 @@ impl ZXDiagram {
     }
 
     /// Optimize Clifford subcircuits using tableau methods
-    fn optimize_clifford_subcircuits(&mut self) -> usize {
+    fn optimize_clifford_subcircuits(&self) -> usize {
         let mut rewrites = 0;
 
         // Extract Clifford parts and optimize using tableau representation
@@ -806,7 +806,7 @@ impl ZXDiagram {
     }
 
     /// Optimize a Clifford region using tableau methods
-    fn optimize_clifford_region(&mut self, region: &[usize]) -> usize {
+    fn optimize_clifford_region(&self, region: &[usize]) -> usize {
         // Placeholder for tableau-based Clifford optimization
         // This would implement:
         // 1. Conversion to stabilizer tableau

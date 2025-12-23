@@ -16,7 +16,7 @@ use scirs2_core::gpu;
 
 // Stubs for missing GPU functionality
 #[cfg(feature = "scirs")]
-fn get_device_count() -> usize {
+const fn get_device_count() -> usize {
     // Placeholder
     1
 }
@@ -33,10 +33,10 @@ struct DeviceInfo {
 #[cfg(feature = "scirs")]
 impl GpuContext {
     fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(GpuContext)
+        Ok(Self)
     }
 
-    fn get_device_info(&self) -> DeviceInfo {
+    const fn get_device_info(&self) -> DeviceInfo {
         DeviceInfo {
             memory_mb: 8192,
             compute_units: 64,
@@ -84,7 +84,7 @@ struct GpuBuffer<T> {
 
 #[cfg(feature = "scirs")]
 impl<T> GpuBuffer<T> {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
         }
@@ -94,7 +94,7 @@ impl<T> GpuBuffer<T> {
         Ok(())
     }
 
-    fn as_kernel_arg(&self) -> KernelArg {
+    const fn as_kernel_arg(&self) -> KernelArg {
         KernelArg::Buffer
     }
 }
@@ -112,17 +112,17 @@ impl GpuMatrix {
         _ctx: &GpuContext,
         _matrix: &Array<f64, Ix2>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(GpuMatrix)
+        Ok(Self)
     }
 
     fn from_host(
         _ctx: &GpuContext,
         _matrix: &Array<f64, Ix2>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(GpuMatrix)
+        Ok(Self)
     }
 
-    fn as_kernel_arg(&self) -> KernelArg {
+    const fn as_kernel_arg(&self) -> KernelArg {
         KernelArg::Buffer
     }
 }
@@ -154,7 +154,7 @@ pub struct EnhancedArminSampler {
 
 impl EnhancedArminSampler {
     /// Create a new enhanced GPU sampler
-    pub fn new(device_id: usize) -> Self {
+    pub const fn new(device_id: usize) -> Self {
         Self {
             seed: None,
             device_id,
@@ -171,38 +171,38 @@ impl EnhancedArminSampler {
     }
 
     /// Enable multi-GPU mode
-    pub fn with_multi_gpu(mut self, enable: bool) -> Self {
+    pub const fn with_multi_gpu(mut self, enable: bool) -> Self {
         self.multi_gpu = enable;
         self
     }
 
     /// Set batch size for parallel runs
-    pub fn with_batch_size(mut self, size: usize) -> Self {
+    pub const fn with_batch_size(mut self, size: usize) -> Self {
         self.batch_size = size;
         self
     }
 
     /// Set temperature schedule
-    pub fn with_temperature(mut self, initial: f64, final_: f64) -> Self {
+    pub const fn with_temperature(mut self, initial: f64, final_: f64) -> Self {
         self.initial_temp = initial;
         self.final_temp = final_;
         self
     }
 
     /// Set number of sweeps
-    pub fn with_sweeps(mut self, sweeps: usize) -> Self {
+    pub const fn with_sweeps(mut self, sweeps: usize) -> Self {
         self.sweeps = sweeps;
         self
     }
 
     /// Set memory pool size
-    pub fn with_memory_pool(mut self, size_mb: usize) -> Self {
+    pub const fn with_memory_pool(mut self, size_mb: usize) -> Self {
         self.memory_pool_mb = size_mb;
         self
     }
 
     /// Enable mixed precision computation
-    pub fn with_mixed_precision(mut self, enable: bool) -> Self {
+    pub const fn with_mixed_precision(mut self, enable: bool) -> Self {
         self.use_mixed_precision = enable;
         self
     }
@@ -219,7 +219,7 @@ impl EnhancedArminSampler {
 
         // Initialize GPU context
         let ctx = GpuContext::new(self.device_id.try_into().unwrap())
-            .map_err(|e| SamplerError::GpuError(format!("Failed to initialize GPU: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("Failed to initialize GPU: {e}")))?;
 
         if self.verbose {
             let info = ctx.get_device_info();
@@ -231,21 +231,21 @@ impl EnhancedArminSampler {
 
         // Allocate memory pool
         ctx.allocate_memory_pool(self.memory_pool_mb * 1024 * 1024)
-            .map_err(|e| SamplerError::GpuError(format!("Memory pool allocation failed: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("Memory pool allocation failed: {e}")))?;
 
         // Transfer QUBO matrix to GPU
         let gpu_qubo = if self.use_mixed_precision {
             // Convert to FP16 for mixed precision
             GpuMatrix::from_host_mixed(&ctx, qubo)
-                .map_err(|e| SamplerError::GpuError(format!("Matrix transfer failed: {}", e)))?
+                .map_err(|e| SamplerError::GpuError(format!("Matrix transfer failed: {e}")))?
         } else {
             GpuMatrix::from_host(&ctx, qubo)
-                .map_err(|e| SamplerError::GpuError(format!("Matrix transfer failed: {}", e)))?
+                .map_err(|e| SamplerError::GpuError(format!("Matrix transfer failed: {e}")))?
         };
 
         // Run annealing in batches
         let mut all_results = Vec::new();
-        let num_batches = (shots + self.batch_size - 1) / self.batch_size;
+        let num_batches = shots.div_ceil(self.batch_size);
 
         for batch in 0..num_batches {
             let batch_size = std::cmp::min(self.batch_size, shots - batch * self.batch_size);
@@ -284,22 +284,22 @@ impl EnhancedArminSampler {
     ) -> SamplerResult<Vec<Vec<bool>>> {
         // CUDA kernel parameters
         let block_size = 256;
-        let grid_size = (batch_size + block_size - 1) / block_size;
+        let grid_size = batch_size.div_ceil(block_size);
 
         // Allocate device memory for states
         let states_size = batch_size * n_vars;
         let d_states = ctx
             .allocate::<u8>(states_size)
-            .map_err(|e| SamplerError::GpuError(format!("State allocation failed: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("State allocation failed: {e}")))?;
 
         // Allocate device memory for energies
         let d_energies = ctx
             .allocate::<f32>(batch_size)
-            .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("Energy allocation failed: {e}")))?;
 
         // Initialize random states on GPU
         ctx.init_random_states(&d_states, self.seed.unwrap_or_else(|| thread_rng().gen()))
-            .map_err(|e| SamplerError::GpuError(format!("Random init failed: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("Random init failed: {e}")))?;
 
         // Launch parallel tempering kernel
         let kernel_name = if self.use_mixed_precision {
@@ -323,19 +323,19 @@ impl EnhancedArminSampler {
                 KernelArg::Integer(self.sweeps as i32),
             ],
         )
-        .map_err(|e| SamplerError::GpuError(format!("Kernel launch failed: {}", e)))?;
+        .map_err(|e| SamplerError::GpuError(format!("Kernel launch failed: {e}")))?;
 
         // Synchronize if not in async mode
         if !self.async_mode {
             ctx.synchronize()
-                .map_err(|e| SamplerError::GpuError(format!("Synchronization failed: {}", e)))?;
+                .map_err(|e| SamplerError::GpuError(format!("Synchronization failed: {e}")))?;
         }
 
         // Copy results back to host
         let mut host_states = vec![0u8; states_size];
         d_states
             .copy_to_host(&mut host_states)
-            .map_err(|e| SamplerError::GpuError(format!("Result transfer failed: {}", e)))?;
+            .map_err(|e| SamplerError::GpuError(format!("Result transfer failed: {e}")))?;
 
         // Convert to boolean vectors
         let mut results = Vec::new();
@@ -444,7 +444,7 @@ impl EnhancedArminSampler {
         }
 
         if self.verbose {
-            println!("Using {} GPUs for distributed sampling", num_gpus);
+            println!("Using {num_gpus} GPUs for distributed sampling");
         }
 
         // Distribute shots across GPUs
@@ -474,7 +474,7 @@ impl EnhancedArminSampler {
                         all_results.extend(gpu_results);
                     }
                     Err(e) => {
-                        eprintln!("GPU {} failed: {}", gpu_id, e);
+                        eprintln!("GPU {gpu_id} failed: {e}");
                     }
                 }
             });
@@ -545,7 +545,7 @@ pub struct MIKASAmpler {
 
 impl MIKASAmpler {
     /// Create new MIKASA sampler for HOBO problems
-    pub fn new(device_id: usize) -> Self {
+    pub const fn new(device_id: usize) -> Self {
         Self {
             base_config: EnhancedArminSampler::new(device_id),
             decomposition_rank: 50,
@@ -555,13 +555,13 @@ impl MIKASAmpler {
     }
 
     /// Set tensor decomposition rank
-    pub fn with_rank(mut self, rank: usize) -> Self {
+    pub const fn with_rank(mut self, rank: usize) -> Self {
         self.decomposition_rank = rank;
         self
     }
 
     /// Enable/disable CP decomposition
-    pub fn with_cp_decomposition(mut self, enable: bool) -> Self {
+    pub const fn with_cp_decomposition(mut self, enable: bool) -> Self {
         self.use_cp_decomposition = enable;
         self
     }
@@ -619,17 +619,14 @@ impl MIKASAmpler {
         let order = tensor.ndim();
 
         if self.base_config.verbose {
-            println!(
-                "Processing {}-order tensor with {} variables",
-                order, n_vars
-            );
+            println!("Processing {order}-order tensor with {n_vars} variables");
         }
 
         // Apply tensor decomposition if beneficial
         if self.use_cp_decomposition && order > 2 {
             // Perform CP decomposition
             let (factors, core_tensors, reconstruction_error) = cp_decomposition(tensor)
-                .map_err(|e| SamplerError::GpuError(format!("CP decomposition failed: {}", e)))?;
+                .map_err(|e| SamplerError::GpuError(format!("CP decomposition failed: {e}")))?;
 
             let decomposed = DecomposedTensor {
                 factors,
@@ -697,7 +694,7 @@ pub struct AsyncGpuPipeline {
 
 impl AsyncGpuPipeline {
     /// Create new asynchronous pipeline
-    pub fn new(sampler: EnhancedArminSampler) -> Self {
+    pub const fn new(sampler: EnhancedArminSampler) -> Self {
         Self {
             num_stages: 3,
             queue_depth: 4,

@@ -50,6 +50,12 @@ pub struct PluginManager {
     configs: HashMap<String, HashMap<String, String>>,
 }
 
+impl Default for PluginManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginManager {
     /// Create new plugin manager
     pub fn new() -> Self {
@@ -64,7 +70,7 @@ impl PluginManager {
         let name = plugin.name().to_string();
 
         if self.plugins.contains_key(&name) {
-            return Err(format!("Plugin {} already registered", name));
+            return Err(format!("Plugin {name} already registered"));
         }
 
         let default_config = plugin.default_config();
@@ -83,7 +89,7 @@ impl PluginManager {
         let plugin = self
             .plugins
             .get(name)
-            .ok_or_else(|| format!("Plugin {} not found", name))?;
+            .ok_or_else(|| format!("Plugin {name} not found"))?;
 
         plugin.validate_config(&config)?;
         self.configs.insert(name.to_string(), config);
@@ -96,7 +102,7 @@ impl PluginManager {
         let plugin = self
             .plugins
             .get_mut(name)
-            .ok_or_else(|| format!("Plugin {} not found", name))?;
+            .ok_or_else(|| format!("Plugin {name} not found"))?;
 
         let config = self.configs.get(name).cloned().unwrap_or_default();
         plugin.initialize(&config)?;
@@ -216,7 +222,8 @@ impl HyperparameterOptimizer {
                 *population_size,
                 *mutation_rate,
             ),
-            _ => Err("Optimization method not available".to_string()),
+            #[cfg(not(feature = "scirs"))]
+            _ => Err("Optimization method not available (requires 'scirs' feature)".to_string()),
         }
     }
 
@@ -514,15 +521,15 @@ impl HyperparameterOptimizer {
             let qubo_tuple = (qubo.to_dense_matrix(), qubo.variable_map());
             let mut results = sampler
                 .run_qubo(&qubo_tuple, 100)
-                .map_err(|e| format!("Sampler error: {:?}", e))?;
+                .map_err(|e| format!("Sampler error: {e:?}"))?;
 
             let elapsed = start.elapsed();
 
             // Score based on solution quality and time
-            let mut best_energy = results.first().map(|r| r.energy).unwrap_or(f64::INFINITY);
+            let mut best_energy = results.first().map_or(f64::INFINITY, |r| r.energy);
 
             let time_penalty = elapsed.as_secs_f64();
-            let mut score = best_energy + 0.1 * time_penalty;
+            let mut score = 0.1f64.mul_add(time_penalty, best_energy);
 
             scores.push(score);
         }
@@ -651,11 +658,7 @@ impl EnsembleSampler {
         let mut vote_counts: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
         for result in all_results {
-            let state: Vec<bool> = qubo
-                .1
-                .iter()
-                .map(|(var, _)| result.assignments[var])
-                .collect();
+            let state: Vec<bool> = qubo.1.keys().map(|var| result.assignments[var]).collect();
 
             let entry = vote_counts.entry(state).or_insert((result.energy, 0));
             entry.1 += result.occurrences;
@@ -803,10 +806,7 @@ impl EnsembleSampler {
         let mut aggregated: HashMap<Vec<bool>, (f64, usize)> = HashMap::new();
 
         for result in results {
-            let state: Vec<bool> = var_map
-                .iter()
-                .map(|(var, _)| result.assignments[var])
-                .collect();
+            let state: Vec<bool> = var_map.keys().map(|var| result.assignments[var]).collect();
 
             let entry = aggregated.entry(state).or_insert((result.energy, 0));
 
@@ -1010,7 +1010,7 @@ pub enum EvaluationMetric {
 
 impl SamplerCrossValidation {
     /// Create new cross-validation
-    pub fn new(n_folds: usize, metric: EvaluationMetric) -> Self {
+    pub const fn new(n_folds: usize, metric: EvaluationMetric) -> Self {
         Self { n_folds, metric }
     }
 
@@ -1075,13 +1075,11 @@ impl SamplerCrossValidation {
         let start = Instant::now();
         let mut results = sampler
             .run_qubo(&qubo_tuple, shots)
-            .map_err(|e| format!("Sampler error: {:?}", e))?;
+            .map_err(|e| format!("Sampler error: {e:?}"))?;
         let elapsed = start.elapsed();
 
         match &self.metric {
-            EvaluationMetric::BestEnergy => {
-                Ok(results.first().map(|r| r.energy).unwrap_or(f64::INFINITY))
-            }
+            EvaluationMetric::BestEnergy => Ok(results.first().map_or(f64::INFINITY, |r| r.energy)),
             EvaluationMetric::TopKAverage(k) => {
                 let sum: f64 = results.iter().take(*k).map(|r| r.energy).sum();
                 Ok(sum / (*k).min(results.len()) as f64)

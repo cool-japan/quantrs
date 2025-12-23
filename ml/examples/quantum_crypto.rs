@@ -30,7 +30,7 @@ fn run_bb84_example() -> Result<()> {
 
     // Create BB84 QKD with 1000 qubits
     let num_qubits = 1000;
-    println!("Creating BB84 protocol with {} qubits", num_qubits);
+    println!("Creating BB84 protocol with {num_qubits} qubits");
     let mut qkd = QuantumKeyDistribution::new(ProtocolType::BB84, num_qubits);
 
     // Optional: set error rate
@@ -42,7 +42,7 @@ fn run_bb84_example() -> Result<()> {
     let start = Instant::now();
     let key_length = qkd.distribute_key()?;
     println!("Key distribution completed in {:.2?}", start.elapsed());
-    println!("Final key length: {} bits", key_length);
+    println!("Final key length: {key_length} bits");
 
     // Verify keys match
     println!("Verifying Alice and Bob have identical keys...");
@@ -88,7 +88,7 @@ fn run_e91_example() -> Result<()> {
 
     // Create E91 QKD with 800 qubits
     let num_qubits = 800;
-    println!("Creating E91 protocol with {} qubits", num_qubits);
+    println!("Creating E91 protocol with {num_qubits} qubits");
     let mut qkd = QuantumKeyDistribution::new(ProtocolType::E91, num_qubits);
 
     // Set error rate
@@ -100,7 +100,7 @@ fn run_e91_example() -> Result<()> {
     let start = Instant::now();
     let key_length = qkd.distribute_key()?;
     println!("Key distribution completed in {:.2?}", start.elapsed());
-    println!("Final key length: {} bits", key_length);
+    println!("Final key length: {key_length} bits");
 
     // Verify keys match
     println!("Verifying Alice and Bob have identical keys...");
@@ -124,14 +124,11 @@ fn run_signature_example() -> Result<()> {
 
     // Create quantum signature with 256 qubits
     let num_qubits = 256;
-    println!(
-        "Creating quantum signature scheme with {} qubits",
-        num_qubits
-    );
+    println!("Creating quantum signature scheme with {num_qubits} qubits");
 
     // Choose a quantum-resistant algorithm
     let algorithm = "Dilithium";
-    println!("Using algorithm: {}", algorithm);
+    println!("Using algorithm: {algorithm}");
 
     let signature = QuantumSignature::new(num_qubits, algorithm)?;
     println!("Quantum signature scheme created");
@@ -180,7 +177,7 @@ fn run_qsdc_example() -> Result<()> {
 
     // Create QSDC protocol with 1000 qubits
     let num_qubits = 1000;
-    println!("Creating QSDC protocol with {} qubits", num_qubits);
+    println!("Creating QSDC protocol with {num_qubits} qubits");
     let qsdc = QSDC::new(num_qubits);
 
     // Transmit message directly
@@ -222,7 +219,7 @@ fn run_blockchain_example() -> Result<()> {
 
     // Create a quantum blockchain
     let difficulty = 2; // 2 leading zeros required for mining
-    println!("Creating quantum blockchain with difficulty {}", difficulty);
+    println!("Creating quantum blockchain with difficulty {difficulty}");
     let mut blockchain = QuantumBlockchain::new(ConsensusType::QuantumProofOfWork, difficulty);
 
     // Create a transaction
@@ -232,15 +229,11 @@ fn run_blockchain_example() -> Result<()> {
 
     println!(
         "Creating transaction: {} sends {} units to recipient",
-        sender
-            .iter()
-            .map(|&b| b.to_string())
-            .collect::<Vec<_>>()
-            .join(""),
+        sender.iter().map(|&b| b.to_string()).collect::<String>(),
         amount
     );
 
-    let transaction = Transaction::new(sender.clone(), recipient.clone(), amount, Vec::new());
+    let transaction = Transaction::new(sender, recipient, amount, Vec::new());
 
     // Add transaction
     println!("Adding transaction to blockchain...");

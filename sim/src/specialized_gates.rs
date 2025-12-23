@@ -5,8 +5,8 @@
 //! These implementations avoid general matrix multiplication and directly
 //! manipulate state vector amplitudes.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use quantrs2_core::{
@@ -521,7 +521,7 @@ impl SpecializedGate for CNOTSpecialized {
 
     fn can_fuse_with(&self, other: &dyn SpecializedGate) -> bool {
         // Two CNOTs with same control and target cancel out
-        if let Some(other_cnot) = other.as_any().downcast_ref::<CNOTSpecialized>() {
+        if let Some(other_cnot) = other.as_any().downcast_ref::<Self>() {
             self.control == other_cnot.control && self.target == other_cnot.target
         } else {
             false

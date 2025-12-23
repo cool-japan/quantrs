@@ -5,9 +5,9 @@
 //! bond dimension management, and SciRS2-accelerated tensor operations.
 
 use scirs2_core::ndarray::{Array, Array2, ArrayD, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -231,8 +231,8 @@ pub enum ContractionTree {
     Leaf { tensor_id: usize },
     /// Internal node (contraction)
     Branch {
-        left: Box<ContractionTree>,
-        right: Box<ContractionTree>,
+        left: Box<Self>,
+        right: Box<Self>,
         contraction_cost: f64,
         result_bond_dim: usize,
     },
@@ -319,7 +319,7 @@ impl TensorNetwork {
         for index in &tensor.indices {
             self.index_graph
                 .entry(index.label.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(id);
         }
 
@@ -373,7 +373,7 @@ impl TensorNetwork {
 
     /// Get all tensor IDs
     fn tensor_ids(&self) -> Vec<usize> {
-        self.tensors.keys().cloned().collect()
+        self.tensors.keys().copied().collect()
     }
 }
 
@@ -416,7 +416,7 @@ impl EnhancedTensorNetworkSimulator {
             let tensor = EnhancedTensor {
                 data: tensor_data,
                 indices: vec![TensorIndex {
-                    label: format!("q{}", qubit),
+                    label: format!("q{qubit}"),
                     dimension: 2,
                     index_type: IndexType::Physical,
                     connected_tensors: vec![],
@@ -447,7 +447,7 @@ impl EnhancedTensorNetworkSimulator {
         let gate_id = self.network.add_tensor(gate_tensor);
 
         // Find qubit tensor
-        let qubit_label = format!("q{}", qubit);
+        let qubit_label = format!("q{qubit}");
         let connected_tensors = self.network.find_connected_tensors(&qubit_label);
 
         if let Some(&qubit_tensor_id) = connected_tensors.first() {
@@ -473,8 +473,8 @@ impl EnhancedTensorNetworkSimulator {
         let gate_id = self.network.add_tensor(gate_tensor);
 
         // Contract with qubit tensors
-        let control_label = format!("q{}", control);
-        let target_label = format!("q{}", target);
+        let control_label = format!("q{control}");
+        let target_label = format!("q{target}");
 
         let control_tensors = self.network.find_connected_tensors(&control_label);
         let target_tensors = self.network.find_connected_tensors(&target_label);
@@ -498,13 +498,13 @@ impl EnhancedTensorNetworkSimulator {
         let tensor1 = self
             .network
             .get_tensor(id1)
-            .ok_or_else(|| SimulatorError::InvalidInput(format!("Tensor {} not found", id1)))?
+            .ok_or_else(|| SimulatorError::InvalidInput(format!("Tensor {id1} not found")))?
             .clone();
 
         let tensor2 = self
             .network
             .get_tensor(id2)
-            .ok_or_else(|| SimulatorError::InvalidInput(format!("Tensor {} not found", id2)))?
+            .ok_or_else(|| SimulatorError::InvalidInput(format!("Tensor {id2} not found")))?
             .clone();
 
         // Find common indices
@@ -554,7 +554,7 @@ impl EnhancedTensorNetworkSimulator {
             .iter()
             .chain(tensor_ids2.iter())
             .chain(tensor_ids3.iter())
-            .cloned()
+            .copied()
             .collect();
 
         let path = match self.config.contraction_strategy {
@@ -601,7 +601,7 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     /// Get performance statistics
-    pub fn get_stats(&self) -> &TensorNetworkStats {
+    pub const fn get_stats(&self) -> &TensorNetworkStats {
         &self.stats
     }
 
@@ -634,7 +634,7 @@ impl EnhancedTensorNetworkSimulator {
         // Input indices
         for &qubit in &qubits {
             indices.push(TensorIndex {
-                label: format!("q{}_in", qubit),
+                label: format!("q{qubit}_in"),
                 dimension: 2,
                 index_type: IndexType::Physical,
                 connected_tensors: vec![],
@@ -644,7 +644,7 @@ impl EnhancedTensorNetworkSimulator {
         // Output indices
         for &qubit in &qubits {
             indices.push(TensorIndex {
-                label: format!("q{}_out", qubit),
+                label: format!("q{qubit}_out"),
                 dimension: 2,
                 index_type: IndexType::Physical,
                 connected_tensors: vec![],
@@ -678,7 +678,7 @@ impl EnhancedTensorNetworkSimulator {
         let indices1: HashSet<_> = tensor1.indices.iter().map(|i| &i.label).collect();
         let indices2: HashSet<_> = tensor2.indices.iter().map(|i| &i.label).collect();
 
-        indices1.intersection(&indices2).cloned().cloned().collect()
+        indices1.intersection(&indices2).copied().cloned().collect()
     }
 
     fn estimate_contraction_cost(
@@ -796,7 +796,7 @@ impl EnhancedTensorNetworkSimulator {
         Ok(EnhancedTensor {
             data: result_data,
             indices: result_indices,
-            bond_dimensions: result_shape.clone(),
+            bond_dimensions: result_shape,
             id: 0,
             memory_size,
             contraction_cost: self.estimate_contraction_cost(tensor1, tensor2, common_indices),
@@ -856,7 +856,7 @@ impl EnhancedTensorNetworkSimulator {
         Ok(EnhancedTensor {
             data: result_data,
             indices: result_indices,
-            bond_dimensions: result_shape.clone(),
+            bond_dimensions: result_shape,
             id: 0,
             memory_size,
             contraction_cost: self.estimate_contraction_cost(tensor1, tensor2, common_indices),
@@ -917,7 +917,7 @@ impl EnhancedTensorNetworkSimulator {
         Ok(ArrayD::zeros(IxDyn(&result_shape)))
     }
 
-    fn accumulate_block_result(
+    const fn accumulate_block_result(
         &self,
         result: &mut ArrayD<Complex64>,
         block_result: &ArrayD<Complex64>,
@@ -966,7 +966,7 @@ impl EnhancedTensorNetworkSimulator {
         })
     }
 
-    fn execute_contraction_operation(
+    const fn execute_contraction_operation(
         &self,
         _op: &ContractionOperation,
         _tensor1: &EnhancedTensor,
@@ -1163,7 +1163,7 @@ impl EnhancedTensorNetworkSimulator {
                 total_flops: 0.0,
                 peak_memory: 0,
                 contraction_tree: ContractionTree::Leaf {
-                    tensor_id: tensor_ids.get(0).copied().unwrap_or(0),
+                    tensor_id: tensor_ids.first().copied().unwrap_or(0),
                 },
                 parallel_sections: Vec::new(),
             });
@@ -1340,7 +1340,7 @@ impl EnhancedTensorNetworkSimulator {
             .iter()
             .chain(tensor_ids2.iter())
             .chain(tensor_ids3.iter())
-            .cloned()
+            .copied()
             .collect();
 
         self.optimize_path_adaptive(&all_ids)
@@ -1455,7 +1455,7 @@ impl EnhancedTensorNetworkSimulator {
         dp_table: &mut HashMap<Vec<usize>, (f64, Vec<ContractionStep>)>,
     ) -> Result<(f64, Vec<ContractionStep>)> {
         let mut sorted_ids = tensor_ids.to_vec();
-        sorted_ids.sort();
+        sorted_ids.sort_unstable();
 
         if let Some((cost, steps)) = dp_table.get(&sorted_ids).cloned() {
             return Ok((cost, steps));
@@ -1562,7 +1562,7 @@ impl EnhancedTensorNetworkSimulator {
     ) -> Result<ContractionTree> {
         if steps.is_empty() {
             return Ok(ContractionTree::Leaf {
-                tensor_id: tensor_ids.get(0).copied().unwrap_or(0),
+                tensor_id: tensor_ids.first().copied().unwrap_or(0),
             });
         }
 
@@ -1722,7 +1722,7 @@ impl EnhancedTensorNetworkSimulator {
                     id: bag_id,
                     tensors: chunk.to_vec(),
                     parent: if bag_id > 0 { Some(bag_id - 1) } else { None },
-                    children: if bag_id < (tensor_ids.len() + bag_size - 1) / bag_size - 1 {
+                    children: if bag_id < tensor_ids.len().div_ceil(bag_size) - 1 {
                         vec![bag_id + 1]
                     } else {
                         Vec::new()
@@ -1920,7 +1920,7 @@ impl EnhancedTensorNetworkSimulator {
         })
     }
 
-    fn update_ml_model(
+    const fn update_ml_model(
         &self,
         _features: &NetworkFeatures,
         _path: &EnhancedContractionPath,
@@ -1995,7 +1995,7 @@ pub struct EnhancedTensorNetworkUtils;
 
 impl EnhancedTensorNetworkUtils {
     /// Estimate memory requirements for a tensor network
-    pub fn estimate_memory_requirements(
+    pub const fn estimate_memory_requirements(
         num_qubits: usize,
         circuit_depth: usize,
         max_bond_dimension: usize,
@@ -2035,7 +2035,7 @@ impl EnhancedTensorNetworkUtils {
             }
 
             let execution_time = start_time.elapsed().as_secs_f64();
-            results.insert(format!("{:?}", strategy), execution_time);
+            results.insert(format!("{strategy:?}"), execution_time);
         }
 
         Ok(results)

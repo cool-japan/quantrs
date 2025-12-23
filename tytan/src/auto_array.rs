@@ -6,11 +6,11 @@
 
 // We don't use these imports directly in the non-dwave version
 #[cfg(feature = "dwave")]
-use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
-#[cfg(feature = "dwave")]
 use quantrs2_symengine::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
 use regex::Regex;
+#[cfg(feature = "dwave")]
+use scirs2_core::ndarray::{Array, ArrayD, IxDyn};
 #[cfg(feature = "dwave")]
 use std::collections::HashMap;
 use thiserror::Error;
@@ -54,7 +54,7 @@ impl<'a> AutoArray<'a> {
     /// # Arguments
     ///
     /// * `result` - The sample result to convert
-    pub fn new(result: &'a SampleResult) -> Self {
+    pub const fn new(result: &'a SampleResult) -> Self {
         Self { result }
     }
 
@@ -90,7 +90,7 @@ impl<'a> AutoArray<'a> {
         let re_str = format.replace("{}", "(\\d+|\\w+)");
         #[cfg(feature = "dwave")]
         let re = Regex::new(&re_str)
-            .map_err(|e| AutoArrayError::InvalidFormat(format!("Invalid regex: {}", e)))?;
+            .map_err(|e| AutoArrayError::InvalidFormat(format!("Invalid regex: {e}")))?;
 
         // Extract all indices from variable names
         let mut indices_by_dim: Vec<Vec<String>> = vec![Vec::new(); dim_count];
@@ -145,7 +145,7 @@ impl<'a> AutoArray<'a> {
                     // Set array value
                     if index_values.len() == dim_count {
                         let mut idx = IxDyn(&index_values);
-                        array[idx] = if value { 1 } else { 0 };
+                        array[idx] = i32::from(value);
                     }
                 }
             }
@@ -255,7 +255,7 @@ impl<'a> AutoArray<'a> {
     ///
     /// The calculated value of the n-bit variable
     #[cfg(feature = "dwave")]
-    pub fn get_nbit_value(&self, expr: &SymEngineExpression) -> AutoArrayResult<f64> {
+    pub const fn get_nbit_value(&self, expr: &SymEngineExpression) -> AutoArrayResult<f64> {
         // TODO: Implement n-bit value calculation
         // This will require evaluating the symbolic expression with
         // the sample values substituted in.

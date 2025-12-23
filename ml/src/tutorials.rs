@@ -18,9 +18,9 @@ use crate::pytorch_api::{
 use crate::qnn::{QNNBuilder, QuantumNeuralNetwork};
 use crate::qsvm::{FeatureMapType, QSVMParams, QSVM};
 use crate::variational::{VariationalAlgorithm, VariationalCircuit};
-use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2, ArrayD, Axis};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -448,7 +448,7 @@ let mut qnn_builder = QNNBuilder::new(4) // 4 qubits
 let mut qnn = qnn_builder.build()?;
 
 // Train on sample data
-let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0));
+let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0).unwrap());
 let y = Array1::from_vec(vec![0.0; 50].into_iter().chain(vec![1.0; 50]).collect());
 
 qnn.train(&X.into_dyn(), &y.into_dyn().insert_axis(Axis(1)))?;
@@ -521,7 +521,7 @@ let qsvm_params = QSVMParams {
 let mut qsvm = QSVM::new(qsvm_params)?;
 
 // Generate sample data
-let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0));
+let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0).unwrap());
 let y = Array1::from_vec((0..100).map(|i| if i < 50 { -1.0 } else { 1.0 }).collect());
 
 // Train the QSVM
@@ -748,14 +748,14 @@ let config = PipelineConfig::default();
 let mut pipeline = manager.create_pipeline("hybrid_classification", config)?;
 
 // Sample data
-let X = Array2::random((1000, 10), Uniform::new(-1.0, 1.0));
+let X = Array2::random((1000, 10), Uniform::new(-1.0, 1.0).unwrap());
 let y = Array1::from_vec((0..1000).map(|i| if i < 500 { 0.0 } else { 1.0 }).collect());
 
 // Train hybrid pipeline
 pipeline.fit(&X.into_dyn(), &y.into_dyn().insert_axis(Axis(1)))?;
 
 // Make predictions
-let test_X = Array2::random((100, 10), Uniform::new(-1.0, 1.0));
+let test_X = Array2::random((100, 10), Uniform::new(-1.0, 1.0).unwrap());
 let predictions = pipeline.predict(&test_X.into_dyn())?;
 "#.to_string(),
                             expected_output: Some("Hybrid pipeline trained and predictions made".to_string()),

@@ -737,7 +737,7 @@ impl AdvancedQubitRouter {
         &self,
         state: &RoutingState,
         dependencies: &[GateDependency],
-        metrics: &mut RoutingMetrics,
+        metrics: &RoutingMetrics,
     ) -> Vec<(RoutingState, f64)> {
         let mut neighbors = Vec::new();
 

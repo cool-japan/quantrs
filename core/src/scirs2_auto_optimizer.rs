@@ -633,7 +633,7 @@ impl AutoOptimizer {
                     problem_size_limits: ProblemSizeLimits {
                         max_qubits: 30,
                         max_depth: 5000,
-                        max_gates: 100000,
+                        max_gates: 100_000,
                         max_memory_gb: 8.0,
                     },
                     optimizations: vec![OptimizationRecommendation {

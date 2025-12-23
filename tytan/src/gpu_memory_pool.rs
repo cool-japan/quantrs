@@ -19,25 +19,19 @@ pub struct GpuContext;
 #[cfg(feature = "scirs")]
 impl GpuContext {
     pub fn new(_device_id: u32) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(GpuContext)
+        Ok(Self)
     }
 }
 
 #[cfg(feature = "scirs")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GpuMemory {
     id: usize,
     size: usize,
 }
 
-#[cfg(feature = "scirs")]
-impl Default for GpuMemory {
-    fn default() -> Self {
-        Self { id: 0, size: 0 }
-    }
-}
-
 /// Memory block information
+#[cfg(feature = "scirs")]
 #[derive(Clone)]
 struct MemoryBlock {
     /// Unique ID for this block
@@ -56,8 +50,10 @@ pub struct GpuMemoryPool {
     #[cfg(feature = "scirs")]
     context: Arc<GpuContext>,
     /// Pool of memory blocks by size
+    #[cfg(feature = "scirs")]
     blocks_by_size: HashMap<usize, VecDeque<MemoryBlock>>,
     /// All allocated blocks
+    #[cfg(feature = "scirs")]
     all_blocks: Vec<MemoryBlock>,
     /// Maximum pool size in bytes
     max_size: usize,
@@ -162,7 +158,7 @@ impl GpuMemoryPool {
             last_access: std::time::Instant::now(),
         };
 
-        self.all_blocks.push(block.clone());
+        self.all_blocks.push(block);
         self.current_size += aligned_size;
         self.stats.total_bytes_allocated += aligned_size;
 
@@ -190,7 +186,7 @@ impl GpuMemoryPool {
                 // Add to the pool for reuse
                 self.blocks_by_size
                     .entry(block.size)
-                    .or_insert_with(VecDeque::new)
+                    .or_default()
                     .push_back(block.clone());
 
                 break;
@@ -233,12 +229,12 @@ impl GpuMemoryPool {
             }
 
             // Free GPU memory
-            unsafe {
-                // TODO: Implement free_raw in GPU stub
-                // self.context
-                //     .free_raw(ptr)
-                //     .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
-            }
+            // TODO: Implement free_raw in GPU stub
+            // unsafe {
+            //     self.context
+            //         .free_raw(ptr)
+            //         .map_err(|e| format!("Failed to free GPU memory: {}", e))?;
+            // }
         }
 
         self.current_size -= freed_size;
@@ -306,13 +302,13 @@ impl ScopedGpuMemory {
 
     /// Get the underlying memory
     #[cfg(feature = "scirs")]
-    pub fn memory(&self) -> &GpuMemory {
+    pub const fn memory(&self) -> &GpuMemory {
         self.memory.as_ref().unwrap()
     }
 
     /// Get mutable access to memory
     #[cfg(feature = "scirs")]
-    pub fn memory_mut(&mut self) -> &mut GpuMemory {
+    pub const fn memory_mut(&mut self) -> &mut GpuMemory {
         self.memory.as_mut().unwrap()
     }
 }
@@ -363,7 +359,7 @@ impl MultiDeviceMemoryPool {
     pub fn allocate(&self, device_id: usize, size: usize) -> Result<ScopedGpuMemory, String> {
         let pool = self
             .get_pool(device_id)
-            .ok_or_else(|| format!("No pool for device {}", device_id))?;
+            .ok_or_else(|| format!("No pool for device {device_id}"))?;
 
         ScopedGpuMemory::new(pool, size)
     }
@@ -394,8 +390,6 @@ pub struct GpuMemory;
 impl GpuMemoryPool {
     pub fn new(_max_size: usize) -> Self {
         Self {
-            blocks_by_size: HashMap::new(),
-            all_blocks: Vec::new(),
             max_size: 0,
             current_size: 0,
             stats: AllocationStats::default(),

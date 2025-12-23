@@ -4,8 +4,8 @@
 //! quantum data processing and feature extraction.
 
 use crate::error::MLError;
-use scirs2_core::Complex64 as Complex;
 use quantrs2_circuit::prelude::*;
+use scirs2_core::Complex64 as Complex;
 use std::f64::consts::PI;
 
 // Simple matrix types for QCNN

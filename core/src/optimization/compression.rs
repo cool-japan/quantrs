@@ -13,8 +13,8 @@ use scirs2_core::ndarray::{Array2, ArrayView2};
 use scirs2_core::Complex64;
 // use scirs2_linalg::lowrank::{randomized_svd, truncated_svd};
 // use scirs2_optimize::prelude::DifferentialEvolutionOptions;
-// Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
-// use scirs2_linalg::tensor_contraction::tucker::{tucker_decomposition, Tucker};
+// Tucker decomposition enabled for beta.3
+use scirs2_linalg::tensor_contraction::tucker::tucker_decomposition;
 // use scirs2_optimize::differential_evolution;
 use crate::linalg_stubs::{randomized_svd, truncated_svd};
 use crate::optimization_stubs::{differential_evolution, DifferentialEvolutionOptions};
@@ -172,9 +172,10 @@ impl GateSequenceCompressor {
         &mut self,
         gates: &[Box<dyn GateOp>],
     ) -> QuantRS2Result<Vec<CompressedGate>> {
-        // Set up parallel execution if configured
+        // Set up parallel execution if configured (SciRS2 POLICY compliant)
         if let Some(threads) = self.config.num_threads {
-            rayon::ThreadPoolBuilder::new()
+            use scirs2_core::parallel_ops::ThreadPoolBuilder;
+            ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .build_global()
                 .map_err(|e| QuantRS2Error::InvalidInput(e.to_string()))?;
@@ -259,13 +260,111 @@ impl GateSequenceCompressor {
     }
 
     /// Try Tucker decomposition for multi-qubit gates
+    ///
+    /// Note: Current implementation applies Tucker separately to real and imaginary parts
+    /// since scirs2-linalg's Tucker only supports Float types (not Complex).
+    /// TODO: Request Complex support in scirs2-linalg Tucker decomposition for better performance
     fn try_tucker_decomposition(
         &self,
-        _matrix: &ArrayView2<Complex64>,
+        matrix: &ArrayView2<Complex64>,
     ) -> QuantRS2Result<Option<CompressedGate>> {
-        // Tucker decomposition temporarily disabled due to scirs2-linalg compilation issues
-        // TODO: Re-enable when scirs2-linalg tensor_contraction feature is fixed
-        Ok(None)
+        let (rows, cols) = matrix.dim();
+
+        // Only apply Tucker to larger multi-qubit gates (4x4 or larger)
+        if rows < 4 || cols < 4 || rows != cols {
+            return Ok(None);
+        }
+
+        // Determine target ranks for compression
+        let target_rank = self.config.max_rank.unwrap_or(rows / 2).min(rows - 1);
+        let ranks = vec![target_rank, target_rank];
+
+        // Separate real and imaginary parts (scirs2-linalg Tucker only supports Float, not Complex)
+        let real_part = Array2::from_shape_fn((rows, cols), |(i, j)| matrix[(i, j)].re);
+        let imag_part = Array2::from_shape_fn((rows, cols), |(i, j)| matrix[(i, j)].im);
+
+        // Apply Tucker decomposition to real part
+        let tucker_real = tucker_decomposition(&real_part.view(), &ranks).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Tucker decomposition (real) failed: {}", e))
+        })?;
+
+        // Apply Tucker decomposition to imaginary part
+        let tucker_imag = tucker_decomposition(&imag_part.view(), &ranks).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Tucker decomposition (imag) failed: {}", e))
+        })?;
+
+        // Convert cores to 2D
+        let core_real = tucker_real
+            .core
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+            .map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Failed to convert real core: {}", e))
+            })?;
+        let core_imag = tucker_imag
+            .core
+            .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+            .map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Failed to convert imag core: {}", e))
+            })?;
+
+        // Combine real and imaginary cores into complex core
+        let core_2d = Array2::from_shape_fn(core_real.dim(), |(i, j)| {
+            Complex64::new(core_real[(i, j)], core_imag[(i, j)])
+        });
+
+        // Combine real and imaginary factors into complex factors
+        // Average the factors from real and imag decompositions (since they should be similar for unitary matrices)
+        let mut factors = Vec::new();
+        for i in 0..tucker_real.factors.len() {
+            let factor_real = &tucker_real.factors[i];
+            let factor_imag = &tucker_imag.factors[i];
+            let combined_factor = Array2::from_shape_fn(factor_real.dim(), |(r, c)| {
+                Complex64::new(factor_real[(r, c)], factor_imag[(r, c)])
+            });
+            factors.push(combined_factor);
+        }
+
+        // Check if compression is worthwhile
+        let original_params = rows * cols * 2; // Complex numbers have 2 components
+        let compressed_params =
+            (core_2d.len() * 2) + factors.iter().map(|f| f.len() * 2).sum::<usize>();
+
+        if compressed_params >= original_params * 3 / 4 {
+            // Not enough compression benefit
+            return Ok(None);
+        }
+
+        // Verify approximation quality by reconstructing and comparing
+        let reconstructed = self.reconstruct_tucker(&core_2d, &factors)?;
+        if !matrices_approx_equal(&reconstructed.view(), matrix, self.config.tolerance) {
+            return Ok(None);
+        }
+
+        Ok(Some(CompressedGate::Tucker {
+            core: core_2d,
+            factors,
+        }))
+    }
+
+    /// Reconstruct matrix from Tucker decomposition
+    fn reconstruct_tucker(
+        &self,
+        core: &Array2<Complex64>,
+        factors: &[Array2<Complex64>],
+    ) -> QuantRS2Result<Array2<Complex64>> {
+        if factors.len() != 2 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Tucker decomposition requires exactly 2 factors for 2D matrices".to_string(),
+            ));
+        }
+
+        // Reconstruct: M ≈ U_1 × core × U_2^T
+        // First: temp = core × U_2^T
+        let temp = core.dot(&factors[1].t());
+        // Second: result = U_1 × temp
+        let result = factors[0].dot(&temp);
+
+        Ok(result)
     }
 
     /// Try to find parameterized representation
@@ -916,12 +1015,12 @@ impl GateSequenceCompressor {
                     reconstructed,
                 )))
             }
-            CompressedGate::Tucker { core, factors: _ } => {
-                // Reconstruct from Tucker decomposition
-                // Simplified reconstruction - would need proper tensor contraction
+            CompressedGate::Tucker { core, factors } => {
+                // Reconstruct from Tucker decomposition using proper tensor contraction
+                let reconstructed = self.reconstruct_tucker(core, factors)?;
                 Ok(Box::new(CustomGate::new(
                     "Tucker".to_string(),
-                    core.clone(),
+                    reconstructed,
                 )))
             }
             CompressedGate::Parameterized {

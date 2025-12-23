@@ -311,7 +311,7 @@ fn demo_device_specific_scheduling() -> quantrs2_core::error::QuantRS2Result<()>
     println!("\nSchedule details:");
     for (i, slice) in schedule.time_slices.iter().enumerate() {
         let gates = &circuit.gates();
-        print!("  Slice {}: ", i);
+        print!("  Slice {i}: ");
         for &gate_idx in &slice.gates {
             print!("{} ", gates[gate_idx].name());
         }

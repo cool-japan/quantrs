@@ -81,7 +81,7 @@ impl MetalLinalgBackend {
     }
 
     /// Check if Metal Performance Shaders is available
-    pub fn is_mps_available() -> bool {
+    pub const fn is_mps_available() -> bool {
         // TODO: Check for MPS availability
         // Requires macOS 10.13+ for basic MPS
         // Requires macOS 11.0+ for advanced features

@@ -436,7 +436,7 @@ impl CircuitOptimizer {
                 for gate in circuit.gates[start_idx..].iter() {
                     if gate.gate_type == start_gate.gate_type && gate.qubits == start_gate.qubits {
                         if let Some(angle) = self.extract_rotation_angle(&gate.gate_type) {
-                            total_angle = (total_angle + angle) % (2 * 1_000_000 * 314159); // 2π in quantized units
+                            total_angle = (total_angle + angle) % (2 * 1_000_000 * 314_159); // 2π in quantized units
                             count += 1;
                         } else {
                             break;

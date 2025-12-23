@@ -419,7 +419,7 @@ impl AdvancedMLErrorMitigator {
         Ok(AdvancedMLMitigationResult {
             mitigated_value,
             confidence,
-            model_used: format!("{:?}", strategy),
+            model_used: format!("{strategy:?}"),
             raw_measurements: measurements.to_vec(),
             overhead: computation_time / 1000.0, // Convert to seconds
             error_reduction,
@@ -551,8 +551,10 @@ impl AdvancedMLErrorMitigator {
                 let best_action = q_values
                     .iter()
                     .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|(action, _)| *action)
-                    .unwrap_or(MitigationAction::MachineLearningPrediction);
+                    .map_or(
+                        MitigationAction::MachineLearningPrediction,
+                        |(action, _)| *action,
+                    );
 
                 Ok(best_action)
             }
@@ -646,7 +648,7 @@ impl AdvancedMLErrorMitigator {
                     .collect();
 
                 // Linear extrapolation to zero noise
-                let extrapolated = 2.0 * values[0] - values[1];
+                let extrapolated = 2.0f64.mul_add(values[0], -values[1]);
                 Ok(extrapolated)
             }
             MitigationAction::VirtualDistillation => {
@@ -691,7 +693,9 @@ impl AdvancedMLErrorMitigator {
             ActivationFunction::GELU => {
                 0.5 * x
                     * (1.0
-                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044715 * x.powi(3))).tanh())
+                        + ((2.0 / std::f64::consts::PI).sqrt()
+                            * 0.044_715f64.mul_add(x.powi(3), x))
+                        .tanh())
             }
         }
     }
@@ -756,7 +760,7 @@ impl AdvancedMLErrorMitigator {
             .iter()
             .map(|&x| (x * 10.0).round() as i32)
             .collect();
-        format!("{:?}", discretized)
+        format!("{discretized:?}")
     }
 
     /// Calculate confidence in mitigation result
@@ -835,8 +839,10 @@ impl AdvancedMLErrorMitigator {
             // In practice, would implement more sophisticated RL algorithms
 
             agent.stats.episodes += 1;
-            agent.stats.avg_reward = (agent.stats.avg_reward * (agent.stats.episodes - 1) as f64
-                + reward)
+            agent.stats.avg_reward = agent
+                .stats
+                .avg_reward
+                .mul_add((agent.stats.episodes - 1) as f64, reward)
                 / agent.stats.episodes as f64;
 
             // Decay exploration rate
@@ -906,7 +912,7 @@ mod tests {
 
         assert!(features.is_ok());
         let features = features.unwrap();
-        assert!(features.len() > 0);
+        assert!(!features.is_empty());
     }
 
     #[test]

@@ -7,8 +7,8 @@
 //! gravitational quantum effects at the Planck scale.
 
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, Array4};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -746,7 +746,10 @@ impl QuantumGravitySimulator {
                 let output_spin = input_spins.iter().sum::<f64>() / input_spins.len() as f64;
                 let dim = input_spins.len();
                 let clebsch_gordan = Array2::<Complex64>::from_shape_fn((dim, dim), |(_i, _j)| {
-                    Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5)
+                    Complex64::new(
+                        thread_rng().gen::<f64>() - 0.5,
+                        thread_rng().gen::<f64>() - 0.5,
+                    )
                 });
 
                 intertwiners.insert(
@@ -787,8 +790,14 @@ impl QuantumGravitySimulator {
 
     /// Generate random SU(2) element
     fn generate_su2_element(&self) -> Result<Array2<Complex64>> {
-        let a = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
-        let b = Complex64::new(thread_rng().gen::<f64>() - 0.5, thread_rng().gen::<f64>() - 0.5);
+        let a = Complex64::new(
+            thread_rng().gen::<f64>() - 0.5,
+            thread_rng().gen::<f64>() - 0.5,
+        );
+        let b = Complex64::new(
+            thread_rng().gen::<f64>() - 0.5,
+            thread_rng().gen::<f64>() - 0.5,
+        );
 
         // Normalize to ensure det = 1
         let norm = (a.norm_sqr() + b.norm_sqr()).sqrt();
@@ -852,7 +861,7 @@ impl QuantumGravitySimulator {
                 }
 
                 let spatial_volume = vertices_per_slice as f64 * self.config.planck_length.powi(3);
-                let curvature = thread_rng().gen::<f64>() * 0.1 - 0.05; // Small curvature
+                let curvature = thread_rng().gen::<f64>().mul_add(0.1, -0.05); // Small curvature
 
                 time_slices.push(TimeSlice {
                     time,
@@ -1063,7 +1072,7 @@ impl QuantumGravitySimulator {
                 let mut evolution = Vec::new();
                 let mut betas = Vec::new();
 
-                let initial_value = match coupling.as_ref() {
+                let initial_value = match *coupling {
                     "newton_constant" => as_config.uv_newton_constant,
                     "cosmological_constant" => as_config.uv_cosmological_constant,
                     "r_squared" => 0.01,
@@ -1083,8 +1092,8 @@ impl QuantumGravitySimulator {
                     evolution.push(current_value);
                 }
 
-                coupling_evolution.insert(coupling.to_string(), evolution);
-                beta_functions.insert(coupling.to_string(), betas);
+                coupling_evolution.insert((*coupling).to_string(), evolution);
+                beta_functions.insert((*coupling).to_string(), betas);
             }
 
             // Find fixed points
@@ -1133,15 +1142,15 @@ impl QuantumGravitySimulator {
         match coupling {
             "newton_constant" => {
                 // β_G = 2G + higher order terms
-                Ok(2.0 * value + 0.1 * value.powi(2) * energy_scale.ln())
+                Ok(2.0f64.mul_add(value, 0.1 * value.powi(2) * energy_scale.ln()))
             }
             "cosmological_constant" => {
                 // β_Λ = -2Λ + G terms
-                Ok(-2.0 * value + 0.01 * value.powi(2))
+                Ok((-2.0f64).mul_add(value, 0.01 * value.powi(2)))
             }
             "r_squared" => {
                 // β_R² = -2R² + ...
-                Ok(-2.0 * value + 0.001 * value.powi(3))
+                Ok((-2.0f64).mul_add(value, 0.001 * value.powi(3)))
             }
             _ => Ok(0.0),
         }
@@ -1215,7 +1224,7 @@ impl QuantumGravitySimulator {
 
             for (i, surface) in rt_surfaces.iter().enumerate() {
                 let entropy = surface.area / (4.0 * self.config.gravitational_constant);
-                entanglement_entropy.insert(format!("region_{}", i), entropy);
+                entanglement_entropy.insert(format!("region_{i}"), entropy);
             }
 
             let holographic_complexity =
@@ -1261,7 +1270,7 @@ impl QuantumGravitySimulator {
             // Generate surface in AdS space
             for j in 0..num_points {
                 let theta = 2.0 * PI * j as f64 / num_points as f64;
-                let radius = config.ads_radius * (1.0 + 0.1 * (i as f64));
+                let radius = config.ads_radius * 0.1f64.mul_add(i as f64, 1.0);
 
                 coordinates[[j, 0]] = 0.0; // Time coordinate
                 if config.ads_dimension > 1 {
@@ -1282,7 +1291,10 @@ impl QuantumGravitySimulator {
             // Create associated boundary region
             let boundary_region = BoundaryRegion {
                 coordinates: coordinates.slice(s![.., ..config.cft_dimension]).to_owned(),
-                volume: PI * (1.0 + 0.1 * i as f64).powi(config.cft_dimension as i32),
+                volume: PI
+                    * 0.1f64
+                        .mul_add(i as f64, 1.0)
+                        .powi(config.cft_dimension as i32),
                 entropy: area / (4.0 * self.config.gravitational_constant),
             };
 
@@ -1305,20 +1317,20 @@ impl QuantumGravitySimulator {
             GravityApproach::LoopQuantumGravity => {
                 self.initialize_spacetime()?;
                 self.initialize_lqg_spin_network()?;
-                self.simulate_lqg()?
+                self.simulate_lqg()?;
             }
             GravityApproach::CausalDynamicalTriangulation => {
                 self.initialize_spacetime()?;
                 self.initialize_cdt()?;
-                self.simulate_cdt()?
+                self.simulate_cdt()?;
             }
             GravityApproach::AsymptoticSafety => {
                 self.initialize_asymptotic_safety()?;
-                self.simulate_asymptotic_safety()?
+                self.simulate_asymptotic_safety()?;
             }
             GravityApproach::HolographicGravity => {
                 self.initialize_ads_cft()?;
-                self.simulate_ads_cft()?
+                self.simulate_ads_cft()?;
             }
             _ => {
                 return Err(SimulatorError::InvalidConfiguration(format!(
@@ -1558,7 +1570,7 @@ impl QuantumGravitySimulator {
         let volume = self.calculate_spacetime_volume(complex)?;
 
         if typical_length > 0.0 {
-            Ok(volume.ln() / typical_length.ln())
+            Ok(volume.log(typical_length))
         } else {
             Ok(4.0) // Default to 4D
         }
@@ -1633,8 +1645,7 @@ impl QuantumGravitySimulator {
             let running_newton_constant = rg_trajectory
                 .coupling_evolution
                 .get("newton_constant")
-                .map(|v| v.last().copied().unwrap_or(0.0))
-                .unwrap_or(0.0);
+                .map_or(0.0, |v| v.last().copied().unwrap_or(0.0));
 
             observables.insert("uv_fixed_point_energy".to_string(), uv_fixed_point_energy);
             observables.insert("effective_dimensionality".to_string(), dimensionality);
@@ -1681,7 +1692,7 @@ impl QuantumGravitySimulator {
             let final_g = newton_evolution.last().copied().unwrap_or(1.0);
 
             if final_g > 0.0 && initial_g > 0.0 {
-                let dimension = 4.0 + 2.0 * (final_g / initial_g).ln();
+                let dimension = 2.0f64.mul_add((final_g / initial_g).ln(), 4.0);
                 Ok(dimension.clamp(2.0, 6.0)) // Reasonable bounds
             } else {
                 Ok(4.0)
@@ -1745,7 +1756,7 @@ impl QuantumGravitySimulator {
                 .entanglement_structure
                 .entanglement_entropy
                 .values()
-                .cloned()
+                .copied()
                 .sum::<f64>();
             let holographic_complexity = holographic_duality
                 .entanglement_structure
@@ -1941,7 +1952,7 @@ pub fn benchmark_quantum_gravity_simulation() -> Result<GravityBenchmarkResults>
         let elapsed = start_time.elapsed().as_secs_f64();
 
         results.push(result);
-        timings.insert(format!("{:?}", approach), elapsed);
+        timings.insert(format!("{approach:?}"), elapsed);
     }
 
     Ok(GravityBenchmarkResults {

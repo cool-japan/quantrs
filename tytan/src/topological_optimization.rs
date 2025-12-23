@@ -7,9 +7,9 @@
 #![allow(dead_code)]
 
 use scirs2_core::ndarray::{Array2, Array3};
+use scirs2_core::random::prelude::*;
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
-use scirs2_core::random::prelude::*;
-use scirs2_core::random::prelude::*;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -73,13 +73,13 @@ impl TopologicalOptimizer {
     }
 
     /// Set braiding depth
-    pub fn with_braid_depth(mut self, depth: usize) -> Self {
+    pub const fn with_braid_depth(mut self, depth: usize) -> Self {
         self.braid_depth = depth;
         self
     }
 
     /// Set temperature
-    pub fn with_temperature(mut self, temp: f64) -> Self {
+    pub const fn with_temperature(mut self, temp: f64) -> Self {
         self.temperature = temp;
         self
     }
@@ -235,7 +235,7 @@ impl TopologicalOptimizer {
     }
 
     /// Compute topological invariant
-    fn compute_topological_invariant(&self, state: &AnyonState) -> f64 {
+    const fn compute_topological_invariant(&self, state: &AnyonState) -> f64 {
         match state {
             AnyonState::Fibonacci(_) => 1.618, // Golden ratio
             AnyonState::Ising(_) => 1.414,     // sqrt(2)
@@ -284,9 +284,7 @@ impl FibonacciState {
 
         // Simplified: just enumerate some valid configurations
         for i in 0..(1 << n) {
-            let config: Vec<usize> = (0..n)
-                .map(|j| if i & (1 << j) != 0 { 1 } else { 0 })
-                .collect();
+            let config: Vec<usize> = (0..n).map(|j| usize::from(i & (1 << j) != 0)).collect();
             basis.push(config);
         }
 
@@ -440,7 +438,7 @@ impl GenericAnyonState {
         // Apply R-matrix from fusion rules
         let r_element = rules.r_matrix[[i.min(j), i.max(j)]];
 
-        for amplitude in new_state.state_vector.iter_mut() {
+        for amplitude in &mut new_state.state_vector {
             *amplitude *= r_element;
         }
 
@@ -467,7 +465,7 @@ impl FusionRules {
         fusion_tensor[[1, 1, 0]] = 1.0; // 1 × 1 = 0
         fusion_tensor[[1, 1, 1]] = 1.0; // 1 × 1 = 1
 
-        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0; // Golden ratio
+        let phi = f64::midpoint(1.0, 5.0_f64.sqrt()); // Golden ratio
         let r_matrix = Array2::from_shape_fn((2, 2), |(i, j)| {
             if i == 0 && j == 0 {
                 Complex64::new(1.0, 0.0)
@@ -575,7 +573,7 @@ pub enum FiltrationType {
 
 impl PersistentHomology {
     /// Create new persistent homology analyzer
-    pub fn new(max_dimension: usize) -> Self {
+    pub const fn new(max_dimension: usize) -> Self {
         Self {
             max_dimension,
             filtration: FiltrationType::Sublevel,
@@ -584,7 +582,7 @@ impl PersistentHomology {
     }
 
     /// Set filtration type
-    pub fn with_filtration(mut self, filtration: FiltrationType) -> Self {
+    pub const fn with_filtration(mut self, filtration: FiltrationType) -> Self {
         self.filtration = filtration;
         self
     }

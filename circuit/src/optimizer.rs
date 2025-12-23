@@ -33,6 +33,7 @@ pub struct PassResult<const N: usize> {
 pub struct SingleQubitGateFusion;
 
 impl SingleQubitGateFusion {
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // For now, just return the circuit unchanged
         // TODO: Implement actual gate fusion logic once we have circuit introspection
@@ -43,7 +44,8 @@ impl SingleQubitGateFusion {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Single-Qubit Gate Fusion"
     }
 }
@@ -71,6 +73,7 @@ impl RedundantGateElimination {
         }
     }
 
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement actual redundant gate elimination
         PassResult {
@@ -80,7 +83,8 @@ impl RedundantGateElimination {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Redundant Gate Elimination"
     }
 }
@@ -96,11 +100,11 @@ impl CommutationOptimizer {
             // Single-qubit gates on different qubits always commute
             // Single-qubit gates on different qubits always commute
             (OptGate::Single(q1, name1, _), OptGate::Single(q2, name2, _)) => {
-                if q1 != q2 {
-                    true
-                } else {
+                if q1 == q2 {
                     // Z gates commute with each other on same qubit
                     name1 == "Z" && name2 == "Z"
+                } else {
+                    true
                 }
             }
 
@@ -113,6 +117,7 @@ impl CommutationOptimizer {
         }
     }
 
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement commutation-based reordering
         PassResult {
@@ -122,7 +127,8 @@ impl CommutationOptimizer {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Commutation-Based Optimization"
     }
 }
@@ -171,6 +177,7 @@ impl Default for PeepholeOptimizer {
 }
 
 impl PeepholeOptimizer {
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement pattern matching and replacement
         PassResult {
@@ -180,7 +187,8 @@ impl PeepholeOptimizer {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Peephole Optimization"
     }
 }
@@ -211,6 +219,7 @@ impl Default for TemplateOptimizer {
 }
 
 impl TemplateOptimizer {
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement template matching
         PassResult {
@@ -220,7 +229,8 @@ impl TemplateOptimizer {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Template Matching Optimization"
     }
 }
@@ -236,6 +246,7 @@ pub enum OptimizationPassType {
 }
 
 impl OptimizationPassType {
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         match self {
             Self::SingleQubitFusion(p) => p.apply(ctx),
@@ -247,7 +258,8 @@ impl OptimizationPassType {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &str {
         match self {
             Self::SingleQubitFusion(p) => p.name(),
             Self::RedundantElimination(p) => p.name(),
@@ -273,6 +285,7 @@ impl<const N: usize> Default for CircuitOptimizer<N> {
 
 impl<const N: usize> CircuitOptimizer<N> {
     /// Create a new circuit optimizer with default passes
+    #[must_use]
     pub fn new() -> Self {
         let passes = vec![
             OptimizationPassType::RedundantElimination(RedundantGateElimination),
@@ -289,7 +302,8 @@ impl<const N: usize> CircuitOptimizer<N> {
     }
 
     /// Create a custom optimizer with specific passes
-    pub fn with_passes(passes: Vec<OptimizationPassType>) -> Self {
+    #[must_use]
+    pub const fn with_passes(passes: Vec<OptimizationPassType>) -> Self {
         Self {
             passes,
             max_iterations: 10,
@@ -297,18 +311,21 @@ impl<const N: usize> CircuitOptimizer<N> {
     }
 
     /// Set the maximum number of optimization iterations
-    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_iterations(mut self, max_iterations: usize) -> Self {
         self.max_iterations = max_iterations;
         self
     }
 
     /// Add an optimization pass
+    #[must_use]
     pub fn add_pass(mut self, pass: OptimizationPassType) -> Self {
         self.passes.push(pass);
         self
     }
 
     /// Optimize a circuit
+    #[must_use]
     pub fn optimize(&self, circuit: &Circuit<N>) -> OptimizationResult<N> {
         let mut current_circuit = circuit.clone();
         let mut total_iterations = 0;
@@ -370,7 +387,7 @@ impl<const N: usize> CircuitOptimizer<N> {
     }
 
     /// Estimate the cost of a circuit (simplified version)
-    fn estimate_cost(&self, _circuit: &Circuit<N>) -> f64 {
+    const fn estimate_cost(&self, _circuit: &Circuit<N>) -> f64 {
         // TODO: Implement actual cost estimation based on gate count and types
         // For now, return a placeholder value
         100.0
@@ -396,6 +413,7 @@ pub struct OptimizationResult<const N: usize> {
 
 impl<const N: usize> OptimizationResult<N> {
     /// Get the improvement ratio
+    #[must_use]
     pub fn improvement_ratio(&self) -> f64 {
         if self.initial_cost > 0.0 {
             (self.initial_cost - self.final_cost) / self.initial_cost
@@ -434,13 +452,15 @@ pub struct HardwareOptimizer {
 }
 
 impl HardwareOptimizer {
-    pub fn new(connectivity: Vec<(usize, usize)>, native_gates: HashSet<String>) -> Self {
+    #[must_use]
+    pub const fn new(connectivity: Vec<(usize, usize)>, native_gates: HashSet<String>) -> Self {
         Self {
             connectivity,
             native_gates,
         }
     }
 
+    #[must_use]
     pub fn apply<const N: usize>(&self, ctx: &OptimizationContext<N>) -> PassResult<N> {
         // TODO: Implement hardware-aware optimization
         // This would include qubit routing and native gate decomposition
@@ -451,7 +471,8 @@ impl HardwareOptimizer {
         }
     }
 
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
         "Hardware-Aware Optimization"
     }
 }

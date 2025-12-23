@@ -1,7 +1,7 @@
 //! Stress testing coordinator
 
-use scirs2_core::random::prelude::*;
 use super::*;
+use scirs2_core::random::prelude::*;
 
 /// Stress testing coordinator
 #[derive(Debug)]

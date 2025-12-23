@@ -79,7 +79,7 @@ fn qaoa_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Best solution: {:?}", results.best_solution);
     println!("  Iterations: {}", results.iterations_completed);
     println!("  Converged: {}", results.converged);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze convergence
     println!("\n  Convergence analysis:");
@@ -87,15 +87,15 @@ fn qaoa_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
         let initial_energy = results.energy_history[0];
         let final_energy = *results.energy_history.last().unwrap();
         let improvement = initial_energy - final_energy;
-        println!("    Initial energy: {:.6}", initial_energy);
-        println!("    Final energy: {:.6}", final_energy);
-        println!("    Total improvement: {:.6}", improvement);
+        println!("    Initial energy: {initial_energy:.6}");
+        println!("    Final energy: {final_energy:.6}");
+        println!("    Total improvement: {improvement:.6}");
 
         // Show energy progression
         println!("    Energy progression (every 10 iterations):");
         for (i, &energy) in results.energy_history.iter().enumerate() {
             if i % 10 == 0 || i == results.energy_history.len() - 1 {
-                println!("      Iter {}: {:.6}", i, energy);
+                println!("      Iter {i}: {energy:.6}");
             }
         }
     }
@@ -105,7 +105,7 @@ fn qaoa_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     for (i, &param) in results.optimal_parameters.iter().enumerate() {
         let param_type = if i % 2 == 0 { "gamma" } else { "beta" };
         let layer = i / 2;
-        println!("    Layer {} {}: {:.6}", layer, param_type, param);
+        println!("    Layer {layer} {param_type}: {param:.6}");
     }
 
     // Performance metrics
@@ -172,21 +172,21 @@ fn hardware_efficient_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Best solution: {:?}", results.best_solution);
     println!("  Iterations: {}", results.iterations_completed);
     println!("  Converged: {}", results.converged);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Gradient analysis
     if !results.gradient_norms.is_empty() {
         println!("\n  Gradient analysis:");
         let initial_grad_norm = results.gradient_norms[0];
         let final_grad_norm = *results.gradient_norms.last().unwrap();
-        println!("    Initial gradient norm: {:.6}", initial_grad_norm);
-        println!("    Final gradient norm: {:.6}", final_grad_norm);
+        println!("    Initial gradient norm: {initial_grad_norm:.6}");
+        println!("    Final gradient norm: {final_grad_norm:.6}");
 
         // Show gradient progression
         println!("    Gradient norm progression:");
         for (i, &grad_norm) in results.gradient_norms.iter().enumerate() {
             if i % 20 == 0 || i == results.gradient_norms.len() - 1 {
-                println!("      Iter {}: {:.6}", i, grad_norm);
+                println!("      Iter {i}: {grad_norm:.6}");
             }
         }
     }
@@ -196,14 +196,14 @@ fn hardware_efficient_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     let energy_range = results
         .energy_history
         .iter()
-        .cloned()
+        .copied()
         .fold(f64::NEG_INFINITY, f64::max)
         - results
             .energy_history
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::INFINITY, f64::min);
-    println!("    Energy range explored: {:.6}", energy_range);
+    println!("    Energy range explored: {energy_range:.6}");
 
     // Parameter statistics
     let param_magnitudes: Vec<f64> = results
@@ -214,17 +214,11 @@ fn hardware_efficient_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     let avg_param_magnitude = param_magnitudes.iter().sum::<f64>() / param_magnitudes.len() as f64;
     let max_param_magnitude = param_magnitudes
         .iter()
-        .cloned()
+        .copied()
         .fold(f64::NEG_INFINITY, f64::max);
 
-    println!(
-        "    Average parameter magnitude: {:.6}",
-        avg_param_magnitude
-    );
-    println!(
-        "    Maximum parameter magnitude: {:.6}",
-        max_param_magnitude
-    );
+    println!("    Average parameter magnitude: {avg_param_magnitude:.6}");
+    println!("    Maximum parameter magnitude: {max_param_magnitude:.6}");
 
     Ok(())
 }
@@ -270,14 +264,14 @@ fn adiabatic_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Best solution: {:?}", results.best_solution);
     println!("  Iterations: {}", results.iterations_completed);
     println!("  Converged: {}", results.converged);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze s-parameter evolution
     println!("\n  Adiabatic schedule analysis:");
     println!("    Optimal s-parameters:");
     for (i, &s_param) in results.optimal_parameters.iter().enumerate() {
         let time_fraction = i as f64 / (results.optimal_parameters.len() - 1) as f64;
-        println!("      t={:.2}: s={:.6}", time_fraction, s_param);
+        println!("      t={time_fraction:.2}: s={s_param:.6}");
     }
 
     // Check if schedule is monotonic
@@ -289,7 +283,7 @@ fn adiabatic_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("    Schedule monotonic: {}", is_monotonic);
+    println!("    Schedule monotonic: {is_monotonic}");
     println!("    Initial s: {:.6}", results.optimal_parameters[0]);
     println!(
         "    Final s: {:.6}",
@@ -299,7 +293,7 @@ fn adiabatic_inspired_vqa_example() -> Result<(), Box<dyn std::error::Error>> {
     // Frustration analysis
     let num_frustrated_bonds = count_frustrated_bonds(&results.best_solution, &problem);
     println!("\n  Frustration analysis:");
-    println!("    Frustrated bonds: {}/5", num_frustrated_bonds);
+    println!("    Frustrated bonds: {num_frustrated_bonds}/5");
     println!(
         "    Ground state quality: {:.1}%",
         (5 - num_frustrated_bonds) as f64 / 5.0 * 100.0
@@ -361,11 +355,11 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
         let results = vqa.optimize(&problem)?;
         let runtime = start.elapsed();
 
-        println!("\n  {} Results:", optimizer_name);
+        println!("\n  {optimizer_name} Results:");
         println!("    Best energy: {:.6}", results.best_energy);
         println!("    Iterations: {}", results.iterations_completed);
         println!("    Converged: {}", results.converged);
-        println!("    Runtime: {:.2?}", runtime);
+        println!("    Runtime: {runtime:.2?}");
         println!(
             "    Function evals: {}",
             results.statistics.function_evaluations
@@ -379,7 +373,7 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
             let initial_energy = results.energy_history[0];
             let final_energy = *results.energy_history.last().unwrap();
             let improvement = initial_energy - final_energy;
-            println!("    Energy improvement: {:.6}", improvement);
+            println!("    Energy improvement: {improvement:.6}");
 
             // Convergence rate analysis
             let convergence_rate = if results.iterations_completed > 1 {
@@ -387,7 +381,7 @@ fn optimizer_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 0.0
             };
-            println!("    Avg improvement/iter: {:.8}", convergence_rate);
+            println!("    Avg improvement/iter: {convergence_rate:.8}");
         }
     }
 
@@ -433,12 +427,12 @@ fn ansatz_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
         let results = vqa.optimize(&problem)?;
         let runtime = start.elapsed();
 
-        println!("\n  Depth {} Results:", depth);
+        println!("\n  Depth {depth} Results:");
         println!("    Parameters: {}", results.optimal_parameters.len());
         println!("    Best energy: {:.6}", results.best_energy);
         println!("    Iterations: {}", results.iterations_completed);
         println!("    Converged: {}", results.converged);
-        println!("    Runtime: {:.2?}", runtime);
+        println!("    Runtime: {runtime:.2?}");
 
         // Parameter utilization analysis
         let param_magnitudes: Vec<f64> = results
@@ -461,17 +455,17 @@ fn ansatz_depth_study_example() -> Result<(), Box<dyn std::error::Error>> {
             results
                 .energy_history
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::NEG_INFINITY, f64::max)
                 - results
                     .energy_history
                     .iter()
-                    .cloned()
+                    .copied()
                     .fold(f64::INFINITY, f64::min)
         } else {
             0.0
         };
-        println!("    Energy range explored: {:.6}", energy_range);
+        println!("    Energy range explored: {energy_range:.6}");
     }
 
     println!("\n  Analysis:");
@@ -578,7 +572,7 @@ fn custom_ansatz_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("  Best solution: {:?}", results.best_solution);
     println!("  Iterations: {}", results.iterations_completed);
     println!("  Converged: {}", results.converged);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Analyze custom circuit structure
     println!("\n  Custom circuit analysis:");
@@ -611,18 +605,18 @@ fn custom_ansatz_example() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("\n  Parameter statistics:");
-    println!("    Parameter std deviation: {:.6}", param_std);
+    println!("    Parameter std deviation: {param_std:.6}");
     println!(
         "    Parameter range: [{:.6}, {:.6}]",
         results
             .optimal_parameters
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::INFINITY, f64::min),
         results
             .optimal_parameters
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max)
     );
 
@@ -667,10 +661,7 @@ fn large_scale_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     let runtime = start.elapsed();
 
     println!("Large-Scale Optimization Results:");
-    println!(
-        "  Problem: {}-qubit random graph (~30% edge density)",
-        problem_size
-    );
+    println!("  Problem: {problem_size}-qubit random graph (~30% edge density)");
     println!("  Ansatz: QAOA-inspired (4 layers)");
     println!(
         "  Parameters: {} (8 total: 4×2)",
@@ -681,11 +672,11 @@ fn large_scale_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     println!("  Best solution: {:?}", results.best_solution);
     println!("  Iterations: {}", results.iterations_completed);
     println!("  Converged: {}", results.converged);
-    println!("  Runtime: {:.2?}", runtime);
+    println!("  Runtime: {runtime:.2?}");
 
     // Scaling analysis
     println!("\n  Scaling metrics:");
-    println!("    Qubits: {}", problem_size);
+    println!("    Qubits: {problem_size}");
     println!("    Parameters: {}", results.optimal_parameters.len());
     println!(
         "    Function evaluations: {}",
@@ -703,7 +694,7 @@ fn large_scale_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
     // Solution quality analysis
     let solution_energy = evaluate_ising_energy(&results.best_solution, &problem)?;
     println!("\n  Solution quality:");
-    println!("    Computed energy: {:.6}", solution_energy);
+    println!("    Computed energy: {solution_energy:.6}");
     println!("    VQA best energy: {:.6}", results.best_energy);
     println!(
         "    Energy consistency: {}",
@@ -720,8 +711,8 @@ fn large_scale_optimization_example() -> Result<(), Box<dyn std::error::Error>> 
         let late_progress = results.energy_history[results.energy_history.len().saturating_sub(20)]
             - *results.energy_history.last().unwrap();
 
-        println!("    Early progress (first 20 iters): {:.6}", early_progress);
-        println!("    Late progress (last 20 iters): {:.6}", late_progress);
+        println!("    Early progress (first 20 iters): {early_progress:.6}");
+        println!("    Late progress (last 20 iters): {late_progress:.6}");
         println!(
             "    Convergence pattern: {}",
             if early_progress > late_progress * 5.0 {
@@ -767,13 +758,13 @@ fn evaluate_ising_energy(
 
     // Bias terms
     for i in 0..spins.len() {
-        energy += problem.get_bias(i)? * spins[i] as f64;
+        energy += problem.get_bias(i)? * f64::from(spins[i]);
     }
 
     // Coupling terms
     for i in 0..spins.len() {
         for j in (i + 1)..spins.len() {
-            energy += problem.get_coupling(i, j)? * spins[i] as f64 * spins[j] as f64;
+            energy += problem.get_coupling(i, j)? * f64::from(spins[i]) * f64::from(spins[j]);
         }
     }
 

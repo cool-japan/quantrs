@@ -28,8 +28,15 @@ pub struct CrosstalkModel {
     pub coupling_map: Vec<(usize, usize)>,
 }
 
+impl Default for CrosstalkModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CrosstalkModel {
     /// Create a new crosstalk model
+    #[must_use]
     pub fn new() -> Self {
         Self {
             crosstalk_coefficients: HashMap::new(),
@@ -40,13 +47,14 @@ impl CrosstalkModel {
     }
 
     /// Create a uniform crosstalk model for testing
+    #[must_use]
     pub fn uniform(num_qubits: usize, crosstalk_rate: f64) -> Self {
         let mut model = Self::new();
 
         // Add crosstalk between all neighboring qubit pairs
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                let dist = (i as i32 - j as i32).abs() as f64;
+                let dist = f64::from((i as i32 - j as i32).abs());
                 let crosstalk = crosstalk_rate / dist; // Decreases with distance
 
                 // Single-qubit crosstalk
@@ -74,13 +82,16 @@ impl CrosstalkModel {
     }
 
     /// Load from device characterization data
+    #[must_use]
     pub fn from_characterization(data: &CrosstalkCharacterization) -> Self {
         let mut model = Self::new();
 
         // Load measured crosstalk values
-        model.crosstalk_coefficients = data.measured_crosstalk.clone();
+        model
+            .crosstalk_coefficients
+            .clone_from(&data.measured_crosstalk);
         model.threshold = data.significance_threshold;
-        model.coupling_map = data.device_coupling.clone();
+        model.coupling_map.clone_from(&data.device_coupling);
 
         // Compute single-qubit crosstalk from measurements
         for (&(q1, q2), &value) in &data.single_qubit_measurements {
@@ -143,7 +154,7 @@ impl CrosstalkModel {
                     }
                 }
                 if count > 0 {
-                    total / count as f64
+                    total / f64::from(count)
                 } else {
                     0.0
                 }
@@ -212,7 +223,8 @@ pub enum SchedulingStrategy {
 
 impl CrosstalkScheduler {
     /// Create a new scheduler
-    pub fn new(model: CrosstalkModel) -> Self {
+    #[must_use]
+    pub const fn new(model: CrosstalkModel) -> Self {
         Self {
             model,
             strategy: SchedulingStrategy::MinimizeCrosstalk,
@@ -220,7 +232,8 @@ impl CrosstalkScheduler {
     }
 
     /// Set scheduling strategy
-    pub fn with_strategy(mut self, strategy: SchedulingStrategy) -> Self {
+    #[must_use]
+    pub const fn with_strategy(mut self, strategy: SchedulingStrategy) -> Self {
         self.strategy = strategy;
         self
     }
@@ -258,7 +271,7 @@ impl CrosstalkScheduler {
         // Get topological order
         let topo_order = dag
             .topological_sort()
-            .map_err(|e| QuantRS2Error::InvalidInput(e))?;
+            .map_err(QuantRS2Error::InvalidInput)?;
 
         while scheduled.iter().any(|&s| !s) {
             let mut current_slice = TimeSlice {
@@ -376,11 +389,13 @@ pub struct CrosstalkAnalyzer {
 
 impl CrosstalkAnalyzer {
     /// Create a new analyzer
-    pub fn new(model: CrosstalkModel) -> Self {
+    #[must_use]
+    pub const fn new(model: CrosstalkModel) -> Self {
         Self { model }
     }
 
     /// Analyze potential crosstalk in a circuit
+    #[must_use]
     pub fn analyze<const N: usize>(&self, circuit: &Circuit<N>) -> CrosstalkAnalysis {
         let gates = circuit.gates();
         let mut problematic_pairs = Vec::new();
@@ -406,7 +421,7 @@ impl CrosstalkAnalyzer {
         // Sort by crosstalk value
         problematic_pairs.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
 
-        let max_crosstalk = problematic_pairs.first().map(|p| p.2).unwrap_or(0.0);
+        let max_crosstalk = problematic_pairs.first().map_or(0.0, |p| p.2);
 
         CrosstalkAnalysis {
             total_gates: gates.len(),
@@ -429,7 +444,7 @@ impl CrosstalkAnalyzer {
             suggestions.push(GateReordering {
                 gate1: *i,
                 gate2: *j,
-                reason: format!("High crosstalk: {:.4}", crosstalk),
+                reason: format!("High crosstalk: {crosstalk:.4}"),
                 expected_improvement: crosstalk * 0.5, // Estimate
             });
         }

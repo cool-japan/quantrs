@@ -515,7 +515,7 @@ impl QuantumOperatingSystem {
     }
 
     fn execute_scheduled_operations(
-        &mut self,
+        &self,
         decision: &QuantumSchedulingDecision,
     ) -> Result<QuantumExecutionResults, QuantRS2Error> {
         let mut total_fidelity = 0.0;
@@ -534,7 +534,7 @@ impl QuantumOperatingSystem {
     }
 
     fn execute_process_operations(
-        &mut self,
+        &self,
         _process_id: u64,
     ) -> Result<ProcessExecutionResult, QuantRS2Error> {
         // Simplified process execution

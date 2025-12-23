@@ -1,6 +1,6 @@
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 
 use quantrs2_core::qubit::QubitId;
 
@@ -66,14 +66,14 @@ pub fn bits_to_int(bits: &[u8]) -> usize {
 }
 
 /// Compute the index with a bit flipped at the specified position
-pub fn flip_bit(index: usize, pos: usize) -> usize {
+pub const fn flip_bit(index: usize, pos: usize) -> usize {
     index ^ (1 << pos)
 }
 
 /// Compute the index with a controlled bit flip
 ///
 /// If the control bit at ctrl_pos is 1, then the target bit at target_pos is flipped.
-pub fn controlled_flip(index: usize, ctrl_pos: usize, target_pos: usize) -> usize {
+pub const fn controlled_flip(index: usize, ctrl_pos: usize, target_pos: usize) -> usize {
     if (index >> ctrl_pos) & 1 == 1 {
         flip_bit(index, target_pos)
     } else {
@@ -85,9 +85,10 @@ pub fn controlled_flip(index: usize, ctrl_pos: usize, target_pos: usize) -> usiz
 ///
 /// Given a list of qubit indices, compute the global index into the state vector.
 pub fn compute_index(qubit_indices: &[QubitId], state_bits: &[u8]) -> usize {
-    if qubit_indices.len() != state_bits.len() {
-        panic!("Mismatch between qubit indices and state bits");
-    }
+    assert!(
+        (qubit_indices.len() == state_bits.len()),
+        "Mismatch between qubit indices and state bits"
+    );
 
     let mut index = 0;
     for (&qubit, &bit) in qubit_indices.iter().zip(state_bits.iter()) {

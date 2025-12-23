@@ -66,10 +66,7 @@ impl MemoryVerifier {
 
         // Test 4: Overall performance comparison
         let overall_performance_ratio = self.test_overall_performance();
-        println!(
-            "✅ Performance improvement: {:.2}x",
-            overall_performance_ratio
-        );
+        println!("✅ Performance improvement: {overall_performance_ratio:.2}x");
 
         VerificationResults {
             buffer_pool_test_passed,
@@ -241,7 +238,7 @@ impl MemoryVerifier {
     /// Generate verification report
     pub fn generate_report(&self, results: &VerificationResults) -> String {
         format!(
-            r#"
+            r"
 📊 Memory Efficiency Verification Report
 ==========================================
 
@@ -263,7 +260,7 @@ impl MemoryVerifier {
 
 ✅ Summary
 {}
-"#,
+",
             if results.buffer_pool_test_passed {
                 "✅ PASSED"
             } else {

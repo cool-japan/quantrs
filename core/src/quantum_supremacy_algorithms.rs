@@ -1191,7 +1191,7 @@ impl SamplingEngine {
     pub fn new() -> Self {
         Self {
             sampling_strategy: SamplingStrategy::UniformSampling,
-            sample_count: 1000000,
+            sample_count: 1_000_000,
             statistical_confidence: 0.99,
             error_mitigation: ErrorMitigation::new(),
             readout_correction: ReadoutCorrection::new(),
@@ -1489,8 +1489,8 @@ pub struct ClassicalSimulationCost {
 impl ClassicalSimulationCost {
     pub fn new() -> Self {
         Self {
-            time_complexity: Duration::from_secs(1000000),
-            space_complexity: 1000000000,
+            time_complexity: Duration::from_secs(1_000_000),
+            space_complexity: 1_000_000_000,
         }
     }
 }
@@ -1636,7 +1636,7 @@ pub struct AdvantageMetrics {
 impl AdvantageMetrics {
     pub fn new() -> Self {
         Self {
-            classical_bound: Duration::from_secs(1000000),
+            classical_bound: Duration::from_secs(1_000_000),
             advantage_factor: 1e8,
         }
     }
@@ -1673,7 +1673,7 @@ pub struct ClassicalSimulationBounds {
 impl ClassicalSimulationBounds {
     pub fn new() -> Self {
         Self {
-            estimated_time: Duration::from_secs(1000000),
+            estimated_time: Duration::from_secs(1_000_000),
         }
     }
 
@@ -1708,8 +1708,8 @@ pub struct SamplingComplexity {
 impl SamplingComplexity {
     pub fn new() -> Self {
         Self {
-            permanent_count: 1000000,
-            classical_time: Duration::from_secs(1000000),
+            permanent_count: 1_000_000,
+            classical_time: Duration::from_secs(1_000_000),
             quantum_advantage: 1e14,
         }
     }
@@ -1772,8 +1772,8 @@ impl ComputationalComplexity {
             },
             space_complexity: SpaceComplexity {
                 quantum_space: 1000,
-                classical_space: 1000000000,
-                memory_advantage: 1000000.0,
+                classical_space: 1_000_000_000,
+                memory_advantage: 1_000_000.0,
             },
             quantum_vs_classical: QuantumClassicalGap {
                 separation_type: SeparationType::Exponential,

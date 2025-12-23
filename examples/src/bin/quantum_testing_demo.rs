@@ -1,8 +1,8 @@
 //! Quantum unit testing framework demonstration
 
+use quantrs2_core::prelude::*;
 use scirs2_core::ndarray::{array, Array1, Array2};
 use scirs2_core::Complex64;
-use quantrs2_core::prelude::*;
 use std::f64::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,15 +43,15 @@ fn basic_assertions_demo() {
 
     match assert.states_equal(&state1, &state2) {
         TestResult::Pass => println!("✓ States are equal (ignoring global phase)"),
-        TestResult::Fail(reason) => println!("✗ States not equal: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ States not equal: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     // Test 2: Normalization check
     match assert.state_normalized(&state1) {
         TestResult::Pass => println!("✓ State is normalized"),
-        TestResult::Fail(reason) => println!("✗ State not normalized: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ State not normalized: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     // Test 3: Orthogonality check
@@ -62,16 +62,16 @@ fn basic_assertions_demo() {
 
     match assert.states_orthogonal(&state1, &state3) {
         TestResult::Pass => println!("✓ States are orthogonal"),
-        TestResult::Fail(reason) => println!("✗ States not orthogonal: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ States not orthogonal: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     // Test 4: Measurement probabilities
     let expected_probs = vec![(0, 0.5), (1, 0.5)];
     match assert.measurement_probabilities(&state1, &expected_probs) {
         TestResult::Pass => println!("✓ Measurement probabilities correct"),
-        TestResult::Fail(reason) => println!("✗ Probabilities incorrect: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ Probabilities incorrect: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     println!();
@@ -93,8 +93,8 @@ fn matrix_testing_demo() {
 
     match assert.matrix_unitary(&hadamard) {
         TestResult::Pass => println!("✓ Hadamard matrix is unitary"),
-        TestResult::Fail(reason) => println!("✗ Not unitary: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ Not unitary: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     // Test Pauli X
@@ -105,8 +105,8 @@ fn matrix_testing_demo() {
 
     match assert.matrix_unitary(&pauli_x) {
         TestResult::Pass => println!("✓ Pauli-X matrix is unitary"),
-        TestResult::Fail(reason) => println!("✗ Not unitary: {}", reason),
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Fail(reason) => println!("✗ Not unitary: {reason}"),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     // Test non-unitary matrix
@@ -118,9 +118,9 @@ fn matrix_testing_demo() {
     match assert.matrix_unitary(&non_unitary) {
         TestResult::Pass => println!("✓ Matrix is unitary (unexpected!)"),
         TestResult::Fail(reason) => {
-            println!("✓ Correctly identified non-unitary matrix: {}", reason)
+            println!("✓ Correctly identified non-unitary matrix: {reason}");
         }
-        TestResult::Skip(reason) => println!("⊙ Test skipped: {}", reason),
+        TestResult::Skip(reason) => println!("⊙ Test skipped: {reason}"),
     }
 
     println!();
@@ -170,7 +170,7 @@ fn test_suite_demo() {
 
     // Run the suite
     let results = suite.run();
-    println!("{}", results);
+    println!("{results}");
 }
 
 /// Demonstrate testing quantum algorithms
@@ -221,7 +221,7 @@ fn algorithm_testing_demo() {
     }));
 
     let results = suite.run();
-    println!("{}", results);
+    println!("{results}");
 
     println!("\nAdvanced Testing Features:");
     println!("• Custom tolerance levels for approximate equality");

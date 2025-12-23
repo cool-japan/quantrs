@@ -27,7 +27,6 @@ petgraph.workspace = true
 thiserror.workspace = true
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 scirs2-autograd.workspace = true
 
@@ -301,5 +300,18 @@ name = "ultrathink_simple_demo"
 path = "src/bin/ultrathink_simple_demo.rs"
 required-features = []
 
-[lints]
-workspace = true
+[lints.rust]
+# Examples are for demonstration - allow unused code patterns
+unused_must_use = "allow"
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+dead_code = "allow"
+deprecated = "allow"  # Allow deprecated methods from dependencies
+
+[lints.clippy]
+# Inherit clippy lints from workspace
+enum_glob_use = "warn"
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+unwrap_used = "warn"

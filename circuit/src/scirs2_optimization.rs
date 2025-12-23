@@ -1,16 +1,16 @@
-//! SciRS2 optimization integration for parameter tuning
+//! `SciRS2` optimization integration for parameter tuning
 //!
-//! This module integrates SciRS2's advanced optimization capabilities for quantum circuit
+//! This module integrates `SciRS2`'s advanced optimization capabilities for quantum circuit
 //! parameter optimization, variational algorithms, and machine learning-enhanced optimization.
 
 use crate::builder::Circuit;
 use crate::scirs2_matrices::SparseMatrix;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -40,7 +40,7 @@ pub trait ObjectiveFunction: Send + Sync {
     fn name(&self) -> &str;
 }
 
-/// SciRS2 optimization algorithms
+/// `SciRS2` optimization algorithms
 #[derive(Debug, Clone, PartialEq)]
 pub enum OptimizationAlgorithm {
     /// Gradient descent variants
@@ -90,7 +90,7 @@ pub enum OptimizationAlgorithm {
     /// Quantum approximate optimization algorithm (QAOA)
     QAOA {
         num_layers: usize,
-        classical_optimizer: Box<OptimizationAlgorithm>,
+        classical_optimizer: Box<Self>,
     },
 }
 
@@ -210,7 +210,7 @@ pub struct OptimizationHistory {
     pub timestamps: Vec<std::time::Instant>,
 }
 
-/// Quantum circuit parameter optimizer using SciRS2
+/// Quantum circuit parameter optimizer using `SciRS2`
 pub struct QuantumCircuitOptimizer {
     /// Current circuit template
     circuit_template: CircuitTemplate,
@@ -265,6 +265,7 @@ pub struct Parameter {
 
 impl QuantumCircuitOptimizer {
     /// Create a new quantum circuit optimizer
+    #[must_use]
     pub fn new(template: CircuitTemplate, config: OptimizationConfig) -> Self {
         Self {
             circuit_template: template,
@@ -419,7 +420,7 @@ impl QuantumCircuitOptimizer {
 
             // Update parameters with momentum
             for i in 0..params.len() {
-                velocity[i] = momentum * velocity[i] - learning_rate * gradient[i];
+                velocity[i] = momentum.mul_add(velocity[i], -(learning_rate * gradient[i]));
                 params[i] += velocity[i];
 
                 // Apply bounds
@@ -486,8 +487,8 @@ impl QuantumCircuitOptimizer {
 
             // Update biased first and second moment estimates
             for i in 0..params.len() {
-                m[i] = beta1 * m[i] + (1.0 - beta1) * gradient[i];
-                v[i] = beta2 * v[i] + (1.0 - beta2) * gradient[i] * gradient[i];
+                m[i] = beta1.mul_add(m[i], (1.0 - beta1) * gradient[i]);
+                v[i] = beta2.mul_add(v[i], (1.0 - beta2) * gradient[i] * gradient[i]);
 
                 // Bias correction
                 let m_hat = m[i] / (1.0 - beta1.powi(t as i32));
@@ -539,10 +540,10 @@ impl QuantumCircuitOptimizer {
         simplex.push(initial_params.to_vec());
         for i in 0..n {
             let mut vertex = initial_params.to_vec();
-            vertex[i] += if vertex[i] != 0.0 {
-                vertex[i] * 0.05
-            } else {
+            vertex[i] += if vertex[i] == 0.0 {
                 0.00025
+            } else {
+                vertex[i] * 0.05
             };
             simplex.push(vertex);
         }
@@ -800,11 +801,13 @@ impl QuantumCircuitOptimizer {
     }
 
     /// Get current best parameters
+    #[must_use]
     pub fn get_best_parameters(&self) -> Option<Vec<f64>> {
         self.best_parameters.lock().unwrap().clone()
     }
 
     /// Get current best value
+    #[must_use]
     pub fn get_best_value(&self) -> f64 {
         *self.best_value.lock().unwrap()
     }
@@ -842,6 +845,7 @@ pub struct VQEObjective {
 
 impl VQEObjective {
     /// Create new VQE objective
+    #[must_use]
     pub fn new(hamiltonian: SparseMatrix, circuit_template: CircuitTemplate) -> Self {
         let bounds = circuit_template
             .parameters
@@ -876,7 +880,7 @@ impl ObjectiveFunction for VQEObjective {
         self.bounds.clone()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "VQE"
     }
 }
@@ -895,6 +899,7 @@ pub struct QAOAObjective {
 
 impl QAOAObjective {
     /// Create new QAOA objective
+    #[must_use]
     pub fn new(
         problem_hamiltonian: SparseMatrix,
         mixer_hamiltonian: SparseMatrix,
@@ -926,7 +931,7 @@ impl ObjectiveFunction for QAOAObjective {
         self.bounds.clone()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QAOA"
     }
 }
@@ -1028,7 +1033,7 @@ mod tests {
             vec![(-5.0, 5.0); 2]
         }
 
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "test"
         }
     }

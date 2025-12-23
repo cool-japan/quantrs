@@ -140,8 +140,7 @@ impl HitachiCMOSSampler {
 
         if n > king_size {
             return Err(SamplerError::InvalidModel(format!(
-                "Problem size {} exceeds hardware limit {}",
-                n, king_size
+                "Problem size {n} exceeds hardware limit {king_size}"
             )));
         }
 
@@ -263,7 +262,7 @@ impl Sampler for HitachiCMOSSampler {
 
         // Submit multiple jobs for shots
         let mut all_results = Vec::new();
-        let jobs_needed = (shots + 99) / 100; // Max 100 solutions per job
+        let jobs_needed = shots.div_ceil(100); // Max 100 solutions per job
 
         for _ in 0..jobs_needed {
             let job_id = self.submit_job(&embedded_qubo)?;

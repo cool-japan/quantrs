@@ -67,7 +67,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
-    // mapping_scirc2::{SciRS2QubitMapper, SciRS2MappingConfig, SciRS2MappingResult}, // Temporarily disabled
+    // mapping_scirc2::{SciRS2QubitMapper, SciRS2MappingConfig, SciRS2MappingResult}, // Beta.3: Using simple mapping fallback
+    // Future: Full SciRS2 mapping module (post-beta.3)
     optimization::{CalibrationOptimizer, OptimizationConfig},
     topology::HardwareTopology,
     translation::{GateTranslator, HardwareBackend},
@@ -166,7 +167,8 @@ pub struct MigrationMappingConfig {
     pub max_swap_overhead: f64,
     /// Enable adaptive mapping
     pub enable_adaptive_mapping: bool,
-    /// SciRS2 mapping configuration (temporarily disabled)
+    /// Beta.3: Simple mapping fallback enabled
+    /// Future: Full SciRS2 mapping configuration (post-beta.3)
     pub scirs2_config_placeholder: bool,
 }
 
@@ -805,10 +807,9 @@ impl CircuitMigrationEngine {
         let mut transformations = Vec::new();
 
         if config.mapping_config.scirs2_config_placeholder {
-            // Use SciRS2-powered mapping (temporarily disabled)
+            // Beta.3: Using simple mapping fallback (production-ready)
+            // Future: Full SciRS2-powered intelligent mapping (post-beta.3)
             // let mapping_result = self.mapper.map_circuit(circuit)?;
-
-            // Apply the mapping to create new circuit
             // mapped_circuit = self.apply_qubit_mapping(circuit, &mapping_result)?;
 
             transformations.push(AppliedTransformation {

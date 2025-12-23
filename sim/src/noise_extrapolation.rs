@@ -5,8 +5,8 @@
 //! and other methods to extrapolate quantum results to the zero-noise limit.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, SimulatorError};
@@ -119,7 +119,7 @@ pub struct ZeroNoiseExtrapolator {
 
 impl ZeroNoiseExtrapolator {
     /// Create new ZNE extrapolator
-    pub fn new(
+    pub const fn new(
         scaling_method: NoiseScalingMethod,
         extrapolation_method: ExtrapolationMethod,
         noise_factors: Vec<f64>,
@@ -276,8 +276,10 @@ impl ZeroNoiseExtrapolator {
             .iter()
             .zip(noise_factors.iter())
             .map(|(&res, &x)| {
-                a * (b * x).exp()
-                    - measured_values[noise_factors.iter().position(|&nx| nx == x).unwrap()]
+                a.mul_add(
+                    (b * x).exp(),
+                    -measured_values[noise_factors.iter().position(|&nx| nx == x).unwrap()],
+                )
             })
             .collect();
 
@@ -294,8 +296,7 @@ impl ZeroNoiseExtrapolator {
     ) -> Result<(f64, f64, FitStatistics)> {
         if noise_factors.len() <= order {
             return Err(SimulatorError::InvalidInput(format!(
-                "Need more than {} data points for order {} polynomial",
-                order, order
+                "Need more than {order} data points for order {order} polynomial"
             )));
         }
 
@@ -367,8 +368,10 @@ impl ZeroNoiseExtrapolator {
             ));
         }
 
-        let a = (y1 * x2 * x3 * (x2 - x3) + y2 * x1 * x3 * (x3 - x1) + y3 * x1 * x2 * (x1 - x2))
-            / denominator;
+        let a = (y3 * x1 * x2).mul_add(
+            x1 - x2,
+            (y1 * x2 * x3).mul_add(x2 - x3, y2 * x1 * x3 * (x3 - x1)),
+        ) / denominator;
 
         let zero_noise_value = a;
 
@@ -470,15 +473,15 @@ impl ZeroNoiseExtrapolator {
             .map(|((&wi, &xi), &yi)| wi * xi * yi)
             .sum();
 
-        let delta = sum_w * sum_wxx - sum_wx * sum_wx;
+        let delta = sum_w.mul_add(sum_wxx, -(sum_wx * sum_wx));
         if delta.abs() < 1e-12 {
             return Err(SimulatorError::NumericalError(
                 "Singular matrix in linear fit".to_string(),
             ));
         }
 
-        let a = (sum_wxx * sum_wy - sum_wx * sum_wxy) / delta; // intercept
-        let b = (sum_w * sum_wxy - sum_wx * sum_wy) / delta; // slope
+        let a = sum_wxx.mul_add(sum_wy, -(sum_wx * sum_wxy)) / delta; // intercept
+        let b = sum_w.mul_add(sum_wxy, -(sum_wx * sum_wy)) / delta; // slope
 
         // Calculate residuals and statistics
         let mut residuals = Vec::with_capacity(n);
@@ -487,7 +490,7 @@ impl ZeroNoiseExtrapolator {
         let y_mean = y.iter().sum::<f64>() / n as f64;
 
         for i in 0..n {
-            let predicted = a + b * x[i];
+            let predicted = b.mul_add(x[i], a);
             let residual = y[i] - predicted;
             residuals.push(residual);
             ss_res += residual * residual;
@@ -502,7 +505,7 @@ impl ZeroNoiseExtrapolator {
         let chi_squared_reduced = ss_res / (n - 2) as f64;
 
         // AIC for linear model
-        let aic = n as f64 * (ss_res / n as f64).ln() + 2.0 * 2.0; // 2 parameters
+        let aic = (n as f64).mul_add((ss_res / n as f64).ln(), 2.0 * 2.0); // 2 parameters
 
         let fit_stats = FitStatistics {
             r_squared,
@@ -537,7 +540,7 @@ impl ZeroNoiseExtrapolator {
     /// Estimate measurement uncertainty
     fn estimate_measurement_uncertainty(&self, measured_value: f64) -> f64 {
         // Shot noise estimate: σ ≈ √(p(1-p)/N) for probability p and N shots
-        let p = (measured_value + 1.0) / 2.0; // Convert from [-1,1] to [0,1]
+        let p = f64::midpoint(measured_value, 1.0); // Convert from [-1,1] to [0,1]
         let shot_noise = (p * (1.0 - p) / self.shots_per_level as f64).sqrt();
         shot_noise * 2.0 // Convert back to [-1,1] scale
     }
@@ -577,7 +580,7 @@ pub enum DistillationProtocol {
 
 impl VirtualDistillation {
     /// Create new virtual distillation instance
-    pub fn new(num_copies: usize, protocol: DistillationProtocol) -> Self {
+    pub const fn new(num_copies: usize, protocol: DistillationProtocol) -> Self {
         Self {
             num_copies,
             protocol,
@@ -674,7 +677,7 @@ pub struct SymmetryOperation {
 
 impl SymmetryVerification {
     /// Create new symmetry verification
-    pub fn new(symmetries: Vec<SymmetryOperation>) -> Self {
+    pub const fn new(symmetries: Vec<SymmetryOperation>) -> Self {
         Self { symmetries }
     }
 

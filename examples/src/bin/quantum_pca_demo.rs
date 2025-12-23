@@ -1,7 +1,7 @@
 //! Quantum Principal Component Analysis demonstration
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_core::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,12 +39,12 @@ fn generate_synthetic_data() -> Array2<f64> {
         let t = i as f64 / n_samples as f64;
 
         // First principal component (strong)
-        data[[i, 0]] = 5.0 * t + 0.1 * thread_rng().gen::<f64>();
-        data[[i, 1]] = 5.0 * t + 0.1 * thread_rng().gen::<f64>();
+        data[[i, 0]] = 5.0f64.mul_add(t, 0.1 * thread_rng().gen::<f64>());
+        data[[i, 1]] = 5.0f64.mul_add(t, 0.1 * thread_rng().gen::<f64>());
 
         // Second principal component (medium)
-        data[[i, 2]] = 3.0 * (1.0 - t) + 0.1 * thread_rng().gen::<f64>();
-        data[[i, 3]] = 3.0 * (1.0 - t) + 0.1 * thread_rng().gen::<f64>();
+        data[[i, 2]] = 3.0f64.mul_add(1.0 - t, 0.1 * thread_rng().gen::<f64>());
+        data[[i, 3]] = 3.0f64.mul_add(1.0 - t, 0.1 * thread_rng().gen::<f64>());
 
         // Noise dimensions (weak)
         data[[i, 4]] = 0.5 * thread_rng().gen::<f64>();
@@ -148,8 +148,7 @@ fn quantum_advantage_analysis() -> Result<(), Box<dyn std::error::Error>> {
         let speedup = classical_ops / quantum_ops.max(1);
 
         println!(
-            "  n={:5}: Classical={:12} ops, Quantum={:6} ops, Speedup={:6}x",
-            n, classical_ops, quantum_ops, speedup
+            "  n={n:5}: Classical={classical_ops:12} ops, Quantum={quantum_ops:6} ops, Speedup={speedup:6}x"
         );
     }
 
@@ -187,10 +186,10 @@ fn quantum_state_pca_demo() -> Result<(), Box<dyn std::error::Error>> {
 
         // Bias towards certain basis states
         if thread_rng().gen::<f64>() < 0.7 {
-            state[0] = 0.8 + 0.2 * thread_rng().gen::<f64>();
+            state[0] = 0.2f64.mul_add(thread_rng().gen::<f64>(), 0.8);
             state[1] = 0.2 * thread_rng().gen::<f64>();
         } else {
-            state[6] = 0.6 + 0.4 * thread_rng().gen::<f64>();
+            state[6] = 0.4f64.mul_add(thread_rng().gen::<f64>(), 0.6);
             state[7] = 0.4 * thread_rng().gen::<f64>();
         }
 

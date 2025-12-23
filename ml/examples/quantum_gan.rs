@@ -1,8 +1,8 @@
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::gan::{DiscriminatorType, GANEvaluationMetrics, GeneratorType, QuantumGAN};
 use quantrs2_ml::prelude::*;
-use std::time::Instant;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use std::time::Instant;
 
 fn main() -> Result<()> {
     println!("Quantum Generative Adversarial Network Example");
@@ -15,10 +15,10 @@ fn main() -> Result<()> {
     let data_dim = 8;
 
     println!("Creating Quantum GAN...");
-    println!("  Generator: {} qubits", num_qubits_gen);
-    println!("  Discriminator: {} qubits", num_qubits_disc);
-    println!("  Latent dimension: {}", latent_dim);
-    println!("  Data dimension: {}", data_dim);
+    println!("  Generator: {num_qubits_gen} qubits");
+    println!("  Discriminator: {num_qubits_disc} qubits");
+    println!("  Latent dimension: {latent_dim}");
+    println!("  Data dimension: {data_dim}");
 
     // Create quantum GAN
     let mut qgan = QuantumGAN::new(
@@ -42,11 +42,11 @@ fn main() -> Result<()> {
 
     for (epochs, batch_size, lr_gen, lr_disc, disc_steps) in training_params {
         println!("Training with parameters:");
-        println!("  Epochs: {}", epochs);
-        println!("  Batch size: {}", batch_size);
-        println!("  Generator learning rate: {}", lr_gen);
-        println!("  Discriminator learning rate: {}", lr_disc);
-        println!("  Discriminator steps per iteration: {}", disc_steps);
+        println!("  Epochs: {epochs}");
+        println!("  Batch size: {batch_size}");
+        println!("  Generator learning rate: {lr_gen}");
+        println!("  Discriminator learning rate: {lr_disc}");
+        println!("  Discriminator steps per iteration: {disc_steps}");
 
         let start = Instant::now();
         let history = qgan.train(&real_data, epochs, batch_size, lr_gen, lr_disc, disc_steps)?;
@@ -68,9 +68,13 @@ fn main() -> Result<()> {
     let num_samples = 10;
     let generated_samples = qgan.generate(num_samples)?;
 
-    println!("Generated {} samples", num_samples);
+    println!("Generated {num_samples} samples");
     println!("First sample:");
-    print_sample(&generated_samples.slice(scirs2_core::ndarray::s![0, ..]).to_owned());
+    print_sample(
+        &generated_samples
+            .slice(scirs2_core::ndarray::s![0, ..])
+            .to_owned(),
+    );
 
     // Evaluate GAN
     println!("\nEvaluating GAN quality...");
@@ -114,7 +118,7 @@ fn generate_sine_wave_data(num_samples: usize, data_dim: usize) -> Array2<f64> {
 
         for j in 0..data_dim {
             let freq = (j as f64 + 1.0) * 0.5;
-            data[[i, j]] = (x * freq).sin() + 0.1 * thread_rng().gen::<f64>();
+            data[[i, j]] = 0.1f64.mul_add(thread_rng().gen::<f64>(), (x * freq).sin());
         }
     }
 
@@ -128,7 +132,7 @@ fn print_sample(sample: &Array1<f64>) {
         if i > 0 {
             print!(", ");
         }
-        print!("{:.4}", val);
+        print!("{val:.4}");
     }
     println!("]");
 }

@@ -25,9 +25,9 @@
 //!   adiabatic processes, and quantum error correction integration
 
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use scirs2_core::Complex64;
-use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
@@ -649,7 +649,11 @@ pub struct ReservoirTrainingData {
 
 impl ReservoirTrainingData {
     /// Create new training data
-    pub fn new(inputs: Vec<Array1<f64>>, targets: Vec<Array1<f64>>, timestamps: Vec<f64>) -> Self {
+    pub const fn new(
+        inputs: Vec<Array1<f64>>,
+        targets: Vec<Array1<f64>>,
+        timestamps: Vec<f64>,
+    ) -> Self {
         Self {
             inputs,
             targets,
@@ -916,7 +920,7 @@ impl QuantumReservoirComputerEnhanced {
 
         // Xavier initialization
         let scale = (2.0 / (output_size + feature_size) as f64).sqrt();
-        for elem in output_weights.iter_mut() {
+        for elem in &mut output_weights {
             *elem = (fastrand::f64() - 0.5) * 2.0 * scale;
         }
 
@@ -1387,7 +1391,7 @@ impl QuantumReservoirComputerEnhanced {
     }
 
     /// Calculate output size based on configuration
-    fn calculate_output_size(config: &QuantumReservoirConfig) -> usize {
+    const fn calculate_output_size(config: &QuantumReservoirConfig) -> usize {
         // For time series prediction, typically 1 output
         1
     }
@@ -1633,7 +1637,7 @@ impl QuantumReservoirComputerEnhanced {
     fn apply_decoherence(&mut self) -> Result<()> {
         let decoherence_rate = self.config.noise_level;
 
-        for amplitude in self.reservoir_state.state_vector.iter_mut() {
+        for amplitude in &mut self.reservoir_state.state_vector {
             // Apply phase decoherence
             let phase_noise = (fastrand::f64() - 0.5) * decoherence_rate * 2.0 * PI;
             *amplitude *= Complex64::new(0.0, phase_noise).exp();
@@ -1810,14 +1814,14 @@ impl QuantumReservoirComputerEnhanced {
 
         for i in 0..self.config.num_qubits {
             for j in 0..self.config.num_qubits {
-                if i != j {
+                if i == j {
+                    correlations.push(1.0); // Self-correlation
+                    self.reservoir_state.correlations[[i, j]] = 1.0;
+                } else {
                     // ZZ correlation
                     let corr = self.calculate_two_qubit_correlation(i, j)?;
                     correlations.push(corr);
                     self.reservoir_state.correlations[[i, j]] = corr;
-                } else {
-                    correlations.push(1.0); // Self-correlation
-                    self.reservoir_state.correlations[[i, j]] = 1.0;
                 }
             }
         }
@@ -1859,7 +1863,7 @@ impl QuantumReservoirComputerEnhanced {
         let state = &self.reservoir_state.state_vector;
         let mut entropy = 0.0;
 
-        for amplitude in state.iter() {
+        for amplitude in state {
             let prob = amplitude.norm_sqr();
             if prob > 1e-15 {
                 entropy -= prob * prob.ln();
@@ -2020,7 +2024,7 @@ impl QuantumReservoirComputerEnhanced {
         // Calculate autocorrelation with past states
         let current_state = &self.reservoir_state.state_vector;
 
-        for past_state in self.reservoir_state.state_history.iter() {
+        for past_state in &self.reservoir_state.state_history {
             let correlation = current_state
                 .iter()
                 .zip(past_state.iter())
@@ -2189,7 +2193,7 @@ impl QuantumReservoirComputerEnhanced {
                     // Soft thresholding update
                     let old_weight = self.output_weights[[i, j]];
                     let gradient = self.compute_lasso_gradient(features, targets, i, j)?;
-                    let update = old_weight - 0.01 * gradient;
+                    let update = 0.01f64.mul_add(-gradient, old_weight);
 
                     // Soft thresholding
                     self.output_weights[[i, j]] = if update > lambda {
@@ -2625,16 +2629,16 @@ impl QuantumReservoirComputerEnhanced {
     fn update_processing_time(&mut self, time_ms: f64) {
         let count = self.metrics.training_examples as f64;
         self.metrics.avg_processing_time_ms =
-            (self.metrics.avg_processing_time_ms * count + time_ms) / (count + 1.0);
+            self.metrics.avg_processing_time_ms.mul_add(count, time_ms) / (count + 1.0);
     }
 
     /// Get current metrics
-    pub fn get_metrics(&self) -> &ReservoirMetrics {
+    pub const fn get_metrics(&self) -> &ReservoirMetrics {
         &self.metrics
     }
 
     /// Get memory analysis results
-    pub fn get_memory_analysis(&self) -> &MemoryAnalyzer {
+    pub const fn get_memory_analysis(&self) -> &MemoryAnalyzer {
         &self.memory_analyzer
     }
 
@@ -2774,7 +2778,7 @@ pub fn benchmark_enhanced_quantum_reservoir_computing() -> Result<HashMap<String
                 })
                 .collect(),
             (0..200)
-                .map(|i| Array1::from_vec(vec![(i as f64 * 0.1 + 1.0).sin()]))
+                .map(|i| Array1::from_vec(vec![(i as f64).mul_add(0.1, 1.0).sin()]))
                 .collect(),
             (0..200).map(|i| i as f64 * 0.1).collect(),
         );
@@ -2783,32 +2787,32 @@ pub fn benchmark_enhanced_quantum_reservoir_computing() -> Result<HashMap<String
         let training_result = qrc.train(&training_data)?;
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("enhanced_config_{}", i), time);
+        results.insert(format!("enhanced_config_{i}"), time);
 
         // Add enhanced performance metrics
         let metrics = qrc.get_metrics();
         results.insert(
-            format!("enhanced_config_{}_accuracy", i),
+            format!("enhanced_config_{i}_accuracy"),
             metrics.prediction_accuracy,
         );
         results.insert(
-            format!("enhanced_config_{}_memory_capacity", i),
+            format!("enhanced_config_{i}_memory_capacity"),
             training_result.memory_capacity,
         );
         results.insert(
-            format!("enhanced_config_{}_nonlinear_capacity", i),
+            format!("enhanced_config_{i}_nonlinear_capacity"),
             training_result.nonlinear_capacity,
         );
         results.insert(
-            format!("enhanced_config_{}_processing_capacity", i),
+            format!("enhanced_config_{i}_processing_capacity"),
             training_result.processing_capacity,
         );
         results.insert(
-            format!("enhanced_config_{}_quantum_advantage", i),
+            format!("enhanced_config_{i}_quantum_advantage"),
             metrics.quantum_advantage,
         );
         results.insert(
-            format!("enhanced_config_{}_efficiency", i),
+            format!("enhanced_config_{i}_efficiency"),
             metrics.reservoir_efficiency,
         );
 
@@ -2816,15 +2820,12 @@ pub fn benchmark_enhanced_quantum_reservoir_computing() -> Result<HashMap<String
         let memory_analyzer = qrc.get_memory_analysis();
         if let Some(&linear_capacity) = memory_analyzer.capacity_estimates.get("linear") {
             results.insert(
-                format!("enhanced_config_{}_linear_memory", i),
+                format!("enhanced_config_{i}_linear_memory"),
                 linear_capacity,
             );
         }
         if let Some(&total_capacity) = memory_analyzer.capacity_estimates.get("total") {
-            results.insert(
-                format!("enhanced_config_{}_total_memory", i),
-                total_capacity,
-            );
+            results.insert(format!("enhanced_config_{i}_total_memory"), total_capacity);
         }
     }
 
@@ -2889,7 +2890,7 @@ mod tests {
             };
 
             let qrc = QuantumReservoirComputerEnhanced::new(config);
-            assert!(qrc.is_ok(), "Failed for architecture: {:?}", arch);
+            assert!(qrc.is_ok(), "Failed for architecture: {arch:?}");
         }
     }
 
@@ -2913,7 +2914,7 @@ mod tests {
             };
 
             let qrc = QuantumReservoirComputerEnhanced::new(config);
-            assert!(qrc.is_ok(), "Failed for algorithm: {:?}", algorithm);
+            assert!(qrc.is_ok(), "Failed for algorithm: {algorithm:?}");
         }
     }
 
@@ -2936,7 +2937,7 @@ mod tests {
 
             let input = Array1::from_vec(vec![0.5, 0.3]);
             let result = qrc.encode_input(&input);
-            assert!(result.is_ok(), "Failed for encoding: {:?}", encoding);
+            assert!(result.is_ok(), "Failed for encoding: {encoding:?}");
         }
     }
 
@@ -2962,7 +2963,7 @@ mod tests {
             };
 
             let qrc = QuantumReservoirComputerEnhanced::new(config);
-            assert!(qrc.is_ok(), "Failed for measurement: {:?}", measurement);
+            assert!(qrc.is_ok(), "Failed for measurement: {measurement:?}");
         }
     }
 
@@ -2985,7 +2986,7 @@ mod tests {
 
             let mut qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
             let result = qrc.evolve_reservoir();
-            assert!(result.is_ok(), "Failed for dynamics: {:?}", dynamic);
+            assert!(result.is_ok(), "Failed for dynamics: {dynamic:?}");
         }
     }
 
@@ -3079,8 +3080,7 @@ mod tests {
             let feature_size = QuantumReservoirComputerEnhanced::calculate_feature_size(&config);
             assert_eq!(
                 feature_size, expected_size,
-                "Feature size mismatch for {:?}",
-                measurement
+                "Feature size mismatch for {measurement:?}"
             );
         }
     }

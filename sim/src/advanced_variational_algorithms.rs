@@ -515,7 +515,7 @@ impl AdvancedVQATrainer {
 
         let converged = gradient_norms
             .last()
-            .map_or(false, |&norm| norm < self.config.convergence_tolerance);
+            .is_some_and(|&norm| norm < self.config.convergence_tolerance);
 
         Ok(VQAResult {
             optimal_parameters: self.state.best_parameters.clone(),
@@ -910,13 +910,13 @@ impl AdvancedVQATrainer {
                 // Parameterize the gate if it's parameterized
                 match &mut selected_gate.gate_type {
                     InterfaceGateType::RX(_) => {
-                        selected_gate.gate_type = InterfaceGateType::RX(parameters[param_idx])
+                        selected_gate.gate_type = InterfaceGateType::RX(parameters[param_idx]);
                     }
                     InterfaceGateType::RY(_) => {
-                        selected_gate.gate_type = InterfaceGateType::RY(parameters[param_idx])
+                        selected_gate.gate_type = InterfaceGateType::RY(parameters[param_idx]);
                     }
                     InterfaceGateType::RZ(_) => {
-                        selected_gate.gate_type = InterfaceGateType::RZ(parameters[param_idx])
+                        selected_gate.gate_type = InterfaceGateType::RZ(parameters[param_idx]);
                     }
                     _ => {}
                 }
@@ -1088,14 +1088,13 @@ impl AdvancedVQATrainer {
                             ));
                         }
                     }
-                    current_level = (current_level + 1) / 2;
+                    current_level = current_level.div_ceil(2);
                 }
             }
             _ => {
                 // Other tensor network topologies would be implemented here
                 return Err(SimulatorError::UnsupportedOperation(format!(
-                    "Tensor network topology {:?} not implemented",
-                    network_topology
+                    "Tensor network topology {network_topology:?} not implemented"
                 )));
             }
         }
@@ -1173,7 +1172,7 @@ impl AdvancedVQATrainer {
                 / (1.0 - beta2.powi(self.state.iteration as i32 + 1));
 
             // Quantum-aware learning rate adaptation
-            let quantum_factor = 1.0 / (1.0 + 0.1 * (self.state.iteration as f64).sqrt());
+            let quantum_factor = 1.0 / 0.1f64.mul_add((self.state.iteration as f64).sqrt(), 1.0);
             let effective_lr = learning_rate * quantum_factor;
 
             // Update parameters
@@ -1435,15 +1434,14 @@ impl AdvancedVQATrainer {
                 .abs();
 
             // Update velocity (stored in momentum)
-            self.state.optimizer_state.momentum[i] = inertia
-                * self.state.optimizer_state.momentum[i]
-                + cognitive
-                    * thread_rng().gen::<f64>()
-                    * (self.state.best_parameters[i] - self.state.parameters[i])
-                    * quantum_factor
-                + social
-                    * thread_rng().gen::<f64>()
-                    * (self.state.best_parameters[i] - self.state.parameters[i]);
+            self.state.optimizer_state.momentum[i] = (social * thread_rng().gen::<f64>()).mul_add(
+                self.state.best_parameters[i] - self.state.parameters[i],
+                inertia * self.state.optimizer_state.momentum[i]
+                    + cognitive
+                        * thread_rng().gen::<f64>()
+                        * (self.state.best_parameters[i] - self.state.parameters[i])
+                        * quantum_factor,
+            );
         }
 
         // Update position
@@ -1521,7 +1519,7 @@ impl AdvancedVQATrainer {
 
         for _ in 0..num_parameters {
             let param = if let Some((min, max)) = config.parameter_bounds {
-                min + (max - min) * thread_rng().gen::<f64>()
+                (max - min).mul_add(thread_rng().gen::<f64>(), min)
             } else {
                 (thread_rng().gen::<f64>() - 0.5) * 2.0 * std::f64::consts::PI
             };
@@ -1618,7 +1616,7 @@ impl AdvancedVQATrainer {
         Ok(self.state.parameters.clone())
     }
 
-    fn compute_baseline_reward(&self) -> Result<f64> {
+    const fn compute_baseline_reward(&self) -> Result<f64> {
         // Simplified baseline - would use value function approximation
         Ok(0.0)
     }
@@ -1698,7 +1696,7 @@ impl GradientCalculator for FiniteDifferenceGradient {
         Ok(gradient)
     }
 
-    fn method_name(&self) -> &str {
+    fn method_name(&self) -> &'static str {
         "FiniteDifference"
     }
 }
@@ -1734,7 +1732,7 @@ impl GradientCalculator for ParameterShiftGradient {
         Ok(gradient)
     }
 
-    fn method_name(&self) -> &str {
+    fn method_name(&self) -> &'static str {
         "ParameterShift"
     }
 }
@@ -1882,7 +1880,7 @@ mod tests {
         ];
 
         for optimizer in &optimizers {
-            println!("Testing optimizer: {:?}", optimizer);
+            println!("Testing optimizer: {optimizer:?}");
         }
     }
 }

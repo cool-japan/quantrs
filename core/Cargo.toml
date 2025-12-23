@@ -15,19 +15,19 @@ description = "Core types and traits for the QuantRS2 quantum computing framewor
 thiserror.workspace = true
 # ndarray.workspace = true              # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
 # SciRS2 foundation dependencies
-scirs2.workspace = true
-scirs2-core = { workspace = true, features = ["simd", "parallel"] }
+scirs2-core = { workspace = true, features = ["simd", "parallel", "cache", "profiling", "memory_management"] }
 scirs2-autograd.workspace = true
-scirs2-linalg.workspace = true
+scirs2-linalg = { workspace = true, features = ["tensor_contraction"] }
 scirs2-optimize.workspace = true
 scirs2-sparse.workspace = true
 scirs2-special.workspace = true
 smallvec.workspace = true
 rustc-hash.workspace = true
+optirs-core.workspace = true
 # rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 # rand_chacha.workspace = true          # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
-rayon.workspace = true
-ndarray-linalg.workspace = true
+# rayon.workspace = true                # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+# ndarray-linalg.workspace = true       # REMOVED: Use scirs2_core (SciRS2 POLICY)
 serde.workspace = true
 tokio.workspace = true
 uuid.workspace = true
@@ -41,9 +41,9 @@ regex.workspace = true
 # Symbolic computation with SymEngine
 quantrs2-symengine = { workspace = true, optional = true }
 quantrs2-symengine-sys = { workspace = true, optional = true }
-num-traits.workspace = true
+# num-traits.workspace = true           # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
-numpy = { workspace = true, optional = true }
+scirs2-numpy = { workspace = true, optional = true }
 chrono.workspace = true
 numrs2 = { workspace = true, optional = true }
 
@@ -57,7 +57,19 @@ vulkan = []
 mps = []
 compression = []
 symbolic = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys"]  # Enable symbolic computation with SymEngine
-python = ["dep:pyo3", "dep:numpy"]  # Enable Python bindings with PyO3 and NumPy (NumRS2 integration ready but disabled due to ARM64 compilation issues)
+python = ["dep:pyo3", "dep:scirs2-numpy"]  # Enable Python bindings with PyO3 and scirs2-numpy
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "simd_performance"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["simd", "gpu"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true

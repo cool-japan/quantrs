@@ -1,8 +1,8 @@
 //! Python bindings for quantum annealing functionality
 
-use numpy::{IntoPyArray, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use scirs2_numpy::{IntoPyArray, PyArray2, PyArrayMethods};
 use std::collections::HashMap;
 
 #[cfg(feature = "anneal")]
@@ -22,6 +22,7 @@ pub struct PyQuboModel {
     n_vars: usize,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyQuboModel {
     #[new]
@@ -44,14 +45,15 @@ impl PyQuboModel {
     fn add_linear(&mut self, var: usize, coeff: f64) -> PyResult<()> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(model) = &mut self.inner {
-                model.set_linear(var, coeff).map_err(|e| {
-                    PyValueError::new_err(format!("Failed to set linear term: {}", e))
-                })?;
-                Ok(())
-            } else {
-                Err(PyValueError::new_err("Model not initialized"))
-            }
+            self.inner.as_mut().map_or_else(
+                || Err(PyValueError::new_err("Model not initialized")),
+                |model| {
+                    model.set_linear(var, coeff).map_err(|e| {
+                        PyValueError::new_err(format!("Failed to set linear term: {e}"))
+                    })?;
+                    Ok(())
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -66,14 +68,15 @@ impl PyQuboModel {
     fn add_quadratic(&mut self, var1: usize, var2: usize, coeff: f64) -> PyResult<()> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(model) = &mut self.inner {
-                model.set_quadratic(var1, var2, coeff).map_err(|e| {
-                    PyValueError::new_err(format!("Failed to set quadratic term: {}", e))
-                })?;
-                Ok(())
-            } else {
-                Err(PyValueError::new_err("Model not initialized"))
-            }
+            self.inner.as_mut().map_or_else(
+                || Err(PyValueError::new_err("Model not initialized")),
+                |model| {
+                    model.set_quadratic(var1, var2, coeff).map_err(|e| {
+                        PyValueError::new_err(format!("Failed to set quadratic term: {e}"))
+                    })?;
+                    Ok(())
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -92,18 +95,19 @@ impl PyQuboModel {
     fn to_ising(&self) -> PyResult<(PyIsingModel, f64)> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(model) = &self.inner {
-                let (ising, offset) = model.to_ising();
-                Ok((
-                    PyIsingModel {
-                        inner: Some(ising),
-                        n_spins: self.n_vars,
-                    },
-                    offset,
-                ))
-            } else {
-                Err(PyValueError::new_err("Model not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Model not initialized")),
+                |model| {
+                    let (ising, offset) = model.to_ising();
+                    Ok((
+                        PyIsingModel {
+                            inner: Some(ising),
+                            n_spins: self.n_vars,
+                        },
+                        offset,
+                    ))
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -123,6 +127,7 @@ pub struct PyIsingModel {
     n_spins: usize,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyIsingModel {
     #[new]
@@ -155,16 +160,20 @@ pub struct PyPenaltyOptimizer {
     inner: Option<PenaltyOptimizer>,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyPenaltyOptimizer {
     #[new]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(
         learning_rate: Option<f64>,
         momentum: Option<f64>,
         adaptive_strategy: Option<String>,
-    ) -> PyResult<Self> {
+    ) -> Self {
         #[cfg(feature = "anneal")]
         {
+            let _ = momentum;
+            let _ = adaptive_strategy;
             let config = PenaltyConfig {
                 learning_rate: learning_rate.unwrap_or(0.1),
                 initial_chain_strength: 1.0,
@@ -175,18 +184,22 @@ impl PyPenaltyOptimizer {
                 adaptive: true,
             };
 
-            Ok(Self {
+            Self {
                 inner: Some(PenaltyOptimizer::new(config)),
-            })
+            }
         }
 
         #[cfg(not(feature = "anneal"))]
         {
-            Ok(Self {})
+            let _ = learning_rate;
+            let _ = momentum;
+            let _ = adaptive_strategy;
+            Self {}
         }
     }
 
     /// Update penalties based on samples
+    #[allow(clippy::needless_pass_by_value)]
     fn update_penalties(
         &mut self,
         chain_breaks: Vec<(usize, bool)>,
@@ -194,16 +207,21 @@ impl PyPenaltyOptimizer {
     ) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(optimizer) = &mut self.inner {
-                // Note: Using placeholder implementation as PenaltyOptimizer doesn't have update_penalties method
-                Ok(HashMap::new())
-            } else {
-                Err(PyValueError::new_err("Optimizer not initialized"))
-            }
+            let _ = chain_breaks;
+            let _ = constraint_violations;
+            self.inner.as_mut().map_or_else(
+                || Err(PyValueError::new_err("Optimizer not initialized")),
+                |_optimizer| {
+                    // Note: Using placeholder implementation as PenaltyOptimizer doesn't have update_penalties method
+                    Ok(HashMap::new())
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
         {
+            let _ = chain_breaks;
+            let _ = constraint_violations;
             Err(PyValueError::new_err("Anneal features not enabled"))
         }
     }
@@ -212,12 +230,13 @@ impl PyPenaltyOptimizer {
     fn get_penalties(&self) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(optimizer) = &self.inner {
-                // Note: Using placeholder implementation as PenaltyOptimizer doesn't have get_penalties method
-                Ok(HashMap::new())
-            } else {
-                Err(PyValueError::new_err("Optimizer not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Optimizer not initialized")),
+                |_optimizer| {
+                    // Note: Using placeholder implementation as PenaltyOptimizer doesn't have get_penalties method
+                    Ok(HashMap::new())
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -234,17 +253,23 @@ pub struct PyLayoutAwareEmbedder {
     inner: Option<LayoutAwareEmbedder>,
 }
 
+#[allow(clippy::missing_const_for_fn)]
 #[pymethods]
 impl PyLayoutAwareEmbedder {
     #[new]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(
         target_topology: String,
         use_coordinates: Option<bool>,
         chain_strength_factor: Option<f64>,
         metric: Option<String>,
-    ) -> PyResult<Self> {
+    ) -> Self {
         #[cfg(feature = "anneal")]
         {
+            let _ = target_topology;
+            let _ = use_coordinates;
+            let _ = chain_strength_factor;
+            let _ = metric;
             let config = LayoutConfig {
                 distance_weight: 1.0,
                 chain_length_weight: 2.0,
@@ -256,18 +281,23 @@ impl PyLayoutAwareEmbedder {
 
             let embedder = LayoutAwareEmbedder::new(config);
 
-            Ok(Self {
+            Self {
                 inner: Some(embedder),
-            })
+            }
         }
 
         #[cfg(not(feature = "anneal"))]
         {
-            Ok(Self {})
+            let _ = target_topology;
+            let _ = use_coordinates;
+            let _ = chain_strength_factor;
+            let _ = metric;
+            Self {}
         }
     }
 
     /// Find embedding for a graph
+    #[allow(clippy::needless_pass_by_value)]
     fn find_embedding(
         &mut self,
         source_edges: Vec<(usize, usize)>,
@@ -276,24 +306,29 @@ impl PyLayoutAwareEmbedder {
     ) -> PyResult<HashMap<usize, Vec<usize>>> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(embedder) = &mut self.inner {
-                // Create a hardware graph from target_graph edges
-                let hardware_graph = quantrs2_anneal::embedding::HardwareGraph::new_custom(
-                    target_graph.len() * 2,
-                    target_graph,
-                );
+            let _ = initial_chains;
+            self.inner.as_mut().map_or_else(
+                || Err(PyValueError::new_err("Embedder not initialized")),
+                |embedder| {
+                    // Create a hardware graph from target_graph edges
+                    let hardware_graph = quantrs2_anneal::embedding::HardwareGraph::new_custom(
+                        target_graph.len() * 2,
+                        target_graph,
+                    );
 
-                let (embedding, _stats) = embedder
-                    .find_embedding(&source_edges, source_edges.len(), &hardware_graph)
-                    .map_err(|e| PyValueError::new_err(format!("Embedding failed: {}", e)))?;
-                Ok(embedding.chains)
-            } else {
-                Err(PyValueError::new_err("Embedder not initialized"))
-            }
+                    let (embedding, _stats) = embedder
+                        .find_embedding(&source_edges, source_edges.len(), &hardware_graph)
+                        .map_err(|e| PyValueError::new_err(format!("Embedding failed: {e}")))?;
+                    Ok(embedding.chains)
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
         {
+            let _ = source_edges;
+            let _ = target_graph;
+            let _ = initial_chains;
             Err(PyValueError::new_err("Anneal features not enabled"))
         }
     }
@@ -302,12 +337,13 @@ impl PyLayoutAwareEmbedder {
     fn get_metrics(&self) -> PyResult<HashMap<String, f64>> {
         #[cfg(feature = "anneal")]
         {
-            if let Some(embedder) = &self.inner {
-                // Note: Using placeholder implementation as LayoutAwareEmbedder doesn't have get_metrics method
-                Ok(HashMap::new())
-            } else {
-                Err(PyValueError::new_err("Embedder not initialized"))
-            }
+            self.inner.as_ref().map_or_else(
+                || Err(PyValueError::new_err("Embedder not initialized")),
+                |_embedder| {
+                    // Note: Using placeholder implementation as LayoutAwareEmbedder doesn't have get_metrics method
+                    Ok(HashMap::new())
+                },
+            )
         }
 
         #[cfg(not(feature = "anneal"))]
@@ -321,6 +357,9 @@ impl PyLayoutAwareEmbedder {
 #[pyclass]
 pub struct PyChimeraGraph;
 
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::missing_const_for_fn)]
+#[allow(clippy::suboptimal_flops)]
 #[pymethods]
 impl PyChimeraGraph {
     /// Generate Chimera graph edges
@@ -389,7 +428,7 @@ impl PyChimeraGraph {
         // Convert to numpy array
         let flat_coords: Vec<f64> = coords.into_iter().flatten().collect();
         let array = scirs2_core::ndarray::Array2::from_shape_vec((n_qubits, 2), flat_coords)
-            .map_err(|e| PyValueError::new_err(format!("Failed to create array: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Failed to create array: {e}")))?;
 
         Ok(array.into_pyarray(py).into())
     }

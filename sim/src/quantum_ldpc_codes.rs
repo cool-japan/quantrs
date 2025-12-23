@@ -278,12 +278,13 @@ impl LDPCStats {
         }
 
         let prev_avg_iter = self.avg_bp_iterations;
-        self.avg_bp_iterations = (prev_avg_iter * (self.total_decodings - 1) as f64
-            + iterations as f64)
+        self.avg_bp_iterations = prev_avg_iter
+            .mul_add((self.total_decodings - 1) as f64, iterations as f64)
             / self.total_decodings as f64;
 
         let prev_avg_time = self.avg_decoding_time_ms;
-        self.avg_decoding_time_ms = (prev_avg_time * (self.total_decodings - 1) as f64 + time_ms)
+        self.avg_decoding_time_ms = prev_avg_time
+            .mul_add((self.total_decodings - 1) as f64, time_ms)
             / self.total_decodings as f64;
 
         self.block_error_rate =
@@ -639,7 +640,7 @@ impl QuantumLDPCCode {
                 (row, col + 1),
             ];
 
-            for (r, c) in neighbors.iter() {
+            for (r, c) in &neighbors {
                 if *r < d && *c < d {
                     let var_id = r * d + c;
                     if var_id < config.n {
@@ -793,8 +794,10 @@ impl QuantumLDPCCode {
                     .get(&var_node.id)
                     .unwrap_or(&0.0);
 
-                let damped_message = self.config.damping_factor * message
-                    + (1.0 - self.config.damping_factor) * old_message;
+                let damped_message = self
+                    .config
+                    .damping_factor
+                    .mul_add(message, (1.0 - self.config.damping_factor) * old_message);
 
                 self.tanner_graph.check_nodes[check_id]
                     .incoming_messages
@@ -839,8 +842,10 @@ impl QuantumLDPCCode {
                     .get(&check_node.id)
                     .unwrap_or(&0.0);
 
-                let damped_message = self.config.damping_factor * message
-                    + (1.0 - self.config.damping_factor) * old_message;
+                let damped_message = self
+                    .config
+                    .damping_factor
+                    .mul_add(message, (1.0 - self.config.damping_factor) * old_message);
 
                 self.tanner_graph.variable_nodes[var_id]
                     .incoming_messages
@@ -923,7 +928,7 @@ impl QuantumLDPCCode {
         num_trials: usize,
     ) -> Result<f64> {
         let (min_noise, max_noise) = noise_range;
-        let mut threshold = (min_noise + max_noise) / 2.0;
+        let mut threshold = f64::midpoint(min_noise, max_noise);
         let mut search_range = max_noise - min_noise;
 
         // Binary search for threshold
@@ -963,9 +968,9 @@ impl QuantumLDPCCode {
             let success_rate = successes as f64 / num_trials as f64;
 
             if success_rate > 0.5 {
-                threshold = (threshold + max_noise) / 2.0;
+                threshold = f64::midpoint(threshold, max_noise);
             } else {
-                threshold = (min_noise + threshold) / 2.0;
+                threshold = f64::midpoint(min_noise, threshold);
             }
 
             search_range /= 2.0;
@@ -976,7 +981,7 @@ impl QuantumLDPCCode {
     }
 
     /// Get current statistics
-    pub fn get_stats(&self) -> &LDPCStats {
+    pub const fn get_stats(&self) -> &LDPCStats {
         &self.stats
     }
 
@@ -986,12 +991,12 @@ impl QuantumLDPCCode {
     }
 
     /// Get code parameters
-    pub fn get_parameters(&self) -> (usize, usize, usize) {
+    pub const fn get_parameters(&self) -> (usize, usize, usize) {
         (self.config.n, self.config.k, self.config.m)
     }
 
     /// Get Tanner graph
-    pub fn get_tanner_graph(&self) -> &TannerGraph {
+    pub const fn get_tanner_graph(&self) -> &TannerGraph {
         &self.tanner_graph
     }
 }
@@ -1054,13 +1059,13 @@ pub fn benchmark_quantum_ldpc_codes() -> Result<HashMap<String, f64>> {
         }
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("config_{}", i), time);
+        results.insert(format!("config_{i}"), time);
 
         // Add performance metrics
         let stats = ldpc_code.get_stats();
-        results.insert(format!("config_{}_success_rate", i), stats.convergence_rate);
+        results.insert(format!("config_{i}_success_rate"), stats.convergence_rate);
         results.insert(
-            format!("config_{}_avg_iterations", i),
+            format!("config_{i}_avg_iterations"),
             stats.avg_bp_iterations,
         );
     }
@@ -1205,7 +1210,7 @@ mod tests {
             config.construction_method = method;
 
             let ldpc_code = QuantumLDPCCode::new(config);
-            assert!(ldpc_code.is_ok(), "Failed for method: {:?}", method);
+            assert!(ldpc_code.is_ok(), "Failed for method: {method:?}");
         }
     }
 
@@ -1235,7 +1240,7 @@ mod tests {
             let syndrome = vec![false, true, false];
 
             let result = ldpc_code.decode_belief_propagation(&llrs, &syndrome);
-            assert!(result.is_ok(), "Failed for algorithm: {:?}", algorithm);
+            assert!(result.is_ok(), "Failed for algorithm: {algorithm:?}");
         }
     }
 

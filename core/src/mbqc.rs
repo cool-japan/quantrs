@@ -41,7 +41,9 @@ impl MeasurementBasis {
                         Complex64::new(0.0, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect(
+                    "Failed to create computational basis operator in MeasurementBasis::operator",
+                )
             }
             MeasurementBasis::X => {
                 // |+⟩⟨+|
@@ -54,7 +56,7 @@ impl MeasurementBasis {
                         Complex64::new(0.5, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Failed to create X basis operator in MeasurementBasis::operator")
             }
             MeasurementBasis::Y => {
                 // |i⟩⟨i| where |i⟩ = (|0⟩ + i|1⟩)/√2
@@ -67,7 +69,7 @@ impl MeasurementBasis {
                         Complex64::new(0.5, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Failed to create Y basis operator in MeasurementBasis::operator")
             }
             MeasurementBasis::XY(theta) => {
                 // |θ⟩⟨θ| where |θ⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩
@@ -82,7 +84,7 @@ impl MeasurementBasis {
                         Complex64::new(s * s, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Failed to create XY basis operator in MeasurementBasis::operator")
             }
             MeasurementBasis::XZ(theta) => {
                 // Rotation in XZ plane
@@ -97,7 +99,7 @@ impl MeasurementBasis {
                         Complex64::new(s * s, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Failed to create XZ basis operator in MeasurementBasis::operator")
             }
             MeasurementBasis::YZ(theta) => {
                 // Rotation in YZ plane
@@ -112,7 +114,7 @@ impl MeasurementBasis {
                         Complex64::new(s * s, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Failed to create YZ basis operator in MeasurementBasis::operator")
             }
         }
     }
@@ -150,8 +152,14 @@ impl Graph {
         }
 
         if u != v {
-            self.edges.get_mut(&u).unwrap().insert(v);
-            self.edges.get_mut(&v).unwrap().insert(u);
+            self.edges
+                .get_mut(&u)
+                .expect("Vertex u should exist in edges map in Graph::add_edge")
+                .insert(v);
+            self.edges
+                .get_mut(&v)
+                .expect("Vertex v should exist in edges map in Graph::add_edge")
+                .insert(u);
         }
 
         Ok(())
@@ -166,7 +174,9 @@ impl Graph {
     pub fn linear_cluster(n: usize) -> Self {
         let mut graph = Self::new(n);
         for i in 0..n - 1 {
-            graph.add_edge(i, i + 1).unwrap();
+            graph
+                .add_edge(i, i + 1)
+                .expect("Failed to add edge in Graph::linear_cluster (indices should be valid)");
         }
         graph
     }
@@ -182,12 +192,16 @@ impl Graph {
 
                 // Horizontal edges
                 if c < cols - 1 {
-                    graph.add_edge(idx, idx + 1).unwrap();
+                    graph
+                        .add_edge(idx, idx + 1)
+                        .expect("Failed to add horizontal edge in Graph::rectangular_cluster");
                 }
 
                 // Vertical edges
                 if r < rows - 1 {
-                    graph.add_edge(idx, idx + cols).unwrap();
+                    graph
+                        .add_edge(idx, idx + cols)
+                        .expect("Failed to add vertical edge in Graph::rectangular_cluster");
                 }
             }
         }
@@ -200,7 +214,9 @@ impl Graph {
         let mut graph = Self::new(n);
         for i in 0..n {
             for j in i + 1..n {
-                graph.add_edge(i, j).unwrap();
+                graph
+                    .add_edge(i, j)
+                    .expect("Failed to add edge in Graph::complete");
             }
         }
         graph
@@ -210,7 +226,9 @@ impl Graph {
     pub fn star(n: usize) -> Self {
         let mut graph = Self::new(n);
         for i in 1..n {
-            graph.add_edge(0, i).unwrap();
+            graph
+                .add_edge(0, i)
+                .expect("Failed to add edge in Graph::star");
         }
         graph
     }
@@ -711,8 +729,12 @@ impl CircuitToMBQC {
         angle: f64,
     ) -> (Graph, MeasurementPattern) {
         let mut graph = Graph::new(3);
-        graph.add_edge(0, 1).unwrap();
-        graph.add_edge(1, 2).unwrap();
+        graph
+            .add_edge(0, 1)
+            .expect("Failed to add edge 0-1 in CircuitToMBQC::convert_single_qubit_gate");
+        graph
+            .add_edge(1, 2)
+            .expect("Failed to add edge 1-2 in CircuitToMBQC::convert_single_qubit_gate");
 
         let pattern = MeasurementPattern::single_qubit_rotation(angle);
 
@@ -729,10 +751,14 @@ impl CircuitToMBQC {
             for j in 0..3 {
                 let idx = i * 3 + j;
                 if j < 2 {
-                    graph.add_edge(idx, idx + 1).unwrap();
+                    graph
+                        .add_edge(idx, idx + 1)
+                        .expect("Failed to add horizontal edge in CircuitToMBQC::convert_cnot");
                 }
                 if i < 4 {
-                    graph.add_edge(idx, idx + 3).unwrap();
+                    graph
+                        .add_edge(idx, idx + 3)
+                        .expect("Failed to add vertical edge in CircuitToMBQC::convert_cnot");
                 }
             }
         }
@@ -756,22 +782,57 @@ mod tests {
     #[test]
     fn test_graph_construction() {
         let mut graph = Graph::new(4);
-        graph.add_edge(0, 1).unwrap();
-        graph.add_edge(1, 2).unwrap();
-        graph.add_edge(2, 3).unwrap();
+        graph
+            .add_edge(0, 1)
+            .expect("Failed to add edge 0-1 in test_graph_construction");
+        graph
+            .add_edge(1, 2)
+            .expect("Failed to add edge 1-2 in test_graph_construction");
+        graph
+            .add_edge(2, 3)
+            .expect("Failed to add edge 2-3 in test_graph_construction");
 
-        assert_eq!(graph.neighbors(1).unwrap().len(), 2);
-        assert!(graph.neighbors(1).unwrap().contains(&0));
-        assert!(graph.neighbors(1).unwrap().contains(&2));
+        assert_eq!(
+            graph
+                .neighbors(1)
+                .expect("Failed to get neighbors of vertex 1 in test_graph_construction")
+                .len(),
+            2
+        );
+        assert!(graph
+            .neighbors(1)
+            .expect(
+                "Failed to get neighbors of vertex 1 for contains check in test_graph_construction"
+            )
+            .contains(&0));
+        assert!(graph.neighbors(1).expect("Failed to get neighbors of vertex 1 for second contains check in test_graph_construction").contains(&2));
     }
 
     #[test]
     fn test_linear_cluster() {
         let graph = Graph::linear_cluster(5);
         assert_eq!(graph.num_vertices, 5);
-        assert_eq!(graph.neighbors(2).unwrap().len(), 2);
-        assert_eq!(graph.neighbors(0).unwrap().len(), 1);
-        assert_eq!(graph.neighbors(4).unwrap().len(), 1);
+        assert_eq!(
+            graph
+                .neighbors(2)
+                .expect("Failed to get neighbors of vertex 2 in test_linear_cluster")
+                .len(),
+            2
+        );
+        assert_eq!(
+            graph
+                .neighbors(0)
+                .expect("Failed to get neighbors of vertex 0 in test_linear_cluster")
+                .len(),
+            1
+        );
+        assert_eq!(
+            graph
+                .neighbors(4)
+                .expect("Failed to get neighbors of vertex 4 in test_linear_cluster")
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -780,16 +841,29 @@ mod tests {
         assert_eq!(graph.num_vertices, 9);
 
         // Corner vertex has 2 neighbors
-        assert_eq!(graph.neighbors(0).unwrap().len(), 2);
+        assert_eq!(
+            graph
+                .neighbors(0)
+                .expect("Failed to get neighbors of vertex 0 in test_rectangular_cluster")
+                .len(),
+            2
+        );
 
         // Center vertex has 4 neighbors
-        assert_eq!(graph.neighbors(4).unwrap().len(), 4);
+        assert_eq!(
+            graph
+                .neighbors(4)
+                .expect("Failed to get neighbors of vertex 4 in test_rectangular_cluster")
+                .len(),
+            4
+        );
     }
 
     #[test]
     fn test_cluster_state_creation() {
         let graph = Graph::linear_cluster(3);
-        let cluster = ClusterState::from_graph(graph).unwrap();
+        let cluster = ClusterState::from_graph(graph)
+            .expect("Failed to create cluster state in test_cluster_state_creation");
 
         // Check state is normalized
         let norm: f64 = cluster.state.iter().map(|c| c.norm_sqr()).sum();
@@ -815,10 +889,13 @@ mod tests {
     #[test]
     fn test_single_qubit_measurement() {
         let graph = Graph::new(1);
-        let mut cluster = ClusterState::from_graph(graph).unwrap();
+        let mut cluster = ClusterState::from_graph(graph)
+            .expect("Failed to create cluster state in test_single_qubit_measurement");
 
         // Measure in X basis
-        let outcome = cluster.measure(0, MeasurementBasis::X).unwrap();
+        let outcome = cluster
+            .measure(0, MeasurementBasis::X)
+            .expect("Failed to measure qubit 0 in test_single_qubit_measurement");
 
         // Check qubit is marked as measured
         assert!(cluster.measurements.contains_key(&0));
@@ -830,10 +907,13 @@ mod tests {
         let graph = Graph::linear_cluster(3);
         let pattern = MeasurementPattern::single_qubit_rotation(PI / 4.0);
 
-        let mut computation = MBQCComputation::new(graph, pattern).unwrap();
+        let mut computation = MBQCComputation::new(graph, pattern)
+            .expect("Failed to create MBQC computation in test_mbqc_computation");
 
         // Run computation
-        let outcomes = computation.run().unwrap();
+        let outcomes = computation
+            .run()
+            .expect("Failed to run MBQC computation in test_mbqc_computation");
 
         // Check measurements were performed
         assert!(outcomes.contains_key(&0));

@@ -269,7 +269,7 @@ pub enum BraidingResult {
 pub struct FusionRuleSet {
     /// Anyon type this rule set applies to
     pub anyon_type: NonAbelianAnyonType,
-    /// Fusion rules: (charge1, charge2) -> [possible_products]
+    /// Fusion rules: (charge1, charge2) -> \[possible_products\]
     pub rules: HashMap<(String, String), Vec<String>>,
     /// F-symbols (associativity constraints)
     pub f_symbols: HashMap<String, f64>,

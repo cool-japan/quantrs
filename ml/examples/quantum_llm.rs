@@ -4,9 +4,9 @@
 //! features like quantum memory, quantum reasoning, and quantum-classical hybrid
 //! processing for improved language understanding and generation.
 
-use scirs2_core::ndarray::{Array1, Array2, Array3};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{Array1, Array2, Array3};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -143,10 +143,7 @@ fn model_configurations_demo() -> Result<()> {
     println!("\n   Quantum Efficiency Analysis:");
     let quantum_efficiency =
         calculate_quantum_efficiency(&small_model, &medium_model, &large_model)?;
-    println!(
-        "   - Quantum parameter efficiency: {:.2}x classical equivalent",
-        quantum_efficiency
-    );
+    println!("   - Quantum parameter efficiency: {quantum_efficiency:.2}x classical equivalent");
 
     Ok(())
 }
@@ -163,7 +160,7 @@ fn quantum_memory_demo() -> Result<()> {
     ];
 
     for (name, config) in memory_configs {
-        println!("\n   --- {} Memory ---", name);
+        println!("\n   --- {name} Memory ---");
 
         let mut memory_system = QuantumMemorySystem::new(config.clone())?;
         println!("   Memory configuration:");
@@ -175,7 +172,7 @@ fn quantum_memory_demo() -> Result<()> {
 
         // Test memory storage and retrieval
         let test_embeddings = Array3::from_shape_fn((2, 10, 128), |(b, s, d)| {
-            0.1 * (b as f64 + s as f64 * 0.1 + d as f64 * 0.01)
+            0.1 * (d as f64).mul_add(0.01, (s as f64).mul_add(0.1, b as f64))
         });
 
         // Enhance embeddings with memory
@@ -187,7 +184,7 @@ fn quantum_memory_demo() -> Result<()> {
         let enhanced_variance = enhanced.var(0.0);
         let enhancement_factor = enhanced_variance / original_variance;
 
-        println!("   Memory enhancement factor: {:.3}", enhancement_factor);
+        println!("   Memory enhancement factor: {enhancement_factor:.3}");
 
         // Test memory update
         let input_ids = Array2::from_shape_fn((2, 10), |(b, s)| (b * 10 + s) % 1000);
@@ -213,7 +210,7 @@ fn quantum_reasoning_demo() -> Result<()> {
     ];
 
     for (name, config) in reasoning_configs {
-        println!("\n   --- {} Reasoning ---", name);
+        println!("\n   --- {name} Reasoning ---");
 
         let mut reasoning_module = QuantumReasoningModule::new(config.clone())?;
 
@@ -235,7 +232,7 @@ fn quantum_reasoning_demo() -> Result<()> {
             let causal_pattern = s as f64 * 0.1;
             let base_value = logical_pattern + causal_pattern;
 
-            base_value + 0.05 * (b as f64 + d as f64 * 0.001)
+            0.05f64.mul_add((d as f64).mul_add(0.001, b as f64), base_value)
         });
 
         println!("   Input hidden states shape: {:?}", hidden_states.dim());
@@ -263,19 +260,19 @@ fn quantum_reasoning_demo() -> Result<()> {
 
         // Test quantum coherence during reasoning
         let coherence = reasoning_module.measure_coherence()?;
-        println!("   Quantum coherence: {:.3}", coherence);
+        println!("   Quantum coherence: {coherence:.3}");
 
         // Test token selection enhancement
         let sample_logits = Array1::from_shape_fn(1000, |i| {
-            0.01 * (i as f64 * 0.1).sin() + 0.001 * fastrand::f64()
+            0.01f64.mul_add((i as f64 * 0.1).sin(), 0.001 * fastrand::f64())
         });
 
         let enhanced_logits = reasoning_module.enhance_token_selection(&sample_logits)?;
         let enhancement_effect = (&enhanced_logits - &sample_logits)
-            .mapv(|x| x.abs())
+            .mapv(f64::abs)
             .mean()
             .unwrap_or(0.0);
-        println!("   Token selection enhancement: {:.4}", enhancement_effect);
+        println!("   Token selection enhancement: {enhancement_effect:.4}");
     }
 
     Ok(())
@@ -295,7 +292,7 @@ fn text_generation_demo() -> Result<()> {
         ("Precise", GenerationConfig::precise()),
     ];
 
-    let test_prompts = vec![
+    let test_prompts = [
         "The quantum computer",
         "Artificial intelligence will",
         "In the future, quantum computing",
@@ -303,7 +300,7 @@ fn text_generation_demo() -> Result<()> {
     ];
 
     for (config_name, gen_config) in generation_configs {
-        println!("\n   --- {} Generation ---", config_name);
+        println!("\n   --- {config_name} Generation ---");
         println!("   Configuration:");
         println!("   - Max length: {}", gen_config.max_length);
         println!("   - Temperature: {:.1}", gen_config.temperature);
@@ -330,8 +327,8 @@ fn text_generation_demo() -> Result<()> {
                 generated.clone()
             };
 
-            println!("   Generated: \"{}\"", display_text);
-            println!("   Generation time: {:.2?}", generation_time);
+            println!("   Generated: \"{display_text}\"");
+            println!("   Generation time: {generation_time:.2?}");
 
             // Analyze generation quality
             let quality = analyze_generation_quality(&generated, &gen_config)?;
@@ -382,7 +379,7 @@ fn language_understanding_demo() -> Result<()> {
     ];
 
     for (task_name, texts) in understanding_tasks {
-        println!("\n   --- {} Task ---", task_name);
+        println!("\n   --- {task_name} Task ---");
 
         for (i, text) in texts.iter().enumerate() {
             println!("   Input {}: \"{}\"", i + 1, text);
@@ -405,7 +402,7 @@ fn language_understanding_demo() -> Result<()> {
 
             // Analyze understanding quality
             let understanding_score = evaluate_understanding_quality(&output, task_name)?;
-            println!("   Understanding score: {:.3}", understanding_score);
+            println!("   Understanding score: {understanding_score:.3}");
         }
 
         // Task-specific analysis
@@ -448,8 +445,8 @@ fn chain_of_thought_demo() -> Result<()> {
     ];
 
     for (problem_type, prompt) in reasoning_problems {
-        println!("\n   --- {} ---", problem_type);
-        println!("   Problem: \"{}\"", prompt);
+        println!("\n   --- {problem_type} ---");
+        println!("   Problem: \"{prompt}\"");
 
         // Enable chain-of-thought generation
         let cot_config = GenerationConfig {
@@ -475,8 +472,8 @@ fn chain_of_thought_demo() -> Result<()> {
         };
 
         println!("   Chain-of-thought reasoning:");
-        println!("   \"{}\"", display_output);
-        println!("   Reasoning time: {:.2?}", reasoning_time);
+        println!("   \"{display_output}\"");
+        println!("   Reasoning time: {reasoning_time:.2?}");
 
         // Analyze reasoning quality
         let reasoning_analysis = analyze_cot_quality(&reasoning_output)?;
@@ -527,8 +524,8 @@ fn multimodal_demo() -> Result<()> {
     ];
 
     for (modality, task_description) in multimodal_tasks {
-        println!("\n   --- {} Processing ---", modality);
-        println!("   Task: \"{}\"", task_description);
+        println!("\n   --- {modality} Processing ---");
+        println!("   Task: \"{task_description}\"");
 
         // Create synthetic multi-modal input
         let text_input =
@@ -627,7 +624,7 @@ fn performance_analysis_demo() -> Result<()> {
         let config = model.config();
         let params = model.num_parameters();
 
-        println!("   {} Model:", name);
+        println!("   {name} Model:");
         println!("   - Parameters: {:.1}M", params as f64 / 1_000_000.0);
         println!(
             "   - Model dimension: {}",
@@ -667,7 +664,7 @@ fn performance_analysis_demo() -> Result<()> {
     ];
 
     for (task_name, benchmark_fn) in benchmark_tasks {
-        println!("\n   {} Benchmark:", task_name);
+        println!("\n   {task_name} Benchmark:");
 
         for (model_name, model) in &models {
             let performance = benchmark_fn(model)?;
@@ -749,10 +746,10 @@ fn test_memory_patterns(
         MemoryRetrievalType::Hierarchical => 0.85,
     };
 
-    println!("   Memory pattern strength: {:.2}", pattern_strength);
+    println!("   Memory pattern strength: {pattern_strength:.2}");
 
     let retrieval_speed = if config.quantum_compression { 1.5 } else { 1.0 };
-    println!("   Retrieval speed factor: {:.1}x", retrieval_speed);
+    println!("   Retrieval speed factor: {retrieval_speed:.1}x");
 
     Ok(())
 }
@@ -772,7 +769,7 @@ fn analyze_reasoning_enhancement(
     let output_variance = output.var(0.0);
     let pattern_amplification = output_variance / (input_variance + 1e-10);
 
-    let logical_consistency = 1.0 - (output - input).mapv(|x| x.abs()).mean().unwrap_or(0.0);
+    let logical_consistency = 1.0 - (output - input).mapv(f64::abs).mean().unwrap_or(0.0);
     let causal_coherence = output.mean().unwrap_or(0.0).abs().min(1.0);
 
     Ok(ReasoningEnhancement {
@@ -825,7 +822,7 @@ fn evaluate_understanding_quality(_output: &Array3<f64>, task_name: &str) -> Res
         _ => 0.0,
     };
 
-    Ok(base_score + task_bonus + 0.1 * fastrand::f64())
+    Ok(0.1f64.mul_add(fastrand::f64(), base_score + task_bonus))
 }
 
 #[derive(Debug)]
@@ -838,7 +835,7 @@ struct ChainOfThoughtAnalysis {
 
 fn analyze_cot_quality(generated_text: &str) -> Result<ChainOfThoughtAnalysis> {
     let logical_steps = generated_text.split('.').count().max(1);
-    let coherence = 0.8 + 0.2 * fastrand::f64();
+    let coherence = 0.2f64.mul_add(fastrand::f64(), 0.8);
     let depth = (logical_steps as f64 / 10.0).min(1.0);
     let quantum_enhancement = if generated_text.contains("quantum") {
         0.6
@@ -876,8 +873,8 @@ fn evaluate_multimodal_integration(
 
     Ok(MultiModalIntegration {
         coherence: base_coherence + modality_bonus,
-        fusion_quality: 0.8 + 0.2 * fastrand::f64(),
-        quantum_entanglement: 0.6 + 0.3 * fastrand::f64(),
+        fusion_quality: 0.2f64.mul_add(fastrand::f64(), 0.8),
+        quantum_entanglement: 0.3f64.mul_add(fastrand::f64(), 0.6),
     })
 }
 
@@ -890,8 +887,8 @@ struct QuantumDataAnalysis {
 
 fn analyze_quantum_data_processing(_output: &Array3<f64>) -> Result<QuantumDataAnalysis> {
     Ok(QuantumDataAnalysis {
-        state_recognition: 0.85 + 0.1 * fastrand::f64(),
-        measurement_prediction: 0.78 + 0.15 * fastrand::f64(),
+        state_recognition: 0.1f64.mul_add(fastrand::f64(), 0.85),
+        measurement_prediction: 0.15f64.mul_add(fastrand::f64(), 0.78),
     })
 }
 
@@ -903,8 +900,8 @@ struct MathematicalAnalysis {
 
 fn analyze_mathematical_reasoning(_output: &Array3<f64>) -> Result<MathematicalAnalysis> {
     Ok(MathematicalAnalysis {
-        equation_understanding: 0.82 + 0.1 * fastrand::f64(),
-        symbol_manipulation: 0.75 + 0.2 * fastrand::f64(),
+        equation_understanding: 0.1f64.mul_add(fastrand::f64(), 0.82),
+        symbol_manipulation: 0.2f64.mul_add(fastrand::f64(), 0.75),
     })
 }
 
@@ -916,8 +913,8 @@ struct LogicalAnalysis {
 
 fn analyze_logical_processing(_output: &Array3<f64>) -> Result<LogicalAnalysis> {
     Ok(LogicalAnalysis {
-        validity: 0.88 + 0.1 * fastrand::f64(),
-        inference_quality: 0.81 + 0.15 * fastrand::f64(),
+        validity: 0.1f64.mul_add(fastrand::f64(), 0.88),
+        inference_quality: 0.15f64.mul_add(fastrand::f64(), 0.81),
     })
 }
 
@@ -929,8 +926,8 @@ struct MemoryAnalysis {
 
 fn analyze_memory_retrieval(_output: &Array3<f64>) -> Result<MemoryAnalysis> {
     Ok(MemoryAnalysis {
-        accuracy: 0.87 + 0.1 * fastrand::f64(),
-        efficiency: 0.79 + 0.15 * fastrand::f64(),
+        accuracy: 0.1f64.mul_add(fastrand::f64(), 0.87),
+        efficiency: 0.15f64.mul_add(fastrand::f64(), 0.79),
     })
 }
 
@@ -946,7 +943,7 @@ fn estimate_quantum_advantage(model: &QuantumLLM) -> Result<QuantumAdvantage> {
     let qubits = config.transformer_config.num_qubits as f64;
     let params = model.num_parameters() as f64;
 
-    let speedup = (qubits / 10.0).powf(0.5) + 1.0;
+    let speedup = (qubits / 10.0).sqrt() + 1.0;
     let memory_efficiency = (qubits.powi(2) / params * 1_000_000.0).min(10.0);
     let reasoning_enhancement = if config.reasoning_config.logical_reasoning {
         2.5
@@ -1009,7 +1006,7 @@ fn measure_memory_performance(model: &QuantumLLM) -> Result<PerformanceMetrics> 
     let params = model.num_parameters() as f64;
 
     let ops_per_sec = 1_200_000.0 / (memory_size / 1000.0 + params / 1_000_000.0).sqrt();
-    let memory_mb = params * 3.5 / 1_000_000.0 + memory_size * 0.001;
+    let memory_mb = memory_size.mul_add(0.001, params * 3.5 / 1_000_000.0);
 
     Ok(PerformanceMetrics {
         operations_per_sec: ops_per_sec,
@@ -1025,7 +1022,7 @@ struct ScalingAnalysis {
     efficiency: f64,
 }
 
-fn analyze_quantum_scaling(models: &[(&str, &QuantumLLM)]) -> Result<ScalingAnalysis> {
+const fn analyze_quantum_scaling(models: &[(&str, &QuantumLLM)]) -> Result<ScalingAnalysis> {
     // Analyze how performance scales with model size
     let quantum_scaling = 1.8; // Better than classical quadratic scaling
     let classical_scaling = 2.0; // Quadratic scaling
@@ -1049,10 +1046,10 @@ fn project_future_efficiency(params: u64) -> f64 {
 
 fn project_coherence_preservation() -> f64 {
     // Project quantum coherence preservation in large models
-    0.75 + 0.2 * fastrand::f64()
+    0.2f64.mul_add(fastrand::f64(), 0.75)
 }
 
 fn project_reasoning_enhancement() -> f64 {
     // Project reasoning capability enhancement
-    3.2 + 0.8 * fastrand::f64()
+    0.8f64.mul_add(fastrand::f64(), 3.2)
 }

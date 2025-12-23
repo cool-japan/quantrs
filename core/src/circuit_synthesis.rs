@@ -498,7 +498,9 @@ impl CircuitSynthesizer {
 
     /// Get available algorithm templates
     pub fn get_available_algorithms(&self) -> Vec<QuantumAlgorithmType> {
-        let templates = self.algorithm_templates.read().unwrap();
+        let templates = self.algorithm_templates.read().expect(
+            "Failed to acquire read lock on algorithm_templates in get_available_algorithms",
+        );
         templates.templates.keys().cloned().collect()
     }
 
@@ -508,7 +510,10 @@ impl CircuitSynthesizer {
         algorithm_type: QuantumAlgorithmType,
         template: Box<dyn AlgorithmTemplate>,
     ) -> QuantRS2Result<()> {
-        let mut templates = self.algorithm_templates.write().unwrap();
+        let mut templates = self
+            .algorithm_templates
+            .write()
+            .expect("Failed to acquire write lock on algorithm_templates in register_template");
         let template_info = template.get_template_info();
 
         let metadata = TemplateMetadata {
@@ -533,7 +538,9 @@ impl CircuitSynthesizer {
 
     /// Initialize built-in algorithm templates
     fn initialize_builtin_templates(&self) -> QuantRS2Result<()> {
-        let mut templates = self.algorithm_templates.write().unwrap();
+        let mut templates = self.algorithm_templates.write().expect(
+            "Failed to acquire write lock on algorithm_templates in initialize_builtin_templates",
+        );
 
         // VQE template
         templates
@@ -668,7 +675,9 @@ impl CircuitSynthesizer {
         &self,
         spec: &AlgorithmSpecification,
     ) -> QuantRS2Result<SynthesizedCircuit> {
-        let templates = self.algorithm_templates.read().unwrap();
+        let templates = self.algorithm_templates.read().expect(
+            "Failed to acquire read lock on algorithm_templates in synthesize_with_template",
+        );
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.synthesize(spec)
         } else {
@@ -683,7 +692,10 @@ impl CircuitSynthesizer {
         &self,
         spec: &AlgorithmSpecification,
     ) -> QuantRS2Result<ResourceEstimates> {
-        let templates = self.algorithm_templates.read().unwrap();
+        let templates = self
+            .algorithm_templates
+            .read()
+            .expect("Failed to acquire read lock on algorithm_templates in estimate_with_template");
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.estimate_resources(spec)
         } else {
@@ -695,7 +707,10 @@ impl CircuitSynthesizer {
     }
 
     fn validate_with_template(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
-        let templates = self.algorithm_templates.read().unwrap();
+        let templates = self
+            .algorithm_templates
+            .read()
+            .expect("Failed to acquire read lock on algorithm_templates in validate_with_template");
         if let Some(template) = templates.templates.get(&spec.algorithm_type) {
             template.validate_specification(spec)
         } else {
@@ -842,7 +857,10 @@ impl CircuitSynthesizer {
     }
 
     fn check_cache(&self, key: &str) -> QuantRS2Result<Option<SynthesizedCircuit>> {
-        let cache = self.synthesis_cache.read().unwrap();
+        let cache = self
+            .synthesis_cache
+            .read()
+            .expect("Failed to acquire read lock on synthesis_cache in check_cache");
         Ok(cache
             .cache_entries
             .get(key)
@@ -850,7 +868,10 @@ impl CircuitSynthesizer {
     }
 
     fn cache_circuit(&self, key: &str, circuit: &SynthesizedCircuit) -> QuantRS2Result<()> {
-        let mut cache = self.synthesis_cache.write().unwrap();
+        let mut cache = self
+            .synthesis_cache
+            .write()
+            .expect("Failed to acquire write lock on synthesis_cache in cache_circuit");
         let entry = CacheEntry {
             circuit: circuit.clone(),
             key: key.to_string(),
@@ -863,7 +884,10 @@ impl CircuitSynthesizer {
     }
 
     fn record_cache_hit(&self) {
-        let mut cache = self.synthesis_cache.write().unwrap();
+        let mut cache = self
+            .synthesis_cache
+            .write()
+            .expect("Failed to acquire write lock on synthesis_cache in record_cache_hit");
         cache.cache_stats.cache_hits += 1;
         cache.cache_stats.total_requests += 1;
         cache.cache_stats.hit_rate =
@@ -871,7 +895,10 @@ impl CircuitSynthesizer {
     }
 
     fn record_cache_miss(&self) {
-        let mut cache = self.synthesis_cache.write().unwrap();
+        let mut cache = self
+            .synthesis_cache
+            .write()
+            .expect("Failed to acquire write lock on synthesis_cache in record_cache_miss");
         cache.cache_stats.cache_misses += 1;
         cache.cache_stats.total_requests += 1;
         cache.cache_stats.hit_rate =
@@ -884,7 +911,9 @@ impl CircuitSynthesizer {
         duration: Duration,
         resources: &ResourceEstimates,
     ) {
-        let mut monitor = self.performance_monitor.write().unwrap();
+        let mut monitor = self.performance_monitor.write().expect(
+            "Failed to acquire write lock on performance_monitor in record_synthesis_performance",
+        );
         monitor
             .synthesis_times
             .entry(algorithm.clone())
@@ -895,8 +924,14 @@ impl CircuitSynthesizer {
 
     /// Get synthesis performance statistics
     pub fn get_performance_stats(&self) -> SynthesisPerformanceStats {
-        let monitor = self.performance_monitor.read().unwrap();
-        let cache = self.synthesis_cache.read().unwrap();
+        let monitor = self
+            .performance_monitor
+            .read()
+            .expect("Failed to acquire read lock on performance_monitor in get_performance_stats");
+        let cache = self
+            .synthesis_cache
+            .read()
+            .expect("Failed to acquire read lock on synthesis_cache in get_performance_stats");
 
         SynthesisPerformanceStats {
             cache_stats: cache.cache_stats.clone(),
@@ -1599,7 +1634,8 @@ mod tests {
         let synthesizer = CircuitSynthesizer::new();
         assert!(synthesizer.is_ok());
 
-        let synthesizer = synthesizer.unwrap();
+        let synthesizer =
+            synthesizer.expect("Failed to create synthesizer in test_circuit_synthesizer_creation");
         let available_algorithms = synthesizer.get_available_algorithms();
         assert!(available_algorithms.contains(&QuantumAlgorithmType::VQE));
         assert!(available_algorithms.contains(&QuantumAlgorithmType::QAOA));
@@ -1608,13 +1644,14 @@ mod tests {
 
     #[test]
     fn test_vqe_synthesis() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer =
+            CircuitSynthesizer::new().expect("Failed to create synthesizer in test_vqe_synthesis");
         let spec = AlgorithmSpecification::vqe(4, vec![0.5, 0.3, 0.7, 0.1, 0.9, 0.2, 0.4, 0.8]);
 
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
 
-        let circuit = circuit.unwrap();
+        let circuit = circuit.expect("Failed to synthesize VQE circuit in test_vqe_synthesis");
         assert_eq!(circuit.metadata.source_algorithm, QuantumAlgorithmType::VQE);
         assert_eq!(circuit.resource_estimates.qubit_count, 4);
         assert!(circuit.gates.len() > 0);
@@ -1622,7 +1659,8 @@ mod tests {
 
     #[test]
     fn test_qaoa_synthesis() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer =
+            CircuitSynthesizer::new().expect("Failed to create synthesizer in test_qaoa_synthesis");
 
         let graph = GraphData {
             num_vertices: 4,
@@ -1636,7 +1674,7 @@ mod tests {
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
 
-        let circuit = circuit.unwrap();
+        let circuit = circuit.expect("Failed to synthesize QAOA circuit in test_qaoa_synthesis");
         assert_eq!(
             circuit.metadata.source_algorithm,
             QuantumAlgorithmType::QAOA
@@ -1646,7 +1684,8 @@ mod tests {
 
     #[test]
     fn test_grover_synthesis() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_grover_synthesis");
 
         let search_space = SearchSpaceData {
             total_items: 16,
@@ -1659,7 +1698,8 @@ mod tests {
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
 
-        let circuit = circuit.unwrap();
+        let circuit =
+            circuit.expect("Failed to synthesize Grover circuit in test_grover_synthesis");
         assert_eq!(
             circuit.metadata.source_algorithm,
             QuantumAlgorithmType::Grover
@@ -1669,13 +1709,15 @@ mod tests {
 
     #[test]
     fn test_resource_estimation() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_resource_estimation");
         let spec = AlgorithmSpecification::vqe(6, vec![0.0; 12]);
 
         let estimates = synthesizer.estimate_resources(&spec);
         assert!(estimates.is_ok());
 
-        let estimates = estimates.unwrap();
+        let estimates =
+            estimates.expect("Failed to estimate resources in test_resource_estimation");
         assert_eq!(estimates.qubit_count, 6);
         assert!(estimates.gate_count > 0);
         assert!(estimates.circuit_depth > 0);
@@ -1683,14 +1725,19 @@ mod tests {
 
     #[test]
     fn test_synthesis_caching() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_synthesis_caching");
         let spec = AlgorithmSpecification::vqe(3, vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
 
         // First synthesis should be a cache miss
-        let circuit1 = synthesizer.synthesize_circuit(&spec).unwrap();
+        let circuit1 = synthesizer
+            .synthesize_circuit(&spec)
+            .expect("Failed to synthesize circuit (first attempt) in test_synthesis_caching");
 
         // Second synthesis with same spec should be a cache hit
-        let circuit2 = synthesizer.synthesize_circuit(&spec).unwrap();
+        let circuit2 = synthesizer
+            .synthesize_circuit(&spec)
+            .expect("Failed to synthesize circuit (second attempt) in test_synthesis_caching");
 
         // Circuits should be identical
         assert_eq!(circuit1.gates.len(), circuit2.gates.len());
@@ -1705,7 +1752,8 @@ mod tests {
 
     #[test]
     fn test_custom_template_registration() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_custom_template_registration");
 
         // Register a custom template
         let custom_template = Box::new(VQETemplate::new());
@@ -1721,7 +1769,8 @@ mod tests {
 
     #[test]
     fn test_optimization_objectives() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_optimization_objectives");
 
         let mut spec = AlgorithmSpecification::vqe(4, vec![0.0; 8]);
         spec.optimization_objectives = vec![
@@ -1732,13 +1781,15 @@ mod tests {
         let circuit = synthesizer.synthesize_circuit(&spec);
         assert!(circuit.is_ok());
 
-        let circuit = circuit.unwrap();
+        let circuit =
+            circuit.expect("Failed to synthesize circuit in test_optimization_objectives");
         assert!(!circuit.optimization_report.optimizations_applied.is_empty());
     }
 
     #[test]
     fn test_specification_validation() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_specification_validation");
 
         // Invalid specification (0 qubits)
         let invalid_spec = AlgorithmSpecification::vqe(0, vec![]);
@@ -1748,7 +1799,8 @@ mod tests {
 
     #[test]
     fn test_performance_monitoring() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_performance_monitoring");
 
         // Synthesize a few circuits
         for i in 2..5 {
@@ -1765,7 +1817,8 @@ mod tests {
 
     #[test]
     fn test_different_algorithm_types() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_different_algorithm_types");
 
         // Test QFT
         let qft_spec = AlgorithmSpecification {
@@ -1798,7 +1851,8 @@ mod tests {
         let qft_circuit = synthesizer.synthesize_circuit(&qft_spec);
         assert!(qft_circuit.is_ok());
 
-        let qft_circuit = qft_circuit.unwrap();
+        let qft_circuit = qft_circuit
+            .expect("Failed to synthesize QFT circuit in test_different_algorithm_types");
         assert_eq!(
             qft_circuit.metadata.source_algorithm,
             QuantumAlgorithmType::QFT
@@ -1807,14 +1861,19 @@ mod tests {
 
     #[test]
     fn test_resource_estimation_scaling() {
-        let synthesizer = CircuitSynthesizer::new().unwrap();
+        let synthesizer = CircuitSynthesizer::new()
+            .expect("Failed to create synthesizer in test_resource_estimation_scaling");
 
         // Test scaling of VQE resources
         let small_spec = AlgorithmSpecification::vqe(3, vec![0.0; 6]);
         let large_spec = AlgorithmSpecification::vqe(6, vec![0.0; 12]);
 
-        let small_estimates = synthesizer.estimate_resources(&small_spec).unwrap();
-        let large_estimates = synthesizer.estimate_resources(&large_spec).unwrap();
+        let small_estimates = synthesizer.estimate_resources(&small_spec).expect(
+            "Failed to estimate resources for small spec in test_resource_estimation_scaling",
+        );
+        let large_estimates = synthesizer.estimate_resources(&large_spec).expect(
+            "Failed to estimate resources for large spec in test_resource_estimation_scaling",
+        );
 
         // Larger circuit should have more resources
         assert!(large_estimates.gate_count > small_estimates.gate_count);

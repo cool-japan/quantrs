@@ -220,7 +220,7 @@ impl BatchParameterOptimizer {
 
     /// Compute gradient for a single parameter
     fn compute_single_gradient(
-        &mut self,
+        &self,
         circuit_fn: impl Fn(&[f64]) -> QuantRS2Result<BatchCircuit>,
         params: &[f64],
         param_idx: usize,

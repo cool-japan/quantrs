@@ -1,7 +1,7 @@
 //! Utility functions and test helpers for advanced testing framework
 
-use scirs2_core::random::prelude::*;
 use super::*;
+use scirs2_core::random::prelude::*;
 
 /// Create standard test configuration
 pub fn create_standard_test_config(test_type: &str) -> ApplicationResult<TestingConfig> {

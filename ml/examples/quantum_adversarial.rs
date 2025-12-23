@@ -3,10 +3,10 @@
 //! This example demonstrates quantum adversarial attacks and defenses,
 //! including FGSM, PGD, parameter shift attacks, and various defense strategies.
 
-use scirs2_core::ndarray::{s, Array1, Array2};
 use quantrs2_ml::autodiff::optimizers::Adam;
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::qnn::QNNLayerType;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> Result<()> {
@@ -70,7 +70,7 @@ fn adversarial_attack_demo() -> Result<()> {
 
     // Test data
     let test_data = Array2::from_shape_fn((10, 4), |(i, j)| {
-        0.5 + 0.3 * (i as f64 / 10.0) + 0.2 * (j as f64 / 4.0)
+        0.2f64.mul_add(j as f64 / 4.0, 0.3f64.mul_add(i as f64 / 10.0, 0.5))
     });
     let test_labels = Array1::from_shape_fn(10, |i| i % 2);
 
@@ -186,8 +186,8 @@ fn defense_mechanisms_demo() -> Result<()> {
     let test_input = Array1::from_vec(vec![0.51, 0.32, 0.83, 0.24]);
     let defended_input = trainer.apply_defense(&test_input)?;
 
-    let defense_effect = (&defended_input - &test_input).mapv(|x| x.abs()).sum();
-    println!("     Defense effect magnitude: {:.4}", defense_effect);
+    let defense_effect = (&defended_input - &test_input).mapv(f64::abs).sum();
+    println!("     Defense effect magnitude: {defense_effect:.4}");
 
     // Randomized circuit defense
     println!("   - Randomized Circuit Defense...");
@@ -205,8 +205,8 @@ fn defense_mechanisms_demo() -> Result<()> {
     let trainer2 = QuantumAdversarialTrainer::new(model2, randomized_defense, config);
 
     let defended_input2 = trainer2.apply_defense(&test_input)?;
-    let randomization_effect = (&defended_input2 - &test_input).mapv(|x| x.abs()).sum();
-    println!("     Randomization effect: {:.4}", randomization_effect);
+    let randomization_effect = (&defended_input2 - &test_input).mapv(f64::abs).sum();
+    println!("     Randomization effect: {randomization_effect:.4}");
 
     // Quantum error correction defense
     println!("   - Quantum Error Correction...");
@@ -614,8 +614,8 @@ fn ensemble_defense_demo() -> Result<()> {
 /// Generate synthetic quantum dataset
 fn generate_quantum_dataset(samples: usize, features: usize) -> Array2<f64> {
     Array2::from_shape_fn((samples, features), |(i, j)| {
-        let phase = (i as f64 * 0.1 + j as f64 * 0.3).sin();
+        let phase = (i as f64).mul_add(0.1, j as f64 * 0.3).sin();
         let amplitude = (i as f64 / samples as f64 + j as f64 / features as f64) * 0.5;
-        0.5 + amplitude * phase + 0.1 * (fastrand::f64() - 0.5)
+        0.1f64.mul_add(fastrand::f64() - 0.5, 0.5 + amplitude * phase)
     })
 }

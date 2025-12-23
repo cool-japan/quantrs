@@ -12,7 +12,8 @@ use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
 use crate::buffer_pool::BufferPool;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView2};
-use ndarray_linalg::{Eigh, Norm, SVD};
+// For complex matrices, use ndarray-linalg traits via scirs2_core (SciRS2 POLICY)
+use scirs2_core::ndarray::ndarray_linalg::{Eigh, Norm, SVD, UPLO};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -387,6 +388,7 @@ impl AdvancedEquivalenceChecker {
         let matrix2 = self.compute_unitary_matrix(circuit2, num_qubits)?;
 
         let diff = &matrix1 - &matrix2;
+        // Use Norm trait via scirs2_core::ndarray (SciRS2 POLICY)
         let frobenius_norm = diff.norm_l2();
         let matrix_size = (1 << num_qubits) as f64;
 
@@ -418,7 +420,7 @@ impl AdvancedEquivalenceChecker {
 
         let diff = &matrix1 - &matrix2;
 
-        // Compute SVD to get spectral norm
+        // Compute SVD to get spectral norm (use SVD trait via scirs2_core - SciRS2 POLICY)
         let (_, singular_values, _) = diff
             .svd(true, true)
             .map_err(|_| QuantRS2Error::ComputationError("SVD computation failed".into()))?;
@@ -443,16 +445,17 @@ impl AdvancedEquivalenceChecker {
         let matrix1 = self.compute_unitary_matrix(circuit1, num_qubits)?;
         let matrix2 = self.compute_unitary_matrix(circuit2, num_qubits)?;
 
-        // Compute SVD of both matrices
+        // Compute SVD of both matrices (use SVD trait via scirs2_core - SciRS2 POLICY)
         let (_, singular_values1, _) = matrix1.svd(true, true).map_err(|_| {
             QuantRS2Error::ComputationError("SVD computation failed for matrix 1".into())
         })?;
+
         let (_, singular_values2, _) = matrix2.svd(true, true).map_err(|_| {
             QuantRS2Error::ComputationError("SVD computation failed for matrix 2".into())
         })?;
 
         // Compare singular values with truncation
-        let mut total_error = 0.0;
+        let mut total_error: f64 = 0.0;
         let threshold = self.config.svd_truncation_threshold;
 
         for i in 0..singular_values1.len() {
@@ -490,10 +493,12 @@ impl AdvancedEquivalenceChecker {
         let herm1 = &matrix1 + &matrix1.t().mapv(|x| x.conj());
         let herm2 = &matrix2 + &matrix2.t().mapv(|x| x.conj());
 
-        let (evals1, _) = herm1.eigh(ndarray_linalg::UPLO::Upper).map_err(|_| {
+        // Use ndarray-linalg trait via scirs2_core for complex hermitian matrices (SciRS2 POLICY)
+        let (evals1, _) = herm1.eigh(UPLO::Upper).map_err(|_| {
             QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 1".into())
         })?;
-        let (evals2, _) = herm2.eigh(ndarray_linalg::UPLO::Upper).map_err(|_| {
+
+        let (evals2, _) = herm2.eigh(UPLO::Upper).map_err(|_| {
             QuantRS2Error::ComputationError("Eigenvalue computation failed for matrix 2".into())
         })?;
 
@@ -535,13 +540,12 @@ impl AdvancedEquivalenceChecker {
         // This requires computing eigenvalues of (U1 - U2)†(U1 - U2)
         let diff_dag_diff = diff.t().mapv(|x| x.conj()).dot(&diff);
 
-        let (eigenvalues, _) = diff_dag_diff
-            .eigh(ndarray_linalg::UPLO::Upper)
-            .map_err(|_| {
-                QuantRS2Error::ComputationError(
-                    "Eigenvalue computation failed for trace distance".into(),
-                )
-            })?;
+        // Use ndarray-linalg trait via scirs2_core for complex hermitian matrices (SciRS2 POLICY)
+        let (eigenvalues, _) = diff_dag_diff.eigh(UPLO::Upper).map_err(|_| {
+            QuantRS2Error::ComputationError(
+                "Eigenvalue computation failed for trace distance".into(),
+            )
+        })?;
 
         let trace_distance: f64 =
             eigenvalues.iter().map(|&lambda| lambda.sqrt()).sum::<f64>() * 0.5;
@@ -817,7 +821,7 @@ impl AdvancedEquivalenceChecker {
 
     fn apply_gate_fusion(
         &self,
-        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+        circuit: &Vec<crate::equivalence_checker::QuantumGate>,
     ) -> Result<bool, QuantRS2Error> {
         // Simplified gate fusion - would be expanded in full implementation
         Ok(false)
@@ -845,7 +849,7 @@ impl AdvancedEquivalenceChecker {
 
     fn apply_phase_normalization(
         &self,
-        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+        circuit: &Vec<crate::equivalence_checker::QuantumGate>,
     ) -> Result<bool, QuantRS2Error> {
         // Simplified phase normalization
         Ok(false)

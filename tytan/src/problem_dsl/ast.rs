@@ -74,8 +74,8 @@ pub enum Value {
     Number(f64),
     Boolean(bool),
     String(String),
-    Array(Vec<Value>),
-    Tuple(Vec<Value>),
+    Array(Vec<Self>),
+    Tuple(Vec<Self>),
 }
 
 /// Objective function
@@ -113,22 +113,19 @@ pub enum ConstraintExpression {
     },
 
     /// Logical combination
-    Logical {
-        op: LogicalOp,
-        operands: Vec<ConstraintExpression>,
-    },
+    Logical { op: LogicalOp, operands: Vec<Self> },
 
     /// Quantified constraint
     Quantified {
         quantifier: Quantifier,
         variables: Vec<(String, String)>, // (var, set)
-        constraint: Box<ConstraintExpression>,
+        constraint: Box<Self>,
     },
 
     /// Implication
     Implication {
-        condition: Box<ConstraintExpression>,
-        consequence: Box<ConstraintExpression>,
+        condition: Box<Self>,
+        consequence: Box<Self>,
     },
 
     /// Counting constraint
@@ -140,7 +137,7 @@ pub enum ConstraintExpression {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonOp {
     Equal,
     NotEqual,
@@ -179,39 +176,36 @@ pub enum Expression {
     Variable(String),
 
     /// Indexed variable
-    IndexedVar {
-        name: String,
-        indices: Vec<Expression>,
-    },
+    IndexedVar { name: String, indices: Vec<Self> },
 
     /// Binary operation
     BinaryOp {
         op: BinaryOperator,
-        left: Box<Expression>,
-        right: Box<Expression>,
+        left: Box<Self>,
+        right: Box<Self>,
     },
 
     /// Unary operation
     UnaryOp {
         op: UnaryOperator,
-        operand: Box<Expression>,
+        operand: Box<Self>,
     },
 
     /// Function call
-    FunctionCall { name: String, args: Vec<Expression> },
+    FunctionCall { name: String, args: Vec<Self> },
 
     /// Aggregation
     Aggregation {
         op: AggregationOp,
         variables: Vec<(String, String)>, // (var, set)
-        expression: Box<Expression>,
+        expression: Box<Self>,
     },
 
     /// Conditional
     Conditional {
         condition: Box<ConstraintExpression>,
-        then_expr: Box<Expression>,
-        else_expr: Box<Expression>,
+        then_expr: Box<Self>,
+        else_expr: Box<Self>,
     },
 }
 
@@ -255,14 +249,14 @@ pub enum Statement {
     /// Conditional
     If {
         condition: ConstraintExpression,
-        then_branch: Vec<Statement>,
-        else_branch: Option<Vec<Statement>>,
+        then_branch: Vec<Self>,
+        else_branch: Option<Vec<Self>>,
     },
 
     /// Loop
     For {
         variable: String,
         set: String,
-        body: Vec<Statement>,
+        body: Vec<Self>,
     },
 }

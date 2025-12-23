@@ -18,7 +18,7 @@ pub struct AnalysisReport {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportType {
     PerformanceSummary,
     DetailedAnalysis,
@@ -53,7 +53,7 @@ pub struct ReportSection {
     /// Section content
     pub content: String,
     /// Subsections
-    pub subsections: Vec<ReportSection>,
+    pub subsections: Vec<Self>,
     /// Figures and tables
     pub figures: Vec<Figure>,
 }
@@ -72,7 +72,7 @@ pub struct Visualization {
 }
 
 /// Visualization types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VisualizationType {
     LineChart,
     BarChart,
@@ -152,7 +152,7 @@ pub enum FigureData {
 }
 
 /// Figure position
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FigurePosition {
     Here,
     Top,
@@ -195,7 +195,7 @@ pub struct ReportMetadata {
 }
 
 /// Report formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportFormat {
     PDF,
     HTML,

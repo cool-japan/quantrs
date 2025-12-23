@@ -193,12 +193,12 @@ pub fn calculate_diversity(results: &[SampleResult]) -> AnalysisResult<HashMap<S
         // Sort for percentiles
         distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let min_distance = distances.first().cloned().unwrap_or(0.0);
-        let max_distance = distances.last().cloned().unwrap_or(0.0);
+        let min_distance = distances.first().copied().unwrap_or(0.0);
+        let max_distance = distances.last().copied().unwrap_or(0.0);
 
         let median_idx = distances.len() / 2;
         let median_distance = if distances.len() % 2 == 0 {
-            (distances[median_idx - 1] + distances[median_idx]) / 2.0
+            f64::midpoint(distances[median_idx - 1], distances[median_idx])
         } else {
             distances[median_idx]
         };
@@ -236,7 +236,7 @@ pub fn calculate_diversity(results: &[SampleResult]) -> AnalysisResult<HashMap<S
             .count() as f64
             / results.len() as f64;
 
-        metrics.insert(format!("var_bias_{}", var_name), var_count);
+        metrics.insert(format!("var_bias_{var_name}"), var_count);
     }
 
     Ok(metrics)
@@ -296,7 +296,7 @@ pub fn visualize_energy_distribution(
         .map_err(|e| AnalysisError::VisualizationError(e.to_string()))?;
 
     // Sort energies for this plot
-    let mut sorted_energies = energies.clone();
+    let mut sorted_energies = energies;
     sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     chart
@@ -306,12 +306,12 @@ pub fn visualize_energy_distribution(
         ))
         .map_err(|e| AnalysisError::VisualizationError(e.to_string()))?
         .label("Energy")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
     chart
         .configure_series_labels()
-        .background_style(&WHITE.mix(0.8))
-        .border_style(&BLACK)
+        .background_style(WHITE.mix(0.8))
+        .border_style(BLACK)
         .draw()
         .map_err(|e| AnalysisError::VisualizationError(e.to_string()))?;
 

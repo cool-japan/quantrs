@@ -467,7 +467,7 @@ impl QuantumAlgorithmProfiler {
     }
 
     fn start_profiling_session(
-        &mut self,
+        &self,
         _algorithm: &QuantumAlgorithm,
         _config: &ProfilingConfiguration,
     ) -> Result<(), QuantRS2Error> {

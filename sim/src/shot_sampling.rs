@@ -4,11 +4,11 @@
 //! circuits, including measurement statistics, error analysis, and convergence
 //! detection for realistic quantum device simulation.
 
-use scirs2_core::random::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
+use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -40,7 +40,7 @@ impl BitString {
     /// Create from vector of booleans
     pub fn from_bools(bools: &[bool]) -> Self {
         Self {
-            bits: bools.iter().map(|&b| if b { 1 } else { 0 }).collect(),
+            bits: bools.iter().map(|&b| u8::from(b)).collect(),
         }
     }
 
@@ -84,7 +84,7 @@ impl BitString {
     }
 
     /// Hamming distance to another bit string
-    pub fn distance(&self, other: &BitString) -> usize {
+    pub fn distance(&self, other: &Self) -> usize {
         if self.len() != other.len() {
             return usize::MAX; // Invalid comparison
         }
@@ -99,7 +99,7 @@ impl BitString {
 impl std::fmt::Display for BitString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for &bit in &self.bits {
-            write!(f, "{}", bit)?;
+            write!(f, "{bit}")?;
         }
         Ok(())
     }
@@ -196,8 +196,7 @@ impl QuantumSampler {
         let total_prob: f64 = probabilities.iter().sum();
         if (total_prob - 1.0).abs() > 1e-10 {
             return Err(SimulatorError::InvalidInput(format!(
-                "State vector not normalized: total probability = {}",
-                total_prob
+                "State vector not normalized: total probability = {total_prob}"
             )));
         }
 
@@ -266,8 +265,8 @@ impl QuantumSampler {
         // Confidence interval
         let z_score = self.get_z_score(self.config.confidence_level);
         let confidence_interval = (
-            total_expectation - z_score * standard_error,
-            total_expectation + z_score * standard_error,
+            z_score.mul_add(-standard_error, total_expectation),
+            z_score.mul_add(standard_error, total_expectation),
         );
 
         Ok(ExpectationResult {
@@ -305,8 +304,8 @@ impl QuantumSampler {
         let standard_error = (variance / measurements.len() as f64).sqrt();
         let z_score = self.get_z_score(self.config.confidence_level);
         let confidence_interval = (
-            mean - z_score * standard_error,
-            mean + z_score * standard_error,
+            z_score.mul_add(-standard_error, mean),
+            z_score.mul_add(standard_error, mean),
         );
 
         Ok(ExpectationResult {
@@ -360,11 +359,10 @@ impl QuantumSampler {
         }
 
         // Find mode
-        let mode = counts
-            .iter()
-            .max_by_key(|(_, &count)| count)
-            .map(|(outcome, _)| outcome.clone())
-            .unwrap_or_else(|| BitString::from_int(0, outcomes[0].len()));
+        let mode = counts.iter().max_by_key(|(_, &count)| count).map_or_else(
+            || BitString::from_int(0, outcomes[0].len()),
+            |(outcome, _)| outcome.clone(),
+        );
 
         // Compute probabilities
         let mut probabilities = HashMap::new();
@@ -670,7 +668,8 @@ pub mod analysis {
         let x = x.abs();
 
         let t = 1.0 / (1.0 + p * x);
-        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+        let y = ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+            .mul_add(-(-x * x).exp(), 1.0);
 
         sign * y
     }

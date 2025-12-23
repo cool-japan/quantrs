@@ -11,16 +11,15 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-// use scirs2_core::parallel_ops::*;
-// use quantrs2_core::platform::PlatformCapabilities;
-// use scirs2_core::memory::BufferPool as SciRS2BufferPool;
-// use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
-// use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+                                  // use quantrs2_core::platform::PlatformCapabilities;
+                                  // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
+                                  // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
+                                  // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use memmap2::{MmapMut, MmapOptions};
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
 use scirs2_core::Complex64;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt;
@@ -358,7 +357,7 @@ impl SparseQuantumState {
         // Rebuild sparse matrix from current nonzero_indices
         let mut dense = vec![Complex64::new(0.0, 0.0); self.dimension];
 
-        for (&idx, _) in &self.nonzero_indices {
+        for &idx in self.nonzero_indices.keys() {
             if idx < dense.len() {
                 // Set normalized amplitude (simplified)
                 dense[idx] = Complex64::new(1.0 / (self.nonzero_indices.len() as f64).sqrt(), 0.0);
@@ -372,7 +371,7 @@ impl SparseQuantumState {
     }
 
     /// Get current sparsity ratio
-    pub fn sparsity_ratio(&self) -> f64 {
+    pub const fn sparsity_ratio(&self) -> f64 {
         self.sparsity_ratio
     }
 
@@ -390,8 +389,14 @@ pub struct SimpleCompressionEngine {
     buffer: Vec<u8>,
 }
 
+impl Default for SimpleCompressionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimpleCompressionEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { buffer: Vec::new() }
     }
 
@@ -403,10 +408,10 @@ impl SimpleCompressionEngine {
             flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
         encoder
             .write_all(data)
-            .map_err(|e| format!("Compression failed: {}", e))?;
+            .map_err(|e| format!("Compression failed: {e}"))?;
         encoder
             .finish()
-            .map_err(|e| format!("Compression finish failed: {}", e))
+            .map_err(|e| format!("Compression finish failed: {e}"))
     }
 
     /// Simple decompression
@@ -416,7 +421,7 @@ impl SimpleCompressionEngine {
         let mut decompressed = Vec::new();
         decoder
             .read_to_end(&mut decompressed)
-            .map_err(|e| format!("Decompression failed: {}", e))?;
+            .map_err(|e| format!("Decompression failed: {e}"))?;
         Ok(decompressed)
     }
 
@@ -472,7 +477,7 @@ pub struct CompressionMetadata {
 }
 
 /// Supported compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     /// Huffman encoding for sparse data
     Huffman,
@@ -491,11 +496,11 @@ impl CompressedQuantumState {
         algorithm: CompressionAlgorithm,
     ) -> QuantRS2Result<Self> {
         let num_qubits = (amplitudes.len() as f64).log2() as usize;
-        let original_size = amplitudes.len() * std::mem::size_of::<Complex64>();
+        let original_size = std::mem::size_of_val(amplitudes);
 
         // Convert to bytes
         let amplitude_bytes: &[u8] =
-            unsafe { std::slice::from_raw_parts(amplitudes.as_ptr() as *const u8, original_size) };
+            unsafe { std::slice::from_raw_parts(amplitudes.as_ptr().cast::<u8>(), original_size) };
 
         // Initialize compression engine
         let compression_engine = SimpleCompressionEngine::new();
@@ -505,10 +510,7 @@ impl CompressedQuantumState {
                 let compressed = compression_engine
                     .compress_huffman(amplitude_bytes)
                     .map_err(|e| {
-                        QuantRS2Error::ComputationError(format!(
-                            "Huffman compression failed: {}",
-                            e
-                        ))
+                        QuantRS2Error::ComputationError(format!("Huffman compression failed: {e}"))
                     })?;
 
                 let metadata = CompressionMetadata {
@@ -525,7 +527,7 @@ impl CompressedQuantumState {
                 let compressed = compression_engine
                     .compress_lz4(amplitude_bytes)
                     .map_err(|e| {
-                        QuantRS2Error::ComputationError(format!("LZ4 compression failed: {}", e))
+                        QuantRS2Error::ComputationError(format!("LZ4 compression failed: {e}"))
                     })?;
 
                 let metadata = CompressionMetadata {
@@ -581,13 +583,13 @@ impl CompressedQuantumState {
                 .compression_engine
                 .decompress_huffman(&self.compressed_data)
                 .map_err(|e| {
-                    QuantRS2Error::ComputationError(format!("Huffman decompression failed: {}", e))
+                    QuantRS2Error::ComputationError(format!("Huffman decompression failed: {e}"))
                 })?,
             CompressionAlgorithm::LZ4 => self
                 .compression_engine
                 .decompress_lz4(&self.compressed_data)
                 .map_err(|e| {
-                    QuantRS2Error::ComputationError(format!("LZ4 decompression failed: {}", e))
+                    QuantRS2Error::ComputationError(format!("LZ4 decompression failed: {e}"))
                 })?,
             CompressionAlgorithm::QuantumAmplitude => {
                 Self::decompress_quantum_amplitudes(&self.compressed_data, self.num_qubits)?
@@ -606,7 +608,7 @@ impl CompressedQuantumState {
         // Convert bytes back to complex numbers
         let amplitudes = unsafe {
             std::slice::from_raw_parts(
-                decompressed_bytes.as_ptr() as *const Complex64,
+                decompressed_bytes.as_ptr().cast::<Complex64>(),
                 decompressed_bytes.len() / std::mem::size_of::<Complex64>(),
             )
         }
@@ -651,8 +653,8 @@ impl CompressedQuantumState {
                 let quantized_phase = u16::from_le_bytes(phase_bytes);
 
                 let magnitude = quantized_magnitude as f64 / 65535.0;
-                let phase = (quantized_phase as f64 / 65535.0) * 2.0 * std::f64::consts::PI
-                    - std::f64::consts::PI;
+                let phase = ((quantized_phase as f64 / 65535.0) * 2.0)
+                    .mul_add(std::f64::consts::PI, -std::f64::consts::PI);
 
                 let amplitude = Complex64::new(magnitude * phase.cos(), magnitude * phase.sin());
                 amplitudes.push(amplitude);
@@ -662,7 +664,7 @@ impl CompressedQuantumState {
         // Convert back to bytes
         let amplitude_bytes = unsafe {
             std::slice::from_raw_parts(
-                amplitudes.as_ptr() as *const u8,
+                amplitudes.as_ptr().cast::<u8>(),
                 amplitudes.len() * std::mem::size_of::<Complex64>(),
             )
         };
@@ -680,7 +682,7 @@ impl CompressedQuantumState {
     }
 
     /// Get compression ratio
-    pub fn compression_ratio(&self) -> f64 {
+    pub const fn compression_ratio(&self) -> f64 {
         self.compression_metadata.compression_ratio
     }
 
@@ -717,7 +719,7 @@ impl MemoryMappedQuantumState {
 
         // Create temporary file
         std::fs::create_dir_all(working_dir).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Failed to create working directory: {}", e))
+            QuantRS2Error::InvalidInput(format!("Failed to create working directory: {e}"))
         })?;
 
         let file_path = working_dir.join(format!("quantum_state_{}.tmp", Uuid::new_v4()));
@@ -727,16 +729,14 @@ impl MemoryMappedQuantumState {
             .write(true)
             .create(true)
             .open(&file_path)
-            .map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to create temp file: {}", e))
-            })?;
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to create temp file: {e}")))?;
 
         file.set_len(file_size as u64)
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to set file size: {}", e)))?;
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to set file size: {e}")))?;
 
         let mmap = unsafe {
             MmapOptions::new().map_mut(&file).map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to create memory map: {}", e))
+                QuantRS2Error::InvalidInput(format!("Failed to create memory map: {e}"))
             })?
         };
 
@@ -774,20 +774,23 @@ impl MemoryMappedQuantumState {
     /// Get amplitudes as mutable slice
     fn get_amplitudes_mut(&mut self) -> &mut [Complex64] {
         unsafe {
-            std::slice::from_raw_parts_mut(self.mmap.as_mut_ptr() as *mut Complex64, self.dimension)
+            std::slice::from_raw_parts_mut(
+                self.mmap.as_mut_ptr().cast::<Complex64>(),
+                self.dimension,
+            )
         }
     }
 
     /// Get amplitudes as slice
     fn get_amplitudes(&self) -> &[Complex64] {
         unsafe {
-            std::slice::from_raw_parts(self.mmap.as_ptr() as *const Complex64, self.dimension)
+            std::slice::from_raw_parts(self.mmap.as_ptr().cast::<Complex64>(), self.dimension)
         }
     }
 
     /// Apply gate operation using chunked processing
     pub fn apply_gate_chunked(&mut self, gate: &dyn GateOp) -> QuantRS2Result<()> {
-        let num_chunks = (self.dimension + self.chunk_size - 1) / self.chunk_size;
+        let num_chunks = self.dimension.div_ceil(self.chunk_size);
 
         for chunk_idx in 0..num_chunks {
             let start = chunk_idx * self.chunk_size;
@@ -864,12 +867,12 @@ impl MemoryMappedQuantumState {
     }
 
     /// Get memory usage (just metadata, actual state is in file)
-    pub fn memory_usage(&self) -> usize {
+    pub const fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>()
     }
 
     /// Get file size
-    pub fn file_size(&self) -> usize {
+    pub const fn file_size(&self) -> usize {
         self.dimension * std::mem::size_of::<Complex64>()
     }
 }
@@ -1217,12 +1220,12 @@ impl LargeScaleQuantumSimulator {
     }
 
     /// Get configuration
-    pub fn get_config(&self) -> &LargeScaleSimulatorConfig {
+    pub const fn get_config(&self) -> &LargeScaleSimulatorConfig {
         &self.config
     }
 
     /// Check if current state can simulate given number of qubits
-    pub fn can_simulate(&self, num_qubits: usize) -> bool {
+    pub const fn can_simulate(&self, num_qubits: usize) -> bool {
         if num_qubits > self.config.max_qubits {
             return false;
         }
@@ -1246,7 +1249,7 @@ impl LargeScaleQuantumSimulator {
 
 impl<const N: usize> Simulator<N> for LargeScaleQuantumSimulator {
     fn run(&self, circuit: &Circuit<N>) -> QuantRS2Result<quantrs2_core::register::Register<N>> {
-        let mut simulator = LargeScaleQuantumSimulator::new(self.config.clone())?;
+        let mut simulator = Self::new(self.config.clone())?;
         simulator.initialize_state(N)?;
 
         // Apply all gates in the circuit

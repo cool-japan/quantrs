@@ -227,7 +227,10 @@ pub fn split_batch(batch: &BatchStateVector, chunk_size: usize) -> Vec<BatchStat
 
     for start in (0..batch_size).step_by(chunk_size) {
         let end = (start + chunk_size).min(batch_size);
-        let chunk_states = batch.states.slice(scirs2_core::ndarray::s![start..end, ..]).to_owned();
+        let chunk_states = batch
+            .states
+            .slice(scirs2_core::ndarray::s![start..end, ..])
+            .to_owned();
 
         if let Ok(chunk) = BatchStateVector::from_states(chunk_states, batch.config.clone()) {
             chunks.push(chunk);
@@ -336,5 +339,234 @@ mod tests {
         let merged = merge_batches(vec![batch1, batch2], BatchConfig::default()).unwrap();
         assert_eq!(merged.batch_size(), 5);
         assert_eq!(merged.n_qubits, 2);
+    }
+
+    // === Comprehensive Batch Operation Tests ===
+
+    #[test]
+    fn test_batch_memory_limit_enforcement() {
+        let mut config = BatchConfig::default();
+        // Set a very small memory limit
+        config.memory_limit = Some(100);
+
+        // Try to create a batch that exceeds the limit
+        let result = BatchStateVector::new(10, 5, config);
+        assert!(result.is_err());
+
+        // Verify error message
+        if let Err(e) = result {
+            let msg = format!("{:?}", e);
+            assert!(msg.contains("bytes") || msg.contains("limit"));
+        }
+    }
+
+    #[test]
+    fn test_batch_state_normalization() {
+        let batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+
+        // Check that all states are normalized
+        for i in 0..batch.batch_size() {
+            let state = batch.get_state(i).unwrap();
+            let norm: f64 = state.iter().map(|c| c.norm_sqr()).sum();
+            assert!(
+                (norm - 1.0).abs() < 1e-10,
+                "State {} not normalized: {}",
+                i,
+                norm
+            );
+        }
+    }
+
+    #[test]
+    fn test_batch_state_get_set_roundtrip() {
+        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
+
+        // Create a custom state
+        let custom_state = Array1::from_vec(vec![
+            Complex64::new(0.5, 0.0),
+            Complex64::new(0.5, 0.0),
+            Complex64::new(0.5, 0.0),
+            Complex64::new(0.5, 0.0),
+        ]);
+
+        // Set and get
+        batch.set_state(1, &custom_state).unwrap();
+        let retrieved = batch.get_state(1).unwrap();
+
+        // Verify
+        for i in 0..4 {
+            assert!((retrieved[i] - custom_state[i]).norm() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_batch_out_of_bounds_access() {
+        let batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+
+        // Get out of bounds
+        assert!(batch.get_state(5).is_err());
+        assert!(batch.get_state(100).is_err());
+    }
+
+    #[test]
+    fn test_batch_set_wrong_size_state() {
+        let mut batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+
+        // Try to set state with wrong size
+        let wrong_state =
+            Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
+        assert!(batch.set_state(0, &wrong_state).is_err());
+    }
+
+    #[test]
+    fn test_empty_batch_creation_fails() {
+        let result = create_batch(Vec::<Array1<Complex64>>::new(), BatchConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_batch_mismatched_state_sizes() {
+        let states = vec![
+            Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]),
+            Array1::from_vec(vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+            ]),
+        ];
+
+        let result = create_batch(states, BatchConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_batch_invalid_state_size() {
+        // State size not a power of 2
+        let states = Array2::zeros((5, 3));
+        let result = BatchStateVector::from_states(states, BatchConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_split_batch_single_element() {
+        let batch = BatchStateVector::new(1, 2, BatchConfig::default()).unwrap();
+        let chunks = split_batch(&batch, 10);
+
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].batch_size(), 1);
+    }
+
+    #[test]
+    fn test_split_batch_exact_division() {
+        let batch = BatchStateVector::new(9, 2, BatchConfig::default()).unwrap();
+        let chunks = split_batch(&batch, 3);
+
+        assert_eq!(chunks.len(), 3);
+        for chunk in &chunks {
+            assert_eq!(chunk.batch_size(), 3);
+        }
+    }
+
+    #[test]
+    fn test_merge_batches_empty() {
+        let result = merge_batches(Vec::new(), BatchConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_merge_batches_mismatched_qubits() {
+        let batch1 = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
+        let batch2 = BatchStateVector::new(2, 3, BatchConfig::default()).unwrap();
+
+        let result = merge_batches(vec![batch1, batch2], BatchConfig::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_batch_config_defaults() {
+        let config = BatchConfig::default();
+        assert!(config.num_workers.is_none());
+        assert_eq!(config.max_batch_size, 1024);
+        assert!(config.use_gpu);
+        assert!(config.memory_limit.is_none());
+        assert!(config.enable_cache);
+    }
+
+    #[test]
+    fn test_large_batch_creation() {
+        // Test with larger batch size
+        let batch = BatchStateVector::new(100, 4, BatchConfig::default()).unwrap();
+        assert_eq!(batch.batch_size(), 100);
+        assert_eq!(batch.n_qubits, 4);
+        assert_eq!(batch.states.ncols(), 16); // 2^4
+    }
+
+    #[test]
+    fn test_batch_state_modification_isolation() {
+        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
+
+        // Modify one state
+        let modified = Array1::from_vec(vec![
+            Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+        ]);
+        batch.set_state(1, &modified).unwrap();
+
+        // Check that other states are unchanged
+        let state0 = batch.get_state(0).unwrap();
+        let state2 = batch.get_state(2).unwrap();
+
+        assert_eq!(state0[0], Complex64::new(1.0, 0.0));
+        assert_eq!(state2[0], Complex64::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn test_split_merge_roundtrip() {
+        let batch = BatchStateVector::new(10, 2, BatchConfig::default()).unwrap();
+        let original_states = batch.states.clone();
+
+        // Split and merge
+        let chunks = split_batch(&batch, 3);
+        let merged = merge_batches(chunks, BatchConfig::default()).unwrap();
+
+        // Verify states are preserved
+        assert_eq!(merged.batch_size(), 10);
+        for i in 0..10 {
+            for j in 0..4 {
+                assert_eq!(merged.states[[i, j]], original_states[[i, j]]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_batch_execution_result_fields() {
+        let result = BatchExecutionResult {
+            final_states: Array2::zeros((5, 4)),
+            execution_time_ms: 100.0,
+            gates_applied: 50,
+            used_gpu: false,
+        };
+
+        assert_eq!(result.execution_time_ms, 100.0);
+        assert_eq!(result.gates_applied, 50);
+        assert!(!result.used_gpu);
+    }
+
+    #[test]
+    fn test_batch_measurement_result_fields() {
+        use scirs2_core::ndarray::Array2;
+
+        let result = BatchMeasurementResult {
+            outcomes: Array2::zeros((5, 10)),
+            probabilities: Array2::zeros((5, 10)),
+            post_measurement_states: None,
+        };
+
+        assert_eq!(result.outcomes.dim(), (5, 10));
+        assert_eq!(result.probabilities.dim(), (5, 10));
+        assert!(result.post_measurement_states.is_none());
     }
 }

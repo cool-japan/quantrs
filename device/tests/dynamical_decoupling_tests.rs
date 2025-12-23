@@ -276,15 +276,13 @@ mod sequence_generation_tests {
 
             assert!(
                 sequence.is_ok(),
-                "Sequence generation should succeed for {:?}",
-                seq_type
+                "Sequence generation should succeed for {seq_type:?}"
             );
             let seq = sequence.unwrap();
             assert_eq!(seq.sequence_type, seq_type);
             assert!(
                 !seq.pulse_timings.is_empty(),
-                "Sequence {:?} should have pulse timings",
-                seq_type
+                "Sequence {seq_type:?} should have pulse timings"
             );
         }
     }
@@ -808,8 +806,7 @@ mod integration_tests {
 
             assert!(
                 result.is_ok(),
-                "Sequence optimization should succeed for {:?}",
-                seq_type
+                "Sequence optimization should succeed for {seq_type:?}"
             );
             let dd_result = result.unwrap();
             assert!(dd_result.success);
@@ -892,7 +889,7 @@ mod stress_tests {
                 mgr.generate_optimized_sequence(
                     &DDSequenceType::HahnEcho,
                     &qubits_clone,
-                    duration + i as f64 * 100.0,
+                    f64::from(i).mul_add(100.0, duration),
                     executor_clone.as_ref(),
                 )
                 .await
@@ -903,13 +900,9 @@ mod stress_tests {
         let results = futures::future::try_join_all(tasks).await.unwrap();
 
         for (i, result) in results.into_iter().enumerate() {
-            assert!(
-                result.is_ok(),
-                "Task {} should complete without panicking",
-                i
-            );
+            assert!(result.is_ok(), "Task {i} should complete without panicking");
             let dd_result = result.unwrap();
-            assert!(dd_result.success, "DD generation {} should succeed", i);
+            assert!(dd_result.success, "DD generation {i} should succeed");
         }
     }
 

@@ -17,8 +17,9 @@ pub struct RoutingResult {
 
 impl RoutingResult {
     /// Calculate total cost (combination of swaps and depth)
+    #[must_use]
     pub fn total_cost(&self) -> f64 {
-        self.total_swaps as f64 + self.circuit_depth as f64 * 0.1
+        (self.circuit_depth as f64).mul_add(0.1, self.total_swaps as f64)
     }
 }
 
@@ -35,6 +36,7 @@ pub struct RoutedCircuit<const N: usize> {
 
 impl<const N: usize> RoutedCircuit<N> {
     /// Create a new routed circuit
+    #[must_use]
     pub fn new(
         gates: Vec<Box<dyn GateOp>>,
         logical_to_physical: HashMap<usize, usize>,
@@ -48,21 +50,25 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get total cost of the routed circuit
+    #[must_use]
     pub fn total_cost(&self) -> f64 {
         self.result.total_cost()
     }
 
     /// Get the number of gates in the routed circuit
+    #[must_use]
     pub fn num_gates(&self) -> usize {
         self.gates.len()
     }
 
     /// Get the number of SWAP gates
+    #[must_use]
     pub fn num_swaps(&self) -> usize {
         self.gates.iter().filter(|g| g.name() == "SWAP").count()
     }
 
     /// Get the routing overhead (SWAPs / total gates)
+    #[must_use]
     pub fn routing_overhead(&self) -> f64 {
         if self.gates.is_empty() {
             0.0
@@ -72,6 +78,7 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get gates by type
+    #[must_use]
     pub fn gates_by_type(&self) -> HashMap<String, usize> {
         let mut counts = HashMap::new();
         for gate in &self.gates {
@@ -92,11 +99,13 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Get the final qubit mapping
-    pub fn get_mapping(&self) -> &HashMap<usize, usize> {
+    #[must_use]
+    pub const fn get_mapping(&self) -> &HashMap<usize, usize> {
         &self.logical_to_physical
     }
 
     /// Get the inverse mapping (physical to logical)
+    #[must_use]
     pub fn get_inverse_mapping(&self) -> HashMap<usize, usize> {
         self.logical_to_physical
             .iter()
@@ -105,6 +114,7 @@ impl<const N: usize> RoutedCircuit<N> {
     }
 
     /// Calculate circuit statistics
+    #[must_use]
     pub fn statistics(&self) -> RoutingStatistics {
         let mut two_qubit_gates = 0;
         let mut single_qubit_gates = 0;
@@ -148,7 +158,8 @@ pub struct RoutingStatistics {
 
 impl RoutingStatistics {
     /// Calculate the improvement ratio compared to another statistic
-    pub fn improvement_ratio(&self, other: &RoutingStatistics) -> f64 {
+    #[must_use]
+    pub fn improvement_ratio(&self, other: &Self) -> f64 {
         if other.total_gates == 0 {
             return 0.0;
         }
@@ -157,6 +168,7 @@ impl RoutingStatistics {
     }
 
     /// Calculate SWAP efficiency (two-qubit gates / total gates)
+    #[must_use]
     pub fn swap_efficiency(&self) -> f64 {
         if self.total_gates == 0 {
             0.0
@@ -181,24 +193,25 @@ pub enum RoutingPassType {
 
 impl RoutingPassType {
     /// Get the name of the routing pass
-    pub fn name(&self) -> &str {
+    #[must_use]
+    pub const fn name(&self) -> &str {
         match self {
-            RoutingPassType::Sabre { .. } => "SABRE",
-            RoutingPassType::Lookahead { .. } => "Lookahead",
+            Self::Sabre { .. } => "SABRE",
+            Self::Lookahead { .. } => "Lookahead",
         }
     }
 
     /// Apply routing to a circuit
     pub fn route<const N: usize>(&self, circuit: &Circuit<N>) -> QuantRS2Result<RoutedCircuit<N>> {
         match self {
-            RoutingPassType::Sabre {
+            Self::Sabre {
                 coupling_map,
                 config,
             } => {
                 let router = super::SabreRouter::new(coupling_map.clone(), config.clone());
                 router.route(circuit)
             }
-            RoutingPassType::Lookahead {
+            Self::Lookahead {
                 coupling_map,
                 config,
             } => {
@@ -209,20 +222,22 @@ impl RoutingPassType {
     }
 
     /// Check if this pass should be applied
-    pub fn should_apply<const N: usize>(&self, _circuit: &Circuit<N>) -> bool {
+    #[must_use]
+    pub const fn should_apply<const N: usize>(&self, _circuit: &Circuit<N>) -> bool {
         true
     }
 
     /// Get pass configuration as string (for debugging)
+    #[must_use]
     pub fn config_string(&self) -> String {
         match self {
-            RoutingPassType::Sabre { config, .. } => {
+            Self::Sabre { config, .. } => {
                 format!(
                     "SABRE(depth={}, max_iter={}, stochastic={})",
                     config.lookahead_depth, config.max_iterations, config.stochastic
                 )
             }
-            RoutingPassType::Lookahead { config, .. } => {
+            Self::Lookahead { config, .. } => {
                 format!(
                     "Lookahead(depth={}, candidates={})",
                     config.lookahead_depth, config.max_swap_candidates
@@ -239,7 +254,7 @@ pub struct RoutingPassManager {
 
 impl RoutingPassManager {
     /// Create a new routing pass manager
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { passes: Vec::new() }
     }
 
@@ -299,14 +314,13 @@ impl RoutingPassManager {
         }
 
         Err(quantrs2_core::error::QuantRS2Error::RoutingError(format!(
-            "Routing pass '{}' not found",
-            pass_name
+            "Routing pass '{pass_name}' not found"
         )))
     }
 
     /// Get available pass names
     pub fn available_passes(&self) -> Vec<&str> {
-        self.passes.iter().map(|p| p.name()).collect()
+        self.passes.iter().map(RoutingPassType::name).collect()
     }
 }
 
@@ -339,7 +353,7 @@ mod tests {
             }),
         ];
 
-        let mapping = [(0, 0), (1, 1), (2, 2)].iter().cloned().collect();
+        let mapping = [(0, 0), (1, 1), (2, 2)].iter().copied().collect();
         let result = RoutingResult {
             total_swaps: 1,
             circuit_depth: 3,

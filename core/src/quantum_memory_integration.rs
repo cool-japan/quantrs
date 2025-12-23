@@ -121,8 +121,7 @@ impl QuantumMemory {
 
         // Start coherence tracking
         self.coherence_manager
-            .start_tracking(encoded_state.state_id, encoded_state.coherence_time)
-            .await;
+            .start_tracking(encoded_state.state_id, encoded_state.coherence_time);
 
         Ok(encoded_state.state_id)
     }
@@ -149,7 +148,7 @@ impl QuantumMemory {
         for layer in &self.storage_layers {
             if let Some(encoded_state) = layer.retrieve_state(state_id)? {
                 // Check coherence
-                if self.coherence_manager.is_coherent(state_id).await {
+                if self.coherence_manager.is_coherent(state_id) {
                     // Decode and cache
                     let decoded_state = self.error_correction.decode_state(&encoded_state)?;
 
@@ -160,14 +159,13 @@ impl QuantumMemory {
 
                     self.update_access_stats(state_id).await;
                     return Ok(Some(decoded_state));
-                } else {
-                    // State has decoherent, remove it
-                    layer.delete_state(state_id)?;
-                    return Err(QuantRS2Error::QuantumDecoherence(format!(
-                        "State {} has decoherent",
-                        state_id
-                    )));
                 }
+                // State has decoherent, remove it
+                layer.delete_state(state_id)?;
+                return Err(QuantRS2Error::QuantumDecoherence(format!(
+                    "State {} has decoherent",
+                    state_id
+                )));
             }
         }
 
@@ -191,7 +189,7 @@ impl QuantumMemory {
         }
 
         // Stop coherence tracking
-        self.coherence_manager.stop_tracking(state_id).await;
+        self.coherence_manager.stop_tracking(state_id);
 
         Ok(())
     }
@@ -210,19 +208,25 @@ impl QuantumMemory {
             let info = layer.get_storage_info();
 
             match (&access_pattern, info.layer_type.clone()) {
-                (&AccessPattern::Frequent, StorageLayerType::UltraFast)
-                | (&AccessPattern::Frequent, StorageLayerType::Fast) => {
+                (
+                    &AccessPattern::Frequent,
+                    StorageLayerType::UltraFast | StorageLayerType::Fast,
+                ) => {
                     return Ok(layer.clone());
                 }
-                (&AccessPattern::Moderate, StorageLayerType::Fast)
-                | (&AccessPattern::Moderate, StorageLayerType::Persistent) => {
+                (
+                    &AccessPattern::Moderate,
+                    StorageLayerType::Fast | StorageLayerType::Persistent,
+                ) => {
                     return Ok(layer.clone());
                 }
-                (&AccessPattern::Rare, StorageLayerType::Persistent)
-                | (&AccessPattern::Rare, StorageLayerType::Archive) => {
+                (
+                    &AccessPattern::Rare,
+                    StorageLayerType::Persistent | StorageLayerType::Archive,
+                ) => {
                     return Ok(layer.clone());
                 }
-                _ => continue,
+                _ => {}
             }
         }
 
@@ -306,7 +310,7 @@ impl QuantumMemory {
 
         // Check each state for coherence and importance
         for state_id in all_states {
-            if !self.coherence_manager.is_coherent(state_id).await {
+            if !self.coherence_manager.is_coherent(state_id) {
                 // State has decoherent, remove it
                 self.delete_state(state_id).await?;
                 collected_states += 1;
@@ -602,7 +606,7 @@ impl CoherenceManager {
     }
 
     /// Start tracking coherence for a quantum state
-    pub async fn start_tracking(&self, state_id: Uuid, coherence_time: Duration) {
+    pub fn start_tracking(&self, state_id: Uuid, coherence_time: Duration) {
         let info = CoherenceInfo {
             creation_time: Instant::now(),
             coherence_time,
@@ -617,12 +621,12 @@ impl CoherenceManager {
     }
 
     /// Stop tracking coherence for a quantum state
-    pub async fn stop_tracking(&self, state_id: Uuid) {
+    pub fn stop_tracking(&self, state_id: Uuid) {
         self.coherence_tracking.lock().unwrap().remove(&state_id);
     }
 
     /// Check if a quantum state is still coherent
-    pub async fn is_coherent(&self, state_id: Uuid) -> bool {
+    pub fn is_coherent(&self, state_id: Uuid) -> bool {
         if let Some(info) = self.coherence_tracking.lock().unwrap().get(&state_id) {
             let elapsed = info.creation_time.elapsed();
             elapsed < info.coherence_time
@@ -632,7 +636,7 @@ impl CoherenceManager {
     }
 
     /// Get predicted fidelity for a quantum state
-    pub async fn get_predicted_fidelity(&self, state_id: Uuid) -> f64 {
+    pub fn get_predicted_fidelity(&self, state_id: Uuid) -> f64 {
         if let Some(info) = self.coherence_tracking.lock().unwrap().get(&state_id) {
             let elapsed = info.creation_time.elapsed();
             let decay_factor = elapsed.as_secs_f64() / info.coherence_time.as_secs_f64();
@@ -915,13 +919,11 @@ mod tests {
         let manager = CoherenceManager::new();
         let state_id = Uuid::new_v4();
 
-        manager
-            .start_tracking(state_id, Duration::from_millis(100))
-            .await;
-        assert!(manager.is_coherent(state_id).await);
+        manager.start_tracking(state_id, Duration::from_millis(100));
+        assert!(manager.is_coherent(state_id));
 
         // Simulate time passage
         tokio::time::sleep(Duration::from_millis(150)).await;
-        assert!(!manager.is_coherent(state_id).await);
+        assert!(!manager.is_coherent(state_id));
     }
 }

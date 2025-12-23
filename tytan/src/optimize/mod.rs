@@ -214,10 +214,8 @@ fn optimize_hobo_basic(
     // In a full implementation, this would handle arbitrary tensor orders
 
     // Return placeholder
-    let assignments: HashMap<String, bool> = var_map
-        .iter()
-        .map(|(name, _)| (name.clone(), false))
-        .collect();
+    let assignments: HashMap<String, bool> =
+        var_map.keys().map(|name| (name.clone(), false)).collect();
 
     vec![SampleResult {
         assignments,

@@ -6,7 +6,7 @@
 use super::{CVDeviceConfig, Complex, GaussianState};
 use crate::{DeviceError, DeviceResult};
 use scirs2_core::random::prelude::*;
-use scirs2_core::random::{Distribution, RandNormal, Poisson};
+use scirs2_core::random::{Distribution, Poisson, RandNormal};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 

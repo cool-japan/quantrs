@@ -1,7 +1,7 @@
 //! Comprehensive test suite for Variational Quantum Algorithm (VQA) support
 //!
 //! This module provides extensive test coverage for all VQA components including
-//! algorithm types, optimization strategies, hardware integration, and SciRS2 analysis.
+//! algorithm types, optimization strategies, hardware integration, and `SciRS2` analysis.
 //!
 //! NOTE: These tests are currently commented out because they reference enum variants
 //! that don't exist in the current VQA implementation.

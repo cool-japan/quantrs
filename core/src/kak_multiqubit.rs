@@ -13,9 +13,9 @@ use crate::{
     shannon::ShannonDecomposer,
     synthesis::{decompose_single_qubit_zyz, SingleQubitDecomposition},
 };
+use rustc_hash::FxHashMap;
 use scirs2_core::ndarray::{s, Array2};
 use scirs2_core::Complex;
-use rustc_hash::FxHashMap;
 
 /// Result of multi-qubit KAK decomposition
 #[derive(Debug, Clone)]
@@ -322,7 +322,7 @@ impl MultiQubitKAKDecomposer {
 
     /// Decompose using Shannon decomposition
     fn decompose_shannon(
-        &mut self,
+        &self,
         unitary: &Array2<Complex<f64>>,
         qubit_ids: &[QubitId],
         partition: usize,
@@ -568,7 +568,7 @@ impl MultiQubitKAKDecomposer {
     }
 
     /// Cache decomposition result
-    fn cache_result(&mut self, _unitary: &Array2<Complex<f64>>, _result: &MultiQubitKAK) {
+    fn cache_result(&self, _unitary: &Array2<Complex<f64>>, _result: &MultiQubitKAK) {
         // Cache implementation
     }
 }

@@ -114,7 +114,7 @@ impl PrecisionAnalysis {
 
         // Score based on error estimates (lower error = higher score)
         for (&precision, &error) in &self.error_estimates {
-            let error_score = 1.0 / (1.0 + error * 1000.0); // Normalize error
+            let error_score = 1.0 / error.mul_add(1000.0, 1.0); // Normalize error
             score += error_score;
             count += 1;
         }
@@ -123,7 +123,7 @@ impl PrecisionAnalysis {
         for (precision, metrics) in &self.performance_metrics {
             let perf_score = metrics.throughput_ops_per_sec / 1000.0; // Normalize throughput
             let mem_score = 1.0 / (1.0 + metrics.memory_usage_bytes as f64 / 1e9); // Normalize memory
-            score += (perf_score + mem_score) / 2.0;
+            score += f64::midpoint(perf_score, mem_score);
             count += 1;
         }
 
@@ -148,8 +148,7 @@ impl PrecisionAnalysis {
         precision_counts
             .into_iter()
             .max_by_key(|(_, count)| *count)
-            .map(|(precision, _)| precision)
-            .unwrap_or(QuantumPrecision::Single)
+            .map_or(QuantumPrecision::Single, |(precision, _)| precision)
     }
 
     /// Check if analysis indicates good quality
@@ -191,7 +190,7 @@ pub struct AnalysisSummary {
 
 impl PerformanceMetrics {
     /// Create new performance metrics
-    pub fn new(
+    pub const fn new(
         execution_time_ms: f64,
         memory_usage_bytes: usize,
         throughput_ops_per_sec: f64,
@@ -279,8 +278,7 @@ impl PrecisionAnalyzer {
 
         // Set rationale
         let rationale = format!(
-            "Analysis for tolerance {:.2e}: recommended precision based on error bounds and performance trade-offs",
-            tolerance
+            "Analysis for tolerance {tolerance:.2e}: recommended precision based on error bounds and performance trade-offs"
         );
         analysis.set_rationale(rationale);
 

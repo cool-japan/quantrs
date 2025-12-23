@@ -15,11 +15,10 @@ categories = ["mathematics", "science"]
 serde = { workspace = true, optional = true, features = ["derive"] }
 quantrs2-symengine-sys.workspace = true
 thiserror.workspace = true
-num-traits.workspace = true
+# num-traits.workspace = true  # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 # num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 
 # SciRS2 dependencies (SCIRS2 POLICY)
-scirs2.workspace = true
 scirs2-core.workspace = true
 
 [dev-dependencies]

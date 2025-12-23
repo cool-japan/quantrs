@@ -5,8 +5,8 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{ArrayD, Dimension, IxDyn};
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -36,7 +36,7 @@ pub struct ParallelTensorConfig {
 impl Default for ParallelTensorConfig {
     fn default() -> Self {
         Self {
-            num_threads: rayon::current_num_threads(),
+            num_threads: current_num_threads(), // SciRS2 POLICY compliant
             chunk_size: 1024,
             enable_work_stealing: true,
             parallel_threshold_bytes: 1024 * 1024, // 1MB
@@ -63,7 +63,7 @@ pub enum LoadBalancingStrategy {
 }
 
 /// Thread affinity configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ThreadAffinityConfig {
     /// Enable CPU affinity
     pub enable_affinity: bool,
@@ -71,16 +71,6 @@ pub struct ThreadAffinityConfig {
     pub core_mapping: Vec<usize>,
     /// NUMA node preferences
     pub numa_preferences: HashMap<usize, usize>,
-}
-
-impl Default for ThreadAffinityConfig {
-    fn default() -> Self {
-        Self {
-            enable_affinity: false,
-            core_mapping: Vec::new(),
-            numa_preferences: HashMap::new(),
-        }
-    }
 }
 
 /// Work unit for parallel tensor contraction
@@ -198,7 +188,7 @@ pub struct ParallelTensorEngine {
     /// Configuration
     config: ParallelTensorConfig,
     /// Worker thread pool
-    thread_pool: rayon::ThreadPool,
+    thread_pool: ThreadPool, // SciRS2 POLICY compliant
     /// Performance statistics
     stats: Arc<Mutex<ParallelTensorStats>>,
 }
@@ -225,11 +215,11 @@ pub struct ParallelTensorStats {
 impl ParallelTensorEngine {
     /// Create new parallel tensor engine
     pub fn new(config: ParallelTensorConfig) -> Result<Self> {
-        let thread_pool = rayon::ThreadPoolBuilder::new()
+        let thread_pool = ThreadPoolBuilder::new() // SciRS2 POLICY compliant
             .num_threads(config.num_threads)
             .build()
             .map_err(|e| {
-                SimulatorError::InitializationFailed(format!("Thread pool creation failed: {}", e))
+                SimulatorError::InitializationFailed(format!("Thread pool creation failed: {e}"))
             })?;
 
         Ok(Self {
@@ -266,8 +256,7 @@ impl ParallelTensorEngine {
         }
 
         // Execute contractions in parallel
-        let final_result =
-            self.execute_parallel_contractions(work_queue.clone(), intermediate_results.clone())?;
+        let final_result = self.execute_parallel_contractions(work_queue, intermediate_results)?;
 
         // Update statistics
         let elapsed = start_time.elapsed();
@@ -354,7 +343,7 @@ impl ParallelTensorEngine {
         // Wait for all threads to complete
         for handle in handles {
             handle.join().map_err(|e| {
-                SimulatorError::ComputationError(format!("Thread join failed: {:?}", e))
+                SimulatorError::ComputationError(format!("Thread join failed: {e:?}"))
             })??;
         }
 
@@ -458,7 +447,7 @@ impl ParallelTensorEngine {
     }
 
     /// Estimate memory requirement for a contraction
-    fn estimate_memory_requirement(
+    const fn estimate_memory_requirement(
         &self,
         _contraction: &ContractionPair,
         _tensors: &[ArrayD<Complex64>],
@@ -476,7 +465,7 @@ impl ParallelTensorEngine {
     }
 
     /// Estimate sequential execution time
-    fn estimate_sequential_time(&self, contraction_sequence: &[ContractionPair]) -> Duration {
+    const fn estimate_sequential_time(&self, contraction_sequence: &[ContractionPair]) -> Duration {
         let estimated_ops = contraction_sequence.len() as u64 * 1000; // Simplified
         Duration::from_millis(estimated_ops)
     }
@@ -565,7 +554,7 @@ pub struct NumaTopology {
 
 impl Default for NumaTopology {
     fn default() -> Self {
-        let num_cores = rayon::current_num_threads();
+        let num_cores = current_num_threads(); // SciRS2 POLICY compliant
         Self {
             num_nodes: 1,
             cores_per_node: vec![num_cores],

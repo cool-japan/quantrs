@@ -380,10 +380,18 @@ pub fn train_test_split<T: Clone>(
     let train_n = n - test_n;
 
     // Simple split without shuffling for fallback
-    let x_train = data.slice(scirs2_core::ndarray::s![0..train_n, ..]).to_owned();
-    let x_test = data.slice(scirs2_core::ndarray::s![train_n.., ..]).to_owned();
-    let y_train = targets.slice(scirs2_core::ndarray::s![0..train_n]).to_owned();
-    let y_test = targets.slice(scirs2_core::ndarray::s![train_n..]).to_owned();
+    let x_train = data
+        .slice(scirs2_core::ndarray::s![0..train_n, ..])
+        .to_owned();
+    let x_test = data
+        .slice(scirs2_core::ndarray::s![train_n.., ..])
+        .to_owned();
+    let y_train = targets
+        .slice(scirs2_core::ndarray::s![0..train_n])
+        .to_owned();
+    let y_test = targets
+        .slice(scirs2_core::ndarray::s![train_n..])
+        .to_owned();
 
     (x_train, x_test, y_train, y_test)
 }

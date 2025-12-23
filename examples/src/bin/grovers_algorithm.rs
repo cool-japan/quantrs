@@ -41,7 +41,7 @@ fn main() {
 
     // Print the results
     println!("\nFinal state probabilities:");
-    let register = result.unwrap();
+    let register = result.expect("Failed to run circuit");
     let probabilities = register.probabilities();
     for i in 0..8 {
         println!("State |{:03b}⟩: {:.6}", i, probabilities[i]);
@@ -61,10 +61,7 @@ fn main() {
         }
     }
 
-    println!(
-        "Most probable state: |{:03b}⟩ with probability {:.6}",
-        max_state, max_prob
-    );
+    println!("Most probable state: |{max_state:03b}⟩ with probability {max_prob:.6}");
 
     // Check if we found the correct state
     if max_state == 5 {

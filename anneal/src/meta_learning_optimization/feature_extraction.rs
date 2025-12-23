@@ -1,11 +1,11 @@
 //! Feature extraction system for meta-learning optimization
 
-use std::collections::{HashMap, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::Instant;
 
+use super::config::*;
 use crate::applications::ApplicationResult;
 use crate::ising::IsingModel;
-use super::config::*;
 
 /// Problem features representation
 #[derive(Debug, Clone)]
@@ -318,7 +318,10 @@ impl FeatureExtractor {
         })
     }
 
-    fn extract_statistical_features(&self, problem: &IsingModel) -> ApplicationResult<StatisticalFeatures> {
+    fn extract_statistical_features(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<StatisticalFeatures> {
         let mut bias_values = Vec::new();
         let mut coupling_values = Vec::new();
 
@@ -354,7 +357,10 @@ impl FeatureExtractor {
         })
     }
 
-    fn extract_spectral_features(&self, problem: &IsingModel) -> ApplicationResult<SpectralFeatures> {
+    fn extract_spectral_features(
+        &self,
+        problem: &IsingModel,
+    ) -> ApplicationResult<SpectralFeatures> {
         // Simplified spectral analysis
         let n = problem.num_qubits as f64;
         let spectral_gap_estimate = 1.0 / n.sqrt();
@@ -849,13 +855,15 @@ impl ExperienceDatabase {
 
     fn update_index(&mut self, experience: &OptimizationExperience) {
         // Update domain index
-        self.index.domain_index
+        self.index
+            .domain_index
             .entry(experience.domain.clone())
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
 
         // Update size index
-        self.index.size_index
+        self.index
+            .size_index
             .entry(experience.problem_features.size)
             .or_insert_with(Vec::new)
             .push(experience.id.clone());
@@ -868,7 +876,11 @@ impl ExperienceDatabase {
         }
 
         // Remove from size index
-        if let Some(ids) = self.index.size_index.get_mut(&experience.problem_features.size) {
+        if let Some(ids) = self
+            .index
+            .size_index
+            .get_mut(&experience.problem_features.size)
+        {
             ids.retain(|id| id != &experience.id);
         }
     }
@@ -877,7 +889,9 @@ impl ExperienceDatabase {
         self.statistics.total_experiences = self.experiences.len();
 
         if !self.experiences.is_empty() {
-            let total_performance: f64 = self.experiences.iter()
+            let total_performance: f64 = self
+                .experiences
+                .iter()
                 .map(|exp| exp.results.quality_metrics.objective_value)
                 .sum();
             self.statistics.avg_performance = total_performance / self.experiences.len() as f64;
@@ -886,11 +900,19 @@ impl ExperienceDatabase {
         // Update domain distribution
         self.statistics.domain_distribution.clear();
         for experience in &self.experiences {
-            *self.statistics.domain_distribution.entry(experience.domain.clone()).or_insert(0) += 1;
+            *self
+                .statistics
+                .domain_distribution
+                .entry(experience.domain.clone())
+                .or_insert(0) += 1;
         }
     }
 
-    pub fn find_similar_experiences(&self, features: &ProblemFeatures, limit: usize) -> ApplicationResult<Vec<OptimizationExperience>> {
+    pub fn find_similar_experiences(
+        &self,
+        features: &ProblemFeatures,
+        limit: usize,
+    ) -> ApplicationResult<Vec<OptimizationExperience>> {
         let mut similarities = Vec::new();
 
         for experience in &self.experiences {
@@ -901,15 +923,21 @@ impl ExperienceDatabase {
         // Sort by similarity (descending)
         similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        Ok(similarities.into_iter()
+        Ok(similarities
+            .into_iter()
             .take(limit)
             .map(|(exp, _)| exp)
             .collect())
     }
 
-    fn calculate_similarity(&self, features1: &ProblemFeatures, features2: &ProblemFeatures) -> f64 {
+    fn calculate_similarity(
+        &self,
+        features1: &ProblemFeatures,
+        features2: &ProblemFeatures,
+    ) -> f64 {
         // Simple similarity calculation based on size and density
-        let size_diff = (features1.size as f64 - features2.size as f64).abs() / features1.size.max(features2.size) as f64;
+        let size_diff = (features1.size as f64 - features2.size as f64).abs()
+            / features1.size.max(features2.size) as f64;
         let density_diff = (features1.density - features2.density).abs();
 
         let size_similarity = 1.0 - size_diff;

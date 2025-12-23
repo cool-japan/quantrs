@@ -124,8 +124,14 @@ mod scirs2_core_stub {
             m2: f64,
         }
 
+        impl Default for OnlineStats {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
         impl OnlineStats {
-            pub fn new() -> Self {
+            pub const fn new() -> Self {
                 Self {
                     count: 0,
                     mean: 0.0,
@@ -141,7 +147,7 @@ mod scirs2_core_stub {
                 self.m2 += delta * delta2;
             }
 
-            pub fn mean(&self) -> f64 {
+            pub const fn mean(&self) -> f64 {
                 self.mean
             }
 
@@ -160,7 +166,7 @@ mod scirs2_core_stub {
         }
 
         impl MovingAverage {
-            pub fn new(window_size: usize) -> Self {
+            pub const fn new(window_size: usize) -> Self {
                 Self {
                     window_size,
                     values: Vec::new(),
@@ -188,7 +194,7 @@ mod scirs2_core_stub {
         use std::error::Error;
         use std::time::Duration;
 
-        pub fn get_device_count() -> usize {
+        pub const fn get_device_count() -> usize {
             0
         }
 
@@ -205,7 +211,7 @@ mod scirs2_core_stub {
                 Err("GPU not available".into())
             }
 
-            pub fn get_device_info(&self) -> DeviceInfo {
+            pub const fn get_device_info(&self) -> DeviceInfo {
                 DeviceInfo {
                     memory_mb: 0,
                     compute_units: 0,
@@ -289,8 +295,8 @@ mod scirs2_linalg_stub {
         pub struct SparseMatrix;
 
         impl SparseMatrix {
-            pub fn from_dense(_matrix: &Array2<f64>) -> Self {
-                SparseMatrix
+            pub const fn from_dense(_matrix: &Array2<f64>) -> Self {
+                Self
             }
         }
     }
@@ -308,7 +314,7 @@ mod scirs2_linalg_stub {
         }
 
         impl PCA {
-            pub fn new(n_components: usize) -> Self {
+            pub const fn new(n_components: usize) -> Self {
                 Self { n_components }
             }
 
@@ -384,14 +390,20 @@ mod scirs2_plot_stub {
     pub struct Violin;
     pub struct BoxPlot;
 
+    impl Default for Plot {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl Plot {
-        pub fn new() -> Self {
-            Plot
+        pub const fn new() -> Self {
+            Self
         }
         pub fn add_trace(&mut self, _trace: impl Trace) {}
-        pub fn set_title(&mut self, _title: &str) {}
-        pub fn set_xlabel(&mut self, _label: &str) {}
-        pub fn set_ylabel(&mut self, _label: &str) {}
+        pub const fn set_title(&mut self, _title: &str) {}
+        pub const fn set_xlabel(&mut self, _label: &str) {}
+        pub const fn set_ylabel(&mut self, _label: &str) {}
         pub fn save(&self, _path: &str) -> Result<(), Box<dyn Error>> {
             Err("Plotting not available".into())
         }
@@ -399,24 +411,24 @@ mod scirs2_plot_stub {
 
     impl Line {
         pub fn new(_x: Vec<f64>, _y: Vec<f64>) -> Self {
-            Line
+            Self
         }
-        pub fn name(self, _name: &str) -> Self {
+        pub const fn name(self, _name: &str) -> Self {
             self
         }
     }
 
     impl Scatter {
         pub fn new(_x: Vec<f64>, _y: Vec<f64>) -> Self {
-            Scatter
+            Self
         }
-        pub fn name(self, _name: &str) -> Self {
+        pub const fn name(self, _name: &str) -> Self {
             self
         }
-        pub fn mode(self, _mode: &str) -> Self {
+        pub const fn mode(self, _mode: &str) -> Self {
             self
         }
-        pub fn marker_size(self, _size: u32) -> Self {
+        pub const fn marker_size(self, _size: u32) -> Self {
             self
         }
         pub fn text(self, _text: Vec<String>) -> Self {
@@ -426,7 +438,7 @@ mod scirs2_plot_stub {
 
     impl Heatmap {
         pub fn new(_z: Vec<Vec<f64>>) -> Self {
-            Heatmap
+            Self
         }
         pub fn x(self, _x: Vec<f64>) -> Self {
             self
@@ -440,16 +452,16 @@ mod scirs2_plot_stub {
         pub fn y_labels(self, _labels: Vec<String>) -> Self {
             self
         }
-        pub fn colorscale(self, _scale: &str) -> Self {
+        pub const fn colorscale(self, _scale: &str) -> Self {
             self
         }
     }
 
     impl Bar {
         pub fn new(_x: Vec<String>, _y: Vec<f64>) -> Self {
-            Bar
+            Self
         }
-        pub fn name(self, _name: &str) -> Self {
+        pub const fn name(self, _name: &str) -> Self {
             self
         }
     }
@@ -459,9 +471,15 @@ mod scirs2_plot_stub {
     impl Trace for Heatmap {}
     impl Trace for Bar {}
 
+    impl Default for Figure {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl Figure {
-        pub fn new() -> Self {
-            Figure
+        pub const fn new() -> Self {
+            Self
         }
 
         pub fn add_subplot(
@@ -473,126 +491,126 @@ mod scirs2_plot_stub {
             Ok(Subplot)
         }
 
-        pub fn suptitle(&mut self, _title: &str) {}
-        pub fn tight_layout(&mut self) {}
+        pub const fn suptitle(&mut self, _title: &str) {}
+        pub const fn tight_layout(&mut self) {}
         pub fn show(&self) -> Result<(), Box<dyn Error>> {
             Err("Plotting not available".into())
         }
     }
 
     impl Subplot {
-        pub fn bar(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+        pub const fn bar(&self, _x: &[f64], _y: &[f64]) -> Self {
+            Self
         }
-        pub fn scatter(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+        pub const fn scatter(&self, _x: &[f64], _y: &[f64]) -> Self {
+            Self
         }
-        pub fn plot(&self, _x: &[f64], _y: &[f64]) -> Self {
-            Subplot
+        pub const fn plot(&self, _x: &[f64], _y: &[f64]) -> Self {
+            Self
         }
-        pub fn contourf(&self, _x: &[f64], _y: &[f64], _z: &[f64]) -> Self {
-            Subplot
+        pub const fn contourf(&self, _x: &[f64], _y: &[f64], _z: &[f64]) -> Self {
+            Self
         }
-        pub fn barh(&self, _y: &[f64], _width: &[f64], _left: &[f64], _height: f64) -> Self {
-            Subplot
+        pub const fn barh(&self, _y: &[f64], _width: &[f64], _left: &[f64], _height: f64) -> Self {
+            Self
         }
-        pub fn pie(&self, _sizes: &[f64], _labels: &[String]) -> Self {
-            Subplot
+        pub const fn pie(&self, _sizes: &[f64], _labels: &[String]) -> Self {
+            Self
         }
-        pub fn bar_horizontal(&self, _names: &[String], _values: &[f64]) -> Self {
-            Subplot
+        pub const fn bar_horizontal(&self, _names: &[String], _values: &[f64]) -> Self {
+            Self
         }
-        pub fn text(&self, _x: f64, _y: f64, _text: &str) -> Self {
-            Subplot
+        pub const fn text(&self, _x: f64, _y: f64, _text: &str) -> Self {
+            Self
         }
-        pub fn axvline(&self, _x: f64) -> Self {
-            Subplot
+        pub const fn axvline(&self, _x: f64) -> Self {
+            Self
         }
 
-        pub fn set_xlabel(&self, _label: &str) -> &Self {
+        pub const fn set_xlabel(&self, _label: &str) -> &Self {
             self
         }
-        pub fn set_ylabel(&self, _label: &str) -> &Self {
+        pub const fn set_ylabel(&self, _label: &str) -> &Self {
             self
         }
-        pub fn set_title(&self, _title: &str) -> &Self {
+        pub const fn set_title(&self, _title: &str) -> &Self {
             self
         }
-        pub fn set_color(&self, _color: &str) -> &Self {
+        pub const fn set_color(&self, _color: &str) -> &Self {
             self
         }
-        pub fn set_color_data(&self, _data: &[f64]) -> &Self {
+        pub const fn set_color_data(&self, _data: &[f64]) -> &Self {
             self
         }
-        pub fn set_colormap(&self, _cmap: &str) -> &Self {
+        pub const fn set_colormap(&self, _cmap: &str) -> &Self {
             self
         }
-        pub fn set_label(&self, _label: &str) -> &Self {
+        pub const fn set_label(&self, _label: &str) -> &Self {
             self
         }
-        pub fn set_linewidth(&self, _width: f64) -> &Self {
+        pub const fn set_linewidth(&self, _width: f64) -> &Self {
             self
         }
-        pub fn set_linestyle(&self, _style: &str) -> &Self {
+        pub const fn set_linestyle(&self, _style: &str) -> &Self {
             self
         }
-        pub fn set_alpha(&self, _alpha: f64) -> &Self {
+        pub const fn set_alpha(&self, _alpha: f64) -> &Self {
             self
         }
-        pub fn set_size(&self, _size: f64) -> &Self {
+        pub const fn set_size(&self, _size: f64) -> &Self {
             self
         }
-        pub fn set_edgecolor(&self, _color: &str) -> &Self {
+        pub const fn set_edgecolor(&self, _color: &str) -> &Self {
             self
         }
-        pub fn set_marker(&self, _marker: &str) -> &Self {
+        pub const fn set_marker(&self, _marker: &str) -> &Self {
             self
         }
-        pub fn set_fontsize(&self, _size: u32) -> &Self {
+        pub const fn set_fontsize(&self, _size: u32) -> &Self {
             self
         }
-        pub fn set_ha(&self, _align: &str) -> &Self {
+        pub const fn set_ha(&self, _align: &str) -> &Self {
             self
         }
-        pub fn set_va(&self, _align: &str) -> &Self {
+        pub const fn set_va(&self, _align: &str) -> &Self {
             self
         }
-        pub fn set_verticalalignment(&self, _align: &str) -> &Self {
+        pub const fn set_verticalalignment(&self, _align: &str) -> &Self {
             self
         }
-        pub fn set_transform(&self, _transform: ()) -> &Self {
+        pub const fn set_transform(&self, _transform: ()) -> &Self {
             self
         }
-        pub fn set_autopct(&self, _fmt: &str) -> &Self {
+        pub const fn set_autopct(&self, _fmt: &str) -> &Self {
             self
         }
-        pub fn set_aspect(&self, _aspect: &str) {}
-        pub fn set_yscale(&self, _scale: &str) {}
-        pub fn set_xlim(&self, _min: f64, _max: f64) {}
-        pub fn set_ylim(&self, _min: f64, _max: f64) {}
-        pub fn set_axis_off(&self) {}
-        pub fn set_xticks(&self, _ticks: &[f64]) {}
-        pub fn set_yticks(&self, _ticks: &[f64]) {}
-        pub fn set_xticklabels(&self, _labels: &[String]) {}
-        pub fn set_yticklabels(&self, _labels: &[String]) {}
+        pub const fn set_aspect(&self, _aspect: &str) {}
+        pub const fn set_yscale(&self, _scale: &str) {}
+        pub const fn set_xlim(&self, _min: f64, _max: f64) {}
+        pub const fn set_ylim(&self, _min: f64, _max: f64) {}
+        pub const fn set_axis_off(&self) {}
+        pub const fn set_xticks(&self, _ticks: &[f64]) {}
+        pub const fn set_yticks(&self, _ticks: &[f64]) {}
+        pub const fn set_xticklabels(&self, _labels: &[String]) {}
+        pub const fn set_yticklabels(&self, _labels: &[String]) {}
         pub fn get_xticklabels(&self) -> Vec<TickLabel> {
             vec![TickLabel; self.get_xticks().len()]
         }
-        pub fn get_xticks(&self) -> Vec<f64> {
+        pub const fn get_xticks(&self) -> Vec<f64> {
             vec![]
         }
-        pub fn axis(&self, _setting: &str) {}
-        pub fn legend(&self) {}
-        pub fn legend_unique(&self) {}
-        pub fn trans_axes(&self) {}
+        pub const fn axis(&self, _setting: &str) {}
+        pub const fn legend(&self) {}
+        pub const fn legend_unique(&self) {}
+        pub const fn trans_axes(&self) {}
     }
 
     #[derive(Clone)]
     pub struct TickLabel;
 
     impl TickLabel {
-        pub fn set_rotation(&self, _angle: u32) {}
-        pub fn set_ha(&self, _align: &str) {}
+        pub const fn set_rotation(&self, _angle: u32) {}
+        pub const fn set_ha(&self, _align: &str) {}
     }
 
     pub trait Trace {}
@@ -601,13 +619,13 @@ mod scirs2_plot_stub {
 mod scirs2_statistics_stub {
 
     pub mod descriptive {
-        pub fn mean(_data: &[f64]) -> f64 {
+        pub const fn mean(_data: &[f64]) -> f64 {
             0.0
         }
-        pub fn std_dev(_data: &[f64]) -> f64 {
+        pub const fn std_dev(_data: &[f64]) -> f64 {
             0.0
         }
-        pub fn quantile(_data: &[f64], _q: f64) -> f64 {
+        pub const fn quantile(_data: &[f64], _q: f64) -> f64 {
             0.0
         }
     }
@@ -621,7 +639,7 @@ mod scirs2_statistics_stub {
         }
 
         impl KMeans {
-            pub fn new(k: usize) -> Self {
+            pub const fn new(k: usize) -> Self {
                 Self { k }
             }
 
@@ -636,7 +654,7 @@ mod scirs2_statistics_stub {
         }
 
         impl DBSCAN {
-            pub fn new(eps: f64, min_samples: usize) -> Self {
+            pub const fn new(eps: f64, min_samples: usize) -> Self {
                 Self { eps, min_samples }
             }
 
@@ -661,7 +679,7 @@ mod scirs2_statistics_stub {
 
         impl KernelDensityEstimator {
             pub fn new(_kernel: &str) -> Result<Self, Box<dyn Error>> {
-                Ok(KernelDensityEstimator)
+                Ok(Self)
             }
 
             pub fn estimate_2d(
@@ -704,7 +722,7 @@ mod scirs2_optimization_stub {
     }
 
     impl Bounds {
-        pub fn new(lower: Array1<f64>, upper: Array1<f64>) -> Self {
+        pub const fn new(lower: Array1<f64>, upper: Array1<f64>) -> Self {
             Self { lower, upper }
         }
     }
@@ -723,7 +741,7 @@ mod scirs2_optimization_stub {
         }
 
         impl LBFGS {
-            pub fn new(dim: usize) -> Self {
+            pub const fn new(dim: usize) -> Self {
                 Self { dim }
             }
         }
@@ -812,8 +830,14 @@ mod scirs2_ml_stub {
         min_samples_split: usize,
     }
 
+    impl Default for RandomForest {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl RandomForest {
-        pub fn new() -> Self {
+        pub const fn new() -> Self {
             Self {
                 n_estimators: 100,
                 max_depth: None,
@@ -821,17 +845,17 @@ mod scirs2_ml_stub {
             }
         }
 
-        pub fn n_estimators(mut self, n: usize) -> Self {
+        pub const fn n_estimators(mut self, n: usize) -> Self {
             self.n_estimators = n;
             self
         }
 
-        pub fn max_depth(mut self, depth: Option<usize>) -> Self {
+        pub const fn max_depth(mut self, depth: Option<usize>) -> Self {
             self.max_depth = depth;
             self
         }
 
-        pub fn min_samples_split(mut self, samples: usize) -> Self {
+        pub const fn min_samples_split(mut self, samples: usize) -> Self {
             self.min_samples_split = samples;
             self
         }
@@ -866,7 +890,7 @@ mod scirs2_ml_stub {
     }
 
     impl KMeans {
-        pub fn new(k: usize) -> Self {
+        pub const fn new(k: usize) -> Self {
             Self { k }
         }
 
@@ -881,7 +905,7 @@ mod scirs2_ml_stub {
     }
 
     impl DBSCAN {
-        pub fn new(eps: f64, min_samples: usize) -> Self {
+        pub const fn new(eps: f64, min_samples: usize) -> Self {
             Self { eps, min_samples }
         }
 
@@ -895,7 +919,7 @@ mod scirs2_ml_stub {
     }
 
     impl PCA {
-        pub fn new(n_components: usize) -> Self {
+        pub const fn new(n_components: usize) -> Self {
             Self { n_components }
         }
 
@@ -922,7 +946,7 @@ mod scirs2_ml_stub {
     }
 
     impl CrossValidation {
-        pub fn new(n_folds: usize) -> Self {
+        pub const fn new(n_folds: usize) -> Self {
             Self { n_folds }
         }
 
@@ -948,7 +972,7 @@ mod scirs2_ml_stub {
         }
     }
 
-    pub fn train_test_split<T>(
+    pub const fn train_test_split<T>(
         _x: &[T],
         _y: &[f64],
         _test_size: f64,

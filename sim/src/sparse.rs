@@ -115,7 +115,7 @@ impl CSRMatrix {
     }
 
     /// Sparse matrix multiplication
-    pub fn matmul(&self, other: &CSRMatrix) -> Result<CSRMatrix> {
+    pub fn matmul(&self, other: &Self) -> Result<Self> {
         if self.num_cols != other.num_rows {
             return Err(SimulatorError::DimensionMismatch(format!(
                 "Matrix dimensions incompatible: {}x{} * {}x{}",
@@ -166,7 +166,7 @@ impl CSRMatrix {
             row_ptr.push(values.len());
         }
 
-        Ok(CSRMatrix::new(
+        Ok(Self::new(
             values,
             col_indices,
             row_ptr,
@@ -241,7 +241,7 @@ pub struct SparseMatrixBuilder {
 
 impl SparseMatrixBuilder {
     /// Create a new builder
-    pub fn new(num_rows: usize, num_cols: usize) -> Self {
+    pub const fn new(num_rows: usize, num_cols: usize) -> Self {
         Self {
             triplets: Vec::new(),
             num_rows,
@@ -383,8 +383,7 @@ impl SparseGates {
             }
             _ => {
                 return Err(SimulatorError::InvalidConfiguration(format!(
-                    "Unknown rotation axis: {}",
-                    axis
+                    "Unknown rotation axis: {axis}"
                 )))
             }
         }

@@ -65,10 +65,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.0-beta.2"
+quantrs2-tytan = "0.1.0-beta.3"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.0-beta.2", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.0-beta.3", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example

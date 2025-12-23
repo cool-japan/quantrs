@@ -3,7 +3,6 @@
 //! This example demonstrates various quantum dimensionality reduction algorithms
 //! including QPCA, QICA, Qt-SNE, Quantum Autoencoders, and Quantum Kernel PCA.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::dimensionality_reduction::config::QuantumEnhancementLevel;
 use quantrs2_ml::dimensionality_reduction::{
     AutoencoderArchitecture, DimensionalityReductionAlgorithm, QAutoencoderConfig, QICAConfig,
@@ -11,8 +10,9 @@ use quantrs2_ml::dimensionality_reduction::{
     QuantumEigensolver, QuantumFeatureMap,
 };
 use quantrs2_ml::prelude::*;
-use std::collections::HashMap;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 fn main() -> Result<()> {
     println!("=== Quantum Dimensionality Reduction Examples ===\n");
@@ -317,7 +317,7 @@ fn compare_methods(data: &Array2<f64>, labels: &Array1<i32>) -> Result<()> {
     let methods = vec![("QPCA", qpca_method), ("Qt-SNE", qtsne_method)];
 
     for (name, mut method) in methods {
-        println!("\nEvaluating {}...", name);
+        println!("\nEvaluating {name}...");
 
         method.fit(data)?;
         let transformed = method.transform(data)?;
@@ -344,22 +344,22 @@ fn compare_methods(data: &Array2<f64>, labels: &Array1<i32>) -> Result<()> {
             metrics.explained_variance_ratio
         );
         if let Some(trust) = metrics.trustworthiness {
-            println!("  Trustworthiness: {:.4}", trust);
+            println!("  Trustworthiness: {trust:.4}");
         }
         if let Some(cont) = metrics.continuity {
-            println!("  Continuity: {:.4}", cont);
+            println!("  Continuity: {cont:.4}");
         }
 
         if let Some(silhouette) = metrics.silhouette_score {
-            println!("  Silhouette Score: {:.4}", silhouette);
+            println!("  Silhouette Score: {silhouette:.4}");
         }
 
         if let Some(stress) = metrics.stress {
-            println!("  Stress: {:.6}", stress);
+            println!("  Stress: {stress:.6}");
         }
 
         if let Some(kl_div) = metrics.kl_divergence {
-            println!("  KL Divergence: {:.6}", kl_div);
+            println!("  KL Divergence: {kl_div:.6}");
         }
     }
 
@@ -499,7 +499,7 @@ mod tests {
 }
 
 // Default configuration creators for tests
-fn create_default_qpca_config() -> QPCAConfig {
+const fn create_default_qpca_config() -> QPCAConfig {
     QPCAConfig {
         n_components: 2,
         eigensolver: QuantumEigensolver::VQE,
@@ -525,7 +525,7 @@ fn create_default_qica_config() -> QICAConfig {
     }
 }
 
-fn create_default_qtsne_config() -> QtSNEConfig {
+const fn create_default_qtsne_config() -> QtSNEConfig {
     QtSNEConfig {
         n_components: 2,
         perplexity: 30.0,

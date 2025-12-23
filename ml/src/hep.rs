@@ -1,10 +1,10 @@
 use crate::classification::{ClassificationMetrics, Classifier};
-use scirs2_core::random::prelude::*;
 use crate::error::{MLError, Result};
 use crate::qnn::QuantumNeuralNetwork;
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_sim::statevector::StateVectorSimulator;
+use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::fmt;
 
 /// Encoding method for high-energy physics data
@@ -394,7 +394,11 @@ impl HEPQuantumClassifier {
         // This is a dummy implementation
         // In a real system, this would use the QNN to make predictions
 
-        let label_idx = if thread_rng().gen::<f64>() > 0.5 { 0 } else { 1 };
+        let label_idx = if thread_rng().gen::<f64>() > 0.5 {
+            0
+        } else {
+            1
+        };
         let confidence = 0.7 + 0.3 * thread_rng().gen::<f64>();
 
         if label_idx < self.class_labels.len() {

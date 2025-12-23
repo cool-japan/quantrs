@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     model.set_coupling(0, n / 2, 0.5)?;
     model.set_coupling(n / 4, 3 * n / 4, -0.7)?;
 
-    println!("Created frustrated Ising model with {} qubits", n);
+    println!("Created frustrated Ising model with {n} qubits");
     println!("Finding initial solution using forward annealing...\n");
 
     // Step 1: Find initial solution using classical forward annealing
@@ -62,10 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     for (name, s_target, pause) in strategies {
-        println!(
-            "Strategy: {} (s_target={}, pause={})",
-            name, s_target, pause
-        );
+        println!("Strategy: {name} (s_target={s_target}, pause={pause})");
 
         // Create reverse annealing schedule
         let schedule = ReverseAnnealingScheduleBuilder::new()
@@ -129,11 +126,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("s(t) values during annealing:");
     for i in 0..=10 {
-        let t = i as f64 / 10.0;
+        let t = f64::from(i) / 10.0;
         let s = schedule.s_of_t(t);
         let a = schedule.transverse_field(s);
         let b = schedule.problem_strength(s);
-        println!("  t={:.1}: s={:.3}, A(s)={:.3}, B(s)={:.3}", t, s, a, b);
+        println!("  t={t:.1}: s={s:.3}, A(s)={a:.3}, B(s)={b:.3}");
     }
 
     // Demonstrate iterative reverse annealing
@@ -144,7 +141,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for iteration in 1..=5 {
         // Use progressively more conservative reverse annealing
-        let s_target = 0.8 - 0.1 * iteration as f64;
+        let s_target = 0.1f64.mul_add(-(iteration as f64), 0.8);
 
         let iter_schedule = ReverseAnnealingScheduleBuilder::new()
             .s_target(s_target.max(0.3))
@@ -167,10 +164,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if iter_result.best_energy < current_energy {
             current_state = iter_result.best_spins;
             current_energy = iter_result.best_energy;
-            println!(
-                "  Iteration {}: Improved to {:.4}",
-                iteration, current_energy
-            );
+            println!("  Iteration {iteration}: Improved to {current_energy:.4}");
         } else {
             println!(
                 "  Iteration {}: No improvement (energy: {:.4})",
@@ -184,10 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "  Initial energy (forward annealing): {:.4}",
         forward_result.best_energy
     );
-    println!(
-        "  Final energy (after reverse annealing): {:.4}",
-        current_energy
-    );
+    println!("  Final energy (after reverse annealing): {current_energy:.4}");
     println!(
         "  Total improvement: {:.4}",
         forward_result.best_energy - current_energy

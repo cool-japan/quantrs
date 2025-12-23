@@ -501,7 +501,10 @@ mod tests {
     fn test_feature_extraction_config() {
         let config = FeatureExtractionConfig::default();
         assert!(config.enable_graph_features);
-        assert_eq!(config.selection_method, FeatureSelectionMethod::AutomaticRelevance);
+        assert_eq!(
+            config.selection_method,
+            FeatureSelectionMethod::AutomaticRelevance
+        );
     }
 
     #[test]

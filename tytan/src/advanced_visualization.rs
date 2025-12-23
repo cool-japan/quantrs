@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 
 use scirs2_core::ndarray::{Array1, Array2, Array3};
-use num;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
@@ -440,8 +440,8 @@ pub struct QuantumState {
 
 #[derive(Debug, Clone)]
 pub enum QuantumStateData {
-    PureState(Array1<num::Complex<f64>>),
-    MixedState(Array2<num::Complex<f64>>),
+    PureState(Array1<Complex64>),
+    MixedState(Array2<Complex64>),
     StabilizerState(StabilizerRepresentation),
     MatrixProductState(MPSRepresentation),
 }
@@ -1203,21 +1203,21 @@ pub enum AlertCondition {
 impl std::fmt::Debug for AlertCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AlertCondition::ThresholdExceeded { metric, threshold } => f
+            Self::ThresholdExceeded { metric, threshold } => f
                 .debug_struct("ThresholdExceeded")
                 .field("metric", metric)
                 .field("threshold", threshold)
                 .finish(),
-            AlertCondition::TrendDetected { trend, duration } => f
+            Self::TrendDetected { trend, duration } => f
                 .debug_struct("TrendDetected")
                 .field("trend", trend)
                 .field("duration", duration)
                 .finish(),
-            AlertCondition::AnomalyDetected { anomaly_type } => f
+            Self::AnomalyDetected { anomaly_type } => f
                 .debug_struct("AnomalyDetected")
                 .field("anomaly_type", anomaly_type)
                 .finish(),
-            AlertCondition::Custom(_) => f
+            Self::Custom(_) => f
                 .debug_struct("Custom")
                 .field("function", &"<custom function>")
                 .finish(),
@@ -1228,22 +1228,20 @@ impl std::fmt::Debug for AlertCondition {
 impl Clone for AlertCondition {
     fn clone(&self) -> Self {
         match self {
-            AlertCondition::ThresholdExceeded { metric, threshold } => {
-                AlertCondition::ThresholdExceeded {
-                    metric: metric.clone(),
-                    threshold: *threshold,
-                }
-            }
-            AlertCondition::TrendDetected { trend, duration } => AlertCondition::TrendDetected {
+            Self::ThresholdExceeded { metric, threshold } => Self::ThresholdExceeded {
+                metric: metric.clone(),
+                threshold: *threshold,
+            },
+            Self::TrendDetected { trend, duration } => Self::TrendDetected {
                 trend: trend.clone(),
                 duration: *duration,
             },
-            AlertCondition::AnomalyDetected { anomaly_type } => AlertCondition::AnomalyDetected {
+            Self::AnomalyDetected { anomaly_type } => Self::AnomalyDetected {
                 anomaly_type: anomaly_type.clone(),
             },
-            AlertCondition::Custom(_) => {
+            Self::Custom(_) => {
                 // For Custom variants, we can't clone the function, so create a no-op
-                AlertCondition::Custom(Box::new(|_| false))
+                Self::Custom(Box::new(|_| false))
             }
         }
     }
@@ -1363,12 +1361,12 @@ pub struct StabilizerRepresentation {
 #[derive(Debug, Clone)]
 pub struct PauliOperator {
     pub pauli_string: String,
-    pub coefficient: num::Complex<f64>,
+    pub coefficient: Complex64,
 }
 
 #[derive(Debug, Clone)]
 pub struct MPSRepresentation {
-    pub tensors: Vec<Array3<num::Complex<f64>>>,
+    pub tensors: Vec<Array3<Complex64>>,
     pub bond_dimensions: Vec<usize>,
 }
 
@@ -1534,8 +1532,7 @@ impl AdvancedVisualizationManager {
         let landscape_data = self.energy_landscape_viz.process_energy_data(energy_data)?;
 
         // Create visualization
-        let _visualization = self
-            .energy_landscape_viz
+        self.energy_landscape_viz
             .create_visualization(&landscape_data)?;
 
         // Register active visualization
@@ -1653,7 +1650,7 @@ impl AdvancedVisualizationManager {
         self.comparative_analyzer
             .perform_comparison(&datasets)
             .map_err(|e| {
-                VisualizationError::DataProcessingFailed(format!("Comparison failed: {:?}", e))
+                VisualizationError::DataProcessingFailed(format!("Comparison failed: {e:?}"))
             })
     }
 
@@ -1665,7 +1662,7 @@ impl AdvancedVisualizationManager {
         _options: ExportOptions,
     ) -> Result<String, VisualizationError> {
         // Implementation stub
-        Ok(format!("exported_{}_{:?}", viz_id, format))
+        Ok(format!("exported_{viz_id}_{format:?}"))
     }
 
     /// Get visualization status
@@ -1766,7 +1763,7 @@ impl EnergyLandscapeVisualizer {
         }
     }
 
-    pub fn process_energy_data(
+    pub const fn process_energy_data(
         &self,
         _energy_data: &[EnergySample],
     ) -> Result<LandscapeData, VisualizationError> {
@@ -1781,7 +1778,7 @@ impl EnergyLandscapeVisualizer {
         })
     }
 
-    pub fn create_visualization(
+    pub const fn create_visualization(
         &self,
         _landscape_data: &LandscapeData,
     ) -> Result<(), VisualizationError> {
@@ -1903,8 +1900,7 @@ impl ConvergenceTracker {
             Ok(())
         } else {
             Err(VisualizationError::InvalidConfiguration(format!(
-                "Session {} not found",
-                session_id
+                "Session {session_id} not found"
             )))
         }
     }
@@ -1954,7 +1950,7 @@ impl QuantumStateVisualizer {
         }
     }
 
-    pub fn create_state_visualization(
+    pub const fn create_state_visualization(
         &self,
         _state: &QuantumState,
         _viz_type: StateVisualizationType,

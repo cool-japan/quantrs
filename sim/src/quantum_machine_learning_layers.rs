@@ -6,9 +6,9 @@
 //! quantum advantage in machine learning applications with hardware-aware optimization.
 
 use scirs2_core::ndarray::Array1;
-use scirs2_core::Complex64;
-use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::parallel_ops::*;
+use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -664,7 +664,7 @@ impl Default for GradientFlowConfig {
 }
 
 /// Noise-aware training configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NoiseAwareTrainingConfig {
     /// Enable noise-aware training
     pub enabled: bool,
@@ -676,18 +676,6 @@ pub struct NoiseAwareTrainingConfig {
     pub noise_characterization: NoiseCharacterizationConfig,
     /// Robust training methods
     pub robust_training: RobustTrainingConfig,
-}
-
-impl Default for NoiseAwareTrainingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            noise_parameters: NoiseParameters::default(),
-            error_mitigation: ErrorMitigationConfig::default(),
-            noise_characterization: NoiseCharacterizationConfig::default(),
-            robust_training: RobustTrainingConfig::default(),
-        }
-    }
 }
 
 /// Noise parameters for quantum devices
@@ -722,7 +710,7 @@ impl Default for NoiseParameters {
 }
 
 /// Error mitigation configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ErrorMitigationConfig {
     /// Enable zero-noise extrapolation
     pub zero_noise_extrapolation: bool,
@@ -734,18 +722,6 @@ pub struct ErrorMitigationConfig {
     pub virtual_distillation: VirtualDistillationConfig,
     /// Quantum error correction
     pub quantum_error_correction: bool,
-}
-
-impl Default for ErrorMitigationConfig {
-    fn default() -> Self {
-        Self {
-            zero_noise_extrapolation: false,
-            readout_error_mitigation: false,
-            symmetry_verification: false,
-            virtual_distillation: VirtualDistillationConfig::default(),
-            quantum_error_correction: false,
-        }
-    }
 }
 
 /// Virtual distillation configuration
@@ -859,7 +835,7 @@ pub enum CalibrationFrequency {
 }
 
 /// Robust training configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RobustTrainingConfig {
     /// Enable robust training methods
     pub enabled: bool,
@@ -869,17 +845,6 @@ pub struct RobustTrainingConfig {
     pub adversarial_training: AdversarialTrainingConfig,
     /// Ensemble methods
     pub ensemble_methods: EnsembleMethodsConfig,
-}
-
-impl Default for RobustTrainingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            noise_injection: NoiseInjectionConfig::default(),
-            adversarial_training: AdversarialTrainingConfig::default(),
-            ensemble_methods: EnsembleMethodsConfig::default(),
-        }
-    }
 }
 
 /// Noise injection configuration
@@ -1170,7 +1135,7 @@ impl QuantumMLFramework {
     /// Create new quantum ML framework
     pub fn new(config: QMLConfig) -> Result<Self> {
         let mut framework = Self {
-            config: config.clone(),
+            config,
             layers: Vec::new(),
             training_state: QMLTrainingState::new(),
             backend: None,
@@ -1317,7 +1282,7 @@ impl QuantumMLFramework {
                 } else {
                     patience_counter += 1;
                     if patience_counter >= self.config.training_config.early_stopping.patience {
-                        println!("Early stopping triggered at epoch {}", epoch);
+                        println!("Early stopping triggered at epoch {epoch}");
                         break;
                     }
                 }
@@ -1341,14 +1306,8 @@ impl QuantumMLFramework {
         let total_training_time = training_start.elapsed();
 
         let result = QMLTrainingResult {
-            final_training_loss: training_metrics
-                .last()
-                .map(|m| m.training_loss)
-                .unwrap_or(0.0),
-            final_validation_loss: training_metrics
-                .last()
-                .map(|m| m.validation_loss)
-                .unwrap_or(0.0),
+            final_training_loss: training_metrics.last().map_or(0.0, |m| m.training_loss),
+            final_validation_loss: training_metrics.last().map_or(0.0, |m| m.validation_loss),
             best_validation_loss,
             epochs_trained: training_metrics.len(),
             total_training_time,
@@ -1383,7 +1342,7 @@ impl QuantumMLFramework {
 
             // Accumulate gradients
             for (i, grad) in gradients.iter().enumerate() {
-                if total_gradients[i].len() == 0 {
+                if total_gradients[i].is_empty() {
                     total_gradients[i] = grad.clone();
                 } else {
                     total_gradients[i] += grad;
@@ -1497,7 +1456,7 @@ impl QuantumMLFramework {
         let mut state = Array1::zeros(state_size);
 
         // Initialize |+⟩^⊗n state (all qubits in superposition)
-        let hadamard_coeff = 1.0 / (2.0_f64.powf(n_qubits as f64 / 2.0));
+        let hadamard_coeff = 1.0 / (n_qubits as f64 / 2.0).exp2();
         for i in 0..state_size {
             state[i] = Complex64::new(hadamard_coeff, 0.0);
         }
@@ -1795,7 +1754,7 @@ impl QuantumMLFramework {
             if let Some((min_val, max_val)) =
                 self.config.training_config.regularization.parameter_bounds
             {
-                for param in parameters.iter_mut() {
+                for param in &mut parameters {
                     *param = param.clamp(min_val, max_val);
                 }
             }
@@ -1850,7 +1809,7 @@ impl QuantumMLFramework {
     }
 
     /// Get training statistics
-    pub fn get_stats(&self) -> &QMLStats {
+    pub const fn get_stats(&self) -> &QMLStats {
         &self.stats
     }
 
@@ -1865,7 +1824,7 @@ impl QuantumMLFramework {
     }
 
     /// Get config reference
-    pub fn get_config(&self) -> &QMLConfig {
+    pub const fn get_config(&self) -> &QMLConfig {
         &self.config
     }
 
@@ -1987,7 +1946,7 @@ impl ParameterizedQuantumCircuitLayer {
     /// Initialize parameters randomly
     fn initialize_parameters(&mut self) {
         let mut rng = thread_rng();
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -2322,7 +2281,7 @@ impl QuantumConvolutionalLayer {
     /// Initialize parameters
     fn initialize_parameters(&mut self) {
         let mut rng = thread_rng();
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -2334,7 +2293,7 @@ impl QuantumConvolutionalLayer {
         let stride = 1;
 
         let mut param_idx = 0;
-        for start in (0..self.num_qubits - filter_size + 1).step_by(stride) {
+        for start in (0..=(self.num_qubits - filter_size)).step_by(stride) {
             if param_idx + 2 <= self.parameters.len() {
                 self.conv_structure.push(ConvolutionalFilter {
                     qubits: vec![start, start + 1],
@@ -2487,7 +2446,7 @@ impl QuantumDenseLayer {
     /// Initialize parameters
     fn initialize_parameters(&mut self) {
         let mut rng = thread_rng();
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -2629,7 +2588,7 @@ impl QuantumLSTMLayer {
     /// Initialize parameters
     fn initialize_parameters(&mut self) {
         let mut rng = thread_rng();
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -2805,7 +2764,7 @@ impl QuantumAttentionLayer {
     /// Initialize parameters
     fn initialize_parameters(&mut self) {
         let mut rng = thread_rng();
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -2949,9 +2908,15 @@ pub struct QMLTrainingState {
     pub validation_loss_history: Vec<f64>,
 }
 
+impl Default for QMLTrainingState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QMLTrainingState {
     /// Create new training state
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             current_epoch: 0,
             current_learning_rate: 0.01,
@@ -3031,9 +2996,15 @@ pub struct QMLStats {
     pub num_parameters: usize,
 }
 
+impl Default for QMLStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QMLStats {
     /// Create new statistics
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             forward_passes: 0,
             backward_passes: 0,
@@ -3173,17 +3144,20 @@ impl QMLUtils {
         let mut outputs = Vec::new();
 
         for _ in 0..num_samples {
-            let input =
-                Array1::from_vec((0..input_dim).map(|_| rng.gen_range(-1.0..1.0)).collect());
+            let input: Array1<f64> = Array1::from_vec(
+                (0..input_dim)
+                    .map(|_| rng.gen_range(-1.0_f64..1.0_f64))
+                    .collect(),
+            );
 
             // Generate output based on some function of input
             let output = Array1::from_vec(
                 (0..output_dim)
                     .map(|i| {
                         if i < input_dim {
-                            (input[i] as f64).sin() // Simple nonlinear transformation
+                            input[i].sin() // Simple nonlinear transformation
                         } else {
-                            rng.gen_range(-1.0..1.0)
+                            rng.gen_range(-1.0_f64..1.0_f64)
                         }
                     })
                     .collect(),
@@ -3264,7 +3238,7 @@ impl QMLUtils {
         metrics.insert("classical_simulation_cost".to_string(), classical_cost);
 
         // Quantum advantage estimate (log scale)
-        let quantum_advantage = classical_cost.log2() / circuit_complexity.log2();
+        let quantum_advantage = classical_cost.log(circuit_complexity);
         metrics.insert("quantum_advantage_estimate".to_string(), quantum_advantage);
 
         metrics
@@ -3297,7 +3271,7 @@ pub fn benchmark_quantum_ml_layers(config: &QMLConfig) -> Result<QMLBenchmarkRes
     ];
 
     for architecture in architectures {
-        let arch_name = format!("{:?}", architecture);
+        let arch_name = format!("{architecture:?}");
 
         // Create configuration for this architecture
         let mut arch_config = config.clone();

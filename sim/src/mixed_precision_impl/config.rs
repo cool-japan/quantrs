@@ -53,42 +53,42 @@ pub enum QuantumPrecision {
 impl QuantumPrecision {
     /// Get the corresponding SciRS2 precision level
     #[cfg(feature = "advanced_math")]
-    pub fn to_scirs2_precision(&self) -> PrecisionLevel {
+    pub const fn to_scirs2_precision(&self) -> PrecisionLevel {
         match self {
-            QuantumPrecision::Half => PrecisionLevel::F16,
-            QuantumPrecision::Single => PrecisionLevel::F32,
-            QuantumPrecision::Double => PrecisionLevel::F64,
-            QuantumPrecision::Adaptive => PrecisionLevel::Adaptive,
+            Self::Half => PrecisionLevel::F16,
+            Self::Single => PrecisionLevel::F32,
+            Self::Double => PrecisionLevel::F64,
+            Self::Adaptive => PrecisionLevel::Adaptive,
         }
     }
 
     /// Get memory usage factor relative to double precision
-    pub fn memory_factor(&self) -> f64 {
+    pub const fn memory_factor(&self) -> f64 {
         match self {
-            QuantumPrecision::Half => 0.25,
-            QuantumPrecision::Single => 0.5,
-            QuantumPrecision::Double => 1.0,
-            QuantumPrecision::Adaptive => 0.75, // Average case
+            Self::Half => 0.25,
+            Self::Single => 0.5,
+            Self::Double => 1.0,
+            Self::Adaptive => 0.75, // Average case
         }
     }
 
     /// Get computational cost factor relative to double precision
-    pub fn computation_factor(&self) -> f64 {
+    pub const fn computation_factor(&self) -> f64 {
         match self {
-            QuantumPrecision::Half => 0.5,
-            QuantumPrecision::Single => 0.7,
-            QuantumPrecision::Double => 1.0,
-            QuantumPrecision::Adaptive => 0.8, // Average case
+            Self::Half => 0.5,
+            Self::Single => 0.7,
+            Self::Double => 1.0,
+            Self::Adaptive => 0.8, // Average case
         }
     }
 
     /// Get typical numerical error for this precision
-    pub fn typical_error(&self) -> f64 {
+    pub const fn typical_error(&self) -> f64 {
         match self {
-            QuantumPrecision::Half => 1e-3,
-            QuantumPrecision::Single => 1e-6,
-            QuantumPrecision::Double => 1e-15,
-            QuantumPrecision::Adaptive => 1e-6, // Conservative estimate
+            Self::Half => 1e-3,
+            Self::Single => 1e-6,
+            Self::Double => 1e-15,
+            Self::Adaptive => 1e-6, // Conservative estimate
         }
     }
 
@@ -98,22 +98,22 @@ impl QuantumPrecision {
     }
 
     /// Get the next higher precision level
-    pub fn higher_precision(&self) -> Option<QuantumPrecision> {
+    pub const fn higher_precision(&self) -> Option<Self> {
         match self {
-            QuantumPrecision::Half => Some(QuantumPrecision::Single),
-            QuantumPrecision::Single => Some(QuantumPrecision::Double),
-            QuantumPrecision::Double => None,
-            QuantumPrecision::Adaptive => Some(QuantumPrecision::Double),
+            Self::Half => Some(Self::Single),
+            Self::Single => Some(Self::Double),
+            Self::Double => None,
+            Self::Adaptive => Some(Self::Double),
         }
     }
 
     /// Get the next lower precision level
-    pub fn lower_precision(&self) -> Option<QuantumPrecision> {
+    pub const fn lower_precision(&self) -> Option<Self> {
         match self {
-            QuantumPrecision::Half => None,
-            QuantumPrecision::Single => Some(QuantumPrecision::Half),
-            QuantumPrecision::Double => Some(QuantumPrecision::Single),
-            QuantumPrecision::Adaptive => Some(QuantumPrecision::Single),
+            Self::Half => None,
+            Self::Single => Some(Self::Half),
+            Self::Double => Some(Self::Single),
+            Self::Adaptive => Some(Self::Single),
         }
     }
 }
@@ -159,7 +159,7 @@ impl Default for MixedPrecisionConfig {
 
 impl MixedPrecisionConfig {
     /// Create configuration optimized for accuracy
-    pub fn for_accuracy() -> Self {
+    pub const fn for_accuracy() -> Self {
         Self {
             state_vector_precision: QuantumPrecision::Double,
             gate_precision: QuantumPrecision::Double,
@@ -174,7 +174,7 @@ impl MixedPrecisionConfig {
     }
 
     /// Create configuration optimized for performance
-    pub fn for_performance() -> Self {
+    pub const fn for_performance() -> Self {
         Self {
             state_vector_precision: QuantumPrecision::Half,
             gate_precision: QuantumPrecision::Single,
@@ -218,16 +218,16 @@ impl MixedPrecisionConfig {
     }
 
     /// Adjust configuration for a specific number of qubits
-    pub fn adjust_for_qubits(&mut self, num_qubits: usize) {
+    pub const fn adjust_for_qubits(&mut self, num_qubits: usize) {
         if num_qubits >= self.large_system_threshold {
             // For large systems, reduce precision to save memory
             if self.adaptive_precision {
                 match self.state_vector_precision {
                     QuantumPrecision::Double => {
-                        self.state_vector_precision = QuantumPrecision::Single
+                        self.state_vector_precision = QuantumPrecision::Single;
                     }
                     QuantumPrecision::Single => {
-                        self.state_vector_precision = QuantumPrecision::Half
+                        self.state_vector_precision = QuantumPrecision::Half;
                     }
                     _ => {}
                 }

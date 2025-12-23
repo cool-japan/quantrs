@@ -13,7 +13,7 @@ pub struct SimulatorResult<const N: usize> {
 
 impl<const N: usize> SimulatorResult<N> {
     /// Create a new simulator result with the given amplitudes
-    pub fn new(amplitudes: Vec<Complex64>) -> Self {
+    pub const fn new(amplitudes: Vec<Complex64>) -> Self {
         Self {
             amplitudes,
             num_qubits: N,
@@ -31,7 +31,7 @@ impl<const N: usize> SimulatorResult<N> {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 }

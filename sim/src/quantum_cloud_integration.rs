@@ -446,7 +446,7 @@ impl QuantumCloudService {
                 quantum_volume: Some(64),
                 gate_errors: [("cx", 0.005), ("u3", 0.001)]
                     .iter()
-                    .map(|(k, v)| (k.to_string(), *v))
+                    .map(|(k, v)| ((*k).to_string(), *v))
                     .collect(),
                 readout_errors: vec![0.02; 127],
                 coherence_times: Some((100e-6, 75e-6)), // T1, T2 in seconds
@@ -497,7 +497,7 @@ impl QuantumCloudService {
                 quantum_volume: Some(32),
                 gate_errors: [("cz", 0.006), ("single_qubit", 0.0008)]
                     .iter()
-                    .map(|(k, v)| (k.to_string(), *v))
+                    .map(|(k, v)| ((*k).to_string(), *v))
                     .collect(),
                 readout_errors: vec![0.015; 70],
                 coherence_times: Some((80e-6, 60e-6)),
@@ -547,7 +547,7 @@ impl QuantumCloudService {
                 quantum_volume: Some(32),
                 gate_errors: [("ms", 0.01), ("gpi", 0.001)]
                     .iter()
-                    .map(|(k, v)| (k.to_string(), *v))
+                    .map(|(k, v)| ((*k).to_string(), *v))
                     .collect(),
                 readout_errors: vec![0.005; 11],
                 coherence_times: Some((10.0, 1.0)), // Trapped ions have different scales
@@ -706,7 +706,7 @@ impl QuantumCloudService {
             submitted_at: SystemTime::now(),
             completed_at: None,
             queue_position: Some(backend.queue_length + 1),
-            estimated_wait_time: Some(self.estimate_wait_time(&backend)),
+            estimated_wait_time: Some(self.estimate_wait_time(backend)),
             cost_estimate: backend.cost_per_shot.map(|cost| cost * shots as f64),
             error_message: None,
         };
@@ -748,8 +748,7 @@ impl QuantumCloudService {
                 }
             }
             return Err(SimulatorError::InvalidInput(format!(
-                "Backend {} not found or offline",
-                name
+                "Backend {name} not found or offline"
             )));
         }
 
@@ -837,7 +836,7 @@ impl QuantumCloudService {
     }
 
     /// Estimate wait time for backend
-    fn estimate_wait_time(&self, backend: &QuantumBackend) -> u64 {
+    const fn estimate_wait_time(&self, backend: &QuantumBackend) -> u64 {
         match backend.backend_type {
             BackendType::Simulator => 10, // 10 seconds for simulators
             BackendType::Hardware => {
@@ -852,16 +851,13 @@ impl QuantumCloudService {
 
     /// Submit job to cloud provider
     fn submit_to_provider(&self, job: &QuantumJob) -> Result<()> {
-        match job.provider {
-            CloudProvider::LocalSimulation => {
-                // Local simulation - immediate execution
-                Ok(())
-            }
-            _ => {
-                // Simulate API call to cloud provider
-                std::thread::sleep(Duration::from_millis(100));
-                Ok(())
-            }
+        if job.provider == CloudProvider::LocalSimulation {
+            // Local simulation - immediate execution
+            Ok(())
+        } else {
+            // Simulate API call to cloud provider
+            std::thread::sleep(Duration::from_millis(100));
+            Ok(())
         }
     }
 
@@ -900,8 +896,7 @@ impl QuantumCloudService {
             Ok(status)
         } else {
             Err(SimulatorError::InvalidInput(format!(
-                "Job {} not found",
-                job_id
+                "Job {job_id} not found"
             )))
         }
     }
@@ -912,13 +907,12 @@ impl QuantumCloudService {
 
         if status != JobStatus::Completed {
             return Err(SimulatorError::InvalidState(format!(
-                "Job {} not completed (status: {:?})",
-                job_id, status
+                "Job {job_id} not completed (status: {status:?})"
             )));
         }
 
         // Check cache first
-        let cache_key = format!("result_{}", job_id);
+        let cache_key = format!("result_{job_id}");
         {
             let cache = self.result_cache.lock().unwrap();
             if let Some((result, _)) = cache.get(&cache_key) {
@@ -951,8 +945,7 @@ impl QuantumCloudService {
             Ok(result)
         } else {
             Err(SimulatorError::InvalidInput(format!(
-                "Job {} not found",
-                job_id
+                "Job {job_id} not found"
             )))
         }
     }
@@ -977,20 +970,20 @@ impl QuantumCloudService {
         }
 
         let execution_time = match job.provider {
-            CloudProvider::LocalSimulation => 0.1 + fastrand::f64() * 0.5,
-            _ => 10.0 + fastrand::f64() * 30.0,
+            CloudProvider::LocalSimulation => fastrand::f64().mul_add(0.5, 0.1),
+            _ => fastrand::f64().mul_add(30.0, 10.0),
         };
 
         let actual_cost = job
             .cost_estimate
-            .map(|cost| cost * (0.9 + fastrand::f64() * 0.2));
+            .map(|cost| cost * fastrand::f64().mul_add(0.2, 0.9));
 
         let result = QuantumJobResult {
             job_id: job.job_id.clone(),
             measurements,
             execution_time,
             actual_cost,
-            success_probability: 0.95 + fastrand::f64() * 0.05,
+            success_probability: fastrand::f64().mul_add(0.05, 0.95),
             metadata: [("backend".to_string(), job.backend.clone())]
                 .iter()
                 .cloned()
@@ -1060,26 +1053,26 @@ impl QuantumCloudService {
         _cost: f64,
         config: &IterationConfig,
     ) -> Result<Array1<f64>> {
-        let mut new_params = params.clone();
+        let mut new_params = params;
 
         match config.update_strategy {
             ParameterUpdateStrategy::GradientDescent => {
                 // Simplified gradient descent
                 let learning_rate = 0.01;
-                for param in new_params.iter_mut() {
+                for param in &mut new_params {
                     *param -= learning_rate * (fastrand::f64() - 0.5) * 0.1;
                 }
             }
             ParameterUpdateStrategy::Adam => {
                 // Simplified Adam optimizer
                 let alpha = 0.001;
-                for param in new_params.iter_mut() {
+                for param in &mut new_params {
                     *param -= alpha * (fastrand::f64() - 0.5) * 0.05;
                 }
             }
             _ => {
                 // Random perturbation for other methods
-                for param in new_params.iter_mut() {
+                for param in &mut new_params {
                     *param += (fastrand::f64() - 0.5) * 0.01;
                 }
             }
@@ -1089,7 +1082,7 @@ impl QuantumCloudService {
     }
 
     /// Get service statistics
-    pub fn get_stats(&self) -> &CloudStats {
+    pub const fn get_stats(&self) -> &CloudStats {
         &self.stats
     }
 
@@ -1109,8 +1102,7 @@ impl QuantumCloudService {
             }
         } else {
             Err(SimulatorError::InvalidInput(format!(
-                "Job {} not found",
-                job_id
+                "Job {job_id} not found"
             )))
         }
     }
@@ -1118,7 +1110,7 @@ impl QuantumCloudService {
     /// Get queue information
     pub fn get_queue_info(&self, provider: CloudProvider) -> Result<Vec<(String, usize)>> {
         let backends = self.backends.get(&provider).ok_or_else(|| {
-            SimulatorError::InvalidInput(format!("Provider {:?} not supported", provider))
+            SimulatorError::InvalidInput(format!("Provider {provider:?} not supported"))
         })?;
 
         let queue_info = backends
@@ -1127,6 +1119,12 @@ impl QuantumCloudService {
             .collect();
 
         Ok(queue_info)
+    }
+}
+
+impl Default for CloudHttpClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1156,6 +1154,12 @@ impl CloudHttpClient {
             timeout: Duration::from_secs(30),
             user_agent: "QuantumRS/1.0".to_string(),
         }
+    }
+}
+
+impl Default for CircuitTranslator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1246,23 +1250,23 @@ pub fn benchmark_quantum_cloud_service() -> Result<HashMap<String, f64>> {
         let _result = service.get_job_result(&job_id);
 
         let time = start.elapsed().as_secs_f64() * 1000.0;
-        results.insert(format!("cloud_config_{}", i), time);
+        results.insert(format!("cloud_config_{i}"), time);
 
         // Add service metrics
         let stats = service.get_stats();
         results.insert(
-            format!("cloud_config_{}_total_jobs", i),
+            format!("cloud_config_{i}_total_jobs"),
             stats.total_jobs as f64,
         );
         results.insert(
-            format!("cloud_config_{}_success_rate", i),
+            format!("cloud_config_{i}_success_rate"),
             if stats.total_jobs > 0 {
                 stats.successful_jobs as f64 / stats.total_jobs as f64
             } else {
                 0.0
             },
         );
-        results.insert(format!("cloud_config_{}_total_cost", i), stats.total_cost);
+        results.insert(format!("cloud_config_{i}_total_cost"), stats.total_cost);
     }
 
     Ok(results)

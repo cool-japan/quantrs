@@ -1,12 +1,12 @@
-//! Graph-based circuit optimizer using SciRS2 algorithms
+//! Graph-based circuit optimizer using `SciRS2` algorithms
 //!
 //! This module implements advanced circuit optimization using graph representations
-//! and algorithms from SciRS2 for optimal gate scheduling and optimization.
+//! and algorithms from `SciRS2` for optimal gate scheduling and optimization.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::error::QuantRS2Error;
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 // SciRS2 integration for graph algorithms when available
@@ -61,6 +61,7 @@ pub struct CircuitDAG {
 
 impl CircuitDAG {
     /// Create a new empty DAG
+    #[must_use]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -99,8 +100,8 @@ impl CircuitDAG {
     /// Check if two gates commute
     fn gates_commute(&self, g1: &GraphGate, g2: &GraphGate) -> bool {
         // Gates on different qubits always commute
-        let qubits1: HashSet<_> = g1.qubits.iter().map(|q| q.id()).collect();
-        let qubits2: HashSet<_> = g2.qubits.iter().map(|q| q.id()).collect();
+        let qubits1: HashSet<_> = g1.qubits.iter().map(quantrs2_core::QubitId::id).collect();
+        let qubits2: HashSet<_> = g2.qubits.iter().map(quantrs2_core::QubitId::id).collect();
 
         if qubits1.is_disjoint(&qubits2) {
             return true;
@@ -109,7 +110,7 @@ impl CircuitDAG {
         // Special cases for common gates
         match (g1.gate_type.as_str(), g2.gate_type.as_str()) {
             // Z gates always commute with each other
-            ("z", "z") | ("rz", "rz") | ("z", "rz") | ("rz", "z") => true,
+            ("z" | "rz", "z" | "rz") => true,
             // CNOT gates commute if they share only control or only target
             ("cnot", "cnot") => {
                 if g1.qubits.len() == 2 && g2.qubits.len() == 2 {
@@ -273,6 +274,7 @@ impl CircuitDAG {
     }
 
     /// Topological sort with optimization
+    #[must_use]
     pub fn optimized_topological_sort(&self) -> Vec<usize> {
         #[cfg(feature = "scirs")]
         {
@@ -431,7 +433,8 @@ impl CircuitDAG {
                 }
 
                 let gate = &self.nodes[gate_id];
-                let gate_qubits: HashSet<_> = gate.qubits.iter().map(|q| q.id()).collect();
+                let gate_qubits: HashSet<_> =
+                    gate.qubits.iter().map(quantrs2_core::QubitId::id).collect();
 
                 // Check if this gate conflicts with current layer
                 if gate_qubits.is_disjoint(&layer_qubits) {
@@ -486,7 +489,8 @@ pub struct GraphOptimizer {
 
 impl GraphOptimizer {
     /// Create a new graph optimizer
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             merge_threshold: 1e-6,
             max_lookahead: 10,
@@ -566,6 +570,7 @@ impl GraphOptimizer {
     }
 
     /// Optimize gate sequence using commutation rules
+    #[must_use]
     pub fn optimize_gate_sequence(&self, gates: Vec<GraphGate>) -> Vec<GraphGate> {
         let mut dag = CircuitDAG::new();
 
@@ -634,6 +639,7 @@ impl GraphOptimizer {
     }
 
     /// Merge consecutive single-qubit gates
+    #[must_use]
     pub fn merge_single_qubit_gates(&self, g1: &GraphGate, g2: &GraphGate) -> Option<GraphGate> {
         // Check if both are single-qubit gates on the same qubit
         if g1.qubits.len() != 1 || g2.qubits.len() != 1 || g1.qubits[0] != g2.qubits[0] {
@@ -772,6 +778,7 @@ pub struct OptimizationStats {
 }
 
 impl OptimizationStats {
+    #[must_use]
     pub fn improvement_percentage(&self) -> f64 {
         if self.original_gate_count == 0 {
             0.0

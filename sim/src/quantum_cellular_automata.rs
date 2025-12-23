@@ -276,14 +276,16 @@ impl QuantumCellularAutomaton {
             }
 
             // Apply measurements if configured
-            if let MeasurementStrategy::Continuous = self.config.measurement_strategy {
+            if self.config.measurement_strategy == MeasurementStrategy::Continuous {
                 self.apply_weak_measurements()?;
             }
 
             let step_time = step_start.elapsed().as_secs_f64() * 1000.0;
-            self.stats.avg_step_time_ms =
-                (self.stats.avg_step_time_ms * self.stats.evolution_steps as f64 + step_time)
-                    / (self.stats.evolution_steps + 1) as f64;
+            self.stats.avg_step_time_ms = self
+                .stats
+                .avg_step_time_ms
+                .mul_add(self.stats.evolution_steps as f64, step_time)
+                / (self.stats.evolution_steps + 1) as f64;
             self.stats.evolution_steps += 1;
         }
 
@@ -527,8 +529,9 @@ impl QuantumCellularAutomaton {
             .evolution_rules
             .iter()
             .find(|r| r.unitary.dim() == (16, 16))
-            .map(|r| r.unitary.clone())
-            .unwrap_or_else(Self::create_margolus_rotation_unitary);
+            .map_or_else(Self::create_margolus_rotation_unitary, |r| {
+                r.unitary.clone()
+            });
 
         // Apply four-qubit unitary
         self.apply_four_qubit_unitary(cells, &rule_unitary)?;
@@ -871,9 +874,12 @@ impl QuantumCellularAutomaton {
         }
 
         let snapshot_count = self.evolution_history.len() as f64;
-        self.stats.entropy_stats.avg_entropy =
-            (self.stats.entropy_stats.avg_entropy * snapshot_count + entropy)
-                / (snapshot_count + 1.0);
+        self.stats.entropy_stats.avg_entropy = self
+            .stats
+            .entropy_stats
+            .avg_entropy
+            .mul_add(snapshot_count, entropy)
+            / (snapshot_count + 1.0);
 
         Ok(QCASnapshot {
             time_step,
@@ -960,7 +966,7 @@ impl QuantumCellularAutomaton {
         // Calculate local magnetization (average Z measurement) for each cell
         for cell in 0..self.cell_mapping.total_cells {
             let magnetization = self.calculate_local_magnetization(cell)?;
-            observables.insert(format!("magnetization_{}", cell), magnetization);
+            observables.insert(format!("magnetization_{cell}"), magnetization);
         }
 
         // Calculate correlation functions for nearest neighbors
@@ -970,8 +976,7 @@ impl QuantumCellularAutomaton {
                     if neighbor > cell {
                         // Avoid double counting
                         let correlation = self.calculate_correlation(cell, neighbor)?;
-                        observables
-                            .insert(format!("correlation_{}_{}", cell, neighbor), correlation);
+                        observables.insert(format!("correlation_{cell}_{neighbor}"), correlation);
                     }
                 }
             }
@@ -1049,10 +1054,10 @@ impl QuantumCellularAutomaton {
         // Zero out incompatible amplitudes and calculate new norm
         for (i, amplitude) in self.state.iter_mut().enumerate() {
             let cell_value = (i & cell_mask) != 0;
-            if cell_value != result {
-                *amplitude = Complex64::new(0.0, 0.0);
-            } else {
+            if cell_value == result {
                 norm += amplitude.norm_sqr();
+            } else {
+                *amplitude = Complex64::new(0.0, 0.0);
             }
         }
 
@@ -1066,7 +1071,7 @@ impl QuantumCellularAutomaton {
     }
 
     /// Get current state
-    pub fn get_state(&self) -> &Array1<Complex64> {
+    pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
@@ -1076,7 +1081,7 @@ impl QuantumCellularAutomaton {
     }
 
     /// Get statistics
-    pub fn get_stats(&self) -> &QCAStats {
+    pub const fn get_stats(&self) -> &QCAStats {
         &self.stats
     }
 
@@ -1105,18 +1110,15 @@ impl QuantumCellularAutomaton {
                     index_to_coord.insert(i, vec![i]);
 
                     let mut cell_neighbors = Vec::new();
-                    match config.boundary_conditions {
-                        BoundaryConditions::Periodic => {
-                            cell_neighbors.push((i + size - 1) % size);
-                            cell_neighbors.push((i + 1) % size);
+                    if config.boundary_conditions == BoundaryConditions::Periodic {
+                        cell_neighbors.push((i + size - 1) % size);
+                        cell_neighbors.push((i + 1) % size);
+                    } else {
+                        if i > 0 {
+                            cell_neighbors.push(i - 1);
                         }
-                        _ => {
-                            if i > 0 {
-                                cell_neighbors.push(i - 1);
-                            }
-                            if i < size - 1 {
-                                cell_neighbors.push(i + 1);
-                            }
+                        if i < size - 1 {
+                            cell_neighbors.push(i + 1);
                         }
                     }
                     neighbors.insert(i, cell_neighbors);
@@ -1173,37 +1175,34 @@ impl QuantumCellularAutomaton {
     ) -> Result<Vec<QCARule>> {
         let mut rules = Vec::new();
 
-        match config.rule_type {
-            QCARuleType::Global => {
-                // Create random unitary for global evolution
-                let state_size = 1 << cell_mapping.total_cells.min(10); // Limit for practicality
-                let unitary = Self::create_random_unitary(state_size);
-                rules.push(QCARule {
-                    id: "global_evolution".to_string(),
-                    unitary,
-                    affected_cells: (0..cell_mapping.total_cells).collect(),
-                    neighborhood_pattern: Vec::new(),
-                    parameters: HashMap::new(),
-                });
-            }
-            _ => {
-                // Create local rules
-                rules.push(QCARule {
-                    id: "two_cell_interaction".to_string(),
-                    unitary: Self::create_cnot_unitary(),
-                    affected_cells: Vec::new(),
-                    neighborhood_pattern: vec![(0, 0, 0), (1, 0, 0)],
-                    parameters: HashMap::new(),
-                });
+        if config.rule_type == QCARuleType::Global {
+            // Create random unitary for global evolution
+            let state_size = 1 << cell_mapping.total_cells.min(10); // Limit for practicality
+            let unitary = Self::create_random_unitary(state_size);
+            rules.push(QCARule {
+                id: "global_evolution".to_string(),
+                unitary,
+                affected_cells: (0..cell_mapping.total_cells).collect(),
+                neighborhood_pattern: Vec::new(),
+                parameters: HashMap::new(),
+            });
+        } else {
+            // Create local rules
+            rules.push(QCARule {
+                id: "two_cell_interaction".to_string(),
+                unitary: Self::create_cnot_unitary(),
+                affected_cells: Vec::new(),
+                neighborhood_pattern: vec![(0, 0, 0), (1, 0, 0)],
+                parameters: HashMap::new(),
+            });
 
-                rules.push(QCARule {
-                    id: "single_cell_rotation".to_string(),
-                    unitary: Self::create_rotation_unitary(std::f64::consts::PI / 4.0),
-                    affected_cells: Vec::new(),
-                    neighborhood_pattern: vec![(0, 0, 0)],
-                    parameters: HashMap::new(),
-                });
-            }
+            rules.push(QCARule {
+                id: "single_cell_rotation".to_string(),
+                unitary: Self::create_rotation_unitary(std::f64::consts::PI / 4.0),
+                affected_cells: Vec::new(),
+                neighborhood_pattern: vec![(0, 0, 0)],
+                parameters: HashMap::new(),
+            });
         }
 
         Ok(rules)
@@ -1466,15 +1465,15 @@ impl QCAUtils {
         let configs = vec![
             (
                 "1d_elementary",
-                QCAUtils::create_predefined_config("elementary_ca", 8),
+                Self::create_predefined_config("elementary_ca", 8),
             ),
             (
                 "2d_game_of_life",
-                QCAUtils::create_predefined_config("game_of_life", 4),
+                Self::create_predefined_config("game_of_life", 4),
             ),
             (
                 "2d_margolus",
-                QCAUtils::create_predefined_config("margolus_ca", 4),
+                Self::create_predefined_config("margolus_ca", 4),
             ),
         ];
 
@@ -1482,7 +1481,7 @@ impl QCAUtils {
             config.evolution_steps = 20; // Limit for benchmarking
 
             let mut qca = QuantumCellularAutomaton::new(config)?;
-            let initial_state = QCAUtils::create_initial_pattern("random", &qca.config.dimensions);
+            let initial_state = Self::create_initial_pattern("random", &qca.config.dimensions);
             qca.set_initial_state(initial_state)?;
 
             let start = std::time::Instant::now();

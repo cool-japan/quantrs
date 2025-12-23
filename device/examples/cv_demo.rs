@@ -2,7 +2,9 @@
 //!
 //! This example demonstrates the basic functionality of the CV quantum system.
 
-use quantrs2_device::continuous_variable::*;
+use quantrs2_device::continuous_variable::{
+    create_gaussian_cv_device, CVGateSequence, Complex, GaussianState,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Perform measurements
     println!("\nPerforming homodyne measurement...");
     let homodyne_result = device.homodyne_measurement(0, 0.0).await?;
-    println!("Homodyne result: {:.3}", homodyne_result);
+    println!("Homodyne result: {homodyne_result:.3}");
 
     println!("Performing heterodyne measurement...");
     let heterodyne_result = device.heterodyne_measurement(1).await?;

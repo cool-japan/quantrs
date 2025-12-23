@@ -27,7 +27,7 @@ pub struct ParameterBounds {
 }
 
 /// Parameter scaling type
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ParameterScale {
     Linear,
     Logarithmic,
@@ -54,7 +54,7 @@ pub struct TuningConfig {
 }
 
 /// Acquisition function types
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AcquisitionType {
     ExpectedImprovement,
     UpperConfidenceBound,
@@ -109,7 +109,7 @@ pub struct TuningResult {
 
 impl ParameterTuner {
     /// Create new parameter tuner
-    pub fn new(config: TuningConfig) -> Self {
+    pub const fn new(config: TuningConfig) -> Self {
         Self {
             config,
             parameter_bounds: Vec::new(),
@@ -242,9 +242,9 @@ impl ParameterTuner {
             .iter()
             .map(|b| {
                 let value = match b.scale {
-                    ParameterScale::Linear => (b.min + b.max) / 2.0,
-                    ParameterScale::Logarithmic => { (b.min.ln() + b.max.ln()) / 2.0 }.exp(),
-                    ParameterScale::Sigmoid => (b.min + b.max) / 2.0,
+                    ParameterScale::Linear => f64::midpoint(b.min, b.max),
+                    ParameterScale::Logarithmic => { f64::midpoint(b.min.ln(), b.max.ln()) }.exp(),
+                    ParameterScale::Sigmoid => f64::midpoint(b.min, b.max),
                 };
                 (
                     b.name.clone(),
@@ -256,7 +256,6 @@ impl ParameterTuner {
 
     /// Sample random parameters
     fn sample_random_parameters(&self, seed: u64) -> HashMap<String, f64> {
-        
         use scirs2_core::random::prelude::*;
 
         let mut rng = StdRng::seed_from_u64(seed + self.config.seed.unwrap_or(42));
@@ -333,7 +332,7 @@ impl ParameterTuner {
             }
             ParameterScale::Sigmoid => {
                 let normalized = (value - bounds.min) / (bounds.max - bounds.min);
-                0.5 + 0.25 * (4.0 * (normalized - 0.5)).tanh()
+                0.25f64.mul_add((4.0 * (normalized - 0.5)).tanh(), 0.5)
             }
         }
     }
@@ -353,7 +352,7 @@ impl ParameterTuner {
                     }
                     ParameterScale::Sigmoid => {
                         let t = (unit_val - 0.5) * 4.0;
-                        let sigmoid = 0.5 + 0.5 * t.tanh();
+                        let sigmoid = 0.5f64.mul_add(t.tanh(), 0.5);
                         b.min + sigmoid * (b.max - b.min)
                     }
                 };

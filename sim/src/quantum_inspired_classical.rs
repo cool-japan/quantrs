@@ -6,8 +6,8 @@
 //! over traditional classical algorithms by incorporating quantum-inspired heuristics.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
 use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -775,7 +775,7 @@ impl Default for RuntimeStats {
 }
 
 /// Framework statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct QuantumInspiredStats {
     /// Algorithm execution statistics
     pub execution_stats: ExecutionStats,
@@ -785,17 +785,6 @@ pub struct QuantumInspiredStats {
     pub convergence_analysis: ConvergenceAnalysis,
     /// Quantum advantage metrics
     pub quantum_advantage_metrics: QuantumAdvantageMetrics,
-}
-
-impl Default for QuantumInspiredStats {
-    fn default() -> Self {
-        Self {
-            execution_stats: ExecutionStats::default(),
-            comparison_stats: ComparisonStats::default(),
-            convergence_analysis: ConvergenceAnalysis::default(),
-            quantum_advantage_metrics: QuantumAdvantageMetrics::default(),
-        }
-    }
 }
 
 /// Execution statistics
@@ -1205,7 +1194,7 @@ impl QuantumInspiredFramework {
 
                 // Quantum-inspired initialization with superposition
                 let mut rng = self.rng.lock().unwrap();
-                let base_value = rng.gen::<f64>() * (max_bound - min_bound) + min_bound;
+                let base_value = rng.gen::<f64>().mul_add(max_bound - min_bound, min_bound);
 
                 // Add quantum superposition effect
                 let superposition_noise = (rng.gen::<f64>() - 0.5)
@@ -1306,8 +1295,8 @@ impl QuantumInspiredFramework {
                     let alpha = rng.gen::<f64>();
 
                     // Quantum entanglement-based recombination
-                    let entangled_val1 = alpha * parent1[j] + (1.0 - alpha) * parent2[j];
-                    let entangled_val2 = (1.0 - alpha) * parent1[j] + alpha * parent2[j];
+                    let entangled_val1 = alpha.mul_add(parent1[j], (1.0 - alpha) * parent2[j]);
+                    let entangled_val2 = (1.0 - alpha).mul_add(parent1[j], alpha * parent2[j]);
 
                     // Add quantum entanglement correlation
                     let correlation = entanglement_strength
@@ -1592,7 +1581,7 @@ impl QuantumInspiredFramework {
             } else {
                 (-10.0, 10.0)
             };
-            current_solution[i] = rng.gen::<f64>() * (max_bound - min_bound) + min_bound;
+            current_solution[i] = rng.gen::<f64>().mul_add(max_bound - min_bound, min_bound);
         }
         drop(rng);
 
@@ -1603,8 +1592,8 @@ impl QuantumInspiredFramework {
         self.state.runtime_stats.function_evaluations += 1;
 
         // Initial temperature
-        let initial_temp = 100.0;
-        let final_temp = 0.01;
+        let initial_temp: f64 = 100.0;
+        let final_temp: f64 = 0.01;
 
         for iteration in 0..max_iterations {
             self.state.iteration = iteration;
@@ -1613,18 +1602,15 @@ impl QuantumInspiredFramework {
             let temp = match temperature_schedule {
                 TemperatureSchedule::Exponential => {
                     initial_temp
-                        * ((final_temp / initial_temp) as f64)
-                            .powf(iteration as f64 / max_iterations as f64)
+                        * (final_temp / initial_temp).powf(iteration as f64 / max_iterations as f64)
                 }
-                TemperatureSchedule::Linear => {
-                    initial_temp
-                        - (initial_temp - final_temp) * (iteration as f64 / max_iterations as f64)
-                }
+                TemperatureSchedule::Linear => (initial_temp - final_temp)
+                    .mul_add(-(iteration as f64 / max_iterations as f64), initial_temp),
                 TemperatureSchedule::Logarithmic => initial_temp / (1.0 + (iteration as f64).ln()),
                 TemperatureSchedule::QuantumAdiabatic => {
                     // Quantum adiabatic schedule
                     let s = iteration as f64 / max_iterations as f64;
-                    initial_temp * (1.0 - s) + final_temp * s * (1.0 - (1.0 - s).powi(3))
+                    initial_temp.mul_add(1.0 - s, final_temp * s * (1.0 - (1.0 - s).powi(3)))
                 }
                 TemperatureSchedule::Custom => initial_temp * 0.95_f64.powi(iteration as i32),
             };
@@ -1769,7 +1755,7 @@ impl QuantumInspiredFramework {
                 a * n
                     + solution
                         .iter()
-                        .map(|&x| x * x - a * (2.0 * PI * x).cos())
+                        .map(|&x| x.mul_add(x, -(a * (2.0 * PI * x).cos())))
                         .sum::<f64>()
             }
             ObjectiveFunction::Rosenbrock => {
@@ -1780,20 +1766,20 @@ impl QuantumInspiredFramework {
                 for i in 0..solution.len() - 1 {
                     let x = solution[i];
                     let y = solution[i + 1];
-                    result += 100.0 * (y - x * x).powi(2) + (1.0 - x).powi(2);
+                    result += (1.0 - x).mul_add(1.0 - x, 100.0 * x.mul_add(-x, y).powi(2));
                 }
                 result
             }
             ObjectiveFunction::Ackley => {
                 let n = solution.len() as f64;
-                let a = 20.0;
-                let b = 0.2;
-                let c = 2.0 * PI;
+                let a: f64 = 20.0;
+                let b: f64 = 0.2;
+                let c: f64 = 2.0 * PI;
 
                 let sum1 = solution.iter().map(|&x| x * x).sum::<f64>() / n;
                 let sum2 = solution.iter().map(|&x| (c * x).cos()).sum::<f64>() / n;
 
-                -a * (-b * sum1.sqrt()).exp() - sum2.exp() + a + std::f64::consts::E
+                (-a).mul_add((-b * sum1.sqrt()).exp(), -sum2.exp()) + a + std::f64::consts::E
             }
             ObjectiveFunction::Sphere => solution.iter().map(|&x| x * x).sum(),
             ObjectiveFunction::Griewank => {
@@ -1879,17 +1865,17 @@ impl QuantumInspiredFramework {
     }
 
     /// Get current statistics
-    pub fn get_stats(&self) -> &QuantumInspiredStats {
+    pub const fn get_stats(&self) -> &QuantumInspiredStats {
         &self.stats
     }
 
     /// Get current state
-    pub fn get_state(&self) -> &QuantumInspiredState {
+    pub const fn get_state(&self) -> &QuantumInspiredState {
         &self.state
     }
 
     /// Get mutable state access
-    pub fn get_state_mut(&mut self) -> &mut QuantumInspiredState {
+    pub const fn get_state_mut(&mut self) -> &mut QuantumInspiredState {
         &mut self.state
     }
 
@@ -2017,7 +2003,7 @@ impl QuantumInspiredUtils {
         let theoretical_speedup = match algorithm_type {
             OptimizationAlgorithm::QuantumGeneticAlgorithm => (problem_size as f64).sqrt(),
             OptimizationAlgorithm::QuantumParticleSwarm => (problem_size as f64).log2(),
-            OptimizationAlgorithm::ClassicalQAOA => 2.0_f64.powf(problem_size as f64 / 2.0),
+            OptimizationAlgorithm::ClassicalQAOA => (problem_size as f64 / 2.0).exp2(),
             _ => 1.0,
         };
 
@@ -2072,8 +2058,8 @@ pub fn benchmark_quantum_inspired_algorithms(
         mean_performance,
         std_deviation,
         confidence_intervals: (
-            mean_performance - 1.96 * std_deviation,
-            mean_performance + 1.96 * std_deviation,
+            1.96f64.mul_add(-std_deviation, mean_performance),
+            1.96f64.mul_add(std_deviation, mean_performance),
         ),
         p_value: 0.05, // Placeholder
         effect_size: mean_performance / std_deviation,

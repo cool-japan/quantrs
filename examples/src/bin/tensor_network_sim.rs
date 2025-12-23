@@ -47,11 +47,14 @@ fn compare_linear_circuit() {
     let mut circuit = Circuit::<8>::new();
 
     // Apply H to first qubit
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply H gate to qubit 0");
 
     // Create a chain of CNOTs
     for i in 0..7 {
-        circuit.cnot(i, i + 1).unwrap();
+        circuit.cnot(i, i + 1).expect(&format!(
+            "Failed to apply CNOT between qubits {i} and {}",
+            i + 1
+        ));
     }
 
     // Compare simulators
@@ -64,11 +67,15 @@ fn compare_ghz_circuit() {
     let mut circuit = Circuit::<8>::new();
 
     // Apply H to first qubit
-    circuit.h(0).unwrap();
+    circuit
+        .h(0)
+        .expect("Failed to apply H gate to qubit 0 for GHZ state");
 
     // Apply CNOTs from first qubit to all others
     for i in 1..8 {
-        circuit.cnot(0, i).unwrap();
+        circuit
+            .cnot(0, i)
+            .expect(&format!("Failed to apply CNOT from qubit 0 to qubit {i}"));
     }
 
     // Compare simulators
@@ -82,24 +89,44 @@ fn compare_random_circuit() {
 
     // Apply random H gates
     for i in 0..8 {
-        circuit.h(i).unwrap();
+        circuit
+            .h(i)
+            .expect(&format!("Failed to apply H gate to qubit {i}"));
     }
 
     // Apply some random gates
-    circuit.x(1).unwrap();
-    circuit.y(3).unwrap();
-    circuit.z(5).unwrap();
-    circuit.rx(2, 0.5).unwrap();
-    circuit.ry(4, 0.7).unwrap();
-    circuit.rz(6, 0.3).unwrap();
+    circuit.x(1).expect("Failed to apply X gate to qubit 1");
+    circuit.y(3).expect("Failed to apply Y gate to qubit 3");
+    circuit.z(5).expect("Failed to apply Z gate to qubit 5");
+    circuit
+        .rx(2, 0.5)
+        .expect("Failed to apply RX gate to qubit 2");
+    circuit
+        .ry(4, 0.7)
+        .expect("Failed to apply RY gate to qubit 4");
+    circuit
+        .rz(6, 0.3)
+        .expect("Failed to apply RZ gate to qubit 6");
 
     // Apply some random two-qubit gates
-    circuit.cnot(0, 1).unwrap();
-    circuit.cnot(2, 3).unwrap();
-    circuit.cnot(4, 5).unwrap();
-    circuit.cnot(6, 7).unwrap();
-    circuit.cnot(1, 3).unwrap();
-    circuit.cnot(5, 7).unwrap();
+    circuit
+        .cnot(0, 1)
+        .expect("Failed to apply CNOT between qubits 0 and 1");
+    circuit
+        .cnot(2, 3)
+        .expect("Failed to apply CNOT between qubits 2 and 3");
+    circuit
+        .cnot(4, 5)
+        .expect("Failed to apply CNOT between qubits 4 and 5");
+    circuit
+        .cnot(6, 7)
+        .expect("Failed to apply CNOT between qubits 6 and 7");
+    circuit
+        .cnot(1, 3)
+        .expect("Failed to apply CNOT between qubits 1 and 3");
+    circuit
+        .cnot(5, 7)
+        .expect("Failed to apply CNOT between qubits 5 and 7");
 
     // Compare simulators
     compare_simulators(&circuit, "Random Circuit");
@@ -125,17 +152,23 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, name: &str) {
 
     // Run with state vector simulator
     let start = Instant::now();
-    let sv_result = sv_sim.run(&circuit).unwrap();
+    let sv_result = sv_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with state vector simulator");
     let sv_time = start.elapsed();
 
     // Run with basic tensor network simulator
     let start = Instant::now();
-    let tn_result = tn_sim.run(&circuit).unwrap();
+    let tn_result = tn_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with basic tensor network simulator");
     let tn_time = start.elapsed();
 
     // Run with optimized tensor network simulator
     let start = Instant::now();
-    let opt_tn_result = opt_tn_sim.run(&circuit).unwrap();
+    let opt_tn_result = opt_tn_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with optimized tensor network simulator");
     let opt_tn_time = start.elapsed();
 
     // Compare results

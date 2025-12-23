@@ -21,14 +21,14 @@ fn main() {
 }
 
 fn run_demo(qubits: usize, name: &str) {
-    println!("=== {} ({} qubits) ===", name, qubits);
+    println!("=== {name} ({qubits} qubits) ===");
 
     match qubits {
         // Use compile-time known qubit counts to utilize const generics
         10 => run_with_qubits::<10>(),
         20 => run_with_qubits::<20>(),
         25 => run_with_qubits::<25>(),
-        n => println!("Qubit count {} not supported in this demo", n),
+        n => println!("Qubit count {n} not supported in this demo"),
     }
 
     println!();
@@ -40,14 +40,19 @@ fn run_with_qubits<const N: usize>() {
 
     // Apply Hadamard to all qubits (creates uniform superposition)
     for i in 0..N {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .expect(&format!("Failed to apply H gate to qubit {i}"));
     }
 
     // Apply CNOT gates between adjacent qubits (creates entanglement)
     for i in 0..(N - 1) {
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
+            .expect(&format!(
+                "Failed to apply CNOT from qubit {i} to qubit {}",
+                i + 1
+            ));
     }
 
     // Apply some rotations
@@ -57,14 +62,16 @@ fn run_with_qubits<const N: usize>() {
                 QubitId::new(i as u32),
                 std::f64::consts::PI / (i + 1) as f64,
             )
-            .unwrap();
+            .expect(&format!("Failed to apply RZ gate to qubit {i}"));
     }
 
     // Run with standard simulator first (if it's a small enough circuit)
     if N <= 20 {
         let standard_sim = StateVectorSimulator::new();
         let start = Instant::now();
-        let result = standard_sim.run(&circuit).unwrap();
+        let result = standard_sim
+            .run(&circuit)
+            .expect("Failed to run circuit with standard simulator");
         let duration = start.elapsed();
 
         println!("Standard simulator: {:.3} seconds", duration.as_secs_f64());
@@ -87,7 +94,9 @@ fn run_with_qubits<const N: usize>() {
     // Run with optimized simulator
     let optimized_sim = OptimizedSimulator::new();
     let start = Instant::now();
-    let result = optimized_sim.run(&circuit).unwrap();
+    let result = optimized_sim
+        .run(&circuit)
+        .expect("Failed to run circuit with optimized simulator");
     let duration = start.elapsed();
 
     println!("Optimized simulator: {:.3} seconds", duration.as_secs_f64());
@@ -108,7 +117,9 @@ fn run_with_qubits<const N: usize>() {
     if N >= 20 {
         let memory_efficient_sim = OptimizedSimulator::memory_efficient();
         let start = Instant::now();
-        let result = memory_efficient_sim.run(&circuit).unwrap();
+        let result = memory_efficient_sim
+            .run(&circuit)
+            .expect("Failed to run circuit with memory-efficient simulator");
         let duration = start.elapsed();
 
         println!(

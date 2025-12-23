@@ -1,17 +1,17 @@
-//! Circuit similarity metrics using SciRS2
+//! Circuit similarity metrics using `SciRS2`
 //!
 //! This module implements sophisticated quantum circuit similarity and distance metrics
-//! leveraging SciRS2's graph algorithms, numerical analysis, and machine learning capabilities.
+//! leveraging `SciRS2`'s graph algorithms, numerical analysis, and machine learning capabilities.
 
 use crate::builder::Circuit;
 use crate::dag::{circuit_to_dag, CircuitDag};
 use crate::scirs2_matrices::SparseMatrix;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -19,7 +19,7 @@ use std::sync::Arc;
 // Placeholder types representing SciRS2 graph and ML interface
 // In the real implementation, these would be imported from SciRS2
 
-/// Graph representation for SciRS2 integration
+/// Graph representation for `SciRS2` integration
 #[derive(Debug, Clone)]
 pub struct SciRS2Graph {
     /// Node identifiers
@@ -32,8 +32,8 @@ pub struct SciRS2Graph {
     pub edge_attributes: HashMap<(usize, usize), HashMap<String, f64>>,
 }
 
-/// Graph similarity algorithms available in SciRS2
-#[derive(Debug, Clone, PartialEq)]
+/// Graph similarity algorithms available in `SciRS2`
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphSimilarityAlgorithm {
     /// Graph edit distance
     GraphEditDistance,
@@ -50,7 +50,7 @@ pub enum GraphSimilarityAlgorithm {
 }
 
 /// Graph kernel types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphKernelType {
     /// Random walk kernel
     RandomWalk { steps: usize },
@@ -114,7 +114,7 @@ pub struct SimilarityConfig {
 }
 
 /// Similarity computation algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityAlgorithm {
     /// Gate-level comparison
     GateLevel,
@@ -131,7 +131,7 @@ pub enum SimilarityAlgorithm {
 }
 
 /// Machine learning model types for embeddings
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MLModelType {
     /// Variational autoencoder
     VAE { latent_dim: usize },
@@ -184,7 +184,7 @@ impl Default for SimilarityConfig {
     }
 }
 
-/// Circuit similarity analyzer using SciRS2
+/// Circuit similarity analyzer using `SciRS2`
 pub struct CircuitSimilarityAnalyzer {
     /// Configuration for similarity computation
     config: SimilarityConfig,
@@ -228,6 +228,7 @@ pub struct EntanglementStructure {
 
 impl CircuitSimilarityAnalyzer {
     /// Create a new circuit similarity analyzer
+    #[must_use]
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             config,
@@ -238,6 +239,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Create analyzer with default configuration
+    #[must_use]
     pub fn with_default_config() -> Self {
         Self::new(SimilarityConfig::default())
     }
@@ -251,11 +253,7 @@ impl CircuitSimilarityAnalyzer {
         // Generate unique identifiers for caching
         let id1 = self.generate_circuit_id(circuit1);
         let id2 = self.generate_circuit_id(circuit2);
-        let cache_key = if id1 < id2 {
-            (id1.clone(), id2.clone())
-        } else {
-            (id2, id1)
-        };
+        let cache_key = if id1 < id2 { (id1, id2) } else { (id2, id1) };
 
         // Check cache
         if self.config.cache_results {
@@ -295,7 +293,7 @@ impl CircuitSimilarityAnalyzer {
                 }
             };
 
-            detailed_metrics.insert(format!("{:?}", algorithm), similarity);
+            detailed_metrics.insert(format!("{algorithm:?}"), similarity);
             similarities.push(similarity);
         }
 
@@ -306,10 +304,16 @@ impl CircuitSimilarityAnalyzer {
         let topological_similarity = self.compute_topological_similarity(&features1, &features2)?;
 
         // Compute overall similarity using weighted combination
-        let overall_similarity = self.config.weights.structural * structural_similarity
-            + self.config.weights.functional * functional_similarity
-            + self.config.weights.sequence * sequence_similarity
-            + self.config.weights.topological * topological_similarity;
+        let overall_similarity = self.config.weights.topological.mul_add(
+            topological_similarity,
+            self.config.weights.sequence.mul_add(
+                sequence_similarity,
+                self.config.weights.structural.mul_add(
+                    structural_similarity,
+                    self.config.weights.functional * functional_similarity,
+                ),
+            ),
+        );
 
         let result = CircuitSimilarityMetrics {
             structural_similarity,
@@ -479,11 +483,11 @@ impl CircuitSimilarityAnalyzer {
             min_edges / max_edges
         };
 
-        Ok((nodes_similarity + edges_similarity) / 2.0)
+        Ok(f64::midpoint(nodes_similarity, edges_similarity))
     }
 
     /// Compute unitary matrix similarity
-    fn compute_unitary_similarity<const N: usize, const M: usize>(
+    const fn compute_unitary_similarity<const N: usize, const M: usize>(
         &self,
         circuit1: &Circuit<N>,
         circuit2: &Circuit<M>,
@@ -529,16 +533,23 @@ impl CircuitSimilarityAnalyzer {
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
-        // Compare statistical properties of circuits
-        let depth_similarity = 1.0
-            - (features1.depth as f64 - features2.depth as f64).abs()
-                / (features1.depth.max(features2.depth) as f64);
+        // Compare statistical properties of circuits with division by zero protection
+        let max_depth = features1.depth.max(features2.depth);
+        let depth_similarity = if max_depth > 0 {
+            1.0 - (features1.depth as f64 - features2.depth as f64).abs() / (max_depth as f64)
+        } else {
+            1.0 // Both have zero depth - identical
+        };
 
-        let two_qubit_similarity = 1.0
-            - (features1.two_qubit_gates as f64 - features2.two_qubit_gates as f64).abs()
-                / (features1.two_qubit_gates.max(features2.two_qubit_gates) as f64);
+        let max_two_qubit = features1.two_qubit_gates.max(features2.two_qubit_gates);
+        let two_qubit_similarity = if max_two_qubit > 0 {
+            1.0 - (features1.two_qubit_gates as f64 - features2.two_qubit_gates as f64).abs()
+                / (max_two_qubit as f64)
+        } else {
+            1.0 // Both have zero two-qubit gates - identical
+        };
 
-        Ok((depth_similarity + two_qubit_similarity) / 2.0)
+        Ok(f64::midpoint(depth_similarity, two_qubit_similarity))
     }
 
     /// Compute ML-based similarity using embeddings
@@ -648,15 +659,20 @@ impl CircuitSimilarityAnalyzer {
             &features2.connectivity_pattern,
         );
 
-        let depth_similarity = 1.0
-            - (features1.depth as f64 - features2.depth as f64).abs()
-                / (features1.depth.max(features2.depth) as f64);
+        // Handle depth comparison with division by zero protection
+        let max_depth = features1.depth.max(features2.depth);
+        let depth_similarity = if max_depth > 0 {
+            1.0 - (features1.depth as f64 - features2.depth as f64).abs() / (max_depth as f64)
+        } else {
+            // Both circuits have zero depth - they are identical in this metric
+            1.0
+        };
 
-        Ok((connectivity_similarity + depth_similarity) / 2.0)
+        Ok(f64::midpoint(connectivity_similarity, depth_similarity))
     }
 
     /// Compute functional similarity
-    fn compute_functional_similarity<const N: usize, const M: usize>(
+    const fn compute_functional_similarity<const N: usize, const M: usize>(
         &self,
         circuit1: &Circuit<N>,
         circuit2: &Circuit<M>,
@@ -699,16 +715,20 @@ impl CircuitSimilarityAnalyzer {
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
-        // Compare entanglement topology
-        let width_similarity = 1.0
-            - (features1.entanglement_structure.max_entanglement_width as f64
+        // Compare entanglement topology with division by zero protection
+        let max_width = features1
+            .entanglement_structure
+            .max_entanglement_width
+            .max(features2.entanglement_structure.max_entanglement_width);
+
+        let width_similarity = if max_width > 0 {
+            1.0 - (features1.entanglement_structure.max_entanglement_width as f64
                 - features2.entanglement_structure.max_entanglement_width as f64)
                 .abs()
-                / (features1
-                    .entanglement_structure
-                    .max_entanglement_width
-                    .max(features2.entanglement_structure.max_entanglement_width)
-                    as f64);
+                / (max_width as f64)
+        } else {
+            1.0 // Both have zero entanglement width - identical
+        };
 
         Ok(width_similarity)
     }
@@ -872,7 +892,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute Wasserstein distance
-    fn compute_wasserstein_distance(
+    const fn compute_wasserstein_distance(
         &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
@@ -883,7 +903,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute Hausdorff distance
-    fn compute_hausdorff_distance<const N: usize, const M: usize>(
+    const fn compute_hausdorff_distance<const N: usize, const M: usize>(
         &self,
         circuit1: &Circuit<N>,
         circuit2: &Circuit<M>,
@@ -893,7 +913,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute Earth Mover's distance
-    fn compute_earth_movers_distance(
+    const fn compute_earth_movers_distance(
         &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
@@ -903,7 +923,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute process fidelity distance
-    fn compute_process_fidelity_distance<const N: usize, const M: usize>(
+    const fn compute_process_fidelity_distance<const N: usize, const M: usize>(
         &self,
         circuit1: &Circuit<N>,
         circuit2: &Circuit<M>,
@@ -928,12 +948,17 @@ impl CircuitSimilarityAnalyzer {
         let max_size = (graph1.nodes.len() + graph1.edges.len())
             .max(graph2.nodes.len() + graph2.edges.len()) as f64;
 
-        let distance = (node_diff + edge_diff) / max_size;
+        let distance = if max_size > 0.0 {
+            (node_diff + edge_diff) / max_size
+        } else {
+            0.0 // Both graphs are empty - identical
+        };
+
         Ok(1.0 - distance) // Convert to similarity
     }
 
     /// Compute spectral similarity
-    fn compute_spectral_similarity(
+    const fn compute_spectral_similarity(
         &self,
         graph1: &SciRS2Graph,
         graph2: &SciRS2Graph,
@@ -951,6 +976,7 @@ pub struct BatchSimilarityComputer {
 
 impl BatchSimilarityComputer {
     /// Create new batch computer
+    #[must_use]
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             analyzer: CircuitSimilarityAnalyzer::new(config),
@@ -1021,11 +1047,40 @@ mod tests {
         let mut circuit = Circuit::<2>::new();
         circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
 
-        let _similarity = analyzer.compute_similarity(&circuit, &circuit).unwrap();
-        // TODO: Fix similarity calculation for identical circuits
-        // The overall similarity should be 1.0 for identical circuits
-        // Current implementation has issues with NaN/infinity values due to
-        // division by zero in some similarity metrics calculations
+        let similarity = analyzer.compute_similarity(&circuit, &circuit).unwrap();
+
+        // Fixed: Overall similarity should be 1.0 for identical circuits
+        // All component similarities should also be 1.0 or very close to it
+        assert!(
+            !similarity.overall_similarity.is_nan(),
+            "Similarity should not be NaN for identical circuits. Actual value: {}",
+            similarity.overall_similarity
+        );
+        assert!(
+            !similarity.overall_similarity.is_infinite(),
+            "Similarity should not be infinite for identical circuits. Actual value: {}",
+            similarity.overall_similarity
+        );
+        assert!(
+            similarity.structural_similarity >= 0.9,
+            "Structural similarity should be high for identical circuits: {}",
+            similarity.structural_similarity
+        );
+        assert!(
+            similarity.sequence_similarity >= 0.9,
+            "Sequence similarity should be high for identical circuits: {}",
+            similarity.sequence_similarity
+        );
+        assert!(
+            similarity.topological_similarity >= 0.9,
+            "Topological similarity should be high for identical circuits: {}",
+            similarity.topological_similarity
+        );
+        assert!(
+            similarity.overall_similarity >= 0.8,
+            "Overall similarity should be high for identical circuits: {}",
+            similarity.overall_similarity
+        );
     }
 
     #[test]

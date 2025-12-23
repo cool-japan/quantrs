@@ -381,14 +381,13 @@ impl SciRS2QFT {
                 {
                     let result_vector =
                         backend.fft_engine.forward(&scirs2_vector).map_err(|e| {
-                            SimulatorError::ComputationError(format!("SciRS2 FFT failed: {}", e))
+                            SimulatorError::ComputationError(format!("SciRS2 FFT failed: {e}"))
                         })?;
 
                     // Copy result back to data
                     let result_array = result_vector.to_array1().map_err(|e| {
                         SimulatorError::ComputationError(format!(
-                            "Failed to extract FFT result: {}",
-                            e
+                            "Failed to extract FFT result: {e}"
                         ))
                     })?;
                     data.copy_from_slice(result_array.as_slice().unwrap());
@@ -430,16 +429,14 @@ impl SciRS2QFT {
                     let result_vector =
                         backend.fft_engine.inverse(&scirs2_vector).map_err(|e| {
                             SimulatorError::ComputationError(format!(
-                                "SciRS2 inverse FFT failed: {}",
-                                e
+                                "SciRS2 inverse FFT failed: {e}"
                             ))
                         })?;
 
                     // Copy result back to data
                     let result_array = result_vector.to_array1().map_err(|e| {
                         SimulatorError::ComputationError(format!(
-                            "Failed to extract inverse FFT result: {}",
-                            e
+                            "Failed to extract inverse FFT result: {e}"
                         ))
                     })?;
                     data.copy_from_slice(result_array.as_slice().unwrap());
@@ -622,7 +619,7 @@ impl SciRS2QFT {
     }
 
     /// Get execution statistics
-    pub fn get_stats(&self) -> &QFTStats {
+    pub const fn get_stats(&self) -> &QFTStats {
         &self.stats
     }
 
@@ -632,12 +629,12 @@ impl SciRS2QFT {
     }
 
     /// Set configuration
-    pub fn set_config(&mut self, config: QFTConfig) {
+    pub const fn set_config(&mut self, config: QFTConfig) {
         self.config = config;
     }
 
     /// Get configuration
-    pub fn get_config(&self) -> &QFTConfig {
+    pub const fn get_config(&self) -> &QFTConfig {
         &self.config
     }
 }
@@ -683,8 +680,7 @@ impl QFTUtils {
             }
             _ => {
                 return Err(SimulatorError::InvalidInput(format!(
-                    "Unknown test pattern: {}",
-                    pattern
+                    "Unknown test pattern: {pattern}"
                 )));
             }
         }
@@ -750,11 +746,7 @@ pub fn benchmark_qft_methods(num_qubits: usize) -> Result<HashMap<String, QFTSta
     for (name, method) in methods {
         let config = QFTConfig {
             method,
-            approximation_level: if method == QFTMethod::SciRS2Approximate {
-                1
-            } else {
-                0
-            },
+            approximation_level: usize::from(method == QFTMethod::SciRS2Approximate),
             bit_reversal: true,
             parallel: true,
             precision_threshold: 1e-10,
@@ -800,11 +792,7 @@ pub fn compare_qft_accuracy(num_qubits: usize) -> Result<HashMap<String, f64>> {
     for (name, method) in methods {
         let config = QFTConfig {
             method,
-            approximation_level: if method == QFTMethod::SciRS2Approximate {
-                1
-            } else {
-                0
-            },
+            approximation_level: usize::from(method == QFTMethod::SciRS2Approximate),
             bit_reversal: false, // Compare without bit reversal for accuracy
             parallel: true,
             precision_threshold: 1e-10,
@@ -878,7 +866,7 @@ mod tests {
 
         // After QFT of |00⟩, should be uniform superposition
         let expected_amplitude = 0.5;
-        for amplitude in state.iter() {
+        for amplitude in &state {
             assert_abs_diff_eq!(amplitude.norm(), expected_amplitude, epsilon = 1e-10);
         }
     }
@@ -894,7 +882,7 @@ mod tests {
         let initial_state = QFTUtils::create_test_state(3, "basis").unwrap(); // Use basis state instead of random
 
         // Just verify that QFT and inverse QFT complete without error
-        let mut state = initial_state.clone();
+        let mut state = initial_state;
         qft.apply_qft(&mut state).unwrap();
         qft.apply_inverse_qft(&mut state).unwrap();
 

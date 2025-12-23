@@ -226,7 +226,7 @@ impl AdaptiveOptimizer {
     }
 
     /// Set learning rate
-    pub fn with_learning_rate(mut self, rate: f64) -> Self {
+    pub const fn with_learning_rate(mut self, rate: f64) -> Self {
         self.learning_rate = rate;
         self
     }
@@ -277,16 +277,16 @@ impl AdaptiveOptimizer {
                 Err(e) => {
                     // Record failure
                     self.record_run(RunRecord {
-                        problem_id: problem_id.clone(),
+                        problem_id,
                         algorithm: algorithm.clone(),
                         parameters: parameters.clone(),
                         quality: f64::INFINITY,
                         time_ms: start_time.elapsed().as_millis() as f64,
                         success: false,
-                        features: features.clone(),
+                        features,
                     });
 
-                    return Err(format!("Sampler error: {:?}", e));
+                    return Err(format!("Sampler error: {e:?}"));
                 }
             }
 
@@ -316,12 +316,7 @@ impl AdaptiveOptimizer {
             });
 
             // Update best solution
-            self.update_best_solution(
-                problem_id.clone(),
-                &best,
-                &algorithm,
-                total_time.as_secs_f64(),
-            );
+            self.update_best_solution(problem_id, &best, &algorithm, total_time.as_secs_f64());
 
             Ok(OptimizationResult {
                 best_solution: best.assignments,
@@ -399,7 +394,7 @@ impl AdaptiveOptimizer {
         features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
         let algorithm = match (&features.size_category, &features.density_category) {
-            (SizeCategory::Tiny, _) | (SizeCategory::Small, _) => "SA",
+            (SizeCategory::Tiny | SizeCategory::Small, _) => "SA",
             (_, DensityCategory::Sparse) => "GA",
             (SizeCategory::Medium, DensityCategory::Medium) => "SA",
             _ => "GA",
@@ -469,7 +464,7 @@ impl AdaptiveOptimizer {
 
                 Ok(Box::new(sampler))
             }
-            _ => Err(format!("Unknown algorithm: {}", algorithm)),
+            _ => Err(format!("Unknown algorithm: {algorithm}")),
         }
     }
 
@@ -532,7 +527,7 @@ impl AdaptiveOptimizer {
         } else {
             // Bad direction, reverse and decrease
             for (_, value) in params.iter_mut() {
-                *value *= 1.0 - self.learning_rate * 0.5;
+                *value *= self.learning_rate.mul_add(-0.5, 1.0);
             }
         }
     }
@@ -562,10 +557,12 @@ impl AdaptiveOptimizer {
 
         // Update statistics
         let n = perf.n_runs as f64;
-        perf.avg_quality = (perf.avg_quality * n + record.quality) / (n + 1.0);
-        perf.avg_time_ms = (perf.avg_time_ms * n + record.time_ms) / (n + 1.0);
-        perf.success_rate =
-            (perf.success_rate * n + if record.success { 1.0 } else { 0.0 }) / (n + 1.0);
+        perf.avg_quality = perf.avg_quality.mul_add(n, record.quality) / (n + 1.0);
+        perf.avg_time_ms = perf.avg_time_ms.mul_add(n, record.time_ms) / (n + 1.0);
+        perf.success_rate = perf
+            .success_rate
+            .mul_add(n, if record.success { 1.0 } else { 0.0 })
+            / (n + 1.0);
         perf.n_runs += 1;
 
         // Update best parameters if better
@@ -789,7 +786,7 @@ impl FeatureExtractor for StructureFeatureExtractor {
         for i in 0..n {
             for j in i + 1..n {
                 let diff = (qubo[[i, j]] - qubo[[j, i]]).abs();
-                let avg = (qubo[[i, j]].abs() + qubo[[j, i]].abs()) / 2.0;
+                let avg = f64::midpoint(qubo[[i, j]].abs(), qubo[[j, i]].abs());
                 if avg > 1e-10 {
                     symmetry_score += 1.0 - diff / avg;
                 }
@@ -810,7 +807,7 @@ impl FeatureExtractor for StructureFeatureExtractor {
 }
 
 impl StrategySelector {
-    fn new(strategy: SelectionStrategy) -> Self {
+    const fn new(strategy: SelectionStrategy) -> Self {
         Self {
             strategy,
             performance_threshold: 0.8,

@@ -5,7 +5,6 @@
 //! automatically selects the best available GPU backend (CUDA, Metal, OpenCL)
 //! and provides optimal performance for quantum circuit simulation.
 
-use scirs2_core::Complex64;
 use quantrs2_circuit::builder::Simulator as CircuitSimulator;
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
@@ -14,6 +13,7 @@ use quantrs2_core::gpu::{
 };
 use quantrs2_core::prelude::QubitId;
 use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
+use scirs2_core::Complex64;
 use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
@@ -37,7 +37,7 @@ impl SciRS2GpuStateVectorSimulator {
     pub fn new() -> QuantRS2Result<Self> {
         // TODO: Update to use scirs2_core beta.3 GPU API
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
         ));
 
         #[allow(unreachable_code)]
@@ -50,9 +50,9 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Create a new simulator with custom configuration
     pub fn with_config(_config: GpuConfig) -> QuantRS2Result<Self> {
-        // GPU backend API has changed in beta.1
+        // GPU backend API has changed in beta.3
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
         ));
 
         #[allow(unreachable_code)]
@@ -65,9 +65,9 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Create an optimized simulator for quantum machine learning
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
-        // TODO: GPU backend API has changed in beta.1
+        // TODO: GPU backend API has changed in beta.3
         return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.1. Please use CPU simulation for now.".to_string(),
+            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
         ));
         #[allow(unreachable_code)]
         Ok(Self {
@@ -102,14 +102,14 @@ impl SciRS2GpuStateVectorSimulator {
 
     /// Get available GPU backends
     pub fn available_backends() -> Vec<String> {
-        // TODO: SciRS2GpuFactory not available in beta.1
+        // TODO: SciRS2GpuFactory not available in beta.3
         vec![]
     }
 }
 
 impl Simulator for SciRS2GpuStateVectorSimulator {
     fn run<const N: usize>(&mut self, circuit: &Circuit<N>) -> Result<SimulatorResult<N>> {
-        // GPU backend not available in beta.1, use CPU fallback
+        // GPU backend not available in beta.3, use CPU fallback
         let cpu_sim = crate::statevector::StateVectorSimulator::new();
         let cpu_result = cpu_sim
             .run(circuit)
@@ -119,7 +119,7 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
             num_qubits: N,
         });
 
-        // Original GPU implementation (disabled in beta.1):
+        // Original GPU implementation (disabled in beta.3):
         #[allow(unreachable_code)]
         let backend = self
             .backend
@@ -209,8 +209,9 @@ impl Simulator for SciRS2GpuStateVectorSimulator {
                         .matrix()
                         .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
                     let size = 1 << qubits.len();
-                    let matrix_array = scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
-                        .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
+                    let matrix_array =
+                        scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix)
+                            .map_err(|e| SimulatorError::BackendError(e.to_string()))?;
 
                     kernel
                         .apply_multi_qubit_gate(state_vector.as_mut(), &matrix_array, &qubits, N)

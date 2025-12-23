@@ -3,8 +3,8 @@
 //! This module creates realistic noise models from device calibration data,
 //! enabling accurate simulation of quantum hardware behavior.
 
-use scirs2_core::Complex64;
 use scirs2_core::random::Rng;
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 use quantrs2_core::{

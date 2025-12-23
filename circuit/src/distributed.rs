@@ -4,11 +4,11 @@
 //! multiple quantum devices, simulators, or cloud services in a distributed manner.
 
 use crate::builder::Circuit;
-use scirs2_core::Complex64;
 use quantrs2_core::{
     error::{QuantRS2Error, QuantRS2Result},
     qubit::QubitId,
 };
+use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -71,13 +71,13 @@ pub enum BackendType {
     },
     /// Hybrid classical-quantum system
     Hybrid {
-        quantum_backend: Box<BackendType>,
+        quantum_backend: Box<Self>,
         classical_resources: ClassicalResources,
     },
 }
 
 /// Types of quantum simulators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimulatorType {
     StateVector,
     DensityMatrix,
@@ -112,7 +112,7 @@ pub struct GPUInfo {
 }
 
 /// Current status of a backend
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackendStatus {
     /// Available for execution
     Available,
@@ -265,7 +265,7 @@ pub struct Credentials {
 }
 
 /// Types of authentication
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthenticationType {
     ApiKey,
     Token,
@@ -312,7 +312,7 @@ pub enum BackoffStrategy {
 }
 
 /// Types of errors that can be retried
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     NetworkError,
     TimeoutError,
@@ -376,7 +376,7 @@ pub struct MetricsConfig {
 }
 
 /// Metrics storage backends
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetricsStorage {
     InMemory,
     File(String),
@@ -398,7 +398,7 @@ pub struct FaultToleranceConfig {
 }
 
 /// Error correction strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorCorrectionStrategy {
     /// No error correction
     None,
@@ -424,7 +424,7 @@ pub struct FailureDetectionConfig {
 }
 
 /// Failure detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailureDetectionMethod {
     /// Error rate monitoring
     ErrorRateMonitoring,
@@ -448,7 +448,7 @@ pub struct ExecutionScheduler {
 }
 
 /// Scheduling policies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SchedulingPolicy {
     /// First-come, first-served
     FCFS,
@@ -476,7 +476,7 @@ pub struct PriorityQueueConfig {
 }
 
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceAllocationStrategy {
     /// Best fit
     BestFit,
@@ -575,7 +575,7 @@ pub struct ExecutionParameters {
 }
 
 /// Error mitigation techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorMitigation {
     /// Readout error mitigation
     ReadoutErrorMitigation,
@@ -590,7 +590,7 @@ pub enum ErrorMitigation {
 }
 
 /// Result format options
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResultFormat {
     /// Raw counts
     Counts,
@@ -620,7 +620,7 @@ pub struct DistributedResult {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStatus {
     /// Job queued
     Queued,
@@ -720,6 +720,7 @@ pub struct CostInfo {
 
 impl DistributedExecutor {
     /// Create a new distributed executor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             backends: Vec::new(),
@@ -940,13 +941,13 @@ impl DistributedExecutor {
     }
 
     /// Get execution status for a job
-    pub fn get_job_status(&self, job_id: &str) -> QuantRS2Result<ExecutionStatus> {
+    pub const fn get_job_status(&self, job_id: &str) -> QuantRS2Result<ExecutionStatus> {
         // This is a placeholder - real implementation would track job status
         Ok(ExecutionStatus::Queued)
     }
 
     /// Cancel a job
-    pub fn cancel_job(&mut self, job_id: &str) -> QuantRS2Result<()> {
+    pub const fn cancel_job(&mut self, job_id: &str) -> QuantRS2Result<()> {
         // This is a placeholder - real implementation would cancel the job
         // across all backends and clean up resources
         Ok(())
@@ -977,6 +978,7 @@ impl DistributedExecutor {
     }
 
     /// Get system health status
+    #[must_use]
     pub fn get_health_status(&self) -> SystemHealthStatus {
         let available_backends = self
             .backends

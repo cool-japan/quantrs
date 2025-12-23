@@ -3,14 +3,14 @@
 //! This example demonstrates the scikit-learn compatibility layer, showing how to use
 //! quantum models with familiar sklearn APIs including pipelines, cross-validation, and grid search.
 
-use scirs2_core::ndarray::{s, Array1, Array2, Axis};
 use quantrs2_ml::prelude::*;
 use quantrs2_ml::sklearn_compatibility::{
     metrics, model_selection, Pipeline, QuantumFeatureEncoder, SelectKBest, SklearnFit,
     StandardScaler,
 };
-use std::collections::HashMap;
+use scirs2_core::ndarray::{s, Array1, Array2, Axis};
 use scirs2_core::random::prelude::*;
+use std::collections::HashMap;
 
 #[allow(non_snake_case)]
 fn main() -> Result<()> {
@@ -76,7 +76,7 @@ fn main() -> Result<()> {
 
     let quantum_pipeline = Pipeline::new(vec![
         ("preprocessing", Box::new(preprocessing_pipeline)),
-        ("classifier", Box::new(qsvc.clone())),
+        ("classifier", Box::new(qsvc)),
     ])?;
 
     println!("   Pipeline steps:");
@@ -108,7 +108,7 @@ fn main() -> Result<()> {
         5, // cv
     )?;
 
-    println!("   Cross-validation scores: {:?}", cv_scores);
+    println!("   Cross-validation scores: {cv_scores:?}");
     println!(
         "   Mean CV accuracy: {:.3} (+/- {:.3})",
         cv_scores.mean().unwrap(),
@@ -134,7 +134,7 @@ fn main() -> Result<()> {
     ]);
 
     let mut grid_search = model_selection::GridSearchCV::new(
-        quantum_pipeline.clone(), // estimator
+        quantum_pipeline, // estimator
         param_grid,
         3, // cv
     );
@@ -161,10 +161,10 @@ fn main() -> Result<()> {
     let f1 = metrics::f1_score(&y_test_int, &y_pred, "weighted"); // average
 
     println!("   Test Results:");
-    println!("   - Accuracy: {:.3}", accuracy);
-    println!("   - Precision: {:.3}", precision);
-    println!("   - Recall: {:.3}", recall);
-    println!("   - F1-score: {:.3}", f1);
+    println!("   - Accuracy: {accuracy:.3}");
+    println!("   - Precision: {precision:.3}");
+    println!("   - Recall: {recall:.3}");
+    println!("   - F1-score: {f1:.3}");
 
     // Step 9: Classification report
     println!("\n9. Detailed classification report...");
@@ -175,7 +175,7 @@ fn main() -> Result<()> {
         vec!["Class 0", "Class 1"], // target_names
         3,                          // digits
     );
-    println!("{}", classification_report);
+    println!("{classification_report}");
 
     // Step 10: Feature importance analysis
     println!("\n10. Feature importance analysis...");
@@ -183,7 +183,7 @@ fn main() -> Result<()> {
     if let Some(feature_importances) = best_model.feature_importances() {
         println!("    Quantum Feature Importances:");
         for (i, importance) in feature_importances.iter().enumerate() {
-            println!("    - Feature {}: {:.4}", i, importance);
+            println!("    - Feature {i}: {importance:.4}");
         }
     }
 
@@ -212,9 +212,9 @@ fn main() -> Result<()> {
     }
 
     println!("    Model Comparison:");
-    println!("    - Quantum Pipeline: {:.3}", accuracy);
+    println!("    - Quantum Pipeline: {accuracy:.3}");
     for (name, classical_accuracy) in comparison_results {
-        println!("    - {}: {:.3}", name, classical_accuracy);
+        println!("    - {name}: {classical_accuracy:.3}");
     }
 
     // Step 12: Clustering with quantum K-means
@@ -225,8 +225,8 @@ fn main() -> Result<()> {
     let calinski_score = metrics::calinski_harabasz_score(&X, &cluster_labels);
 
     println!("    Clustering Results:");
-    println!("    - Silhouette Score: {:.3}", silhouette_score);
-    println!("    - Calinski-Harabasz Score: {:.3}", calinski_score);
+    println!("    - Silhouette Score: {silhouette_score:.3}");
+    println!("    - Calinski-Harabasz Score: {calinski_score:.3}");
     println!(
         "    - Unique clusters found: {}",
         cluster_labels
@@ -254,9 +254,9 @@ fn main() -> Result<()> {
     // Learning curves (commented out - function not available)
     // let (train_sizes, train_scores, val_scores) = model_selection::learning_curve(...)?;
     println!("    Learning Curve Analysis: (Mock results)");
-    let train_sizes = vec![0.1, 0.33, 0.55, 0.78, 1.0];
-    let train_scores = vec![0.65, 0.72, 0.78, 0.82, 0.85];
-    let val_scores = vec![0.62, 0.70, 0.76, 0.79, 0.81];
+    let train_sizes = [0.1, 0.33, 0.55, 0.78, 1.0];
+    let train_scores = [0.65, 0.72, 0.78, 0.82, 0.85];
+    let val_scores = [0.62, 0.70, 0.76, 0.79, 0.81];
 
     for (i, &size) in train_sizes.iter().enumerate() {
         println!(
@@ -270,9 +270,9 @@ fn main() -> Result<()> {
     // Validation curves (commented out - function not available)
     // let (train_scores_val, test_scores_val) = model_selection::validation_curve(...)?;
     println!("    Validation Curve (C parameter): (Mock results)");
-    let param_range = vec![0.1, 0.5, 1.0, 2.0, 5.0];
-    let train_scores_val = vec![0.70, 0.75, 0.80, 0.78, 0.75];
-    let test_scores_val = vec![0.68, 0.73, 0.78, 0.76, 0.72];
+    let param_range = [0.1, 0.5, 1.0, 2.0, 5.0];
+    let train_scores_val = [0.70, 0.75, 0.80, 0.78, 0.75];
+    let test_scores_val = [0.68, 0.73, 0.78, 0.76, 0.72];
 
     for (i, &param_value) in param_range.iter().enumerate() {
         println!(
@@ -325,8 +325,8 @@ fn create_sklearn_dataset() -> Result<(Array2<f64>, Array1<f64>)> {
 
     // Create a dataset similar to sklearn's make_classification
     let X = Array2::from_shape_fn((num_samples, num_features), |(i, j)| {
-        let base = (i as f64 * 0.02) + (j as f64 * 0.5);
-        let noise = fastrand::f64() * 0.3 - 0.15;
+        let base = (i as f64).mul_add(0.02, j as f64 * 0.5);
+        let noise = fastrand::f64().mul_add(0.3, -0.15);
         base.sin() + noise
     });
 
@@ -343,6 +343,7 @@ fn create_sklearn_dataset() -> Result<(Array2<f64>, Array1<f64>)> {
     Ok((X, y))
 }
 
+#[allow(non_snake_case)] // X is standard ML convention for feature matrix
 fn analyze_quantum_features(
     model: &dyn SklearnClassifier,
     X: &Array2<f64>,
@@ -355,7 +356,7 @@ fn analyze_quantum_features(
     SklearnFit::fit(
         &mut classical_model,
         X,
-        &predictions_quantum.mapv(|x| x as f64),
+        &predictions_quantum.mapv(f64::from),
     )?; // Use quantum predictions as targets
     let predictions_classical = classical_model.predict(X)?;
 
@@ -363,7 +364,7 @@ fn analyze_quantum_features(
     let advantage_score = predictions_quantum
         .iter()
         .zip(predictions_classical.iter())
-        .map(|(&q, &c)| (q as f64 - c as f64).abs())
+        .map(|(&q, &c)| (f64::from(q) - f64::from(c)).abs())
         .sum::<f64>()
         / predictions_quantum.len() as f64;
 
@@ -384,7 +385,7 @@ fn interpret_quantum_model(
     Ok(QuantumInterpretation {
         state_fidelity: 0.92,                            // Mock value
         feature_contributions: vec![0.3, 0.2, 0.4, 0.1], // Mock values
-        prediction: prediction[0] as f64,
+        prediction: f64::from(prediction[0]),
     })
 }
 
@@ -408,7 +409,7 @@ struct LogisticRegression {
 }
 
 impl LogisticRegression {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { fitted: false }
     }
 }
@@ -442,13 +443,7 @@ impl SklearnClassifier for LogisticRegression {
             ));
         }
         // Mock predictions
-        Ok(Array1::from_shape_fn(X.nrows(), |i| {
-            if i % 2 == 0 {
-                1
-            } else {
-                0
-            }
-        }))
+        Ok(Array1::from_shape_fn(X.nrows(), |i| i32::from(i % 2 == 0)))
     }
 
     fn predict_proba(&self, X: &Array2<f64>) -> Result<Array2<f64>> {
@@ -479,7 +474,7 @@ struct RandomForestClassifier {
 }
 
 impl RandomForestClassifier {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { fitted: false }
     }
 }
@@ -514,11 +509,7 @@ impl SklearnClassifier for RandomForestClassifier {
         }
         // Mock predictions with higher accuracy
         Ok(Array1::from_shape_fn(X.nrows(), |i| {
-            if (i * 3) % 4 != 0 {
-                1
-            } else {
-                0
-            }
+            i32::from((i * 3) % 4 != 0)
         }))
     }
 
@@ -550,7 +541,7 @@ struct SVC {
 }
 
 impl SVC {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { fitted: false }
     }
 }
@@ -584,13 +575,7 @@ impl SklearnClassifier for SVC {
             ));
         }
         // Mock predictions
-        Ok(Array1::from_shape_fn(X.nrows(), |i| {
-            if i % 3 == 0 {
-                0
-            } else {
-                1
-            }
-        }))
+        Ok(Array1::from_shape_fn(X.nrows(), |i| i32::from(i % 3 != 0)))
     }
 
     fn predict_proba(&self, X: &Array2<f64>) -> Result<Array2<f64>> {

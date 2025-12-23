@@ -1,8 +1,8 @@
 //! Demonstration of the HHL algorithm for solving linear systems
 
+use quantrs2_core::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
-use quantrs2_core::prelude::*;
 use std::time::Instant;
 
 fn main() {
@@ -29,7 +29,7 @@ fn simple_2x2_example() {
     // Use the built-in example
     match hhl_example() {
         Ok(()) => println!("HHL example completed successfully"),
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {e}"),
     }
 }
 
@@ -56,7 +56,7 @@ fn larger_system_example() {
             Complex64::new(4.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 4x4 Hermitian matrix for HHL algorithm demonstration");
 
     // Vector b
     let vector_b = Array1::from_vec(vec![
@@ -74,7 +74,7 @@ fn larger_system_example() {
         println!();
     }
 
-    println!("\nVector b: {:?}", vector_b);
+    println!("\nVector b: {vector_b:?}");
 
     // Set up HHL parameters
     let params = HHLParams {
@@ -94,16 +94,16 @@ fn larger_system_example() {
                 let elapsed = start.elapsed();
 
                 println!("\nHHL Algorithm Results:");
-                println!("Time: {:?}", elapsed);
+                println!("Time: {elapsed:?}");
                 println!("Solution |x⟩:");
                 for (i, val) in solution.iter().enumerate() {
                     println!("  x[{}] = {:.4} + {:.4}i", i, val.re, val.im);
                 }
-                println!("Success probability: {:.4}", success_prob);
+                println!("Success probability: {success_prob:.4}");
             }
-            Err(e) => println!("Error running HHL: {}", e),
+            Err(e) => println!("Error running HHL: {e}"),
         },
-        Err(e) => println!("Error creating HHL instance: {}", e),
+        Err(e) => println!("Error creating HHL instance: {e}"),
     }
 }
 
@@ -149,12 +149,12 @@ fn quantum_vs_classical() {
     for _ in 0..100 {
         let grad = matrix.dot(&x_classical) - &vector_b;
         for i in 0..n {
-            x_classical[i] = x_classical[i] - grad[i] * 0.1;
+            x_classical[i] -= grad[i] * 0.1;
         }
     }
 
     let classical_time = start_classical.elapsed();
-    println!("Time: {:?}", classical_time);
+    println!("Time: {classical_time:?}");
     for (i, val) in x_classical.iter().enumerate() {
         println!("  x[{}] = {:.4}", i, val.re);
     }
@@ -164,13 +164,13 @@ fn quantum_vs_classical() {
     let params = HHLParams::new(2);
 
     let start_quantum = Instant::now();
-    match HHLAlgorithm::new(matrix.clone(), vector_b.clone(), params) {
+    match HHLAlgorithm::new(matrix.clone(), vector_b, params) {
         Ok(hhl) => {
             match hhl.run() {
                 Ok((solution, success_prob)) => {
                     let quantum_time = start_quantum.elapsed();
 
-                    println!("Time: {:?}", quantum_time);
+                    println!("Time: {quantum_time:?}");
 
                     // Normalize to compare with true solution
                     let scale = true_solution[0] / solution[0];
@@ -179,7 +179,7 @@ fn quantum_vs_classical() {
                         let scaled = val * scale;
                         println!("  x[{}] = {:.4}", i, scaled.re);
                     }
-                    println!("Success probability: {:.4}", success_prob);
+                    println!("Success probability: {success_prob:.4}");
 
                     // Compute error
                     let mut error = 0.0;
@@ -187,12 +187,12 @@ fn quantum_vs_classical() {
                         let scaled = solution[i] * scale;
                         error += (scaled - true_solution[i]).norm();
                     }
-                    println!("Total error: {:.6}", error);
+                    println!("Total error: {error:.6}");
                 }
-                Err(e) => println!("Error running HHL: {}", e),
+                Err(e) => println!("Error running HHL: {e}"),
             }
         }
-        Err(e) => println!("Error creating HHL instance: {}", e),
+        Err(e) => println!("Error creating HHL instance: {e}"),
     }
 }
 
@@ -216,6 +216,6 @@ fn quantum_advantage_demo() {
         let n = 1 << i;
         let classical = n * n * n;
         let quantum = i * 100; // log(n) × κ²
-        println!("{}\t{}\t\t{}", n, classical, quantum);
+        println!("{n}\t{classical}\t\t{quantum}");
     }
 }

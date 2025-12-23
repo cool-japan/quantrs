@@ -4,9 +4,9 @@
 //! enabling efficient execution of variational algorithms like VQE and QAOA.
 
 use crate::{CircuitResult, DeviceError, DeviceResult};
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::gate::{multi::*, single::*, GateOp};
+use scirs2_core::ndarray::{Array1, Array2};
 use std::collections::HashMap;
 use std::sync::Arc;
 

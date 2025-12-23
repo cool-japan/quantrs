@@ -3,8 +3,8 @@
 //! This example demonstrates how to use the quantum anomaly detection module
 //! for various types of anomaly detection tasks.
 
-use scirs2_core::ndarray::{Array1, Array2};
 use quantrs2_ml::prelude::*;
+use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 
 fn main() -> quantrs2_ml::Result<()> {
@@ -27,14 +27,11 @@ fn main() -> quantrs2_ml::Result<()> {
 
     for i in 0..n_samples {
         for j in 0..n_features {
-            normal_data[[i, j]] = thread_rng().gen::<f64>() * 2.0 - 1.0; // Normal range [-1, 1]
+            normal_data[[i, j]] = thread_rng().gen::<f64>().mul_add(2.0, -1.0); // Normal range [-1, 1]
         }
     }
 
-    println!(
-        "Generated {} normal samples with {} features",
-        n_samples, n_features
-    );
+    println!("Generated {n_samples} normal samples with {n_features} features");
 
     // Train the detector on normal data
     println!("Training anomaly detector...");
@@ -52,21 +49,18 @@ fn main() -> quantrs2_ml::Result<()> {
     // Normal samples (first 80)
     for i in 0..80 {
         for j in 0..n_features {
-            test_data[[i, j]] = thread_rng().gen::<f64>() * 2.0 - 1.0;
+            test_data[[i, j]] = thread_rng().gen::<f64>().mul_add(2.0, -1.0);
         }
     }
 
     // Anomalous samples (last 20) - outliers with larger values
     for i in 80..n_test {
         for j in 0..n_features {
-            test_data[[i, j]] = thread_rng().gen::<f64>() * 6.0 + 5.0; // Anomalous range [5, 11]
+            test_data[[i, j]] = thread_rng().gen::<f64>().mul_add(6.0, 5.0); // Anomalous range [5, 11]
         }
     }
 
-    println!(
-        "Generated {} test samples (80 normal, 20 anomalous)",
-        n_test
-    );
+    println!("Generated {n_test} test samples (80 normal, 20 anomalous)");
 
     // Detect anomalies
     println!("Detecting anomalies...");
@@ -84,10 +78,7 @@ fn main() -> quantrs2_ml::Result<()> {
     );
 
     let anomaly_count = result.anomaly_labels.iter().sum::<i32>();
-    println!(
-        "Detected {} anomalies out of {} samples",
-        anomaly_count, n_test
-    );
+    println!("Detected {anomaly_count} anomalies out of {n_test} samples");
 
     // Performance metrics
     println!("\nPerformance Metrics:");

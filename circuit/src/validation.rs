@@ -267,6 +267,7 @@ pub struct CircuitValidator {
 
 impl CircuitValidator {
     /// Create a new circuit validator
+    #[must_use]
     pub fn new() -> Self {
         let mut validator = Self {
             backend_rules: HashMap::new(),
@@ -284,6 +285,7 @@ impl CircuitValidator {
     }
 
     /// Get available backends for validation
+    #[must_use]
     pub fn available_backends(&self) -> Vec<String> {
         self.backend_rules.keys().cloned().collect()
     }
@@ -301,7 +303,7 @@ impl CircuitValidator {
         let rules = self
             .backend_rules
             .get(backend)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {}", backend)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {backend}")))?;
 
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -568,7 +570,7 @@ impl CircuitValidator {
     }
 
     /// Validate measurement constraints
-    fn validate_measurements<const N: usize>(
+    const fn validate_measurements<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
@@ -627,7 +629,7 @@ impl CircuitValidator {
     }
 
     /// Estimate memory usage
-    fn estimate_memory_usage<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
+    const fn estimate_memory_usage<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
         // Estimate based on state vector simulation
         if N <= 30 {
             (1usize << N) * 16 // 16 bytes per complex amplitude
@@ -651,13 +653,13 @@ impl CircuitValidator {
                 1 => noise_model
                     .single_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.depolarizing + e.amplitude_damping + e.phase_damping)
-                    .unwrap_or(0.001),
+                    .map_or(0.001, |e| {
+                        e.depolarizing + e.amplitude_damping + e.phase_damping
+                    }),
                 2 => noise_model
                     .two_qubit_errors
                     .get(gate_name)
-                    .map(|e| e.depolarizing)
-                    .unwrap_or(0.01),
+                    .map_or(0.01, |e| e.depolarizing),
                 _ => 0.05, // Multi-qubit gates
             };
             total_error += error;
@@ -715,17 +717,18 @@ impl CircuitValidator {
 
 impl ValidationRules {
     /// IBM Quantum validation rules
+    #[must_use]
     pub fn ibm_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
-            two_qubit: ["CNOT", "CZ"].iter().map(|s| s.to_string()).collect(),
+            two_qubit: ["CNOT", "CZ"].iter().map(|s| (*s).to_string()).collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -746,14 +749,14 @@ impl ValidationRules {
                 gate_qubit_restrictions: HashMap::new(),
             },
             depth_limits: DepthLimits {
-                max_depth: Some(10000),
-                max_execution_time: Some(100000.0), // 100ms
-                max_gates: Some(50000),
+                max_depth: Some(10_000),
+                max_execution_time: Some(100_000.0), // 100ms
+                max_gates: Some(50_000),
                 gate_type_limits: HashMap::new(),
             },
             measurement_constraints: MeasurementConstraints {
                 allow_mid_circuit: true,
-                max_measurements: Some(1000),
+                max_measurements: Some(1_000),
                 allow_conditional: true,
                 required_basis: None,
                 non_measurable_qubits: HashSet::new(),
@@ -765,26 +768,27 @@ impl ValidationRules {
                 max_conditional_depth: Some(100),
             },
             resource_limits: ResourceLimits {
-                max_memory_mb: Some(8192),
-                max_shots: Some(100000),
-                max_runtime_seconds: Some(3600),
+                max_memory_mb: Some(8_192),
+                max_shots: Some(100_000),
+                max_runtime_seconds: Some(3_600),
                 priority_constraints: None,
             },
         }
     }
 
     /// Google Quantum AI validation rules
+    #[must_use]
     pub fn google_quantum() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "SQRT_X"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
-            two_qubit: ["CZ", "ISWAP"].iter().map(|s| s.to_string()).collect(),
+            two_qubit: ["CZ", "ISWAP"].iter().map(|s| (*s).to_string()).collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -805,9 +809,9 @@ impl ValidationRules {
                 gate_qubit_restrictions: HashMap::new(),
             },
             depth_limits: DepthLimits {
-                max_depth: Some(5000),
-                max_execution_time: Some(50000.0),
-                max_gates: Some(20000),
+                max_depth: Some(5_000),
+                max_execution_time: Some(50_000.0),
+                max_gates: Some(20_000),
                 gate_type_limits: HashMap::new(),
             },
             measurement_constraints: MeasurementConstraints {
@@ -824,29 +828,30 @@ impl ValidationRules {
                 max_conditional_depth: None,
             },
             resource_limits: ResourceLimits {
-                max_memory_mb: Some(4096),
-                max_shots: Some(50000),
-                max_runtime_seconds: Some(1800),
+                max_memory_mb: Some(4_096),
+                max_shots: Some(50_000),
+                max_runtime_seconds: Some(1_800),
                 priority_constraints: None,
             },
         }
     }
 
     /// AWS Braket validation rules
+    #[must_use]
     pub fn aws_braket() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "RZ", "RX", "RY"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             two_qubit: ["CNOT", "CZ", "ISWAP"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             multi_qubit: HashSet::new(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 
@@ -868,7 +873,7 @@ impl ValidationRules {
             },
             depth_limits: DepthLimits {
                 max_depth: None,
-                max_execution_time: Some(200000.0),
+                max_execution_time: Some(200_000.0),
                 max_gates: None,
                 gate_type_limits: HashMap::new(),
             },
@@ -886,32 +891,33 @@ impl ValidationRules {
                 max_conditional_depth: None,
             },
             resource_limits: ResourceLimits {
-                max_memory_mb: Some(16384),
-                max_shots: Some(1000000),
-                max_runtime_seconds: Some(7200),
+                max_memory_mb: Some(16_384),
+                max_shots: Some(1_000_000),
+                max_runtime_seconds: Some(7_200),
                 priority_constraints: None,
             },
         }
     }
 
     /// Simulator validation rules
+    #[must_use]
     pub fn simulator() -> Self {
         let native_gates = NativeGateSet {
             single_qubit: ["X", "Y", "Z", "H", "S", "T", "RZ", "RX", "RY", "U"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             two_qubit: ["CNOT", "CZ", "ISWAP", "SWAP", "CX"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             multi_qubit: ["Toffoli", "Fredkin"]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect(),
             parameterized: [("RZ", 1), ("RX", 1), ("RY", 1), ("U", 3)]
                 .iter()
-                .map(|(k, v)| (k.to_string(), *v))
+                .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
 

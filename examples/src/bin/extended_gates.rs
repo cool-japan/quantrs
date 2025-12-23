@@ -17,11 +17,15 @@ fn main() {
     println!("EXAMPLE 1: Square Root of X Gate");
     println!("--------------------------------");
     let mut sx_circuit = Circuit::<1>::new();
-    sx_circuit.sx(0).unwrap();
+    sx_circuit
+        .sx(0)
+        .expect("Failed to apply √X gate to qubit 0");
 
     // Run the circuit
     let simulator = StateVectorSimulator::new();
-    let result = simulator.run(&sx_circuit).unwrap();
+    let result = simulator
+        .run(&sx_circuit)
+        .expect("Failed to run √X circuit");
 
     // Print the resulting state vector
     println!("After applying √X to |0⟩:");
@@ -43,11 +47,17 @@ fn main() {
 
     // S gate followed by S-dagger should give identity
     let mut sdg_circuit = Circuit::<1>::new();
-    sdg_circuit.s(0).unwrap().sdg(0).unwrap();
+    sdg_circuit
+        .s(0)
+        .expect("Failed to apply S gate to qubit 0")
+        .sdg(0)
+        .expect("Failed to apply S† gate to qubit 0");
 
     // Run the circuit
     let simulator = StateVectorSimulator::new();
-    let result = simulator.run(&sdg_circuit).unwrap();
+    let result = simulator
+        .run(&sdg_circuit)
+        .expect("Failed to run S-S† circuit");
 
     // Print the resulting state vector
     println!("After applying S then S† to |0⟩:");
@@ -67,17 +77,23 @@ fn main() {
 
     // Create a superposition on the control qubit and apply CH
     let mut controlled_circuit = Circuit::<2>::new();
-    controlled_circuit.h(0).unwrap().ch(0, 1).unwrap();
+    controlled_circuit
+        .h(0)
+        .expect("Failed to apply H gate to qubit 0")
+        .ch(0, 1)
+        .expect("Failed to apply CH gate from qubit 0 to qubit 1");
 
     // Run the circuit
     let simulator = StateVectorSimulator::sequential(); // Use sequential for predictable output order
-    let result = simulator.run(&controlled_circuit).unwrap();
+    let result = simulator
+        .run(&controlled_circuit)
+        .expect("Failed to run controlled Hadamard circuit");
 
     // Print the resulting state vector
     println!("After applying H to q0, then CH(q0, q1):");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
         // Format the state in binary
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (magnitude: {:.6})",
             bits,
@@ -95,19 +111,21 @@ fn main() {
     let mut crz_circuit = Circuit::<2>::new();
     crz_circuit
         .x(0)
-        .unwrap()
+        .expect("Failed to apply X gate to qubit 0")
         .crz(0, 1, std::f64::consts::PI / 2.0)
-        .unwrap();
+        .expect("Failed to apply CRZ gate from qubit 0 to qubit 1");
 
     // Run the circuit
     let simulator = StateVectorSimulator::sequential();
-    let result = simulator.run(&crz_circuit).unwrap();
+    let result = simulator
+        .run(&crz_circuit)
+        .expect("Failed to run controlled rotation circuit");
 
     // Print the resulting state vector
     println!("After applying X to q0, then CRZ(q0, q1, π/2):");
     for (i, amplitude) in result.amplitudes().iter().enumerate() {
         // Format the state in binary
-        let bits = format!("{:02b}", i);
+        let bits = format!("{i:02b}");
         println!(
             "|{}⟩: {} (magnitude: {:.6})",
             bits,

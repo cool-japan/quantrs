@@ -744,7 +744,7 @@ impl QuantumAutoDiff {
 
     // Optimizer implementations
 
-    fn sgd_update(&mut self, gradients: &GradientResult, learning_rate: f64) -> QuantRS2Result<()> {
+    fn sgd_update(&self, gradients: &GradientResult, learning_rate: f64) -> QuantRS2Result<()> {
         let mut registry = self.parameter_registry.write().unwrap();
 
         for (i, &param_id) in gradients.parameter_ids.iter().enumerate() {
@@ -762,27 +762,19 @@ impl QuantumAutoDiff {
         Ok(())
     }
 
-    fn adam_update(
-        &mut self,
-        _gradients: &GradientResult,
-        _learning_rate: f64,
-    ) -> QuantRS2Result<()> {
+    fn adam_update(&self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
         // Simplified Adam optimizer implementation
         // In a full implementation, this would track momentum and second moments
         Ok(())
     }
 
-    fn lbfgs_update(
-        &mut self,
-        _gradients: &GradientResult,
-        _learning_rate: f64,
-    ) -> QuantRS2Result<()> {
+    fn lbfgs_update(&self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
         // Simplified L-BFGS implementation
         Ok(())
     }
 
     fn adagrad_update(
-        &mut self,
+        &self,
         _gradients: &GradientResult,
         _learning_rate: f64,
     ) -> QuantRS2Result<()> {

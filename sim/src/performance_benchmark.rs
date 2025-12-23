@@ -4,8 +4,8 @@
 //! the performance of various quantum simulation components, including optimizations,
 //! memory efficiency, and scalability analysis.
 
-use scirs2_core::Complex64;
 use scirs2_core::parallel_ops::*;
+use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -420,7 +420,7 @@ impl QuantumBenchmarkSuite {
 
             // Break if taking too long
             if avg_time > Duration::from_secs(10) {
-                println!("  ⚠️ Breaking at {} qubits due to time limit", qubits);
+                println!("  ⚠️ Breaking at {qubits} qubits due to time limit");
                 break;
             }
         }
@@ -496,7 +496,7 @@ impl QuantumBenchmarkSuite {
             let simd_time = start.elapsed();
 
             let speedup = regular_time.as_nanos() as f64 / simd_time.as_nanos() as f64;
-            println!("  ✓ Size {}: {:.2}x SIMD speedup", size, speedup);
+            println!("  ✓ Size {size}: {speedup:.2}x SIMD speedup");
         }
 
         println!();
@@ -565,7 +565,7 @@ impl QuantumBenchmarkSuite {
         let timing_stats = self.calculate_timing_stats(&times);
 
         Ok(BenchmarkResult {
-            name: format!("{}_{}q", gate_name, qubits),
+            name: format!("{gate_name}_{qubits}q"),
             qubits,
             depth: 1,
             timing: timing_stats.clone(),
@@ -612,7 +612,7 @@ impl QuantumBenchmarkSuite {
         let timing_stats = self.calculate_timing_stats(&times);
 
         Ok(BenchmarkResult {
-            name: format!("random_circuit_{}q_{}d", qubits, depth),
+            name: format!("random_circuit_{qubits}q_{depth}d"),
             qubits,
             depth,
             timing: timing_stats.clone(),
@@ -678,7 +678,7 @@ impl QuantumBenchmarkSuite {
                 operations_per_second: 10.0 / (timing_stats.average_ns as f64 / 1_000_000_000.0),
                 steps_per_second: 1.0 / (timing_stats.average_ns as f64 / 1_000_000_000.0),
             },
-            config_description: format!("{} memory configuration", config_name),
+            config_description: format!("{config_name} memory configuration"),
         })
     }
 
@@ -726,7 +726,7 @@ impl QuantumBenchmarkSuite {
                 operations_per_second: 20.0 / (timing_stats.average_ns as f64 / 1_000_000_000.0),
                 steps_per_second: 1.0 / (timing_stats.average_ns as f64 / 1_000_000_000.0),
             },
-            config_description: format!("{} optimization strategy", opt_name),
+            config_description: format!("{opt_name} optimization strategy"),
         })
     }
 
@@ -844,8 +844,7 @@ impl QuantumBenchmarkSuite {
             .iter()
             .take_while(|(_, time)| time.as_secs() < 10)
             .last()
-            .map(|(q, _)| *q + 2)
-            .unwrap_or(20);
+            .map_or(20, |(q, _)| *q + 2);
 
         ScalabilityAnalysis {
             time_growth_factor: avg_growth,
@@ -1079,7 +1078,7 @@ impl QuantumBenchmarkSuite {
     }
 
     /// Get benchmark configuration
-    pub fn get_config(&self) -> &BenchmarkConfig {
+    pub const fn get_config(&self) -> &BenchmarkConfig {
         &self.config
     }
 

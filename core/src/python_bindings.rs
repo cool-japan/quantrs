@@ -29,11 +29,11 @@ use crate::{
     variational::VariationalCircuit,
 };
 
-use scirs2_core::ndarray::Array2;
-use scirs2_core::Complex64;
-use numpy::{PyArray2, PyReadonlyArray2};
 use pyo3::prelude::*;
 use pyo3::types::PyString;
+use scirs2_core::ndarray::Array2;
+use scirs2_core::Complex64;
+use scirs2_numpy::{PyArray2, PyReadonlyArray2};
 use std::time::{Duration, SystemTime};
 
 /// Python wrapper for QubitId
@@ -431,7 +431,7 @@ impl PyNumRS2Array {
     /// Create NumRS2Array from NumPy array
     #[staticmethod]
     fn from_numpy(array: &Bound<'_, PyArray2<Complex64>>) -> PyResult<Self> {
-        use numpy::PyArrayMethods;
+        use scirs2_numpy::PyArrayMethods;
         let readonly = array.readonly();
         let ndarray_view = readonly.as_array();
         let owned_array = ndarray_view.to_owned();

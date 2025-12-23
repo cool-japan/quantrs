@@ -3,8 +3,6 @@
 //! This module provides comprehensive bindings for all gate operations from the core module,
 //! including standard gates, parameterized gates, multi-qubit gates, and custom gate creation.
 
-use scirs2_core::Complex64;
-use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList, PyTuple};
@@ -14,6 +12,11 @@ use quantrs2_core::parametric::{
     ParametricRotationY, ParametricRotationZ, ParametricU,
 };
 use quantrs2_core::qubit::QubitId;
+use scirs2_core::Complex64;
+use scirs2_numpy::{
+    IntoPyArray, PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2,
+    PyUntypedArrayMethods,
+};
 use std::collections::HashMap;
 
 /// Base class for all quantum gates
@@ -55,13 +58,15 @@ impl Gate {
         let matrix_vec = self
             .gate
             .matrix()
-            .map_err(|e| PyValueError::new_err(format!("Error getting gate matrix: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Error getting gate matrix: {e}")))?;
 
         let size = (matrix_vec.len() as f64).sqrt() as usize;
         // Convert to ndarray first, then to PyArray
         let arr = scirs2_core::ndarray::Array2::from_shape_vec((size, size), matrix_vec)
-            .map_err(|e| PyValueError::new_err(format!("Invalid matrix shape: {}", e)))?;
-        Ok(PyArray2::from_array(py, &arr))
+            .map_err(|e| PyValueError::new_err(format!("Invalid matrix shape: {e}")))?;
+
+        // scirs2-numpy handles scirs2_core::Complex64 natively
+        Ok(arr.into_pyarray(py))
     }
 
     /// Get the matrix representation as a list of complex numbers
@@ -69,7 +74,7 @@ impl Gate {
         let matrix_vec = self
             .gate
             .matrix()
-            .map_err(|e| PyValueError::new_err(format!("Error getting gate matrix: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Error getting gate matrix: {e}")))?;
 
         let result = PyList::empty(py);
         for amp in matrix_vec {
@@ -90,7 +95,7 @@ impl Gate {
     }
 
     /// Check equality with another gate
-    fn __eq__(&self, other: &Gate) -> bool {
+    fn __eq__(&self, other: &Self) -> bool {
         self.gate.name() == other.gate.name() && self.gate.qubits() == other.gate.qubits()
     }
 }
@@ -487,7 +492,7 @@ impl GateParameter {
     /// Create a constant parameter
     #[staticmethod]
     fn constant(value: f64) -> Self {
-        GateParameter {
+        Self {
             param: Parameter::constant(value),
         }
     }
@@ -495,7 +500,7 @@ impl GateParameter {
     /// Create a symbolic parameter
     #[staticmethod]
     fn symbol(name: &str) -> Self {
-        GateParameter {
+        Self {
             param: Parameter::symbol(name),
         }
     }
@@ -503,7 +508,7 @@ impl GateParameter {
     /// Create a symbolic parameter with value
     #[staticmethod]
     fn symbol_with_value(name: &str, value: f64) -> Self {
-        GateParameter {
+        Self {
             param: Parameter::symbol_with_value(name, value),
         }
     }
@@ -522,13 +527,13 @@ impl GateParameter {
 
     fn __repr__(&self) -> String {
         match &self.param {
-            Parameter::Constant(v) => format!("GateParameter(constant={})", v),
-            Parameter::ComplexConstant(v) => format!("GateParameter(complex_constant={})", v),
+            Parameter::Constant(v) => format!("GateParameter(constant={v})"),
+            Parameter::ComplexConstant(v) => format!("GateParameter(complex_constant={v})"),
             Parameter::Symbol(s) => match s.value {
                 Some(v) => format!("GateParameter(symbol='{}', value={})", s.name, v),
                 None => format!("GateParameter(symbol='{}')", s.name),
             },
-            Parameter::Symbolic(expr) => format!("GateParameter(symbolic='{}')", expr),
+            Parameter::Symbolic(expr) => format!("GateParameter(symbolic='{expr}')"),
         }
     }
 }
@@ -562,7 +567,7 @@ impl ParametricGateBase {
         let new_gate = self
             .gate
             .with_parameters(&rust_params)
-            .map_err(|e| PyValueError::new_err(format!("Error updating parameters: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Error updating parameters: {e}")))?;
         Ok(Self { gate: new_gate })
     }
 
@@ -572,7 +577,7 @@ impl ParametricGateBase {
         let new_gate = self
             .gate
             .assign(&values_vec)
-            .map_err(|e| PyValueError::new_err(format!("Error assigning parameters: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Error assigning parameters: {e}")))?;
         Ok(Self { gate: new_gate })
     }
 
@@ -582,7 +587,7 @@ impl ParametricGateBase {
         let new_gate = self
             .gate
             .bind(&values_vec)
-            .map_err(|e| PyValueError::new_err(format!("Error binding parameters: {}", e)))?;
+            .map_err(|e| PyValueError::new_err(format!("Error binding parameters: {e}")))?;
         Ok(Self { gate: new_gate })
     }
 }
@@ -741,7 +746,12 @@ impl CustomGate {
         qubits: Vec<usize>,
         matrix: PyReadonlyArray2<Complex64>,
     ) -> PyResult<(Self, Gate)> {
-        let matrix_vec = matrix.as_slice()?.to_vec();
+        // Convert Complex64 to scirs2_core::Complex64
+        let matrix_slice = matrix.as_slice()?;
+        let matrix_vec: Vec<Complex64> = matrix_slice
+            .iter()
+            .map(|c| Complex64::new(c.re, c.im))
+            .collect();
         let expected_size = 1 << qubits.len();
 
         if matrix.shape()[0] != expected_size || matrix.shape()[1] != expected_size {
@@ -781,7 +791,7 @@ impl CustomGate {
             }
 
             fn clone_gate(&self) -> Box<dyn GateOp> {
-                Box::new(CustomGateImpl {
+                Box::new(Self {
                     name: self.name.clone(),
                     qubits: self.qubits.clone(),
                     matrix: self.matrix.clone(),
@@ -795,7 +805,7 @@ impl CustomGate {
             matrix: matrix_vec.clone(),
         };
 
-        let custom = CustomGate {
+        let custom = Self {
             name,
             qubits,
             matrix: matrix_vec,

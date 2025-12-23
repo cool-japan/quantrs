@@ -418,24 +418,235 @@ impl OptimizationModel {
 
     /// Compile the model to QUBO formulation
     pub fn compile_to_qubo(&self) -> DslResult<QuboModel> {
-        // Simplified compilation - create a basic QUBO model
-        let model = QuboModel::new(self.next_qubit);
+        // Create QUBO model with the right size
+        let mut model = QuboModel::new(self.next_qubit);
 
-        // For now, just return the empty model
-        // TODO: Implement proper compilation
+        // Process objectives and add to QUBO
+        for objective in &self.objectives {
+            let sign = match objective.direction {
+                ObjectiveDirection::Minimize => 1.0,
+                ObjectiveDirection::Maximize => -1.0,
+            };
+
+            self.add_expression_to_qubo(&mut model, &objective.expression, sign)?;
+        }
+
+        // Process constraints and add as penalties
+        for constraint in &self.constraints {
+            // Hard constraints use a large penalty, soft constraints use specified weight
+            let penalty_weight = if constraint.is_hard {
+                1000.0 // Large penalty for hard constraints
+            } else {
+                constraint.penalty_weight.unwrap_or(1.0)
+            };
+
+            self.add_constraint_to_qubo(&mut model, &constraint.expression, penalty_weight)?;
+        }
+
         Ok(model)
     }
 
     /// Compile the model to Ising formulation
     pub fn compile_to_ising(&self) -> DslResult<IsingModel> {
-        let _qubo = self.compile_to_qubo()?;
+        let qubo = self.compile_to_qubo()?;
 
-        // Convert QUBO to Ising (simplified)
+        // Convert QUBO to Ising using the standard transformation
+        // QUBO: x_i ∈ {0,1}, Ising: s_i ∈ {-1,+1}
+        // Transformation: x_i = (1 + s_i) / 2
         let mut ising = IsingModel::new(self.next_qubit);
 
-        // For now, just return empty Ising model
-        // TODO: Implement proper conversion
+        // Transform QUBO coefficients to Ising coefficients
+        // For each QUBO term Q_ij x_i x_j, we get:
+        // Q_ij * (1+s_i)/2 * (1+s_j)/2 = Q_ij/4 * (1 + s_i + s_j + s_i*s_j)
+
+        let mut offset = 0.0;
+
+        // Process linear terms (diagonal of QUBO)
+        for i in 0..self.next_qubit {
+            let q_val = qubo.get_linear(i)?;
+
+            if q_val.abs() > 1e-10 {
+                // Diagonal term: Q_ii x_i = Q_ii/4 * (1 + 2*s_i + s_i^2)
+                // = Q_ii/4 * (2 + 2*s_i) since s_i^2 = 1
+                let h_i = q_val / 2.0; // Linear term coefficient
+                let current_bias = ising.get_bias(i)?;
+                ising.set_bias(i, current_bias + h_i)?;
+                offset += q_val / 4.0; // Constant offset
+            }
+        }
+
+        // Process quadratic terms (off-diagonal of QUBO)
+        for (i, j, q_val) in qubo.quadratic_terms() {
+            if q_val.abs() > 1e-10 {
+                // Off-diagonal term: Q_ij x_i x_j
+                // = Q_ij/4 * (1 + s_i + s_j + s_i*s_j)
+                let j_ij = q_val / 4.0; // Coupling coefficient
+                ising.set_coupling(i, j, j_ij)?;
+
+                // Add linear field contributions
+                let bias_i = ising.get_bias(i)?;
+                ising.set_bias(i, bias_i + q_val / 4.0)?;
+
+                let bias_j = ising.get_bias(j)?;
+                ising.set_bias(j, bias_j + q_val / 4.0)?;
+
+                offset += q_val / 4.0;
+            }
+        }
+
+        // Store the constant offset in metadata if needed
+        // (The offset doesn't affect optimization but is needed for absolute energy)
+
         Ok(ising)
+    }
+
+    /// Helper: Add an expression to QUBO model
+    fn add_expression_to_qubo(
+        &self,
+        model: &mut QuboModel,
+        expr: &Expression,
+        coefficient: f64,
+    ) -> DslResult<()> {
+        match expr {
+            Expression::Constant(_c) => {
+                // Constants don't affect optimization, only the absolute energy value
+                Ok(())
+            }
+            Expression::Variable(var) => {
+                // Linear term
+                if let Some(&qubit_idx) = var.qubit_indices.first() {
+                    model.add_linear(qubit_idx, coefficient)?;
+                }
+                Ok(())
+            }
+            Expression::Sum(terms) => {
+                // Recursively add all terms
+                for term in terms {
+                    self.add_expression_to_qubo(model, term, coefficient)?;
+                }
+                Ok(())
+            }
+            Expression::Product(e1, e2) => {
+                // Handle quadratic terms
+                if let (Expression::Variable(v1), Expression::Variable(v2)) =
+                    (e1.as_ref(), e2.as_ref())
+                {
+                    if let (Some(&q1), Some(&q2)) =
+                        (v1.qubit_indices.first(), v2.qubit_indices.first())
+                    {
+                        if q1 == q2 {
+                            // Same variable - add to linear term
+                            model.add_linear(q1, coefficient)?;
+                        } else {
+                            // Different variables - add to quadratic term
+                            let current = model.get_quadratic(q1, q2)?;
+                            model.set_quadratic(q1, q2, current + coefficient)?;
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Expression::Quadratic {
+                var1,
+                var2,
+                coefficient: coef,
+            } => {
+                // Direct quadratic term
+                if let (Some(&q1), Some(&q2)) =
+                    (var1.qubit_indices.first(), var2.qubit_indices.first())
+                {
+                    if q1 == q2 {
+                        // Same variable - add to linear term
+                        model.add_linear(q1, coefficient * coef)?;
+                    } else {
+                        // Different variables - add to quadratic term
+                        let current = model.get_quadratic(q1, q2)?;
+                        model.set_quadratic(q1, q2, current + coefficient * coef)?;
+                    }
+                }
+                Ok(())
+            }
+            Expression::LinearCombination { weights, terms } => {
+                // Add weighted sum of terms
+                for (weight, term) in weights.iter().zip(terms.iter()) {
+                    self.add_expression_to_qubo(model, term, coefficient * weight)?;
+                }
+                Ok(())
+            }
+            Expression::Negate(e) => {
+                self.add_expression_to_qubo(model, e, -coefficient)?;
+                Ok(())
+            }
+            _ => {
+                // For other expression types, return an error or handle appropriately
+                Err(DslError::CompilationError(
+                    "Unsupported expression type in QUBO compilation".to_string(),
+                ))
+            }
+        }
+    }
+
+    /// Helper: Add a constraint to QUBO as a penalty term
+    fn add_constraint_to_qubo(
+        &self,
+        model: &mut QuboModel,
+        constraint: &BooleanExpression,
+        penalty: f64,
+    ) -> DslResult<()> {
+        match constraint {
+            BooleanExpression::True => Ok(()),
+            BooleanExpression::False => {
+                // Unsatisfiable constraint
+                Err(DslError::InvalidConstraint(
+                    "Unsatisfiable constraint (False)".to_string(),
+                ))
+            }
+            BooleanExpression::Equal(e1, e2) => {
+                // (e1 - e2)^2 penalty
+                let diff =
+                    Expression::Sum(vec![e1.clone(), Expression::Negate(Box::new(e2.clone()))]);
+                let penalty_expr = Expression::Product(Box::new(diff.clone()), Box::new(diff));
+                self.add_expression_to_qubo(model, &penalty_expr, penalty)
+            }
+            BooleanExpression::ExactlyOne(vars) => {
+                // Sum of variables should equal 1: (sum - 1)^2
+                let sum_expr = Expression::Sum(
+                    vars.iter()
+                        .map(|v| Expression::Variable(v.clone()))
+                        .collect(),
+                );
+                let one = Expression::Constant(1.0);
+                let diff = Expression::Sum(vec![sum_expr, Expression::Negate(Box::new(one))]);
+                let penalty_expr = Expression::Product(Box::new(diff.clone()), Box::new(diff));
+                self.add_expression_to_qubo(model, &penalty_expr, penalty)
+            }
+            BooleanExpression::AtMostOne(vars) => {
+                // Penalize pairs: sum_{i<j} x_i * x_j
+                for i in 0..vars.len() {
+                    for j in (i + 1)..vars.len() {
+                        if let (Some(&q1), Some(&q2)) =
+                            (vars[i].qubit_indices.first(), vars[j].qubit_indices.first())
+                        {
+                            let current = model.get_quadratic(q1, q2)?;
+                            model.set_quadratic(q1, q2, current + penalty)?;
+                        }
+                    }
+                }
+                Ok(())
+            }
+            BooleanExpression::And(b1, b2) => {
+                // Both constraints must be satisfied
+                self.add_constraint_to_qubo(model, b1, penalty)?;
+                self.add_constraint_to_qubo(model, b2, penalty)?;
+                Ok(())
+            }
+            _ => {
+                // For other constraint types, return error or implement as needed
+                Err(DslError::CompilationError(
+                    "Unsupported constraint type in QUBO compilation".to_string(),
+                ))
+            }
+        }
     }
 
     /// Get model summary
