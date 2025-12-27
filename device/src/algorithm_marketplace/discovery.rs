@@ -66,7 +66,7 @@ pub struct ComplexityFilter {
 }
 
 /// Sorting options for discovery results
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SortBy {
     Relevance,
     Popularity,
@@ -91,7 +91,7 @@ pub struct UserContext {
 }
 
 /// Experience levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExperienceLevel {
     Beginner,
     Intermediate,
@@ -179,7 +179,7 @@ pub struct UserInteraction {
 }
 
 /// Interaction types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InteractionType {
     View,
     Download,
@@ -349,7 +349,7 @@ pub struct AdaptationEvent {
 }
 
 /// Adaptation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationType {
     UserFeedback,
     PerformanceOptimization,
@@ -454,7 +454,10 @@ impl AlgorithmDiscoveryEngine {
         user_id: &str,
         count: usize,
     ) -> DeviceResult<Vec<AlgorithmInfo>> {
-        let recommendation_engine = self.recommendation_engine.read().unwrap();
+        let recommendation_engine = self
+            .recommendation_engine
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         // Get base recommendations
         let recommendations = recommendation_engine.get_recommendations(user_id, count)?;
@@ -464,7 +467,7 @@ impl AlgorithmDiscoveryEngine {
         for (algorithm_id, score) in recommendations {
             let info = AlgorithmInfo {
                 algorithm_id: algorithm_id.clone(),
-                name: format!("Algorithm {}", algorithm_id),
+                name: format!("Algorithm {algorithm_id}"),
                 version: "1.0.0".to_string(),
                 description: "Recommended algorithm".to_string(),
                 author: "Unknown".to_string(),
@@ -532,7 +535,10 @@ impl AlgorithmDiscoveryEngine {
         mut results: Vec<AlgorithmInfo>,
         criteria: &DiscoveryCriteria,
     ) -> DeviceResult<Vec<AlgorithmInfo>> {
-        let ranking_system = self.ranking_system.read().unwrap();
+        let ranking_system = self
+            .ranking_system
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let ranked_results = ranking_system.rank_algorithms(&results, criteria)?;
 
         // Sort by rank
@@ -540,13 +546,11 @@ impl AlgorithmDiscoveryEngine {
             let rank_a = ranked_results
                 .iter()
                 .find(|r| r.algorithm_id == a.algorithm_id)
-                .map(|r| r.rank)
-                .unwrap_or(usize::MAX);
+                .map_or(usize::MAX, |r| r.rank);
             let rank_b = ranked_results
                 .iter()
                 .find(|r| r.algorithm_id == b.algorithm_id)
-                .map(|r| r.rank)
-                .unwrap_or(usize::MAX);
+                .map_or(usize::MAX, |r| r.rank);
             rank_a.cmp(&rank_b)
         });
 
@@ -558,7 +562,10 @@ impl AlgorithmDiscoveryEngine {
         mut results: Vec<AlgorithmInfo>,
         user_context: &UserContext,
     ) -> DeviceResult<Vec<AlgorithmInfo>> {
-        let personalization_engine = self.personalization_engine.read().unwrap();
+        let personalization_engine = self
+            .personalization_engine
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let personalized_scores =
             personalization_engine.personalize_results(&results, user_context)?;
 
@@ -574,11 +581,11 @@ impl AlgorithmDiscoveryEngine {
 
     fn generate_cache_key(&self, criteria: &DiscoveryCriteria) -> String {
         // Generate a unique cache key based on criteria
-        format!("search:{:?}", criteria)
+        format!("search:{criteria:?}")
     }
 
     async fn check_cache(&self, cache_key: &str) -> DeviceResult<Option<Vec<AlgorithmInfo>>> {
-        let cache = self.cache.read().unwrap();
+        let cache = self.cache.read().unwrap_or_else(|e| e.into_inner());
         if let Some(cached_result) = cache.query_cache.get(cache_key) {
             if cached_result.expires_at > SystemTime::now() {
                 return Ok(Some(cached_result.results.clone()));
@@ -588,7 +595,7 @@ impl AlgorithmDiscoveryEngine {
     }
 
     async fn cache_results(&self, cache_key: &str, results: &[AlgorithmInfo]) -> DeviceResult<()> {
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self.cache.write().unwrap_or_else(|e| e.into_inner());
         let cached_result = CachedResult {
             results: results.to_vec(),
             cached_at: SystemTime::now(),
@@ -650,7 +657,7 @@ impl RecommendationEngine {
         // Simplified recommendation logic
         let mut recommendations = Vec::new();
         for i in 0..count {
-            recommendations.push((format!("algorithm_{}", i), 0.8 - (i as f64 * 0.1)));
+            recommendations.push((format!("algorithm_{i}"), (i as f64).mul_add(-0.1, 0.8)));
         }
         Ok(recommendations)
     }
@@ -676,7 +683,7 @@ impl RankingSystem {
             results.push(RankedResult {
                 algorithm_id: algorithm.algorithm_id.clone(),
                 rank: i,
-                score: 1.0 - (i as f64 * 0.1),
+                score: (i as f64).mul_add(-0.1, 1.0),
                 feature_scores: HashMap::new(),
                 explanation: RankingExplanation {
                     primary_factors: vec!["relevance".to_string()],
@@ -711,7 +718,7 @@ impl PersonalizationEngine {
         Ok(results
             .iter()
             .enumerate()
-            .map(|(i, _)| 0.9 - (i as f64 * 0.1))
+            .map(|(i, _)| (i as f64).mul_add(-0.1, 0.9))
             .collect())
     }
 }

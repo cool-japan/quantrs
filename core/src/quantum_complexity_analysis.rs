@@ -8,6 +8,7 @@ use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Comprehensive quantum algorithm complexity analyzer
 #[pyclass(name = "QuantumComplexityAnalyzer")]
 pub struct PyQuantumComplexityAnalyzer {
@@ -143,81 +144,98 @@ impl PyQuantumComplexityAnalyzer {
         }
 
         let mut report = "# Quantum Algorithm Complexity Analysis Report\n".to_string();
-        report.push_str(&format!("**Algorithm:** {}\n\n", self.algorithm_name));
+        writeln!(report, "**Algorithm:** {}\n", self.algorithm_name)
+            .expect("Writing to String cannot fail");
 
         for (i, result) in self.analysis_results.iter().enumerate() {
-            report.push_str(&format!(
-                "## Analysis {} - {} Algorithm\n",
+            writeln!(
+                report,
+                "## Analysis {} - {} Algorithm",
                 i + 1,
                 result.algorithm_type
-            ));
-            report.push_str(&format!("- **Input Size:** {}\n", result.input_size));
-            report.push_str(&format!("- **Qubit Count:** {}\n", result.qubit_count));
-            report.push_str(&format!("- **Circuit Depth:** {}\n", result.circuit_depth));
-            report.push_str(&format!(
-                "- **Time Complexity:** {}\n",
-                result.time_complexity
-            ));
-            report.push_str(&format!(
-                "- **Space Complexity:** {}\n",
+            )
+            .expect("Writing to String cannot fail");
+            writeln!(report, "- **Input Size:** {}", result.input_size)
+                .expect("Writing to String cannot fail");
+            writeln!(report, "- **Qubit Count:** {}", result.qubit_count)
+                .expect("Writing to String cannot fail");
+            writeln!(report, "- **Circuit Depth:** {}", result.circuit_depth)
+                .expect("Writing to String cannot fail");
+            writeln!(report, "- **Time Complexity:** {}", result.time_complexity)
+                .expect("Writing to String cannot fail");
+            writeln!(
+                report,
+                "- **Space Complexity:** {}",
                 result.space_complexity
-            ));
-            report.push_str(&format!(
-                "- **Classical Complexity:** {}\n",
+            )
+            .expect("Writing to String cannot fail");
+            writeln!(
+                report,
+                "- **Classical Complexity:** {}",
                 result.classical_complexity
-            ));
+            )
+            .expect("Writing to String cannot fail");
 
             if let Some(advantage) = result.quantum_advantage {
-                report.push_str(&format!(
-                    "- **Quantum Advantage:** {:.2e}x speedup\n",
-                    advantage
-                ));
+                writeln!(report, "- **Quantum Advantage:** {advantage:.2e}x speedup")
+                    .expect("Writing to String cannot fail");
             }
 
             if let Some(fidelity) = result.fidelity_estimate {
-                report.push_str(&format!("- **Estimated Fidelity:** {:.4}\n", fidelity));
+                writeln!(report, "- **Estimated Fidelity:** {fidelity:.4}")
+                    .expect("Writing to String cannot fail");
             }
 
             if let Some(entropy) = result.entanglement_entropy {
-                report.push_str(&format!(
-                    "- **Entanglement Entropy:** {:.3} bits\n",
-                    entropy
-                ));
+                writeln!(report, "- **Entanglement Entropy:** {entropy:.3} bits")
+                    .expect("Writing to String cannot fail");
             }
 
             if let Some(qv) = result.quantum_volume {
-                report.push_str(&format!("- **Quantum Volume:** {:.0}\n", qv));
+                writeln!(report, "- **Quantum Volume:** {qv:.0}")
+                    .expect("Writing to String cannot fail");
             }
 
             report.push_str("\n### Gate Count Distribution:\n");
             for (gate_type, count) in &result.gate_count {
-                report.push_str(&format!("- **{}:** {}\n", gate_type, count));
+                writeln!(report, "- **{gate_type}:** {count}")
+                    .expect("Writing to String cannot fail");
             }
             report.push('\n');
         }
 
         // Add circuit metrics summary
         report.push_str("## Circuit Metrics Summary\n");
-        report.push_str(&format!(
-            "- **Total Gates:** {}\n",
+        writeln!(
+            report,
+            "- **Total Gates:** {}",
             self.circuit_metrics.total_gates
-        ));
-        report.push_str(&format!(
-            "- **Single-Qubit Gates:** {}\n",
+        )
+        .expect("Writing to String cannot fail");
+        writeln!(
+            report,
+            "- **Single-Qubit Gates:** {}",
             self.circuit_metrics.single_qubit_gates
-        ));
-        report.push_str(&format!(
-            "- **Two-Qubit Gates:** {}\n",
+        )
+        .expect("Writing to String cannot fail");
+        writeln!(
+            report,
+            "- **Two-Qubit Gates:** {}",
             self.circuit_metrics.two_qubit_gates
-        ));
-        report.push_str(&format!(
-            "- **Parallel Depth:** {}\n",
+        )
+        .expect("Writing to String cannot fail");
+        writeln!(
+            report,
+            "- **Parallel Depth:** {}",
             self.circuit_metrics.parallel_depth
-        ));
-        report.push_str(&format!(
-            "- **Gate Density:** {:.3}\n",
+        )
+        .expect("Writing to String cannot fail");
+        writeln!(
+            report,
+            "- **Gate Density:** {:.3}",
             self.circuit_metrics.gate_density
-        ));
+        )
+        .expect("Writing to String cannot fail");
 
         report
     }
@@ -245,8 +263,8 @@ impl PyQuantumComplexityAnalyzer {
                 let (gate_scaling, depth_scaling, qubit_scaling) =
                     match latest_result.algorithm_type.as_str() {
                         "Shor" => (
-                            scaling_factor.powf(3.0),
-                            scaling_factor.powf(2.0),
+                            scaling_factor.powi(3),
+                            scaling_factor.powi(2),
                             scaling_factor.log2(),
                         ),
                         "Grover" => (
@@ -255,7 +273,7 @@ impl PyQuantumComplexityAnalyzer {
                             scaling_factor.log2(),
                         ),
                         "VQE" => (scaling_factor.powf(1.5), scaling_factor, scaling_factor),
-                        "QAOA" => (scaling_factor.powf(2.0), scaling_factor, scaling_factor),
+                        "QAOA" => (scaling_factor.powi(2), scaling_factor, scaling_factor),
                         _ => (scaling_factor, scaling_factor, scaling_factor.log2()),
                     };
 
@@ -288,8 +306,7 @@ impl PyQuantumComplexityAnalyzer {
             let threshold: f64 = 1e-2; // Surface code threshold
 
             if physical_error_rate < threshold {
-                let code_distance =
-                    (target_logical_error_rate.log10() / physical_error_rate.log10()).ceil();
+                let code_distance = target_logical_error_rate.log(physical_error_rate).ceil();
                 let physical_qubits_per_logical = code_distance * code_distance * 2.0; // Surface code
 
                 overhead.insert("code_distance".to_string(), code_distance);
@@ -360,18 +377,17 @@ impl PyQuantumComplexityAnalyzer {
 impl PyQuantumComplexityAnalyzer {
     fn calculate_quantum_volume(qubit_count: usize, circuit_depth: usize) -> f64 {
         let min_dimension = qubit_count.min(circuit_depth);
-        2.0_f64.powf(min_dimension as f64)
+        (min_dimension as f64).exp2()
     }
 
     fn estimate_quantum_advantage(algorithm_type: &str, input_size: usize) -> Option<f64> {
         match algorithm_type {
             "Shor" => {
                 // Exponential advantage over classical factoring
-                let classical_complexity = 2.0_f64.powf(
-                    (input_size as f64).powf(1.0 / 3.0)
-                        * (input_size as f64).log2().powf(2.0 / 3.0),
-                );
-                let quantum_complexity = (input_size as f64).powf(3.0);
+                let classical_complexity = ((input_size as f64).cbrt()
+                    * (input_size as f64).log2().powf(2.0 / 3.0))
+                .exp2();
+                let quantum_complexity = (input_size as f64).powi(3);
                 Some(classical_complexity / quantum_complexity)
             }
             "Grover" => {
@@ -382,7 +398,7 @@ impl PyQuantumComplexityAnalyzer {
             }
             "HHL" => {
                 // Exponential advantage for certain linear systems
-                Some((input_size as f64).powf(2.0) / (input_size as f64).log2())
+                Some((input_size as f64).powi(2) / (input_size as f64).log2())
             }
             _ => None,
         }
@@ -415,8 +431,10 @@ impl PyQuantumComplexityAnalyzer {
         let total_two_qubit =
             *gate_count.get("CNOT").unwrap_or(&0) + *gate_count.get("CZ").unwrap_or(&0);
 
-        let error_probability = (total_single_qubit as f64) * single_qubit_error
-            + (total_two_qubit as f64) * two_qubit_error;
+        let error_probability = (total_single_qubit as f64).mul_add(
+            single_qubit_error,
+            (total_two_qubit as f64) * two_qubit_error,
+        );
 
         Some(f64::max(1.0 - error_probability, 0.0))
     }
@@ -539,6 +557,6 @@ pub fn calculate_theoretical_quantum_volume(qubit_count: usize, circuit_depth: u
 }
 
 /// Module initialization
-pub fn init_complexity_analysis() {
+pub const fn init_complexity_analysis() {
     // Initialization code for complexity analysis tools
 }

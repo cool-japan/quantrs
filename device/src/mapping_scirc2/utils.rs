@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_linear_topology_creation() {
-        let topology = create_linear_topology(4).unwrap();
+        let topology = create_linear_topology(4).expect("should create linear topology");
         assert_eq!(topology.num_qubits(), 4);
         assert!(topology.are_connected(0, 1));
         assert!(topology.are_connected(1, 2));
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_grid_topology_creation() {
-        let topology = create_grid_topology(4).unwrap();
+        let topology = create_grid_topology(4).expect("should create grid topology");
         assert_eq!(topology.num_qubits(), 4);
         // In a 2x2 grid: 0-1, 0-2, 1-3, 2-3
         assert!(topology.are_connected(0, 1));
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_star_topology_creation() {
-        let topology = create_star_topology(5).unwrap();
+        let topology = create_star_topology(5).expect("should create star topology");
         assert_eq!(topology.num_qubits(), 5);
         // Center (0) connected to all others
         for i in 1..5 {
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_mapping_quality_calculation() {
-        let topology = create_linear_topology(4).unwrap();
+        let topology = create_linear_topology(4).expect("should create linear topology");
         let mut graph = Graph::new();
         let nodes: Vec<_> = (0..4).map(|i| graph.add_node(i)).collect();
 
@@ -238,7 +238,7 @@ mod tests {
         mapping.insert(2, 2);
         mapping.insert(3, 3);
 
-        let quality = calculate_mapping_quality(&mapping, &graph, &topology).unwrap();
+        let quality = calculate_mapping_quality(&mapping, &graph, &topology).expect("should calculate mapping quality");
         assert!(quality > 0.0 && quality <= 1.0);
     }
 
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_complete_topology() {
-        let topology = create_complete_topology(4).unwrap();
+        let topology = create_complete_topology(4).expect("should create complete topology");
         assert_eq!(topology.num_qubits(), 4);
 
         // All pairs should be connected

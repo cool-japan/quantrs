@@ -52,8 +52,7 @@ impl<const N: usize> Register<N> {
 
         if (norm_squared - 1.0).abs() > 1e-10 {
             return Err(QuantRS2Error::CircuitValidationFailed(format!(
-                "Amplitudes vector is not properly normalized. Norm^2 = {}",
-                norm_squared
+                "Amplitudes vector is not properly normalized. Norm^2 = {norm_squared}"
             )));
         }
 
@@ -106,8 +105,7 @@ impl<const N: usize> Register<N> {
         for &bit in bits {
             if bit > 1 {
                 return Err(QuantRS2Error::CircuitValidationFailed(format!(
-                    "Invalid bit value {}. Must be 0 or 1",
-                    bit
+                    "Invalid bit value {bit}. Must be 0 or 1"
                 )));
             }
         }

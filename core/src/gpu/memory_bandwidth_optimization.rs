@@ -152,7 +152,7 @@ impl MemoryBufferPool {
     }
 
     /// Align size to cache line boundary
-    fn align_to_cache_line(&self, size: usize) -> usize {
+    const fn align_to_cache_line(&self, size: usize) -> usize {
         let elem_size = std::mem::size_of::<Complex64>();
         let elems_per_line = self.config.cache_line_size / elem_size;
         ((size + elems_per_line - 1) / elems_per_line) * elems_per_line
@@ -221,7 +221,7 @@ impl MemoryBandwidthOptimizer {
     }
 
     /// Get optimal memory layout for quantum state vector
-    pub fn get_optimal_layout(&self, n_qubits: usize) -> MemoryLayout {
+    pub const fn get_optimal_layout(&self, n_qubits: usize) -> MemoryLayout {
         let state_size = 1 << n_qubits;
         let elem_size = std::mem::size_of::<Complex64>();
         let total_bytes = state_size * elem_size;
@@ -359,7 +359,10 @@ impl MemoryBandwidthOptimizer {
 
     /// Get current metrics
     pub fn get_metrics(&self) -> MemoryBandwidthMetrics {
-        self.metrics.read().unwrap().clone()
+        self.metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Get pool statistics
@@ -445,7 +448,7 @@ pub struct StreamingTransfer {
 
 impl StreamingTransfer {
     /// Create new streaming transfer manager
-    pub fn new(chunk_size: usize, buffer_pool: Arc<MemoryBufferPool>) -> Self {
+    pub const fn new(chunk_size: usize, buffer_pool: Arc<MemoryBufferPool>) -> Self {
         Self {
             chunk_size,
             concurrent_transfers: 2, // Double buffering

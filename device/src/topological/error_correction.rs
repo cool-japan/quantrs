@@ -98,7 +98,7 @@ pub struct AnyonError {
 }
 
 /// Types of errors that can affect anyons
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnyonErrorType {
     /// Anyon creation/annihilation error
     CreationAnnihilation,
@@ -181,7 +181,7 @@ impl TopologicalErrorCorrector {
     ) -> TopologicalResult<SyndromeRound> {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .expect("System time should be after UNIX epoch")
             .as_secs_f64();
 
         let mut measurements = Vec::new();
@@ -291,18 +291,16 @@ impl TopologicalErrorCorrector {
 
         for (qubit_id, operator) in correction.qubits.iter().zip(&correction.corrections) {
             match operator {
-                super::topological_codes::PauliOperator::X => {
-                    // Apply X correction via braiding
+                super::topological_codes::PauliOperator::X
+                | super::topological_codes::PauliOperator::Z
+                | super::topological_codes::PauliOperator::Y
+                | super::topological_codes::PauliOperator::I => {
+                    // Placeholder: Apply correction via braiding
                     // This is simplified - would require complex braiding sequences
-                }
-                super::topological_codes::PauliOperator::Z => {
-                    // Apply Z correction via braiding
-                }
-                super::topological_codes::PauliOperator::Y => {
-                    // Apply Y correction (combination of X and Z)
-                }
-                super::topological_codes::PauliOperator::I => {
-                    // Identity - no correction needed
+                    // X: X correction via braiding
+                    // Z: Z correction via braiding
+                    // Y: Y correction (combination of X and Z)
+                    // I: Identity - no correction needed
                 }
             }
         }
@@ -485,7 +483,7 @@ pub struct RealTimeErrorMonitor {
 
 impl RealTimeErrorMonitor {
     /// Create a new real-time error monitor
-    pub fn new(corrector: TopologicalErrorCorrector, measurement_interval: Duration) -> Self {
+    pub const fn new(corrector: TopologicalErrorCorrector, measurement_interval: Duration) -> Self {
         Self {
             corrector,
             monitoring_active: false,
@@ -531,7 +529,7 @@ impl RealTimeErrorMonitor {
     }
 
     /// Stop monitoring
-    pub fn stop_monitoring(&mut self) {
+    pub const fn stop_monitoring(&mut self) {
         self.monitoring_active = false;
     }
 
@@ -552,8 +550,8 @@ mod tests {
     #[test]
     fn test_error_corrector_creation() {
         let config = ErrorCorrectionConfig::default();
-        let corrector =
-            TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config).unwrap();
+        let corrector = TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config)
+            .expect("Error corrector creation should succeed");
 
         assert_eq!(corrector.code_distance, 3);
         assert!(corrector.surface_code.is_some());
@@ -563,7 +561,8 @@ mod tests {
     async fn test_syndrome_measurement() {
         let config = ErrorCorrectionConfig::default();
         let mut corrector =
-            TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config).unwrap();
+            TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config)
+                .expect("Error corrector creation should succeed");
 
         // Create a mock device
         let system_type = TopologicalSystemType::NonAbelian {
@@ -585,7 +584,7 @@ mod tests {
         let syndrome_round = corrector
             .perform_syndrome_measurement(&device, 0)
             .await
-            .unwrap();
+            .expect("Syndrome measurement should succeed");
         assert_eq!(syndrome_round.round_id, 0);
         assert!(!syndrome_round.measurements.is_empty());
     }
@@ -593,8 +592,8 @@ mod tests {
     #[test]
     fn test_statistics_calculation() {
         let config = ErrorCorrectionConfig::default();
-        let corrector =
-            TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config).unwrap();
+        let corrector = TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config)
+            .expect("Error corrector creation should succeed");
 
         let stats = corrector.calculate_statistics();
         assert_eq!(stats.total_rounds, 0);
@@ -604,8 +603,8 @@ mod tests {
     #[test]
     fn test_pattern_analysis() {
         let config = ErrorCorrectionConfig::default();
-        let corrector =
-            TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config).unwrap();
+        let corrector = TopologicalErrorCorrector::new(TopologicalCodeType::SurfaceCode, 3, config)
+            .expect("Error corrector creation should succeed");
 
         let patterns = corrector.analyze_syndrome_patterns();
         // Should be empty since there's no history

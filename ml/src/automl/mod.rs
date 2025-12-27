@@ -208,7 +208,7 @@ impl QuantumAutoML {
         // Simple task type detection based on target values
         let unique_values = {
             let mut values: Vec<f64> = y.iter().cloned().collect();
-            values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
             values.dedup();
             values
         };
@@ -363,7 +363,7 @@ impl QuantumAutoML {
             }
             Some(MLTaskType::Regression) => {
                 // Calculate R2 score
-                let mean_true = y_true.mean().unwrap();
+                let mean_true = y_true.mean().unwrap_or(0.0);
                 let ss_tot = y_true.iter().map(|&y| (y - mean_true).powi(2)).sum::<f64>();
                 let ss_res = predictions
                     .iter()
@@ -447,7 +447,7 @@ impl QuantumEnsembleManager {
                 .performance_weights
                 .iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             {
                 if performance > self.performance_weights[worst_idx] {
                     self.ensemble_members[worst_idx] = pipeline;

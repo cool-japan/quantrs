@@ -333,7 +333,10 @@ impl MetricsCollector {
     }
 
     fn record_execution(&self, operation: &str, duration: Duration) {
-        let mut times = self.execution_times.lock().unwrap();
+        let mut times = self
+            .execution_times
+            .lock()
+            .expect("Execution times lock poisoned");
         times
             .entry(operation.to_string())
             .or_insert_with(Vec::new)
@@ -453,7 +456,7 @@ impl AnomalyDetector {
                         timestamp: history.len() as f64,
                         metric,
                         severity,
-                        description: format!("Anomaly detected: z-score = {:.2}", z_score),
+                        description: format!("Anomaly detected: z-score = {z_score:.2}"),
                         impact: z_score / 10.0, // Normalized impact
                     });
                 }
@@ -640,7 +643,10 @@ impl EnhancedQuantumProfiler {
 
     /// Initialize profiling state
     fn initialize_profiling(&self, num_qubits: usize) -> Result<(), QuantRS2Error> {
-        let mut state = self.profiling_state.lock().unwrap();
+        let mut state = self
+            .profiling_state
+            .lock()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         state.current_depth = 0;
         state.call_stack.clear();
         state.gate_timings.clear();
@@ -671,7 +677,10 @@ impl EnhancedQuantumProfiler {
 
         // Record gate start
         {
-            let mut state = self.profiling_state.lock().unwrap();
+            let mut state = self
+                .profiling_state
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             state.gate_timings.insert(
                 gate_index,
                 GateTimingInfo {
@@ -695,7 +704,10 @@ impl EnhancedQuantumProfiler {
 
         // Update gate timing info
         {
-            let mut state = self.profiling_state.lock().unwrap();
+            let mut state = self
+                .profiling_state
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             if let Some(timing_info) = state.gate_timings.get_mut(&gate_index) {
                 timing_info.end_time = Some(end_time);
                 timing_info.memory_after = Some(memory_after);
@@ -719,7 +731,10 @@ impl EnhancedQuantumProfiler {
         // Check for anomalies
         let mut anomalies = Vec::new();
         {
-            let mut state = self.profiling_state.lock().unwrap();
+            let mut state = self
+                .profiling_state
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             if let Some(anomaly) = state
                 .anomaly_detector
                 .update_metric(MetricType::ExecutionTime, execution_time.as_secs_f64())
@@ -789,7 +804,7 @@ impl EnhancedQuantumProfiler {
     }
 
     /// Estimate memory usage
-    fn estimate_memory_usage(&self, num_qubits: usize) -> usize {
+    const fn estimate_memory_usage(&self, num_qubits: usize) -> usize {
         let state_vector_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
         let overhead = state_vector_size / 10; // 10% overhead estimate
         state_vector_size + overhead
@@ -979,7 +994,7 @@ impl EnhancedQuantumProfiler {
                     ],
                 });
 
-                impact_analysis.insert(format!("gate_{}", idx), impact);
+                impact_analysis.insert(format!("gate_{idx}"), impact);
             }
 
             // Check for low cache efficiency
@@ -989,7 +1004,7 @@ impl EnhancedQuantumProfiler {
                         gate_index: idx,
                         layer: idx / num_qubits,
                         qubits: vec![idx % num_qubits],
-                        context: format!("Poor cache efficiency at gate {}", idx),
+                        context: format!("Poor cache efficiency at gate {idx}"),
                     },
                     bottleneck_type: BottleneckType::CacheMiss,
                     severity: (1.0 - result.cache_efficiency) * 50.0,
@@ -1113,8 +1128,8 @@ impl EnhancedQuantumProfiler {
     }
 
     /// Check if two gates can be fused
-    fn can_fuse_gates(gate1: &GateType, gate2: &GateType) -> bool {
-        use GateType::*;
+    const fn can_fuse_gates(gate1: &GateType, gate2: &GateType) -> bool {
+        use GateType::{Rx, Ry, Rz, H, X, Y, Z};
         matches!(
             (gate1, gate2),
             (H, H) | (X, X) | (Y, Y) | (Z, Z) | // Self-inverse gates
@@ -1125,8 +1140,7 @@ impl EnhancedQuantumProfiler {
     /// Generate fusion code example
     fn generate_fusion_code(&self, gate1: &GateType, gate2: &GateType) -> String {
         format!(
-            "// Fused {:?} and {:?}\nlet fused_gate = FusedGate::new({:?}, {:?});\nfused_gate.apply(state);",
-            gate1, gate2, gate1, gate2
+            "// Fused {gate1:?} and {gate2:?}\nlet fused_gate = FusedGate::new({gate1:?}, {gate2:?});\nfused_gate.apply(state);"
         )
     }
 
@@ -1267,9 +1281,8 @@ impl EnhancedQuantumProfiler {
         &self,
         gate_results: &[EnhancedGateProfilingResult],
     ) -> Result<Vec<u8>, QuantRS2Error> {
-        let json = serde_json::to_vec_pretty(gate_results).map_err(|e| {
-            QuantRS2Error::ComputationError(format!("CSV generation failed: {}", e))
-        })?;
+        let json = serde_json::to_vec_pretty(gate_results)
+            .map_err(|e| QuantRS2Error::ComputationError(format!("CSV generation failed: {e}")))?;
         Ok(json)
     }
 
@@ -1280,7 +1293,7 @@ impl EnhancedQuantumProfiler {
     ) -> Result<Vec<u8>, QuantRS2Error> {
         let mut csv = Vec::new();
         writeln!(csv, "gate_index,gate_type,execution_time_us,memory_delta,simd_ops,parallel_ops,cache_efficiency")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
 
         for result in gate_results {
             writeln!(
@@ -1294,7 +1307,7 @@ impl EnhancedQuantumProfiler {
                 result.parallel_operations,
                 result.cache_efficiency
             )
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
         }
 
         Ok(csv)
@@ -1310,13 +1323,13 @@ impl EnhancedQuantumProfiler {
             html,
             "<html><head><title>Quantum Circuit Profiling Report</title>"
         )
-        .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+        .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
         writeln!(html, "<style>table {{ border-collapse: collapse; }} th, td {{ border: 1px solid black; padding: 8px; }}</style>")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
         writeln!(html, "</head><body><h1>Profiling Results</h1><table>")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
         writeln!(html, "<tr><th>Gate</th><th>Type</th><th>Time (μs)</th><th>Memory</th><th>SIMD</th><th>Parallel</th><th>Cache</th></tr>")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
 
         for result in gate_results {
             writeln!(html, "<tr><td>{}</td><td>{:?}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{:.1}%</td></tr>",
@@ -1327,11 +1340,11 @@ impl EnhancedQuantumProfiler {
                 result.simd_operations,
                 result.parallel_operations,
                 result.cache_efficiency * 100.0
-            ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            ).map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
         }
 
         writeln!(html, "</table></body></html>")
-            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("IO error: {e}")))?;
 
         Ok(html)
     }
@@ -1449,7 +1462,9 @@ mod tests {
             QuantumGate::new(GateType::H, vec![1], None),
         ];
 
-        let result = profiler.profile_circuit(&gates, 2).unwrap();
+        let result = profiler
+            .profile_circuit(&gates, 2)
+            .expect("Failed to profile circuit");
         assert_eq!(result.gate_results.len(), 3);
         assert!(result.summary.total_execution_time.as_nanos() > 0);
     }
@@ -1468,7 +1483,9 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None),
         ];
 
-        let result = profiler.profile_circuit(&gates, 1).unwrap();
+        let result = profiler
+            .profile_circuit(&gates, 1)
+            .expect("Failed to profile circuit");
         assert!(result.bottleneck_analysis.is_some());
     }
 
@@ -1485,7 +1502,9 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None), // H^2 = I
         ];
 
-        let result = profiler.profile_circuit(&gates, 1).unwrap();
+        let result = profiler
+            .profile_circuit(&gates, 1)
+            .expect("Failed to profile circuit");
         assert!(!result.optimizations.is_empty());
         assert!(result
             .optimizations
@@ -1507,10 +1526,14 @@ mod tests {
             QuantumGate::new(GateType::Z, vec![2], None),
         ];
 
-        let result = profiler.profile_circuit(&gates, 3).unwrap();
+        let result = profiler
+            .profile_circuit(&gates, 3)
+            .expect("Failed to profile circuit");
         assert!(result.performance_predictions.is_some());
 
-        let predictions = result.performance_predictions.unwrap();
+        let predictions = result
+            .performance_predictions
+            .expect("Missing performance predictions");
         assert!(predictions.predictions.contains_key("current"));
         assert!(predictions.predictions.contains_key("quantum_hw"));
     }
@@ -1525,7 +1548,9 @@ mod tests {
 
         let gates = vec![QuantumGate::new(GateType::H, vec![0], None)];
 
-        let result = profiler.profile_circuit(&gates, 1).unwrap();
+        let result = profiler
+            .profile_circuit(&gates, 1)
+            .expect("Failed to profile circuit");
         assert_eq!(result.export_data.len(), 3);
         assert!(result.export_data.contains_key(&ExportFormat::JSON));
         assert!(result.export_data.contains_key(&ExportFormat::CSV));

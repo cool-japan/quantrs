@@ -435,14 +435,14 @@ mod utils_integration {
 
         // Test memory formatting
         let mem_1kb = utils::format_memory(1024);
-        assert!(mem_1kb.contains("KB") || mem_1kb.contains("1"));
+        assert!(mem_1kb.contains("KB") || mem_1kb.contains('1'));
 
         let mem_1mb = utils::format_memory(1024 * 1024);
-        assert!(mem_1mb.contains("MB") || mem_1mb.contains("1"));
+        assert!(mem_1mb.contains("MB") || mem_1mb.contains('1'));
 
         // Test duration formatting
         let dur_1s = utils::format_duration(Duration::from_secs(1));
-        assert!(dur_1s.contains("s"));
+        assert!(dur_1s.contains('s'));
 
         let dur_1ms = utils::format_duration(Duration::from_millis(1));
         assert!(dur_1ms.contains("ms"));
@@ -678,10 +678,10 @@ mod quantum_math_integration {
     #[test]
     fn test_quantum_constants() {
         // Verify quantum computing constants
-        assert!((utils::SQRT_2 * utils::INV_SQRT_2 - 1.0).abs() < 1e-15);
-        assert!((utils::PI_OVER_2 * 2.0 - utils::PI_CONST).abs() < 1e-15);
-        assert!((utils::PI_OVER_4 * 4.0 - utils::PI_CONST).abs() < 1e-15);
-        assert!((utils::PI_OVER_8 * 8.0 - utils::PI_CONST).abs() < 1e-15);
+        assert!(utils::SQRT_2.mul_add(utils::INV_SQRT_2, -1.0).abs() < 1e-15);
+        assert!(utils::PI_OVER_2.mul_add(2.0, -utils::PI_CONST).abs() < 1e-15);
+        assert!(utils::PI_OVER_4.mul_add(4.0, -utils::PI_CONST).abs() < 1e-15);
+        assert!(utils::PI_OVER_8.mul_add(8.0, -utils::PI_CONST).abs() < 1e-15);
     }
 
     #[test]
@@ -761,7 +761,7 @@ mod quantum_math_integration {
     fn test_angle_conversions() {
         // 360 degrees = 2π radians
         let rad = utils::deg_to_rad(360.0);
-        assert!((rad - 2.0 * std::f64::consts::PI).abs() < 1e-10);
+        assert!(2.0f64.mul_add(-std::f64::consts::PI, rad).abs() < 1e-10);
 
         // π radians = 180 degrees
         let deg = utils::rad_to_deg(std::f64::consts::PI);

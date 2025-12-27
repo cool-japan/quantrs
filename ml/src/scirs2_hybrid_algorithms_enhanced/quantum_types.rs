@@ -1,7 +1,7 @@
 //! Quantum-specific types for hybrid algorithms
 
-use quantrs2_core::{QuantRS2Result, QuantRS2Error};
 use quantrs2_circuit::builder::Circuit;
+use quantrs2_core::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::Array1;
 use scirs2_core::Complex64;
 
@@ -55,12 +55,15 @@ pub enum Ansatz {
 impl Ansatz {
     pub fn num_parameters(&self) -> usize {
         match self {
-            Ansatz::HardwareEfficient { num_qubits, num_layers } => {
+            Ansatz::HardwareEfficient {
+                num_qubits,
+                num_layers,
+            } => {
                 num_qubits * num_layers * 3 // 3 rotation angles per qubit per layer
-            },
+            }
             Ansatz::QAOA { num_layers, .. } => {
                 2 * num_layers // beta and gamma for each layer
-            },
+            }
             _ => 0,
         }
     }
@@ -86,15 +89,24 @@ pub struct QAOAProblem {
 }
 
 impl QAOAProblem {
-    pub fn evaluate_cost(&self, measurements: &super::data_types::MeasurementResults) -> QuantRS2Result<f64> {
+    pub fn evaluate_cost(
+        &self,
+        measurements: &super::data_types::MeasurementResults,
+    ) -> QuantRS2Result<f64> {
         Ok(0.0)
     }
 
-    pub fn evaluate_solution(&self, solution: &super::data_types::BinaryString) -> QuantRS2Result<f64> {
+    pub fn evaluate_solution(
+        &self,
+        solution: &super::data_types::BinaryString,
+    ) -> QuantRS2Result<f64> {
         Ok(0.0)
     }
 
-    pub fn check_constraints(&self, solution: &super::data_types::BinaryString) -> QuantRS2Result<Vec<String>> {
+    pub fn check_constraints(
+        &self,
+        solution: &super::data_types::BinaryString,
+    ) -> QuantRS2Result<Vec<String>> {
         Ok(Vec::new())
     }
 

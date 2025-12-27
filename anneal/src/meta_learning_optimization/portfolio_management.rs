@@ -6,8 +6,13 @@ use std::time::{Duration, Instant};
 use scirs2_core::rand_prelude::IndexedRandom;
 use scirs2_core::random::thread_rng;
 
-use super::config::*;
-use super::feature_extraction::*;
+use super::config::{
+    AlgorithmSelectionStrategy, DiversityCriteria, DiversityMethod, PortfolioManagementConfig,
+};
+use super::feature_extraction::{
+    AlgorithmType, OptimizationConfiguration, ProblemDomain, ProblemFeatures, ResourceAllocation,
+    ResourceUsage,
+};
 
 /// Algorithm portfolio manager
 pub struct AlgorithmPortfolio {
@@ -24,6 +29,7 @@ pub struct AlgorithmPortfolio {
 }
 
 impl AlgorithmPortfolio {
+    #[must_use]
     pub fn new(config: PortfolioManagementConfig) -> Self {
         let mut portfolio = Self {
             algorithms: HashMap::new(),
@@ -63,7 +69,7 @@ impl AlgorithmPortfolio {
             },
             performance_stats: AlgorithmPerformanceStats::default(),
             applicability: ApplicabilityConditions {
-                size_range: (1, 10000),
+                size_range: (1, 10_000),
                 suitable_domains: vec![
                     ProblemDomain::Combinatorial,
                     ProblemDomain::Graph,
@@ -73,7 +79,7 @@ impl AlgorithmPortfolio {
                     memory: 128,
                     compute_time: Duration::from_secs(60),
                     parameters: 1000,
-                    flops: 1000000,
+                    flops: 1_000_000,
                 },
                 performance_guarantees: vec![],
             },
@@ -116,7 +122,7 @@ impl AlgorithmPortfolio {
                     memory: 256,
                     compute_time: Duration::from_secs(30),
                     parameters: 5000,
-                    flops: 10000000,
+                    flops: 10_000_000,
                 },
                 performance_guarantees: vec![],
             },
@@ -149,7 +155,7 @@ impl AlgorithmPortfolio {
             },
             performance_stats: AlgorithmPerformanceStats::default(),
             applicability: ApplicabilityConditions {
-                size_range: (10, 50000),
+                size_range: (10, 50_000),
                 suitable_domains: vec![
                     ProblemDomain::Combinatorial,
                     ProblemDomain::Scheduling,
@@ -158,8 +164,8 @@ impl AlgorithmPortfolio {
                 required_resources: ResourceRequirements {
                     memory: 256,
                     compute_time: Duration::from_secs(120),
-                    parameters: 10000,
-                    flops: 50000000,
+                    parameters: 10_000,
+                    flops: 50_000_000,
                 },
                 performance_guarantees: vec![],
             },
@@ -212,14 +218,14 @@ impl AlgorithmPortfolio {
                 let perf_a = self
                     .algorithms
                     .get(*a)
-                    .map(|alg| alg.performance_stats.mean_performance)
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |alg| alg.performance_stats.mean_performance);
                 let perf_b = self
                     .algorithms
                     .get(*b)
-                    .map(|alg| alg.performance_stats.mean_performance)
-                    .unwrap_or(0.0);
-                perf_a.partial_cmp(&perf_b).unwrap()
+                    .map_or(0.0, |alg| alg.performance_stats.mean_performance);
+                perf_a
+                    .partial_cmp(&perf_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .ok_or("Failed to select algorithm")?;
 
@@ -246,24 +252,20 @@ impl AlgorithmPortfolio {
                 let history_a = self
                     .performance_history
                     .get(*a)
-                    .map(|h| h.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::collections::VecDeque::len);
                 let history_b = self
                     .performance_history
                     .get(*b)
-                    .map(|h| h.len())
-                    .unwrap_or(0);
+                    .map_or(0, std::collections::VecDeque::len);
 
                 let mean_a = self
                     .algorithms
                     .get(*a)
-                    .map(|alg| alg.performance_stats.mean_performance)
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |alg| alg.performance_stats.mean_performance);
                 let mean_b = self
                     .algorithms
                     .get(*b)
-                    .map(|alg| alg.performance_stats.mean_performance)
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |alg| alg.performance_stats.mean_performance);
 
                 let confidence_a = if history_a > 0 {
                     (2.0 * total_trials.ln() / history_a as f64).sqrt()
@@ -280,7 +282,9 @@ impl AlgorithmPortfolio {
                 let ucb_a = mean_a + confidence_a;
                 let ucb_b = mean_b + confidence_b;
 
-                ucb_a.partial_cmp(&ucb_b).unwrap()
+                ucb_a
+                    .partial_cmp(&ucb_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .ok_or("Failed to select algorithm")?;
 
@@ -304,14 +308,14 @@ impl AlgorithmPortfolio {
                 let var_a = self
                     .algorithms
                     .get(*a)
-                    .map(|alg| alg.performance_stats.performance_variance)
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |alg| alg.performance_stats.performance_variance);
                 let var_b = self
                     .algorithms
                     .get(*b)
-                    .map(|alg| alg.performance_stats.performance_variance)
-                    .unwrap_or(0.0);
-                var_a.partial_cmp(&var_b).unwrap()
+                    .map_or(0.0, |alg| alg.performance_stats.performance_variance);
+                var_a
+                    .partial_cmp(&var_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .ok_or("Failed to select algorithm")?;
 
@@ -376,7 +380,7 @@ impl AlgorithmPortfolio {
         self.performance_history
             .entry(algorithm_id.to_string())
             .or_insert_with(VecDeque::new)
-            .push_back(record.clone());
+            .push_back(record);
 
         // Update algorithm statistics - extract algorithm to avoid double mutable borrow
         let algorithm_id_string = algorithm_id.to_string();
@@ -420,8 +424,10 @@ impl AlgorithmPortfolio {
         }
     }
 
-    fn update_algorithm_stats(&mut self, algorithm: &mut Algorithm, record: &PerformanceRecord) {
-        let history = self.performance_history.get(&algorithm.id).unwrap();
+    fn update_algorithm_stats(&self, algorithm: &mut Algorithm, _record: &PerformanceRecord) {
+        let Some(history) = self.performance_history.get(&algorithm.id) else {
+            return;
+        };
 
         if !history.is_empty() {
             // Update mean performance
@@ -442,7 +448,8 @@ impl AlgorithmPortfolio {
         }
     }
 
-    pub fn get_portfolio_diversity(&self) -> f64 {
+    #[must_use]
+    pub const fn get_portfolio_diversity(&self) -> f64 {
         self.diversity_analyzer.current_diversity
     }
 
@@ -459,7 +466,7 @@ impl AlgorithmPortfolio {
 
         // Normalize weights
         if total_performance > 0.0 {
-            for (_, weight) in new_weights.iter_mut() {
+            for (_, weight) in &mut new_weights {
                 *weight /= total_performance;
             }
         }
@@ -501,6 +508,7 @@ pub struct PortfolioComposition {
 }
 
 impl PortfolioComposition {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             weights: HashMap::new(),
@@ -604,6 +612,7 @@ pub struct DiversityAnalyzer {
 }
 
 impl DiversityAnalyzer {
+    #[must_use]
     pub fn new(criteria: DiversityCriteria) -> Self {
         Self {
             metrics: vec![
@@ -647,13 +656,13 @@ impl DiversityAnalyzer {
             0.0
         };
 
-        self.current_diversity = (algorithmic_diversity + performance_diversity) / 2.0;
+        self.current_diversity = f64::midpoint(algorithmic_diversity, performance_diversity);
         self.current_diversity
     }
 }
 
 /// Diversity metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiversityMetric {
     /// Algorithm diversity
     AlgorithmDiversity,
@@ -672,6 +681,9 @@ use super::neural_architecture_search::ResourceRequirements;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::meta_learning_optimization::feature_extraction::{
+        GraphFeatures, SpectralFeatures, StatisticalFeatures,
+    };
 
     #[test]
     fn test_portfolio_creation() {

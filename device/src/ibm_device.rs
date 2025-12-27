@@ -123,8 +123,9 @@ impl IBMQuantumDevice {
         let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
 
         // Define the quantum and classical registers
-        qasm.push_str(&format!("qreg q[{}];\n", N));
-        qasm.push_str(&format!("creg c[{}];\n\n", N));
+        use std::fmt::Write;
+        let _ = writeln!(qasm, "qreg q[{N}];");
+        let _ = writeln!(qasm, "creg c[{N}];");
 
         // Process each gate in the circuit
         // This is a simplified placeholder implementation

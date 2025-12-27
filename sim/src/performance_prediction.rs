@@ -1,7 +1,7 @@
 //! Performance Prediction Models for Circuit Execution Time Estimation
 //!
 //! This module provides sophisticated models for predicting quantum circuit
-//! execution times across different simulation backends using SciRS2 analysis
+//! execution times across different simulation backends using `SciRS2` analysis
 //! tools and machine learning techniques.
 
 use crate::{
@@ -31,7 +31,7 @@ pub struct PerformancePredictionConfig {
     pub confidence_threshold: f64,
     /// Enable hardware profiling for adaptive predictions
     pub enable_hardware_profiling: bool,
-    /// SciRS2 analysis depth for complexity estimation
+    /// `SciRS2` analysis depth for complexity estimation
     pub analysis_depth: AnalysisDepth,
     /// Prediction strategy to use
     pub prediction_strategy: PredictionStrategy,
@@ -47,7 +47,7 @@ impl Default for PerformancePredictionConfig {
     fn default() -> Self {
         Self {
             enable_ml_prediction: true,
-            max_history_size: 10000,
+            max_history_size: 10_000,
             confidence_threshold: 0.8,
             enable_hardware_profiling: true,
             analysis_depth: AnalysisDepth::Deep,
@@ -255,7 +255,7 @@ pub struct PerformancePredictionEngine {
     execution_history: VecDeque<ExecutionDataPoint>,
     /// Trained models for different backends
     trained_models: HashMap<BackendType, TrainedModel>,
-    /// SciRS2 backend for analysis
+    /// `SciRS2` backend for analysis
     scirs2_backend: SciRS2Backend,
     /// Current hardware specifications
     current_hardware: PerformanceHardwareSpecs,
@@ -358,7 +358,7 @@ impl PerformancePredictionEngine {
 
         Ok(Self {
             config,
-            execution_history: VecDeque::with_capacity(10000),
+            execution_history: VecDeque::with_capacity(10_000),
             trained_models: HashMap::new(),
             scirs2_backend: SciRS2Backend::new(),
             current_hardware,
@@ -399,9 +399,9 @@ impl PerformancePredictionEngine {
         Ok(prediction)
     }
 
-    /// Analyze circuit complexity using SciRS2 tools
+    /// Analyze circuit complexity using `SciRS2` tools
     fn analyze_circuit_complexity<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
     ) -> Result<ComplexityMetrics> {
         let gate_count = circuit.num_gates();
@@ -504,11 +504,8 @@ impl PerformancePredictionEngine {
         state_vector_size * 3
     }
 
-    /// Analyze parallelism potential using SciRS2
-    fn analyze_parallelism_potential<const N: usize>(
-        &mut self,
-        circuit: &Circuit<N>,
-    ) -> Result<f64> {
+    /// Analyze parallelism potential using `SciRS2`
+    fn analyze_parallelism_potential<const N: usize>(&self, circuit: &Circuit<N>) -> Result<f64> {
         // Use SciRS2 parallel analysis
         let independent_operations = self.count_independent_operations(circuit)?;
         let total_operations = circuit.num_gates();
@@ -953,12 +950,13 @@ impl PerformancePredictionEngine {
     }
 
     /// Update timing statistics
-    const fn update_timing_stats(&mut self, elapsed: Duration) {
+    const fn update_timing_stats(&self, elapsed: Duration) {
         // Update timing statistics
         // Simplified implementation
     }
 
     /// Get prediction engine statistics
+    #[must_use]
     pub const fn get_statistics(&self) -> &PredictionStatistics {
         &self.prediction_stats
     }

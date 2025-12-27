@@ -709,17 +709,19 @@ mod tests {
     fn test_circuit_noise_analysis() {
         let analyzer = NoiseAnalyzer::new();
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let result = analyzer
             .analyze_circuit_noise(&circuit, "ibm_quantum")
-            .unwrap();
+            .expect("analyze_circuit_noise should succeed");
         assert!(result.total_fidelity > 0.0 && result.total_fidelity < 1.0);
         assert!(!result.gate_errors.is_empty());
     }
@@ -730,7 +732,9 @@ mod tests {
         let model = NoiseModel::ibm_quantum();
         let h_gate = Hadamard { target: QubitId(0) };
 
-        let error = analyzer.calculate_gate_error(&h_gate, &model).unwrap();
+        let error = analyzer
+            .calculate_gate_error(&h_gate, &model)
+            .expect("calculate_gate_error should succeed");
         assert!(error > 0.0);
     }
 

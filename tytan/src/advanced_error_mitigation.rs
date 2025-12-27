@@ -1132,7 +1132,9 @@ impl AdvancedErrorMitigationManager {
         &self,
         circuit: &QuantumCircuit,
     ) -> Result<MitigatedResult, MitigationError> {
-        let state = self.state.read().unwrap();
+        let state = self.state.read().map_err(|e| {
+            MitigationError::InvalidParameters(format!("Failed to acquire read lock: {e}"))
+        })?;
         let noise_model = &state.current_noise_model;
 
         self.mitigation_engine
@@ -1154,7 +1156,9 @@ impl AdvancedErrorMitigationManager {
         code_name: &str,
         circuit: &QuantumCircuit,
     ) -> Result<QECIntegrationResult, MitigationError> {
-        let state = self.state.read().unwrap();
+        let state = self.state.read().map_err(|e| {
+            MitigationError::InvalidParameters(format!("Failed to acquire read lock: {e}"))
+        })?;
         let noise_model = &state.current_noise_model;
 
         self.qec_integrator
@@ -1162,8 +1166,10 @@ impl AdvancedErrorMitigationManager {
     }
 
     /// Get current system status
-    pub fn get_status(&self) -> MitigationState {
-        self.state.read().unwrap().clone()
+    pub fn get_status(&self) -> Result<MitigationState, MitigationError> {
+        self.state.read().map(|guard| guard.clone()).map_err(|e| {
+            MitigationError::InvalidParameters(format!("Failed to acquire read lock: {e}"))
+        })
     }
 
     /// Update system configuration

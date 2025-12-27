@@ -40,12 +40,12 @@ impl SimdGateEngine {
     }
 
     /// Get the platform capabilities
-    pub fn capabilities(&self) -> &PlatformCapabilities {
+    pub const fn capabilities(&self) -> &PlatformCapabilities {
         &self.capabilities
     }
 
     /// Get the optimal SIMD width
-    pub fn simd_width(&self) -> usize {
+    pub const fn simd_width(&self) -> usize {
         self.simd_width
     }
 
@@ -454,7 +454,7 @@ impl SimdGateEngine {
         let imag_part = <f64 as SimdF64>::simd_sum_array(&imag_diff.view());
 
         // Fidelity is |⟨ψ|φ⟩|²
-        let fidelity = real_part * real_part + imag_part * imag_part;
+        let fidelity = real_part.mul_add(real_part, imag_part * imag_part);
         Ok(fidelity)
     }
 }
@@ -486,7 +486,7 @@ mod tests {
         // Apply RX(π) which should flip the state to |1⟩
         engine
             .apply_rotation_gate(&mut state, 0, RotationAxis::X, std::f64::consts::PI)
-            .unwrap();
+            .expect("Failed to apply RX gate");
 
         // After RX(π), |0⟩ → -i|1⟩
         assert!(state[0].norm() < 0.1);
@@ -501,7 +501,7 @@ mod tests {
         // Apply RY(π/2) which creates equal superposition
         engine
             .apply_rotation_gate(&mut state, 0, RotationAxis::Y, std::f64::consts::PI / 2.0)
-            .unwrap();
+            .expect("Failed to apply RY gate");
 
         let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
         assert!((state[0].norm() - sqrt2_inv).abs() < 1e-10);
@@ -519,7 +519,7 @@ mod tests {
         // Apply RZ(π/4)
         engine
             .apply_rotation_gate(&mut state, 0, RotationAxis::Z, std::f64::consts::PI / 4.0)
-            .unwrap();
+            .expect("Failed to apply RZ gate");
 
         // Magnitudes should be preserved
         let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
@@ -539,7 +539,9 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        engine.apply_cnot(&mut state, 1, 0).unwrap();
+        engine
+            .apply_cnot(&mut state, 1, 0)
+            .expect("Failed to apply CNOT gate");
 
         // After CNOT with control=1, target=0: |10⟩ → |11⟩
         // When control (bit 1) is 1, flip target (bit 0)
@@ -557,11 +559,15 @@ mod tests {
         let state1 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let state2 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
 
-        let fid = engine.fidelity(&state1, &state2).unwrap();
+        let fid = engine
+            .fidelity(&state1, &state2)
+            .expect("Failed to compute fidelity");
         assert!((fid - 1.0).abs() < 1e-10);
 
         let state3 = vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)];
-        let fid2 = engine.fidelity(&state1, &state3).unwrap();
+        let fid2 = engine
+            .fidelity(&state1, &state3)
+            .expect("Failed to compute fidelity for orthogonal states");
         assert!(fid2.abs() < 1e-10);
     }
 
@@ -573,7 +579,9 @@ mod tests {
 
         let gates = vec![(0, RotationAxis::X, std::f64::consts::PI / 2.0)];
 
-        engine.batch_apply_single_qubit(&mut state, &gates).unwrap();
+        engine
+            .batch_apply_single_qubit(&mut state, &gates)
+            .expect("Failed to apply batch gates");
 
         // Check normalization
         let norm_sqr: f64 = state.iter().map(|c| c.norm_sqr()).sum();

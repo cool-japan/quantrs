@@ -21,6 +21,7 @@ mod client {
     use reqwest::Client;
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
+    use std::fmt::Write;
     use std::time::{Duration, Instant};
     use thiserror::Error;
     use tokio::runtime::Runtime;
@@ -244,7 +245,7 @@ mod client {
     }
 
     /// Solver category for filtering
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum SolverCategory {
         /// Quantum processing units
         QPU,
@@ -257,7 +258,7 @@ mod client {
     }
 
     /// Problem status tracking
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     pub enum ProblemStatus {
         /// Problem is being processed
         #[serde(rename = "IN_PROGRESS")]
@@ -623,8 +624,7 @@ mod client {
                     let status = response.status();
                     let error_text = response.text().await?;
                     return Err(DWaveError::ApiError(format!(
-                        "Error getting solvers: {} - {}",
-                        status, error_text
+                        "Error getting solvers: {status} - {error_text}"
                     )));
                 }
 
@@ -644,13 +644,19 @@ mod client {
             // Convert the Ising model to the format expected by D-Wave
             let mut linear_terms = serde_json::Map::new();
             for (qubit, bias) in model.biases() {
-                linear_terms.insert(qubit.to_string(), serde_json::to_value(bias).unwrap());
+                let value = serde_json::to_value(bias).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize bias: {e}"))
+                })?;
+                linear_terms.insert(qubit.to_string(), value);
             }
 
             let mut quadratic_terms = serde_json::Map::new();
             for coupling in model.couplings() {
                 let key = format!("{},{}", coupling.i, coupling.j);
-                quadratic_terms.insert(key, serde_json::to_value(coupling.strength).unwrap());
+                let value = serde_json::to_value(coupling.strength).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize coupling: {e}"))
+                })?;
+                quadratic_terms.insert(key, value);
             }
 
             // Create the problem
@@ -676,13 +682,19 @@ mod client {
             // Convert the QUBO model to the format expected by D-Wave
             let mut linear_terms = serde_json::Map::new();
             for (var, value) in model.linear_terms() {
-                linear_terms.insert(var.to_string(), serde_json::to_value(value).unwrap());
+                let json_value = serde_json::to_value(value).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize linear term: {e}"))
+                })?;
+                linear_terms.insert(var.to_string(), json_value);
             }
 
             let mut quadratic_terms = serde_json::Map::new();
             for (var1, var2, value) in model.quadratic_terms() {
-                let key = format!("{},{}", var1, var2);
-                quadratic_terms.insert(key, serde_json::to_value(value).unwrap());
+                let key = format!("{var1},{var2}");
+                let json_value = serde_json::to_value(value).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize quadratic term: {e}"))
+                })?;
+                quadratic_terms.insert(key, json_value);
             }
 
             // Create the problem
@@ -711,7 +723,10 @@ mod client {
             // Convert flux biases to the format expected by D-Wave
             let mut flux_map = serde_json::Map::new();
             for (qubit, &flux_bias) in flux_biases {
-                flux_map.insert(qubit.to_string(), serde_json::to_value(flux_bias).unwrap());
+                let value = serde_json::to_value(flux_bias).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize flux bias: {e}"))
+                })?;
+                flux_map.insert(qubit.to_string(), value);
             }
             params_with_flux.flux_bias_map = Some(flux_map);
 
@@ -740,8 +755,7 @@ mod client {
                     let status = response.status();
                     let error_text = response.text().await?;
                     return Err(DWaveError::ApiError(format!(
-                        "Error submitting problem: {} - {}",
-                        status, error_text
+                        "Error submitting problem: {status} - {error_text}"
                     )));
                 }
 
@@ -773,8 +787,7 @@ mod client {
                         let status = status_response.status();
                         let error_text = status_response.text().await?;
                         return Err(DWaveError::ApiError(format!(
-                            "Error getting problem status: {} - {}",
-                            status, error_text
+                            "Error getting problem status: {status} - {error_text}"
                         )));
                     }
 
@@ -796,7 +809,7 @@ mod client {
                             });
                         } else if state == "FAILED" {
                             let error = status["error"].as_str().unwrap_or("Unknown error");
-                            return Err(DWaveError::ApiError(format!("Problem failed: {}", error)));
+                            return Err(DWaveError::ApiError(format!("Problem failed: {error}")));
                         }
                     }
 
@@ -827,8 +840,7 @@ mod client {
                     let status = response.status();
                     let error_text = response.text().await?;
                     return Err(DWaveError::ApiError(format!(
-                        "Error getting Leap solvers: {} - {}",
-                        status, error_text
+                        "Error getting Leap solvers: {status} - {error_text}"
                     )));
                 }
 
@@ -915,7 +927,7 @@ mod client {
                     .into_iter()
                     .find(|s| s.id == id)
                     .ok_or_else(|| {
-                        DWaveError::SolverConfigError(format!("Solver {} not found", id))
+                        DWaveError::SolverConfigError(format!("Solver {id} not found"))
                     })?
             } else {
                 self.select_solver(None)?
@@ -926,21 +938,33 @@ mod client {
                 self.submit_with_auto_embedding(model, &solver, params, embedding_config)
             } else {
                 // For hybrid solvers, convert to standard submission
-                let legacy_params = params
-                    .map(|p| ProblemParams {
+                let legacy_params = if let Some(p) = params {
+                    let flux_bias_map = if let Some(fb) = p.flux_biases {
+                        let mut map = serde_json::Map::new();
+                        for (k, v) in fb {
+                            let value = serde_json::to_value(v).map_err(|e| {
+                                DWaveError::ProblemError(format!(
+                                    "Failed to serialize flux bias: {e}"
+                                ))
+                            })?;
+                            map.insert(k, value);
+                        }
+                        Some(map)
+                    } else {
+                        None
+                    };
+                    ProblemParams {
                         num_reads: p.num_reads,
                         annealing_time: 20,
                         programming_therm: p.programming_thermalization.unwrap_or(1000),
                         readout_therm: p.readout_thermalization.unwrap_or(0),
                         flux_biases: None, // Use flux_bias_map instead
-                        flux_bias_map: p.flux_biases.clone().map(|fb| {
-                            fb.into_iter()
-                                .map(|(k, v)| (k, serde_json::to_value(v).unwrap()))
-                                .collect()
-                        }),
+                        flux_bias_map,
                         other: serde_json::Value::Object(serde_json::Map::new()),
-                    })
-                    .unwrap_or_default();
+                    }
+                } else {
+                    ProblemParams::default()
+                };
 
                 self.submit_ising(model, &solver.id, legacy_params)
             }
@@ -980,10 +1004,10 @@ mod client {
 
             // Calculate chain strength
             let chain_strength =
-                self.calculate_chain_strength(model, &embedding_config.chain_strength_method);
+                Self::calculate_chain_strength(model, &embedding_config.chain_strength_method);
 
             // Create embedded problem
-            let embedded_problem = self.embed_problem(model, &embedding, chain_strength)?;
+            let embedded_problem = Self::embed_problem(model, &embedding, chain_strength)?;
 
             // Submit embedded problem
             self.submit_embedded_problem(&embedded_problem, solver, params)
@@ -1005,8 +1029,7 @@ mod client {
                     let status = response.status();
                     let error_text = response.text().await?;
                     return Err(DWaveError::ApiError(format!(
-                        "Error getting solver topology: {} - {}",
-                        status, error_text
+                        "Error getting solver topology: {status} - {error_text}"
                     )));
                 }
 
@@ -1039,11 +1062,7 @@ mod client {
         }
 
         /// Calculate appropriate chain strength
-        fn calculate_chain_strength(
-            &self,
-            model: &IsingModel,
-            method: &ChainStrengthMethod,
-        ) -> f64 {
+        fn calculate_chain_strength(model: &IsingModel, method: &ChainStrengthMethod) -> f64 {
             match method {
                 ChainStrengthMethod::Auto => {
                     // Calculate based on maximum coupling strength
@@ -1075,7 +1094,6 @@ mod client {
 
         /// Embed logical problem onto physical hardware
         fn embed_problem(
-            &self,
             model: &IsingModel,
             embedding: &Embedding,
             chain_strength: f64,
@@ -1146,6 +1164,20 @@ mod client {
             solver: &LeapSolverInfo,
             params: AdvancedProblemParams,
         ) -> DWaveResult<Solution> {
+            // Convert flux biases if present
+            let flux_bias_map = if let Some(fb) = params.flux_biases {
+                let mut map = serde_json::Map::new();
+                for (k, v) in fb {
+                    let value = serde_json::to_value(v).map_err(|e| {
+                        DWaveError::ProblemError(format!("Failed to serialize flux bias: {e}"))
+                    })?;
+                    map.insert(k, value);
+                }
+                Some(map)
+            } else {
+                None
+            };
+
             // Convert advanced parameters to legacy format
             let legacy_params = ProblemParams {
                 num_reads: params.num_reads,
@@ -1158,11 +1190,7 @@ mod client {
                 programming_therm: params.programming_thermalization.unwrap_or(1000),
                 readout_therm: params.readout_thermalization.unwrap_or(0),
                 flux_biases: None, // Use flux_bias_map instead
-                flux_bias_map: params.flux_biases.clone().map(|fb| {
-                    fb.into_iter()
-                        .map(|(k, v)| (k, serde_json::to_value(v).unwrap()))
-                        .collect()
-                }),
+                flux_bias_map,
                 other: serde_json::Value::Object(serde_json::Map::new()),
             };
 
@@ -1184,7 +1212,7 @@ mod client {
                     .into_iter()
                     .find(|s| s.id == id)
                     .ok_or_else(|| {
-                        DWaveError::SolverConfigError(format!("Solver {} not found", id))
+                        DWaveError::SolverConfigError(format!("Solver {id} not found"))
                     })?
             } else {
                 let hybrid_selector = SolverSelector {
@@ -1197,29 +1225,35 @@ mod client {
             // Convert to appropriate format for hybrid submission
             let mut linear_terms = serde_json::Map::new();
             for (qubit, bias) in model.biases() {
-                linear_terms.insert(qubit.to_string(), serde_json::to_value(bias).unwrap());
+                let value = serde_json::to_value(bias).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize bias: {e}"))
+                })?;
+                linear_terms.insert(qubit.to_string(), value);
             }
 
             let mut quadratic_terms = serde_json::Map::new();
             for coupling in model.couplings() {
                 let key = format!("{},{}", coupling.i, coupling.j);
-                quadratic_terms.insert(key, serde_json::to_value(coupling.strength).unwrap());
+                let value = serde_json::to_value(coupling.strength).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize coupling: {e}"))
+                })?;
+                quadratic_terms.insert(key, value);
             }
 
             // Add hybrid-specific parameters
             let mut hybrid_params = params.extra.clone();
             if let Some(time_limit) = params.time_limit {
-                hybrid_params.insert(
-                    "time_limit".to_string(),
-                    serde_json::to_value(time_limit).unwrap(),
-                );
+                let value = serde_json::to_value(time_limit).map_err(|e| {
+                    DWaveError::ProblemError(format!("Failed to serialize time_limit: {e}"))
+                })?;
+                hybrid_params.insert("time_limit".to_string(), value);
             }
 
             let problem = Problem {
                 linear_terms: serde_json::Value::Object(linear_terms),
                 quadratic_terms: serde_json::Value::Object(quadratic_terms),
                 type_: "ising".to_string(),
-                solver: solver.id.clone(),
+                solver: solver.id,
                 params: ProblemParams {
                     num_reads: 1, // Hybrid solvers typically return one solution
                     annealing_time: 1,
@@ -1431,7 +1465,8 @@ mod client {
         pub fn list_problems(&self, limit: Option<usize>) -> DWaveResult<Vec<ProblemInfo>> {
             let mut url = format!("{}/problems", self.endpoint);
             if let Some(limit) = limit {
-                url.push_str(&format!("?limit={}", limit));
+                // Writing to a String is infallible
+                let _ = write!(url, "?limit={}", limit);
             }
 
             self.runtime.block_on(async {
@@ -1603,6 +1638,9 @@ mod placeholder {
 pub use placeholder::*;
 
 /// Check if D-Wave API support is enabled
-pub fn is_available() -> bool {
+#[must_use]
+pub const fn is_available() -> bool {
     cfg!(feature = "dwave")
 }
+
+use std::fmt::Write;

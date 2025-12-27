@@ -39,12 +39,12 @@ pub struct Dual {
 
 impl Dual {
     /// Create a new dual number
-    pub fn new(real: f64, dual: f64) -> Self {
+    pub const fn new(real: f64, dual: f64) -> Self {
         Self { real, dual }
     }
 
     /// Create a constant (no derivative)
-    pub fn constant(value: f64) -> Self {
+    pub const fn constant(value: f64) -> Self {
         Self {
             real: value,
             dual: 0.0,
@@ -52,7 +52,7 @@ impl Dual {
     }
 
     /// Create a variable (unit derivative)
-    pub fn variable(value: f64) -> Self {
+    pub const fn variable(value: f64) -> Self {
         Self {
             real: value,
             dual: 1.0,
@@ -89,7 +89,7 @@ impl std::ops::Mul for Dual {
     fn mul(self, other: Self) -> Self {
         Self {
             real: self.real * other.real,
-            dual: self.real * other.dual + self.dual * other.real,
+            dual: self.real.mul_add(other.dual, self.dual * other.real),
         }
     }
 }
@@ -100,13 +100,15 @@ impl std::ops::Div for Dual {
     fn div(self, other: Self) -> Self {
         Self {
             real: self.real / other.real,
-            dual: (self.dual * other.real - self.real * other.dual) / (other.real * other.real),
+            dual: self.dual.mul_add(other.real, -(self.real * other.dual))
+                / (other.real * other.real),
         }
     }
 }
 
 // Trigonometric functions for dual numbers
 impl Dual {
+    #[must_use]
     pub fn sin(self) -> Self {
         Self {
             real: self.real.sin(),
@@ -114,6 +116,7 @@ impl Dual {
         }
     }
 
+    #[must_use]
     pub fn cos(self) -> Self {
         Self {
             real: self.real.cos(),
@@ -121,6 +124,7 @@ impl Dual {
         }
     }
 
+    #[must_use]
     pub fn exp(self) -> Self {
         let exp_real = self.real.exp();
         Self {
@@ -129,6 +133,7 @@ impl Dual {
         }
     }
 
+    #[must_use]
     pub fn sqrt(self) -> Self {
         let sqrt_real = self.real.sqrt();
         Self {
@@ -369,11 +374,11 @@ impl VariationalGate {
                     Complex::new(cos_half, 0.0),
                 ],
             )
-            .unwrap()
+            .expect("RX gate matrix shape is always valid")
         });
 
         Self {
-            name: format!("RX({})", param_name),
+            name: format!("RX({param_name})"),
             qubits: vec![qubit],
             params: vec![param_name],
             values: vec![initial_value],
@@ -398,11 +403,11 @@ impl VariationalGate {
                     Complex::new(cos_half, 0.0),
                 ],
             )
-            .unwrap()
+            .expect("RY gate matrix shape is always valid")
         });
 
         Self {
-            name: format!("RY({})", param_name),
+            name: format!("RY({param_name})"),
             qubits: vec![qubit],
             params: vec![param_name],
             values: vec![initial_value],
@@ -427,11 +432,11 @@ impl VariationalGate {
                     exp_pos,
                 ],
             )
-            .unwrap()
+            .expect("RZ gate matrix shape is always valid")
         });
 
         Self {
-            name: format!("RZ({})", param_name),
+            name: format!("RZ({param_name})"),
             qubits: vec![qubit],
             params: vec![param_name],
             values: vec![initial_value],
@@ -616,7 +621,7 @@ impl GateOp for VariationalGate {
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex<f64>>> {
         let mat = (self.generator)(&self.values);
-        Ok(mat.iter().cloned().collect())
+        Ok(mat.iter().copied().collect())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -725,7 +730,7 @@ impl VariationalCircuit {
     ) -> QuantRS2Result<f64> {
         let current_params = self.get_parameters();
         let current_value = *current_params.get(param_name).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Parameter {} not found", param_name))
+            QuantRS2Error::InvalidInput(format!("Parameter {param_name} not found"))
         })?;
 
         // Create circuit copies with shifted parameters
@@ -735,7 +740,7 @@ impl VariationalCircuit {
         circuit_plus.set_parameters(&params_plus)?;
 
         let mut circuit_minus = self.clone_circuit();
-        let mut params_minus = current_params.clone();
+        let mut params_minus = current_params;
         params_minus.insert(param_name.to_string(), current_value - PI / 2.0);
         circuit_minus.set_parameters(&params_minus)?;
 
@@ -788,7 +793,9 @@ impl VariationalOptimizer {
         for (param_name, &grad) in gradients {
             // Update velocity with momentum
             let velocity = self.velocities.entry(param_name.clone()).or_insert(0.0);
-            *velocity = self.momentum * *velocity - self.learning_rate * grad;
+            *velocity = self
+                .momentum
+                .mul_add(*velocity, -(self.learning_rate * grad));
 
             // Update parameter
             if let Some(value) = new_params.get_mut(param_name) {
@@ -829,7 +836,7 @@ impl QuantumAutoencoder {
         for i in 0..input_qubits {
             encoder.add_gate(VariationalGate::ry(
                 QubitId(i as u32),
-                format!("enc_ry_{}", i),
+                format!("enc_ry_{i}"),
                 0.1 * (i as f64 + 1.0),
             ));
         }
@@ -840,7 +847,7 @@ impl QuantumAutoencoder {
                 encoder.add_gate(VariationalGate::cry(
                     QubitId(i as u32),
                     QubitId(j as u32),
-                    format!("enc_cry_{}_{}", i, j),
+                    format!("enc_cry_{i}_{j}"),
                     0.05 * ((i + j) as f64 + 1.0),
                 ));
             }
@@ -855,7 +862,7 @@ impl QuantumAutoencoder {
                 decoder.add_gate(VariationalGate::cry(
                     QubitId(j as u32),
                     QubitId(i as u32),
-                    format!("dec_cry_{}_{}", j, i),
+                    format!("dec_cry_{j}_{i}"),
                     0.05 * ((i + j) as f64 + 1.0),
                 ));
             }
@@ -864,7 +871,7 @@ impl QuantumAutoencoder {
         for i in 0..input_qubits {
             decoder.add_gate(VariationalGate::ry(
                 QubitId(i as u32),
-                format!("dec_ry_{}", i),
+                format!("dec_ry_{i}"),
                 0.1 * (i as f64 + 1.0),
             ));
         }
@@ -1064,7 +1071,7 @@ impl QuantumAutoencoder {
             .sum::<f64>()
             .sqrt();
         if norm > 1e-10 {
-            for element in output_state.iter_mut() {
+            for element in &mut output_state {
                 *element /= norm;
             }
         }
@@ -1166,7 +1173,7 @@ impl VariationalQuantumEigensolver {
             // Compute gradients
             let gradients = self.compute_energy_gradients()?;
             self.gradient_history
-                .push(gradients.values().cloned().collect());
+                .push(gradients.values().copied().collect());
 
             // Update parameters
             self.optimizer.step(&mut self.ansatz, &gradients)?;
@@ -1219,7 +1226,9 @@ impl VariationalQuantumEigensolver {
         if gate.qubits.len() == 1 {
             // Single-qubit gate
             let matrix_vec = gate.matrix()?;
-            let matrix = Array2::from_shape_vec((2, 2), matrix_vec).unwrap();
+            let matrix = Array2::from_shape_vec((2, 2), matrix_vec).map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Invalid gate matrix shape: {e}"))
+            })?;
 
             // Apply to specific qubit (simplified)
             let qubit_idx = gate.qubits[0].0;
@@ -1273,7 +1282,7 @@ impl HardwareEfficientAnsatz {
             for qubit in 0..num_qubits {
                 circuit.add_gate(VariationalGate::ry(
                     QubitId(qubit as u32),
-                    format!("ry_{}_{}", layer, qubit),
+                    format!("ry_{layer}_{qubit}"),
                     0.1 * (layer as f64 + qubit as f64 + 1.0),
                 ));
             }
@@ -1283,7 +1292,7 @@ impl HardwareEfficientAnsatz {
                 circuit.add_gate(VariationalGate::cry(
                     QubitId(qubit as u32),
                     QubitId((qubit + 1) as u32),
-                    format!("cry_{}_{}", layer, qubit),
+                    format!("cry_{layer}_{qubit}"),
                     0.05 * (layer as f64 + qubit as f64 + 1.0),
                 ));
             }
@@ -1312,7 +1321,7 @@ impl QAOAAnsatz {
                     circuit.add_gate(VariationalGate::cry(
                         QubitId(u as u32),
                         QubitId(v as u32),
-                        format!("gamma_{}_{}_{}", layer, u, v),
+                        format!("gamma_{layer}_{u}_{v}"),
                         0.1 * (layer as f64 + i as f64 + 1.0),
                     ));
                 }
@@ -1322,7 +1331,7 @@ impl QAOAAnsatz {
             for qubit in 0..num_qubits {
                 circuit.add_gate(VariationalGate::rx(
                     QubitId(qubit as u32),
-                    format!("beta_{}_{}", layer, qubit),
+                    format!("beta_{layer}_{qubit}"),
                     0.1 * (layer as f64 + qubit as f64 + 1.0),
                 ));
             }
@@ -1359,13 +1368,15 @@ mod tests {
     fn test_variational_rx_gate() {
         let gate = VariationalGate::rx(QubitId(0), "theta".to_string(), PI / 4.0);
 
-        let matrix_vec = gate.matrix().unwrap();
+        let matrix_vec = gate.matrix().expect("RX gate matrix should be valid");
         assert_eq!(matrix_vec.len(), 4);
 
         // Convert to Array2 for unitary check
-        let matrix = Array2::from_shape_vec((2, 2), matrix_vec).unwrap();
-        let mat = DenseMatrix::new(matrix).unwrap();
-        assert!(mat.is_unitary(1e-10).unwrap());
+        let matrix = Array2::from_shape_vec((2, 2), matrix_vec).expect("matrix shape is valid 2x2");
+        let mat = DenseMatrix::new(matrix).expect("DenseMatrix creation should succeed");
+        assert!(mat
+            .is_unitary(1e-10)
+            .expect("unitarity check should succeed"));
     }
 
     #[test]
@@ -1381,7 +1392,9 @@ mod tests {
             (matrix[[0, 0]] + matrix[[1, 1]]).re
         };
 
-        let gradients = gate.gradient(loss_fn).unwrap();
+        let gradients = gate
+            .gradient(loss_fn)
+            .expect("gradient computation should succeed");
         assert_eq!(gradients.len(), 1);
 
         // For RY(θ), the matrix trace is 2*cos(θ/2)
@@ -1424,7 +1437,9 @@ mod tests {
         new_params.insert("theta2".to_string(), 0.6);
         new_params.insert("theta3".to_string(), 0.7);
 
-        circuit.set_parameters(&new_params).unwrap();
+        circuit
+            .set_parameters(&new_params)
+            .expect("set_parameters should succeed");
 
         let params = circuit.get_parameters();
         assert_eq!(params.get("theta1"), Some(&0.5));
@@ -1444,10 +1459,18 @@ mod tests {
         gradients.insert("theta".to_string(), 1.0);
 
         // Take optimization step
-        optimizer.step(&mut circuit, &gradients).unwrap();
+        optimizer
+            .step(&mut circuit, &gradients)
+            .expect("optimizer step should succeed");
 
         let params = circuit.get_parameters();
-        assert!(params.get("theta").unwrap().abs() > 0.0);
+        assert!(
+            params
+                .get("theta")
+                .expect("theta parameter should exist")
+                .abs()
+                > 0.0
+        );
     }
 
     #[test]
@@ -1465,7 +1488,9 @@ mod tests {
         training_data.push(state1);
 
         // Run one training step
-        let loss = autoencoder.train_step(&training_data).unwrap();
+        let loss = autoencoder
+            .train_step(&training_data)
+            .expect("train_step should succeed");
         assert!(loss >= 0.0);
 
         // Test encoding and decoding
@@ -1476,10 +1501,10 @@ mod tests {
             Complex::new(0.0, 0.0),
         ]);
 
-        let encoded = autoencoder.encode(&input).unwrap();
+        let encoded = autoencoder.encode(&input).expect("encode should succeed");
         assert_eq!(encoded.len(), 2); // 2^1 = 2 for 1 latent qubit
 
-        let decoded = autoencoder.decode(&encoded).unwrap();
+        let decoded = autoencoder.decode(&encoded).expect("decode should succeed");
         assert_eq!(decoded.len(), 4); // 2^2 = 4 for 2 input qubits
     }
 
@@ -1495,14 +1520,14 @@ mod tests {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Z Hamiltonian shape is always valid 2x2");
 
         // Create hardware-efficient ansatz
         let ansatz = HardwareEfficientAnsatz::create(1, 2);
 
         let mut vqe = VariationalQuantumEigensolver::new(hamiltonian, ansatz, 0.01, 1e-6, 10);
 
-        let energy = vqe.optimize().unwrap();
+        let energy = vqe.optimize().expect("VQE optimization should succeed");
 
         // For Pauli-Z, ground state energy should be close to -1 (or at least converging)
         // Note: This is a simplified VQE test, may not converge to exact ground state

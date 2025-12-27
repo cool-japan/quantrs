@@ -64,15 +64,21 @@ use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     benchmarking::{BenchmarkConfig, DeviceExecutor, HardwareBenchmarkSuite},
     calibration::{CalibrationManager, DeviceCalibration},
-    characterization::AdvancedNoiseCharacterizer,
+    characterization::{AdvancedNoiseCharacterizer, NoiseCharacterizationConfig},
     ml_optimization::{train_test_split, IsolationForest, KMeans, KMeansResult, DBSCAN},
-    qec::QuantumErrorCorrector,
+    qec::{QECConfig, QuantumErrorCorrector},
     CircuitResult, DeviceError, DeviceResult,
 };
 
 // Placeholder ML model types
 pub struct LinearRegression {
     pub coefficients: Array1<f64>,
+}
+
+impl Default for LinearRegression {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LinearRegression {
@@ -82,7 +88,7 @@ impl LinearRegression {
         }
     }
 
-    pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
+    pub const fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
 
@@ -90,7 +96,7 @@ impl LinearRegression {
         Array1::zeros(1)
     }
 
-    pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
+    pub const fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.95) // Mock score
     }
 }
@@ -100,11 +106,11 @@ pub struct RandomForestRegressor {
 }
 
 impl RandomForestRegressor {
-    pub fn new(n_estimators: usize) -> Self {
+    pub const fn new(n_estimators: usize) -> Self {
         Self { n_estimators }
     }
 
-    pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
+    pub const fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
 
@@ -112,7 +118,7 @@ impl RandomForestRegressor {
         Array1::zeros(1)
     }
 
-    pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
+    pub const fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.92) // Mock score
     }
 }
@@ -123,14 +129,14 @@ pub struct GradientBoostingRegressor {
 }
 
 impl GradientBoostingRegressor {
-    pub fn new(n_estimators: usize, learning_rate: f64) -> Self {
+    pub const fn new(n_estimators: usize, learning_rate: f64) -> Self {
         Self {
             n_estimators,
             learning_rate,
         }
     }
 
-    pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
+    pub const fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<&Self, String> {
         Ok(self)
     }
 
@@ -138,7 +144,7 @@ impl GradientBoostingRegressor {
         Array1::zeros(1)
     }
 
-    pub fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
+    pub const fn score(&self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<f64, String> {
         Ok(0.89) // Mock score
     }
 }
@@ -279,7 +285,7 @@ pub struct NotificationConfig {
 }
 
 /// Notification channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Log { level: String },
     Email { recipients: Vec<String> },
@@ -382,7 +388,7 @@ pub struct BootstrapConfig {
 }
 
 /// Bootstrap methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BootstrapMethod {
     Percentile,
     BiasCorrecterdAccelerated,
@@ -423,7 +429,7 @@ pub enum OptimizationObjective {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationAlgorithm {
     GradientDescent,
     ParticleSwarm,
@@ -445,7 +451,7 @@ pub struct MultiObjectiveConfig {
 }
 
 /// Constraint handling methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintMethod {
     PenaltyFunction,
     LagrangeMultipliers,
@@ -586,7 +592,7 @@ pub struct TrendAnalysis {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -647,7 +653,7 @@ pub struct AnomalyInfo {
 }
 
 /// Types of anomalies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyType {
     PointAnomaly,
     ContextualAnomaly,
@@ -868,7 +874,7 @@ pub struct PerformanceSnapshot {
 }
 
 /// System state
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SystemState {
     Healthy,
     Warning,
@@ -892,7 +898,7 @@ pub struct PerformanceAlert {
 }
 
 /// Alert levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertLevel {
     Info,
     Warning,
@@ -1089,11 +1095,11 @@ impl AdvancedHardwareBenchmarkSuite {
         let noise_characterizer = AdvancedNoiseCharacterizer::new(
             "benchmark_device".to_string(),
             calibration_manager.clone(),
-            Default::default(),
+            NoiseCharacterizationConfig::default(),
         );
 
         let error_corrector = QuantumErrorCorrector::new(
-            Default::default(),
+            QECConfig::default(),
             "benchmark_device".to_string(),
             Some(calibration_manager.clone()),
             Some(device_topology),
@@ -1132,7 +1138,7 @@ impl AdvancedHardwareBenchmarkSuite {
             .await?;
 
         // Step 2: Extract features for ML analysis
-        let features = self.extract_features(&base_results)?;
+        let features = Self::extract_features(&base_results)?;
 
         // Step 3: Perform ML analysis
         let ml_analysis = self.perform_ml_analysis(&features).await?;
@@ -1175,7 +1181,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Extract features for ML analysis
     fn extract_features(
-        &self,
         results: &crate::benchmarking::BenchmarkSuite,
     ) -> DeviceResult<Array2<f64>> {
         let mut features = Vec::new();
@@ -1226,7 +1231,7 @@ impl AdvancedHardwareBenchmarkSuite {
         let flat_features: Vec<f64> = features.into_iter().flatten().collect();
 
         Array2::from_shape_vec((n_samples, n_features), flat_features)
-            .map_err(|e| DeviceError::APIError(format!("Feature extraction error: {}", e)))
+            .map_err(|e| DeviceError::APIError(format!("Feature extraction error: {e}")))
     }
 
     /// Perform comprehensive ML analysis
@@ -1237,8 +1242,8 @@ impl AdvancedHardwareBenchmarkSuite {
         // Train different ML models
         for model_type in &self.config.ml_config.model_types {
             let (model_result, metrics) = self.train_model(model_type, features).await?;
-            models.insert(format!("{:?}", model_type), model_result);
-            model_metrics.insert(format!("{:?}", model_type), metrics);
+            models.insert(format!("{model_type:?}"), model_result);
+            model_metrics.insert(format!("{model_type:?}"), metrics);
         }
 
         // Calculate feature importance
@@ -1268,25 +1273,25 @@ impl AdvancedHardwareBenchmarkSuite {
     ) -> DeviceResult<(MLModelResult, ModelMetrics)> {
         // Generate synthetic target values for demonstration
         // In practice, these would be real performance metrics
-        let targets = self.generate_synthetic_targets(features)?;
+        let targets = Self::generate_synthetic_targets(features)?;
 
         // Split data into training and testing
         let test_size = self.config.ml_config.training_config.test_size;
         let (x_train, x_test, y_train, y_test) =
-            self.train_test_split(features, &targets, test_size)?;
+            Self::train_test_split(features, &targets, test_size)?;
 
         // Train model based on type
         let (model_data, training_score, validation_score) = match model_type {
             MLModelType::LinearRegression => {
-                self.train_linear_regression(&x_train, &y_train, &x_test, &y_test)?
+                Self::train_linear_regression(&x_train, &y_train, &x_test, &y_test)?
             }
             MLModelType::RandomForest { n_estimators } => {
-                self.train_random_forest(&x_train, &y_train, &x_test, &y_test, *n_estimators)?
+                Self::train_random_forest(&x_train, &y_train, &x_test, &y_test, *n_estimators)?
             }
             MLModelType::GradientBoosting {
                 n_estimators,
                 learning_rate,
-            } => self.train_gradient_boosting(
+            } => Self::train_gradient_boosting(
                 &x_train,
                 &y_train,
                 &x_test,
@@ -1304,8 +1309,8 @@ impl AdvancedHardwareBenchmarkSuite {
         let cv_scores = self.cross_validate(&x_train, &y_train, model_type)?;
 
         // Calculate model metrics
-        let predictions = self.predict_with_model(&model_data, &x_test)?;
-        let metrics = self.calculate_model_metrics(&y_test, &predictions)?;
+        let predictions = Self::predict_with_model(&model_data, &x_test)?;
+        let metrics = Self::calculate_model_metrics(&y_test, &predictions)?;
 
         let model_result = MLModelResult {
             model_type: model_type.clone(),
@@ -1320,7 +1325,7 @@ impl AdvancedHardwareBenchmarkSuite {
     }
 
     /// Generate synthetic target values (placeholder)
-    fn generate_synthetic_targets(&self, features: &Array2<f64>) -> DeviceResult<Array1<f64>> {
+    fn generate_synthetic_targets(features: &Array2<f64>) -> DeviceResult<Array1<f64>> {
         let n_samples = features.nrows();
         let mut targets = Array1::zeros(n_samples);
 
@@ -1336,7 +1341,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Split data into training and testing sets
     fn train_test_split(
-        &self,
         features: &Array2<f64>,
         targets: &Array1<f64>,
         test_size: f64,
@@ -1356,7 +1360,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Train linear regression model
     fn train_linear_regression(
-        &self,
         x_train: &Array2<f64>,
         y_train: &Array1<f64>,
         x_test: &Array2<f64>,
@@ -1386,7 +1389,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Train random forest model
     fn train_random_forest(
-        &self,
         x_train: &Array2<f64>,
         y_train: &Array1<f64>,
         x_test: &Array2<f64>,
@@ -1415,7 +1417,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Train gradient boosting model
     fn train_gradient_boosting(
-        &self,
         x_train: &Array2<f64>,
         y_train: &Array1<f64>,
         x_test: &Array2<f64>,
@@ -1455,7 +1456,7 @@ impl AdvancedHardwareBenchmarkSuite {
 
         // Simple cross-validation (in practice, would use proper CV)
         for _ in 0..cv_folds {
-            let score = 0.80 + (thread_rng().gen::<f64>() - 0.5) * 0.1;
+            let score = (thread_rng().gen::<f64>() - 0.5).mul_add(0.1, 0.80);
             scores.push(score);
         }
 
@@ -1463,18 +1464,14 @@ impl AdvancedHardwareBenchmarkSuite {
     }
 
     /// Predict with trained model
-    fn predict_with_model(
-        &self,
-        model_data: &[u8],
-        features: &Array2<f64>,
-    ) -> DeviceResult<Array1<f64>> {
+    fn predict_with_model(model_data: &[u8], features: &Array2<f64>) -> DeviceResult<Array1<f64>> {
         // Simplified prediction (would use actual model)
         let n_samples = features.nrows();
         let mut predictions = Array1::zeros(n_samples);
 
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
-            predictions[i] = feature_sum + (thread_rng().gen::<f64>() - 0.5) * 0.1;
+            predictions[i] = (thread_rng().gen::<f64>() - 0.5).mul_add(0.1, feature_sum);
         }
 
         Ok(predictions)
@@ -1482,7 +1479,6 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Calculate model performance metrics
     fn calculate_model_metrics(
-        &self,
         y_true: &Array1<f64>,
         y_pred: &Array1<f64>,
     ) -> DeviceResult<ModelMetrics> {
@@ -1620,7 +1616,9 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Detect anomalies in the data
     fn detect_anomalies(&self, features: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
-        let mut anomaly_detector = self.anomaly_detector.lock().unwrap();
+        let mut anomaly_detector = self.anomaly_detector.lock().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire anomaly detector lock: {e}"))
+        })?;
         anomaly_detector.detect_anomalies(features)
     }
 
@@ -1688,7 +1686,13 @@ impl AdvancedHardwareBenchmarkSuite {
 
     /// Collect real-time monitoring data
     fn collect_realtime_data(&self) -> DeviceResult<RealtimeMonitoringData> {
-        let performance_history = self.performance_history.read().unwrap().clone();
+        let performance_history = self
+            .performance_history
+            .read()
+            .map_err(|e| {
+                DeviceError::LockError(format!("Failed to acquire performance history lock: {e}"))
+            })?
+            .clone();
 
         Ok(RealtimeMonitoringData {
             performance_history,
@@ -1715,7 +1719,11 @@ impl AdvancedHardwareBenchmarkSuite {
             system_state: SystemState::Healthy,
         };
 
-        let mut history = self.performance_history.write().unwrap();
+        let mut history = self.performance_history.write().map_err(|e| {
+            DeviceError::LockError(format!(
+                "Failed to acquire performance history write lock: {e}"
+            ))
+        })?;
         if history.len() >= 10000 {
             history.pop_front();
         }
@@ -1804,7 +1812,7 @@ mod tests {
 
         let suite = AdvancedHardwareBenchmarkSuite::new(config, calibration_manager, topology)
             .await
-            .unwrap();
+            .expect("AdvancedHardwareBenchmarkSuite creation should succeed");
 
         // Create mock benchmark results
         let base_results = crate::benchmarking::BenchmarkSuite {
@@ -1868,7 +1876,8 @@ mod tests {
             execution_time: Duration::from_secs(60),
         };
 
-        let features = suite.extract_features(&base_results).unwrap();
+        let features = AdvancedHardwareBenchmarkSuite::extract_features(&base_results)
+            .expect("Feature extraction should succeed");
         assert_eq!(features.nrows(), 0); // No benchmark results in mock data
     }
 }

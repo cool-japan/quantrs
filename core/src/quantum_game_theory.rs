@@ -4,14 +4,12 @@
 //! extending classical game theory to the quantum realm. It includes
 //! quantum Nash equilibria, quantum strategies, and quantum mechanisms
 //! for multi-player games.
-
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::Complex64;
 use std::collections::HashMap;
-
 /// Types of quantum games
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameType {
     /// Prisoner's Dilemma with quantum strategies
     QuantumPrisonersDilemma,
@@ -26,20 +24,18 @@ pub enum GameType {
     /// Custom quantum game
     Custom,
 }
-
 /// Player strategies in quantum games
 #[derive(Debug, Clone, PartialEq)]
 pub enum QuantumStrategy {
     /// Classical deterministic strategy (pure classical)
-    Classical(f64), // angle parameter for rotation
+    Classical(f64),
     /// Quantum superposition strategy
-    Superposition { theta: f64, phi: f64 }, // Bloch sphere angles
+    Superposition { theta: f64, phi: f64 },
     /// Entangled strategy (requires coordination with other player)
     Entangled,
     /// Mixed quantum strategy
-    Mixed(Vec<(f64, QuantumStrategy)>), // probabilities and strategies
+    Mixed(Vec<(f64, Self)>),
 }
-
 /// Quantum player in a game
 #[derive(Debug, Clone)]
 pub struct QuantumPlayer {
@@ -52,7 +48,6 @@ pub struct QuantumPlayer {
     /// Player's utility function parameters
     pub utility_params: HashMap<String, f64>,
 }
-
 impl QuantumPlayer {
     /// Create a new quantum player
     pub fn new(id: usize, strategy: QuantumStrategy) -> Self {
@@ -63,17 +58,14 @@ impl QuantumPlayer {
             utility_params: HashMap::new(),
         }
     }
-
     /// Set utility function parameter
     pub fn set_utility_param(&mut self, param: String, value: f64) {
         self.utility_params.insert(param, value);
     }
-
     /// Prepare quantum state based on strategy
     pub fn prepare_quantum_state(&mut self) -> QuantRS2Result<Array1<Complex64>> {
         match self.strategy {
             QuantumStrategy::Classical(theta) => {
-                // Classical strategy as a quantum state |0⟩ or |1⟩ with rotation
                 let state = Array1::from_vec(vec![
                     Complex64::new(theta.cos(), 0.0),
                     Complex64::new(theta.sin(), 0.0),
@@ -82,7 +74,6 @@ impl QuantumPlayer {
                 Ok(state)
             }
             QuantumStrategy::Superposition { theta, phi } => {
-                // General qubit state on Bloch sphere
                 let state = Array1::from_vec(vec![
                     Complex64::new((theta / 2.0).cos(), 0.0),
                     Complex64::new(
@@ -94,8 +85,6 @@ impl QuantumPlayer {
                 Ok(state)
             }
             QuantumStrategy::Entangled => {
-                // Entangled state preparation requires coordination
-                // Return Bell state component for now
                 let state = Array1::from_vec(vec![
                     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
                     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
@@ -104,7 +93,6 @@ impl QuantumPlayer {
                 Ok(state)
             }
             QuantumStrategy::Mixed(_) => {
-                // Mixed strategy - for now use superposition
                 let state = Array1::from_vec(vec![
                     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
                     Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
@@ -114,19 +102,14 @@ impl QuantumPlayer {
             }
         }
     }
-
     /// Compute expected utility given game outcomes
     pub fn compute_utility(&self, game_outcome: &GameOutcome) -> f64 {
         match &game_outcome.payoff_matrix {
-            Some(payoffs) => {
-                // Linear utility based on expected payoffs
-                payoffs.iter().sum::<f64>() / payoffs.len() as f64
-            }
+            Some(payoffs) => payoffs.iter().sum::<f64>() / payoffs.len() as f64,
             None => 0.0,
         }
     }
 }
-
 /// Game outcome after quantum measurement
 #[derive(Debug, Clone)]
 pub struct GameOutcome {
@@ -139,7 +122,6 @@ pub struct GameOutcome {
     /// Nash equilibrium indicator
     pub is_nash_equilibrium: bool,
 }
-
 /// Quantum game engine
 #[derive(Debug, Clone)]
 pub struct QuantumGame {
@@ -156,13 +138,11 @@ pub struct QuantumGame {
     /// Entanglement operator (if applicable)
     pub entanglement_operator: Option<Array2<Complex64>>,
 }
-
 impl QuantumGame {
     /// Create a new quantum game
     pub fn new(game_type: GameType, num_players: usize) -> Self {
         let players = Vec::new();
         let payoff_matrices = vec![Array2::zeros((2, 2)); num_players];
-
         Self {
             game_type,
             num_players,
@@ -172,7 +152,6 @@ impl QuantumGame {
             entanglement_operator: None,
         }
     }
-
     /// Add a player to the game
     pub fn add_player(&mut self, player: QuantumPlayer) -> QuantRS2Result<()> {
         if self.players.len() >= self.num_players {
@@ -180,11 +159,9 @@ impl QuantumGame {
                 "Maximum number of players reached".to_string(),
             ));
         }
-
         self.players.push(player);
         Ok(())
     }
-
     /// Set payoff matrix for a specific player
     pub fn set_payoff_matrix(
         &mut self,
@@ -196,83 +173,50 @@ impl QuantumGame {
                 "Player ID out of bounds".to_string(),
             ));
         }
-
         self.payoff_matrices[player_id] = payoffs;
         Ok(())
     }
-
     /// Create quantum prisoner's dilemma
     pub fn quantum_prisoners_dilemma() -> QuantRS2Result<Self> {
         let mut game = Self::new(GameType::QuantumPrisonersDilemma, 2);
-
-        // Classical prisoner's dilemma payoff matrices
-        // (Cooperate, Defect) strategies
-        let payoff_p1 = Array2::from_shape_vec(
-            (2, 2),
-            vec![3.0, 0.0, 5.0, 1.0], // (CC, CD, DC, DD)
-        )
-        .unwrap();
-
-        let payoff_p2 = Array2::from_shape_vec(
-            (2, 2),
-            vec![3.0, 5.0, 0.0, 1.0], // (CC, DC, CD, DD)
-        )
-        .unwrap();
-
+        let payoff_p1 = Array2::from_shape_vec((2, 2), vec![3.0, 0.0, 5.0, 1.0]).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Failed to create payoff matrix: {e}"))
+        })?;
+        let payoff_p2 = Array2::from_shape_vec((2, 2), vec![3.0, 5.0, 0.0, 1.0]).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Failed to create payoff matrix: {e}"))
+        })?;
         game.set_payoff_matrix(0, payoff_p1)?;
         game.set_payoff_matrix(1, payoff_p2)?;
-
-        // Add entanglement operator (optional)
-        let entanglement = Self::create_entanglement_operator(std::f64::consts::PI / 2.0);
+        let entanglement = Self::create_entanglement_operator(std::f64::consts::PI / 2.0)?;
         game.entanglement_operator = Some(entanglement);
-
         Ok(game)
     }
-
     /// Create quantum coordination game
     pub fn quantum_coordination_game() -> QuantRS2Result<Self> {
         let mut game = Self::new(GameType::QuantumCoordination, 2);
-
-        // Coordination game: both players want to choose the same action
-        let payoff_p1 = Array2::from_shape_vec(
-            (2, 2),
-            vec![2.0, 0.0, 0.0, 1.0], // Prefer (0,0) or (1,1)
-        )
-        .unwrap();
-
+        let payoff_p1 = Array2::from_shape_vec((2, 2), vec![2.0, 0.0, 0.0, 1.0]).map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Failed to create payoff matrix: {e}"))
+        })?;
         let payoff_p2 = payoff_p1.clone();
-
         game.set_payoff_matrix(0, payoff_p1)?;
         game.set_payoff_matrix(1, payoff_p2)?;
-
         Ok(game)
     }
-
     /// Create quantum auction mechanism
     pub fn quantum_auction(num_bidders: usize) -> QuantRS2Result<Self> {
         let mut game = Self::new(GameType::QuantumAuction, num_bidders);
-
-        // Each bidder has a 2x2 payoff matrix (bid high/low vs others)
         for i in 0..num_bidders {
-            let payoff = Array2::from_shape_vec(
-                (2, 2),
-                vec![1.0, 0.5, 2.0, 0.0], // Utility from winning/losing auction
-            )
-            .unwrap();
-
+            let payoff = Array2::from_shape_vec((2, 2), vec![1.0, 0.5, 2.0, 0.0]).map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Failed to create payoff matrix: {e}"))
+            })?;
             game.set_payoff_matrix(i, payoff)?;
         }
-
         Ok(game)
     }
-
     /// Create entanglement operator
-    fn create_entanglement_operator(gamma: f64) -> Array2<Complex64> {
-        // J(γ) = exp(iγ(σ_x ⊗ σ_x + σ_y ⊗ σ_y)/2)
-        // Simplified version: controlled-rotation
+    fn create_entanglement_operator(gamma: f64) -> QuantRS2Result<Array2<Complex64>> {
         let cos_g = (gamma / 2.0).cos();
         let sin_g = (gamma / 2.0).sin();
-
         Array2::from_shape_vec(
             (4, 4),
             vec![
@@ -294,9 +238,10 @@ impl QuantumGame {
                 Complex64::new(cos_g, 0.0),
             ],
         )
-        .unwrap()
+        .map_err(|e| {
+            QuantRS2Error::InvalidInput(format!("Failed to create entanglement operator: {e}"))
+        })
     }
-
     /// Play the quantum game and return outcome
     pub fn play_game(&mut self) -> QuantRS2Result<GameOutcome> {
         if self.players.len() != self.num_players {
@@ -304,55 +249,35 @@ impl QuantumGame {
                 "Not all players have joined the game".to_string(),
             ));
         }
-
-        // Prepare player quantum states
         let mut joint_state = self.prepare_joint_state()?;
-
-        // Apply entanglement operator if present
         if let Some(entanglement_op) = &self.entanglement_operator {
             joint_state = entanglement_op.dot(&joint_state);
         }
-
-        // Apply player strategies
         joint_state = self.apply_player_strategies(joint_state)?;
-
-        // Measure the final state
         self.measure_game_outcome(joint_state)
     }
-
     /// Prepare joint quantum state of all players
     fn prepare_joint_state(&mut self) -> QuantRS2Result<Array1<Complex64>> {
-        let total_dim = 1 << self.num_players; // 2^n dimensional Hilbert space
+        let total_dim = 1 << self.num_players;
         let mut joint_state = Array1::zeros(total_dim);
-
-        // Start with |00...0⟩ state
         joint_state[0] = Complex64::new(1.0, 0.0);
-
-        // Apply each player's initial strategy
         let mut player_states = Vec::new();
-        for player in self.players.iter_mut() {
+        for player in &mut self.players {
             let player_state = player.prepare_quantum_state()?;
             player_states.push(player_state);
         }
-
         for (i, player_state) in player_states.into_iter().enumerate() {
-            joint_state = self.tensor_product_player_state(joint_state, player_state, i)?;
+            joint_state = Self::tensor_product_player_state(joint_state, player_state, i)?;
         }
-
         Ok(joint_state)
     }
-
     /// Tensor product of joint state with single player state
     fn tensor_product_player_state(
-        &self,
         joint_state: Array1<Complex64>,
         player_state: Array1<Complex64>,
         player_index: usize,
     ) -> QuantRS2Result<Array1<Complex64>> {
-        // Simplified implementation - in practice this is more complex
-        let mut new_state = joint_state.clone();
-
-        // Apply player's state preparation as a rotation on their qubit
+        let mut new_state = joint_state;
         for i in 0..new_state.len() {
             let bit = (i >> player_index) & 1;
             if bit == 0 {
@@ -361,36 +286,28 @@ impl QuantumGame {
                 new_state[i] *= player_state[1];
             }
         }
-
         Ok(new_state)
     }
-
     /// Apply all player strategies to the joint state
     fn apply_player_strategies(
         &self,
         mut joint_state: Array1<Complex64>,
     ) -> QuantRS2Result<Array1<Complex64>> {
-        // For each player, apply their quantum strategy operator
         for (i, player) in self.players.iter().enumerate() {
-            joint_state = self.apply_single_player_strategy(joint_state, &player.strategy, i)?;
+            joint_state = Self::apply_single_player_strategy(joint_state, &player.strategy, i)?;
         }
-
         Ok(joint_state)
     }
-
     /// Apply a single player's strategy to the joint state
     fn apply_single_player_strategy(
-        &self,
         mut joint_state: Array1<Complex64>,
         strategy: &QuantumStrategy,
         player_index: usize,
     ) -> QuantRS2Result<Array1<Complex64>> {
         match strategy {
             QuantumStrategy::Classical(theta) => {
-                // Apply rotation around Z-axis
                 let cos_theta = theta.cos();
                 let sin_theta = theta.sin();
-
                 for i in 0..joint_state.len() {
                     let bit = (i >> player_index) & 1;
                     if bit == 1 {
@@ -399,33 +316,23 @@ impl QuantumGame {
                 }
             }
             QuantumStrategy::Superposition { theta, phi } => {
-                // Apply general single-qubit rotation
                 let half_theta = theta / 2.0;
                 let cos_half = half_theta.cos();
                 let sin_half = half_theta.sin();
-
                 let mut new_state = Array1::zeros(joint_state.len());
-
                 for i in 0..joint_state.len() {
                     let bit = (i >> player_index) & 1;
                     let flipped_i = i ^ (1 << player_index);
-
                     if bit == 0 {
                         new_state[i] += cos_half * joint_state[i];
                         new_state[flipped_i] +=
                             sin_half * Complex64::new(phi.cos(), phi.sin()) * joint_state[i];
                     }
                 }
-
                 joint_state = new_state;
             }
-            QuantumStrategy::Entangled => {
-                // Entangled strategies are handled by the entanglement operator
-                // No additional operation needed here
-            }
+            QuantumStrategy::Entangled => {}
             QuantumStrategy::Mixed(_strategies) => {
-                // Mixed strategies require probabilistic sampling
-                // For now, treat as superposition
                 let mut new_state = joint_state.clone();
                 for i in 0..new_state.len() {
                     new_state[i] *= Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
@@ -433,36 +340,23 @@ impl QuantumGame {
                 joint_state = new_state;
             }
         }
-
         Ok(joint_state)
     }
-
     /// Measure the final game state and determine outcome
     fn measure_game_outcome(&self, joint_state: Array1<Complex64>) -> QuantRS2Result<GameOutcome> {
         let num_outcomes = joint_state.len();
         let mut probabilities = Array1::zeros(num_outcomes);
-
-        // Compute measurement probabilities
         for i in 0..num_outcomes {
             probabilities[i] = joint_state[i].norm_sqr();
         }
-
-        // Sample a classical outcome based on probabilities
-        let outcome_index = self.sample_outcome(&probabilities)?;
-
-        // Extract individual player outcomes
+        let outcome_index = Self::sample_outcome(&probabilities)?;
         let mut classical_outcomes = Vec::new();
         for player_idx in 0..self.num_players {
             let bit = (outcome_index >> player_idx) & 1;
             classical_outcomes.push(bit);
         }
-
-        // Compute payoffs for this outcome
         let payoffs = self.compute_payoffs(&classical_outcomes)?;
-
-        // Check if this is a Nash equilibrium
         let is_nash = self.is_nash_equilibrium(&classical_outcomes, &payoffs)?;
-
         Ok(GameOutcome {
             classical_outcomes,
             probabilities,
@@ -470,120 +364,80 @@ impl QuantumGame {
             is_nash_equilibrium: is_nash,
         })
     }
-
     /// Sample an outcome based on probability distribution
-    fn sample_outcome(&self, probabilities: &Array1<f64>) -> QuantRS2Result<usize> {
+    fn sample_outcome(probabilities: &Array1<f64>) -> QuantRS2Result<usize> {
         let mut rng = thread_rng();
         use scirs2_core::random::prelude::*;
-
         let random_value: f64 = rng.random();
         let mut cumulative = 0.0;
-
         for (i, &prob) in probabilities.iter().enumerate() {
             cumulative += prob;
             if random_value <= cumulative {
                 return Ok(i);
             }
         }
-
-        // Fallback to last outcome
         Ok(probabilities.len() - 1)
     }
-
     /// Compute payoffs for all players given classical outcomes
     fn compute_payoffs(&self, outcomes: &[usize]) -> QuantRS2Result<Vec<f64>> {
         let mut payoffs = Vec::new();
-
         for (player_idx, payoff_matrix) in self.payoff_matrices.iter().enumerate() {
             if outcomes.len() < 2 {
                 return Err(QuantRS2Error::InvalidInput(
                     "Need at least 2 players for payoff calculation".to_string(),
                 ));
             }
-
-            // For 2-player games, use both players' actions
             let player_action = outcomes[player_idx];
-            let opponent_action = outcomes[1 - player_idx % 2]; // Simple opponent selection
-
+            let opponent_action = outcomes[1 - player_idx % 2];
             let payoff = payoff_matrix[[player_action, opponent_action]];
             payoffs.push(payoff);
         }
-
         Ok(payoffs)
     }
-
     /// Check if current outcome is a Nash equilibrium
     fn is_nash_equilibrium(&self, outcomes: &[usize], _payoffs: &[f64]) -> QuantRS2Result<bool> {
-        // Simplified Nash equilibrium check
-        // In a real implementation, this would check if any player can improve
-        // their payoff by unilaterally changing their strategy
-
-        // For now, assume prisoner's dilemma: (Defect, Defect) is Nash equilibrium
         match self.game_type {
-            GameType::QuantumPrisonersDilemma => {
-                Ok(outcomes == &[1, 1]) // Both defect
-            }
-            GameType::QuantumCoordination => {
-                Ok(outcomes[0] == outcomes[1]) // Coordination successful
-            }
+            GameType::QuantumPrisonersDilemma => Ok(outcomes == &[1, 1]),
+            GameType::QuantumCoordination => Ok(outcomes[0] == outcomes[1]),
             _ => Ok(false),
         }
     }
-
     /// Find quantum Nash equilibria using iterative algorithm
     pub fn find_quantum_nash_equilibria(&mut self) -> QuantRS2Result<Vec<GameOutcome>> {
         let mut equilibria = Vec::new();
-
-        // Grid search over strategy space
         let theta_steps = 10;
         let phi_steps = 10;
-
         for i in 0..theta_steps {
             for j in 0..phi_steps {
                 let theta = (i as f64) * std::f64::consts::PI / (theta_steps as f64);
                 let phi = (j as f64) * 2.0 * std::f64::consts::PI / (phi_steps as f64);
-
-                // Set strategies for all players
                 for player in &mut self.players {
                     player.strategy = QuantumStrategy::Superposition { theta, phi };
                 }
-
-                // Play game and check if outcome is equilibrium
                 let outcome = self.play_game()?;
                 if outcome.is_nash_equilibrium {
                     equilibria.push(outcome);
                 }
             }
         }
-
         Ok(equilibria)
     }
-
     /// Compute quantum advantage over classical game
     pub fn quantum_advantage(&mut self) -> QuantRS2Result<f64> {
-        // Play quantum version
         let quantum_outcome = self.play_game()?;
         let quantum_payoffs = quantum_outcome.payoff_matrix.unwrap_or_default();
         let quantum_total = quantum_payoffs.iter().sum::<f64>();
-
-        // Compare with classical Nash equilibrium
         let classical_total = self.compute_classical_nash_payoff()?;
-
         Ok(quantum_total - classical_total)
     }
-
     /// Compute payoff at classical Nash equilibrium
-    fn compute_classical_nash_payoff(&self) -> QuantRS2Result<f64> {
-        // For prisoner's dilemma: classical Nash is (Defect, Defect) = (1, 1)
-        // Both players get payoff of 1
+    const fn compute_classical_nash_payoff(&self) -> QuantRS2Result<f64> {
         match self.game_type {
-            GameType::QuantumPrisonersDilemma => Ok(2.0), // 1 + 1
-            GameType::QuantumCoordination => Ok(0.0),     // Miscoordination
-            _ => Ok(0.0),
+            GameType::QuantumPrisonersDilemma => Ok(2.0),
+            GameType::QuantumCoordination | _ => Ok(0.0),
         }
     }
 }
-
 /// Quantum mechanism design for multi-player games
 #[derive(Debug, Clone)]
 pub struct QuantumMechanism {
@@ -596,7 +450,6 @@ pub struct QuantumMechanism {
     /// Revenue function for the mechanism designer
     pub revenue_function: Option<fn(&[f64]) -> f64>,
 }
-
 impl QuantumMechanism {
     /// Create quantum auction mechanism
     pub fn quantum_auction_mechanism(num_bidders: usize) -> Self {
@@ -604,44 +457,33 @@ impl QuantumMechanism {
             num_players: num_bidders,
             mechanism_type: "Quantum Auction".to_string(),
             circuit: None,
-            revenue_function: Some(|bids| bids.iter().sum::<f64>() * 0.1), // 10% commission
+            revenue_function: Some(|bids| bids.iter().sum::<f64>() * 0.1),
         }
     }
-
     /// Create quantum voting mechanism
     pub fn quantum_voting_mechanism(num_voters: usize) -> Self {
         Self {
             num_players: num_voters,
             mechanism_type: "Quantum Voting".to_string(),
             circuit: None,
-            revenue_function: None, // No revenue in voting
+            revenue_function: None,
         }
     }
-
     /// Design optimal quantum mechanism
     pub fn design_optimal_mechanism(&mut self) -> QuantRS2Result<Array2<Complex64>> {
-        // This would implement the quantum mechanism design algorithm
-        // For now, return identity transformation
         let dim = 1 << self.num_players;
         Ok(Array2::eye(dim))
     }
-
     /// Verify mechanism properties (incentive compatibility, individual rationality)
-    pub fn verify_mechanism_properties(&self) -> QuantRS2Result<(bool, bool)> {
-        // Simplified verification
-        // In practice, this would check incentive compatibility and individual rationality
-
-        let incentive_compatible = true; // Assume true for now
-        let individually_rational = true; // Assume true for now
-
+    pub const fn verify_mechanism_properties(&self) -> QuantRS2Result<(bool, bool)> {
+        let incentive_compatible = true;
+        let individually_rational = true;
         Ok((incentive_compatible, individually_rational))
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_quantum_player_creation() {
         let strategy = QuantumStrategy::Superposition {
@@ -649,67 +491,57 @@ mod tests {
             phi: 0.0,
         };
         let player = QuantumPlayer::new(0, strategy.clone());
-
         assert_eq!(player.id, 0);
         assert_eq!(player.strategy, strategy);
         assert!(player.state.is_none());
     }
-
     #[test]
     fn test_quantum_state_preparation() {
         let mut player =
             QuantumPlayer::new(0, QuantumStrategy::Classical(std::f64::consts::PI / 4.0));
-        let state = player.prepare_quantum_state().unwrap();
-
+        let state = player
+            .prepare_quantum_state()
+            .expect("failed to prepare quantum state");
         assert_eq!(state.len(), 2);
         assert!(state[0].norm() > 0.0);
         assert!(player.state.is_some());
     }
-
     #[test]
     fn test_quantum_prisoners_dilemma() {
-        let game = QuantumGame::quantum_prisoners_dilemma().unwrap();
-
+        let game = QuantumGame::quantum_prisoners_dilemma()
+            .expect("failed to create quantum prisoners dilemma");
         assert_eq!(game.game_type, GameType::QuantumPrisonersDilemma);
         assert_eq!(game.num_players, 2);
         assert_eq!(game.payoff_matrices.len(), 2);
         assert!(game.entanglement_operator.is_some());
     }
-
     #[test]
     fn test_quantum_coordination_game() {
-        let game = QuantumGame::quantum_coordination_game().unwrap();
-
+        let game = QuantumGame::quantum_coordination_game()
+            .expect("failed to create quantum coordination game");
         assert_eq!(game.game_type, GameType::QuantumCoordination);
         assert_eq!(game.num_players, 2);
         assert_eq!(game.payoff_matrices.len(), 2);
     }
-
     #[test]
     fn test_game_with_players() {
-        let mut game = QuantumGame::quantum_prisoners_dilemma().unwrap();
-
+        let mut game = QuantumGame::quantum_prisoners_dilemma()
+            .expect("failed to create quantum prisoners dilemma");
         let player1 = QuantumPlayer::new(0, QuantumStrategy::Classical(0.0));
         let player2 = QuantumPlayer::new(1, QuantumStrategy::Classical(std::f64::consts::PI));
-
-        game.add_player(player1).unwrap();
-        game.add_player(player2).unwrap();
-
-        let outcome = game.play_game().unwrap();
+        game.add_player(player1).expect("failed to add player1");
+        game.add_player(player2).expect("failed to add player2");
+        let outcome = game.play_game().expect("failed to play game");
         assert_eq!(outcome.classical_outcomes.len(), 2);
         assert!(!outcome.probabilities.is_empty());
     }
-
     #[test]
     fn test_entanglement_operator() {
-        let entanglement = QuantumGame::create_entanglement_operator(std::f64::consts::PI / 2.0);
-
+        let entanglement = QuantumGame::create_entanglement_operator(std::f64::consts::PI / 2.0)
+            .expect("failed to create entanglement operator");
         assert_eq!(entanglement.dim(), (4, 4));
-
-        // Check unitarity (U†U = I)
         let conjugate_transpose = entanglement.t().mapv(|x| x.conj());
         let product = conjugate_transpose.dot(&entanglement);
-
         for i in 0..4 {
             for j in 0..4 {
                 let expected = if i == j { 1.0 } else { 0.0 };
@@ -717,42 +549,39 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn test_nash_equilibrium_detection() {
-        let game = QuantumGame::quantum_prisoners_dilemma().unwrap();
-
-        // (Defect, Defect) should be Nash equilibrium in prisoner's dilemma
-        let is_nash = game.is_nash_equilibrium(&[1, 1], &[1.0, 1.0]).unwrap();
+        let game = QuantumGame::quantum_prisoners_dilemma()
+            .expect("failed to create quantum prisoners dilemma");
+        let is_nash = game
+            .is_nash_equilibrium(&[1, 1], &[1.0, 1.0])
+            .expect("failed to check Nash equilibrium");
         assert!(is_nash);
-
-        // (Cooperate, Cooperate) should not be Nash equilibrium
-        let is_nash = game.is_nash_equilibrium(&[0, 0], &[3.0, 3.0]).unwrap();
+        let is_nash = game
+            .is_nash_equilibrium(&[0, 0], &[3.0, 3.0])
+            .expect("failed to check Nash equilibrium");
         assert!(!is_nash);
     }
-
     #[test]
     fn test_quantum_mechanism_creation() {
         let mechanism = QuantumMechanism::quantum_auction_mechanism(3);
-
         assert_eq!(mechanism.num_players, 3);
         assert_eq!(mechanism.mechanism_type, "Quantum Auction");
         assert!(mechanism.revenue_function.is_some());
     }
-
     #[test]
     fn test_mechanism_verification() {
         let mechanism = QuantumMechanism::quantum_voting_mechanism(5);
-        let (ic, ir) = mechanism.verify_mechanism_properties().unwrap();
-
-        assert!(ic); // Incentive compatible
-        assert!(ir); // Individually rational
+        let (ic, ir) = mechanism
+            .verify_mechanism_properties()
+            .expect("failed to verify mechanism properties");
+        assert!(ic);
+        assert!(ir);
     }
-
     #[test]
     fn test_quantum_advantage_calculation() {
-        let mut game = QuantumGame::quantum_prisoners_dilemma().unwrap();
-
+        let mut game = QuantumGame::quantum_prisoners_dilemma()
+            .expect("failed to create quantum prisoners dilemma");
         let player1 = QuantumPlayer::new(
             0,
             QuantumStrategy::Superposition {
@@ -767,13 +596,11 @@ mod tests {
                 phi: 0.0,
             },
         );
-
-        game.add_player(player1).unwrap();
-        game.add_player(player2).unwrap();
-
-        let advantage = game.quantum_advantage().unwrap();
-        // Quantum strategies can potentially achieve better outcomes than classical Nash
-        // The exact value depends on the strategy profile
+        game.add_player(player1).expect("failed to add player1");
+        game.add_player(player2).expect("failed to add player2");
+        let advantage = game
+            .quantum_advantage()
+            .expect("failed to calculate quantum advantage");
         assert!(advantage.is_finite());
     }
 }

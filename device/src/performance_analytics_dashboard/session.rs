@@ -52,7 +52,7 @@ pub struct CookieSettings {
 }
 
 /// Same-site policy
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SameSitePolicy {
     Strict,
     Lax,
@@ -116,7 +116,7 @@ pub struct NotificationPreferences {
 }
 
 /// Notification frequency
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NotificationFrequency {
     Immediate,
     Hourly,
@@ -135,7 +135,7 @@ pub struct QuietHours {
 }
 
 /// Days of the week
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DayOfWeek {
     Monday,
     Tuesday,
@@ -159,7 +159,7 @@ pub struct DisplayPreferences {
 }
 
 /// Display density
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DisplayDensity {
     Compact,
     Normal,
@@ -185,7 +185,7 @@ pub struct Credentials {
 }
 
 /// Authentication provider types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthProviderType {
     Local,
     LDAP,
@@ -254,7 +254,7 @@ pub struct AccessPolicy {
 }
 
 /// Policy effect
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicyEffect {
     Allow,
     Deny,
@@ -269,7 +269,7 @@ pub struct AccessCondition {
 }
 
 /// Condition types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionType {
     UserRole,
     UserGroup,
@@ -281,7 +281,7 @@ pub enum ConditionType {
 }
 
 /// Condition operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionOperator {
     Equals,
     NotEquals,
@@ -308,7 +308,7 @@ pub struct SessionActivity {
 }
 
 /// Activity types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActivityType {
     Login,
     Logout,
@@ -338,7 +338,7 @@ pub struct AuditLogConfig {
 }
 
 /// Audit log levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuditLogLevel {
     Debug,
     Info,
@@ -364,7 +364,7 @@ pub struct AuditEvent {
 }
 
 /// Audit event types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuditEventType {
     Authentication,
     Authorization,
@@ -376,7 +376,7 @@ pub enum AuditEventType {
 }
 
 /// Audit result
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuditResult {
     Success,
     Failure,
@@ -467,7 +467,11 @@ impl SessionManager {
         }
 
         // Now get mutable reference and update last activity
-        let session = self.active_sessions.get_mut(session_id).unwrap();
+        // SAFETY: We verified the session exists above, so this should never fail
+        let session = self
+            .active_sessions
+            .get_mut(session_id)
+            .expect("Session was verified to exist");
         session.last_activity = SystemTime::now();
 
         Ok(session)
@@ -543,11 +547,12 @@ impl SessionManager {
 
     fn generate_session_id(&self) -> String {
         // Generate secure session ID
+        // SAFETY: SystemTime::now() is always after UNIX_EPOCH
         format!(
             "session_{}",
             SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or(Duration::ZERO)
                 .as_nanos()
         )
     }
@@ -617,6 +622,12 @@ pub struct SessionStatistics {
     pub average_session_duration: Duration,
 }
 
+impl Default for PermissionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PermissionManager {
     pub fn new() -> Self {
         Self {
@@ -667,10 +678,11 @@ impl PermissionManager {
         action: &str,
     ) -> DeviceResult<bool> {
         for policy in &self.access_policies {
-            if policy.resource == resource && policy.action == action {
-                if self.evaluate_conditions(&policy.conditions, user_info)? {
-                    return Ok(policy.effect == PolicyEffect::Allow);
-                }
+            if policy.resource == resource
+                && policy.action == action
+                && self.evaluate_conditions(&policy.conditions, user_info)?
+            {
+                return Ok(policy.effect == PolicyEffect::Allow);
             }
         }
 

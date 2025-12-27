@@ -25,6 +25,7 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+use std::fmt::Write;
 /// Comprehensive benchmark result
 #[derive(Debug, Clone)]
 pub struct BenchmarkResult {
@@ -89,7 +90,7 @@ impl Default for BenchmarkConfig {
 
 impl QuantumBenchmarkSuite {
     /// Create a new benchmark suite
-    pub fn new(noise_model: NoiseModel, config: BenchmarkConfig) -> Self {
+    pub const fn new(noise_model: NoiseModel, config: BenchmarkConfig) -> Self {
         Self {
             noise_model,
             enable_mitigation: true,
@@ -111,12 +112,7 @@ impl QuantumBenchmarkSuite {
         let mixer_hamiltonian = MixerHamiltonian::TransverseField;
         let params = QAOAParams::random(num_layers);
 
-        let circuit = QAOACircuit::new(
-            num_qubits,
-            cost_hamiltonian.clone(),
-            mixer_hamiltonian,
-            params.clone(),
-        );
+        let circuit = QAOACircuit::new(num_qubits, cost_hamiltonian, mixer_hamiltonian, params);
 
         // Benchmark without mitigation
         let noisy_result = self.run_qaoa_noisy(&circuit)?;
@@ -404,24 +400,15 @@ impl QAOABenchmarkResult {
         );
 
         if let Some(mitigated) = self.mitigated_expectation {
-            println!(
-                "║   Mitigated Expectation: {:8.4}                    ║",
-                mitigated
-            );
+            println!("║   Mitigated Expectation: {mitigated:8.4}                    ║");
         }
 
         if let Some(ideal) = self.ideal_expectation {
-            println!(
-                "║   Ideal Expectation:     {:8.4}                    ║",
-                ideal
-            );
+            println!("║   Ideal Expectation:     {ideal:8.4}                    ║");
         }
 
         if let Some(improvement) = self.mitigation_improvement {
-            println!(
-                "║   Mitigation Improvement: {:7.2}x                   ║",
-                improvement
-            );
+            println!("║   Mitigation Improvement: {improvement:7.2}x                   ║");
         }
 
         println!("║                                                        ║");
@@ -475,7 +462,7 @@ pub struct ComparativeBenchmark {
 
 impl ComparativeBenchmark {
     /// Create new comparative benchmark
-    pub fn new(suite: QuantumBenchmarkSuite) -> Self {
+    pub const fn new(suite: QuantumBenchmarkSuite) -> Self {
         Self {
             suite,
             results: Vec::new(),
@@ -493,25 +480,27 @@ impl ComparativeBenchmark {
         report.push_str("================================\n\n");
 
         for result in &self.results {
-            report.push_str(&format!("Algorithm: {}\n", result.algorithm));
-            report.push_str(&format!("  Fidelity: {:.4}\n", result.fidelity));
-            report.push_str(&format!(
-                "  Success Rate: {:.2}%\n",
+            let _ = writeln!(report, "Algorithm: {}", result.algorithm);
+            let _ = writeln!(report, "  Fidelity: {:.4}", result.fidelity);
+            let _ = writeln!(
+                report,
+                "  Success Rate: {:.2}%",
                 result.success_rate * 100.0
-            ));
-            report.push_str(&format!("  Execution Time: {:?}\n", result.execution_time));
+            );
+            let _ = writeln!(report, "  Execution Time: {:?}", result.execution_time);
 
             if let Some(improvement) = result.mitigation_improvement {
-                report.push_str(&format!("  Mitigation Improvement: {:.2}x\n", improvement));
+                let _ = writeln!(report, "  Mitigation Improvement: {improvement:.2}x");
             }
 
-            report.push_str(&format!(
-                "  Resources: {} gates, depth {}, {} qubits\n",
+            let _ = writeln!(
+                report,
+                "  Resources: {} gates, depth {}, {} qubits",
                 result.resource_usage.gate_count,
                 result.resource_usage.circuit_depth,
                 result.resource_usage.num_qubits,
-            ));
-            report.push_str("\n");
+            );
+            report.push('\n');
         }
 
         report
@@ -555,7 +544,9 @@ mod tests {
 
         // Simple 3-qubit MaxCut problem
         let edges = vec![(0, 1), (1, 2)];
-        let result = suite.benchmark_qaoa_with_mitigation(3, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_with_mitigation(3, edges, 1)
+            .expect("Failed to benchmark QAOA with mitigation");
 
         assert_eq!(result.num_qubits, 3);
         assert_eq!(result.num_edges, 2);
@@ -579,7 +570,7 @@ mod tests {
 
         let result = suite
             .benchmark_with_dynamical_decoupling(DDSequenceType::CPMG, 10, 1.0)
-            .unwrap();
+            .expect("Failed to benchmark dynamical decoupling");
 
         assert!(result.coherence_improvement > 1.0);
         assert!(result.overhead_fraction >= 0.0); // Can be > 1 for many pulses
@@ -617,7 +608,9 @@ mod tests {
         let report = comparative.generate_report();
         assert!(report.contains("Algorithm A"));
 
-        let best = comparative.best_algorithm().unwrap();
+        let best = comparative
+            .best_algorithm()
+            .expect("Expected at least one algorithm in benchmark");
         assert_eq!(best.algorithm, "Algorithm A");
     }
 

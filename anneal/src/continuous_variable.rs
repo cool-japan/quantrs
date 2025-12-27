@@ -69,8 +69,7 @@ impl ContinuousVariable {
     ) -> ContinuousVariableResult<Self> {
         if lower_bound >= upper_bound {
             return Err(ContinuousVariableError::InvalidVariable(format!(
-                "Invalid bounds: {} >= {}",
-                lower_bound, upper_bound
+                "Invalid bounds: {lower_bound} >= {upper_bound}"
             )));
         }
 
@@ -90,32 +89,37 @@ impl ContinuousVariable {
     }
 
     /// Add description to the variable
+    #[must_use]
     pub fn with_description(mut self, description: String) -> Self {
         self.description = Some(description);
         self
     }
 
     /// Get the number of discrete levels
-    pub fn num_levels(&self) -> usize {
+    #[must_use]
+    pub const fn num_levels(&self) -> usize {
         2_usize.pow(self.precision_bits as u32)
     }
 
     /// Convert binary representation to continuous value
+    #[must_use]
     pub fn binary_to_continuous(&self, binary_value: u32) -> f64 {
         let max_value = (1u32 << self.precision_bits) - 1;
-        let normalized = binary_value as f64 / max_value as f64;
+        let normalized = f64::from(binary_value) / f64::from(max_value);
         self.lower_bound + normalized * (self.upper_bound - self.lower_bound)
     }
 
     /// Convert continuous value to binary representation
+    #[must_use]
     pub fn continuous_to_binary(&self, continuous_value: f64) -> u32 {
         let clamped = continuous_value.clamp(self.lower_bound, self.upper_bound);
         let normalized = (clamped - self.lower_bound) / (self.upper_bound - self.lower_bound);
         let max_value = (1u32 << self.precision_bits) - 1;
-        (normalized * max_value as f64).round() as u32
+        (normalized * f64::from(max_value)).round() as u32
     }
 
     /// Get the resolution (smallest representable difference)
+    #[must_use]
     pub fn resolution(&self) -> f64 {
         (self.upper_bound - self.lower_bound) / (self.num_levels() - 1) as f64
     }
@@ -155,6 +159,7 @@ impl std::fmt::Debug for ContinuousConstraint {
 
 impl ContinuousConstraint {
     /// Create a new constraint
+    #[must_use]
     pub fn new(name: String, function: ConstraintFunction, penalty_weight: f64) -> Self {
         Self {
             name,
@@ -165,7 +170,8 @@ impl ContinuousConstraint {
     }
 
     /// Set constraint tolerance
-    pub fn with_tolerance(mut self, tolerance: f64) -> Self {
+    #[must_use]
+    pub const fn with_tolerance(mut self, tolerance: f64) -> Self {
         self.tolerance = tolerance;
         self
     }
@@ -199,6 +205,7 @@ impl std::fmt::Debug for ContinuousOptimizationProblem {
 
 impl ContinuousOptimizationProblem {
     /// Create a new continuous optimization problem
+    #[must_use]
     pub fn new(objective: ObjectiveFunction) -> Self {
         Self {
             variables: HashMap::new(),
@@ -227,16 +234,18 @@ impl ContinuousOptimizationProblem {
     }
 
     /// Set default penalty weight
-    pub fn set_default_penalty_weight(&mut self, weight: f64) {
+    pub const fn set_default_penalty_weight(&mut self, weight: f64) {
         self.default_penalty_weight = weight;
     }
 
     /// Get total number of binary variables needed
+    #[must_use]
     pub fn total_binary_variables(&self) -> usize {
         self.variables.values().map(|v| v.precision_bits).sum()
     }
 
     /// Create binary variable mapping
+    #[must_use]
     pub fn create_binary_mapping(&self) -> HashMap<String, Vec<usize>> {
         let mut mapping = HashMap::new();
         let mut current_index = 0;
@@ -263,8 +272,7 @@ impl ContinuousOptimizationProblem {
 
             if indices.iter().any(|&i| i >= binary_solution.len()) {
                 return Err(ContinuousVariableError::DiscretizationError(format!(
-                    "Binary solution too short for variable '{}'",
-                    var_name
+                    "Binary solution too short for variable '{var_name}'"
                 )));
             }
 
@@ -285,6 +293,7 @@ impl ContinuousOptimizationProblem {
     }
 
     /// Evaluate objective function with penalty for constraint violations
+    #[must_use]
     pub fn evaluate_penalized_objective(&self, continuous_solution: &HashMap<String, f64>) -> f64 {
         let mut objective_value = (self.objective)(continuous_solution);
 
@@ -394,6 +403,7 @@ pub struct ContinuousVariableAnnealer {
 
 impl ContinuousVariableAnnealer {
     /// Create a new continuous variable annealer
+    #[must_use]
     pub fn new(config: ContinuousAnnealingConfig) -> Self {
         let rng = match config.annealing_params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
@@ -507,7 +517,7 @@ impl ContinuousVariableAnnealer {
     }
 
     /// Create discretized QUBO problem
-    fn create_discretized_problem(
+    const fn create_discretized_problem(
         &self,
         _problem: &ContinuousOptimizationProblem,
     ) -> ContinuousVariableResult<DiscretizedProblem> {
@@ -535,7 +545,7 @@ impl ContinuousVariableAnnealer {
     }
 
     /// Refine discretization around current solution
-    fn refine_discretization(
+    const fn refine_discretization(
         &self,
         _problem: &ContinuousOptimizationProblem,
         _current_solution: &HashMap<String, f64>,
@@ -549,7 +559,7 @@ impl ContinuousVariableAnnealer {
 
     /// Perform local search to improve solution
     fn local_search(
-        &mut self,
+        &self,
         problem: &ContinuousOptimizationProblem,
         solution: &mut HashMap<String, f64>,
     ) -> ContinuousVariableResult<()> {
@@ -565,8 +575,9 @@ impl ContinuousVariableAnnealer {
                     (var.upper_bound - var.lower_bound) * self.config.local_search_step_size;
 
                 // Try both directions
-                for direction in [-1.0, 1.0] {
-                    let new_value = (current_value + direction * step_size)
+                for direction in [-1.0_f64, 1.0] {
+                    let new_value = direction
+                        .mul_add(step_size, current_value)
                         .clamp(var.lower_bound, var.upper_bound);
 
                     // Temporarily update solution
@@ -577,10 +588,9 @@ impl ContinuousVariableAnnealer {
                         current_objective = new_objective;
                         improved = true;
                         break; // Keep this improvement
-                    } else {
-                        // Revert change
-                        solution.insert(var_name.clone(), current_value);
                     }
+                    // Revert change
+                    solution.insert(var_name.clone(), current_value);
                 }
             }
 
@@ -632,7 +642,7 @@ pub fn create_quadratic_problem(
 
     let objective: ObjectiveFunction = Box::new(move |vars: &HashMap<String, f64>| {
         let n = linear_coeffs.len();
-        let x: Vec<f64> = (0..n).map(|i| vars[&format!("x{}", i)]).collect();
+        let x: Vec<f64> = (0..n).map(|i| vars[&format!("x{i}")]).collect();
 
         // Linear term
         let linear_term: f64 = linear_coeffs
@@ -656,7 +666,7 @@ pub fn create_quadratic_problem(
 
     // Add variables
     for (i, &(lower, upper)) in bounds.iter().enumerate() {
-        let var = ContinuousVariable::new(format!("x{}", i), lower, upper, precision_bits)?;
+        let var = ContinuousVariable::new(format!("x{i}"), lower, upper, precision_bits)?;
         problem.add_variable(var)?;
     }
 
@@ -669,7 +679,8 @@ mod tests {
 
     #[test]
     fn test_continuous_variable_creation() {
-        let var = ContinuousVariable::new("x".to_string(), 0.0, 10.0, 8).unwrap();
+        let var = ContinuousVariable::new("x".to_string(), 0.0, 10.0, 8)
+            .expect("should create continuous variable with valid bounds");
         assert_eq!(var.name, "x");
         assert_eq!(var.lower_bound, 0.0);
         assert_eq!(var.upper_bound, 10.0);
@@ -679,7 +690,8 @@ mod tests {
 
     #[test]
     fn test_binary_continuous_conversion() {
-        let var = ContinuousVariable::new("x".to_string(), 0.0, 10.0, 4).unwrap();
+        let var = ContinuousVariable::new("x".to_string(), 0.0, 10.0, 4)
+            .expect("should create continuous variable for conversion test");
 
         // Test conversion: 0 -> 0.0, 15 -> 10.0
         assert_eq!(var.binary_to_continuous(0), 0.0);
@@ -702,8 +714,8 @@ mod tests {
         let quadratic_matrix = vec![vec![2.0, 0.0], vec![0.0, 2.0]];
         let bounds = vec![(0.0, 5.0), (-3.0, 3.0)];
 
-        let problem =
-            create_quadratic_problem(&linear_coeffs, &quadratic_matrix, &bounds, 6).unwrap();
+        let problem = create_quadratic_problem(&linear_coeffs, &quadratic_matrix, &bounds, 6)
+            .expect("should create quadratic problem with valid parameters");
         assert_eq!(problem.variables.len(), 2);
         assert!(problem.variables.contains_key("x0"));
         assert!(problem.variables.contains_key("x1"));

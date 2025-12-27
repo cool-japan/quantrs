@@ -76,7 +76,7 @@ impl Default for IBMRetryConfig {
 #[cfg(feature = "ibm")]
 impl IBMRetryConfig {
     /// Create a configuration for aggressive retries (good for transient network errors)
-    pub fn aggressive() -> Self {
+    pub const fn aggressive() -> Self {
         Self {
             max_attempts: 5,
             initial_delay: Duration::from_millis(50),
@@ -87,7 +87,7 @@ impl IBMRetryConfig {
     }
 
     /// Create a configuration for patient retries (good for rate limiting)
-    pub fn patient() -> Self {
+    pub const fn patient() -> Self {
         Self {
             max_attempts: 3,
             initial_delay: Duration::from_secs(1),
@@ -121,11 +121,7 @@ impl TokenInfo {
     /// Get remaining validity time in seconds
     pub fn remaining_secs(&self) -> u64 {
         let elapsed = self.obtained_at.elapsed().as_secs();
-        if elapsed >= self.valid_for_secs {
-            0
-        } else {
-            self.valid_for_secs - elapsed
-        }
+        self.valid_for_secs.saturating_sub(elapsed)
     }
 }
 
@@ -188,7 +184,7 @@ pub struct IBMCircuitConfig {
 }
 
 /// Status of a job in IBM Quantum
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "ibm", derive(Deserialize))]
 pub enum IBMJobStatus {
     #[cfg_attr(feature = "ibm", serde(rename = "CREATING"))]
@@ -408,12 +404,12 @@ impl IBMQuantumClient {
     }
 
     /// Set retry configuration
-    pub fn set_retry_config(&mut self, config: IBMRetryConfig) {
+    pub const fn set_retry_config(&mut self, config: IBMRetryConfig) {
         self.retry_config = config;
     }
 
     /// Get current retry configuration
-    pub fn retry_config(&self) -> &IBMRetryConfig {
+    pub const fn retry_config(&self) -> &IBMRetryConfig {
         &self.retry_config
     }
 
@@ -436,10 +432,9 @@ impl IBMQuantumClient {
 
                     // Check if error is retryable
                     let is_retryable = match &err {
-                        DeviceError::Connection(_) => true,
-                        DeviceError::Timeout(_) => true,
+                        DeviceError::Connection(_) | DeviceError::Timeout(_) => true,
                         DeviceError::APIError(msg) => {
-                            msg.contains("rate") || msg.contains("5") || msg.contains("503")
+                            msg.contains("rate") || msg.contains('5') || msg.contains("503")
                         }
                         _ => false,
                     };
@@ -474,13 +469,11 @@ impl IBMQuantumClient {
     /// Exchange an API key for an access token
     async fn exchange_api_key_for_token(client: &Client, api_key: &str) -> DeviceResult<TokenInfo> {
         let response = client
-            .post(&format!("{}/users/loginWithToken", IBM_AUTH_URL))
+            .post(format!("{IBM_AUTH_URL}/users/loginWithToken"))
             .json(&serde_json::json!({ "apiToken": api_key }))
             .send()
             .await
-            .map_err(|e| {
-                DeviceError::Connection(format!("Authentication request failed: {}", e))
-            })?;
+            .map_err(|e| DeviceError::Connection(format!("Authentication request failed: {e}")))?;
 
         if !response.status().is_success() {
             let error_msg = response
@@ -491,7 +484,7 @@ impl IBMQuantumClient {
         }
 
         let auth_response: AuthResponse = response.json().await.map_err(|e| {
-            DeviceError::Deserialization(format!("Failed to parse auth response: {}", e))
+            DeviceError::Deserialization(format!("Failed to parse auth response: {e}"))
         })?;
 
         let valid_for_secs = auth_response.ttl.unwrap_or(DEFAULT_TOKEN_VALIDITY_SECS);
@@ -567,8 +560,8 @@ impl IBMQuantumClient {
 
         let response = self
             .client
-            .get(&format!("{}/backends", self.api_url))
-            .header("Authorization", format!("Bearer {}", token))
+            .get(format!("{}/backends", self.api_url))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -595,8 +588,8 @@ impl IBMQuantumClient {
 
         let response = self
             .client
-            .get(&format!("{}/backends/{}", self.api_url, backend_name))
-            .header("Authorization", format!("Bearer {}", token))
+            .get(format!("{}/backends/{}", self.api_url, backend_name))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -640,8 +633,8 @@ impl IBMQuantumClient {
 
             let response = self
                 .client
-                .post(&format!("{}/jobs", self.api_url))
-                .header("Authorization", format!("Bearer {}", token))
+                .post(format!("{}/jobs", self.api_url))
+                .header("Authorization", format!("Bearer {token}"))
                 .json(&payload)
                 .send()
                 .await
@@ -675,8 +668,8 @@ impl IBMQuantumClient {
 
         let response = self
             .client
-            .get(&format!("{}/jobs/{}", self.api_url, job_id))
-            .header("Authorization", format!("Bearer {}", token))
+            .get(format!("{}/jobs/{}", self.api_url, job_id))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -703,8 +696,8 @@ impl IBMQuantumClient {
 
         let response = self
             .client
-            .get(&format!("{}/jobs/{}/result", self.api_url, job_id))
-            .header("Authorization", format!("Bearer {}", token))
+            .get(format!("{}/jobs/{}/result", self.api_url, job_id))
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await
             .map_err(|e| DeviceError::Connection(e.to_string()))?;
@@ -744,14 +737,12 @@ impl IBMQuantumClient {
                 }
                 IBMJobStatus::Error => {
                     return Err(DeviceError::JobExecution(format!(
-                        "Job {} encountered an error",
-                        job_id
+                        "Job {job_id} encountered an error"
                     )));
                 }
                 IBMJobStatus::Cancelled => {
                     return Err(DeviceError::JobExecution(format!(
-                        "Job {} was cancelled",
-                        job_id
+                        "Job {job_id} was cancelled"
                     )));
                 }
                 _ => {
@@ -763,8 +754,7 @@ impl IBMQuantumClient {
         }
 
         Err(DeviceError::Timeout(format!(
-            "Timed out waiting for job {} to complete",
-            job_id
+            "Timed out waiting for job {job_id} to complete"
         )))
     }
 
@@ -804,8 +794,7 @@ impl IBMQuantumClient {
                     },
                     Err(e) => {
                         return Err(DeviceError::JobSubmission(format!(
-                            "Failed to join task: {}",
-                            e
+                            "Failed to join task: {e}"
                         )));
                     }
                 }
@@ -832,8 +821,11 @@ impl IBMQuantumClient {
         let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
 
         // Define the quantum and classical registers
-        qasm.push_str(&format!("qreg q[{}];\n", N));
-        qasm.push_str(&format!("creg c[{}];\n\n", N));
+        use std::fmt::Write;
+        writeln!(qasm, "qreg q[{N}];")
+            .map_err(|e| DeviceError::CircuitConversion(format!("Failed to write QASM: {e}")))?;
+        writeln!(qasm, "creg c[{N}];")
+            .map_err(|e| DeviceError::CircuitConversion(format!("Failed to write QASM: {e}")))?;
 
         // Implement conversion of gates to QASM here
         // For example:

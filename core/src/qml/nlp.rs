@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 
 /// Text embedding strategies for quantum NLP
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextEmbeddingStrategy {
     /// Word-level embeddings: each word is encoded separately
     WordLevel,
@@ -90,7 +90,7 @@ impl QuantumWordEmbedding {
                 // Initialize with random values
                 let value = ((word_id * qubit) as f64 * 0.1).sin() * 0.5;
                 word_embedding.push(Parameter {
-                    name: format!("embed_{}_{}", word_id, qubit),
+                    name: format!("embed_{word_id}_{qubit}"),
                     value,
                     bounds: None,
                 });
@@ -176,7 +176,7 @@ impl QMLLayer for QuantumWordEmbedding {
         Ok(vec![0.0; total_params])
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QuantumWordEmbedding"
     }
 }
@@ -212,28 +212,28 @@ impl QuantumAttention {
             for i in 0..params_per_head {
                 // Query parameters
                 query_params.push(Parameter {
-                    name: format!("query_{}_{}", head, i),
+                    name: format!("query_{head}_{i}"),
                     value: ((head + i) as f64 * 0.1).sin() * 0.5,
                     bounds: None,
                 });
 
                 // Key parameters
                 key_params.push(Parameter {
-                    name: format!("key_{}_{}", head, i),
+                    name: format!("key_{head}_{i}"),
                     value: ((head + i + 1) as f64 * 0.1).cos() * 0.5,
                     bounds: None,
                 });
 
                 // Value parameters
                 value_params.push(Parameter {
-                    name: format!("value_{}_{}", head, i),
+                    name: format!("value_{head}_{i}"),
                     value: ((head + i + 2) as f64 * 0.1).sin() * 0.5,
                     bounds: None,
                 });
 
                 // Output parameters
                 output_params.push(Parameter {
-                    name: format!("output_{}_{}", head, i),
+                    name: format!("output_{head}_{i}"),
                     value: ((head + i + 3) as f64 * 0.1).cos() * 0.5,
                     bounds: None,
                 });
@@ -354,7 +354,7 @@ impl QMLLayer for QuantumAttention {
         Ok(vec![0.0; total_params])
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "QuantumAttention"
     }
 }
@@ -393,7 +393,7 @@ impl QuantumTextClassifier {
         for class in 0..num_classes {
             for qubit in 0..config.feature_qubits {
                 classifier_params.push(Parameter {
-                    name: format!("classifier_{}_{}", class, qubit),
+                    name: format!("classifier_{class}_{qubit}"),
                     value: ((class + qubit) as f64 * 0.2).sin() * 0.3,
                     bounds: None,
                 });
@@ -499,7 +499,7 @@ impl QuantumTextClassifier {
             losses.push(epoch_loss);
 
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.4}", epoch, epoch_loss);
+                println!("Epoch {epoch}: Loss = {epoch_loss:.4}");
             }
         }
 
@@ -566,7 +566,7 @@ impl QuantumLanguageModel {
         let mut output_params = Vec::new();
         for token in 0..config.vocab_size {
             output_params.push(Parameter {
-                name: format!("output_{}", token),
+                name: format!("output_{token}"),
                 value: (token as f64 * 0.01).sin() * 0.1,
                 bounds: None,
             });
@@ -644,9 +644,9 @@ impl QuantumLanguageModel {
             let next_token = probs
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(i, _)| i)
-                .unwrap();
+                .unwrap_or(0);
 
             generated.push(next_token);
         }
@@ -696,7 +696,9 @@ mod tests {
 
         // Test encoding a simple sequence
         let word_ids = vec![1, 5, 10];
-        let gates = embedding.encode_sequence(&word_ids).unwrap();
+        let gates = embedding
+            .encode_sequence(&word_ids)
+            .expect("Failed to encode sequence");
         assert!(!gates.is_empty());
     }
 
@@ -706,7 +708,9 @@ mod tests {
         assert_eq!(attention.num_qubits(), 8);
         assert_eq!(attention.num_heads, 2);
 
-        let gates = attention.attention_gates().unwrap();
+        let gates = attention
+            .attention_gates()
+            .expect("Failed to get attention gates");
         assert!(!gates.is_empty());
     }
 
@@ -723,7 +727,9 @@ mod tests {
 
         // Test classification
         let word_ids = vec![1, 2, 3];
-        let probs = classifier.classify(&word_ids).unwrap();
+        let probs = classifier
+            .classify(&word_ids)
+            .expect("Failed to classify text");
         assert_eq!(probs.len(), 3);
 
         // Check probabilities sum to 1
@@ -744,11 +750,15 @@ mod tests {
 
         // Test next token prediction
         let context = vec![1, 2, 3];
-        let probs = lm.predict_next_token(&context).unwrap();
+        let probs = lm
+            .predict_next_token(&context)
+            .expect("Failed to predict next token");
         assert_eq!(probs.len(), 20);
 
         // Test text generation
-        let generated = lm.generate_text(&context, 5, 1.0).unwrap();
+        let generated = lm
+            .generate_text(&context, 5, 1.0)
+            .expect("Failed to generate text");
         assert_eq!(generated.len(), 8); // 3 context + 5 generated
     }
 
@@ -771,7 +781,9 @@ mod tests {
             (vec![2, 4], 1), // Class 1
         ];
 
-        let losses = classifier.train(&training_data, 0.01, 5).unwrap();
+        let losses = classifier
+            .train(&training_data, 0.01, 5)
+            .expect("Failed to train classifier");
         assert_eq!(losses.len(), 5);
     }
 }
@@ -849,7 +861,7 @@ pub mod advanced {
                     .vocab
                     .get(&word)
                     .copied()
-                    .unwrap_or(self.special_tokens["<UNK>"]);
+                    .unwrap_or_else(|| self.special_tokens["<UNK>"]);
                 tokens.push(token_id);
             }
 
@@ -893,7 +905,7 @@ pub mod advanced {
             for i in 0..num_qubits * 2 {
                 // For two text inputs
                 similarity_params.push(Parameter {
-                    name: format!("sim_{}", i),
+                    name: format!("sim_{i}"),
                     value: (i as f64 * 0.1).sin() * 0.5,
                     bounds: None,
                 });
@@ -971,7 +983,7 @@ pub mod advanced {
             let mut summary_params = Vec::new();
             for i in 0..config.text_qubits {
                 summary_params.push(Parameter {
-                    name: format!("summary_{}", i),
+                    name: format!("summary_{i}"),
                     value: (i as f64 * 0.15).sin() * 0.4,
                     bounds: None,
                 });
@@ -1001,14 +1013,14 @@ pub mod advanced {
             let mut token_scores = Vec::new();
             for (i, &token) in text_tokens.iter().enumerate() {
                 // Simple scoring based on token frequency and position
-                let position_weight = 1.0 - (i as f64 / text_tokens.len() as f64) * 0.5;
+                let position_weight = (i as f64 / text_tokens.len() as f64).mul_add(-0.5, 1.0);
                 let token_weight = (token as f64 * 0.1).sin().abs();
                 let score = position_weight * token_weight;
                 token_scores.push((i, token, score));
             }
 
             // Sort by score and select top tokens
-            token_scores.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
+            token_scores.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
             let mut summary_tokens = Vec::new();
             for (_, token, _) in token_scores.into_iter().take(summary_length) {
@@ -1059,8 +1071,8 @@ pub mod advanced {
                 let mut classifier_params = Vec::new();
                 for i in 0..config.text_qubits {
                     classifier_params.push(Parameter {
-                        name: format!("{}_{}", entity_type, i),
-                        value: (entity_type.len() as f64 + i as f64 * 0.1).sin() * 0.3,
+                        name: format!("{entity_type}_{i}"),
+                        value: (i as f64).mul_add(0.1, entity_type.len() as f64).sin() * 0.3,
                         bounds: None,
                     });
                 }

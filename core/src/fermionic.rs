@@ -42,7 +42,7 @@ pub struct FermionOperator {
 
 impl FermionOperator {
     /// Create a new fermionic operator
-    pub fn new(op_type: FermionOperatorType, mode: usize, coefficient: Complex64) -> Self {
+    pub const fn new(op_type: FermionOperatorType, mode: usize, coefficient: Complex64) -> Self {
         Self {
             op_type,
             mode,
@@ -51,7 +51,7 @@ impl FermionOperator {
     }
 
     /// Create a creation operator
-    pub fn creation(mode: usize) -> Self {
+    pub const fn creation(mode: usize) -> Self {
         Self::new(
             FermionOperatorType::Creation,
             mode,
@@ -60,7 +60,7 @@ impl FermionOperator {
     }
 
     /// Create an annihilation operator
-    pub fn annihilation(mode: usize) -> Self {
+    pub const fn annihilation(mode: usize) -> Self {
         Self::new(
             FermionOperatorType::Annihilation,
             mode,
@@ -69,11 +69,12 @@ impl FermionOperator {
     }
 
     /// Create a number operator
-    pub fn number(mode: usize) -> Self {
+    pub const fn number(mode: usize) -> Self {
         Self::new(FermionOperatorType::Number, mode, Complex64::new(1.0, 0.0))
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let conj_coeff = self.coefficient.conj();
         match self.op_type {
@@ -104,7 +105,7 @@ pub struct FermionTerm {
 
 impl FermionTerm {
     /// Create a new fermionic term
-    pub fn new(operators: Vec<FermionOperator>, coefficient: Complex64) -> Self {
+    pub const fn new(operators: Vec<FermionOperator>, coefficient: Complex64) -> Self {
         Self {
             operators,
             coefficient,
@@ -112,7 +113,7 @@ impl FermionTerm {
     }
 
     /// Create an identity term
-    pub fn identity() -> Self {
+    pub const fn identity() -> Self {
         Self {
             operators: vec![],
             coefficient: Complex64::new(1.0, 0.0),
@@ -165,10 +166,7 @@ impl FermionTerm {
         let op2 = &self.operators[idx + 1];
 
         // Check anticommutation relation
-        if op1.mode != op2.mode {
-            // Different modes anticommute: {a_i, a_j†} = 0 for i ≠ j
-            self.coefficient *= -1.0;
-        } else {
+        if op1.mode == op2.mode {
             // Same mode: {a_i, a_i†} = 1
             match (op1.op_type, op2.op_type) {
                 (FermionOperatorType::Annihilation, FermionOperatorType::Creation) => {
@@ -182,6 +180,9 @@ impl FermionTerm {
                     self.coefficient *= -1.0;
                 }
             }
+        } else {
+            // Different modes anticommute: {a_i, a_j†} = 0 for i ≠ j
+            self.coefficient *= -1.0;
         }
 
         self.operators.swap(idx, idx + 1);
@@ -189,6 +190,7 @@ impl FermionTerm {
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let mut conj_ops = self.operators.clone();
         conj_ops.reverse();
@@ -212,7 +214,7 @@ pub struct FermionHamiltonian {
 
 impl FermionHamiltonian {
     /// Create a new fermionic Hamiltonian
-    pub fn new(n_modes: usize) -> Self {
+    pub const fn new(n_modes: usize) -> Self {
         Self {
             terms: Vec::new(),
             n_modes,
@@ -257,6 +259,7 @@ impl FermionHamiltonian {
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let conj_terms = self.terms.iter().map(|t| t.dagger()).collect();
         Self {
@@ -287,7 +290,7 @@ pub struct JordanWigner {
 
 impl JordanWigner {
     /// Create a new Jordan-Wigner transformer
-    pub fn new(n_modes: usize) -> Self {
+    pub const fn new(n_modes: usize) -> Self {
         Self { n_modes }
     }
 
@@ -313,8 +316,7 @@ impl JordanWigner {
     ) -> QuantRS2Result<Vec<QubitOperator>> {
         if mode >= self.n_modes {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Mode {} out of bounds",
-                mode
+                "Mode {mode} out of bounds"
             )));
         }
 
@@ -348,8 +350,7 @@ impl JordanWigner {
     ) -> QuantRS2Result<Vec<QubitOperator>> {
         if mode >= self.n_modes {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Mode {} out of bounds",
-                mode
+                "Mode {mode} out of bounds"
             )));
         }
 
@@ -383,8 +384,7 @@ impl JordanWigner {
     ) -> QuantRS2Result<Vec<QubitOperator>> {
         if mode >= self.n_modes {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Mode {} out of bounds",
-                mode
+                "Mode {mode} out of bounds"
             )));
         }
 
@@ -471,7 +471,7 @@ impl PauliOperator {
     /// Get the matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            PauliOperator::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -480,8 +480,8 @@ impl PauliOperator {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
-            PauliOperator::X => Array2::from_shape_vec(
+            .expect("Pauli I matrix construction should succeed"),
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -490,8 +490,8 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            PauliOperator::Y => Array2::from_shape_vec(
+            .expect("Pauli X matrix construction should succeed"),
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -500,8 +500,8 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            PauliOperator::Z => Array2::from_shape_vec(
+            .expect("Pauli Y matrix construction should succeed"),
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -510,8 +510,8 @@ impl PauliOperator {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
-            PauliOperator::Plus => Array2::from_shape_vec(
+            .expect("Pauli Z matrix construction should succeed"),
+            Self::Plus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -520,8 +520,8 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            PauliOperator::Minus => Array2::from_shape_vec(
+            .expect("Pauli Plus matrix construction should succeed"),
+            Self::Minus => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -530,7 +530,7 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Minus matrix construction should succeed"),
         }
     }
 }
@@ -555,7 +555,7 @@ pub struct QubitOperator {
 
 impl QubitOperator {
     /// Create a zero operator
-    pub fn zero(n_qubits: usize) -> Self {
+    pub const fn zero(n_qubits: usize) -> Self {
         Self {
             terms: vec![],
             n_qubits,
@@ -682,7 +682,7 @@ pub struct BravyiKitaev {
 
 impl BravyiKitaev {
     /// Create a new Bravyi-Kitaev transformer
-    pub fn new(n_modes: usize) -> Self {
+    pub const fn new(n_modes: usize) -> Self {
         Self { n_modes }
     }
 
@@ -720,7 +720,9 @@ mod tests {
     fn test_jordan_wigner_number_operator() {
         let jw = JordanWigner::new(4);
         let op = FermionOperator::number(1);
-        let qubit_ops = jw.transform_operator(&op).unwrap();
+        let qubit_ops = jw
+            .transform_operator(&op)
+            .expect("Jordan-Wigner transformation should succeed");
 
         // n_1 = (I - Z_1)/2
         assert_eq!(qubit_ops.len(), 2);
@@ -730,7 +732,9 @@ mod tests {
     fn test_jordan_wigner_creation_operator() {
         let jw = JordanWigner::new(4);
         let op = FermionOperator::creation(2);
-        let qubit_ops = jw.transform_operator(&op).unwrap();
+        let qubit_ops = jw
+            .transform_operator(&op)
+            .expect("Jordan-Wigner transformation should succeed");
 
         // a†_2 should have Z operators on qubits 0 and 1
         assert_eq!(qubit_ops.len(), 1);
@@ -755,10 +759,14 @@ mod tests {
         let op1 = QubitOperator::identity(2, Complex64::new(1.0, 0.0));
         let op2 = QubitOperator::identity(2, Complex64::new(2.0, 0.0));
 
-        let sum = op1.add(&op2).unwrap();
+        let sum = op1
+            .add(&op2)
+            .expect("QubitOperator addition should succeed");
         assert_eq!(sum.terms.len(), 2);
 
-        let prod = op1.multiply(&op2).unwrap();
+        let prod = op1
+            .multiply(&op2)
+            .expect("QubitOperator multiplication should succeed");
         assert_eq!(prod.terms.len(), 1);
         assert_eq!(prod.terms[0].coefficient, Complex64::new(2.0, 0.0));
     }

@@ -54,7 +54,7 @@ pub struct ScalingCondition {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     GreaterThan,
     LessThan,
@@ -76,7 +76,7 @@ pub struct ScalingAction {
 }
 
 /// Scaling action types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScalingActionType {
     ScaleUp,
     ScaleDown,
@@ -128,7 +128,7 @@ pub struct PredictiveScalingConfig {
 }
 
 /// Prediction models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictionModel {
     ARIMA,
     LinearRegression,

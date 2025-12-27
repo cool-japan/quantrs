@@ -55,7 +55,7 @@ pub fn create_process_tomographer(
 }
 
 /// Create a process tomographer with custom configuration
-pub fn create_process_tomographer_with_config(
+pub const fn create_process_tomographer_with_config(
     config: SciRS2ProcessTomographyConfig,
     calibration_manager: CalibrationManager,
 ) -> SciRS2ProcessTomographer {
@@ -95,7 +95,7 @@ pub async fn comprehensive_process_characterization<
     config: Option<SciRS2ProcessTomographyConfig>,
 ) -> DeviceResult<SciRS2ProcessTomographyResult> {
     let calibration_manager = CalibrationManager::new();
-    let config = config.unwrap_or_else(SciRS2ProcessTomographyConfig::default);
+    let config = config.unwrap_or_default();
     let mut tomographer = SciRS2ProcessTomographer::new(config, calibration_manager);
 
     // Generate input states and measurements
@@ -109,7 +109,7 @@ pub async fn comprehensive_process_characterization<
 }
 
 /// Create process monitoring system for continuous characterization
-pub fn create_process_monitoring_system(
+pub const fn create_process_monitoring_system(
     reference_metrics: ProcessMetrics,
     anomaly_threshold: f64,
     drift_sensitivity: f64,
@@ -281,17 +281,18 @@ pub struct ProcessValidationReport {
 
 /// Calculate overall quality score for a process tomography result
 fn calculate_overall_quality_score(result: &SciRS2ProcessTomographyResult) -> f64 {
-    let physical_score = (result
-        .statistical_analysis
-        .reconstruction_quality
-        .physical_validity
-        .positivity_measure
-        + result
+    let physical_score = f64::midpoint(
+        result
             .statistical_analysis
             .reconstruction_quality
             .physical_validity
-            .trace_preservation_measure)
-        / 2.0;
+            .positivity_measure,
+        result
+            .statistical_analysis
+            .reconstruction_quality
+            .physical_validity
+            .trace_preservation_measure,
+    );
 
     let fidelity_score = result.process_metrics.process_fidelity;
     let unitarity_score = result.process_metrics.unitarity;
@@ -305,9 +306,12 @@ fn calculate_overall_quality_score(result: &SciRS2ProcessTomographyResult) -> f6
                 / 1e6);
 
     // Weighted average
-    (physical_score * 0.3 + fidelity_score * 0.3 + unitarity_score * 0.2 + numerical_score * 0.2)
-        .max(0.0)
-        .min(1.0)
+    numerical_score
+        .mul_add(
+            0.2,
+            unitarity_score.mul_add(0.2, fidelity_score.mul_add(0.3, physical_score * 0.3)),
+        )
+        .clamp(0.0, 1.0)
 }
 
 /// Export process tomography results in various formats

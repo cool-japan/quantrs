@@ -557,15 +557,15 @@ impl PerformanceProfiler {
         tool: ExternalTool,
     ) -> Result<String, String> {
         match tool {
-            ExternalTool::Perf => self.export_perf_script(profile),
-            ExternalTool::Valgrind => self.export_valgrind_format(profile),
-            ExternalTool::FlameScope => self.export_flamescope_format(profile),
-            ExternalTool::SpeedScope => self.export_speedscope_format(profile),
+            ExternalTool::Perf => Self::export_perf_script(profile),
+            ExternalTool::Valgrind => Self::export_valgrind_format(profile),
+            ExternalTool::FlameScope => Self::export_flamescope_format(profile),
+            ExternalTool::SpeedScope => Self::export_speedscope_format(profile),
         }
     }
 
     /// Export in perf script format
-    fn export_perf_script(&self, profile: &Profile) -> Result<String, String> {
+    fn export_perf_script(profile: &Profile) -> Result<String, String> {
         let mut output = String::new();
 
         for event in &profile.events {
@@ -585,7 +585,7 @@ impl PerformanceProfiler {
     }
 
     /// Export in valgrind callgrind format
-    fn export_valgrind_format(&self, profile: &Profile) -> Result<String, String> {
+    fn export_valgrind_format(profile: &Profile) -> Result<String, String> {
         let mut output = String::new();
 
         output.push_str("events: Instructions\n");
@@ -604,7 +604,7 @@ impl PerformanceProfiler {
     }
 
     /// Export in FlameScope format
-    fn export_flamescope_format(&self, profile: &Profile) -> Result<String, String> {
+    fn export_flamescope_format(profile: &Profile) -> Result<String, String> {
         // Simplified FlameScope JSON format
         let mut stacks = Vec::new();
 
@@ -624,7 +624,7 @@ impl PerformanceProfiler {
     }
 
     /// Export in SpeedScope format
-    fn export_speedscope_format(&self, profile: &Profile) -> Result<String, String> {
+    fn export_speedscope_format(profile: &Profile) -> Result<String, String> {
         let speedscope_profile = serde_json::json!({
             "$schema": "https://www.speedscope.app/file-format-schema.json",
             "version": "0.0.1",
@@ -711,7 +711,7 @@ impl PerformanceProfiler {
             } else {
                 PerformanceTrend::Unknown
             },
-            variance: self.calculate_variance(&times),
+            variance: Self::calculate_variance(&times),
         });
 
         // Compare memory usage
@@ -734,14 +734,14 @@ impl PerformanceProfiler {
             } else {
                 PerformanceTrend::Unknown
             },
-            variance: self.calculate_variance(&memory),
+            variance: Self::calculate_variance(&memory),
         });
 
         comparison
     }
 
     /// Calculate variance
-    fn calculate_variance(&self, values: &[f64]) -> f64 {
+    fn calculate_variance(values: &[f64]) -> f64 {
         if values.len() < 2 {
             return 0.0;
         }
@@ -861,7 +861,7 @@ impl PerformanceProfiler {
 
         // Start metrics collection thread
         if self.config.sampling_interval > Duration::from_secs(0) {
-            self.start_metrics_collection()?;
+            Self::start_metrics_collection()?;
         }
 
         Ok(())
@@ -888,13 +888,13 @@ impl PerformanceProfiler {
             - context.profile.start_time;
 
         // Process metrics buffer
-        self.process_metrics_buffer(&mut context)?;
+        Self::process_metrics_buffer(&mut context)?;
 
         // Build call graph
-        self.build_call_graph(&mut context.profile)?;
+        Self::build_call_graph(&mut context.profile)?;
 
         // Calculate percentiles
-        self.calculate_percentiles(&mut context.profile)?;
+        Self::calculate_percentiles(&mut context.profile)?;
 
         // Store profile
         self.profiles.push(context.profile.clone());
@@ -1102,14 +1102,14 @@ impl PerformanceProfiler {
     }
 
     /// Start metrics collection
-    const fn start_metrics_collection(&self) -> Result<(), String> {
+    const fn start_metrics_collection() -> Result<(), String> {
         // This would spawn a thread to collect metrics periodically
         // Simplified for now
         Ok(())
     }
 
     /// Process metrics buffer
-    fn process_metrics_buffer(&self, context: &mut ProfileContext) -> Result<(), String> {
+    fn process_metrics_buffer(context: &mut ProfileContext) -> Result<(), String> {
         // Calculate memory statistics
         if !context.metrics_buffer.memory_samples.is_empty() {
             let total_memory: usize = context
@@ -1142,7 +1142,7 @@ impl PerformanceProfiler {
     }
 
     /// Build call graph
-    fn build_call_graph(&self, profile: &mut Profile) -> Result<(), String> {
+    fn build_call_graph(profile: &mut Profile) -> Result<(), String> {
         let mut node_map: HashMap<String, usize> = HashMap::new();
         let mut nodes = Vec::new();
         let mut edges: HashMap<(usize, usize), CallEdge> = HashMap::new();
@@ -1219,7 +1219,7 @@ impl PerformanceProfiler {
     }
 
     /// Calculate percentiles
-    fn calculate_percentiles(&self, profile: &mut Profile) -> Result<(), String> {
+    fn calculate_percentiles(profile: &mut Profile) -> Result<(), String> {
         let mut durations: Vec<Duration> =
             profile.events.iter().filter_map(|e| e.duration).collect();
 
@@ -1249,15 +1249,15 @@ impl PerformanceProfiler {
     /// Compare profiles
     pub fn compare_profiles(&self, profile1: &Profile, profile2: &Profile) -> ComparisonReport {
         ComparisonReport {
-            time_comparison: self.compare_time_metrics(
+            time_comparison: Self::compare_time_metrics(
                 &profile1.metrics.time_metrics,
                 &profile2.metrics.time_metrics,
             ),
-            memory_comparison: self.compare_memory_metrics(
+            memory_comparison: Self::compare_memory_metrics(
                 &profile1.metrics.memory_metrics,
                 &profile2.metrics.memory_metrics,
             ),
-            quality_comparison: self.compare_quality_metrics(
+            quality_comparison: Self::compare_quality_metrics(
                 &profile1.metrics.quality_metrics,
                 &profile2.metrics.quality_metrics,
             ),
@@ -1267,7 +1267,7 @@ impl PerformanceProfiler {
     }
 
     /// Compare time metrics
-    fn compare_time_metrics(&self, m1: &TimeMetrics, m2: &TimeMetrics) -> TimeComparison {
+    fn compare_time_metrics(m1: &TimeMetrics, m2: &TimeMetrics) -> TimeComparison {
         TimeComparison {
             total_time_diff: m2.total_time.as_secs_f64() - m1.total_time.as_secs_f64(),
             total_time_ratio: m2.total_time.as_secs_f64() / m1.total_time.as_secs_f64(),
@@ -1279,7 +1279,7 @@ impl PerformanceProfiler {
     }
 
     /// Compare memory metrics
-    fn compare_memory_metrics(&self, m1: &MemoryMetrics, m2: &MemoryMetrics) -> MemoryComparison {
+    fn compare_memory_metrics(m1: &MemoryMetrics, m2: &MemoryMetrics) -> MemoryComparison {
         MemoryComparison {
             peak_memory_diff: m2.peak_memory as i64 - m1.peak_memory as i64,
             peak_memory_ratio: m2.peak_memory as f64 / m1.peak_memory as f64,
@@ -1289,11 +1289,7 @@ impl PerformanceProfiler {
     }
 
     /// Compare quality metrics
-    fn compare_quality_metrics(
-        &self,
-        m1: &QualityMetrics,
-        m2: &QualityMetrics,
-    ) -> QualityComparison {
+    fn compare_quality_metrics(m1: &QualityMetrics, m2: &QualityMetrics) -> QualityComparison {
         QualityComparison {
             convergence_rate_diff: m2.convergence_rate - m1.convergence_rate,
             time_to_best_diff: m2.time_to_best_solution.as_secs_f64()
@@ -1309,16 +1305,16 @@ impl PerformanceProfiler {
         format: &OutputFormat,
     ) -> Result<String, String> {
         match format {
-            OutputFormat::Json => self.generate_json_report(profile),
-            OutputFormat::Csv => self.generate_csv_report(profile),
-            OutputFormat::FlameGraph => self.generate_flame_graph(profile),
-            OutputFormat::ChromeTrace => self.generate_chrome_trace(profile),
-            _ => Err("Format not implemented".to_string()),
+            OutputFormat::Json => Self::generate_json_report(profile),
+            OutputFormat::Csv => Self::generate_csv_report(profile),
+            OutputFormat::FlameGraph => Self::generate_flame_graph(profile),
+            OutputFormat::ChromeTrace => Self::generate_chrome_trace(profile),
+            OutputFormat::Binary => Err("Format not implemented".to_string()),
         }
     }
 
     /// Generate JSON report
-    fn generate_json_report(&self, profile: &Profile) -> Result<String, String> {
+    fn generate_json_report(profile: &Profile) -> Result<String, String> {
         use std::fmt::Write;
 
         let mut json = String::new();
@@ -1675,7 +1671,7 @@ impl PerformanceProfiler {
     }
 
     /// Generate CSV report
-    fn generate_csv_report(&self, profile: &Profile) -> Result<String, String> {
+    fn generate_csv_report(profile: &Profile) -> Result<String, String> {
         let mut csv = String::new();
 
         csv.push_str("function,total_time_ms,call_count,avg_time_ms\n");
@@ -1694,7 +1690,7 @@ impl PerformanceProfiler {
     }
 
     /// Generate flame graph
-    fn generate_flame_graph(&self, profile: &Profile) -> Result<String, String> {
+    fn generate_flame_graph(profile: &Profile) -> Result<String, String> {
         // Simplified flame graph generation
         let mut stacks = Vec::new();
 
@@ -1709,7 +1705,7 @@ impl PerformanceProfiler {
     }
 
     /// Generate Chrome trace format
-    fn generate_chrome_trace(&self, profile: &Profile) -> Result<String, String> {
+    fn generate_chrome_trace(profile: &Profile) -> Result<String, String> {
         #[derive(Serialize)]
         struct TraceEvent {
             name: String,
@@ -1887,14 +1883,14 @@ impl PerformanceAnalyzer {
 
         // Detect anomalies
         if self.config.detect_anomalies {
-            report.anomalies = self.detect_anomalies(profile);
+            report.anomalies = Self::detect_anomalies(profile);
         }
 
         // Find hot functions
-        report.summary.hot_functions = self.find_hot_functions(profile);
+        report.summary.hot_functions = Self::find_hot_functions(profile);
 
         // Find critical path
-        report.summary.critical_path = self.find_critical_path(profile);
+        report.summary.critical_path = Self::find_critical_path(profile);
 
         report
     }
@@ -1955,7 +1951,7 @@ impl PerformanceAnalyzer {
         let mut suggestions = Vec::new();
 
         for rule in &self.optimization_suggester.rules {
-            if self.check_rule_condition(&rule.condition, profile) {
+            if Self::check_rule_condition(&rule.condition, profile) {
                 suggestions.push(OptimizationSuggestion {
                     title: rule.name.clone(),
                     description: rule.suggestion.clone(),
@@ -1970,7 +1966,7 @@ impl PerformanceAnalyzer {
     }
 
     /// Check rule condition
-    fn check_rule_condition(&self, condition: &RuleCondition, profile: &Profile) -> bool {
+    fn check_rule_condition(condition: &RuleCondition, profile: &Profile) -> bool {
         match condition {
             RuleCondition::HighFunctionTime {
                 function,
@@ -2001,7 +1997,7 @@ impl PerformanceAnalyzer {
     }
 
     /// Detect anomalies
-    fn detect_anomalies(&self, profile: &Profile) -> Vec<Anomaly> {
+    fn detect_anomalies(profile: &Profile) -> Vec<Anomaly> {
         let mut anomalies = Vec::new();
 
         // Check for unusual time distributions
@@ -2026,7 +2022,7 @@ impl PerformanceAnalyzer {
     }
 
     /// Find hot functions
-    fn find_hot_functions(&self, profile: &Profile) -> Vec<(String, f64)> {
+    fn find_hot_functions(profile: &Profile) -> Vec<(String, f64)> {
         let total_time = profile.metrics.time_metrics.total_time.as_secs_f64();
 
         let mut hot_functions: Vec<_> = profile
@@ -2046,7 +2042,7 @@ impl PerformanceAnalyzer {
     }
 
     /// Find critical path
-    fn find_critical_path(&self, profile: &Profile) -> Vec<String> {
+    fn find_critical_path(profile: &Profile) -> Vec<String> {
         // Simplified critical path - longest execution path
         let mut path = Vec::new();
 

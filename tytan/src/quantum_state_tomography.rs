@@ -1304,23 +1304,30 @@ impl QuantumStateTomography {
             PauliOperator::I => Array2::eye(2),
             PauliOperator::X => {
                 if outcome == 0 {
-                    Array2::from_shape_vec((2, 2), vec![0.5, 0.5, 0.5, 0.5]).unwrap()
+                    // Shape (2,2) with 4 elements is always valid
+                    Array2::from_shape_vec((2, 2), vec![0.5, 0.5, 0.5, 0.5])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 } else {
-                    Array2::from_shape_vec((2, 2), vec![0.5, -0.5, -0.5, 0.5]).unwrap()
+                    Array2::from_shape_vec((2, 2), vec![0.5, -0.5, -0.5, 0.5])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 }
             }
             PauliOperator::Y => {
                 if outcome == 0 {
-                    Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5]).unwrap()
+                    Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 } else {
-                    Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5]).unwrap()
+                    Array2::from_shape_vec((2, 2), vec![0.5, 0.0, 0.0, 0.5])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 }
             }
             PauliOperator::Z => {
                 if outcome == 0 {
-                    Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0]).unwrap()
+                    Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 } else {
-                    Array2::from_shape_vec((2, 2), vec![0.0, 0.0, 0.0, 1.0]).unwrap()
+                    Array2::from_shape_vec((2, 2), vec![0.0, 0.0, 0.0, 1.0])
+                        .expect("2x2 matrix with 4 elements is always valid")
                 }
             }
         }
@@ -1444,7 +1451,7 @@ impl QuantumStateTomography {
                 statistic: *state
                     .eigenvalues
                     .iter()
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     .unwrap_or(&0.0),
                 p_value: if eigenvals_positive { 1.0 } else { 0.0 },
                 critical_value: 0.0,
@@ -1658,14 +1665,18 @@ mod tests {
     #[test]
     fn test_pauli_measurement_generation() {
         let tomography = create_tomography_system(2);
-        let mut measurements = tomography.generate_pauli_measurements().unwrap();
+        let mut measurements = tomography
+            .generate_pauli_measurements()
+            .expect("Pauli measurement generation should succeed");
         assert_eq!(measurements.len(), 9); // 3^2 = 9 Pauli measurements for 2 qubits
     }
 
     #[test]
     fn test_shadow_measurement_generation() {
         let tomography = create_tomography_system(2);
-        let mut measurements = tomography.generate_shadow_measurements(100).unwrap();
+        let mut measurements = tomography
+            .generate_shadow_measurements(100)
+            .expect("Shadow measurement generation should succeed");
         assert_eq!(measurements.len(), 100);
     }
 
@@ -1681,7 +1692,8 @@ mod tests {
     #[test]
     fn test_purity_computation() {
         let tomography = create_tomography_system(1);
-        let pure_state = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0]).unwrap();
+        let pure_state = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0])
+            .expect("Array creation from valid shape and data should succeed");
         let purity = tomography.compute_purity(&pure_state);
         assert!((purity - 1.0).abs() < 1e-10);
 
@@ -1693,7 +1705,8 @@ mod tests {
     #[test]
     fn test_entropy_computation() {
         let tomography = create_tomography_system(1);
-        let pure_state = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0]).unwrap();
+        let pure_state = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 0.0])
+            .expect("Array creation from valid shape and data should succeed");
         let entropy = tomography.compute_von_neumann_entropy(&pure_state);
         assert!(entropy.abs() < 1e-10); // Pure state has zero entropy
     }

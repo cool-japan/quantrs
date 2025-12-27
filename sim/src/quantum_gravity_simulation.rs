@@ -17,6 +17,7 @@ use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
 use scirs2_core::random::prelude::*;
 
+use std::fmt::Write;
 /// Quantum gravity simulation configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QuantumGravityConfig {
@@ -63,7 +64,7 @@ impl Default for QuantumGravityConfig {
             background_metric: BackgroundMetric::Minkowski,
             cosmological_constant: 0.0,
             gravitational_constant: 6.674e-11,  // m³/kg/s²
-            speed_of_light: 299792458.0,        // m/s
+            speed_of_light: 299_792_458.0,      // m/s
             reduced_planck_constant: 1.055e-34, // J⋅s
             quantum_corrections: true,
             lqg_config: Some(LQGConfig::default()),
@@ -148,10 +149,10 @@ impl Default for LQGConfig {
             num_edges: 300,
             spin_foam_dynamics: true,
             area_eigenvalues: (1..=20)
-                .map(|j| (j as f64) * (PI * 1.616e-35_f64.powi(2)))
+                .map(|j| f64::from(j) * (PI * 1.616e-35_f64.powi(2)))
                 .collect(),
             volume_eigenvalues: (1..=50)
-                .map(|n| (n as f64).sqrt() * 1.616e-35_f64.powi(3))
+                .map(|n| f64::from(n).sqrt() * 1.616e-35_f64.powi(3))
                 .collect(),
             holonomy_discretization: 0.1,
         }
@@ -182,7 +183,7 @@ pub struct CDTConfig {
 impl Default for CDTConfig {
     fn default() -> Self {
         Self {
-            num_simplices: 10000,
+            num_simplices: 10_000,
             time_slicing: 0.1,
             spatial_volume: 1000.0,
             bare_coupling: 0.1,
@@ -230,15 +231,15 @@ impl Default for AsymptoticSafetyConfig {
 /// AdS/CFT correspondence configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AdSCFTConfig {
-    /// AdS space dimension
+    /// `AdS` space dimension
     pub ads_dimension: usize,
-    /// CFT dimension (AdS_d+1/CFT_d)
+    /// CFT dimension (`AdS_d+1/CFT_d`)
     pub cft_dimension: usize,
-    /// AdS radius
+    /// `AdS` radius
     pub ads_radius: f64,
     /// Central charge of CFT
     pub central_charge: f64,
-    /// Temperature (for thermal AdS)
+    /// Temperature (for thermal `AdS`)
     pub temperature: f64,
     /// Enable black hole formation
     pub black_hole_formation: bool,
@@ -431,7 +432,7 @@ pub enum FixedPointStability {
 /// Holographic duality correspondence
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HolographicDuality {
-    /// Bulk geometry (AdS space)
+    /// Bulk geometry (`AdS` space)
     pub bulk_geometry: BulkGeometry,
     /// Boundary theory (CFT)
     pub boundary_theory: BoundaryTheory,
@@ -441,12 +442,12 @@ pub struct HolographicDuality {
     pub entanglement_structure: EntanglementStructure,
 }
 
-/// Bulk AdS geometry
+/// Bulk `AdS` geometry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BulkGeometry {
     /// Metric tensor
     pub metric_tensor: Array2<f64>,
-    /// AdS radius
+    /// `AdS` radius
     pub ads_radius: f64,
     /// Black hole horizon (if present)
     pub horizon_radius: Option<f64>,
@@ -519,7 +520,7 @@ pub struct QuantumGravitySimulator {
     rg_trajectory: Option<RGTrajectory>,
     /// Holographic duality (for AdS/CFT)
     holographic_duality: Option<HolographicDuality>,
-    /// SciRS2 backend for numerical computations
+    /// `SciRS2` backend for numerical computations
     backend: Option<SciRS2Backend>,
     /// Simulation history
     simulation_history: Vec<GravitySimulationResult>,
@@ -631,6 +632,7 @@ impl Default for GravitySimulationStats {
 
 impl QuantumGravitySimulator {
     /// Create a new quantum gravity simulator
+    #[must_use]
     pub fn new(config: QuantumGravityConfig) -> Self {
         Self {
             config,
@@ -645,7 +647,8 @@ impl QuantumGravitySimulator {
         }
     }
 
-    /// Initialize the simulator with SciRS2 backend
+    /// Initialize the simulator with `SciRS2` backend
+    #[must_use]
     pub fn with_backend(mut self, backend: SciRS2Backend) -> Self {
         self.backend = Some(backend);
         self
@@ -1230,7 +1233,7 @@ impl QuantumGravitySimulator {
             let holographic_complexity =
                 rt_surfaces.iter().map(|s| s.area).sum::<f64>() / ads_cft_config.ads_radius;
             let entanglement_spectrum =
-                Array1::<f64>::from_vec((0..20).map(|i| (-i as f64 * 0.1).exp()).collect());
+                Array1::<f64>::from_vec((0..20).map(|i| (f64::from(-i) * 0.1).exp()).collect());
 
             let entanglement_structure = EntanglementStructure {
                 rt_surfaces,
@@ -1270,7 +1273,7 @@ impl QuantumGravitySimulator {
             // Generate surface in AdS space
             for j in 0..num_points {
                 let theta = 2.0 * PI * j as f64 / num_points as f64;
-                let radius = config.ads_radius * 0.1f64.mul_add(i as f64, 1.0);
+                let radius = config.ads_radius * 0.1f64.mul_add(f64::from(i), 1.0);
 
                 coordinates[[j, 0]] = 0.0; // Time coordinate
                 if config.ads_dimension > 1 {
@@ -1293,7 +1296,7 @@ impl QuantumGravitySimulator {
                 coordinates: coordinates.slice(s![.., ..config.cft_dimension]).to_owned(),
                 volume: PI
                     * 0.1f64
-                        .mul_add(i as f64, 1.0)
+                        .mul_add(f64::from(i), 1.0)
                         .powi(config.cft_dimension as i32),
                 entropy: area / (4.0 * self.config.gravitational_constant),
             };
@@ -1346,7 +1349,9 @@ impl QuantumGravitySimulator {
         self.stats.avg_time_per_step =
             self.stats.total_time / self.stats.calculations_performed as f64;
 
-        Ok(self.simulation_history.last().unwrap().clone())
+        self.simulation_history.last().cloned().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("No simulation results available".to_string())
+        })
     }
 
     /// Simulate Loop Quantum Gravity dynamics
@@ -1705,15 +1710,15 @@ impl QuantumGravitySimulator {
     /// Measure Asymptotic Safety geometry
     fn measure_as_geometry(&self, trajectory: &RGTrajectory) -> Result<GeometryMeasurements> {
         let area_spectrum: Vec<f64> = (1..=10)
-            .map(|n| n as f64 * self.config.planck_length.powi(2))
+            .map(|n| f64::from(n) * self.config.planck_length.powi(2))
             .collect();
 
         let volume_spectrum: Vec<f64> = (1..=10)
-            .map(|n| n as f64 * self.config.planck_length.powi(4))
+            .map(|n| f64::from(n) * self.config.planck_length.powi(4))
             .collect();
 
         let length_spectrum: Vec<f64> = (1..=10)
-            .map(|n| n as f64 * self.config.planck_length)
+            .map(|n| f64::from(n) * self.config.planck_length)
             .collect();
 
         // Curvature from running couplings
@@ -1809,21 +1814,21 @@ impl QuantumGravitySimulator {
         }
     }
 
-    /// Calculate AdS volume
+    /// Calculate `AdS` volume
     fn calculate_ads_volume(&self, duality: &HolographicDuality) -> Result<f64> {
         let ads_radius = duality.bulk_geometry.ads_radius;
         let dimension = 5; // AdS_5 volume
 
         // Simple approximation for gamma function
-        let _half_dim = dimension as f64 / 2.0;
+        let _half_dim = f64::from(dimension) / 2.0;
         let gamma_approx = if dimension % 2 == 0 {
             // For integer values: gamma(n) = (n-1)!
-            (1..=(dimension / 2)).map(|i| i as f64).product::<f64>()
+            (1..=(dimension / 2)).map(f64::from).product::<f64>()
         } else {
             // For half-integer values: gamma(n+1/2) = sqrt(π) * (2n)! / (4^n * n!)
             let n = dimension / 2;
-            PI.sqrt() * (1..=(2 * n)).map(|i| i as f64).product::<f64>()
-                / (4.0_f64.powi(n) * (1..=n).map(|i| i as f64).product::<f64>())
+            PI.sqrt() * (1..=(2 * n)).map(f64::from).product::<f64>()
+                / (4.0_f64.powi(n) * (1..=n).map(f64::from).product::<f64>())
         };
 
         Ok(PI.powi(dimension / 2) * ads_radius.powi(dimension) / gamma_approx)
@@ -1849,7 +1854,7 @@ impl QuantumGravitySimulator {
             .collect();
 
         let length_spectrum: Vec<f64> = (1..=10)
-            .map(|n| n as f64 * duality.bulk_geometry.ads_radius / 10.0)
+            .map(|n| f64::from(n) * duality.bulk_geometry.ads_radius / 10.0)
             .collect();
 
         // Curvature from AdS metric
@@ -1877,6 +1882,7 @@ pub struct QuantumGravityUtils;
 
 impl QuantumGravityUtils {
     /// Calculate Planck units
+    #[must_use]
     pub fn planck_units() -> HashMap<String, f64> {
         let mut units = HashMap::new();
         units.insert("length".to_string(), 1.616e-35); // meters
@@ -1888,24 +1894,27 @@ impl QuantumGravityUtils {
     }
 
     /// Compare quantum gravity approaches
+    #[must_use]
     pub fn compare_approaches(results: &[GravitySimulationResult]) -> String {
         let mut comparison = String::new();
         comparison.push_str("Quantum Gravity Approach Comparison:\n");
 
         for result in results {
-            comparison.push_str(&format!(
-                "{:?}: Energy = {:.6e}, Volume = {:.6e}, Computation Time = {:.3}s\n",
+            let _ = writeln!(
+                comparison,
+                "{:?}: Energy = {:.6e}, Volume = {:.6e}, Computation Time = {:.3}s",
                 result.approach,
                 result.ground_state_energy,
                 result.spacetime_volume,
                 result.computation_time
-            ));
+            );
         }
 
         comparison
     }
 
     /// Validate physical constraints
+    #[must_use]
     pub fn validate_physical_constraints(result: &GravitySimulationResult) -> Vec<String> {
         let mut violations = Vec::new();
 
@@ -1999,7 +2008,7 @@ mod tests {
     #[test]
     fn test_cdt_config_creation() {
         let cdt_config = CDTConfig::default();
-        assert_eq!(cdt_config.num_simplices, 10000);
+        assert_eq!(cdt_config.num_simplices, 10_000);
         assert!(cdt_config.monte_carlo_moves);
     }
 
@@ -2034,7 +2043,10 @@ mod tests {
         assert!(simulator.initialize_spacetime().is_ok());
         assert!(simulator.spacetime_state.is_some());
 
-        let spacetime = simulator.spacetime_state.as_ref().unwrap();
+        let spacetime = simulator
+            .spacetime_state
+            .as_ref()
+            .expect("spacetime state should be initialized");
         assert_eq!(spacetime.metric_field.ndim(), 4);
     }
 
@@ -2051,7 +2063,10 @@ mod tests {
         assert!(simulator.initialize_lqg_spin_network().is_ok());
         assert!(simulator.spin_network.is_some());
 
-        let spin_network = simulator.spin_network.as_ref().unwrap();
+        let spin_network = simulator
+            .spin_network
+            .as_ref()
+            .expect("spin network should be initialized");
         assert_eq!(spin_network.nodes.len(), 10);
         assert!(spin_network.edges.len() <= 20); // Some edges might be filtered out
     }
@@ -2068,7 +2083,10 @@ mod tests {
         assert!(simulator.initialize_cdt().is_ok());
         assert!(simulator.simplicial_complex.is_some());
 
-        let complex = simulator.simplicial_complex.as_ref().unwrap();
+        let complex = simulator
+            .simplicial_complex
+            .as_ref()
+            .expect("simplicial complex should be initialized");
         assert_eq!(complex.simplices.len(), 100);
         assert!(!complex.vertices.is_empty());
         assert!(!complex.time_slices.is_empty());
@@ -2086,7 +2104,10 @@ mod tests {
         assert!(simulator.initialize_asymptotic_safety().is_ok());
         assert!(simulator.rg_trajectory.is_some());
 
-        let trajectory = simulator.rg_trajectory.as_ref().unwrap();
+        let trajectory = simulator
+            .rg_trajectory
+            .as_ref()
+            .expect("RG trajectory should be initialized");
         assert_eq!(trajectory.energy_scales.len(), 10);
         assert!(!trajectory.coupling_evolution.is_empty());
     }
@@ -2099,7 +2120,10 @@ mod tests {
         assert!(simulator.initialize_ads_cft().is_ok());
         assert!(simulator.holographic_duality.is_some());
 
-        let duality = simulator.holographic_duality.as_ref().unwrap();
+        let duality = simulator
+            .holographic_duality
+            .as_ref()
+            .expect("holographic duality should be initialized");
         assert_eq!(duality.bulk_geometry.ads_radius, 1.0);
         assert_eq!(duality.boundary_theory.central_charge, 100.0);
         assert!(!duality.entanglement_structure.rt_surfaces.is_empty());
@@ -2110,7 +2134,9 @@ mod tests {
         let config = QuantumGravityConfig::default();
         let simulator = QuantumGravitySimulator::new(config);
 
-        let su2_element = simulator.generate_su2_element().unwrap();
+        let su2_element = simulator
+            .generate_su2_element()
+            .expect("SU(2) element generation should succeed");
 
         // Check that it's 2x2
         assert_eq!(su2_element.shape(), [2, 2]);
@@ -2126,7 +2152,9 @@ mod tests {
         let config = QuantumGravityConfig::default();
         let simulator = QuantumGravitySimulator::new(config);
 
-        let su2_element = simulator.generate_su2_element().unwrap();
+        let su2_element = simulator
+            .generate_su2_element()
+            .expect("SU(2) element generation should succeed");
         let coeffs = simulator.extract_pauli_coefficients(&su2_element);
 
         // Check that we have 4 coefficients
@@ -2160,7 +2188,7 @@ mod tests {
         let simplex_vertices = vec![0, 1];
         let volume = simulator
             .calculate_simplex_volume(&vertices, &simplex_vertices)
-            .unwrap();
+            .expect("simplex volume calculation should succeed");
 
         assert!(volume > 0.0);
     }
@@ -2184,7 +2212,9 @@ mod tests {
             coordination: 4,
         };
 
-        let is_connected = simulator.is_causally_connected(&v1, &v2).unwrap();
+        let is_connected = simulator
+            .is_causally_connected(&v1, &v2)
+            .expect("causal connection check should succeed");
         assert!(is_connected); // Should be causally connected
     }
 
@@ -2195,10 +2225,10 @@ mod tests {
 
         let beta_g = simulator
             .calculate_beta_function("newton_constant", 0.1, &1.0)
-            .unwrap();
+            .expect("beta function calculation should succeed");
         let beta_lambda = simulator
             .calculate_beta_function("cosmological_constant", 0.01, &1.0)
-            .unwrap();
+            .expect("beta function calculation should succeed");
 
         assert!(beta_g.is_finite());
         assert!(beta_lambda.is_finite());
@@ -2210,7 +2240,9 @@ mod tests {
         let simulator = QuantumGravitySimulator::new(config);
         let ads_cft_config = AdSCFTConfig::default();
 
-        let surfaces = simulator.generate_rt_surfaces(&ads_cft_config).unwrap();
+        let surfaces = simulator
+            .generate_rt_surfaces(&ads_cft_config)
+            .expect("RT surface generation should succeed");
 
         assert!(!surfaces.is_empty());
         for surface in &surfaces {
@@ -2234,7 +2266,7 @@ mod tests {
         let result = simulator.simulate();
         assert!(result.is_ok());
 
-        let simulation_result = result.unwrap();
+        let simulation_result = result.expect("LQG simulation should succeed");
         assert_eq!(
             simulation_result.approach,
             GravityApproach::LoopQuantumGravity
@@ -2258,7 +2290,7 @@ mod tests {
         let result = simulator.simulate();
         assert!(result.is_ok());
 
-        let simulation_result = result.unwrap();
+        let simulation_result = result.expect("CDT simulation should succeed");
         assert_eq!(
             simulation_result.approach,
             GravityApproach::CausalDynamicalTriangulation
@@ -2280,7 +2312,7 @@ mod tests {
         let result = simulator.simulate();
         assert!(result.is_ok());
 
-        let simulation_result = result.unwrap();
+        let simulation_result = result.expect("Asymptotic Safety simulation should succeed");
         assert_eq!(
             simulation_result.approach,
             GravityApproach::AsymptoticSafety
@@ -2298,7 +2330,7 @@ mod tests {
         let result = simulator.simulate();
         assert!(result.is_ok());
 
-        let simulation_result = result.unwrap();
+        let simulation_result = result.expect("Holographic Gravity simulation should succeed");
         assert_eq!(
             simulation_result.approach,
             GravityApproach::HolographicGravity
@@ -2402,7 +2434,7 @@ mod tests {
         let result = benchmark_quantum_gravity_simulation();
         assert!(result.is_ok());
 
-        let benchmark = result.unwrap();
+        let benchmark = result.expect("benchmark should complete successfully");
         assert!(!benchmark.approach_results.is_empty());
         assert!(!benchmark.timing_comparisons.is_empty());
         assert!(benchmark.memory_usage > 0);

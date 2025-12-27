@@ -45,7 +45,7 @@ pub struct ValidationConfig {
 }
 
 /// Validation metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationMetric {
     RMSE,
     MAE,
@@ -58,7 +58,7 @@ pub enum ValidationMetric {
 }
 
 /// Distribution types for noise characterization
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistributionType {
     Normal,
     LogNormal,
@@ -82,7 +82,7 @@ pub enum NoiseColor {
 }
 
 /// AR model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ARModelType {
     AR,
     MA,
@@ -93,7 +93,7 @@ pub enum ARModelType {
 }
 
 /// Machine learning model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MLModelType {
     GaussianProcess,
     NeuralNetwork,
@@ -104,7 +104,7 @@ pub enum MLModelType {
 }
 
 /// Spatial interpolation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SpatialInterpolation {
     Kriging,
     RadialBasisFunction,
@@ -115,7 +115,7 @@ pub enum SpatialInterpolation {
 }
 
 /// Decomposition methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DecompositionMethod {
     PCA,
     ICA,

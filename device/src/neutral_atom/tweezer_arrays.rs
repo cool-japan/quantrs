@@ -243,7 +243,7 @@ impl TweezerArrayManager {
     }
 
     /// Convert linear index to 3D coordinates
-    fn index_to_coordinates(
+    const fn index_to_coordinates(
         index: usize,
         dimensions: &(usize, usize, usize),
     ) -> (usize, usize, usize) {
@@ -254,7 +254,7 @@ impl TweezerArrayManager {
     }
 
     /// Convert 3D coordinates to linear index
-    fn coordinates_to_index(
+    const fn coordinates_to_index(
         x: usize,
         y: usize,
         z: usize,
@@ -290,7 +290,7 @@ impl TweezerArrayManager {
         // First, get the tweezer info for loading calculation
         let (loading_attempts, base_success_rate) = {
             let tweezer = self.state.tweezers.get(&tweezer_id).ok_or_else(|| {
-                DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
+                DeviceError::InvalidInput(format!("Tweezer {tweezer_id} not found"))
             })?;
             (
                 tweezer.loading_attempts,
@@ -303,9 +303,10 @@ impl TweezerArrayManager {
             self.simulate_atom_loading_from_params(loading_attempts, base_success_rate);
 
         // Now update the tweezer
-        let tweezer = self.state.tweezers.get_mut(&tweezer_id).ok_or_else(|| {
-            DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
-        })?;
+        let tweezer =
+            self.state.tweezers.get_mut(&tweezer_id).ok_or_else(|| {
+                DeviceError::InvalidInput(format!("Tweezer {tweezer_id} not found"))
+            })?;
 
         tweezer.loading_attempts += 1;
         tweezer.last_update = std::time::SystemTime::now();
@@ -355,9 +356,10 @@ impl TweezerArrayManager {
         target_position: TweezerPosition,
         parameters: MovementParameters,
     ) -> DeviceResult<String> {
-        let tweezer = self.state.tweezers.get(&tweezer_id).ok_or_else(|| {
-            DeviceError::InvalidInput(format!("Tweezer {} not found", tweezer_id))
-        })?;
+        let tweezer =
+            self.state.tweezers.get(&tweezer_id).ok_or_else(|| {
+                DeviceError::InvalidInput(format!("Tweezer {tweezer_id} not found"))
+            })?;
 
         if tweezer.atom_state != AtomState::Loaded {
             return Err(DeviceError::InvalidInput(
@@ -401,7 +403,7 @@ impl TweezerArrayManager {
         let dx = pos2.x - pos1.x;
         let dy = pos2.y - pos1.y;
         let dz = pos2.z - pos1.z;
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        dz.mul_add(dz, dx.mul_add(dx, dy * dy)).sqrt()
     }
 
     /// Process movement operations
@@ -497,12 +499,12 @@ impl TweezerArrayManager {
     }
 
     /// Get current array state
-    pub fn get_array_state(&self) -> &TweezerArrayState {
+    pub const fn get_array_state(&self) -> &TweezerArrayState {
         &self.state
     }
 
     /// Get loading statistics
-    pub fn get_loading_statistics(&self) -> &LoadingStatistics {
+    pub const fn get_loading_statistics(&self) -> &LoadingStatistics {
         &self.state.loading_stats
     }
 
@@ -523,21 +525,21 @@ impl TweezerArrayManager {
         if self.optimization_settings.auto_reload {
             let reload_count = self.auto_reload_failed_tweezers().await?;
             if reload_count > 0 {
-                optimizations_applied.push(format!("Reloaded {} failed tweezers", reload_count));
+                optimizations_applied.push(format!("Reloaded {reload_count} failed tweezers"));
             }
         }
 
         if self.optimization_settings.position_optimization {
             let position_adjustments = self.optimize_positions().await?;
             if position_adjustments > 0 {
-                optimizations_applied.push(format!("Adjusted {} positions", position_adjustments));
+                optimizations_applied.push(format!("Adjusted {position_adjustments} positions"));
             }
         }
 
         if self.optimization_settings.power_optimization {
             let power_adjustments = self.optimize_power_levels().await?;
             if power_adjustments > 0 {
-                optimizations_applied.push(format!("Optimized {} power levels", power_adjustments));
+                optimizations_applied.push(format!("Optimized {power_adjustments} power levels"));
             }
         }
 
@@ -678,7 +680,7 @@ pub fn create_basic_array_config(rows: usize, cols: usize, spacing: f64) -> Twee
 }
 
 /// Create movement parameters for fast movement
-pub fn create_fast_movement_params() -> MovementParameters {
+pub const fn create_fast_movement_params() -> MovementParameters {
     MovementParameters {
         speed: 50.0,
         acceleration: 20.0,

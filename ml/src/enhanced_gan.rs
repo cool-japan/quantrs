@@ -293,7 +293,7 @@ impl WassersteinQGAN {
 
     /// Compute Wasserstein loss
     pub fn wasserstein_loss(&self, real_scores: &Array1<f64>, fake_scores: &Array1<f64>) -> f64 {
-        real_scores.mean().unwrap() - fake_scores.mean().unwrap()
+        real_scores.mean().unwrap_or(0.0) - fake_scores.mean().unwrap_or(0.0)
     }
 
     /// Compute gradient penalty (simplified)
@@ -395,27 +395,34 @@ mod tests {
 
     #[test]
     fn test_enhanced_generator() {
-        let gen = EnhancedQuantumGenerator::new(4, 2, 4, 2).unwrap();
+        let gen = EnhancedQuantumGenerator::new(4, 2, 4, 2)
+            .expect("Failed to create enhanced quantum generator");
         assert_eq!(gen.params.len(), 24); // 4 qubits * 2 layers * 3 gates
 
         let latent = vec![0.5, -0.5];
-        let circuit = gen.build_circuit::<4>(&latent).unwrap();
+        let circuit = gen
+            .build_circuit::<4>(&latent)
+            .expect("Failed to build circuit");
         // Circuit successfully created for 4 qubits
     }
 
     #[test]
     fn test_enhanced_discriminator() {
-        let disc = EnhancedQuantumDiscriminator::new(4, 4, 2).unwrap();
+        let disc = EnhancedQuantumDiscriminator::new(4, 4, 2)
+            .expect("Failed to create enhanced quantum discriminator");
 
-        let sample = Array2::from_shape_vec((1, 4), vec![0.1, 0.2, 0.3, 0.4]).unwrap();
-        let output = disc.discriminate(&sample).unwrap();
+        let sample = Array2::from_shape_vec((1, 4), vec![0.1, 0.2, 0.3, 0.4])
+            .expect("Failed to create sample array");
+        let output = disc
+            .discriminate(&sample)
+            .expect("Discriminate should succeed");
         assert_eq!(output.len(), 1);
         assert!(output[0] >= 0.0 && output[0] <= 1.0);
     }
 
     #[test]
     fn test_wasserstein_qgan() {
-        let wgan = WassersteinQGAN::new(4, 4, 2, 4, 2).unwrap();
+        let wgan = WassersteinQGAN::new(4, 4, 2, 4, 2).expect("Failed to create Wasserstein QGAN");
 
         let real_scores = Array1::from_vec(vec![0.8, 0.9, 0.7]);
         let fake_scores = Array1::from_vec(vec![0.2, 0.3, 0.1]);
@@ -426,9 +433,12 @@ mod tests {
 
     #[test]
     fn test_conditional_qgan() {
-        let cqgan = ConditionalQGAN::new(4, 4, 2, 4, 3, 2).unwrap();
+        let cqgan =
+            ConditionalQGAN::new(4, 4, 2, 4, 3, 2).expect("Failed to create conditional QGAN");
 
-        let samples = cqgan.generate_class(1, 5).unwrap();
+        let samples = cqgan
+            .generate_class(1, 5)
+            .expect("Failed to generate class samples");
         assert_eq!(samples.shape(), &[5, 4]);
     }
 }

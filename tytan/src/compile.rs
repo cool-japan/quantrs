@@ -43,7 +43,7 @@ pub mod expr {
 
     pub type Expr = SimpleExpr;
 
-    pub fn constant(value: f64) -> Expr {
+    pub const fn constant(value: f64) -> Expr {
         SimpleExpr::constant(value)
     }
 
@@ -84,23 +84,23 @@ pub enum SimpleExpr {
     /// Constant
     Const(f64),
     /// Addition
-    Add(Box<SimpleExpr>, Box<SimpleExpr>),
+    Add(Box<Self>, Box<Self>),
     /// Multiplication
-    Mul(Box<SimpleExpr>, Box<SimpleExpr>),
+    Mul(Box<Self>, Box<Self>),
     /// Power
-    Pow(Box<SimpleExpr>, i32),
+    Pow(Box<Self>, i32),
 }
 
 #[cfg(not(feature = "dwave"))]
 impl SimpleExpr {
     /// Create a variable
     pub fn var(name: &str) -> Self {
-        SimpleExpr::Var(name.to_string())
+        Self::Var(name.to_string())
     }
 
     /// Create a constant
-    pub fn constant(value: f64) -> Self {
-        SimpleExpr::Const(value)
+    pub const fn constant(value: f64) -> Self {
+        Self::Const(value)
     }
 }
 
@@ -109,7 +109,7 @@ impl std::ops::Add for SimpleExpr {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        SimpleExpr::Add(Box::new(self), Box::new(rhs))
+        Self::Add(Box::new(self), Box::new(rhs))
     }
 }
 
@@ -118,14 +118,14 @@ impl std::ops::Mul for SimpleExpr {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        SimpleExpr::Mul(Box::new(self), Box::new(rhs))
+        Self::Mul(Box::new(self), Box::new(rhs))
     }
 }
 
 #[cfg(not(feature = "dwave"))]
 impl std::iter::Sum for SimpleExpr {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(SimpleExpr::Const(0.0), |acc, x| acc + x)
+        iter.fold(Self::Const(0.0), |acc, x| acc + x)
     }
 }
 
@@ -330,14 +330,18 @@ impl CompiledModel {
         // Set all the QUBO coefficients
         for i in 0..self.qubo_matrix.nrows() {
             for j in i..self.qubo_matrix.ncols() {
-                let mut value = self.qubo_matrix[[i, j]];
+                let value = self.qubo_matrix[[i, j]];
                 if value.abs() > 1e-10 {
                     if i == j {
                         // Diagonal term (linear)
-                        qubo.set_linear(i, value).unwrap();
+                        // SAFETY: index i is derived from matrix dimensions which match QuboModel size
+                        qubo.set_linear(i, value)
+                            .expect("index within bounds from matrix dimensions");
                     } else {
                         // Off-diagonal term (quadratic)
-                        qubo.set_quadratic(i, j, value).unwrap();
+                        // SAFETY: indices i,j are derived from matrix dimensions which match QuboModel size
+                        qubo.set_quadratic(i, j, value)
+                            .expect("indices within bounds from matrix dimensions");
                     }
                 }
             }
@@ -673,10 +677,14 @@ impl CompiledModel {
                 if value.abs() > 1e-10 {
                     if i == j {
                         // Diagonal term (linear)
-                        qubo.set_linear(i, value).unwrap();
+                        // SAFETY: index i is derived from matrix dimensions which match QuboModel size
+                        qubo.set_linear(i, value)
+                            .expect("index within bounds from matrix dimensions");
                     } else {
                         // Off-diagonal term (quadratic)
-                        qubo.set_quadratic(i, j, value).unwrap();
+                        // SAFETY: indices i,j are derived from matrix dimensions which match QuboModel size
+                        qubo.set_quadratic(i, j, value)
+                            .expect("indices within bounds from matrix dimensions");
                     }
                 }
             }
@@ -842,7 +850,8 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
 
     // If it's a power operation (like x^2)
     if expr.is_pow() {
-        let (base, exp) = expr.as_pow().unwrap();
+        // SAFETY: is_pow() check guarantees as_pow() will succeed
+        let (base, exp) = expr.as_pow().expect("is_pow() was true");
 
         // If the base is a symbol and exponent is a number
         if base.is_symbol() && exp.is_number() {
@@ -884,7 +893,8 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     // If it's a product (like x*y or x*x)
     if expr.is_mul() {
         let mut total_degree = 0;
-        for factor in expr.as_mul().unwrap() {
+        // SAFETY: is_mul() check guarantees as_mul() will succeed
+        for factor in expr.as_mul().expect("is_mul() was true") {
             total_degree += calc_highest_degree(&factor)?;
         }
         return Ok(total_degree);
@@ -893,7 +903,8 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     // If it's a sum (like x + y)
     if expr.is_add() {
         let mut max_degree = 0;
-        for term in expr.as_add().unwrap() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        for term in expr.as_add().expect("is_add() was true") {
             let term_degree = calc_highest_degree(&term)?;
             max_degree = std::cmp::max(max_degree, term_degree);
         }
@@ -973,7 +984,8 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
 
     // If it's a power operation (like x^2)
     if expr.is_pow() {
-        let (base, exp) = expr.as_pow().unwrap();
+        // SAFETY: is_pow() check guarantees as_pow() will succeed
+        let (base, exp) = expr.as_pow().expect("is_pow() was true");
 
         // If the base is a symbol and exponent is 2, replace with base
         if base.is_symbol() && exp.is_number() {
@@ -1000,7 +1012,8 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
     // If it's a product (like x*y or x*x)
     if expr.is_mul() {
         let mut new_terms = Vec::new();
-        for factor in expr.as_mul().unwrap() {
+        // SAFETY: is_mul() check guarantees as_mul() will succeed
+        for factor in expr.as_mul().expect("is_mul() was true") {
             new_terms.push(replace_squared_terms(&factor)?);
         }
 
@@ -1015,7 +1028,8 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
     // If it's a sum (like x + y)
     if expr.is_add() {
         let mut new_terms = Vec::new();
-        for term in expr.as_add().unwrap() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        for term in expr.as_add().expect("is_add() was true") {
             new_terms.push(replace_squared_terms(&term)?);
         }
 
@@ -1039,7 +1053,8 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
 
     // Process expression as a sum of terms
     if expr.is_add() {
-        for term in expr.as_add().unwrap() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        for term in expr.as_add().expect("is_add() was true") {
             let (term_coeffs, term_offset) = extract_term_coefficients(&term)?;
 
             // Merge coefficients
@@ -1057,7 +1072,8 @@ fn extract_coefficients(expr: &Expr) -> CompileResult<(HashMap<Vec<String>, f64>
             // Use regex to split properly maintaining signs
             // This is a more robust workaround for symengine type detection issues
             use regex::Regex;
-            let re = Regex::new(r"([+-]?)([^+-]+)").unwrap();
+            // SAFETY: Static regex pattern is known to be valid at compile time
+            let re = Regex::new(r"([+-]?)([^+-]+)").expect("static regex pattern is valid");
 
             for caps in re.captures_iter(&expr_str) {
                 let sign = caps.get(1).map_or("", |m| m.as_str());
@@ -1167,8 +1183,9 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a symbol, it's a linear term with coefficient 1
     if term.is_symbol() {
-        let var_name = term.as_symbol().unwrap();
-        let mut vars = vec![var_name];
+        // SAFETY: is_symbol() check guarantees as_symbol() will succeed
+        let var_name = term.as_symbol().expect("is_symbol() was true");
+        let vars = vec![var_name];
         coeffs.insert(vars, 1.0);
         return Ok((coeffs, 0.0));
     }
@@ -1178,10 +1195,11 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
         let mut coeff = 1.0;
         let mut vars = Vec::new();
 
-        for factor in term.as_mul().unwrap() {
+        // SAFETY: is_mul() check guarantees as_mul() will succeed
+        for factor in term.as_mul().expect("is_mul() was true") {
             if factor.is_number() {
                 // Numerical factor is a coefficient
-                let mut value = match factor.to_f64() {
+                let value = match factor.to_f64() {
                     Some(n) => n,
                     None => {
                         return Err(CompileError::InvalidExpression(
@@ -1192,7 +1210,8 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
                 coeff *= value;
             } else if factor.is_symbol() {
                 // Symbol is a variable
-                let var_name = factor.as_symbol().unwrap();
+                // SAFETY: is_symbol() check guarantees as_symbol() will succeed
+                let var_name = factor.as_symbol().expect("is_symbol() was true");
                 vars.push(var_name);
             } else {
                 // More complex factors not supported in this example
@@ -1268,13 +1287,21 @@ fn build_qubo_matrix(
             }
             1 => {
                 // Linear term: var * coeff
-                let i = *var_map.get(&vars[0]).unwrap();
+                // SAFETY: var_map was built from the same variables in coeffs
+                let i = *var_map
+                    .get(&vars[0])
+                    .expect("variable exists in var_map built from coeffs");
                 matrix[[i, i]] += coeff;
             }
             2 => {
                 // Quadratic term: var1 * var2 * coeff
-                let i = *var_map.get(&vars[0]).unwrap();
-                let j = *var_map.get(&vars[1]).unwrap();
+                // SAFETY: var_map was built from the same variables in coeffs
+                let i = *var_map
+                    .get(&vars[0])
+                    .expect("variable exists in var_map built from coeffs");
+                let j = *var_map
+                    .get(&vars[1])
+                    .expect("variable exists in var_map built from coeffs");
 
                 // QUBO format requires i <= j
                 if i == j {
@@ -1350,7 +1377,15 @@ fn build_hobo_tensor(
         }
 
         // Convert variable names to indices
-        let mut indices: Vec<usize> = vars.iter().map(|var| *var_map.get(var).unwrap()).collect();
+        // SAFETY: var_map was built from the same variables in coeffs
+        let mut indices: Vec<usize> = vars
+            .iter()
+            .map(|var| {
+                *var_map
+                    .get(var)
+                    .expect("variable exists in var_map built from coeffs")
+            })
+            .collect();
 
         // Sort indices (canonical ordering)
         indices.sort_unstable();

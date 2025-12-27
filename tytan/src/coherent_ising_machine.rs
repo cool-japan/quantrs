@@ -125,7 +125,8 @@ impl CIMSimulator {
             .collect();
 
         // Normal distribution for noise
-        let _noise_dist = Normal::new(0.0, self.noise_strength).unwrap();
+        let _noise_dist = Normal::new(0.0, self.noise_strength)
+            .map_err(|e| format!("Failed to create noise distribution: {e}"))?;
 
         // Evolution loop
         for step in 0..steps {
@@ -319,8 +320,12 @@ impl Sampler for CIMSimulator {
             });
         }
 
-        // Sort by energy
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        // Sort by energy (NaN values are treated as equal)
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(results)
     }
@@ -571,7 +576,11 @@ impl Sampler for AdvancedCIM {
             })
             .collect();
 
-        final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        final_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(final_results)
     }
@@ -703,10 +712,12 @@ mod tests {
 
         let mut var_map = HashMap::new();
         for i in 0..4 {
-            var_map.insert(format!("x{}", i), i);
+            var_map.insert(format!("x{i}"), i);
         }
 
-        let mut results = cim.run_qubo(&(qubo_matrix, var_map), 10).unwrap();
+        let results = cim
+            .run_qubo(&(qubo_matrix, var_map), 10)
+            .expect("CIM run_qubo should succeed for valid QUBO input");
         assert!(!results.is_empty());
     }
 

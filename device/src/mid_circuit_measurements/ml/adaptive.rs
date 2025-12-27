@@ -77,18 +77,26 @@ impl AdaptiveMeasurementManager {
             Some(baseline) => {
                 // Update baseline with exponential moving average
                 let alpha = self.config.baseline_update_rate;
-                baseline.measurement_success_rate = alpha
-                    * current_performance.measurement_success_rate
-                    + (1.0 - alpha) * baseline.measurement_success_rate;
-                baseline.classical_efficiency = alpha * current_performance.classical_efficiency
-                    + (1.0 - alpha) * baseline.classical_efficiency;
-                baseline.circuit_fidelity = alpha * current_performance.circuit_fidelity
-                    + (1.0 - alpha) * baseline.circuit_fidelity;
-                baseline.measurement_error_rate = alpha
-                    * current_performance.measurement_error_rate
-                    + (1.0 - alpha) * baseline.measurement_error_rate;
-                baseline.timing_overhead = alpha * current_performance.timing_overhead
-                    + (1.0 - alpha) * baseline.timing_overhead;
+                baseline.measurement_success_rate = alpha.mul_add(
+                    current_performance.measurement_success_rate,
+                    (1.0 - alpha) * baseline.measurement_success_rate,
+                );
+                baseline.classical_efficiency = alpha.mul_add(
+                    current_performance.classical_efficiency,
+                    (1.0 - alpha) * baseline.classical_efficiency,
+                );
+                baseline.circuit_fidelity = alpha.mul_add(
+                    current_performance.circuit_fidelity,
+                    (1.0 - alpha) * baseline.circuit_fidelity,
+                );
+                baseline.measurement_error_rate = alpha.mul_add(
+                    current_performance.measurement_error_rate,
+                    (1.0 - alpha) * baseline.measurement_error_rate,
+                );
+                baseline.timing_overhead = alpha.mul_add(
+                    current_performance.timing_overhead,
+                    (1.0 - alpha) * baseline.timing_overhead,
+                );
             }
             None => {
                 // Initialize baseline
@@ -203,7 +211,7 @@ impl AdaptiveMeasurementManager {
                 .iter()
                 .rev()
                 .take(5)
-                .cloned()
+                .copied()
                 .collect();
 
             let loss_trend = self.calculate_trend(&recent_losses);
@@ -217,11 +225,8 @@ impl AdaptiveMeasurementManager {
             }
 
             // Clamp learning rate
-            self.learning_state.current_learning_rate = self
-                .learning_state
-                .current_learning_rate
-                .max(0.0001)
-                .min(0.1);
+            self.learning_state.current_learning_rate =
+                self.learning_state.current_learning_rate.clamp(0.0001, 0.1);
         }
 
         // Update convergence status
@@ -353,8 +358,7 @@ impl AdaptiveMeasurementManager {
             performance_before: self
                 .performance_baseline
                 .as_ref()
-                .map(|b| b.measurement_success_rate)
-                .unwrap_or(0.0),
+                .map_or(0.0, |b| b.measurement_success_rate),
             performance_after: current_performance.measurement_success_rate,
             performance_snapshot: current_performance.clone(),
             adaptation_magnitude: self.calculate_adaptation_magnitude(current_performance)?,
@@ -367,8 +371,7 @@ impl AdaptiveMeasurementManager {
                 > self
                     .performance_baseline
                     .as_ref()
-                    .map(|b| b.measurement_success_rate)
-                    .unwrap_or(0.0),
+                    .map_or(0.0, |b| b.measurement_success_rate),
         };
 
         self.adaptation_history.push_back(adaptation_event);
@@ -407,9 +410,9 @@ impl AdaptiveMeasurementManager {
             .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
 
-        let denominator = n * x2_sum - x_sum * x_sum;
+        let denominator = n.mul_add(x2_sum, -(x_sum * x_sum));
         if denominator.abs() > 1e-10 {
-            (n * xy_sum - x_sum * y_sum) / denominator
+            n.mul_add(xy_sum, -(x_sum * y_sum)) / denominator
         } else {
             0.0
         }
@@ -458,7 +461,7 @@ impl AdaptiveMeasurementManager {
         let mut period_correlation = 0.0;
 
         // Check correlation between periods
-        for offset in 1..=(values.len() / period_length - 1) {
+        for offset in 1..(values.len() / period_length) {
             let start_idx = 0;
             let offset_idx = offset * period_length;
             let compare_length = (values.len() - offset_idx).min(period_length);
@@ -522,7 +525,7 @@ impl AdaptiveMeasurementManager {
             .iter()
             .rev()
             .take(10)
-            .cloned()
+            .copied()
             .collect();
 
         let loss_variance = {
@@ -608,11 +611,11 @@ impl LearningState {
     }
 
     fn get_loss_history(&self) -> scirs2_core::ndarray::Array1<f64> {
-        scirs2_core::ndarray::Array1::from_vec(self.loss_history.iter().cloned().collect())
+        scirs2_core::ndarray::Array1::from_vec(self.loss_history.iter().copied().collect())
     }
 
     fn get_accuracy_history(&self) -> scirs2_core::ndarray::Array1<f64> {
-        scirs2_core::ndarray::Array1::from_vec(self.accuracy_history.iter().cloned().collect())
+        scirs2_core::ndarray::Array1::from_vec(self.accuracy_history.iter().copied().collect())
     }
 }
 
@@ -647,13 +650,13 @@ struct TransferLearningEngine {
 }
 
 impl TransferLearningEngine {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             source_domain_knowledge: None,
         }
     }
 
-    fn calculate_transfer_effectiveness(
+    const fn calculate_transfer_effectiveness(
         &self,
         measurement_history: &[MeasurementEvent],
     ) -> DeviceResult<f64> {
@@ -692,7 +695,7 @@ impl TransferLearningEngine {
         };
         let confidence_similarity = if avg_confidence > 0.8 { 0.9 } else { 0.5 };
 
-        Ok((latency_similarity + confidence_similarity) / 2.0)
+        Ok(f64::midpoint(latency_similarity, confidence_similarity))
     }
 
     fn analyze_feature_transferability(

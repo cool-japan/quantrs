@@ -30,7 +30,7 @@ mod tests {
         let framework = QuantumMLFramework::new(config);
         assert!(framework.is_ok());
 
-        let framework = framework.unwrap();
+        let framework = framework.expect("Failed to create QuantumMLFramework");
         assert_eq!(framework.get_layers().len(), 1);
     }
 
@@ -49,7 +49,7 @@ mod tests {
         let layer = ParameterizedQuantumCircuitLayer::new(4, config);
         assert!(layer.is_ok());
 
-        let layer = layer.unwrap();
+        let layer = layer.expect("Failed to create ParameterizedQuantumCircuitLayer");
         assert_eq!(layer.get_num_parameters(), 8);
         assert_eq!(layer.get_depth(), 2);
         assert!(layer.get_gate_count() > 0);
@@ -70,7 +70,7 @@ mod tests {
         let layer = QuantumConvolutionalLayer::new(4, config);
         assert!(layer.is_ok());
 
-        let layer = layer.unwrap();
+        let layer = layer.expect("Failed to create QuantumConvolutionalLayer");
         assert_eq!(layer.get_num_parameters(), 6);
         assert!(layer.get_gate_count() > 0);
     }
@@ -90,7 +90,7 @@ mod tests {
         let layer = QuantumDenseLayer::new(4, config);
         assert!(layer.is_ok());
 
-        let layer = layer.unwrap();
+        let layer = layer.expect("Failed to create QuantumDenseLayer");
         assert_eq!(layer.get_num_parameters(), 6);
         assert!(layer.get_gate_count() > 0);
     }
@@ -110,7 +110,7 @@ mod tests {
         let layer = QuantumLSTMLayer::new(4, config);
         assert!(layer.is_ok());
 
-        let layer = layer.unwrap();
+        let layer = layer.expect("Failed to create QuantumLSTMLayer");
         assert_eq!(layer.get_num_parameters(), 16);
         assert_eq!(layer.get_lstm_gates().len(), 4); // Forget, Input, Output, Candidate
     }
@@ -130,7 +130,7 @@ mod tests {
         let layer = QuantumAttentionLayer::new(4, config);
         assert!(layer.is_ok());
 
-        let layer = layer.unwrap();
+        let layer = layer.expect("Failed to create QuantumAttentionLayer");
         assert_eq!(layer.get_num_parameters(), 8);
         assert_eq!(layer.get_attention_structure().len(), 2); // 2 attention heads
     }
@@ -138,20 +138,20 @@ mod tests {
     #[test]
     fn test_forward_pass() {
         let config = QMLConfig::default();
-        let mut framework = QuantumMLFramework::new(config).unwrap();
+        let mut framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let output = framework.forward(&input);
 
         assert!(output.is_ok());
-        let output = output.unwrap();
+        let output = output.expect("Forward pass should succeed");
         assert_eq!(output.len(), framework.get_config().num_qubits);
     }
 
     #[test]
     fn test_backward_pass() {
         let config = QMLConfig::default();
-        let mut framework = QuantumMLFramework::new(config).unwrap();
+        let mut framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
         let loss_gradient = Array1::from_vec(vec![0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]);
         let gradient = framework.backward(&loss_gradient);
@@ -169,12 +169,12 @@ mod tests {
             ..Default::default()
         };
 
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let input = Array1::from_vec(vec![0.6, 0.8]); // Should normalize to unit vector
         let encoded = framework.encode_amplitude_public(&input);
 
         assert!(encoded.is_ok());
-        let encoded_state = encoded.unwrap();
+        let encoded_state = encoded.expect("Amplitude encoding should succeed");
 
         // Check normalization
         let norm_sq: f64 = encoded_state.iter().map(|c| c.norm_sqr()).sum();
@@ -191,12 +191,12 @@ mod tests {
             ..Default::default()
         };
 
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let input = Array1::from_vec(vec![PI / 4.0, PI / 2.0, 0.0, PI]);
         let encoded = framework.encode_angle_public(&input);
 
         assert!(encoded.is_ok());
-        let encoded_state = encoded.unwrap();
+        let encoded_state = encoded.expect("Angle encoding should succeed");
 
         // Check normalization
         let norm_sq: f64 = encoded_state.iter().map(|c| c.norm_sqr()).sum();
@@ -213,12 +213,12 @@ mod tests {
             ..Default::default()
         };
 
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let input = Array1::from_vec(vec![1.0, 0.0, 1.0, 0.0]); // Should encode to |1010⟩ = |10⟩
         let encoded = framework.encode_basis_public(&input);
 
         assert!(encoded.is_ok());
-        let encoded_state = encoded.unwrap();
+        let encoded_state = encoded.expect("Basis encoding should succeed");
 
         // Check that only one state has amplitude 1
         let non_zero_count = encoded_state
@@ -238,12 +238,12 @@ mod tests {
             ..Default::default()
         };
 
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let encoded = framework.encode_quantum_feature_map_public(&input);
 
         assert!(encoded.is_ok());
-        let encoded_state = encoded.unwrap();
+        let encoded_state = encoded.expect("Quantum feature map encoding should succeed");
 
         // Check normalization
         let norm_sq: f64 = encoded_state.iter().map(|c| c.norm_sqr()).sum();
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_pauli_z_measurement() {
         let config = QMLConfig::default();
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
         // Create |0⟩ state
         let state_size = 1 << framework.get_config().num_qubits;
@@ -263,7 +263,7 @@ mod tests {
         // Measure first qubit (should be +1 for |0⟩)
         let expectation = framework.measure_pauli_z_expectation_public(&state, 0);
         assert!(expectation.is_ok());
-        assert!((expectation.unwrap() - 1.0).abs() < 1e-10);
+        assert!((expectation.expect("Pauli Z measurement should succeed") - 1.0).abs() < 1e-10);
 
         // Create |1⟩ state for first qubit
         state[0] = Complex64::new(0.0, 0.0);
@@ -271,7 +271,7 @@ mod tests {
 
         let expectation = framework.measure_pauli_z_expectation_public(&state, 0);
         assert!(expectation.is_ok());
-        assert!((expectation.unwrap() + 1.0).abs() < 1e-10);
+        assert!((expectation.expect("Pauli Z measurement should succeed") + 1.0).abs() < 1e-10);
     }
 
     #[test]
@@ -293,14 +293,15 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut framework = QuantumMLFramework::new(config).unwrap();
+            let mut framework =
+                QuantumMLFramework::new(config).expect("Failed to create framework");
             let (inputs, outputs) = QMLUtils::generate_synthetic_data(20, 4, 4);
             let (train_data, val_data) = QMLUtils::train_test_split(inputs, outputs, 0.2);
 
             let result = framework.train(&train_data, Some(&val_data));
             assert!(result.is_ok());
 
-            let training_result = result.unwrap();
+            let training_result = result.expect("Training should succeed");
             assert!(training_result.epochs_trained > 0);
             assert!(training_result.final_training_loss >= 0.0);
         }
@@ -321,7 +322,8 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut framework = QuantumMLFramework::new(config).unwrap();
+            let mut framework =
+                QuantumMLFramework::new(config).expect("Failed to create framework");
             let (inputs, outputs) = QMLUtils::generate_synthetic_data(10, 4, 4);
             let (train_data, _) = QMLUtils::train_test_split(inputs, outputs, 0.8);
 
@@ -349,7 +351,7 @@ mod tests {
                 ..Default::default()
             };
 
-            let framework = QuantumMLFramework::new(config).unwrap();
+            let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
             // Test learning rate at different epochs
             let lr_epoch_0 = framework.get_current_learning_rate_public(0);
@@ -392,7 +394,7 @@ mod tests {
             let layer = ParameterizedQuantumCircuitLayer::new(4, config);
             assert!(layer.is_ok());
 
-            let layer = layer.unwrap();
+            let layer = layer.expect("Failed to create layer");
             assert!(layer.get_gate_count() > 0);
             assert_eq!(layer.get_depth(), 2);
         }
@@ -420,7 +422,7 @@ mod tests {
             let layer = ParameterizedQuantumCircuitLayer::new(4, config);
             assert!(layer.is_ok());
 
-            let layer = layer.unwrap();
+            let layer = layer.expect("Failed to create layer");
             assert!(layer.get_gate_count() > 0);
         }
     }
@@ -507,14 +509,14 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumMLFramework::new(config).unwrap();
+        let mut framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let (inputs, outputs) = QMLUtils::generate_synthetic_data(10, 4, 4); // Reduced data size
         let (train_data, val_data) = QMLUtils::train_test_split(inputs, outputs, 0.2);
 
         let result = framework.train(&train_data, Some(&val_data));
         assert!(result.is_ok());
 
-        let training_result = result.unwrap();
+        let training_result = result.expect("Training should succeed");
         // Early stopping should prevent training all epochs or training should complete
         // The exact behavior depends on the data and initialization
         assert!(training_result.epochs_trained <= 20);
@@ -539,7 +541,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumMLFramework::new(config).unwrap();
+        let mut framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let (inputs, outputs) = QMLUtils::generate_synthetic_data(10, 4, 4);
         let (train_data, _) = QMLUtils::train_test_split(inputs, outputs, 0.8);
 
@@ -602,7 +604,8 @@ mod tests {
             enable_gradient_computation: true,
         };
 
-        let mut layer = ParameterizedQuantumCircuitLayer::new(4, config).unwrap();
+        let mut layer =
+            ParameterizedQuantumCircuitLayer::new(4, config).expect("Failed to create layer");
 
         // Test forward pass
         let state_size = 1 << 4;
@@ -612,7 +615,7 @@ mod tests {
         let output = layer.forward(&input_state);
         assert!(output.is_ok());
 
-        let output_state = output.unwrap();
+        let output_state = output.expect("Forward pass should succeed");
         let norm_sq: f64 = output_state.iter().map(|c| c.norm_sqr()).sum();
         assert!((norm_sq - 1.0).abs() < 1e-10); // Check normalization
 
@@ -634,7 +637,8 @@ mod tests {
             enable_gradient_computation: true,
         };
 
-        let mut layer = ParameterizedQuantumCircuitLayer::new(4, config).unwrap();
+        let mut layer =
+            ParameterizedQuantumCircuitLayer::new(4, config).expect("Failed to create layer");
 
         // Test getting parameters
         let params = layer.get_parameters();
@@ -693,7 +697,7 @@ mod tests {
         let result = benchmark_quantum_ml_layers(&config);
         assert!(result.is_ok());
 
-        let benchmark_results = result.unwrap();
+        let benchmark_results = result.expect("Benchmark should succeed");
         assert!(!benchmark_results.training_times.is_empty());
         assert!(!benchmark_results.final_accuracies.is_empty());
         assert!(!benchmark_results.parameter_counts.is_empty());
@@ -702,27 +706,27 @@ mod tests {
     #[test]
     fn test_loss_computation() {
         let config = QMLConfig::default();
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
         let prediction = Array1::from_vec(vec![1.0, 0.5, 0.0]);
         let target = Array1::from_vec(vec![1.0, 0.5, 0.0]);
 
         let loss = framework.compute_loss_public(&prediction, &target);
         assert!(loss.is_ok());
-        assert!((loss.unwrap() - 0.0).abs() < 1e-10); // Perfect prediction should have zero loss
+        assert!((loss.expect("Loss computation should succeed") - 0.0).abs() < 1e-10); // Perfect prediction should have zero loss
 
         let prediction2 = Array1::from_vec(vec![1.0, 0.0, 1.0]);
         let target2 = Array1::from_vec(vec![0.0, 1.0, 0.0]);
 
         let loss2 = framework.compute_loss_public(&prediction2, &target2);
         assert!(loss2.is_ok());
-        assert!(loss2.unwrap() > 0.0); // Imperfect prediction should have positive loss
+        assert!(loss2.expect("Loss computation should succeed") > 0.0); // Imperfect prediction should have positive loss
     }
 
     #[test]
     fn test_loss_gradient_computation() {
         let config = QMLConfig::default();
-        let framework = QuantumMLFramework::new(config).unwrap();
+        let framework = QuantumMLFramework::new(config).expect("Failed to create framework");
 
         let prediction = Array1::from_vec(vec![1.0, 0.5]);
         let target = Array1::from_vec(vec![0.8, 0.3]);
@@ -730,7 +734,7 @@ mod tests {
         let gradient = framework.compute_loss_gradient_public(&prediction, &target);
         assert!(gradient.is_ok());
 
-        let grad = gradient.unwrap();
+        let grad = gradient.expect("Gradient computation should succeed");
         assert_eq!(grad.len(), 2);
 
         // Check gradient calculation (derivative of MSE)
@@ -772,7 +776,7 @@ mod tests {
         let framework = QuantumMLFramework::new(config);
         assert!(framework.is_ok());
 
-        let framework = framework.unwrap();
+        let framework = framework.expect("Failed to create multi-layer framework");
         assert_eq!(framework.get_layers().len(), 2);
 
         // Check that total parameters is sum of layer parameters
@@ -814,12 +818,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumMLFramework::new(config).unwrap();
+        let mut framework = QuantumMLFramework::new(config).expect("Failed to create framework");
         let (inputs, outputs) = QMLUtils::generate_synthetic_data(10, 4, 4);
         let data: Vec<(Array1<f64>, Array1<f64>)> = inputs.into_iter().zip(outputs).collect();
 
         let loss = framework.evaluate(&data);
         assert!(loss.is_ok());
-        assert!(loss.unwrap() >= 0.0);
+        assert!(loss.expect("Evaluation should succeed") >= 0.0);
     }
 }

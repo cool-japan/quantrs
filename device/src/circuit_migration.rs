@@ -136,7 +136,7 @@ pub struct MigrationOptimizationConfig {
 }
 
 /// Optimization passes for migration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationPass {
     /// Gate set reduction
     GateSetReduction,
@@ -173,7 +173,7 @@ pub struct MigrationMappingConfig {
 }
 
 /// Qubit mapping strategies for migration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MappingStrategy {
     /// Preserve original qubit indices if possible
     PreserveIndices,
@@ -207,7 +207,7 @@ pub struct MigrationTranslationConfig {
 }
 
 /// Gate translation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GateTranslationStrategy {
     /// Use native gates when possible
     PreferNative,
@@ -237,7 +237,7 @@ pub struct MigrationPerformanceRequirements {
 }
 
 /// Accuracy levels for migration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AccuracyLevel {
     /// Best effort migration
     BestEffort,
@@ -387,7 +387,7 @@ pub struct AppliedTransformation {
 }
 
 /// Types of transformations during migration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransformationType {
     GateTranslation,
     QubitMapping,
@@ -412,7 +412,7 @@ pub struct TransformationImpact {
 }
 
 /// Migration stages
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MigrationStage {
     Analysis,
     Translation,
@@ -512,7 +512,7 @@ pub struct MigrationWarning {
 }
 
 /// Types of migration warnings
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WarningType {
     FidelityLoss,
     PerformanceDegradation,
@@ -751,7 +751,7 @@ impl CircuitMigrationEngine {
         let mut transformations = Vec::new();
 
         // Get target platform capabilities
-        let target_caps = query_backend_capabilities(config.target_platform.clone());
+        let target_caps = query_backend_capabilities(config.target_platform);
 
         // Translate gates based on strategy
         match config.translation_config.gate_strategy {
@@ -982,7 +982,10 @@ impl CircuitMigrationEngine {
         success: bool,
         metrics: &MigrationMetrics,
     ) -> DeviceResult<()> {
-        let mut tracker = self.performance_tracker.lock().unwrap();
+        let mut tracker = self
+            .performance_tracker
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
 
         let record = MigrationPerformanceRecord {
             config: config.clone(),
@@ -1039,7 +1042,7 @@ impl CircuitMigrationEngine {
         Ok(ResourceAnalysis::default())
     }
 
-    fn calculate_compatibility_score<const N: usize>(
+    const fn calculate_compatibility_score<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
         _config: &MigrationConfig,
@@ -1068,7 +1071,7 @@ impl CircuitMigrationEngine {
     }
 
     // Additional helper method placeholders...
-    fn translate_to_native_gates<const N: usize>(
+    const fn translate_to_native_gates<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _caps: &BackendCapabilities,
@@ -1076,7 +1079,7 @@ impl CircuitMigrationEngine {
     ) -> DeviceResult<()> {
         Ok(())
     }
-    fn translate_minimize_gates<const N: usize>(
+    const fn translate_minimize_gates<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _caps: &BackendCapabilities,
@@ -1084,7 +1087,7 @@ impl CircuitMigrationEngine {
     ) -> DeviceResult<()> {
         Ok(())
     }
-    fn translate_preserve_fidelity<const N: usize>(
+    const fn translate_preserve_fidelity<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _caps: &BackendCapabilities,
@@ -1092,7 +1095,7 @@ impl CircuitMigrationEngine {
     ) -> DeviceResult<()> {
         Ok(())
     }
-    fn translate_minimize_depth<const N: usize>(
+    const fn translate_minimize_depth<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _caps: &BackendCapabilities,
@@ -1100,7 +1103,7 @@ impl CircuitMigrationEngine {
     ) -> DeviceResult<()> {
         Ok(())
     }
-    fn translate_custom_priority<const N: usize>(
+    const fn translate_custom_priority<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _caps: &BackendCapabilities,
@@ -1250,7 +1253,7 @@ impl CircuitMigrationEngine {
             .count();
 
         if translation_transforms > 0 {
-            1.0 / (1.0 + translation_transforms as f64 * 0.1)
+            1.0 / (translation_transforms as f64).mul_add(0.1, 1.0)
         } else {
             1.0
         }
@@ -1277,20 +1280,18 @@ impl CircuitMigrationEngine {
     fn calculate_quality_score(&self, original: &CircuitMetrics, migrated: &CircuitMetrics) -> f64 {
         let fidelity_ratio = migrated.estimated_fidelity / original.estimated_fidelity;
         let depth_penalty = if migrated.depth > original.depth {
-            1.0 - (migrated.depth - original.depth) as f64 / original.depth as f64 * 0.1
+            ((migrated.depth - original.depth) as f64 / original.depth as f64).mul_add(-0.1, 1.0)
         } else {
             1.0
         };
         let gate_penalty = if migrated.gate_count > original.gate_count {
-            1.0 - (migrated.gate_count - original.gate_count) as f64 / original.gate_count as f64
-                * 0.05
+            ((migrated.gate_count - original.gate_count) as f64 / original.gate_count as f64)
+                .mul_add(-0.05, 1.0)
         } else {
             1.0
         };
 
-        (fidelity_ratio * depth_penalty * gate_penalty)
-            .min(1.0)
-            .max(0.0)
+        (fidelity_ratio * depth_penalty * gate_penalty).clamp(0.0, 1.0)
     }
 
     fn check_migration_requirements(

@@ -339,7 +339,9 @@ impl QuantumNAS {
             population.sort_by(|a, b| {
                 let fitness_a = self.compute_fitness(a);
                 let fitness_b = self.compute_fitness(b);
-                fitness_b.partial_cmp(&fitness_a).unwrap()
+                fitness_b
+                    .partial_cmp(&fitness_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             // Update best architectures
@@ -697,7 +699,9 @@ impl QuantumNAS {
             }
         }
 
-        Ok(best.unwrap())
+        best.ok_or_else(|| {
+            MLError::MLOperationError("Tournament selection failed: no candidates".to_string())
+        })
     }
 
     /// Crossover operation for evolutionary algorithm
@@ -816,7 +820,7 @@ impl QuantumNAS {
             .collect();
 
         // Sort by fitness (descending)
-        fitness_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        fitness_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Reorder architectures based on fitness
         let sorted_architectures: Vec<_> = fitness_scores
@@ -1260,7 +1264,9 @@ mod tests {
         let strategy = SearchStrategy::Random { num_samples: 10 };
         let nas = QuantumNAS::new(strategy, search_space);
 
-        let arch = nas.sample_random_architecture().unwrap();
+        let arch = nas
+            .sample_random_architecture()
+            .expect("Random architecture sampling should succeed");
         assert!(arch.layers.len() >= 2); // At least encoding and measurement
         assert!(arch.num_qubits >= nas.search_space.qubit_constraints.min_qubits);
         assert!(arch.num_qubits <= nas.search_space.qubit_constraints.max_qubits);
@@ -1272,7 +1278,9 @@ mod tests {
         let strategy = SearchStrategy::Random { num_samples: 10 };
         let nas = QuantumNAS::new(strategy, search_space);
 
-        let mut arch = nas.sample_random_architecture().unwrap();
+        let mut arch = nas
+            .sample_random_architecture()
+            .expect("Random architecture sampling should succeed");
         arch.metrics.accuracy = Some(0.8);
         arch.metrics.parameter_count = 50;
         arch.metrics.circuit_depth = 10;
@@ -1292,10 +1300,12 @@ mod tests {
         };
         let nas = QuantumNAS::new(strategy, search_space);
 
-        let mut arch = nas.sample_random_architecture().unwrap();
+        let mut arch = nas
+            .sample_random_architecture()
+            .expect("Random architecture sampling should succeed");
         let original_layers = arch.layers.len();
 
-        nas.mutate(&mut arch).unwrap();
+        nas.mutate(&mut arch).expect("Mutation should succeed");
 
         // Architecture should still be valid
         assert!(arch.layers.len() >= 2);

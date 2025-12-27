@@ -68,7 +68,7 @@ struct GradientCache {
 
 impl BatchParameterOptimizer {
     /// Create a new batch parameter optimizer
-    pub fn new(executor: BatchCircuitExecutor, config: OptimizationConfig) -> Self {
+    pub const fn new(executor: BatchCircuitExecutor, config: OptimizationConfig) -> Self {
         let gradient_cache = if config.enable_cache {
             Some(GradientCache {
                 gradients: Vec::new(),
@@ -103,13 +103,16 @@ impl BatchParameterOptimizer {
         let cost_fn = Arc::new(cost_fn);
 
         let objective = {
-            let executor = executor.clone();
-            let states = states.clone();
-            let circuit_fn = circuit_fn.clone();
-            let cost_fn = cost_fn.clone();
+            let executor = executor;
+            let states = states;
+            let circuit_fn = circuit_fn;
+            let cost_fn = cost_fn;
 
             move |params: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
-                let params_slice = params.as_slice().unwrap();
+                let params_slice = match params.as_slice() {
+                    Some(slice) => slice,
+                    None => return f64::INFINITY,
+                };
                 let circuit = match (*circuit_fn)(params_slice) {
                     Ok(c) => c,
                     Err(_) => return f64::INFINITY,
@@ -138,8 +141,7 @@ impl BatchParameterOptimizer {
         match result {
             Ok(opt_result) => Ok(opt_result),
             Err(e) => Err(QuantRS2Error::InvalidInput(format!(
-                "Optimization failed: {:?}",
-                e
+                "Optimization failed: {e:?}"
             ))),
         }
     }
@@ -330,7 +332,7 @@ pub struct BatchVQE {
 
 impl BatchVQE {
     /// Create a new batch VQE optimizer
-    pub fn new(
+    pub const fn new(
         executor: BatchCircuitExecutor,
         hamiltonian: Array2<Complex64>,
         config: OptimizationConfig,
@@ -420,7 +422,7 @@ pub struct BatchQAOA {
 
 impl BatchQAOA {
     /// Create a new batch QAOA optimizer
-    pub fn new(
+    pub const fn new(
         executor: BatchCircuitExecutor,
         cost_hamiltonian: Array2<Complex64>,
         mixer_hamiltonian: Array2<Complex64>,
@@ -451,7 +453,7 @@ impl BatchQAOA {
         }
 
         // Create QAOA circuit constructor
-        let _p = self.p;
+        // let _p = self.p;
         let _cost_ham = self.cost_hamiltonian.clone();
         let _mixer_ham = self.mixer_hamiltonian.clone();
 
@@ -518,7 +520,8 @@ mod tests {
     #[test]
     fn test_gradient_computation() {
         let config = Default::default();
-        let executor = BatchCircuitExecutor::new(config).unwrap();
+        let executor = BatchCircuitExecutor::new(config)
+            .expect("BatchCircuitExecutor creation should succeed");
         let mut optimizer = BatchParameterOptimizer::new(executor, Default::default());
 
         // Simple circuit function
@@ -532,19 +535,21 @@ mod tests {
         // Simple cost function
         let cost_fn = |_states: &BatchStateVector| -> f64 { 1.0 };
 
-        let batch = BatchStateVector::new(1, 1, Default::default()).unwrap();
+        let batch = BatchStateVector::new(1, 1, Default::default())
+            .expect("BatchStateVector creation should succeed");
         let params = vec![0.5];
 
         let gradients = optimizer
             .compute_gradients_batch(circuit_fn, &params, cost_fn, &batch, 0.01)
-            .unwrap();
+            .expect("Gradient computation should succeed");
 
         assert_eq!(gradients.len(), 1);
     }
 
     #[test]
     fn test_vqe_setup() {
-        let executor = BatchCircuitExecutor::new(Default::default()).unwrap();
+        let executor = BatchCircuitExecutor::new(Default::default())
+            .expect("BatchCircuitExecutor creation should succeed");
 
         // Simple 2x2 Hamiltonian
         let hamiltonian = array![

@@ -29,7 +29,7 @@ pub struct MigrationConfig {
 }
 
 /// Migration types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MigrationType {
     Hot,     // Live migration with no downtime
     Warm,    // Brief downtime during cutover
@@ -102,7 +102,7 @@ pub struct ProviderCapabilities {
 }
 
 /// Connectivity types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectivityType {
     Linear,
     Grid,
@@ -164,8 +164,7 @@ impl ProviderMigrationEngine {
 
         if compatibility.overall_score < 0.7 {
             return Err(DeviceError::InvalidInput(format!(
-                "Insufficient compatibility between {:?} and {:?}",
-                source, target
+                "Insufficient compatibility between {source:?} and {target:?}"
             )));
         }
 
@@ -210,7 +209,7 @@ impl ProviderMigrationEngine {
             .chunks(5)
             .enumerate()
             .map(|(i, chunk)| MigrationPhase {
-                phase_id: format!("phase_{}", i),
+                phase_id: format!("phase_{i}"),
                 phase_name: format!("Migration Phase {}", i + 1),
                 workloads: chunk.iter().map(|w| w.workload_id.clone()).collect(),
                 estimated_duration: Duration::from_secs(600),

@@ -729,7 +729,7 @@ fn test_tomography_protocols() {
 #[test]
 fn test_create_advanced_error_mitigation_manager() {
     let manager = create_advanced_error_mitigation_manager();
-    let status = manager.get_status();
+    let status = manager.get_status().expect("should get status");
 
     // Test manager creation via helper function
     assert!(matches!(
@@ -743,7 +743,7 @@ fn test_create_advanced_error_mitigation_manager() {
 #[test]
 fn test_create_lightweight_error_mitigation_manager() {
     let manager = create_lightweight_error_mitigation_manager();
-    let status = manager.get_status();
+    let status = manager.get_status().expect("should get status");
 
     // Test lightweight manager creation
     assert!(matches!(

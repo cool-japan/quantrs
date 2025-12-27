@@ -1374,7 +1374,7 @@ impl QuantumFederatedServer {
                         }
                     }
 
-                    distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                     score = distances.iter().take(num_honest - 1).sum();
 
                     if score < best_score {
@@ -1395,7 +1395,7 @@ impl QuantumFederatedServer {
                     let mut values: Vec<f64> = updates.iter()
                         .map(|u| u.parameter_update[param_idx])
                         .collect();
-                    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                     // Remove top and bottom byzantine_fraction
                     let trim_count = (values.len() as f64 * byzantine_fraction / 2.0) as usize;
@@ -1630,7 +1630,8 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
 
-        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2)
+            .expect("Failed to create model");
 
         let device_info = QuantumDeviceInfo {
             num_qubits: 4,
@@ -1669,7 +1670,8 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
 
-        let global_model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let global_model = QuantumNeuralNetwork::new(layers, 4, 4, 2)
+            .expect("Failed to create global model");
 
         let aggregation_strategy = QuantumAggregationStrategy::QuantumFedAvg {
             weight_type: WeightingType::DataSize,
@@ -1718,8 +1720,10 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
 
-        let global_model = QuantumNeuralNetwork::new(layers.clone(), 4, 4, 2).unwrap();
-        let local_model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let global_model = QuantumNeuralNetwork::new(layers.clone(), 4, 4, 2)
+            .expect("Failed to create global model");
+        let local_model = QuantumNeuralNetwork::new(layers, 4, 4, 2)
+            .expect("Failed to create local model");
 
         let aggregation_strategy = QuantumAggregationStrategy::QuantumFedAvg {
             weight_type: WeightingType::Uniform,

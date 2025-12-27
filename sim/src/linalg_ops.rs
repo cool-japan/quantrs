@@ -1,7 +1,7 @@
-//! Linear algebra operations for quantum simulation using SciRS2
+//! Linear algebra operations for quantum simulation using `SciRS2`
 //!
 //! This module provides optimized linear algebra operations for quantum
-//! simulation by leveraging SciRS2's BLAS/LAPACK bindings when available.
+//! simulation by leveraging `SciRS2`'s BLAS/LAPACK bindings when available.
 
 // Note: NdArrayExt would be used here if it was available in scirs2_core
 // For now, we'll use standard ndarray operations
@@ -59,6 +59,7 @@ pub fn apply_unitary(
 /// Compute the tensor product of two matrices
 ///
 /// This is used for constructing multi-qubit gates from single-qubit gates.
+#[must_use]
 pub fn tensor_product(a: &ArrayView2<Complex64>, b: &ArrayView2<Complex64>) -> Array2<Complex64> {
     let (m, n) = a.dim();
     let (p, q) = b.dim();
@@ -128,6 +129,7 @@ pub fn partial_trace(
 }
 
 /// Check if a matrix is unitary (U†U = I)
+#[must_use]
 pub fn is_unitary(matrix: &ArrayView2<Complex64>, tolerance: f64) -> bool {
     let n = matrix.nrows();
     if matrix.ncols() != n {
@@ -197,7 +199,7 @@ mod tests {
         // |0⟩ state
         let mut state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
 
-        apply_unitary(&h.view(), &mut state).unwrap();
+        apply_unitary(&h.view(), &mut state).expect("unitary application should succeed");
 
         // Should produce |+⟩ state
         let expected_0 = Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0);

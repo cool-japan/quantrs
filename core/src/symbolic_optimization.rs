@@ -26,7 +26,7 @@ pub struct SymbolicOptimizationConfig {
 
 impl Default for SymbolicOptimizationConfig {
     fn default() -> Self {
-        SymbolicOptimizationConfig {
+        Self {
             max_iterations: 1000,
             tolerance: 1e-6,
             learning_rate: 0.01,
@@ -104,7 +104,7 @@ impl Clone for HamiltonianExpectation {
 impl HamiltonianExpectation {
     /// Create a new Hamiltonian expectation objective
     pub fn new(hamiltonian: SymbolicHamiltonian) -> Self {
-        HamiltonianExpectation {
+        Self {
             circuit_parameters: hamiltonian.variables(),
             hamiltonian,
             state_prep: None,
@@ -112,6 +112,7 @@ impl HamiltonianExpectation {
     }
 
     /// Set the state preparation function
+    #[must_use]
     pub fn with_state_prep<F>(mut self, state_prep: F) -> Self
     where
         F: Fn(&HashMap<String, f64>) -> QuantRS2Result<Vec<Complex64>> + 'static,
@@ -163,7 +164,7 @@ impl SymbolicObjective for HamiltonianExpectation {
                 let grad_hamiltonians = self.hamiltonian.gradients(&self.parameter_names())?;
 
                 for (param_name, grad_hamiltonian) in grad_hamiltonians {
-                    let grad_obj = HamiltonianExpectation {
+                    let grad_obj = Self {
                         hamiltonian: grad_hamiltonian,
                         circuit_parameters: self.circuit_parameters.clone(),
                         state_prep: None, // Cannot clone function
@@ -221,12 +222,12 @@ pub struct QAOACostFunction {
 
 impl QAOACostFunction {
     /// Create a new QAOA cost function
-    pub fn new(
+    pub const fn new(
         cost_hamiltonian: SymbolicHamiltonian,
         mixer_hamiltonian: SymbolicHamiltonian,
         p_layers: usize,
     ) -> Self {
-        QAOACostFunction {
+        Self {
             cost_hamiltonian,
             mixer_hamiltonian,
             p_layers,
@@ -243,8 +244,8 @@ impl SymbolicObjective for QAOACostFunction {
         let mut total_cost = 0.0;
 
         for layer in 0..self.p_layers {
-            let gamma_key = format!("gamma_{}", layer);
-            let beta_key = format!("beta_{}", layer);
+            let gamma_key = format!("gamma_{layer}");
+            let beta_key = format!("beta_{layer}");
 
             let gamma = parameters.get(&gamma_key).unwrap_or(&0.0);
             let beta = parameters.get(&beta_key).unwrap_or(&0.0);
@@ -261,8 +262,8 @@ impl SymbolicObjective for QAOACostFunction {
 
         // Simplified gradients for the example
         for layer in 0..self.p_layers {
-            let gamma_key = format!("gamma_{}", layer);
-            let beta_key = format!("beta_{}", layer);
+            let gamma_key = format!("gamma_{layer}");
+            let beta_key = format!("beta_{layer}");
 
             let gamma = parameters.get(&gamma_key).unwrap_or(&0.0);
             let beta = parameters.get(&beta_key).unwrap_or(&0.0);
@@ -277,8 +278,8 @@ impl SymbolicObjective for QAOACostFunction {
     fn parameter_names(&self) -> Vec<String> {
         let mut names = Vec::new();
         for layer in 0..self.p_layers {
-            names.push(format!("gamma_{}", layer));
-            names.push(format!("beta_{}", layer));
+            names.push(format!("gamma_{layer}"));
+            names.push(format!("beta_{layer}"));
         }
         names
     }
@@ -288,11 +289,11 @@ impl SymbolicObjective for QAOACostFunction {
         for layer in 0..self.p_layers {
             // QAOA parameters typically bounded by [0, 2π]
             bounds.insert(
-                format!("gamma_{}", layer),
+                format!("gamma_{layer}"),
                 (Some(0.0), Some(2.0 * std::f64::consts::PI)),
             );
             bounds.insert(
-                format!("beta_{}", layer),
+                format!("beta_{layer}"),
                 (Some(0.0), Some(std::f64::consts::PI)),
             );
         }
@@ -307,13 +308,13 @@ pub struct SymbolicOptimizer {
 
 impl SymbolicOptimizer {
     /// Create a new symbolic optimizer
-    pub fn new(config: SymbolicOptimizationConfig) -> Self {
-        SymbolicOptimizer { config }
+    pub const fn new(config: SymbolicOptimizationConfig) -> Self {
+        Self { config }
     }
 
     /// Create with default configuration
     pub fn default() -> Self {
-        SymbolicOptimizer::new(SymbolicOptimizationConfig::default())
+        Self::new(SymbolicOptimizationConfig::default())
     }
 
     /// Optimize using gradient descent
@@ -377,8 +378,7 @@ impl SymbolicOptimizer {
             // Optional: Print progress
             if iteration % 100 == 0 {
                 println!(
-                    "Iteration {}: objective = {:.6e}, max_grad = {:.6e}",
-                    iteration, current_value, max_gradient
+                    "Iteration {iteration}: objective = {current_value:.6e}, max_grad = {max_gradient:.6e}"
                 );
             }
         }
@@ -490,21 +490,19 @@ fn compute_pauli_expectation_real(
                         }
                     }
                     PauliOperator::X => {
-                        if bit_i != bit_j {
-                            Complex64::new(1.0, 0.0)
-                        } else {
+                        if bit_i == bit_j {
                             Complex64::new(0.0, 0.0)
+                        } else {
+                            Complex64::new(1.0, 0.0)
                         }
                     }
                     PauliOperator::Y => {
-                        if bit_i != bit_j {
-                            if bit_j == 1 {
-                                Complex64::new(0.0, 1.0)
-                            } else {
-                                Complex64::new(0.0, -1.0)
-                            }
-                        } else {
+                        if bit_i == bit_j {
                             Complex64::new(0.0, 0.0)
+                        } else if bit_j == 1 {
+                            Complex64::new(0.0, 1.0)
+                        } else {
+                            Complex64::new(0.0, -1.0)
                         }
                     }
                     PauliOperator::Z => {
@@ -600,7 +598,7 @@ mod tests {
         let result = optimizer.optimize(&objective, initial_params);
 
         assert!(result.is_ok());
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Optimization should succeed");
         assert_eq!(opt_result.iterations, 10);
     }
 }

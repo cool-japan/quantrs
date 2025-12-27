@@ -215,7 +215,9 @@ impl EnergyLandscape {
             let mut result = Array2::zeros((n_samples, n_components));
 
             // Center the data
-            let means = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+            let means = data
+                .mean_axis(scirs2_core::ndarray::Axis(0))
+                .ok_or("Failed to compute mean axis")?;
             for i in 0..n_samples {
                 for j in 0..n_features {
                     result[[i, j]] = data[[i, j]] - means[j];
@@ -274,7 +276,11 @@ impl EnergyLandscape {
             .samples
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|(_, a), (_, b)| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map_or(0, |(i, _)| i);
 
         let best_solution = data.row(best_idx);

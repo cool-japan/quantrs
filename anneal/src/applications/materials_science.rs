@@ -34,9 +34,10 @@ use crate::quantum_error_correction::{
     NoiseResilientAnnealingProtocol, SyndromeDetector,
 };
 use crate::simulator::{AnnealingParams, QuantumAnnealingSimulator};
+use std::fmt::Write;
 
 /// Crystal lattice types
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LatticeType {
     /// Simple cubic lattice
     SimpleCubic,
@@ -68,35 +69,38 @@ pub struct LatticePosition {
 }
 
 impl LatticePosition {
-    pub fn new(x: i32, y: i32, z: i32) -> Self {
+    #[must_use]
+    pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
     }
 
+    #[must_use]
     pub fn distance(&self, other: &Self) -> f64 {
-        let dx = (self.x - other.x) as f64;
-        let dy = (self.y - other.y) as f64;
-        let dz = (self.z - other.z) as f64;
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        let dx = f64::from(self.x - other.x);
+        let dy = f64::from(self.y - other.y);
+        let dz = f64::from(self.z - other.z);
+        dz.mul_add(dz, dx.mul_add(dx, dy * dy)).sqrt()
     }
 
-    pub fn neighbors(&self, lattice_type: LatticeType) -> Vec<LatticePosition> {
+    #[must_use]
+    pub fn neighbors(&self, lattice_type: LatticeType) -> Vec<Self> {
         match lattice_type {
             LatticeType::SimpleCubic => {
                 vec![
-                    LatticePosition::new(self.x + 1, self.y, self.z),
-                    LatticePosition::new(self.x - 1, self.y, self.z),
-                    LatticePosition::new(self.x, self.y + 1, self.z),
-                    LatticePosition::new(self.x, self.y - 1, self.z),
-                    LatticePosition::new(self.x, self.y, self.z + 1),
-                    LatticePosition::new(self.x, self.y, self.z - 1),
+                    Self::new(self.x + 1, self.y, self.z),
+                    Self::new(self.x - 1, self.y, self.z),
+                    Self::new(self.x, self.y + 1, self.z),
+                    Self::new(self.x, self.y - 1, self.z),
+                    Self::new(self.x, self.y, self.z + 1),
+                    Self::new(self.x, self.y, self.z - 1),
                 ]
             }
             LatticeType::Graphene => {
                 // Honeycomb lattice neighbors
                 vec![
-                    LatticePosition::new(self.x + 1, self.y, self.z),
-                    LatticePosition::new(self.x, self.y + 1, self.z),
-                    LatticePosition::new(self.x - 1, self.y + 1, self.z),
+                    Self::new(self.x + 1, self.y, self.z),
+                    Self::new(self.x, self.y + 1, self.z),
+                    Self::new(self.x - 1, self.y + 1, self.z),
                 ]
             }
             _ => {
@@ -119,7 +123,8 @@ pub struct AtomicSpecies {
 }
 
 impl AtomicSpecies {
-    pub fn new(symbol: String, atomic_number: u32, mass: f64) -> Self {
+    #[must_use]
+    pub const fn new(symbol: String, atomic_number: u32, mass: f64) -> Self {
         Self {
             symbol,
             atomic_number,
@@ -130,12 +135,14 @@ impl AtomicSpecies {
         }
     }
 
-    pub fn with_magnetic_moment(mut self, moment: f64) -> Self {
+    #[must_use]
+    pub const fn with_magnetic_moment(mut self, moment: f64) -> Self {
         self.magnetic_moment = Some(moment);
         self
     }
 
-    pub fn with_charge(mut self, charge: f64) -> Self {
+    #[must_use]
+    pub const fn with_charge(mut self, charge: f64) -> Self {
         self.charge = charge;
         self
     }
@@ -153,7 +160,8 @@ pub struct LatticeSite {
 }
 
 impl LatticeSite {
-    pub fn new(position: LatticePosition) -> Self {
+    #[must_use]
+    pub const fn new(position: LatticePosition) -> Self {
         Self {
             position,
             species: None,
@@ -164,17 +172,20 @@ impl LatticeSite {
         }
     }
 
+    #[must_use]
     pub fn with_species(mut self, species: AtomicSpecies) -> Self {
         self.species = Some(species);
         self.occupation = true;
         self
     }
 
-    pub fn with_spin(mut self, spin: [f64; 3]) -> Self {
+    #[must_use]
+    pub const fn with_spin(mut self, spin: [f64; 3]) -> Self {
         self.spin = Some(spin);
         self
     }
 
+    #[must_use]
     pub fn with_defect(mut self, defect: DefectType) -> Self {
         self.defect_type = Some(defect);
         self
@@ -210,6 +221,7 @@ pub struct MaterialsLattice {
 }
 
 impl MaterialsLattice {
+    #[must_use]
     pub fn new(lattice_type: LatticeType, dimensions: [usize; 3]) -> Self {
         let mut sites = HashMap::new();
 
@@ -233,7 +245,7 @@ impl MaterialsLattice {
         }
     }
 
-    pub fn set_lattice_constants(&mut self, constants: [f64; 3]) {
+    pub const fn set_lattice_constants(&mut self, constants: [f64; 3]) {
         self.lattice_constants = constants;
     }
 
@@ -248,8 +260,7 @@ impl MaterialsLattice {
             Ok(())
         } else {
             Err(ApplicationError::InvalidConfiguration(format!(
-                "Position {:?} not found in lattice",
-                position
+                "Position {position:?} not found in lattice"
             )))
         }
     }
@@ -279,12 +290,12 @@ impl MaterialsLattice {
             Ok(())
         } else {
             Err(ApplicationError::InvalidConfiguration(format!(
-                "Position {:?} not found in lattice",
-                position
+                "Position {position:?} not found in lattice"
             )))
         }
     }
 
+    #[must_use]
     pub fn calculate_total_energy(&self) -> f64 {
         let mut total_energy = 0.0;
 
@@ -324,14 +335,14 @@ impl MaterialsLattice {
         // Magnetic interaction
         if let (Some(spin1), Some(spin2)) = (site1.spin, site2.spin) {
             let j_exchange = -1.0; // Exchange coupling (simplified)
-            energy +=
-                j_exchange * (spin1[0] * spin2[0] + spin1[1] * spin2[1] + spin1[2] * spin2[2]);
+            energy += j_exchange
+                * spin1[2].mul_add(spin2[2], spin1[0].mul_add(spin2[0], spin1[1] * spin2[1]));
         }
 
         energy
     }
 
-    fn defect_energy(&self, defect: &DefectType) -> f64 {
+    const fn defect_energy(&self, defect: &DefectType) -> f64 {
         match defect {
             DefectType::Vacancy => 2.0,           // Formation energy for vacancy
             DefectType::Interstitial(_) => 3.0,   // Formation energy for interstitial
@@ -342,6 +353,7 @@ impl MaterialsLattice {
         }
     }
 
+    #[must_use]
     pub fn calculate_order_parameter(&self) -> f64 {
         let mut magnetization = [0.0, 0.0, 0.0];
         let mut count = 0;
@@ -356,10 +368,11 @@ impl MaterialsLattice {
         }
 
         if count > 0 {
-            let mag = magnetization[0] * magnetization[0]
-                + magnetization[1] * magnetization[1]
-                + magnetization[2] * magnetization[2];
-            mag.sqrt() / count as f64
+            let mag = magnetization[2].mul_add(
+                magnetization[2],
+                magnetization[0].mul_add(magnetization[0], magnetization[1] * magnetization[1]),
+            );
+            mag.sqrt() / f64::from(count)
         } else {
             0.0
         }
@@ -382,7 +395,7 @@ pub enum MaterialsObjective {
     /// Maximize order parameter
     MaximizeOrder,
     /// Multi-objective optimization
-    MultiObjective(Vec<(MaterialsObjective, f64)>),
+    MultiObjective(Vec<(Self, f64)>),
 }
 
 /// Materials science optimization problem
@@ -414,6 +427,7 @@ pub enum MaterialsConstraint {
 }
 
 impl MaterialsOptimizationProblem {
+    #[must_use]
     pub fn new(lattice: MaterialsLattice) -> Self {
         Self {
             lattice,
@@ -432,21 +446,25 @@ impl MaterialsOptimizationProblem {
         }
     }
 
+    #[must_use]
     pub fn with_quantum_error_correction(mut self, config: String) -> Self {
         self.qec_framework = Some(config);
         self
     }
 
+    #[must_use]
     pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
 
+    #[must_use]
     pub fn add_objective(mut self, objective: MaterialsObjective) -> Self {
         self.objectives.push(objective);
         self
     }
 
+    #[must_use]
     pub fn add_constraint(mut self, constraint: MaterialsConstraint) -> Self {
         self.constraints.push(constraint);
         self
@@ -467,12 +485,11 @@ impl MaterialsOptimizationProblem {
 
         let mut qaoa = InfiniteDepthQAOA::new(qaoa_config);
         let result = qaoa.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Infinite QAOA failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Infinite QAOA failed: {e:?}"))
         })?;
 
-        let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("QAOA solver error: {}", e))
-        })?;
+        let solution = result
+            .map_err(|e| ApplicationError::OptimizationError(format!("QAOA solver error: {e}")))?;
 
         self.solution_to_lattice(&solution, &variable_map)
     }
@@ -492,12 +509,11 @@ impl MaterialsOptimizationProblem {
 
         let mut zeno_annealer = QuantumZenoAnnealer::new(zeno_config);
         let result = zeno_annealer.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Zeno annealing failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Zeno annealing failed: {e:?}"))
         })?;
 
-        let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("Zeno solver error: {}", e))
-        })?;
+        let solution = result
+            .map_err(|e| ApplicationError::OptimizationError(format!("Zeno solver error: {e}")))?;
 
         self.solution_to_lattice(&solution, &variable_map)
     }
@@ -512,11 +528,11 @@ impl MaterialsOptimizationProblem {
         let mut shortcuts_optimizer = AdiabaticShortcutsOptimizer::new(shortcuts_config);
 
         let result = shortcuts_optimizer.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {e:?}"))
         })?;
 
         let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("Shortcuts solver error: {}", e))
+            ApplicationError::OptimizationError(format!("Shortcuts solver error: {e}"))
         })?;
 
         self.solution_to_lattice(&solution, &variable_map)
@@ -533,18 +549,17 @@ impl MaterialsOptimizationProblem {
             let error_config = ErrorMitigationConfig::default();
             let mut error_manager = ErrorMitigationManager::new(error_config).map_err(|e| {
                 ApplicationError::OptimizationError(format!(
-                    "Failed to create error manager: {:?}",
-                    e
+                    "Failed to create error manager: {e:?}"
                 ))
             })?;
 
             // First perform standard annealing
             let params = AnnealingParams::default();
             let annealer = QuantumAnnealingSimulator::new(params.clone()).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e))
+                ApplicationError::OptimizationError(format!("Failed to create annealer: {e:?}"))
             })?;
             let annealing_result = annealer.solve(&ising_model).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e))
+                ApplicationError::OptimizationError(format!("Annealing failed: {e:?}"))
             })?;
 
             // Convert simulator result to error mitigation format
@@ -553,7 +568,7 @@ impl MaterialsOptimizationProblem {
                     solution: annealing_result
                         .best_spins
                         .iter()
-                        .map(|&x| x as i32)
+                        .map(|&x| i32::from(x))
                         .collect(),
                     energy: annealing_result.best_energy,
                     num_occurrences: 1,
@@ -566,7 +581,7 @@ impl MaterialsOptimizationProblem {
             let mitigation_result = error_manager
                 .apply_mitigation(&ising_model, error_mitigation_result, &params)
                 .map_err(|e| {
-                    ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e))
+                    ApplicationError::OptimizationError(format!("Error mitigation failed: {e:?}"))
                 })?;
 
             let solution = &mitigation_result.mitigated_result.solution;
@@ -599,7 +614,7 @@ impl MaterialsOptimizationProblem {
         };
 
         let best_params = optimize_annealing_parameters(objective, Some(40)).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {e:?}"))
         })?;
 
         let mut result = HashMap::new();
@@ -617,7 +632,7 @@ impl MaterialsOptimizationProblem {
         let mut variable_map = HashMap::new();
 
         // Map lattice sites to Ising variables
-        let site_positions: Vec<_> = self.lattice.sites.keys().cloned().collect();
+        let site_positions: Vec<_> = self.lattice.sites.keys().copied().collect();
         for (i, pos) in site_positions.iter().enumerate() {
             variable_map.insert(format!("site_{}_{}_{}_{}", pos.x, pos.y, pos.z, i), i);
         }
@@ -639,8 +654,9 @@ impl MaterialsOptimizationProblem {
                     }
                     MaterialsObjective::OptimizeMagnetism => {
                         if let Some(spin) = site.spin {
-                            let spin_magnitude =
-                                (spin[0] * spin[0] + spin[1] * spin[1] + spin[2] * spin[2]).sqrt();
+                            let spin_magnitude = spin[2]
+                                .mul_add(spin[2], spin[0].mul_add(spin[0], spin[1] * spin[1]))
+                                .sqrt();
                             bias -= spin_magnitude; // Encourage magnetic order
                         }
                     }
@@ -690,7 +706,7 @@ impl MaterialsOptimizationProblem {
         let mut optimized_lattice = self.lattice.clone();
 
         // Update lattice configuration based on solution
-        for (pos, site) in optimized_lattice.sites.iter_mut() {
+        for (pos, site) in &mut optimized_lattice.sites {
             if let Some(&var_index) =
                 variable_map.get(&format!("site_{}_{}_{}_0", pos.x, pos.y, pos.z))
             {
@@ -710,7 +726,7 @@ impl MaterialsOptimizationProblem {
         }
 
         // Recalculate local energies
-        let positions: Vec<_> = optimized_lattice.sites.keys().cloned().collect();
+        let positions: Vec<_> = optimized_lattice.sites.keys().copied().collect();
         for pos in positions {
             let local_energy = self.calculate_local_energy(&pos, &optimized_lattice);
             if let Some(site) = optimized_lattice.sites.get_mut(&pos) {
@@ -787,7 +803,7 @@ impl OptimizationProblem for MaterialsOptimizationProblem {
 
         let total_sites =
             self.lattice.dimensions[0] * self.lattice.dimensions[1] * self.lattice.dimensions[2];
-        if total_sites > 10000 {
+        if total_sites > 10_000 {
             return Err(ApplicationError::ResourceLimitExceeded(
                 "Lattice too large for current implementation".to_string(),
             ));
@@ -805,8 +821,7 @@ impl OptimizationProblem for MaterialsOptimizationProblem {
                         .sum();
                     if total_charge.abs() > 1e-6 {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Charge neutrality violated: total charge = {}",
-                            total_charge
+                            "Charge neutrality violated: total charge = {total_charge}"
                         )));
                     }
                 }
@@ -820,8 +835,7 @@ impl OptimizationProblem for MaterialsOptimizationProblem {
                     let defect_density = defect_count as f64 / self.lattice.sites.len() as f64;
                     if defect_density > *max_density {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Defect density {} exceeds maximum {}",
-                            defect_density, max_density
+                            "Defect density {defect_density} exceeds maximum {max_density}"
                         )));
                     }
                 }
@@ -887,7 +901,7 @@ impl IndustrySolution for MaterialsLattice {
     type Problem = MaterialsOptimizationProblem;
 
     fn from_binary(problem: &Self::Problem, binary_solution: &[i8]) -> ApplicationResult<Self> {
-        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| x as i32).collect();
+        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| i32::from(x)).collect();
         let variable_map = HashMap::new(); // Simplified
         problem.solution_to_lattice(&solution_i32, &variable_map)
     }
@@ -954,47 +968,47 @@ impl IndustrySolution for MaterialsLattice {
         let mut output = String::new();
 
         output.push_str("# Materials Science Lattice Configuration\n");
-        output.push_str(&format!("Lattice Type: {:?}\n", self.lattice_type));
-        output.push_str(&format!("Dimensions: {:?}\n", self.dimensions));
-        output.push_str(&format!(
-            "Lattice Constants: {:?}\n",
-            self.lattice_constants
-        ));
-        output.push_str(&format!("Temperature: {:.2} K\n", self.temperature));
-        output.push_str(&format!(
+        let _ = writeln!(output, "Lattice Type: {:?}", self.lattice_type);
+        let _ = writeln!(output, "Dimensions: {:?}", self.dimensions);
+        let _ = writeln!(output, "Lattice Constants: {:?}", self.lattice_constants);
+        let _ = writeln!(output, "Temperature: {:.2} K", self.temperature);
+        let _ = write!(
+            output,
             "Total Energy: {:.6}\n",
             self.calculate_total_energy()
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Order Parameter: {:.6}\n",
             self.calculate_order_parameter()
-        ));
+        );
 
         if let Some(field) = self.external_field {
-            output.push_str(&format!("External Field: {:?}\n", field));
+            let _ = writeln!(output, "External Field: {field:?}");
         }
 
         output.push_str("\n# Site Details\n");
         for (pos, site) in &self.sites {
             if site.occupation {
-                output.push_str(&format!("Site ({}, {}, {}): ", pos.x, pos.y, pos.z));
+                let _ = write!(output, "Site ({}, {}, {}): ", pos.x, pos.y, pos.z);
 
                 if let Some(ref species) = site.species {
-                    output.push_str(&format!("{} ", species.symbol));
+                    let _ = write!(output, "{} ", species.symbol);
                 }
 
                 if let Some(spin) = site.spin {
-                    output.push_str(&format!(
+                    let _ = write!(
+                        output,
                         "spin=({:.3}, {:.3}, {:.3}) ",
                         spin[0], spin[1], spin[2]
-                    ));
+                    );
                 }
 
                 if let Some(ref defect) = site.defect_type {
-                    output.push_str(&format!("defect={:?} ", defect));
+                    let _ = write!(output, "defect={defect:?} ");
                 }
 
-                output.push_str(&format!("energy={:.6}", site.local_energy));
+                let _ = write!(output, "energy={:.6}", site.local_energy);
                 output.push('\n');
             }
         }
@@ -1033,7 +1047,7 @@ pub fn create_benchmark_problems(
             .with_charge(0.0);
 
         // Fill lattice with iron atoms
-        for (pos, site) in lattice.sites.iter_mut() {
+        for (pos, site) in &mut lattice.sites {
             if (pos.x + pos.y + pos.z) % 2 == 0 {
                 // Checkerboard pattern
                 site.species = Some(fe_atom.clone());
@@ -1106,7 +1120,10 @@ mod tests {
         let result = lattice.create_defect(pos, DefectType::Vacancy);
         assert!(result.is_ok());
 
-        let site = lattice.sites.get(&pos).unwrap();
+        let site = lattice
+            .sites
+            .get(&pos)
+            .expect("site should exist at position after defect creation");
         assert!(!site.occupation);
         assert!(site.defect_type.is_some());
     }
@@ -1118,7 +1135,9 @@ mod tests {
         let fe_atom = AtomicSpecies::new("Fe".to_string(), 26, 55.845);
         let pos = LatticePosition::new(0, 0, 0);
 
-        lattice.add_atom(pos, fe_atom).unwrap();
+        lattice
+            .add_atom(pos, fe_atom)
+            .expect("should add Fe atom at position");
 
         let energy = lattice.calculate_total_energy();
         assert!(energy >= 0.0); // Basic sanity check
@@ -1137,7 +1156,9 @@ mod tests {
         let lattice = MaterialsLattice::new(LatticeType::SimpleCubic, [2, 2, 2]);
         let problem = MaterialsOptimizationProblem::new(lattice);
 
-        let (ising, variable_map) = problem.to_ising_model().unwrap();
+        let (ising, variable_map) = problem
+            .to_ising_model()
+            .expect("should convert lattice problem to Ising model");
         assert_eq!(ising.num_qubits, 8); // 2x2x2 = 8 sites
         assert!(!variable_map.is_empty());
     }

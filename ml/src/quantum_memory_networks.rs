@@ -1155,16 +1155,15 @@ impl QuantumMemoryAugmentedNetwork {
             self.training_history.push(metrics);
 
             if epoch % 20 == 0 {
-                println!(
-                    "Epoch {}: Loss = {:.6}, Memory Utilization = {:.3}, Quantum Coherence = {:.4}",
-                    epoch,
-                    epoch_loss,
-                    self.training_history.last().unwrap().memory_utilization,
-                    self.training_history
-                        .last()
-                        .unwrap()
-                        .quantum_memory_coherence
-                );
+                if let Some(last_metrics) = self.training_history.last() {
+                    println!(
+                        "Epoch {}: Loss = {:.6}, Memory Utilization = {:.3}, Quantum Coherence = {:.4}",
+                        epoch,
+                        epoch_loss,
+                        last_metrics.memory_utilization,
+                        last_metrics.quantum_memory_coherence
+                    );
+                }
             }
         }
 
@@ -1234,7 +1233,7 @@ impl QuantumMemoryAugmentedNetwork {
         Ok(TrainingMetrics {
             epoch,
             loss,
-            memory_utilization: self.memory.usage_weights.mean().unwrap(),
+            memory_utilization: self.memory.usage_weights.mean().unwrap_or(0.0),
             read_attention_entropy: self.compute_attention_entropy(&self.memory.read_weights)?,
             write_attention_entropy: self.compute_attention_entropy(&self.memory.write_weights)?,
             quantum_memory_coherence: self.compute_quantum_coherence()?,
@@ -1625,7 +1624,8 @@ mod tests {
     #[test]
     fn test_memory_operations() {
         let config = QMANConfig::default();
-        let mut qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
+        let mut qman = QuantumMemoryAugmentedNetwork::new(config)
+            .expect("Failed to create QuantumMemoryAugmentedNetwork");
 
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
         let result = qman.forward(&input);
@@ -1635,13 +1635,14 @@ mod tests {
     #[test]
     fn test_quantum_addressing() {
         let config = QMANConfig::default();
-        let qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
+        let qman = QuantumMemoryAugmentedNetwork::new(config)
+            .expect("Failed to create QuantumMemoryAugmentedNetwork");
 
         let key = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let weights = qman.content_addressing(&key, 2.0);
         assert!(weights.is_ok());
 
-        let weights = weights.unwrap();
+        let weights = weights.expect("Content addressing should succeed");
         let sum = weights.sum();
         assert!((sum - 1.0).abs() < 1e-6); // Should sum to 1
     }
@@ -1649,7 +1650,8 @@ mod tests {
     #[test]
     fn test_episodic_memory() {
         let config = QMANConfig::default();
-        let mut qman = QuantumMemoryAugmentedNetwork::new(config).unwrap();
+        let mut qman = QuantumMemoryAugmentedNetwork::new(config)
+            .expect("Failed to create QuantumMemoryAugmentedNetwork");
 
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
         let output = Array1::from_vec(vec![0.7, 0.8, 0.9, 1.0, 1.1, 1.2]);

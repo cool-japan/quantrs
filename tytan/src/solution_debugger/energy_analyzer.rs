@@ -214,7 +214,11 @@ impl EnergyAnalyzer {
         }
 
         // Sort by energy
-        local_minima.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        local_minima.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         local_minima.truncate(10); // Keep top 10 local minima
 
         // Calculate ruggedness (simplified measure)

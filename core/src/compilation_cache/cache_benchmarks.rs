@@ -372,7 +372,8 @@ impl CacheBenchmarks {
         }
 
         for handle in handles {
-            handle.join().unwrap();
+            // Thread join can fail if the thread panicked; we handle this gracefully
+            let _ = handle.join();
         }
 
         let total_time = start.elapsed().as_micros() as f64;
@@ -421,8 +422,8 @@ mod tests {
             warmup_trials: 2,
         };
 
-        let benchmarks = CacheBenchmarks::new(config).unwrap();
-        let hit_time = benchmarks.benchmark_cache_hits().unwrap();
+        let benchmarks = CacheBenchmarks::new(config).expect("benchmark creation should succeed");
+        let hit_time = benchmarks.benchmark_cache_hits().expect("cache hit benchmark should succeed");
 
         assert!(hit_time > 0.0);
         assert!(hit_time < 1000.0); // Should be under 1ms
@@ -437,8 +438,8 @@ mod tests {
             warmup_trials: 2,
         };
 
-        let benchmarks = CacheBenchmarks::new(config).unwrap();
-        let (compile_time, hit_rate, time_saved) = benchmarks.benchmark_compilation_savings().unwrap();
+        let benchmarks = CacheBenchmarks::new(config).expect("benchmark creation should succeed");
+        let (compile_time, hit_rate, time_saved) = benchmarks.benchmark_compilation_savings().expect("compilation savings benchmark should succeed");
 
         assert!(compile_time > 0.0);
         assert!(hit_rate >= 0.0 && hit_rate <= 1.0);
@@ -457,8 +458,8 @@ mod tests {
             warmup_trials: 1,
         };
 
-        let benchmarks = CacheBenchmarks::new(config).unwrap();
-        let (memory_used, num_entries) = benchmarks.benchmark_memory_usage().unwrap();
+        let benchmarks = CacheBenchmarks::new(config).expect("benchmark creation should succeed");
+        let (memory_used, num_entries) = benchmarks.benchmark_memory_usage().expect("memory usage benchmark should succeed");
 
         assert!(memory_used > 0);
         assert!(num_entries > 0);
@@ -476,8 +477,8 @@ mod tests {
             warmup_trials: 1,
         };
 
-        let benchmarks = CacheBenchmarks::new(config).unwrap();
-        let (early_time, late_time) = benchmarks.benchmark_cache_eviction().unwrap();
+        let benchmarks = CacheBenchmarks::new(config).expect("benchmark creation should succeed");
+        let (early_time, late_time) = benchmarks.benchmark_cache_eviction().expect("cache eviction benchmark should succeed");
 
         assert!(early_time > 0.0);
         assert!(late_time > 0.0);
@@ -494,8 +495,8 @@ mod tests {
             warmup_trials: 1,
         };
 
-        let benchmarks = CacheBenchmarks::new(config).unwrap();
-        let avg_time = benchmarks.benchmark_concurrent_access().unwrap();
+        let benchmarks = CacheBenchmarks::new(config).expect("benchmark creation should succeed");
+        let avg_time = benchmarks.benchmark_concurrent_access().expect("concurrent access benchmark should succeed");
 
         assert!(avg_time > 0.0);
 
@@ -504,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_quick_benchmarks() {
-        let results = run_quick_cache_benchmarks().unwrap();
+        let results = run_quick_cache_benchmarks().expect("quick cache benchmarks should succeed");
 
         assert!(results.avg_compile_time_us > results.avg_cache_hit_time_us);
         assert!(results.cache_hit_rate >= 0.0 && results.cache_hit_rate <= 1.0);

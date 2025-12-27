@@ -41,7 +41,7 @@ pub struct ActiveAlert {
 }
 
 /// Alert status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AlertStatus {
     Triggered,
     Acknowledged,
@@ -71,7 +71,7 @@ pub struct ResolvedAlert {
 }
 
 /// Resolution methods
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ResolutionMethod {
     Automatic,
     Manual,
@@ -104,7 +104,7 @@ pub struct AlertTrends {
 }
 
 /// Trend direction (placeholder from analytics)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -145,7 +145,7 @@ pub struct NotificationMessage {
 }
 
 /// Message formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageFormat {
     PlainText,
     HTML,
@@ -184,7 +184,7 @@ pub struct DeliveryRecord {
 }
 
 /// Delivery status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryStatus {
     Sent,
     Delivered,
@@ -236,7 +236,7 @@ pub struct SuppressionEvent {
 }
 
 /// Suppression event types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuppressionEventType {
     AlertSuppressed,
     AlertUnsuppressed,
@@ -276,7 +276,7 @@ pub struct EscalationEvent {
 }
 
 /// Escalation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EscalationType {
     Notification,
     AutoRemediation,
@@ -303,7 +303,7 @@ impl AlertManager {
                 config.notification_channels.clone(),
             ),
             suppression_engine: SuppressionEngine::new(config.suppression_rules.clone()),
-            escalation_engine: EscalationEngine::new(config.escalation_policies.clone()),
+            escalation_engine: EscalationEngine::new(config.escalation_policies),
         }
     }
 
@@ -440,10 +440,7 @@ impl AlertManager {
 
         // Calculate statistics from active and resolved alerts
         for alert in self.active_alerts.values() {
-            *stats
-                .alerts_by_severity
-                .entry(alert.severity.clone())
-                .or_insert(0) += 1;
+            *stats.alerts_by_severity.entry(alert.severity).or_insert(0) += 1;
             *stats
                 .alerts_by_metric
                 .entry(alert.metric_name.clone())
@@ -453,7 +450,7 @@ impl AlertManager {
         for resolved in &self.alert_history {
             *stats
                 .alerts_by_severity
-                .entry(resolved.alert.severity.clone())
+                .entry(resolved.alert.severity)
                 .or_insert(0) += 1;
             *stats
                 .alerts_by_metric
@@ -481,7 +478,7 @@ impl AlertManager {
             metric_name,
             SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs()
         );
 
@@ -491,7 +488,7 @@ impl AlertManager {
             metric_name: metric_name.to_string(),
             threshold: threshold.clone(),
             current_value: value,
-            severity: threshold.severity.clone(),
+            severity: threshold.severity,
             status: AlertStatus::Triggered,
             acknowledgement: None,
             escalation_level: 0,
@@ -545,7 +542,7 @@ impl AlertManager {
         !self.should_trigger_alert(threshold, value)
     }
 
-    fn map_anomaly_severity(
+    const fn map_anomaly_severity(
         &self,
         anomaly_severity: &super::analytics::AnomalySeverity,
     ) -> AlertSeverity {
@@ -675,7 +672,7 @@ impl NotificationDispatcher {
         }
     }
 
-    fn map_severity_to_priority(&self, severity: &AlertSeverity) -> NotificationPriority {
+    const fn map_severity_to_priority(&self, severity: &AlertSeverity) -> NotificationPriority {
         match severity {
             AlertSeverity::Info => NotificationPriority::Low,
             AlertSeverity::Warning => NotificationPriority::Normal,
@@ -703,6 +700,12 @@ impl NotificationDispatcher {
     }
 }
 
+impl Default for RateLimiter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RateLimiter {
     pub fn new() -> Self {
         Self {
@@ -719,10 +722,7 @@ impl RateLimiter {
         });
 
         let now = SystemTime::now();
-        let usage = self
-            .usage_tracking
-            .entry(channel_type.clone())
-            .or_insert_with(VecDeque::new);
+        let usage = self.usage_tracking.entry(channel_type.clone()).or_default();
 
         // Remove old entries outside the time window
         while let Some(front) = usage.front() {
@@ -778,7 +778,11 @@ impl SuppressionEngine {
         Ok(false)
     }
 
-    fn matches_suppression_rule(&self, _alert: &ActiveAlert, _rule: &SuppressionRule) -> bool {
+    const fn matches_suppression_rule(
+        &self,
+        _alert: &ActiveAlert,
+        _rule: &SuppressionRule,
+    ) -> bool {
         // Simplified rule matching logic
         false
     }

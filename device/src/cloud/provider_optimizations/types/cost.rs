@@ -30,6 +30,12 @@ pub struct CostPerformanceAnalysis {
     pareto_optimal_solutions: Vec<ParetoOptimalSolution>,
     trade_off_analysis: HashMap<String, TradeOffCurve>,
 }
+impl Default for CostPerformanceAnalysis {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CostPerformanceAnalysis {
     pub fn new() -> Self {
         Self {
@@ -164,6 +170,12 @@ pub struct PricingData {
     pricing_trends: HashMap<CloudProvider, PricingTrend>,
     discount_schedules: HashMap<CloudProvider, DiscountSchedule>,
 }
+impl Default for PricingData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PricingData {
     pub fn new() -> Self {
         Self {
@@ -339,6 +351,12 @@ pub struct BudgetTracking {
     budget_alerts: Vec<BudgetAlert>,
     forecasted_spending: HashMap<String, SpendingForecast>,
 }
+impl Default for BudgetTracking {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BudgetTracking {
     pub fn new() -> Self {
         Self {

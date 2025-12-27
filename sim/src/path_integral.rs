@@ -7,7 +7,7 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -56,7 +56,7 @@ impl Default for PathIntegralConfig {
         Self {
             method: PathIntegralMethod::MonteCarlo,
             time_slices: 100,
-            monte_carlo_samples: 10000,
+            monte_carlo_samples: 10_000,
             temperature: 0.0, // Zero temperature (ground state)
             time_step: 0.01,
             tolerance: 1e-10,
@@ -126,6 +126,7 @@ pub struct QuantumPath {
 
 impl QuantumPath {
     /// Create new quantum path
+    #[must_use]
     pub fn new(time_slices: usize, dimensions: usize) -> Self {
         Self {
             coordinates: Array2::zeros((time_slices, dimensions)),
@@ -171,7 +172,7 @@ pub struct PathIntegralSimulator {
     dimensions: usize,
     /// Configuration
     config: PathIntegralConfig,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Path cache for optimization
     path_cache: HashMap<String, Vec<QuantumPath>>,
@@ -191,7 +192,7 @@ impl PathIntegralSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -240,7 +241,7 @@ impl PathIntegralSimulator {
 
     /// Exact path integral evaluation (small systems only)
     fn evolve_exact<H, I>(
-        &mut self,
+        &self,
         initial_state: &I,
         hamiltonian: &H,
         evolution_time: f64,
@@ -311,7 +312,7 @@ impl PathIntegralSimulator {
 
     /// Monte Carlo path integral sampling
     fn evolve_monte_carlo<H, I>(
-        &mut self,
+        &self,
         initial_state: &I,
         hamiltonian: &H,
         evolution_time: f64,
@@ -391,7 +392,7 @@ impl PathIntegralSimulator {
 
     /// Quantum Monte Carlo with importance sampling
     fn evolve_quantum_monte_carlo<H, I>(
-        &mut self,
+        &self,
         initial_state: &I,
         hamiltonian: &H,
         evolution_time: f64,
@@ -482,9 +483,9 @@ impl PathIntegralSimulator {
         }
     }
 
-    /// SciRS2 path integral implementation
+    /// `SciRS2` path integral implementation
     fn evolve_scirs2_path_integral<H, I>(
-        &mut self,
+        &self,
         initial_state: &I,
         hamiltonian: &H,
         evolution_time: f64,
@@ -563,7 +564,7 @@ impl PathIntegralSimulator {
 
     /// Trotter decomposition approximation
     fn evolve_trotter_approximation<H, I>(
-        &mut self,
+        &self,
         initial_state: &I,
         hamiltonian: &H,
         evolution_time: f64,
@@ -731,6 +732,7 @@ impl PathIntegralSimulator {
     }
 
     /// Get configuration
+    #[must_use]
     pub const fn get_config(&self) -> &PathIntegralConfig {
         &self.config
     }
@@ -853,7 +855,7 @@ mod tests {
         let config = PathIntegralConfig::default();
         assert_eq!(config.method, PathIntegralMethod::MonteCarlo);
         assert_eq!(config.time_slices, 100);
-        assert_eq!(config.monte_carlo_samples, 10000);
+        assert_eq!(config.monte_carlo_samples, 10_000);
     }
 
     #[test]
@@ -867,7 +869,7 @@ mod tests {
     #[test]
     fn test_path_integral_simulator_creation() {
         let config = PathIntegralConfig::default();
-        let simulator = PathIntegralSimulator::new(1, config).unwrap();
+        let simulator = PathIntegralSimulator::new(1, config).expect("Failed to create simulator");
         assert_eq!(simulator.dimensions, 1);
     }
 
@@ -896,13 +898,14 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = PathIntegralSimulator::new(1, config).unwrap();
+        let mut simulator =
+            PathIntegralSimulator::new(1, config).expect("Failed to create simulator");
         let hamiltonian = PathIntegralUtils::harmonic_oscillator(1.0, 1.0);
         let initial_state = PathIntegralUtils::gaussian_wave_packet(0.0, 1.0, 0.0);
 
         let result = simulator
             .evolve_system(initial_state, hamiltonian, 1.0)
-            .unwrap();
+            .expect("Failed to evolve system");
 
         assert_eq!(result.amplitudes.len(), 100);
         assert!(result.execution_stats.execution_time_ms > 0.0);
@@ -919,7 +922,8 @@ mod tests {
         }
 
         let hamiltonian = PathIntegralUtils::harmonic_oscillator(1.0, 1.0);
-        path.calculate_action(&hamiltonian, 0.1).unwrap();
+        path.calculate_action(&hamiltonian, 0.1)
+            .expect("Failed to calculate action");
 
         assert!(path.action.abs() > 0.0);
         assert!(path.weight.norm() > 0.0);
@@ -934,13 +938,14 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = PathIntegralSimulator::new(1, config).unwrap();
+        let mut simulator =
+            PathIntegralSimulator::new(1, config).expect("Failed to create simulator");
         let hamiltonian = PathIntegralUtils::harmonic_oscillator(1.0, 1.0);
         let initial_state = PathIntegralUtils::gaussian_wave_packet(0.0, 1.0, 0.0);
 
         let result = simulator
             .evolve_system(initial_state, hamiltonian, 0.5)
-            .unwrap();
+            .expect("Failed to evolve system");
 
         assert!(!result.amplitudes.is_empty());
         assert!(result.convergence_stats.converged);

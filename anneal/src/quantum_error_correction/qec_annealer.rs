@@ -1,6 +1,6 @@
 //! Quantum Error Correction Annealer
 //!
-//! This module implements the main QuantumErrorCorrectionAnnealer struct that
+//! This module implements the main `QuantumErrorCorrectionAnnealer` struct that
 //! orchestrates all quantum error correction components for annealing systems.
 //! It provides a unified interface for running error-corrected quantum annealing
 //! with adaptive protocols, syndrome detection, logical encoding, and error mitigation.
@@ -196,11 +196,11 @@ impl QuantumErrorCorrectionAnnealer {
 
         // Get spins and convert to i32 for result
         let best_spins_i8 = annealing_result.best_spins.clone();
-        let best_spins_i32: Vec<i32> = best_spins_i8.iter().map(|&s| s as i32).collect();
+        let best_spins_i32: Vec<i32> = best_spins_i8.iter().map(|&s| i32::from(s)).collect();
 
         // Calculate energies
         let logical_solution = best_spins_i32.clone();
-        let physical_solution = best_spins_i32.clone();
+        let physical_solution = best_spins_i32;
 
         let logical_energy = problem.energy(&best_spins_i8)?;
         let physical_energy = logical_energy;
@@ -217,7 +217,9 @@ impl QuantumErrorCorrectionAnnealer {
             num_errors_detected: 0,
             num_errors_corrected: 0,
             logical_fidelity: self.estimate_logical_fidelity(&logical_solution, problem),
-            correction_overhead: total_time - annealing_time,
+            correction_overhead: total_time
+                .checked_sub(annealing_time)
+                .unwrap_or(Duration::ZERO),
             annealing_time,
             total_time,
             stats: QECAnnealingStats {
@@ -242,7 +244,7 @@ impl QuantumErrorCorrectionAnnealer {
 
     /// Run annealing (base implementation)
     fn run_annealing(
-        &mut self,
+        &self,
         problem: &IsingModel,
         params: Option<AnnealingParams>,
     ) -> QECResult<AnnealingSolution> {
@@ -265,7 +267,7 @@ impl QuantumErrorCorrectionAnnealer {
         let distance = self.config.code_parameters.distance;
         let distance_factor = 1.0 - (1.0 / (distance as f64 + 1.0));
 
-        base_fidelity * (0.9 + 0.1 * distance_factor)
+        base_fidelity * 0.1f64.mul_add(distance_factor, 0.9)
     }
 
     /// Estimate physical error rate
@@ -279,12 +281,12 @@ impl QuantumErrorCorrectionAnnealer {
     }
 
     /// Estimate logical error rate
-    fn estimate_logical_error_rate(&self) -> f64 {
+    const fn estimate_logical_error_rate(&self) -> f64 {
         self.performance_stats.avg_logical_error_rate
     }
 
     /// Get code distance being used
-    fn get_code_distance(&self) -> usize {
+    const fn get_code_distance(&self) -> usize {
         self.config.code_parameters.distance
     }
 
@@ -310,26 +312,31 @@ impl QuantumErrorCorrectionAnnealer {
 
         // Update running averages
         let n = self.performance_stats.total_runs as f64;
-        self.performance_stats.avg_logical_error_rate =
-            (self.performance_stats.avg_logical_error_rate * (n - 1.0)
-                + result.stats.logical_error_rate)
-                / n;
+        self.performance_stats.avg_logical_error_rate = self
+            .performance_stats
+            .avg_logical_error_rate
+            .mul_add(n - 1.0, result.stats.logical_error_rate)
+            / n;
 
-        self.performance_stats.avg_physical_error_rate =
-            (self.performance_stats.avg_physical_error_rate * (n - 1.0)
-                + result.stats.physical_error_rate)
-                / n;
+        self.performance_stats.avg_physical_error_rate = self
+            .performance_stats
+            .avg_physical_error_rate
+            .mul_add(n - 1.0, result.stats.physical_error_rate)
+            / n;
 
         self.performance_stats.avg_correction_overhead = Duration::from_secs_f64(
-            (self.performance_stats.avg_correction_overhead.as_secs_f64() * (n - 1.0)
-                + result.correction_overhead.as_secs_f64())
+            self.performance_stats
+                .avg_correction_overhead
+                .as_secs_f64()
+                .mul_add(n - 1.0, result.correction_overhead.as_secs_f64())
                 / n,
         );
 
-        self.performance_stats.avg_energy_improvement =
-            (self.performance_stats.avg_energy_improvement * (n - 1.0)
-                + result.stats.energy_improvement)
-                / n;
+        self.performance_stats.avg_energy_improvement = self
+            .performance_stats
+            .avg_energy_improvement
+            .mul_add(n - 1.0, result.stats.energy_improvement)
+            / n;
 
         if result.logical_fidelity > self.performance_stats.best_logical_fidelity {
             self.performance_stats.best_logical_fidelity = result.logical_fidelity;
@@ -337,7 +344,8 @@ impl QuantumErrorCorrectionAnnealer {
     }
 
     /// Get performance statistics
-    pub fn get_statistics(&self) -> &QECAnnealerStats {
+    #[must_use]
+    pub const fn get_statistics(&self) -> &QECAnnealerStats {
         &self.performance_stats
     }
 
@@ -377,12 +385,15 @@ mod tests {
     #[test]
     fn test_qec_annealer_solve_simple() {
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, -1.0).unwrap();
-        problem.set_coupling(0, 1, -1.0).unwrap();
+        problem.set_bias(0, -1.0).expect("Failed to set bias");
+        problem
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling");
 
         let config = QECConfig::default();
 
-        let mut annealer = QuantumErrorCorrectionAnnealer::new(config).unwrap();
+        let mut annealer =
+            QuantumErrorCorrectionAnnealer::new(config).expect("Failed to create QEC annealer");
         let result = annealer.solve(&problem, None);
         assert!(result.is_ok());
     }
@@ -390,12 +401,13 @@ mod tests {
     #[test]
     fn test_statistics_tracking() {
         let config = QECConfig::default();
-        let mut annealer = QuantumErrorCorrectionAnnealer::new(config).unwrap();
+        let mut annealer =
+            QuantumErrorCorrectionAnnealer::new(config).expect("Failed to create QEC annealer");
 
         assert_eq!(annealer.get_statistics().total_runs, 0);
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, -1.0).unwrap();
+        problem.set_bias(0, -1.0).expect("Failed to set bias");
 
         let _ = annealer.solve(&problem, None);
 
@@ -405,10 +417,11 @@ mod tests {
     #[test]
     fn test_statistics_reset() {
         let config = QECConfig::default();
-        let mut annealer = QuantumErrorCorrectionAnnealer::new(config).unwrap();
+        let mut annealer =
+            QuantumErrorCorrectionAnnealer::new(config).expect("Failed to create QEC annealer");
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, -1.0).unwrap();
+        problem.set_bias(0, -1.0).expect("Failed to set bias");
 
         let _ = annealer.solve(&problem, None);
         assert_eq!(annealer.get_statistics().total_runs, 1);
@@ -420,7 +433,8 @@ mod tests {
     #[test]
     fn test_error_rate_estimation() {
         let config = QECConfig::default();
-        let annealer = QuantumErrorCorrectionAnnealer::new(config).unwrap();
+        let annealer =
+            QuantumErrorCorrectionAnnealer::new(config).expect("Failed to create QEC annealer");
 
         let physical_error_rate = annealer.estimate_physical_error_rate();
         assert!(physical_error_rate >= 0.0 && physical_error_rate <= 1.0);
@@ -432,10 +446,11 @@ mod tests {
     #[test]
     fn test_fidelity_estimation() {
         let config = QECConfig::default();
-        let annealer = QuantumErrorCorrectionAnnealer::new(config).unwrap();
+        let annealer =
+            QuantumErrorCorrectionAnnealer::new(config).expect("Failed to create QEC annealer");
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, -1.0).unwrap();
+        problem.set_bias(0, -1.0).expect("Failed to set bias");
 
         let solution = vec![1, 1, 1, 1];
         let fidelity = annealer.estimate_logical_fidelity(&solution, &problem);

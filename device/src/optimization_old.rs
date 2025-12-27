@@ -104,7 +104,7 @@ pub enum OptimizationDecision {
 
 impl CalibrationOptimizer {
     /// Create a new calibration-based optimizer
-    pub fn new(calibration_manager: CalibrationManager, config: OptimizationConfig) -> Self {
+    pub const fn new(calibration_manager: CalibrationManager, config: OptimizationConfig) -> Self {
         Self {
             calibration_manager,
             config,
@@ -120,8 +120,7 @@ impl CalibrationOptimizer {
         // Check if calibration is available and valid
         if !self.calibration_manager.is_calibration_valid(device_id) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "No valid calibration for device {}",
-                device_id
+                "No valid calibration for device {device_id}"
             )));
         }
 
@@ -194,7 +193,7 @@ impl CalibrationOptimizer {
     }
 
     /// Optimize circuit for minimum duration
-    fn optimize_for_duration<const N: usize>(
+    const fn optimize_for_duration<const N: usize>(
         &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
@@ -212,7 +211,7 @@ impl CalibrationOptimizer {
     }
 
     /// Apply gate substitutions based on calibration
-    fn apply_gate_substitutions<const N: usize>(
+    const fn apply_gate_substitutions<const N: usize>(
         &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
@@ -226,7 +225,7 @@ impl CalibrationOptimizer {
     }
 
     /// Minimize crosstalk effects
-    fn minimize_crosstalk<const N: usize>(
+    const fn minimize_crosstalk<const N: usize>(
         &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
@@ -312,12 +311,12 @@ pub struct PulseOptimizer {
 
 impl PulseOptimizer {
     /// Create a new pulse optimizer
-    pub fn new(calibration: DeviceCalibration) -> Self {
+    pub const fn new(calibration: DeviceCalibration) -> Self {
         Self { calibration }
     }
 
     /// Optimize pulse parameters for a gate
-    pub fn optimize_gate_pulse(
+    pub const fn optimize_gate_pulse(
         &self,
         gate_name: &str,
         qubits: &[QubitId],
@@ -355,7 +354,7 @@ pub struct FidelityEstimator {
 
 impl FidelityEstimator {
     /// Create a new fidelity estimator
-    pub fn new(calibration: DeviceCalibration) -> Self {
+    pub const fn new(calibration: DeviceCalibration) -> Self {
         Self { calibration }
     }
 
@@ -376,14 +375,12 @@ impl FidelityEstimator {
                     .single_qubit_gates
                     .get(gate.name())
                     .and_then(|g| g.qubit_data.get(&qubits[0]))
-                    .map(|d| d.error_rate)
-                    .unwrap_or(0.001),
+                    .map_or(0.001, |d| d.error_rate),
                 2 => self
                     .calibration
                     .two_qubit_gates
                     .get(&(qubits[0], qubits[1]))
-                    .map(|g| g.error_rate)
-                    .unwrap_or(0.01),
+                    .map_or(0.01, |g| g.error_rate),
                 _ => 0.05, // Multi-qubit gates
             };
 
@@ -397,7 +394,7 @@ impl FidelityEstimator {
             .readout_calibration
             .qubit_readout
             .values()
-            .map(|r| 1.0 - (r.p0_given_0 + r.p1_given_1) / 2.0)
+            .map(|r| 1.0 - f64::midpoint(r.p0_given_0, r.p1_given_1))
             .sum::<f64>()
             / self.calibration.readout_calibration.qubit_readout.len() as f64;
 
@@ -430,14 +427,12 @@ impl FidelityEstimator {
                             .single_qubit_gates
                             .get(gate.name())
                             .and_then(|g| g.qubit_data.get(&qubits[0]))
-                            .map(|d| d.duration)
-                            .unwrap_or(20.0),
+                            .map_or(20.0, |d| d.duration),
                         2 => self
                             .calibration
                             .two_qubit_gates
                             .get(&(qubits[0], qubits[1]))
-                            .map(|g| g.duration)
-                            .unwrap_or(200.0),
+                            .map_or(200.0, |g| g.duration),
                         _ => 500.0,
                     }
                 })
@@ -489,7 +484,9 @@ mod tests {
         let _ = circuit.h(QubitId(0));
         let _ = circuit.cnot(QubitId(0), QubitId(1));
 
-        let result = optimizer.optimize_circuit(&circuit, "test").unwrap();
+        let result = optimizer
+            .optimize_circuit(&circuit, "test")
+            .expect("Circuit optimization should succeed");
 
         assert!(result.estimated_fidelity > 0.9);
         assert!(result.estimated_duration > 0.0);
@@ -505,8 +502,12 @@ mod tests {
         let _ = circuit.cnot(QubitId(0), QubitId(1));
         let _ = circuit.cnot(QubitId(1), QubitId(2));
 
-        let process_fidelity = estimator.estimate_process_fidelity(&circuit).unwrap();
-        let state_fidelity = estimator.estimate_state_fidelity(&circuit, true).unwrap();
+        let process_fidelity = estimator
+            .estimate_process_fidelity(&circuit)
+            .expect("Process fidelity estimation should succeed");
+        let state_fidelity = estimator
+            .estimate_state_fidelity(&circuit, true)
+            .expect("State fidelity estimation should succeed");
 
         assert!(process_fidelity > 0.95);
         assert!(state_fidelity > 0.9);

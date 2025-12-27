@@ -146,39 +146,63 @@ impl<const N: usize> QuantumFormatter<N> {
         Ok(CodeStructure::default())
     }
 
-    fn optimize_layout(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let optimizer = self.layout_optimizer.read().unwrap();
-        optimizer.optimize_layout(_code, &self.config)
+    fn optimize_layout(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let optimizer = self.layout_optimizer.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire layout optimizer lock".to_string(),
+            )
+        })?;
+        optimizer.optimize_layout(code, &self.config)
     }
 
-    fn enforce_style(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let enforcer = self.style_enforcer.read().unwrap();
-        enforcer.enforce_style(_code, &self.config)
+    fn enforce_style(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let enforcer = self.style_enforcer.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire style enforcer lock".to_string(),
+            )
+        })?;
+        enforcer.enforce_style(code, &self.config)
     }
 
-    fn organize_code(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let organizer = self.code_organizer.read().unwrap();
-        organizer.organize_code(_code, &self.config)
+    fn organize_code(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let organizer = self.code_organizer.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire code organizer lock".to_string(),
+            )
+        })?;
+        organizer.organize_code(code, &self.config)
     }
 
-    fn format_comments(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let formatter = self.comment_formatter.read().unwrap();
-        formatter.format_comments(_code, &self.config)
+    fn format_comments(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let formatter = self.comment_formatter.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire comment formatter lock".to_string(),
+            )
+        })?;
+        formatter.format_comments(code, &self.config)
     }
 
-    fn manage_whitespace(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let manager = self.whitespace_manager.read().unwrap();
-        manager.manage_whitespace(_code, &self.config)
+    fn manage_whitespace(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let manager = self.whitespace_manager.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire whitespace manager lock".to_string(),
+            )
+        })?;
+        manager.manage_whitespace(code, &self.config)
     }
 
-    fn apply_alignment(&self, _code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
-        let engine = self.alignment_engine.read().unwrap();
-        engine.apply_alignment(_code, &self.config)
+    fn apply_alignment(&self, code: &CodeStructure) -> QuantRS2Result<Vec<FormattingChange>> {
+        let engine = self.alignment_engine.read().map_err(|_| {
+            quantrs2_core::error::QuantRS2Error::InvalidOperation(
+                "Failed to acquire alignment engine lock".to_string(),
+            )
+        })?;
+        engine.apply_alignment(code, &self.config)
     }
 
     fn build_formatted_code(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _changes: &[FormattingChange],
     ) -> QuantRS2Result<FormattedCircuit> {
         let code = format!("// Formatted circuit with {N} qubits\n");
@@ -212,7 +236,7 @@ impl<const N: usize> QuantumFormatter<N> {
 
     const fn calculate_quality_metrics(
         &self,
-        _code: &FormattedCircuit,
+        code: &FormattedCircuit,
     ) -> QuantRS2Result<QualityMetrics> {
         Ok(QualityMetrics {
             readability_score: 0.9,
@@ -236,7 +260,7 @@ impl<const N: usize> LayoutOptimizer<N> {
 
     pub const fn optimize_layout(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())
@@ -262,7 +286,7 @@ impl<const N: usize> StyleEnforcer<N> {
 
     pub const fn enforce_style(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())
@@ -288,7 +312,7 @@ impl<const N: usize> CodeOrganizer<N> {
 
     pub const fn organize_code(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())
@@ -320,7 +344,7 @@ impl<const N: usize> CommentFormatter<N> {
 
     pub const fn format_comments(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())
@@ -375,7 +399,7 @@ impl<const N: usize> WhitespaceManager<N> {
 
     pub const fn manage_whitespace(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())
@@ -427,7 +451,7 @@ impl<const N: usize> AlignmentEngine<N> {
 
     pub const fn apply_alignment(
         &self,
-        _code: &CodeStructure,
+        code: &CodeStructure,
         _config: &FormatterConfig,
     ) -> QuantRS2Result<Vec<FormattingChange>> {
         Ok(Vec::new())

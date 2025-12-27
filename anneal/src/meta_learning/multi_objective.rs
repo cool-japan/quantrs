@@ -80,7 +80,7 @@ pub struct FrontierUpdate {
 }
 
 /// Update reasons
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpdateReason {
     /// New non-dominated solution
     NewNonDominated,
@@ -130,7 +130,7 @@ pub struct Constraint {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Equality constraint
     Equality,
@@ -156,7 +156,7 @@ pub struct DecisionMaker {
 }
 
 /// Decision strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionStrategy {
     /// Interactive decision making
     Interactive,
@@ -195,7 +195,7 @@ pub struct PreferenceFunction {
 }
 
 /// Types of preference functions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreferenceFunctionType {
     /// Linear preference
     Linear,
@@ -225,9 +225,10 @@ pub struct Decision {
 }
 
 impl MultiObjectiveOptimizer {
+    #[must_use]
     pub fn new(config: MultiObjectiveConfig) -> Self {
         Self {
-            config: config.clone(),
+            config,
             pareto_frontier: ParetoFrontier {
                 solutions: Vec::new(),
                 statistics: FrontierStatistics {
@@ -383,7 +384,7 @@ impl MultiObjectiveOptimizer {
                 .iter()
                 .map(|s| s.objective_values[i])
                 .collect();
-            values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
             if let (Some(&min), Some(&max)) = (values.first(), values.last()) {
                 total_distance += max - min;
@@ -394,6 +395,7 @@ impl MultiObjectiveOptimizer {
     }
 
     /// Scalarize objectives using weighted sum
+    #[must_use]
     pub fn scalarize_weighted_sum(
         &self,
         solution: &MultiObjectiveSolution,
@@ -456,12 +458,14 @@ impl MultiObjectiveOptimizer {
     }
 
     /// Get frontier statistics
-    pub fn get_statistics(&self) -> &FrontierStatistics {
+    #[must_use]
+    pub const fn get_statistics(&self) -> &FrontierStatistics {
         &self.pareto_frontier.statistics
     }
 
     /// Get all solutions in Pareto frontier
-    pub fn get_pareto_solutions(&self) -> &Vec<MultiObjectiveSolution> {
+    #[must_use]
+    pub const fn get_pareto_solutions(&self) -> &Vec<MultiObjectiveSolution> {
         &self.pareto_frontier.solutions
     }
 
@@ -520,7 +524,7 @@ mod tests {
 
         let result = optimizer.add_solution(solution);
         assert!(result.is_ok());
-        assert!(result.unwrap());
+        assert!(result.expect("add_solution should succeed"));
         assert_eq!(optimizer.pareto_frontier.solutions.len(), 1);
     }
 
@@ -624,7 +628,9 @@ mod tests {
             crowding_distance: 0.0,
         };
 
-        optimizer.add_solution(solution).unwrap();
+        optimizer
+            .add_solution(solution)
+            .expect("add_solution should succeed");
 
         let stats = optimizer.get_statistics();
         assert_eq!(stats.size, 1);
@@ -673,11 +679,15 @@ mod tests {
             crowding_distance: 0.0,
         };
 
-        optimizer.add_solution(solution1).unwrap();
-        optimizer.add_solution(solution2).unwrap();
+        optimizer
+            .add_solution(solution1)
+            .expect("add_solution for solution1 should succeed");
+        optimizer
+            .add_solution(solution2)
+            .expect("add_solution for solution2 should succeed");
 
         let selected = optimizer.select_solution();
         assert!(selected.is_ok());
-        assert!(selected.unwrap().is_some());
+        assert!(selected.expect("select_solution should succeed").is_some());
     }
 }

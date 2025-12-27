@@ -38,7 +38,7 @@ pub enum CspError {
 pub type CspResult<T> = Result<T, CspError>;
 
 /// Variable domain specification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Domain {
     /// Boolean domain {0, 1}
     Boolean,
@@ -55,22 +55,24 @@ pub enum Domain {
 
 impl Domain {
     /// Get the size of the domain
+    #[must_use]
     pub fn size(&self) -> usize {
         match self {
-            Domain::Boolean => 2,
-            Domain::IntegerRange { min, max } => ((max - min + 1) as usize).max(0),
-            Domain::Discrete(values) => values.len(),
-            Domain::Categorical(labels) => labels.len(),
+            Self::Boolean => 2,
+            Self::IntegerRange { min, max } => ((max - min + 1) as usize).max(0),
+            Self::Discrete(values) => values.len(),
+            Self::Categorical(labels) => labels.len(),
         }
     }
 
     /// Check if a value is in the domain
+    #[must_use]
     pub fn contains(&self, value: &CspValue) -> bool {
         match (self, value) {
-            (Domain::Boolean, CspValue::Boolean(_)) => true,
-            (Domain::IntegerRange { min, max }, CspValue::Integer(v)) => v >= min && v <= max,
-            (Domain::Discrete(values), CspValue::Integer(v)) => values.contains(v),
-            (Domain::Categorical(labels), CspValue::String(s)) => labels.contains(s),
+            (Self::Boolean, CspValue::Boolean(_)) => true,
+            (Self::IntegerRange { min, max }, CspValue::Integer(v)) => v >= min && v <= max,
+            (Self::Discrete(values), CspValue::Integer(v)) => values.contains(v),
+            (Self::Categorical(labels), CspValue::String(s)) => labels.contains(s),
             _ => false,
         }
     }
@@ -78,10 +80,10 @@ impl Domain {
     /// Convert to list of values
     pub fn values(&self) -> Vec<CspValue> {
         match self {
-            Domain::Boolean => vec![CspValue::Boolean(false), CspValue::Boolean(true)],
-            Domain::IntegerRange { min, max } => (*min..=*max).map(CspValue::Integer).collect(),
-            Domain::Discrete(values) => values.iter().map(|&v| CspValue::Integer(v)).collect(),
-            Domain::Categorical(labels) => {
+            Self::Boolean => vec![CspValue::Boolean(false), CspValue::Boolean(true)],
+            Self::IntegerRange { min, max } => (*min..=*max).map(CspValue::Integer).collect(),
+            Self::Discrete(values) => values.iter().map(|&v| CspValue::Integer(v)).collect(),
+            Self::Categorical(labels) => {
                 labels.iter().map(|s| CspValue::String(s.clone())).collect()
             }
         }
@@ -99,9 +101,9 @@ pub enum CspValue {
 impl fmt::Display for CspValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspValue::Boolean(b) => write!(f, "{}", b),
-            CspValue::Integer(i) => write!(f, "{}", i),
-            CspValue::String(s) => write!(f, "{}", s),
+            Self::Boolean(b) => write!(f, "{b}"),
+            Self::Integer(i) => write!(f, "{i}"),
+            Self::String(s) => write!(f, "{s}"),
         }
     }
 }
@@ -121,7 +123,8 @@ pub struct CspVariable {
 
 impl CspVariable {
     /// Create a new CSP variable
-    pub fn new(name: String, domain: Domain) -> Self {
+    #[must_use]
+    pub const fn new(name: String, domain: Domain) -> Self {
         Self {
             name,
             domain,
@@ -130,6 +133,7 @@ impl CspVariable {
     }
 
     /// Add description to the variable
+    #[must_use]
     pub fn with_description(mut self, description: String) -> Self {
         self.description = Some(description);
         self
@@ -187,11 +191,11 @@ pub enum CspConstraint {
 impl fmt::Debug for CspConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspConstraint::AllDifferent { variables } => f
+            Self::AllDifferent { variables } => f
                 .debug_struct("AllDifferent")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::Linear {
+            Self::Linear {
                 terms,
                 comparison,
                 rhs,
@@ -201,15 +205,15 @@ impl fmt::Debug for CspConstraint {
                 .field("comparison", comparison)
                 .field("rhs", rhs)
                 .finish(),
-            CspConstraint::ExactlyOne { variables } => f
+            Self::ExactlyOne { variables } => f
                 .debug_struct("ExactlyOne")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::AtMostOne { variables } => f
+            Self::AtMostOne { variables } => f
                 .debug_struct("AtMostOne")
                 .field("variables", variables)
                 .finish(),
-            CspConstraint::Element {
+            Self::Element {
                 array_var,
                 index_var,
                 value_var,
@@ -219,7 +223,7 @@ impl fmt::Debug for CspConstraint {
                 .field("index_var", index_var)
                 .field("value_var", value_var)
                 .finish(),
-            CspConstraint::GlobalCardinality {
+            Self::GlobalCardinality {
                 variables,
                 values,
                 min_counts,
@@ -231,7 +235,7 @@ impl fmt::Debug for CspConstraint {
                 .field("min_counts", min_counts)
                 .field("max_counts", max_counts)
                 .finish(),
-            CspConstraint::Table {
+            Self::Table {
                 variables,
                 tuples,
                 allowed,
@@ -241,7 +245,7 @@ impl fmt::Debug for CspConstraint {
                 .field("tuples", tuples)
                 .field("allowed", allowed)
                 .finish(),
-            CspConstraint::Custom {
+            Self::Custom {
                 name, variables, ..
             } => f
                 .debug_struct("Custom")
@@ -254,7 +258,7 @@ impl fmt::Debug for CspConstraint {
 }
 
 /// Comparison operators for linear constraints
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonOp {
     Equal,
     LessEqual,
@@ -297,12 +301,12 @@ pub enum CspObjective {
 impl fmt::Debug for CspObjective {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CspObjective::Linear { terms, minimize } => f
+            Self::Linear { terms, minimize } => f
                 .debug_struct("Linear")
                 .field("terms", terms)
                 .field("minimize", minimize)
                 .finish(),
-            CspObjective::Custom { minimize, .. } => f
+            Self::Custom { minimize, .. } => f
                 .debug_struct("Custom")
                 .field("function", &"<function>")
                 .field("minimize", minimize)
@@ -369,6 +373,7 @@ pub struct ConstraintViolation {
 
 impl CspProblem {
     /// Create a new CSP problem
+    #[must_use]
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
@@ -398,8 +403,7 @@ impl CspProblem {
         for var_name in &var_names {
             if !self.variables.contains_key(var_name) {
                 return Err(CspError::InvalidConstraint(format!(
-                    "Unknown variable '{}' in constraint",
-                    var_name
+                    "Unknown variable '{var_name}' in constraint"
                 )));
             }
         }
@@ -415,8 +419,7 @@ impl CspProblem {
         for var_name in &var_names {
             if !self.variables.contains_key(var_name) {
                 return Err(CspError::InvalidConstraint(format!(
-                    "Unknown variable '{}' in objective",
-                    var_name
+                    "Unknown variable '{var_name}' in objective"
                 )));
             }
         }
@@ -426,7 +429,7 @@ impl CspProblem {
     }
 
     /// Set compilation parameters
-    pub fn set_compilation_params(&mut self, params: CompilationParams) {
+    pub const fn set_compilation_params(&mut self, params: CompilationParams) {
         self.compilation_params = params;
     }
 
@@ -463,55 +466,50 @@ impl CspProblem {
         let mut encodings = HashMap::new();
 
         for (var_name, csp_var) in &self.variables {
-            let encoding = match csp_var.domain {
-                Domain::Boolean => {
-                    let qubo_var = builder
-                        .add_variable(var_name.clone())
-                        .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
-                    VariableEncoding::Direct(qubo_var)
-                }
+            let encoding = if csp_var.domain == Domain::Boolean {
+                let qubo_var = builder
+                    .add_variable(var_name.clone())
+                    .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                VariableEncoding::Direct(qubo_var)
+            } else {
+                let domain_size = csp_var.domain.size();
 
-                _ => {
-                    let domain_size = csp_var.domain.size();
-
-                    if domain_size <= self.compilation_params.max_onehot_size
-                        && !self.compilation_params.use_log_encoding
-                    {
-                        // One-hot encoding
-                        let mut qubo_vars = Vec::new();
-                        for (i, value) in csp_var.domain.values().iter().enumerate() {
-                            let var_name_encoded = format!("{}_{}", var_name, i);
-                            let qubo_var = builder
-                                .add_variable(var_name_encoded)
-                                .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
-                            qubo_vars.push((qubo_var, value.clone()));
-                        }
-
-                        // Add exactly-one constraint for one-hot encoding
-                        let vars_only: Vec<_> =
-                            qubo_vars.iter().map(|(var, _)| var.clone()).collect();
-                        builder
-                            .constrain_one_hot(&vars_only)
+                if domain_size <= self.compilation_params.max_onehot_size
+                    && !self.compilation_params.use_log_encoding
+                {
+                    // One-hot encoding
+                    let mut qubo_vars = Vec::new();
+                    for (i, value) in csp_var.domain.values().iter().enumerate() {
+                        let var_name_encoded = format!("{var_name}_{i}");
+                        let qubo_var = builder
+                            .add_variable(var_name_encoded)
                             .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                        qubo_vars.push((qubo_var, value.clone()));
+                    }
 
-                        VariableEncoding::OneHot(qubo_vars)
-                    } else {
-                        // Binary/logarithmic encoding
-                        let num_bits = (domain_size as f64).log2().ceil() as usize;
-                        let mut qubo_vars = Vec::new();
+                    // Add exactly-one constraint for one-hot encoding
+                    let vars_only: Vec<_> = qubo_vars.iter().map(|(var, _)| var.clone()).collect();
+                    builder
+                        .constrain_one_hot(&vars_only)
+                        .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
 
-                        for i in 0..num_bits {
-                            let var_name_bit = format!("{}_bit_{}", var_name, i);
-                            let qubo_var = builder
-                                .add_variable(var_name_bit)
-                                .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
-                            qubo_vars.push(qubo_var);
-                        }
+                    VariableEncoding::OneHot(qubo_vars)
+                } else {
+                    // Binary/logarithmic encoding
+                    let num_bits = (domain_size as f64).log2().ceil() as usize;
+                    let mut qubo_vars = Vec::new();
 
-                        VariableEncoding::Binary {
-                            bits: qubo_vars,
-                            domain_values: csp_var.domain.values(),
-                        }
+                    for i in 0..num_bits {
+                        let var_name_bit = format!("{var_name}_bit_{i}");
+                        let qubo_var = builder
+                            .add_variable(var_name_bit)
+                            .map_err(|e| CspError::CompilationFailed(e.to_string()))?;
+                        qubo_vars.push(qubo_var);
+                    }
+
+                    VariableEncoding::Binary {
+                        bits: qubo_vars,
+                        domain_values: csp_var.domain.values(),
                     }
                 }
             };
@@ -561,8 +559,7 @@ impl CspProblem {
 
                 _ => {
                     return Err(CspError::UnsupportedConstraint(format!(
-                        "Constraint type not yet implemented: constraint {}",
-                        i
+                        "Constraint type not yet implemented: constraint {i}"
                     )));
                 }
             }
@@ -906,17 +903,19 @@ mod tests {
         let x = CspVariable::new("x".to_string(), Domain::Boolean);
         let y = CspVariable::new("y".to_string(), Domain::Boolean);
 
-        problem.add_variable(x).unwrap();
-        problem.add_variable(y).unwrap();
+        problem.add_variable(x).expect("should add variable x");
+        problem.add_variable(y).expect("should add variable y");
 
         // Add exactly-one constraint
         let constraint = CspConstraint::ExactlyOne {
             variables: vec!["x".to_string(), "y".to_string()],
         };
-        problem.add_constraint(constraint).unwrap();
+        problem
+            .add_constraint(constraint)
+            .expect("should add exactly-one constraint");
 
         // Compile to QUBO
-        let (qubo_formulation, info) = problem.compile_to_qubo().unwrap();
+        let (qubo_formulation, info) = problem.compile_to_qubo().expect("should compile to QUBO");
 
         assert_eq!(info.csp_variables, 2);
         assert_eq!(info.qubo_variables, 2);
@@ -933,16 +932,20 @@ mod tests {
         // Add three boolean variables
         for i in 0..3 {
             let var = CspVariable::new(format!("x{}", i), Domain::Boolean);
-            problem.add_variable(var).unwrap();
+            problem
+                .add_variable(var)
+                .expect("should add boolean variable");
         }
 
         // Add all-different constraint (only one can be true for boolean vars)
         let constraint = CspConstraint::AllDifferent {
             variables: vec!["x0".to_string(), "x1".to_string(), "x2".to_string()],
         };
-        problem.add_constraint(constraint).unwrap();
+        problem
+            .add_constraint(constraint)
+            .expect("should add all-different constraint");
 
-        let (_, info) = problem.compile_to_qubo().unwrap();
+        let (_, info) = problem.compile_to_qubo().expect("should compile to QUBO");
         assert_eq!(info.constraints_compiled, 1);
     }
 
@@ -952,9 +955,11 @@ mod tests {
 
         // Add variable with small discrete domain
         let var = CspVariable::new("color".to_string(), Domain::Discrete(vec![1, 2, 3]));
-        problem.add_variable(var).unwrap();
+        problem
+            .add_variable(var)
+            .expect("should add discrete variable");
 
-        let (_, info) = problem.compile_to_qubo().unwrap();
+        let (_, info) = problem.compile_to_qubo().expect("should compile to QUBO");
 
         // Should use one-hot encoding: 3 QUBO variables for 3 domain values
         assert_eq!(info.variable_info["color"].qubo_variables_used, 3);

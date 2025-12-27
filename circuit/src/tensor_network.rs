@@ -283,7 +283,12 @@ impl<const N: usize> CircuitToTensorNetwork<N> {
             // Connect to previous wires
             for qubit in gate.qubits() {
                 let q = qubit.id() as usize;
-                let prev_wire = qubit_wires.get(&q).unwrap().clone();
+                let prev_wire = qubit_wires
+                    .get(&q)
+                    .ok_or_else(|| {
+                        QuantRS2Error::InvalidInput(format!("Qubit wire {q} not found"))
+                    })?
+                    .clone();
                 let new_wire = format!("q{q}_g{gate_idx}");
 
                 // Add bond from previous wire to this gate
@@ -569,7 +574,7 @@ mod tests {
         let idx2 = tn.add_tensor(t2);
 
         tn.add_bond(idx1, "b".to_string(), idx2, "c".to_string())
-            .unwrap();
+            .expect("Failed to add bond between tensors");
 
         assert_eq!(tn.tensors.len(), 2);
         assert_eq!(tn.bonds.len(), 1);
@@ -578,12 +583,16 @@ mod tests {
     #[test]
     fn test_circuit_to_tensor_network() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
 
         let converter = CircuitToTensorNetwork::<2>::new();
-        let tn = converter.convert(&circuit).unwrap();
+        let tn = converter
+            .convert(&circuit)
+            .expect("Failed to convert circuit to tensor network");
 
-        assert!(tn.tensors.len() > 0);
+        assert!(!tn.tensors.is_empty());
     }
 
     #[test]
@@ -591,7 +600,9 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let compressor = TensorNetworkCompressor::new(32);
 
-        let compressed = compressor.compress(&circuit).unwrap();
+        let compressed = compressor
+            .compress(&circuit)
+            .expect("Failed to compress circuit");
         assert!(compressed.compression_ratio() <= 1.0);
     }
 }

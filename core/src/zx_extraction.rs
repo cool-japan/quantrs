@@ -89,14 +89,18 @@ impl ZXExtractor {
             for &(target, _) in neighbors {
                 // Only count edges going "forward" (avoid double counting)
                 if self.is_forward_edge(source, target, inputs, outputs) {
-                    *in_degree.get_mut(&target).unwrap() += 1;
-                    adjacency.get_mut(&source).unwrap().push(target);
+                    if let Some(degree) = in_degree.get_mut(&target) {
+                        *degree += 1;
+                    }
+                    if let Some(adj) = adjacency.get_mut(&source) {
+                        adj.push(target);
+                    }
                 }
             }
         }
 
         // Kahn's algorithm for topological sort
-        let mut queue: VecDeque<usize> = inputs.iter().cloned().collect();
+        let mut queue: VecDeque<usize> = inputs.iter().copied().collect();
         let mut topo_order = Vec::new();
 
         while let Some(spider) = queue.pop_front() {
@@ -167,8 +171,7 @@ impl ZXExtractor {
             }
 
             for (neighbor, _) in self.diagram.neighbors(current) {
-                if !visited.contains(&neighbor) {
-                    visited.insert(neighbor);
+                if visited.insert(neighbor) {
                     queue.push_back((neighbor, dist + 1));
                 }
             }
@@ -334,8 +337,7 @@ impl ZXExtractor {
                                     let layer = self
                                         .spider_positions
                                         .get(&spider_id)
-                                        .map(|(l, _)| *l)
-                                        .unwrap_or(0);
+                                        .map_or(0, |(l, _)| *l);
 
                                     self.add_gate_to_layer(gate, layer);
                                     processed.insert(spider_id);
@@ -367,8 +369,7 @@ impl ZXExtractor {
                                     let layer = self
                                         .spider_positions
                                         .get(&spider_id)
-                                        .map(|(l, _)| *l)
-                                        .unwrap_or(0);
+                                        .map_or(0, |(l, _)| *l);
 
                                     self.add_gate_to_layer(gate, layer);
                                     processed.insert(spider_id);
@@ -412,8 +413,7 @@ impl ZXExtractor {
             }
 
             for (neighbor, _) in self.diagram.neighbors(current) {
-                if !visited.contains(&neighbor) {
-                    visited.insert(neighbor);
+                if visited.insert(neighbor) {
                     queue.push_back(neighbor);
                 }
             }
@@ -449,7 +449,7 @@ pub struct ZXPipeline {
 
 impl ZXPipeline {
     /// Create a new ZX optimization pipeline
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             optimizer: ZXOptimizer::new(),
         }
@@ -475,7 +475,7 @@ impl ZXPipeline {
 
         // Optimize the diagram
         let rewrites = diagram.simplify(100);
-        println!("Applied {} ZX-calculus rewrites", rewrites);
+        println!("Applied {rewrites} ZX-calculus rewrites");
 
         // Extract optimized circuit
         let mut extractor = ZXExtractor::new(diagram);
@@ -527,7 +527,9 @@ mod tests {
         diagram.add_edge(input, output, EdgeType::Regular);
 
         let mut extractor = ZXExtractor::new(diagram);
-        let circuit = extractor.extract_circuit().unwrap();
+        let circuit = extractor
+            .extract_circuit()
+            .expect("Failed to extract circuit");
 
         // Should extract empty circuit (identity)
         assert_eq!(circuit.len(), 0);
@@ -545,7 +547,9 @@ mod tests {
         diagram.add_edge(z_spider, output, EdgeType::Regular);
 
         let mut extractor = ZXExtractor::new(diagram);
-        let circuit = extractor.extract_circuit().unwrap();
+        let circuit = extractor
+            .extract_circuit()
+            .expect("Failed to extract circuit");
 
         // Should extract one RZ gate
         assert_eq!(circuit.len(), 1);
@@ -562,7 +566,9 @@ mod tests {
         ];
 
         let pipeline = ZXPipeline::new();
-        let optimized = pipeline.optimize(&gates).unwrap();
+        let optimized = pipeline
+            .optimize(&gates)
+            .expect("Failed to optimize circuit");
 
         // The optimized circuit should be simpler
         assert!(optimized.len() <= gates.len());
@@ -583,7 +589,9 @@ mod tests {
         ];
 
         let pipeline = ZXPipeline::new();
-        let optimized = pipeline.optimize(&gates).unwrap();
+        let optimized = pipeline
+            .optimize(&gates)
+            .expect("Failed to optimize circuit");
 
         let (original_t, optimized_t) = pipeline.compare_t_count(&gates, &optimized);
 

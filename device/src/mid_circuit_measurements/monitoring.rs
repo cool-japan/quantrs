@@ -352,7 +352,11 @@ impl PerformanceMonitor {
             return Ok(alerts);
         }
 
-        let latest_metrics = &self.metrics_history.back().unwrap().metrics;
+        let latest_metrics = &self
+            .metrics_history
+            .back()
+            .expect("metrics_history not empty after is_empty check")
+            .metrics;
 
         // Check success rate alert
         if latest_metrics.measurement_success_rate < self.alert_thresholds.min_success_rate {
@@ -471,20 +475,26 @@ impl PerformanceMonitor {
 
     /// Export metrics as JSON
     fn export_as_json(&self) -> DeviceResult<String> {
+        use std::fmt::Write;
         // Simplified JSON export
         let mut json_data = String::from("{\n");
-        json_data.push_str(&format!(
-            "  \"total_samples\": {},\n",
+        writeln!(
+            json_data,
+            "  \"total_samples\": {},",
             self.metrics_history.len()
-        ));
-        json_data.push_str(&format!(
-            "  \"monitoring_window_secs\": {},\n",
+        )
+        .expect("String write infallible");
+        writeln!(
+            json_data,
+            "  \"monitoring_window_secs\": {},",
             self.monitoring_window.as_secs()
-        ));
+        )
+        .expect("String write infallible");
         json_data.push_str("  \"metrics\": [\n");
 
         for (i, metric) in self.metrics_history.iter().enumerate() {
-            json_data.push_str(&format!(
+            writeln!(
+                json_data,
                 "    {{\"timestamp\": {}, \"success_rate\": {:.4}, \"error_rate\": {:.4}}}",
                 metric
                     .timestamp
@@ -493,7 +503,8 @@ impl PerformanceMonitor {
                     .as_secs(),
                 metric.metrics.measurement_success_rate,
                 metric.metrics.measurement_error_rate
-            ));
+            )
+            .expect("String write infallible");
             if i < self.metrics_history.len() - 1 {
                 json_data.push(',');
             }
@@ -506,12 +517,14 @@ impl PerformanceMonitor {
 
     /// Export metrics as CSV
     fn export_as_csv(&self) -> DeviceResult<String> {
+        use std::fmt::Write;
         let mut csv_data =
             String::from("timestamp,success_rate,error_rate,efficiency,fidelity,timing_overhead\n");
 
         for metric in &self.metrics_history {
-            csv_data.push_str(&format!(
-                "{},{:.4},{:.4},{:.4},{:.4},{:.4}\n",
+            writeln!(
+                csv_data,
+                "{},{:.4},{:.4},{:.4},{:.4},{:.4}",
                 metric
                     .timestamp
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -522,7 +535,8 @@ impl PerformanceMonitor {
                 metric.metrics.classical_efficiency,
                 metric.metrics.circuit_fidelity,
                 metric.metrics.timing_overhead
-            ));
+            )
+            .expect("String write infallible");
         }
 
         Ok(csv_data)
@@ -530,11 +544,16 @@ impl PerformanceMonitor {
 
     /// Export metrics in Prometheus format
     fn export_as_prometheus_metrics(&self) -> DeviceResult<String> {
+        use std::fmt::Write;
         if self.metrics_history.is_empty() {
             return Ok(String::new());
         }
 
-        let latest = &self.metrics_history.back().unwrap().metrics;
+        let latest = &self
+            .metrics_history
+            .back()
+            .expect("metrics_history not empty after is_empty check")
+            .metrics;
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or(Duration::ZERO)
@@ -542,30 +561,40 @@ impl PerformanceMonitor {
 
         let mut prometheus_data = String::new();
 
-        prometheus_data.push_str(&format!(
-            "measurement_success_rate {} {}\n",
+        writeln!(
+            prometheus_data,
+            "measurement_success_rate {} {}",
             latest.measurement_success_rate, timestamp
-        ));
+        )
+        .expect("String write infallible");
 
-        prometheus_data.push_str(&format!(
-            "measurement_error_rate {} {}\n",
+        writeln!(
+            prometheus_data,
+            "measurement_error_rate {} {}",
             latest.measurement_error_rate, timestamp
-        ));
+        )
+        .expect("String write infallible");
 
-        prometheus_data.push_str(&format!(
-            "classical_efficiency {} {}\n",
+        writeln!(
+            prometheus_data,
+            "classical_efficiency {} {}",
             latest.classical_efficiency, timestamp
-        ));
+        )
+        .expect("String write infallible");
 
-        prometheus_data.push_str(&format!(
-            "circuit_fidelity {} {}\n",
+        writeln!(
+            prometheus_data,
+            "circuit_fidelity {} {}",
             latest.circuit_fidelity, timestamp
-        ));
+        )
+        .expect("String write infallible");
 
-        prometheus_data.push_str(&format!(
-            "timing_overhead {} {}\n",
+        writeln!(
+            prometheus_data,
+            "timing_overhead {} {}",
             latest.timing_overhead, timestamp
-        ));
+        )
+        .expect("String write infallible");
 
         Ok(prometheus_data)
     }
@@ -588,8 +617,16 @@ impl PerformanceMonitor {
             return Ok(Duration::ZERO);
         }
 
-        let first_timestamp = self.metrics_history.front().unwrap().timestamp;
-        let last_timestamp = self.metrics_history.back().unwrap().timestamp;
+        let first_timestamp = self
+            .metrics_history
+            .front()
+            .expect("metrics_history not empty after is_empty check")
+            .timestamp;
+        let last_timestamp = self
+            .metrics_history
+            .back()
+            .expect("metrics_history not empty after is_empty check")
+            .timestamp;
 
         Ok(last_timestamp
             .duration_since(first_timestamp)
@@ -636,7 +673,7 @@ impl PerformanceMonitor {
         let avg_fidelity =
             metrics.iter().map(|m| m.circuit_fidelity).sum::<f64>() / metrics.len() as f64;
 
-        (avg_success_rate + avg_fidelity) / 2.0
+        f64::midpoint(avg_success_rate, avg_fidelity)
     }
 
     fn calculate_data_quality_score(&self, metrics: &[&PerformanceMetrics]) -> f64 {
@@ -668,9 +705,9 @@ impl PerformanceMonitor {
             .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
 
-        let denominator = n * x2_sum - x_sum * x_sum;
+        let denominator = n.mul_add(x2_sum, -(x_sum * x_sum));
         if denominator.abs() > 1e-10 {
-            (n * xy_sum - x_sum * y_sum) / denominator
+            n.mul_add(xy_sum, -(x_sum * y_sum)) / denominator
         } else {
             0.0
         }

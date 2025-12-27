@@ -36,7 +36,7 @@ pub struct ErrorMitigationConfig {
 }
 
 /// Mitigation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MitigationStrategy {
     ZeroNoiseExtrapolation,
     SymmetryVerification,
@@ -68,7 +68,7 @@ pub struct ZNEConfig {
 }
 
 /// Circuit folding methods for ZNE
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitFoldingMethod {
     GlobalFolding,
     LocalFolding,
@@ -77,7 +77,7 @@ pub enum CircuitFoldingMethod {
 }
 
 /// Extrapolation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExtrapolationMethod {
     Linear,
     Polynomial,
@@ -100,7 +100,7 @@ pub struct FoldingConfig {
 }
 
 /// Types of folding
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FoldingType {
     Global,
     Local,
@@ -134,7 +134,7 @@ pub struct FoldingRegion {
 }
 
 /// Region selection strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegionSelectionStrategy {
     Random,
     HighErrorRate,
@@ -145,7 +145,7 @@ pub enum RegionSelectionStrategy {
 }
 
 /// Overlap handling strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OverlapHandling {
     Ignore,
     Merge,
@@ -171,7 +171,7 @@ pub struct GateSpecificFoldingConfig {
 }
 
 /// Default folding strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DefaultFoldingStrategy {
     Identity,
     Inverse,
@@ -192,7 +192,7 @@ pub struct GateFoldingRule {
 }
 
 /// Gate replacement strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GateReplacementStrategy {
     Identity,
     Inverse,
@@ -225,7 +225,7 @@ pub struct ErrorEstimationConfig {
 }
 
 /// Error estimation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorEstimationMethod {
     Bootstrap,
     Jackknife,
@@ -249,7 +249,7 @@ pub struct ReadoutMitigationConfig {
 }
 
 /// Readout mitigation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReadoutMitigationMethod {
     CompleteMitigation,
     TensoredMitigation,
@@ -270,7 +270,7 @@ pub struct ReadoutCalibrationConfig {
 }
 
 /// Calibration frequency options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CalibrationFrequency {
     BeforeEachExperiment,
     Periodic(Duration),
@@ -290,7 +290,7 @@ pub struct CalibrationState {
 }
 
 /// Quality metrics for calibration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QualityMetric {
     Fidelity,
     CrossTalk,
@@ -310,7 +310,7 @@ pub struct MatrixInversionConfig {
 }
 
 /// Matrix inversion methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InversionMethod {
     DirectInversion,
     PseudoInverse,
@@ -330,7 +330,7 @@ pub struct RegularizationConfig {
 }
 
 /// Regularization types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegularizationType {
     L1,
     L2,
@@ -351,7 +351,7 @@ pub struct NumericalStabilityConfig {
 }
 
 /// Pivoting strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PivotingStrategy {
     Partial,
     Complete,
@@ -382,7 +382,7 @@ pub struct MitigationGroup {
 }
 
 /// Group formation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GroupFormationStrategy {
     Topology,
     ErrorRate,
@@ -392,7 +392,7 @@ pub enum GroupFormationStrategy {
 }
 
 /// Cross-talk handling methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CrosstalkHandling {
     Ignore,
     Model,
@@ -425,7 +425,7 @@ pub struct GateSpecificConfig {
 }
 
 /// Gate error models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GateErrorModel {
     Depolarizing,
     Coherent,
@@ -435,7 +435,7 @@ pub enum GateErrorModel {
 }
 
 /// Gate mitigation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GateMitigationMethod {
     PulseOptimization,
     CompositePulses,
@@ -469,7 +469,7 @@ pub struct TwirlingConfig {
 }
 
 /// Types of twirling
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TwirlingType {
     Pauli,
     Clifford,
@@ -489,7 +489,7 @@ pub struct TwirlingGroup {
 }
 
 /// Sampling distributions for twirling
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SamplingDistribution {
     Uniform,
     Weighted,
@@ -498,7 +498,7 @@ pub enum SamplingDistribution {
 }
 
 /// Randomization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RandomizationStrategy {
     FullRandomization,
     PartialRandomization,
@@ -520,7 +520,7 @@ pub struct RandomizedCompilingConfig {
 }
 
 /// Compilation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompilationStrategy {
     GateReplacement,
     CircuitReordering,
@@ -529,7 +529,7 @@ pub enum CompilationStrategy {
 }
 
 /// Randomization levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RandomizationLevel {
     Low,
     Medium,
@@ -551,7 +551,7 @@ pub struct SymmetryVerificationConfig {
 }
 
 /// Symmetry types for verification
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SymmetryType {
     UnitarySymmetry,
     HamiltonianSymmetry,
@@ -560,7 +560,7 @@ pub enum SymmetryType {
 }
 
 /// Verification protocols
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationProtocol {
     DirectVerification,
     RandomizedBenchmarking,
@@ -593,7 +593,7 @@ pub struct VirtualDistillationConfig {
 }
 
 /// Distillation protocols
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistillationProtocol {
     Standard,
     Accelerated,
@@ -624,7 +624,7 @@ pub struct ProcessingRequirements {
 }
 
 /// Quality metrics for distillation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistillationQualityMetric {
     Fidelity,
     SuccessProbability,
@@ -657,7 +657,7 @@ pub struct QuasiProbabilityConfig {
 }
 
 /// Decomposition methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DecompositionMethod {
     Optimal,
     Greedy,
@@ -677,7 +677,7 @@ pub struct SamplingConfig {
 }
 
 /// Sampling methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SamplingMethod {
     MonteCarlo,
     ImportanceSampling,
@@ -697,7 +697,7 @@ pub struct PECOptimizationConfig {
 }
 
 /// Objective functions for PEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ObjectiveFunction {
     MinimizeVariance,
     MinimizeBias,
@@ -717,7 +717,7 @@ pub struct OptimizationConstraint {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationAlgorithm {
     GradientDescent,
     Newton,

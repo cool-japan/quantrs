@@ -34,25 +34,25 @@ pub struct Complex {
 }
 
 impl Complex {
-    pub fn new(real: f64, imag: f64) -> Self {
+    pub const fn new(real: f64, imag: f64) -> Self {
         Self { real, imag }
     }
 
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self {
             real: 0.0,
             imag: 0.0,
         }
     }
 
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self {
             real: 1.0,
             imag: 0.0,
         }
     }
 
-    pub fn i() -> Self {
+    pub const fn i() -> Self {
         Self {
             real: 0.0,
             imag: 1.0,
@@ -60,13 +60,14 @@ impl Complex {
     }
 
     pub fn magnitude(&self) -> f64 {
-        (self.real * self.real + self.imag * self.imag).sqrt()
+        self.real.hypot(self.imag)
     }
 
     pub fn phase(&self) -> f64 {
         self.imag.atan2(self.real)
     }
 
+    #[must_use]
     pub fn conjugate(&self) -> Self {
         Self {
             real: self.real,
@@ -89,8 +90,8 @@ impl std::ops::Mul for Complex {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
         Self {
-            real: self.real * other.real - self.imag * other.imag,
-            imag: self.real * other.imag + self.imag * other.real,
+            real: self.real.mul_add(other.real, -(self.imag * other.imag)),
+            imag: self.real.mul_add(other.imag, self.imag * other.real),
         }
     }
 }
@@ -106,7 +107,7 @@ impl std::ops::Mul<f64> for Complex {
 }
 
 /// Types of continuous variable quantum systems
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CVSystemType {
     /// Gaussian states with squeezed light
     GaussianStates,
@@ -180,7 +181,7 @@ impl CVQuantumDevice {
         config: CVDeviceConfig,
     ) -> DeviceResult<Self> {
         let mode_frequencies = (0..num_modes)
-            .map(|i| 1e14 + i as f64 * 1e12) // Base frequency 100 THz + mode spacing
+            .map(|i| (i as f64).mul_add(1e12, 1e14)) // Base frequency 100 THz + mode spacing
             .collect();
 
         let gaussian_state = GaussianState::vacuum_state(num_modes);
@@ -212,7 +213,7 @@ impl CVQuantumDevice {
     async fn initialize_optical_system(&mut self) -> DeviceResult<()> {
         // Initialize laser sources
         for (i, &freq) in self.mode_frequencies.iter().enumerate() {
-            println!("Initializing mode {} at frequency {:.2e} Hz", i, freq);
+            println!("Initializing mode {i} at frequency {freq:.2e} Hz");
         }
 
         // Initialize homodyne detectors
@@ -266,8 +267,7 @@ impl CVQuantumDevice {
 
         if squeezing_param.abs() > self.config.max_squeezing_db / 8.686 {
             return Err(DeviceError::InvalidInput(format!(
-                "Squeezing parameter {} exceeds maximum",
-                squeezing_param
+                "Squeezing parameter {squeezing_param} exceeds maximum"
             )));
         }
 
@@ -309,7 +309,7 @@ impl CVQuantumDevice {
             ));
         }
 
-        if transmittance < 0.0 || transmittance > 1.0 {
+        if !(0.0..=1.0).contains(&transmittance) {
             return Err(DeviceError::InvalidInput(
                 "Transmittance must be between 0 and 1".to_string(),
             ));
@@ -352,7 +352,7 @@ impl CVQuantumDevice {
             result: CVMeasurementOutcome::Real(result),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         });
 
@@ -378,7 +378,7 @@ impl CVQuantumDevice {
             result: CVMeasurementOutcome::Complex(result),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         });
 
@@ -407,7 +407,7 @@ impl CVQuantumDevice {
             )));
         }
 
-        Ok(self.gaussian_state.get_mode_state(mode)?)
+        self.gaussian_state.get_mode_state(mode)
     }
 
     /// Get system entanglement
@@ -562,54 +562,66 @@ mod tests {
 
     #[tokio::test]
     async fn test_cv_device_creation() {
-        let device = create_gaussian_cv_device(4, None).unwrap();
+        let device = create_gaussian_cv_device(4, None).expect("Failed to create CV device");
         assert_eq!(device.num_modes, 4);
         assert_eq!(device.system_type, CVSystemType::GaussianStates);
     }
 
     #[tokio::test]
     async fn test_cv_device_connection() {
-        let mut device = create_gaussian_cv_device(2, None).unwrap();
+        let mut device = create_gaussian_cv_device(2, None).expect("Failed to create CV device");
         assert!(!device.is_connected);
 
-        device.connect().await.unwrap();
+        device.connect().await.expect("Failed to connect");
         assert!(device.is_connected);
 
-        device.disconnect().await.unwrap();
+        device.disconnect().await.expect("Failed to disconnect");
         assert!(!device.is_connected);
     }
 
     #[tokio::test]
     async fn test_displacement_operation() {
-        let mut device = create_gaussian_cv_device(2, None).unwrap();
-        device.connect().await.unwrap();
+        let mut device = create_gaussian_cv_device(2, None).expect("Failed to create CV device");
+        device.connect().await.expect("Failed to connect");
 
-        device.displacement(0, 1.0, PI / 4.0).await.unwrap();
+        device
+            .displacement(0, 1.0, PI / 4.0)
+            .await
+            .expect("Failed to apply displacement");
 
-        let state = device.get_mode_state(0).unwrap();
+        let state = device.get_mode_state(0).expect("Failed to get mode state");
         assert!(state.mean_amplitude.magnitude() > 0.0);
     }
 
     #[tokio::test]
     async fn test_squeezing_operation() {
-        let mut device = create_gaussian_cv_device(2, None).unwrap();
-        device.connect().await.unwrap();
+        let mut device = create_gaussian_cv_device(2, None).expect("Failed to create CV device");
+        device.connect().await.expect("Failed to connect");
 
-        device.squeezing(0, 1.0, 0.0).await.unwrap();
+        device
+            .squeezing(0, 1.0, 0.0)
+            .await
+            .expect("Failed to apply squeezing");
 
-        let state = device.get_mode_state(0).unwrap();
+        let state = device.get_mode_state(0).expect("Failed to get mode state");
         assert!(state.squeezing_parameter > 0.0);
     }
 
     #[tokio::test]
     async fn test_homodyne_measurement() {
-        let mut device = create_gaussian_cv_device(2, None).unwrap();
-        device.connect().await.unwrap();
+        let mut device = create_gaussian_cv_device(2, None).expect("Failed to create CV device");
+        device.connect().await.expect("Failed to connect");
 
         // Displace the mode first
-        device.displacement(0, 2.0, 0.0).await.unwrap();
+        device
+            .displacement(0, 2.0, 0.0)
+            .await
+            .expect("Failed to apply displacement");
 
-        let result = device.homodyne_measurement(0, 0.0).await.unwrap();
+        let result = device
+            .homodyne_measurement(0, 0.0)
+            .await
+            .expect("Failed to perform homodyne measurement");
         assert!(result.is_finite());
 
         assert_eq!(device.measurement_history.len(), 1);

@@ -54,7 +54,7 @@ impl Default for ShortcutsConfig {
 }
 
 /// Shortcut methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShortcutMethod {
     /// Shortcuts to adiabaticity (STA)
     ShortcutsToAdiabaticity,
@@ -69,7 +69,7 @@ pub enum ShortcutMethod {
 }
 
 /// Control optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlOptimizationMethod {
     /// GRAPE (Gradient Ascent Pulse Engineering)
     GRAPE,
@@ -160,7 +160,7 @@ impl Default for ResourceConstraints {
 }
 
 /// Control field types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlField {
     /// Magnetic field in X direction
     MagneticX,
@@ -251,7 +251,7 @@ pub struct ControlSequence {
 }
 
 /// Interpolation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InterpolationMethod {
     /// Linear interpolation
     Linear,
@@ -316,7 +316,7 @@ pub struct RegularizationTerm {
 }
 
 /// Regularization types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegularizationType {
     /// L1 regularization
     L1,
@@ -331,7 +331,7 @@ pub enum RegularizationType {
 }
 
 /// Gradient computation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GradientComputation {
     /// Analytical gradients
     Analytical,
@@ -373,6 +373,7 @@ pub struct ShortcutsPerformanceStats {
 
 impl AdiabaticShortcutsOptimizer {
     /// Create new adiabatic shortcuts optimizer
+    #[must_use]
     pub fn new(config: ShortcutsConfig) -> Self {
         Self {
             config,
@@ -395,7 +396,7 @@ impl AdiabaticShortcutsOptimizer {
                     let spins: Vec<i32> = annealing_solution
                         .best_spins
                         .iter()
-                        .map(|&s| s as i32)
+                        .map(|&s| i32::from(s))
                         .collect();
                     Ok(Ok(spins))
                 }
@@ -437,15 +438,15 @@ impl AdiabaticShortcutsOptimizer {
         match self.config.shortcut_method {
             ShortcutMethod::ShortcutsToAdiabaticity => {
                 // STA benefits from smooth energy landscapes
-                self.generate_smooth_landscape(&mut ising, &mut rng)?
+                self.generate_smooth_landscape(&mut ising, &mut rng)?;
             }
             ShortcutMethod::FastForward => {
                 // Fast-forward benefits from known gap structure
-                self.generate_gap_structured_problem(&mut ising, &mut rng)?
+                self.generate_gap_structured_problem(&mut ising, &mut rng)?;
             }
             _ => {
                 // Default structured problem
-                self.generate_default_problem(&mut ising, &mut rng)?
+                self.generate_default_problem(&mut ising, &mut rng)?;
             }
         }
 
@@ -470,7 +471,7 @@ impl AdiabaticShortcutsOptimizer {
 
         // Add nearest-neighbor couplings for smoothness
         for i in 0..(num_qubits - 1) {
-            let coupling = -0.5 + 0.2 * rng.gen_range(-1.0..1.0);
+            let coupling = 0.2f64.mul_add(rng.gen_range(-1.0..1.0), -0.5);
             ising
                 .set_coupling(i, i + 1, coupling)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -555,17 +556,17 @@ impl AdiabaticShortcutsOptimizer {
     }
 
     /// Estimate problem size from generic type
-    fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
+    const fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // Use reasonable size for adiabatic shortcuts (not too large for exact simulation)
         12
     }
 
     /// Generate hash for problem to ensure consistent conversion
-    fn hash_problem<P>(&self, _problem: &P) -> u64 {
+    const fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure
         // Use fixed seed for reproducibility
-        54321
+        54_321
     }
 
     /// Optimize using adiabatic shortcuts
@@ -586,11 +587,8 @@ impl AdiabaticShortcutsOptimizer {
         // Update performance statistics
         self.performance_stats.optimization_time = start_time.elapsed();
         self.performance_stats.achieved_fidelity = self.calculate_achieved_fidelity(&result)?;
-        self.performance_stats.protocol_time = protocol
-            .time_evolution
-            .last()
-            .map(|tp| tp.time)
-            .unwrap_or(0.0);
+        self.performance_stats.protocol_time =
+            protocol.time_evolution.last().map_or(0.0, |tp| tp.time);
         self.performance_stats.control_effort = self.calculate_control_effort(&protocol)?;
         self.performance_stats.speedup_factor = self.calculate_speedup_factor(&protocol)?;
 
@@ -641,7 +639,7 @@ impl AdiabaticShortcutsOptimizer {
             / self.config.time_constraints.time_steps as f64;
 
         for i in 0..=self.config.time_constraints.time_steps {
-            let time = self.config.time_constraints.min_time + i as f64 * dt;
+            let time = (i as f64).mul_add(dt, self.config.time_constraints.min_time);
 
             // Create Hamiltonian for this time point
             let hamiltonian = HamiltonianComponent {
@@ -762,13 +760,17 @@ impl AdiabaticShortcutsOptimizer {
             / self.config.time_constraints.time_steps as f64;
 
         for i in 0..=self.config.time_constraints.time_steps {
-            let time = self.config.time_constraints.min_time + i as f64 * dt;
+            let time = (i as f64).mul_add(dt, self.config.time_constraints.min_time);
 
             // STA-specific control amplitude calculation
             let s = time / self.config.time_constraints.max_time;
             let amplitude = match field_type {
                 ControlField::MagneticX => s * (1.0 - s) * 4.0, // Bang-bang like
-                ControlField::MagneticY => 0.5 * (1.0 - (2.0 * s - 1.0).powi(2)), // Smooth
+                ControlField::MagneticY => {
+                    0.5 * 2.0f64
+                        .mul_add(s, -1.0)
+                        .mul_add(-2.0f64.mul_add(s, -1.0), 1.0)
+                } // Smooth
                 ControlField::MagneticZ => 1.0 - s,             // Linear decrease
                 _ => 0.1 * (time * std::f64::consts::PI).sin(), // Sinusoidal
             };
@@ -794,7 +796,7 @@ impl AdiabaticShortcutsOptimizer {
             / self.config.time_constraints.time_steps as f64;
 
         for i in 0..=self.config.time_constraints.time_steps {
-            let time = self.config.time_constraints.min_time + i as f64 * dt;
+            let time = (i as f64).mul_add(dt, self.config.time_constraints.min_time);
 
             // Fast-forward specific control
             let amplitude = match field_type {
@@ -824,7 +826,7 @@ impl AdiabaticShortcutsOptimizer {
             / self.config.time_constraints.time_steps as f64;
 
         for i in 0..=self.config.time_constraints.time_steps {
-            let time = self.config.time_constraints.min_time + i as f64 * dt;
+            let time = (i as f64).mul_add(dt, self.config.time_constraints.min_time);
             let amplitude = 0.1; // Constant small amplitude
             amplitude_sequence.push((time, amplitude));
         }
@@ -871,9 +873,12 @@ impl AdiabaticShortcutsOptimizer {
         let max_amplitude_index = state_vector
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap())
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .max_by(|(_, a), (_, b)| {
+                a.abs()
+                    .partial_cmp(&b.abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map_or(0, |(i, _)| i);
 
         // Convert to spin configuration
         let num_qubits = (state_vector.len() as f64).log2() as usize;
@@ -888,7 +893,7 @@ impl AdiabaticShortcutsOptimizer {
     }
 
     /// Estimate protocol fidelity
-    fn estimate_protocol_fidelity(
+    const fn estimate_protocol_fidelity(
         &self,
         _time_evolution: &[TimePoint],
         _control_fields: &[ControlSequence],
@@ -917,7 +922,7 @@ impl AdiabaticShortcutsOptimizer {
     }
 
     /// Calculate achieved fidelity
-    fn calculate_achieved_fidelity(
+    const fn calculate_achieved_fidelity(
         &self,
         _result: &AnnealingSolution,
     ) -> AdvancedQuantumResult<f64> {
@@ -926,18 +931,17 @@ impl AdiabaticShortcutsOptimizer {
     }
 
     /// Calculate control effort
-    fn calculate_control_effort(&self, protocol: &ShortcutProtocol) -> AdvancedQuantumResult<f64> {
+    const fn calculate_control_effort(
+        &self,
+        protocol: &ShortcutProtocol,
+    ) -> AdvancedQuantumResult<f64> {
         Ok(protocol.protocol_cost)
     }
 
     /// Calculate speedup factor
     fn calculate_speedup_factor(&self, protocol: &ShortcutProtocol) -> AdvancedQuantumResult<f64> {
         let adiabatic_time = 100.0; // Typical adiabatic evolution time
-        let shortcut_time = protocol
-            .time_evolution
-            .last()
-            .map(|tp| tp.time)
-            .unwrap_or(1.0);
+        let shortcut_time = protocol.time_evolution.last().map_or(1.0, |tp| tp.time);
 
         Ok(adiabatic_time / shortcut_time)
     }
@@ -983,11 +987,13 @@ impl Default for ShortcutsPerformanceStats {
 }
 
 /// Create default adiabatic shortcuts optimizer
+#[must_use]
 pub fn create_adiabatic_shortcuts_optimizer() -> AdiabaticShortcutsOptimizer {
     AdiabaticShortcutsOptimizer::new(ShortcutsConfig::default())
 }
 
 /// Create custom adiabatic shortcuts optimizer
+#[must_use]
 pub fn create_custom_adiabatic_shortcuts_optimizer(
     shortcut_method: ShortcutMethod,
     control_method: ControlOptimizationMethod,
@@ -1023,7 +1029,9 @@ mod tests {
         let optimizer = create_adiabatic_shortcuts_optimizer();
         let ising = IsingModel::new(2);
 
-        let time_evolution = optimizer.generate_time_evolution(&ising).unwrap();
+        let time_evolution = optimizer
+            .generate_time_evolution(&ising)
+            .expect("should generate time evolution");
         assert!(!time_evolution.is_empty());
         assert!(time_evolution.len() > 10);
 
@@ -1038,7 +1046,9 @@ mod tests {
         let optimizer = create_adiabatic_shortcuts_optimizer();
         let ising = IsingModel::new(2);
 
-        let control_sequences = optimizer.generate_control_sequences(&ising).unwrap();
+        let control_sequences = optimizer
+            .generate_control_sequences(&ising)
+            .expect("should generate control sequences");
         assert!(!control_sequences.is_empty());
 
         for sequence in &control_sequences {
@@ -1056,7 +1066,9 @@ mod tests {
 
         // State vector for 2 qubits with highest amplitude at |01⟩ (index 1)
         let state_vector = vec![0.1, 0.9, 0.3, 0.2];
-        let spins = optimizer.extract_spin_configuration(&state_vector).unwrap();
+        let spins = optimizer
+            .extract_spin_configuration(&state_vector)
+            .expect("should extract spin configuration");
 
         assert_eq!(spins.len(), 2);
         assert_eq!(spins[0], 1); // bit 0 is 1 -> spin +1

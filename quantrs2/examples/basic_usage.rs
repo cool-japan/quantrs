@@ -22,7 +22,7 @@ fn main() {
     // 2. Get detailed version info
     println!("2. Detailed Version Info:");
     let version_info = version::VersionInfo::current();
-    println!("   {}", version_info);
+    println!("   {version_info}");
     println!();
 
     // 3. Configuration management
@@ -60,10 +60,10 @@ fn main() {
     } else {
         println!("   ✗ System has issues - review diagnostics");
         for error in report.errors() {
-            println!("     ERROR: {}", error);
+            println!("     ERROR: {error}");
         }
         for warning in report.warnings() {
-            println!("     WARNING: {}", warning);
+            println!("     WARNING: {warning}");
         }
     }
     println!();
@@ -75,7 +75,7 @@ fn main() {
         Err(issues) => {
             println!("   ✗ Compatibility issues found:");
             for issue in issues {
-                println!("     - {}", issue);
+                println!("     - {issue}");
             }
         }
     }
@@ -99,7 +99,7 @@ fn main() {
     use quantrs2::error::{ErrorCategory, QuantRS2ErrorExt};
 
     let err = QuantRS2Error::InvalidQubitId(42);
-    println!("   Error: {}", err);
+    println!("   Error: {err}");
     println!("   Category: {:?}", err.category());
     println!("   Is recoverable: {}", err.is_recoverable());
     println!("   User message: {}", err.user_message());

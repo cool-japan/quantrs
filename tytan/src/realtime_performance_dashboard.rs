@@ -704,7 +704,9 @@ mod tests {
                 runtime: 0.01 * i as f64,
                 memory_usage: 100.0,
             };
-            dashboard.update_metrics(metric).unwrap();
+            dashboard
+                .update_metrics(metric)
+                .expect("Failed to update metrics in test_performance_summary");
         }
 
         let summary = dashboard.get_summary();
@@ -745,7 +747,9 @@ mod tests {
                 runtime: 0.01 * i as f64,
                 memory_usage: 100.0,
             };
-            dashboard.update_metrics(metric).unwrap();
+            dashboard
+                .update_metrics(metric)
+                .expect("Failed to update metrics in test_convergence_detection");
         }
 
         let summary = dashboard.get_summary();
@@ -768,7 +772,9 @@ mod tests {
                 quantum_usage: None,
                 network_io: 5.0,
             };
-            dashboard.update_resources(resources).unwrap();
+            dashboard
+                .update_resources(resources)
+                .expect("Failed to update resources in test_resource_summary");
         }
 
         let summary = dashboard.get_summary();

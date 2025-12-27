@@ -72,24 +72,21 @@ use tokio::sync::{mpsc, Semaphore};
 use uuid::Uuid;
 
 /// Job priority levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
 pub enum JobPriority {
     /// System critical jobs (maintenance, calibration)
     Critical = 0,
     /// High priority research or production jobs
     High = 1,
     /// Normal priority jobs
+    #[default]
     Normal = 2,
     /// Low priority background jobs
     Low = 3,
     /// Best effort jobs that can be delayed
     BestEffort = 4,
-}
-
-impl Default for JobPriority {
-    fn default() -> Self {
-        JobPriority::Normal
-    }
 }
 
 /// Job execution status
@@ -271,12 +268,18 @@ impl Default for ResourceRequirements {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct JobId(pub String);
 
+impl Default for JobId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JobId {
     pub fn new() -> Self {
         Self(Uuid::new_v4().to_string())
     }
 
-    pub fn from_string(s: String) -> Self {
+    pub const fn from_string(s: String) -> Self {
         Self(s)
     }
 }
@@ -713,7 +716,7 @@ impl QuantumJobScheduler {
             .backends
             .read()
             .expect("Failed to acquire read lock on backends in get_available_backends");
-        backends.iter().cloned().collect()
+        backends.iter().copied().collect()
     }
 
     /// Submit a quantum job for execution
@@ -767,9 +770,7 @@ impl QuantumJobScheduler {
             .job_queues
             .lock()
             .expect("Failed to acquire lock on job_queues in submit_job");
-        let queue = queues
-            .entry(job.config.priority)
-            .or_insert_with(VecDeque::new);
+        let queue = queues.entry(job.config.priority).or_default();
         queue.push_back(job_id.clone());
         drop(queues);
 
@@ -987,8 +988,8 @@ impl QuantumJobScheduler {
         let analyzer = CircuitAnalyzer::new();
         let metrics = analyzer
             .analyze(circuit)
-            .map_err(|e| DeviceError::APIError(format!("Circuit analysis error: {:?}", e)))?;
-        let circuit_complexity = metrics.depth as f64 + (metrics.gate_count as f64 * 0.1);
+            .map_err(|e| DeviceError::APIError(format!("Circuit analysis error: {e:?}")))?;
+        let circuit_complexity = (metrics.gate_count as f64).mul_add(0.1, metrics.depth as f64);
         let shots_factor = (shots as f64).log10();
 
         // Base estimation
@@ -1009,7 +1010,7 @@ impl QuantumJobScheduler {
         };
 
         let estimated = Duration::from_millis(
-            ((base_time.as_millis() + avg_execution_time.as_millis()) / 2)
+            u128::midpoint(base_time.as_millis(), avg_execution_time.as_millis())
                 .try_into()
                 .expect(
                     "Failed to convert estimated execution time to u64 in estimate_execution_time",
@@ -1029,7 +1030,7 @@ impl QuantumJobScheduler {
         let analyzer = CircuitAnalyzer::new();
         let metrics = analyzer
             .analyze(circuit)
-            .map_err(|e| DeviceError::APIError(format!("Circuit analysis error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Circuit analysis error: {e:?}")))?;
         let circuit_complexity = metrics.depth as f64 + metrics.gate_count as f64;
         let base_cost = circuit_complexity * shots as f64 * 0.001; // $0.001 per complexity unit
 
@@ -1050,14 +1051,16 @@ impl QuantumJobScheduler {
             .user_shares
             .write()
             .expect("Failed to acquire write lock on user_shares in update_user_share");
-        let share = user_shares.entry(user_id.to_string()).or_insert(UserShare {
-            user_id: user_id.to_string(),
-            allocated_share: 1.0, // Default equal share
-            used_share: 0.0,
-            jobs_running: 0,
-            jobs_queued: 0,
-            last_updated: SystemTime::now(),
-        });
+        let share = user_shares
+            .entry(user_id.to_string())
+            .or_insert_with(|| UserShare {
+                user_id: user_id.to_string(),
+                allocated_share: 1.0, // Default equal share
+                used_share: 0.0,
+                jobs_running: 0,
+                jobs_queued: 0,
+                last_updated: SystemTime::now(),
+            });
 
         share.jobs_queued = (share.jobs_queued as i32 + queued_delta).max(0) as usize;
         share.jobs_running = (share.jobs_running as i32 + running_delta).max(0) as usize;
@@ -1158,7 +1161,7 @@ impl QuantumJobScheduler {
             .expect("Failed to acquire lock on scheduler_running in scheduling_loop")
         {
             if let Err(e) = self.schedule_next_jobs().await {
-                eprintln!("Scheduling error: {}", e);
+                eprintln!("Scheduling error: {e}");
             }
 
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -1198,11 +1201,9 @@ impl QuantumJobScheduler {
                     .job_queues
                     .lock()
                     .expect("Failed to acquire lock on job_queues in schedule_priority_fifo");
-                if let Some(queue) = queues.get_mut(&priority) {
-                    queue.pop_front()
-                } else {
-                    None
-                }
+                queues
+                    .get_mut(&priority)
+                    .and_then(|queue| queue.pop_front())
             };
 
             if let Some(job_id) = job_id {
@@ -1314,7 +1315,7 @@ impl QuantumJobScheduler {
             AllocationStrategy::BestFit => {
                 // Return backend with best capabilities for this job
                 // TODO: Implement proper job requirements matching
-                for &backend in backends.iter() {
+                for &backend in &backends {
                     if self.is_backend_available(backend).await {
                         return Ok(Some(backend));
                     }
@@ -1325,7 +1326,7 @@ impl QuantumJobScheduler {
                 let mut best_backend = None;
                 let mut lowest_utilization = f64::INFINITY;
 
-                for (&backend, perf) in backend_performance_snapshot.iter() {
+                for (&backend, perf) in &backend_performance_snapshot {
                     if self.is_backend_available(backend).await
                         && perf.utilization < lowest_utilization
                     {
@@ -1338,7 +1339,7 @@ impl QuantumJobScheduler {
             }
             _ => {
                 // Default to first fit
-                for &backend in backends.iter() {
+                for &backend in &backends {
                     if self.is_backend_available(backend).await {
                         return Ok(Some(backend));
                     }
@@ -1360,11 +1361,10 @@ impl QuantumJobScheduler {
             .resource_manager
             .lock()
             .expect("Failed to acquire lock on resource_manager in is_backend_available");
-        if let Some(capacity) = resource_manager.available_resources.get(&backend) {
-            backend_jobs < capacity.concurrent_jobs
-        } else {
-            false
-        }
+        resource_manager
+            .available_resources
+            .get(&backend)
+            .is_some_and(|capacity| backend_jobs < capacity.concurrent_jobs)
     }
 
     async fn assign_job_to_backend(
@@ -1510,7 +1510,7 @@ impl QuantumJobScheduler {
             }
 
             if let Err(e) = self.run_scirs2_optimization().await {
-                eprintln!("SciRS2 optimization error: {}", e);
+                eprintln!("SciRS2 optimization error: {e}");
             }
 
             tokio::time::sleep(frequency).await;
@@ -1862,9 +1862,7 @@ pub fn create_energy_efficient_config() -> JobConfig {
         max_execution_time: Duration::from_secs(3600), // 1 hour
         max_queue_time: None,                          // Wait for renewable energy availability
         retry_attempts: 2,
-        tags: [("energy_profile".to_string(), "green".to_string())]
-            .into_iter()
-            .collect(),
+        tags: std::iter::once(("energy_profile".to_string(), "green".to_string())).collect(),
         ..Default::default()
     }
 }
@@ -1894,11 +1892,10 @@ pub fn create_deadline_config(deadline: SystemTime) -> JobConfig {
         max_queue_time: Some(Duration::from_secs(300)), // 5 minutes max wait
         retry_attempts: 2,
         deadline: Some(deadline),
-        tags: [(
+        tags: std::iter::once((
             "scheduling_type".to_string(),
             "deadline_sensitive".to_string(),
-        )]
-        .into_iter()
+        ))
         .collect(),
         ..Default::default()
     }

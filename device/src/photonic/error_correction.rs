@@ -25,7 +25,7 @@ pub enum PhotonicQECError {
 }
 
 /// Photonic error correction codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PhotonicErrorCorrectionCode {
     /// Loss-tolerant encoding using redundant photons
     LossTolerant { redundancy: usize },
@@ -41,7 +41,7 @@ pub enum PhotonicErrorCorrectionCode {
 }
 
 /// CV quantum error correction types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CVQECType {
     /// Squeezed state encoding
     SqueezedState,
@@ -123,8 +123,7 @@ impl PhotonicQECEngine {
                 for mode in 0..state.num_modes {
                     if state.squeeze(0.1, 0.0, mode).is_err() {
                         return Err(PhotonicQECError::CorrectionFailed(format!(
-                            "Failed to apply squeezing correction to mode {}",
-                            mode
+                            "Failed to apply squeezing correction to mode {mode}"
                         )));
                     }
                 }
@@ -235,7 +234,9 @@ mod tests {
         let state = GaussianState::vacuum(2);
         let code = PhotonicErrorCorrectionCode::LossTolerant { redundancy: 2 };
 
-        let syndrome = engine.extract_syndrome(&state, &code).unwrap();
+        let syndrome = engine
+            .extract_syndrome(&state, &code)
+            .expect("Syndrome extraction should succeed");
         assert_eq!(syndrome.len(), 2);
     }
 }

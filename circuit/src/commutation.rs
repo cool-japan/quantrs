@@ -240,8 +240,7 @@ impl CommutationAnalyzer {
         let type2 = Self::gate_to_type(gate2);
 
         match self.rules.check_commutation(&type1, &type2) {
-            CommutationResult::Commute => true,
-            CommutationResult::AntiCommute(_) => true, // Still commute, just with phase
+            CommutationResult::Commute | CommutationResult::AntiCommute(_) => true, // Commute (with or without phase)
             CommutationResult::NonCommute => false,
             CommutationResult::ConditionalCommute(condition) => {
                 // Check specific conditions

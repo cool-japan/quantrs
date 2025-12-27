@@ -8,14 +8,18 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::Array2;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::fmt;
 
 use crate::error::Result;
 use crate::trotter::{DynamicCircuit, Hamiltonian, TrotterDecomposer, TrotterMethod};
-use quantrs2_core::gate::{multi::*, single::*, GateOp};
+use quantrs2_core::gate::{
+    multi::CNOT,
+    single::{Hadamard, Phase, PhaseDagger, RotationX, RotationY, RotationZ},
+    GateOp,
+};
 use quantrs2_core::qubit::QubitId;
 
 /// Single Pauli operator type
@@ -57,6 +61,7 @@ impl PauliOperator {
     }
 
     /// Get matrix representation
+    #[must_use]
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
             Self::I => Array2::from_shape_vec(
@@ -68,7 +73,7 @@ impl PauliOperator {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli I matrix has valid shape"),
             Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -78,7 +83,7 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli X matrix has valid shape"),
             Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -88,7 +93,7 @@ impl PauliOperator {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Y matrix has valid shape"),
             Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -98,11 +103,12 @@ impl PauliOperator {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Z matrix has valid shape"),
         }
     }
 
     /// Check if commutes with another Pauli
+    #[must_use]
     pub fn commutes_with(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::I, _) | (_, Self::I) => true,
@@ -112,6 +118,7 @@ impl PauliOperator {
     }
 
     /// Multiplication of Pauli operators (returns (result, phase))
+    #[must_use]
     pub const fn multiply(&self, other: &Self) -> (Self, Complex64) {
         match (self, other) {
             (Self::I, p) | (p, Self::I) => (*p, Complex64::new(1.0, 0.0)),
@@ -141,6 +148,7 @@ pub struct PauliString {
 
 impl PauliString {
     /// Create a new Pauli string
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             operators: vec![PauliOperator::I; num_qubits],
@@ -200,6 +208,7 @@ impl PauliString {
     }
 
     /// Get non-identity operators
+    #[must_use]
     pub fn non_identity_ops(&self) -> Vec<(usize, PauliOperator)> {
         self.operators
             .iter()
@@ -210,6 +219,7 @@ impl PauliString {
     }
 
     /// Check if this Pauli string commutes with another
+    #[must_use]
     pub fn commutes_with(&self, other: &Self) -> bool {
         if self.num_qubits != other.num_qubits {
             return false;
@@ -249,6 +259,7 @@ impl PauliString {
     }
 
     /// Get weight (number of non-identity operators)
+    #[must_use]
     pub fn weight(&self) -> usize {
         self.operators
             .iter()
@@ -257,8 +268,12 @@ impl PauliString {
     }
 
     /// Convert to Pauli string representation
+    #[must_use]
     pub fn pauli_string(&self) -> String {
-        self.operators.iter().map(|op| op.to_string()).collect()
+        self.operators
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect()
     }
 
     /// Create time evolution circuit for this Pauli string
@@ -376,6 +391,7 @@ pub struct PauliOperatorSum {
 
 impl PauliOperatorSum {
     /// Create new empty sum
+    #[must_use]
     pub const fn new(num_qubits: usize) -> Self {
         Self {
             terms: Vec::new(),
@@ -417,6 +433,7 @@ impl PauliOperatorSum {
     }
 
     /// Convert to Hamiltonian for Trotter evolution
+    #[must_use]
     pub fn to_hamiltonian(&self) -> Hamiltonian {
         let mut ham = Hamiltonian::new(self.num_qubits);
 
@@ -525,6 +542,7 @@ impl PauliUtils {
     }
 
     /// Create an all-X Pauli string
+    #[must_use]
     pub fn all_x(num_qubits: usize, coeff: Complex64) -> PauliString {
         let mut pauli = PauliString::new(num_qubits);
         pauli.coefficient = coeff;
@@ -535,6 +553,7 @@ impl PauliUtils {
     }
 
     /// Create an all-Z Pauli string
+    #[must_use]
     pub fn all_z(num_qubits: usize, coeff: Complex64) -> PauliString {
         let mut pauli = PauliString::new(num_qubits);
         pauli.coefficient = coeff;
@@ -561,14 +580,15 @@ impl PauliUtils {
 
         let ops = [PauliOperator::X, PauliOperator::Y, PauliOperator::Z];
 
-        for i in 0..weight {
-            pauli.operators[positions[i]] = ops[fastrand::usize(0..3)];
+        for &pos in &positions[..weight] {
+            pauli.operators[pos] = ops[fastrand::usize(0..3)];
         }
 
         Ok(pauli)
     }
 
     /// Check if a set of Pauli strings are mutually commuting
+    #[must_use]
     pub fn are_mutually_commuting(pauli_strings: &[PauliString]) -> bool {
         for i in 0..pauli_strings.len() {
             for j in i + 1..pauli_strings.len() {
@@ -581,6 +601,7 @@ impl PauliUtils {
     }
 
     /// Find maximal set of mutually commuting Pauli strings
+    #[must_use]
     pub fn maximal_commuting_set(pauli_strings: &[PauliString]) -> Vec<usize> {
         let mut commuting_set = Vec::new();
 
@@ -619,7 +640,8 @@ mod tests {
 
     #[test]
     fn test_pauli_string_creation() {
-        let pauli = PauliString::from_string("XYZ", Complex64::new(1.0, 0.0)).unwrap();
+        let pauli = PauliString::from_string("XYZ", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XYZ' should be parsed successfully");
         assert_eq!(pauli.num_qubits, 3);
         assert_eq!(pauli.operators[0], PauliOperator::X);
         assert_eq!(pauli.operators[1], PauliOperator::Y);
@@ -628,10 +650,14 @@ mod tests {
 
     #[test]
     fn test_pauli_string_multiply() {
-        let p1 = PauliString::from_string("XY", Complex64::new(1.0, 0.0)).unwrap();
-        let p2 = PauliString::from_string("YZ", Complex64::new(1.0, 0.0)).unwrap();
+        let p1 = PauliString::from_string("XY", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XY' should be parsed successfully");
+        let p2 = PauliString::from_string("YZ", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'YZ' should be parsed successfully");
 
-        let result = p1.multiply(&p2).unwrap();
+        let result = p1
+            .multiply(&p2)
+            .expect("Pauli string multiplication should succeed");
         assert_eq!(result.operators[0], PauliOperator::Z);
         assert_eq!(result.operators[1], PauliOperator::X);
         assert_eq!(result.coefficient, Complex64::new(-1.0, 0.0));
@@ -639,9 +665,12 @@ mod tests {
 
     #[test]
     fn test_pauli_string_commutation() {
-        let p1 = PauliString::from_string("XY", Complex64::new(1.0, 0.0)).unwrap();
-        let p2 = PauliString::from_string("ZI", Complex64::new(1.0, 0.0)).unwrap();
-        let p3 = PauliString::from_string("XI", Complex64::new(1.0, 0.0)).unwrap();
+        let p1 = PauliString::from_string("XY", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XY' should be parsed successfully");
+        let p2 = PauliString::from_string("ZI", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'ZI' should be parsed successfully");
+        let p3 = PauliString::from_string("XI", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XI' should be parsed successfully");
 
         assert!(!p1.commutes_with(&p2)); // XY and ZI anti-commute at first qubit
         assert!(p1.commutes_with(&p3)); // XY and XI commute
@@ -649,10 +678,12 @@ mod tests {
 
     #[test]
     fn test_pauli_string_weight() {
-        let p1 = PauliString::from_string("XIYZ", Complex64::new(1.0, 0.0)).unwrap();
+        let p1 = PauliString::from_string("XIYZ", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XIYZ' should be parsed successfully");
         assert_eq!(p1.weight(), 3);
 
-        let p2 = PauliString::from_string("IIII", Complex64::new(1.0, 0.0)).unwrap();
+        let p2 = PauliString::from_string("IIII", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'IIII' should be parsed successfully");
         assert_eq!(p2.weight(), 0);
     }
 
@@ -660,33 +691,43 @@ mod tests {
     fn test_pauli_operator_sum() {
         let mut sum = PauliOperatorSum::new(2);
 
-        let p1 = PauliString::from_string("XX", Complex64::new(1.0, 0.0)).unwrap();
-        let p2 = PauliString::from_string("YY", Complex64::new(0.5, 0.0)).unwrap();
+        let p1 = PauliString::from_string("XX", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XX' should be parsed successfully");
+        let p2 = PauliString::from_string("YY", Complex64::new(0.5, 0.0))
+            .expect("Pauli string 'YY' should be parsed successfully");
 
-        sum.add_term(p1).unwrap();
-        sum.add_term(p2).unwrap();
+        sum.add_term(p1)
+            .expect("Adding term 'XX' to sum should succeed");
+        sum.add_term(p2)
+            .expect("Adding term 'YY' to sum should succeed");
 
         assert_eq!(sum.terms.len(), 2);
     }
 
     #[test]
     fn test_evolution_circuit_single_qubit() {
-        let pauli = PauliString::from_string("X", Complex64::new(1.0, 0.0)).unwrap();
-        let circuit = pauli.evolution_circuit(1.0).unwrap();
+        let pauli = PauliString::from_string("X", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'X' should be parsed successfully");
+        let circuit = pauli
+            .evolution_circuit(1.0)
+            .expect("Evolution circuit creation should succeed");
         assert!(circuit.gate_count() > 0);
     }
 
     #[test]
     fn test_evolution_circuit_multi_qubit() {
-        let pauli = PauliString::from_string("XYZ", Complex64::new(1.0, 0.0)).unwrap();
-        let circuit = pauli.evolution_circuit(1.0).unwrap();
+        let pauli = PauliString::from_string("XYZ", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XYZ' should be parsed successfully");
+        let circuit = pauli
+            .evolution_circuit(1.0)
+            .expect("Evolution circuit creation should succeed");
         assert!(circuit.gate_count() > 0);
     }
 
     #[test]
     fn test_utils_single_qubit() {
-        let pauli =
-            PauliUtils::single_qubit(3, 1, PauliOperator::X, Complex64::new(1.0, 0.0)).unwrap();
+        let pauli = PauliUtils::single_qubit(3, 1, PauliOperator::X, Complex64::new(1.0, 0.0))
+            .expect("Single qubit Pauli creation should succeed");
         assert_eq!(pauli.operators[0], PauliOperator::I);
         assert_eq!(pauli.operators[1], PauliOperator::X);
         assert_eq!(pauli.operators[2], PauliOperator::I);
@@ -694,9 +735,12 @@ mod tests {
 
     #[test]
     fn test_mutually_commuting() {
-        let p1 = PauliString::from_string("XX", Complex64::new(1.0, 0.0)).unwrap();
-        let p2 = PauliString::from_string("ZZ", Complex64::new(1.0, 0.0)).unwrap();
-        let p3 = PauliString::from_string("YY", Complex64::new(1.0, 0.0)).unwrap();
+        let p1 = PauliString::from_string("XX", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'XX' should be parsed successfully");
+        let p2 = PauliString::from_string("ZZ", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'ZZ' should be parsed successfully");
+        let p3 = PauliString::from_string("YY", Complex64::new(1.0, 0.0))
+            .expect("Pauli string 'YY' should be parsed successfully");
 
         let paulis = vec![p1, p2, p3];
         assert!(PauliUtils::are_mutually_commuting(&paulis));

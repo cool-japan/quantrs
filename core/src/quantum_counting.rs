@@ -66,7 +66,7 @@ impl QuantumPhaseEstimation {
             // Check if control qubit is |1⟩
             if (basis >> (total_qubits - control - 1)) & 1 == 1 {
                 // Extract target qubit indices
-                let _target_basis = basis & ((1 << n) - 1);
+                // let _target_basis = basis & ((1 << n) - 1);
 
                 // Apply U^power to target qubits
                 let mut new_amplitudes = vec![Complex64::new(0.0, 0.0); dim];
@@ -291,7 +291,7 @@ pub struct QuantumAmplitudeEstimation {
 
 impl QuantumAmplitudeEstimation {
     /// Create a new amplitude estimation instance
-    pub fn new(
+    pub const fn new(
         state_prep: Array2<Complex64>,
         oracle: Array2<Complex64>,
         precision_bits: usize,
@@ -366,7 +366,7 @@ pub fn quantum_counting_example() {
     let count = counter.count();
 
     println!("Counting numbers divisible by 3 in range 1-15:");
-    println!("Estimated count: {:.1}", count);
+    println!("Estimated count: {count:.1}");
     println!("Actual count: 5 (3, 6, 9, 12, 15)");
     println!("Error: {:.1}", (count - 5.0).abs());
 }
@@ -389,7 +389,7 @@ pub fn amplitude_estimation_example() {
     let amplitude = qae.estimate();
 
     println!("Estimating amplitude of marked states (2 and 5) in uniform superposition:");
-    println!("Estimated amplitude: {:.3}", amplitude);
+    println!("Estimated amplitude: {amplitude:.3}");
     println!("Actual amplitude: {:.3}", (2.0 / n as f64).sqrt());
     println!("Error: {:.3}", (amplitude - (2.0 / n as f64).sqrt()).abs());
 }
@@ -412,7 +412,7 @@ mod tests {
                 Complex64::new(phase.cos(), phase.sin()),
             ],
         )
-        .unwrap();
+        .expect("2x2 matrix from 4-element vector should succeed");
 
         let qpe = QuantumPhaseEstimation::new(4, u);
 

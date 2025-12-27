@@ -39,35 +39,33 @@ pub enum AtomSpecies {
 
 impl AtomSpecies {
     /// Get atomic mass in atomic mass units
-    pub fn mass(&self) -> f64 {
+    pub const fn mass(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 86.909_183,
-            AtomSpecies::Cs133 => 132.905_447,
-            AtomSpecies::Sr88 => 87.905_614,
-            AtomSpecies::Yb171 => 170.936_426,
-            AtomSpecies::Custom { mass, .. } => *mass,
+            Self::Rb87 => 86.909_183,
+            Self::Cs133 => 132.905_447,
+            Self::Sr88 => 87.905_614,
+            Self::Yb171 => 170.936_426,
+            Self::Custom { mass, .. } => *mass,
         }
     }
 
     /// Get typical trap depth in μK
-    pub fn typical_trap_depth(&self) -> f64 {
+    pub const fn typical_trap_depth(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 1000.0,
-            AtomSpecies::Cs133 => 800.0,
-            AtomSpecies::Sr88 => 1200.0,
-            AtomSpecies::Yb171 => 900.0,
-            AtomSpecies::Custom { .. } => 1000.0,
+            Self::Rb87 | Self::Custom { .. } => 1000.0,
+            Self::Cs133 => 800.0,
+            Self::Sr88 => 1200.0,
+            Self::Yb171 => 900.0,
         }
     }
 
     /// Get Rydberg state energy in GHz
-    pub fn rydberg_energy(&self) -> f64 {
+    pub const fn rydberg_energy(&self) -> f64 {
         match self {
-            AtomSpecies::Rb87 => 100.0, // Example value
-            AtomSpecies::Cs133 => 95.0,
-            AtomSpecies::Sr88 => 110.0,
-            AtomSpecies::Yb171 => 105.0,
-            AtomSpecies::Custom { .. } => 100.0,
+            Self::Rb87 | Self::Custom { .. } => 100.0, // Example value
+            Self::Cs133 => 95.0,
+            Self::Sr88 => 110.0,
+            Self::Yb171 => 105.0,
         }
     }
 }
@@ -81,18 +79,22 @@ pub struct Position3D {
 }
 
 impl Position3D {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
     /// Calculate distance to another position
-    pub fn distance_to(&self, other: &Position3D) -> f64 {
-        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
+    pub fn distance_to(&self, other: &Self) -> f64 {
+        (self.z - other.z)
+            .mul_add(
+                self.z - other.z,
+                (self.y - other.y).mul_add(self.y - other.y, (self.x - other.x).powi(2)),
+            )
             .sqrt()
     }
 
     /// Calculate Rydberg interaction strength at this distance
-    pub fn rydberg_interaction(&self, other: &Position3D, c6: f64) -> f64 {
+    pub fn rydberg_interaction(&self, other: &Self, c6: f64) -> f64 {
         let distance = self.distance_to(other);
         if distance == 0.0 {
             f64::INFINITY
@@ -103,7 +105,7 @@ impl Position3D {
 }
 
 /// State of a neutral atom
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AtomState {
     /// Ground state |g⟩
     Ground,
@@ -134,7 +136,7 @@ pub struct NeutralAtom {
 
 impl NeutralAtom {
     /// Create a new neutral atom
-    pub fn new(species: AtomSpecies, position: Position3D) -> Self {
+    pub const fn new(species: AtomSpecies, position: Position3D) -> Self {
         Self {
             species,
             position,
@@ -151,14 +153,13 @@ impl NeutralAtom {
     }
 
     /// Calculate interaction strength with another atom
-    pub fn interaction_with(&self, other: &NeutralAtom) -> f64 {
+    pub fn interaction_with(&self, other: &Self) -> f64 {
         // C6 coefficient for Rydberg interactions (MHz·μm^6)
         let c6 = match (&self.species, &other.species) {
-            (AtomSpecies::Rb87, AtomSpecies::Rb87) => 5000.0,
             (AtomSpecies::Cs133, AtomSpecies::Cs133) => 6000.0,
             (AtomSpecies::Sr88, AtomSpecies::Sr88) => 4500.0,
             (AtomSpecies::Yb171, AtomSpecies::Yb171) => 4800.0,
-            _ => 5000.0, // Default for mixed species
+            (AtomSpecies::Rb87, AtomSpecies::Rb87) | _ => 5000.0, // Rb87 and mixed species
         };
 
         self.position.rydberg_interaction(&other.position, c6)
@@ -184,7 +185,12 @@ pub struct OpticalTweezer {
 
 impl OpticalTweezer {
     /// Create a new optical tweezer
-    pub fn new(position: Position3D, power: f64, wavelength: f64, numerical_aperture: f64) -> Self {
+    pub const fn new(
+        position: Position3D,
+        power: f64,
+        wavelength: f64,
+        numerical_aperture: f64,
+    ) -> Self {
         Self {
             position,
             power,
@@ -227,12 +233,12 @@ impl OpticalTweezer {
     }
 
     /// Remove atom from tweezer
-    pub fn remove_atom(&mut self) -> Option<NeutralAtom> {
+    pub const fn remove_atom(&mut self) -> Option<NeutralAtom> {
         self.atom.take()
     }
 
     /// Check if tweezer has an atom
-    pub fn has_atom(&self) -> bool {
+    pub const fn has_atom(&self) -> bool {
         self.atom.is_some()
     }
 }
@@ -256,7 +262,7 @@ pub struct LaserSystem {
 
 impl LaserSystem {
     /// Create a new laser system
-    pub fn new(wavelength: f64, power: f64, beam_waist: f64, detuning: f64) -> Self {
+    pub const fn new(wavelength: f64, power: f64, beam_waist: f64, detuning: f64) -> Self {
         Self {
             wavelength,
             power,
@@ -278,12 +284,12 @@ impl LaserSystem {
     }
 
     /// Set laser detuning
-    pub fn set_detuning(&mut self, detuning: f64) {
+    pub const fn set_detuning(&mut self, detuning: f64) {
         self.detuning = detuning;
     }
 
     /// Turn laser on/off
-    pub fn set_active(&mut self, active: bool) {
+    pub const fn set_active(&mut self, active: bool) {
         self.active = active;
     }
 }
@@ -402,7 +408,7 @@ impl NeutralAtomQC {
         let tweezer_idx = *self
             .qubit_map
             .get(&qubit)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Qubit {:?} not found", qubit)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Qubit {qubit:?} not found")))?;
 
         // Check if atom is present
         if !self.tweezers[tweezer_idx].has_atom() {
@@ -425,10 +431,10 @@ impl NeutralAtomQC {
     /// Apply two-qubit Rydberg gate
     pub fn apply_rydberg_gate(&mut self, control: QubitId, target: QubitId) -> QuantRS2Result<()> {
         let control_idx = *self.qubit_map.get(&control).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Control qubit {:?} not found", control))
+            QuantRS2Error::InvalidInput(format!("Control qubit {control:?} not found"))
         })?;
         let target_idx = *self.qubit_map.get(&target).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Target qubit {:?} not found", target))
+            QuantRS2Error::InvalidInput(format!("Target qubit {target:?} not found"))
         })?;
 
         // Check if both atoms are present
@@ -439,8 +445,12 @@ impl NeutralAtomQC {
         }
 
         // Check interaction strength
-        let control_atom = self.tweezers[control_idx].atom.as_ref().unwrap();
-        let target_atom = self.tweezers[target_idx].atom.as_ref().unwrap();
+        let control_atom = self.tweezers[control_idx].atom.as_ref().ok_or_else(|| {
+            QuantRS2Error::InvalidOperation("Control atom unexpectedly missing".to_string())
+        })?;
+        let target_atom = self.tweezers[target_idx].atom.as_ref().ok_or_else(|| {
+            QuantRS2Error::InvalidOperation("Target atom unexpectedly missing".to_string())
+        })?;
         let interaction = control_atom.interaction_with(target_atom);
 
         if interaction < 1.0 {
@@ -577,11 +587,7 @@ impl NeutralAtomQC {
         // Sample measurement result
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let result: usize = if rng.gen::<f64>() < prob_0 / (prob_0 + prob_1) {
-            0
-        } else {
-            1
-        };
+        let result: usize = usize::from(rng.gen::<f64>() >= prob_0 / (prob_0 + prob_1));
 
         // Collapse state
         let mut new_state = Array1::zeros(1 << self.num_qubits);
@@ -832,7 +838,9 @@ mod tests {
     #[test]
     fn test_atom_loading() {
         let mut qc = NeutralAtomQC::new(2);
-        let loaded = qc.load_atoms(AtomSpecies::Rb87).unwrap();
+        let loaded = qc
+            .load_atoms(AtomSpecies::Rb87)
+            .expect("Failed to load atoms");
 
         // Should attempt to load into both tweezers
         assert!(loaded <= 2);
@@ -842,7 +850,8 @@ mod tests {
     #[test]
     fn test_single_qubit_gates() {
         let mut qc = NeutralAtomQC::new(1);
-        qc.load_atoms(AtomSpecies::Rb87).unwrap();
+        qc.load_atoms(AtomSpecies::Rb87)
+            .expect("Failed to load atoms");
 
         if qc.loaded_atom_count() > 0 {
             let x_gate = NeutralAtomGates::x_gate();
@@ -856,7 +865,8 @@ mod tests {
     #[test]
     fn test_two_qubit_rydberg_gate() {
         let mut qc = NeutralAtomQC::new(2);
-        qc.load_atoms(AtomSpecies::Rb87).unwrap();
+        qc.load_atoms(AtomSpecies::Rb87)
+            .expect("Failed to load atoms");
 
         if qc.loaded_atom_count() == 2 {
             let result = qc.apply_rydberg_gate(QubitId(0), QubitId(1));
@@ -868,12 +878,12 @@ mod tests {
     #[test]
     fn test_measurement() {
         let mut qc = NeutralAtomQC::new(1);
-        qc.load_atoms(AtomSpecies::Rb87).unwrap();
+        qc.load_atoms(AtomSpecies::Rb87)
+            .expect("Failed to load atoms");
 
         if qc.loaded_atom_count() > 0 {
             let result = qc.measure_qubit(QubitId(0));
-            if result.is_ok() {
-                let measurement = result.unwrap();
+            if let Ok(measurement) = result {
                 assert!(measurement == 0 || measurement == 1);
             }
         }

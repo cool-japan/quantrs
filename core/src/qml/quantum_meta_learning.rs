@@ -93,7 +93,7 @@ pub struct QuantumTask {
 
 impl QuantumTask {
     /// Create new quantum task
-    pub fn new(
+    pub const fn new(
         support_states: Vec<Array1<Complex64>>,
         support_labels: Vec<usize>,
         query_states: Vec<Array1<Complex64>>,
@@ -240,7 +240,7 @@ impl QuantumMetaCircuit {
         }
 
         // Softmax
-        let max_logit = logits.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_logit = logits.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         let mut probs = Array1::zeros(self.num_classes);
         let mut sum_exp = 0.0;
 
@@ -546,7 +546,7 @@ impl QuantumMAML {
     }
 
     /// Get meta-model
-    pub fn meta_model(&self) -> &QuantumMetaCircuit {
+    pub const fn meta_model(&self) -> &QuantumMetaCircuit {
         &self.meta_model
     }
 }
@@ -629,7 +629,9 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ]);
 
-        let probs = circuit.forward(&state).unwrap();
+        let probs = circuit
+            .forward(&state)
+            .expect("forward pass should succeed");
         assert_eq!(probs.len(), 2);
 
         let sum: f64 = probs.iter().sum();
@@ -659,8 +661,10 @@ mod tests {
             config.n_query,
         );
 
-        let adapted_model = maml.adapt(&task).unwrap();
-        let probs = adapted_model.forward(&task.query_states[0]).unwrap();
+        let adapted_model = maml.adapt(&task).expect("MAML adaptation should succeed");
+        let probs = adapted_model
+            .forward(&task.query_states[0])
+            .expect("adapted model forward pass should succeed");
 
         assert_eq!(probs.len(), config.n_way);
     }

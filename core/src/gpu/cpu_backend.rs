@@ -27,17 +27,17 @@ impl CpuBuffer {
 
     /// Get a reference to the data
     pub fn data(&self) -> std::sync::MutexGuard<'_, Vec<Complex64>> {
-        self.data.lock().unwrap()
+        self.data.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
 impl GpuBuffer for CpuBuffer {
     fn size(&self) -> usize {
-        self.data.lock().unwrap().len() * std::mem::size_of::<Complex64>()
+        self.data.lock().unwrap_or_else(|e| e.into_inner()).len() * std::mem::size_of::<Complex64>()
     }
 
     fn upload(&mut self, data: &[Complex64]) -> QuantRS2Result<()> {
-        let mut buffer = self.data.lock().unwrap();
+        let mut buffer = self.data.lock().unwrap_or_else(|e| e.into_inner());
         if buffer.len() != data.len() {
             return Err(QuantRS2Error::InvalidInput(format!(
                 "Buffer size mismatch: {} != {}",
@@ -50,7 +50,7 @@ impl GpuBuffer for CpuBuffer {
     }
 
     fn download(&self, data: &mut [Complex64]) -> QuantRS2Result<()> {
-        let buffer = self.data.lock().unwrap();
+        let buffer = self.data.lock().unwrap_or_else(|e| e.into_inner());
         if buffer.len() != data.len() {
             return Err(QuantRS2Error::InvalidInput(format!(
                 "Buffer size mismatch: {} != {}",
@@ -216,10 +216,10 @@ impl GpuKernel for CpuKernel {
         }
 
         // Convert gate matrix to flat array for easier indexing
-        let gate_flat: Vec<Complex64> = gate_matrix.iter().cloned().collect();
+        let gate_flat: Vec<Complex64> = gate_matrix.iter().copied().collect();
 
         // Calculate indices for all affected basis states
-        let _total_states = 1 << n_qubits;
+        // let _total_states = 1 << n_qubits;
         let affected_states = 1 << gate_qubits;
         let unaffected_qubits = n_qubits - gate_qubits;
         let iterations = 1 << unaffected_qubits;
@@ -277,7 +277,7 @@ impl GpuKernel for CpuKernel {
 
         let data = cpu_buffer.data();
         let qubit_idx = qubit.0 as usize;
-        let _stride = 1 << qubit_idx;
+        // let _stride = 1 << qubit_idx;
 
         // Calculate probability of measuring |1⟩
         let mut prob_one = 0.0;
@@ -349,7 +349,7 @@ pub struct CpuBackend {
 
 impl CpuBackend {
     /// Create a new CPU backend
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { kernel: CpuKernel }
     }
 }
@@ -365,7 +365,7 @@ impl GpuBackend for CpuBackend {
         true // CPU is always available
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CPU"
     }
 
@@ -404,10 +404,14 @@ mod tests {
             Complex64::new(0.0, -1.0),
         ];
 
-        buffer.upload(&data).unwrap();
+        buffer
+            .upload(&data)
+            .expect("Failed to upload data to buffer");
 
         let mut downloaded = vec![Complex64::new(0.0, 0.0); 4];
-        buffer.download(&mut downloaded).unwrap();
+        buffer
+            .download(&mut downloaded)
+            .expect("Failed to download data from buffer");
 
         assert_eq!(data, downloaded);
     }
@@ -419,7 +423,9 @@ mod tests {
         assert_eq!(backend.name(), "CPU");
 
         // Test state vector allocation
-        let buffer = backend.allocate_state_vector(3).unwrap();
+        let buffer = backend
+            .allocate_state_vector(3)
+            .expect("Failed to allocate state vector");
         assert_eq!(buffer.size(), 8 * std::mem::size_of::<Complex64>());
     }
 }

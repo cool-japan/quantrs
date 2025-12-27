@@ -193,8 +193,7 @@ impl QuantumVolumeResult {
     pub fn is_qv_achieved(&self, n_qubits: usize) -> bool {
         self.success_rates
             .get(&n_qubits)
-            .map(|&rate| rate >= 2.0 / 3.0)
-            .unwrap_or(false)
+            .is_some_and(|&rate| rate >= 2.0 / 3.0)
     }
 }
 
@@ -290,7 +289,7 @@ impl QuantumProcessTomography {
         let normalized = if trace.norm() > 1e-10 {
             &chi / trace
         } else {
-            chi.clone()
+            chi
         };
 
         Ok(normalized)
@@ -354,7 +353,7 @@ impl ProcessMatrix {
     }
 
     /// Compute the diamond norm distance to another process
-    pub fn diamond_distance(&self, other: &ProcessMatrix) -> QuantRS2Result<f64> {
+    pub fn diamond_distance(&self, other: &Self) -> QuantRS2Result<f64> {
         if self.num_qubits != other.num_qubits {
             return Err(QuantRS2Error::InvalidInput(
                 "Process matrices must have same dimension".to_string(),
@@ -387,7 +386,7 @@ pub struct GateSetTomography {
 
 impl GateSetTomography {
     /// Create a new GST protocol
-    pub fn new(num_qubits: usize, gate_set: Vec<String>, max_length: usize) -> Self {
+    pub const fn new(num_qubits: usize, gate_set: Vec<String>, max_length: usize) -> Self {
         Self {
             num_qubits,
             gate_set,
@@ -539,7 +538,9 @@ mod tests {
             }
         };
 
-        let result = qpt.run(mock_process).unwrap();
+        let result = qpt
+            .run(mock_process)
+            .expect("QPT run should succeed with mock process");
 
         assert_eq!(result.num_qubits, 1);
         assert!(result.is_trace_preserving(1e-6));

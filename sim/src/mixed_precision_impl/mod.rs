@@ -35,11 +35,13 @@ pub fn initialize() -> Result<()> {
 }
 
 /// Check if mixed-precision features are available
+#[must_use]
 pub const fn is_available() -> bool {
     cfg!(feature = "advanced_math")
 }
 
 /// Get supported precision levels
+#[must_use]
 pub fn get_supported_precisions() -> Vec<QuantumPrecision> {
     vec![
         QuantumPrecision::Half,
@@ -50,16 +52,19 @@ pub fn get_supported_precisions() -> Vec<QuantumPrecision> {
 }
 
 /// Create a default configuration for accuracy
+#[must_use]
 pub const fn default_accuracy_config() -> MixedPrecisionConfig {
     MixedPrecisionConfig::for_accuracy()
 }
 
 /// Create a default configuration for performance
+#[must_use]
 pub const fn default_performance_config() -> MixedPrecisionConfig {
     MixedPrecisionConfig::for_performance()
 }
 
 /// Create a balanced configuration
+#[must_use]
 pub fn default_balanced_config() -> MixedPrecisionConfig {
     MixedPrecisionConfig::balanced()
 }
@@ -70,16 +75,19 @@ pub fn validate_config(config: &MixedPrecisionConfig) -> Result<()> {
 }
 
 /// Estimate memory usage for a given configuration and number of qubits
+#[must_use]
 pub fn estimate_memory_usage(config: &MixedPrecisionConfig, num_qubits: usize) -> usize {
     config.estimate_memory_usage(num_qubits)
 }
 
 /// Calculate memory savings compared to double precision
+#[must_use]
 pub fn calculate_memory_savings(config: &MixedPrecisionConfig, num_qubits: usize) -> f64 {
     simulator::utils::memory_savings(config, num_qubits)
 }
 
 /// Get performance improvement factor for a precision level
+#[must_use]
 pub fn get_performance_factor(precision: QuantumPrecision) -> f64 {
     simulator::utils::performance_improvement_factor(precision)
 }
@@ -209,12 +217,16 @@ mod tests {
         assert!(state.set_amplitude(0, amplitude).is_ok());
 
         // For single precision, we need to account for precision loss
-        let retrieved_amplitude = state.amplitude(0).unwrap();
+        let retrieved_amplitude = state
+            .amplitude(0)
+            .expect("should retrieve amplitude at index 0");
         assert!((retrieved_amplitude.re - amplitude.re).abs() < 1e-6);
         assert!((retrieved_amplitude.im - amplitude.im).abs() < 1e-6);
 
         // Test probability calculation
-        let prob = state.probability(0).unwrap();
+        let prob = state
+            .probability(0)
+            .expect("should calculate probability at index 0");
         assert!((prob - amplitude.norm_sqr()).abs() < 1e-6);
     }
 
@@ -224,7 +236,7 @@ mod tests {
         let state_double = state_single.to_precision(QuantumPrecision::Double);
 
         assert!(state_double.is_ok());
-        let converted = state_double.unwrap();
+        let converted = state_double.expect("precision conversion should succeed");
         assert_eq!(converted.precision(), QuantumPrecision::Double);
         assert_eq!(converted.len(), 4);
     }
@@ -235,7 +247,7 @@ mod tests {
         let simulator = MixedPrecisionSimulator::new(2, config);
 
         assert!(simulator.is_ok());
-        let sim = simulator.unwrap();
+        let sim = simulator.expect("mixed precision simulator creation should succeed");
         assert!(sim.get_state().is_some());
     }
 

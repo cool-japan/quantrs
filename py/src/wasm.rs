@@ -410,7 +410,7 @@ impl WasmResult {
             .iter()
             .enumerate()
             .map(|(i, a)| (i, a.norm_sqr()))
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or((0, 0.0));
 
         format!("{:0width$b}", max_idx, width = self.n_qubits)

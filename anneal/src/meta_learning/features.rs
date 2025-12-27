@@ -165,7 +165,7 @@ pub struct FeatureTransformer {
 }
 
 /// Transformer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransformerType {
     /// Polynomial features
     Polynomial,
@@ -204,7 +204,8 @@ pub struct DimensionalityReducer {
 }
 
 impl FeatureExtractor {
-    pub fn new(config: FeatureExtractionConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: FeatureExtractionConfig) -> Self {
         Self {
             config,
             transformers: Vec::new(),
@@ -357,7 +358,7 @@ impl FeatureExtractor {
         }
 
         if max_edges > 0 {
-            num_edges as f64 / max_edges as f64
+            f64::from(num_edges) / max_edges as f64
         } else {
             0.0
         }

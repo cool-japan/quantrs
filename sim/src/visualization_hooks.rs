@@ -10,7 +10,7 @@ use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
-use std::io::Write;
+use std::io::Write as IoWrite;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -19,6 +19,7 @@ use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateTy
 use crate::debugger::{ExecutionSnapshot, PerformanceMetrics};
 use crate::error::{Result, SimulatorError};
 
+use std::fmt::Write;
 /// Visualization framework types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum VisualizationFramework {
@@ -64,7 +65,7 @@ impl Default for VisualizationConfig {
         Self {
             framework: VisualizationFramework::JSON,
             real_time: false,
-            max_data_points: 10000,
+            max_data_points: 10_000,
             export_directory: "./visualization_output".to_string(),
             color_scheme: ColorScheme::Default,
             interactive: false,
@@ -171,6 +172,7 @@ pub struct VisualizationManager {
 
 impl VisualizationManager {
     /// Create new visualization manager
+    #[must_use]
     pub fn new(config: VisualizationConfig) -> Self {
         Self {
             config,
@@ -196,7 +198,7 @@ impl VisualizationManager {
         let basis_labels = self.generate_basis_labels(state.len());
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .map_err(|e| SimulatorError::InvalidOperation(format!("System time error: {e}")))?
             .as_secs_f64();
 
         let data = VisualizationData::StateVector {
@@ -238,7 +240,10 @@ impl VisualizationManager {
     /// Visualize performance metrics
     pub fn visualize_performance(&mut self, metrics: &PerformanceMetrics) -> Result<()> {
         {
-            let mut history = self.performance_history.lock().unwrap();
+            let mut history = self
+                .performance_history
+                .lock()
+                .map_err(|e| SimulatorError::InvalidOperation(format!("Lock poisoned: {e}")))?;
             history.push(metrics.clone());
 
             // Keep only recent data
@@ -249,7 +254,10 @@ impl VisualizationManager {
 
         // Create time series data
         let data = {
-            let history = self.performance_history.lock().unwrap();
+            let history = self
+                .performance_history
+                .lock()
+                .map_err(|e| SimulatorError::InvalidOperation(format!("Lock poisoned: {e}")))?;
             let timestamps: Vec<f64> = (0..history.len()).map(|i| i as f64).collect();
             let execution_times: Vec<f64> =
                 history.iter().map(|m| m.total_time.as_secs_f64()).collect();
@@ -307,7 +315,7 @@ impl VisualizationManager {
     ) -> Result<()> {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .map_err(|e| SimulatorError::InvalidOperation(format!("System time error: {e}")))?
             .as_secs_f64();
 
         let data = VisualizationData::SyndromePattern {
@@ -344,7 +352,10 @@ impl VisualizationManager {
     fn process_visualization_data(&mut self, data: VisualizationData) -> Result<()> {
         // Add to buffer for real-time processing
         if self.config.real_time {
-            let mut buffer = self.data_buffer.lock().unwrap();
+            let mut buffer = self
+                .data_buffer
+                .lock()
+                .map_err(|e| SimulatorError::InvalidOperation(format!("Lock poisoned: {e}")))?;
             buffer.push_back(data.clone());
             if buffer.len() > self.config.max_data_points {
                 buffer.pop_front();
@@ -384,8 +395,12 @@ impl VisualizationManager {
             hook.clear();
         }
 
-        self.data_buffer.lock().unwrap().clear();
-        self.performance_history.lock().unwrap().clear();
+        if let Ok(mut buffer) = self.data_buffer.lock() {
+            buffer.clear();
+        }
+        if let Ok(mut history) = self.performance_history.lock() {
+            history.clear();
+        }
     }
 
     /// Generate basis state labels
@@ -530,6 +545,7 @@ pub struct JSONVisualizationHook {
 }
 
 impl JSONVisualizationHook {
+    #[must_use]
     pub const fn new(config: VisualizationConfig) -> Self {
         Self {
             data: Vec::new(),
@@ -581,6 +597,7 @@ pub struct ASCIIVisualizationHook {
 }
 
 impl ASCIIVisualizationHook {
+    #[must_use]
     pub fn new(config: VisualizationConfig) -> Self {
         Self {
             recent_states: VecDeque::with_capacity(100),
@@ -601,17 +618,20 @@ impl ASCIIVisualizationHook {
             let bar_length = (magnitude * 20.0) as usize;
             let bar = "█".repeat(bar_length) + &"░".repeat(20 - bar_length);
 
-            output.push_str(&format!(
-                "|{:02}⟩: {} {:.4} ∠{:.2}π\n",
+            writeln!(
+                output,
+                "|{:02}⟩: {} {:.4} ∠{:.2}π",
                 i,
                 bar,
                 magnitude,
                 phase / std::f64::consts::PI
-            ));
+            )
+            .expect("Failed to write to string buffer");
         }
 
         if state.len() > 16 {
-            output.push_str(&format!("... ({} more states)\n", state.len() - 16));
+            writeln!(output, "... ({} more states)", state.len() - 16)
+                .expect("Failed to write to string buffer");
         }
 
         output
@@ -664,7 +684,7 @@ impl VisualizationHook for ASCIIVisualizationHook {
         output.push_str("==========================\n\n");
 
         for (i, state) in self.recent_states.iter().enumerate() {
-            output.push_str(&format!("State {i}:\n"));
+            writeln!(output, "State {i}:").expect("Failed to write to string buffer");
             output.push_str(&self.state_to_ascii(state));
             output.push('\n');
         }
@@ -711,7 +731,7 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
                 "10".to_string(),
                 "11".to_string(),
             ],
-            timestamp: i as f64,
+            timestamp: f64::from(i),
         };
 
         json_hook.process_data(data)?;
@@ -743,7 +763,7 @@ pub fn benchmark_visualization() -> Result<HashMap<String, f64>> {
                 "10".to_string(),
                 "11".to_string(),
             ],
-            timestamp: i as f64,
+            timestamp: f64::from(i),
         };
 
         ascii_hook.process_data(data)?;
@@ -868,12 +888,12 @@ mod tests {
 
         let entanglement_matrix = manager
             .calculate_entanglement_matrix(&bell_state, 2)
-            .unwrap();
+            .expect("Entanglement calculation should succeed in test");
         assert_eq!(entanglement_matrix.shape(), [2, 2]);
 
         let entropies = manager
             .calculate_bipartite_entropies(&bell_state, 2)
-            .unwrap();
+            .expect("Entropy calculation should succeed in test");
         assert_eq!(entropies.len(), 1);
     }
 }

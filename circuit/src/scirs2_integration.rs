@@ -411,18 +411,20 @@ impl SciRS2CircuitAnalyzer {
     /// Calculate node properties using graph algorithms
     fn calculate_node_properties(&self, graph: &mut SciRS2CircuitGraph) -> QuantRS2Result<()> {
         for &node_id in graph.nodes.keys() {
-            let mut properties = NodeProperties::default();
-
-            // Calculate degree
-            properties.degree = self.calculate_degree(node_id, graph);
-            properties.in_degree = self.calculate_in_degree(node_id, graph);
-            properties.out_degree = self.calculate_out_degree(node_id, graph);
-
             // Calculate clustering coefficient if enabled
-            if self.config.enable_centrality {
-                properties.clustering_coefficient =
-                    self.calculate_clustering_coefficient(node_id, graph);
-            }
+            let clustering_coefficient = if self.config.enable_centrality {
+                self.calculate_clustering_coefficient(node_id, graph)
+            } else {
+                Some(0.0)
+            };
+
+            let properties = NodeProperties {
+                degree: self.calculate_degree(node_id, graph),
+                in_degree: self.calculate_in_degree(node_id, graph),
+                out_degree: self.calculate_out_degree(node_id, graph),
+                clustering_coefficient,
+                ..Default::default()
+            };
 
             graph.node_properties.insert(node_id, properties);
         }
@@ -891,15 +893,19 @@ mod tests {
         let analyzer = SciRS2CircuitAnalyzer::new();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to qubit 0");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let graph = analyzer.circuit_to_scirs2_graph(&circuit).unwrap();
+        let graph = analyzer
+            .circuit_to_scirs2_graph(&circuit)
+            .expect("Failed to convert circuit to SciRS2 graph");
 
         assert_eq!(graph.nodes.len(), 2);
         assert!(!graph.edges.is_empty());
@@ -910,12 +916,22 @@ mod tests {
         let analyzer = SciRS2CircuitAnalyzer::new();
 
         let mut circuit = Circuit::<3>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(2) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to qubit 0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("Failed to add Hadamard gate to qubit 1");
+        circuit
+            .add_gate(Hadamard { target: QubitId(2) })
+            .expect("Failed to add Hadamard gate to qubit 2");
 
-        let graph = analyzer.circuit_to_scirs2_graph(&circuit).unwrap();
-        let metrics = analyzer.calculate_graph_metrics(&graph).unwrap();
+        let graph = analyzer
+            .circuit_to_scirs2_graph(&circuit)
+            .expect("Failed to convert circuit to SciRS2 graph");
+        let metrics = analyzer
+            .calculate_graph_metrics(&graph)
+            .expect("Failed to calculate graph metrics");
 
         assert_eq!(metrics.num_nodes, 3);
         assert!(metrics.clustering_coefficient >= 0.0);
@@ -927,16 +943,22 @@ mod tests {
         let mut analyzer = SciRS2CircuitAnalyzer::new();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to qubit 0");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
+            .expect("Failed to add CNOT gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("Failed to add Hadamard gate to qubit 1");
 
-        let result = analyzer.analyze_circuit(&circuit).unwrap();
+        let result = analyzer
+            .analyze_circuit(&circuit)
+            .expect("Failed to analyze circuit");
 
         assert!(result.metrics.num_nodes > 0);
         assert!(!result.critical_paths.is_empty());
@@ -947,12 +969,22 @@ mod tests {
         let analyzer = SciRS2CircuitAnalyzer::new();
 
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add first Hadamard gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add second Hadamard gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add third Hadamard gate");
 
-        let graph = analyzer.circuit_to_scirs2_graph(&circuit).unwrap();
-        let motifs = analyzer.detect_motifs(&graph).unwrap();
+        let graph = analyzer
+            .circuit_to_scirs2_graph(&circuit)
+            .expect("Failed to convert circuit to SciRS2 graph");
+        let motifs = analyzer
+            .detect_motifs(&graph)
+            .expect("Failed to detect motifs");
 
         // Note: This test is simplified - in a real implementation,
         // motif detection would be more sophisticated

@@ -118,7 +118,7 @@ pub struct PhotonicCircuitResult {
 }
 
 /// Photonic measurement data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PhotonicMeasurementData {
     /// Quadrature measurements
     pub quadratures: Vec<(f64, f64)>, // (x, p) pairs
@@ -151,19 +151,6 @@ pub struct PhotonicExecutionMetadata {
     pub gate_sequence: Vec<String>,
     /// Optimization applied
     pub optimizations_applied: Vec<String>,
-}
-
-impl Default for PhotonicMeasurementData {
-    fn default() -> Self {
-        Self {
-            quadratures: Vec::new(),
-            photon_numbers: Vec::new(),
-            homodyne_results: Vec::new(),
-            heterodyne_results: Vec::new(),
-            correlations: HashMap::new(),
-            fidelities: HashMap::new(),
-        }
-    }
 }
 
 impl Default for PhotonicExecutionMetadata {
@@ -288,7 +275,7 @@ pub fn validate_photonic_config(config: &PhotonicDeviceConfig) -> DeviceResult<(
     }
 
     if let Some(loss_rate) = config.loss_rate {
-        if loss_rate < 0.0 || loss_rate > 1.0 {
+        if !(0.0..=1.0).contains(&loss_rate) {
             return Err(DeviceError::InvalidInput(
                 "Loss rate must be between 0 and 1".to_string(),
             ));
@@ -296,7 +283,7 @@ pub fn validate_photonic_config(config: &PhotonicDeviceConfig) -> DeviceResult<(
     }
 
     if let Some(efficiency) = config.detection_efficiency {
-        if efficiency < 0.0 || efficiency > 1.0 {
+        if !(0.0..=1.0).contains(&efficiency) {
             return Err(DeviceError::InvalidInput(
                 "Detection efficiency must be between 0 and 1".to_string(),
             ));

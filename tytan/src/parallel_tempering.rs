@@ -217,10 +217,10 @@ mod tests {
         var_map.insert("y".to_string(), 1);
 
         let sampler = ParallelTemperingSampler::new(Some(4), Some(100));
-        let mut result = sampler.run_qubo(&(matrix, var_map), 10);
+        let result = sampler.run_qubo(&(matrix, var_map), 10);
 
         assert!(result.is_ok());
-        let solutions = result.unwrap();
+        let solutions = result.expect("run_qubo should return valid solutions");
         assert_eq!(solutions.len(), 10);
     }
 }

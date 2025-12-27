@@ -42,7 +42,7 @@ pub fn reconstruct_maximum_likelihood(
     // Perform optimization (simplified)
     let optimization_result: Result<super::super::fallback::OptimizeResult, crate::DeviceError> =
         Ok(super::super::fallback::OptimizeResult {
-            x: initial_params.clone(),
+            x: initial_params,
             fun: 0.0,
             success: true,
             nit: 10,
@@ -141,7 +141,7 @@ fn calculate_negative_log_likelihood(
 
             // Poisson likelihood (typical for count data)
             if predicted > 1e-12 {
-                neg_log_likelihood -= observed * predicted.ln() - predicted;
+                neg_log_likelihood -= observed.mul_add(predicted.ln(), -predicted);
             } else {
                 neg_log_likelihood += 1e6; // Large penalty for zero probabilities
             }
@@ -187,7 +187,7 @@ fn predict_measurement_probability(
     }
 
     // Ensure probability is real and non-negative
-    let prob = result.re.max(0.0).min(1.0);
+    let prob = result.re.clamp(0.0, 1.0);
     Ok(prob)
 }
 

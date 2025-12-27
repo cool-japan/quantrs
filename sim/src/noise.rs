@@ -24,6 +24,7 @@ pub enum NoiseChannelType {
 
 impl NoiseChannelType {
     /// Get the name of the noise channel
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::BitFlip(ch) => ch.name(),
@@ -52,6 +53,7 @@ impl NoiseChannelType {
     }
 
     /// Get the qubits this channel affects
+    #[must_use]
     pub fn qubits(&self) -> Vec<QubitId> {
         match self {
             Self::BitFlip(ch) => ch.qubits(),
@@ -74,6 +76,7 @@ impl NoiseChannelType {
     }
 
     /// Get the probability of the noise occurring
+    #[must_use]
     pub fn probability(&self) -> f64 {
         match self {
             Self::BitFlip(ch) => ch.probability(),
@@ -520,6 +523,7 @@ pub struct NoiseModel {
 
 impl NoiseModel {
     /// Create a new empty noise model
+    #[must_use]
     pub const fn new(per_gate: bool) -> Self {
         Self {
             channels: Vec::new(),
@@ -571,6 +575,7 @@ impl NoiseModel {
     }
 
     /// Get the total number of channels
+    #[must_use]
     pub fn num_channels(&self) -> usize {
         self.channels.len()
     }
@@ -589,6 +594,7 @@ pub struct NoiseModelBuilder {
 
 impl NoiseModelBuilder {
     /// Create a new noise model builder
+    #[must_use]
     pub const fn new(per_gate: bool) -> Self {
         Self {
             model: NoiseModel::new(per_gate),
@@ -596,6 +602,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add depolarizing noise to all qubits
+    #[must_use]
     pub fn with_depolarizing_noise(mut self, qubits: &[QubitId], probability: f64) -> Self {
         for &qubit in qubits {
             self.model.add_depolarizing(DepolarizingChannel {
@@ -607,6 +614,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add bit flip noise to all qubits
+    #[must_use]
     pub fn with_bit_flip_noise(mut self, qubits: &[QubitId], probability: f64) -> Self {
         for &qubit in qubits {
             self.model.add_bit_flip(BitFlipChannel {
@@ -618,6 +626,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add phase flip noise to all qubits
+    #[must_use]
     pub fn with_phase_flip_noise(mut self, qubits: &[QubitId], probability: f64) -> Self {
         for &qubit in qubits {
             self.model.add_phase_flip(PhaseFlipChannel {
@@ -629,6 +638,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add amplitude damping to all qubits
+    #[must_use]
     pub fn with_amplitude_damping(mut self, qubits: &[QubitId], gamma: f64) -> Self {
         for &qubit in qubits {
             self.model.add_amplitude_damping(AmplitudeDampingChannel {
@@ -640,6 +650,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add phase damping to all qubits
+    #[must_use]
     pub fn with_phase_damping(mut self, qubits: &[QubitId], lambda: f64) -> Self {
         for &qubit in qubits {
             self.model.add_phase_damping(PhaseDampingChannel {
@@ -651,6 +662,7 @@ impl NoiseModelBuilder {
     }
 
     /// Build the noise model
+    #[must_use]
     pub fn build(self) -> NoiseModel {
         self.model
     }

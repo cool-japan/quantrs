@@ -88,7 +88,10 @@ pub struct ReinforcementLearning {
 
 impl ReinforcementLearning {
     /// Creates a new quantum reinforcement learning agent
-    pub fn new() -> Self {
+    ///
+    /// # Errors
+    /// Returns an error if the quantum neural network cannot be created
+    pub fn new() -> Result<Self> {
         // This is a placeholder implementation
         // In a real system, this would create a proper QNN
 
@@ -108,10 +111,9 @@ impl ReinforcementLearning {
             layers, 8, // 8 qubits
             4, // 4 input features
             2, // 2 output actions
-        )
-        .unwrap();
+        )?;
 
-        ReinforcementLearning {
+        Ok(ReinforcementLearning {
             rl_type: ReinforcementLearningType::QLearning,
             qnn,
             learning_rate: 0.01,
@@ -119,7 +121,7 @@ impl ReinforcementLearning {
             exploration_rate: 0.1,
             state_dim: 4,
             action_dim: 2,
-        }
+        })
     }
 
     /// Sets the reinforcement learning algorithm type

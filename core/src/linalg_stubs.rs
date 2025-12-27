@@ -24,7 +24,7 @@ impl<T: Clone + Default> CsrMatrix<T> {
         }
     }
 
-    pub fn new(
+    pub const fn new(
         data: Vec<T>,
         indices: Vec<usize>,
         indptr: Vec<usize>,
@@ -38,7 +38,7 @@ impl<T: Clone + Default> CsrMatrix<T> {
         })
     }
 
-    pub fn shape(&self) -> (usize, usize) {
+    pub const fn shape(&self) -> (usize, usize) {
         self.shape
     }
 
@@ -82,9 +82,8 @@ pub fn svd(
 ) -> QuantRS2Result<(Array2<f64>, Array1<f64>, Array2<f64>)> {
     // Use scirs2_linalg for SVD computation (SciRS2 POLICY)
     // svd returns (u, singular_values, vt) tuple
-    let (u, s, vt) = scirs2_linalg::svd(matrix, true, None).map_err(|e| {
-        crate::error::QuantRS2Error::ComputationError(format!("SVD failed: {:?}", e))
-    })?;
+    let (u, s, vt) = scirs2_linalg::svd(matrix, true, None)
+        .map_err(|e| crate::error::QuantRS2Error::ComputationError(format!("SVD failed: {e:?}")))?;
 
     Ok((u, s, vt))
 }

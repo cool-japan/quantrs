@@ -1336,7 +1336,11 @@ impl<const N: usize> QuantumDebugger<N> {
     /// Start debugging session
     pub fn start_session(&mut self) -> QuantRS2Result<()> {
         {
-            let mut state = self.execution_state.write().unwrap();
+            let mut state = self.execution_state.write().map_err(|_| {
+                QuantRS2Error::InvalidOperation(
+                    "Failed to acquire execution state write lock".to_string(),
+                )
+            })?;
             state.status = ExecutionStatus::Running;
             state.timing_info.start_time = SystemTime::now();
         }
@@ -1363,19 +1367,31 @@ impl<const N: usize> QuantumDebugger<N> {
 
         // Check if we're at a breakpoint
         if self.should_break()? {
-            let mut state = self.execution_state.write().unwrap();
+            let mut state = self.execution_state.write().map_err(|_| {
+                QuantRS2Error::InvalidOperation(
+                    "Failed to acquire execution state write lock".to_string(),
+                )
+            })?;
             state.status = ExecutionStatus::Paused;
             return Ok(StepResult::Breakpoint);
         }
 
         // Execute the next gate
         let gate_index = {
-            let state = self.execution_state.read().unwrap();
+            let state = self.execution_state.read().map_err(|_| {
+                QuantRS2Error::InvalidOperation(
+                    "Failed to acquire execution state read lock".to_string(),
+                )
+            })?;
             state.current_gate_index
         };
 
         if gate_index >= self.circuit.gates().len() {
-            let mut state = self.execution_state.write().unwrap();
+            let mut state = self.execution_state.write().map_err(|_| {
+                QuantRS2Error::InvalidOperation(
+                    "Failed to acquire execution state write lock".to_string(),
+                )
+            })?;
             state.status = ExecutionStatus::Completed;
             return Ok(StepResult::Completed);
         }
@@ -1391,7 +1407,11 @@ impl<const N: usize> QuantumDebugger<N> {
 
         // Update execution state
         {
-            let mut state = self.execution_state.write().unwrap();
+            let mut state = self.execution_state.write().map_err(|_| {
+                QuantRS2Error::InvalidOperation(
+                    "Failed to acquire execution state write lock".to_string(),
+                )
+            })?;
             state.current_gate_index += 1;
             state.gates_executed += 1;
             state.current_depth = self.calculate_current_depth()?;
@@ -1448,28 +1468,42 @@ impl<const N: usize> QuantumDebugger<N> {
 
     /// Pause execution
     pub fn pause(&mut self) -> QuantRS2Result<()> {
-        let mut state = self.execution_state.write().unwrap();
+        let mut state = self.execution_state.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state write lock".to_string(),
+            )
+        })?;
         state.status = ExecutionStatus::Paused;
         Ok(())
     }
 
     /// Resume execution
     pub fn resume(&mut self) -> QuantRS2Result<()> {
-        let mut state = self.execution_state.write().unwrap();
+        let mut state = self.execution_state.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state write lock".to_string(),
+            )
+        })?;
         state.status = ExecutionStatus::Running;
         Ok(())
     }
 
     /// Stop execution
     pub fn stop(&mut self) -> QuantRS2Result<()> {
-        let mut state = self.execution_state.write().unwrap();
+        let mut state = self.execution_state.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state write lock".to_string(),
+            )
+        })?;
         state.status = ExecutionStatus::Stopped;
         Ok(())
     }
 
     /// Add breakpoint at gate index
     pub fn add_gate_breakpoint(&mut self, gate_index: usize) -> QuantRS2Result<()> {
-        let mut breakpoints = self.breakpoints.write().unwrap();
+        let mut breakpoints = self.breakpoints.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation("Failed to acquire breakpoints write lock".to_string())
+        })?;
         breakpoints.gate_breakpoints.insert(gate_index);
         Ok(())
     }
@@ -1480,7 +1514,9 @@ impl<const N: usize> QuantumDebugger<N> {
         qubit: QubitId,
         condition: BreakpointCondition,
     ) -> QuantRS2Result<()> {
-        let mut breakpoints = self.breakpoints.write().unwrap();
+        let mut breakpoints = self.breakpoints.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation("Failed to acquire breakpoints write lock".to_string())
+        })?;
         breakpoints.qubit_breakpoints.insert(qubit, condition);
         Ok(())
     }
@@ -1492,7 +1528,9 @@ impl<const N: usize> QuantumDebugger<N> {
         pattern: StatePattern,
         tolerance: f64,
     ) -> QuantRS2Result<()> {
-        let mut breakpoints = self.breakpoints.write().unwrap();
+        let mut breakpoints = self.breakpoints.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation("Failed to acquire breakpoints write lock".to_string())
+        })?;
         breakpoints.state_breakpoints.push(StateBreakpoint {
             id,
             target_state: pattern,
@@ -1504,26 +1542,39 @@ impl<const N: usize> QuantumDebugger<N> {
 
     /// Get current quantum state
     pub fn get_current_state(&self) -> QuantRS2Result<Array1<Complex64>> {
-        let state = self.execution_state.read().unwrap();
+        let state = self.execution_state.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state read lock".to_string(),
+            )
+        })?;
         Ok(state.current_state.clone())
     }
 
     /// Get execution status
     #[must_use]
     pub fn get_execution_status(&self) -> ExecutionStatus {
-        let state = self.execution_state.read().unwrap();
+        let state = self
+            .execution_state
+            .read()
+            .expect("execution state lock should not be poisoned");
         state.status.clone()
     }
 
     /// Get performance analysis
     pub fn get_performance_analysis(&self) -> QuantRS2Result<PerformanceAnalysis> {
-        let profiler = self.profiler.read().unwrap();
+        let profiler = self.profiler.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation("Failed to acquire profiler read lock".to_string())
+        })?;
         Ok(profiler.analysis_results.clone())
     }
 
     /// Get error analysis
     pub fn get_error_analysis(&self) -> QuantRS2Result<ErrorAnalysisResults> {
-        let detector = self.error_detector.read().unwrap();
+        let detector = self.error_detector.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire error detector read lock".to_string(),
+            )
+        })?;
         Ok(detector.analysis_results.clone())
     }
 
@@ -1541,25 +1592,31 @@ impl<const N: usize> QuantumDebugger<N> {
 
     // Private implementation methods...
 
-    fn initialize_scirs2_analysis(&mut self) -> QuantRS2Result<()> {
+    fn initialize_scirs2_analysis(&self) -> QuantRS2Result<()> {
         // Initialize SciRS2 circuit analysis
         let _graph = self.analyzer.circuit_to_scirs2_graph(&self.circuit)?;
         Ok(())
     }
 
-    const fn start_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn start_profiling(&self) -> QuantRS2Result<()> {
         // Start performance profiling
         Ok(())
     }
 
-    const fn initialize_visualization(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_visualization(&self) -> QuantRS2Result<()> {
         // Initialize visualization engine
         Ok(())
     }
 
     fn should_break(&self) -> QuantRS2Result<bool> {
-        let breakpoints = self.breakpoints.read().unwrap();
-        let state = self.execution_state.read().unwrap();
+        let breakpoints = self.breakpoints.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation("Failed to acquire breakpoints read lock".to_string())
+        })?;
+        let state = self.execution_state.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state read lock".to_string(),
+            )
+        })?;
 
         // Check gate breakpoints
         if breakpoints
@@ -1573,13 +1630,13 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(false)
     }
 
-    const fn pre_execution_analysis(&mut self, _gate_index: usize) -> QuantRS2Result<()> {
+    const fn pre_execution_analysis(&self, _gate_index: usize) -> QuantRS2Result<()> {
         // Perform pre-execution analysis
         Ok(())
     }
 
     const fn execute_gate_with_monitoring(
-        &mut self,
+        &self,
         _gate_index: usize,
     ) -> QuantRS2Result<GateExecutionResult> {
         // Execute gate with comprehensive monitoring
@@ -1592,7 +1649,7 @@ impl<const N: usize> QuantumDebugger<N> {
     }
 
     const fn post_execution_analysis(
-        &mut self,
+        &self,
         _gate_index: usize,
         _result: &GateExecutionResult,
     ) -> QuantRS2Result<()> {
@@ -1605,26 +1662,38 @@ impl<const N: usize> QuantumDebugger<N> {
         Ok(0)
     }
 
-    const fn update_visualizations(&mut self) -> QuantRS2Result<()> {
+    const fn update_visualizations(&self) -> QuantRS2Result<()> {
         // Update all active visualizations
         Ok(())
     }
 
-    fn finalize_execution(&mut self) -> QuantRS2Result<()> {
+    fn finalize_execution(&self) -> QuantRS2Result<()> {
         // Finalize execution and cleanup
-        let mut state = self.execution_state.write().unwrap();
+        let mut state = self.execution_state.write().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state write lock".to_string(),
+            )
+        })?;
         state.status = ExecutionStatus::Completed;
         state.timing_info.current_time = SystemTime::now();
         Ok(())
     }
 
     fn get_execution_time(&self) -> QuantRS2Result<Duration> {
-        let state = self.execution_state.read().unwrap();
+        let state = self.execution_state.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state read lock".to_string(),
+            )
+        })?;
         Ok(state.timing_info.total_duration)
     }
 
     fn get_memory_usage(&self) -> QuantRS2Result<MemoryUsage> {
-        let state = self.execution_state.read().unwrap();
+        let state = self.execution_state.read().map_err(|_| {
+            QuantRS2Error::InvalidOperation(
+                "Failed to acquire execution state read lock".to_string(),
+            )
+        })?;
         Ok(state.memory_usage.clone())
     }
 
@@ -1704,21 +1773,30 @@ mod tests {
         let circuit = Circuit::<2>::new();
         let mut debugger = QuantumDebugger::new(circuit);
 
-        debugger.add_gate_breakpoint(0).unwrap();
+        debugger
+            .add_gate_breakpoint(0)
+            .expect("add_gate_breakpoint should succeed");
 
-        let breakpoints = debugger.breakpoints.read().unwrap();
+        let breakpoints = debugger
+            .breakpoints
+            .read()
+            .expect("breakpoints lock should not be poisoned");
         assert!(breakpoints.gate_breakpoints.contains(&0));
     }
 
     #[test]
     fn test_step_execution() {
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add_gate should succeed");
 
         let mut debugger = QuantumDebugger::new(circuit);
-        debugger.start_session().unwrap();
+        debugger
+            .start_session()
+            .expect("start_session should succeed");
 
-        let result = debugger.step_next().unwrap();
+        let result = debugger.step_next().expect("step_next should succeed");
         match result {
             StepResult::Success => (),
             _ => panic!("Expected successful step execution"),
@@ -1733,28 +1811,35 @@ mod tests {
 
         let debugger = QuantumDebugger::with_config(circuit, config);
 
-        let visualizer = debugger.visualizer.read().unwrap();
+        let visualizer = debugger
+            .visualizer
+            .read()
+            .expect("visualizer lock should not be poisoned");
         assert!(visualizer.config.enable_realtime);
     }
 
     #[test]
     fn test_performance_profiling() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add_gate Hadamard should succeed");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add_gate CNOT should succeed");
 
         let mut config = DebuggerConfig::default();
         config.enable_profiling = true;
 
         let mut debugger = QuantumDebugger::with_config(circuit, config);
-        let _summary = debugger.run().unwrap();
+        let _summary = debugger.run().expect("debugger run should succeed");
 
-        let analysis = debugger.get_performance_analysis().unwrap();
+        let analysis = debugger
+            .get_performance_analysis()
+            .expect("get_performance_analysis should succeed");
         assert!(!analysis.suggestions.is_empty() || analysis.suggestions.is_empty());
         // Flexible assertion
     }
@@ -1767,7 +1852,10 @@ mod tests {
 
         let debugger = QuantumDebugger::with_config(circuit, config);
 
-        let detector = debugger.error_detector.read().unwrap();
+        let detector = debugger
+            .error_detector
+            .read()
+            .expect("error_detector lock should not be poisoned");
         assert!(detector.config.enable_auto_detection);
     }
 }

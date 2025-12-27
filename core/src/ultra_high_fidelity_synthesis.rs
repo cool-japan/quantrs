@@ -79,7 +79,7 @@ impl GrapeOptimizer {
             self.update_pulses(&gradients, learning_rate);
 
             if iteration % 100 == 0 {
-                println!("GRAPE Iteration {}: Fidelity = {:.6}", iteration, fidelity);
+                println!("GRAPE Iteration {iteration}: Fidelity = {fidelity:.6}");
             }
         }
 
@@ -132,7 +132,7 @@ impl GrapeOptimizer {
         let mut backward_props = vec![Array2::eye(n); self.time_steps];
 
         for t in (0..self.time_steps).rev() {
-            backward_props[t] = backward_unitary.clone();
+            backward_props[t].clone_from(&backward_unitary);
             backward_unitary = backward_unitary.dot(&propagators[t].t().mapv(|x| x.conj()));
         }
 
@@ -261,10 +261,7 @@ impl QuantumGateRL {
             self.exploration_rate *= 0.995;
 
             if episode % 1000 == 0 {
-                println!(
-                    "RL Episode {}: Best Fidelity = {:.6}",
-                    episode, best_fidelity
-                );
+                println!("RL Episode {episode}: Best Fidelity = {best_fidelity:.6}");
             }
         }
 
@@ -320,9 +317,8 @@ impl QuantumGateRL {
             q_values
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .map(|(i, _)| i)
-                .unwrap_or(0)
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map_or(0, |(i, _)| i)
         } else {
             0 // Default action if state not seen before
         }
@@ -343,13 +339,12 @@ impl QuantumGateRL {
         let next_q_max = if terminal {
             0.0
         } else {
-            self.q_table
-                .get(&next_state)
-                .map(|values| values.iter().cloned().fold(f64::NEG_INFINITY, f64::max))
-                .unwrap_or(0.0)
+            self.q_table.get(&next_state).map_or(0.0, |values| {
+                values.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+            })
         };
 
-        let target_q = reward + self.discount_factor * next_q_max;
+        let target_q = self.discount_factor.mul_add(next_q_max, reward);
 
         // Update Q-value
         if let Some(q_values) = self.q_table.get_mut(&state) {
@@ -401,12 +396,12 @@ pub enum NoiseModel {
     Depolarizing { error_rate: f64 },
     Dephasing { error_rate: f64 },
     AmplitudeDamping { error_rate: f64 },
-    Composite { models: Vec<NoiseModel> },
+    Composite { models: Vec<Self> },
 }
 
 impl ErrorSuppressionSynthesis {
     /// Create a new error suppression synthesis
-    pub fn new(
+    pub const fn new(
         target_unitary: Array2<Complex64>,
         noise_model: NoiseModel,
         error_suppression_level: f64,
@@ -544,14 +539,8 @@ impl ErrorSuppressionSynthesis {
         // Simplified optimization - adjust gate parameters
         for operation in &mut optimized {
             match operation {
-                GateOperation::RX(angle) => {
-                    *angle *= 1.0 + self.error_suppression_level * 0.01;
-                }
-                GateOperation::RY(angle) => {
-                    *angle *= 1.0 + self.error_suppression_level * 0.01;
-                }
-                GateOperation::RZ(angle) => {
-                    *angle *= 1.0 + self.error_suppression_level * 0.01;
+                GateOperation::RX(angle) | GateOperation::RY(angle) | GateOperation::RZ(angle) => {
+                    *angle *= self.error_suppression_level.mul_add(0.01, 1.0);
                 }
                 _ => {}
             }
@@ -705,11 +694,6 @@ impl ErrorSuppressionSynthesis {
 
     fn pauli_matrix(&self, index: usize) -> Array2<Complex64> {
         match index {
-            0 => scirs2_core::ndarray::array![
-                // I
-                [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-                [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
-            ],
             1 => scirs2_core::ndarray::array![
                 // X
                 [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
@@ -725,7 +709,8 @@ impl ErrorSuppressionSynthesis {
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
             ],
-            _ => scirs2_core::ndarray::array![
+            0 | _ => scirs2_core::ndarray::array![
+                // I (identity) or default
                 [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
                 [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]
             ],
@@ -963,14 +948,18 @@ impl UltraHighFidelitySynthesis {
             .max_by(|a, b| {
                 let fidelity_a = self.get_method_fidelity(a);
                 let fidelity_b = self.get_method_fidelity(b);
-                fidelity_a.partial_cmp(&fidelity_b).unwrap()
+                fidelity_a
+                    .partial_cmp(&fidelity_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .unwrap();
+            .ok_or_else(|| {
+                QuantRS2Error::OptimizationFailed("No synthesis results to compare".to_string())
+            })?;
 
         Ok(best)
     }
 
-    fn get_method_fidelity(&self, method: &SynthesisMethod) -> f64 {
+    const fn get_method_fidelity(&self, method: &SynthesisMethod) -> f64 {
         match method {
             SynthesisMethod::GRAPE(result) => result.final_fidelity,
             SynthesisMethod::ReinforcementLearning(result) => result.best_fidelity,
@@ -978,7 +967,7 @@ impl UltraHighFidelitySynthesis {
         }
     }
 
-    fn get_result_fidelity(&self, method: &SynthesisMethod) -> f64 {
+    const fn get_result_fidelity(&self, method: &SynthesisMethod) -> f64 {
         self.get_method_fidelity(method)
     }
 
@@ -1063,7 +1052,7 @@ mod tests {
         let result = rl.train(100, 5);
         assert!(result.is_ok());
 
-        let rl_result = result.unwrap();
+        let rl_result = result.expect("RL training failed");
         assert!(!rl_result.best_sequence.is_empty());
         assert!(rl_result.best_fidelity >= 0.0);
     }
@@ -1080,7 +1069,7 @@ mod tests {
         let result = error_supp.synthesize();
 
         assert!(result.is_ok());
-        let sequence = result.unwrap();
+        let sequence = result.expect("Error suppression synthesis failed");
         assert!(!sequence.gate_sequence.is_empty());
         assert!(sequence.estimated_fidelity >= 0.0);
     }

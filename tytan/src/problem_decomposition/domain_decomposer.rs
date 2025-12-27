@@ -587,18 +587,18 @@ mod tests {
         let decomposer = DomainDecomposer::new(base_sampler);
 
         // Create test QUBO
-        let qubo =
-            Array2::from_shape_vec((6, 6), (0..36).map(|x| x as f64 * 0.1).collect()).unwrap();
+        let qubo = Array2::from_shape_vec((6, 6), (0..36).map(|x| x as f64 * 0.1).collect())
+            .expect("6x6 QUBO matrix construction should succeed");
 
         let mut var_map = HashMap::new();
         for i in 0..6 {
-            var_map.insert(format!("x{}", i), i);
+            var_map.insert(format!("x{i}"), i);
         }
 
         let domains = decomposer.decompose_into_domains(&qubo, &var_map);
         assert!(domains.is_ok());
 
-        let domains = domains.unwrap();
+        let domains = domains.expect("Domain decomposition should succeed");
         assert!(!domains.is_empty());
 
         // Check that domains cover all variables

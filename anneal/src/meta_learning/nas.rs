@@ -59,7 +59,7 @@ pub struct ResourceRequirements {
 }
 
 /// Architecture generation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerationMethod {
     /// Random generation
     Random,
@@ -115,10 +115,11 @@ pub enum PredictorModel {
     /// Support vector machine
     SupportVectorMachine,
     /// Ensemble model
-    Ensemble(Vec<PredictorModel>),
+    Ensemble(Vec<Self>),
 }
 
 impl NeuralArchitectureSearch {
+    #[must_use]
     pub fn new(config: NeuralArchitectureSearchConfig) -> Self {
         Self {
             config: config.clone(),
@@ -209,7 +210,7 @@ impl NeuralArchitectureSearch {
                 memory: 512,
                 computation: 1e9,
                 training_time: Duration::from_secs(300),
-                model_size: 100000,
+                model_size: 100_000,
             },
             generation_method: method,
         };
@@ -259,6 +260,7 @@ impl NeuralArchitectureSearch {
     }
 
     /// Get the best architecture found so far
+    #[must_use]
     pub fn get_best_architecture(&self) -> Option<&ArchitectureCandidate> {
         self.current_architectures.iter().max_by(|a, b| {
             let a_perf = a.actual_performance.unwrap_or(a.estimated_performance);
@@ -421,12 +423,12 @@ impl PerformancePredictor {
         self.training_data.push((architecture, performance));
 
         // Limit training data size
-        if self.training_data.len() > 10000 {
+        if self.training_data.len() > 10_000 {
             self.training_data.remove(0);
         }
 
         // Update accuracy estimate (simplified)
-        self.accuracy = 0.8 + (self.training_data.len() as f64 / 10000.0) * 0.15;
+        self.accuracy = (self.training_data.len() as f64 / 10_000.0).mul_add(0.15, 0.8);
     }
 }
 
@@ -451,7 +453,7 @@ mod tests {
         let candidate = nas.generate_candidate(GenerationMethod::Random);
         assert!(candidate.is_ok());
 
-        let arch = candidate.unwrap();
+        let arch = candidate.expect("architecture generation should succeed");
         assert!(!arch.architecture.layers.is_empty());
         assert!(!arch.id.is_empty());
     }
@@ -493,7 +495,7 @@ mod tests {
         let performance = predictor.predict(&architecture);
         assert!(performance.is_ok());
 
-        let perf_value = performance.unwrap();
+        let perf_value = performance.expect("performance prediction should succeed");
         assert!(perf_value >= 0.0 && perf_value <= 1.0);
     }
 }

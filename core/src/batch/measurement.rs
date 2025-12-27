@@ -111,11 +111,10 @@ fn measure_single_state(
     qubits_to_measure: &[QubitId],
     config: &MeasurementConfig,
 ) -> (Vec<u8>, Vec<f64>) {
-    let mut rng = if let Some(seed) = config.seed {
-        StdRng::seed_from_u64(seed)
-    } else {
-        StdRng::from_seed(thread_rng().gen())
-    };
+    let mut rng = config.seed.map_or_else(
+        || StdRng::from_seed(thread_rng().gen()),
+        StdRng::seed_from_u64,
+    );
 
     let mut outcomes = Vec::with_capacity(qubits_to_measure.len());
     let mut probabilities = Vec::with_capacity(qubits_to_measure.len());
@@ -146,11 +145,7 @@ fn measure_qubit(state: &Array1<Complex64>, qubit: QubitId, rng: &mut StdRng) ->
     }
 
     // Perform measurement
-    let outcome = if rng.random::<f64>() < prob_zero {
-        0
-    } else {
-        1
-    };
+    let outcome = u8::from(rng.random::<f64>() >= prob_zero);
     let probability = if outcome == 0 {
         prob_zero
     } else {
@@ -242,7 +237,7 @@ fn compute_measurement_statistics(
 
         if count > max_count {
             max_count = count;
-            most_likely = outcome.clone();
+            most_likely.clone_from(outcome);
         }
     }
 
@@ -455,7 +450,8 @@ mod tests {
 
     #[test]
     fn test_batch_measurement() {
-        let batch = BatchStateVector::new(5, 2, Default::default()).unwrap();
+        let batch = BatchStateVector::new(5, 2, Default::default())
+            .expect("Failed to create batch state vector");
         let config = MeasurementConfig {
             shots: 100,
             return_states: false,
@@ -463,7 +459,8 @@ mod tests {
             parallel: false,
         };
 
-        let result = measure_batch(&batch, &[QubitId(0), QubitId(1)], config).unwrap();
+        let result = measure_batch(&batch, &[QubitId(0), QubitId(1)], config)
+            .expect("Batch measurement failed");
 
         assert_eq!(result.outcomes.shape(), &[5, 2]);
         assert_eq!(result.probabilities.shape(), &[5, 2]);
@@ -484,9 +481,11 @@ mod tests {
         states[[0, 0]] = Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0);
         states[[0, 1]] = Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0);
 
-        let batch = BatchStateVector::from_states(states, Default::default()).unwrap();
+        let batch = BatchStateVector::from_states(states, Default::default())
+            .expect("Failed to create batch from states");
 
-        let stats = measure_batch_with_statistics(&batch, &[QubitId(0)], 1000).unwrap();
+        let stats = measure_batch_with_statistics(&batch, &[QubitId(0)], 1000)
+            .expect("Failed to measure batch statistics");
 
         assert_eq!(stats.batch_size, 1);
         assert_eq!(stats.measurement_size, 1);
@@ -502,7 +501,8 @@ mod tests {
 
     #[test]
     fn test_expectation_measurement() {
-        let batch = BatchStateVector::new(3, 1, Default::default()).unwrap();
+        let batch = BatchStateVector::new(3, 1, Default::default())
+            .expect("Failed to create batch state vector");
 
         // Pauli Z observable
         let pauli_z = array![
@@ -510,7 +510,8 @@ mod tests {
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
 
-        let expectations = measure_expectation_batch(&batch, &[(QubitId(0), pauli_z)]).unwrap();
+        let expectations = measure_expectation_batch(&batch, &[(QubitId(0), pauli_z)])
+            .expect("Expectation value measurement failed");
 
         assert_eq!(expectations.len(), 3);
         // All states are |0>, so Z expectation is +1

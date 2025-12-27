@@ -64,8 +64,7 @@ impl BatchStateVector {
             let required_memory = batch_size * state_size * std::mem::size_of::<Complex64>();
             if required_memory > limit {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Batch requires {} bytes, limit is {}",
-                    required_memory, limit
+                    "Batch requires {required_memory} bytes, limit is {limit}"
                 )));
             }
         }
@@ -279,14 +278,15 @@ mod tests {
 
     #[test]
     fn test_batch_creation() {
-        let batch = BatchStateVector::new(10, 3, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(10, 3, BatchConfig::default())
+            .expect("Failed to create batch state vector");
         assert_eq!(batch.batch_size(), 10);
         assert_eq!(batch.n_qubits, 3);
         assert_eq!(batch.states.ncols(), 8); // 2^3
 
         // Check initial state is |000>
         for i in 0..10 {
-            let state = batch.get_state(i).unwrap();
+            let state = batch.get_state(i).expect("Failed to get state from batch");
             assert_eq!(state[0], Complex64::new(1.0, 0.0));
             for j in 1..8 {
                 assert_eq!(state[j], Complex64::new(0.0, 0.0));
@@ -301,7 +301,8 @@ mod tests {
             states[[i, i % 4]] = Complex64::new(1.0, 0.0);
         }
 
-        let batch = BatchStateVector::from_states(states, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::from_states(states, BatchConfig::default())
+            .expect("Failed to create batch from states");
         assert_eq!(batch.batch_size(), 5);
         assert_eq!(batch.n_qubits, 2); // 2^2 = 4
     }
@@ -314,14 +315,16 @@ mod tests {
             Array1::from_vec(vec![Complex64::new(0.707, 0.0), Complex64::new(0.707, 0.0)]),
         ];
 
-        let batch = create_batch(states, BatchConfig::default()).unwrap();
+        let batch = create_batch(states, BatchConfig::default())
+            .expect("Failed to create batch from state collection");
         assert_eq!(batch.batch_size(), 3);
         assert_eq!(batch.n_qubits, 1);
     }
 
     #[test]
     fn test_split_batch() {
-        let batch = BatchStateVector::new(10, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(10, 2, BatchConfig::default())
+            .expect("Failed to create batch for split test");
         let chunks = split_batch(&batch, 3);
 
         assert_eq!(chunks.len(), 4); // 3, 3, 3, 1
@@ -333,10 +336,13 @@ mod tests {
 
     #[test]
     fn test_merge_batches() {
-        let batch1 = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
-        let batch2 = BatchStateVector::new(2, 2, BatchConfig::default()).unwrap();
+        let batch1 = BatchStateVector::new(3, 2, BatchConfig::default())
+            .expect("Failed to create first batch");
+        let batch2 = BatchStateVector::new(2, 2, BatchConfig::default())
+            .expect("Failed to create second batch");
 
-        let merged = merge_batches(vec![batch1, batch2], BatchConfig::default()).unwrap();
+        let merged = merge_batches(vec![batch1, batch2], BatchConfig::default())
+            .expect("Failed to merge batches");
         assert_eq!(merged.batch_size(), 5);
         assert_eq!(merged.n_qubits, 2);
     }
@@ -362,11 +368,14 @@ mod tests {
 
     #[test]
     fn test_batch_state_normalization() {
-        let batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(5, 2, BatchConfig::default())
+            .expect("Failed to create batch for normalization test");
 
         // Check that all states are normalized
         for i in 0..batch.batch_size() {
-            let state = batch.get_state(i).unwrap();
+            let state = batch
+                .get_state(i)
+                .expect("Failed to get state for normalization check");
             let norm: f64 = state.iter().map(|c| c.norm_sqr()).sum();
             assert!(
                 (norm - 1.0).abs() < 1e-10,
@@ -379,7 +388,8 @@ mod tests {
 
     #[test]
     fn test_batch_state_get_set_roundtrip() {
-        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
+        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default())
+            .expect("Failed to create batch for get/set test");
 
         // Create a custom state
         let custom_state = Array1::from_vec(vec![
@@ -390,8 +400,12 @@ mod tests {
         ]);
 
         // Set and get
-        batch.set_state(1, &custom_state).unwrap();
-        let retrieved = batch.get_state(1).unwrap();
+        batch
+            .set_state(1, &custom_state)
+            .expect("Failed to set custom state");
+        let retrieved = batch
+            .get_state(1)
+            .expect("Failed to retrieve state after set");
 
         // Verify
         for i in 0..4 {
@@ -401,7 +415,8 @@ mod tests {
 
     #[test]
     fn test_batch_out_of_bounds_access() {
-        let batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(5, 2, BatchConfig::default())
+            .expect("Failed to create batch for bounds test");
 
         // Get out of bounds
         assert!(batch.get_state(5).is_err());
@@ -410,7 +425,8 @@ mod tests {
 
     #[test]
     fn test_batch_set_wrong_size_state() {
-        let mut batch = BatchStateVector::new(5, 2, BatchConfig::default()).unwrap();
+        let mut batch = BatchStateVector::new(5, 2, BatchConfig::default())
+            .expect("Failed to create batch for wrong size test");
 
         // Try to set state with wrong size
         let wrong_state =
@@ -450,7 +466,8 @@ mod tests {
 
     #[test]
     fn test_split_batch_single_element() {
-        let batch = BatchStateVector::new(1, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(1, 2, BatchConfig::default())
+            .expect("Failed to create single element batch");
         let chunks = split_batch(&batch, 10);
 
         assert_eq!(chunks.len(), 1);
@@ -459,7 +476,8 @@ mod tests {
 
     #[test]
     fn test_split_batch_exact_division() {
-        let batch = BatchStateVector::new(9, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(9, 2, BatchConfig::default())
+            .expect("Failed to create batch for exact division test");
         let chunks = split_batch(&batch, 3);
 
         assert_eq!(chunks.len(), 3);
@@ -476,8 +494,10 @@ mod tests {
 
     #[test]
     fn test_merge_batches_mismatched_qubits() {
-        let batch1 = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
-        let batch2 = BatchStateVector::new(2, 3, BatchConfig::default()).unwrap();
+        let batch1 = BatchStateVector::new(3, 2, BatchConfig::default())
+            .expect("Failed to create first batch with 2 qubits");
+        let batch2 = BatchStateVector::new(2, 3, BatchConfig::default())
+            .expect("Failed to create second batch with 3 qubits");
 
         let result = merge_batches(vec![batch1, batch2], BatchConfig::default());
         assert!(result.is_err());
@@ -496,7 +516,8 @@ mod tests {
     #[test]
     fn test_large_batch_creation() {
         // Test with larger batch size
-        let batch = BatchStateVector::new(100, 4, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(100, 4, BatchConfig::default())
+            .expect("Failed to create large batch");
         assert_eq!(batch.batch_size(), 100);
         assert_eq!(batch.n_qubits, 4);
         assert_eq!(batch.states.ncols(), 16); // 2^4
@@ -504,7 +525,8 @@ mod tests {
 
     #[test]
     fn test_batch_state_modification_isolation() {
-        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default()).unwrap();
+        let mut batch = BatchStateVector::new(3, 2, BatchConfig::default())
+            .expect("Failed to create batch for isolation test");
 
         // Modify one state
         let modified = Array1::from_vec(vec![
@@ -513,11 +535,13 @@ mod tests {
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
         ]);
-        batch.set_state(1, &modified).unwrap();
+        batch
+            .set_state(1, &modified)
+            .expect("Failed to set modified state");
 
         // Check that other states are unchanged
-        let state0 = batch.get_state(0).unwrap();
-        let state2 = batch.get_state(2).unwrap();
+        let state0 = batch.get_state(0).expect("Failed to get state 0");
+        let state2 = batch.get_state(2).expect("Failed to get state 2");
 
         assert_eq!(state0[0], Complex64::new(1.0, 0.0));
         assert_eq!(state2[0], Complex64::new(1.0, 0.0));
@@ -525,12 +549,14 @@ mod tests {
 
     #[test]
     fn test_split_merge_roundtrip() {
-        let batch = BatchStateVector::new(10, 2, BatchConfig::default()).unwrap();
+        let batch = BatchStateVector::new(10, 2, BatchConfig::default())
+            .expect("Failed to create batch for roundtrip test");
         let original_states = batch.states.clone();
 
         // Split and merge
         let chunks = split_batch(&batch, 3);
-        let merged = merge_batches(chunks, BatchConfig::default()).unwrap();
+        let merged = merge_batches(chunks, BatchConfig::default())
+            .expect("Failed to merge chunks in roundtrip test");
 
         // Verify states are preserved
         assert_eq!(merged.batch_size(), 10);

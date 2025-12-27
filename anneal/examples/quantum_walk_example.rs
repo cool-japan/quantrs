@@ -286,7 +286,7 @@ fn amplitude_amplification_example() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nImprovement: {improvement:.4}");
     println!(
         "Amplification overhead: {:.2?}",
-        time_with_amp - time_no_amp
+        time_with_amp.checked_sub(time_no_amp).unwrap()
     );
 
     Ok(())

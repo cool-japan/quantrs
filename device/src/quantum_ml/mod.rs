@@ -91,7 +91,7 @@ impl Default for QMLConfig {
 }
 
 /// Types of optimizers for QML
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizerType {
     /// Gradient descent
     GradientDescent,
@@ -112,7 +112,7 @@ pub enum OptimizerType {
 }
 
 /// Gradient computation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GradientMethod {
     /// Parameter shift rule
     ParameterShift,
@@ -127,7 +127,7 @@ pub enum GradientMethod {
 }
 
 /// Noise resilience levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoiseResilienceLevel {
     Low,
     Medium,
@@ -151,7 +151,7 @@ pub struct TrainingEpoch {
 }
 
 /// QML model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QMLModelType {
     /// Variational Quantum Classifier
     VQC,
@@ -387,10 +387,10 @@ impl QMLModel {
     pub async fn export(&self, format: ModelExportFormat) -> DeviceResult<Vec<u8>> {
         match format {
             ModelExportFormat::JSON => serde_json::to_vec(self)
-                .map_err(|e| DeviceError::InvalidInput(format!("JSON export error: {}", e))),
+                .map_err(|e| DeviceError::InvalidInput(format!("JSON export error: {e}"))),
             ModelExportFormat::Binary => {
                 bincode::serde::encode_to_vec(self, bincode::config::standard())
-                    .map_err(|e| DeviceError::InvalidInput(format!("Binary export error: {:?}", e)))
+                    .map_err(|e| DeviceError::InvalidInput(format!("Binary export error: {e:?}")))
             }
             ModelExportFormat::ONNX => {
                 // Placeholder for ONNX export
@@ -404,11 +404,11 @@ impl QMLModel {
     pub async fn import(data: Vec<u8>, format: ModelExportFormat) -> DeviceResult<Self> {
         match format {
             ModelExportFormat::JSON => serde_json::from_slice(&data)
-                .map_err(|e| DeviceError::InvalidInput(format!("JSON import error: {}", e))),
+                .map_err(|e| DeviceError::InvalidInput(format!("JSON import error: {e}"))),
             ModelExportFormat::Binary => {
                 bincode::serde::decode_from_slice(&data, bincode::config::standard())
                     .map(|(v, _consumed)| v)
-                    .map_err(|e| DeviceError::InvalidInput(format!("Binary import error: {:?}", e)))
+                    .map_err(|e| DeviceError::InvalidInput(format!("Binary import error: {e:?}")))
             }
             ModelExportFormat::ONNX => Err(DeviceError::InvalidInput(
                 "ONNX import not yet implemented".to_string(),
@@ -418,7 +418,7 @@ impl QMLModel {
 }
 
 /// Model export formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelExportFormat {
     JSON,
     Binary,
@@ -462,7 +462,11 @@ impl TrainingStatistics {
         }
 
         let total_epochs = history.len();
-        let final_loss = history.last().unwrap().loss;
+        // Safe to use expect here since we already verified history is not empty above
+        let final_loss = history
+            .last()
+            .expect("history should not be empty after early return check")
+            .loss;
         let best_loss = history.iter().map(|e| e.loss).fold(f64::INFINITY, f64::min);
         let average_loss = history.iter().map(|e| e.loss).sum::<f64>() / total_epochs as f64;
         let total_training_time = history.iter().map(|e| e.execution_time).sum();
@@ -499,6 +503,12 @@ pub struct ModelRegistry {
     active_models: HashMap<String, bool>,
 }
 
+impl Default for ModelRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelRegistry {
     pub fn new() -> Self {
         Self {
@@ -516,7 +526,7 @@ impl ModelRegistry {
     pub fn get_model(&self, id: &str) -> DeviceResult<&QMLModel> {
         self.models
             .get(id)
-            .ok_or_else(|| DeviceError::InvalidInput(format!("Model {} not found", id)))
+            .ok_or_else(|| DeviceError::InvalidInput(format!("Model {id} not found")))
     }
 
     pub fn model_count(&self) -> usize {
@@ -535,7 +545,7 @@ impl ModelRegistry {
             self.active_models.insert(id.to_string(), false);
             Ok(())
         } else {
-            Err(DeviceError::InvalidInput(format!("Model {} not found", id)))
+            Err(DeviceError::InvalidInput(format!("Model {id} not found")))
         }
     }
 }
@@ -545,10 +555,12 @@ pub fn create_vqc_accelerator(
     device: Arc<RwLock<dyn QuantumDevice + Send + Sync>>,
     num_qubits: usize,
 ) -> DeviceResult<QMLAccelerator> {
-    let mut config = QMLConfig::default();
-    config.max_qubits = num_qubits;
-    config.optimizer = OptimizerType::Adam;
-    config.gradient_method = GradientMethod::ParameterShift;
+    let config = QMLConfig {
+        max_qubits: num_qubits,
+        optimizer: OptimizerType::Adam,
+        gradient_method: GradientMethod::ParameterShift,
+        ..Default::default()
+    };
 
     QMLAccelerator::new(device, config)
 }
@@ -558,11 +570,13 @@ pub fn create_qaoa_accelerator(
     device: Arc<RwLock<dyn QuantumDevice + Send + Sync>>,
     problem_size: usize,
 ) -> DeviceResult<QMLAccelerator> {
-    let mut config = QMLConfig::default();
-    config.max_qubits = problem_size;
-    config.optimizer = OptimizerType::COBYLA;
-    config.gradient_method = GradientMethod::FiniteDifference;
-    config.max_circuit_depth = 50;
+    let config = QMLConfig {
+        max_qubits: problem_size,
+        optimizer: OptimizerType::COBYLA,
+        gradient_method: GradientMethod::FiniteDifference,
+        max_circuit_depth: 50,
+        ..Default::default()
+    };
 
     QMLAccelerator::new(device, config)
 }
@@ -575,7 +589,8 @@ mod tests {
     #[tokio::test]
     async fn test_qml_accelerator_creation() {
         let device = create_mock_quantum_device();
-        let accelerator = QMLAccelerator::new(device, QMLConfig::default()).unwrap();
+        let accelerator = QMLAccelerator::new(device, QMLConfig::default())
+            .expect("QML accelerator creation should succeed with mock device");
 
         assert_eq!(accelerator.config.max_qubits, 20);
         assert!(!accelerator.is_connected);
@@ -602,11 +617,13 @@ mod tests {
 
         registry
             .register_model("test_model".to_string(), model)
-            .unwrap();
+            .expect("registering model should succeed");
         assert_eq!(registry.model_count(), 1);
         assert_eq!(registry.active_model_count(), 1);
 
-        let retrieved = registry.get_model("test_model").unwrap();
+        let retrieved = registry
+            .get_model("test_model")
+            .expect("retrieving registered model should succeed");
         assert_eq!(retrieved.model_type, QMLModelType::VQC);
     }
 

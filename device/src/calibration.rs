@@ -187,7 +187,7 @@ pub struct TwoQubitGateCalibration {
     /// Direction-specific calibration (some gates work better in one direction)
     pub directional: bool,
     /// Alternative calibration for reversed direction
-    pub reversed_calibration: Option<Box<TwoQubitGateCalibration>>,
+    pub reversed_calibration: Option<Box<Self>>,
 }
 
 /// Multi-qubit gate calibration data
@@ -414,12 +414,11 @@ impl CalibrationManager {
 
     /// Load calibration from file
     pub fn load_calibration(&mut self, path: &str) -> QuantRS2Result<()> {
-        let data = std::fs::read_to_string(path).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Failed to read calibration: {}", e))
-        })?;
+        let data = std::fs::read_to_string(path)
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to read calibration: {e}")))?;
 
         let calibration: DeviceCalibration = serde_json::from_str(&data).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Failed to parse calibration: {}", e))
+            QuantRS2Error::InvalidInput(format!("Failed to parse calibration: {e}"))
         })?;
 
         self.update_calibration(calibration);
@@ -429,15 +428,15 @@ impl CalibrationManager {
     /// Save calibration to file
     pub fn save_calibration(&self, device_id: &str, path: &str) -> QuantRS2Result<()> {
         let calibration = self.get_calibration(device_id).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("No calibration for device {}", device_id))
+            QuantRS2Error::InvalidInput(format!("No calibration for device {device_id}"))
         })?;
 
         let data = serde_json::to_string_pretty(calibration).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Failed to serialize calibration: {}", e))
+            QuantRS2Error::InvalidInput(format!("Failed to serialize calibration: {e}"))
         })?;
 
         std::fs::write(path, data).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Failed to write calibration: {}", e))
+            QuantRS2Error::InvalidInput(format!("Failed to write calibration: {e}"))
         })?;
 
         Ok(())
@@ -470,15 +469,13 @@ impl CalibrationManager {
 
     /// Check if calibration is still valid
     pub fn is_calibration_valid(&self, device_id: &str) -> bool {
-        if let Some(cal) = self.calibrations.get(device_id) {
+        self.calibrations.get(device_id).map_or(false, |cal| {
             let elapsed = SystemTime::now()
                 .duration_since(cal.timestamp)
                 .unwrap_or(Duration::from_secs(u64::MAX));
 
             elapsed < cal.valid_duration
-        } else {
-            false
-        }
+        })
     }
 
     /// Get the latest calibration across all devices
@@ -575,12 +572,14 @@ impl CalibrationBuilder {
     }
 
     /// Set validity duration
-    pub fn valid_duration(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn valid_duration(mut self, duration: Duration) -> Self {
         self.valid_duration = duration;
         self
     }
 
     /// Add qubit calibration
+    #[must_use]
     pub fn add_qubit_calibration(mut self, calibration: QubitCalibration) -> Self {
         self.qubit_calibrations
             .insert(calibration.qubit_id, calibration);
@@ -588,6 +587,7 @@ impl CalibrationBuilder {
     }
 
     /// Add single-qubit gate calibration
+    #[must_use]
     pub fn add_single_qubit_gate(
         mut self,
         gate_name: String,
@@ -598,6 +598,7 @@ impl CalibrationBuilder {
     }
 
     /// Add two-qubit gate calibration
+    #[must_use]
     pub fn add_two_qubit_gate(
         mut self,
         control: QubitId,
@@ -609,24 +610,28 @@ impl CalibrationBuilder {
     }
 
     /// Set readout calibration
+    #[must_use]
     pub fn readout_calibration(mut self, calibration: ReadoutCalibration) -> Self {
         self.readout_calibration = Some(calibration);
         self
     }
 
     /// Set crosstalk matrix
+    #[must_use]
     pub fn crosstalk_matrix(mut self, matrix: CrosstalkMatrix) -> Self {
         self.crosstalk_matrix = Some(matrix);
         self
     }
 
     /// Set device topology
+    #[must_use]
     pub fn topology(mut self, topology: DeviceTopology) -> Self {
         self.topology = Some(topology);
         self
     }
 
     /// Add metadata
+    #[must_use]
     pub fn add_metadata(mut self, key: String, value: String) -> Self {
         self.metadata.insert(key, value);
         self
@@ -803,7 +808,9 @@ pub fn create_ideal_calibration(device_id: String, num_qubits: usize) -> DeviceC
         qubit_coordinates: None,
     });
 
-    builder.build().unwrap()
+    builder
+        .build()
+        .expect("Ideal calibration should always be valid with all required fields")
 }
 
 #[cfg(test)]
@@ -843,7 +850,7 @@ mod tests {
                 qubit_coordinates: None,
             })
             .build()
-            .unwrap();
+            .expect("Test calibration should build successfully");
 
         assert_eq!(cal.device_id, "test_device");
         assert_eq!(cal.qubit_calibrations.len(), 1);

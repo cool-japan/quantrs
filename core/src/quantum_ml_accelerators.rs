@@ -305,7 +305,7 @@ impl QuantumKernelOptimizer {
             }
         }
 
-        self.kernel_matrix = kernel_matrix.clone();
+        self.kernel_matrix.clone_from(&kernel_matrix);
         Ok(kernel_matrix)
     }
 
@@ -476,8 +476,7 @@ impl QuantumKernelOptimizer {
                 [Complex64::new(0.0, 0.0), Complex64::new(cos_half, sin_half)]
             ]),
             _ => Err(QuantRS2Error::InvalidGateOp(format!(
-                "Unknown Pauli string: {}",
-                pauli_string
+                "Unknown Pauli string: {pauli_string}"
             ))),
         }
     }
@@ -568,17 +567,17 @@ impl QuantumKernelOptimizer {
         let config = OptimizationConfig::default();
 
         let result = minimize(objective, &initial_params, &config).map_err(|e| {
-            QuantRS2Error::OptimizationFailed(format!("Kernel optimization failed: {:?}", e))
+            QuantRS2Error::OptimizationFailed(format!("Kernel optimization failed: {e:?}"))
         })?;
 
         // Update the feature map parameters with optimized values
-        self.feature_map_parameters = result.parameters.clone();
+        self.feature_map_parameters.clone_from(&result.parameters);
 
         Ok(result)
     }
 
     /// Update feature map parameters
-    fn update_feature_map_parameters(&self, _params: &Array1<f64>) {
+    const fn update_feature_map_parameters(&self, _params: &Array1<f64>) {
         // Implementation depends on specific feature map type
         // Would update angles, depths, etc.
     }
@@ -635,7 +634,7 @@ impl HardwareEfficientMLLayer {
     /// Initialize parameters randomly
     pub fn initialize_parameters(&mut self, rng: &mut impl scirs2_core::random::Rng) {
         use scirs2_core::random::prelude::*;
-        for param in self.parameters.iter_mut() {
+        for param in &mut self.parameters {
             *param = rng.gen_range(-PI..PI);
         }
     }
@@ -940,7 +939,7 @@ impl TensorNetworkMLAccelerator {
 
         Ok(result
             .into_shape_with_order((sqrt_dim, sqrt_dim))
-            .map_err(|e| QuantRS2Error::TensorNetwork(format!("Shape error: {}", e)))?)
+            .map_err(|e| QuantRS2Error::TensorNetwork(format!("Shape error: {e}")))?)
     }
 
     /// Estimate computational complexity
@@ -980,7 +979,10 @@ mod tests {
 
         let gradient = optimizer.compute_gradient(expectation_fn, &params);
         assert!(gradient.is_ok());
-        assert_eq!(gradient.unwrap().len(), 2);
+        assert_eq!(
+            gradient.expect("gradient computation should succeed").len(),
+            2
+        );
     }
 
     #[test]
@@ -995,7 +997,7 @@ mod tests {
         let result = optimizer.compute_kernel_matrix(&data);
 
         assert!(result.is_ok());
-        let kernel = result.unwrap();
+        let kernel = result.expect("kernel matrix computation should succeed");
         assert_eq!(kernel.shape(), &[2, 2]);
     }
 

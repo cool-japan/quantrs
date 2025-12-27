@@ -203,7 +203,7 @@ impl QuantumAdiabaticPathOptimizer {
 
         // Compute eigenvalues (simplified - in practice use SciRS2 linalg)
         let mut eigenvalues: Vec<f64> = (0..dim).map(|i| hamiltonian[[i, i]]).collect();
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let ground = eigenvalues[0];
         let excited = if eigenvalues.len() > 1 {
@@ -252,7 +252,7 @@ impl QuantumAdiabaticPathOptimizer {
             energies.push(energy);
         }
 
-        energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let ground = energies[0];
         let excited = if energies.len() > 1 {
@@ -608,7 +608,9 @@ mod tests {
         qubo[[0, 1]] = 2.0;
 
         let optimizer = QuantumAdiabaticPathOptimizer::new(config);
-        let samples = optimizer.run_adiabatic_evolution(&qubo).unwrap();
+        let samples = optimizer
+            .run_adiabatic_evolution(&qubo)
+            .expect("Failed to run adiabatic evolution");
         assert_eq!(samples.len(), 10);
     }
 

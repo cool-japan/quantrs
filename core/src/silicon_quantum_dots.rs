@@ -9,7 +9,7 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Types of silicon quantum dots
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuantumDotType {
     /// Single electron spin qubit
     SpinQubit,
@@ -44,7 +44,7 @@ pub struct QuantumDotParams {
 
 impl QuantumDotParams {
     /// Create typical silicon quantum dot parameters
-    pub fn typical_silicon_dot() -> Self {
+    pub const fn typical_silicon_dot() -> Self {
         Self {
             diameter: 50.0,            // 50 nm
             tunnel_coupling: 1e-6,     // 1 μeV
@@ -108,10 +108,8 @@ impl SiliconQuantumDot {
         position: [f64; 2],
     ) -> Self {
         let state_size = match dot_type {
-            QuantumDotType::SpinQubit => 2,      // |↑⟩, |↓⟩
-            QuantumDotType::ChargeQubit => 2,    // |0⟩, |1⟩ electrons
-            QuantumDotType::SingletTriplet => 4, // |S⟩, |T₀⟩, |T₊⟩, |T₋⟩
-            QuantumDotType::HybridQubit => 4,    // Hybrid encoding
+            QuantumDotType::SpinQubit | QuantumDotType::ChargeQubit => 2, // |↑⟩, |↓⟩ or |0⟩, |1⟩
+            QuantumDotType::SingletTriplet | QuantumDotType::HybridQubit => 4, // 4-level systems
         };
 
         let mut state = Array1::zeros(state_size);
@@ -170,7 +168,7 @@ impl SiliconQuantumDot {
         // Update parameters based on gate voltage
         if gate_name.starts_with("plunger") {
             // Plunger gate affects charging energy
-            self.params.charging_energy *= 1.0 + voltage * 0.1;
+            self.params.charging_energy *= voltage.mul_add(0.1, 1.0);
         } else if gate_name.starts_with("barrier") {
             // Barrier gate affects tunnel coupling
             self.params.tunnel_coupling *= (-voltage).exp();
@@ -315,7 +313,7 @@ impl SiliconQuantumDotSystem {
                 let pos1 = self.dots[i].position;
                 let pos2 = self.dots[j].position;
 
-                let distance = ((pos1[0] - pos2[0]).powi(2) + (pos1[1] - pos2[1]).powi(2)).sqrt();
+                let distance = (pos1[0] - pos2[0]).hypot(pos1[1] - pos2[1]);
 
                 // Exponential decay with distance
                 let coupling = 1e-6 * (-distance / 100.0).exp(); // 1 μeV at 100 nm
@@ -751,7 +749,9 @@ mod tests {
         let mut system = SiliconQuantumDotSystem::new(dot_configs, device_params);
         assert_eq!(system.num_dots, 2);
 
-        system.calculate_distance_coupling().unwrap();
+        system
+            .calculate_distance_coupling()
+            .expect("distance coupling calculation should succeed");
         assert!(system.coupling_matrix[[0, 1]] > 0.0);
     }
 
@@ -775,13 +775,13 @@ mod tests {
 
         let mut system = SiliconQuantumDotSystem::new(dot_configs, device_params);
 
-        // Apply π pulse (should flip spin)
+        // Apply pi pulse (should flip spin)
         let field_amplitude = 1e-3;
         let omega = field_amplitude * 2.0 * std::f64::consts::PI;
-        let duration = std::f64::consts::PI / omega; // Duration for π rotation
+        let duration = std::f64::consts::PI / omega; // Duration for pi rotation
         system
             .apply_magnetic_pulse(&[0], field_amplitude, duration, 0.0)
-            .unwrap();
+            .expect("magnetic pulse application should succeed");
 
         // Should be mostly in |1⟩ state
         let probs = system.dots[0].get_probabilities();
@@ -799,11 +799,15 @@ mod tests {
         ];
 
         let mut system = SiliconQuantumDotSystem::new(dot_configs, device_params);
-        system.set_coupling(0, 1, 1e-6).unwrap(); // 1 μeV coupling
+        system
+            .set_coupling(0, 1, 1e-6)
+            .expect("set_coupling should succeed"); // 1 uV coupling
 
         // Apply exchange interaction
         let duration = 1e-9; // 1 ns
-        system.apply_exchange_interaction(0, 1, duration).unwrap();
+        system
+            .apply_exchange_interaction(0, 1, duration)
+            .expect("exchange interaction should succeed");
 
         // States should be modified
         let state1 = system.dots[0].get_probabilities();
@@ -825,7 +829,9 @@ mod tests {
         system.dots[0].state[0] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
         system.dots[0].state[1] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
 
-        let result = system.dots[0].measure().unwrap();
+        let result = system.dots[0]
+            .measure()
+            .expect("measurement should succeed");
         assert!(result == 0 || result == 1);
 
         // State should be collapsed
@@ -842,12 +848,13 @@ mod tests {
         let mut system = SiliconQuantumDotSystem::new(dot_configs, device_params);
 
         // Test X rotation
-        SiliconQuantumDotGates::spin_x_rotation(&mut system, 0, std::f64::consts::PI).unwrap();
+        SiliconQuantumDotGates::spin_x_rotation(&mut system, 0, std::f64::consts::PI)
+            .expect("spin X rotation should succeed");
         let probs = system.dots[0].get_probabilities();
-        assert!(probs[1] > 0.8); // Should be in |1⟩
+        assert!(probs[1] > 0.8); // Should be in |1>
 
         // Test Hadamard
-        SiliconQuantumDotGates::hadamard(&mut system, 0).unwrap();
+        SiliconQuantumDotGates::hadamard(&mut system, 0).expect("hadamard gate should succeed");
         let probs = system.dots[0].get_probabilities();
         assert!(probs[0] > 0.05 && probs[0] < 0.95); // Should be in superposition (relaxed tolerance)
     }
@@ -863,13 +870,16 @@ mod tests {
         ];
 
         let mut system = SiliconQuantumDotSystem::new(dot_configs, device_params);
-        system.set_coupling(0, 1, 1e-3).unwrap(); // Increase coupling strength
+        system
+            .set_coupling(0, 1, 1e-3)
+            .expect("set_coupling should succeed"); // Increase coupling strength
 
-        // Set control to |1⟩
-        SiliconQuantumDotGates::spin_x_rotation(&mut system, 0, std::f64::consts::PI).unwrap();
+        // Set control to |1>
+        SiliconQuantumDotGates::spin_x_rotation(&mut system, 0, std::f64::consts::PI)
+            .expect("spin X rotation should succeed");
 
         // Apply CNOT
-        SiliconQuantumDotGates::cnot(&mut system, 0, 1).unwrap();
+        SiliconQuantumDotGates::cnot(&mut system, 0, 1).expect("CNOT gate should succeed");
 
         // Target should now be |1⟩ (approximately)
         let target_probs = system.dots[1].get_probabilities();
@@ -891,7 +901,9 @@ mod tests {
         let initial_state = system.dots[0].state.clone();
 
         // Apply decoherence
-        system.apply_decoherence(1e-6).unwrap(); // 1 μs
+        system
+            .apply_decoherence(1e-6)
+            .expect("decoherence application should succeed"); // 1 us
 
         let final_state = system.dots[0].state.clone();
 

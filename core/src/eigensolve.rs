@@ -77,7 +77,7 @@ fn eigen_2x2(matrix: &Array2<Complex>, tolerance: f64) -> QuantRS2Result<EigenDe
     // For each eigenvalue, solve (A - λI)v = 0
     for (i, &lambda) in eigenvalues.iter().enumerate() {
         // Use the first row of (A - λI) to find eigenvector
-        let _a_minus_lambda = a - lambda;
+        // let _a_minus_lambda = a - lambda;
 
         if b.norm() > tolerance {
             // v = [b, λ - a]ᵀ (normalized)
@@ -410,13 +410,13 @@ mod tests {
                 Complex::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create Pauli X matrix");
 
-        let result = eigen_decompose_unitary(&matrix, 1e-10).unwrap();
+        let result = eigen_decompose_unitary(&matrix, 1e-10).expect("Eigendecomposition failed");
 
         // Pauli X has eigenvalues ±1
         let mut eigenvalues: Vec<_> = result.eigenvalues.iter().map(|&x| x.re).collect();
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         assert!((eigenvalues[0] - (-1.0)).abs() < 1e-10);
         assert!((eigenvalues[1] - 1.0).abs() < 1e-10);
@@ -438,9 +438,9 @@ mod tests {
                 Complex::new(c, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create rotation matrix");
 
-        let result = eigen_decompose_unitary(&matrix, 1e-10).unwrap();
+        let result = eigen_decompose_unitary(&matrix, 1e-10).expect("Eigendecomposition failed");
 
         // Rotation matrix has eigenvalues e^(±iθ)
         for eigenvalue in result.eigenvalues.iter() {
@@ -466,9 +466,9 @@ mod tests {
                 Complex::new(-sqrt2_inv, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create Hadamard matrix");
 
-        let result = eigen_decompose_unitary(&matrix, 1e-10).unwrap();
+        let result = eigen_decompose_unitary(&matrix, 1e-10).expect("Eigendecomposition failed");
 
         // Check eigenvectors are orthonormal
         let v1 = result.eigenvectors.column(0);

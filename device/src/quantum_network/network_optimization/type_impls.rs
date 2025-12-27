@@ -19,11 +19,23 @@ use crate::quantum_network::distributed_protocols::{
 
 use super::type_definitions::*;
 
+impl Default for QuantumChannelOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumChannelOptimizer {
     pub fn new() -> Self {
         Self {
             channel_configs: vec!["low_noise".to_string(), "high_fidelity".to_string()],
         }
+    }
+}
+
+impl Default for CongestionPredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -35,13 +47,25 @@ impl CongestionPredictor {
     }
 }
 
+impl Default for AdaptiveRateControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdaptiveRateControl {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             initial_rate: 1.0,
             max_rate: 10.0,
             adjustment_factor: 1.5,
         }
+    }
+}
+
+impl Default for NetworkFeatureExtractor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -56,6 +80,12 @@ impl NetworkFeatureExtractor {
     }
 }
 
+impl Default for ErrorSyndromeAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ErrorSyndromeAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -64,6 +94,12 @@ impl ErrorSyndromeAnalyzer {
             correction_strategies: vec!["surface_code".to_string()],
             analysis_depth: 10,
         }
+    }
+}
+
+impl Default for TopologyPerformanceAnalyzer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -77,6 +113,12 @@ impl TopologyPerformanceAnalyzer {
             ],
             analysis_window: Duration::from_secs(300),
         }
+    }
+}
+
+impl Default for BandwidthOptimizer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -310,6 +352,12 @@ impl MLNetworkOptimizer {
     }
 }
 
+impl Default for AdmissionController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdmissionController {
     pub fn new() -> Self {
         Self {
@@ -319,6 +367,12 @@ impl AdmissionController {
                 "priority_level".to_string(),
             ],
         }
+    }
+}
+
+impl Default for UrgencyEvaluator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -333,6 +387,12 @@ impl UrgencyEvaluator {
     }
 }
 
+impl Default for TrafficPatternAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrafficPatternAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -344,6 +404,12 @@ impl TrafficPatternAnalyzer {
     }
 }
 
+impl Default for QuantumAwareBackoff {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumAwareBackoff {
     pub fn new() -> Self {
         Self {
@@ -352,6 +418,12 @@ impl QuantumAwareBackoff {
             urgency_scheduler: Arc::new(UrgencyScheduler::new()),
             backoff_multiplier: 2.0,
         }
+    }
+}
+
+impl Default for TopologyOptimizer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -383,11 +455,23 @@ impl TopologyOptimizer {
     }
 }
 
+impl Default for RoundRobinBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoundRobinBalancer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             current_index: std::sync::atomic::AtomicUsize::new(0),
         }
+    }
+}
+
+impl Default for MLEnhancedLoadBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -403,12 +487,24 @@ impl MLEnhancedLoadBalancer {
     }
 }
 
+impl Default for NetworkMetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkMetricsCollector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             collection_interval: Duration::from_secs(1),
             metrics_buffer: Vec::new(),
         }
+    }
+}
+
+impl Default for QuantumTrafficShaper {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -591,11 +687,23 @@ impl QuantumTrafficShaper {
     }
 }
 
+impl Default for ThroughputPredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ThroughputPredictor {
     pub fn new() -> Self {
         Self {
             prediction_model: "linear_regression".to_string(),
         }
+    }
+}
+
+impl Default for FailurePredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -607,11 +715,23 @@ impl FailurePredictor {
     }
 }
 
+impl Default for ProtocolOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProtocolOptimizer {
     pub fn new() -> Self {
         Self {
             protocol_configs: vec!["tcp".to_string(), "udp".to_string()],
         }
+    }
+}
+
+impl Default for QoSMonitoringSystem {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -628,6 +748,12 @@ impl QoSMonitoringSystem {
     }
 }
 
+impl Default for QoSEnforcement {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QoSEnforcement {
     pub fn new() -> Self {
         Self {
@@ -640,6 +766,12 @@ impl QoSEnforcement {
     }
 }
 
+impl Default for CongestionController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CongestionController {
     pub fn new() -> Self {
         Self {
@@ -649,12 +781,24 @@ impl CongestionController {
     }
 }
 
+impl Default for QuantumPriorityScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumPriorityScheduler {
     pub fn new() -> Self {
         Self {
             priority_queue: Vec::new(),
             scheduling_algorithm: "priority_queue".to_string(),
         }
+    }
+}
+
+impl Default for DeadlineScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -669,12 +813,24 @@ impl DeadlineScheduler {
     }
 }
 
+impl Default for AdaptiveRouting {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdaptiveRouting {
     pub fn new() -> Self {
         Self {
             routing_strategy: "shortest_path".to_string(),
             adaptation_interval: Duration::from_secs(30),
         }
+    }
+}
+
+impl Default for QoSResourceAllocator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -691,6 +847,12 @@ impl QoSResourceAllocator {
     }
 }
 
+impl Default for DynamicFeatureExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DynamicFeatureExtractor {
     pub fn new() -> Self {
         Self {
@@ -701,14 +863,26 @@ impl DynamicFeatureExtractor {
     }
 }
 
+impl Default for TrainingScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrainingScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             schedule_interval: Duration::from_secs(3600),
             max_training_duration: Duration::from_secs(1800),
             resource_threshold: 0.8,
             priority_level: 1,
         }
+    }
+}
+
+impl Default for ErrorCorrectionScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -723,8 +897,14 @@ impl ErrorCorrectionScheduler {
     }
 }
 
+impl Default for AccuracyTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AccuracyTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             accuracy_history: Vec::new(),
             tracking_window: Duration::from_secs(3600),
@@ -741,6 +921,12 @@ impl AccuracyTracker {
     }
 }
 
+impl Default for TopologyReconfiguration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TopologyReconfiguration {
     pub fn new() -> Self {
         Self {
@@ -751,6 +937,12 @@ impl TopologyReconfiguration {
             ],
             reconfiguration_threshold: 0.7,
         }
+    }
+}
+
+impl Default for QuantumAwareScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -767,6 +959,12 @@ impl QuantumAwareScheduler {
     }
 }
 
+impl Default for CoherencePreservingProtocols {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CoherencePreservingProtocols {
     pub fn new() -> Self {
         Self {
@@ -776,6 +974,12 @@ impl CoherencePreservingProtocols {
             ],
             coherence_time_threshold: Duration::from_millis(100),
         }
+    }
+}
+
+impl Default for StaticFeatureExtractor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -795,6 +999,12 @@ impl StaticFeatureExtractor {
     }
 }
 
+impl Default for CongestionControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CongestionControl {
     pub fn new() -> Self {
         Self {
@@ -804,6 +1014,12 @@ impl CongestionControl {
             quantum_aware_backoff: Arc::new(QuantumAwareBackoff::new()),
             adaptive_rate_control: Arc::new(AdaptiveRateControl::new()),
         }
+    }
+}
+
+impl Default for NetworkPerformancePredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -858,6 +1074,12 @@ impl NetworkPerformancePredictor {
     }
 }
 
+impl Default for QuantumVolumeCalculator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumVolumeCalculator {
     pub fn new() -> Self {
         Self {
@@ -869,12 +1091,24 @@ impl QuantumVolumeCalculator {
     }
 }
 
+impl Default for QoSEnforcer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QoSEnforcer {
     pub fn new() -> Self {
         Self {
             qos_policies: vec!["strict".to_string(), "best_effort".to_string()],
             enforcement_mode: "strict".to_string(),
         }
+    }
+}
+
+impl Default for CostOptimizer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -891,6 +1125,12 @@ impl CostOptimizer {
     }
 }
 
+impl Default for TemporalFeatureExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TemporalFeatureExtractor {
     pub fn new() -> Self {
         Self {
@@ -899,6 +1139,12 @@ impl TemporalFeatureExtractor {
             sampling_rate: 10.0,
             feature_types: vec!["trend".to_string(), "seasonality".to_string()],
         }
+    }
+}
+
+impl Default for DynamicBandwidthAdjuster {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -912,6 +1158,12 @@ impl DynamicBandwidthAdjuster {
     }
 }
 
+impl Default for LoadPredictionModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadPredictionModel {
     pub fn new() -> Self {
         Self {
@@ -920,6 +1172,12 @@ impl LoadPredictionModel {
             prediction_horizon: Duration::from_secs(300),
             accuracy_tracker: Arc::new(AccuracyTracker::new()),
         }
+    }
+}
+
+impl Default for LatencyOptimizer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1050,6 +1308,12 @@ impl LatencyOptimizer {
     }
 }
 
+impl Default for UrgencyScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UrgencyScheduler {
     pub fn new() -> Self {
         Self {
@@ -1064,6 +1328,12 @@ impl UrgencyScheduler {
     }
 }
 
+impl Default for PriorityEnforcer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PriorityEnforcer {
     pub fn new() -> Self {
         Self {
@@ -1072,11 +1342,23 @@ impl PriorityEnforcer {
     }
 }
 
+impl Default for PerformanceLearner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceLearner {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             learning_rate: 0.01,
         }
+    }
+}
+
+impl Default for LatencyPredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1088,6 +1370,12 @@ impl LatencyPredictor {
     }
 }
 
+impl Default for HardwareLatencyOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HardwareLatencyOptimizer {
     pub fn new() -> Self {
         Self {
@@ -1096,11 +1384,23 @@ impl HardwareLatencyOptimizer {
     }
 }
 
+impl Default for RoutingOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoutingOptimizer {
     pub fn new() -> Self {
         Self {
             routing_table: HashMap::new(),
         }
+    }
+}
+
+impl Default for ViolationHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1117,6 +1417,12 @@ impl ViolationHandler {
     }
 }
 
+impl Default for ModelUpdater {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelUpdater {
     pub fn new() -> Self {
         Self {
@@ -1125,6 +1431,12 @@ impl ModelUpdater {
             learning_rate: 0.001,
             last_update: Utc::now(),
         }
+    }
+}
+
+impl Default for EntanglementAwareRouting {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1137,11 +1449,23 @@ impl EntanglementAwareRouting {
     }
 }
 
+impl Default for QueueOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QueueOptimizer {
     pub fn new() -> Self {
         Self {
             queue_configs: vec!["fifo".to_string(), "priority".to_string()],
         }
+    }
+}
+
+impl Default for QuantumFeatureExtractor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1153,6 +1477,12 @@ impl QuantumFeatureExtractor {
             error_syndrome_patterns: Arc::new(ErrorSyndromeAnalyzer::new()),
             quantum_volume_metrics: Arc::new(QuantumVolumeCalculator::new()),
         }
+    }
+}
+
+impl Default for RTTEstimator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1168,11 +1498,23 @@ impl RTTEstimator {
     }
 }
 
+impl Default for QuantumPerformancePredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumPerformancePredictor {
     pub fn new() -> Self {
         Self {
             prediction_model: "quantum_neural_network".to_string(),
         }
+    }
+}
+
+impl Default for ModelPredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

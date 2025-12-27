@@ -1147,7 +1147,12 @@ pub mod utils {
             average_payback_months: avg_payback,
             highest_roi_use_case: all_use_cases
                 .iter()
-                .max_by(|a, b| a.roi_estimate.npv.partial_cmp(&b.roi_estimate.npv).unwrap())
+                .max_by(|a, b| {
+                    a.roi_estimate
+                        .npv
+                        .partial_cmp(&b.roi_estimate.npv)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
                 .map(|uc| uc.name.clone())
                 .unwrap_or_else(|| "None".to_string()),
         }
@@ -1213,7 +1218,9 @@ mod tests {
         let manager = IndustryExampleManager::new();
         let banking_use_cases = manager.get_industry_use_cases(&Industry::Banking);
         assert!(banking_use_cases.is_some());
-        assert!(!banking_use_cases.unwrap().is_empty());
+        assert!(!banking_use_cases
+            .expect("Banking use cases should exist")
+            .is_empty());
     }
 
     #[test]
@@ -1246,7 +1253,7 @@ mod tests {
         let result = manager.run_use_case_example("Quantum Credit Scoring");
         assert!(result.is_ok());
 
-        let example_result = result.unwrap();
+        let example_result = result.expect("Example execution should succeed");
         assert_eq!(example_result.use_case_name, "Quantum Credit Scoring");
         assert!(!example_result.lessons_learned.is_empty());
         assert!(!example_result.next_steps.is_empty());
@@ -1258,12 +1265,12 @@ mod tests {
         let mut manager = IndustryExampleManager::new();
         let _result = manager
             .run_use_case_example("Quantum Credit Scoring")
-            .unwrap();
+            .expect("Example execution should succeed");
 
         let benchmark = manager.get_benchmark_results("Quantum Credit Scoring");
         assert!(benchmark.is_some());
 
-        let bench = benchmark.unwrap();
+        let bench = benchmark.expect("Benchmark results should exist");
         assert!(bench.quantum_performance.primary_metric > 0.0);
         assert!(bench.classical_performance.primary_metric > 0.0);
     }
@@ -1271,7 +1278,9 @@ mod tests {
     #[test]
     fn test_synthetic_data_generation() {
         let manager = IndustryExampleManager::new();
-        let (X_train, y_train, X_test, y_test) = manager.generate_credit_data().unwrap();
+        let (X_train, y_train, X_test, y_test) = manager
+            .generate_credit_data()
+            .expect("Credit data generation should succeed");
 
         assert_eq!(X_train.shape()[1], X_test.shape()[1]); // Same number of features
         assert_eq!(y_train.shape()[1], 1); // Binary classification

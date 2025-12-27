@@ -60,7 +60,7 @@ pub struct PauliTerm {
 }
 
 /// Pauli operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PauliOperator {
     I, // Identity
     X, // Pauli-X
@@ -100,7 +100,7 @@ impl VQE {
 
             if energy < best_energy {
                 best_energy = energy;
-                best_parameters = parameters.clone();
+                best_parameters.clone_from(&parameters);
             }
 
             // Check convergence
@@ -336,7 +336,7 @@ pub struct HardwareEfficientAnsatz {
     pub entangling_gates: EntanglingGateType,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntanglingGateType {
     CNOT,
     CZ,
@@ -483,7 +483,7 @@ impl QAOA {
 
             if cost < best_cost {
                 best_cost = cost;
-                best_parameters = parameters.clone();
+                best_parameters.clone_from(&parameters);
             }
 
             // Compute gradients and update parameters
@@ -670,8 +670,9 @@ impl QAOA {
 
                     match pauli_op {
                         PauliOperator::Z => term_value *= bit_value,
-                        PauliOperator::I => {} // Identity doesn't change value
-                        _ => {}                // X and Y terms would need quantum evaluation
+                        PauliOperator::I | _ => {
+                            // Identity doesn't change value; X and Y terms would need quantum evaluation
+                        }
                     }
                 }
             }
@@ -764,16 +765,19 @@ impl QuantumState {
     pub fn get_most_probable_bitstring(&self) -> String {
         self.amplitudes
             .iter()
-            .max_by(|a, b| (a.1 * a.1).partial_cmp(&(b.1 * b.1)).unwrap())
-            .map(|(bitstring, _)| bitstring.clone())
-            .unwrap_or_else(|| "0".repeat(self.num_qubits))
+            .max_by(|a, b| {
+                (a.1 * a.1)
+                    .partial_cmp(&(b.1 * b.1))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map_or_else(
+                || "0".repeat(self.num_qubits),
+                |(bitstring, _)| bitstring.clone(),
+            )
     }
 
     pub fn get_probability(&self, bitstring: &str) -> f64 {
-        self.amplitudes
-            .get(bitstring)
-            .map(|amp| amp * amp)
-            .unwrap_or(0.0)
+        self.amplitudes.get(bitstring).map_or(0.0, |amp| amp * amp)
     }
 
     pub fn get_all_amplitudes(&self) -> HashMap<String, f64> {
@@ -803,7 +807,7 @@ pub struct AdamOptimizer {
 }
 
 impl AdamOptimizer {
-    pub fn new(learning_rate: f64) -> Self {
+    pub const fn new(learning_rate: f64) -> Self {
         Self {
             learning_rate,
             beta1: 0.9,
@@ -832,10 +836,14 @@ impl VariationalOptimizer for AdamOptimizer {
 
         for i in 0..updated_params.len() {
             // Update biased first moment estimate
-            self.m[i] = self.beta1 * self.m[i] + (1.0 - self.beta1) * gradients[i];
+            self.m[i] = self
+                .beta1
+                .mul_add(self.m[i], (1.0 - self.beta1) * gradients[i]);
 
             // Update biased second raw moment estimate
-            self.v[i] = self.beta2 * self.v[i] + (1.0 - self.beta2) * gradients[i] * gradients[i];
+            self.v[i] = self
+                .beta2
+                .mul_add(self.v[i], (1.0 - self.beta2) * gradients[i] * gradients[i]);
 
             // Compute bias-corrected first moment estimate
             let m_hat = self.m[i] / (1.0 - self.beta1.powi(self.t as i32));
@@ -879,22 +887,21 @@ pub enum QuantumGate {
 }
 
 impl ParameterizedQuantumCircuit {
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
             gates: Vec::new(),
         }
     }
 
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
     pub fn add_h_gate(&mut self, qubit: usize) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::H(qubit));
@@ -904,8 +911,7 @@ impl ParameterizedQuantumCircuit {
     pub fn add_rx_gate(&mut self, qubit: usize, angle: f64) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::RX(qubit, angle));
@@ -915,8 +921,7 @@ impl ParameterizedQuantumCircuit {
     pub fn add_ry_gate(&mut self, qubit: usize, angle: f64) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::RY(qubit, angle));
@@ -926,8 +931,7 @@ impl ParameterizedQuantumCircuit {
     pub fn add_rz_gate(&mut self, qubit: usize, angle: f64) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::RZ(qubit, angle));
@@ -947,8 +951,7 @@ impl ParameterizedQuantumCircuit {
     pub fn add_s_dagger_gate(&mut self, qubit: usize) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::SDagger(qubit));
@@ -958,8 +961,7 @@ impl ParameterizedQuantumCircuit {
     pub fn add_x_gate(&mut self, qubit: usize) -> DeviceResult<()> {
         if qubit >= self.num_qubits {
             return Err(DeviceError::InvalidInput(format!(
-                "Qubit {} out of range",
-                qubit
+                "Qubit {qubit} out of range"
             )));
         }
         self.gates.push(QuantumGate::X(qubit));
@@ -1077,7 +1079,7 @@ mod tests {
 
         let updated = optimizer
             .update_parameters(params.clone(), gradients)
-            .unwrap();
+            .expect("Adam optimizer update should succeed");
         assert_eq!(updated.len(), 3);
 
         // Parameters should be updated (not equal to original)

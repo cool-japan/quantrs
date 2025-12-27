@@ -1649,7 +1649,7 @@ mod tests {
         );
 
         assert!(attention.is_ok());
-        let attn = attention.unwrap();
+        let attn = attention.expect("Attention creation should succeed");
         assert_eq!(attn.num_heads, 8);
         assert_eq!(attn.model_dim, 512);
         assert_eq!(attn.head_dim, 64);
@@ -1660,7 +1660,7 @@ mod tests {
         let pos_enc = QuantumPositionEncoding::new(PositionEncodingType::Sinusoidal, 256, 512, 8);
 
         assert!(pos_enc.is_ok());
-        let pe = pos_enc.unwrap();
+        let pe = pos_enc.expect("Position encoding creation should succeed");
         assert_eq!(pe.model_dim, 256);
         assert_eq!(pe.max_seq_len, 512);
     }
@@ -1670,7 +1670,7 @@ mod tests {
         let ff = QuantumFeedForward::new(256, 1024, 256, 8, ActivationType::QuantumGELU, 0.1);
 
         assert!(ff.is_ok());
-        let feedforward = ff.unwrap();
+        let feedforward = ff.expect("Feedforward creation should succeed");
         assert_eq!(feedforward.input_dim, 256);
         assert_eq!(feedforward.hidden_dim, 1024);
         assert_eq!(feedforward.output_dim, 256);

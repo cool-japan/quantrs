@@ -117,7 +117,7 @@ impl GpuBackend for CudaBackend {
         false // TODO: Check for CUDA availability
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CUDA"
     }
 

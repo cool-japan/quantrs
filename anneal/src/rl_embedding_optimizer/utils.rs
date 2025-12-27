@@ -1,14 +1,19 @@
 //! Utility functions and helper methods for RL embedding optimization
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
-use super::types::*;
+use super::types::{
+    ExperienceContext, ExplorationConfig, ObjectiveWeights, RLEmbeddingConfig,
+    TransferLearningConfig,
+};
 
 /// Create default RL embedding optimizer configuration
+#[must_use]
 pub fn create_default_config() -> RLEmbeddingConfig {
     RLEmbeddingConfig::default()
 }
 
 /// Create custom RL embedding optimizer configuration
+#[must_use]
 pub fn create_custom_config(
     dqn_layers: Vec<usize>,
     policy_layers: Vec<usize>,
@@ -23,6 +28,7 @@ pub fn create_custom_config(
 }
 
 /// Create exploration configuration for different strategies
+#[must_use]
 pub fn create_exploration_config(strategy: ExplorationStrategy) -> ExplorationConfig {
     match strategy {
         ExplorationStrategy::Conservative => ExplorationConfig {
@@ -36,7 +42,7 @@ pub fn create_exploration_config(strategy: ExplorationStrategy) -> ExplorationCo
         ExplorationStrategy::Aggressive => ExplorationConfig {
             initial_epsilon: 1.0,
             final_epsilon: 0.01,
-            epsilon_decay_steps: 20000,
+            epsilon_decay_steps: 20_000,
             policy_noise: 0.2,
             curiosity_weight: 0.2,
         },
@@ -51,6 +57,7 @@ pub enum ExplorationStrategy {
 }
 
 /// Create objective weights for different optimization goals
+#[must_use]
 pub fn create_objective_weights(goal: OptimizationGoal) -> ObjectiveWeights {
     match goal {
         OptimizationGoal::MinimizeChainLength => ObjectiveWeights {
@@ -87,12 +94,13 @@ pub enum OptimizationGoal {
 }
 
 /// Create transfer learning configuration for different scenarios
-pub fn create_transfer_learning_config(scenario: TransferScenario) -> TransferLearningConfig {
+#[must_use]
+pub const fn create_transfer_learning_config(scenario: TransferScenario) -> TransferLearningConfig {
     match scenario {
         TransferScenario::SimilarProblems => TransferLearningConfig {
             enabled: true,
             source_weight_decay: 0.95,
-            adaptation_lr: 0.00005,
+            adaptation_lr: 0.00_005,
             fine_tuning_epochs: 50,
             similarity_threshold: 0.8,
         },
@@ -204,6 +212,7 @@ pub fn validate_config(config: &RLEmbeddingConfig) -> RLEmbeddingResult<()> {
 }
 
 /// Calculate memory usage estimate for configuration
+#[must_use]
 pub fn estimate_memory_usage(config: &RLEmbeddingConfig) -> usize {
     let mut memory = 0;
 
@@ -229,6 +238,7 @@ pub fn estimate_memory_usage(config: &RLEmbeddingConfig) -> usize {
 }
 
 /// Create configuration summary string
+#[must_use]
 pub fn config_summary(config: &RLEmbeddingConfig) -> String {
     format!(
         "RL Embedding Optimizer Configuration:\n\
@@ -260,6 +270,7 @@ pub fn config_summary(config: &RLEmbeddingConfig) -> String {
 }
 
 /// Helper function to create experience context
+#[must_use]
 pub fn create_experience_context(
     problem_type: String,
     hardware_id: String,
@@ -277,16 +288,17 @@ pub fn create_experience_context(
 }
 
 /// Helper function to format hardware topology as string
+#[must_use]
 pub fn hardware_topology_to_string(hardware: &crate::embedding::HardwareTopology) -> String {
     match hardware {
         crate::embedding::HardwareTopology::Chimera(m, n, t) => {
-            format!("Chimera_{}x{}x{}", m, n, t)
+            format!("Chimera_{m}x{n}x{t}")
         }
         crate::embedding::HardwareTopology::Pegasus(n) => {
-            format!("Pegasus_{}", n)
+            format!("Pegasus_{n}")
         }
         crate::embedding::HardwareTopology::Zephyr(n) => {
-            format!("Zephyr_{}", n)
+            format!("Zephyr_{n}")
         }
         crate::embedding::HardwareTopology::Custom => "Custom".to_string(),
     }

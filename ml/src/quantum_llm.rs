@@ -741,8 +741,10 @@ impl QuantumLLM {
         for step in 0..config.max_length {
             // Prepare input for forward pass
             let batch_input = current_ids.clone().insert_axis(Axis(0)); // Add batch dimension
-            let input_2d =
-                Array2::from_shape_vec((1, current_ids.len()), current_ids.to_vec()).unwrap();
+            let input_2d = Array2::from_shape_vec((1, current_ids.len()), current_ids.to_vec())
+                .map_err(|e| {
+                    MLError::MLOperationError(format!("Failed to create input array: {}", e))
+                })?;
 
             // Create causal mask
             let seq_len = current_ids.len();
@@ -825,7 +827,8 @@ impl QuantumLLM {
         if let Some(k) = config.top_k {
             let mut indexed_probs: Vec<(usize, f64)> =
                 probs.iter().enumerate().map(|(i, &p)| (i, p)).collect();
-            indexed_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            indexed_probs
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
             for (i, &(idx, _)) in indexed_probs.iter().enumerate() {
                 if i >= k {
@@ -847,7 +850,8 @@ impl QuantumLLM {
                 .enumerate()
                 .map(|(i, &prob)| (i, prob))
                 .collect();
-            indexed_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            indexed_probs
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
             let mut cumulative = 0.0;
             for (idx, prob) in &indexed_probs {
@@ -885,7 +889,7 @@ impl QuantumLLM {
         Ok(probs
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0))
     }
@@ -1128,7 +1132,7 @@ impl QuantumAssociativeMemory {
             .amplitudes
             .iter()
             .enumerate()
-            .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
 
@@ -1684,7 +1688,7 @@ mod tests {
 
     #[test]
     fn test_vocabulary_creation() {
-        let vocab = Vocabulary::new(1000).unwrap();
+        let vocab = Vocabulary::new(1000).expect("Failed to create vocabulary");
         assert_eq!(vocab.quantum_embeddings.nrows(), 1000);
         assert!(vocab.special_tokens.contains_key("<eos>"));
     }
@@ -1706,7 +1710,7 @@ mod tests {
         let memory_system = QuantumMemorySystem::new(config);
         assert!(memory_system.is_ok());
 
-        let memory = memory_system.unwrap();
+        let memory = memory_system.expect("QuantumMemorySystem::new should succeed");
         assert!(!memory.associative_banks.is_empty());
     }
 
@@ -1716,7 +1720,7 @@ mod tests {
         let reasoning_module = QuantumReasoningModule::new(config);
         assert!(reasoning_module.is_ok());
 
-        let reasoning = reasoning_module.unwrap();
+        let reasoning = reasoning_module.expect("QuantumReasoningModule::new should succeed");
         assert!(!reasoning.logical_circuits.is_empty());
     }
 }

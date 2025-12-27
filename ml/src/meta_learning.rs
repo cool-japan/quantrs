@@ -352,7 +352,10 @@ impl QuantumMetaLearner {
             // Inner loop with learnable per-parameter learning rates
             for _ in 0..inner_steps {
                 let grad = self.compute_task_gradient(&task.train_data, &task_params)?;
-                let lr = self.per_param_lr.as_ref().unwrap();
+                let lr = self
+                    .per_param_lr
+                    .as_ref()
+                    .expect("per_param_lr must be initialized for MetaSGD");
                 task_params = task_params - lr * &grad;
             }
 
@@ -548,7 +551,10 @@ impl QuantumMetaLearner {
             }
             MetaLearningAlgorithm::MetaSGD { inner_steps } => {
                 let mut params = self.meta_params.clone();
-                let lr = self.per_param_lr.as_ref().unwrap();
+                let lr = self
+                    .per_param_lr
+                    .as_ref()
+                    .expect("per_param_lr must be initialized for MetaSGD");
                 for _ in 0..inner_steps {
                     let grad = self.compute_task_gradient(&task.train_data, &params)?;
                     params = params - lr * &grad;
@@ -778,7 +784,7 @@ mod tests {
             },
         ];
 
-        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create QNN");
 
         let maml_algo = MetaLearningAlgorithm::MAML {
             inner_steps: 5,
@@ -794,7 +800,8 @@ mod tests {
             QNNLayerType::EncodingLayer { num_features: 4 },
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
-        let qnn2 = QuantumNeuralNetwork::new(layers2, 4, 4, 2).unwrap();
+        let qnn2 =
+            QuantumNeuralNetwork::new(layers2, 4, 4, 2).expect("Failed to create QNN for Meta-SGD");
 
         let metasgd_algo = MetaLearningAlgorithm::MetaSGD { inner_steps: 3 };
         let meta_sgd = QuantumMetaLearner::new(metasgd_algo, qnn2);
@@ -808,7 +815,7 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 6 },
         ];
 
-        let qnn = QuantumNeuralNetwork::new(layers, 4, 2, 2).unwrap();
+        let qnn = QuantumNeuralNetwork::new(layers, 4, 2, 2).expect("Failed to create QNN");
         let algo = MetaLearningAlgorithm::Reptile {
             inner_steps: 5,
             inner_lr: 0.01,
@@ -821,7 +828,9 @@ mod tests {
         let task = generator.generate_rotation_task(20);
 
         // Adapt to task
-        let adapted_params = meta_learner.adapt_to_task(&task).unwrap();
+        let adapted_params = meta_learner
+            .adapt_to_task(&task)
+            .expect("Task adaptation should succeed");
         assert_eq!(adapted_params.len(), meta_learner.meta_params.len());
     }
 }

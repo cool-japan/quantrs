@@ -282,7 +282,7 @@ impl GateOp for CompositeGate {
     }
 
     fn clone_gate(&self) -> Box<dyn GateOp> {
-        Box::new(CompositeGate {
+        Box::new(Self {
             gates: self.gates.iter().map(|g| g.clone()).collect(),
             qubits: self.qubits.clone(),
             name: self.name.clone(),
@@ -524,10 +524,9 @@ pub mod utils {
                     }
                 }
                 // Rotation gates might cancel if they sum to a multiple of 2π
-                "RX" | "RY" | "RZ" => {
+                "RX" | "RY" | "RZ" | _ => {
                     // Would need to check rotation angles for exact cancellation
                 }
-                _ => {}
             }
         }
 

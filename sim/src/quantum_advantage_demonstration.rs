@@ -7,7 +7,7 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -110,7 +110,7 @@ pub struct QuantumAdvantageMetrics {
     pub quantum_time: Duration,
     /// Classical algorithm runtime
     pub classical_time: Duration,
-    /// Speedup factor (classical_time / quantum_time)
+    /// Speedup factor (`classical_time` / `quantum_time`)
     pub speedup_factor: f64,
     /// Quantum algorithm accuracy/fidelity
     pub quantum_accuracy: f64,
@@ -616,6 +616,7 @@ pub struct PerformanceProfiler {
 
 impl QuantumAdvantageDemonstrator {
     /// Create new quantum advantage demonstrator
+    #[must_use]
     pub fn new(config: QuantumAdvantageConfig) -> Self {
         let mut demonstrator = Self {
             config,
@@ -712,7 +713,7 @@ impl QuantumAdvantageDemonstrator {
                     r.classical_results
                         .iter()
                         .map(|c| c.solution_quality)
-                        .max_by(|a, b| a.partial_cmp(b).unwrap())
+                        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                         .unwrap_or(0.0)
                 })
                 .sum::<f64>()
@@ -751,7 +752,7 @@ impl QuantumAdvantageDemonstrator {
     }
 
     /// Test a specific problem size
-    fn test_problem_size(&mut self, problem_size: usize) -> Result<DetailedResult> {
+    fn test_problem_size(&self, problem_size: usize) -> Result<DetailedResult> {
         // Generate problem instance
         let problem_instance = self.generate_problem_instance(problem_size)?;
 
@@ -961,7 +962,7 @@ impl QuantumAdvantageDemonstrator {
                 r.classical_results
                     .iter()
                     .map(|c| c.execution_time.as_secs_f64())
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     .unwrap_or(0.0)
             })
             .collect();
@@ -1127,7 +1128,8 @@ impl QuantumAdvantageDemonstrator {
             }
         }
 
-        let verification_success_rate = verification_successes as f64 / total_verifications as f64;
+        let verification_success_rate =
+            f64::from(verification_successes) / total_verifications as f64;
         let spoofing_resistance = 0.95; // Would calculate based on complexity
 
         Ok(VerificationResult {
@@ -1309,7 +1311,10 @@ impl QuantumAdvantageDemonstrator {
     }
 
     fn store_results(&self, result: &QuantumAdvantageResult) -> Result<()> {
-        let mut database = self.results_database.lock().unwrap();
+        let mut database = self
+            .results_database
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let key = format!("{:?}_{:?}", self.config.advantage_type, self.config.domain);
         database
             .results
@@ -1398,7 +1403,7 @@ impl QuantumAlgorithm for QAOAAlgorithm {
             gate_count: problem_size * 50,
             coherence_time: Duration::from_millis(50),
             gate_fidelity: 0.99,
-            shots: 10000,
+            shots: 10_000,
             quantum_volume: problem_size,
         }
     }
@@ -1543,7 +1548,7 @@ pub fn benchmark_quantum_advantage() -> Result<HashMap<String, f64>> {
                 cpu_cores: 8,
                 cpu_frequency: 3.0,
                 ram_size: 32_000_000_000,
-                cache_sizes: vec![32768, 262144, 8388608],
+                cache_sizes: vec![32_768, 262_144, 8_388_608],
                 gpu_specs: None,
             },
         },
@@ -1576,7 +1581,9 @@ mod tests {
     fn test_problem_instance_generation() {
         let config = create_test_config();
         let demonstrator = QuantumAdvantageDemonstrator::new(config);
-        let instance = demonstrator.generate_problem_instance(5).unwrap();
+        let instance = demonstrator
+            .generate_problem_instance(5)
+            .expect("Failed to generate problem instance");
         assert_eq!(instance.size, 5);
     }
 
@@ -1585,7 +1592,9 @@ mod tests {
         let demonstrator = QuantumAdvantageDemonstrator::new(create_test_config());
         let sizes = vec![1, 2, 4, 8];
         let times = vec![1.0, 4.0, 16.0, 64.0]; // Quadratic scaling
-        let scaling = demonstrator.fit_power_law(&sizes, &times).unwrap();
+        let scaling = demonstrator
+            .fit_power_law(&sizes, &times)
+            .expect("Failed to fit power law");
         assert!((scaling - 2.0).abs() < 0.1);
     }
 
@@ -1611,7 +1620,7 @@ mod tests {
                     cpu_cores: 4,
                     cpu_frequency: 2.0,
                     ram_size: 8_000_000_000,
-                    cache_sizes: vec![32768, 262144],
+                    cache_sizes: vec![32_768, 262_144],
                     gpu_specs: None,
                 },
             },

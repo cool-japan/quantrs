@@ -271,8 +271,14 @@ impl HeterodyneDetector {
 
         // Measure DC offsets
         self.calibration.dc_offsets = (
-            self.config.iq_demod_config.dc_offset_i + 0.0005 * (thread_rng().gen::<f64>() - 0.5),
-            self.config.iq_demod_config.dc_offset_q + 0.0005 * (thread_rng().gen::<f64>() - 0.5),
+            0.0005f64.mul_add(
+                thread_rng().gen::<f64>() - 0.5,
+                self.config.iq_demod_config.dc_offset_i,
+            ),
+            0.0005f64.mul_add(
+                thread_rng().gen::<f64>() - 0.5,
+                self.config.iq_demod_config.dc_offset_q,
+            ),
         );
 
         // Measure relative phase between LOs
@@ -280,8 +286,8 @@ impl HeterodyneDetector {
 
         // Measure amplitude factors
         self.calibration.amplitude_factors = (
-            1.0 + 0.01 * (thread_rng().gen::<f64>() - 0.5),
-            1.0 + 0.01 * (thread_rng().gen::<f64>() - 0.5),
+            0.01f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0),
+            0.01f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0),
         );
 
         println!("Calibration complete");
@@ -310,7 +316,7 @@ impl HeterodyneDetector {
     }
 
     /// Check if both phase locks are acquired
-    pub fn is_phase_locked(&self) -> bool {
+    pub const fn is_phase_locked(&self) -> bool {
         self.phase_lock_status.0 && self.phase_lock_status.1
     }
 
@@ -328,8 +334,7 @@ impl HeterodyneDetector {
 
         if mode >= state.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -356,9 +361,9 @@ impl HeterodyneDetector {
 
         // Sample both quadratures
         let dist_x = Normal::new(mean_x, noise_var_x.sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
         let dist_p = Normal::new(mean_p, noise_var_p.sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let raw_i = dist_x.sample(&mut rng);
@@ -371,8 +376,8 @@ impl HeterodyneDetector {
 
         // Convert to complex amplitude
         let complex_amplitude = Complex::new(
-            (corrected_i + corrected_q * Complex::i().real) / (2.0_f64).sqrt(),
-            (corrected_q - corrected_i * Complex::i().imag) / (2.0_f64).sqrt(),
+            corrected_q.mul_add(Complex::i().real, corrected_i) / (2.0_f64).sqrt(),
+            corrected_i.mul_add(-Complex::i().imag, corrected_q) / (2.0_f64).sqrt(),
         );
 
         // Calculate uncertainties
@@ -385,7 +390,7 @@ impl HeterodyneDetector {
 
         // Calculate SNR
         let signal_power = complex_amplitude.magnitude().powi(2);
-        let noise_power = (noise_var_x + noise_var_p) / 2.0;
+        let noise_power = f64::midpoint(noise_var_x, noise_var_p);
         let snr_db = 10.0 * (signal_power / noise_power).log10();
 
         // Generate detector data
@@ -424,8 +429,8 @@ impl HeterodyneDetector {
 
         // Apply calibration matrix
         let matrix = &self.calibration.iq_matrix;
-        let corrected_i = matrix[0][0] * dc_corrected_i + matrix[0][1] * dc_corrected_q;
-        let corrected_q = matrix[1][0] * dc_corrected_i + matrix[1][1] * dc_corrected_q;
+        let corrected_i = matrix[0][0].mul_add(dc_corrected_i, matrix[0][1] * dc_corrected_q);
+        let corrected_q = matrix[1][0].mul_add(dc_corrected_i, matrix[1][1] * dc_corrected_q);
 
         // Apply amplitude corrections
         let final_i = corrected_i * self.calibration.amplitude_factors.0;
@@ -435,9 +440,10 @@ impl HeterodyneDetector {
             corrected_i: final_i,
             corrected_q: final_q,
             correction_data: IQCorrection {
-                amplitude_correction: (self.calibration.amplitude_factors.0
-                    + self.calibration.amplitude_factors.1)
-                    / 2.0,
+                amplitude_correction: f64::midpoint(
+                    self.calibration.amplitude_factors.0,
+                    self.calibration.amplitude_factors.1,
+                ),
                 phase_correction: self.calibration.relative_phase_offset,
                 dc_offset_i: self.calibration.dc_offsets.0,
                 dc_offset_q: self.calibration.dc_offsets.1,
@@ -466,8 +472,12 @@ impl HeterodyneDetector {
         // Additional noise from IQ demodulation
         let iq_noise = self.config.electronic_noise.sqrt();
 
-        let total_electronic_noise =
-            (current_noise.powi(2) + thermal_noise.powi(2) + iq_noise.powi(2)).sqrt();
+        let total_electronic_noise = iq_noise
+            .mul_add(
+                iq_noise,
+                thermal_noise.powi(2).mul_add(1.0, current_noise.powi(2)),
+            )
+            .sqrt();
 
         // Convert to quadrature variance units
         total_electronic_noise
@@ -491,7 +501,7 @@ impl HeterodyneDetector {
         raw_q: f64,
         complex_amplitude: Complex,
     ) -> HeterodyneDetectorData {
-        let if_amplitude = (raw_i.powi(2) + raw_q.powi(2)).sqrt();
+        let if_amplitude = raw_i.hypot(raw_q);
         let if_phase = raw_q.atan2(raw_i);
 
         HeterodyneDetectorData {
@@ -511,7 +521,7 @@ impl HeterodyneDetector {
         phase_uncertainty: f64,
     ) -> f64 {
         let snr = signal_power / noise_power;
-        let phase_penalty = 1.0 / (1.0 + phase_uncertainty.powi(2));
+        let phase_penalty = 1.0 / phase_uncertainty.mul_add(phase_uncertainty, 1.0);
         let efficiency_penalty = self.config.efficiency;
 
         // Additional penalty for heterodyne 3dB penalty
@@ -575,7 +585,7 @@ impl HeterodyneDetector {
     }
 
     /// Get calibration data
-    pub fn get_calibration(&self) -> &HeterodyneCalibration {
+    pub const fn get_calibration(&self) -> &HeterodyneCalibration {
         &self.calibration
     }
 }
@@ -630,7 +640,10 @@ mod tests {
         let config = HeterodyneDetectorConfig::default();
         let mut detector = HeterodyneDetector::new(config);
 
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
         assert!(detector.is_phase_locked());
     }
 
@@ -638,11 +651,18 @@ mod tests {
     async fn test_heterodyne_measurement() {
         let config = HeterodyneDetectorConfig::default();
         let mut detector = HeterodyneDetector::new(config);
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
 
-        let mut state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 1.0)]).unwrap();
+        let mut state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 1.0)])
+            .expect("Coherent state creation should succeed");
 
-        let result = detector.measure(&mut state, 0).await.unwrap();
+        let result = detector
+            .measure(&mut state, 0)
+            .await
+            .expect("Heterodyne measurement should succeed");
 
         assert!(result.complex_amplitude.magnitude() > 0.0);
         assert!(result.fidelity > 0.0);
@@ -654,11 +674,17 @@ mod tests {
     async fn test_vacuum_measurement() {
         let config = HeterodyneDetectorConfig::default();
         let mut detector = HeterodyneDetector::new(config);
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
 
         let mut state = GaussianState::vacuum_state(1);
 
-        let result = detector.measure(&mut state, 0).await.unwrap();
+        let result = detector
+            .measure(&mut state, 0)
+            .await
+            .expect("Heterodyne measurement should succeed");
 
         // Vacuum should have small but finite amplitude due to noise
         assert!(result.complex_amplitude.magnitude() >= 0.0);

@@ -18,6 +18,7 @@ use rustc_hash::FxHashMap;
 use std::collections::{HashSet, VecDeque};
 use std::f64::consts::PI;
 
+use std::fmt::Write;
 /// Type of spider in the ZX-diagram
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SpiderType {
@@ -44,7 +45,7 @@ pub struct Spider {
 
 impl Spider {
     /// Create a new spider
-    pub fn new(id: usize, spider_type: SpiderType, phase: f64) -> Self {
+    pub const fn new(id: usize, spider_type: SpiderType, phase: f64) -> Self {
         Self {
             id,
             spider_type,
@@ -54,7 +55,7 @@ impl Spider {
     }
 
     /// Create a boundary spider
-    pub fn boundary(id: usize, qubit: QubitId) -> Self {
+    pub const fn boundary(id: usize, qubit: QubitId) -> Self {
         Self {
             id,
             spider_type: SpiderType::Boundary,
@@ -70,7 +71,7 @@ impl Spider {
 
         multiples_of_pi_2.iter().any(|&p| {
             (normalized_phase - p).abs() < tolerance
-                || (normalized_phase - p + 2.0 * PI).abs() < tolerance
+                || 2.0f64.mul_add(PI, normalized_phase - p).abs() < tolerance
         })
     }
 
@@ -79,7 +80,7 @@ impl Spider {
         let normalized_phase = self.phase % (2.0 * PI);
         normalized_phase.abs() < tolerance
             || (normalized_phase - PI).abs() < tolerance
-            || (normalized_phase - 2.0 * PI).abs() < tolerance
+            || 2.0f64.mul_add(-PI, normalized_phase).abs() < tolerance
     }
 }
 
@@ -206,10 +207,7 @@ impl ZXDiagram {
 
     /// Get the degree (number of connections) of a spider
     pub fn degree(&self, spider_id: usize) -> usize {
-        self.adjacency
-            .get(&spider_id)
-            .map(|adj| adj.len())
-            .unwrap_or(0)
+        self.adjacency.get(&spider_id).map_or(0, |adj| adj.len())
     }
 
     /// Apply spider fusion rule: two adjacent spiders of the same color merge
@@ -248,7 +246,7 @@ impl ZXDiagram {
         }
 
         // Transfer all edges from spider2 to spider1
-        let spider2_neighbors = self.neighbors(spider2).clone();
+        let spider2_neighbors = self.neighbors(spider2);
         for (neighbor, edge_type) in spider2_neighbors {
             if neighbor != spider1 {
                 self.remove_edge(spider2, neighbor);
@@ -284,8 +282,8 @@ impl ZXDiagram {
 
                 // Connect the two neighbors
                 let new_edge_type = match (e1, e2) {
-                    (EdgeType::Regular, EdgeType::Regular) => EdgeType::Regular,
-                    (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
+                    (EdgeType::Regular, EdgeType::Regular)
+                    | (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
                     _ => EdgeType::Hadamard,
                 };
 
@@ -316,7 +314,7 @@ impl ZXDiagram {
         let new_type = match spider.spider_type {
             SpiderType::Z => SpiderType::X,
             SpiderType::X => SpiderType::Z,
-            _ => return Ok(()),
+            SpiderType::Boundary => return Ok(()),
         };
 
         if let Some(s) = self.spiders.get_mut(&spider_id) {
@@ -324,7 +322,7 @@ impl ZXDiagram {
         }
 
         // Flip all edge types
-        let neighbors = self.neighbors(spider_id).clone();
+        let neighbors = self.neighbors(spider_id);
         for (neighbor, edge_type) in neighbors {
             self.remove_edge(spider_id, neighbor);
             let new_edge_type = match edge_type {
@@ -351,7 +349,7 @@ impl ZXDiagram {
             ));
         }
 
-        let neighbors = self.neighbors(spider_id).clone();
+        let neighbors = self.neighbors(spider_id);
         let mut new_spiders = Vec::new();
 
         // Create a copy for each neighbor
@@ -423,8 +421,8 @@ impl ZXDiagram {
             for (x_n, x_edge) in &x_neighbors {
                 // Determine edge type based on the rule
                 let edge_type = match (z_edge, x_edge) {
-                    (EdgeType::Regular, EdgeType::Regular) => EdgeType::Regular,
-                    (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
+                    (EdgeType::Regular, EdgeType::Regular)
+                    | (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
                     _ => EdgeType::Hadamard,
                 };
                 self.add_edge(*z_n, *x_n, edge_type);
@@ -467,7 +465,7 @@ impl ZXDiagram {
     /// Apply spider fusion systematically
     fn apply_spider_fusion(&mut self) -> usize {
         let mut rewrites = 0;
-        let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
+        let spider_ids: Vec<_> = self.spiders.keys().copied().collect();
 
         for i in 0..spider_ids.len() {
             for j in i + 1..spider_ids.len() {
@@ -475,11 +473,12 @@ impl ZXDiagram {
                 let id2 = spider_ids[j];
 
                 // Check if spiders still exist and can be fused
-                if self.spiders.contains_key(&id1) && self.spiders.contains_key(&id2) {
-                    if let Ok(()) = self.spider_fusion(id1, id2) {
-                        rewrites += 1;
-                        break;
-                    }
+                if self.spiders.contains_key(&id1)
+                    && self.spiders.contains_key(&id2)
+                    && self.spider_fusion(id1, id2) == Ok(())
+                {
+                    rewrites += 1;
+                    break;
                 }
             }
             if rewrites > 0 {
@@ -493,7 +492,7 @@ impl ZXDiagram {
     /// Apply pivot rules for graph state optimization
     fn apply_pivot_rules(&mut self) -> usize {
         let mut rewrites = 0;
-        let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
+        let spider_ids: Vec<_> = self.spiders.keys().copied().collect();
 
         for &spider_id in &spider_ids {
             if !self.spiders.contains_key(&spider_id) {
@@ -506,11 +505,10 @@ impl ZXDiagram {
             if spider.spider_type == SpiderType::Z
                 && self.is_even_multiple_of_pi(spider.phase, 1e-10)
                 && self.degree(spider_id) >= 2
+                && self.pivot_around_spider(spider_id) == Ok(())
             {
-                if let Ok(()) = self.pivot_around_spider(spider_id) {
-                    rewrites += 1;
-                    break;
-                }
+                rewrites += 1;
+                break;
             }
         }
 
@@ -520,7 +518,7 @@ impl ZXDiagram {
     /// Apply local complementation rules
     fn apply_local_complementation(&mut self) -> usize {
         let mut rewrites = 0;
-        let spider_ids: Vec<_> = self.spiders.keys().cloned().collect();
+        let spider_ids: Vec<_> = self.spiders.keys().copied().collect();
 
         for &spider_id in &spider_ids {
             if !self.spiders.contains_key(&spider_id) {
@@ -533,11 +531,10 @@ impl ZXDiagram {
             if spider.spider_type == SpiderType::X
                 && self.is_odd_multiple_of_pi(spider.phase, 1e-10)
                 && self.degree(spider_id) >= 3
+                && self.local_complement_around_spider(spider_id) == Ok(())
             {
-                if let Ok(()) = self.local_complement_around_spider(spider_id) {
-                    rewrites += 1;
-                    break;
-                }
+                rewrites += 1;
+                break;
             }
         }
 
@@ -552,10 +549,8 @@ impl ZXDiagram {
         let clifford_components = self.find_clifford_components();
 
         for component in clifford_components {
-            if component.len() > 2 {
-                if let Ok(()) = self.decompose_clifford_component(&component) {
-                    rewrites += 1;
-                }
+            if component.len() > 2 && self.decompose_clifford_component(&component) == Ok(()) {
+                rewrites += 1;
             }
         }
 
@@ -735,8 +730,8 @@ impl ZXDiagram {
                         let (n2, e2) = neighbors[1];
 
                         let new_edge_type = match (e1, e2) {
-                            (EdgeType::Regular, EdgeType::Regular) => EdgeType::Regular,
-                            (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
+                            (EdgeType::Regular, EdgeType::Regular)
+                            | (EdgeType::Hadamard, EdgeType::Hadamard) => EdgeType::Regular,
                             _ => EdgeType::Hadamard,
                         };
 
@@ -787,14 +782,12 @@ impl ZXDiagram {
 
                     // Add Clifford neighbors to queue
                     for (neighbor, _) in self.neighbors(spider_id) {
-                        if !visited.contains(&neighbor) {
-                            if let Some(neighbor_spider) = self.spiders.get(&neighbor) {
-                                if neighbor_spider.spider_type != SpiderType::Boundary
-                                    && neighbor_spider.is_clifford(1e-10)
-                                {
-                                    visited.insert(neighbor);
-                                    queue.push_back(neighbor);
-                                }
+                        if let Some(neighbor_spider) = self.spiders.get(&neighbor) {
+                            if neighbor_spider.spider_type != SpiderType::Boundary
+                                && neighbor_spider.is_clifford(1e-10)
+                                && visited.insert(neighbor)
+                            {
+                                queue.push_back(neighbor);
                             }
                         }
                     }
@@ -806,7 +799,7 @@ impl ZXDiagram {
     }
 
     /// Optimize a Clifford region using tableau methods
-    fn optimize_clifford_region(&self, region: &[usize]) -> usize {
+    const fn optimize_clifford_region(&self, region: &[usize]) -> usize {
         // Placeholder for tableau-based Clifford optimization
         // This would implement:
         // 1. Conversion to stabilizer tableau
@@ -851,10 +844,10 @@ impl ZXDiagram {
                 }
             };
 
-            dot.push_str(&format!(
-                "  {} [label=\"{}\", color={}, shape={}];\n",
-                id, label, color, shape
-            ));
+            let _ = writeln!(
+                dot,
+                "  {id} [label=\"{label}\", color={color}, shape={shape}];"
+            );
         }
 
         // Add edges (avoid duplicates)
@@ -867,15 +860,13 @@ impl ZXDiagram {
                     (target, source)
                 };
 
-                if !processed.contains(&key) {
-                    processed.insert(key);
-
+                if processed.insert(key) {
                     let style = match edge_type {
                         EdgeType::Regular => "solid",
                         EdgeType::Hadamard => "dashed",
                     };
 
-                    dot.push_str(&format!("  {} -- {} [style={}];\n", source, target, style));
+                    let _ = writeln!(dot, "  {source} -- {target} [style={style}];");
                 }
             }
         }
@@ -917,7 +908,7 @@ impl Default for ZXOptimizer {
 
 impl ZXOptimizer {
     /// Create a new ZX optimizer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             max_iterations: 100,
             enable_advanced: true,
@@ -927,25 +918,29 @@ impl ZXOptimizer {
     }
 
     /// Set the maximum iterations
-    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_iterations(mut self, max_iterations: usize) -> Self {
         self.max_iterations = max_iterations;
         self
     }
 
     /// Enable or disable advanced optimization passes
-    pub fn with_advanced(mut self, enable_advanced: bool) -> Self {
+    #[must_use]
+    pub const fn with_advanced(mut self, enable_advanced: bool) -> Self {
         self.enable_advanced = enable_advanced;
         self
     }
 
     /// Enable verbose output
-    pub fn with_verbose(mut self, verbose: bool) -> Self {
+    #[must_use]
+    pub const fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
     }
 
     /// Set numerical tolerance
-    pub fn with_tolerance(mut self, tolerance: f64) -> Self {
+    #[must_use]
+    pub const fn with_tolerance(mut self, tolerance: f64) -> Self {
         self.tolerance = tolerance;
         self
     }
@@ -955,7 +950,7 @@ impl ZXOptimizer {
         let initial_size = diagram.spiders.len();
 
         if self.verbose {
-            println!("ZX Optimizer: Starting with {} spiders", initial_size);
+            println!("ZX Optimizer: Starting with {initial_size} spiders");
         }
 
         let mut total_rewrites = 0;
@@ -973,7 +968,7 @@ impl ZXOptimizer {
 
             if iteration_rewrites == 0 {
                 if self.verbose {
-                    println!("ZX Optimizer: Converged after {} iterations", iteration);
+                    println!("ZX Optimizer: Converged after {iteration} iterations");
                 }
                 break;
             }
@@ -996,8 +991,7 @@ impl ZXOptimizer {
 
         if self.verbose {
             println!(
-                "ZX Optimizer: Reduced from {} to {} spiders ({}% reduction, {} total rewrites)",
-                initial_size, final_size, reduction, total_rewrites
+                "ZX Optimizer: Reduced from {initial_size} to {final_size} spiders ({reduction}% reduction, {total_rewrites} total rewrites)"
             );
         }
 
@@ -1075,7 +1069,7 @@ impl ZXOptimizer {
     }
 
     /// Apply routing optimization for connectivity
-    fn apply_routing_optimization(&self, diagram: &mut ZXDiagram) -> usize {
+    const fn apply_routing_optimization(&self, diagram: &mut ZXDiagram) -> usize {
         let mut rewrites = 0;
 
         // Minimize CNOT count through routing optimization
@@ -1088,7 +1082,7 @@ impl ZXOptimizer {
     }
 
     /// Apply graph state decomposition
-    fn apply_graph_state_decomposition(&self, _diagram: &mut ZXDiagram) -> usize {
+    const fn apply_graph_state_decomposition(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for graph state decomposition
         // This would implement decomposition of large graph states
         // into smaller, more efficient representations
@@ -1096,7 +1090,7 @@ impl ZXOptimizer {
     }
 
     /// Apply Clifford tableau reduction
-    fn apply_tableau_reduction(&self, _diagram: &mut ZXDiagram) -> usize {
+    const fn apply_tableau_reduction(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for tableau-based Clifford reduction
         // This would implement:
         // 1. Convert Clifford subcircuits to stabilizer tableaux
@@ -1149,14 +1143,12 @@ impl ZXOptimizer {
 
                     // Add non-Clifford neighbors
                     for (neighbor, _) in diagram.neighbors(spider_id) {
-                        if !visited.contains(&neighbor) {
-                            if let Some(neighbor_spider) = diagram.spiders.get(&neighbor) {
-                                if neighbor_spider.spider_type != SpiderType::Boundary
-                                    && !neighbor_spider.is_clifford(self.tolerance)
-                                {
-                                    visited.insert(neighbor);
-                                    queue.push_back(neighbor);
-                                }
+                        if let Some(neighbor_spider) = diagram.spiders.get(&neighbor) {
+                            if neighbor_spider.spider_type != SpiderType::Boundary
+                                && !neighbor_spider.is_clifford(self.tolerance)
+                                && visited.insert(neighbor)
+                            {
+                                queue.push_back(neighbor);
                             }
                         }
                     }
@@ -1168,7 +1160,11 @@ impl ZXOptimizer {
     }
 
     /// Optimize a phase polynomial
-    fn optimize_phase_polynomial(&self, _diagram: &mut ZXDiagram, _polynomial: &[usize]) -> usize {
+    const fn optimize_phase_polynomial(
+        &self,
+        _diagram: &mut ZXDiagram,
+        _polynomial: &[usize],
+    ) -> usize {
         // Placeholder for phase polynomial optimization
         // This would implement:
         // 1. Convert to phase polynomial representation
@@ -1178,14 +1174,14 @@ impl ZXOptimizer {
     }
 
     /// Optimize CNOT routing
-    fn optimize_cnot_routing(&self, _diagram: &mut ZXDiagram) -> usize {
+    const fn optimize_cnot_routing(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for CNOT routing optimization
         // This would implement connectivity-aware gate routing
         0
     }
 
     /// Apply commutation-based optimization
-    fn apply_commutation_optimization(&self, _diagram: &mut ZXDiagram) -> usize {
+    const fn apply_commutation_optimization(&self, _diagram: &mut ZXDiagram) -> usize {
         // Placeholder for commutation-based optimization
         // This would implement gate commutation and reordering
         0
@@ -1243,8 +1239,7 @@ impl ZXOptimizer {
             }
 
             for (neighbor, _) in diagram.neighbors(current) {
-                if !visited.contains(&neighbor) {
-                    visited.insert(neighbor);
+                if visited.insert(neighbor) {
                     queue.push_back((neighbor, depth + 1));
                 }
             }

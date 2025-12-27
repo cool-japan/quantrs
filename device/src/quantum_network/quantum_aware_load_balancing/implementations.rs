@@ -108,25 +108,25 @@ impl MLOptimizedQuantumLoadBalancer {
 
         // Node capability features
         for (i, node) in available_nodes.iter().enumerate() {
-            let node_prefix = format!("node_{}", i);
+            let node_prefix = format!("node_{i}");
 
             // Quantum hardware features
             features.insert(
-                format!("{}_max_qubits ", node_prefix),
+                format!("{node_prefix}_max_qubits "),
                 node.capabilities.max_qubits as f64,
             );
             features.insert(
-                format!("{}_readout_fidelity ", node_prefix),
+                format!("{node_prefix}_readout_fidelity "),
                 node.capabilities.readout_fidelity,
             );
 
             // Current load features
             features.insert(
-                format!("{}_qubits_in_use ", node_prefix),
+                format!("{node_prefix}_qubits_in_use "),
                 node.current_load.qubits_in_use as f64,
             );
             features.insert(
-                format!("{}_queue_length ", node_prefix),
+                format!("{node_prefix}_queue_length "),
                 node.current_load.queue_length as f64,
             );
 
@@ -135,14 +135,14 @@ impl MLOptimizedQuantumLoadBalancer {
                 self.get_node_entanglement_quality(&node.node_id).await?
             {
                 features.insert(
-                    format!("{}_entanglement_quality ", node_prefix),
+                    format!("{node_prefix}_entanglement_quality "),
                     entanglement_quality,
                 );
             }
 
             if let Some(coherence_metrics) = self.get_node_coherence_metrics(&node.node_id).await? {
                 features.insert(
-                    format!("{}_avg_coherence_time ", node_prefix),
+                    format!("{node_prefix}_avg_coherence_time "),
                     coherence_metrics.average_coherence_time.as_secs_f64(),
                 );
             }
@@ -232,7 +232,11 @@ impl MLOptimizedQuantumLoadBalancer {
         available_nodes: &[NodeInfo],
         circuit_partition: &CircuitPartition,
     ) -> Result<NodeId> {
-        let weights = self.adaptive_weights.lock().unwrap().clone();
+        let weights = self
+            .adaptive_weights
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
 
         let mut node_scores: HashMap<NodeId, f64> = HashMap::new();
 
@@ -250,22 +254,19 @@ impl MLOptimizedQuantumLoadBalancer {
             let entanglement_score = quantum_constraints
                 .entanglement_constraints
                 .get(&node.node_id)
-                .map(|c| c.quality_score)
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.quality_score);
 
             // Coherence time score
             let coherence_score = quantum_constraints
                 .coherence_constraints
                 .get(&node.node_id)
-                .map(|c| c.adequacy_score)
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.adequacy_score);
 
             // Fidelity preservation score
             let fidelity_score = quantum_constraints
                 .fidelity_constraints
                 .get(&node.node_id)
-                .map(|c| c.preservation_score)
-                .unwrap_or(0.0);
+                .map_or(0.0, |c| c.preservation_score);
 
             // Classical resource score
             let classical_score = self
@@ -285,7 +286,7 @@ impl MLOptimizedQuantumLoadBalancer {
         // Select node with highest combined score
         let optimal_node = node_scores
             .into_iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(node_id, _)| node_id)
             .ok_or_else(|| {
                 QuantumLoadBalancingError::QuantumSchedulingConflict(
@@ -302,7 +303,7 @@ impl MLOptimizedQuantumLoadBalancer {
             .entanglement_tracker
             .entanglement_states
             .read()
-            .unwrap();
+            .unwrap_or_else(|e| e.into_inner());
 
         let quality: f64 = entanglement_states
             .iter()
@@ -319,7 +320,11 @@ impl MLOptimizedQuantumLoadBalancer {
         &self,
         node_id: &NodeId,
     ) -> Result<Option<NodeCoherenceMetrics>> {
-        let coherence_states = self.coherence_monitor.coherence_times.read().unwrap();
+        let coherence_states = self
+            .coherence_monitor
+            .coherence_times
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         let node_coherence_data: Vec<_> = coherence_states
             .iter()
@@ -380,7 +385,7 @@ impl MLOptimizedQuantumLoadBalancer {
 
         let experiment_type = if gate_types.contains(&"H") && gate_types.contains(&"CNOT") {
             "entanglement_experiment"
-        } else if gate_types.iter().any(|&g| g.starts_with("R")) {
+        } else if gate_types.iter().any(|&g| g.starts_with('R')) {
             "variational_algorithm"
         } else if gate_types.contains(&"QFT") {
             "quantum_fourier_transform"
@@ -402,7 +407,7 @@ impl MLOptimizedQuantumLoadBalancer {
             .entanglement_tracker
             .entanglement_states
             .read()
-            .unwrap();
+            .unwrap_or_else(|e| e.into_inner());
 
         // Calculate available entanglement quality
         let available_quality: f64 = entanglement_states
@@ -434,7 +439,11 @@ impl MLOptimizedQuantumLoadBalancer {
         circuit_partition: &CircuitPartition,
         quantum_requirements: &QuantumResourceRequirements,
     ) -> Result<CoherenceConstraint> {
-        let coherence_states = self.coherence_monitor.coherence_times.read().unwrap();
+        let coherence_states = self
+            .coherence_monitor
+            .coherence_times
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         // Get minimum coherence time available on this node
         let min_coherence_time = coherence_states
@@ -473,7 +482,11 @@ impl MLOptimizedQuantumLoadBalancer {
         quantum_requirements: &QuantumResourceRequirements,
     ) -> Result<FidelityConstraint> {
         // Get historical fidelity data for this node
-        let performance_history = self.performance_learner.performance_history.read().unwrap();
+        let performance_history = self
+            .performance_learner
+            .performance_history
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         let fidelity_history = performance_history
             .get(node_id)
@@ -483,14 +496,14 @@ impl MLOptimizedQuantumLoadBalancer {
 
         // Calculate expected fidelity based on circuit complexity
         let circuit_complexity = circuit_partition.gates.len() as f64;
-        let base_fidelity = if !fidelity_history.is_empty() {
+        let base_fidelity = if fidelity_history.is_empty() {
+            0.95 // Default assumption
+        } else {
             fidelity_history
                 .iter()
                 .map(|m| m.process_fidelity)
                 .sum::<f64>()
                 / fidelity_history.len() as f64
-        } else {
-            0.95 // Default assumption
         };
 
         // Apply fidelity degradation based on circuit complexity
@@ -590,7 +603,11 @@ impl MLOptimizedQuantumLoadBalancer {
         features: &FeatureVector,
         prediction: &QuantumPredictionResult,
     ) -> Result<()> {
-        let mut quantum_metrics = self.metrics_collector.quantum_metrics.lock().unwrap();
+        let mut quantum_metrics = self
+            .metrics_collector
+            .quantum_metrics
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
 
         quantum_metrics.total_quantum_decisions += 1;
 
@@ -701,6 +718,12 @@ pub struct CapabilityBasedQuantumBalancer {
     pub quantum_performance_history: Arc<RwLock<HashMap<NodeId, QuantumPerformanceHistory>>>,
 }
 
+impl Default for CapabilityBasedQuantumBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapabilityBasedQuantumBalancer {
     pub fn new() -> Self {
         let mut weights = HashMap::new();
@@ -771,13 +794,18 @@ impl LoadBalancer for CapabilityBasedQuantumBalancer {
         crate::quantum_network::distributed_protocols::DistributedComputationError,
     > {
         // Update performance history
-        let mut history = self.quantum_performance_history.write().unwrap();
+        let mut history = self
+            .quantum_performance_history
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if !history.contains_key(node_id) {
             history.insert(node_id.clone(), QuantumPerformanceHistory::default());
         }
 
         // Add performance data point
-        let node_history = history.get_mut(node_id).unwrap();
+        let Some(node_history) = history.get_mut(node_id) else {
+            return Ok(());
+        };
 
         // Update classical metrics
         node_history
@@ -788,9 +816,10 @@ impl LoadBalancer for CapabilityBasedQuantumBalancer {
             node_history.classical_metrics.execution_times.pop_front();
         }
 
-        node_history.classical_metrics.success_rate = (node_history.classical_metrics.success_rate
-            * 0.9)
-            + (if metrics.success { 1.0 } else { 0.0 } * 0.1);
+        node_history.classical_metrics.success_rate = node_history
+            .classical_metrics
+            .success_rate
+            .mul_add(0.9, if metrics.success { 1.0 } else { 0.0 } * 0.1);
 
         Ok(())
     }
@@ -1024,6 +1053,12 @@ pub struct SimpleMLModel {
     pub model_type: String,
 }
 
+impl Default for SimpleMLModel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimpleMLModel {
     pub fn new() -> Self {
         Self {
@@ -1131,12 +1166,12 @@ mod tests {
             !balancer
                 .adaptive_weights
                 .lock()
-                .unwrap()
+                .expect("Mutex should not be poisoned")
                 .dynamic_adjustment_enabled
                 || balancer
                     .adaptive_weights
                     .lock()
-                    .unwrap()
+                    .expect("Mutex should not be poisoned")
                     .dynamic_adjustment_enabled
         );
     }
@@ -1211,7 +1246,7 @@ mod tests {
             .await;
         assert!(features.is_ok());
 
-        let feature_vector = features.unwrap();
+        let feature_vector = features.expect("Feature extraction should succeed");
         assert!(!feature_vector.features.is_empty());
         assert!(feature_vector.features.contains_key("circuit_depth"));
         assert!(feature_vector
@@ -1303,7 +1338,7 @@ mod tests {
         assert!(selected_node.is_ok());
 
         // Should select the high capability node
-        let node_id = selected_node.unwrap();
+        let node_id = selected_node.expect("Node selection should succeed");
         assert_eq!(node_id.0, "high_capability_node");
     }
 }

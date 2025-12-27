@@ -306,7 +306,7 @@ impl NoiseModelingUtils {
 
         // Percentiles (simplified)
         let mut sorted = flattened.clone();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let p25_idx = (0.25 * n) as usize;
         let p50_idx = (0.50 * n) as usize;
         let p75_idx = (0.75 * n) as usize;

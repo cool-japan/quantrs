@@ -23,7 +23,9 @@ impl QLDA {
 
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         let n_components = self.config.n_components.unwrap_or(2).min(data.ncols());
-        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let mean = data
+            .mean_axis(scirs2_core::ndarray::Axis(0))
+            .unwrap_or_else(|| scirs2_core::ndarray::Array1::zeros(data.ncols()));
         let components = Array2::eye(n_components);
         let explained_variance_ratio = Array1::ones(n_components) / n_components as f64;
 

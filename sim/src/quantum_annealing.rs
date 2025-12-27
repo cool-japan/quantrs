@@ -8,7 +8,7 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -151,7 +151,7 @@ impl Default for PostProcessingConfig {
 pub struct IsingProblem {
     /// Number of spins
     pub num_spins: usize,
-    /// Linear coefficients (h_i)
+    /// Linear coefficients (`h_i`)
     pub h: Array1<f64>,
     /// Quadratic coefficients (J_{ij})
     pub j: Array2<f64>,
@@ -193,6 +193,7 @@ pub struct ProblemMetadata {
 
 impl IsingProblem {
     /// Create new Ising problem
+    #[must_use]
     pub fn new(num_spins: usize) -> Self {
         Self {
             num_spins,
@@ -219,6 +220,7 @@ impl IsingProblem {
     }
 
     /// Calculate energy for a given configuration
+    #[must_use]
     pub fn calculate_energy(&self, configuration: &[i8]) -> f64 {
         if configuration.len() != self.num_spins {
             return f64::INFINITY;
@@ -228,13 +230,14 @@ impl IsingProblem {
 
         // Linear terms
         for i in 0..self.num_spins {
-            energy += self.h[i] * configuration[i] as f64;
+            energy += self.h[i] * f64::from(configuration[i]);
         }
 
         // Quadratic terms
         for i in 0..self.num_spins {
             for j in i + 1..self.num_spins {
-                energy += self.j[[i, j]] * configuration[i] as f64 * configuration[j] as f64;
+                energy +=
+                    self.j[[i, j]] * f64::from(configuration[i]) * f64::from(configuration[j]);
             }
         }
 
@@ -242,6 +245,7 @@ impl IsingProblem {
     }
 
     /// Convert to QUBO problem
+    #[must_use]
     pub fn to_qubo(&self) -> QUBOProblem {
         let num_vars = self.num_spins;
         let mut q = Array2::zeros((num_vars, num_vars));
@@ -277,6 +281,7 @@ impl IsingProblem {
     }
 
     /// Find ground state using brute force (for small problems)
+    #[must_use]
     pub fn find_ground_state_brute_force(&self) -> (Vec<i8>, f64) {
         assert!(
             (self.num_spins <= 20),
@@ -307,6 +312,7 @@ impl IsingProblem {
 
 impl QUBOProblem {
     /// Create new QUBO problem
+    #[must_use]
     pub fn new(num_variables: usize) -> Self {
         Self {
             num_variables,
@@ -318,6 +324,7 @@ impl QUBOProblem {
     }
 
     /// Calculate energy for a given binary configuration
+    #[must_use]
     pub fn calculate_energy(&self, configuration: &[u8]) -> f64 {
         if configuration.len() != self.num_variables {
             return f64::INFINITY;
@@ -327,14 +334,15 @@ impl QUBOProblem {
 
         // Linear terms
         for i in 0..self.num_variables {
-            energy += self.linear[i] * configuration[i] as f64;
+            energy += self.linear[i] * f64::from(configuration[i]);
         }
 
         // Quadratic terms
         for i in 0..self.num_variables {
             for j in 0..self.num_variables {
                 if i != j {
-                    energy += self.q[[i, j]] * configuration[i] as f64 * configuration[j] as f64;
+                    energy +=
+                        self.q[[i, j]] * f64::from(configuration[i]) * f64::from(configuration[j]);
                 }
             }
         }
@@ -343,6 +351,7 @@ impl QUBOProblem {
     }
 
     /// Convert to Ising problem
+    #[must_use]
     pub fn to_ising(&self) -> IsingProblem {
         let num_spins = self.num_variables;
         let mut h = Array1::zeros(num_spins);
@@ -386,7 +395,7 @@ pub struct QuantumAnnealingSimulator {
     current_problem: Option<IsingProblem>,
     /// Device noise simulator
     noise_simulator: Option<DeviceNoiseSimulator>,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Annealing history
     annealing_history: Vec<AnnealingSnapshot>,
@@ -487,7 +496,7 @@ impl QuantumAnnealingSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -552,8 +561,11 @@ impl QuantumAnnealingSimulator {
         }
 
         // Sort solutions by energy
-        self.solutions
-            .sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        self.solutions.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Rank solutions
         for (rank, solution) in self.solutions.iter_mut().enumerate() {
@@ -578,8 +590,12 @@ impl QuantumAnnealingSimulator {
     }
 
     /// Run single annealing cycle
-    fn single_anneal(&mut self, read_id: usize) -> Result<AnnealingSolution> {
-        let problem_num_spins = self.current_problem.as_ref().unwrap().num_spins;
+    fn single_anneal(&mut self, _read_id: usize) -> Result<AnnealingSolution> {
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
+        let problem_num_spins = problem.num_spins;
 
         // Initialize quantum state in superposition
         let state_size = 1 << problem_num_spins.min(20); // Limit for memory
@@ -621,7 +637,7 @@ impl QuantumAnnealingSimulator {
                     s,
                     transverse_field,
                     longitudinal_field,
-                    &quantum_state,
+                    quantum_state.as_ref(),
                 )?;
                 self.annealing_history.push(snapshot);
             }
@@ -632,14 +648,17 @@ impl QuantumAnnealingSimulator {
             self.measure_final_state(state)?
         } else {
             // Get the problem again for classical sampling
-            let problem = self.current_problem.as_ref().unwrap();
+            let problem = self
+                .current_problem
+                .as_ref()
+                .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
             self.classical_sampling(problem)?
         };
 
         let energy = self
             .current_problem
             .as_ref()
-            .unwrap()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?
             .calculate_energy(&final_configuration);
 
         Ok(AnnealingSolution {
@@ -724,14 +743,17 @@ impl QuantumAnnealingSimulator {
 
     /// Apply quantum evolution for one time step
     fn apply_quantum_evolution(
-        &mut self,
+        &self,
         state: &mut Array1<Complex64>,
         transverse_field: f64,
         longitudinal_field: f64,
         dt: f64,
     ) -> Result<()> {
-        let problem = self.current_problem.as_ref().unwrap();
-        let num_spins = problem.num_spins;
+        // Problem is guaranteed to exist when called from single_anneal
+        let _problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
 
         // Build total Hamiltonian matrix
         let hamiltonian = self.build_annealing_hamiltonian(transverse_field, longitudinal_field)?;
@@ -741,7 +763,11 @@ impl QuantumAnnealingSimulator {
         *state = evolution_operator.dot(state);
 
         // Renormalize to handle numerical errors
-        let norm: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        let norm: f64 = state
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            .sqrt();
         if norm > 1e-15 {
             state.mapv_inplace(|x| x / norm);
         }
@@ -755,7 +781,10 @@ impl QuantumAnnealingSimulator {
         transverse_field: f64,
         longitudinal_field: f64,
     ) -> Result<Array2<Complex64>> {
-        let problem = self.current_problem.as_ref().unwrap();
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
         let num_spins = problem.num_spins;
         let dim = 1 << num_spins;
         let mut hamiltonian = Array2::zeros((dim, dim));
@@ -788,7 +817,10 @@ impl QuantumAnnealingSimulator {
 
     /// Build problem Hamiltonian (Ising model)
     fn build_problem_hamiltonian(&self) -> Result<Array2<Complex64>> {
-        let problem = self.current_problem.as_ref().unwrap();
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
         let num_spins = problem.num_spins;
         let dim = 1 << num_spins;
         let mut hamiltonian = Array2::zeros((dim, dim));
@@ -860,8 +892,12 @@ impl QuantumAnnealingSimulator {
 
         for n in 1..=15 {
             // Limit series expansion
-            term = term.dot(&scaled_matrix) / (n as f64);
-            let term_norm: f64 = term.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+            term = term.dot(&scaled_matrix) / f64::from(n);
+            let term_norm: f64 = term
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
 
             result += &term;
 
@@ -912,7 +948,11 @@ impl QuantumAnnealingSimulator {
         let error_strength = 0.01; // 1% control errors
 
         // Apply random single-qubit rotations to simulate control errors
-        let problem = self.current_problem.as_ref().unwrap();
+        // Problem is guaranteed to exist when called from apply_annealing_noise
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
         for spin in 0..problem.num_spins.min(10) {
             // Limit for performance
             if fastrand::f64() < error_strength * dt {
@@ -947,7 +987,11 @@ impl QuantumAnnealingSimulator {
         spin: usize,
         angle: f64,
     ) -> Result<()> {
-        let problem = self.current_problem.as_ref().unwrap();
+        // Problem check for validation - spin_mask doesn't depend on it but kept for API consistency
+        let _problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
         let spin_mask = 1 << spin;
         let cos_half = (angle / 2.0).cos();
         let sin_half = (angle / 2.0).sin();
@@ -975,7 +1019,7 @@ impl QuantumAnnealingSimulator {
         s: f64,
         transverse_field: f64,
         longitudinal_field: f64,
-        quantum_state: &Option<Array1<Complex64>>,
+        quantum_state: Option<&Array1<Complex64>>,
     ) -> Result<AnnealingSnapshot> {
         let energy_expectation = if let Some(state) = quantum_state {
             self.calculate_energy_expectation(state)?
@@ -990,7 +1034,7 @@ impl QuantumAnnealingSimulator {
             s,
             transverse_field,
             longitudinal_field,
-            quantum_state: quantum_state.clone(),
+            quantum_state: quantum_state.cloned(),
             classical_probabilities: None,
             energy_expectation,
             temperature_factor,
@@ -999,7 +1043,10 @@ impl QuantumAnnealingSimulator {
 
     /// Calculate energy expectation value
     fn calculate_energy_expectation(&self, state: &Array1<Complex64>) -> Result<f64> {
-        let problem = self.current_problem.as_ref().unwrap();
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
         let mut expectation = 0.0;
 
         for (i, &amplitude) in state.iter().enumerate() {
@@ -1022,10 +1069,13 @@ impl QuantumAnnealingSimulator {
 
     /// Measure final quantum state
     fn measure_final_state(&self, state: &Array1<Complex64>) -> Result<Vec<i8>> {
-        let problem = self.current_problem.as_ref().unwrap();
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
 
         // Sample from the quantum state probability distribution
-        let probabilities: Vec<f64> = state.iter().map(|x| x.norm_sqr()).collect();
+        let probabilities: Vec<f64> = state.iter().map(scirs2_core::Complex::norm_sqr).collect();
         let random_val = fastrand::f64();
 
         let mut cumulative_prob = 0.0;
@@ -1098,7 +1148,10 @@ impl QuantumAnnealingSimulator {
 
     /// Apply local search post-processing
     fn apply_local_search_post_processing(&mut self) -> Result<()> {
-        let problem = self.current_problem.as_ref().unwrap();
+        let problem = self
+            .current_problem
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidInput("No problem set".to_string()))?;
 
         for solution in &mut self.solutions {
             let mut improved_config = solution.configuration.clone();
@@ -1168,6 +1221,7 @@ impl QuantumAnnealingSimulator {
     }
 
     /// Get annealing statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &AnnealingStats {
         &self.stats
     }
@@ -1200,6 +1254,7 @@ pub struct QuantumAnnealingUtils;
 
 impl QuantumAnnealingUtils {
     /// Create Max-Cut Ising problem
+    #[must_use]
     pub fn create_max_cut_problem(graph_edges: &[(usize, usize)], weights: &[f64]) -> IsingProblem {
         let num_vertices = graph_edges
             .iter()
@@ -1223,6 +1278,7 @@ impl QuantumAnnealingUtils {
     }
 
     /// Create number partitioning problem
+    #[must_use]
     pub fn create_number_partitioning_problem(numbers: &[f64]) -> IsingProblem {
         let n = numbers.len();
         let mut problem = IsingProblem::new(n);
@@ -1240,6 +1296,7 @@ impl QuantumAnnealingUtils {
     }
 
     /// Create random Ising problem
+    #[must_use]
     pub fn create_random_ising_problem(
         num_spins: usize,
         h_range: f64,
@@ -1378,7 +1435,8 @@ mod tests {
             schedule_type: AnnealingScheduleType::Linear,
             ..Default::default()
         };
-        let simulator = QuantumAnnealingSimulator::new(config).unwrap();
+        let simulator = QuantumAnnealingSimulator::new(config)
+            .expect("should create quantum annealing simulator");
 
         assert_abs_diff_eq!(simulator.schedule_function(0.0), 0.0, epsilon = 1e-10);
         assert_abs_diff_eq!(simulator.schedule_function(5.0), 0.5, epsilon = 1e-10);
@@ -1392,7 +1450,12 @@ mod tests {
 
         let problem = QuantumAnnealingUtils::create_max_cut_problem(&edges, &weights);
         assert_eq!(problem.num_spins, 3);
-        assert!(problem.metadata.name.as_ref().unwrap().contains("Max-Cut"));
+        assert!(problem
+            .metadata
+            .name
+            .as_ref()
+            .expect("metadata name should be set")
+            .contains("Max-Cut"));
     }
 
     #[test]
@@ -1405,7 +1468,7 @@ mod tests {
             .metadata
             .name
             .as_ref()
-            .unwrap()
+            .expect("metadata name should be set")
             .contains("Number Partitioning"));
     }
 
@@ -1421,13 +1484,16 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = QuantumAnnealingSimulator::new(config).unwrap();
-        simulator.set_problem(problem).unwrap();
+        let mut simulator = QuantumAnnealingSimulator::new(config)
+            .expect("should create quantum annealing simulator");
+        simulator
+            .set_problem(problem)
+            .expect("should set problem successfully");
 
         let result = simulator.anneal(10);
         assert!(result.is_ok());
 
-        let annealing_result = result.unwrap();
+        let annealing_result = result.expect("should get annealing result");
         assert_eq!(annealing_result.solutions.len(), 10);
         assert!(!annealing_result.annealing_history.is_empty());
     }
@@ -1435,7 +1501,8 @@ mod tests {
     #[test]
     fn test_field_strength_calculation() {
         let config = QuantumAnnealingConfig::default();
-        let simulator = QuantumAnnealingSimulator::new(config).unwrap();
+        let simulator = QuantumAnnealingSimulator::new(config)
+            .expect("should create quantum annealing simulator");
 
         let (transverse, longitudinal) = simulator.calculate_field_strengths(0.0);
         assert_abs_diff_eq!(transverse, 1.0, epsilon = 1e-10);

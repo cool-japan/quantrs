@@ -104,16 +104,13 @@ pub enum Expression {
     Variable(Variable),
 
     /// Sum of expressions
-    Sum(Vec<Expression>),
+    Sum(Vec<Self>),
 
     /// Product of expressions
-    Product(Box<Expression>, Box<Expression>),
+    Product(Box<Self>, Box<Self>),
 
     /// Linear combination
-    LinearCombination {
-        weights: Vec<f64>,
-        terms: Vec<Expression>,
-    },
+    LinearCombination { weights: Vec<f64>, terms: Vec<Self> },
 
     /// Quadratic term
     Quadratic {
@@ -123,19 +120,19 @@ pub enum Expression {
     },
 
     /// Power of expression
-    Power(Box<Expression>, i32),
+    Power(Box<Self>, i32),
 
     /// Negation
-    Negate(Box<Expression>),
+    Negate(Box<Self>),
 
     /// Absolute value
-    Abs(Box<Expression>),
+    Abs(Box<Self>),
 
     /// Conditional expression
     Conditional {
         condition: Box<BooleanExpression>,
-        if_true: Box<Expression>,
-        if_false: Box<Expression>,
+        if_true: Box<Self>,
+        if_false: Box<Self>,
     },
 }
 
@@ -164,19 +161,19 @@ pub enum BooleanExpression {
     GreaterThanOrEqual(Expression, Expression),
 
     /// Logical AND
-    And(Box<BooleanExpression>, Box<BooleanExpression>),
+    And(Box<Self>, Box<Self>),
 
     /// Logical OR
-    Or(Box<BooleanExpression>, Box<BooleanExpression>),
+    Or(Box<Self>, Box<Self>),
 
     /// Logical NOT
-    Not(Box<BooleanExpression>),
+    Not(Box<Self>),
 
     /// Logical XOR
-    Xor(Box<BooleanExpression>, Box<BooleanExpression>),
+    Xor(Box<Self>, Box<Self>),
 
     /// Implication (if-then)
-    Implies(Box<BooleanExpression>, Box<BooleanExpression>),
+    Implies(Box<Self>, Box<Self>),
 
     /// All different constraint
     AllDifferent(Vec<Variable>),
@@ -205,7 +202,7 @@ pub struct Constraint {
 }
 
 /// Objective function direction
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectiveDirection {
     Minimize,
     Maximize,
@@ -273,8 +270,7 @@ impl OptimizationModel {
 
         if self.variables.contains_key(&var_name) {
             return Err(DslError::InvalidConstraint(format!(
-                "Variable {} already exists",
-                var_name
+                "Variable {var_name} already exists"
             )));
         }
 
@@ -301,7 +297,7 @@ impl OptimizationModel {
         let mut variables = Vec::new();
 
         for i in 0..size {
-            let var_name = format!("{}[{}]", vec_name, i);
+            let var_name = format!("{vec_name}[{i}]");
             let var = self.add_binary(var_name)?;
             variables.push(var);
         }
@@ -326,15 +322,13 @@ impl OptimizationModel {
 
         if self.variables.contains_key(&var_name) {
             return Err(DslError::InvalidConstraint(format!(
-                "Variable {} already exists",
-                var_name
+                "Variable {var_name} already exists"
             )));
         }
 
         if min > max {
             return Err(DslError::InvalidRange(format!(
-                "Invalid range [{}, {}]",
-                min, max
+                "Invalid range [{min}, {max}]"
             )));
         }
 
@@ -367,8 +361,7 @@ impl OptimizationModel {
 
         if self.variables.contains_key(&var_name) {
             return Err(DslError::InvalidConstraint(format!(
-                "Variable {} already exists",
-                var_name
+                "Variable {var_name} already exists"
             )));
         }
 
@@ -650,6 +643,7 @@ impl OptimizationModel {
     }
 
     /// Get model summary
+    #[must_use]
     pub fn summary(&self) -> ModelSummary {
         ModelSummary {
             name: self.name.clone(),
@@ -701,7 +695,7 @@ impl fmt::Display for ModelSummary {
         writeln!(f, "  Objectives: {}", self.num_objectives)?;
         writeln!(f, "  Variable types:")?;
         for (var_type, count) in &self.variable_types {
-            writeln!(f, "    {}: {}", var_type, count)?;
+            writeln!(f, "    {var_type}: {count}")?;
         }
         Ok(())
     }
@@ -710,43 +704,47 @@ impl fmt::Display for ModelSummary {
 /// Expression builder helper methods
 impl Expression {
     /// Create a constant expression
-    pub fn constant(value: f64) -> Self {
-        Expression::Constant(value)
+    #[must_use]
+    pub const fn constant(value: f64) -> Self {
+        Self::Constant(value)
     }
 
     /// Create a sum expression
-    pub fn sum(terms: Vec<Expression>) -> Self {
-        Expression::Sum(terms)
+    #[must_use]
+    pub const fn sum(terms: Vec<Self>) -> Self {
+        Self::Sum(terms)
     }
 
     /// Add two expressions
-    pub fn add(self, other: Expression) -> Self {
+    #[must_use]
+    pub fn add(self, other: Self) -> Self {
         match (self, other) {
-            (Expression::Sum(mut terms), Expression::Sum(other_terms)) => {
+            (Self::Sum(mut terms), Self::Sum(other_terms)) => {
                 terms.extend(other_terms);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (Expression::Sum(mut terms), other) => {
+            (Self::Sum(mut terms), other) => {
                 terms.push(other);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (expr, Expression::Sum(mut terms)) => {
+            (expr, Self::Sum(mut terms)) => {
                 terms.insert(0, expr);
-                Expression::Sum(terms)
+                Self::Sum(terms)
             }
-            (expr1, expr2) => Expression::Sum(vec![expr1, expr2]),
+            (expr1, expr2) => Self::Sum(vec![expr1, expr2]),
         }
     }
 
     /// Multiply expression by a constant
+    #[must_use]
     pub fn scale(self, factor: f64) -> Self {
         match self {
-            Expression::Constant(value) => Expression::Constant(value * factor),
-            Expression::LinearCombination { weights, terms } => Expression::LinearCombination {
+            Self::Constant(value) => Self::Constant(value * factor),
+            Self::LinearCombination { weights, terms } => Self::LinearCombination {
                 weights: weights.into_iter().map(|w| w * factor).collect(),
                 terms,
             },
-            expr => Expression::LinearCombination {
+            expr => Self::LinearCombination {
                 weights: vec![factor],
                 terms: vec![expr],
             },
@@ -754,14 +752,16 @@ impl Expression {
     }
 
     /// Negate expression
+    #[must_use]
     pub fn negate(self) -> Self {
-        Expression::Negate(Box::new(self))
+        Self::Negate(Box::new(self))
     }
 }
 
 /// Variable vector helper methods
 impl VariableVector {
     /// Sum all variables in the vector
+    #[must_use]
     pub fn sum(&self) -> Expression {
         Expression::Sum(
             self.variables
@@ -772,6 +772,7 @@ impl VariableVector {
     }
 
     /// Weighted sum of variables
+    #[must_use]
     pub fn weighted_sum(&self, weights: &[f64]) -> Expression {
         if weights.len() != self.variables.len() {
             // Return zero expression if dimensions don't match
@@ -789,16 +790,19 @@ impl VariableVector {
     }
 
     /// Get a specific variable by index
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<&Variable> {
         self.variables.get(index)
     }
 
     /// Number of variables in the vector
+    #[must_use]
     pub fn len(&self) -> usize {
         self.variables.len()
     }
 
     /// Check if vector is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.variables.is_empty()
     }
@@ -807,7 +811,7 @@ impl VariableVector {
 /// Constraint builder methods for expressions
 impl Expression {
     /// Create equality constraint
-    pub fn equals(self, other: impl Into<Expression>) -> Constraint {
+    pub fn equals(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::Equal(self, other.into()),
             name: None,
@@ -817,7 +821,7 @@ impl Expression {
     }
 
     /// Create less-than constraint
-    pub fn less_than(self, other: impl Into<Expression>) -> Constraint {
+    pub fn less_than(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::LessThan(self, other.into()),
             name: None,
@@ -827,7 +831,7 @@ impl Expression {
     }
 
     /// Create less-than-or-equal constraint
-    pub fn less_than_or_equal(self, other: impl Into<Expression>) -> Constraint {
+    pub fn less_than_or_equal(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::LessThanOrEqual(self, other.into()),
             name: None,
@@ -837,7 +841,7 @@ impl Expression {
     }
 
     /// Create greater-than constraint
-    pub fn greater_than(self, other: impl Into<Expression>) -> Constraint {
+    pub fn greater_than(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::GreaterThan(self, other.into()),
             name: None,
@@ -847,7 +851,7 @@ impl Expression {
     }
 
     /// Create greater-than-or-equal constraint
-    pub fn greater_than_or_equal(self, other: impl Into<Expression>) -> Constraint {
+    pub fn greater_than_or_equal(self, other: impl Into<Self>) -> Constraint {
         Constraint {
             expression: BooleanExpression::GreaterThanOrEqual(self, other.into()),
             name: None,
@@ -860,25 +864,27 @@ impl Expression {
 /// Implement `Into<Expression>` for numeric types
 impl From<f64> for Expression {
     fn from(value: f64) -> Self {
-        Expression::Constant(value)
+        Self::Constant(value)
     }
 }
 
 impl From<i32> for Expression {
     fn from(value: i32) -> Self {
-        Expression::Constant(value as f64)
+        Self::Constant(f64::from(value))
     }
 }
 
 impl From<Variable> for Expression {
     fn from(var: Variable) -> Self {
-        Expression::Variable(var)
+        Self::Variable(var)
     }
 }
 
 /// Common optimization patterns
 pub mod patterns {
-    use super::*;
+    use super::{
+        BooleanExpression, Constraint, DslError, DslResult, Expression, OptimizationModel, Variable,
+    };
 
     /// Create a knapsack problem
     pub fn knapsack(
@@ -923,7 +929,7 @@ pub mod patterns {
         // Binary variables x[v][c] = 1 if vertex v has color c
         let mut x = Vec::new();
         for v in 0..n {
-            let colors = model.add_binary_vector(format!("vertex_{}_color", v), num_colors)?;
+            let colors = model.add_binary_vector(format!("vertex_{v}_color"), num_colors)?;
             x.push(colors);
         }
 
@@ -935,7 +941,7 @@ pub mod patterns {
 
             model.add_constraint(Constraint {
                 expression: BooleanExpression::ExactlyOne(vertex_vars),
-                name: Some(format!("vertex_{}_one_color", v)),
+                name: Some(format!("vertex_{v}_one_color")),
                 penalty_weight: None,
                 is_hard: true,
             })?;
@@ -951,7 +957,7 @@ pub mod patterns {
                             var_u.clone(),
                             var_v.clone(),
                         ]),
-                        name: Some(format!("edge_{}_{}_color_{}", u, v, c)),
+                        name: Some(format!("edge_{u}_{v}_color_{c}")),
                         penalty_weight: None,
                         is_hard: true,
                     })?;
@@ -962,7 +968,7 @@ pub mod patterns {
         // Objective: minimize number of colors used (optional)
         let mut color_used = Vec::new();
         for c in 0..num_colors {
-            let color_var = model.add_binary(format!("color_{}_used", c))?;
+            let color_var = model.add_binary(format!("color_{c}_used"))?;
             color_used.push(color_var.clone());
 
             // If any vertex uses color c, then color_used[c] = 1
@@ -992,7 +998,9 @@ mod tests {
     #[test]
     fn test_binary_variable_creation() {
         let mut model = OptimizationModel::new("Test Model");
-        let var = model.add_binary("x").unwrap();
+        let var = model
+            .add_binary("x")
+            .expect("Failed to add binary variable");
 
         assert_eq!(var.id, "x");
         assert_eq!(var.qubit_indices.len(), 1);
@@ -1002,7 +1010,9 @@ mod tests {
     #[test]
     fn test_binary_vector_creation() {
         let mut model = OptimizationModel::new("Test Model");
-        let vec = model.add_binary_vector("x", 5).unwrap();
+        let vec = model
+            .add_binary_vector("x", 5)
+            .expect("Failed to add binary vector");
 
         assert_eq!(vec.name, "x");
         assert_eq!(vec.len(), 5);
@@ -1013,7 +1023,9 @@ mod tests {
     #[test]
     fn test_integer_variable_creation() {
         let mut model = OptimizationModel::new("Test Model");
-        let var = model.add_integer("i", 0, 7).unwrap();
+        let var = model
+            .add_integer("i", 0, 7)
+            .expect("Failed to add integer variable");
 
         assert_eq!(var.id, "i");
         assert_eq!(var.qubit_indices.len(), 3); // 2^3 = 8 > 7
@@ -1050,7 +1062,8 @@ mod tests {
         let weights = vec![5.0, 10.0, 7.0];
         let capacity = 15.0;
 
-        let model = patterns::knapsack(&items, &values, &weights, capacity).unwrap();
+        let model = patterns::knapsack(&items, &values, &weights, capacity)
+            .expect("Failed to create knapsack model");
 
         assert_eq!(model.name, "Knapsack Problem");
         assert_eq!(model.summary().num_variables, 3);

@@ -579,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_qbm_creation() {
-        let qbm = QuantumBoltzmannMachine::new(4, 2, 1.0, 0.01).unwrap();
+        let qbm = QuantumBoltzmannMachine::new(4, 2, 1.0, 0.01).expect("Failed to create QBM");
         assert_eq!(qbm.num_visible, 4);
         assert_eq!(qbm.num_hidden, 2);
         assert_eq!(qbm.num_qubits, 6);
@@ -587,7 +587,7 @@ mod tests {
 
     #[test]
     fn test_energy_computation() {
-        let qbm = QuantumBoltzmannMachine::new(2, 2, 1.0, 0.01).unwrap();
+        let qbm = QuantumBoltzmannMachine::new(2, 2, 1.0, 0.01).expect("Failed to create QBM");
         let state = Array1::from_vec(vec![1.0, 0.0, 1.0, 0.0]);
         let energy = qbm.energy(&state);
         assert!(energy.is_finite());
@@ -595,8 +595,8 @@ mod tests {
 
     #[test]
     fn test_sampling() {
-        let qbm = QuantumBoltzmannMachine::new(3, 2, 1.0, 0.01).unwrap();
-        let samples = qbm.sample(10).unwrap();
+        let qbm = QuantumBoltzmannMachine::new(3, 2, 1.0, 0.01).expect("Failed to create QBM");
+        let samples = qbm.sample(10).expect("Sampling should succeed");
         assert_eq!(samples.shape(), &[10, 3]);
 
         // Check samples are binary
@@ -609,7 +609,7 @@ mod tests {
 
     #[test]
     fn test_rbm_creation() {
-        let rbm = QuantumRBM::new(4, 3, 1.0, 0.01).unwrap();
+        let rbm = QuantumRBM::new(4, 3, 1.0, 0.01).expect("Failed to create RBM");
         assert_eq!(rbm.qbm.num_visible, 4);
         assert_eq!(rbm.qbm.num_hidden, 3);
     }
@@ -617,7 +617,8 @@ mod tests {
     #[test]
     fn test_deep_boltzmann() {
         let layer_sizes = vec![4, 3, 2];
-        let dbm = DeepBoltzmannMachine::new(layer_sizes.clone(), 1.0, 0.01).unwrap();
+        let dbm = DeepBoltzmannMachine::new(layer_sizes.clone(), 1.0, 0.01)
+            .expect("Failed to create DBM");
         assert_eq!(dbm.layer_sizes, layer_sizes);
         assert_eq!(dbm.rbms.len(), 2);
     }

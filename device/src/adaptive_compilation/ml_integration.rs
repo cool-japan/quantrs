@@ -21,7 +21,7 @@ pub struct MLOptimizationConfig {
 }
 
 /// Types of ML models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MLModelType {
     NeuralNetwork,
     RandomForest,
@@ -34,7 +34,7 @@ pub enum MLModelType {
 }
 
 /// ML training configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MLTrainingConfig {
     /// Training data requirements
     pub training_data: TrainingDataConfig,
@@ -64,7 +64,7 @@ pub struct TrainingDataConfig {
 }
 
 /// Data collection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataCollectionStrategy {
     Passive,
     Active,
@@ -87,7 +87,7 @@ pub struct DataPreprocessingConfig {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NormalizationMethod {
     MinMax,
     ZScore,
@@ -97,7 +97,7 @@ pub enum NormalizationMethod {
 }
 
 /// Outlier handling strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutlierHandling {
     Remove,
     Cap,
@@ -106,7 +106,7 @@ pub enum OutlierHandling {
 }
 
 /// Missing value handling strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MissingValueStrategy {
     Remove,
     Impute,
@@ -136,7 +136,7 @@ pub enum ValidationCondition {
 }
 
 /// Actions to take on validation failure
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationFailureAction {
     Reject,
     Warn,
@@ -156,7 +156,7 @@ pub struct DataAugmentationConfig {
 }
 
 /// Data augmentation techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AugmentationTechnique {
     NoiseInjection,
     Rotation,
@@ -195,7 +195,7 @@ pub struct HyperparameterOptimization {
 }
 
 /// Hyperparameter optimization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HyperparameterStrategy {
     GridSearch,
     RandomSearch,
@@ -205,7 +205,7 @@ pub enum HyperparameterStrategy {
 }
 
 /// Search space configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SearchSpaceConfig {
     /// Parameter ranges
     pub parameter_ranges: HashMap<String, ParameterRange>,
@@ -229,7 +229,7 @@ pub struct ParameterRange {
 }
 
 /// Parameter distributions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParameterDistribution {
     Uniform,
     LogUniform,
@@ -249,7 +249,7 @@ pub struct ParameterConstraint {
 }
 
 /// Types of parameter constraints
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     Equality,
     Inequality,
@@ -292,7 +292,7 @@ pub struct TrainingOptimizationConfig {
 }
 
 /// Types of optimizers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizerType {
     SGD,
     Adam,
@@ -313,7 +313,7 @@ pub struct LearningRateScheduling {
 }
 
 /// Learning rate scheduling strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LRSchedulingStrategy {
     StepDecay,
     ExponentialDecay,
@@ -334,7 +334,7 @@ pub struct GradientClippingConfig {
 }
 
 /// Gradient clipping methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClippingMethod {
     Norm,
     Value,
@@ -353,7 +353,7 @@ pub struct LossFunctionConfig {
 }
 
 /// Loss function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LossFunction {
     MeanSquaredError,
     MeanAbsoluteError,
@@ -375,7 +375,7 @@ pub struct AuxiliaryLoss {
 }
 
 /// Loss weighting schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LossWeightingScheme {
     Static,
     Dynamic,
@@ -399,7 +399,7 @@ pub struct RegularizationConfig {
 }
 
 /// Additional regularization techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegularizationTechnique {
     Dropout,
     BatchNorm,
@@ -425,7 +425,7 @@ pub struct EarlyStoppingConfig {
 }
 
 /// Direction of improvement for monitored metric
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImprovementDirection {
     Maximize,
     Minimize,
@@ -445,7 +445,7 @@ pub struct CrossValidationConfig {
 }
 
 /// Cross-validation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CVStrategy {
     KFold,
     StratifiedKFold,
@@ -466,7 +466,7 @@ pub struct StratificationConfig {
 }
 
 /// Strategies for balancing stratified samples
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BalanceStrategy {
     None,
     Oversample,
@@ -491,7 +491,7 @@ pub struct FeatureEngineeringConfig {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureSelectionMethod {
     VarianceThreshold,
     UnivariateSelection,
@@ -502,7 +502,7 @@ pub enum FeatureSelectionMethod {
 }
 
 /// Feature scaling methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureScalingMethod {
     StandardScaler,
     MinMaxScaler,
@@ -526,7 +526,7 @@ pub struct DimensionalityReductionConfig {
 }
 
 /// Dimensionality reduction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DimensionalityReductionMethod {
     PCA,
     ICA,
@@ -550,7 +550,7 @@ pub struct InteractionDetectionConfig {
 }
 
 /// Feature interaction detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InteractionDetectionMethod {
     Correlation,
     MutualInformation,
@@ -586,7 +586,7 @@ pub struct AdaptiveLearningRate {
 }
 
 /// Learning rate adaptation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LRAdaptationStrategy {
     Constant,
     InverseScaling,
@@ -606,7 +606,7 @@ pub struct UpdateFrequency {
 }
 
 /// Triggers for model updates
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpdateTrigger {
     TimeInterval,
     DataVolume,
@@ -629,7 +629,7 @@ pub struct ConceptDriftConfig {
 }
 
 /// Concept drift detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DriftDetectionMethod {
     StatisticalTest,
     PerformanceMonitoring,
@@ -638,7 +638,7 @@ pub enum DriftDetectionMethod {
 }
 
 /// Response strategies for concept drift
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DriftResponseStrategy {
     Retrain,
     Adapt,
@@ -658,7 +658,7 @@ pub struct MemoryManagementConfig {
 }
 
 /// Memory management strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemoryStrategy {
     FixedWindow,
     SlidingWindow,
@@ -680,7 +680,7 @@ pub struct TransferLearningConfig {
 }
 
 /// Transfer learning strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferStrategy {
     FeatureExtraction,
     FineTuning,
@@ -701,7 +701,7 @@ pub struct SourceDomainConfig {
 }
 
 /// Similarity metrics for domain comparison
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityMetric {
     Statistical,
     Distributional,
@@ -763,7 +763,7 @@ pub struct DomainAdaptationConfig {
 }
 
 /// Domain adaptation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DomainAdaptationMethod {
     FeatureAlignment,
     DistributionMatching,
@@ -772,7 +772,7 @@ pub enum DomainAdaptationMethod {
 }
 
 /// Validation strategies for domain adaptation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationValidationStrategy {
     TargetValidation,
     SourceValidation,
@@ -794,19 +794,6 @@ impl Default for MLOptimizationConfig {
             feature_engineering: FeatureEngineeringConfig::default(),
             online_learning: OnlineLearningConfig::default(),
             transfer_learning: TransferLearningConfig::default(),
-        }
-    }
-}
-
-impl Default for MLTrainingConfig {
-    fn default() -> Self {
-        Self {
-            training_data: TrainingDataConfig::default(),
-            hyperparameters: ModelHyperparameters::default(),
-            optimization: TrainingOptimizationConfig::default(),
-            regularization: RegularizationConfig::default(),
-            early_stopping: EarlyStoppingConfig::default(),
-            cross_validation: CrossValidationConfig::default(),
         }
     }
 }
@@ -903,16 +890,6 @@ impl Default for HyperparameterOptimization {
             strategy: HyperparameterStrategy::RandomSearch,
             search_space: SearchSpaceConfig::default(),
             optimization_budget: OptimizationBudget::default(),
-        }
-    }
-}
-
-impl Default for SearchSpaceConfig {
-    fn default() -> Self {
-        Self {
-            parameter_ranges: HashMap::new(),
-            categorical_parameters: HashMap::new(),
-            constraints: vec![],
         }
     }
 }

@@ -7,7 +7,7 @@
 //! # Features
 //!
 //! - Full AWS Braket API integration
-//! - Quantum annealing device access (IonQ, Rigetti, etc.)
+//! - Quantum annealing device access (`IonQ`, Rigetti, etc.)
 //! - Analog quantum simulation support
 //! - Advanced problem formulation and submission
 //! - Device status tracking and management
@@ -21,6 +21,7 @@ mod client {
     use reqwest::Client;
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
+    use std::fmt::Write;
     use std::time::{Duration, Instant};
     use thiserror::Error;
     use tokio::runtime::Runtime;
@@ -87,7 +88,7 @@ mod client {
     pub type BraketResult<T> = Result<T, BraketError>;
 
     /// AWS Braket device types
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     pub enum DeviceType {
         /// Quantum processing unit
         #[serde(rename = "QPU")]
@@ -98,7 +99,7 @@ mod client {
     }
 
     /// AWS Braket device status
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     pub enum DeviceStatus {
         /// Device is online and available
         #[serde(rename = "ONLINE")]
@@ -112,7 +113,7 @@ mod client {
     }
 
     /// Quantum task status
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     pub enum TaskStatus {
         /// Task is being processed
         #[serde(rename = "RUNNING")]
@@ -778,7 +779,7 @@ mod client {
         pub fn list_tasks(&self, limit: Option<usize>) -> BraketResult<Vec<TaskResult>> {
             let mut url = format!("https://braket.{}.amazonaws.com/quantum-tasks", self.region);
             if let Some(limit) = limit {
-                url.push_str(&format!("?limit={}", limit));
+                let _ = write!(url, "?limit={}", limit);
             }
 
             self.runtime.block_on(async {
@@ -907,7 +908,7 @@ mod client {
                     if device.provider_name.contains("IonQ") {
                         0.01 // $0.01 per shot
                     } else if device.provider_name.contains("Rigetti") {
-                        0.00035 // $0.00035 per shot
+                        0.00_035 // $0.00_035 per shot
                     } else {
                         0.001 // Default QPU cost
                     }
@@ -1057,6 +1058,9 @@ mod placeholder {
 pub use placeholder::*;
 
 /// Check if AWS Braket support is enabled
-pub fn is_available() -> bool {
+#[must_use]
+pub const fn is_available() -> bool {
     cfg!(feature = "braket")
 }
+
+use std::fmt::Write;

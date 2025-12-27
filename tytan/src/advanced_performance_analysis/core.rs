@@ -364,7 +364,7 @@ impl AdvancedPerformanceAnalyzer {
             if let Some(&max_cpu) = cpu_time_series
                 .values
                 .iter()
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             {
                 if max_cpu > 80.0 {
                     self.analysis_results
@@ -392,7 +392,7 @@ impl AdvancedPerformanceAnalyzer {
             if let Some(&max_memory) = memory_time_series
                 .values
                 .iter()
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             {
                 if max_memory > 85.0 {
                     self.analysis_results

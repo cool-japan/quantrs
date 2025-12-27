@@ -4,7 +4,10 @@ use scirs2_core::ndarray::Array1;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use super::*;
+use super::{
+    DecompositionStrategy, DiversityMetric, DomainAdaptationStrategy, EvaluationMetric, ModelType,
+    ProblemAnalysis, QueryStrategy, StructureType,
+};
 use crate::ising::IsingModel;
 
 /// Decomposition strategy learner
@@ -33,7 +36,7 @@ impl DecompositionStrategyLearner {
         })
     }
 
-    pub fn recommend_strategy(
+    pub const fn recommend_strategy(
         &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
@@ -65,6 +68,7 @@ pub struct StrategySelectionModel {
 }
 
 impl StrategySelectionModel {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             model_type: ModelType::Linear,
@@ -87,10 +91,10 @@ impl StrategySelectionModel {
         features: &Array1<f64>,
     ) -> Result<f64, String> {
         let base_uncertainty = self.get_uncertainty(features)?;
-        let strategy_key = format!("{:?}", strategy);
+        let strategy_key = format!("{strategy:?}");
 
         if let Some(&stored_uncertainty) = self.uncertainty_estimates.get(&strategy_key) {
-            Ok((base_uncertainty + stored_uncertainty) / 2.0)
+            Ok(f64::midpoint(base_uncertainty, stored_uncertainty))
         } else {
             Ok(base_uncertainty)
         }
@@ -168,7 +172,8 @@ pub struct QuerySelector {
 }
 
 impl QuerySelector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             query_strategy: QueryStrategy::UncertaintySampling,
             uncertainty_threshold: 0.5,
@@ -235,6 +240,7 @@ pub struct TransferLearningManager {
 }
 
 impl TransferLearningManager {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             source_models: Vec::new(),
@@ -305,7 +311,8 @@ pub struct LearningStatistics {
 }
 
 impl LearningStatistics {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             total_queries: 0,
             successful_predictions: 0,

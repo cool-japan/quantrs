@@ -5,7 +5,9 @@
 //! These implementations avoid general matrix multiplication and directly
 //! manipulate state vector amplitudes.
 
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
@@ -820,7 +822,10 @@ impl SpecializedGate for FredkinSpecialized {
 
 /// Convert a general gate to its specialized implementation if available
 pub fn specialize_gate(gate: &dyn GateOp) -> Option<Box<dyn SpecializedGate>> {
-    use quantrs2_core::gate::{multi::*, single::*};
+    use quantrs2_core::gate::{
+        multi::{CNOT, CZ, SWAP},
+        single::{Hadamard, PauliX, PauliY, PauliZ, Phase, RotationX, RotationY, RotationZ, T},
+    };
     use std::any::Any;
 
     // Try single-qubit gates
@@ -1311,7 +1316,8 @@ mod tests {
         let mut state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let gate = HadamardSpecialized { target: QubitId(0) };
 
-        gate.apply_specialized(&mut state, 1, false).unwrap();
+        gate.apply_specialized(&mut state, 1, false)
+            .expect("Hadamard gate application should succeed");
 
         let sqrt2_inv = 1.0 / std::f64::consts::SQRT_2;
         assert!((state[0] - Complex64::new(sqrt2_inv, 0.0)).norm() < 1e-10);
@@ -1331,7 +1337,8 @@ mod tests {
             target: QubitId(1),
         };
 
-        gate.apply_specialized(&mut state, 2, false).unwrap();
+        gate.apply_specialized(&mut state, 2, false)
+            .expect("CNOT gate application should succeed");
 
         assert!((state[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         assert!((state[1] - Complex64::new(0.0, 0.0)).norm() < 1e-10);

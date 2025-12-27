@@ -93,7 +93,7 @@ impl Tensor {
     {
         let shape = array.shape().to_vec();
         let data = array.into_dyn();
-        let index_labels: Vec<String> = indices.iter().map(|i| format!("idx_{}", i)).collect();
+        let index_labels: Vec<String> = indices.iter().map(|i| format!("idx_{i}")).collect();
         Self {
             id: 0, // Default ID
             data,
@@ -108,7 +108,7 @@ impl Tensor {
     }
 
     /// Get a reference to the tensor data
-    pub fn tensor(&self) -> &ArrayD<Complex64> {
+    pub const fn tensor(&self) -> &ArrayD<Complex64> {
         &self.data
     }
 
@@ -118,26 +118,21 @@ impl Tensor {
     }
 
     /// Contract this tensor with another over specified indices
-    pub fn contract(
-        &self,
-        other: &Tensor,
-        self_idx: &str,
-        other_idx: &str,
-    ) -> QuantRS2Result<Tensor> {
+    pub fn contract(&self, other: &Self, self_idx: &str, other_idx: &str) -> QuantRS2Result<Self> {
         // Find the positions of the indices to contract
         let self_pos = self
             .indices
             .iter()
             .position(|s| s == self_idx)
             .ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!("Index {} not found in tensor", self_idx))
+                QuantRS2Error::InvalidInput(format!("Index {self_idx} not found in tensor"))
             })?;
         let other_pos = other
             .indices
             .iter()
             .position(|s| s == other_idx)
             .ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!("Index {} not found in tensor", other_idx))
+                QuantRS2Error::InvalidInput(format!("Index {other_idx} not found in tensor"))
             })?;
 
         // Check dimensions match
@@ -164,7 +159,7 @@ impl Tensor {
             }
         }
 
-        Ok(Tensor::new(
+        Ok(Self::new(
             self.id.max(other.id) + 1,
             contracted,
             new_indices,
@@ -174,7 +169,7 @@ impl Tensor {
     /// Perform the actual index contraction
     fn contract_indices(
         &self,
-        other: &Tensor,
+        other: &Self,
         self_idx: usize,
         other_idx: usize,
     ) -> QuantRS2Result<ArrayD<Complex64>> {
@@ -208,13 +203,13 @@ impl Tensor {
             .data
             .view()
             .into_shape_with_order((self_left_dims, contract_dim * self_right_dims))
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?
             .to_owned();
         let other_mat = other
             .data
             .view()
             .into_shape_with_order((other_left_dims * contract_dim, other_right_dims))
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?
             .to_owned();
 
         // Perform contraction via matrix multiplication
@@ -231,10 +226,9 @@ impl Tensor {
                     for l in 0..other_right_dims {
                         let mut sum = Complex64::new(0.0, 0.0);
                         for c in 0..contract_dim {
-                            let _self_idx =
-                                i * contract_dim * self_right_dims + c * self_right_dims + j;
-                            let _other_idx =
-                                k * contract_dim * other_right_dims + c * other_right_dims + l;
+                            // Commented out - index calculations unused
+                            // let _ = i * contract_dim * self_right_dims + c * self_right_dims + j;
+                            // let _ = k * contract_dim * other_right_dims + c * other_right_dims + l;
                             sum += self_mat[[i, c * self_right_dims + j]]
                                 * other_mat[[k * contract_dim + c, l]];
                         }
@@ -260,7 +254,7 @@ impl Tensor {
         }
 
         ArrayD::from_shape_vec(IxDyn(&result_shape), result_vec)
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))
     }
 
     /// Apply SVD decomposition to split tensor along specified index
@@ -268,7 +262,7 @@ impl Tensor {
         &self,
         idx: usize,
         max_rank: Option<usize>,
-    ) -> QuantRS2Result<(Tensor, Tensor)> {
+    ) -> QuantRS2Result<(Self, Self)> {
         if idx >= self.rank() {
             return Err(QuantRS2Error::InvalidInput(format!(
                 "Index {} out of bounds for tensor with rank {}",
@@ -294,13 +288,13 @@ impl Tensor {
             .data
             .view()
             .into_shape_with_order((left_dim, right_dim))
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?
             .to_owned();
 
         // Perform SVD using SciRS2
         let real_matrix = matrix.mapv(|c| c.re);
         let (u, s, vt) = svd(&real_matrix.view(), false, None)
-            .map_err(|e| QuantRS2Error::ComputationError(format!("SVD failed: {:?}", e)))?;
+            .map_err(|e| QuantRS2Error::ComputationError(format!("SVD failed: {e:?}")))?;
 
         // Determine rank to keep
         let rank = if let Some(max_r) = max_rank {
@@ -331,9 +325,9 @@ impl Tensor {
         let mut right_indices = vec![format!("bond_{}", self.id)];
         right_indices.extend_from_slice(&self.indices[(idx + 1)..]);
 
-        let left_tensor = Tensor::new(self.id * 2, left_data.into_dyn(), left_indices);
+        let left_tensor = Self::new(self.id * 2, left_data.into_dyn(), left_indices);
 
-        let right_tensor = Tensor::new(self.id * 2 + 1, right_data.into_dyn(), right_indices);
+        let right_tensor = Self::new(self.id * 2 + 1, right_data.into_dyn(), right_indices);
 
         Ok((left_tensor, right_tensor))
     }
@@ -396,14 +390,12 @@ impl TensorNetwork {
         // Verify tensors exist
         if !self.tensors.contains_key(&tensor1) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Tensor {} not found",
-                tensor1
+                "Tensor {tensor1} not found"
             )));
         }
         if !self.tensors.contains_key(&tensor2) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "Tensor {} not found",
-                tensor2
+                "Tensor {tensor2} not found"
             )));
         }
 
@@ -416,20 +408,14 @@ impl TensorNetwork {
             .iter()
             .position(|s| s == &index1)
             .ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!(
-                    "Index {} not found in tensor {}",
-                    index1, tensor1
-                ))
+                QuantRS2Error::InvalidInput(format!("Index {index1} not found in tensor {tensor1}"))
             })?;
         let idx2_pos = t2
             .indices
             .iter()
             .position(|s| s == &index2)
             .ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!(
-                    "Index {} not found in tensor {}",
-                    index2, tensor2
-                ))
+                QuantRS2Error::InvalidInput(format!("Index {index2} not found in tensor {tensor2}"))
             })?;
 
         if t1.shape[idx1_pos] != t2.shape[idx2_pos] {
@@ -461,7 +447,7 @@ impl TensorNetwork {
     /// Find optimal contraction order using greedy algorithm
     pub fn find_contraction_order(&self) -> Vec<(usize, usize)> {
         // Simple greedy algorithm: contract pairs that minimize intermediate tensor size
-        let mut remaining_tensors: HashSet<_> = self.tensors.keys().cloned().collect();
+        let mut remaining_tensors: HashSet<_> = self.tensors.keys().copied().collect();
         let mut order = Vec::new();
 
         // Build adjacency list
@@ -530,7 +516,7 @@ impl TensorNetwork {
     }
 
     /// Estimate the computational cost of contracting two tensors
-    fn estimate_contraction_cost(&self, _t1: usize, _t2: usize) -> usize {
+    const fn estimate_contraction_cost(&self, _t1: usize, _t2: usize) -> usize {
         // Cost is roughly the product of all dimensions in the result
         // This is a simplified estimate
         1000 // Placeholder
@@ -545,7 +531,14 @@ impl TensorNetwork {
         }
 
         if self.tensors.len() == 1 {
-            return Ok(self.tensors.values().next().unwrap().clone());
+            return self
+                .tensors
+                .values()
+                .next()
+                .map(|t| t.clone())
+                .ok_or_else(|| {
+                    QuantRS2Error::InvalidInput("Single tensor expected but not found".into())
+                });
         }
 
         // Find contraction order
@@ -595,14 +588,14 @@ impl TensorNetwork {
     }
 
     /// Apply Matrix Product State (MPS) decomposition
-    pub fn to_mps(&self, _max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
+    pub const fn to_mps(&self, _max_bond_dim: Option<usize>) -> QuantRS2Result<Vec<Tensor>> {
         // This would decompose the network into a chain of tensors
         // For now, return a placeholder
         Ok(vec![])
     }
 
     /// Apply Matrix Product Operator (MPO) representation
-    pub fn apply_mpo(&mut self, _mpo: &[Tensor], _qubits: &[usize]) -> QuantRS2Result<()> {
+    pub const fn apply_mpo(&mut self, _mpo: &[Tensor], _qubits: &[usize]) -> QuantRS2Result<()> {
         // Apply an MPO to specified qubits
         Ok(())
     }
@@ -634,7 +627,7 @@ impl TensorNetworkBuilder {
 
         // Initialize qubits in |0⟩ state
         for i in 0..num_qubits {
-            let idx = format!("q{}_0", i);
+            let idx = format!("q{i}_0");
             let tensor = Tensor::qubit_zero(i, idx.clone());
             network.add_tensor(tensor);
             qubit_indices.insert(i, idx.clone());
@@ -656,7 +649,7 @@ impl TensorNetworkBuilder {
     ) -> QuantRS2Result<()> {
         let matrix_vec = gate.matrix()?;
         let matrix = Array2::from_shape_vec((2, 2), matrix_vec)
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?;
 
         // Create gate tensor
         let in_idx = self.current_indices[&qubit].clone();
@@ -692,12 +685,12 @@ impl TensorNetworkBuilder {
     ) -> QuantRS2Result<()> {
         let matrix_vec = gate.matrix()?;
         let matrix = Array2::from_shape_vec((4, 4), matrix_vec)
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?;
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?;
 
         // Reshape to rank-4 tensor
         let tensor_data = matrix
             .into_shape_with_order((2, 2, 2, 2))
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {}", e)))?
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Shape error: {e}")))?
             .into_dyn();
 
         // Create indices
@@ -753,6 +746,7 @@ impl TensorNetworkBuilder {
     }
 
     /// Contract the network and return the quantum state
+    #[must_use]
     pub fn to_statevector(&mut self) -> QuantRS2Result<Vec<Complex64>> {
         let final_tensor = self.network.contract_all()?;
         Ok(final_tensor.data.into_raw_vec_and_offset().0)
@@ -771,7 +765,7 @@ pub struct TensorNetworkSimulator {
 
 impl TensorNetworkSimulator {
     /// Create a new tensor network simulator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             max_bond_dim: 64,
             use_compression: true,
@@ -780,13 +774,15 @@ impl TensorNetworkSimulator {
     }
 
     /// Set maximum bond dimension
-    pub fn with_max_bond_dim(mut self, dim: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_bond_dim(mut self, dim: usize) -> Self {
         self.max_bond_dim = dim;
         self
     }
 
     /// Enable or disable compression
-    pub fn with_compression(mut self, compress: bool) -> Self {
+    #[must_use]
+    pub const fn with_compression(mut self, compress: bool) -> Self {
         self.use_compression = compress;
         self
     }
@@ -841,7 +837,7 @@ pub mod contraction_optimization {
 
         /// Find optimal contraction order using dynamic programming
         pub fn optimize(&mut self, network: &TensorNetwork) -> Vec<(usize, usize)> {
-            let tensor_ids: Vec<_> = network.tensors.keys().cloned().collect();
+            let tensor_ids: Vec<_> = network.tensors.keys().copied().collect();
             self.find_optimal_order(&tensor_ids, network).1
         }
 

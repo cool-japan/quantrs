@@ -5,7 +5,9 @@
 //! entanglement spectrum analysis, and spectral density computations.
 
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -157,7 +159,7 @@ impl Default for SpectralConfig {
 
 /// SciRS2-optimized spectral analyzer
 pub struct SciRS2SpectralAnalyzer {
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Configuration
     config: SpectralConfig,
@@ -175,7 +177,7 @@ impl SciRS2SpectralAnalyzer {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -426,7 +428,7 @@ impl SciRS2SpectralAnalyzer {
         // Filter out zero eigenvalues and sort
         let mut nonzero_eigenvalues: Vec<f64> =
             eigenvalues.into_iter().filter(|&x| x > 1e-15).collect();
-        nonzero_eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        nonzero_eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         // Calculate entanglement entropy
         let entropy = -nonzero_eigenvalues.iter().map(|&p| p * p.ln()).sum::<f64>();
@@ -437,10 +439,10 @@ impl SciRS2SpectralAnalyzer {
             let renyi_n = if n == 1 {
                 entropy
             } else {
-                (1.0 / (1.0 - n as f64))
+                (1.0 / (1.0 - f64::from(n)))
                     * nonzero_eigenvalues
                         .iter()
-                        .map(|&p| p.powf(n as f64))
+                        .map(|&p| p.powf(f64::from(n)))
                         .sum::<f64>()
                         .ln()
             };
@@ -488,8 +490,10 @@ impl SciRS2SpectralAnalyzer {
                 .par_iter()
                 .map(|k_point| {
                     let hamiltonian = hamiltonian_generator(k_point)?;
-                    let mut config = SparseSolverConfig::default();
-                    config.method = crate::scirs2_sparse::SparseSolverMethod::Lanczos;
+                    let config = SparseSolverConfig {
+                        method: crate::scirs2_sparse::SparseSolverMethod::Lanczos,
+                        ..SparseSolverConfig::default()
+                    };
                     let mut solver = SciRS2SparseSolver::new(config)?;
                     let result =
                         solver.solve_eigenvalue_problem(&hamiltonian, num_bands, "smallest")?;
@@ -501,8 +505,10 @@ impl SciRS2SpectralAnalyzer {
                 .iter()
                 .map(|k_point| {
                     let hamiltonian = hamiltonian_generator(k_point)?;
-                    let mut config = SparseSolverConfig::default();
-                    config.method = crate::scirs2_sparse::SparseSolverMethod::Lanczos;
+                    let config = SparseSolverConfig {
+                        method: crate::scirs2_sparse::SparseSolverMethod::Lanczos,
+                        ..SparseSolverConfig::default()
+                    };
                     let mut solver = SciRS2SparseSolver::new(config)?;
                     let result =
                         solver.solve_eigenvalue_problem(&hamiltonian, num_bands, "smallest")?;
@@ -645,11 +651,13 @@ impl SciRS2SpectralAnalyzer {
             return Ok(cached_result.clone());
         }
 
-        let mut config = SparseSolverConfig::default();
-        config.method = if hamiltonian.is_hermitian {
-            crate::scirs2_sparse::SparseSolverMethod::Lanczos
-        } else {
-            crate::scirs2_sparse::SparseSolverMethod::Arnoldi
+        let config = SparseSolverConfig {
+            method: if hamiltonian.is_hermitian {
+                crate::scirs2_sparse::SparseSolverMethod::Lanczos
+            } else {
+                crate::scirs2_sparse::SparseSolverMethod::Arnoldi
+            },
+            ..SparseSolverConfig::default()
         };
 
         let mut solver = if self.backend.is_some() {
@@ -788,11 +796,19 @@ impl SciRS2SpectralAnalyzer {
                     .map(|c| c.re)
                     .collect();
 
-                // Calculate slopes
-                let prev_slope =
-                    (prev_values.last().unwrap() - prev_values.first().unwrap()) / (5.0 * dt);
-                let next_slope =
-                    (next_values.last().unwrap() - next_values.first().unwrap()) / (5.0 * dt);
+                // Calculate slopes - skip if we don't have enough values
+                let (Some(&prev_last), Some(&prev_first)) =
+                    (prev_values.last(), prev_values.first())
+                else {
+                    continue;
+                };
+                let (Some(&next_last), Some(&next_first)) =
+                    (next_values.last(), next_values.first())
+                else {
+                    continue;
+                };
+                let prev_slope = (prev_last - prev_first) / (5.0 * dt);
+                let next_slope = (next_last - next_first) / (5.0 * dt);
 
                 // Detect plateau (slope change from positive to near zero)
                 if prev_slope > 0.1 && next_slope.abs() < 0.05 && t > dt * 5.0 {
@@ -881,7 +897,7 @@ impl SciRS2SpectralAnalyzer {
         }
 
         // Remove duplicates and sort
-        critical_points.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        critical_points.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         critical_points.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
 
         Ok(critical_points)
@@ -958,7 +974,11 @@ impl SciRS2SpectralAnalyzer {
                 let new_x = matrix.dot(&x);
 
                 // Normalize
-                let norm = new_x.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
+                let norm = new_x
+                    .iter()
+                    .map(scirs2_core::Complex::norm_sqr)
+                    .sum::<f64>()
+                    .sqrt();
                 if norm < tolerance {
                     break;
                 }
@@ -975,7 +995,7 @@ impl SciRS2SpectralAnalyzer {
                 .zip(ax.iter())
                 .map(|(xi, axi)| xi.conj() * axi)
                 .sum();
-            let denominator: f64 = x.iter().map(|xi| xi.norm_sqr()).sum();
+            let denominator: f64 = x.iter().map(scirs2_core::Complex::norm_sqr).sum();
 
             if denominator > tolerance {
                 eigenvalues.push(numerator.re / denominator);
@@ -1006,7 +1026,7 @@ impl SciRS2SpectralAnalyzer {
                 }
             }
 
-            eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap());
+            eigenvalues.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
             Ok(eigenvalues)
         } else {
             // For larger matrices, suggest using proper LAPACK implementation
@@ -1017,6 +1037,7 @@ impl SciRS2SpectralAnalyzer {
     }
 
     /// Get configuration
+    #[must_use]
     pub const fn get_config(&self) -> &SpectralConfig {
         &self.config
     }
@@ -1090,6 +1111,7 @@ impl QuantumHamiltonianLibrary {
     }
 
     /// Create random matrix model
+    #[must_use]
     pub fn random_matrix_model(size: usize, density: f64, hermitian: bool) -> SparseMatrix {
         use crate::scirs2_sparse::SparseMatrixUtils;
         SparseMatrixUtils::random_sparse(size, density, hermitian)
@@ -1160,34 +1182,41 @@ mod tests {
     #[test]
     fn test_spectral_analyzer_creation() {
         let config = SpectralConfig::default();
-        let analyzer = SciRS2SpectralAnalyzer::new(config).unwrap();
+        let analyzer = SciRS2SpectralAnalyzer::new(config)
+            .expect("should create spectral analyzer with default config");
         assert_eq!(analyzer.config.num_eigenvalues, 10);
     }
 
     #[test]
     fn test_transverse_field_ising() {
-        let hamiltonian = QuantumHamiltonianLibrary::transverse_field_ising(3, 1.0, 0.5).unwrap();
+        let hamiltonian = QuantumHamiltonianLibrary::transverse_field_ising(3, 1.0, 0.5)
+            .expect("should create transverse field Ising Hamiltonian");
         assert_eq!(hamiltonian.shape, (8, 8));
         assert!(hamiltonian.is_hermitian);
     }
 
     #[test]
     fn test_heisenberg_model() {
-        let hamiltonian = QuantumHamiltonianLibrary::heisenberg_model(2, 1.0, 1.0, 1.0).unwrap();
+        let hamiltonian = QuantumHamiltonianLibrary::heisenberg_model(2, 1.0, 1.0, 1.0)
+            .expect("should create Heisenberg model Hamiltonian");
         assert_eq!(hamiltonian.shape, (4, 4));
         assert!(hamiltonian.is_hermitian);
     }
 
     #[test]
     fn test_spectral_analysis() {
-        let hamiltonian = QuantumHamiltonianLibrary::transverse_field_ising(3, 1.0, 0.5).unwrap();
+        let hamiltonian = QuantumHamiltonianLibrary::transverse_field_ising(3, 1.0, 0.5)
+            .expect("should create transverse field Ising Hamiltonian for spectral analysis");
         let config = SpectralConfig {
             num_eigenvalues: 5,
             ..Default::default()
         };
 
-        let mut analyzer = SciRS2SpectralAnalyzer::new(config).unwrap();
-        let result = analyzer.analyze_spectrum(&hamiltonian).unwrap();
+        let mut analyzer =
+            SciRS2SpectralAnalyzer::new(config).expect("should create spectral analyzer");
+        let result = analyzer
+            .analyze_spectrum(&hamiltonian)
+            .expect("spectral analysis should succeed");
 
         assert_eq!(result.eigenvalues.len(), 5);
         assert!(result.spectral_gap >= 0.0);
@@ -1201,12 +1230,13 @@ mod tests {
         state[3] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
 
         let config = SpectralConfig::default();
-        let mut analyzer = SciRS2SpectralAnalyzer::new(config).unwrap();
+        let mut analyzer = SciRS2SpectralAnalyzer::new(config)
+            .expect("should create spectral analyzer for entanglement spectrum test");
 
         let bipartition = vec![0];
         let result = analyzer
             .calculate_entanglement_spectrum(&state, &bipartition)
-            .unwrap();
+            .expect("entanglement spectrum calculation should succeed");
 
         assert!(result.entropy > 0.0);
         assert_eq!(result.bipartition, vec![0]);
@@ -1216,7 +1246,8 @@ mod tests {
     fn test_energy_gaps() {
         let eigenvalues = vec![0.0, 1.0, 3.0, 6.0];
         let config = SpectralConfig::default();
-        let analyzer = SciRS2SpectralAnalyzer::new(config).unwrap();
+        let analyzer = SciRS2SpectralAnalyzer::new(config)
+            .expect("should create spectral analyzer for energy gaps test");
 
         let gaps = analyzer.calculate_energy_gaps(&eigenvalues);
 
@@ -1232,11 +1263,12 @@ mod tests {
         eigenvectors[[3, 1]] = Complex64::new(0.5, 0.0);
 
         let config = SpectralConfig::default();
-        let analyzer = SciRS2SpectralAnalyzer::new(config).unwrap();
+        let analyzer = SciRS2SpectralAnalyzer::new(config)
+            .expect("should create spectral analyzer for participation ratios test");
 
         let ratios = analyzer
             .calculate_participation_ratios(&eigenvectors)
-            .unwrap();
+            .expect("participation ratios calculation should succeed");
 
         assert_eq!(ratios.len(), 2);
         assert_abs_diff_eq!(ratios[0], 1.0, epsilon = 1e-10); // Localized state

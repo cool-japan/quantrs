@@ -11,7 +11,7 @@ pub struct CorrelationAnalyzer {
 
 impl CorrelationAnalyzer {
     /// Create new correlation analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -169,7 +169,7 @@ impl CorrelationAnalyzer {
     fn convert_to_ranks(&self, values: &[f64]) -> Vec<f64> {
         let mut indexed_values: Vec<(usize, f64)> =
             values.iter().enumerate().map(|(i, &v)| (i, v)).collect();
-        indexed_values.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        indexed_values.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut ranks = vec![0.0; values.len()];
         for (rank, &(original_index, _)) in indexed_values.iter().enumerate() {
@@ -245,7 +245,7 @@ impl CorrelationAnalyzer {
         }
 
         // Simplified t-test approximation
-        let t_stat = correlation * ((n - 2) as f64 / (1.0 - correlation.powi(2))).sqrt();
+        let t_stat = correlation * ((n - 2) as f64 / correlation.mul_add(-correlation, 1.0)).sqrt();
 
         // Very rough p-value approximation
         if t_stat.abs() > 2.0 {

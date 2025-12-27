@@ -14,6 +14,7 @@ pub struct SparseVector<T> {
 }
 
 impl<T: Clone + Default + PartialEq> SparseVector<T> {
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             data: HashMap::new(),
@@ -21,6 +22,7 @@ impl<T: Clone + Default + PartialEq> SparseVector<T> {
         }
     }
 
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.data.get(&index)
     }
@@ -43,6 +45,7 @@ impl<T: Clone + Default + PartialEq> SparseVector<T> {
         self.data.remove(&index)
     }
 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -64,6 +67,7 @@ pub struct CooMatrix<T> {
 }
 
 impl<T: Clone + Default + PartialEq> CooMatrix<T> {
+    #[must_use]
     pub fn new(rows: usize, cols: usize) -> Self {
         Self {
             data: HashMap::new(),
@@ -72,6 +76,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
         }
     }
 
+    #[must_use]
     pub fn get(&self, row: usize, col: usize) -> Option<&T> {
         self.data.get(&(row, col))
     }
@@ -97,6 +102,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
         self.data.retain(predicate);
     }
 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -142,6 +148,7 @@ pub struct CompressionStats {
 
 impl CompressedQubo {
     /// Create a new compressed QUBO
+    #[must_use]
     pub fn new(num_vars: usize) -> Self {
         Self {
             num_vars,
@@ -172,6 +179,7 @@ impl CompressedQubo {
     }
 
     /// Get the energy for a given solution
+    #[must_use]
     pub fn evaluate(&self, solution: &[bool]) -> f64 {
         let mut energy = self.offset;
 
@@ -193,6 +201,7 @@ impl CompressedQubo {
     }
 
     /// Get total number of non-zero elements
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.linear_terms.nnz() + self.quadratic_terms.nnz()
     }
@@ -439,7 +448,7 @@ impl VariableReducer {
             // Linear coefficient
             let linear_coeff = *qubo.linear_terms.get(var).unwrap_or(&0.0);
             if linear_coeff.abs() > 1e-10 {
-                sig_parts.push(format!("L:{:.6}", linear_coeff));
+                sig_parts.push(format!("L:{linear_coeff:.6}"));
             }
 
             // Quadratic coefficients
@@ -453,7 +462,7 @@ impl VariableReducer {
             quad_coeffs.sort_by_key(|&(v, _)| v);
 
             for (other, coeff) in quad_coeffs {
-                sig_parts.push(format!("Q{}:{:.6}", other, coeff));
+                sig_parts.push(format!("Q{other}:{coeff:.6}"));
             }
 
             signatures.insert(var, sig_parts.join("|"));
@@ -619,6 +628,7 @@ pub struct ReductionMapping {
 
 impl ReductionMapping {
     /// Create a new identity mapping
+    #[must_use]
     pub fn new(num_vars: usize) -> Self {
         let mut variable_map = HashMap::new();
         for i in 0..num_vars {
@@ -657,6 +667,7 @@ impl ReductionMapping {
     }
 
     /// Check if a variable has been reduced
+    #[must_use]
     pub fn is_reduced(&self, var: usize) -> bool {
         self.fixed_vars.contains_key(&var)
             || self
@@ -666,6 +677,7 @@ impl ReductionMapping {
     }
 
     /// Map solution from reduced to original variables
+    #[must_use]
     pub fn expand_solution(&self, reduced_solution: &[bool]) -> Vec<bool> {
         let mut solution = vec![false; self.original_vars];
 
@@ -710,13 +722,18 @@ impl Default for BlockDetector {
 
 impl BlockDetector {
     /// Detect block structure in QUBO
+    #[must_use]
     pub fn detect_blocks(&self, qubo: &CompressedQubo) -> Vec<Vec<usize>> {
         let mut blocks = Vec::new();
         let mut unassigned: HashSet<usize> = (0..qubo.num_vars).collect();
 
         while !unassigned.is_empty() {
             // Start a new block with an arbitrary unassigned variable
-            let start = *unassigned.iter().next().unwrap();
+            // SAFETY: The while loop guarantees unassigned is not empty
+            let start = *unassigned
+                .iter()
+                .next()
+                .expect("unassigned is not empty as checked by while loop");
             let mut block = vec![start];
             let mut to_process = vec![start];
             unassigned.remove(&start);
@@ -772,7 +789,9 @@ mod tests {
         ];
 
         let compressor = CooCompressor::default();
-        let compressed = compressor.compress_dense(&matrix, 0.5).unwrap();
+        let compressed = compressor
+            .compress_dense(&matrix, 0.5)
+            .expect("compression should succeed for valid matrix");
 
         assert_eq!(compressed.num_vars, 3);
         assert_eq!(compressed.offset, 0.5);
@@ -790,7 +809,9 @@ mod tests {
         qubo.add_quadratic(2, 3, -1.0);
 
         let reducer = VariableReducer::default();
-        let mapping = reducer.reduce(&mut qubo).unwrap();
+        let mapping = reducer
+            .reduce(&mut qubo)
+            .expect("reduction should succeed for valid QUBO");
 
         println!("Fixed vars: {:?}", mapping.fixed_vars);
         println!("Fixing threshold: {}", reducer.fixing_threshold);

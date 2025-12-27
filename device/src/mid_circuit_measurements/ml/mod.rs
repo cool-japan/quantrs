@@ -178,7 +178,7 @@ impl MLOptimizer {
                 .config
                 .model_types
                 .first()
-                .map(|t| format!("{:?}", t))
+                .map(|t| format!("{t:?}"))
                 .unwrap_or_else(|| "LinearRegression".to_string()),
             parameters: self.initialize_model_parameters()?,
             training_features: features.clone(),
@@ -271,7 +271,7 @@ impl MLOptimizer {
     }
 
     /// Calculate optimization confidence
-    fn calculate_optimization_confidence(&self) -> DeviceResult<f64> {
+    const fn calculate_optimization_confidence(&self) -> DeviceResult<f64> {
         if let Some(ref model) = self.model_cache {
             Ok(model.model_performance.validation_accuracy)
         } else {
@@ -374,9 +374,9 @@ impl MLOptimizer {
             .sum::<f64>();
         let sum_x2 = x.iter().map(|&xi| xi * xi).sum::<f64>();
 
-        let denominator = n * sum_x2 - sum_x * sum_x;
+        let denominator = n.mul_add(sum_x2, -(sum_x * sum_x));
         if denominator > 1e-10 {
-            (n * sum_xy - sum_x * sum_y) / denominator
+            n.mul_add(sum_xy, -(sum_x * sum_y)) / denominator
         } else {
             0.0
         }
@@ -528,7 +528,7 @@ impl MLOptimizer {
             0.0
         };
 
-        Ok((latency_drift + confidence_drift) / 2.0)
+        Ok(f64::midpoint(latency_drift, confidence_drift))
     }
 
     fn initialize_model_parameters(&self) -> DeviceResult<Vec<f64>> {

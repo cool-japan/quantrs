@@ -45,7 +45,7 @@ pub struct NoiseColor {
 }
 
 /// Noise color types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseColorType {
     White,  // β ≈ 0
     Pink,   // β ≈ -1
@@ -81,7 +81,7 @@ pub struct SpectralAnalyzer {
 
 impl SpectralAnalyzer {
     /// Create a new spectral analyzer
-    pub fn new(sampling_frequency: f64, window_size: usize, overlap_ratio: f64) -> Self {
+    pub const fn new(sampling_frequency: f64, window_size: usize, overlap_ratio: f64) -> Self {
         Self {
             sampling_frequency,
             window_size,
@@ -106,7 +106,7 @@ impl SpectralAnalyzer {
         // Generate a realistic 1/f-like spectrum for demonstration
         for i in 1..n_freqs {
             let freq = (i as f64) * self.sampling_frequency / (self.window_size as f64);
-            psd[i] = 1.0 / freq.powf(0.5) + 0.1 * thread_rng().gen::<f64>();
+            psd[i] = 0.1_f64.mul_add(thread_rng().gen::<f64>(), 1.0 / freq.sqrt());
         }
 
         Ok(psd)
@@ -180,7 +180,7 @@ impl SpectralAnalyzer {
             .sum();
         let sum_x2: f64 = log_freqs.iter().map(|x| x * x).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x2, -(sum_x * sum_x));
 
         // Determine noise color based on slope
         let color_type = match slope {
@@ -198,8 +198,8 @@ impl SpectralAnalyzer {
         let y_pred: Vec<f64> = log_freqs
             .iter()
             .map(|&x| {
-                let intercept = (sum_y - slope * sum_x) / n;
-                slope * x + intercept
+                let intercept = slope.mul_add(-sum_x, sum_y) / n;
+                slope.mul_add(x, intercept)
             })
             .collect();
         let ss_res: f64 = log_psd
@@ -447,7 +447,9 @@ mod tests {
             (2.0 * std::f64::consts::PI * 50.0 * i as f64 / 1000.0).sin()
         });
 
-        let psd = analyzer.compute_power_spectrum(&test_data.view()).unwrap();
+        let psd = analyzer
+            .compute_power_spectrum(&test_data.view())
+            .expect("power spectrum computation should succeed");
         assert_eq!(psd.len(), 32); // window_size / 2
         assert!(psd.iter().all(|&x| x >= 0.0)); // PSD should be non-negative
     }
@@ -458,7 +460,9 @@ mod tests {
 
         // Test white noise (flat spectrum)
         let white_noise_psd = Array1::ones(32);
-        let coloring = analyzer.analyze_noise_coloring(&white_noise_psd).unwrap();
+        let coloring = analyzer
+            .analyze_noise_coloring(&white_noise_psd)
+            .expect("noise coloring analysis should succeed");
 
         // Should detect approximately white noise
         assert_eq!(coloring.color_type, NoiseColorType::White);
@@ -474,7 +478,9 @@ mod tests {
         let mut psd = Array1::ones(32) * 0.1;
         psd[10] = 1.0; // Peak at bin 10
 
-        let peaks = analyzer.find_spectral_peaks(&psd).unwrap();
+        let peaks = analyzer
+            .find_spectral_peaks(&psd)
+            .expect("spectral peak detection should succeed");
 
         assert!(!peaks.is_empty());
         let peak = &peaks[0];
@@ -495,7 +501,9 @@ mod tests {
         measurements.insert("source1".to_string(), signal1);
         measurements.insert("source2".to_string(), signal2);
 
-        let coherence = analyzer.analyze_coherence(&measurements).unwrap();
+        let coherence = analyzer
+            .analyze_coherence(&measurements)
+            .expect("coherence analysis should succeed");
 
         assert_eq!(coherence.coherence_matrix.nrows(), 2);
         assert_eq!(coherence.coherence_matrix.ncols(), 2);

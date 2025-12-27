@@ -125,7 +125,7 @@ impl VQE {
         }
 
         let iterations = energy_history.len();
-        let ground_state_energy = *energy_history.last().unwrap();
+        let ground_state_energy = energy_history.last().copied().unwrap_or(0.0);
 
         Ok(VQEResult {
             optimal_parameters: params,
@@ -415,7 +415,7 @@ impl QAOA {
         // Sample final state
         let samples = self.sample_qaoa_state(&betas, &gammas, &hamiltonian, 1000)?;
 
-        let best_energy = *energy_history.last().unwrap();
+        let best_energy = energy_history.last().copied().unwrap_or(0.0);
 
         Ok(QAOAResult {
             optimal_betas: betas,
@@ -813,7 +813,11 @@ impl IterativeRefinement {
             });
         }
 
-        refined_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        refined_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(refined_results)
     }
 

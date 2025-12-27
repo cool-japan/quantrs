@@ -1,6 +1,10 @@
 //! Test scenario engine for complex problem generation
 
-use super::*;
+use super::{
+    ApplicationError, ApplicationResult, ConditionOperator, ConstraintSpec, ConvergenceExpectation,
+    CriterionType, CriterionValue, DensitySpec, Duration, ExpectedMetrics, HashMap, Instant,
+    IsingModel, ProblemSpecification, ProblemType, PropertyValue, ValidationCriterion, VecDeque,
+};
 
 /// Test scenario engine for complex problem generation
 #[derive(Debug)]
@@ -65,7 +69,7 @@ pub struct ProblemGenerator {
 }
 
 /// Types of problem generators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GeneratorType {
     /// Random problem generator
     Random,
@@ -128,7 +132,7 @@ pub struct RuleOutcome {
 }
 
 /// Severity levels for validation rules
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuleSeverity {
     /// Critical rule (must pass)
     Critical,
@@ -139,7 +143,7 @@ pub enum RuleSeverity {
 }
 
 /// Methods for rule evaluation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationMethod {
     /// Direct comparison
     Direct,
@@ -152,6 +156,7 @@ pub enum EvaluationMethod {
 }
 
 impl TestScenarioEngine {
+    #[must_use]
     pub fn new() -> Self {
         let mut scenarios = HashMap::new();
 
@@ -334,6 +339,7 @@ impl TestScenarioEngine {
     }
 
     /// Get scenario by ID
+    #[must_use]
     pub fn get_scenario(&self, scenario_id: &str) -> Option<&TestScenario> {
         self.scenarios.get(scenario_id)
     }
@@ -349,6 +355,7 @@ impl TestScenarioEngine {
     }
 
     /// Get execution history for scenario
+    #[must_use]
     pub fn get_execution_history(&self, scenario_id: &str) -> Vec<&ScenarioExecution> {
         self.execution_history
             .iter()
@@ -393,13 +400,13 @@ impl TestScenarioEngine {
         generator: &ProblemGenerator,
         spec: &ProblemSpecification,
     ) -> ApplicationResult<IsingModel> {
-        let size = (spec.size_range.0 + spec.size_range.1) / 2;
+        let size = usize::midpoint(spec.size_range.0, spec.size_range.1);
         let mut problem = IsingModel::new(size);
 
         match generator.generator_type {
             GeneratorType::Random => self.generate_random_problem(&mut problem, spec, generator)?,
             GeneratorType::Structured => {
-                self.generate_structured_problem(&mut problem, spec, generator)?
+                self.generate_structured_problem(&mut problem, spec, generator)?;
             }
             _ => {
                 return Err(ApplicationError::ConfigurationError(format!(
@@ -430,7 +437,8 @@ impl TestScenarioEngine {
         }
 
         // Set random couplings based on density
-        let target_density = (spec.density.edge_density.0 + spec.density.edge_density.1) / 2.0;
+        let target_density =
+            f64::midpoint(spec.density.edge_density.0, spec.density.edge_density.1);
         let max_edges = size * (size - 1) / 2;
         let target_edges = (max_edges as f64 * target_density) as usize;
 

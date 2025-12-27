@@ -556,13 +556,15 @@ mod tests {
 
         // Encode value 2
         let mut binary = encoded.encode(2);
-        assert_eq!(binary[&"x_0".to_string()], false);
-        assert_eq!(binary[&"x_1".to_string()], false);
-        assert_eq!(binary[&"x_2".to_string()], true);
-        assert_eq!(binary[&"x_3".to_string()], false);
+        assert!(!binary[&"x_0".to_string()]);
+        assert!(!binary[&"x_1".to_string()]);
+        assert!(binary[&"x_2".to_string()]);
+        assert!(!binary[&"x_3".to_string()]);
 
         // Decode back
-        let mut value = encoded.decode(&binary).unwrap();
+        let value = encoded
+            .decode(&binary)
+            .expect("Failed to decode one-hot value");
         assert_eq!(value, 2);
     }
 
@@ -573,11 +575,13 @@ mod tests {
 
         // Encode value 5 (binary: 101)
         let mut binary = encoded.encode(5);
-        assert_eq!(binary[&"y_bit0".to_string()], true);
-        assert_eq!(binary[&"y_bit1".to_string()], false);
-        assert_eq!(binary[&"y_bit2".to_string()], true);
+        assert!(binary[&"y_bit0".to_string()]);
+        assert!(!binary[&"y_bit1".to_string()]);
+        assert!(binary[&"y_bit2".to_string()]);
 
-        let mut value = encoded.decode(&binary).unwrap();
+        let value = encoded
+            .decode(&binary)
+            .expect("Failed to decode binary value");
         assert_eq!(value, 5);
     }
 
@@ -588,12 +592,14 @@ mod tests {
 
         // Encode value 2 (domain wall: 1100)
         let mut binary = encoded.encode(2);
-        assert_eq!(binary[&"z_dw0".to_string()], true);
-        assert_eq!(binary[&"z_dw1".to_string()], true);
-        assert_eq!(binary[&"z_dw2".to_string()], false);
-        assert_eq!(binary[&"z_dw3".to_string()], false);
+        assert!(binary[&"z_dw0".to_string()]);
+        assert!(binary[&"z_dw1".to_string()]);
+        assert!(!binary[&"z_dw2".to_string()]);
+        assert!(!binary[&"z_dw3".to_string()]);
 
-        let mut value = encoded.decode(&binary).unwrap();
+        let value = encoded
+            .decode(&binary)
+            .expect("Failed to decode domain wall value");
         assert_eq!(value, 2);
     }
 

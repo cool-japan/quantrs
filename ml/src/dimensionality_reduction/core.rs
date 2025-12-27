@@ -286,14 +286,20 @@ impl QuantumDimensionalityReducer {
 
     fn fit_placeholder(&mut self, data: &Array2<f64>) -> Result<()> {
         // Placeholder implementation - creates a simple identity transformation
-        let n_samples = data.nrows();
+        let _n_samples = data.nrows();
         let n_features = data.ncols();
         let n_components = (n_features / 2).max(1);
 
         let components = Array2::eye(n_components);
         let explained_variance_ratio =
             Array1::from_vec((0..n_components).map(|i| 1.0 / (i + 1) as f64).collect());
-        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let mean = data
+            .mean_axis(scirs2_core::ndarray::Axis(0))
+            .ok_or_else(|| {
+                MLError::ComputationError(
+                    "Failed to compute mean axis for placeholder fit".to_string(),
+                )
+            })?;
 
         self.trained_state = Some(DRTrainedState {
             components,
@@ -311,67 +317,99 @@ impl QuantumDimensionalityReducer {
     // Private transformation methods (placeholder implementations)
 
     fn transform_qpca(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QPCA model not trained".to_string()))?;
         let centered = data - &state.mean;
         Ok(centered.dot(&state.components.t()))
     }
 
     fn transform_qica(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QICA model not trained".to_string()))?;
         let centered = data - &state.mean;
         Ok(centered.dot(&state.components.t()))
     }
 
     fn transform_qtsne(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QtSNE model not trained".to_string()))?;
         // t-SNE doesn't have a direct transform, so use embedding
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qumap(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QUMAP model not trained".to_string()))?;
         // UMAP transform placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qlda(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QLDA model not trained".to_string()))?;
         let centered = data - &state.mean;
         Ok(centered.dot(&state.components.t()))
     }
 
     fn transform_qvae(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QVAE model not trained".to_string()))?;
         // VAE encoding placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qdenoising_ae(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self.trained_state.as_ref().ok_or_else(|| {
+            MLError::ModelNotTrained("QDenoisingAE model not trained".to_string())
+        })?;
         // Denoising AE encoding placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qsparse_ae(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QSparseAE model not trained".to_string()))?;
         // Sparse AE encoding placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qmanifold(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QManifold model not trained".to_string()))?;
         // Manifold learning transform placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_qkernel_pca(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QKernelPCA model not trained".to_string()))?;
         // Kernel PCA transform placeholder
         Ok(Array2::zeros((data.nrows(), state.components.ncols())))
     }
 
     fn transform_placeholder(&self, data: &Array2<f64>) -> Result<Array2<f64>> {
-        let state = self.trained_state.as_ref().unwrap();
+        let state = self
+            .trained_state
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("Placeholder model not trained".to_string()))?;
         let centered = data - &state.mean;
         Ok(centered.dot(&state.components.t()))
     }

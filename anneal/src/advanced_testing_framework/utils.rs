@@ -1,8 +1,12 @@
 //! Utility functions and test helpers for advanced testing framework
 
-use super::*;
+use super::{
+    ApplicationError, ApplicationResult, Duration, IsingModel, ProblemType, TestExecutionResult,
+    TestSuiteResults, TestingConfig,
+};
 use scirs2_core::random::prelude::*;
 
+use std::fmt::Write;
 /// Create standard test configuration
 pub fn create_standard_test_config(test_type: &str) -> ApplicationResult<TestingConfig> {
     match test_type {
@@ -34,7 +38,7 @@ pub fn create_standard_test_config(test_type: &str) -> ApplicationResult<Testing
             significance_level: 0.05,
             data_retention: Duration::from_secs(30 * 24 * 3600),
             detailed_logging: false,
-            stress_test_sizes: vec![100, 500, 1000, 2000, 5000, 10000],
+            stress_test_sizes: vec![100, 500, 1000, 2000, 5000, 10_000],
         }),
         "property" => Ok(TestingConfig {
             enable_parallel: true,
@@ -47,8 +51,7 @@ pub fn create_standard_test_config(test_type: &str) -> ApplicationResult<Testing
             stress_test_sizes: vec![10, 25, 50, 100],
         }),
         _ => Err(ApplicationError::ConfigurationError(format!(
-            "Unknown test type: {}",
-            test_type
+            "Unknown test type: {test_type}"
         ))),
     }
 }
@@ -73,8 +76,7 @@ pub fn create_test_problem(
         ProblemType::Portfolio => create_portfolio_problem(&mut problem, density, rng_seed)?,
         ProblemType::Custom(ref name) => {
             return Err(ApplicationError::ConfigurationError(format!(
-                "Custom problem type not implemented: {}",
-                name
+                "Custom problem type not implemented: {name}"
             )));
         }
     }
@@ -95,7 +97,7 @@ fn create_random_ising_problem(
 
     // Set random biases
     for i in 0..size {
-        local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+        local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
         let bias = ((local_seed % 2000) as f64 / 1000.0) - 1.0; // Range [-1, 1]
         problem.set_bias(i, bias)?;
     }
@@ -111,9 +113,9 @@ fn create_random_ising_problem(
                 break;
             }
 
-            local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+            local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             if (local_seed % 1000) < (density * 1000.0) as u64 {
-                local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+                local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
                 let coupling = ((local_seed % 2000) as f64 / 1000.0) - 1.0; // Range [-1, 1]
                 problem.set_coupling(i, j, coupling)?;
                 edges_added += 1;
@@ -152,9 +154,9 @@ fn create_max_cut_problem(
                 break;
             }
 
-            local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+            local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             if (local_seed % 1000) < (density * 1000.0) as u64 {
-                local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+                local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
                 let weight = (local_seed % 100) as f64 / 100.0; // Range [0, 1]
                                                                 // For Max-Cut, use negative coupling (ferromagnetic)
                 problem.set_coupling(i, j, -weight)?;
@@ -195,7 +197,7 @@ fn create_vertex_cover_problem(
                 break;
             }
 
-            local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+            local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             if (local_seed % 1000) < (density * 1000.0) as u64 {
                 // Large penalty if neither vertex is in cover
                 let penalty = 10.0;
@@ -225,7 +227,7 @@ fn create_tsp_problem(problem: &mut IsingModel, _density: f64, seed: u64) -> App
     // Add constraints for TSP (simplified)
     for i in 0..size {
         for j in (i + 1)..size {
-            local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+            local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             let distance = (local_seed % 100) as f64 / 10.0; // Distance between cities
             problem.set_coupling(i, j, distance)?;
         }
@@ -245,7 +247,7 @@ fn create_portfolio_problem(
 
     // Portfolio: expected returns (biases) and correlations (couplings)
     for i in 0..size {
-        local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+        local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
         let expected_return = ((local_seed % 200) as f64 / 1000.0) + 0.05; // 5-25% return
         problem.set_bias(i, -expected_return)?; // Negative because we want to maximize
     }
@@ -253,7 +255,7 @@ fn create_portfolio_problem(
     // Add correlation matrix (risk)
     for i in 0..size {
         for j in (i + 1)..size {
-            local_seed = local_seed.wrapping_mul(1103515245).wrapping_add(12345);
+            local_seed = local_seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
             let correlation = ((local_seed % 100) as f64 / 500.0) - 0.1; // Range [-0.1, 0.1]
             problem.set_coupling(i, j, correlation)?;
         }
@@ -307,6 +309,7 @@ pub fn validate_framework_config(config: &TestingConfig) -> ApplicationResult<()
 }
 
 /// Calculate test quality metrics
+#[must_use]
 pub fn calculate_test_quality_metrics(results: &[TestExecutionResult]) -> TestQualityMetrics {
     if results.is_empty() {
         return TestQualityMetrics {
@@ -333,12 +336,13 @@ pub fn calculate_test_quality_metrics(results: &[TestExecutionResult]) -> TestQu
         / (qualities.len() - 1).max(1) as f64;
     let std_dev_quality = variance_quality.sqrt();
 
-    let mut sorted_qualities = qualities.clone();
-    sorted_qualities.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let mut sorted_qualities = qualities;
+    sorted_qualities.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let median_quality = if sorted_qualities.len() % 2 == 0 {
-        (sorted_qualities[sorted_qualities.len() / 2 - 1]
-            + sorted_qualities[sorted_qualities.len() / 2])
-            / 2.0
+        f64::midpoint(
+            sorted_qualities[sorted_qualities.len() / 2 - 1],
+            sorted_qualities[sorted_qualities.len() / 2],
+        )
     } else {
         sorted_qualities[sorted_qualities.len() / 2]
     };
@@ -375,22 +379,27 @@ pub fn calculate_test_quality_metrics(results: &[TestExecutionResult]) -> TestQu
 }
 
 /// Generate test report summary
+#[must_use]
 pub fn generate_test_summary(results: &TestSuiteResults) -> String {
     let mut summary = String::new();
 
-    summary.push_str(&format!("# Test Suite Summary\n\n"));
-    summary.push_str(&format!(
+    writeln!(summary, "# Test Suite Summary\n").expect("writing to String is infallible");
+    write!(
+        summary,
         "**Execution Time:** {:?}\n",
         results.execution_time
-    ));
-    summary.push_str(&format!(
+    )
+    .expect("writing to String is infallible");
+    write!(
+        summary,
         "**Overall Success:** {}\n\n",
         if results.overall_success {
             "✅"
         } else {
             "❌"
         }
-    ));
+    )
+    .expect("writing to String is infallible");
 
     // Scenario tests summary
     if !results.scenario_results.is_empty() {
@@ -399,12 +408,14 @@ pub fn generate_test_summary(results: &TestSuiteResults) -> String {
             .iter()
             .filter(|r| r.success)
             .count();
-        summary.push_str(&format!(
+        write!(
+            summary,
             "## Scenario Tests\n- **Results:** {}/{} passed\n- **Success Rate:** {:.1}%\n\n",
             scenario_success,
             results.scenario_results.len(),
             (scenario_success as f64 / results.scenario_results.len() as f64) * 100.0
-        ));
+        )
+        .expect("writing to String is infallible");
     }
 
     // Regression tests summary
@@ -414,11 +425,13 @@ pub fn generate_test_summary(results: &TestSuiteResults) -> String {
             .iter()
             .filter(|r| r.regression_detected)
             .count();
-        summary.push_str(&format!(
+        write!(
+            summary,
             "## Regression Tests\n- **Regressions Detected:** {}\n- **Tests Analyzed:** {}\n\n",
             regressions_detected,
             results.regression_results.len()
-        ));
+        )
+        .expect("writing to String is infallible");
     }
 
     // Platform tests summary
@@ -430,11 +443,13 @@ pub fn generate_test_summary(results: &TestSuiteResults) -> String {
             .sum::<f64>()
             / results.platform_results.len() as f64;
 
-        summary.push_str(&format!(
+        write!(
+            summary,
             "## Platform Tests\n- **Platforms Tested:** {}\n- **Average Compatibility:** {:.2}\n\n",
             results.platform_results.len(),
             avg_compatibility
-        ));
+        )
+        .expect("writing to String is infallible");
     }
 
     // Stress tests summary
@@ -446,11 +461,13 @@ pub fn generate_test_summary(results: &TestSuiteResults) -> String {
             .sum::<f64>()
             / results.stress_results.len() as f64;
 
-        summary.push_str(&format!(
+        write!(
+            summary,
             "## Stress Tests\n- **Tests Completed:** {}\n- **Average Success Rate:** {:.1}%\n\n",
             results.stress_results.len(),
             avg_success_rate * 100.0
-        ));
+        )
+        .expect("writing to String is infallible");
     }
 
     // Property tests summary
@@ -466,27 +483,29 @@ pub fn generate_test_summary(results: &TestSuiteResults) -> String {
             .map(|r| r.cases_passed)
             .sum::<usize>();
 
-        summary.push_str(&format!(
-            "## Property Tests\n- **Properties Tested:** {}\n- **Test Cases:** {} total, {} passed\n- **Overall Confidence:** {:.1}%\n\n",
+        write!(summary, "## Property Tests\n- **Properties Tested:** {}\n- **Test Cases:** {} total, {} passed\n- **Overall Confidence:** {:.1}%\n\n",
             results.property_results.len(),
             total_cases,
             total_passed,
-            if total_cases > 0 { (total_passed as f64 / total_cases as f64) * 100.0 } else { 0.0 }
-        ));
+            if total_cases > 0 { (total_passed as f64 / total_cases as f64) * 100.0 } else { 0.0 })
+            .expect("writing to String is infallible");
     }
 
-    summary.push_str(&format!(
+    write!(
+        summary,
         "---\n*Generated at: {}*\n",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs()
-    ));
+    )
+    .expect("writing to String is infallible");
 
     summary
 }
 
 /// Compare two test results
+#[must_use]
 pub fn compare_test_results(
     result1: &TestExecutionResult,
     result2: &TestExecutionResult,
@@ -496,9 +515,15 @@ pub fn compare_test_results(
     let quality_similar = quality_diff <= tolerance;
 
     let time_diff = if result1.execution_time > result2.execution_time {
-        result1.execution_time - result2.execution_time
+        result1
+            .execution_time
+            .checked_sub(result2.execution_time)
+            .unwrap_or_default()
     } else {
-        result2.execution_time - result1.execution_time
+        result2
+            .execution_time
+            .checked_sub(result1.execution_time)
+            .unwrap_or_default()
     };
 
     let energy_diff = (result1.final_energy - result2.final_energy).abs();
@@ -555,10 +580,12 @@ pub struct TestComparisonResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::advanced_testing_framework::ScenarioTestResult;
 
     #[test]
     fn test_standard_config_creation() {
-        let config = create_standard_test_config("performance").unwrap();
+        let config = create_standard_test_config("performance")
+            .expect("should create performance test config");
         assert!(config.enable_parallel);
         assert_eq!(config.max_concurrent_tests, 4);
         assert_eq!(config.performance_tolerance, 0.05);
@@ -582,7 +609,7 @@ mod tests {
         let problem = create_test_problem(ProblemType::RandomIsing, 10, 0.3, Some(42));
         assert!(problem.is_ok());
 
-        let ising = problem.unwrap();
+        let ising = problem.expect("should create random Ising problem");
         assert_eq!(ising.num_qubits, 10);
     }
 
@@ -645,12 +672,12 @@ mod tests {
         let problem = create_test_problem(ProblemType::MaxCut, 5, 0.5, Some(123));
         assert!(problem.is_ok());
 
-        let max_cut = problem.unwrap();
+        let max_cut = problem.expect("should create Max-Cut problem");
         assert_eq!(max_cut.num_qubits, 5);
 
         // Check that biases are zero (Max-Cut characteristic)
         for i in 0..5 {
-            assert_eq!(max_cut.get_bias(i).unwrap(), 0.0);
+            assert_eq!(max_cut.get_bias(i).expect("should get bias for qubit"), 0.0);
         }
     }
 

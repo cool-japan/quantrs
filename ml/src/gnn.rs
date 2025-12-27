@@ -847,7 +847,7 @@ impl QuantumGraphPool {
         }
 
         // Sort by score
-        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select top-k nodes
         let k = ((graph.num_nodes as f64) * self.pool_ratio).ceil() as usize;
@@ -981,7 +981,7 @@ impl QuantumGraphPool {
             })
             .collect();
 
-        let r = fastrand::f64() * cumsum.last().unwrap();
+        let r = fastrand::f64() * cumsum.last().unwrap_or(&1.0);
 
         for (i, &cs) in cumsum.iter().enumerate() {
             if r <= cs {
@@ -1156,7 +1156,9 @@ impl QuantumGNN {
         let readout_features = match self.readout {
             ReadoutType::Mean => node_features
                 .mean_axis(scirs2_core::ndarray::Axis(0))
-                .unwrap(),
+                .ok_or_else(|| {
+                    MLError::InvalidInput("Cannot compute mean of empty array".to_string())
+                })?,
             ReadoutType::Max => {
                 let mut max_features = Array1::from_elem(node_features.ncols(), f64::NEG_INFINITY);
                 for row in node_features.rows() {
@@ -1226,11 +1228,11 @@ mod tests {
                 (3, 4),
                 vec![1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
             )
-            .unwrap(),
+            .expect("Failed to create node features"),
         );
 
         let gcn = QuantumGCNLayer::new(4, 8, ActivationType::ReLU);
-        let output = gcn.forward(&graph).unwrap();
+        let output = gcn.forward(&graph).expect("Forward pass failed");
 
         assert_eq!(output.shape(), &[3, 8]);
     }
@@ -1244,7 +1246,7 @@ mod tests {
         );
 
         let gat = QuantumGATLayer::new(8, 16, 4, 0.1);
-        let output = gat.forward(&graph).unwrap();
+        let output = gat.forward(&graph).expect("Forward pass failed");
 
         assert_eq!(output.shape(), &[4, 16]);
     }
@@ -1254,7 +1256,7 @@ mod tests {
         let graph = QuantumGraph::new(3, vec![(0, 1), (1, 2)], Array2::zeros((3, 4)));
 
         let mpnn = QuantumMPNN::new(4, 8, 16, 2);
-        let output = mpnn.forward(&graph).unwrap();
+        let output = mpnn.forward(&graph).expect("Forward pass failed");
 
         assert_eq!(output.len(), 8);
     }
@@ -1268,7 +1270,9 @@ mod tests {
         );
 
         let pool = QuantumGraphPool::new(0.5, PoolingMethod::TopK, 4);
-        let (selected, pooled) = pool.pool(&graph, &graph.node_features).unwrap();
+        let (selected, pooled) = pool
+            .pool(&graph, &graph.node_features)
+            .expect("Pooling failed");
 
         assert_eq!(selected.len(), 3);
         assert_eq!(pooled.shape(), &[3, 4]);
@@ -1279,7 +1283,8 @@ mod tests {
         let layer_configs = vec![("gcn".to_string(), 4, 8), ("gat".to_string(), 8, 16)];
         let pooling_configs = vec![None, Some((0.5, PoolingMethod::TopK))];
 
-        let gnn = QuantumGNN::new(layer_configs, pooling_configs, ReadoutType::Mean, 10).unwrap();
+        let gnn = QuantumGNN::new(layer_configs, pooling_configs, ReadoutType::Mean, 10)
+            .expect("Failed to create GNN");
 
         let graph = QuantumGraph::new(
             5,
@@ -1287,7 +1292,7 @@ mod tests {
             Array2::ones((5, 4)),
         );
 
-        let output = gnn.forward(&graph).unwrap();
+        let output = gnn.forward(&graph).expect("Forward pass failed");
         assert_eq!(output.len(), 10);
     }
 }

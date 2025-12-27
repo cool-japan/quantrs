@@ -127,8 +127,14 @@ pub struct QMLResourceConfig {
 pub struct SimpleMLAnomalyDetector {
     pub threshold: f64,
 }
+impl Default for SimpleMLAnomalyDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimpleMLAnomalyDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { threshold: 2.0 }
     }
 }
@@ -175,7 +181,7 @@ pub struct ResourceAnalytics {
     pub bottleneck_analysis: BottleneckAnalysis,
 }
 /// Quantum encoding types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantumEncodingType {
     Amplitude,
     Angle,
@@ -239,7 +245,7 @@ pub enum RecommendationPriority {
     Critical,
 }
 /// Types of classical components
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClassicalComponentType {
     Dense,
     Convolutional,
@@ -280,7 +286,7 @@ pub struct QMLMonitoringConfig {
     pub alert_config: AlertConfig,
 }
 /// Data formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataFormat {
     CSV,
     JSON,
@@ -346,7 +352,7 @@ pub struct QMLDataset {
     pub quantum_encoding: Option<QuantumEncoding>,
 }
 /// Implementation effort levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImplementationEffort {
     Low,
     Medium,
@@ -433,7 +439,7 @@ pub struct ClassicalResourceRequirements {
     pub network_bandwidth: Option<f64>,
 }
 /// Types of quantum ML models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QMLModelType {
     QuantumNeuralNetwork,
     VariationalQuantumEigensolver,
@@ -470,7 +476,7 @@ pub enum MLFramework {
     Custom(String),
 }
 /// Measurement strategies for QML
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MeasurementStrategy {
     Computational,
     Pauli,
@@ -478,7 +484,7 @@ pub enum MeasurementStrategy {
     Custom(String),
 }
 /// Entanglement patterns
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntanglementPattern {
     Linear,
     Circular,
@@ -558,7 +564,7 @@ pub struct AllocationRecord {
     pub efficiency: f64,
 }
 /// Batch size adaptation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BatchAdaptationStrategy {
     Fixed,
     Linear,
@@ -647,7 +653,7 @@ pub struct ResourceUtilization {
     pub network_utilization: f64,
 }
 /// Data processor types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataProcessorType {
     Normalization,
     Encoding,
@@ -669,7 +675,7 @@ pub struct DataSourceInfo {
     pub description: String,
 }
 /// Optimizer types for QML
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizerType {
     Adam,
     SGD,
@@ -766,7 +772,7 @@ pub struct AnomalyDetectionResults {
     pub confidence: f64,
 }
 /// Constraint handling methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintHandling {
     Penalty,
     Barrier,
@@ -790,7 +796,7 @@ pub struct OptimizerState {
     pub step_count: usize,
 }
 /// Convergence status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceStatus {
     NotStarted,
     Improving,
@@ -876,7 +882,7 @@ pub struct HardwareRequirements {
     pub performance_requirements: PerformanceRequirements,
 }
 /// Caching strategies for QML
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CachingStrategy {
     None,
     LRU,
@@ -951,6 +957,12 @@ pub struct QMLResourceManager {
     /// Resource utilization tracking
     utilization_tracker: ResourceUtilizationTracker,
 }
+impl Default for QMLResourceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QMLResourceManager {
     pub fn new() -> Self {
         Self {
@@ -959,7 +971,7 @@ impl QMLResourceManager {
                 available_cpu_cores: 8,
                 available_memory_mb: 16384,
                 available_gpus: Vec::new(),
-                available_storage_mb: 102400,
+                available_storage_mb: 102_400,
                 utilization: ResourceUtilization {
                     cpu_utilization: 0.0,
                     memory_utilization: 0.0,
@@ -1083,6 +1095,12 @@ pub struct AlertManager {
     /// Notification channels
     pub notification_channels: HashMap<QMLAlertChannel, Box<dyn NotificationChannel>>,
 }
+impl Default for AlertManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AlertManager {
     pub fn new() -> Self {
         Self {
@@ -1165,7 +1183,7 @@ pub struct QMLModelMetadata {
     pub hardware_requirements: HardwareRequirements,
 }
 /// Gradient computation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GradientMethod {
     ParameterShift,
     FiniteDifference,
@@ -1418,7 +1436,7 @@ pub struct NoiseCharacteristics {
     pub snr: f64,
 }
 /// Data types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataType {
     Classification,
     Regression,
@@ -1437,7 +1455,7 @@ pub struct AlertEscalation {
     pub timeouts: HashMap<String, Duration>,
 }
 /// Escalation actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationAction {
     Notify,
     Throttle,
@@ -1446,7 +1464,7 @@ pub enum EscalationAction {
     Fallback,
 }
 /// Activation functions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActivationFunction {
     ReLU,
     Sigmoid,
@@ -1487,6 +1505,12 @@ pub struct TrainingPerformanceMonitor {
     /// Monitoring configuration
     pub config: QMLMonitoringConfig,
 }
+impl Default for TrainingPerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrainingPerformanceMonitor {
     pub fn new() -> Self {
         Self {
@@ -1541,7 +1565,7 @@ pub struct FrameworkBridge {
     pub performance_metrics: BridgePerformanceMetrics,
 }
 /// Types of anomalies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyType {
     PerformanceDegradation,
     ResourceSpike,
@@ -1613,7 +1637,7 @@ pub struct ResourceUtilizationTracker {
     efficiency_metrics: EfficiencyMetrics,
 }
 /// Improvement direction for early stopping
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImprovementMode {
     Minimize,
     Maximize,
@@ -1645,7 +1669,7 @@ pub struct CircuitExecutionMetrics {
     pub shot_efficiency: f64,
 }
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     LeastLoaded,
@@ -1654,7 +1678,7 @@ pub enum LoadBalancingStrategy {
     Cost,
 }
 /// Topology constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyConstraint {
     Linear,
     Grid,
@@ -1762,13 +1786,16 @@ impl QuantumMLIntegrationHub {
                 config.training_config.clone(),
             )?)),
             ml_analytics: Arc::new(RwLock::new(MLPerformanceAnalytics::new())),
-            data_pipeline: Arc::new(RwLock::new(QMLDataPipeline::new(config.clone())?)),
+            data_pipeline: Arc::new(RwLock::new(QMLDataPipeline::new(config)?)),
             framework_bridges: Arc::new(RwLock::new(HashMap::new())),
         })
     }
     /// Register a QML model
     pub fn register_model(&self, model: QMLModel) -> DeviceResult<()> {
-        let mut registry = self.model_registry.write().unwrap();
+        let mut registry = self
+            .model_registry
+            .write()
+            .expect("Model registry RwLock should not be poisoned");
         registry.insert(model.model_id.clone(), model);
         Ok(())
     }
@@ -1781,10 +1808,13 @@ impl QuantumMLIntegrationHub {
     ) -> DeviceResult<QMLTrainingResult> {
         let training_config = config.unwrap_or_else(|| self.config.training_config.clone());
         let model = {
-            let registry = self.model_registry.read().unwrap();
+            let registry = self
+                .model_registry
+                .read()
+                .expect("Model registry RwLock should not be poisoned");
             registry
                 .get(model_id)
-                .ok_or_else(|| DeviceError::InvalidInput(format!("Model {} not found", model_id)))?
+                .ok_or_else(|| DeviceError::InvalidInput(format!("Model {model_id} not found")))?
                 .clone()
         };
         let training_request = TrainingRequest {
@@ -1795,7 +1825,10 @@ impl QuantumMLIntegrationHub {
             priority: TrainingPriority::Normal,
             resource_requirements: QMLResourceRequirements::default(),
         };
-        let mut orchestrator = self.training_orchestrator.write().unwrap();
+        let mut orchestrator = self
+            .training_orchestrator
+            .write()
+            .expect("Training orchestrator RwLock should not be poisoned");
         orchestrator.submit_training_request(training_request).await
     }
     /// Execute QML model inference
@@ -1805,18 +1838,28 @@ impl QuantumMLIntegrationHub {
         input_data: QMLDataBatch,
     ) -> DeviceResult<QMLInferenceResult> {
         let model = {
-            let registry = self.model_registry.read().unwrap();
+            let registry = self
+                .model_registry
+                .read()
+                .expect("Model registry RwLock should not be poisoned");
             registry
                 .get(model_id)
-                .ok_or_else(|| DeviceError::InvalidInput(format!("Model {} not found", model_id)))?
+                .ok_or_else(|| DeviceError::InvalidInput(format!("Model {model_id} not found")))?
                 .clone()
         };
-        let mut executor = self.qnn_executor.write().unwrap();
+        let mut executor = self
+            .qnn_executor
+            .write()
+            .expect("QNN executor RwLock should not be poisoned");
         executor.execute_inference(&model, &input_data).await
     }
     /// Get ML analytics
     pub fn get_analytics(&self) -> MLPerformanceAnalytics {
-        (*self.ml_analytics.read().unwrap()).clone()
+        (*self
+            .ml_analytics
+            .read()
+            .expect("ML analytics RwLock should not be poisoned"))
+        .clone()
     }
     /// Register framework bridge
     pub fn register_framework_bridge(
@@ -1824,13 +1867,16 @@ impl QuantumMLIntegrationHub {
         framework: MLFramework,
         bridge: FrameworkBridge,
     ) -> DeviceResult<()> {
-        let mut bridges = self.framework_bridges.write().unwrap();
+        let mut bridges = self
+            .framework_bridges
+            .write()
+            .expect("Framework bridges RwLock should not be poisoned");
         bridges.insert(framework, bridge);
         Ok(())
     }
 }
 /// Noise types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoiseType {
     White,
     Pink,
@@ -1935,6 +1981,12 @@ pub struct MLPerformanceAnalytics {
     /// Comparative analytics
     comparative_analytics: ComparativeAnalytics,
 }
+impl Default for MLPerformanceAnalytics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLPerformanceAnalytics {
     pub fn new() -> Self {
         Self {
@@ -2099,7 +2151,7 @@ pub struct UtilizationSnapshot {
     pub throughput: f64,
 }
 /// Idle pattern types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IdlePatternType {
     Scheduled,
     Unexpected,
@@ -2108,7 +2160,7 @@ pub enum IdlePatternType {
     LoadImbalance,
 }
 /// Bottleneck types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BottleneckType {
     CPU,
     Memory,
@@ -2213,7 +2265,7 @@ pub struct CostAnalytics {
     pub optimization_opportunities: Vec<CostOptimizationOpportunity>,
 }
 /// Trend directions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -2221,7 +2273,7 @@ pub enum TrendDirection {
     Volatile,
 }
 /// Types of QML layers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QMLLayerType {
     Parameterized,
     Entangling,
@@ -2383,7 +2435,7 @@ impl QMLTrainingOrchestrator {
     }
 }
 /// Data source types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataSourceType {
     File,
     Database,
@@ -2416,7 +2468,7 @@ pub struct MultiObjectiveConfig {
     pub constraint_handling: ConstraintHandling,
 }
 /// Loss function types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LossFunction {
     MeanSquaredError,
     CrossEntropy,
@@ -2428,7 +2480,7 @@ pub enum LossFunction {
     Custom(String),
 }
 /// Alert channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QMLAlertChannel {
     Log,
     Email,

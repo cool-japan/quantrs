@@ -39,7 +39,7 @@ Add `QuantRS2` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2 = "0.1.0-beta.3"
+quantrs2 = "0.1.0-rc.1"
 ```
 
 ### Feature Flags
@@ -48,10 +48,10 @@ Enable specific modules as needed:
 
 ```toml
 # Full installation with all features
-quantrs2 = { version = "0.1.0-beta.3", features = ["full"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["full"] }
 
 # Selective installation
-quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "sim", "ml"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["circuit", "sim", "ml"] }
 ```
 
 **Available Features:**
@@ -75,7 +75,7 @@ Create and simulate a Bell state (maximally entangled 2-qubit state):
 
 ```rust,ignore
 // This example demonstrates basic quantum circuit creation and simulation
-// Requires: quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "sim"] }
+// Requires: quantrs2 = { version = "0.1.0-rc.1", features = ["circuit", "sim"] }
 
 use quantrs2_circuit::Circuit;
 use quantrs2_sim::StateVectorSimulator;
@@ -108,7 +108,7 @@ Compute the ground state energy of a molecular Hamiltonian:
 
 ```rust,ignore
 // This example demonstrates VQE usage with the quantum ML module
-// Requires: quantrs2 = { version = "0.1.0-beta.3", features = ["ml"] }
+// Requires: quantrs2 = { version = "0.1.0-rc.1", features = ["ml"] }
 
 // Define H2 molecule Hamiltonian
 let hamiltonian = MolecularHamiltonian::h2_sto3g(0.74)?;
@@ -137,7 +137,7 @@ Solve `MaxCut` problem on a graph:
 
 ```rust,ignore
 // This example demonstrates QAOA usage with the quantum ML module
-// Requires: quantrs2 = { version = "0.1.0-beta.3", features = ["ml"] }
+// Requires: quantrs2 = { version = "0.1.0-rc.1", features = ["ml"] }
 
 // Define graph edges for MaxCut problem
 let edges = vec![(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)];
@@ -157,7 +157,7 @@ println!("Optimal cut: {:?}", result.bitstring);
 
 ```rust,ignore
 // This example demonstrates quantum annealing with D-Wave integration
-// Requires: quantrs2 = { version = "0.1.0-beta.3", features = ["anneal"] }
+// Requires: quantrs2 = { version = "0.1.0-rc.1", features = ["anneal"] }
 
 // Define QUBO problem
 let mut qubo = QUBO::new(4);
@@ -247,7 +247,7 @@ For users who only need circuit construction and manipulation:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["circuit"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["circuit"] }
 ```
 
 ```rust,ignore
@@ -275,7 +275,7 @@ For quantum algorithm research and development:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["sim"] }
 ```
 
 ```rust,ignore
@@ -305,7 +305,7 @@ For variational algorithms and quantum ML:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["ml"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["ml"] }
 ```
 
 ```rust,ignore
@@ -335,7 +335,7 @@ For QUBO/Ising model optimization:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["tytan"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["tytan"] }
 ```
 
 ```rust,ignore
@@ -358,7 +358,7 @@ For real quantum device execution:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["device", "circuit"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["device", "circuit"] }
 ```
 
 ```rust,ignore
@@ -385,7 +385,7 @@ For comprehensive quantum computing capabilities:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["full"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["full"] }
 ```
 
 ```rust,ignore
@@ -439,7 +439,7 @@ QuantRS2 uses **SciRS2** for all numerical operations, providing:
 
 **Tip**: Enable SciRS2 SIMD features for maximum performance:
 ```toml
-quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["sim"] }
 # SciRS2 automatically uses SIMD when available
 ```
 
@@ -452,15 +452,15 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
 **Before** (Using individual crates):
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-beta.3"
-quantrs2-circuit = "0.1.0-beta.3"
-quantrs2-sim = "0.1.0-beta.3"
+quantrs2-core = "0.1.0-rc.1"
+quantrs2-circuit = "0.1.0-rc.1"
+quantrs2-sim = "0.1.0-rc.1"
 ```
 
 **After** (Using facade):
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
+quantrs2 = { version = "0.1.0-rc.1", features = ["sim"] }
 ```
 
 **Code Changes**:
@@ -486,7 +486,7 @@ use quantrs2::sim::StateVectorSimulator;
 
 ### From Pre-0.1.0 (Alpha) Versions
 
-**Breaking Changes in 0.1.0-beta.3**:
+**Breaking Changes in 0.1.0-rc.1**:
 1. **SciRS2 Integration**: All `ndarray`, `rand`, `num-complex` usage replaced with `scirs2_core`
 2. **Unified Preludes**: New hierarchical prelude system
 3. **Enhanced Diagnostics**: New `diagnostics` module for system checks
@@ -557,7 +557,7 @@ cfg.set_memory_limit_gb(16);
 cargo update -p quantrs2
 
 # Or specify exact version
-quantrs2 = "0.1.0-beta.3"
+quantrs2 = "0.1.0-rc.1"
 ```
 
 **Verify Compatibility**:
@@ -922,9 +922,9 @@ at your option.
 
 ## 🔖 Version Information
 
-**Current Version**: `0.1.0-beta.3`
+**Current Version**: `0.1.0-rc.1`
 
-### Recent Updates (v0.1.0-beta.3)
+### Recent Updates (v0.1.0-rc.1)
 
 - 🎯 **Facade Enhancements**: Comprehensive system management features
   - System diagnostics module with hardware detection and compatibility checking
@@ -1444,7 +1444,7 @@ pub mod error;
 ///
 /// # Version Constants
 ///
-/// - `VERSION` - QuantRS2 version (e.g., "0.1.0-beta.3")
+/// - `VERSION` - QuantRS2 version (e.g., "0.1.0-rc.1")
 /// - `SCIRS2_VERSION` - SciRS2 dependency version
 /// - `BUILD_TIMESTAMP` - When this build was created
 /// - `GIT_COMMIT_HASH` - Git commit SHA

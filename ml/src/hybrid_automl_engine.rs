@@ -800,9 +800,11 @@ impl HybridAutoMLEngine {
             .max_by(|a, b| {
                 let score_a = self.compute_option_score(a, chars, constraints);
                 let score_b = self.compute_option_score(b, chars, constraints);
-                score_a.partial_cmp(&score_b).unwrap()
+                score_a
+                    .partial_cmp(&score_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .unwrap();
+            .expect("filtered verified non-empty above");
 
         Ok(best)
     }
@@ -1225,7 +1227,9 @@ mod tests {
             max_power_consumption: None,
         };
 
-        let recommendation = engine.analyze_and_recommend(&chars, &constraints).unwrap();
+        let recommendation = engine
+            .analyze_and_recommend(&chars, &constraints)
+            .expect("Failed to analyze and recommend");
 
         assert!(recommendation.confidence > 0.0);
         assert!(recommendation.expected_performance.accuracy > 0.0);

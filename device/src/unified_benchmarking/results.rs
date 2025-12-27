@@ -62,7 +62,7 @@ pub struct DeviceInfo {
     pub calibration_date: Option<SystemTime>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantumTechnology {
     Superconducting,
     TrappedIon,
@@ -90,7 +90,7 @@ pub struct ConnectivityInfo {
     pub connectivity_matrix: Array2<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyType {
     Linear,
     Ring,
@@ -107,7 +107,7 @@ pub struct CoherenceTimes {
     pub t2_echo: HashMap<usize, Duration>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeviceStatus {
     Online,
     Offline,
@@ -307,7 +307,7 @@ pub struct ExponentialFit {
     pub predicted_scaling: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComplexityClass {
     Constant,
     Logarithmic,

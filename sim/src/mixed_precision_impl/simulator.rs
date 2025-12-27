@@ -129,7 +129,9 @@ impl MixedPrecisionSimulator {
         // Use measurement precision for this operation
         self.adapt_state_precision(self.config.measurement_precision)?;
 
-        let state = self.state.as_ref().unwrap();
+        let state = self.state.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidOperation("State vector not initialized".to_string())
+        })?;
 
         // Calculate probability of measuring |1⟩
         let mut prob_one = 0.0;
@@ -159,6 +161,7 @@ impl MixedPrecisionSimulator {
     }
 
     /// Get the current state vector
+    #[must_use]
     pub const fn get_state(&self) -> Option<&MixedPrecisionStateVector> {
         self.state.as_ref()
     }
@@ -171,7 +174,9 @@ impl MixedPrecisionSimulator {
             ));
         }
 
-        let state = self.state.as_ref().unwrap();
+        let state = self.state.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidOperation("State vector not initialized".to_string())
+        })?;
         let mut expectation = 0.0;
 
         for i in 0..state.len() {
@@ -222,6 +227,7 @@ impl MixedPrecisionSimulator {
     }
 
     /// Get performance statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &MixedPrecisionStats {
         &self.stats
     }
@@ -375,6 +381,7 @@ impl MixedPrecisionSimulator {
 
 impl MixedPrecisionStats {
     /// Calculate average gate time
+    #[must_use]
     pub fn average_gate_time(&self) -> f64 {
         if self.total_gates > 0 {
             self.total_time_ms / self.total_gates as f64
@@ -384,11 +391,13 @@ impl MixedPrecisionStats {
     }
 
     /// Get total memory usage across all precisions
+    #[must_use]
     pub fn total_memory_usage(&self) -> usize {
         self.memory_usage_by_precision.values().sum()
     }
 
     /// Get adaptation rate (adaptations per gate)
+    #[must_use]
     pub fn adaptation_rate(&self) -> f64 {
         if self.total_gates > 0 {
             self.precision_adaptations as f64 / self.total_gates as f64
@@ -398,6 +407,7 @@ impl MixedPrecisionStats {
     }
 
     /// Get performance summary
+    #[must_use]
     pub fn summary(&self) -> String {
         format!(
             "Gates: {}, Adaptations: {}, Avg Time: {:.2}ms, Total Memory: {}MB",
@@ -411,7 +421,10 @@ impl MixedPrecisionStats {
 
 /// Utility functions for mixed precision simulation
 pub mod utils {
-    use super::*;
+    use super::{
+        Array1, Complex64, MixedPrecisionConfig, MixedPrecisionStateVector, QuantumPrecision,
+        Result,
+    };
 
     /// Convert a regular state vector to mixed precision
     pub fn convert_state_vector(
@@ -435,6 +448,7 @@ pub mod utils {
     }
 
     /// Calculate memory savings compared to double precision
+    #[must_use]
     pub fn memory_savings(config: &MixedPrecisionConfig, num_qubits: usize) -> f64 {
         let double_precision_size = (1 << num_qubits) * std::mem::size_of::<Complex64>();
         let mixed_precision_size = config.estimate_memory_usage(num_qubits);
@@ -442,6 +456,7 @@ pub mod utils {
     }
 
     /// Estimate performance improvement factor
+    #[must_use]
     pub fn performance_improvement_factor(precision: QuantumPrecision) -> f64 {
         1.0 / precision.computation_factor()
     }

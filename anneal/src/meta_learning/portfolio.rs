@@ -113,7 +113,7 @@ pub struct ApplicabilityConditions {
 }
 
 /// Problem domains
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemDomain {
     /// Combinatorial optimization
     Combinatorial,
@@ -184,7 +184,7 @@ pub struct DiversityAnalyzer {
 }
 
 /// Diversity metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiversityMetric {
     /// Algorithm diversity
     AlgorithmDiversity,
@@ -199,6 +199,7 @@ pub enum DiversityMetric {
 }
 
 impl AlgorithmPortfolio {
+    #[must_use]
     pub fn new(config: super::config::PortfolioManagementConfig) -> Self {
         Self {
             algorithms: HashMap::new(),
@@ -299,11 +300,13 @@ impl AlgorithmPortfolio {
     pub fn get_statistics(&self) -> PortfolioStatistics {
         let total_algorithms = self.algorithms.len();
         let active_algorithms = self.composition.weights.len();
-        let avg_performance = if !self.performance_history.is_empty() {
+        let avg_performance = if self.performance_history.is_empty() {
+            0.0
+        } else {
             let total_records: usize = self
                 .performance_history
                 .values()
-                .map(|history| history.len())
+                .map(std::collections::VecDeque::len)
                 .sum();
 
             if total_records > 0 {
@@ -317,8 +320,6 @@ impl AlgorithmPortfolio {
             } else {
                 0.0
             }
-        } else {
-            0.0
         };
 
         PortfolioStatistics {
@@ -376,7 +377,9 @@ mod tests {
 
         let algorithm_id = portfolio.select_algorithm(&features);
         assert!(algorithm_id.is_ok());
-        assert!(!algorithm_id.unwrap().is_empty());
+        assert!(!algorithm_id
+            .expect("Algorithm selection should succeed")
+            .is_empty());
     }
 
     #[test]

@@ -63,7 +63,10 @@ mod tests {
             last_heartbeat: Utc::now(),
         };
 
-        orchestrator.register_node(node_info).await.unwrap();
+        orchestrator
+            .register_node(node_info)
+            .await
+            .expect("Node registration should succeed");
 
         let status = orchestrator.get_system_status().await;
         assert_eq!(status.total_nodes, 1);
@@ -134,7 +137,7 @@ mod tests {
 
         let partitions = partitioner
             .partition_circuit(&circuit, &nodes, &config)
-            .unwrap();
+            .expect("Circuit partitioning should succeed");
         assert!(!partitions.is_empty());
         assert_eq!(partitions[0].gates.len(), 1);
     }
@@ -231,7 +234,10 @@ mod tests {
         let protocol = BasicSynchronizationProtocol::new();
 
         let nodes = vec![NodeId("node1".to_string()), NodeId("node2".to_string())];
-        let result = protocol.synchronize_states(&nodes, 0.95).await.unwrap();
+        let result = protocol
+            .synchronize_states(&nodes, 0.95)
+            .await
+            .expect("State synchronization should succeed");
 
         assert!(result.success);
         assert_eq!(result.consistency_level, 0.95);
@@ -266,12 +272,18 @@ mod tests {
         storage
             .store_checkpoint(checkpoint_id, &checkpoint_data)
             .await
-            .unwrap();
+            .expect("Checkpoint storage should succeed");
 
-        let loaded_data = storage.load_checkpoint(checkpoint_id).await.unwrap();
+        let loaded_data = storage
+            .load_checkpoint(checkpoint_id)
+            .await
+            .expect("Checkpoint loading should succeed");
         assert_eq!(loaded_data.timestamp, checkpoint_data.timestamp);
 
-        let checkpoints = storage.list_checkpoints().await.unwrap();
+        let checkpoints = storage
+            .list_checkpoints()
+            .await
+            .expect("Listing checkpoints should succeed");
         assert_eq!(checkpoints.len(), 1);
         assert_eq!(checkpoints[0], checkpoint_id);
     }
@@ -288,7 +300,10 @@ mod tests {
             node_id: Some(NodeId("node1".to_string())),
         };
 
-        storage.store_metric(&metric).await.unwrap();
+        storage
+            .store_metric(&metric)
+            .await
+            .expect("Metric storage should succeed");
 
         let query = MetricsQuery {
             metric_names: vec!["cpu_utilization".to_string()],
@@ -297,7 +312,10 @@ mod tests {
             limit: None,
         };
 
-        let results = storage.query_metrics(&query).await.unwrap();
+        let results = storage
+            .query_metrics(&query)
+            .await
+            .expect("Metrics query should succeed");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].metric_name, "cpu_utilization");
         assert_eq!(results[0].value, 0.75);
@@ -313,7 +331,7 @@ mod tests {
         let result = consensus
             .reach_consensus(proposal.clone(), &participants, Duration::from_secs(30))
             .await
-            .unwrap();
+            .expect("Consensus should be reached");
 
         assert!(result.consensus_achieved);
         assert_eq!(result.decision, proposal);

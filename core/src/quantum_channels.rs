@@ -68,8 +68,7 @@ impl QuantumChannel {
         for (i, op) in operators.iter().enumerate() {
             if op.shape() != shape {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Kraus operator {} has inconsistent dimensions",
-                    i
+                    "Kraus operator {i} has inconsistent dimensions"
                 )));
             }
         }
@@ -130,17 +129,24 @@ impl QuantumChannel {
     /// Convert to Kraus representation
     pub fn to_kraus(&mut self) -> QuantRS2Result<&KrausRepresentation> {
         if self.kraus.is_some() {
-            return Ok(self.kraus.as_ref().unwrap());
+            return self
+                .kraus
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Kraus representation missing".into()));
         }
 
         if let Some(choi) = &self.choi {
             let kraus = self.choi_to_kraus(&choi.matrix)?;
             self.kraus = Some(kraus);
-            Ok(self.kraus.as_ref().unwrap())
+            self.kraus
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Kraus conversion failed".into()))
         } else if let Some(stinespring) = &self.stinespring {
             let kraus = self.stinespring_to_kraus(&stinespring.isometry, stinespring.env_dim)?;
             self.kraus = Some(kraus);
-            Ok(self.kraus.as_ref().unwrap())
+            self.kraus
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Kraus conversion failed".into()))
         } else {
             Err(QuantRS2Error::InvalidInput(
                 "No representation available".to_string(),
@@ -151,19 +157,26 @@ impl QuantumChannel {
     /// Convert to Choi representation
     pub fn to_choi(&mut self) -> QuantRS2Result<&ChoiRepresentation> {
         if self.choi.is_some() {
-            return Ok(self.choi.as_ref().unwrap());
+            return self
+                .choi
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Choi representation missing".into()));
         }
 
         if let Some(kraus) = &self.kraus {
             let choi = self.kraus_to_choi(&kraus.operators)?;
             self.choi = Some(choi);
-            Ok(self.choi.as_ref().unwrap())
+            self.choi
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Choi conversion failed".into()))
         } else if let Some(stinespring) = &self.stinespring {
             // First convert to Kraus, then to Choi
             let kraus = self.stinespring_to_kraus(&stinespring.isometry, stinespring.env_dim)?;
             let choi = self.kraus_to_choi(&kraus.operators)?;
             self.choi = Some(choi);
-            Ok(self.choi.as_ref().unwrap())
+            self.choi
+                .as_ref()
+                .ok_or_else(|| QuantRS2Error::InvalidInput("Choi conversion failed".into()))
         } else {
             Err(QuantRS2Error::InvalidInput(
                 "No representation available".to_string(),
@@ -174,14 +187,18 @@ impl QuantumChannel {
     /// Convert to Stinespring representation
     pub fn to_stinespring(&mut self) -> QuantRS2Result<&StinespringRepresentation> {
         if self.stinespring.is_some() {
-            return Ok(self.stinespring.as_ref().unwrap());
+            return self.stinespring.as_ref().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Stinespring representation missing".into())
+            });
         }
 
         // Convert from Kraus to Stinespring
         let kraus = self.to_kraus()?.clone();
         let stinespring = self.kraus_to_stinespring(&kraus.operators)?;
         self.stinespring = Some(stinespring);
-        Ok(self.stinespring.as_ref().unwrap())
+        self.stinespring
+            .as_ref()
+            .ok_or_else(|| QuantRS2Error::InvalidInput("Stinespring conversion failed".into()))
     }
 
     /// Apply the channel to a density matrix
@@ -245,7 +262,7 @@ impl QuantumChannel {
         // Extract p from first Kraus operator
         // K₀ = √(1-3p/4)*I
         let k0_coeff = kraus.operators[0][[0, 0]].norm();
-        let p = 4.0 * (1.0 - k0_coeff * k0_coeff) / 3.0;
+        let p = 4.0 * k0_coeff.mul_add(-k0_coeff, 1.0) / 3.0;
 
         Ok(Some(p))
     }
@@ -439,7 +456,7 @@ impl QuantumChannels {
         let sqrt_p_4 = (p / 4.0).sqrt();
 
         let operators = vec![
-            // √(1-3p/4) * I
+            // sqrt(1-3p/4) * I
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -449,8 +466,8 @@ impl QuantumChannels {
                     Complex::new(sqrt_1_minus_3p_4, 0.0),
                 ],
             )
-            .unwrap(),
-            // √(p/4) * X
+            .expect("valid 2x2 identity Kraus operator"),
+            // sqrt(p/4) * X
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -460,8 +477,8 @@ impl QuantumChannels {
                     Complex::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            // √(p/4) * Y
+            .expect("valid 2x2 X Kraus operator"),
+            // sqrt(p/4) * Y
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -471,8 +488,8 @@ impl QuantumChannels {
                     Complex::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            // √(p/4) * Z
+            .expect("valid 2x2 Y Kraus operator"),
+            // sqrt(p/4) * Z
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -482,7 +499,7 @@ impl QuantumChannels {
                     Complex::new(-sqrt_p_4, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("valid 2x2 Z Kraus operator"),
         ];
 
         QuantumChannel::from_kraus(operators)
@@ -500,7 +517,7 @@ impl QuantumChannels {
         let sqrt_1_minus_gamma = (1.0 - gamma).sqrt();
 
         let operators = vec![
-            // K₀ = |0⟩⟨0| + √(1-γ)|1⟩⟨1|
+            // K0 = |0><0| + sqrt(1-gamma)|1><1|
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -510,8 +527,8 @@ impl QuantumChannels {
                     Complex::new(sqrt_1_minus_gamma, 0.0),
                 ],
             )
-            .unwrap(),
-            // K₁ = √γ|0⟩⟨1|
+            .expect("valid 2x2 amplitude damping K0"),
+            // K1 = sqrt(gamma)|0><1|
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -521,7 +538,7 @@ impl QuantumChannels {
                     Complex::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("valid 2x2 amplitude damping K1"),
         ];
 
         QuantumChannel::from_kraus(operators)
@@ -539,7 +556,7 @@ impl QuantumChannels {
         let sqrt_gamma = gamma.sqrt();
 
         let operators = vec![
-            // K₀ = √(1-γ) * I
+            // K0 = sqrt(1-gamma) * I
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -549,8 +566,8 @@ impl QuantumChannels {
                     Complex::new(sqrt_1_minus_gamma, 0.0),
                 ],
             )
-            .unwrap(),
-            // K₁ = √γ * Z
+            .expect("valid 2x2 phase damping K0"),
+            // K1 = sqrt(gamma) * Z
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -560,7 +577,7 @@ impl QuantumChannels {
                     Complex::new(-sqrt_gamma, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("valid 2x2 phase damping K1"),
         ];
 
         QuantumChannel::from_kraus(operators)
@@ -578,7 +595,7 @@ impl QuantumChannels {
         let sqrt_p = p.sqrt();
 
         let operators = vec![
-            // K₀ = √(1-p) * I
+            // K0 = sqrt(1-p) * I
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -588,8 +605,8 @@ impl QuantumChannels {
                     Complex::new(sqrt_1_minus_p, 0.0),
                 ],
             )
-            .unwrap(),
-            // K₁ = √p * X
+            .expect("valid 2x2 bit flip K0"),
+            // K1 = sqrt(p) * X
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -599,7 +616,7 @@ impl QuantumChannels {
                     Complex::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("valid 2x2 bit flip K1"),
         ];
 
         QuantumChannel::from_kraus(operators)
@@ -617,7 +634,7 @@ impl QuantumChannels {
         let sqrt_p = p.sqrt();
 
         let operators = vec![
-            // K₀ = √(1-p) * I
+            // K0 = sqrt(1-p) * I
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -627,8 +644,8 @@ impl QuantumChannels {
                     Complex::new(sqrt_1_minus_p, 0.0),
                 ],
             )
-            .unwrap(),
-            // K₁ = √p * Z
+            .expect("valid 2x2 phase flip K0"),
+            // K1 = sqrt(p) * Z
             Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -638,7 +655,7 @@ impl QuantumChannels {
                     Complex::new(-sqrt_p, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("valid 2x2 phase flip K1"),
         ];
 
         QuantumChannel::from_kraus(operators)
@@ -695,27 +712,45 @@ mod tests {
 
     #[test]
     fn test_depolarizing_channel() {
-        let channel = QuantumChannels::depolarizing(0.1).unwrap();
+        let channel =
+            QuantumChannels::depolarizing(0.1).expect("Failed to create depolarizing channel");
 
         assert_eq!(channel.input_dim, 2);
         assert_eq!(channel.output_dim, 2);
         assert!(channel.kraus.is_some());
-        assert_eq!(channel.kraus.as_ref().unwrap().operators.len(), 4);
+        assert_eq!(
+            channel
+                .kraus
+                .as_ref()
+                .expect("Kraus representation missing")
+                .operators
+                .len(),
+            4
+        );
     }
 
     #[test]
     fn test_amplitude_damping() {
-        let channel = QuantumChannels::amplitude_damping(0.3).unwrap();
+        let channel = QuantumChannels::amplitude_damping(0.3)
+            .expect("Failed to create amplitude damping channel");
 
         assert!(channel.kraus.is_some());
-        assert_eq!(channel.kraus.as_ref().unwrap().operators.len(), 2);
+        assert_eq!(
+            channel
+                .kraus
+                .as_ref()
+                .expect("Kraus representation missing")
+                .operators
+                .len(),
+            2
+        );
 
-        // Test on |1⟩⟨1| state
+        // Test on |1><1| state
         let mut rho = Array2::zeros((2, 2));
         rho[[1, 1]] = Complex::new(1.0, 0.0);
 
         let mut ch = channel;
-        let output = ch.apply(&rho).unwrap();
+        let output = ch.apply(&rho).expect("Failed to apply channel");
 
         // Population should decrease
         assert!(output[[1, 1]].re < 1.0);
@@ -724,8 +759,9 @@ mod tests {
 
     #[test]
     fn test_kraus_to_choi() {
-        let mut channel = QuantumChannels::bit_flip(0.2).unwrap();
-        let choi = channel.to_choi().unwrap();
+        let mut channel =
+            QuantumChannels::bit_flip(0.2).expect("Failed to create bit flip channel");
+        let choi = channel.to_choi().expect("Failed to convert to Choi");
 
         assert_eq!(choi.matrix.shape(), [4, 4]);
 
@@ -739,8 +775,9 @@ mod tests {
     #[test]
     fn test_channel_composition() {
         // Create two channels
-        let mut ch1 = QuantumChannels::phase_flip(0.1).unwrap();
-        let mut ch2 = QuantumChannels::bit_flip(0.2).unwrap();
+        let mut ch1 =
+            QuantumChannels::phase_flip(0.1).expect("Failed to create phase flip channel");
+        let mut ch2 = QuantumChannels::bit_flip(0.2).expect("Failed to create bit flip channel");
 
         // Apply both to a superposition state
         let mut rho = Array2::zeros((2, 2));
@@ -749,8 +786,10 @@ mod tests {
         rho[[1, 0]] = Complex::new(0.5, 0.0);
         rho[[1, 1]] = Complex::new(0.5, 0.0);
 
-        let intermediate = ch1.apply(&rho).unwrap();
-        let final_state = ch2.apply(&intermediate).unwrap();
+        let intermediate = ch1.apply(&rho).expect("Failed to apply phase flip channel");
+        let final_state = ch2
+            .apply(&intermediate)
+            .expect("Failed to apply bit flip channel");
 
         // Trace should be preserved
         let trace = final_state[[0, 0]] + final_state[[1, 1]];
@@ -770,20 +809,24 @@ mod tests {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("valid 2x2 Hadamard matrix")
             / Complex::new(2.0_f64.sqrt(), 0.0);
 
-        let mut channel = QuantumChannel::from_kraus(vec![h]).unwrap();
+        let mut channel =
+            QuantumChannel::from_kraus(vec![h]).expect("Failed to create unitary channel");
 
-        assert!(channel.is_unitary().unwrap());
+        assert!(channel.is_unitary().expect("Failed to check unitarity"));
     }
 
     #[test]
     fn test_stinespring_conversion() {
-        let mut channel = QuantumChannels::amplitude_damping(0.5).unwrap();
+        let mut channel = QuantumChannels::amplitude_damping(0.5)
+            .expect("Failed to create amplitude damping channel");
 
         // Convert to Stinespring
-        let stinespring = channel.to_stinespring().unwrap();
+        let stinespring = channel
+            .to_stinespring()
+            .expect("Failed to convert to Stinespring");
 
         assert_eq!(stinespring.env_dim, 2);
         assert_eq!(stinespring.isometry.shape(), [4, 2]);
@@ -791,10 +834,10 @@ mod tests {
         // Convert back to Kraus
         let kraus_decomposer =
             QuantumChannel::from_kraus(vec![Array2::eye(2).mapv(|x| Complex::new(x, 0.0))])
-                .unwrap();
+                .expect("Failed to create identity channel");
         let kraus = kraus_decomposer
             .stinespring_to_kraus(&stinespring.isometry, stinespring.env_dim)
-            .unwrap();
+            .expect("Failed to convert back to Kraus");
         assert_eq!(kraus.operators.len(), 2);
     }
 }

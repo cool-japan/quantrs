@@ -91,12 +91,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Memory Overhead: {:.2}x", perf.memory_overhead);
 
         if let Some(threshold) = perf.threshold_estimate {
-            println!("  Estimated Threshold: {:.4}", threshold);
+            println!("  Estimated Threshold: {threshold:.4}");
         }
 
         println!("\n  Logical Error Rates:");
         for (error_rate, logical_rate) in &perf.logical_error_rates {
-            println!("    {}: {:.6}", error_rate, logical_rate);
+            println!("    {error_rate}: {logical_rate:.6}");
         }
     }
 
@@ -115,7 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Recall: {:.2}%", perf.recall * 100.0);
         println!("  F1 Score: {:.4}", perf.f1_score);
         if let Some(roc_auc) = perf.roc_auc {
-            println!("  ROC AUC: {:.4}", roc_auc);
+            println!("  ROC AUC: {roc_auc:.4}");
         }
     }
 
@@ -175,12 +175,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:-<80}", "");
     println!("\nBest Performers by Metric:");
     for (metric, code) in &results.comparative_analysis.best_by_metric {
-        println!("  {}: {}", metric, code);
+        println!("  {metric}: {code}");
     }
 
     println!("\nPerformance Rankings:");
     for (metric, ranking) in &results.comparative_analysis.rankings {
-        println!("  {} (fastest to slowest):", metric);
+        println!("  {metric} (fastest to slowest):");
         for (i, code) in ranking.iter().enumerate() {
             println!("    {}. {}", i + 1, code);
         }
@@ -217,7 +217,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Generate and display detailed report
     let report = suite.generate_report(&results);
-    println!("{}", report);
+    println!("{report}");
 
     println!("\n{:-<80}", "");
     println!("\nBenchmark completed successfully!");

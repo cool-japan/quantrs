@@ -174,7 +174,8 @@ impl DataPreprocessor {
                 // Robust scaling using median and IQR
                 for j in 0..data.ncols() {
                     let mut column_data: Vec<f64> = data.column(j).to_vec();
-                    column_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    column_data
+                        .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                     let median = if column_data.len() % 2 == 0 {
                         (column_data[column_data.len() / 2 - 1]
@@ -232,7 +233,7 @@ impl DataPreprocessor {
             .map(|(i, &score)| (i, score))
             .collect();
 
-        indexed_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        indexed_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let num_selected = (n_features / 2).max(1);
         let selected_features: Vec<usize> = indexed_scores

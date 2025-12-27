@@ -16,7 +16,7 @@ pub struct DashboardOptimizationConfig {
     pub priority_weighting: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OptimizationObjective {
     MaximizeThroughput,
     MinimizeLatency,

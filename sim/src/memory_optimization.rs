@@ -46,6 +46,7 @@ pub struct MemoryStats {
 
 impl MemoryStats {
     /// Calculate cache hit ratio
+    #[must_use]
     pub fn cache_hit_ratio(&self) -> f64 {
         if self.total_allocations == 0 {
             0.0
@@ -91,6 +92,7 @@ impl MemoryStats {
 
 impl AdvancedMemoryPool {
     /// Create new advanced memory pool
+    #[must_use]
     pub fn new(max_buffers_per_size: usize, cleanup_threshold: Duration) -> Self {
         Self {
             size_pools: RwLock::new(HashMap::new()),
@@ -136,7 +138,10 @@ impl AdvancedMemoryPool {
 
         // Try to get from appropriate size pool
         let buffer = {
-            let pools = self.size_pools.read().unwrap();
+            let pools = self
+                .size_pools
+                .read()
+                .expect("Size pools read lock poisoned");
             if let Some(pool) = pools.get(&size_class) {
                 if pool.is_empty() {
                     None
@@ -144,10 +149,13 @@ impl AdvancedMemoryPool {
                     cache_hit = true;
                     // Need to get write lock to modify
                     drop(pools);
-                    let mut pools_write = self.size_pools.write().unwrap();
+                    let mut pools_write = self
+                        .size_pools
+                        .write()
+                        .expect("Size pools write lock poisoned");
                     pools_write
                         .get_mut(&size_class)
-                        .and_then(|pool| pool.pop_front())
+                        .and_then(std::collections::VecDeque::pop_front)
                 }
             } else {
                 None
@@ -184,7 +192,10 @@ impl AdvancedMemoryPool {
 
         // Only cache if capacity matches size class to avoid memory waste
         if capacity == size_class {
-            let mut pools = self.size_pools.write().unwrap();
+            let mut pools = self
+                .size_pools
+                .write()
+                .expect("Size pools write lock poisoned");
             let pool = pools.entry(size_class).or_default();
 
             if pool.len() < self.max_buffers_per_size {
@@ -217,7 +228,10 @@ impl AdvancedMemoryPool {
 
     /// Clean up unused buffers to free memory
     pub fn cleanup_unused_buffers(&self) {
-        let mut pools = self.size_pools.write().unwrap();
+        let mut pools = self
+            .size_pools
+            .write()
+            .expect("Size pools write lock poisoned");
         let mut freed_memory = 0u64;
 
         for (size_class, pool) in pools.iter_mut() {
@@ -238,12 +252,15 @@ impl AdvancedMemoryPool {
 
     /// Get memory statistics
     pub fn get_stats(&self) -> MemoryStats {
-        self.stats.lock().unwrap().clone()
+        self.stats.lock().expect("Stats lock poisoned").clone()
     }
 
     /// Clear all cached buffers
     pub fn clear(&self) {
-        let mut pools = self.size_pools.write().unwrap();
+        let mut pools = self
+            .size_pools
+            .write()
+            .expect("Size pools write lock poisoned");
         let mut freed_memory = 0u64;
 
         for (_, pool) in pools.iter() {
@@ -271,6 +288,7 @@ pub struct NumaAwareAllocator {
 
 impl NumaAwareAllocator {
     /// Create NUMA-aware allocator
+    #[must_use]
     pub fn new(num_nodes: usize, max_buffers_per_size: usize) -> Self {
         let node_pools = (0..num_nodes)
             .map(|_| AdvancedMemoryPool::new(max_buffers_per_size, Duration::from_secs(30)))
@@ -293,7 +311,10 @@ impl NumaAwareAllocator {
 
     /// Get buffer with automatic load balancing
     pub fn get_buffer(&self, size: usize) -> Vec<Complex64> {
-        let mut current_node = self.current_node.lock().unwrap();
+        let mut current_node = self
+            .current_node
+            .lock()
+            .expect("Current node lock poisoned");
         let node = *current_node;
         *current_node = (*current_node + 1) % self.node_pools.len();
         drop(current_node);
@@ -343,9 +364,10 @@ impl NumaAwareAllocator {
 
 /// Memory optimization utility functions
 pub mod utils {
-    use super::*;
+    use super::Complex64;
 
     /// Estimate memory requirements for a given number of qubits
+    #[must_use]
     pub const fn estimate_memory_requirements(num_qubits: usize) -> u64 {
         let state_size = 1usize << num_qubits;
         let bytes_per_amplitude = std::mem::size_of::<Complex64>();
@@ -357,6 +379,7 @@ pub mod utils {
     }
 
     /// Check if system has sufficient memory for simulation
+    #[must_use]
     pub const fn check_memory_availability(num_qubits: usize) -> bool {
         let required_memory = estimate_memory_requirements(num_qubits);
 
@@ -375,6 +398,7 @@ pub mod utils {
     }
 
     /// Optimize buffer size for cache efficiency
+    #[must_use]
     pub const fn optimize_buffer_size(target_size: usize) -> usize {
         // Align to cache line size (typically 64 bytes)
         let cache_line_size = 64;

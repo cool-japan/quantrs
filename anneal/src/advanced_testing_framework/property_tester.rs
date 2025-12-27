@@ -1,6 +1,10 @@
 //! Property-based testing system
 
-use super::*;
+use super::{
+    ApplicationError, ApplicationResult, ConstraintSpec, DensitySpec, Duration, GenerationStrategy,
+    HashMap, Instant, InvariantScope, ProblemSpecification, ProblemType, PropertyTestResult,
+    PropertyType, PropertyValue, TestExecutionResult,
+};
 use scirs2_core::random::{thread_rng, Rng};
 
 /// Property-based testing system
@@ -95,7 +99,7 @@ pub struct ShrinkingStrategy {
 }
 
 /// Shrinking algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShrinkingAlgorithm {
     /// Linear shrinking
     Linear,
@@ -123,6 +127,7 @@ pub struct PropertyTestStats {
 }
 
 impl PropertyBasedTester {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             properties: Self::create_default_properties(),
@@ -303,7 +308,7 @@ impl PropertyBasedTester {
             .iter()
             .find(|p| p.id == property_id)
             .ok_or_else(|| {
-                ApplicationError::ConfigurationError(format!("Property not found: {}", property_id))
+                ApplicationError::ConfigurationError(format!("Property not found: {property_id}"))
             })?
             .clone();
 
@@ -329,7 +334,7 @@ impl PropertyBasedTester {
                     self.execution_stats.shrinking_attempts += 1;
                     self.shrink_counterexample_internal(&property, &test_case)?
                 };
-                counterexamples.push(format!("Case {}: {:?}", cases_tested, shrunk_case));
+                counterexamples.push(format!("Case {cases_tested}: {shrunk_case:?}"));
 
                 // For demonstration, stop after finding a few counterexamples
                 if counterexamples.len() >= 3 {
@@ -351,10 +356,7 @@ impl PropertyBasedTester {
         self.execution_stats.cases_failed += cases_tested - cases_passed;
         self.execution_stats.execution_time += execution_time;
 
-        println!(
-            "Property test completed: {}/{} passed",
-            cases_passed, cases_tested
-        );
+        println!("Property test completed: {cases_passed}/{cases_tested} passed");
 
         Ok(PropertyTestResult {
             property_id: property.id.clone(),
@@ -386,7 +388,7 @@ impl PropertyBasedTester {
     }
 
     /// Check if generator is suitable for property
-    fn is_generator_suitable(
+    const fn is_generator_suitable(
         &self,
         _generator: &TestCaseGenerator,
         _property: &PropertyDefinition,
@@ -464,7 +466,7 @@ impl PropertyBasedTester {
         let size = boundary_sizes[rng.gen_range(0..boundary_sizes.len())];
 
         Ok(PropertyTestCase {
-            id: format!("boundary_case_{}", size),
+            id: format!("boundary_case_{size}"),
             problem_spec: ProblemSpecification {
                 problem_type: ProblemType::RandomIsing,
                 size_range: (size, size),
@@ -515,7 +517,7 @@ impl PropertyBasedTester {
         let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
 
         Ok(PropertyTestCase {
-            id: format!("equiv_case_{}_{}", class_id, size),
+            id: format!("equiv_case_{class_id}_{size}"),
             problem_spec: ProblemSpecification {
                 problem_type,
                 size_range: (size, size),
@@ -608,7 +610,7 @@ impl PropertyBasedTester {
     }
 
     /// Evaluate precondition
-    fn evaluate_precondition(
+    const fn evaluate_precondition(
         &self,
         _precondition: &Precondition,
         _test_case: &PropertyTestCase,
@@ -628,7 +630,7 @@ impl PropertyBasedTester {
         };
 
         // Simulate execution with some variability
-        let quality = 0.8 + (thread_rng().gen::<f64>() * 0.2);
+        let quality = thread_rng().gen::<f64>().mul_add(0.2, 0.8);
         let execution_time = Duration::from_millis((size as u64 * 10).min(1000));
 
         Ok(TestExecutionResult {
@@ -651,7 +653,7 @@ impl PropertyBasedTester {
             "solution_valid" => PropertyValue::Boolean(execution_result.convergence_achieved),
             "quality_improvement" => PropertyValue::Numeric(execution_result.solution_quality),
             "reproducible_result" => PropertyValue::Boolean(true), // Simplified
-            "memory_bounded" => PropertyValue::Boolean(execution_result.memory_used < 1000000),
+            "memory_bounded" => PropertyValue::Boolean(execution_result.memory_used < 1_000_000),
             "time_bounded" => {
                 PropertyValue::Boolean(execution_result.execution_time < Duration::from_secs(60))
             }
@@ -678,7 +680,7 @@ impl PropertyBasedTester {
     }
 
     /// Evaluate invariant
-    fn evaluate_invariant(
+    const fn evaluate_invariant(
         &self,
         _invariant: &Invariant,
         _execution_result: &TestExecutionResult,
@@ -718,6 +720,7 @@ impl PropertyBasedTester {
     }
 
     /// Get property by ID
+    #[must_use]
     pub fn get_property(&self, property_id: &str) -> Option<&PropertyDefinition> {
         self.properties.iter().find(|p| p.id == property_id)
     }
@@ -728,7 +731,8 @@ impl PropertyBasedTester {
     }
 
     /// Get execution statistics
-    pub fn get_stats(&self) -> &PropertyTestStats {
+    #[must_use]
+    pub const fn get_stats(&self) -> &PropertyTestStats {
         &self.execution_stats
     }
 }

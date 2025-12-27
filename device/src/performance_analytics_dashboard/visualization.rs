@@ -38,7 +38,7 @@ pub struct ChartData {
 }
 
 /// Chart data types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChartDataType {
     TimeSeries,
     Categorical,
@@ -78,7 +78,7 @@ pub enum DataValue {
 }
 
 /// Series types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SeriesType {
     Line,
     Bar,
@@ -150,7 +150,7 @@ pub enum LegendPosition {
 }
 
 /// Legend orientation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LegendOrientation {
     Horizontal,
     Vertical,
@@ -210,7 +210,7 @@ pub struct Chart {
 }
 
 /// Chart formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChartFormat {
     SVG,
     PNG,
@@ -288,7 +288,7 @@ pub enum ResponsiveCondition {
 }
 
 /// Device types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceType {
     Desktop,
     Tablet,
@@ -381,7 +381,7 @@ pub struct TextSection {
 }
 
 /// Text format types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextFormatType {
     PlainText,
     Markdown,
@@ -414,7 +414,7 @@ pub struct ExportOptions {
 }
 
 /// Export quality
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportQuality {
     Low,
     Medium,
@@ -434,7 +434,7 @@ pub struct PageSettings {
 }
 
 /// Page size
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PageSize {
     A4,
     A3,
@@ -444,7 +444,7 @@ pub enum PageSize {
 }
 
 /// Page orientation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PageOrientation {
     Portrait,
     Landscape,
@@ -485,7 +485,7 @@ pub struct TemplateVariable {
 }
 
 /// Variable types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableType {
     Text,
     Number,
@@ -611,7 +611,7 @@ impl DashboardRenderer {
             chart_generators,
             layout_manager: LayoutManager::new(config.dashboard_layout.clone()),
             export_engine: ExportEngine::new(),
-            theme_manager: ThemeManager::new(config.color_scheme.clone()),
+            theme_manager: ThemeManager::new(config.color_scheme),
         }
     }
 
@@ -637,7 +637,7 @@ impl DashboardRenderer {
                 "dashboard-{}",
                 SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs()
             ),
             title: "Performance Analytics Dashboard".to_string(),
@@ -769,7 +769,7 @@ struct BarChartGenerator;
 struct HeatMapGenerator;
 
 impl LineChartGenerator {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -804,7 +804,7 @@ impl ChartGenerator for LineChartGenerator {
 }
 
 impl BarChartGenerator {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -830,7 +830,7 @@ impl ChartGenerator for BarChartGenerator {
 }
 
 impl HeatMapGenerator {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -890,6 +890,12 @@ impl LayoutManager {
     }
 }
 
+impl Default for ExportEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExportEngine {
     pub fn new() -> Self {
         Self {
@@ -909,6 +915,12 @@ impl ExportEngine {
     }
 }
 
+impl Default for TemplateEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TemplateEngine {
     pub fn new() -> Self {
         Self {
@@ -916,6 +928,12 @@ impl TemplateEngine {
             template_cache: HashMap::new(),
             variable_resolver: VariableResolver::new(),
         }
+    }
+}
+
+impl Default for VariableResolver {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -940,7 +958,7 @@ impl ThemeManager {
         }
     }
 
-    pub fn get_current_theme(&self) -> &Theme {
+    pub const fn get_current_theme(&self) -> &Theme {
         &self.current_theme
     }
 
@@ -969,8 +987,8 @@ impl ThemeManager {
         };
 
         Theme {
-            theme_id: format!("{:?}", scheme).to_lowercase(),
-            theme_name: format!("{:?} Theme", scheme),
+            theme_id: format!("{scheme:?}").to_lowercase(),
+            theme_name: format!("{scheme:?} Theme"),
             color_palette: ColorPalette {
                 primary,
                 secondary: "#03DAC6".to_string(),

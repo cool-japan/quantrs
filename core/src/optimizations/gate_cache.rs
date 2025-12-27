@@ -100,13 +100,17 @@ impl QuantumGateCache {
         // Check cache first
         if let Ok(mut cache) = self.matrix_cache.lock() {
             if let Some(cached) = cache.get(&key) {
-                *self.cache_hits.lock().unwrap() += 1;
-                return Ok(cached.matrix.clone());
+                if let Ok(mut hits) = self.cache_hits.lock() {
+                    *hits += 1;
+                }
+                return Ok(cached.matrix);
             }
         }
 
         // Cache miss - compute with profiling
-        *self.cache_misses.lock().unwrap() += 1;
+        if let Ok(mut misses) = self.cache_misses.lock() {
+            *misses += 1;
+        }
 
         let computation_result = Timer::time_function(
             &format!("gate_matrix_computation_{}", key.gate_type),
@@ -135,9 +139,9 @@ impl QuantumGateCache {
 
     /// Get cache performance statistics
     pub fn get_performance_stats(&self) -> QuantumGateCacheStats {
-        let hits = *self.cache_hits.lock().unwrap();
-        let misses = *self.cache_misses.lock().unwrap();
-        let total_time = *self.total_computation_time.lock().unwrap();
+        let hits = self.cache_hits.lock().map(|g| *g).unwrap_or(0);
+        let misses = self.cache_misses.lock().map(|g| *g).unwrap_or(0);
+        let total_time = self.total_computation_time.lock().map(|g| *g).unwrap_or(0);
 
         QuantumGateCacheStats {
             cache_hits: hits,
@@ -199,9 +203,15 @@ impl QuantumGateCache {
         if let Ok(mut cache) = self.matrix_cache.lock() {
             cache.clear();
         }
-        *self.cache_hits.lock().unwrap() = 0;
-        *self.cache_misses.lock().unwrap() = 0;
-        *self.total_computation_time.lock().unwrap() = 0;
+        if let Ok(mut hits) = self.cache_hits.lock() {
+            *hits = 0;
+        }
+        if let Ok(mut misses) = self.cache_misses.lock() {
+            *misses = 0;
+        }
+        if let Ok(mut time) = self.total_computation_time.lock() {
+            *time = 0;
+        }
     }
 }
 
@@ -246,14 +256,14 @@ mod tests {
         // First call should be a cache miss
         let matrix1 = cache
             .get_or_compute_matrix(key.clone(), || Ok(vec![Complex64::new(1.0, 0.0); 4]))
-            .unwrap();
+            .expect("matrix computation should succeed");
 
         // Second call should be a cache hit
         let matrix2 = cache
             .get_or_compute_matrix(key, || {
                 panic!("Should not be called due to cache hit");
             })
-            .unwrap();
+            .expect("cache hit should succeed");
 
         assert_eq!(matrix1, matrix2);
 
@@ -287,7 +297,9 @@ mod tests {
         assert_eq!(initial_stats.cache_misses, 0);
 
         // Pre-warm should populate cache
-        cache.prewarm_common_gates().unwrap();
+        cache
+            .prewarm_common_gates()
+            .expect("prewarming common gates should succeed");
 
         let stats = cache.get_performance_stats();
         assert!(stats.cache_misses > 0); // Should have computed some matrices
@@ -298,7 +310,7 @@ mod tests {
             .get_or_compute_matrix(key, || {
                 panic!("Should be a cache hit");
             })
-            .unwrap();
+            .expect("cache hit for hadamard gate should succeed");
 
         let final_stats = cache.get_performance_stats();
         assert!(final_stats.cache_hits > 0);

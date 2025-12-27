@@ -190,8 +190,12 @@ impl ParameterTuner {
         let best_eval = self
             .evaluation_history
             .iter()
-            .min_by(|a, b| a.objective_value.partial_cmp(&b.objective_value).unwrap())
-            .unwrap();
+            .min_by(|a, b| {
+                a.objective_value
+                    .partial_cmp(&b.objective_value)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .ok_or("No evaluations recorded in history")?;
 
         let convergence_history: Vec<f64> = self
             .evaluation_history

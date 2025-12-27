@@ -1028,7 +1028,7 @@ impl QuantumErrorCorrection {
                 syndrome: syndrome.clone(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .unwrap_or_default()
                     .as_secs_f64(),
                 error: None,
                 correction: None,
@@ -1712,19 +1712,23 @@ mod tests {
 
     #[test]
     fn test_mwpm_decoding() {
-        let mut qec = create_optimization_qec(2);
+        let qec = create_optimization_qec(2);
         let syndrome = Array1::from_vec(vec![1, 0, 1, 0]);
 
-        let mut error_estimate = qec.decode_mwpm(&syndrome).unwrap();
+        let error_estimate = qec
+            .decode_mwpm(&syndrome)
+            .expect("MWPM decoding should succeed");
         assert_eq!(error_estimate.len(), qec.num_physical_qubits);
     }
 
     #[test]
     fn test_belief_propagation_decoding() {
-        let mut qec = create_optimization_qec(2);
+        let qec = create_optimization_qec(2);
         let syndrome = Array1::from_vec(vec![1, 1, 0, 0]);
 
-        let mut error_estimate = qec.decode_belief_propagation(&syndrome).unwrap();
+        let error_estimate = qec
+            .decode_belief_propagation(&syndrome)
+            .expect("Belief propagation decoding should succeed");
         assert_eq!(error_estimate.len(), qec.num_physical_qubits);
     }
 

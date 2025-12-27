@@ -180,8 +180,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                 let mut number = String::new();
                 while let Some(&ch) = chars.peek() {
                     if ch.is_ascii_digit() || ch == '.' {
-                        number.push(chars.next().unwrap());
-                        column += 1;
+                        if let Some(c) = chars.next() {
+                            number.push(c);
+                            column += 1;
+                        }
                     } else {
                         break;
                     }
@@ -230,8 +232,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                 let mut identifier = String::new();
                 while let Some(&ch) = chars.peek() {
                     if ch.is_alphanumeric() || ch == '_' {
-                        identifier.push(chars.next().unwrap());
-                        column += 1;
+                        if let Some(c) = chars.next() {
+                            identifier.push(c);
+                            column += 1;
+                        }
                     } else {
                         break;
                     }
@@ -286,8 +290,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
                         if ch == '\n' {
                             break;
                         }
-                        comment.push(chars.next().unwrap());
-                        column += 1;
+                        if let Some(c) = chars.next() {
+                            comment.push(c);
+                            column += 1;
+                        }
                     }
                     tokens.push(Token::Comment(comment));
                 } else {

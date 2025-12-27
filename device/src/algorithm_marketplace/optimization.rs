@@ -26,7 +26,7 @@ pub struct OptimizationConfig {
 }
 
 /// Optimization levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationLevel {
     None,
     Basic,
@@ -106,7 +106,7 @@ pub struct OptimizationObjective {
 }
 
 /// Objective types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ObjectiveType {
     Minimize,
     Maximize,
@@ -166,7 +166,7 @@ pub struct OptimizationRecommendation {
 }
 
 /// Recommendation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationType {
     ParameterAdjustment,
     AlgorithmVariant,
@@ -177,7 +177,7 @@ pub enum RecommendationType {
 }
 
 /// Implementation effort
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplementationEffort {
     Low,
     Medium,
@@ -218,7 +218,7 @@ pub struct PerformanceBottleneck {
 }
 
 /// Bottleneck types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BottleneckType {
     ComputeBottleneck,
     MemoryBottleneck,
@@ -248,7 +248,7 @@ pub struct PerformanceAnomaly {
 }
 
 /// Anomaly types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyType {
     SuddenDegradation,
     GradualDecline,
@@ -268,7 +268,7 @@ pub struct PerformanceSuggestion {
 }
 
 /// Suggestion types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuggestionType {
     ParameterTuning,
     AlgorithmModification,
@@ -305,7 +305,7 @@ pub struct ProblemInstance {
 }
 
 /// Difficulty levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DifficultyLevel {
     Trivial,
     Easy,
@@ -363,7 +363,7 @@ pub struct ComparisonMetric {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NormalizationMethod {
     None,
     ZScore,
@@ -373,7 +373,7 @@ pub enum NormalizationMethod {
 }
 
 /// Aggregation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AggregationMethod {
     Mean,
     Median,
@@ -395,7 +395,7 @@ pub struct PerformanceModel {
 }
 
 /// Performance model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PerformanceModelType {
     LinearRegression,
     PolynomialRegression,
@@ -443,7 +443,7 @@ pub struct ObjectiveFunction {
 }
 
 /// Objective function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ObjectiveFunctionType {
     SingleObjective,
     MultiObjective,
@@ -452,7 +452,7 @@ pub enum ObjectiveFunctionType {
 }
 
 /// Evaluation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationMethod {
     DirectEvaluation,
     SimulationBased,
@@ -488,7 +488,7 @@ pub struct ParameterDimension {
 }
 
 /// Dimension types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DimensionType {
     Continuous,
     Discrete,
@@ -515,7 +515,7 @@ pub struct ParameterConstraint {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     Equality,
     Inequality,
@@ -617,7 +617,7 @@ pub struct ScalingRelationship {
 }
 
 /// Relationship types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelationshipType {
     Linear,
     Logarithmic,
@@ -681,7 +681,7 @@ pub struct CostComponent {
 }
 
 /// Cost types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CostType {
     Fixed,
     Variable,

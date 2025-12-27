@@ -48,7 +48,8 @@ mod tests {
             .optimize_network_performance(&network_state, &objectives)
             .await;
         assert!(result.is_ok());
-        let optimization_result = result.unwrap();
+        let optimization_result =
+            result.expect("Network optimization should succeed with valid input");
         assert!(optimization_result.overall_improvement_estimate > 0.0);
     }
     #[tokio::test]
@@ -89,7 +90,7 @@ mod tests {
         };
         let result = shaper.optimize_traffic_flow(&predictions).await;
         assert!(result.is_ok());
-        let traffic_result = result.unwrap();
+        let traffic_result = result.expect("Traffic shaping should succeed with valid predictions");
         assert_eq!(traffic_result.new_priority_weights.len(), 7);
         assert!(
             traffic_result.new_priority_weights[&Priority::CriticalQuantumState]

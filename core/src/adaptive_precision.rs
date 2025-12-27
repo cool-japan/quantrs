@@ -33,7 +33,7 @@ pub enum PrecisionMode {
 
 impl Default for PrecisionMode {
     fn default() -> Self {
-        PrecisionMode::Double
+        Self::Double
     }
 }
 
@@ -231,7 +231,7 @@ impl AdaptivePrecisionSimulator {
         _state: &mut Array1<Complex64>,
     ) -> QuantRS2Result<AdaptiveResult> {
         let _matrix = gate.matrix()?;
-        let _current_precision = self.current_precision;
+        // let _current_precision = self.current_precision;
 
         self.execute_adaptive(
             move |precision| {
@@ -285,7 +285,7 @@ impl AdaptivePrecisionSimulator {
                         std::thread::sleep(Duration::from_micros(15));
                         Complex64::new(0.5, 0.0)
                     }
-                    PrecisionMode::Double => {
+                    PrecisionMode::Double | PrecisionMode::Adaptive => {
                         std::thread::sleep(Duration::from_micros(30));
                         Complex64::new(0.5, 0.0)
                     }
@@ -298,10 +298,6 @@ impl AdaptivePrecisionSimulator {
                         std::thread::sleep(Duration::from_micros(delay));
                         Complex64::new(0.5, 0.0)
                     }
-                    PrecisionMode::Adaptive => {
-                        std::thread::sleep(Duration::from_micros(30));
-                        Complex64::new(0.5, 0.0)
-                    }
                 };
 
                 Ok(result)
@@ -311,7 +307,7 @@ impl AdaptivePrecisionSimulator {
     }
 
     /// Get current precision mode
-    pub fn current_precision(&self) -> PrecisionMode {
+    pub const fn current_precision(&self) -> PrecisionMode {
         self.current_precision
     }
 
@@ -322,8 +318,14 @@ impl AdaptivePrecisionSimulator {
 
     /// Get precision statistics
     pub fn get_precision_stats(&self) -> PrecisionStatistics {
-        let error_monitor = self.error_monitor.read().unwrap();
-        let perf_monitor = self.performance_monitor.read().unwrap();
+        let error_monitor = self
+            .error_monitor
+            .read()
+            .expect("Error monitor lock poisoned");
+        let perf_monitor = self
+            .performance_monitor
+            .read()
+            .expect("Performance monitor lock poisoned");
 
         PrecisionStatistics {
             current_precision: self.current_precision,
@@ -343,7 +345,10 @@ impl AdaptivePrecisionSimulator {
         _result: &Complex64,
         _comp_type: ComputationType,
     ) -> QuantRS2Result<f64> {
-        let error_monitor = self.error_monitor.read().unwrap();
+        let error_monitor = self
+            .error_monitor
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
 
         // Use the most recent error estimate, or a default
         Ok(error_monitor.error_history.last().copied().unwrap_or(1e-15))
@@ -363,10 +368,9 @@ impl AdaptivePrecisionSimulator {
 
         let precision_multiplier = match self.current_precision {
             PrecisionMode::Single => 1.0,
-            PrecisionMode::Double => 2.0,
+            PrecisionMode::Double | PrecisionMode::Adaptive => 2.0,
             PrecisionMode::Extended => 2.5,
             PrecisionMode::Arbitrary(bits) => (bits as f64) / 32.0,
-            PrecisionMode::Adaptive => 2.0,
         };
 
         (base_memory as f64 * precision_multiplier) as usize
@@ -379,14 +383,20 @@ impl AdaptivePrecisionSimulator {
     ) -> QuantRS2Result<()> {
         // Update error monitoring
         {
-            let mut error_monitor = self.error_monitor.write().unwrap();
+            let mut error_monitor = self
+                .error_monitor
+                .write()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             error_monitor.add_error_sample(result.estimated_error);
             error_monitor.update_error_trend();
         }
 
         // Update performance monitoring
         {
-            let mut perf_monitor = self.performance_monitor.write().unwrap();
+            let mut perf_monitor = self
+                .performance_monitor
+                .write()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             perf_monitor.add_timing_sample(
                 result.precision,
                 result.computation_time.as_secs_f64() * 1000.0,
@@ -414,7 +424,10 @@ impl AdaptivePrecisionSimulator {
         }
 
         // Check if adaptation is needed based on error
-        let error_monitor = self.error_monitor.read().unwrap();
+        let error_monitor = self
+            .error_monitor
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         if error_monitor.current_error > self.config.max_error_threshold {
             return Ok(true);
         }
@@ -428,8 +441,14 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn adapt_precision(&mut self, comp_type: ComputationType) -> QuantRS2Result<()> {
-        let error_monitor = self.error_monitor.read().unwrap();
-        let perf_monitor = self.performance_monitor.read().unwrap();
+        let error_monitor = self
+            .error_monitor
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
+        let perf_monitor = self
+            .performance_monitor
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
 
         let current_error = error_monitor.current_error;
         let error_trend = error_monitor.error_trend;
@@ -437,12 +456,12 @@ impl AdaptivePrecisionSimulator {
         // Determine if we should increase or decrease precision
         let new_precision = if current_error > self.config.max_error_threshold {
             // Error too high, increase precision
-            self.increase_precision(self.current_precision)
+            Self::increase_precision(self.current_precision)
         } else if current_error < self.config.target_accuracy / 10.0
             && matches!(error_trend, ErrorTrend::Stable | ErrorTrend::Decreasing)
         {
             // Error low and stable, can decrease precision
-            self.decrease_precision(self.current_precision)
+            Self::decrease_precision(self.current_precision)
         } else {
             // Keep current precision
             self.current_precision
@@ -450,7 +469,7 @@ impl AdaptivePrecisionSimulator {
 
         // Consider performance factors
         let final_precision =
-            self.consider_performance_factors(new_precision, &perf_monitor, comp_type);
+            Self::consider_performance_factors(new_precision, &perf_monitor, comp_type);
 
         if final_precision != self.current_precision {
             println!(
@@ -464,7 +483,7 @@ impl AdaptivePrecisionSimulator {
         Ok(())
     }
 
-    fn increase_precision(&self, current: PrecisionMode) -> PrecisionMode {
+    const fn increase_precision(current: PrecisionMode) -> PrecisionMode {
         match current {
             PrecisionMode::Single => PrecisionMode::Double,
             PrecisionMode::Double => PrecisionMode::Extended,
@@ -474,7 +493,7 @@ impl AdaptivePrecisionSimulator {
         }
     }
 
-    fn decrease_precision(&self, current: PrecisionMode) -> PrecisionMode {
+    const fn decrease_precision(current: PrecisionMode) -> PrecisionMode {
         match current {
             PrecisionMode::Extended => PrecisionMode::Double,
             PrecisionMode::Double => PrecisionMode::Single,
@@ -484,8 +503,7 @@ impl AdaptivePrecisionSimulator {
         }
     }
 
-    fn consider_performance_factors(
-        &self,
+    const fn consider_performance_factors(
         suggested: PrecisionMode,
         _perf_monitor: &PrecisionPerformanceMonitor,
         _comp_type: ComputationType,
@@ -495,7 +513,7 @@ impl AdaptivePrecisionSimulator {
         suggested
     }
 
-    fn count_adaptations(&self) -> usize {
+    const fn count_adaptations(&self) -> usize {
         // Simplified - in a real implementation, this would track actual adaptations
         self.operation_count / self.config.adaptation_interval
     }
@@ -510,7 +528,6 @@ impl AdaptivePrecisionSimulator {
     // Precision-specific computation methods
 
     fn apply_gate_single_precision(
-        &self,
         _matrix: &[Complex64],
         _state: &mut Array1<Complex64>,
     ) -> QuantRS2Result<f64> {
@@ -520,7 +537,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn apply_gate_double_precision(
-        &self,
         _matrix: &[Complex64],
         _state: &mut Array1<Complex64>,
     ) -> QuantRS2Result<f64> {
@@ -530,7 +546,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn apply_gate_extended_precision(
-        &self,
         _matrix: &[Complex64],
         _state: &mut Array1<Complex64>,
     ) -> QuantRS2Result<f64> {
@@ -540,7 +555,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn apply_gate_arbitrary_precision(
-        &self,
         _matrix: &[Complex64],
         _state: &mut Array1<Complex64>,
         bits: u32,
@@ -552,7 +566,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn expectation_value_single_precision(
-        &self,
         _observable: &Array2<Complex64>,
         _state: &Array1<Complex64>,
     ) -> QuantRS2Result<Complex64> {
@@ -561,7 +574,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn expectation_value_double_precision(
-        &self,
         _observable: &Array2<Complex64>,
         _state: &Array1<Complex64>,
     ) -> QuantRS2Result<Complex64> {
@@ -570,7 +582,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn expectation_value_extended_precision(
-        &self,
         _observable: &Array2<Complex64>,
         _state: &Array1<Complex64>,
     ) -> QuantRS2Result<Complex64> {
@@ -579,7 +590,6 @@ impl AdaptivePrecisionSimulator {
     }
 
     fn expectation_value_arbitrary_precision(
-        &self,
         _observable: &Array2<Complex64>,
         _state: &Array1<Complex64>,
         bits: u32,
@@ -733,10 +743,9 @@ impl ErrorEstimator for DoublePrecisionComparisonEstimator {
         // Estimate error based on precision mode
         match result.precision {
             PrecisionMode::Single => 1e-7,
-            PrecisionMode::Double => 1e-15,
+            PrecisionMode::Double | PrecisionMode::Adaptive => 1e-15,
             PrecisionMode::Extended => 1e-19,
             PrecisionMode::Arbitrary(bits) => 10.0_f64.powf(-(bits as f64) / 3.3),
-            PrecisionMode::Adaptive => 1e-15,
         }
     }
 
@@ -915,7 +924,7 @@ mod tests {
         let result = simulator.apply_gate_adaptive(&hadamard, &mut state);
         assert!(result.is_ok());
 
-        let adaptive_result = result.unwrap();
+        let adaptive_result = result.expect("Gate application should succeed");
         assert_eq!(adaptive_result.precision, PrecisionMode::Double);
         assert!(adaptive_result.estimated_error > 0.0);
     }
@@ -933,14 +942,14 @@ mod tests {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Observable matrix construction should succeed");
 
         let state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
 
         let result = simulator.expectation_value_adaptive(&observable, &state);
         assert!(result.is_ok());
 
-        let adaptive_result = result.unwrap();
+        let adaptive_result = result.expect("Expectation value computation should succeed");
         assert_eq!(adaptive_result.value, Complex64::new(0.5, 0.0));
     }
 
@@ -990,29 +999,29 @@ mod tests {
 
         // Test precision increasing
         assert_eq!(
-            simulator.increase_precision(PrecisionMode::Single),
+            AdaptivePrecisionSimulator::increase_precision(PrecisionMode::Single),
             PrecisionMode::Double
         );
         assert_eq!(
-            simulator.increase_precision(PrecisionMode::Double),
+            AdaptivePrecisionSimulator::increase_precision(PrecisionMode::Double),
             PrecisionMode::Extended
         );
         assert_eq!(
-            simulator.increase_precision(PrecisionMode::Extended),
+            AdaptivePrecisionSimulator::increase_precision(PrecisionMode::Extended),
             PrecisionMode::Arbitrary(128)
         );
 
         // Test precision decreasing
         assert_eq!(
-            simulator.decrease_precision(PrecisionMode::Extended),
+            AdaptivePrecisionSimulator::decrease_precision(PrecisionMode::Extended),
             PrecisionMode::Double
         );
         assert_eq!(
-            simulator.decrease_precision(PrecisionMode::Double),
+            AdaptivePrecisionSimulator::decrease_precision(PrecisionMode::Double),
             PrecisionMode::Single
         );
         assert_eq!(
-            simulator.decrease_precision(PrecisionMode::Arbitrary(128)),
+            AdaptivePrecisionSimulator::decrease_precision(PrecisionMode::Arbitrary(128)),
             PrecisionMode::Arbitrary(64)
         );
     }

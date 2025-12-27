@@ -305,12 +305,15 @@ impl CompilationCache {
         }
 
         let result = hasher.finish();
-        Ok(format!("{:x}", result))
+        Ok(format!("{result:x}"))
     }
 
     /// Get from memory cache
     fn get_from_memory(&self, gate_id: &str) -> QuantRS2Result<Option<CompiledGate>> {
-        let mut cache = self.memory_cache.write().unwrap();
+        let mut cache = self
+            .memory_cache
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Memory cache lock poisoned".to_string()))?;
 
         if let Some(compiled) = cache.gates.get(gate_id).cloned() {
             // Update LRU
@@ -318,7 +321,7 @@ impl CompilationCache {
             cache.lru_queue.push_front(gate_id.to_string());
 
             // Update last accessed time
-            let mut updated_compiled = compiled.clone();
+            let mut updated_compiled = compiled;
             updated_compiled.metadata.last_accessed = current_timestamp();
             cache
                 .gates
@@ -332,7 +335,10 @@ impl CompilationCache {
 
     /// Add to memory cache
     fn add_to_memory(&self, compiled: CompiledGate) -> QuantRS2Result<()> {
-        let mut cache = self.memory_cache.write().unwrap();
+        let mut cache = self
+            .memory_cache
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Memory cache lock poisoned".to_string()))?;
         let gate_size = self.estimate_size(&compiled);
 
         // Evict entries if needed
@@ -352,13 +358,14 @@ impl CompilationCache {
         cache
             .gates
             .insert(compiled.gate_id.clone(), compiled.clone());
-        cache.lru_queue.push_front(compiled.gate_id.clone());
+        cache.lru_queue.push_front(compiled.gate_id);
         cache.current_size += gate_size;
 
         // Update statistics
-        let mut stats = self.statistics.write().unwrap();
-        stats.num_entries = cache.gates.len();
-        stats.total_size_bytes = cache.current_size;
+        if let Ok(mut stats) = self.statistics.write() {
+            stats.num_entries = cache.gates.len();
+            stats.total_size_bytes = cache.current_size;
+        }
 
         Ok(())
     }
@@ -413,7 +420,10 @@ impl CompilationCache {
 
     /// Queue gate for asynchronous write
     fn queue_for_write(&self, compiled: CompiledGate) -> QuantRS2Result<()> {
-        let mut queue = self.write_queue.write().unwrap();
+        let mut queue = self
+            .write_queue
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Write queue lock poisoned".to_string()))?;
         queue.push_back(compiled);
         Ok(())
     }
@@ -427,8 +437,10 @@ impl CompilationCache {
             std::thread::sleep(Duration::from_millis(100));
 
             let gates_to_write: Vec<CompiledGate> = {
-                let mut queue = write_queue.write().unwrap();
-                queue.drain(..).collect()
+                match write_queue.write() {
+                    Ok(mut queue) => queue.drain(..).collect(),
+                    Err(_) => continue, // Skip this iteration if lock is poisoned
+                }
             };
 
             for compiled in gates_to_write {
@@ -439,7 +451,7 @@ impl CompilationCache {
                 let file_path = cache_dir.join(filename);
 
                 if let Err(e) = Self::write_gate_to_file(&file_path, &compiled, 3) {
-                    eprintln!("Failed to write gate to cache: {}", e);
+                    eprintln!("Failed to write gate to cache: {e}");
                 }
             }
         })
@@ -480,7 +492,10 @@ impl CompilationCache {
 
     /// Record cache hit
     fn record_hit(&self, gate_id: &str) -> QuantRS2Result<()> {
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self
+            .statistics
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Statistics lock poisoned".to_string()))?;
         stats.total_hits += 1;
 
         // Estimate time saved (average compilation time)
@@ -495,7 +510,10 @@ impl CompilationCache {
 
     /// Record cache miss
     fn record_miss(&self) -> QuantRS2Result<()> {
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self
+            .statistics
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Statistics lock poisoned".to_string()))?;
         stats.total_misses += 1;
         Ok(())
     }
@@ -503,7 +521,10 @@ impl CompilationCache {
     /// Clear the cache
     pub fn clear(&self) -> QuantRS2Result<()> {
         // Clear memory cache
-        let mut cache = self.memory_cache.write().unwrap();
+        let mut cache = self
+            .memory_cache
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Memory cache lock poisoned".to_string()))?;
         cache.gates.clear();
         cache.lru_queue.clear();
         cache.current_size = 0;
@@ -519,7 +540,10 @@ impl CompilationCache {
         }
 
         // Reset statistics
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self
+            .statistics
+            .write()
+            .map_err(|_| QuantRS2Error::RuntimeError("Statistics lock poisoned".to_string()))?;
         *stats = CacheStatistics {
             total_hits: 0,
             total_misses: 0,
@@ -534,7 +558,17 @@ impl CompilationCache {
 
     /// Get cache statistics
     pub fn statistics(&self) -> CacheStatistics {
-        self.statistics.read().unwrap().clone()
+        self.statistics
+            .read()
+            .map(|s| s.clone())
+            .unwrap_or_else(|_| CacheStatistics {
+                total_hits: 0,
+                total_misses: 0,
+                time_saved_us: 0,
+                num_entries: 0,
+                total_size_bytes: 0,
+                created_at: current_timestamp(),
+            })
     }
 
     /// Optimize cache by removing expired entries
@@ -563,10 +597,7 @@ impl CompilationCache {
             }
         }
 
-        println!(
-            "Cache optimization: removed {} expired entries",
-            removed_count
-        );
+        println!("Cache optimization: removed {removed_count} expired entries");
         Ok(())
     }
 
@@ -769,7 +800,7 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
         let stats = cache.statistics();
 
         assert_eq!(stats.total_hits, 0);
@@ -784,7 +815,7 @@ mod tests {
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos()
         ));
         let config = CacheConfig {
@@ -794,15 +825,15 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
         // Clear any existing cache state
-        cache.clear().unwrap();
+        cache.clear().expect("Failed to clear cache");
         let gate = Hadamard { target: QubitId(0) };
 
         // First access - should compile
         let compiled1 = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to compile gate");
         let stats1 = cache.statistics();
         assert_eq!(stats1.total_misses, 1);
         assert_eq!(stats1.total_hits, 0);
@@ -810,7 +841,7 @@ mod tests {
         // Second access - should hit cache
         let compiled2 = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to get cached gate");
         let stats2 = cache.statistics();
         assert_eq!(stats2.total_misses, 1);
         assert_eq!(stats2.total_hits, 1);
@@ -830,14 +861,14 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
 
         // Add three gates to trigger eviction
         for i in 0..3 {
             let gate = PauliX { target: QubitId(i) };
             let _ = cache
                 .get_or_compile(&gate, compile_single_qubit_gate)
-                .unwrap();
+                .expect("Failed to compile gate");
         }
 
         let stats = cache.statistics();
@@ -859,19 +890,19 @@ mod tests {
 
         // Create cache and compile gate
         {
-            let cache = CompilationCache::new(config.clone()).unwrap();
+            let cache = CompilationCache::new(config.clone()).expect("Failed to create cache");
             let compiled = cache
                 .get_or_compile(&gate, compile_single_qubit_gate)
-                .unwrap();
+                .expect("Failed to compile gate");
             gate_id = compiled.gate_id.clone();
         }
 
         // Create new cache instance and verify persistence
         {
-            let cache = CompilationCache::new(config).unwrap();
+            let cache = CompilationCache::new(config).expect("Failed to create cache");
             let compiled = cache
                 .get_or_compile(&gate, compile_single_qubit_gate)
-                .unwrap();
+                .expect("Failed to get cached gate");
 
             assert_eq!(compiled.gate_id, gate_id);
 
@@ -892,23 +923,23 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
         let gate = Hadamard { target: QubitId(0) };
 
         // Compile and cache gate
         let _ = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to compile gate");
 
         // Wait a bit and optimize
         std::thread::sleep(Duration::from_millis(100));
-        cache.optimize().unwrap();
+        cache.optimize().expect("Failed to optimize cache");
 
         // Try to access again - should miss due to expiration
-        cache.clear().unwrap(); // Clear memory cache
+        cache.clear().expect("Failed to clear cache"); // Clear memory cache
         let _ = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to recompile gate");
 
         let stats = cache.statistics();
         assert_eq!(stats.total_misses, 1); // Should have missed
@@ -924,10 +955,12 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
         // Clear any existing cache state
-        cache.clear().unwrap();
-        cache.precompile_common_gates().unwrap();
+        cache.clear().expect("Failed to clear cache");
+        cache
+            .precompile_common_gates()
+            .expect("Failed to precompile gates");
 
         let stats = cache.statistics();
         assert!(stats.num_entries > 0);
@@ -941,7 +974,7 @@ mod tests {
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos()
         ));
         let config = CacheConfig {
@@ -950,28 +983,31 @@ mod tests {
             ..Default::default()
         };
 
-        let cache = CompilationCache::new(config).unwrap();
+        let cache = CompilationCache::new(config).expect("Failed to create cache");
         // Clear any existing cache state
-        cache.clear().unwrap();
+        cache.clear().expect("Failed to clear cache");
 
         // Generate some statistics
         let gate = Hadamard { target: QubitId(0) };
         let _ = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to compile gate");
         let _ = cache
             .get_or_compile(&gate, compile_single_qubit_gate)
-            .unwrap();
+            .expect("Failed to get cached gate");
 
         // Export statistics
-        std::fs::create_dir_all(&temp_dir).unwrap();
+        std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
         let stats_path = temp_dir.join("stats.json");
-        cache.export_statistics(&stats_path).unwrap();
+        cache
+            .export_statistics(&stats_path)
+            .expect("Failed to export statistics");
 
         // Verify file exists and contains valid JSON
         assert!(stats_path.exists());
-        let contents = fs::read_to_string(&stats_path).unwrap();
-        let parsed: CacheStatistics = serde_json::from_str(&contents).unwrap();
+        let contents = fs::read_to_string(&stats_path).expect("Failed to read stats file");
+        let parsed: CacheStatistics =
+            serde_json::from_str(&contents).expect("Failed to parse JSON");
 
         assert_eq!(parsed.total_hits, 1);
         assert_eq!(parsed.total_misses, 1);

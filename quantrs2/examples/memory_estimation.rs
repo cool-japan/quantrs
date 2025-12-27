@@ -22,10 +22,7 @@ fn main() {
     for &qubits in &qubit_counts {
         let memory_bytes = utils::estimate_statevector_memory(qubits);
         let memory_str = utils::format_memory(memory_bytes);
-        println!(
-            "   {:6}  │  {:15} B │  {}",
-            qubits, memory_bytes, memory_str
-        );
+        println!("   {qubits:6}  │  {memory_bytes:15} B │  {memory_str}");
     }
     println!();
 
@@ -33,7 +30,7 @@ fn main() {
     println!("2. Maximum Qubits for Available Memory:\n");
 
     let memory_configs = vec![
-        ("1 GB", 1 * 1024 * 1024 * 1024),
+        ("1 GB", 1024 * 1024 * 1024),
         ("4 GB", 4 * 1024 * 1024 * 1024),
         ("8 GB", 8 * 1024 * 1024 * 1024),
         ("16 GB", 16 * 1024 * 1024 * 1024),
@@ -49,7 +46,7 @@ fn main() {
         let max_qubits = utils::max_qubits_for_memory(memory);
         let used_memory = utils::estimate_statevector_memory(max_qubits);
         let used_str = utils::format_memory(used_memory);
-        println!("   {:15}  │  {:8}   │  {}", name, max_qubits, used_str);
+        println!("   {name:15}  │  {max_qubits:8}   │  {used_str}");
     }
     println!();
 
@@ -69,7 +66,7 @@ fn main() {
         let required = utils::estimate_statevector_memory(qubits);
         let required_str = utils::format_memory(required);
 
-        println!("   {} {} (requires {})", status, description, required_str);
+        println!("   {status} {description} (requires {required_str})");
     }
     println!();
 
@@ -114,7 +111,7 @@ fn main() {
     let total_memory = state_memory * 4; // 4× for overhead
 
     println!();
-    println!("   Circuit size: {} qubits", vqe_qubits);
+    println!("   Circuit size: {vqe_qubits} qubits");
     println!("   State vector: {}", utils::format_memory(state_memory));
     println!(
         "   Total recommended: {}",

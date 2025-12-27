@@ -84,21 +84,21 @@ impl EnhancedCrossCompiler {
         let start_time = std::time::Instant::now();
 
         // Stage 1: Parse source circuit
-        let parsed_circuit = self.parse_source_circuit(&source)?;
+        let parsed_circuit = Self::parse_source_circuit(&source)?;
         result.stages.push(CompilationStage {
             name: "Parsing".to_string(),
             duration: start_time.elapsed(),
-            metrics: self.collect_stage_metrics(&parsed_circuit),
+            metrics: Self::collect_stage_metrics(&parsed_circuit),
         });
 
         // Stage 2: Convert to IR
         let stage_start = std::time::Instant::now();
-        let ir = self.convert_to_ir(&parsed_circuit)?;
+        let ir = Self::convert_to_ir(&parsed_circuit)?;
         result.intermediate_representation = Some(ir.clone());
         result.stages.push(CompilationStage {
             name: "IR Conversion".to_string(),
             duration: stage_start.elapsed(),
-            metrics: self.collect_ir_metrics(&ir),
+            metrics: Self::collect_ir_metrics(&ir),
         });
 
         // Stage 3: Optimize IR
@@ -112,7 +112,7 @@ impl EnhancedCrossCompiler {
         result.stages.push(CompilationStage {
             name: "IR Optimization".to_string(),
             duration: stage_start.elapsed(),
-            metrics: self.collect_optimization_metrics(&ir, &optimized_ir),
+            metrics: Self::collect_optimization_metrics(&ir, &optimized_ir),
         });
 
         // Stage 4: ML-based optimization (if enabled)
@@ -123,7 +123,7 @@ impl EnhancedCrossCompiler {
             result.stages.push(CompilationStage {
                 name: "ML Optimization".to_string(),
                 duration: stage_start.elapsed(),
-                metrics: self.collect_ml_metrics(&optimized_ir, &ml_optimized),
+                metrics: Self::collect_ml_metrics(&optimized_ir, &ml_optimized),
             });
             ml_optimized
         } else {
@@ -140,7 +140,7 @@ impl EnhancedCrossCompiler {
         result.stages.push(CompilationStage {
             name: "Target Optimization".to_string(),
             duration: stage_start.elapsed(),
-            metrics: self.collect_target_metrics(&target_optimized, target),
+            metrics: Self::collect_target_metrics(&target_optimized, target),
         });
 
         // Stage 6: Code generation
@@ -163,7 +163,7 @@ impl EnhancedCrossCompiler {
             result.stages.push(CompilationStage {
                 name: "Validation".to_string(),
                 duration: stage_start.elapsed(),
-                metrics: self.collect_validation_metrics(&validation_result),
+                metrics: Self::collect_validation_metrics(&validation_result),
             });
 
             if !validation_result.is_valid {
@@ -175,15 +175,15 @@ impl EnhancedCrossCompiler {
         }
 
         // Generate compilation report
-        result.compilation_report = Some(self.generate_compilation_report(&result)?);
+        result.compilation_report = Some(Self::generate_compilation_report(&result)?);
 
         // Visual flow (if enabled)
         if self.config.enable_visual_flow {
-            result.visual_flow = Some(self.generate_visual_flow(&result)?);
+            result.visual_flow = Some(Self::generate_visual_flow(&result)?);
         }
 
         // Update cache
-        self.update_cache(&source, target, &result)?;
+        Self::update_cache(&source, target, &result)?;
 
         Ok(result)
     }
@@ -216,19 +216,19 @@ impl EnhancedCrossCompiler {
         }
 
         // Generate batch report
-        batch_result.batch_report = Some(self.generate_batch_report(&batch_result)?);
+        batch_result.batch_report = Some(Self::generate_batch_report(&batch_result)?);
 
         Ok(batch_result)
     }
 
     /// Parse source circuit based on framework
-    fn parse_source_circuit(&self, source: &SourceCircuit) -> QuantRS2Result<ParsedCircuit> {
+    fn parse_source_circuit(source: &SourceCircuit) -> QuantRS2Result<ParsedCircuit> {
         match source.framework {
-            QuantumFramework::QuantRS2 => self.parse_quantrs2_circuit(&source.code),
-            QuantumFramework::Qiskit => self.parse_qiskit_circuit(&source.code),
-            QuantumFramework::Cirq => self.parse_cirq_circuit(&source.code),
-            QuantumFramework::PennyLane => self.parse_pennylane_circuit(&source.code),
-            QuantumFramework::OpenQASM => self.parse_openqasm_circuit(&source.code),
+            QuantumFramework::QuantRS2 => Ok(Self::parse_quantrs2_circuit(&source.code)),
+            QuantumFramework::Qiskit => Ok(Self::parse_qiskit_circuit(&source.code)),
+            QuantumFramework::Cirq => Ok(Self::parse_cirq_circuit(&source.code)),
+            QuantumFramework::PennyLane => Ok(Self::parse_pennylane_circuit(&source.code)),
+            QuantumFramework::OpenQASM => Ok(Self::parse_openqasm_circuit(&source.code)),
             _ => Err(QuantRS2Error::UnsupportedOperation(format!(
                 "Framework {:?} not yet supported",
                 source.framework
@@ -237,23 +237,23 @@ impl EnhancedCrossCompiler {
     }
 
     /// Convert parsed circuit to IR
-    fn convert_to_ir(&self, circuit: &ParsedCircuit) -> QuantRS2Result<QuantumIR> {
+    fn convert_to_ir(circuit: &ParsedCircuit) -> QuantRS2Result<QuantumIR> {
         let mut ir = QuantumIR::new();
 
         // Convert quantum operations
         for operation in &circuit.operations {
-            let ir_op = self.convert_operation_to_ir(operation)?;
+            let ir_op = Self::convert_operation_to_ir(operation)?;
             ir.add_operation(ir_op);
         }
 
         // Convert classical operations
         for classical_op in &circuit.classical_operations {
-            let ir_classical = self.convert_classical_to_ir(classical_op)?;
+            let ir_classical = Self::convert_classical_to_ir(classical_op)?;
             ir.add_classical_operation(ir_classical);
         }
 
         // Add metadata
-        ir.metadata = circuit.metadata.clone();
+        ir.metadata.clone_from(&circuit.metadata);
         ir.num_qubits = circuit.num_qubits;
         ir.num_classical_bits = circuit.num_classical_bits;
 
@@ -269,13 +269,13 @@ impl EnhancedCrossCompiler {
         let mut optimized = ir.clone();
 
         // Stage 1: High-level optimizations
-        optimized = self.apply_high_level_optimizations(&optimized)?;
+        optimized = Self::apply_high_level_optimizations(&optimized)?;
 
         // Stage 2: Mid-level optimizations
-        optimized = self.apply_mid_level_optimizations(&optimized)?;
+        optimized = Self::apply_mid_level_optimizations(&optimized)?;
 
         // Stage 3: Low-level optimizations
-        optimized = self.apply_low_level_optimizations(&optimized, target)?;
+        optimized = Self::apply_low_level_optimizations(&optimized, target)?;
 
         // Real-time monitoring
         if self.config.enable_realtime_monitoring {
@@ -287,53 +287,52 @@ impl EnhancedCrossCompiler {
     }
 
     /// Apply high-level optimizations
-    fn apply_high_level_optimizations(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_high_level_optimizations(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         let mut optimized = ir.clone();
 
         // Circuit simplification
-        optimized = self.simplify_circuit(&optimized)?;
+        optimized = Self::simplify_circuit(&optimized)?;
 
         // Template matching
-        optimized = self.apply_template_matching(&optimized)?;
+        optimized = Self::apply_template_matching(&optimized)?;
 
         // Algebraic simplification
-        optimized = self.apply_algebraic_simplification(&optimized)?;
+        optimized = Self::apply_algebraic_simplification(&optimized)?;
 
         Ok(optimized)
     }
 
     /// Apply mid-level optimizations
-    fn apply_mid_level_optimizations(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_mid_level_optimizations(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         let mut optimized = ir.clone();
 
         // Gate fusion
-        optimized = self.apply_gate_fusion(&optimized)?;
+        optimized = Self::apply_gate_fusion(&optimized)?;
 
         // Commutation analysis
-        optimized = self.apply_commutation_analysis(&optimized)?;
+        optimized = Self::apply_commutation_analysis(&optimized)?;
 
         // Rotation merging
-        optimized = self.apply_rotation_merging(&optimized)?;
+        optimized = Self::apply_rotation_merging(&optimized)?;
 
         Ok(optimized)
     }
 
     /// Apply low-level optimizations
     fn apply_low_level_optimizations(
-        &self,
         ir: &QuantumIR,
         target: TargetPlatform,
     ) -> QuantRS2Result<QuantumIR> {
         let mut optimized = ir.clone();
 
         // Native gate decomposition
-        optimized = self.decompose_to_native_gates(&optimized, target)?;
+        optimized = Self::decompose_to_native_gates(&optimized, target)?;
 
         // Peephole optimization
-        optimized = self.apply_peephole_optimization(&optimized)?;
+        optimized = Self::apply_peephole_optimization(&optimized)?;
 
         // Layout optimization
-        optimized = self.optimize_layout(&optimized, target)?;
+        optimized = Self::optimize_layout(&optimized, target)?;
 
         Ok(optimized)
     }
@@ -344,18 +343,18 @@ impl EnhancedCrossCompiler {
         ir: &QuantumIR,
         target: TargetPlatform,
     ) -> QuantRS2Result<QuantumIR> {
-        let target_spec = self.get_target_specification(target)?;
+        let target_spec = Self::get_target_specification(target)?;
         let mut optimized = ir.clone();
 
         // Apply target-specific constraints
-        optimized = self.apply_connectivity_constraints(&optimized, &target_spec)?;
+        optimized = Self::apply_connectivity_constraints(&optimized, &target_spec)?;
 
         // Optimize for target gate set
-        optimized = self.optimize_for_gate_set(&optimized, &target_spec)?;
+        optimized = Self::optimize_for_gate_set(&optimized, &target_spec)?;
 
         // Apply error mitigation
         if self.config.base_config.enable_error_correction {
-            optimized = self.apply_error_mitigation(&optimized, &target_spec)?;
+            optimized = Self::apply_error_mitigation(&optimized, &target_spec)?;
         }
 
         Ok(optimized)
@@ -375,77 +374,69 @@ impl EnhancedCrossCompiler {
     }
 
     /// Helper methods for framework-specific parsing
-    fn parse_quantrs2_circuit(&self, _code: &str) -> QuantRS2Result<ParsedCircuit> {
-        Ok(ParsedCircuit::default())
+    fn parse_quantrs2_circuit(_code: &str) -> ParsedCircuit {
+        ParsedCircuit::default()
     }
 
-    fn parse_qiskit_circuit(&self, _code: &str) -> QuantRS2Result<ParsedCircuit> {
-        Ok(ParsedCircuit::default())
+    fn parse_qiskit_circuit(_code: &str) -> ParsedCircuit {
+        ParsedCircuit::default()
     }
 
-    fn parse_cirq_circuit(&self, _code: &str) -> QuantRS2Result<ParsedCircuit> {
-        Ok(ParsedCircuit::default())
+    fn parse_cirq_circuit(_code: &str) -> ParsedCircuit {
+        ParsedCircuit::default()
     }
 
-    fn parse_pennylane_circuit(&self, _code: &str) -> QuantRS2Result<ParsedCircuit> {
-        Ok(ParsedCircuit::default())
+    fn parse_pennylane_circuit(_code: &str) -> ParsedCircuit {
+        ParsedCircuit::default()
     }
 
-    fn parse_openqasm_circuit(&self, _code: &str) -> QuantRS2Result<ParsedCircuit> {
-        Ok(ParsedCircuit::default())
+    fn parse_openqasm_circuit(_code: &str) -> ParsedCircuit {
+        ParsedCircuit::default()
     }
 }
 
 // Optimization helper implementations
 impl EnhancedCrossCompiler {
-    fn simplify_circuit(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn simplify_circuit(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_template_matching(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_template_matching(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_algebraic_simplification(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_algebraic_simplification(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_gate_fusion(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_gate_fusion(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_commutation_analysis(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_commutation_analysis(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_rotation_merging(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_rotation_merging(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
     fn decompose_to_native_gates(
-        &self,
         ir: &QuantumIR,
         _target: TargetPlatform,
     ) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn apply_peephole_optimization(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
+    fn apply_peephole_optimization(ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn optimize_layout(
-        &self,
-        ir: &QuantumIR,
-        _target: TargetPlatform,
-    ) -> QuantRS2Result<QuantumIR> {
+    fn optimize_layout(ir: &QuantumIR, _target: TargetPlatform) -> QuantRS2Result<QuantumIR> {
         Ok(ir.clone())
     }
 
-    fn get_target_specification(
-        &self,
-        _target: TargetPlatform,
-    ) -> QuantRS2Result<TargetSpecification> {
+    fn get_target_specification(_target: TargetPlatform) -> QuantRS2Result<TargetSpecification> {
         Ok(TargetSpecification {
             native_gates: vec![],
             connectivity: vec![],
@@ -454,7 +445,6 @@ impl EnhancedCrossCompiler {
     }
 
     fn apply_connectivity_constraints(
-        &self,
         ir: &QuantumIR,
         _spec: &TargetSpecification,
     ) -> QuantRS2Result<QuantumIR> {
@@ -462,7 +452,6 @@ impl EnhancedCrossCompiler {
     }
 
     fn optimize_for_gate_set(
-        &self,
         ir: &QuantumIR,
         _spec: &TargetSpecification,
     ) -> QuantRS2Result<QuantumIR> {
@@ -470,7 +459,6 @@ impl EnhancedCrossCompiler {
     }
 
     fn apply_error_mitigation(
-        &self,
         ir: &QuantumIR,
         _spec: &TargetSpecification,
     ) -> QuantRS2Result<QuantumIR> {
@@ -478,7 +466,6 @@ impl EnhancedCrossCompiler {
     }
 
     const fn update_cache(
-        &self,
         _source: &SourceCircuit,
         _target: TargetPlatform,
         _result: &CrossCompilationResult,
@@ -489,7 +476,7 @@ impl EnhancedCrossCompiler {
 
 // Metric collection helpers
 impl EnhancedCrossCompiler {
-    fn collect_stage_metrics(&self, circuit: &ParsedCircuit) -> HashMap<String, f64> {
+    fn collect_stage_metrics(circuit: &ParsedCircuit) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("num_qubits".to_string(), circuit.num_qubits as f64);
         metrics.insert(
@@ -499,14 +486,13 @@ impl EnhancedCrossCompiler {
         metrics
     }
 
-    fn collect_ir_metrics(&self, ir: &QuantumIR) -> HashMap<String, f64> {
+    fn collect_ir_metrics(ir: &QuantumIR) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("ir_operations".to_string(), ir.operations.len() as f64);
         metrics
     }
 
     fn collect_optimization_metrics(
-        &self,
         original: &QuantumIR,
         optimized: &QuantumIR,
     ) -> HashMap<String, f64> {
@@ -520,27 +506,19 @@ impl EnhancedCrossCompiler {
         metrics
     }
 
-    fn collect_ml_metrics(
-        &self,
-        _original: &QuantumIR,
-        _optimized: &QuantumIR,
-    ) -> HashMap<String, f64> {
+    fn collect_ml_metrics(_original: &QuantumIR, _optimized: &QuantumIR) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("ml_improvement".to_string(), 0.1);
         metrics
     }
 
-    fn collect_target_metrics(
-        &self,
-        _ir: &QuantumIR,
-        _target: TargetPlatform,
-    ) -> HashMap<String, f64> {
+    fn collect_target_metrics(_ir: &QuantumIR, _target: TargetPlatform) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert("target_compatibility".to_string(), 0.95);
         metrics
     }
 
-    fn collect_validation_metrics(&self, validation: &ValidationResult) -> HashMap<String, f64> {
+    fn collect_validation_metrics(validation: &ValidationResult) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert(
             "fidelity".to_string(),
@@ -552,10 +530,7 @@ impl EnhancedCrossCompiler {
 
 // Report generation helpers
 impl EnhancedCrossCompiler {
-    fn generate_summary(
-        &self,
-        result: &CrossCompilationResult,
-    ) -> QuantRS2Result<CompilationSummary> {
+    fn generate_summary(result: &CrossCompilationResult) -> QuantRS2Result<CompilationSummary> {
         let total_time = result.stages.iter().map(|s| s.duration).sum();
 
         Ok(CompilationSummary {
@@ -571,7 +546,7 @@ impl EnhancedCrossCompiler {
         })
     }
 
-    fn analyze_compilation_stage(&self, stage: &CompilationStage) -> QuantRS2Result<StageAnalysis> {
+    fn analyze_compilation_stage(stage: &CompilationStage) -> QuantRS2Result<StageAnalysis> {
         Ok(StageAnalysis {
             stage_name: stage.name.clone(),
             performance: StagePerformance {
@@ -589,7 +564,6 @@ impl EnhancedCrossCompiler {
     }
 
     fn analyze_optimizations(
-        &self,
         _original: &QuantumIR,
         _optimized: &QuantumIR,
     ) -> QuantRS2Result<OptimizationReport> {
@@ -604,32 +578,27 @@ impl EnhancedCrossCompiler {
         })
     }
 
-    fn calculate_resource_usage(
-        &self,
-        _result: &CrossCompilationResult,
-    ) -> QuantRS2Result<ResourceUsage> {
+    fn calculate_resource_usage(_result: &CrossCompilationResult) -> QuantRS2Result<ResourceUsage> {
         Ok(ResourceUsage::default())
     }
 
     const fn generate_recommendations(
-        &self,
         _result: &CrossCompilationResult,
     ) -> QuantRS2Result<Vec<CompilationRecommendation>> {
         Ok(vec![])
     }
 
     fn generate_compilation_report(
-        &self,
         result: &CrossCompilationResult,
     ) -> QuantRS2Result<CompilationReport> {
         let mut report = CompilationReport::new();
 
         // Summary
-        report.summary = self.generate_summary(result)?;
+        report.summary = Self::generate_summary(result)?;
 
         // Stage analysis
         for stage in &result.stages {
-            let stage_analysis = self.analyze_compilation_stage(stage)?;
+            let stage_analysis = Self::analyze_compilation_stage(stage)?;
             report.stage_analyses.push(stage_analysis);
         }
 
@@ -638,20 +607,19 @@ impl EnhancedCrossCompiler {
             &result.intermediate_representation,
             &result.optimized_representation,
         ) {
-            report.optimization_report = Some(self.analyze_optimizations(original, optimized)?);
+            report.optimization_report = Some(Self::analyze_optimizations(original, optimized)?);
         }
 
         // Resource usage
-        report.resource_usage = self.calculate_resource_usage(result)?;
+        report.resource_usage = Self::calculate_resource_usage(result)?;
 
         // Recommendations
-        report.recommendations = self.generate_recommendations(result)?;
+        report.recommendations = Self::generate_recommendations(result)?;
 
         Ok(report)
     }
 
     fn generate_batch_report(
-        &self,
         batch_result: &BatchCompilationResult,
     ) -> QuantRS2Result<BatchCompilationReport> {
         let total =
@@ -675,7 +643,6 @@ impl EnhancedCrossCompiler {
     }
 
     fn generate_visual_flow(
-        &self,
         result: &CrossCompilationResult,
     ) -> QuantRS2Result<VisualCompilationFlow> {
         let mut flow = VisualCompilationFlow::new();
@@ -702,18 +669,18 @@ impl EnhancedCrossCompiler {
 
         // Add IR visualization
         if let Some(ir) = &result.intermediate_representation {
-            flow.ir_visualization = Some(self.visualize_ir(ir)?);
+            flow.ir_visualization = Some(Self::visualize_ir(ir)?);
         }
 
         // Add optimization visualization
         if result.ml_optimization_applied {
-            flow.optimization_visualization = Some(self.visualize_optimizations(result)?);
+            flow.optimization_visualization = Some(Self::visualize_optimizations(result)?);
         }
 
         Ok(flow)
     }
 
-    fn visualize_ir(&self, _ir: &QuantumIR) -> QuantRS2Result<IRVisualization> {
+    fn visualize_ir(_ir: &QuantumIR) -> QuantRS2Result<IRVisualization> {
         Ok(IRVisualization {
             graph: IRGraph {
                 nodes: vec![],
@@ -727,7 +694,6 @@ impl EnhancedCrossCompiler {
     }
 
     const fn visualize_optimizations(
-        &self,
         _result: &CrossCompilationResult,
     ) -> QuantRS2Result<OptimizationVisualization> {
         Ok(OptimizationVisualization {
@@ -760,10 +726,10 @@ impl EnhancedCrossCompiler {
 
 // Operation conversion helpers
 impl EnhancedCrossCompiler {
-    fn convert_operation_to_ir(&self, op: &QuantumOperation) -> QuantRS2Result<IROperation> {
+    fn convert_operation_to_ir(op: &QuantumOperation) -> QuantRS2Result<IROperation> {
         let operation_type = match &op.op_type {
             OperationType::Gate(name) => {
-                let gate = self.parse_gate(name, &op.parameters)?;
+                let gate = Self::parse_gate(name, &op.parameters)?;
                 IROperationType::Gate(gate)
             }
             OperationType::Measurement => {
@@ -781,7 +747,7 @@ impl EnhancedCrossCompiler {
         })
     }
 
-    fn convert_classical_to_ir(&self, op: &ClassicalOperation) -> QuantRS2Result<IRClassicalOp> {
+    fn convert_classical_to_ir(op: &ClassicalOperation) -> QuantRS2Result<IRClassicalOp> {
         let op_type = match op.op_type {
             ClassicalOpType::Assignment => IRClassicalOpType::Move,
             ClassicalOpType::Arithmetic => IRClassicalOpType::Add,
@@ -795,7 +761,7 @@ impl EnhancedCrossCompiler {
         })
     }
 
-    fn parse_gate(&self, name: &str, params: &[f64]) -> QuantRS2Result<IRGate> {
+    fn parse_gate(name: &str, params: &[f64]) -> QuantRS2Result<IRGate> {
         match name {
             "H" => Ok(IRGate::H),
             "X" => Ok(IRGate::X),

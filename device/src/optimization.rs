@@ -104,7 +104,7 @@ pub enum OptimizationDecision {
 
 impl CalibrationOptimizer {
     /// Create a new calibration-based optimizer
-    pub fn new(calibration_manager: CalibrationManager, config: OptimizationConfig) -> Self {
+    pub const fn new(calibration_manager: CalibrationManager, config: OptimizationConfig) -> Self {
         Self {
             calibration_manager,
             config,
@@ -120,8 +120,7 @@ impl CalibrationOptimizer {
         // Check if calibration is available and valid
         if !self.calibration_manager.is_calibration_valid(device_id) {
             return Err(QuantRS2Error::InvalidInput(format!(
-                "No valid calibration for device {}",
-                device_id
+                "No valid calibration for device {device_id}"
             )));
         }
 
@@ -140,20 +139,20 @@ impl CalibrationOptimizer {
         }
 
         if self.config.optimize_duration {
-            self.optimize_for_duration(&mut optimized_circuit, calibration, &mut decisions)?;
+            Self::optimize_for_duration(&mut optimized_circuit, calibration, &mut decisions)?;
         }
 
         if self.config.allow_substitutions {
-            self.apply_gate_substitutions(&mut optimized_circuit, calibration, &mut decisions)?;
+            Self::apply_gate_substitutions(&mut optimized_circuit, calibration, &mut decisions)?;
         }
 
         if self.config.consider_crosstalk {
-            self.mitigate_crosstalk(&mut optimized_circuit, calibration, &mut decisions)?;
+            Self::mitigate_crosstalk(&mut optimized_circuit, calibration, &mut decisions)?;
         }
 
         // Estimate final metrics
-        let estimated_fidelity = self.estimate_circuit_fidelity(&optimized_circuit, calibration)?;
-        let estimated_duration = self.estimate_circuit_duration(&optimized_circuit, calibration)?;
+        let estimated_fidelity = Self::estimate_circuit_fidelity(&optimized_circuit, calibration)?;
+        let estimated_duration = Self::estimate_circuit_duration(&optimized_circuit, calibration)?;
 
         Ok(OptimizationResult {
             circuit: optimized_circuit,
@@ -173,7 +172,7 @@ impl CalibrationOptimizer {
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         // Strategy 1: Use highest fidelity qubits for critical gates
-        let qubit_qualities = self.rank_qubits_by_quality(calibration);
+        let qubit_qualities = Self::rank_qubits_by_quality(calibration);
 
         // Strategy 2: Minimize two-qubit gate count by decomposing into single-qubit gates where possible
         let mut optimized_gates: Vec<
@@ -181,7 +180,7 @@ impl CalibrationOptimizer {
         > = Vec::new();
         let original_gates = circuit.gates();
 
-        for gate in original_gates.iter() {
+        for gate in original_gates {
             let qubits = gate.qubits();
 
             if qubits.len() == 2 {
@@ -193,28 +192,25 @@ impl CalibrationOptimizer {
                     .single_qubit_gates
                     .get(gate.name())
                     .and_then(|gate_cal| gate_cal.qubit_data.get(&q1))
-                    .map(|data| data.fidelity)
-                    .unwrap_or(0.999);
+                    .map_or(0.999, |data| data.fidelity);
 
                 let single_q2_fidelity = calibration
                     .single_qubit_gates
                     .get(gate.name())
                     .and_then(|gate_cal| gate_cal.qubit_data.get(&q2))
-                    .map(|data| data.fidelity)
-                    .unwrap_or(0.999);
+                    .map_or(0.999, |data| data.fidelity);
 
                 let two_qubit_fidelity = calibration
                     .two_qubit_gates
                     .get(&(q1, q2))
-                    .map(|gate_cal| gate_cal.fidelity)
-                    .unwrap_or(0.99);
+                    .map_or(0.99, |gate_cal| gate_cal.fidelity);
 
                 // If decomposition into single-qubit gates would be more faithful
                 let decomposition_fidelity = single_q1_fidelity * single_q2_fidelity;
 
                 if decomposition_fidelity > two_qubit_fidelity && gate.name() != "CNOT" {
                     // Attempt decomposition for certain gates
-                    if let Some(decomposed_gates) = self.try_decompose_gate(gate.as_ref()) {
+                    if let Some(decomposed_gates) = Self::try_decompose_gate(gate.as_ref()) {
                         let new_depth = decomposed_gates.len();
                         // Convert Box<dyn GateOp> to Arc<dyn GateOp + Send + Sync>
                         for decomposed_gate in decomposed_gates {
@@ -233,7 +229,7 @@ impl CalibrationOptimizer {
 
                 // Strategy 3: Remap to higher fidelity qubit pairs if available
                 if let Some((better_q1, better_q2)) =
-                    self.find_better_qubit_pair(&(q1, q2), calibration)
+                    Self::find_better_qubit_pair(&(q1, q2), calibration)
                 {
                     decisions.push(OptimizationDecision::QubitRemapping {
                         gate: gate.name().to_string(),
@@ -244,8 +240,7 @@ impl CalibrationOptimizer {
                             calibration
                                 .two_qubit_gates
                                 .get(&(better_q1, better_q2))
-                                .map(|g| g.fidelity)
-                                .unwrap_or(0.99),
+                                .map_or(0.99, |g| g.fidelity),
                             two_qubit_fidelity
                         ),
                     });
@@ -257,7 +252,7 @@ impl CalibrationOptimizer {
 
         // Strategy 4: Reorder gates to use highest quality qubits for most critical operations
         if self.config.prefer_native_gates {
-            self.prioritize_native_gates(&mut optimized_gates, calibration, decisions)?;
+            Self::prioritize_native_gates(&mut optimized_gates, calibration, decisions)?;
         }
 
         Ok(())
@@ -265,13 +260,12 @@ impl CalibrationOptimizer {
 
     /// Optimize circuit for minimum duration
     fn optimize_for_duration<const N: usize>(
-        &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         // Strategy 1: Parallelize gates where possible
-        let parallel_groups = self.identify_parallelizable_gates(circuit, calibration)?;
+        let parallel_groups = Self::identify_parallelizable_gates(circuit, calibration)?;
 
         if parallel_groups.len() > 1 {
             decisions.push(OptimizationDecision::GateReordering {
@@ -295,7 +289,7 @@ impl CalibrationOptimizer {
                     if let Some(qubit_data) = gate_cal.qubit_data.get(&qubit) {
                         // Check for alternative implementations
                         let faster_alternatives =
-                            self.find_faster_gate_alternatives(gate.name(), qubit_data);
+                            Self::find_faster_gate_alternatives(gate.name(), qubit_data);
 
                         if let Some((alt_name, duration_improvement)) = faster_alternatives {
                             decisions.push(OptimizationDecision::GateSubstitution {
@@ -333,24 +327,23 @@ impl CalibrationOptimizer {
         }
 
         // Strategy 3: Minimize circuit depth by removing redundant operations
-        self.remove_redundant_gates(circuit, decisions)?;
+        Self::remove_redundant_gates(circuit, decisions)?;
 
         // Strategy 4: Optimize gate scheduling based on hardware timing constraints
-        self.optimize_gate_scheduling(circuit, calibration, decisions)?;
+        Self::optimize_gate_scheduling(circuit, calibration, decisions)?;
 
         Ok(())
     }
 
     /// Apply gate substitutions based on calibration
     fn apply_gate_substitutions<const N: usize>(
-        &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         let original_gates = circuit.gates();
 
-        for gate in original_gates.iter() {
+        for gate in original_gates {
             let qubits = gate.qubits();
             let gate_name = gate.name();
 
@@ -373,7 +366,7 @@ impl CalibrationOptimizer {
 
                 // Check if this gate can be replaced with a native gate
                 if let Some(native_replacement) =
-                    self.find_native_replacement(gate_name, calibration)
+                    Self::find_native_replacement(gate_name, calibration)
                 {
                     if let Some(gate_cal) = calibration.single_qubit_gates.get(&native_replacement)
                     {
@@ -383,8 +376,7 @@ impl CalibrationOptimizer {
                                 .single_qubit_gates
                                 .get(gate_name)
                                 .and_then(|g| g.qubit_data.get(&qubit))
-                                .map(|d| d.fidelity)
-                                .unwrap_or(0.999);
+                                .map_or(0.999, |d| d.fidelity);
 
                             if qubit_data.fidelity > original_fidelity {
                                 decisions.push(OptimizationDecision::GateSubstitution {
@@ -397,8 +389,7 @@ impl CalibrationOptimizer {
                                             .single_qubit_gates
                                             .get(gate_name)
                                             .and_then(|g| g.qubit_data.get(&qubit))
-                                            .map(|d| d.duration)
-                                            .unwrap_or(30.0),
+                                            .map_or(30.0, |d| d.duration),
                                 });
                             }
                         }
@@ -406,7 +397,7 @@ impl CalibrationOptimizer {
                 }
 
                 // Strategy 3: Composite gate decomposition
-                if let Some(decomposition) = self.find_composite_decomposition(gate_name) {
+                if let Some(decomposition) = Self::find_composite_decomposition(gate_name) {
                     // Check if decomposition improves overall fidelity
                     let mut total_decomp_fidelity = 1.0;
                     let mut total_decomp_duration = 0.0;
@@ -424,8 +415,7 @@ impl CalibrationOptimizer {
                         .single_qubit_gates
                         .get(gate_name)
                         .and_then(|g| g.qubit_data.get(&qubit))
-                        .map(|d| d.fidelity)
-                        .unwrap_or(0.999);
+                        .map_or(0.999, |d| d.fidelity);
 
                     // Only substitute if it improves fidelity or duration significantly
                     if total_decomp_fidelity > original_fidelity + 0.001
@@ -453,16 +443,14 @@ impl CalibrationOptimizer {
                         let cnot_fidelity = calibration
                             .two_qubit_gates
                             .get(&(q1, q2))
-                            .map(|g| g.fidelity)
-                            .unwrap_or(0.99);
+                            .map_or(0.99, |g| g.fidelity);
 
                         // CZ + H decomposition might be more faithful
                         let h_fidelity = calibration
                             .single_qubit_gates
                             .get("H")
                             .and_then(|g| g.qubit_data.get(&q2))
-                            .map(|d| d.fidelity)
-                            .unwrap_or(0.999);
+                            .map_or(0.999, |d| d.fidelity);
 
                         let decomp_fidelity = cz_cal.fidelity * h_fidelity * h_fidelity;
 
@@ -476,8 +464,7 @@ impl CalibrationOptimizer {
                                     - calibration
                                         .two_qubit_gates
                                         .get(&(q1, q2))
-                                        .map(|g| g.duration)
-                                        .unwrap_or(300.0),
+                                        .map_or(300.0, |g| g.duration),
                             });
                         }
                     }
@@ -490,7 +477,6 @@ impl CalibrationOptimizer {
 
     /// Mitigate crosstalk effects
     fn mitigate_crosstalk<const N: usize>(
-        &self,
         circuit: &mut Circuit<N>,
         calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
@@ -575,7 +561,7 @@ impl CalibrationOptimizer {
 
                 // Look for alternative qubits with lower crosstalk
                 if let Some(better_mapping) =
-                    self.find_lower_crosstalk_mapping(&gate1_qubits, &gate2_qubits, calibration)
+                    Self::find_lower_crosstalk_mapping(&gate1_qubits, &gate2_qubits, calibration)
                 {
                     decisions.push(OptimizationDecision::QubitRemapping {
                         gate: original_gates[gate1_idx].name().to_string(),
@@ -618,16 +604,16 @@ impl CalibrationOptimizer {
 
         // Strategy 4: Spectator qubit management
         // For idle qubits during two-qubit operations, apply dynamical decoupling
-        let active_qubits = self.get_active_qubits_per_layer(original_gates);
+        let active_qubits = Self::get_active_qubits_per_layer(original_gates);
 
         for (layer_idx, layer_qubits) in active_qubits.iter().enumerate() {
             let all_qubits: HashSet<QubitId> = (0..calibration.topology.num_qubits)
                 .map(|i| QubitId(i as u32))
                 .collect();
 
-            let layer_qubits_set: HashSet<QubitId> = layer_qubits.iter().cloned().collect();
+            let layer_qubits_set: HashSet<QubitId> = layer_qubits.iter().copied().collect();
             let idle_qubits: Vec<QubitId> =
-                all_qubits.difference(&layer_qubits_set).cloned().collect();
+                all_qubits.difference(&layer_qubits_set).copied().collect();
 
             if !idle_qubits.is_empty() && layer_qubits.len() >= 2 {
                 // Check if any idle qubits have significant crosstalk with active ones
@@ -664,7 +650,7 @@ impl CalibrationOptimizer {
     }
 
     /// Rank qubits by quality metrics
-    fn rank_qubits_by_quality(&self, calibration: &DeviceCalibration) -> Vec<(QubitId, f64)> {
+    fn rank_qubits_by_quality(calibration: &DeviceCalibration) -> Vec<(QubitId, f64)> {
         let mut qubit_scores = Vec::new();
 
         for (qubit_id, qubit_cal) in &calibration.qubit_calibrations {
@@ -674,7 +660,8 @@ impl CalibrationOptimizer {
             let readout_score = 1.0 - qubit_cal.readout_error;
 
             // Weight the scores (these weights could be configurable)
-            let quality_score = 0.3 * t1_score + 0.3 * t2_score + 0.4 * readout_score;
+            let quality_score =
+                0.4_f64.mul_add(readout_score, 0.3_f64.mul_add(t1_score, 0.3 * t2_score));
 
             qubit_scores.push((*qubit_id, quality_score));
         }
@@ -687,7 +674,6 @@ impl CalibrationOptimizer {
 
     /// Estimate circuit fidelity based on calibration data
     fn estimate_circuit_fidelity<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         calibration: &DeviceCalibration,
     ) -> QuantRS2Result<f64> {
@@ -695,7 +681,7 @@ impl CalibrationOptimizer {
 
         // Multiply fidelities of all gates (assumes independent errors)
         for gate in circuit.gates() {
-            let gate_fidelity = self.estimate_gate_fidelity(gate.as_ref(), calibration)?;
+            let gate_fidelity = Self::estimate_gate_fidelity(gate.as_ref(), calibration)?;
             total_fidelity *= gate_fidelity;
         }
 
@@ -704,7 +690,6 @@ impl CalibrationOptimizer {
 
     /// Estimate circuit duration based on calibration data
     fn estimate_circuit_duration<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         calibration: &DeviceCalibration,
     ) -> QuantRS2Result<f64> {
@@ -713,7 +698,7 @@ impl CalibrationOptimizer {
         let mut total_duration = 0.0;
 
         for gate in circuit.gates() {
-            let gate_duration = self.estimate_gate_duration(gate.as_ref(), calibration)?;
+            let gate_duration = Self::estimate_gate_duration(gate.as_ref(), calibration)?;
             total_duration += gate_duration;
         }
 
@@ -722,7 +707,6 @@ impl CalibrationOptimizer {
 
     /// Estimate fidelity of a specific gate
     fn estimate_gate_fidelity(
-        &self,
         gate: &dyn GateOp,
         calibration: &DeviceCalibration,
     ) -> QuantRS2Result<f64> {
@@ -758,7 +742,6 @@ impl CalibrationOptimizer {
 
     /// Estimate duration of a specific gate
     fn estimate_gate_duration(
-        &self,
         gate: &dyn GateOp,
         calibration: &DeviceCalibration,
     ) -> QuantRS2Result<f64> {
@@ -794,7 +777,6 @@ impl CalibrationOptimizer {
 
     /// Get active qubits for each layer of gates
     fn get_active_qubits_per_layer(
-        &self,
         gates: &[std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>],
     ) -> Vec<Vec<QubitId>> {
         let mut layers = Vec::new();
@@ -827,18 +809,16 @@ impl CalibrationOptimizer {
 
     /// Try to decompose a gate into simpler gates
     fn try_decompose_gate(
-        &self,
-        gate: &dyn quantrs2_core::gate::GateOp,
+        _gate: &dyn quantrs2_core::gate::GateOp,
     ) -> Option<Vec<Box<dyn quantrs2_core::gate::GateOp>>> {
         // Placeholder implementation - in practice would decompose gates based on hardware constraints
         None
     }
 
     /// Find better qubit pair for two-qubit gate based on connectivity and error rates
-    fn find_better_qubit_pair(
-        &self,
-        current_pair: &(quantrs2_core::qubit::QubitId, quantrs2_core::qubit::QubitId),
-        calibration: &DeviceCalibration,
+    const fn find_better_qubit_pair(
+        _current_pair: &(quantrs2_core::qubit::QubitId, quantrs2_core::qubit::QubitId),
+        _calibration: &DeviceCalibration,
     ) -> Option<(quantrs2_core::qubit::QubitId, quantrs2_core::qubit::QubitId)> {
         // Placeholder implementation - would search for better connected qubits with lower error rates
         None
@@ -846,10 +826,9 @@ impl CalibrationOptimizer {
 
     /// Prioritize native gates in the gate sequence
     fn prioritize_native_gates(
-        &self,
-        gates: &mut Vec<std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>>,
-        calibration: &DeviceCalibration,
-        decisions: &mut Vec<OptimizationDecision>,
+        _gates: &mut Vec<std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>>,
+        _calibration: &DeviceCalibration,
+        _decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         // Placeholder implementation - would reorder gates to prefer native operations
         Ok(())
@@ -857,9 +836,8 @@ impl CalibrationOptimizer {
 
     /// Identify gates that can be executed in parallel
     fn identify_parallelizable_gates<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
-        calibration: &DeviceCalibration,
+        _calibration: &DeviceCalibration,
     ) -> QuantRS2Result<Vec<Vec<std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>>>>
     {
         let mut parallel_groups = Vec::new();
@@ -895,9 +873,8 @@ impl CalibrationOptimizer {
 
     /// Find faster alternatives for a gate
     fn find_faster_gate_alternatives(
-        &self,
         gate_name: &str,
-        qubit_data: &crate::calibration::SingleQubitGateData,
+        _qubit_data: &crate::calibration::SingleQubitGateData,
     ) -> Option<(String, f64)> {
         // Map of gate alternatives with typical speed improvements
         let alternatives = match gate_name {
@@ -920,7 +897,6 @@ impl CalibrationOptimizer {
 
     /// Remove redundant gates from circuit
     fn remove_redundant_gates<const N: usize>(
-        &self,
         circuit: &mut Circuit<N>,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
@@ -960,9 +936,8 @@ impl CalibrationOptimizer {
 
     /// Optimize gate scheduling based on hardware constraints
     fn optimize_gate_scheduling<const N: usize>(
-        &self,
-        circuit: &mut Circuit<N>,
-        calibration: &DeviceCalibration,
+        _circuit: &mut Circuit<N>,
+        _calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         // This would implement sophisticated scheduling algorithms
@@ -977,11 +952,7 @@ impl CalibrationOptimizer {
     }
 
     /// Find native hardware replacement for a gate
-    fn find_native_replacement(
-        &self,
-        gate_name: &str,
-        calibration: &DeviceCalibration,
-    ) -> Option<String> {
+    fn find_native_replacement(gate_name: &str, calibration: &DeviceCalibration) -> Option<String> {
         // Map non-native gates to native equivalents
         let native_map = match gate_name {
             "T" => Some("RZ_pi_4"),      // T gate as Z rotation
@@ -1002,7 +973,7 @@ impl CalibrationOptimizer {
     }
 
     /// Find composite gate decomposition
-    fn find_composite_decomposition(&self, gate_name: &str) -> Option<Vec<String>> {
+    fn find_composite_decomposition(gate_name: &str) -> Option<Vec<String>> {
         match gate_name {
             "TOFFOLI" => Some(vec![
                 "H".to_string(),
@@ -1022,11 +993,10 @@ impl CalibrationOptimizer {
     }
 
     /// Find mapping with lower crosstalk
-    fn find_lower_crosstalk_mapping(
-        &self,
-        qubits1: &[QubitId],
-        qubits2: &[QubitId],
-        calibration: &DeviceCalibration,
+    const fn find_lower_crosstalk_mapping(
+        _qubits1: &[QubitId],
+        _qubits2: &[QubitId],
+        _calibration: &DeviceCalibration,
     ) -> Option<Vec<QubitId>> {
         // This would search for alternative qubit mappings with lower crosstalk
         // For now, return None to indicate no better mapping found
@@ -1046,7 +1016,7 @@ pub struct FidelityEstimator {
 
 impl FidelityEstimator {
     /// Create a new fidelity estimator
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             use_process_tomography: false,
             consider_spam_errors: true,
@@ -1055,9 +1025,8 @@ impl FidelityEstimator {
     }
 
     /// Estimate process fidelity of a quantum circuit
-    pub fn estimate_process_fidelity<const N: usize>(
-        &self,
-        circuit: &Circuit<N>,
+    pub const fn estimate_process_fidelity<const N: usize>(
+        _circuit: &Circuit<N>,
     ) -> QuantRS2Result<f64> {
         // This would implement more sophisticated fidelity estimation
         // including process tomography data, error models, etc.
@@ -1066,7 +1035,7 @@ impl FidelityEstimator {
 
     /// Helper methods for optimization strategies
     /// Try to decompose a gate into simpler components
-    fn try_decompose_gate(&self, gate: &dyn GateOp) -> Option<Vec<Box<dyn GateOp>>> {
+    fn try_decompose_gate(_gate: &dyn GateOp) -> Option<Vec<Box<dyn GateOp>>> {
         // This would implement gate decomposition logic
         // For now, return None to indicate no decomposition found
         None
@@ -1074,15 +1043,13 @@ impl FidelityEstimator {
 
     /// Find a better qubit pair for a two-qubit gate
     fn find_better_qubit_pair(
-        &self,
         current_pair: &(QubitId, QubitId),
         calibration: &DeviceCalibration,
     ) -> Option<(QubitId, QubitId)> {
         let current_fidelity = calibration
             .two_qubit_gates
             .get(current_pair)
-            .map(|g| g.fidelity)
-            .unwrap_or(0.99);
+            .map_or(0.99, |g| g.fidelity);
 
         // Search for alternative qubit pairs with better fidelity
         for (&(q1, q2), gate_cal) in &calibration.two_qubit_gates {
@@ -1146,9 +1113,8 @@ impl FidelityEstimator {
 
     /// Find faster alternatives for a gate
     fn find_faster_gate_alternatives(
-        &self,
         gate_name: &str,
-        qubit_data: &crate::calibration::SingleQubitGateData,
+        _qubit_data: &crate::calibration::SingleQubitGateData,
     ) -> Option<(String, f64)> {
         // Map of gate alternatives with typical speed improvements
         let alternatives = match gate_name {
@@ -1171,7 +1137,6 @@ impl FidelityEstimator {
 
     /// Remove redundant gates from circuit
     fn remove_redundant_gates<const N: usize>(
-        &self,
         circuit: &mut Circuit<N>,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
@@ -1211,9 +1176,8 @@ impl FidelityEstimator {
 
     /// Optimize gate scheduling based on hardware constraints
     fn optimize_gate_scheduling<const N: usize>(
-        &self,
-        circuit: &mut Circuit<N>,
-        calibration: &DeviceCalibration,
+        _circuit: &mut Circuit<N>,
+        _calibration: &DeviceCalibration,
         decisions: &mut Vec<OptimizationDecision>,
     ) -> QuantRS2Result<()> {
         // This would implement sophisticated scheduling algorithms
@@ -1228,11 +1192,7 @@ impl FidelityEstimator {
     }
 
     /// Find native hardware replacement for a gate
-    fn find_native_replacement(
-        &self,
-        gate_name: &str,
-        calibration: &DeviceCalibration,
-    ) -> Option<String> {
+    fn find_native_replacement(gate_name: &str, calibration: &DeviceCalibration) -> Option<String> {
         // Map non-native gates to native equivalents
         let native_map = match gate_name {
             "T" => Some("RZ_pi_4"),      // T gate as Z rotation
@@ -1253,7 +1213,7 @@ impl FidelityEstimator {
     }
 
     /// Find composite gate decomposition
-    fn find_composite_decomposition(&self, gate_name: &str) -> Option<Vec<String>> {
+    fn find_composite_decomposition(gate_name: &str) -> Option<Vec<String>> {
         match gate_name {
             "TOFFOLI" => Some(vec![
                 "H".to_string(),
@@ -1274,7 +1234,6 @@ impl FidelityEstimator {
 
     /// Get active qubits for each layer of gates
     fn get_active_qubits_per_layer(
-        &self,
         gates: &[std::sync::Arc<dyn quantrs2_core::gate::GateOp + Send + Sync>],
     ) -> Vec<HashSet<QubitId>> {
         let mut layers = Vec::new();
@@ -1313,7 +1272,7 @@ pub struct PulseOptimizer {
 
 impl PulseOptimizer {
     /// Create a new pulse optimizer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             max_amplitude: 1.0,
             sample_rate: 4.5, // Typical for superconducting qubits
@@ -1368,7 +1327,8 @@ mod tests {
         let _ = circuit.cnot(QubitId(0), QubitId(1));
         let _ = circuit.cnot(QubitId(1), QubitId(2));
 
-        let fidelity = estimator.estimate_process_fidelity(&circuit).unwrap();
+        let fidelity = FidelityEstimator::estimate_process_fidelity(&circuit)
+            .expect("estimate_process_fidelity should succeed for valid circuit");
         assert!(fidelity > 0.0 && fidelity <= 1.0);
     }
 }

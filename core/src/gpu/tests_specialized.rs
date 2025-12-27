@@ -26,7 +26,7 @@ mod tests {
         let report = get_adaptive_performance_report();
         assert!(report.is_ok(), "Failed to get performance report: {:?}", report);
 
-        let perf_report = report.unwrap();
+        let perf_report = report.expect("Failed to get performance report");
         println!("CPU Features: {:?}", perf_report.cpu_features);
         println!("Selected SIMD Variant: {:?}", perf_report.selected_variant);
 
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_holonomic_gate_application() {
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels");
 
         let mut state = vec![
             Complex64::new(1.0, 0.0),
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn test_post_quantum_hash_gate() {
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for hash gate");
 
         let mut state = vec![Complex64::new(1.0, 0.0); 8];
         let hash_circuit = vec![Complex64::new(0.5, 0.5); 16];
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn test_quantum_ml_attention() {
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for ML attention");
 
         let mut state = vec![Complex64::new(0.5, 0.5); 16];
         let query_params = vec![Complex64::new(1.0, 0.0); 8];
@@ -164,7 +164,7 @@ mod tests {
             max_fusion_length: 4,
             ..Default::default()
         };
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for gate fusion");
 
         let mut state = vec![Complex64::new(1.0, 0.0); 4];
 
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_performance_reporting() {
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for performance reporting");
 
         let report = kernels.get_performance_report();
 
@@ -299,7 +299,7 @@ mod tests {
     #[test]
     fn test_error_handling() {
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for error handling test");
 
         // Test with empty state
         let mut empty_state = vec![];
@@ -325,7 +325,7 @@ mod tests {
     fn test_integration_quantum_circuit() {
         let _ = initialize_adaptive_simd();
         let config = OptimizationConfig::default();
-        let kernels = SpecializedGpuKernels::new(config).unwrap();
+        let kernels = SpecializedGpuKernels::new(config).expect("Failed to create GPU kernels for integration test");
 
         // Create a 3-qubit quantum circuit state
         let mut state = vec![Complex64::new(0.0, 0.0); 8];

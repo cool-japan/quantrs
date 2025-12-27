@@ -66,7 +66,7 @@ impl Default for HybridEngineConfig {
 }
 
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceAllocationStrategy {
     /// Pure quantum execution
     QuantumOnly,
@@ -83,7 +83,7 @@ pub enum ResourceAllocationStrategy {
 }
 
 /// Execution strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStrategy {
     /// Sequential execution (quantum then classical fallback)
     Sequential,
@@ -181,7 +181,7 @@ impl Default for HybridMonitoringConfig {
 }
 
 /// Compute resource types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceType {
     /// D-Wave quantum annealer
     DWaveQuantum,
@@ -217,7 +217,7 @@ pub struct ComputeResource {
 }
 
 /// Resource availability status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceAvailability {
     /// Available for immediate use
     Available,
@@ -337,7 +337,7 @@ pub struct QualityRequirements {
 }
 
 /// Quality assessment methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityAssessmentMethod {
     /// Energy-based quality (lower energy = higher quality)
     EnergyBased,
@@ -376,7 +376,7 @@ pub struct GeographicConstraints {
 }
 
 /// Task execution priority
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub enum TaskPriority {
     Low = 1,
     Medium = 2,
@@ -490,7 +490,7 @@ pub struct ActiveExecution {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStatus {
     /// Queued for execution
     Queued,
@@ -625,7 +625,7 @@ pub struct ResultAggregator {
 }
 
 /// Result aggregation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResultAggregationStrategy {
     /// Best result wins
     BestResult,
@@ -691,6 +691,7 @@ pub struct ConsensusResult {
 
 impl HeterogeneousHybridEngine {
     /// Create new hybrid execution engine
+    #[must_use]
     pub fn new(config: HybridEngineConfig) -> Self {
         Self {
             config,
@@ -729,13 +730,13 @@ impl HeterogeneousHybridEngine {
         })?;
 
         queue.push_back(task);
-        println!("Task {} submitted to hybrid execution queue", task_id);
+        println!("Task {task_id} submitted to hybrid execution queue");
         Ok(task_id)
     }
 
     /// Execute task using hybrid approach
     pub fn execute_task(&self, task_id: &str) -> ApplicationResult<HybridExecutionResult> {
-        println!("Starting hybrid execution for task: {}", task_id);
+        println!("Starting hybrid execution for task: {task_id}");
 
         // Step 1: Get task from queue
         let task = self.get_task_from_queue(task_id)?;
@@ -755,7 +756,7 @@ impl HeterogeneousHybridEngine {
         // Step 6: Update performance metrics
         self.update_performance_metrics(&task, &final_result)?;
 
-        println!("Hybrid execution completed for task: {}", task_id);
+        println!("Hybrid execution completed for task: {task_id}");
         Ok(final_result)
     }
 
@@ -770,13 +771,14 @@ impl HeterogeneousHybridEngine {
             .iter()
             .position(|task| task.id == task_id)
             .ok_or_else(|| {
-                ApplicationError::InvalidConfiguration(format!(
-                    "Task {} not found in queue",
-                    task_id
-                ))
+                ApplicationError::InvalidConfiguration(format!("Task {task_id} not found in queue"))
             })?;
 
-        Ok(queue.remove(task_index).unwrap())
+        // Safety: task_index was obtained from position() which found the task,
+        // so remove() will always succeed
+        Ok(queue
+            .remove(task_index)
+            .expect("Task index was just found via position()"))
     }
 
     /// Create execution plan for task
@@ -925,17 +927,16 @@ impl HeterogeneousHybridEngine {
             }
             _ => {
                 // Default: select best performing resource
-                vec![available_resources
+                available_resources
                     .iter()
                     .max_by(|a, b| {
                         a.performance
                             .throughput
                             .partial_cmp(&b.performance.throughput)
-                            .unwrap()
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
-                    .unwrap()
-                    .id
-                    .clone()]
+                    .map(|r| vec![r.id.clone()])
+                    .unwrap_or_default()
             }
         };
 
@@ -956,17 +957,19 @@ impl HeterogeneousHybridEngine {
                     resource.performance.throughput * resource.performance.success_rate;
                 let quality_score = resource.performance.quality_score;
                 let cost_score = 1.0
-                    / (1.0
-                        + resource.cost.fixed_cost
-                        + resource.cost.variable_cost * task.problem.num_qubits as f64);
+                    / resource.cost.variable_cost.mul_add(
+                        task.problem.num_qubits as f64,
+                        1.0 + resource.cost.fixed_cost,
+                    );
 
-                let total_score = performance_score * 0.4 + quality_score * 0.4 + cost_score * 0.2;
+                let total_score =
+                    performance_score.mul_add(0.4, quality_score * 0.4) + cost_score * 0.2;
                 (resource.id.clone(), total_score)
             })
             .collect();
 
         // Sort by score (highest first)
-        scored_resources.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        scored_resources.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select top resources
         let num_resources = (scored_resources.len().min(3)).max(1);
@@ -986,13 +989,15 @@ impl HeterogeneousHybridEngine {
         let mut cost_sorted: Vec<_> = available
             .iter()
             .map(|resource| {
-                let total_cost = resource.cost.fixed_cost
-                    + resource.cost.variable_cost * task.problem.num_qubits as f64;
+                let total_cost = resource
+                    .cost
+                    .variable_cost
+                    .mul_add(task.problem.num_qubits as f64, resource.cost.fixed_cost);
                 (resource.id.clone(), total_cost)
             })
             .collect();
 
-        cost_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        cost_sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select cheapest resource that meets quality requirements
         for (resource_id, _cost) in &cost_sorted {
@@ -1018,7 +1023,7 @@ impl HeterogeneousHybridEngine {
             .map(|resource| (resource.id.clone(), resource.performance.quality_score))
             .collect();
 
-        quality_sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        quality_sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select highest quality resources
         let num_resources = quality_sorted.len().min(2);
@@ -1105,10 +1110,11 @@ impl HeterogeneousHybridEngine {
         let all_results = self.execute_parallel(task, resources)?;
 
         // Return best result
-        if let Some(best) = all_results
-            .iter()
-            .max_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap())
-        {
+        if let Some(best) = all_results.iter().max_by(|a, b| {
+            a.quality
+                .partial_cmp(&b.quality)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             Ok(vec![best.clone()])
         } else {
             Ok(all_results)
@@ -1129,7 +1135,7 @@ impl HeterogeneousHybridEngine {
         })?;
 
         let resource = resources.get(resource_id).ok_or_else(|| {
-            ApplicationError::InvalidConfiguration(format!("Resource {} not found", resource_id))
+            ApplicationError::InvalidConfiguration(format!("Resource {resource_id} not found"))
         })?;
 
         // Simulate execution time based on resource performance
@@ -1140,9 +1146,12 @@ impl HeterogeneousHybridEngine {
         // Generate solution (simplified)
         let solution = self.generate_simulated_solution(task, resource)?;
         let energy = self.calculate_energy(&task.problem, &solution)?;
-        let quality = resource.performance.quality_score * (0.8 + thread_rng().gen::<f64>() * 0.4);
-        let cost =
-            resource.cost.fixed_cost + resource.cost.variable_cost * task.problem.num_qubits as f64;
+        let quality =
+            resource.performance.quality_score * thread_rng().gen::<f64>().mul_add(0.4, 0.8);
+        let cost = resource
+            .cost
+            .variable_cost
+            .mul_add(task.problem.num_qubits as f64, resource.cost.fixed_cost);
 
         Ok(IndividualResult {
             resource_id: resource_id.to_string(),
@@ -1183,7 +1192,7 @@ impl HeterogeneousHybridEngine {
             let biases = problem.biases();
             for (qubit_index, bias_value) in biases {
                 if qubit_index == i {
-                    energy += bias_value * spin as f64;
+                    energy += bias_value * f64::from(spin);
                     break;
                 }
             }
@@ -1193,8 +1202,9 @@ impl HeterogeneousHybridEngine {
         let couplings = problem.couplings();
         for coupling in couplings {
             if coupling.i < solution.len() && coupling.j < solution.len() {
-                energy +=
-                    coupling.strength * solution[coupling.i] as f64 * solution[coupling.j] as f64;
+                energy += coupling.strength
+                    * f64::from(solution[coupling.i])
+                    * f64::from(solution[coupling.j]);
             }
         }
 
@@ -1213,7 +1223,11 @@ impl HeterogeneousHybridEngine {
 
         let best_result = results
             .iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .cloned()
             .unwrap_or_else(|| IndividualResult {
                 resource_id: "none".to_string(),
@@ -1315,7 +1329,7 @@ pub struct PerformanceRequirements {
     pub min_quality: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemComplexity {
     Simple,
     Medium,
@@ -1347,10 +1361,10 @@ impl HybridPerformanceMonitor {
     fn update_metrics(&mut self, task: &HybridExecutionTask, result: &HybridExecutionResult) {
         self.system_metrics.total_tasks += 1;
         self.system_metrics.total_cost += result.total_cost;
-        self.system_metrics.avg_quality = (self.system_metrics.avg_quality
-            * (self.system_metrics.total_tasks - 1) as f64
-            + result.quality_score)
-            / self.system_metrics.total_tasks as f64;
+        self.system_metrics.avg_quality = self.system_metrics.avg_quality.mul_add(
+            (self.system_metrics.total_tasks - 1) as f64,
+            result.quality_score,
+        ) / self.system_metrics.total_tasks as f64;
 
         self.cost_tracking.spent_amount += result.total_cost;
 
@@ -1429,7 +1443,7 @@ pub fn create_example_hybrid_engine() -> ApplicationResult<HeterogeneousHybridEn
             latency: Duration::from_secs(5),
             success_rate: 0.99,
             quality_score: 0.8,
-            size_range: (1, 10000),
+            size_range: (1, 10_000),
             history: VecDeque::new(),
         },
         cost: ResourceCost {
@@ -1457,15 +1471,16 @@ mod tests {
         let config = HybridEngineConfig::default();
         let engine = HeterogeneousHybridEngine::new(config);
 
-        let resources = engine.resources.read().unwrap();
+        let resources = engine.resources.read().unwrap_or_else(|e| e.into_inner());
         assert!(resources.is_empty());
     }
 
     #[test]
     fn test_resource_registration() {
-        let engine = create_example_hybrid_engine().unwrap();
+        let engine =
+            create_example_hybrid_engine().expect("Example hybrid engine creation should succeed");
 
-        let resources = engine.resources.read().unwrap();
+        let resources = engine.resources.read().unwrap_or_else(|e| e.into_inner());
         assert_eq!(resources.len(), 2);
         assert!(resources.contains_key("dwave_advantage"));
         assert!(resources.contains_key("classical_simulator"));
@@ -1473,7 +1488,8 @@ mod tests {
 
     #[test]
     fn test_task_submission() {
-        let engine = create_example_hybrid_engine().unwrap();
+        let engine =
+            create_example_hybrid_engine().expect("Example hybrid engine creation should succeed");
 
         let problem = IsingModel::new(100);
         let task = HybridExecutionTask {
@@ -1498,7 +1514,7 @@ mod tests {
 
         let result = engine.submit_task(task);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "test_task");
+        assert_eq!(result.expect("Task submission should succeed"), "test_task");
     }
 
     #[test]

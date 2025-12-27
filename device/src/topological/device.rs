@@ -164,9 +164,9 @@ impl EnhancedTopologicalDevice {
             // Create anyon pairs at different positions
             let positions = [
                 (qubit_ids.len() as f64 * 10.0, 0.0),
-                (qubit_ids.len() as f64 * 10.0 + 5.0, 0.0),
+                ((qubit_ids.len() as f64).mul_add(10.0, 5.0), 0.0),
                 (qubit_ids.len() as f64 * 10.0, 5.0),
-                (qubit_ids.len() as f64 * 10.0 + 5.0, 5.0),
+                ((qubit_ids.len() as f64).mul_add(10.0, 5.0), 5.0),
             ];
 
             let (anyon1_id, anyon2_id) = self
@@ -190,14 +190,9 @@ impl EnhancedTopologicalDevice {
 
     /// Perform a topological X gate via braiding
     pub async fn topological_x_gate(&mut self, qubit_id: usize) -> TopologicalResult<()> {
-        let qubit =
-            self.core_device
-                .qubits
-                .get(&qubit_id)
-                .ok_or(TopologicalError::InvalidBraiding(format!(
-                    "Qubit {} not found",
-                    qubit_id
-                )))?;
+        let qubit = self.core_device.qubits.get(&qubit_id).ok_or_else(|| {
+            TopologicalError::InvalidBraiding(format!("Qubit {qubit_id} not found"))
+        })?;
 
         if qubit.anyons.len() < 4 {
             return Err(TopologicalError::InsufficientAnyons {
@@ -219,14 +214,9 @@ impl EnhancedTopologicalDevice {
 
     /// Perform a topological Z gate via braiding
     pub async fn topological_z_gate(&mut self, qubit_id: usize) -> TopologicalResult<()> {
-        let qubit =
-            self.core_device
-                .qubits
-                .get(&qubit_id)
-                .ok_or(TopologicalError::InvalidBraiding(format!(
-                    "Qubit {} not found",
-                    qubit_id
-                )))?;
+        let qubit = self.core_device.qubits.get(&qubit_id).ok_or_else(|| {
+            TopologicalError::InvalidBraiding(format!("Qubit {qubit_id} not found"))
+        })?;
 
         if qubit.anyons.len() < 4 {
             return Err(TopologicalError::InsufficientAnyons {
@@ -258,22 +248,18 @@ impl EnhancedTopologicalDevice {
     ) -> TopologicalResult<()> {
         // Get anyons from both qubits
         let control_anyons = {
-            let qubit = self.core_device.qubits.get(&control_qubit).ok_or(
+            let qubit = self.core_device.qubits.get(&control_qubit).ok_or_else(|| {
                 TopologicalError::InvalidBraiding(format!(
-                    "Control qubit {} not found",
-                    control_qubit
-                )),
-            )?;
+                    "Control qubit {control_qubit} not found"
+                ))
+            })?;
             qubit.anyons.clone()
         };
 
         let target_anyons = {
-            let qubit = self.core_device.qubits.get(&target_qubit).ok_or(
-                TopologicalError::InvalidBraiding(format!(
-                    "Target qubit {} not found",
-                    target_qubit
-                )),
-            )?;
+            let qubit = self.core_device.qubits.get(&target_qubit).ok_or_else(|| {
+                TopologicalError::InvalidBraiding(format!("Target qubit {target_qubit} not found"))
+            })?;
             qubit.anyons.clone()
         };
 
@@ -312,8 +298,7 @@ impl EnhancedTopologicalDevice {
             Ok(())
         } else {
             Err(TopologicalError::InvalidBraiding(format!(
-                "Qubit {} not found for reset",
-                qubit_id
+                "Qubit {qubit_id} not found for reset"
             )))
         }
     }
@@ -543,62 +528,82 @@ mod tests {
 
     #[tokio::test]
     async fn test_fibonacci_device_creation() {
-        let device = create_fibonacci_device(100, 10).unwrap();
+        let device = create_fibonacci_device(100, 10).expect("Failed to create Fibonacci device");
         assert_eq!(device.core_device.capabilities.max_anyons, 100);
         assert_eq!(device.core_device.capabilities.max_qubits, 10);
     }
 
     #[tokio::test]
     async fn test_device_connection() {
-        let mut device = create_fibonacci_device(50, 5).unwrap();
+        let mut device = create_fibonacci_device(50, 5).expect("Failed to create Fibonacci device");
         assert!(!device.is_connected);
 
-        device.connect().await.unwrap();
+        device.connect().await.expect("Failed to connect to device");
         assert!(device.is_connected);
 
-        device.disconnect().await.unwrap();
+        device
+            .disconnect()
+            .await
+            .expect("Failed to disconnect from device");
         assert!(!device.is_connected);
     }
 
     #[tokio::test]
     async fn test_qubit_initialization() {
-        let mut device = create_fibonacci_device(100, 10).unwrap();
-        device.connect().await.unwrap();
+        let mut device =
+            create_fibonacci_device(100, 10).expect("Failed to create Fibonacci device");
+        device.connect().await.expect("Failed to connect to device");
 
-        let qubit_ids = device.initialize_topological_qubits(3).await.unwrap();
+        let qubit_ids = device
+            .initialize_topological_qubits(3)
+            .await
+            .expect("Failed to initialize topological qubits");
         assert_eq!(qubit_ids.len(), 3);
     }
 
     #[tokio::test]
     async fn test_topological_gates() {
-        let mut device = create_fibonacci_device(100, 10).unwrap();
-        device.connect().await.unwrap();
+        let mut device =
+            create_fibonacci_device(100, 10).expect("Failed to create Fibonacci device");
+        device.connect().await.expect("Failed to connect to device");
 
-        let qubit_ids = device.initialize_topological_qubits(2).await.unwrap();
+        let qubit_ids = device
+            .initialize_topological_qubits(2)
+            .await
+            .expect("Failed to initialize topological qubits");
 
         // Test X gate
-        device.topological_x_gate(qubit_ids[0]).await.unwrap();
+        device
+            .topological_x_gate(qubit_ids[0])
+            .await
+            .expect("Failed to apply X gate");
 
         // Test Z gate
-        device.topological_z_gate(qubit_ids[0]).await.unwrap();
+        device
+            .topological_z_gate(qubit_ids[0])
+            .await
+            .expect("Failed to apply Z gate");
 
         // Test CNOT gate
         device
             .topological_cnot_gate(qubit_ids[0], qubit_ids[1])
             .await
-            .unwrap();
+            .expect("Failed to apply CNOT gate");
     }
 
     #[tokio::test]
     async fn test_measurement() {
-        let mut device = create_fibonacci_device(50, 5).unwrap();
-        device.connect().await.unwrap();
+        let mut device = create_fibonacci_device(50, 5).expect("Failed to create Fibonacci device");
+        device.connect().await.expect("Failed to connect to device");
 
-        let qubit_ids = device.initialize_topological_qubits(1).await.unwrap();
+        let qubit_ids = device
+            .initialize_topological_qubits(1)
+            .await
+            .expect("Failed to initialize topological qubits");
         let result = device
             .measure_topological_qubit(qubit_ids[0])
             .await
-            .unwrap();
+            .expect("Failed to measure topological qubit");
 
         // Result should be boolean
         assert!(result == true || result == false);
@@ -606,7 +611,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_device_diagnostics() {
-        let device = create_fibonacci_device(50, 5).unwrap();
+        let device = create_fibonacci_device(50, 5).expect("Failed to create Fibonacci device");
         let diagnostics = device.get_diagnostics().await;
 
         assert_eq!(diagnostics.is_connected, false);
@@ -616,12 +621,29 @@ mod tests {
 
     #[tokio::test]
     async fn test_quantum_device_traits() {
-        let device = create_ising_device(30, 3).unwrap();
+        let device = create_ising_device(30, 3).expect("Failed to create Ising device");
 
-        assert!(device.is_simulator().await.unwrap());
-        assert_eq!(device.qubit_count().await.unwrap(), 3);
+        assert!(device
+            .is_simulator()
+            .await
+            .expect("Failed to check if device is simulator"));
+        assert_eq!(
+            device
+                .qubit_count()
+                .await
+                .expect("Failed to get qubit count"),
+            3
+        );
 
-        let properties = device.properties().await.unwrap();
-        assert_eq!(properties.get("device_type").unwrap(), "topological");
+        let properties = device
+            .properties()
+            .await
+            .expect("Failed to get device properties");
+        assert_eq!(
+            properties
+                .get("device_type")
+                .expect("device_type property not found"),
+            "topological"
+        );
     }
 }

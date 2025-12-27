@@ -200,7 +200,7 @@ pub struct CrosstalkMechanism {
 }
 
 /// Types of crosstalk mechanisms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CrosstalkType {
     /// Capacitive coupling between qubits
     CapacitiveCoupling,
@@ -221,7 +221,7 @@ pub enum CrosstalkType {
 }
 
 /// Difficulty level of mitigation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationDifficulty {
     Easy,
     Moderate,
@@ -241,7 +241,7 @@ pub struct MitigationStrategy {
 }
 
 /// Types of mitigation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationType {
     /// Frequency detuning to avoid resonant crosstalk
     FrequencyDetuning,
@@ -271,7 +271,7 @@ pub struct CrosstalkAnalyzer {
 
 impl CrosstalkAnalyzer {
     /// Create a new crosstalk analyzer
-    pub fn new(config: CrosstalkConfig, device_topology: HardwareTopology) -> Self {
+    pub const fn new(config: CrosstalkConfig, device_topology: HardwareTopology) -> Self {
         Self {
             config,
             device_topology,
@@ -712,8 +712,7 @@ impl CrosstalkAnalyzer {
             .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .map_or(0, |(idx, _)| idx);
 
         let time_delay = max_idx as f64 * dt;
 
@@ -773,7 +772,7 @@ impl CrosstalkAnalyzer {
                             strength: crosstalk_matrix[[i, j]],
                             frequency_signature: None,
                             mitigation_difficulty: MitigationDifficulty::Moderate,
-                            description: format!("Z-Z interaction between qubits {} and {}", i, j),
+                            description: format!("Z-Z interaction between qubits {i} and {j}"),
                         });
                     }
 
@@ -787,8 +786,7 @@ impl CrosstalkAnalyzer {
                                 frequency_signature: Some(freq_data.mapv(|c| c.norm())),
                                 mitigation_difficulty: MitigationDifficulty::Difficult,
                                 description: format!(
-                                    "Capacitive coupling between qubits {} and {}",
-                                    i, j
+                                    "Capacitive coupling between qubits {i} and {j}"
                                 ),
                             });
                         }
@@ -804,8 +802,7 @@ impl CrosstalkAnalyzer {
                                 frequency_signature: None,
                                 mitigation_difficulty: MitigationDifficulty::Easy,
                                 description: format!(
-                                    "Control line crosstalk between qubits {} and {}",
-                                    i, j
+                                    "Control line crosstalk between qubits {i} and {j}"
                                 ),
                             });
                         }
@@ -957,7 +954,7 @@ impl CrosstalkAnalyzer {
         let num_points = ((end - start) / resolution) as usize + 1;
 
         (0..num_points)
-            .map(|i| start + i as f64 * resolution)
+            .map(|i| (i as f64).mul_add(resolution, start))
             .collect()
     }
 
@@ -1163,8 +1160,7 @@ impl CrosstalkAnalyzer {
             .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .map_or(0, |(idx, _)| idx);
 
         if peak_idx + 2 >= data.len() {
             return Ok(1000.0);
@@ -1256,12 +1252,12 @@ impl CrosstalkAnalyzer {
         Ok(distance_decay)
     }
 
-    fn calculate_qubit_distance(&self, qubit1: usize, qubit2: usize) -> DeviceResult<usize> {
+    const fn calculate_qubit_distance(&self, qubit1: usize, qubit2: usize) -> DeviceResult<usize> {
         // Calculate Manhattan distance on the qubit grid
         // This is a simplified version - would use actual device layout
 
         // For a linear topology
-        Ok((qubit1 as i32 - qubit2 as i32).abs() as usize)
+        Ok((qubit1 as i32 - qubit2 as i32).unsigned_abs() as usize)
     }
 
     fn identify_directional_patterns(
@@ -1371,10 +1367,9 @@ impl CrosstalkAnalyzer {
         let mut visited = HashSet::new();
 
         for &(source, target, _) in graph {
-            if !visited.contains(&source) {
+            if visited.insert(source) {
                 let path = vec![source, target]; // Simplified 2-hop path
                 paths.push(path);
-                visited.insert(source);
             }
         }
 
@@ -1446,7 +1441,7 @@ pub struct CrosstalkOperation {
 }
 
 /// Types of crosstalk operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CrosstalkOperationType {
     ZRotation,
     FrequencySweep,
@@ -1494,7 +1489,8 @@ mod tests {
             ..Default::default()
         };
 
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("Linear topology creation should succeed");
         let analyzer = CrosstalkAnalyzer::new(config, topology);
 
         let frequencies = analyzer.generate_frequency_sweep();
@@ -1511,7 +1507,8 @@ mod tests {
             ..Default::default()
         };
 
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("Linear topology creation should succeed");
         let analyzer = CrosstalkAnalyzer::new(config, topology);
 
         let amplitudes = analyzer.generate_amplitude_sweep();
@@ -1522,7 +1519,8 @@ mod tests {
 
     #[test]
     fn test_crosstalk_strength_calculation() {
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("Linear topology creation should succeed");
         let analyzer = CrosstalkAnalyzer::new(CrosstalkConfig::default(), topology);
 
         let baseline = CrosstalkResult {
@@ -1545,13 +1543,14 @@ mod tests {
 
         let strength = analyzer
             .calculate_crosstalk_strength(&baseline, &crosstalk)
-            .unwrap();
+            .expect("Crosstalk strength calculation should succeed");
         assert!((strength - 0.4).abs() < 0.01); // Expected difference of 0.4
     }
 
     #[test]
     fn test_mechanism_identification() {
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("Linear topology creation should succeed");
         let analyzer = CrosstalkAnalyzer::new(CrosstalkConfig::default(), topology);
 
         // Create test crosstalk matrix
@@ -1574,7 +1573,7 @@ mod tests {
                 &frequency_crosstalk,
                 &spectral_signatures,
             )
-            .unwrap();
+            .expect("Mechanism identification should succeed");
 
         assert!(!mechanisms.is_empty());
         assert_eq!(mechanisms[0].mechanism_type, CrosstalkType::ZZInteraction);

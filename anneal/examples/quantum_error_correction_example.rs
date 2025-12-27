@@ -170,7 +170,7 @@ fn analyze_qec_performance(
     let config = QECConfig::default();
     let mut annealer = QuantumErrorCorrectionAnnealer::new(config)?;
 
-    println!("Running {} annealing iterations...", num_runs);
+    println!("Running {num_runs} annealing iterations...");
     for i in 0..num_runs {
         let result = annealer.solve(problem, Some(params.clone()))?;
         qec_energies.push(result.logical_energy);
@@ -196,12 +196,12 @@ fn analyze_qec_performance(
         .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
     println!("\nPerformance Summary:");
-    println!("  Average energy: {:.4}", avg_energy);
-    println!("  Best energy: {:.4}", min_energy);
-    println!("  Worst energy: {:.4}", max_energy);
+    println!("  Average energy: {avg_energy:.4}");
+    println!("  Best energy: {min_energy:.4}");
+    println!("  Worst energy: {max_energy:.4}");
     println!("  Energy variance: {:.4}", max_energy - min_energy);
-    println!("  Average fidelity: {:.4}", avg_fidelity);
-    println!("  Average time: {:.4}s", avg_time);
+    println!("  Average fidelity: {avg_fidelity:.4}");
+    println!("  Average time: {avg_time:.4}s");
 
     Ok(())
 }
@@ -318,7 +318,7 @@ fn compare_with_without_qec(
     let classical_energy = problem.energy(&classical_spins_i8)?;
 
     println!("Without QEC (Classical):");
-    println!("  Energy: {:.4}", classical_energy);
+    println!("  Energy: {classical_energy:.4}");
     println!("  Runtime: {:?}", classical_result.runtime);
 
     // With QEC
@@ -338,14 +338,14 @@ fn compare_with_without_qec(
 
     println!("\nAnalysis:");
     if energy_improvement > 0.0 {
-        println!("  Energy improvement: {:.4} (better)", energy_improvement);
+        println!("  Energy improvement: {energy_improvement:.4} (better)");
     } else {
         println!(
             "  Energy difference: {:.4} (comparable)",
             energy_improvement.abs()
         );
     }
-    println!("  QEC overhead: {:.2}%", overhead_percentage);
+    println!("  QEC overhead: {overhead_percentage:.2}%");
     println!(
         "  Error suppression factor: {:.2}x",
         qec_result.stats.physical_error_rate / qec_result.stats.logical_error_rate.max(1e-10)

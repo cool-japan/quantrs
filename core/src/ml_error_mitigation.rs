@@ -145,7 +145,10 @@ impl NeuralErrorPredictor {
 
         // Store training example
         {
-            let mut history = self.training_history.write().unwrap();
+            let mut history = self
+                .training_history
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             history.push(TrainingExample {
                 features: features.to_vec(),
                 error_rate: observed_error_rate,
@@ -196,12 +199,18 @@ impl NeuralErrorPredictor {
 
     /// Get training history
     pub fn get_training_history(&self) -> Vec<TrainingExample> {
-        self.training_history.read().unwrap().clone()
+        self.training_history
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Calculate prediction accuracy on historical data
     pub fn calculate_accuracy(&self) -> f64 {
-        let history = self.training_history.read().unwrap();
+        let history = self
+            .training_history
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         if history.is_empty() {
             return 0.0;
         }
@@ -276,7 +285,7 @@ impl CircuitFeatures {
         };
 
         // Estimate average gate fidelity (simplified, would be calibrated)
-        let average_gate_fidelity = 0.99 - (two_qubit_gates as f64 * 0.005);
+        let average_gate_fidelity = (two_qubit_gates as f64).mul_add(-0.005, 0.99);
 
         Self {
             depth: max_depth,
@@ -355,10 +364,11 @@ impl AdaptiveErrorMitigation {
         let predicted_error = self.predictor.predict(&features.to_vector())?;
 
         // Adaptive shot allocation: more errors = more shots needed
-        let recommended_shots = (self.min_shots as f64 * (1.0 + predicted_error * 10.0)) as usize;
+        let recommended_shots =
+            (self.min_shots as f64 * predicted_error.mul_add(10.0, 1.0)) as usize;
 
         // Adaptive mitigation strength
-        let strength = self.mitigation_strength * (1.0 + predicted_error * 2.0);
+        let strength = self.mitigation_strength * predicted_error.mul_add(2.0, 1.0);
 
         Ok((recommended_shots, strength))
     }
@@ -374,7 +384,7 @@ impl AdaptiveErrorMitigation {
 
         // Update metrics
         {
-            let mut metrics = self.metrics.write().unwrap();
+            let mut metrics = self.metrics.write().unwrap_or_else(|e| e.into_inner());
             metrics.total_circuits += 1;
             metrics.prediction_accuracy = self.predictor.calculate_accuracy();
         }
@@ -384,7 +394,10 @@ impl AdaptiveErrorMitigation {
 
     /// Get current metrics
     pub fn get_metrics(&self) -> MitigationMetrics {
-        self.metrics.read().unwrap().clone()
+        self.metrics
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 }
 
@@ -413,7 +426,7 @@ mod tests {
         let result = predictor.predict(&features);
         assert!(result.is_ok());
 
-        let error_rate = result.unwrap();
+        let error_rate = result.expect("Failed to predict error rate");
         assert!(error_rate >= 0.0 && error_rate <= 1.0);
     }
 
@@ -451,7 +464,7 @@ mod tests {
         let result = mitigation.recommend_mitigation(&features);
         assert!(result.is_ok());
 
-        let (shots, strength) = result.unwrap();
+        let (shots, strength) = result.expect("Failed to recommend mitigation");
         assert!(shots >= 1024);
         assert!(strength > 0.0);
     }

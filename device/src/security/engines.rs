@@ -35,7 +35,7 @@ pub struct ThreatDetectionResults {
 }
 
 impl ThreatDetectionResults {
-    pub fn merge(traditional: ThreatDetectionResults, ml: ThreatDetectionResults) -> Self {
+    pub fn merge(traditional: Self, ml: Self) -> Self {
         Self {
             threats_detected: traditional.threats_detected + ml.threats_detected,
             high_severity_threats: traditional.high_severity_threats + ml.high_severity_threats,
@@ -48,7 +48,10 @@ impl ThreatDetectionResults {
                 ml.detection_algorithms_used,
             ]
             .concat(),
-            overall_risk_score: (traditional.overall_risk_score + ml.overall_risk_score) / 2.0,
+            overall_risk_score: f64::midpoint(
+                traditional.overall_risk_score,
+                ml.overall_risk_score,
+            ),
             detection_time: traditional.detection_time + ml.detection_time,
         }
     }

@@ -14,6 +14,7 @@ use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use scirs2_core::Complex64;
 use std::sync::Arc;
 
+use std::fmt::Write;
 /// SciRS2-powered GPU linear algebra operations
 ///
 /// This structure provides high-performance linear algebra operations using
@@ -317,7 +318,8 @@ pub async fn benchmark_gpu_linalg() -> Result<String, QuantRS2Error> {
 
     // Test different matrix sizes
     for size in [4, 8, 16, 32, 64, 128] {
-        report.push_str(&format!("Matrix size: {}x{}\n", size, size));
+        writeln!(report, "Matrix size: {}x{}", size, size)
+            .expect("Failed to write to string buffer");
 
         // Create random matrices
         let a = Array2::from_shape_fn((size, size), |_| {
@@ -337,12 +339,14 @@ pub async fn benchmark_gpu_linalg() -> Result<String, QuantRS2Error> {
         let _gpu_result = gpu_linalg.matmul(&a, &b).await?;
         let gpu_time = gpu_start.elapsed();
 
-        report.push_str(&format!("  CPU time: {:?}\n", cpu_time));
-        report.push_str(&format!("  GPU time: {:?}\n", gpu_time));
-        report.push_str(&format!(
+        writeln!(report, "  CPU time: {:?}", cpu_time).expect("Failed to write to string buffer");
+        writeln!(report, "  GPU time: {:?}", gpu_time).expect("Failed to write to string buffer");
+        write!(
+            report,
             "  Speedup: {:.2}x\n",
             cpu_time.as_secs_f64() / gpu_time.as_secs_f64()
-        ));
+        )
+        .expect("Failed to write to string buffer");
         report.push_str("\n");
     }
 
@@ -379,7 +383,7 @@ mod tests {
                 Complex64::new(4.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Matrix creation should succeed in test");
 
         let b = Array2::from_shape_vec(
             (2, 2),
@@ -390,9 +394,12 @@ mod tests {
                 Complex64::new(8.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Matrix creation should succeed in test");
 
-        let result = gpu_linalg.matmul(&a, &b).await.unwrap();
+        let result = gpu_linalg
+            .matmul(&a, &b)
+            .await
+            .expect("Matrix multiplication should succeed in test");
 
         // Expected: [[19, 22], [43, 50]]
         assert!((result[[0, 0]].re - 19.0).abs() < 1e-6);
@@ -421,7 +428,7 @@ mod tests {
                 Complex64::new(4.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Matrix creation should succeed in test");
 
         let b = Array2::from_shape_vec(
             (2, 2),
@@ -432,9 +439,12 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Matrix creation should succeed in test");
 
-        let result = gpu_linalg.tensor_product(&a, &b).await.unwrap();
+        let result = gpu_linalg
+            .tensor_product(&a, &b)
+            .await
+            .expect("Tensor product should succeed in test");
         assert_eq!(result.shape(), &[4, 4]);
 
         // Check some expected values for tensor product
@@ -470,13 +480,13 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("X gate matrix creation should succeed in test");
 
         // Apply X gate to qubit 0
         gpu_linalg
             .apply_unitary(&mut state, &x_gate, &[0])
             .await
-            .unwrap();
+            .expect("X gate application should succeed in test");
 
         // Should now be in |01⟩ state
         assert!((state[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10); // |00⟩

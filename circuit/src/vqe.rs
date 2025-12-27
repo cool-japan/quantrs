@@ -533,7 +533,7 @@ impl VQEOptimizer {
 
             if current_energy < best_energy {
                 best_energy = current_energy;
-                best_parameters = circuit.parameters.clone();
+                best_parameters.clone_from(&circuit.parameters);
             }
 
             // Check convergence
@@ -603,22 +603,28 @@ mod tests {
 
     #[test]
     fn test_hardware_efficient_ansatz() {
-        let circuit = VQECircuit::<4>::new(VQEAnsatz::HardwareEfficient { layers: 2 }).unwrap();
-        assert!(circuit.parameters.len() > 0);
+        let circuit = VQECircuit::<4>::new(VQEAnsatz::HardwareEfficient { layers: 2 })
+            .expect("create VQE circuit");
+        assert!(!circuit.parameters.is_empty());
         assert_eq!(circuit.parameter_names.len(), circuit.parameters.len());
     }
 
     #[test]
     fn test_observable_creation() {
         let obs = VQEObservable::heisenberg_model(4, 1.0);
-        assert!(obs.terms.len() > 0);
+        assert!(!obs.terms.is_empty());
     }
 
     #[test]
     fn test_parameter_management() {
-        let mut circuit = VQECircuit::<2>::new(VQEAnsatz::Custom).unwrap();
-        circuit.add_parameterized_ry(QubitId(0), "theta1").unwrap();
-        circuit.set_parameter("theta1", 0.5).unwrap();
+        let mut circuit =
+            VQECircuit::<2>::new(VQEAnsatz::Custom).expect("create custom VQE circuit");
+        circuit
+            .add_parameterized_ry(QubitId(0), "theta1")
+            .expect("add parameterized RY gate");
+        circuit
+            .set_parameter("theta1", 0.5)
+            .expect("set parameter theta1");
         assert_eq!(circuit.get_parameter("theta1"), Some(0.5));
     }
 }

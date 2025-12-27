@@ -485,7 +485,7 @@ impl QuantumReservoir {
     }
 
     /// Get reservoir configuration
-    pub fn config(&self) -> &QuantumReservoirConfig {
+    pub const fn config(&self) -> &QuantumReservoirConfig {
         &self.config
     }
 }
@@ -694,10 +694,13 @@ mod tests {
     #[test]
     fn test_quantum_reservoir() {
         let config = QuantumReservoirConfig::default();
-        let mut reservoir = QuantumReservoir::new(config).unwrap();
+        let mut reservoir =
+            QuantumReservoir::new(config).expect("Failed to create quantum reservoir");
 
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
-        let features = reservoir.step(&input).unwrap();
+        let features = reservoir
+            .step(&input)
+            .expect("Failed to step quantum reservoir");
 
         assert_eq!(features.len(), 8 * 3); // 3 Pauli expectations per qubit
     }
@@ -714,11 +717,14 @@ mod tests {
             seed: Some(42),
         };
 
-        let mut qrc = QuantumReservoirComputer::new(config, 2).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config, 2)
+            .expect("Failed to create quantum reservoir computer");
 
         // Create test sequence
         let inputs = Array2::from_shape_fn((10, 4), |(i, j)| (i + j) as f64 * 0.1);
-        let outputs = qrc.process_sequence(&inputs).unwrap();
+        let outputs = qrc
+            .process_sequence(&inputs)
+            .expect("Failed to process sequence");
 
         assert_eq!(outputs.shape(), &[10, 2]);
     }

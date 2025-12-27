@@ -32,7 +32,7 @@ pub struct SyndromeDetectionConfig {
 }
 
 /// Syndrome detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SyndromeDetectionMethod {
     /// Standard stabilizer measurements
     StandardStabilizer,
@@ -60,7 +60,7 @@ pub struct PatternRecognitionConfig {
 }
 
 /// Pattern recognition algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatternRecognitionAlgorithm {
     NeuralNetwork,
     SupportVectorMachine,
@@ -100,7 +100,7 @@ pub struct SyndromeStatisticsConfig {
 }
 
 /// Statistical methods for syndrome analysis
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatisticalMethod {
     HypothesisTesting,
     DistributionFitting,
@@ -124,7 +124,7 @@ pub struct FastExtractionConfig {
 }
 
 /// Fast extraction algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FastExtractionAlgorithm {
     ParallelStabilizer,
     PipelinedMeasurement,
@@ -145,7 +145,7 @@ pub struct ParallelProcessingConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     WorkStealing,
@@ -154,7 +154,7 @@ pub enum LoadBalancingStrategy {
 }
 
 /// Synchronization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SynchronizationMethod {
     Barrier,
     LockFree,
@@ -196,7 +196,7 @@ pub struct CacheOptimizationConfig {
 }
 
 /// Cache eviction policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheEvictionPolicy {
     LRU,
     LFU,
@@ -206,7 +206,7 @@ pub enum CacheEvictionPolicy {
 }
 
 /// Prefetching strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrefetchingStrategy {
     None,
     Sequential,
@@ -227,7 +227,7 @@ pub struct CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     LZ4,
     Zlib,
@@ -313,7 +313,7 @@ pub struct ValidationConfig {
 }
 
 /// Consistency checks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConsistencyCheck {
     SyndromeConsistency,
     StabilizerCommutation,
@@ -322,7 +322,7 @@ pub enum ConsistencyCheck {
 }
 
 /// Validation frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationFrequency {
     Always,
     Periodic(Duration),
@@ -366,7 +366,7 @@ pub struct HistoricalAnalysisConfig {
 }
 
 /// Analysis methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalysisMethod {
     TrendAnalysis,
     SeasonalAnalysis,
@@ -400,7 +400,7 @@ pub struct AlertConfig {
 }
 
 /// Alert channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertChannel {
     Email,
     SMS,
@@ -430,7 +430,7 @@ pub struct EscalationLevel {
 }
 
 /// Escalation actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationAction {
     Notify,
     AutoRemediate,
@@ -450,7 +450,7 @@ pub struct AdaptiveMeasurementConfig {
 }
 
 /// Adaptation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationStrategy {
     ErrorRateBased,
     PerformanceBased,
@@ -473,7 +473,7 @@ pub struct LearningConfig {
 }
 
 /// Learning algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LearningAlgorithm {
     ReinforcementLearning,
     SupervisedLearning,
@@ -494,7 +494,7 @@ pub struct FeedbackControlConfig {
 }
 
 /// Control algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ControlAlgorithm {
     PID,
     ModelPredictiveControl,
@@ -528,7 +528,7 @@ pub struct StabilityAnalysisConfig {
 }
 
 /// Stability analysis methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StabilityMethod {
     LyapunovAnalysis,
     RouthHurwitz,
@@ -571,7 +571,7 @@ pub struct SensingMatrixConfig {
 }
 
 /// Types of sensing matrices
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SensingMatrixType {
     Random,
     Structured,
@@ -603,7 +603,7 @@ pub struct ReconstructionConfig {
 }
 
 /// Reconstruction algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReconstructionAlgorithm {
     L1Minimization,
     OrthogonalMatchingPursuit,
@@ -635,7 +635,7 @@ pub struct ConvergenceConfig {
 }
 
 /// Convergence criteria
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceCriteria {
     ResidualNorm,
     ObjectiveFunction,
@@ -655,7 +655,7 @@ pub struct SparsityConfig {
 }
 
 /// Sparsity patterns
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SparsityPattern {
     Random,
     Structured,

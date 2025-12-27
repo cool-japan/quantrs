@@ -428,7 +428,9 @@ pub mod quantum_calibration {
         ) -> Result<()> {
             if let Some(shots) = shot_counts {
                 if self.config.account_shot_noise {
-                    let avg_probs = logits.mean_axis(scirs2_core::ndarray::Axis(1)).unwrap();
+                    let avg_probs = logits
+                        .mean_axis(scirs2_core::ndarray::Axis(1))
+                        .expect("logits should have valid axis");
                     self.shot_noise_estimates = Some(self.estimate_shot_noise(&avg_probs, shots));
                 }
             }
@@ -740,7 +742,11 @@ pub mod ensemble_selection {
                 is_binary: true,
             });
         }
-        candidates.sort_by(|a, b| a.mean_ece.partial_cmp(&b.mean_ece).unwrap());
+        candidates.sort_by(|a, b| {
+            a.mean_ece
+                .partial_cmp(&b.mean_ece)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         let (selected_methods, weights) = match strategy {
             SelectionStrategy::BestSingle => (vec![candidates[0].name.clone()], vec![1.0]),
             SelectionStrategy::TopK(k) => {

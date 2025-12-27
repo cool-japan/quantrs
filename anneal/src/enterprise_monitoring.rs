@@ -10,7 +10,7 @@
 //! - Service Level Objectives (SLO) and Service Level Indicators (SLI) management
 //! - Security event monitoring and correlation
 //! - Business metrics and usage analytics
-//! - Cost monitoring and FinOps integration
+//! - Cost monitoring and `FinOps` integration
 //! - Data governance and compliance tracking
 //! - SIEM and ITSM integration capabilities
 
@@ -130,13 +130,13 @@ impl Default for SecurityMonitoringConfig {
                 ComplianceFramework::ISO27001,
                 ComplianceFramework::GDPR,
             ],
-            security_event_retention: Duration::from_secs(90 * 86400),
+            security_event_retention: Duration::from_secs(90 * 86_400),
         }
     }
 }
 
 /// Threat detection sensitivity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreatSensitivity {
     Low,
     Medium,
@@ -145,7 +145,7 @@ pub enum ThreatSensitivity {
 }
 
 /// Compliance frameworks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplianceFramework {
     SOC2,
     ISO27001,
@@ -237,7 +237,7 @@ impl Default for UsageMetricsConfig {
 }
 
 /// Performance KPIs
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PerformanceKpi {
     ResponseTime,
     Throughput,
@@ -253,7 +253,7 @@ pub enum PerformanceKpi {
 pub struct CostMonitoringConfig {
     /// Enable cost monitoring
     pub enable_cost_monitoring: bool,
-    /// FinOps practices
+    /// `FinOps` practices
     pub enable_finops: bool,
     /// Cost allocation tags
     pub cost_allocation_tags: Vec<String>,
@@ -301,7 +301,7 @@ pub struct BudgetThreshold {
 }
 
 /// Budget threshold actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BudgetAction {
     Alert,
     Restrict,
@@ -310,7 +310,7 @@ pub enum BudgetAction {
 }
 
 /// Cost optimization rules
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CostOptimizationRule {
     IdleResourceShutdown,
     RightSizing,
@@ -371,7 +371,7 @@ pub struct RetentionPolicy {
 }
 
 /// Data types for governance
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataType {
     Logs,
     Metrics,
@@ -420,7 +420,7 @@ impl Default for SiemConfig {
     fn default() -> Self {
         Self {
             endpoint: "https://siem.company.com/api/events".to_string(),
-            authentication: AuthenticationMethod::ApiKey("".to_string()),
+            authentication: AuthenticationMethod::ApiKey(String::new()),
             event_types: vec![
                 SecurityEventType::Authentication,
                 SecurityEventType::Authorization,
@@ -458,7 +458,7 @@ impl Default for ItsmConfig {
         Self {
             platform: ItsmPlatform::ServiceNow,
             endpoint: "https://company.service-now.com/api".to_string(),
-            authentication: AuthenticationMethod::OAuth2("".to_string()),
+            authentication: AuthenticationMethod::OAuth2(String::new()),
             incident_templates,
         }
     }
@@ -517,7 +517,7 @@ pub enum AuthenticationMethod {
 }
 
 /// Security event types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecurityEventType {
     Authentication,
     Authorization,
@@ -529,7 +529,7 @@ pub enum SecurityEventType {
 }
 
 /// ITSM platforms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ItsmPlatform {
     ServiceNow,
     Jira,
@@ -539,7 +539,7 @@ pub enum ItsmPlatform {
 }
 
 /// CI/CD platforms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CicdPlatform {
     GitHubActions,
     GitLabCI,
@@ -550,7 +550,7 @@ pub enum CicdPlatform {
 }
 
 /// External tool types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExternalToolType {
     APM,
     Logging,
@@ -561,7 +561,7 @@ pub enum ExternalToolType {
 }
 
 /// Data formats for external tools
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataFormat {
     JSON,
     Protobuf,
@@ -601,7 +601,7 @@ pub struct IncidentTemplate {
 }
 
 /// Incident priorities
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IncidentPriority {
     Critical,
     High,
@@ -618,7 +618,7 @@ pub struct PerformanceGate {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Comparison {
     LessThan,
     LessThanOrEqual,
@@ -696,8 +696,8 @@ pub enum LogValue {
     String(String),
     Number(f64),
     Boolean(bool),
-    Array(Vec<LogValue>),
-    Object(HashMap<String, LogValue>),
+    Array(Vec<Self>),
+    Object(HashMap<String, Self>),
 }
 
 /// Correlation context
@@ -780,7 +780,7 @@ pub struct SpanLog {
 }
 
 /// Span status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpanStatus {
     Ok,
     Error,
@@ -862,7 +862,7 @@ pub struct ServiceLevelIndicator {
 }
 
 /// SLI metric types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SliMetricType {
     Availability,
     Latency,
@@ -910,7 +910,7 @@ pub struct BurnRateAlert {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -949,7 +949,7 @@ pub struct SecurityEvent {
 }
 
 /// Security severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecuritySeverity {
     Low,
     Medium,
@@ -958,7 +958,7 @@ pub enum SecuritySeverity {
 }
 
 /// Security event outcomes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecurityOutcome {
     Success,
     Failure,
@@ -980,7 +980,7 @@ pub struct ThreatDetectionRule {
 }
 
 /// Threat rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreatRuleType {
     Anomaly,
     Signature,
@@ -999,7 +999,7 @@ pub struct ThreatCondition {
 }
 
 /// Threat operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreatOperator {
     Equals,
     NotEquals,
@@ -1011,7 +1011,7 @@ pub enum ThreatOperator {
 }
 
 /// Threat actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreatAction {
     Alert,
     Block,
@@ -1031,7 +1031,7 @@ pub struct BehavioralBaseline {
 }
 
 /// Entity types for behavioral analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntityType {
     User,
     Service,
@@ -1066,7 +1066,7 @@ pub struct ComplianceCheck {
 }
 
 /// Compliance check types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplianceCheckType {
     Configuration,
     AccessControl,
@@ -1077,7 +1077,7 @@ pub enum ComplianceCheckType {
 }
 
 /// Compliance status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplianceStatus {
     Compliant,
     NonCompliant,
@@ -1100,6 +1100,7 @@ pub struct SecurityMetrics {
 
 impl EnterpriseMonitoringSystem {
     /// Create new enterprise monitoring system
+    #[must_use]
     pub fn new(config: EnterpriseMonitoringConfig) -> Self {
         Self {
             config: config.clone(),
@@ -1248,7 +1249,7 @@ impl EnterpriseMonitoringSystem {
         })
     }
 
-    fn get_slo_compliance(&self) -> ApplicationResult<SloComplianceStatus> {
+    const fn get_slo_compliance(&self) -> ApplicationResult<SloComplianceStatus> {
         Ok(SloComplianceStatus {
             total_slos: 5,
             compliant_slos: 4,
@@ -1257,7 +1258,7 @@ impl EnterpriseMonitoringSystem {
         })
     }
 
-    fn get_security_status(&self) -> ApplicationResult<SecurityStatus> {
+    const fn get_security_status(&self) -> ApplicationResult<SecurityStatus> {
         Ok(SecurityStatus {
             threat_level: ThreatLevel::Low,
             active_threats: 0,
@@ -1266,16 +1267,16 @@ impl EnterpriseMonitoringSystem {
         })
     }
 
-    fn get_cost_metrics(&self) -> ApplicationResult<CostMetrics> {
+    const fn get_cost_metrics(&self) -> ApplicationResult<CostMetrics> {
         Ok(CostMetrics {
-            current_spend: 12450.67,
+            current_spend: 12_450.67,
             budget_utilization: 78.2,
             cost_trend: CostTrend::Stable,
             savings_opportunities: 5,
         })
     }
 
-    fn get_business_kpis(&self) -> ApplicationResult<BusinessKpis> {
+    const fn get_business_kpis(&self) -> ApplicationResult<BusinessKpis> {
         Ok(BusinessKpis {
             user_satisfaction: 4.7,
             quantum_advantage: 3.2,
@@ -1324,7 +1325,7 @@ pub struct SecurityStatus {
 }
 
 /// Threat levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreatLevel {
     Low,
     Medium,
@@ -1342,7 +1343,7 @@ pub struct CostMetrics {
 }
 
 /// Cost trends
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CostTrend {
     Decreasing,
     Stable,
@@ -1395,7 +1396,7 @@ impl StructuredLoggingSystem {
         self.log_buffer.push_back(entry);
 
         // Limit buffer size
-        if self.log_buffer.len() > 10000 {
+        if self.log_buffer.len() > 10_000 {
             self.log_buffer.pop_front();
         }
 
@@ -1505,7 +1506,7 @@ impl SecurityMonitor {
         self.security_metrics.total_events += 1;
 
         // Limit buffer size
-        if self.security_events.len() > 50000 {
+        if self.security_events.len() > 50_000 {
             self.security_events.pop_front();
         }
 
@@ -1570,14 +1571,16 @@ mod tests {
 
     #[test]
     fn test_structured_logging() {
-        let system = create_example_enterprise_monitoring().unwrap();
+        let system = create_example_enterprise_monitoring()
+            .expect("Enterprise monitoring system creation should succeed");
         let result = system.log(LogLevel::Info, "Test message", Some("corr-123".to_string()));
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_slo_creation() {
-        let system = create_example_enterprise_monitoring().unwrap();
+        let system = create_example_enterprise_monitoring()
+            .expect("Enterprise monitoring system creation should succeed");
         let slo = ServiceLevelObjective {
             id: "test-slo".to_string(),
             name: "Test SLO".to_string(),
@@ -1597,7 +1600,8 @@ mod tests {
 
     #[test]
     fn test_security_event_recording() {
-        let system = create_example_enterprise_monitoring().unwrap();
+        let system = create_example_enterprise_monitoring()
+            .expect("Enterprise monitoring system creation should succeed");
         let event = SecurityEvent {
             id: "sec-001".to_string(),
             timestamp: SystemTime::now(),
@@ -1618,11 +1622,12 @@ mod tests {
 
     #[test]
     fn test_dashboard_generation() {
-        let system = create_example_enterprise_monitoring().unwrap();
+        let system = create_example_enterprise_monitoring()
+            .expect("Enterprise monitoring system creation should succeed");
         let dashboard = system.get_dashboard();
         assert!(dashboard.is_ok());
 
-        let dashboard = dashboard.unwrap();
+        let dashboard = dashboard.expect("Dashboard generation should succeed");
         assert!(dashboard.system_health.overall_health > 0.0);
         // total_slos is u32, so always >= 0
     }

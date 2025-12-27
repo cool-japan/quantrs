@@ -264,7 +264,7 @@ impl QuantumOptimizer for GradientBasedOptimizer {
 
             if objective_value < best_value {
                 best_value = objective_value;
-                best_parameters = parameters.clone();
+                best_parameters.clone_from(&parameters);
             }
 
             // Compute gradients
@@ -392,7 +392,7 @@ impl GradientFreeOptimizer {
         for _ in 0..population_size {
             let parameters = if let Some((min_bound, max_bound)) = self.config.bounds {
                 (0..parameter_count)
-                    .map(|_| min_bound + fastrand::f64() * (max_bound - min_bound))
+                    .map(|_| fastrand::f64().mul_add(max_bound - min_bound, min_bound))
                     .collect()
             } else {
                 (0..parameter_count)
@@ -652,7 +652,9 @@ impl VQEObjectiveFunction {
 impl ObjectiveFunction for VQEObjectiveFunction {
     fn evaluate(&self, parameters: &[f64]) -> DeviceResult<f64> {
         // This is a simplified VQE energy evaluation
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = tokio::runtime::Runtime::new().map_err(|e| {
+            DeviceError::ExecutionFailed(format!("Failed to create tokio runtime: {e}"))
+        })?;
         rt.block_on(async {
             let circuit = self.ansatz.build_circuit(parameters)?;
             let device = self.device.read().await;
@@ -675,10 +677,11 @@ impl ObjectiveFunction for VQEObjectiveFunction {
 
                             match pauli_op {
                                 super::variational_algorithms::PauliOperator::Z => {
-                                    eigenvalue *= bit_value
+                                    eigenvalue *= bit_value;
                                 }
-                                super::variational_algorithms::PauliOperator::I => {} // Identity
-                                _ => {} // X and Y would need basis rotation
+                                super::variational_algorithms::PauliOperator::I | _ => {
+                                    // Identity or X/Y (would need basis rotation)
+                                }
                             }
                         }
                     }
@@ -812,7 +815,9 @@ mod tests {
         });
 
         let initial_params = vec![0.0, 0.0, 0.0];
-        let result = optimizer.optimize(initial_params, objective).unwrap();
+        let result = optimizer
+            .optimize(initial_params, objective)
+            .expect("Gradient-based optimization should succeed with quadratic objective");
 
         assert!(result.optimal_value < 1.0); // Should be close to minimum
         assert!(result.function_evaluations > 0);
@@ -834,7 +839,9 @@ mod tests {
         });
 
         let initial_params = vec![0.0, 0.0];
-        let result = optimizer.optimize(initial_params, objective).unwrap();
+        let result = optimizer
+            .optimize(initial_params, objective)
+            .expect("Gradient-free optimization should succeed with quadratic objective");
 
         assert!(result.optimal_value < 5.0); // Should improve from initial
         assert!(result.function_evaluations > 0);

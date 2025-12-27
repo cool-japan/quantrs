@@ -195,13 +195,15 @@ mod tests {
         let router = CircuitRouter::new(RoutingStrategy::Basic, coupling_map);
 
         let mut circuit = Circuit::<3>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(2),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let result = router.route(&circuit);
         assert!(result.is_ok());

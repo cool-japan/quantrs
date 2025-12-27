@@ -49,7 +49,7 @@ type EnergyConsumptionModel = String;
 type EnergyEfficiencyOptimizer = String;
 
 /// Mitigation urgency levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationUrgency {
     Immediate,
     High,
@@ -511,7 +511,10 @@ impl AdvancedQuantumScheduler {
         job_requirements: &JobRequirements,
         user_preferences: &UserPreferences,
     ) -> DeviceResult<HardwareBackend> {
-        let multi_obj = self.multi_objective_optimizer.lock().unwrap();
+        let multi_obj = self
+            .multi_objective_optimizer
+            .lock()
+            .expect("Multi-objective optimizer Mutex should not be poisoned");
 
         // Define objectives: performance, cost, energy, availability
         let objectives = vec![
@@ -541,7 +544,10 @@ impl AdvancedQuantumScheduler {
 
     /// Predictive queue time estimation using SciRS2 forecasting
     pub async fn predict_queue_times(&self) -> DeviceResult<HashMap<HardwareBackend, Duration>> {
-        let predictive_engine = self.predictive_engine.lock().unwrap();
+        let predictive_engine = self
+            .predictive_engine
+            .lock()
+            .expect("Predictive engine Mutex should not be poisoned");
 
         #[cfg(feature = "scirs2")]
         {
@@ -570,7 +576,10 @@ impl AdvancedQuantumScheduler {
 
     /// Dynamic load balancing with real-time adaptation
     pub async fn dynamic_load_balance(&self) -> DeviceResult<()> {
-        let adaptation_engine = self.adaptation_engine.lock().unwrap();
+        let adaptation_engine = self
+            .adaptation_engine
+            .lock()
+            .expect("Adaptation engine Mutex should not be poisoned");
 
         // Monitor platform performance in real-time
         let platform_metrics = self.collect_platform_metrics().await?;
@@ -594,7 +603,10 @@ impl AdvancedQuantumScheduler {
 
     /// SLA compliance monitoring and violation prediction
     pub async fn monitor_sla_compliance(&self) -> DeviceResult<SLAComplianceReport> {
-        let sla_manager = self.sla_manager.lock().unwrap();
+        let sla_manager = self
+            .sla_manager
+            .lock()
+            .expect("SLA manager Mutex should not be poisoned");
 
         // Collect current job statuses and performance metrics
         let job_metrics = self.collect_job_metrics().await?;
@@ -624,7 +636,10 @@ impl AdvancedQuantumScheduler {
 
     /// Cost optimization with dynamic pricing and budget management
     pub async fn optimize_costs(&self) -> DeviceResult<CostOptimizationReport> {
-        let cost_optimizer = self.cost_optimizer.lock().unwrap();
+        let cost_optimizer = self
+            .cost_optimizer
+            .lock()
+            .expect("Cost optimizer Mutex should not be poisoned");
 
         // Analyze current spending patterns
         let spending_analysis = self.analyze_spending_patterns().await?;
@@ -650,7 +665,10 @@ impl AdvancedQuantumScheduler {
 
     /// Energy optimization for sustainable quantum computing
     pub async fn optimize_energy_consumption(&self) -> DeviceResult<EnergyOptimizationReport> {
-        let energy_optimizer = self.energy_optimizer.lock().unwrap();
+        let energy_optimizer = self
+            .energy_optimizer
+            .lock()
+            .expect("Energy optimizer Mutex should not be poisoned");
 
         // Monitor current energy consumption
         let energy_metrics = self.collect_energy_metrics().await?;
@@ -675,7 +693,10 @@ impl AdvancedQuantumScheduler {
 
     /// Game-theoretic fair scheduling for multi-user environments
     pub async fn apply_fair_scheduling(&self) -> DeviceResult<FairnessReport> {
-        let fairness_engine = self.fairness_engine.lock().unwrap();
+        let fairness_engine = self
+            .fairness_engine
+            .lock()
+            .expect("Fairness engine Mutex should not be poisoned");
 
         // Analyze user behavior and resource usage patterns
         let user_analysis = self.analyze_user_behavior().await?;
@@ -726,7 +747,10 @@ impl AdvancedQuantumScheduler {
         features: &JobFeatures,
     ) -> DeviceResult<JobConfig> {
         // Use ML models to optimize job configuration
-        let decision_engine = self.decision_engine.lock().unwrap();
+        let decision_engine = self
+            .decision_engine
+            .lock()
+            .expect("Decision engine Mutex should not be poisoned");
 
         // Predict optimal resource requirements
         config.resource_requirements = self.predict_optimal_resources(features).await?;
@@ -807,7 +831,7 @@ impl AdvancedQuantumScheduler {
             factors.insert("fairness".to_string(), 0.8);
 
             let score = BackendScore {
-                backend_name: format!("{:?}", backend),
+                backend_name: format!("{backend:?}"),
                 score: 0.76, // weighted average
                 factors,
             };

@@ -72,8 +72,7 @@ pub fn create_standard_topology(
             Ok(topology)
         }
         _ => Err(crate::DeviceError::InvalidInput(format!(
-            "Unknown topology type: {}",
-            topology_type
+            "Unknown topology type: {topology_type}"
         ))),
     }
 }
@@ -152,21 +151,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_advanced_compilation() {
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("should create linear topology");
         let calibration = create_ideal_calibration("test".to_string(), 4);
         let config = CompilerConfig::default();
         let backend_capabilities = BackendCapabilities::default();
 
         let compiler =
             HardwareCompiler::new(config, topology, calibration, None, backend_capabilities)
-                .unwrap();
+                .expect("should create compiler");
 
         let mut circuit = Circuit::<4>::new();
         let _ = circuit.h(QubitId(0));
         let _ = circuit.cnot(QubitId(0), QubitId(1));
         let _ = circuit.cnot(QubitId(1), QubitId(2));
 
-        let result = compiler.compile_circuit(&circuit).await.unwrap();
+        let result = compiler
+            .compile_circuit(&circuit)
+            .await
+            .expect("should compile circuit");
         assert!(!result.applied_passes.is_empty());
         assert!(!result.optimization_history.is_empty());
         assert!(result.verification_results.equivalence_verified);
@@ -174,10 +177,12 @@ mod tests {
 
     #[test]
     fn test_topology_creation() {
-        let linear_topology = create_standard_topology("linear", 4).unwrap();
+        let linear_topology =
+            create_standard_topology("linear", 4).expect("should create linear topology");
         assert!(linear_topology.num_qubits >= 4);
 
-        let grid_topology = create_standard_topology("grid", 4).unwrap();
+        let grid_topology =
+            create_standard_topology("grid", 4).expect("should create grid topology");
         assert!(grid_topology.num_qubits >= 4);
     }
 

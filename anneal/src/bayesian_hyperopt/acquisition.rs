@@ -28,7 +28,7 @@ impl Default for AcquisitionConfig {
 }
 
 /// Types of acquisition functions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AcquisitionFunctionType {
     /// Expected Improvement
     ExpectedImprovement,
@@ -47,7 +47,7 @@ pub enum AcquisitionFunctionType {
 }
 
 /// Batch acquisition strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchAcquisitionStrategy {
     /// Local penalization method
     LocalPenalization,
@@ -60,7 +60,7 @@ pub enum BatchAcquisitionStrategy {
 }
 
 /// Acquisition function optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AcquisitionOptimizationMethod {
     /// Limited-memory BFGS
     LBFGS,

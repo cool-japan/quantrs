@@ -2,7 +2,6 @@
 //!
 //! This module provides comprehensive validation capabilities to ensure quantum circuits
 //! are compatible with specific backend requirements, constraints, and capabilities.
-
 use crate::builder::Circuit;
 use crate::noise_models::NoiseModel;
 use crate::routing::CouplingMap;
@@ -14,7 +13,6 @@ use quantrs2_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-
 /// Validation rules for a quantum backend
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationRules {
@@ -35,7 +33,6 @@ pub struct ValidationRules {
     /// Resource limits
     pub resource_limits: ResourceLimits,
 }
-
 /// Connectivity constraints for qubits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectivityConstraints {
@@ -48,7 +45,6 @@ pub struct ConnectivityConstraints {
     /// Restricted qubit pairs (forbidden connections)
     pub forbidden_pairs: HashSet<(usize, usize)>,
 }
-
 /// Gate set restrictions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GateRestrictions {
@@ -63,7 +59,6 @@ pub struct GateRestrictions {
     /// Gate-specific qubit restrictions
     pub gate_qubit_restrictions: HashMap<String, HashSet<usize>>,
 }
-
 /// Circuit depth and timing limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepthLimits {
@@ -76,7 +71,6 @@ pub struct DepthLimits {
     /// Depth limits by gate type
     pub gate_type_limits: HashMap<String, usize>,
 }
-
 /// Measurement operation constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MeasurementConstraints {
@@ -91,7 +85,6 @@ pub struct MeasurementConstraints {
     /// Qubits that cannot be measured
     pub non_measurable_qubits: HashSet<usize>,
 }
-
 /// Classical control flow constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClassicalConstraints {
@@ -104,7 +97,6 @@ pub struct ClassicalConstraints {
     /// Maximum conditional depth
     pub max_conditional_depth: Option<usize>,
 }
-
 /// Resource usage limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceLimits {
@@ -117,7 +109,6 @@ pub struct ResourceLimits {
     /// Priority constraints
     pub priority_constraints: Option<PriorityConstraints>,
 }
-
 /// Job priority constraints
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PriorityConstraints {
@@ -128,7 +119,6 @@ pub struct PriorityConstraints {
     /// Time-based restrictions
     pub time_restrictions: Option<TimeRestrictions>,
 }
-
 /// Time-based execution restrictions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeRestrictions {
@@ -139,7 +129,6 @@ pub struct TimeRestrictions {
     /// Maximum job duration by time of day
     pub duration_limits: HashMap<u8, usize>,
 }
-
 /// Circuit validation result
 #[derive(Debug, Clone)]
 pub struct ValidationResult {
@@ -154,7 +143,6 @@ pub struct ValidationResult {
     /// Suggested fixes
     pub suggestions: Vec<ValidationSuggestion>,
 }
-
 /// Validation error types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationError {
@@ -200,7 +188,6 @@ pub enum ValidationError {
         position: usize,
     },
 }
-
 /// Validation warning types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationWarning {
@@ -226,7 +213,6 @@ pub enum ValidationWarning {
         usage_percentage: f64,
     },
 }
-
 /// Validation statistics
 #[derive(Debug, Clone)]
 pub struct ValidationStats {
@@ -241,7 +227,6 @@ pub struct ValidationStats {
     /// Estimated execution time
     pub estimated_execution_time: Option<f64>,
 }
-
 /// Validation suggestion for fixing errors
 #[derive(Debug, Clone)]
 pub enum ValidationSuggestion {
@@ -256,7 +241,6 @@ pub enum ValidationSuggestion {
     /// Use different backend
     SwitchBackend { recommended_backends: Vec<String> },
 }
-
 /// Circuit validator for different backends
 pub struct CircuitValidator {
     /// Validation rules by backend
@@ -264,7 +248,6 @@ pub struct CircuitValidator {
     /// Cached validation results
     validation_cache: HashMap<String, ValidationResult>,
 }
-
 impl CircuitValidator {
     /// Create a new circuit validator
     #[must_use]
@@ -273,23 +256,18 @@ impl CircuitValidator {
             backend_rules: HashMap::new(),
             validation_cache: HashMap::new(),
         };
-
-        // Load standard backend validation rules
         validator.load_standard_backends();
         validator
     }
-
     /// Add validation rules for a backend
     pub fn add_backend_rules(&mut self, rules: ValidationRules) {
         self.backend_rules.insert(rules.backend_name.clone(), rules);
     }
-
     /// Get available backends for validation
     #[must_use]
     pub fn available_backends(&self) -> Vec<String> {
         self.backend_rules.keys().cloned().collect()
     }
-
     /// Validate a circuit against backend requirements
     pub fn validate<const N: usize>(
         &mut self,
@@ -298,18 +276,13 @@ impl CircuitValidator {
         noise_model: Option<&NoiseModel>,
     ) -> QuantRS2Result<ValidationResult> {
         let start_time = std::time::Instant::now();
-
-        // Check if backend is supported
         let rules = self
             .backend_rules
             .get(backend)
             .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown backend: {backend}")))?;
-
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let mut suggestions = Vec::new();
-
-        // Validate qubit count
         if N > rules.max_qubits {
             errors.push(ValidationError::ExceedsQubitLimit {
                 required: N,
@@ -319,32 +292,18 @@ impl CircuitValidator {
                 recommended_backends: self.find_backends_with_qubits(N),
             });
         }
-
-        // Validate gate set
-        self.validate_gate_set(circuit, rules, &mut errors, &mut warnings, &mut suggestions)?;
-
-        // Validate connectivity
-        self.validate_connectivity(circuit, rules, &mut errors, &mut suggestions)?;
-
-        // Validate circuit depth and limits
+        Self::validate_gate_set(circuit, rules, &mut errors, &warnings, &mut suggestions)?;
+        Self::validate_connectivity(circuit, rules, &mut errors, &mut suggestions)?;
         self.validate_depth_limits(circuit, rules, &mut errors, &mut warnings, &mut suggestions)?;
-
-        // Validate measurements
-        self.validate_measurements(circuit, rules, &mut errors, &mut warnings)?;
-
-        // Validate resource requirements
+        Self::validate_measurements(circuit, rules, &errors, &warnings)?;
         self.validate_resources(circuit, rules, &mut errors, &mut warnings)?;
-
-        // Estimate fidelity if noise model provided
         let estimated_fidelity = if let Some(noise) = noise_model {
-            Some(self.estimate_fidelity(circuit, noise)?)
+            Some(Self::estimate_fidelity(circuit, noise)?)
         } else {
             None
         };
-
         let validation_time = start_time.elapsed();
         let is_valid = errors.is_empty();
-
         let result = ValidationResult {
             is_valid,
             errors,
@@ -352,33 +311,27 @@ impl CircuitValidator {
             stats: ValidationStats {
                 validation_time,
                 gates_checked: circuit.gates().len(),
-                constraints_evaluated: self.count_constraints(rules),
+                constraints_evaluated: Self::count_constraints(rules),
                 estimated_fidelity,
-                estimated_execution_time: Some(self.estimate_execution_time(circuit, rules)),
+                estimated_execution_time: Some(Self::estimate_execution_time(circuit, rules)),
             },
             suggestions,
         };
-
         Ok(result)
     }
-
     /// Validate gate set compliance
     fn validate_gate_set<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
         errors: &mut Vec<ValidationError>,
-        warnings: &mut Vec<ValidationWarning>,
+        warnings: &[ValidationWarning],
         suggestions: &mut Vec<ValidationSuggestion>,
     ) -> QuantRS2Result<()> {
         let mut non_native_gates = Vec::new();
         let mut invalid_sequences: Vec<String> = Vec::new();
-
         for (i, gate) in circuit.gates().iter().enumerate() {
             let gate_name = gate.name();
             let qubit_count = gate.qubits().len();
-
-            // Check if gate is native
             let is_native = match qubit_count {
                 1 => rules
                     .gate_restrictions
@@ -396,7 +349,6 @@ impl CircuitValidator {
                     .multi_qubit
                     .contains(gate_name),
             };
-
             if !is_native {
                 if rules.gate_restrictions.require_native {
                     errors.push(ValidationError::UnsupportedGate {
@@ -407,8 +359,6 @@ impl CircuitValidator {
                     non_native_gates.push(gate_name.to_string());
                 }
             }
-
-            // Check gate-specific qubit restrictions
             if let Some(allowed_qubits) = rules
                 .gate_restrictions
                 .gate_qubit_restrictions
@@ -426,41 +376,31 @@ impl CircuitValidator {
                 }
             }
         }
-
-        // Add suggestions for non-native gates
         if !non_native_gates.is_empty() {
             suggestions.push(ValidationSuggestion::DecomposeGates {
                 gates_to_decompose: non_native_gates,
             });
         }
-
         Ok(())
     }
-
     /// Validate qubit connectivity constraints
     fn validate_connectivity<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
         errors: &mut Vec<ValidationError>,
         suggestions: &mut Vec<ValidationSuggestion>,
     ) -> QuantRS2Result<()> {
         if rules.connectivity.all_to_all {
-            return Ok(()); // No connectivity constraints
+            return Ok(());
         }
-
         let coupling_map = rules.connectivity.coupling_map.as_ref();
         let mut connectivity_violations = false;
-
         for (i, gate) in circuit.gates().iter().enumerate() {
             if gate.qubits().len() >= 2 {
                 let qubits: Vec<usize> = gate.qubits().iter().map(|q| q.id() as usize).collect();
-
-                // Check two-qubit connectivity
                 if gate.qubits().len() == 2 {
                     let q1 = qubits[0];
                     let q2 = qubits[1];
-
                     if rules.connectivity.forbidden_pairs.contains(&(q1, q2))
                         || rules.connectivity.forbidden_pairs.contains(&(q2, q1))
                     {
@@ -471,7 +411,6 @@ impl CircuitValidator {
                         });
                         connectivity_violations = true;
                     }
-
                     if let Some(coupling) = coupling_map {
                         if !coupling.are_connected(q1, q2) {
                             errors.push(ValidationError::ConnectivityViolation {
@@ -483,8 +422,6 @@ impl CircuitValidator {
                         }
                     }
                 }
-
-                // Check multi-qubit distance constraints
                 if let Some(max_dist) = rules.connectivity.max_distance {
                     if let Some(coupling) = coupling_map {
                         for i in 0..qubits.len() {
@@ -504,16 +441,13 @@ impl CircuitValidator {
                 }
             }
         }
-
         if connectivity_violations {
             suggestions.push(ValidationSuggestion::UseTranspilation {
                 suggested_router: "SABRE".to_string(),
             });
         }
-
         Ok(())
     }
-
     /// Validate circuit depth and timing limits
     fn validate_depth_limits<const N: usize>(
         &self,
@@ -523,10 +457,8 @@ impl CircuitValidator {
         warnings: &mut Vec<ValidationWarning>,
         suggestions: &mut Vec<ValidationSuggestion>,
     ) -> QuantRS2Result<()> {
-        let circuit_depth = self.calculate_circuit_depth(circuit);
+        let circuit_depth = Self::calculate_circuit_depth(circuit);
         let gate_count = circuit.gates().len();
-
-        // Check maximum depth
         if let Some(max_depth) = rules.depth_limits.max_depth {
             if circuit_depth > max_depth {
                 errors.push(ValidationError::DepthLimitExceeded {
@@ -541,8 +473,6 @@ impl CircuitValidator {
                 });
             }
         }
-
-        // Check maximum gate count
         if let Some(max_gates) = rules.depth_limits.max_gates {
             if gate_count > max_gates {
                 errors.push(ValidationError::GateCountExceeded {
@@ -554,10 +484,8 @@ impl CircuitValidator {
                 });
             }
         }
-
-        // Check execution time limits
         if let Some(max_time) = rules.depth_limits.max_execution_time {
-            let estimated_time = self.estimate_execution_time(circuit, rules);
+            let estimated_time = Self::estimate_execution_time(circuit, rules);
             if estimated_time > max_time {
                 warnings.push(ValidationWarning::LongExecutionTime {
                     estimated_time,
@@ -565,23 +493,17 @@ impl CircuitValidator {
                 });
             }
         }
-
         Ok(())
     }
-
     /// Validate measurement constraints
     const fn validate_measurements<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
-        errors: &mut Vec<ValidationError>,
-        warnings: &mut Vec<ValidationWarning>,
+        errors: &[ValidationError],
+        warnings: &[ValidationWarning],
     ) -> QuantRS2Result<()> {
-        // For now, basic measurement validation
-        // In a full implementation, this would analyze measurement operations in the circuit
         Ok(())
     }
-
     /// Validate resource requirements
     fn validate_resources<const N: usize>(
         &self,
@@ -590,9 +512,7 @@ impl CircuitValidator {
         errors: &mut Vec<ValidationError>,
         warnings: &mut Vec<ValidationWarning>,
     ) -> QuantRS2Result<()> {
-        // Estimate memory usage
-        let estimated_memory = self.estimate_memory_usage(circuit);
-
+        let estimated_memory = Self::estimate_memory_usage(circuit);
         if let Some(max_memory) = rules.resource_limits.max_memory_mb {
             let estimated_memory_mb = estimated_memory / (1024 * 1024);
             if estimated_memory_mb > max_memory {
@@ -608,45 +528,33 @@ impl CircuitValidator {
                 });
             }
         }
-
         Ok(())
     }
-
     /// Calculate circuit depth
-    fn calculate_circuit_depth<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
-        // Simplified depth calculation - in practice, this would consider gate parallelization
+    fn calculate_circuit_depth<const N: usize>(circuit: &Circuit<N>) -> usize {
         circuit.gates().len()
     }
-
     /// Estimate execution time
     fn estimate_execution_time<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         rules: &ValidationRules,
     ) -> f64 {
-        // Simplified estimation based on gate count
-        circuit.gates().len() as f64 * 0.1 // 0.1 microseconds per gate average
+        circuit.gates().len() as f64 * 0.1
     }
-
     /// Estimate memory usage
-    const fn estimate_memory_usage<const N: usize>(&self, circuit: &Circuit<N>) -> usize {
-        // Estimate based on state vector simulation
+    const fn estimate_memory_usage<const N: usize>(circuit: &Circuit<N>) -> usize {
         if N <= 30 {
-            (1usize << N) * 16 // 16 bytes per complex amplitude
+            (1usize << N) * 16
         } else {
-            usize::MAX // Too large for classical simulation
+            usize::MAX
         }
     }
-
     /// Estimate circuit fidelity
     fn estimate_fidelity<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
         noise_model: &NoiseModel,
     ) -> QuantRS2Result<f64> {
-        // Simplified fidelity estimation
         let mut total_error = 0.0;
-
         for gate in circuit.gates() {
             let gate_name = gate.name();
             let error = match gate.qubits().len() {
@@ -660,23 +568,19 @@ impl CircuitValidator {
                     .two_qubit_errors
                     .get(gate_name)
                     .map_or(0.01, |e| e.depolarizing),
-                _ => 0.05, // Multi-qubit gates
+                _ => 0.05,
             };
             total_error += error;
         }
-
         Ok((1.0 - total_error).max(0.0))
     }
-
     /// Count validation constraints
-    fn count_constraints(&self, rules: &ValidationRules) -> usize {
+    fn count_constraints(rules: &ValidationRules) -> usize {
         let mut count = 0;
-
-        count += 1; // Qubit count
+        count += 1;
         count += rules.gate_restrictions.native_gates.single_qubit.len();
         count += rules.gate_restrictions.native_gates.two_qubit.len();
         count += rules.gate_restrictions.native_gates.multi_qubit.len();
-
         if rules.depth_limits.max_depth.is_some() {
             count += 1;
         }
@@ -686,10 +590,8 @@ impl CircuitValidator {
         if rules.depth_limits.max_execution_time.is_some() {
             count += 1;
         }
-
         count
     }
-
     /// Find backends that support the required number of qubits
     fn find_backends_with_qubits(&self, required_qubits: usize) -> Vec<String> {
         self.backend_rules
@@ -698,23 +600,14 @@ impl CircuitValidator {
             .map(|(name, _)| name.clone())
             .collect()
     }
-
     /// Load standard backend validation rules
     fn load_standard_backends(&mut self) {
-        // IBM Quantum validation rules
         self.add_backend_rules(ValidationRules::ibm_quantum());
-
-        // Google Quantum AI validation rules
         self.add_backend_rules(ValidationRules::google_quantum());
-
-        // AWS Braket validation rules
         self.add_backend_rules(ValidationRules::aws_braket());
-
-        // Simulator validation rules
         self.add_backend_rules(ValidationRules::simulator());
     }
 }
-
 impl ValidationRules {
     /// IBM Quantum validation rules
     #[must_use]
@@ -731,12 +624,11 @@ impl ValidationRules {
                 .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
-
         Self {
             backend_name: "ibm_quantum".to_string(),
             max_qubits: 127,
             connectivity: ConnectivityConstraints {
-                coupling_map: Some(CouplingMap::grid(11, 12)), // Roughly sqrt(127) grid
+                coupling_map: Some(CouplingMap::grid(11, 12)),
                 all_to_all: false,
                 max_distance: Some(10),
                 forbidden_pairs: HashSet::new(),
@@ -750,7 +642,7 @@ impl ValidationRules {
             },
             depth_limits: DepthLimits {
                 max_depth: Some(10_000),
-                max_execution_time: Some(100_000.0), // 100ms
+                max_execution_time: Some(100_000.0),
                 max_gates: Some(50_000),
                 gate_type_limits: HashMap::new(),
             },
@@ -775,7 +667,6 @@ impl ValidationRules {
             },
         }
     }
-
     /// Google Quantum AI validation rules
     #[must_use]
     pub fn google_quantum() -> Self {
@@ -791,7 +682,6 @@ impl ValidationRules {
                 .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
-
         Self {
             backend_name: "google_quantum".to_string(),
             max_qubits: 70,
@@ -835,7 +725,6 @@ impl ValidationRules {
             },
         }
     }
-
     /// AWS Braket validation rules
     #[must_use]
     pub fn aws_braket() -> Self {
@@ -854,12 +743,11 @@ impl ValidationRules {
                 .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
-
         Self {
             backend_name: "aws_braket".to_string(),
             max_qubits: 100,
             connectivity: ConnectivityConstraints {
-                coupling_map: None, // Varies by device
+                coupling_map: None,
                 all_to_all: true,
                 max_distance: None,
                 forbidden_pairs: HashSet::new(),
@@ -898,7 +786,6 @@ impl ValidationRules {
             },
         }
     }
-
     /// Simulator validation rules
     #[must_use]
     pub fn simulator() -> Self {
@@ -920,10 +807,9 @@ impl ValidationRules {
                 .map(|(k, v)| ((*k).to_string(), *v))
                 .collect(),
         };
-
         Self {
             backend_name: "simulator".to_string(),
-            max_qubits: 30, // Practical limit for state vector simulation
+            max_qubits: 30,
             connectivity: ConnectivityConstraints {
                 coupling_map: None,
                 all_to_all: true,
@@ -965,65 +851,61 @@ impl ValidationRules {
         }
     }
 }
-
 impl Default for CircuitValidator {
     fn default() -> Self {
         Self::new()
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use quantrs2_core::gate::multi::CNOT;
     use quantrs2_core::gate::single::Hadamard;
-
     #[test]
     fn test_validator_creation() {
         let validator = CircuitValidator::new();
         assert!(!validator.available_backends().is_empty());
     }
-
     #[test]
     fn test_validation_rules_creation() {
         let rules = ValidationRules::ibm_quantum();
         assert_eq!(rules.backend_name, "ibm_quantum");
         assert_eq!(rules.max_qubits, 127);
     }
-
     #[test]
     fn test_simple_circuit_validation() {
         let mut validator = CircuitValidator::new();
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-
-        let result = validator.validate(&circuit, "simulator", None).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
+        let result = validator
+            .validate(&circuit, "simulator", None)
+            .expect("Validation should succeed for simple circuit");
         assert!(result.is_valid);
     }
-
     #[test]
     fn test_qubit_limit_validation() {
         let mut validator = CircuitValidator::new();
-        let circuit = Circuit::<200>::new(); // Too many qubits
-
-        let result = validator.validate(&circuit, "ibm_quantum", None).unwrap();
+        let circuit = Circuit::<200>::new();
+        let result = validator
+            .validate(&circuit, "ibm_quantum", None)
+            .expect("Validation should return result even for exceeding qubit limit");
         assert!(!result.is_valid);
         assert!(!result.errors.is_empty());
     }
-
     #[test]
     fn test_connectivity_validation() {
         let mut validator = CircuitValidator::new();
         let mut circuit = Circuit::<3>::new();
-        // This would require checking actual connectivity constraints
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
-
-        let result = validator.validate(&circuit, "ibm_quantum", None).unwrap();
-        // Result depends on the specific connectivity of the coupling map
+            .expect("Failed to add CNOT gate");
+        let result = validator
+            .validate(&circuit, "ibm_quantum", None)
+            .expect("Validation should return result for connectivity test");
     }
 }

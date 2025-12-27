@@ -115,11 +115,9 @@ impl MeasurementPredictor {
 
         // Train model using different algorithms based on config
         let model = match "linear_regression" {
-            // Default algorithm
-            "linear_regression" => self.train_linear_regression(&features, &targets)?,
             "autoregressive" => self.train_autoregressive_model(&features, &targets)?,
             "neural_network" => self.train_neural_network(&features, &targets).await?,
-            _ => self.train_linear_regression(&features, &targets)?, // Default
+            "linear_regression" | _ => self.train_linear_regression(&features, &targets)?, // Default
         };
 
         self.model = Some(model);
@@ -252,7 +250,7 @@ impl MeasurementPredictor {
         Ok(PredictionModel {
             model_type: "Neural Network".to_string(),
             coefficients,
-            feature_names: (0..input_size).map(|i| format!("feature_{}", i)).collect(),
+            feature_names: (0..input_size).map(|i| format!("feature_{i}")).collect(),
             training_accuracy,
             validation_accuracy: training_accuracy * 0.92,
             last_trained: std::time::SystemTime::now(),
@@ -286,7 +284,7 @@ impl MeasurementPredictor {
             let prediction = match model.model_type.as_str() {
                 "Linear Regression" => {
                     // Simple prediction using mean
-                    model.coefficients.get(0).copied().unwrap_or(0.0)
+                    model.coefficients.first().copied().unwrap_or(0.0)
                 }
                 "Autoregressive" => {
                     // AR prediction using recent values
@@ -308,7 +306,7 @@ impl MeasurementPredictor {
                 }
                 "Neural Network" => {
                     // Simplified NN prediction
-                    model.coefficients.get(0).copied().unwrap_or(0.0)
+                    model.coefficients.first().copied().unwrap_or(0.0)
                 }
                 _ => 0.0,
             };
@@ -331,7 +329,7 @@ impl MeasurementPredictor {
         let base_uncertainty = 0.1; // 10% base uncertainty
 
         for i in 0..horizon {
-            let uncertainty = base_uncertainty * (1.0 + i as f64 * 0.1); // Increasing uncertainty
+            let uncertainty = base_uncertainty * (i as f64).mul_add(0.1, 1.0); // Increasing uncertainty
             let margin = predictions[i] * uncertainty;
 
             confidence_intervals[[i, 0]] = predictions[i] - margin; // Lower bound
@@ -343,15 +341,11 @@ impl MeasurementPredictor {
 
     /// Generate prediction timestamps
     fn generate_prediction_timestamps(&self, horizon: usize) -> DeviceResult<Vec<f64>> {
-        let last_timestamp = self
-            .training_data
-            .back()
-            .map(|m| m.timestamp)
-            .unwrap_or(0.0);
+        let last_timestamp = self.training_data.back().map_or(0.0, |m| m.timestamp);
 
         let time_step = 1.0; // 1 unit time step
         let timestamps = (1..=horizon)
-            .map(|i| last_timestamp + i as f64 * time_step)
+            .map(|i| (i as f64).mul_add(time_step, last_timestamp))
             .collect();
 
         Ok(timestamps)
@@ -386,12 +380,14 @@ impl MeasurementPredictor {
         let aleatoric_uncertainty = Array1::from_elem(horizon, 0.02); // 2% noise
 
         // Epistemic uncertainty (model uncertainty, increases with prediction horizon)
-        let epistemic_uncertainty = Array1::from_shape_fn(horizon, |i| 0.01 + i as f64 * 0.005);
+        let epistemic_uncertainty =
+            Array1::from_shape_fn(horizon, |i| (i as f64).mul_add(0.005, 0.01));
 
         // Total uncertainty
         let total_uncertainty = Array1::from_shape_fn(horizon, |i| {
-            ((aleatoric_uncertainty[i] as f64).powi(2) + (epistemic_uncertainty[i] as f64).powi(2))
-                .sqrt()
+            let a: f64 = aleatoric_uncertainty[i];
+            let e: f64 = epistemic_uncertainty[i];
+            (a.powi(2) + e.powi(2)).sqrt()
         });
 
         // Uncertainty bounds
@@ -448,7 +444,7 @@ impl MeasurementPredictor {
         for prediction_result in &mut self.prediction_history {
             // Find actual measurements that correspond to this prediction
             // (simplified implementation)
-            if prediction_result.actual_values.len() == 0 && !recent_measurements.is_empty() {
+            if prediction_result.actual_values.is_empty() && !recent_measurements.is_empty() {
                 // Fill actual values (simplified)
                 let actual_values = Array1::from_vec(
                     recent_measurements
@@ -480,14 +476,14 @@ impl MeasurementPredictor {
         let total_accuracy: f64 = self
             .prediction_history
             .iter()
-            .filter(|p| p.actual_values.len() > 0)
+            .filter(|p| !p.actual_values.is_empty())
             .map(|p| p.accuracy_score)
             .sum();
 
         let validated_count = self
             .prediction_history
             .iter()
-            .filter(|p| p.actual_values.len() > 0)
+            .filter(|p| !p.actual_values.is_empty())
             .count();
 
         if validated_count > 0 {

@@ -5,7 +5,9 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{ArrayD, Dimension, IxDyn};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    current_num_threads, IndexedParallelIterator, ParallelIterator, ThreadPool, ThreadPoolBuilder,
+};
 use scirs2_core::Complex64;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
@@ -111,6 +113,7 @@ pub struct TensorWorkQueue {
 
 impl TensorWorkQueue {
     /// Create new work queue
+    #[must_use]
     pub fn new(work_units: Vec<TensorWorkUnit>, config: ParallelTensorConfig) -> Self {
         let total_units = work_units.len();
         let mut pending = VecDeque::from(work_units);
@@ -133,8 +136,15 @@ impl TensorWorkQueue {
 
     /// Get next available work unit
     pub fn get_work(&self) -> Option<TensorWorkUnit> {
-        let mut pending = self.pending.lock().unwrap();
-        let completed = self.completed.read().unwrap();
+        // Use expect() for lock poisoning - if locks are poisoned, we have a bigger problem
+        let mut pending = self
+            .pending
+            .lock()
+            .expect("pending lock should not be poisoned");
+        let completed = self
+            .completed
+            .read()
+            .expect("completed lock should not be poisoned");
 
         // Find a work unit whose dependencies are satisfied
         for i in 0..pending.len() {
@@ -145,11 +155,17 @@ impl TensorWorkQueue {
                 .all(|dep| completed.contains(dep));
 
             if dependencies_satisfied {
-                let work_unit = pending.remove(i).unwrap();
+                // Safety: i is always within bounds (from for loop condition)
+                let work_unit = pending
+                    .remove(i)
+                    .expect("index i is guaranteed to be within bounds");
 
                 // Mark as in progress
                 drop(completed);
-                let mut in_progress = self.in_progress.write().unwrap();
+                let mut in_progress = self
+                    .in_progress
+                    .write()
+                    .expect("in_progress lock should not be poisoned");
                 in_progress.insert(work_unit.id, Instant::now());
 
                 return Some(work_unit);
@@ -161,24 +177,45 @@ impl TensorWorkQueue {
 
     /// Mark work unit as completed
     pub fn complete_work(&self, work_id: usize) {
-        let mut completed = self.completed.write().unwrap();
+        let mut completed = self
+            .completed
+            .write()
+            .expect("completed lock should not be poisoned");
         completed.insert(work_id);
 
-        let mut in_progress = self.in_progress.write().unwrap();
+        let mut in_progress = self
+            .in_progress
+            .write()
+            .expect("in_progress lock should not be poisoned");
         in_progress.remove(&work_id);
     }
 
     /// Check if all work is completed
     pub fn is_complete(&self) -> bool {
-        let completed = self.completed.read().unwrap();
+        let completed = self
+            .completed
+            .read()
+            .expect("completed lock should not be poisoned");
         completed.len() == self.total_units
     }
 
     /// Get progress statistics
     pub fn get_progress(&self) -> (usize, usize, usize) {
-        let completed = self.completed.read().unwrap().len();
-        let in_progress = self.in_progress.read().unwrap().len();
-        let pending = self.pending.lock().unwrap().len();
+        let completed = self
+            .completed
+            .read()
+            .expect("completed lock should not be poisoned")
+            .len();
+        let in_progress = self
+            .in_progress
+            .read()
+            .expect("in_progress lock should not be poisoned")
+            .len();
+        let pending = self
+            .pending
+            .lock()
+            .expect("pending lock should not be poisoned")
+            .len();
         (completed, in_progress, pending)
     }
 }
@@ -249,7 +286,9 @@ impl ParallelTensorEngine {
 
         // Initialize with input tensors
         {
-            let mut results = intermediate_results.write().unwrap();
+            let mut results = intermediate_results
+                .write()
+                .expect("intermediate_results lock should not be poisoned");
             for (i, tensor) in tensors.iter().enumerate() {
                 results.insert(i, tensor.clone());
             }
@@ -260,7 +299,10 @@ impl ParallelTensorEngine {
 
         // Update statistics
         let elapsed = start_time.elapsed();
-        let mut stats = self.stats.lock().unwrap();
+        let mut stats = self
+            .stats
+            .lock()
+            .expect("stats lock should not be poisoned");
         stats.total_contractions += contraction_sequence.len() as u64;
         stats.total_computation_time += elapsed;
 
@@ -348,7 +390,9 @@ impl ParallelTensorEngine {
         }
 
         // Find the final result (tensor with highest ID)
-        let results = intermediate_results.read().unwrap();
+        let results = intermediate_results
+            .read()
+            .expect("intermediate_results lock should not be poisoned");
         let max_id = results.keys().max().copied().unwrap_or(0);
         Ok(results[&max_id].clone())
     }
@@ -364,12 +408,16 @@ impl ParallelTensorEngine {
             if let Some(work_unit) = work_queue.get_work() {
                 // Get input tensors
                 let tensor1 = {
-                    let results = intermediate_results.read().unwrap();
+                    let results = intermediate_results
+                        .read()
+                        .expect("intermediate_results lock should not be poisoned");
                     results[&work_unit.input_tensors[0]].clone()
                 };
 
                 let tensor2 = {
-                    let results = intermediate_results.read().unwrap();
+                    let results = intermediate_results
+                        .read()
+                        .expect("intermediate_results lock should not be poisoned");
                     results[&work_unit.input_tensors[1]].clone()
                 };
 
@@ -383,7 +431,9 @@ impl ParallelTensorEngine {
 
                 // Store result
                 {
-                    let mut results = intermediate_results.write().unwrap();
+                    let mut results = intermediate_results
+                        .write()
+                        .expect("intermediate_results lock should not be poisoned");
                     results.insert(work_unit.output_tensor, result);
                 }
 
@@ -471,8 +521,12 @@ impl ParallelTensorEngine {
     }
 
     /// Get performance statistics
+    #[must_use]
     pub fn get_stats(&self) -> ParallelTensorStats {
-        self.stats.lock().unwrap().clone()
+        self.stats
+            .lock()
+            .expect("stats lock should not be poisoned")
+            .clone()
     }
 }
 
@@ -491,7 +545,10 @@ pub struct ContractionPair {
 
 /// Advanced parallel tensor contraction strategies
 pub mod strategies {
-    use super::*;
+    use super::{
+        ArrayD, Complex64, ContractionPair, LoadBalancingStrategy, NumaTopology,
+        ParallelTensorConfig, ParallelTensorEngine, Result,
+    };
 
     /// Work-stealing parallel contraction
     pub fn work_stealing_contraction(
@@ -571,7 +628,8 @@ mod tests {
     #[test]
     fn test_parallel_tensor_engine() {
         let config = ParallelTensorConfig::default();
-        let engine = ParallelTensorEngine::new(config).unwrap();
+        let engine =
+            ParallelTensorEngine::new(config).expect("should create parallel tensor engine");
 
         // Create simple test tensors
         let tensor1 = Array::zeros(IxDyn(&[2, 2]));

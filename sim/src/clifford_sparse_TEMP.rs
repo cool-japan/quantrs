@@ -39,7 +39,7 @@ impl SparsePauli {
     }
 
     /// Create a single-qubit Pauli operator
-    pub fn single_qubit(num_qubits: usize, qubit: usize, pauli: char) -> Self {
+    pub fn single_qubit(num_qubits: usize, qubit: usize, pauli: char) -> Result<Self, QuantRS2Error> {
         let mut x_values = vec![];
         let mut x_indices = vec![];
         let mut z_values = vec![];
@@ -73,7 +73,7 @@ impl SparsePauli {
                 x_indices,
                 x_values,
             )
-            .unwrap();
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to create sparse X matrix: {e}")))?;
             CsrMatrix::from(&coo)
         };
 
@@ -87,15 +87,15 @@ impl SparsePauli {
                 z_indices,
                 z_values,
             )
-            .unwrap();
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to create sparse Z matrix: {e}")))?;
             CsrMatrix::from(&coo)
         };
 
-        Self {
+        Ok(Self {
             x_sparse,
             z_sparse,
             phase: 0,
-        }
+        })
     }
 
     /// Compute the commutation phase when multiplying two Paulis
@@ -151,9 +151,11 @@ impl SparseStabilizerTableau {
 
         for i in 0..num_qubits {
             // Stabilizer i is Z_i
-            stabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'Z'));
+            stabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'Z')
+                .expect("Failed to create stabilizer Z operator"));
             // Destabilizer i is X_i
-            destabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'X'));
+            destabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'X')
+                .expect("Failed to create destabilizer X operator"));
         }
 
         Self {
@@ -228,7 +230,7 @@ impl SparseStabilizerTableau {
                     new_x_indices,
                     new_x_values,
                 )
-                .unwrap();
+                .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to rebuild sparse X matrix: {e}")))?;
                 CsrMatrix::from(&coo)
             };
 
@@ -242,7 +244,7 @@ impl SparseStabilizerTableau {
                     new_z_indices,
                     new_z_values,
                 )
-                .unwrap();
+                .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to rebuild sparse Z matrix: {e}")))?;
                 CsrMatrix::from(&coo)
             };
 
@@ -299,7 +301,7 @@ impl SparseStabilizerTableau {
                     new_dx_indices,
                     new_dx_values,
                 )
-                .unwrap();
+                .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to rebuild destabilizer X matrix: {e}")))?;
                 CsrMatrix::from(&coo)
             };
 
@@ -313,7 +315,7 @@ impl SparseStabilizerTableau {
                     new_dz_indices,
                     new_dz_values,
                 )
-                .unwrap();
+                .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to rebuild destabilizer Z matrix: {e}")))?;
                 CsrMatrix::from(&coo)
             };
         }
@@ -377,7 +379,7 @@ impl SparseStabilizerTableau {
                         new_x_indices,
                         new_x_values,
                     )
-                    .unwrap();
+                    .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to update X matrix in CNOT: {e}")))?;
                     CsrMatrix::from(&coo)
                 };
             }
@@ -410,7 +412,7 @@ impl SparseStabilizerTableau {
                         new_z_indices,
                         new_z_values,
                     )
-                    .unwrap();
+                    .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to update Z matrix in CNOT target: {e}")))?;
                     CsrMatrix::from(&coo)
                 };
             }
@@ -463,7 +465,7 @@ impl SparseStabilizerTableau {
                         new_z_indices,
                         new_z_values,
                     )
-                    .unwrap();
+                    .map_err(|e| QuantRS2Error::GateApplicationFailed(format!("Failed to update Z matrix in S gate: {e}")))?;
                     CsrMatrix::from(&coo)
                 };
 
@@ -601,7 +603,7 @@ mod tests {
     #[test]
     fn test_sparse_hadamard() {
         let mut sim = SparseCliffordSimulator::new(5);
-        sim.apply_gate(CliffordGate::H(0)).unwrap();
+        sim.apply_gate(CliffordGate::H(0)).expect("Failed to apply Hadamard gate");
 
         let stabs = sim.get_stabilizers();
         assert_eq!(stabs[0], "+XIIII");
@@ -613,7 +615,7 @@ mod tests {
 
         // Create a chain of CNOTs
         for i in 0..9 {
-            sim.apply_gate(CliffordGate::CNOT(i, i + 1)).unwrap();
+            sim.apply_gate(CliffordGate::CNOT(i, i + 1)).expect("Failed to apply CNOT gate");
         }
 
         let (stab_sparsity, _) = sim.get_sparsity_info();

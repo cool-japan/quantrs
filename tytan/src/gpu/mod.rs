@@ -35,7 +35,7 @@ pub enum GpuError {
 pub type GpuResult<T> = Result<T, GpuError>;
 
 /// Check if GPU acceleration is available
-pub fn is_available() -> bool {
+pub const fn is_available() -> bool {
     #[cfg(feature = "gpu_accelerated")]
     {
         // For SciRS2 GPU integration
@@ -120,21 +120,22 @@ pub fn gpu_solve_qubo(
         let mut results = Vec::new();
 
         for i in 0..shots {
-            let mut state = binary_states.slice(scirs2_core::ndarray::s![i, ..]);
-            let mut energy = energies[[i, 0]];
+            let state = binary_states.slice(scirs2_core::ndarray::s![i, ..]);
+            let energy = energies[[i, 0]];
 
             // Create variable assignment dictionary
             let assignments: HashMap<String, bool> = state
                 .iter()
                 .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
+                .filter_map(|(idx, &value)| {
+                    idx_to_var
+                        .get(&idx)
+                        .map(|var_name| (var_name.clone(), value))
                 })
                 .collect();
 
             // Create sample result
-            let mut result = SampleResult {
+            let result = SampleResult {
                 assignments,
                 energy,
                 occurrences: 1, // For now, each result has one occurrence
@@ -144,7 +145,11 @@ pub fn gpu_solve_qubo(
         }
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Combine identical solutions
         let mut consolidated = HashMap::new();
@@ -157,11 +162,9 @@ pub fn gpu_solve_qubo(
                 .collect();
             sorted_assignments.sort_by(|a, b| a.0.cmp(&b.0));
 
-            let entry = consolidated.entry(sorted_assignments).or_insert((
-                result.assignments.clone(),
-                result.energy,
-                0,
-            ));
+            let entry = consolidated
+                .entry(sorted_assignments)
+                .or_insert_with(|| (result.assignments.clone(), result.energy, 0));
             entry.2 += 1;
         }
 
@@ -176,7 +179,11 @@ pub fn gpu_solve_qubo(
             .collect();
 
         // Sort again
-        final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        final_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(final_results)
     }
@@ -295,14 +302,15 @@ pub fn gpu_solve_qubo(
             let assignments: HashMap<String, bool> = state
                 .iter()
                 .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
+                .filter_map(|(idx, &value)| {
+                    idx_to_var
+                        .get(&idx)
+                        .map(|var_name| (var_name.clone(), value))
                 })
                 .collect();
 
             // Create sample result
-            let mut result = SampleResult {
+            let result = SampleResult {
                 assignments,
                 energy: energies[i],
                 occurrences: 1, // For now, each result has one occurrence
@@ -312,7 +320,11 @@ pub fn gpu_solve_qubo(
         }
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(results)
     }
@@ -369,7 +381,7 @@ pub fn gpu_solve_hobo(
             .collect();
 
         // Create sample result
-        let mut result = SampleResult {
+        let result = SampleResult {
             assignments,
             energy: 0.0, // This would be an actual energy in real implementation
             occurrences: 1,

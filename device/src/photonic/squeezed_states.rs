@@ -201,7 +201,9 @@ mod instant_serde {
     where
         S: Serializer,
     {
-        let duration_since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let duration_since_epoch = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("System time should be after UNIX epoch");
         duration_since_epoch.as_secs().serialize(serializer)
     }
 
@@ -260,8 +262,7 @@ impl SqueezedStateGenerator {
                 squeezing_dB,
             } => self.generate_phase_squeezed(alpha, squeezing_dB, num_modes),
             _ => Err(SqueezedStateError::GenerationFailed(format!(
-                "State type {:?} not yet implemented",
-                state_type
+                "State type {state_type:?} not yet implemented"
             ))),
         }
     }
@@ -292,8 +293,7 @@ impl SqueezedStateGenerator {
                 Ok(state)
             }
             Err(e) => Err(SqueezedStateError::GenerationFailed(format!(
-                "Failed to generate squeezed state: {:?}",
-                e
+                "Failed to generate squeezed state: {e:?}"
             ))),
         }
     }
@@ -317,13 +317,12 @@ impl SqueezedStateGenerator {
         let mut state = GaussianState::vacuum(num_modes);
 
         match state.two_mode_squeeze(realistic_r, phase, 0, 1) {
-            Ok(_) => {
+            Ok(()) => {
                 self.update_performance_metrics(squeezing_dB, realistic_r);
                 Ok(state)
             }
             Err(e) => Err(SqueezedStateError::GenerationFailed(format!(
-                "Failed to generate two-mode squeezed state: {:?}",
-                e
+                "Failed to generate two-mode squeezed state: {e:?}"
             ))),
         }
     }
@@ -343,8 +342,7 @@ impl SqueezedStateGenerator {
             Ok(s) => s,
             Err(e) => {
                 return Err(SqueezedStateError::GenerationFailed(format!(
-                    "Failed to create coherent state: {:?}",
-                    e
+                    "Failed to create coherent state: {e:?}"
                 )))
             }
         };
@@ -352,13 +350,12 @@ impl SqueezedStateGenerator {
         // Apply amplitude squeezing (squeezing in phase with displacement)
         let squeezing_angle = alpha.phase();
         match state.squeeze(realistic_r, squeezing_angle, 0) {
-            Ok(_) => {
+            Ok(()) => {
                 self.update_performance_metrics(squeezing_dB, realistic_r);
                 Ok(state)
             }
             Err(e) => Err(SqueezedStateError::GenerationFailed(format!(
-                "Failed to apply amplitude squeezing: {:?}",
-                e
+                "Failed to apply amplitude squeezing: {e:?}"
             ))),
         }
     }
@@ -378,8 +375,7 @@ impl SqueezedStateGenerator {
             Ok(s) => s,
             Err(e) => {
                 return Err(SqueezedStateError::GenerationFailed(format!(
-                    "Failed to create coherent state: {:?}",
-                    e
+                    "Failed to create coherent state: {e:?}"
                 )))
             }
         };
@@ -387,13 +383,12 @@ impl SqueezedStateGenerator {
         // Apply phase squeezing (squeezing perpendicular to displacement)
         let squeezing_angle = alpha.phase() + PI / 2.0;
         match state.squeeze(realistic_r, squeezing_angle, 0) {
-            Ok(_) => {
+            Ok(()) => {
                 self.update_performance_metrics(squeezing_dB, realistic_r);
                 Ok(state)
             }
             Err(e) => Err(SqueezedStateError::GenerationFailed(format!(
-                "Failed to apply phase squeezing: {:?}",
-                e
+                "Failed to apply phase squeezing: {e:?}"
             ))),
         }
     }
@@ -437,7 +432,7 @@ impl SqueezedStateGenerator {
 
         // Simulate stability fluctuations
         let stability_noise = (thread_rng().gen::<f64>() - 0.5) * 0.1;
-        self.performance.stability_percent = (95.0 + stability_noise).max(90.0).min(99.0);
+        self.performance.stability_percent = (95.0 + stability_noise).clamp(90.0, 99.0);
     }
 
     /// Characterize generated squeezed state
@@ -448,8 +443,7 @@ impl SqueezedStateGenerator {
     ) -> Result<SqueezingCharacterization, SqueezedStateError> {
         if mode >= state.num_modes {
             return Err(SqueezedStateError::CharacterizationFailed(format!(
-                "Mode {} does not exist",
-                mode
+                "Mode {mode} does not exist"
             )));
         }
 
@@ -463,8 +457,8 @@ impl SqueezedStateGenerator {
 
         // Calculate eigenvalues of covariance matrix
         let trace = var_x + var_p;
-        let det = var_x * var_p - cov_xp * cov_xp;
-        let discriminant = trace * trace - 4.0 * det;
+        let det = var_x.mul_add(var_p, -(cov_xp * cov_xp));
+        let discriminant = trace.mul_add(trace, -(4.0 * det));
 
         if discriminant < 0.0 {
             return Err(SqueezedStateError::CharacterizationFailed(
@@ -473,7 +467,7 @@ impl SqueezedStateGenerator {
         }
 
         let sqrt_discriminant = discriminant.sqrt();
-        let eigenval1 = (trace + sqrt_discriminant) / 2.0;
+        let eigenval1 = f64::midpoint(trace, sqrt_discriminant);
         let eigenval2 = (trace - sqrt_discriminant) / 2.0;
 
         let min_eigenval = eigenval1.min(eigenval2);
@@ -486,12 +480,10 @@ impl SqueezedStateGenerator {
         // Calculate squeezing angle
         let squeezing_angle = if cov_xp.abs() > 1e-10 {
             0.5 * (2.0 * cov_xp / (var_x - var_p)).atan()
+        } else if var_x < var_p {
+            0.0
         } else {
-            if var_x < var_p {
-                0.0
-            } else {
-                PI / 2.0
-            }
+            PI / 2.0
         };
 
         // Estimate purity
@@ -509,7 +501,7 @@ impl SqueezedStateGenerator {
             noise_figure: anti_squeezing_dB - squeezing_dB,
             bandwidth_hz: 1e6, // Placeholder - would depend on specific measurement
             purity: purity.min(1.0),
-            estimated_loss: estimated_loss.max(0.0).min(1.0),
+            estimated_loss: estimated_loss.clamp(0.0, 1.0),
         })
     }
 
@@ -586,8 +578,7 @@ impl SqueezedStateGenerator {
                     let realistic_r = self.apply_realistic_limitations(squeezing_strength)?;
                     if let Err(e) = state.two_mode_squeeze(realistic_r, 0.0, i, j) {
                         return Err(SqueezedStateError::GenerationFailed(format!(
-                            "Multimode squeezing failed: {:?}",
-                            e
+                            "Multimode squeezing failed: {e:?}"
                         )));
                     }
                 }
@@ -612,7 +603,7 @@ pub struct SqueezedStateMeasurement {
 
 #[allow(non_snake_case)]
 impl SqueezedStateMeasurement {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             homodyne_efficiency: 0.95,
             electronic_noise: 0.01,
@@ -631,8 +622,7 @@ impl SqueezedStateMeasurement {
     ) -> Result<Vec<f64>, SqueezedStateError> {
         if mode >= state.num_modes {
             return Err(SqueezedStateError::MeasurementError(format!(
-                "Mode {} does not exist",
-                mode
+                "Mode {mode} does not exist"
             )));
         }
 
@@ -643,14 +633,19 @@ impl SqueezedStateMeasurement {
         let cos_phi = local_oscillator_phase.cos();
         let sin_phi = local_oscillator_phase.sin();
 
-        let mean_quad = cos_phi * state.mean[x_idx] + sin_phi * state.mean[p_idx];
-        let var_quad = cos_phi * cos_phi * state.covariance[x_idx][x_idx]
-            + sin_phi * sin_phi * state.covariance[p_idx][p_idx]
-            + 2.0 * cos_phi * sin_phi * state.covariance[x_idx][p_idx];
+        let mean_quad = cos_phi.mul_add(state.mean[x_idx], sin_phi * state.mean[p_idx]);
+        let var_quad = (2.0 * cos_phi * sin_phi).mul_add(
+            state.covariance[x_idx][p_idx],
+            (cos_phi * cos_phi).mul_add(
+                state.covariance[x_idx][x_idx],
+                sin_phi * sin_phi * state.covariance[p_idx][p_idx],
+            ),
+        );
 
         // Account for detection efficiency
-        let effective_variance = self.homodyne_efficiency * var_quad
-            + (1.0 - self.homodyne_efficiency) * 0.5
+        let effective_variance = self
+            .homodyne_efficiency
+            .mul_add(var_quad, (1.0 - self.homodyne_efficiency) * 0.5)
             + self.electronic_noise;
 
         // Generate measurement samples
@@ -681,7 +676,7 @@ impl SqueezedStateMeasurement {
         let u1 = thread_rng().gen::<f64>();
         let u2 = thread_rng().gen::<f64>();
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
-        mean + variance.sqrt() * z
+        variance.sqrt().mul_add(z, mean)
     }
 
     /// Analyze measurement data for squeezing
@@ -759,7 +754,7 @@ mod tests {
         let result = generator.generate_squeezed_state(state_type, 1);
         assert!(result.is_ok());
 
-        let state = result.unwrap();
+        let state = result.expect("Single-mode squeezed state generation should succeed");
         assert_eq!(state.num_modes, 1);
 
         // Check that squeezing was applied (X quadrature should be squeezed)
@@ -785,7 +780,7 @@ mod tests {
         let result = generator.generate_squeezed_state(state_type, 2);
         assert!(result.is_ok());
 
-        let state = result.unwrap();
+        let state = result.expect("Two-mode squeezed state generation should succeed");
         assert_eq!(state.num_modes, 2);
     }
 
@@ -806,8 +801,12 @@ mod tests {
             angle: 0.0,
         };
 
-        let state = generator.generate_squeezed_state(state_type, 1).unwrap();
-        let characterization = generator.characterize_state(&state, 0).unwrap();
+        let state = generator
+            .generate_squeezed_state(state_type, 1)
+            .expect("Squeezed state generation should succeed");
+        let characterization = generator
+            .characterize_state(&state, 0)
+            .expect("State characterization should succeed");
 
         assert!(characterization.measured_squeezing_dB > 0.0);
         assert!(characterization.anti_squeezing_dB > 0.0);
@@ -819,11 +818,12 @@ mod tests {
         let measurement = SqueezedStateMeasurement::new();
 
         // Create a simple squeezed state for testing
-        let state = GaussianState::squeezed_vacuum(1.0, 0.0, 0, 1).unwrap();
+        let state = GaussianState::squeezed_vacuum(1.0, 0.0, 0, 1)
+            .expect("Squeezed vacuum state creation should succeed");
 
         let measurements = measurement
             .measure_squeezing_homodyne(&state, 0, 0.0, 0.1)
-            .unwrap();
+            .expect("Homodyne measurement should succeed");
 
         assert!(!measurements.is_empty());
         assert!(measurements.len() > 10000); // Should have many samples
@@ -841,7 +841,9 @@ mod tests {
 
         let mut generator = SqueezedStateGenerator::new(method);
 
-        let optimized = generator.optimize_parameters(15.0).unwrap();
+        let optimized = generator
+            .optimize_parameters(15.0)
+            .expect("Parameter optimization should succeed");
         assert_eq!(optimized.target_squeezing_dB, 15.0);
         assert!(optimized.feedback_control); // Should be enabled for high squeezing
         assert!(optimized.phase_stabilization);

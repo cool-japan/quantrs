@@ -73,6 +73,7 @@ struct ErrorSample {
 
 impl PrecisionAnalysis {
     /// Create a new empty analysis
+    #[must_use]
     pub fn new() -> Self {
         Self {
             recommended_precisions: HashMap::new(),
@@ -128,16 +129,18 @@ impl PrecisionAnalysis {
         }
 
         if count > 0 {
-            self.quality_score = (score / count as f64).min(1.0);
+            self.quality_score = (score / f64::from(count)).min(1.0);
         }
     }
 
     /// Get the best precision for a given operation type
+    #[must_use]
     pub fn get_best_precision(&self, operation: &str) -> Option<QuantumPrecision> {
         self.recommended_precisions.get(operation).copied()
     }
 
     /// Get overall recommended precision
+    #[must_use]
     pub fn get_overall_recommendation(&self) -> QuantumPrecision {
         // Find the most commonly recommended precision
         let mut precision_counts = HashMap::new();
@@ -152,11 +155,13 @@ impl PrecisionAnalysis {
     }
 
     /// Check if analysis indicates good quality
+    #[must_use]
     pub fn is_high_quality(&self) -> bool {
         self.quality_score > 0.8
     }
 
     /// Get summary statistics
+    #[must_use]
     pub fn get_summary(&self) -> AnalysisSummary {
         AnalysisSummary {
             num_operations_analyzed: self.recommended_precisions.len(),
@@ -190,6 +195,7 @@ pub struct AnalysisSummary {
 
 impl PerformanceMetrics {
     /// Create new performance metrics
+    #[must_use]
     pub const fn new(
         execution_time_ms: f64,
         memory_usage_bytes: usize,
@@ -205,6 +211,7 @@ impl PerformanceMetrics {
     }
 
     /// Create metrics from execution time and memory usage
+    #[must_use]
     pub fn from_time_and_memory(execution_time_ms: f64, memory_usage_bytes: usize) -> Self {
         let throughput = if execution_time_ms > 0.0 {
             1000.0 / execution_time_ms
@@ -224,6 +231,7 @@ impl PerformanceMetrics {
     }
 
     /// Calculate performance score (0-1, higher is better)
+    #[must_use]
     pub fn performance_score(&self) -> f64 {
         let time_score = 1.0 / (1.0 + self.execution_time_ms / 1000.0);
         let memory_score = 1.0 / (1.0 + self.memory_usage_bytes as f64 / 1e9);
@@ -234,6 +242,7 @@ impl PerformanceMetrics {
     }
 
     /// Compare with another metrics instance
+    #[must_use]
     pub fn is_better_than(&self, other: &Self) -> bool {
         self.performance_score() > other.performance_score()
     }
@@ -241,6 +250,7 @@ impl PerformanceMetrics {
 
 impl PrecisionAnalyzer {
     /// Create a new precision analyzer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             analysis_state: AnalysisState {
@@ -324,6 +334,7 @@ impl PrecisionAnalyzer {
     }
 
     /// Get average error for a precision level
+    #[must_use]
     pub fn get_average_error(&self, precision: QuantumPrecision) -> f64 {
         let errors: Vec<f64> = self
             .error_history
@@ -353,7 +364,7 @@ impl PrecisionAnalyzer {
         let execution_time = base_time * precision.computation_factor();
 
         let base_memory = 1024 * 1024; // Base memory usage in bytes
-        let memory_usage = (base_memory as f64 * precision.memory_factor()) as usize;
+        let memory_usage = (f64::from(base_memory) * precision.memory_factor()) as usize;
 
         PerformanceMetrics::from_time_and_memory(execution_time, memory_usage)
     }
@@ -361,7 +372,7 @@ impl PrecisionAnalyzer {
     /// Estimate memory usage for a precision level
     fn estimate_memory_usage(&self, precision: QuantumPrecision) -> usize {
         let base_memory = 1024 * 1024; // 1MB base
-        (base_memory as f64 * precision.memory_factor()) as usize
+        (f64::from(base_memory) * precision.memory_factor()) as usize
     }
 }
 

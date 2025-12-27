@@ -354,7 +354,7 @@ impl QuantumFLServer {
                 .filter(|&j| j != i)
                 .map(|j| (values[i] - values[j]).abs())
                 .collect();
-            distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
             // Sum of n-f-1 closest values
             scores[i] = distances.iter().take(n - f - 1).sum();
@@ -364,9 +364,9 @@ impl QuantumFLServer {
         let best_idx = scores
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(idx, _)| idx)
-            .unwrap();
+            .unwrap_or(0);
 
         Ok(values[best_idx])
     }
@@ -672,12 +672,15 @@ mod tests {
             ("measurement".to_string(), 0),
         ];
 
-        let mut client = QuantumFLClient::new("client_1".to_string(), &config, 100, 1.0).unwrap();
+        let mut client = QuantumFLClient::new("client_1".to_string(), &config, 100, 1.0)
+            .expect("Failed to create client");
 
         let data = array![[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]];
         let labels = array![0, 1, 0];
 
-        let loss = client.train_local(&data, &labels, 1).unwrap();
+        let loss = client
+            .train_local(&data, &labels, 1)
+            .expect("Training failed");
         assert!(loss >= 0.0);
     }
 
@@ -700,7 +703,9 @@ mod tests {
             ("client2".to_string(), params2, 200),
         ];
 
-        let aggregated = server.aggregate_updates(updates).unwrap();
+        let aggregated = server
+            .aggregate_updates(updates)
+            .expect("Aggregation failed");
 
         // Weighted average: w1 = (0.5*100 + 0.7*200)/300 = 0.633...
         assert!((aggregated["w1"] - 0.633).abs() < 0.01);
@@ -712,7 +717,9 @@ mod tests {
 
         // Normal values with one outlier
         let values = vec![0.5, 0.52, 0.48, 0.51, 10.0]; // 10.0 is Byzantine
-        let robust_value = server.byzantine_robust_aggregation(&values).unwrap();
+        let robust_value = server
+            .byzantine_robust_aggregation(&values)
+            .expect("Byzantine aggregation failed");
 
         // Should select one of the normal values
         assert!(robust_value < 1.0);
@@ -729,7 +736,7 @@ mod tests {
         params.insert("param2".to_string(), 0.3);
 
         let original = params.clone();
-        dp.add_noise(&mut params).unwrap();
+        dp.add_noise(&mut params).expect("Failed to add noise");
 
         // Check that noise was added
         assert_ne!(params["param1"], original["param1"]);
@@ -746,7 +753,7 @@ mod tests {
             SecureAggregationProtocol::FederatedAveraging,
             1.0,
         )
-        .unwrap();
+        .expect("Failed to create distributed learning system");
 
         // Create dummy data for each client
         let mut data_dist = HashMap::new();
@@ -756,7 +763,7 @@ mod tests {
             data_dist.insert(format!("client_{}", i), (data, labels));
         }
 
-        let result = system.train(&data_dist, 2, 2).unwrap();
+        let result = system.train(&data_dist, 2, 2).expect("Training failed");
 
         assert_eq!(result.num_rounds, 2);
         assert_eq!(result.round_losses.len(), 2);

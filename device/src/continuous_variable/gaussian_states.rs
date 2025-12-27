@@ -106,8 +106,7 @@ impl GaussianState {
     pub fn apply_displacement(&mut self, mode: usize, displacement: Complex) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -122,8 +121,7 @@ impl GaussianState {
     pub fn apply_squeezing(&mut self, mode: usize, r: f64, phi: f64) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -134,10 +132,10 @@ impl GaussianState {
 
         // Squeezing transformation matrix
         // Standard squeezing: S = [[e^(-r), 0], [0, e^r]] for φ=0
-        let s11 = cosh_r - sinh_r * cos_phi; // For φ=0: e^(-r) (squeeze position)
+        let s11 = sinh_r.mul_add(-cos_phi, cosh_r); // For φ=0: e^(-r) (squeeze position)
         let s12 = -sinh_r * sin_phi; // For φ=0: 0
         let s21 = -sinh_r * sin_phi; // For φ=0: 0
-        let s22 = cosh_r + sinh_r * cos_phi; // For φ=0: e^r (anti-squeeze momentum)
+        let s22 = sinh_r.mul_add(cos_phi, cosh_r); // For φ=0: e^r (anti-squeeze momentum)
 
         // Apply to covariance matrix
         let i = 2 * mode;
@@ -151,20 +149,18 @@ impl GaussianState {
                 if (a == i || a == j) && (b == i || b == j) {
                     let mut new_val = 0.0;
 
-                    for k in [i, j].iter() {
-                        for l in [i, j].iter() {
+                    for k in &[i, j] {
+                        for l in &[i, j] {
                             let s_ak = if a == i {
                                 if *k == i {
                                     s11
                                 } else {
                                     s12
                                 }
+                            } else if *k == i {
+                                s21
                             } else {
-                                if *k == i {
-                                    s21
-                                } else {
-                                    s22
-                                }
+                                s22
                             };
 
                             let s_bl = if b == i {
@@ -173,12 +169,10 @@ impl GaussianState {
                                 } else {
                                     s12
                                 }
+                            } else if *l == i {
+                                s21
                             } else {
-                                if *l == i {
-                                    s21
-                                } else {
-                                    s22
-                                }
+                                s22
                             };
 
                             new_val += s_ak * old_covar[*k][*l] * s_bl;
@@ -190,12 +184,12 @@ impl GaussianState {
                     // Mixed terms
                     let s_a = if a == i { [s11, s12] } else { [s21, s22] };
                     self.covariancematrix[a][b] =
-                        s_a[0] * old_covar[i][b] + s_a[1] * old_covar[j][b];
+                        s_a[0].mul_add(old_covar[i][b], s_a[1] * old_covar[j][b]);
                 } else if b == i || b == j {
                     // Mixed terms (transpose)
                     let s_b = if b == i { [s11, s21] } else { [s12, s22] };
                     self.covariancematrix[a][b] =
-                        old_covar[a][i] * s_b[0] + old_covar[a][j] * s_b[1];
+                        old_covar[a][i].mul_add(s_b[0], old_covar[a][j] * s_b[1]);
                 }
             }
         }
@@ -288,12 +282,18 @@ impl GaussianState {
         let mean2_x = old_mean[2 * mode2];
         let mean2_p = old_mean[2 * mode2 + 1];
 
-        self.mean_vector[2 * mode1] = t * mean1_x + r * cos_phi * mean2_x - r * sin_phi * mean2_p;
+        self.mean_vector[2 * mode1] =
+            (r * sin_phi).mul_add(-mean2_p, t.mul_add(mean1_x, r * cos_phi * mean2_x));
         self.mean_vector[2 * mode1 + 1] =
-            t * mean1_p + r * sin_phi * mean2_x + r * cos_phi * mean2_p;
-        self.mean_vector[2 * mode2] = -r * cos_phi * mean1_x + r * sin_phi * mean1_p + t * mean2_x;
-        self.mean_vector[2 * mode2 + 1] =
-            r * sin_phi * mean1_x + r * cos_phi * mean1_p + t * mean2_p;
+            (r * cos_phi).mul_add(mean2_p, t.mul_add(mean1_p, r * sin_phi * mean2_x));
+        self.mean_vector[2 * mode2] = t.mul_add(
+            mean2_x,
+            (-r * cos_phi).mul_add(mean1_x, r * sin_phi * mean1_p),
+        );
+        self.mean_vector[2 * mode2 + 1] = t.mul_add(
+            mean2_p,
+            (r * sin_phi).mul_add(mean1_x, r * cos_phi * mean1_p),
+        );
 
         // Build 4x4 transformation matrix
         let mut transform = [[0.0; 4]; 4];
@@ -331,8 +331,7 @@ impl GaussianState {
     pub fn apply_phase_rotation(&mut self, mode: usize, phi: f64) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -343,8 +342,8 @@ impl GaussianState {
         let mean_x = self.mean_vector[2 * mode];
         let mean_p = self.mean_vector[2 * mode + 1];
 
-        self.mean_vector[2 * mode] = cos_phi * mean_x + sin_phi * mean_p;
-        self.mean_vector[2 * mode + 1] = -sin_phi * mean_x + cos_phi * mean_p;
+        self.mean_vector[2 * mode] = cos_phi.mul_add(mean_x, sin_phi * mean_p);
+        self.mean_vector[2 * mode + 1] = (-sin_phi).mul_add(mean_x, cos_phi * mean_p);
 
         // Rotation transformation matrix
         let indices = [2 * mode, 2 * mode + 1];
@@ -378,8 +377,7 @@ impl GaussianState {
     ) -> DeviceResult<f64> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -388,17 +386,20 @@ impl GaussianState {
         let sin_phi = phase.sin();
 
         // Mean value
-        let mean_result =
-            cos_phi * self.mean_vector[2 * mode] + sin_phi * self.mean_vector[2 * mode + 1];
+        let mean_result = cos_phi.mul_add(
+            self.mean_vector[2 * mode],
+            sin_phi * self.mean_vector[2 * mode + 1],
+        );
 
         // Variance
         let var_x = self.covariancematrix[2 * mode][2 * mode];
         let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
         let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
-        let variance = cos_phi * cos_phi * var_x
-            + sin_phi * sin_phi * var_p
-            + 2.0 * cos_phi * sin_phi * cov_xp;
+        let variance = (2.0 * cos_phi * sin_phi).mul_add(
+            cov_xp,
+            (cos_phi * cos_phi).mul_add(var_x, sin_phi * sin_phi * var_p),
+        );
 
         // Add noise effects
         let noise_variance = self.calculate_measurement_noise(config);
@@ -407,7 +408,7 @@ impl GaussianState {
         // Sample from Gaussian distribution
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let noise: f64 = Normal::new(0.0, total_variance.sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?
             .sample(&mut rng);
 
         let result = mean_result + noise;
@@ -426,8 +427,7 @@ impl GaussianState {
     ) -> DeviceResult<Complex> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -443,19 +443,19 @@ impl GaussianState {
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
 
         let noise_x: f64 = Normal::new(0.0, (var_x + noise_variance / 2.0).sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?
             .sample(&mut rng);
 
         let noise_p: f64 = Normal::new(0.0, (var_p + noise_variance / 2.0).sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?
             .sample(&mut rng);
 
         let result_x = mean_x + noise_x;
         let result_p = mean_p + noise_p;
 
         let result = Complex::new(
-            (result_x + result_p * Complex::i().real) / (2.0_f64).sqrt(),
-            (result_p - result_x * Complex::i().imag) / (2.0_f64).sqrt(),
+            result_p.mul_add(Complex::i().real, result_x) / (2.0_f64).sqrt(),
+            result_x.mul_add(-Complex::i().imag, result_p) / (2.0_f64).sqrt(),
         );
 
         // Condition state on measurement (destructive measurement)
@@ -492,8 +492,10 @@ impl GaussianState {
         self.mean_vector[2 * mode + 1] = result * sin_phi / (2.0_f64).sqrt();
 
         // Simplified: reduce variance in measured quadrature
-        let measured_var = cos_phi * cos_phi * self.covariancematrix[2 * mode][2 * mode]
-            + sin_phi * sin_phi * self.covariancematrix[2 * mode + 1][2 * mode + 1];
+        let measured_var = (cos_phi * cos_phi).mul_add(
+            self.covariancematrix[2 * mode][2 * mode],
+            sin_phi * sin_phi * self.covariancematrix[2 * mode + 1][2 * mode + 1],
+        );
 
         let reduction_factor = 0.1; // Measurement significantly reduces uncertainty
         self.covariancematrix[2 * mode][2 * mode] *= reduction_factor;
@@ -516,8 +518,7 @@ impl GaussianState {
     pub fn reset_mode_to_vacuum(&mut self, mode: usize) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -548,8 +549,7 @@ impl GaussianState {
     pub fn get_mode_state(&self, mode: usize) -> DeviceResult<CVModeState> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -583,7 +583,7 @@ impl GaussianState {
         let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
         // Find minimum variance quadrature
-        let delta = (var_x - var_p).powi(2) + 4.0 * cov_xp.powi(2);
+        let delta = (var_x - var_p).mul_add(var_x - var_p, 4.0 * cov_xp.powi(2));
         let min_var = 0.5 * (var_x + var_p - delta.sqrt());
         let max_var = 0.5 * (var_x + var_p + delta.sqrt());
 
@@ -608,7 +608,7 @@ impl GaussianState {
         let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
         let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
-        let det = var_x * var_p - cov_xp.powi(2);
+        let det = cov_xp.mul_add(-cov_xp, var_x * var_p);
         1.0 / (4.0 * det)
     }
 
@@ -642,11 +642,13 @@ impl GaussianState {
             let var_p = self.covariancematrix[2 * mode + 1][2 * mode + 1];
             let cov_xp = self.covariancematrix[2 * mode][2 * mode + 1];
 
-            let det = var_x * var_p - cov_xp.powi(2);
+            let det = cov_xp.mul_add(-cov_xp, var_x * var_p);
             if det > 0.25 {
                 let eigenvalue = det.sqrt();
-                entropy += (eigenvalue + 0.5) * (eigenvalue + 0.5).ln()
-                    - (eigenvalue - 0.5) * (eigenvalue - 0.5).ln();
+                entropy += (eigenvalue + 0.5).mul_add(
+                    (eigenvalue + 0.5).ln(),
+                    -((eigenvalue - 0.5) * (eigenvalue - 0.5).ln()),
+                );
             }
         }
 
@@ -676,7 +678,7 @@ impl GaussianState {
         let cov_x1x2 = self.covariancematrix[0][2];
         let cov_p1p2 = self.covariancematrix[1][3];
 
-        (cov_x1x2.abs() + cov_p1p2.abs()) / 2.0
+        f64::midpoint(cov_x1x2.abs(), cov_p1p2.abs())
     }
 }
 
@@ -701,7 +703,8 @@ mod tests {
     #[test]
     fn test_coherent_state_creation() {
         let displacements = vec![Complex::new(1.0, 0.5), Complex::new(0.0, 1.0)];
-        let state = GaussianState::coherent_state(2, displacements).unwrap();
+        let state = GaussianState::coherent_state(2, displacements)
+            .expect("Coherent state creation should succeed");
 
         assert!(state.mean_vector[0] > 0.0); // x quadrature of mode 0
         assert!(state.mean_vector[1] > 0.0); // p quadrature of mode 0
@@ -712,7 +715,9 @@ mod tests {
         let mut state = GaussianState::vacuum_state(1);
         let displacement = Complex::new(2.0, 1.0);
 
-        state.apply_displacement(0, displacement).unwrap();
+        state
+            .apply_displacement(0, displacement)
+            .expect("Displacement operation should succeed");
 
         assert!((state.mean_vector[0] - 2.0 * (2.0_f64).sqrt()).abs() < 1e-10);
         assert!((state.mean_vector[1] - 1.0 * (2.0_f64).sqrt()).abs() < 1e-10);
@@ -722,7 +727,9 @@ mod tests {
     fn test_squeezing_operation() {
         let mut state = GaussianState::vacuum_state(1);
 
-        state.apply_squeezing(0, 1.0, 0.0).unwrap();
+        state
+            .apply_squeezing(0, 1.0, 0.0)
+            .expect("Squeezing operation should succeed");
 
         // Check that one quadrature is squeezed
         assert!(state.covariancematrix[0][0] < 0.5); // x should be squeezed
@@ -733,14 +740,16 @@ mod tests {
     fn test_beamsplitter_operation() {
         let mut state =
             GaussianState::coherent_state(2, vec![Complex::new(1.0, 0.0), Complex::new(0.0, 0.0)])
-                .unwrap();
+                .expect("Coherent state creation should succeed");
 
         let initial_energy = state.mean_vector[0].powi(2)
             + state.mean_vector[1].powi(2)
             + state.mean_vector[2].powi(2)
             + state.mean_vector[3].powi(2);
 
-        state.apply_beamsplitter(0, 1, 0.5, 0.0).unwrap();
+        state
+            .apply_beamsplitter(0, 1, 0.5, 0.0)
+            .expect("Beamsplitter operation should succeed");
 
         let final_energy = state.mean_vector[0].powi(2)
             + state.mean_vector[1].powi(2)
@@ -753,9 +762,12 @@ mod tests {
 
     #[test]
     fn test_mode_state_calculation() {
-        let state = GaussianState::squeezed_vacuum_state(1, vec![1.0], vec![0.0]).unwrap();
+        let state = GaussianState::squeezed_vacuum_state(1, vec![1.0], vec![0.0])
+            .expect("Squeezed vacuum state creation should succeed");
 
-        let mode_state = state.get_mode_state(0).unwrap();
+        let mode_state = state
+            .get_mode_state(0)
+            .expect("Getting mode state should succeed");
         assert!(mode_state.squeezing_parameter > 0.0);
         assert!((mode_state.squeezing_phase).abs() < 1e-10);
     }

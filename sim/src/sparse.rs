@@ -26,6 +26,7 @@ pub struct CSRMatrix {
 
 impl CSRMatrix {
     /// Create a new CSR matrix
+    #[must_use]
     pub fn new(
         values: Vec<Complex64>,
         col_indices: Vec<usize>,
@@ -46,6 +47,7 @@ impl CSRMatrix {
     }
 
     /// Create from a dense matrix
+    #[must_use]
     pub fn from_dense(matrix: &Array2<Complex64>) -> Self {
         let num_rows = matrix.nrows();
         let num_cols = matrix.ncols();
@@ -68,6 +70,7 @@ impl CSRMatrix {
     }
 
     /// Convert to dense matrix
+    #[must_use]
     pub fn to_dense(&self) -> Array2<Complex64> {
         let mut dense = Array2::zeros((self.num_rows, self.num_cols));
 
@@ -84,6 +87,7 @@ impl CSRMatrix {
     }
 
     /// Get number of non-zero elements
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.values.len()
     }
@@ -241,6 +245,7 @@ pub struct SparseMatrixBuilder {
 
 impl SparseMatrixBuilder {
     /// Create a new builder
+    #[must_use]
     pub const fn new(num_rows: usize, num_cols: usize) -> Self {
         Self {
             triplets: Vec::new(),
@@ -262,6 +267,7 @@ impl SparseMatrixBuilder {
     }
 
     /// Build the CSR matrix
+    #[must_use]
     pub fn build(mut self) -> CSRMatrix {
         // Sort by row, then column
         self.triplets.sort_by_key(|(r, c, _)| (*r, *c));
@@ -313,6 +319,7 @@ pub struct SparseGates;
 
 impl SparseGates {
     /// Create sparse Pauli X gate
+    #[must_use]
     pub fn x() -> CSRMatrix {
         let mut builder = SparseMatrixBuilder::new(2, 2);
         builder.add(0, 1, Complex64::new(1.0, 0.0));
@@ -321,6 +328,7 @@ impl SparseGates {
     }
 
     /// Create sparse Pauli Y gate
+    #[must_use]
     pub fn y() -> CSRMatrix {
         let mut builder = SparseMatrixBuilder::new(2, 2);
         builder.add(0, 1, Complex64::new(0.0, -1.0));
@@ -329,6 +337,7 @@ impl SparseGates {
     }
 
     /// Create sparse Pauli Z gate
+    #[must_use]
     pub fn z() -> CSRMatrix {
         let mut builder = SparseMatrixBuilder::new(2, 2);
         builder.add(0, 0, Complex64::new(1.0, 0.0));
@@ -337,6 +346,7 @@ impl SparseGates {
     }
 
     /// Create sparse CNOT gate
+    #[must_use]
     pub fn cnot() -> CSRMatrix {
         let mut builder = SparseMatrixBuilder::new(4, 4);
         builder.add(0, 0, Complex64::new(1.0, 0.0));
@@ -347,6 +357,7 @@ impl SparseGates {
     }
 
     /// Create sparse CZ gate
+    #[must_use]
     pub fn cz() -> CSRMatrix {
         let mut builder = SparseMatrixBuilder::new(4, 4);
         builder.add(0, 0, Complex64::new(1.0, 0.0));
@@ -524,7 +535,7 @@ mod tests {
         let cnot = SparseGates::cnot();
         assert_eq!(cnot.nnz(), 4);
 
-        let rz = SparseGates::rotation("z", 0.5).unwrap();
+        let rz = SparseGates::rotation("z", 0.5).expect("Failed to create rotation gate");
         assert_eq!(rz.nnz(), 2);
     }
 
@@ -533,7 +544,9 @@ mod tests {
         let x = SparseGates::x();
         let vec = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
 
-        let result = x.matvec(&vec).unwrap();
+        let result = x
+            .matvec(&vec)
+            .expect("Failed to perform matrix-vector multiplication");
         assert!((result[0] - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         assert!((result[1] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
     }
@@ -543,7 +556,9 @@ mod tests {
         let x = SparseGates::x();
         let z = SparseGates::z();
 
-        let xz = x.matmul(&z).unwrap();
+        let xz = x
+            .matmul(&z)
+            .expect("Failed to perform matrix multiplication");
         let y_expected = SparseGates::y();
 
         // X * Z = -iY

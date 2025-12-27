@@ -71,11 +71,8 @@ fn main() -> Result<()> {
     let num_layers = 2;
     let num_parameters = num_qubits * num_layers * 2; // RY and RZ per qubit per layer
 
-    println!(
-        "Ansatz: Hardware-efficient with {} parameters",
-        num_parameters
-    );
-    println!("  {} layers, {} qubits\n", num_layers, num_qubits);
+    println!("Ansatz: Hardware-efficient with {num_parameters} parameters");
+    println!("  {num_layers} layers, {num_qubits} qubits\n");
 
     // Initialize parameters
     let initial_params = vec![0.0; num_parameters];
@@ -106,7 +103,7 @@ fn main() -> Result<()> {
     ];
 
     for (optimizer_name, optimizer_type) in optimizers {
-        println!("\n=== Testing {} ===", optimizer_name);
+        println!("\n=== Testing {optimizer_name} ===");
 
         // Create fresh ansatz and hamiltonian for each run
         let ansatz = build_ansatz(num_qubits, num_layers);
@@ -154,7 +151,7 @@ fn main() -> Result<()> {
         println!("  Converged: {}", result.converged);
         println!("  Final energy: {:.6} Ha", result.optimal_energy);
         println!("  Iterations: {}", result.iterations);
-        println!("  Time: {:.2?}", elapsed);
+        println!("  Time: {elapsed:.2?}");
         println!(
             "  Error from expected: {:.6} Ha",
             (result.optimal_energy + 1.857).abs()
@@ -163,7 +160,7 @@ fn main() -> Result<()> {
         // Print final parameters
         println!("  Final parameters:");
         for (i, param) in result.optimal_parameters.iter().enumerate() {
-            println!("    θ{}: {:.4}", i, param);
+            println!("    θ{i}: {param:.4}");
         }
 
         // Print optimization history (last 5 iterations)
@@ -188,7 +185,7 @@ fn main() -> Result<()> {
         ansatz: ansatz_gd,
         hamiltonian: hamiltonian_gd,
         context: AutoDiffContext::new(
-            initial_params.clone(),
+            initial_params,
             GradientMethod::FiniteDifference { step_size: 1e-4 },
         ),
         history: Vec::new(),
@@ -207,7 +204,7 @@ fn main() -> Result<()> {
     println!("  Converged: {}", result_gd.converged);
     println!("  Final energy: {:.6} Ha", result_gd.optimal_energy);
     println!("  Iterations: {}", result_gd.iterations);
-    println!("  Time: {:.2?}", elapsed_gd);
+    println!("  Time: {elapsed_gd:.2?}");
     println!(
         "  Error from expected: {:.6} Ha",
         (result_gd.optimal_energy + 1.857).abs()

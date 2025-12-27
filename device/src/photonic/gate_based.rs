@@ -46,7 +46,7 @@ pub enum PhotonicQubitEncoding {
 }
 
 /// Polarization states
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Polarization {
     /// Horizontal polarization
     Horizontal,
@@ -79,7 +79,7 @@ pub struct PhotonicQubitState {
 
 impl PhotonicQubitState {
     /// Create |0⟩ state
-    pub fn zero(encoding: PhotonicQubitEncoding) -> Self {
+    pub const fn zero(encoding: PhotonicQubitEncoding) -> Self {
         Self {
             encoding,
             amplitude_0: 1.0,
@@ -90,7 +90,7 @@ impl PhotonicQubitState {
     }
 
     /// Create |1⟩ state
-    pub fn one(encoding: PhotonicQubitEncoding) -> Self {
+    pub const fn one(encoding: PhotonicQubitEncoding) -> Self {
         Self {
             encoding,
             amplitude_0: 0.0,
@@ -157,8 +157,8 @@ impl PhotonicQubitState {
         let old_amp_1 = self.amplitude_1;
         let old_phase = self.relative_phase;
 
-        self.amplitude_0 = (old_amp_0 + old_amp_1 * old_phase.cos()) / (2.0_f64).sqrt();
-        self.amplitude_1 = (old_amp_0 - old_amp_1 * old_phase.cos()) / (2.0_f64).sqrt();
+        self.amplitude_0 = old_amp_1.mul_add(old_phase.cos(), old_amp_0) / (2.0_f64).sqrt();
+        self.amplitude_1 = old_amp_1.mul_add(-old_phase.cos(), old_amp_0) / (2.0_f64).sqrt();
         self.relative_phase = if old_amp_1 * old_phase.sin() >= 0.0 {
             0.0
         } else {
@@ -312,7 +312,7 @@ impl PhotonicGates {
         };
 
         PhotonicGateImpl {
-            gate_name: format!("R{:?}({:.3})", axis, angle),
+            gate_name: format!("R{axis:?}({angle:.3})"),
             encoding_required: PhotonicQubitEncoding::Polarization,
             optical_elements: elements,
             success_probability: 1.0,
@@ -446,8 +446,9 @@ impl PhotonicGateImpl {
                 let old_amp_0 = state.amplitude_0;
                 let old_amp_1 = state.amplitude_1;
 
-                state.amplitude_0 =
-                    (cos_theta * old_amp_0 + sin_theta * old_amp_1 * phase.cos()).abs();
+                state.amplitude_0 = cos_theta
+                    .mul_add(old_amp_0, sin_theta * old_amp_1 * phase.cos())
+                    .abs();
                 state.amplitude_1 =
                     (sin_theta * old_amp_0 - cos_theta * old_amp_1 * phase.cos()).abs();
             }
@@ -490,10 +491,7 @@ impl PhotonicGateImpl {
 
         for element in &self.optical_elements {
             match element {
-                OpticalElement::HalfWaveplate { .. } => {
-                    requirements.waveplates += 1;
-                }
-                OpticalElement::QuarterWaveplate => {
+                OpticalElement::HalfWaveplate { .. } | OpticalElement::QuarterWaveplate => {
                     requirements.waveplates += 1;
                 }
                 OpticalElement::BeamSplitter { .. } => {
@@ -763,7 +761,9 @@ mod tests {
         let x_gate = PhotonicGates::polarization_x();
         let mut state = PhotonicQubitState::zero(PhotonicQubitEncoding::Polarization);
 
-        let success = x_gate.apply(&mut state).unwrap();
+        let success = x_gate
+            .apply(&mut state)
+            .expect("polarization X gate should apply successfully");
         assert!(success);
         assert!(state.prob_one() > 0.9); // Should be close to |1⟩
     }
@@ -787,7 +787,9 @@ mod tests {
             PhotonicGates::polarization_x(),
         ];
 
-        let implementation = compiler.compile_gate_sequence(&gates).unwrap();
+        let implementation = compiler
+            .compile_gate_sequence(&gates)
+            .expect("gate sequence compilation should succeed");
         assert_eq!(implementation.gates.len(), 2);
         assert!(implementation.success_probability > 0.9);
     }
@@ -815,10 +817,14 @@ mod tests {
             },
         ];
 
-        let mut implementation = compiler.compile_gate_sequence(&gates).unwrap();
+        let mut implementation = compiler
+            .compile_gate_sequence(&gates)
+            .expect("gate sequence compilation should succeed");
         let original_length = implementation.gates.len();
 
-        compiler.optimize_for_hardware(&mut implementation).unwrap();
+        compiler
+            .optimize_for_hardware(&mut implementation)
+            .expect("hardware optimization should succeed");
 
         // Should combine the two phase shifts into one
         assert!(implementation.gates.len() <= original_length);

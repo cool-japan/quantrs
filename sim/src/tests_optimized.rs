@@ -24,23 +24,29 @@ fn test_bell_state_all_simulators() {
     let mut circuit = Circuit::<2>::new();
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("Failed to apply Hadamard gate")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap();
+        .expect("Failed to apply CNOT gate");
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("Standard simulator failed");
 
     // Run with optimized simulators
     let simple_opt_sim = OptimizedSimulatorSimple::new();
-    let simple_opt_result = simple_opt_sim.run(&circuit).unwrap();
+    let simple_opt_result = simple_opt_sim
+        .run(&circuit)
+        .expect("Simple optimized simulator failed");
 
     let chunked_sim = OptimizedSimulatorChunked::new();
-    let chunked_opt_result = chunked_sim.run(&circuit).unwrap();
+    let chunked_opt_result = chunked_sim.run(&circuit).expect("Chunked simulator failed");
 
     let full_opt_sim = OptimizedSimulator::new();
-    let full_opt_result = full_opt_sim.run(&circuit).unwrap();
+    let full_opt_result = full_opt_sim
+        .run(&circuit)
+        .expect("Full optimized simulator failed");
 
     // Expected amplitudes for the Bell state
     let expected_amplitudes = vec![
@@ -64,25 +70,31 @@ fn test_ghz_state_all_simulators() {
     let mut circuit = Circuit::<3>::new();
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("Failed to apply Hadamard gate")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap()
+        .expect("Failed to apply CNOT gate")
         .cnot(QubitId::new(1), QubitId::new(2))
-        .unwrap();
+        .expect("Failed to apply CNOT gate");
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("Standard simulator failed");
 
     // Run with optimized simulators
     let simple_opt_sim = OptimizedSimulatorSimple::new();
-    let simple_opt_result = simple_opt_sim.run(&circuit).unwrap();
+    let simple_opt_result = simple_opt_sim
+        .run(&circuit)
+        .expect("Simple optimized simulator failed");
 
     let chunked_sim = OptimizedSimulatorChunked::new();
-    let chunked_opt_result = chunked_sim.run(&circuit).unwrap();
+    let chunked_opt_result = chunked_sim.run(&circuit).expect("Chunked simulator failed");
 
     let full_opt_sim = OptimizedSimulator::new();
-    let full_opt_result = full_opt_sim.run(&circuit).unwrap();
+    let full_opt_result = full_opt_sim
+        .run(&circuit)
+        .expect("Full optimized simulator failed");
 
     // Expected amplitudes for the GHZ state
     let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 8];
@@ -104,17 +116,23 @@ fn test_qft_like_circuit() {
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("Standard simulator failed");
 
     // Run with optimized simulators
     let simple_opt_sim = OptimizedSimulatorSimple::new();
-    let simple_opt_result = simple_opt_sim.run(&circuit).unwrap();
+    let simple_opt_result = simple_opt_sim
+        .run(&circuit)
+        .expect("Simple optimized simulator failed");
 
     let chunked_sim = OptimizedSimulatorChunked::new();
-    let chunked_opt_result = chunked_sim.run(&circuit).unwrap();
+    let chunked_opt_result = chunked_sim.run(&circuit).expect("Chunked simulator failed");
 
     let full_opt_sim = OptimizedSimulator::new();
-    let full_opt_result = full_opt_sim.run(&circuit).unwrap();
+    let full_opt_result = full_opt_sim
+        .run(&circuit)
+        .expect("Full optimized simulator failed");
 
     // Check that all simulators produce equivalent results
     assert_state_vector_close(
@@ -146,17 +164,23 @@ fn test_random_circuit_consistency() {
 
     // Run with standard simulator
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("Standard simulator failed");
 
     // Run with optimized simulators
     let simple_opt_sim = OptimizedSimulatorSimple::new();
-    let simple_opt_result = simple_opt_sim.run(&circuit).unwrap();
+    let simple_opt_result = simple_opt_sim
+        .run(&circuit)
+        .expect("Simple optimized simulator failed");
 
     let chunked_sim = OptimizedSimulatorChunked::new();
-    let chunked_opt_result = chunked_sim.run(&circuit).unwrap();
+    let chunked_opt_result = chunked_sim.run(&circuit).expect("Chunked simulator failed");
 
     let full_opt_sim = OptimizedSimulator::new();
-    let full_opt_result = full_opt_sim.run(&circuit).unwrap();
+    let full_opt_result = full_opt_sim
+        .run(&circuit)
+        .expect("Full optimized simulator failed");
 
     // Check that all simulators produce equivalent results
     assert_state_vector_close(
@@ -186,14 +210,16 @@ fn test_larger_circuit() {
 
     // Apply Hadamard to all qubits
     for i in 0..QUBITS {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .expect("Failed to apply Hadamard gate");
     }
 
     // Apply some controlled gates
     for i in 0..(QUBITS - 1) {
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
+            .expect("Failed to apply CNOT gate");
     }
 
     // Apply some rotations
@@ -203,15 +229,19 @@ fn test_larger_circuit() {
                 QubitId::new(i as u32),
                 std::f64::consts::PI / (i + 1) as f64,
             )
-            .unwrap();
+            .expect("Failed to apply RZ gate");
     }
 
     // Run with optimized simulators
     let simple_opt_sim = OptimizedSimulatorSimple::new();
-    let simple_opt_result = simple_opt_sim.run(&circuit).unwrap();
+    let simple_opt_result = simple_opt_sim
+        .run(&circuit)
+        .expect("Simple optimized simulator failed");
 
     let full_opt_sim = OptimizedSimulator::new();
-    let full_opt_result = full_opt_sim.run(&circuit).unwrap();
+    let full_opt_result = full_opt_sim
+        .run(&circuit)
+        .expect("Full optimized simulator failed");
 
     // For a larger circuit, we focus on consistency between optimized simulators
     assert_state_vector_close(
@@ -227,28 +257,30 @@ fn create_simple_qft_circuit<const N: usize>() -> Circuit<N> {
 
     // Apply H to all qubits
     for i in 0..N {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .expect("Failed to apply Hadamard gate");
     }
 
     // Apply controlled-Z gates between adjacent qubits
     for i in 0..(N - 1) {
         circuit
             .cz(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
+            .expect("Failed to apply CZ gate");
     }
 
     // Apply some Z rotations
     for i in 0..N {
         circuit
             .rz(QubitId::new(i as u32), std::f64::consts::PI / 4.0)
-            .unwrap();
+            .expect("Failed to apply RZ gate");
     }
 
     // Apply SWAP operations at the end
     for i in 0..(N / 2) {
         circuit
             .swap(QubitId::new(i as u32), QubitId::new((N - i - 1) as u32))
-            .unwrap();
+            .expect("Failed to apply SWAP gate");
     }
 
     circuit

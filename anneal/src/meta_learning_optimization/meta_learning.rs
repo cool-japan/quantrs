@@ -8,12 +8,18 @@ use crate::applications::{ApplicationError, ApplicationResult};
 use crate::ising::{IsingModel, QuboModel};
 use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulator};
 
-use super::config::*;
-use super::feature_extraction::*;
-use super::multi_objective::*;
-use super::neural_architecture_search::*;
-use super::portfolio_management::*;
-use super::transfer_learning::*;
+use super::config::MetaLearningConfig;
+use super::feature_extraction::{
+    AlgorithmType, DistributionStats, ExperienceDatabase, FeatureExtractor,
+    OptimizationConfiguration, OptimizationExperience, ProblemDomain, ProblemFeatures,
+    ResourceAllocation,
+};
+use super::multi_objective::MultiObjectiveOptimizer;
+use super::neural_architecture_search::NeuralArchitectureSearch;
+use super::portfolio_management::{AlgorithmPortfolio, PerformanceRecord};
+use super::transfer_learning::{
+    DomainCharacteristics, SourceDomain, TransferLearner, TransferableModel,
+};
 use super::{AlternativeStrategy, MetaLearningStatistics, RecommendedStrategy};
 
 /// Main meta-learning optimization engine
@@ -37,6 +43,7 @@ pub struct MetaLearningOptimizer {
 }
 
 impl MetaLearningOptimizer {
+    #[must_use]
     pub fn new(config: MetaLearningConfig) -> Self {
         Self {
             experience_db: Arc::new(RwLock::new(ExperienceDatabase::new())),
@@ -288,7 +295,7 @@ impl MetaLearningOptimizer {
         })
     }
 
-    fn infer_problem_domain(&self, features: &ProblemFeatures) -> ProblemDomain {
+    const fn infer_problem_domain(&self, features: &ProblemFeatures) -> ProblemDomain {
         // Simple domain inference based on problem characteristics
         if features.graph_features.num_edges > 0 {
             ProblemDomain::Graph
@@ -307,7 +314,7 @@ impl MetaLearningOptimizer {
         let experience_confidence = if similar_experiences.is_empty() {
             0.3
         } else {
-            0.7 + 0.3 * (similar_experiences.len() as f64 / 10.0).min(1.0)
+            0.3f64.mul_add((similar_experiences.len() as f64 / 10.0).min(1.0), 0.7)
         };
 
         let transfer_confidence = if transferred_knowledge.is_empty() {
@@ -395,6 +402,7 @@ pub struct MetaLearner {
 }
 
 impl MetaLearner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             algorithm: MetaLearningAlgorithm::MAML,
@@ -428,7 +436,11 @@ impl MetaLearner {
         let mut hyperparameters = HashMap::new();
 
         // Set hyperparameters based on experiences
-        if !experiences.is_empty() {
+        if experiences.is_empty() {
+            // Default hyperparameters
+            hyperparameters.insert("initial_temperature".to_string(), 10.0);
+            hyperparameters.insert("final_temperature".to_string(), 0.1);
+        } else {
             let avg_initial_temp = experiences
                 .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("initial_temperature"))
@@ -442,15 +454,11 @@ impl MetaLearner {
                 .sum::<f64>()
                 / experiences.len() as f64;
             hyperparameters.insert("final_temperature".to_string(), avg_final_temp.max(0.01));
-        } else {
-            // Default hyperparameters
-            hyperparameters.insert("initial_temperature".to_string(), 10.0);
-            hyperparameters.insert("final_temperature".to_string(), 0.1);
         }
 
         hyperparameters.insert(
             "num_sweeps".to_string(),
-            (features.size as f64 * 10.0).min(10000.0),
+            (features.size as f64 * 10.0).min(10_000.0),
         );
 
         let configuration = OptimizationConfiguration {
@@ -501,7 +509,7 @@ impl MetaLearner {
 }
 
 /// Meta-learning algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetaLearningAlgorithm {
     /// Model-Agnostic Meta-Learning
     MAML,
@@ -546,7 +554,7 @@ pub struct PerformanceEvaluator {
 }
 
 /// Evaluation metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationMetric {
     /// Mean squared error
     MeanSquaredError,
@@ -567,7 +575,7 @@ pub enum EvaluationMetric {
 }
 
 /// Cross-validation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CrossValidationStrategy {
     /// K-fold cross-validation
     KFold(usize),
@@ -582,7 +590,7 @@ pub enum CrossValidationStrategy {
 }
 
 /// Statistical tests
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalTest {
     /// t-test
     TTest,

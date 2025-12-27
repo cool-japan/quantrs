@@ -214,18 +214,18 @@ impl GateSequenceCompressor {
         // Apply SVD to real and imaginary parts separately
         let (u_real, s_real, vt_real) = if self.config.use_randomized {
             randomized_svd(&real_part.view(), target_rank, Some(10), Some(2), None)
-                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
+                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {e}")))?
         } else {
             truncated_svd(&real_part.view(), target_rank, None)
-                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
+                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {e}")))?
         };
 
         let (u_imag, s_imag, vt_imag) = if self.config.use_randomized {
             randomized_svd(&imag_part.view(), target_rank, Some(10), Some(2), None)
-                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
+                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {e}")))?
         } else {
             truncated_svd(&imag_part.view(), target_rank, None)
-                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {}", e)))?
+                .map_err(|e| QuantRS2Error::InvalidInput(format!("SVD failed: {e}")))?
         };
 
         // Find effective rank based on singular values
@@ -285,12 +285,12 @@ impl GateSequenceCompressor {
 
         // Apply Tucker decomposition to real part
         let tucker_real = tucker_decomposition(&real_part.view(), &ranks).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Tucker decomposition (real) failed: {}", e))
+            QuantRS2Error::InvalidInput(format!("Tucker decomposition (real) failed: {e}"))
         })?;
 
         // Apply Tucker decomposition to imaginary part
         let tucker_imag = tucker_decomposition(&imag_part.view(), &ranks).map_err(|e| {
-            QuantRS2Error::InvalidInput(format!("Tucker decomposition (imag) failed: {}", e))
+            QuantRS2Error::InvalidInput(format!("Tucker decomposition (imag) failed: {e}"))
         })?;
 
         // Convert cores to 2D
@@ -298,13 +298,13 @@ impl GateSequenceCompressor {
             .core
             .into_dimensionality::<scirs2_core::ndarray::Ix2>()
             .map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to convert real core: {}", e))
+                QuantRS2Error::InvalidInput(format!("Failed to convert real core: {e}"))
             })?;
         let core_imag = tucker_imag
             .core
             .into_dimensionality::<scirs2_core::ndarray::Ix2>()
             .map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to convert imag core: {}", e))
+                QuantRS2Error::InvalidInput(format!("Failed to convert imag core: {e}"))
             })?;
 
         // Combine real and imaginary cores into complex core
@@ -405,15 +405,14 @@ impl GateSequenceCompressor {
         // Clone values needed for the closure to avoid borrowing self
         let target_matrix_clone = target_matrix.clone();
         let gate_type_clone = gate_type.clone();
-        let _tolerance = self.config.tolerance;
+        // let _tolerance = self.config.tolerance;
 
         // Create objective function
         let objective = move |x: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
-            let params: Vec<f64> = x.iter().cloned().collect();
+            let params: Vec<f64> = x.iter().copied().collect();
 
             // Inline the evaluation logic since we can't access self
             let gate_matrix = match gate_type_clone.as_str() {
-                "rotation" => Array2::eye(target_matrix_clone.dim().0), // Placeholder
                 "phase" => {
                     let mut matrix = Array2::eye(target_matrix_clone.dim().0);
                     if !params.is_empty() {
@@ -423,7 +422,7 @@ impl GateSequenceCompressor {
                     }
                     matrix
                 }
-                _ => Array2::eye(target_matrix_clone.dim().0), // Placeholder
+                "rotation" | _ => Array2::eye(target_matrix_clone.dim().0), // Placeholder
             };
 
             // Compute Frobenius norm of difference
@@ -449,7 +448,7 @@ impl GateSequenceCompressor {
 
         let result =
             differential_evolution(objective, &de_bounds, Some(options), None).map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Parameter optimization failed: {:?}", e))
+                QuantRS2Error::InvalidInput(format!("Parameter optimization failed: {e:?}"))
             })?;
 
         if result.fun > self.config.tolerance {
@@ -543,7 +542,7 @@ impl GateSequenceCompressor {
         use std::hash::{Hash, Hasher};
 
         let mut hasher = DefaultHasher::new();
-        for elem in matrix.iter() {
+        for elem in matrix {
             // Hash real and imaginary parts
             elem.re.to_bits().hash(&mut hasher);
             elem.im.to_bits().hash(&mut hasher);
@@ -630,11 +629,20 @@ impl GateSequenceCompressor {
         tensor: &scirs2_core::ndarray::ArrayD<f64>,
     ) -> QuantRS2Result<Array2<Complex64>> {
         // For now, just flatten the tensor and reshape to square matrix
-        let elements: Vec<f64> = tensor.iter().cloned().collect();
+        let elements: Vec<f64> = tensor.iter().copied().collect();
         let size = elements.len() as f64;
         let dim = size.sqrt() as usize;
 
-        if dim * dim != elements.len() {
+        if dim * dim == elements.len() {
+            let mut matrix = Array2::zeros((dim, dim));
+            for i in 0..dim {
+                for j in 0..dim {
+                    let idx = i * dim + j;
+                    matrix[(i, j)] = Complex64::new(elements[idx], 0.0);
+                }
+            }
+            Ok(matrix)
+        } else {
             // If not square, pad with zeros
             let dim = (size.sqrt().ceil()) as usize;
             let mut matrix = Array2::zeros((dim, dim));
@@ -643,15 +651,6 @@ impl GateSequenceCompressor {
                 let j = idx % dim;
                 if i < dim && j < dim {
                     matrix[(i, j)] = Complex64::new(val, 0.0);
-                }
-            }
-            Ok(matrix)
-        } else {
-            let mut matrix = Array2::zeros((dim, dim));
-            for i in 0..dim {
-                for j in 0..dim {
-                    let idx = i * dim + j;
-                    matrix[(i, j)] = Complex64::new(elements[idx], 0.0);
                 }
             }
             Ok(matrix)
@@ -849,25 +848,25 @@ impl GateSequenceCompressor {
     }
 
     /// Compress using Zlib
-    fn compress_zlib(&self, _data: &[u8]) -> QuantRS2Result<Vec<u8>> {
+    fn compress_zlib(&self, data: &[u8]) -> QuantRS2Result<Vec<u8>> {
         #[cfg(feature = "compression")]
         {
             use std::io::Write;
             let mut encoder =
                 flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-            encoder.write_all(_data).map_err(|e| {
-                QuantRS2Error::RuntimeError(format!("Zlib compression failed: {}", e))
+            encoder.write_all(data).map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Zlib compression failed: {e}"))
             })?;
 
             encoder
                 .finish()
-                .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib compression failed: {}", e)))
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib compression failed: {e}")))
         }
 
         #[cfg(not(feature = "compression"))]
         {
             // Fallback: return uncompressed data
-            Ok(_data.to_vec())
+            Ok(data.to_vec())
         }
     }
 
@@ -922,7 +921,7 @@ impl GateSequenceCompressor {
         // For sparse matrices, store only non-zero elements with their indices
         if metadata.sparsity_ratio > 0.5 {
             let complex_data = self.deserialize_matrix_from_bytes(data)?;
-            let _n = metadata.matrix_dims.0;
+            // let _n = metadata.matrix_dims.0;
 
             // Store as (index, real, imag) triples for non-zero elements
             let mut non_zero_count = 0u32;
@@ -1067,7 +1066,7 @@ impl GateSequenceCompressor {
             let mut decompressed = Vec::new();
 
             decoder.read_to_end(&mut decompressed).map_err(|e| {
-                QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {}", e))
+                QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {e}"))
             })?;
 
             Ok(decompressed)
@@ -1283,7 +1282,11 @@ impl CustomGate {
         }
     }
 
-    pub fn with_qubits(name: String, matrix: Array2<Complex64>, qubits: Vec<QubitId>) -> Self {
+    pub const fn with_qubits(
+        name: String,
+        matrix: Array2<Complex64>,
+        qubits: Vec<QubitId>,
+    ) -> Self {
         Self {
             name,
             matrix,
@@ -1410,7 +1413,9 @@ mod tests {
         let h_gate = Hadamard {
             target: QubitId::new(0),
         };
-        let compressed = compressor.compress_gate(&h_gate).unwrap();
+        let compressed = compressor
+            .compress_gate(&h_gate)
+            .expect("Failed to compress Hadamard gate");
 
         match compressed {
             CompressedGate::Original(_) => {
@@ -1441,7 +1446,9 @@ mod tests {
             }),
         ];
 
-        let compressed = compressor.compress_sequence(&gates).unwrap();
+        let compressed = compressor
+            .compress_sequence(&gates)
+            .expect("Failed to compress gate sequence");
         assert!(compressed.len() <= gates.len());
     }
 
@@ -1459,7 +1466,9 @@ mod tests {
             }),
         ];
 
-        let compressed = compressor.compress_sequence(&gates).unwrap();
+        let compressed = compressor
+            .compress_sequence(&gates)
+            .expect("Failed to compress gate sequence for stats");
         let stats = compressor.get_stats(&gates, &compressed);
 
         assert_eq!(stats.original_gates, 2);

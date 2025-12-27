@@ -28,7 +28,7 @@ pub struct AlertThreshold {
     pub duration_threshold: Duration,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum NotificationChannel {
     Email,
     Slack,
@@ -54,7 +54,7 @@ pub struct AnomalyDetectionConfig {
     pub detection_window: Duration,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ComparisonOperator {
     GreaterThan,
     LessThan,
@@ -64,7 +64,7 @@ pub enum ComparisonOperator {
     LessThanOrEqual,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AlertSeverity {
     Low,
     Medium,
@@ -72,7 +72,7 @@ pub enum AlertSeverity {
     Critical,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AnomalyDetectionAlgorithm {
     StatisticalOutlier,
     MovingAverage,

@@ -308,13 +308,13 @@ impl QGAN {
         match self.config.noise_type {
             NoiseType::Gaussian => {
                 for i in 0..self.config.latent_qubits {
-                    noise[i] = self.rng.random::<f64>() * 2.0 - 1.0; // Normal-like distribution
+                    noise[i] = self.rng.random::<f64>().mul_add(2.0, -1.0); // Normal-like distribution
                 }
             }
             NoiseType::Uniform => {
                 for i in 0..self.config.latent_qubits {
-                    noise[i] = self.rng.random::<f64>() * 2.0 * std::f64::consts::PI
-                        - std::f64::consts::PI;
+                    noise[i] = (self.rng.random::<f64>() * 2.0)
+                        .mul_add(std::f64::consts::PI, -std::f64::consts::PI);
                 }
             }
             NoiseType::QuantumSuperposition => {
@@ -405,9 +405,14 @@ impl QGAN {
         real_batch: &Array2<f64>,
         fake_batch: &Array2<f64>,
     ) -> QuantRS2Result<f64> {
+        use crate::error::QuantRS2Error;
         // Simplified fidelity computation using mean and variance
-        let real_mean = real_batch.mean_axis(Axis(0)).unwrap();
-        let fake_mean = fake_batch.mean_axis(Axis(0)).unwrap();
+        let real_mean = real_batch
+            .mean_axis(Axis(0))
+            .ok_or_else(|| QuantRS2Error::InvalidInput("Empty real batch".to_string()))?;
+        let fake_mean = fake_batch
+            .mean_axis(Axis(0))
+            .ok_or_else(|| QuantRS2Error::InvalidInput("Empty fake batch".to_string()))?;
 
         let real_var = real_batch.var_axis(Axis(0), 0.0);
         let fake_var = fake_batch.var_axis(Axis(0), 0.0);
@@ -422,7 +427,7 @@ impl QGAN {
     }
 
     /// Get training statistics
-    pub fn get_training_stats(&self) -> &QGANTrainingStats {
+    pub const fn get_training_stats(&self) -> &QGANTrainingStats {
         &self.training_stats
     }
 
@@ -459,7 +464,7 @@ impl QuantumGenerator {
             None => StdRng::from_seed([0; 32]),
         };
 
-        for param in parameters.iter_mut() {
+        for param in &mut parameters {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
@@ -558,7 +563,7 @@ impl QuantumDiscriminator {
             None => StdRng::from_seed([0; 32]),
         };
 
-        for param in parameters.iter_mut() {
+        for param in &mut parameters {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
@@ -595,7 +600,7 @@ impl QuantumDiscriminator {
             let prediction = self.discriminate(&data_sample)?;
 
             // Binary cross-entropy loss
-            let loss = -(target * prediction.ln() + (1.0 - target) * (1.0 - prediction).ln());
+            let loss = -target.mul_add(prediction.ln(), (1.0 - target) * (1.0 - prediction).ln());
             total_loss += loss;
 
             // Compute gradients and update parameters
@@ -642,7 +647,7 @@ impl QuantumDiscriminator {
 
 impl QuantumGeneratorCircuit {
     /// Create a new quantum generator circuit
-    fn new(
+    const fn new(
         latent_qubits: usize,
         data_qubits: usize,
         depth: usize,
@@ -660,7 +665,7 @@ impl QuantumGeneratorCircuit {
     }
 
     /// Get number of parameters in the circuit
-    fn get_parameter_count(&self) -> usize {
+    const fn get_parameter_count(&self) -> usize {
         let total_qubits = self.latent_qubits + self.data_qubits;
         // Each layer: rotation gates (3 per qubit) + entangling gates
         let rotations_per_layer = total_qubits * 3;
@@ -751,7 +756,7 @@ impl QuantumGeneratorCircuit {
         // Convert hash to data values
         for i in 0..self.data_qubits {
             let qubit_hash = hash_value.wrapping_add(i as u64);
-            data[i] = ((qubit_hash % 1000) as f64 / 1000.0) * 2.0 - 1.0; // [-1, 1]
+            data[i] = ((qubit_hash % 1000) as f64 / 1000.0).mul_add(2.0, -1.0); // [-1, 1]
         }
 
         Ok(data)
@@ -794,7 +799,7 @@ impl QuantumGeneratorCircuit {
 
 impl QuantumDiscriminatorCircuit {
     /// Create a new quantum discriminator circuit
-    fn new(data_qubits: usize, aux_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
+    const fn new(data_qubits: usize, aux_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
         let total_qubits = data_qubits + aux_qubits;
 
         Ok(Self {
@@ -806,7 +811,7 @@ impl QuantumDiscriminatorCircuit {
     }
 
     /// Get number of parameters
-    fn get_parameter_count(&self) -> usize {
+    const fn get_parameter_count(&self) -> usize {
         let total_qubits = self.data_qubits + self.aux_qubits;
         let rotations_per_layer = total_qubits * 3;
         let entangling_per_layer = total_qubits;
@@ -938,7 +943,7 @@ mod tests {
     #[test]
     fn test_qgan_creation() {
         let config = QGANConfig::default();
-        let qgan = QGAN::new(config).unwrap();
+        let qgan = QGAN::new(config).expect("failed to create QGAN");
 
         assert_eq!(qgan.iteration, 0);
         assert_eq!(qgan.training_stats.generator_losses.len(), 0);
@@ -947,27 +952,27 @@ mod tests {
     #[test]
     fn test_noise_generation() {
         let config = QGANConfig::default();
-        let mut qgan = QGAN::new(config).unwrap();
+        let mut qgan = QGAN::new(config).expect("failed to create QGAN");
 
-        let noise = qgan.sample_noise().unwrap();
+        let noise = qgan.sample_noise().expect("failed to sample noise");
         assert_eq!(noise.len(), qgan.config.latent_qubits);
 
         // Test different noise types
         qgan.config.noise_type = NoiseType::Uniform;
-        let uniform_noise = qgan.sample_noise().unwrap();
+        let uniform_noise = qgan.sample_noise().expect("failed to sample uniform noise");
         assert_eq!(uniform_noise.len(), qgan.config.latent_qubits);
 
         qgan.config.noise_type = NoiseType::QuantumSuperposition;
-        let quantum_noise = qgan.sample_noise().unwrap();
+        let quantum_noise = qgan.sample_noise().expect("failed to sample quantum noise");
         assert_eq!(quantum_noise.len(), qgan.config.latent_qubits);
     }
 
     #[test]
     fn test_data_generation() {
         let config = QGANConfig::default();
-        let mut qgan = QGAN::new(config).unwrap();
+        let mut qgan = QGAN::new(config).expect("failed to create QGAN");
 
-        let generated_data = qgan.generate_data(5).unwrap();
+        let generated_data = qgan.generate_data(5).expect("failed to generate data");
         assert_eq!(generated_data.nrows(), 5);
         assert_eq!(generated_data.ncols(), qgan.config.data_qubits);
     }
@@ -975,14 +980,14 @@ mod tests {
     #[test]
     fn test_discrimination() {
         let config = QGANConfig::default();
-        let qgan = QGAN::new(config).unwrap();
+        let qgan = QGAN::new(config).expect("failed to create QGAN");
 
         // Create some mock data
         let data = Array2::from_shape_fn((3, qgan.config.data_qubits), |(i, j)| {
             (i as f64 + j as f64) / 10.0
         });
 
-        let scores = qgan.discriminate(&data).unwrap();
+        let scores = qgan.discriminate(&data).expect("failed to discriminate");
         assert_eq!(scores.len(), 3);
 
         // Check scores are in [0, 1]
@@ -997,14 +1002,14 @@ mod tests {
             batch_size: 4,
             ..Default::default()
         };
-        let mut qgan = QGAN::new(config).unwrap();
+        let mut qgan = QGAN::new(config).expect("failed to create QGAN");
 
         // Create some mock real data
         let real_data = Array2::from_shape_fn((10, qgan.config.data_qubits), |(i, j)| {
             ((i + j) as f64).sin()
         });
 
-        let metrics = qgan.train(&real_data).unwrap();
+        let metrics = qgan.train(&real_data).expect("failed to train QGAN");
 
         assert_eq!(metrics.iteration, 0);
         assert!(metrics.fidelity >= 0.0 && metrics.fidelity <= 1.0);
@@ -1016,7 +1021,7 @@ mod tests {
     #[test]
     fn test_convergence_check() {
         let config = QGANConfig::default();
-        let mut qgan = QGAN::new(config).unwrap();
+        let mut qgan = QGAN::new(config).expect("failed to create QGAN");
 
         // Simulate high fidelity values for convergence
         for _ in 0..10 {
@@ -1029,44 +1034,54 @@ mod tests {
 
     #[test]
     fn test_quantum_generator_circuit() {
-        let circuit = QuantumGeneratorCircuit::new(3, 2, 4, NoiseType::Gaussian).unwrap();
+        let circuit = QuantumGeneratorCircuit::new(3, 2, 4, NoiseType::Gaussian)
+            .expect("failed to create generator circuit");
         let param_count = circuit.get_parameter_count();
         assert!(param_count > 0);
 
         let noise = Array1::from_vec(vec![0.5, -0.5, 0.0]);
         let parameters = Array1::zeros(param_count);
 
-        let generated_data = circuit.generate_data(&noise, &parameters).unwrap();
+        let generated_data = circuit
+            .generate_data(&noise, &parameters)
+            .expect("failed to generate data");
         assert_eq!(generated_data.len(), 2);
     }
 
     #[test]
     fn test_quantum_discriminator_circuit() {
-        let circuit = QuantumDiscriminatorCircuit::new(3, 2, 4).unwrap();
+        let circuit = QuantumDiscriminatorCircuit::new(3, 2, 4)
+            .expect("failed to create discriminator circuit");
         let param_count = circuit.get_parameter_count();
         assert!(param_count > 0);
 
         let data = Array1::from_vec(vec![0.5, -0.5, 0.0]);
         let parameters = Array1::zeros(param_count);
 
-        let score = circuit.discriminate_data(&data, &parameters).unwrap();
+        let score = circuit
+            .discriminate_data(&data, &parameters)
+            .expect("failed to discriminate data");
         assert!(score >= 0.0 && score <= 1.0);
     }
 
     #[test]
     fn test_fidelity_computation() {
         let config = QGANConfig::default();
-        let qgan = QGAN::new(config).unwrap();
+        let qgan = QGAN::new(config).expect("failed to create QGAN");
 
         // Identical distributions should have high fidelity
         let data1 = Array2::ones((5, 3));
         let data2 = Array2::ones((5, 3));
-        let fidelity = qgan.compute_fidelity(&data1, &data2).unwrap();
+        let fidelity = qgan
+            .compute_fidelity(&data1, &data2)
+            .expect("failed to compute fidelity");
         assert!(fidelity > 0.9);
 
         // Very different distributions should have low fidelity
         let data3 = Array2::zeros((5, 3));
-        let fidelity2 = qgan.compute_fidelity(&data1, &data3).unwrap();
+        let fidelity2 = qgan
+            .compute_fidelity(&data1, &data3)
+            .expect("failed to compute fidelity");
         assert!(fidelity2 < fidelity);
     }
 }

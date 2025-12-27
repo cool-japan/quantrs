@@ -52,7 +52,7 @@ pub struct ValidationIssue {
 }
 
 /// Issue types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IssueType {
     SyntaxError,
     SecurityVulnerability,
@@ -64,7 +64,7 @@ pub enum IssueType {
 }
 
 /// Issue severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IssueSeverity {
     Critical,
     High,
@@ -74,7 +74,7 @@ pub enum IssueSeverity {
 }
 
 /// Recommendation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationType {
     Security,
     Performance,
@@ -103,7 +103,7 @@ pub struct ValidationRecommendation {
 }
 
 /// Recommendation priority
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationPriority {
     Low,
     Medium,
@@ -129,7 +129,7 @@ pub struct SecurityRule {
 }
 
 /// Security rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecurityRuleType {
     CodeInjection,
     DataExposure,
@@ -157,7 +157,7 @@ pub struct Vulnerability {
 }
 
 /// Vulnerability severity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VulnerabilitySeverity {
     Low,
     Medium,
@@ -197,7 +197,7 @@ pub struct SecurityVulnerability {
 }
 
 /// Vulnerability types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VulnerabilityType {
     BufferOverflow,
     SqlInjection,
@@ -226,7 +226,7 @@ pub struct QualityMetric {
 }
 
 /// Quality metric types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityMetricType {
     Complexity,
     Maintainability,
@@ -262,7 +262,7 @@ pub struct QualityIssue {
 }
 
 /// Quality issue categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityIssueCategory {
     CodeSmell,
     AntiPattern,
@@ -282,7 +282,7 @@ pub struct ImprovementSuggestion {
 }
 
 /// Improvement types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImprovementType {
     Refactoring,
     Optimization,
@@ -292,7 +292,7 @@ pub enum ImprovementType {
 }
 
 /// Implementation difficulty
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplementationDifficulty {
     Trivial,
     Easy,
@@ -356,7 +356,7 @@ pub struct TestingStandards {
 }
 
 /// Test types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestType {
     Unit,
     Integration,
@@ -393,7 +393,7 @@ pub struct ScalabilityRequirements {
 }
 
 /// Scaling behavior
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalingBehavior {
     Constant,
     Logarithmic,
@@ -452,7 +452,7 @@ impl AlgorithmValidationService {
                     issues.push(ValidationIssue {
                         issue_type: IssueType::QualityIssue,
                         severity: IssueSeverity::Medium,
-                        description: format!("Validator error: {}", e),
+                        description: format!("Validator error: {e}"),
                         location: None,
                         suggested_fix: None,
                     });

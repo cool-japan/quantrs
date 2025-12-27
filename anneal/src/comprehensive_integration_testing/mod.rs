@@ -50,6 +50,7 @@ pub use results::ValidationResults as StressTestResult;
 pub use scenarios::ExpectedResults as ExpectedOutcomes;
 
 // Placeholder for create_example_integration_testing function
+#[must_use]
 pub fn create_example_integration_testing() -> ComprehensiveIntegrationTesting {
     ComprehensiveIntegrationTesting::new(IntegrationTestConfig::default())
 }

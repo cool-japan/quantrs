@@ -77,12 +77,11 @@ pub struct DataEncoder {
 
 impl DataEncoder {
     /// Create a new data encoder
-    pub fn new(strategy: EncodingStrategy, num_qubits: usize) -> Self {
+    pub const fn new(strategy: EncodingStrategy, num_qubits: usize) -> Self {
         let num_features = match strategy {
             EncodingStrategy::Amplitude => 1 << num_qubits, // 2^n amplitudes
-            EncodingStrategy::Angle => num_qubits,          // One angle per qubit
+            EncodingStrategy::Angle | EncodingStrategy::Basis => num_qubits, // One per qubit
             EncodingStrategy::IQP => num_qubits * (num_qubits + 1) / 2, // All pairs
-            EncodingStrategy::Basis => num_qubits,          // One bit per qubit
         };
 
         Self {
@@ -93,7 +92,7 @@ impl DataEncoder {
     }
 
     /// Get the number of features this encoder can handle
-    pub fn num_features(&self) -> usize {
+    pub const fn num_features(&self) -> usize {
         self.num_features
     }
 
@@ -255,13 +254,8 @@ pub enum FeatureMapType {
 
 impl FeatureMap {
     /// Create a new feature map
-    pub fn new(num_qubits: usize, map_type: FeatureMapType, reps: usize) -> Self {
-        let num_features = match map_type {
-            FeatureMapType::Pauli => num_qubits,
-            FeatureMapType::ZFeature => num_qubits,
-            FeatureMapType::ZZFeature => num_qubits,
-            FeatureMapType::Custom => num_qubits,
-        };
+    pub const fn new(num_qubits: usize, map_type: FeatureMapType, reps: usize) -> Self {
+        let num_features = num_qubits; // All feature map types use one feature per qubit
 
         Self {
             num_qubits,
@@ -387,7 +381,7 @@ pub struct DataReuploader {
 
 impl DataReuploader {
     /// Create a new data re-uploader
-    pub fn new(encoder: DataEncoder, num_layers: usize, trainable_scaling: bool) -> Self {
+    pub const fn new(encoder: DataEncoder, num_layers: usize, trainable_scaling: bool) -> Self {
         Self {
             encoder,
             num_layers,
@@ -441,7 +435,7 @@ mod tests {
         assert_eq!(encoder.num_features(), 3);
 
         let data = vec![0.5, 1.0, 0.0];
-        let gates = encoder.encode(&data).unwrap();
+        let gates = encoder.encode(&data).expect("Failed to encode angle data");
 
         // Should have 3 Hadamards + 3 RY gates
         assert_eq!(gates.len(), 6);
@@ -453,7 +447,7 @@ mod tests {
         assert_eq!(encoder.num_features(), 4);
 
         let data = vec![1.0, 0.0, 1.0, 0.0];
-        let gates = encoder.encode(&data).unwrap();
+        let gates = encoder.encode(&data).expect("Failed to encode basis data");
 
         // Should have 2 X gates (for the 1.0 values)
         assert_eq!(gates.len(), 2);
@@ -464,7 +458,9 @@ mod tests {
         let feature_map = FeatureMap::new(2, FeatureMapType::ZFeature, 1);
         let features = vec![0.5, 0.7];
 
-        let gates = feature_map.create_gates(&features).unwrap();
+        let gates = feature_map
+            .create_gates(&features)
+            .expect("Failed to create feature map gates");
 
         // Should have 2 Hadamards + 2 RZ gates
         assert_eq!(gates.len(), 4);
@@ -476,7 +472,9 @@ mod tests {
         let reuploader = DataReuploader::new(encoder, 3, false);
 
         let data = vec![0.5, 0.5];
-        let layers = reuploader.create_gates(&data, None).unwrap();
+        let layers = reuploader
+            .create_gates(&data, None)
+            .expect("Failed to create reuploader gates");
 
         assert_eq!(layers.len(), 3); // 3 layers
         assert_eq!(layers[0].len(), 4); // Each layer has 2 H + 2 RY

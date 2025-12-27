@@ -507,6 +507,7 @@ impl Default for MemoryLayoutOptimizer {
 
 impl GPUKernelOptimizer {
     /// Create a new GPU kernel optimizer
+    #[must_use]
     pub fn new(config: GPUKernelConfig) -> Self {
         Self {
             kernel_registry: KernelRegistry::default(),
@@ -848,7 +849,7 @@ impl GPUKernelOptimizer {
     /// Generic single-qubit gate application
     const fn apply_generic_single_qubit(
         &self,
-        state: &mut Array1<Complex64>,
+        state: &Array1<Complex64>,
         qubit: usize,
         _gate_name: &str,
     ) -> QuantRS2Result<()> {
@@ -953,9 +954,9 @@ impl GPUKernelOptimizer {
         })?;
 
         // CZ: apply phase flip when both control and target are |1>
-        for i in 0..n {
+        for (i, amplitude) in amplitudes.iter_mut().enumerate() {
             if (i & control_stride) != 0 && (i & target_stride) != 0 {
-                amplitudes[i] = -amplitudes[i];
+                *amplitude = -*amplitude;
             }
         }
 
@@ -1058,6 +1059,7 @@ impl GPUKernelOptimizer {
     }
 
     /// Get available kernel names
+    #[must_use]
     pub fn get_available_kernels(&self) -> Vec<String> {
         let mut kernels = Vec::new();
         kernels.extend(self.kernel_registry.single_qubit_kernels.keys().cloned());
@@ -1067,6 +1069,7 @@ impl GPUKernelOptimizer {
     }
 
     /// Check if a kernel is available
+    #[must_use]
     pub fn has_kernel(&self, name: &str) -> bool {
         self.kernel_registry.single_qubit_kernels.contains_key(name)
             || self.kernel_registry.two_qubit_kernels.contains_key(name)
@@ -1213,15 +1216,15 @@ mod tests {
 
         optimizer
             .apply_single_qubit_gate(&mut state, 0, "hadamard", None)
-            .unwrap();
+            .expect("hadamard gate should apply successfully");
         optimizer
             .apply_single_qubit_gate(&mut state, 0, "pauli_x", None)
-            .unwrap();
+            .expect("pauli_x gate should apply successfully");
 
-        let stats = optimizer.get_stats().unwrap();
+        let stats = optimizer.get_stats().expect("get_stats should succeed");
         assert_eq!(stats.total_executions, 2);
-        assert_eq!(*stats.execution_counts.get("hadamard").unwrap(), 1);
-        assert_eq!(*stats.execution_counts.get("pauli_x").unwrap(), 1);
+        assert_eq!(*stats.execution_counts.get("hadamard").unwrap_or(&0), 1);
+        assert_eq!(*stats.execution_counts.get("pauli_x").unwrap_or(&0), 1);
     }
 
     #[test]
@@ -1265,10 +1268,10 @@ mod tests {
 
         optimizer
             .apply_single_qubit_gate(&mut state, 0, "hadamard", None)
-            .unwrap();
-        optimizer.reset_stats().unwrap();
+            .expect("hadamard gate should apply successfully");
+        optimizer.reset_stats().expect("reset_stats should succeed");
 
-        let stats = optimizer.get_stats().unwrap();
+        let stats = optimizer.get_stats().expect("get_stats should succeed");
         assert_eq!(stats.total_executions, 0);
     }
 
@@ -1284,12 +1287,12 @@ mod tests {
         // Apply H to qubit 0
         optimizer
             .apply_single_qubit_gate(&mut state, 0, "hadamard", None)
-            .unwrap();
+            .expect("hadamard gate should apply successfully");
 
         // Apply CNOT(0, 1)
         optimizer
             .apply_two_qubit_gate(&mut state, 0, 1, "cnot")
-            .unwrap();
+            .expect("cnot gate should apply successfully");
 
         // State should be in superposition
         let total_prob: f64 = state.iter().map(|a| (a * a.conj()).re).sum();

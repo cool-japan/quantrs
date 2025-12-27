@@ -26,14 +26,14 @@ pub struct StabilizerGroup {
 }
 
 /// Type of stabilizer (X or Z)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StabilizerType {
     XStabilizer,
     ZStabilizer,
 }
 
 /// Pauli operator enumeration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PauliOperator {
     I,
     X,
@@ -49,7 +49,7 @@ pub struct LogicalOperator {
 }
 
 /// Type of logical operator
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogicalOperatorType {
     LogicalX,
     LogicalZ,
@@ -63,7 +63,7 @@ pub struct SyndromeResult {
 }
 
 /// Type of syndrome indicating error type
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SyndromeType {
     XError,
     ZError,
@@ -108,7 +108,7 @@ pub struct DeviceState {
 }
 
 /// Type of correction operation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CorrectionType {
     PauliX,
     PauliY,
@@ -146,7 +146,7 @@ pub struct AdaptiveQECSystem {
 }
 
 impl AdaptiveQECSystem {
-    pub fn new(config: super::adaptive::AdaptiveQECConfig) -> Self {
+    pub const fn new(config: super::adaptive::AdaptiveQECConfig) -> Self {
         Self {
             config,
             current_threshold: 0.95,
@@ -154,19 +154,19 @@ impl AdaptiveQECSystem {
         }
     }
 
-    pub fn update_thresholds(&mut self, _performance_data: &[f64]) {
+    pub const fn update_thresholds(&mut self, _performance_data: &[f64]) {
         // Implementation provided by adaptive module
     }
 
-    pub fn adapt_strategy(&mut self, _error_rates: &[f64]) {
+    pub const fn adapt_strategy(&mut self, _error_rates: &[f64]) {
         // Implementation provided by adaptive module
     }
 
-    pub fn get_current_threshold(&self) -> f64 {
+    pub const fn get_current_threshold(&self) -> f64 {
         self.current_threshold
     }
 
-    pub fn update_performance(&mut self, _metrics: &QECPerformanceMetrics) {
+    pub const fn update_performance(&mut self, _metrics: &QECPerformanceMetrics) {
         self.current_threshold = 0.90;
     }
 
@@ -177,7 +177,7 @@ impl AdaptiveQECSystem {
     pub fn evaluate_strategies(&mut self, strategy_performance: &HashMap<super::QECStrategy, f64>) {
         if let Some((best_strategy, _)) = strategy_performance
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
         {
             self.current_strategy = best_strategy.clone();
         }
@@ -198,11 +198,11 @@ impl QECPerformanceTracker {
         }
     }
 
-    pub fn record_correction(&mut self, _correction_type: CorrectionType, _success: bool) {
+    pub const fn record_correction(&mut self, _correction_type: CorrectionType, _success: bool) {
         // Record correction for statistics
     }
 
-    pub fn get_success_rate(&self) -> f64 {
+    pub const fn get_success_rate(&self) -> f64 {
         0.95
     }
 
@@ -210,11 +210,11 @@ impl QECPerformanceTracker {
         self.metrics_history.push(metrics);
     }
 
-    pub fn get_metrics_history(&self) -> &Vec<QECPerformanceMetrics> {
+    pub const fn get_metrics_history(&self) -> &Vec<QECPerformanceMetrics> {
         &self.metrics_history
     }
 
-    pub fn analyze_trends(&self) -> TrendAnalysis {
+    pub const fn analyze_trends(&self) -> TrendAnalysis {
         TrendAnalysis {
             error_rate_trend: Some(0.1),
             detection_rate_trend: Some(-0.05),
@@ -255,7 +255,7 @@ pub enum ErrorModel {
 }
 
 impl ErrorModel {
-    pub fn apply_to_qubits(&self, _qubits: &[QubitId]) -> QECResult<()> {
+    pub const fn apply_to_qubits(&self, _qubits: &[QubitId]) -> QECResult<()> {
         Ok(())
     }
 }

@@ -60,10 +60,7 @@ fn main() -> Result<()> {
         constraints: vec![],
     };
 
-    println!(
-        "Problem: MaxCut on a square graph with {} vertices",
-        num_vertices
-    );
+    println!("Problem: MaxCut on a square graph with {num_vertices} vertices");
     println!("Edges: (0,1), (1,2), (2,3), (3,0), (0,2)");
     println!("Expected max cut value: 4 (optimal: {{0,2}} vs {{1,3}})\n");
 
@@ -78,7 +75,7 @@ fn main() -> Result<()> {
     ];
 
     for (strategy_name, strategy) in strategies {
-        println!("\n=== Testing {} ===", strategy_name);
+        println!("\n=== Testing {strategy_name} ===");
 
         // Configure QAOA
         let config = QAOAConfig {
@@ -110,7 +107,7 @@ fn main() -> Result<()> {
         println!("  Best cost: {:.4}", result.best_cost);
         println!("  Approximation ratio: {:.4}", result.approximation_ratio);
         println!("  Iterations: {}", result.function_evaluations);
-        println!("  Time: {:.2?}", elapsed);
+        println!("  Time: {elapsed:.2?}");
         println!("  Best solution: {}", result.best_solution);
 
         // Print final parameters
@@ -138,7 +135,7 @@ fn main() -> Result<()> {
         println!("    Feasible: {}", result.solution_quality.feasible);
         println!("    Confidence: {:.4}", result.solution_quality.confidence);
         if let Some(gap) = result.solution_quality.optimality_gap {
-            println!("    Optimality gap: {:.4}", gap);
+            println!("    Optimality gap: {gap:.4}");
         }
 
         // Print cost history (last 10 iterations)
@@ -146,7 +143,7 @@ fn main() -> Result<()> {
             println!("\n  Last 10 cost values:");
             for (i, cost) in result.cost_history.iter().rev().take(10).rev().enumerate() {
                 let iter_num = result.cost_history.len() - 10 + i;
-                println!("    Iter {}: {:.6}", iter_num, cost);
+                println!("    Iter {iter_num}: {cost:.6}");
             }
         }
     }

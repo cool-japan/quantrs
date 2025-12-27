@@ -6,7 +6,7 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 
@@ -27,7 +27,7 @@ pub struct LindladSimulator {
     time_step: f64,
     /// Integration method
     integration_method: IntegrationMethod,
-    /// SciRS2 backend for linear algebra
+    /// `SciRS2` backend for linear algebra
     backend: Option<SciRS2Backend>,
 }
 
@@ -73,7 +73,7 @@ impl LindladSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_scirs2_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -275,7 +275,7 @@ impl LindladSimulator {
         }
     }
 
-    /// Matrix exponential using SciRS2
+    /// Matrix exponential using `SciRS2`
     fn matrix_exp_with_scirs2(&mut self, dt: f64) -> Result<()> {
         // This would use SciRS2's matrix exponential routines
         // For now, fallback to series expansion
@@ -294,7 +294,7 @@ impl LindladSimulator {
 
         // Series expansion up to reasonable order
         for n in 1..=20 {
-            term = term.dot(&l_dt) / n as f64;
+            term = term.dot(&l_dt) / f64::from(n);
             result += &term;
 
             // Check convergence
@@ -395,16 +395,20 @@ impl LindladSimulator {
     /// Devectorize density matrix
     fn devectorize_density_matrix(&self, vec: &Array1<Complex64>) -> Array2<Complex64> {
         let dim = (vec.len() as f64).sqrt() as usize;
-        Array2::from_shape_vec((dim, dim), vec.to_vec()).unwrap()
+        Array2::from_shape_vec((dim, dim), vec.to_vec()).expect(
+            "devectorize_density_matrix: shape mismatch should not occur for valid density matrix",
+        )
     }
 
     /// Get current purity Tr(ρ²)
+    #[must_use]
     pub fn purity(&self) -> f64 {
         let rho_squared = self.density_matrix.dot(&self.density_matrix);
         rho_squared.diag().iter().map(|x| x.re).sum()
     }
 
     /// Get current trace
+    #[must_use]
     pub fn trace(&self) -> Complex64 {
         self.density_matrix.diag().iter().sum()
     }
@@ -418,6 +422,7 @@ impl LindladSimulator {
     }
 
     /// Get current density matrix
+    #[must_use]
     pub const fn get_density_matrix(&self) -> &Array2<Complex64> {
         &self.density_matrix
     }
@@ -462,6 +467,7 @@ pub struct QuantumChannel {
 
 impl QuantumChannel {
     /// Create depolarizing channel
+    #[must_use]
     pub fn depolarizing(num_qubits: usize, probability: f64) -> Self {
         let dim = 1 << num_qubits;
         let mut kraus_ops = Vec::new();
@@ -501,6 +507,7 @@ impl QuantumChannel {
     }
 
     /// Create amplitude damping channel
+    #[must_use]
     pub fn amplitude_damping(gamma: f64) -> Self {
         let mut kraus_ops = Vec::new();
 
@@ -522,6 +529,7 @@ impl QuantumChannel {
     }
 
     /// Create phase damping channel
+    #[must_use]
     pub fn phase_damping(gamma: f64) -> Self {
         let mut kraus_ops = Vec::new();
 
@@ -543,6 +551,7 @@ impl QuantumChannel {
     }
 
     /// Apply channel to density matrix
+    #[must_use]
     pub fn apply(&self, rho: &Array2<Complex64>) -> Array2<Complex64> {
         let dim = rho.nrows();
         let mut result = Array2::zeros((dim, dim));
@@ -556,6 +565,7 @@ impl QuantumChannel {
     }
 
     /// Verify channel is trace-preserving
+    #[must_use]
     pub fn is_trace_preserving(&self) -> bool {
         let dim = self.kraus_operators[0].nrows();
         let mut sum = Array2::zeros((dim, dim));
@@ -583,6 +593,7 @@ pub struct ProcessTomography {
 
 impl ProcessTomography {
     /// Create standard process tomography setup
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let mut input_states = Vec::new();
 
@@ -672,6 +683,7 @@ impl ProcessTomography {
 }
 
 /// Compute quantum fidelity between two density matrices
+#[must_use]
 pub fn quantum_fidelity(rho1: &Array2<Complex64>, rho2: &Array2<Complex64>) -> f64 {
     // F(ρ₁, ρ₂) = Tr(√(√ρ₁ ρ₂ √ρ₁))²
     // Simplified calculation for small systems
@@ -714,6 +726,7 @@ impl Default for NoiseModelBuilder {
 }
 
 impl NoiseModelBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             channels: HashMap::new(),
@@ -722,6 +735,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add depolarizing noise
+    #[must_use]
     pub fn depolarizing(mut self, name: &str, probability: f64) -> Self {
         let channel = QuantumChannel::depolarizing(1, probability);
         self.channels.insert(name.to_string(), channel);
@@ -730,6 +744,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add amplitude damping
+    #[must_use]
     pub fn amplitude_damping(mut self, name: &str, gamma: f64) -> Self {
         let channel = QuantumChannel::amplitude_damping(gamma);
         self.channels.insert(name.to_string(), channel);
@@ -738,6 +753,7 @@ impl NoiseModelBuilder {
     }
 
     /// Add phase damping
+    #[must_use]
     pub fn phase_damping(mut self, name: &str, gamma: f64) -> Self {
         let channel = QuantumChannel::phase_damping(gamma);
         self.channels.insert(name.to_string(), channel);
@@ -746,6 +762,7 @@ impl NoiseModelBuilder {
     }
 
     /// Build composite noise model
+    #[must_use]
     pub fn build(self) -> CompositeNoiseModel {
         CompositeNoiseModel {
             channels: self.channels,
@@ -763,6 +780,7 @@ pub struct CompositeNoiseModel {
 
 impl CompositeNoiseModel {
     /// Apply all noise channels in order
+    #[must_use]
     pub fn apply(&self, rho: &Array2<Complex64>) -> Array2<Complex64> {
         let mut result = rho.clone();
 
@@ -776,6 +794,7 @@ impl CompositeNoiseModel {
     }
 
     /// Get channel by name
+    #[must_use]
     pub fn get_channel(&self, name: &str) -> Option<&QuantumChannel> {
         self.channels.get(name)
     }
@@ -787,7 +806,7 @@ mod tests {
 
     #[test]
     fn test_lindblad_simulator_creation() {
-        let sim = LindladSimulator::new(2).unwrap();
+        let sim = LindladSimulator::new(2).expect("should create Lindblad simulator with 2 qubits");
         assert_eq!(sim.num_qubits, 2);
         assert_eq!(sim.density_matrix.shape(), [4, 4]);
     }

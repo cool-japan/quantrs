@@ -64,7 +64,7 @@ impl Default for AdvancedMLMitigationConfig {
             enable_online_learning: true,
             learning_rate: 0.001,
             batch_size: 64,
-            memory_size: 10000,
+            memory_size: 10_000,
             exploration_rate: 0.1,
             transfer_alpha: 0.5,
             ensemble_size: 5,
@@ -510,7 +510,7 @@ impl AdvancedMLErrorMitigator {
             "PauliX", "PauliY", "PauliZ", "Hadamard", "CNOT", "CZ", "RX", "RY", "RZ", "Phase",
         ] {
             let count = gate_counts.get(gate_type).unwrap_or(&0);
-            features.push(*count as f64 / total_gates);
+            features.push(f64::from(*count) / total_gates);
         }
 
         // Measurement statistics
@@ -614,7 +614,8 @@ impl AdvancedMLErrorMitigator {
                 EnsembleStrategy::MajorityVoting => {
                     // For regression, use median
                     let mut sorted_predictions = predictions.clone();
-                    sorted_predictions.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                    sorted_predictions
+                        .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                     sorted_predictions[sorted_predictions.len() / 2]
                 }
                 _ => {
@@ -701,6 +702,7 @@ impl AdvancedMLErrorMitigator {
     }
 
     /// Apply activation function
+    #[must_use]
     pub fn apply_activation(&self, x: f64, activation: ActivationFunction) -> f64 {
         Self::apply_activation_static(x, activation)
     }
@@ -750,7 +752,7 @@ impl AdvancedMLErrorMitigator {
             }
         }
 
-        Ok(entangling_gates as f64 / circuit.gates.len() as f64)
+        Ok(f64::from(entangling_gates) / circuit.gates.len() as f64)
     }
 
     /// Convert features to state key for Q-learning
@@ -768,7 +770,7 @@ impl AdvancedMLErrorMitigator {
         // Simple confidence calculation based on feature consistency
         let feature_variance = features.var(0.0);
         let confidence = 1.0 / (1.0 + feature_variance);
-        Ok(confidence.min(1.0).max(0.0))
+        Ok(confidence.clamp(0.0, 1.0))
     }
 
     /// Estimate error reduction achieved
@@ -779,7 +781,7 @@ impl AdvancedMLErrorMitigator {
         // Estimate error reduction based on variance reduction
         let estimated_improvement = (original_variance.sqrt() - (mitigated - original_mean).abs())
             / original_variance.sqrt();
-        Ok(estimated_improvement.max(0.0).min(1.0))
+        Ok(estimated_improvement.clamp(0.0, 1.0))
     }
 
     /// Update models with new training data
@@ -901,7 +903,7 @@ mod tests {
     #[test]
     fn test_feature_extraction() {
         let config = AdvancedMLMitigationConfig::default();
-        let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+        let mitigator = AdvancedMLErrorMitigator::new(config).expect("Failed to create mitigator");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -911,14 +913,14 @@ mod tests {
         let features = mitigator.extract_features(&circuit, &measurements);
 
         assert!(features.is_ok());
-        let features = features.unwrap();
+        let features = features.expect("Failed to extract features");
         assert!(!features.is_empty());
     }
 
     #[test]
     fn test_activation_functions() {
         let config = AdvancedMLMitigationConfig::default();
-        let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+        let mitigator = AdvancedMLErrorMitigator::new(config).expect("Failed to create mitigator");
 
         // Test ReLU
         assert_eq!(
@@ -938,7 +940,8 @@ mod tests {
     #[test]
     fn test_mitigation_strategy_selection() {
         let config = AdvancedMLMitigationConfig::default();
-        let mut mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+        let mut mitigator =
+            AdvancedMLErrorMitigator::new(config).expect("Failed to create mitigator");
 
         let features = Array1::from_vec(vec![1.0, 2.0, 3.0]);
         let strategy = mitigator.select_mitigation_strategy(&features);
@@ -949,7 +952,7 @@ mod tests {
     #[test]
     fn test_traditional_mitigation() {
         let config = AdvancedMLMitigationConfig::default();
-        let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+        let mitigator = AdvancedMLErrorMitigator::new(config).expect("Failed to create mitigator");
 
         let measurements = Array1::from_vec(vec![0.48, 0.52, 0.49]);
         let circuit = InterfaceCircuit::new(2, 0);

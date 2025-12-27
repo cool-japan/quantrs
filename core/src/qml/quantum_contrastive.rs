@@ -93,7 +93,7 @@ pub struct QuantumAugmenter {
 
 impl QuantumAugmenter {
     /// Create new quantum augmenter
-    pub fn new(
+    pub const fn new(
         num_qubits: usize,
         strategies: Vec<QuantumAugmentation>,
         noise_strength: f64,
@@ -558,7 +558,7 @@ impl QuantumEncoder {
     }
 
     /// Get parameters
-    pub fn params(&self) -> &Array2<f64> {
+    pub const fn params(&self) -> &Array2<f64> {
         &self.params
     }
 }
@@ -749,7 +749,7 @@ mod tests {
 
         let augmented = augmenter
             .augment(&state, QuantumAugmentation::RandomRotation)
-            .unwrap();
+            .expect("Failed to augment quantum state with random rotation");
         assert_eq!(augmented.len(), 4);
     }
 
@@ -773,7 +773,10 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ]);
 
-        let encoded = learner.encoder.encode(&state).unwrap();
+        let encoded = learner
+            .encoder
+            .encode(&state)
+            .expect("Failed to encode quantum state with encoder");
         assert_eq!(encoded.len(), 4);
     }
 }

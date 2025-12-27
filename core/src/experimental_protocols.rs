@@ -580,7 +580,8 @@ mod tests {
         let state1 = Array1::from_vec(vec![Complex::new(1.0, 0.0), Complex::new(0.0, 0.0)]);
         let state2 = Array1::from_vec(vec![Complex::new(0.0, 0.0), Complex::new(1.0, 0.0)]);
 
-        let result = discriminator.discriminate(&state1, &state2, 0.5).unwrap();
+        let result = discriminator.discriminate(&state1, &state2, 0.5)
+            .expect("State discrimination should succeed for orthogonal states");
 
         // Orthogonal states should have zero error probability
         assert!(result.error_probability < 0.01);
@@ -593,7 +594,8 @@ mod tests {
         // Mock measurement function
         let measurements = |_| Ok(1.0);
 
-        let estimate = metrology.estimate_parameter(measurements, 100).unwrap();
+        let estimate = metrology.estimate_parameter(measurements, 100)
+            .expect("Parameter estimation should succeed");
 
         // GHZ state should give N-fold enhancement
         assert!(estimate.enhancement_factor > 5.0);

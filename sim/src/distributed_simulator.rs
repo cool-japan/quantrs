@@ -3,7 +3,7 @@
 //! This module provides a distributed quantum simulator that can coordinate
 //! across multiple compute nodes to enable simulation of extremely large
 //! quantum circuits (50+ qubits) through state distribution, work partitioning,
-//! and advanced SciRS2 distributed computing integration.
+//! and advanced `SciRS2` distributed computing integration.
 
 use crate::large_scale_simulator::{
     LargeScaleQuantumSimulator, LargeScaleSimulatorConfig, MemoryStatistics,
@@ -20,7 +20,7 @@ use quantrs2_core::{
 // use scirs2_core::communication::{MessagePassing, NetworkTopology};
 // use scirs2_core::load_balancing::{LoadBalancer, WorkDistribution};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
-use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator}; // SciRS2 POLICY compliant
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -103,7 +103,10 @@ pub struct NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            local_address: "127.0.0.1:8080".parse().unwrap(),
+            // Safety: "127.0.0.1:8080" is a valid socket address format
+            local_address: "127.0.0.1:8080"
+                .parse()
+                .expect("Valid default socket address"),
             cluster_nodes: vec![],
             communication_timeout: Duration::from_secs(30),
             max_message_size: 64 * 1024 * 1024, // 64MB
@@ -219,7 +222,7 @@ pub enum DistributionStrategy {
     QubitPartition,
     /// Hybrid distribution based on circuit structure
     Hybrid,
-    /// Custom distribution based on SciRS2 graph partitioning
+    /// Custom distribution based on `SciRS2` graph partitioning
     GraphPartition,
 }
 
@@ -283,7 +286,10 @@ mod instant_serde {
     {
         // Convert to system time for serialization
         let system_time = SystemTime::now();
-        let duration_since_epoch = system_time.duration_since(UNIX_EPOCH).unwrap();
+        // Safety: SystemTime::now() is always after UNIX_EPOCH on modern systems
+        let duration_since_epoch = system_time
+            .duration_since(UNIX_EPOCH)
+            .expect("System time is after UNIX_EPOCH");
         duration_since_epoch.as_millis().serialize(serializer)
     }
 
@@ -770,7 +776,10 @@ impl DistributedQuantumSimulator {
 
         // Update simulation state
         {
-            let mut state = self.simulation_state.write().unwrap();
+            let mut state = self
+                .simulation_state
+                .write()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             *state = SimulationState::Running {
                 current_step: 0,
                 total_steps: circuit.num_gates(),
@@ -787,7 +796,10 @@ impl DistributedQuantumSimulator {
 
             // Update progress
             {
-                let mut state = self.simulation_state.write().unwrap();
+                let mut state = self
+                    .simulation_state
+                    .write()
+                    .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
                 if let SimulationState::Running {
                     current_step,
                     total_steps,
@@ -807,8 +819,15 @@ impl DistributedQuantumSimulator {
 
         // Update simulation state to completed
         {
-            let mut state = self.simulation_state.write().unwrap();
-            let stats = self.performance_stats.lock().unwrap().clone();
+            let mut state = self
+                .simulation_state
+                .write()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
+            let stats = self
+                .performance_stats
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?
+                .clone();
             *state = SimulationState::Completed {
                 final_state: final_state.clone(),
                 stats,
@@ -819,13 +838,21 @@ impl DistributedQuantumSimulator {
     }
 
     /// Get current simulation statistics
+    #[must_use]
     pub fn get_statistics(&self) -> DistributedPerformanceStats {
-        self.performance_stats.lock().unwrap().clone()
+        self.performance_stats
+            .lock()
+            .expect("Performance stats lock poisoned")
+            .clone()
     }
 
     /// Get cluster status information
+    #[must_use]
     pub fn get_cluster_status(&self) -> HashMap<Uuid, NodeInfo> {
-        self.cluster_nodes.read().unwrap().clone()
+        self.cluster_nodes
+            .read()
+            .expect("Cluster nodes lock poisoned")
+            .clone()
     }
 
     /// Detect local node capabilities
@@ -835,7 +862,7 @@ impl DistributedQuantumSimulator {
 
         let available_memory = platform_caps.memory.available_memory;
         let cpu_cores = platform_caps.cpu.logical_cores;
-        let cpu_frequency = platform_caps.cpu.base_clock_mhz.unwrap_or(3000.0) as f64 / 1000.0; // Convert MHz to GHz
+        let cpu_frequency = f64::from(platform_caps.cpu.base_clock_mhz.unwrap_or(3000.0)) / 1000.0; // Convert MHz to GHz
         let network_bandwidth = Self::detect_network_bandwidth(); // Keep network detection as-is
         let has_gpu = platform_caps.has_gpu();
 
@@ -913,7 +940,7 @@ impl DistributedQuantumSimulator {
     }
 
     /// Discover cluster nodes through network scanning
-    fn discover_cluster_nodes(&mut self) -> QuantRS2Result<()> {
+    fn discover_cluster_nodes(&self) -> QuantRS2Result<()> {
         // Implementation would scan network for other quantum simulator nodes
         // For now, use configured nodes
         for node_addr in &self.config.network_config.cluster_nodes {
@@ -935,7 +962,7 @@ impl DistributedQuantumSimulator {
 
             self.cluster_nodes
                 .write()
-                .unwrap()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?
                 .insert(node_info.node_id, node_info);
         }
 
@@ -943,13 +970,13 @@ impl DistributedQuantumSimulator {
     }
 
     /// Establish connections to cluster nodes
-    const fn establish_connections(&mut self) -> QuantRS2Result<()> {
+    const fn establish_connections(&self) -> QuantRS2Result<()> {
         // Implementation would establish TCP connections to other nodes
         Ok(())
     }
 
     /// Start background services (heartbeat, load balancing, etc.)
-    const fn start_background_services(&mut self) -> QuantRS2Result<()> {
+    const fn start_background_services(&self) -> QuantRS2Result<()> {
         // Implementation would start background threads for:
         // - Heartbeat monitoring
         // - Load balancing
@@ -959,12 +986,20 @@ impl DistributedQuantumSimulator {
     }
 
     /// Distribute initial quantum state across cluster
-    fn distribute_initial_state(&mut self, num_qubits: usize) -> QuantRS2Result<()> {
+    fn distribute_initial_state(&self, num_qubits: usize) -> QuantRS2Result<()> {
         let state_size: usize = 1 << num_qubits;
-        let num_nodes: usize = self.cluster_nodes.read().unwrap().len() + 1; // +1 for local node
+        let cluster_nodes_guard = self
+            .cluster_nodes
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
+        let num_nodes: usize = cluster_nodes_guard.len() + 1; // +1 for local node
 
         // Calculate chunk size per node
         let chunk_size = state_size.div_ceil(num_nodes);
+
+        // Collect node keys for indexing
+        let node_keys: Vec<Uuid> = cluster_nodes_guard.keys().copied().collect();
+        drop(cluster_nodes_guard); // Release the read lock
 
         // Create state chunks
         let mut chunks = Vec::new();
@@ -973,22 +1008,21 @@ impl DistributedQuantumSimulator {
             let end_index = ((i + 1) * chunk_size).min(state_size);
 
             if start_index < end_index {
+                let owner_node = if i == 0 {
+                    self.local_node.node_id
+                } else {
+                    // Safety: i > 0 and i-1 < node_keys.len() since num_nodes = node_keys.len() + 1
+                    node_keys.get(i - 1).copied().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("Node index out of bounds".to_string())
+                    })?
+                };
+
                 let chunk = StateChunk {
                     chunk_id: Uuid::new_v4(),
                     amplitude_range: (start_index, end_index),
                     qubit_indices: (0..num_qubits).collect(),
                     amplitudes: vec![Complex64::new(0.0, 0.0); end_index - start_index],
-                    owner_node: if i == 0 {
-                        self.local_node.node_id
-                    } else {
-                        *self
-                            .cluster_nodes
-                            .read()
-                            .unwrap()
-                            .keys()
-                            .nth(i - 1)
-                            .unwrap()
-                    },
+                    owner_node,
                     backup_nodes: vec![],
                     metadata: ChunkMetadata {
                         size_bytes: (end_index - start_index) * 16,
@@ -1011,11 +1045,12 @@ impl DistributedQuantumSimulator {
         }
 
         // Store chunks
+        let mut state_chunks_guard = self
+            .state_chunks
+            .write()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         for chunk in chunks {
-            self.state_chunks
-                .write()
-                .unwrap()
-                .insert(chunk.chunk_id, chunk);
+            state_chunks_guard.insert(chunk.chunk_id, chunk);
         }
 
         Ok(())
@@ -1023,7 +1058,7 @@ impl DistributedQuantumSimulator {
 
     /// Execute a gate operation in distributed manner
     fn execute_distributed_gate(
-        &mut self,
+        &self,
         gate: &Arc<dyn GateOp + Send + Sync>,
         step: usize,
     ) -> QuantRS2Result<()> {
@@ -1084,7 +1119,7 @@ impl DistributedQuantumSimulator {
 
     /// Execute gate with amplitude distribution strategy
     fn execute_amplitude_distributed_gate(
-        &mut self,
+        &self,
         gate: &Arc<dyn GateOp + Send + Sync>,
         operation: &DistributedGateOperation,
     ) -> QuantRS2Result<()> {
@@ -1095,7 +1130,7 @@ impl DistributedQuantumSimulator {
 
     /// Execute gate with qubit partition strategy
     fn execute_qubit_partitioned_gate(
-        &mut self,
+        &self,
         gate: &Arc<dyn GateOp + Send + Sync>,
         operation: &DistributedGateOperation,
     ) -> QuantRS2Result<()> {
@@ -1105,7 +1140,7 @@ impl DistributedQuantumSimulator {
 
     /// Execute gate with hybrid strategy
     fn execute_hybrid_distributed_gate(
-        &mut self,
+        &self,
         gate: &Arc<dyn GateOp + Send + Sync>,
         operation: &DistributedGateOperation,
     ) -> QuantRS2Result<()> {
@@ -1115,7 +1150,7 @@ impl DistributedQuantumSimulator {
 
     /// Execute gate with graph partition strategy
     fn execute_graph_partitioned_gate(
-        &mut self,
+        &self,
         gate: &Arc<dyn GateOp + Send + Sync>,
         operation: &DistributedGateOperation,
     ) -> QuantRS2Result<()> {
@@ -1125,7 +1160,10 @@ impl DistributedQuantumSimulator {
 
     /// Collect final state from all nodes
     fn collect_final_state(&self) -> QuantRS2Result<Vec<Complex64>> {
-        let chunks = self.state_chunks.read().unwrap();
+        let chunks = self
+            .state_chunks
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         let mut final_state = Vec::new();
 
         // Sort chunks by amplitude range and collect
@@ -1141,7 +1179,10 @@ impl DistributedQuantumSimulator {
 
     /// Update performance statistics
     fn update_performance_stats(&self, simulation_time: Duration) -> QuantRS2Result<()> {
-        let mut stats = self.performance_stats.lock().unwrap();
+        let mut stats = self
+            .performance_stats
+            .lock()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         stats.total_time = simulation_time;
 
         // Calculate communication overhead, load balance efficiency, etc.
@@ -1188,6 +1229,7 @@ impl CommunicationManager {
 
 impl LoadBalancer {
     /// Create new load balancer
+    #[must_use]
     pub fn new(strategy: LoadBalancingStrategy) -> Self {
         Self {
             strategy,
@@ -1309,7 +1351,7 @@ mod tests {
         let capabilities = DistributedQuantumSimulator::detect_local_capabilities();
         assert!(capabilities.is_ok());
 
-        let caps = capabilities.unwrap();
+        let caps = capabilities.expect("Failed to detect local capabilities");
         assert!(caps.available_memory > 0);
         assert!(caps.cpu_cores > 0);
         assert!(caps.max_qubits > 0);

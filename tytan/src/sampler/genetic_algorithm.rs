@@ -374,7 +374,12 @@ impl Sampler for GASampler {
             let matrix = tensor
                 .clone()
                 .into_dimensionality::<scirs2_core::ndarray::Ix2>()
-                .unwrap();
+                .map_err(|e| {
+                    super::SamplerError::InvalidModel(format!(
+                        "Failed to convert tensor to 2D matrix: {}",
+                        e
+                    ))
+                })?;
             let qubo = (matrix, var_map.clone());
 
             return self.run_qubo(&qubo, shots);
@@ -505,27 +510,38 @@ impl Sampler for GASampler {
         // Convert solutions to SampleResult
         let mut results: Vec<SampleResult> = solution_counts
             .into_iter()
-            .map(|(state, (energy, count))| {
+            .filter_map(|(state, (energy, count))| {
                 // Convert to variable assignments
                 let assignments: HashMap<String, bool> = state
                     .iter()
                     .enumerate()
-                    .map(|(idx, &value)| {
-                        let var_name = idx_to_var.get(&idx).unwrap().clone();
-                        (var_name, value)
+                    .filter_map(|(idx, &value)| {
+                        idx_to_var
+                            .get(&idx)
+                            .map(|var_name| (var_name.clone(), value))
                     })
                     .collect();
 
-                SampleResult {
+                // Skip solutions with missing variable mappings
+                if assignments.len() != state.len() {
+                    return None;
+                }
+
+                Some(SampleResult {
                     assignments,
                     energy,
                     occurrences: count,
-                }
+                })
             })
             .collect();
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        // Use unwrap_or for NaN handling - treat NaN as equal to any value
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Limit to requested number of shots if we have more
         if results.len() > actual_shots {
@@ -712,15 +728,21 @@ impl Sampler for GASampler {
             // Calculate energy one more time
             let energy = calculate_energy(solution, matrix);
 
-            // Convert to variable assignments
+            // Convert to variable assignments, skipping any missing mappings
             let assignments: HashMap<String, bool> = solution
                 .iter()
                 .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
+                .filter_map(|(idx, &value)| {
+                    idx_to_var
+                        .get(&idx)
+                        .map(|var_name| (var_name.clone(), value))
                 })
                 .collect();
+
+            // Skip solutions with incomplete variable mappings
+            if assignments.len() != solution.len() {
+                continue;
+            }
 
             // Create result and add to collection
             results.push(SampleResult {
@@ -731,7 +753,12 @@ impl Sampler for GASampler {
         }
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        // Use unwrap_or for NaN handling - treat NaN as equal to any value
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Trim to requested number of shots
         if results.len() > actual_shots {

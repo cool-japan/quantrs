@@ -30,6 +30,7 @@ pub mod integration_tests;
 pub mod logistics;
 
 use drug_discovery::Molecule;
+use std::fmt::Write;
 pub mod manufacturing;
 pub mod materials_science;
 pub mod performance_benchmarks;
@@ -77,25 +78,25 @@ pub enum ApplicationError {
 
 impl From<crate::ising::IsingError> for ApplicationError {
     fn from(err: crate::ising::IsingError) -> Self {
-        ApplicationError::OptimizationError(format!("Ising model error: {}", err))
+        Self::OptimizationError(format!("Ising model error: {err}"))
     }
 }
 
 impl From<crate::advanced_quantum_algorithms::AdvancedQuantumError> for ApplicationError {
     fn from(err: crate::advanced_quantum_algorithms::AdvancedQuantumError) -> Self {
-        ApplicationError::OptimizationError(format!("Advanced quantum algorithm error: {}", err))
+        Self::OptimizationError(format!("Advanced quantum algorithm error: {err}"))
     }
 }
 
 impl From<crate::quantum_error_correction::QuantumErrorCorrectionError> for ApplicationError {
     fn from(err: crate::quantum_error_correction::QuantumErrorCorrectionError) -> Self {
-        ApplicationError::OptimizationError(format!("Quantum error correction error: {}", err))
+        Self::OptimizationError(format!("Quantum error correction error: {err}"))
     }
 }
 
 impl From<crate::simulator::AnnealingError> for ApplicationError {
     fn from(err: crate::simulator::AnnealingError) -> Self {
-        ApplicationError::OptimizationError(format!("Annealing error: {}", err))
+        Self::OptimizationError(format!("Annealing error: {err}"))
     }
 }
 
@@ -231,7 +232,7 @@ pub enum IndustryObjective {
     /// Maximize customer satisfaction
     MaximizeSatisfaction,
     /// Multi-objective combination
-    MultiObjective(Vec<(IndustryObjective, f64)>), // (objective, weight)
+    MultiObjective(Vec<(Self, f64)>), // (objective, weight)
 }
 
 /// Utility functions for industry applications
@@ -423,8 +424,7 @@ pub fn create_benchmark_suite(
         }
 
         _ => Err(ApplicationError::InvalidConfiguration(format!(
-            "Unknown benchmark: {} / {}",
-            industry, size
+            "Unknown benchmark: {industry} / {size}"
         ))),
     }
 }
@@ -436,10 +436,11 @@ pub fn generate_performance_report(
 ) -> ApplicationResult<String> {
     let mut report = String::new();
 
-    report.push_str(&format!(
+    let _ = write!(
+        report,
         "# {} Industry Optimization Report\n\n",
         industry.to_uppercase()
-    ));
+    );
     report.push_str("## Performance Metrics\n\n");
 
     // Sort metrics for consistent reporting
@@ -447,7 +448,7 @@ pub fn generate_performance_report(
     sorted_metrics.sort_by_key(|(key, _)| *key);
 
     for (metric, value) in sorted_metrics {
-        report.push_str(&format!("- **{}**: {:.4}\n", metric, value));
+        let _ = writeln!(report, "- **{metric}**: {value:.4}");
     }
 
     report.push_str("\n## Industry-Specific Analysis\n\n");
@@ -532,8 +533,7 @@ pub fn validate_constraints(
                 if let Some(&usage) = solution_data.get(resource) {
                     if usage > *limit {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Resource {} usage {} exceeds limit {}",
-                            resource, usage, limit
+                            "Resource {resource} usage {usage} exceeds limit {limit}"
                         )));
                     }
                 }
@@ -542,8 +542,7 @@ pub fn validate_constraints(
                 if let Some(&cost) = solution_data.get("total_cost") {
                     if cost > *limit {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Total cost {} exceeds budget {}",
-                            cost, limit
+                            "Total cost {cost} exceeds budget {limit}"
                         )));
                     }
                 }
@@ -552,8 +551,7 @@ pub fn validate_constraints(
                 if let Some(&quality) = solution_data.get(metric) {
                     if quality < *threshold {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Quality metric {} value {} below threshold {}",
-                            metric, quality, threshold
+                            "Quality metric {metric} value {quality} below threshold {threshold}"
                         )));
                     }
                 }
@@ -597,7 +595,8 @@ mod tests {
         results.insert("accuracy".to_string(), 0.95);
         results.insert("efficiency".to_string(), 0.88);
 
-        let report = generate_performance_report("finance", &results).unwrap();
+        let report = generate_performance_report("finance", &results)
+            .expect("should generate performance report for finance");
         assert!(report.contains("FINANCE"));
         assert!(report.contains("accuracy"));
         assert!(report.contains("0.95"));
@@ -653,13 +652,13 @@ impl OptimizationProblem for MoleculeToBinaryWrapper {
         }
 
         // Set quadratic terms
-        for ((i, j_idx), &value) in j.iter() {
+        for ((i, j_idx), &value) in &j {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
 
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
-            variable_mapping.insert(format!("bit_{}", i), i);
+            variable_mapping.insert(format!("bit_{i}"), i);
         }
 
         Ok((qubo, variable_mapping))
@@ -715,7 +714,7 @@ impl MoleculeToBinaryWrapper {
     }
 }
 
-/// Wrapper to convert MaterialsLattice problems to binary representation
+/// Wrapper to convert `MaterialsLattice` problems to binary representation
 pub struct MaterialsToBinaryWrapper {
     inner: Box<
         dyn OptimizationProblem<
@@ -769,13 +768,13 @@ impl OptimizationProblem for MaterialsToBinaryWrapper {
         }
 
         // Set quadratic terms
-        for ((i, j_idx), &value) in j.iter() {
+        for ((i, j_idx), &value) in &j {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
 
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
-            variable_mapping.insert(format!("site_{}", i), i);
+            variable_mapping.insert(format!("site_{i}"), i);
         }
 
         Ok((qubo, variable_mapping))
@@ -798,7 +797,7 @@ impl OptimizationProblem for MaterialsToBinaryWrapper {
     }
 }
 
-/// Wrapper to convert ProteinFolding problems to binary representation
+/// Wrapper to convert `ProteinFolding` problems to binary representation
 pub struct ProteinToBinaryWrapper {
     inner: Box<
         dyn OptimizationProblem<Solution = protein_folding::ProteinFolding, ObjectiveValue = f64>,
@@ -849,13 +848,13 @@ impl OptimizationProblem for ProteinToBinaryWrapper {
         }
 
         // Set quadratic terms
-        for ((i, j_idx), &value) in j.iter() {
+        for ((i, j_idx), &value) in &j {
             qubo.set_quadratic(*i, *j_idx, value)?;
         }
 
         let mut variable_mapping = HashMap::new();
         for i in 0..n {
-            variable_mapping.insert(format!("fold_{}", i), i);
+            variable_mapping.insert(format!("fold_{i}"), i);
         }
 
         Ok((qubo, variable_mapping))
@@ -930,7 +929,10 @@ impl ChemistryToBinaryWrapper {
         &self,
         solution: &[i8],
     ) -> ApplicationResult<quantum_computational_chemistry::QuantumChemistryResult> {
-        use quantum_computational_chemistry::*;
+        use quantum_computational_chemistry::{
+            BasisSet, CalculationMetadata, ElectronDensity, ElectronicStructureMethod,
+            MolecularOrbital, OrbitalType, QuantumChemistryResult, ThermochemicalProperties,
+        };
 
         // Create molecular orbitals from binary solution
         let mut molecular_orbitals = Vec::new();

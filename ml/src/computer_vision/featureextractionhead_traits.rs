@@ -22,9 +22,15 @@ impl TaskHead for FeatureExtractionHead {
         let (batch_size, channels, _, _) = features.dim();
         let pooled = features
             .mean_axis(Axis(2))
-            .unwrap()
+            .ok_or_else(|| {
+                MLError::ComputationError("Failed to compute mean over axis 2".to_string())
+            })?
             .mean_axis(Axis(2))
-            .unwrap();
+            .ok_or_else(|| {
+                MLError::ComputationError(
+                    "Failed to compute mean over axis 2 (second pass)".to_string(),
+                )
+            })?;
         let mut extracted_features = Array2::zeros((batch_size, self.feature_dim));
         for i in 0..batch_size {
             let feature_vec = pooled.slice(s![i, ..]).to_owned();

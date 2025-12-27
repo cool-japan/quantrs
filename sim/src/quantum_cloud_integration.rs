@@ -16,7 +16,7 @@
 //! - Result caching and persistence
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -38,7 +38,7 @@ pub enum CloudProvider {
     AzureQuantum,
     /// Rigetti Quantum Cloud Services
     RigettiQCS,
-    /// IonQ Cloud
+    /// `IonQ` Cloud
     IonQCloud,
     /// Xanadu Quantum Cloud
     XanaduCloud,
@@ -46,7 +46,7 @@ pub enum CloudProvider {
     PasqalCloud,
     /// Oxford Quantum Computing
     OxfordQC,
-    /// Quantum Inspire (QuTech)
+    /// Quantum Inspire (`QuTech`)
     QuantumInspire,
     /// Local simulation
     LocalSimulation,
@@ -122,7 +122,7 @@ impl Default for CloudConfig {
             max_queue_size: 10,
             job_timeout: 3600, // 1 hour
             enable_caching: true,
-            cache_duration: 86400, // 24 hours
+            cache_duration: 86_400, // 24 hours
             max_retries: 3,
             cost_optimization: CostOptimization::Balanced,
             fallback_providers: vec![CloudProvider::LocalSimulation],
@@ -458,8 +458,8 @@ impl QuantumCloudService {
                     "x".to_string(),
                 ],
                 queue_length: 25,
-                cost_per_shot: Some(0.00085),
-                max_shots: 20000,
+                cost_per_shot: Some(0.000_85),
+                max_shots: 20_000,
                 max_circuit_depth: Some(1000),
                 status: BackendStatus::Online,
             },
@@ -485,7 +485,7 @@ impl QuantumCloudService {
                 ],
                 queue_length: 0,
                 cost_per_shot: Some(0.0),
-                max_shots: 10000,
+                max_shots: 10_000,
                 max_circuit_depth: None,
                 status: BackendStatus::Online,
             },
@@ -509,7 +509,7 @@ impl QuantumCloudService {
                 ],
                 queue_length: 15,
                 cost_per_shot: Some(0.001),
-                max_shots: 50000,
+                max_shots: 50_000,
                 max_circuit_depth: Some(40),
                 status: BackendStatus::Online,
             },
@@ -535,7 +535,7 @@ impl QuantumCloudService {
                 ],
                 queue_length: 0,
                 cost_per_shot: Some(0.075),
-                max_shots: 100000,
+                max_shots: 100_000,
                 max_circuit_depth: None,
                 status: BackendStatus::Online,
             },
@@ -555,7 +555,7 @@ impl QuantumCloudService {
                 gate_set: vec!["ms".to_string(), "gpi".to_string(), "gpi2".to_string()],
                 queue_length: 8,
                 cost_per_shot: Some(0.01),
-                max_shots: 10000,
+                max_shots: 10_000,
                 max_circuit_depth: Some(300),
                 status: BackendStatus::Online,
             },
@@ -575,7 +575,7 @@ impl QuantumCloudService {
             gate_set: vec!["all".to_string()],
             queue_length: 0,
             cost_per_shot: Some(0.0),
-            max_shots: 1000000,
+            max_shots: 1_000_000,
             max_circuit_depth: None,
             status: BackendStatus::Online,
         }];
@@ -690,7 +690,7 @@ impl QuantumCloudService {
             backend.provider as u8,
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_millis(),
             fastrand::u32(..)
         );
@@ -716,7 +716,10 @@ impl QuantumCloudService {
 
         // Store job in active jobs
         {
-            let mut active_jobs = self.active_jobs.lock().unwrap();
+            let mut active_jobs = self
+                .active_jobs
+                .lock()
+                .map_err(|e| SimulatorError::ResourceExhausted(format!("Lock poisoned: {e}")))?;
             active_jobs.insert(job_id.clone(), job);
         }
 
@@ -778,7 +781,9 @@ impl QuantumCloudService {
                 .min_by_key(|b| {
                     (b.cost_per_shot.unwrap_or(0.0) * 1000.0) as u64 + b.queue_length as u64
                 })
-                .unwrap(),
+                .ok_or_else(|| {
+                    SimulatorError::ResourceExhausted("No candidates for MinimizeCost".to_string())
+                })?,
             CostOptimization::MinimizeTime => candidates
                 .iter()
                 .min_by_key(|b| {
@@ -789,7 +794,9 @@ impl QuantumCloudService {
                             0
                         }
                 })
-                .unwrap(),
+                .ok_or_else(|| {
+                    SimulatorError::ResourceExhausted("No candidates for MinimizeTime".to_string())
+                })?,
             CostOptimization::Balanced => candidates
                 .iter()
                 .min_by_key(|b| {
@@ -797,8 +804,12 @@ impl QuantumCloudService {
                     let time_score = b.queue_length as u64 * 10;
                     cost_score + time_score
                 })
-                .unwrap(),
-            _ => candidates.first().unwrap(),
+                .ok_or_else(|| {
+                    SimulatorError::ResourceExhausted("No candidates for Balanced".to_string())
+                })?,
+            _ => candidates.first().ok_or_else(|| {
+                SimulatorError::ResourceExhausted("No candidates available".to_string())
+            })?,
         };
 
         Ok(best_backend)
@@ -815,11 +826,13 @@ impl QuantumCloudService {
         }
 
         let cache_key = self.generate_cache_key(circuit, shots);
-        let cache = self.result_cache.lock().unwrap();
+        let cache = self.result_cache.lock().ok()?;
 
         if let Some((result, timestamp)) = cache.get(&cache_key) {
             let now = SystemTime::now();
-            if now.duration_since(*timestamp).unwrap().as_secs() < self.config.cache_duration {
+            if now.duration_since(*timestamp).unwrap_or_default().as_secs()
+                < self.config.cache_duration
+            {
                 self.stats.cache_hit_rate += 1.0;
                 return Some(result.clone());
             }
@@ -863,13 +876,16 @@ impl QuantumCloudService {
 
     /// Get job status
     pub fn get_job_status(&self, job_id: &str) -> Result<JobStatus> {
-        let active_jobs = self.active_jobs.lock().unwrap();
+        let active_jobs = self
+            .active_jobs
+            .lock()
+            .map_err(|e| SimulatorError::ResourceExhausted(format!("Lock poisoned: {e}")))?;
 
         if let Some(job) = active_jobs.get(job_id) {
             // Simulate job progression
             let elapsed = SystemTime::now()
                 .duration_since(job.submitted_at)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs();
 
             let status = match job.provider {
@@ -914,7 +930,10 @@ impl QuantumCloudService {
         // Check cache first
         let cache_key = format!("result_{job_id}");
         {
-            let cache = self.result_cache.lock().unwrap();
+            let cache = self
+                .result_cache
+                .lock()
+                .map_err(|e| SimulatorError::ResourceExhausted(format!("Lock poisoned: {e}")))?;
             if let Some((result, _)) = cache.get(&cache_key) {
                 return Ok(result.clone());
             }
@@ -922,7 +941,10 @@ impl QuantumCloudService {
 
         // Simulate retrieving result from cloud provider
         let job = {
-            let active_jobs = self.active_jobs.lock().unwrap();
+            let active_jobs = self
+                .active_jobs
+                .lock()
+                .map_err(|e| SimulatorError::ResourceExhausted(format!("Lock poisoned: {e}")))?;
             active_jobs.get(job_id).cloned()
         };
 
@@ -931,8 +953,9 @@ impl QuantumCloudService {
 
             // Cache result
             if self.config.enable_caching {
-                let mut cache = self.result_cache.lock().unwrap();
-                cache.insert(cache_key, (result.clone(), SystemTime::now()));
+                if let Ok(mut cache) = self.result_cache.lock() {
+                    cache.insert(cache_key, (result.clone(), SystemTime::now()));
+                }
             }
 
             // Update statistics
@@ -995,6 +1018,7 @@ impl QuantumCloudService {
     }
 
     /// List available backends
+    #[must_use]
     pub fn list_backends(&self, provider: Option<CloudProvider>) -> Vec<&QuantumBackend> {
         let mut backends = Vec::new();
 
@@ -1082,13 +1106,17 @@ impl QuantumCloudService {
     }
 
     /// Get service statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &CloudStats {
         &self.stats
     }
 
     /// Cancel job
     pub fn cancel_job(&mut self, job_id: &str) -> Result<()> {
-        let mut active_jobs = self.active_jobs.lock().unwrap();
+        let mut active_jobs = self
+            .active_jobs
+            .lock()
+            .map_err(|e| SimulatorError::ResourceExhausted(format!("Lock poisoned: {e}")))?;
 
         if let Some(mut job) = active_jobs.get_mut(job_id) {
             if job.status == JobStatus::Queued || job.status == JobStatus::Running {
@@ -1130,6 +1158,7 @@ impl Default for CloudHttpClient {
 
 impl CloudHttpClient {
     /// Create new HTTP client
+    #[must_use]
     pub fn new() -> Self {
         let mut base_urls = HashMap::new();
         base_urls.insert(
@@ -1165,6 +1194,7 @@ impl Default for CircuitTranslator {
 
 impl CircuitTranslator {
     /// Create new circuit translator
+    #[must_use]
     pub fn new() -> Self {
         let mut supported_formats = HashMap::new();
         supported_formats.insert(
@@ -1287,7 +1317,7 @@ mod tests {
     #[test]
     fn test_backend_initialization() {
         let config = CloudConfig::default();
-        let service = QuantumCloudService::new(config).unwrap();
+        let service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         assert!(!service.backends.is_empty());
         assert!(service
@@ -1299,7 +1329,7 @@ mod tests {
     #[test]
     fn test_job_submission() {
         let config = CloudConfig::default();
-        let mut service = QuantumCloudService::new(config).unwrap();
+        let mut service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -1307,20 +1337,24 @@ mod tests {
         let result = service.submit_job(circuit, 100, None);
         assert!(result.is_ok());
 
-        let job_id = result.unwrap();
+        let job_id = result.expect("Failed to submit job");
         assert!(!job_id.is_empty());
     }
 
     #[test]
     fn test_job_status_tracking() {
         let config = CloudConfig::default();
-        let mut service = QuantumCloudService::new(config).unwrap();
+        let mut service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::X, vec![0]));
 
-        let job_id = service.submit_job(circuit, 50, None).unwrap();
-        let status = service.get_job_status(&job_id).unwrap();
+        let job_id = service
+            .submit_job(circuit, 50, None)
+            .expect("Failed to submit job");
+        let status = service
+            .get_job_status(&job_id)
+            .expect("Failed to get job status");
 
         assert!(matches!(
             status,
@@ -1331,7 +1365,7 @@ mod tests {
     #[test]
     fn test_backend_selection() {
         let config = CloudConfig::default();
-        let service = QuantumCloudService::new(config).unwrap();
+        let service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
@@ -1339,14 +1373,14 @@ mod tests {
         let backend = service.select_optimal_backend(&circuit, None);
         assert!(backend.is_ok());
 
-        let selected_backend = backend.unwrap();
+        let selected_backend = backend.expect("Failed to select backend");
         assert!(selected_backend.num_qubits >= circuit.num_qubits);
     }
 
     #[test]
     fn test_backends_listing() {
         let config = CloudConfig::default();
-        let service = QuantumCloudService::new(config).unwrap();
+        let service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let all_backends = service.list_backends(None);
         assert!(!all_backends.is_empty());
@@ -1362,7 +1396,7 @@ mod tests {
     #[test]
     fn test_cache_key_generation() {
         let config = CloudConfig::default();
-        let service = QuantumCloudService::new(config).unwrap();
+        let service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let mut circuit1 = InterfaceCircuit::new(2, 0);
         circuit1.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -1393,12 +1427,14 @@ mod tests {
     #[test]
     fn test_job_cancellation() {
         let config = CloudConfig::default();
-        let mut service = QuantumCloudService::new(config).unwrap();
+        let mut service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliY, vec![0]));
 
-        let job_id = service.submit_job(circuit, 100, None).unwrap();
+        let job_id = service
+            .submit_job(circuit, 100, None)
+            .expect("Failed to submit job");
         let result = service.cancel_job(&job_id);
 
         // Should succeed for queued/running jobs
@@ -1408,26 +1444,28 @@ mod tests {
     #[test]
     fn test_queue_info() {
         let config = CloudConfig::default();
-        let service = QuantumCloudService::new(config).unwrap();
+        let service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let queue_info = service.get_queue_info(CloudProvider::LocalSimulation);
         assert!(queue_info.is_ok());
 
-        let info = queue_info.unwrap();
+        let info = queue_info.expect("Failed to get queue info");
         assert!(!info.is_empty());
     }
 
     #[test]
     fn test_stats_tracking() {
         let config = CloudConfig::default();
-        let mut service = QuantumCloudService::new(config).unwrap();
+        let mut service = QuantumCloudService::new(config).expect("Failed to create cloud service");
 
         let initial_jobs = service.stats.total_jobs;
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::PauliZ, vec![1]));
 
-        let _job_id = service.submit_job(circuit, 100, None).unwrap();
+        let _job_id = service
+            .submit_job(circuit, 100, None)
+            .expect("Failed to submit job");
 
         assert_eq!(service.stats.total_jobs, initial_jobs + 1);
         assert!(service.stats.provider_usage.values().sum::<usize>() > 0);

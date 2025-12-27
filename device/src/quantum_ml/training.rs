@@ -46,7 +46,8 @@ impl TrainingData {
         self.features.is_empty()
     }
 
-    pub fn get_batch(&self, indices: &[usize]) -> TrainingData {
+    #[must_use]
+    pub fn get_batch(&self, indices: &[usize]) -> Self {
         let batch_features = indices
             .iter()
             .filter_map(|&i| self.features.get(i))
@@ -55,10 +56,10 @@ impl TrainingData {
         let batch_labels = indices
             .iter()
             .filter_map(|&i| self.labels.get(i))
-            .cloned()
+            .copied()
             .collect();
 
-        TrainingData {
+        Self {
             features: batch_features,
             labels: batch_labels,
             metadata: self.metadata.clone(),
@@ -101,8 +102,14 @@ pub struct TrainingMetrics {
     pub execution_times: Vec<Duration>,
 }
 
+impl Default for TrainingMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrainingMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             loss_history: Vec::new(),
             accuracy_history: Vec::new(),
@@ -190,7 +197,7 @@ impl LossFunction for MSELoss {
         Ok(gradients)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "MSE"
     }
 }
@@ -212,7 +219,7 @@ impl LossFunction for CrossEntropyLoss {
             .zip(predictions.iter())
             .map(|(t, p)| {
                 let p_clipped = p.clamp(epsilon, 1.0 - epsilon);
-                t * p_clipped.ln() + (1.0 - t) * (1.0 - p_clipped).ln()
+                (1.0 - t).mul_add((1.0 - p_clipped).ln(), t * p_clipped.ln())
             })
             .sum::<f64>()
             / predictions.len() as f64;
@@ -240,7 +247,7 @@ impl LossFunction for CrossEntropyLoss {
         Ok(gradients)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "CrossEntropy"
     }
 }
@@ -344,14 +351,16 @@ impl QuantumTrainer {
                 execution_time,
                 quantum_fidelity: Some(quantum_fidelity),
                 classical_preprocessing_time: Duration::from_millis(10),
-                quantum_execution_time: execution_time - Duration::from_millis(10),
+                quantum_execution_time: execution_time
+                    .checked_sub(Duration::from_millis(10))
+                    .unwrap_or(Duration::ZERO),
             });
 
             // Check for improvement
             let current_loss = val_loss.unwrap_or(epoch_loss);
             if current_loss < best_loss {
                 best_loss = current_loss;
-                best_parameters = parameters.clone();
+                best_parameters.clone_from(&parameters);
                 patience_counter = 0;
             } else {
                 patience_counter += 1;
@@ -359,13 +368,13 @@ impl QuantumTrainer {
 
             // Early stopping
             if patience_counter >= early_stopping_patience {
-                println!("Early stopping at epoch {} due to no improvement", epoch);
+                println!("Early stopping at epoch {epoch} due to no improvement");
                 break;
             }
 
             // Convergence check
             if epoch_loss < self.config.convergence_tolerance {
-                println!("Converged at epoch {} with loss {:.6}", epoch, epoch_loss);
+                println!("Converged at epoch {epoch} with loss {epoch_loss:.6}");
                 break;
             }
 
@@ -410,7 +419,7 @@ impl QuantumTrainer {
         training_data: &TrainingData,
     ) -> DeviceResult<(f64, f64, f64)> {
         let batch_size = self.config.batch_size.min(training_data.len());
-        let num_batches = (training_data.len() + batch_size - 1) / batch_size;
+        let num_batches = training_data.len().div_ceil(batch_size);
 
         let mut total_loss = 0.0;
         let mut total_accuracy = 0.0;
@@ -646,14 +655,13 @@ impl QuantumTrainer {
     /// Initialize model parameters
     fn initialize_parameters(&self) -> DeviceResult<Vec<f64>> {
         let param_count = match self.model_type {
-            QMLModelType::VQC => 20, // Default parameter count
             QMLModelType::QNN => 30,
             QMLModelType::QAOA => 10,
-            _ => 20,
+            QMLModelType::VQC | _ => 20, // Default parameter count
         };
 
         let parameters = (0..param_count)
-            .map(|_| fastrand::f64() * 2.0 * std::f64::consts::PI - std::f64::consts::PI)
+            .map(|_| (fastrand::f64() * 2.0).mul_add(std::f64::consts::PI, -std::f64::consts::PI))
             .collect();
 
         Ok(parameters)
@@ -662,7 +670,7 @@ impl QuantumTrainer {
     /// Estimate quantum fidelity
     async fn estimate_quantum_fidelity(&self, _parameters: &[f64]) -> DeviceResult<f64> {
         // Simplified fidelity estimate
-        Ok(0.95 + fastrand::f64() * 0.05)
+        Ok(fastrand::f64().mul_add(0.05, 0.95))
     }
 
     /// Get circuit structure description
@@ -859,12 +867,16 @@ mod tests {
         let predictions = vec![0.8, 0.2, 0.9];
         let targets = vec![1.0, 0.0, 1.0];
 
-        let loss = loss_fn.compute_loss(&predictions, &targets).unwrap();
+        let loss = loss_fn
+            .compute_loss(&predictions, &targets)
+            .expect("MSE loss computation should succeed");
         let expected_loss =
             ((0.8_f64 - 1.0).powi(2) + (0.2_f64 - 0.0).powi(2) + (0.9_f64 - 1.0).powi(2)) / 3.0;
         assert!((loss - expected_loss).abs() < 1e-10);
 
-        let gradients = loss_fn.compute_gradients(&predictions, &targets).unwrap();
+        let gradients = loss_fn
+            .compute_gradients(&predictions, &targets)
+            .expect("MSE gradient computation should succeed");
         assert_eq!(gradients.len(), 3);
     }
 
@@ -874,10 +886,14 @@ mod tests {
         let predictions = vec![0.8, 0.2, 0.9];
         let targets = vec![1.0, 0.0, 1.0];
 
-        let loss = loss_fn.compute_loss(&predictions, &targets).unwrap();
+        let loss = loss_fn
+            .compute_loss(&predictions, &targets)
+            .expect("CrossEntropy loss computation should succeed");
         assert!(loss > 0.0); // Cross-entropy should be positive
 
-        let gradients = loss_fn.compute_gradients(&predictions, &targets).unwrap();
+        let gradients = loss_fn
+            .compute_gradients(&predictions, &targets)
+            .expect("CrossEntropy gradient computation should succeed");
         assert_eq!(gradients.len(), 3);
     }
 
@@ -886,7 +902,8 @@ mod tests {
         let device = create_mock_quantum_device();
         let config = QMLConfig::default();
 
-        let trainer = QuantumTrainer::new(device, &config, QMLModelType::VQC).unwrap();
+        let trainer = QuantumTrainer::new(device, &config, QMLModelType::VQC)
+            .expect("QuantumTrainer creation should succeed");
         assert_eq!(trainer.model_type, QMLModelType::VQC);
     }
 

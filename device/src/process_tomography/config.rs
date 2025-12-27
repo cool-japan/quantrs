@@ -30,7 +30,7 @@ pub struct SciRS2ProcessTomographyConfig {
 }
 
 /// Process reconstruction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReconstructionMethod {
     /// Linear inversion (fast but can produce unphysical results)
     LinearInversion,
@@ -64,7 +64,7 @@ pub struct OptimizationConfig {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     LBFGS,
     ConjugateGradient,

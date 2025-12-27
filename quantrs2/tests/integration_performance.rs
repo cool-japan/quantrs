@@ -43,10 +43,7 @@ mod zero_cost_abstractions {
         let ratio = facade_time.as_nanos() as f64 / direct_time.as_nanos().max(1) as f64;
         assert!(
             ratio < 1.5,
-            "Facade overhead is too high: {:.2}x (facade: {:?}, direct: {:?})",
-            ratio,
-            facade_time,
-            direct_time
+            "Facade overhead is too high: {ratio:.2}x (facade: {facade_time:?}, direct: {direct_time:?})"
         );
     }
 
@@ -65,8 +62,7 @@ mod zero_cost_abstractions {
         // Should complete very quickly (sub-millisecond)
         assert!(
             elapsed < Duration::from_millis(100),
-            "Prelude access is too slow: {:?}",
-            elapsed
+            "Prelude access is too slow: {elapsed:?}"
         );
     }
 }
@@ -94,8 +90,7 @@ mod error_handling_overhead {
         // Error creation should be fast
         assert!(
             elapsed < Duration::from_millis(50),
-            "Error creation is too slow: {:?}",
-            elapsed
+            "Error creation is too slow: {elapsed:?}"
         );
     }
 
@@ -127,7 +122,7 @@ mod error_handling_overhead {
         // Should be essentially identical in release mode
         // In debug mode, allow more variance due to lack of optimizations
         let ratio = facade_time.as_nanos() as f64 / std_time.as_nanos().max(1) as f64;
-        assert!(ratio < 2.0, "Result type overhead: {:.2}x", ratio);
+        assert!(ratio < 2.0, "Result type overhead: {ratio:.2}x");
     }
 }
 
@@ -158,8 +153,7 @@ mod feature_detection_overhead {
         // Note: diagnostics does system calls, so allow more time
         assert!(
             elapsed < Duration::from_secs(5),
-            "Diagnostics calls too slow: {:?}",
-            elapsed
+            "Diagnostics calls too slow: {elapsed:?}"
         );
     }
 
@@ -180,8 +174,7 @@ mod feature_detection_overhead {
         // Config snapshots should be very fast
         assert!(
             elapsed < Duration::from_millis(500),
-            "Config access too slow: {:?}",
-            elapsed
+            "Config access too slow: {elapsed:?}"
         );
     }
 }
@@ -230,8 +223,7 @@ mod version_checking_overhead {
         // Version info creation should be fast
         assert!(
             elapsed < Duration::from_millis(100),
-            "VersionInfo creation too slow: {:?}",
-            elapsed
+            "VersionInfo creation too slow: {elapsed:?}"
         );
     }
 
@@ -250,8 +242,7 @@ mod version_checking_overhead {
         // Compatibility checks should be fast (< 100ms for 1000 checks)
         assert!(
             elapsed < Duration::from_millis(500),
-            "Compatibility check too slow: {:?}",
-            elapsed
+            "Compatibility check too slow: {elapsed:?}"
         );
     }
 }
@@ -277,8 +268,7 @@ mod utility_function_overhead {
         // Memory estimation should be microsecond-scale
         assert!(
             elapsed < Duration::from_millis(10),
-            "Memory estimation too slow: {:?}",
-            elapsed
+            "Memory estimation too slow: {elapsed:?}"
         );
     }
 
@@ -294,10 +284,10 @@ mod utility_function_overhead {
         const PI: f64 = utils::PI_CONST;
 
         // Verify correctness
-        assert!((SQRT2 * INV_SQRT2 - 1.0).abs() < 1e-15);
-        assert!((PI_2 * 2.0 - PI).abs() < 1e-15);
-        assert!((PI_4 * 4.0 - PI).abs() < 1e-15);
-        assert!((PI_8 * 8.0 - PI).abs() < 1e-15);
+        assert!(SQRT2.mul_add(INV_SQRT2, -1.0).abs() < 1e-15);
+        assert!(PI_2.mul_add(2.0, -PI).abs() < 1e-15);
+        assert!(PI_4.mul_add(4.0, -PI).abs() < 1e-15);
+        assert!(PI_8.mul_add(8.0, -PI).abs() < 1e-15);
     }
 
     /// Verify formatting functions are fast
@@ -313,8 +303,7 @@ mod utility_function_overhead {
         // Formatting should be fast
         assert!(
             elapsed < Duration::from_millis(100),
-            "Memory formatting too slow: {:?}",
-            elapsed
+            "Memory formatting too slow: {elapsed:?}"
         );
     }
 }
@@ -340,8 +329,7 @@ mod deprecation_overhead {
         // Deprecation checks should be very fast (uses HashMap lookup)
         assert!(
             elapsed < Duration::from_millis(100),
-            "Deprecation check too slow: {:?}",
-            elapsed
+            "Deprecation check too slow: {elapsed:?}"
         );
     }
 
@@ -358,8 +346,7 @@ mod deprecation_overhead {
         // Module stability lookup should be fast
         assert!(
             elapsed < Duration::from_millis(100),
-            "Module stability lookup too slow: {:?}",
-            elapsed
+            "Module stability lookup too slow: {elapsed:?}"
         );
     }
 
@@ -376,8 +363,7 @@ mod deprecation_overhead {
         // Report generation (string building) should be fast
         assert!(
             elapsed < Duration::from_millis(500),
-            "Migration report too slow: {:?}",
-            elapsed
+            "Migration report too slow: {elapsed:?}"
         );
     }
 }
@@ -406,8 +392,7 @@ mod bench_utilities_overhead {
         let per_op = total.as_nanos() / 10_000;
         assert!(
             per_op < 10_000, // < 10 microseconds
-            "Timer overhead too high: {}ns per operation",
-            per_op
+            "Timer overhead too high: {per_op}ns per operation"
         );
     }
 
@@ -425,8 +410,7 @@ mod bench_utilities_overhead {
         // Recording should be fast
         assert!(
             recording_time < Duration::from_millis(50),
-            "Stats recording too slow: {:?}",
-            recording_time
+            "Stats recording too slow: {recording_time:?}"
         );
 
         // Stat calculations should be fast
@@ -445,8 +429,7 @@ mod bench_utilities_overhead {
         // (median requires sorting which is O(n log n))
         assert!(
             calc_time < Duration::from_secs(2),
-            "Stats calculations too slow: {:?}",
-            calc_time
+            "Stats calculations too slow: {calc_time:?}"
         );
     }
 }
@@ -470,8 +453,7 @@ mod testing_utilities_overhead {
 
         assert!(
             elapsed < Duration::from_millis(50),
-            "Assertion too slow: {:?}",
-            elapsed
+            "Assertion too slow: {elapsed:?}"
         );
     }
 
@@ -488,8 +470,7 @@ mod testing_utilities_overhead {
         // 100 * 1000 random numbers should be fast
         assert!(
             elapsed < Duration::from_millis(500),
-            "Random data generation too slow: {:?}",
-            elapsed
+            "Random data generation too slow: {elapsed:?}"
         );
     }
 }
@@ -514,7 +495,7 @@ mod inlining_verification {
 
         // Verify values
         assert!(!_V.is_empty());
-        assert!((_S * _I - 1.0).abs() < 1e-15);
+        assert!(_S.mul_add(_I, -1.0).abs() < 1e-15);
     }
 }
 
@@ -533,7 +514,7 @@ mod memory_efficiency {
         let size = std::mem::size_of::<QuantRS2Error>();
 
         // Error should be reasonably compact (< 256 bytes is acceptable)
-        assert!(size < 256, "QuantRS2Error is too large: {} bytes", size);
+        assert!(size < 256, "QuantRS2Error is too large: {size} bytes");
     }
 
     /// Verify config snapshot is reasonably sized
@@ -544,7 +525,7 @@ mod memory_efficiency {
         let size = std::mem::size_of::<ConfigData>();
 
         // Config data should be compact
-        assert!(size < 256, "ConfigData is too large: {} bytes", size);
+        assert!(size < 256, "ConfigData is too large: {size} bytes");
     }
 
     /// Verify deprecation info is reasonably sized
@@ -555,6 +536,6 @@ mod memory_efficiency {
         let size = std::mem::size_of::<DeprecationInfo>();
 
         // Deprecation info has strings, but shouldn't be huge
-        assert!(size < 512, "DeprecationInfo is too large: {} bytes", size);
+        assert!(size < 512, "DeprecationInfo is too large: {size} bytes");
     }
 }

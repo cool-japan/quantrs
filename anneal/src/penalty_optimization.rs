@@ -3,7 +3,7 @@
 //! This module implements advanced penalty function optimization techniques
 //! for improving embedding quality and problem formulation in quantum annealing.
 //! It includes methods for optimizing chain strengths, penalty weights, and
-//! constraint handling using SciRS2 optimization algorithms.
+//! constraint handling using `SciRS2` optimization algorithms.
 
 use crate::embedding::Embedding;
 use crate::ising::{IsingModel, IsingResult, QuboModel};
@@ -68,6 +68,7 @@ pub struct PenaltyOptimizer {
 
 impl PenaltyOptimizer {
     /// Create a new penalty optimizer
+    #[must_use]
     pub fn new(config: PenaltyConfig) -> Self {
         Self {
             config,
@@ -98,10 +99,7 @@ impl PenaltyOptimizer {
                 .insert(*var, self.config.initial_chain_strength);
         }
 
-        if !self.config.adaptive {
-            // Static penalty optimization
-            self.apply_static_penalties(model, embedding, &stats.chain_strengths)?;
-        } else {
+        if self.config.adaptive {
             // Adaptive penalty optimization
             let initial_energy = self.compute_average_energy(model, samples);
 
@@ -130,6 +128,9 @@ impl PenaltyOptimizer {
                     break;
                 }
             }
+        } else {
+            // Static penalty optimization
+            self.apply_static_penalties(model, embedding, &stats.chain_strengths)?;
         }
 
         // Compute final statistics
@@ -248,9 +249,9 @@ impl PenaltyOptimizer {
     }
 
     /// Update constraint penalties based on violations
-    fn update_constraint_penalties(
+    const fn update_constraint_penalties(
         &self,
-        model: &mut IsingModel,
+        model: &IsingModel,
         violations: &HashMap<String, f64>,
     ) {
         // Placeholder - would update specific constraint penalties
@@ -292,7 +293,7 @@ impl PenaltyOptimizer {
         }
 
         if total_chains > 0 {
-            total_breaks as f64 / total_chains as f64
+            f64::from(total_breaks) / f64::from(total_chains)
         } else {
             0.0
         }
@@ -311,6 +312,7 @@ pub struct AdvancedPenaltyOptimizer {
 
 impl AdvancedPenaltyOptimizer {
     /// Create a new advanced penalty optimizer
+    #[must_use]
     pub fn new(config: PenaltyConfig) -> Self {
         Self {
             base_optimizer: PenaltyOptimizer::new(config),
@@ -341,9 +343,13 @@ impl AdvancedPenaltyOptimizer {
             let gradients = self.compute_gradients(model, embedding, samples, &chain_strengths)?;
 
             // Update chain strengths using gradient descent
-            for (var, strength) in chain_strengths.iter_mut() {
+            for (var, strength) in &mut chain_strengths {
                 if let Some(&grad) = gradients.get(var) {
-                    let new_strength = *strength - self.base_optimizer.config.learning_rate * grad;
+                    let new_strength = self
+                        .base_optimizer
+                        .config
+                        .learning_rate
+                        .mul_add(-grad, *strength);
                     *strength = new_strength
                         .max(self.base_optimizer.config.min_chain_strength)
                         .min(self.base_optimizer.config.max_chain_strength);
@@ -421,8 +427,10 @@ impl AdvancedPenaltyOptimizer {
             };
 
             // Gradient with regularization
-            let gradient = (energy_plus - energy_minus) / (2.0 * epsilon)
-                + self.regularization * current_strength;
+            let gradient = self.regularization.mul_add(
+                current_strength,
+                (energy_plus - energy_minus) / (2.0 * epsilon),
+            );
             gradients.insert(*var, gradient);
         }
 
@@ -454,7 +462,7 @@ pub struct Constraint {
 }
 
 /// Types of constraints
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Equality constraint (sum = target)
     Equality,
@@ -470,6 +478,7 @@ pub enum ConstraintType {
 
 impl ConstraintPenaltyOptimizer {
     /// Create a new constraint penalty optimizer
+    #[must_use]
     pub fn new(tolerance: f64) -> Self {
         Self {
             constraints: Vec::new(),
@@ -524,7 +533,7 @@ impl ConstraintPenaltyOptimizer {
                 }
             }
 
-            let violation_rate = violation_count as f64 / samples.len() as f64;
+            let violation_rate = f64::from(violation_count) / samples.len() as f64;
             violations.insert(constraint.name.clone(), violation_rate);
         }
 
@@ -540,9 +549,9 @@ impl ConstraintPenaltyOptimizer {
             .sum();
 
         match constraint.constraint_type {
-            ConstraintType::Equality => (sum as f64 - constraint.target).abs() < 1e-6,
-            ConstraintType::LessEqual => sum as f64 <= constraint.target,
-            ConstraintType::GreaterEqual => sum as f64 >= constraint.target,
+            ConstraintType::Equality => (f64::from(sum) - constraint.target).abs() < 1e-6,
+            ConstraintType::LessEqual => f64::from(sum) <= constraint.target,
+            ConstraintType::GreaterEqual => f64::from(sum) >= constraint.target,
             ConstraintType::ExactlyOne => sum == 1,
             ConstraintType::AtMostOne => sum <= 1,
         }

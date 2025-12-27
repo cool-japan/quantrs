@@ -129,23 +129,23 @@ impl PulseBuilder {
     }
 
     /// Add a pulse instruction
+    #[must_use]
     pub fn play(mut self, channel: ChannelType, pulse: PulseShape) -> Self {
         let duration = match &pulse {
-            PulseShape::Gaussian { duration, .. } => *duration,
-            PulseShape::GaussianDrag { duration, .. } => *duration,
-            PulseShape::Square { duration, .. } => *duration,
-            PulseShape::CosineTapered { duration, .. } => *duration,
+            PulseShape::Gaussian { duration, .. }
+            | PulseShape::GaussianDrag { duration, .. }
+            | PulseShape::Square { duration, .. }
+            | PulseShape::CosineTapered { duration, .. } => *duration,
             PulseShape::Arbitrary {
                 samples,
                 sample_rate,
             } => samples.len() as f64 / sample_rate,
         };
 
-        let duration_dt = if let Some(cal) = &self.calibration {
-            (duration / cal.dt) as u64
-        } else {
-            duration as u64
-        };
+        let duration_dt = self
+            .calibration
+            .as_ref()
+            .map_or(duration as u64, |cal| (duration / cal.dt) as u64);
 
         self.schedule.instructions.push(PulseInstruction {
             t0: self.current_time,
@@ -161,6 +161,7 @@ impl PulseBuilder {
     }
 
     /// Add a delay
+    #[must_use]
     pub fn delay(mut self, duration: u64, channel: ChannelType) -> Self {
         // Delays are implicit - just advance time
         self.current_time += duration;
@@ -169,6 +170,7 @@ impl PulseBuilder {
     }
 
     /// Set phase on a channel
+    #[must_use]
     pub fn set_phase(mut self, channel: ChannelType, phase: f64) -> Self {
         self.schedule.instructions.push(PulseInstruction {
             t0: self.current_time,
@@ -184,6 +186,7 @@ impl PulseBuilder {
     }
 
     /// Set frequency on a channel
+    #[must_use]
     pub fn set_frequency(mut self, channel: ChannelType, frequency: f64) -> Self {
         self.schedule.instructions.push(PulseInstruction {
             t0: self.current_time,
@@ -199,6 +202,7 @@ impl PulseBuilder {
     }
 
     /// Barrier - synchronize channels
+    #[must_use]
     pub fn barrier(mut self, channels: Vec<ChannelType>) -> Self {
         // Find latest time across channels
         let max_time = self
@@ -208,20 +212,19 @@ impl PulseBuilder {
             .filter(|inst| channels.contains(&inst.channel))
             .map(|inst| {
                 let duration = match &inst.pulse {
-                    PulseShape::Gaussian { duration, .. } => *duration,
-                    PulseShape::GaussianDrag { duration, .. } => *duration,
-                    PulseShape::Square { duration, .. } => *duration,
-                    PulseShape::CosineTapered { duration, .. } => *duration,
+                    PulseShape::Gaussian { duration, .. }
+                    | PulseShape::GaussianDrag { duration, .. }
+                    | PulseShape::Square { duration, .. }
+                    | PulseShape::CosineTapered { duration, .. } => *duration,
                     PulseShape::Arbitrary {
                         samples,
                         sample_rate,
                     } => samples.len() as f64 / sample_rate,
                 };
-                let duration_dt = if let Some(cal) = &self.calibration {
-                    (duration / cal.dt) as u64
-                } else {
-                    duration as u64
-                };
+                let duration_dt = self
+                    .calibration
+                    .as_ref()
+                    .map_or(duration as u64, |cal| (duration / cal.dt) as u64);
                 inst.t0 + duration_dt
             })
             .max()
@@ -232,6 +235,7 @@ impl PulseBuilder {
     }
 
     /// Add metadata
+    #[must_use]
     pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.schedule.metadata.insert(key.into(), value.into());
         self
@@ -261,7 +265,7 @@ pub trait PulseBackend {
 }
 
 /// Measurement level for pulse experiments
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeasLevel {
     /// Raw ADC values
     Raw,
@@ -352,7 +356,7 @@ impl PulseBackend for IBMPulseBackend {
             match &inst.channel {
                 ChannelType::Drive(q) | ChannelType::Measure(q) => {
                     if *q >= self.calibration.qubit_frequencies.len() as u32 {
-                        return Err(DeviceError::APIError(format!("Invalid qubit: {}", q)));
+                        return Err(DeviceError::APIError(format!("Invalid qubit: {q}")));
                     }
                 }
                 ChannelType::Control(q1, q2) => {
@@ -375,7 +379,7 @@ pub struct PulseLibrary;
 
 impl PulseLibrary {
     /// Create a Gaussian pulse
-    pub fn gaussian(duration: f64, sigma: f64, amplitude: f64) -> PulseShape {
+    pub const fn gaussian(duration: f64, sigma: f64, amplitude: f64) -> PulseShape {
         PulseShape::Gaussian {
             duration,
             sigma,
@@ -384,7 +388,7 @@ impl PulseLibrary {
     }
 
     /// Create a DRAG pulse
-    pub fn drag(duration: f64, sigma: f64, amplitude: f64, beta: f64) -> PulseShape {
+    pub const fn drag(duration: f64, sigma: f64, amplitude: f64, beta: f64) -> PulseShape {
         PulseShape::GaussianDrag {
             duration,
             sigma,
@@ -394,7 +398,7 @@ impl PulseLibrary {
     }
 
     /// Create a square pulse
-    pub fn square(duration: f64, amplitude: f64) -> PulseShape {
+    pub const fn square(duration: f64, amplitude: f64) -> PulseShape {
         PulseShape::Square {
             duration,
             amplitude: Complex64::new(amplitude, 0.0),
@@ -402,7 +406,7 @@ impl PulseLibrary {
     }
 
     /// Create a cosine-tapered pulse
-    pub fn cosine_tapered(duration: f64, amplitude: f64, rise_time: f64) -> PulseShape {
+    pub const fn cosine_tapered(duration: f64, amplitude: f64, rise_time: f64) -> PulseShape {
         PulseShape::CosineTapered {
             duration,
             amplitude: Complex64::new(amplitude, 0.0),
@@ -411,13 +415,13 @@ impl PulseLibrary {
     }
 
     /// Create X gate pulse
-    pub fn x_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
+    pub const fn x_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
         // Default X pulse - π rotation
         Self::gaussian(160e-9, 40e-9, 0.5)
     }
 
     /// Create Y gate pulse
-    pub fn y_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
+    pub const fn y_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
         // Y pulse with phase
         PulseShape::Gaussian {
             duration: 160e-9,
@@ -427,13 +431,13 @@ impl PulseLibrary {
     }
 
     /// Create SX (√X) gate pulse
-    pub fn sx_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
+    pub const fn sx_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
         // π/2 rotation
         Self::gaussian(160e-9, 40e-9, 0.25)
     }
 
     /// Create RZ gate using phase shift
-    pub fn rz_pulse(angle: f64) -> PulseInstruction {
+    pub const fn rz_pulse(angle: f64) -> PulseInstruction {
         PulseInstruction {
             t0: 0,
             channel: ChannelType::Drive(0), // Will be updated
@@ -447,7 +451,7 @@ impl PulseLibrary {
     }
 
     /// Create measurement pulse
-    pub fn measure_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
+    pub const fn measure_pulse(calibration: &PulseCalibration, qubit: u32) -> PulseShape {
         // Square measurement pulse
         Self::square(2e-6, 0.1)
     }
@@ -532,7 +536,7 @@ impl PulseTemplates {
         amplitudes
             .into_iter()
             .map(|amp| {
-                PulseBuilder::with_calibration(format!("rabi_{}", amp), calibration.clone())
+                PulseBuilder::with_calibration(format!("rabi_{amp}"), calibration.clone())
                     .play(
                         ChannelType::Drive(qubit),
                         PulseLibrary::gaussian(160e-9, 40e-9, amp),
@@ -555,7 +559,7 @@ impl PulseTemplates {
         delays
             .into_iter()
             .map(|delay| {
-                PulseBuilder::with_calibration(format!("t1_{}", delay), calibration.clone())
+                PulseBuilder::with_calibration(format!("t1_{delay}"), calibration.clone())
                     .play(
                         ChannelType::Drive(qubit),
                         PulseLibrary::x_pulse(calibration, qubit),
@@ -580,7 +584,7 @@ impl PulseTemplates {
         delays
             .into_iter()
             .map(|delay| {
-                PulseBuilder::with_calibration(format!("ramsey_{}", delay), calibration.clone())
+                PulseBuilder::with_calibration(format!("ramsey_{delay}"), calibration.clone())
                     // First π/2 pulse
                     .play(
                         ChannelType::Drive(qubit),

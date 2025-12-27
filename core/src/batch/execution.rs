@@ -151,7 +151,10 @@ impl BatchCircuitExecutor {
                 let state_data = batch.get_state(i)?;
                 // Upload state to GPU
                 let mut gpu_buffer = gpu_backend.allocate_state_vector(batch.n_qubits)?;
-                gpu_buffer.upload(state_data.as_slice().unwrap())?;
+                let state_slice = state_data.as_slice().ok_or_else(|| {
+                    QuantRS2Error::RuntimeError("Failed to get state data as slice".to_string())
+                })?;
+                gpu_buffer.upload(state_slice)?;
 
                 gpu_states.push(gpu_buffer);
             }
@@ -245,7 +248,7 @@ impl BatchCircuitExecutor {
             .into_par_iter()
             .map(|i| {
                 let mut state = batch.states.row(i).to_owned();
-                apply_gates_to_state(&mut state, gates, n_qubits).map(|_| state)
+                apply_gates_to_state(&mut state, gates, n_qubits).map(|()| state)
             })
             .collect::<QuantRS2Result<Vec<_>>>()?;
 
@@ -434,29 +437,33 @@ mod tests {
             ..Default::default()
         };
 
-        let executor = BatchCircuitExecutor::new(config).unwrap();
+        let executor =
+            BatchCircuitExecutor::new(config).expect("Failed to create batch circuit executor");
 
         // Create a simple circuit
         let mut circuit = BatchCircuit::new(2);
         circuit
             .add_gate(Box::new(Hadamard { target: QubitId(0) }))
-            .unwrap();
+            .expect("Failed to add Hadamard gate to qubit 0");
         circuit
             .add_gate(Box::new(Hadamard { target: QubitId(1) }))
-            .unwrap();
+            .expect("Failed to add Hadamard gate to qubit 1");
 
         // Create batch
-        let mut batch = BatchStateVector::new(5, 2, Default::default()).unwrap();
+        let mut batch = BatchStateVector::new(5, 2, Default::default())
+            .expect("Failed to create batch state vector");
 
         // Execute
-        let result = executor.execute_batch(&circuit, &mut batch).unwrap();
+        let result = executor
+            .execute_batch(&circuit, &mut batch)
+            .expect("Failed to execute batch circuit");
 
         assert_eq!(result.gates_applied, 2);
         assert!(!result.used_gpu);
 
         // Check all states are in superposition
         for i in 0..5 {
-            let state = batch.get_state(i).unwrap();
+            let state = batch.get_state(i).expect("Failed to get batch state");
             assert!((state[0].re - 0.5).abs() < 1e-10);
         }
     }
@@ -469,7 +476,8 @@ mod tests {
             ..Default::default()
         };
 
-        let executor = BatchCircuitExecutor::new(config).unwrap();
+        let executor =
+            BatchCircuitExecutor::new(config).expect("Failed to create batch circuit executor");
 
         // Create multiple circuits
         let mut circuits = Vec::new();
@@ -477,17 +485,18 @@ mod tests {
             let mut circuit = BatchCircuit::new(1);
             circuit
                 .add_gate(Box::new(Hadamard { target: QubitId(0) }))
-                .unwrap();
+                .expect("Failed to add Hadamard gate");
             circuits.push(circuit);
         }
 
         // Create initial batch
-        let batch = BatchStateVector::new(10, 1, Default::default()).unwrap();
+        let batch = BatchStateVector::new(10, 1, Default::default())
+            .expect("Failed to create batch state vector");
 
         // Execute multiple circuits
         let results = executor
             .execute_multiple_circuits(&circuits, &batch)
-            .unwrap();
+            .expect("Failed to execute multiple circuits");
 
         assert_eq!(results.len(), 3);
         for result in results {

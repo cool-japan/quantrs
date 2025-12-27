@@ -49,7 +49,7 @@ pub struct HardwareAdaptationConfig {
 }
 
 /// Adaptation triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationTrigger {
     PerformanceDegradation,
     CalibrationDrift,

@@ -70,7 +70,7 @@ pub struct FrequencyProfile {
 }
 
 /// Spectral shape classification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpectralShape {
     /// White noise (flat spectrum)
     White,
@@ -154,7 +154,7 @@ pub struct NoiseStatistics {
 }
 
 /// Noise distribution types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseDistribution {
     Gaussian,
     Uniform,
@@ -196,7 +196,7 @@ pub struct NoiseSource {
 }
 
 /// Types of noise sources
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseSourceType {
     /// Environmental electromagnetic interference
     ElectromagneticInterference,
@@ -230,7 +230,7 @@ pub struct NoiseSourceLocation {
 }
 
 /// Noise propagation pattern
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropagationPattern {
     Local,
     Nearest,
@@ -254,7 +254,7 @@ pub struct NoiseEnvironmentClassification {
 }
 
 /// Types of noise environments
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseEnvironmentType {
     /// Simple Markovian noise
     SimpleMarkovian,
@@ -295,7 +295,7 @@ pub struct NonStationaryComponent {
 }
 
 /// Types of non-stationary behavior
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NonStationaryType {
     LinearTrend,
     PeriodicModulation,
@@ -345,7 +345,7 @@ pub struct ChangePoint {
 }
 
 /// Types of changes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeType {
     MeanShift,
     VarianceChange,
@@ -381,7 +381,7 @@ pub struct ParameterPredictionModel {
 }
 
 /// Types of prediction models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionModelType {
     AutoRegressive,
     MovingAverage,
@@ -648,7 +648,7 @@ pub struct SpatialPatterns {
 }
 
 /// Types of spatial patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpatialPatternType {
     Uniform,
     Gradient,
@@ -741,7 +741,7 @@ pub struct MemoryCharacterization {
 }
 
 /// Types of memory
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemoryType {
     ShortTerm,
     LongTerm,
@@ -804,7 +804,7 @@ pub struct NonMarkovianModel {
 }
 
 /// Types of non-Markovian models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NonMarkovianModelType {
     GeneralizedLangevin,
     FractionalBrownian,
@@ -842,7 +842,7 @@ pub struct SuppressionMechanism {
 }
 
 /// Types of suppression mechanisms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuppressionMechanismType {
     Averaging,
     Decoupling,
@@ -859,7 +859,7 @@ pub struct DDNoiseAnalyzer {
 
 impl DDNoiseAnalyzer {
     /// Create new noise analyzer
-    pub fn new(config: DDNoiseConfig) -> Self {
+    pub const fn new(config: DDNoiseConfig) -> Self {
         Self { config }
     }
 

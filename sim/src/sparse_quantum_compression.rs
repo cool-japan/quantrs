@@ -737,7 +737,10 @@ impl SparseQuantumStateCompressor {
 
     /// Get compression statistics
     pub fn get_statistics(&self) -> CompressionStatistics {
-        self.stats.lock().unwrap().clone()
+        self.stats
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default()
     }
 
     /// Clear compression cache
@@ -815,12 +818,16 @@ mod tests {
         };
 
         let mut compressor = SparseQuantumStateCompressor::new(config);
-        let compressed = compressor.compress(&state).unwrap();
+        let compressed = compressor
+            .compress(&state)
+            .expect("Failed to compress state with LZ4");
 
         assert!(compressed.metadata.compression_ratio > 1.0);
         assert_eq!(compressed.metadata.algorithm, CompressionAlgorithm::LZ4);
 
-        let decompressed = compressor.decompress(&compressed).unwrap();
+        let decompressed = compressor
+            .decompress(&compressed)
+            .expect("Failed to decompress LZ4 state");
         assert_eq!(decompressed.amplitudes.len(), state.amplitudes.len());
     }
 
@@ -879,12 +886,16 @@ mod tests {
         };
 
         let mut compressor = SparseQuantumStateCompressor::new(config);
-        let compressed = compressor.compress(&state).unwrap();
+        let compressed = compressor
+            .compress(&state)
+            .expect("Failed to compress state with hybrid algorithm");
 
         assert!(compressed.metadata.compression_ratio > 1.0);
         assert!(compressed.metadata.fidelity >= 0.99);
 
-        let decompressed = compressor.decompress(&compressed).unwrap();
+        let decompressed = compressor
+            .decompress(&compressed)
+            .expect("Failed to decompress hybrid state");
         assert_eq!(decompressed.num_qubits, state.num_qubits);
     }
 }

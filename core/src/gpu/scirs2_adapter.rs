@@ -118,7 +118,7 @@ impl SciRS2BufferAdapter {
             }
             Err(e) => {
                 // Fall back to CPU mode
-                eprintln!("GPU initialization failed, falling back to CPU: {}", e);
+                eprintln!("GPU initialization failed, falling back to CPU: {e}");
                 Ok(())
             }
         }
@@ -142,12 +142,13 @@ impl SciRS2BufferAdapter {
 
     /// Check if GPU acceleration is active
     #[cfg(feature = "gpu")]
+    #[allow(clippy::missing_const_for_fn)] // Option::is_some() is not const
     pub fn is_gpu_active(&self) -> bool {
         self.device.is_some()
     }
 
     #[cfg(not(feature = "gpu"))]
-    pub fn is_gpu_active(&self) -> bool {
+    pub const fn is_gpu_active(&self) -> bool {
         false
     }
 }
@@ -276,7 +277,7 @@ impl SciRS2KernelAdapter {
                 Ok(())
             }
             Err(e) => {
-                eprintln!("GPU initialization failed, using CPU fallback: {}", e);
+                eprintln!("GPU initialization failed, using CPU fallback: {e}");
                 Ok(())
             }
         }
@@ -663,7 +664,7 @@ impl QuantumGpuBackend for SciRS2GpuBackend {
         is_gpu_available()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "SciRS2_GPU"
     }
 
@@ -747,14 +748,14 @@ pub fn register_quantum_kernel(name: &str, kernel_source: &str) -> QuantRS2Resul
 }
 
 /// Register a compiled kernel for caching
-pub fn register_compiled_kernel(name: &str, kernel_binary: &[u8]) -> QuantRS2Result<()> {
+pub const fn register_compiled_kernel(name: &str, kernel_binary: &[u8]) -> QuantRS2Result<()> {
     // Placeholder for kernel binary caching
     let _ = (name, kernel_binary);
     Ok(())
 }
 
 /// Helper to check if GPU acceleration is available via SciRS2
-pub fn is_gpu_available() -> bool {
+pub const fn is_gpu_available() -> bool {
     #[cfg(feature = "gpu")]
     {
         // For now, assume GPU is available if the feature is enabled

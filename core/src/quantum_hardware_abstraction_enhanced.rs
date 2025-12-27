@@ -1692,7 +1692,7 @@ mod tests {
         // Register a test platform first
         let platform_id = "test_platform".to_string();
         let platform = create_test_platform(platform_id.clone());
-        qhal.register_platform(platform).await.unwrap();
+        qhal.register_platform(platform).await.expect("Platform registration should succeed");
 
         let circuit = QuantumCircuit {
             circuit_id: Uuid::new_v4(),
@@ -1704,7 +1704,7 @@ mod tests {
         let result = qhal.compile_for_platform(&circuit, &platform_id, OptimizationLevel::Standard).await;
         assert!(result.is_ok());
 
-        let compiled = result.unwrap();
+        let compiled = result.expect("Circuit compilation should succeed");
         assert_eq!(compiled.target_platform, platform_id);
     }
 
@@ -1716,13 +1716,13 @@ mod tests {
         for i in 0..3 {
             let platform_id = format!("test_platform_{}", i);
             let platform = create_test_platform(platform_id);
-            qhal.register_platform(platform).await.unwrap();
+            qhal.register_platform(platform).await.expect("Platform registration should succeed");
         }
 
         let health_report = qhal.monitor_hardware_health().await;
         assert!(health_report.is_ok());
 
-        let health = health_report.unwrap();
+        let health = health_report.expect("Hardware health monitoring should succeed");
         assert_eq!(health.platform_health.len(), 3);
         assert!(health.overall_health_score > 0.0);
     }

@@ -163,7 +163,7 @@ fn bench_code_scaling(c: &mut Criterion) {
     let logical_state = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
 
     // Benchmark Surface Code with different distances
-    for distance in [3, 5].iter() {
+    for distance in &[3, 5] {
         let surface_code = SurfaceCode::new(*distance);
         let num_qubits = surface_code.num_data_qubits() + surface_code.num_ancilla_qubits();
 
@@ -180,7 +180,7 @@ fn bench_code_scaling(c: &mut Criterion) {
     }
 
     // Benchmark Toric Code with different lattice sizes
-    for size in [2, 3].iter() {
+    for size in &[2, 3] {
         let toric_code = ToricCode::new((*size, *size));
         let num_qubits = toric_code.num_data_qubits() + toric_code.num_ancilla_qubits();
 

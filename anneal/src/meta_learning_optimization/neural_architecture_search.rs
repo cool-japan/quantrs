@@ -6,8 +6,11 @@ use std::time::{Duration, Instant};
 use scirs2_core::rand_prelude::IndexedRandom;
 use scirs2_core::random::thread_rng;
 
-use super::config::*;
-use super::feature_extraction::*;
+use super::config::{NeuralArchitectureSearchConfig, SearchSpace, SearchStrategy};
+use super::feature_extraction::{
+    ArchitectureSpec, ConnectionPattern, LayerSpec, OptimizationSettings, OptimizerType,
+    ProblemFeatures, RegularizationConfig,
+};
 
 /// Neural Architecture Search engine
 pub struct NeuralArchitectureSearch {
@@ -24,6 +27,7 @@ pub struct NeuralArchitectureSearch {
 }
 
 impl NeuralArchitectureSearch {
+    #[must_use]
     pub fn new(config: NeuralArchitectureSearchConfig) -> Self {
         Self {
             search_space: config.search_space.clone(),
@@ -266,7 +270,7 @@ impl NeuralArchitectureSearch {
             tournament.sort_by(|a, b| {
                 b.estimated_performance
                     .partial_cmp(&a.estimated_performance)
-                    .unwrap()
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
             parents.push(tournament[0].clone());
         }
@@ -356,11 +360,12 @@ impl NeuralArchitectureSearch {
         }
     }
 
+    #[must_use]
     pub fn get_best_architecture(&self) -> Option<&ArchitectureCandidate> {
         self.current_architectures.iter().max_by(|a, b| {
             a.estimated_performance
                 .partial_cmp(&b.estimated_performance)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         })
     }
 }
@@ -383,7 +388,7 @@ pub struct ArchitectureCandidate {
 }
 
 /// Architecture generation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerationMethod {
     /// Random generation
     Random,
@@ -428,7 +433,8 @@ pub struct PerformancePredictor {
 }
 
 impl PerformancePredictor {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model: PredictorModel::NeuralNetwork,
             training_data: Vec::new(),
@@ -448,9 +454,9 @@ impl PerformancePredictor {
 
         // Simple heuristic: balance complexity and size
         let performance =
-            (0.8 - complexity * 0.05).max(0.1) * (1.0 - (total_params / 1000000.0).min(0.5));
+            complexity.mul_add(-0.05, 0.8).max(0.1) * (1.0 - (total_params / 1_000_000.0).min(0.5));
 
-        Ok(performance.max(0.1).min(1.0))
+        Ok(performance.clamp(0.1, 1.0))
     }
 
     pub fn update(&mut self, architecture: ArchitectureSpec, performance: f64) {
@@ -480,11 +486,11 @@ pub enum PredictorModel {
     /// Support vector machine
     SupportVectorMachine,
     /// Ensemble model
-    Ensemble(Vec<PredictorModel>),
+    Ensemble(Vec<Self>),
 }
 
 /// Resource requirements for architectures
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceRequirements {
     /// Memory requirements (MB)
     pub memory: usize,
@@ -499,6 +505,9 @@ pub struct ResourceRequirements {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::meta_learning_optimization::feature_extraction::{
+        GraphFeatures, SpectralFeatures, StatisticalFeatures,
+    };
 
     #[test]
     fn test_nas_creation() {
@@ -531,7 +540,7 @@ mod tests {
         let result = nas.generate_random_architecture(&features);
         assert!(result.is_ok());
 
-        let arch = result.unwrap();
+        let arch = result.expect("generate_random_architecture should succeed");
         assert!(!arch.architecture.layers.is_empty());
         assert_eq!(arch.generation_method, GenerationMethod::Random);
     }

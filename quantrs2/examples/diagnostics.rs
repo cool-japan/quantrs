@@ -16,7 +16,7 @@ fn main() {
     let report = diagnostics::run_diagnostics();
 
     // 2. Display the full report
-    println!("{}", report);
+    println!("{report}");
     println!();
 
     // 3. Check system readiness
@@ -28,12 +28,12 @@ fn main() {
         println!("   ✗ System has CRITICAL ERRORS!");
         println!("   Please resolve the following issues:");
         for error in report.errors() {
-            println!("     - {}", error);
+            println!("     - {error}");
         }
     } else if report.has_warnings() {
         println!("   ⚠ System is functional but has warnings:");
         for warning in report.warnings() {
-            println!("     - {}", warning);
+            println!("     - {warning}");
         }
         println!("   The system will work, but performance may be suboptimal.");
     }
@@ -121,7 +121,7 @@ fn main() {
     }
     if let Some(ref dir) = config.cache_dir {
         println!("   Cache:");
-        println!("     - Directory: {}", dir);
+        println!("     - Directory: {dir}");
         if let Some(size) = config.max_cache_size_bytes {
             println!("     - Max size: {:.2} MB", size as f64 / (1024.0 * 1024.0));
         }
@@ -144,7 +144,7 @@ fn main() {
             for error in errors {
                 println!("     - [{}] {}", error.component, error.message);
                 if let Some(ref suggestion) = error.suggestion {
-                    println!("       → Suggestion: {}", suggestion);
+                    println!("       → Suggestion: {suggestion}");
                 }
             }
             println!();
@@ -155,7 +155,7 @@ fn main() {
             for warning in warnings {
                 println!("     - [{}] {}", warning.component, warning.message);
                 if let Some(ref suggestion) = warning.suggestion {
-                    println!("       → Suggestion: {}", suggestion);
+                    println!("       → Suggestion: {suggestion}");
                 }
             }
             println!();

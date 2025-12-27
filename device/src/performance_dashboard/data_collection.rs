@@ -42,7 +42,7 @@ pub struct SamplingConfig {
     pub quality_based_sampling: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PerformanceMetric {
     Fidelity,
     Throughput,
@@ -54,7 +54,7 @@ pub enum PerformanceMetric {
     SwapCount,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ResourceMetric {
     CpuUtilization,
     MemoryUtilization,
@@ -65,7 +65,7 @@ pub enum ResourceMetric {
     ActiveConnections,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum QualityMetric {
     ProcessFidelity,
     MeasurementFidelity,
@@ -76,7 +76,7 @@ pub enum QualityMetric {
     CalibrationDrift,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CustomMetric {
     UserDefined(String),
     ApplicationSpecific(String),
@@ -95,7 +95,7 @@ pub enum AggregationFunction {
     Variance,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TimeWindow {
     Seconds(u64),
     Minutes(u64),
@@ -103,7 +103,7 @@ pub enum TimeWindow {
     Days(u64),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SamplingStrategy {
     Fixed,
     Adaptive,

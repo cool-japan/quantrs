@@ -682,7 +682,7 @@ mod tests {
             momentum: 0.0,
         };
 
-        let vqf = VQF::new(15, optimizer).unwrap();
+        let vqf = VQF::new(15, optimizer).expect("Failed to create VQF for n=15");
         assert_eq!(vqf.n, 15);
 
         // Test preprocessing
@@ -702,7 +702,8 @@ mod tests {
             gamma: 0.101,
         };
 
-        let enhanced = EnhancedVQF::new(21, optimizer).unwrap();
+        let enhanced =
+            EnhancedVQF::new(21, optimizer).expect("Failed to create EnhancedVQF for n=21");
         assert!(enhanced.use_carry_handling);
     }
 
@@ -712,7 +713,7 @@ mod tests {
         let mut result = shors.factor();
 
         assert!(result.is_ok());
-        let factors = result.unwrap().factors;
+        let factors = result.expect("Shor's algorithm should factor 15").factors;
         assert_eq!(factors[0] * factors[1], 15);
     }
 

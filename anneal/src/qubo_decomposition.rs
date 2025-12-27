@@ -206,7 +206,8 @@ pub struct QuboDecomposer {
 
 impl QuboDecomposer {
     /// Create a new QUBO decomposer
-    pub fn new(config: DecompositionConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: DecompositionConfig) -> Self {
         Self { config }
     }
 
@@ -562,7 +563,7 @@ impl QuboDecomposer {
         }
 
         let mut sub_problems = Vec::new();
-        for (id, mut variables) in cluster_vars.into_iter() {
+        for (id, mut variables) in cluster_vars {
             // Add overlap
             let (ising, _) = qubo.to_ising();
             variables = self.add_overlap(&variables, &ising, overlap_size);
@@ -613,7 +614,9 @@ impl QuboDecomposer {
             neighbors.sort_by(|&a, &b| {
                 let strength_a = ising.get_coupling(var, a).unwrap_or(0.0).abs();
                 let strength_b = ising.get_coupling(var, b).unwrap_or(0.0).abs();
-                strength_b.partial_cmp(&strength_a).unwrap()
+                strength_b
+                    .partial_cmp(&strength_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             for &neighbor in neighbors.iter().take(overlap_size) {
@@ -622,7 +625,7 @@ impl QuboDecomposer {
         }
 
         let mut result_vec: Vec<usize> = result.into_iter().collect();
-        result_vec.sort();
+        result_vec.sort_unstable();
         result_vec
     }
 
@@ -649,7 +652,7 @@ impl QuboDecomposer {
         }
 
         let mut result_vec: Vec<usize> = result.into_iter().collect();
-        result_vec.sort();
+        result_vec.sort_unstable();
         result_vec
     }
 
@@ -803,7 +806,7 @@ mod tests {
     fn test_block_decomposition() {
         let mut qubo = QuboModel::new(20); // Increase size to 20 variables
         for i in 0..20 {
-            qubo.set_linear(i, 1.0).unwrap();
+            qubo.set_linear(i, 1.0).expect("set_linear should succeed");
         }
 
         let config = DecompositionConfig {
@@ -816,7 +819,9 @@ mod tests {
         };
 
         let decomposer = QuboDecomposer::new(config);
-        let sub_problems = decomposer.block_decomposition(&qubo, 4, 1).unwrap();
+        let sub_problems = decomposer
+            .block_decomposition(&qubo, 4, 1)
+            .expect("block_decomposition should succeed");
 
         assert!(!sub_problems.is_empty());
         for sub_problem in &sub_problems {
@@ -830,17 +835,23 @@ mod tests {
 
         // Create a small test problem
         let vars: Vec<_> = (0..6)
-            .map(|i| builder.add_variable(format!("x{}", i)).unwrap())
+            .map(|i| {
+                builder
+                    .add_variable(format!("x{}", i))
+                    .expect("add_variable should succeed")
+            })
             .collect();
 
         for i in 0..6 {
-            builder.set_linear_term(&vars[i], 1.0).unwrap();
+            builder
+                .set_linear_term(&vars[i], 1.0)
+                .expect("set_linear_term should succeed");
         }
 
         for i in 0..5 {
             builder
                 .set_quadratic_term(&vars[i], &vars[i + 1], -2.0)
-                .unwrap();
+                .expect("set_quadratic_term should succeed");
         }
 
         let qubo_formulation = builder.build();
@@ -858,7 +869,7 @@ mod tests {
         };
 
         let decomposer = QuboDecomposer::new(config);
-        let result = decomposer.solve(&qubo).unwrap();
+        let result = decomposer.solve(&qubo).expect("solve should succeed");
 
         assert_eq!(result.variable_values.len(), 6);
         assert!(result.stats.num_subproblems > 0);

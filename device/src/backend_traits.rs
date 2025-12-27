@@ -73,7 +73,7 @@ pub mod ibm_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 
@@ -150,7 +150,7 @@ pub mod google_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 
@@ -223,7 +223,7 @@ pub mod google_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 }
@@ -280,7 +280,7 @@ pub mod ionq_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 
@@ -354,7 +354,7 @@ pub mod rigetti_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 }
@@ -411,7 +411,7 @@ pub mod honeywell_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 
@@ -463,7 +463,7 @@ pub mod honeywell_gates {
         }
 
         fn clone_gate(&self) -> Box<dyn GateOp> {
-            Box::new(self.clone())
+            Box::new(*self)
         }
     }
 }
@@ -476,7 +476,7 @@ pub struct DecompositionValidator {
 
 impl DecompositionValidator {
     /// Create a new validator
-    pub fn new(tolerance: f64) -> Self {
+    pub const fn new(tolerance: f64) -> Self {
         Self { tolerance }
     }
 
@@ -528,7 +528,7 @@ impl Default for BackendCapabilities {
 }
 
 /// Backend feature support
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BackendFeatures {
     /// Supports mid-circuit measurements
     pub mid_circuit_measurement: bool,
@@ -618,7 +618,7 @@ pub fn query_backend_capabilities(backend: HardwareBackend) -> BackendCapabiliti
             backend,
             native_gates: NativeGateSet {
                 backend,
-                single_qubit_gates: vec!["id", "rz", "sx", "x"]
+                single_qubit_gates: ["id", "rz", "sx", "x"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect(),
@@ -667,10 +667,7 @@ pub fn query_backend_capabilities(backend: HardwareBackend) -> BackendCapabiliti
             backend,
             native_gates: NativeGateSet {
                 backend,
-                single_qubit_gates: vec!["rx", "ry", "rz"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect(),
+                single_qubit_gates: ["rx", "ry", "rz"].iter().map(|s| s.to_string()).collect(),
                 two_qubit_gates: vec!["xx".to_string()],
                 multi_qubit_gates: vec![],
                 arbitrary_single_qubit: true,

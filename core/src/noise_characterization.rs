@@ -57,7 +57,7 @@ impl Default for NoiseModel {
 
 impl NoiseModel {
     /// Create a new noise model with specified parameters
-    pub fn new(
+    pub const fn new(
         single_qubit_depolarizing: f64,
         two_qubit_depolarizing: f64,
         t1: f64,
@@ -190,8 +190,8 @@ impl RandomizedBenchmarking {
         // Use last data point as estimate for asymptote B
         let asymptote = *data
             .values()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(&0.5);
 
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
@@ -199,7 +199,7 @@ impl RandomizedBenchmarking {
         let mut sum_xx = 0.0;
         let mut count = 0;
 
-        for (&length, &survival) in data.iter() {
+        for (&length, &survival) in data {
             if survival > asymptote {
                 let x = length as f64;
                 let y = (survival - asymptote).ln();
@@ -274,7 +274,7 @@ impl Default for ZeroNoiseExtrapolation {
 
 impl ZeroNoiseExtrapolation {
     /// Create a new ZNE protocol
-    pub fn new(scaling_factors: Vec<f64>, extrapolation_method: ExtrapolationMethod) -> Self {
+    pub const fn new(scaling_factors: Vec<f64>, extrapolation_method: ExtrapolationMethod) -> Self {
         Self {
             scaling_factors,
             extrapolation_method,
@@ -324,8 +324,8 @@ impl ZeroNoiseExtrapolation {
 
         // Standard linear regression formula: slope = (n*Σxy - Σx*Σy) / (n*Σx² - (Σx)²)
         #[allow(clippy::suspicious_operation_groupings)]
-        let b = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-        let a = (sum_y - b * sum_x) / n;
+        let b = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_xx, -(sum_x * sum_x));
+        let a = b.mul_add(-sum_x, sum_y) / n;
 
         // Extrapolate to x=0 (zero noise)
         Ok(a)
@@ -463,8 +463,8 @@ impl ZeroNoiseExtrapolation {
 
         // Standard linear regression formula: slope = (n*Σxy - Σx*Σy) / (n*Σx² - (Σx)²)
         #[allow(clippy::suspicious_operation_groupings)]
-        let b = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-        let log_a = (sum_y - b * sum_x) / n;
+        let b = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_xx, -(sum_x * sum_x));
+        let log_a = b.mul_add(-sum_x, sum_y) / n;
         let a = log_a.exp();
 
         // Extrapolate to x=0
@@ -484,7 +484,7 @@ pub struct ProbabilisticErrorCancellation {
 
 impl ProbabilisticErrorCancellation {
     /// Create a new PEC protocol
-    pub fn new(noise_model: NoiseModel, num_samples: usize) -> Self {
+    pub const fn new(noise_model: NoiseModel, num_samples: usize) -> Self {
         Self {
             noise_model,
             num_samples,
@@ -552,7 +552,7 @@ pub enum DDSequenceType {
 
 impl DynamicalDecoupling {
     /// Create a new DD protocol
-    pub fn new(sequence_type: DDSequenceType, num_pulses: usize) -> Self {
+    pub const fn new(sequence_type: DDSequenceType, num_pulses: usize) -> Self {
         Self {
             sequence_type,
             num_pulses,
@@ -642,7 +642,7 @@ impl DynamicalDecoupling {
 
         // Improvement factor ≈ n^2 for ideal pulses
         // Reduced by pulse errors
-        (n * n) / (1.0 + n * pulse_error)
+        (n * n) / n.mul_add(pulse_error, 1.0)
     }
 }
 
@@ -667,7 +667,7 @@ pub struct CrossEntropyBenchmarking {
 
 impl CrossEntropyBenchmarking {
     /// Create a new XEB protocol
-    pub fn new(num_qubits: usize, circuit_depth: usize, num_circuits: usize) -> Self {
+    pub const fn new(num_qubits: usize, circuit_depth: usize, num_circuits: usize) -> Self {
         Self {
             num_qubits,
             circuit_depth,
@@ -763,7 +763,9 @@ mod tests {
         // Mock executor: result = 1.0 - 0.1 * noise_scale
         let executor = |scale: f64| 1.0 - 0.1 * scale;
 
-        let mitigated = zne.mitigate(executor).unwrap();
+        let mitigated = zne
+            .mitigate(executor)
+            .expect("ZNE linear extrapolation failed");
 
         // Should extrapolate to ~1.0 at scale=0
         assert!((mitigated - 1.0).abs() < 0.05);
@@ -804,7 +806,9 @@ mod tests {
         // Mock classical simulator (uniform for simplicity)
         let classical_sim = |_circuit_id: usize| vec![0.0312; 32]; // 1/32 for 5 qubits
 
-        let result = xeb.run(quantum_exec, classical_sim).unwrap();
+        let result = xeb
+            .run(quantum_exec, classical_sim)
+            .expect("XEB run failed");
 
         assert!(result.cross_entropy > 0.0);
         assert!(result.fidelity > 0.0);
@@ -821,7 +825,9 @@ mod tests {
         // Mock executor: result = 1.0 - 0.05 * scale - 0.01 * scale^2
         let executor = |scale: f64| 1.0 - 0.05 * scale - 0.01 * scale * scale;
 
-        let mitigated = zne.mitigate(executor).unwrap();
+        let mitigated = zne
+            .mitigate(executor)
+            .expect("ZNE polynomial extrapolation failed");
 
         // Should extrapolate close to 1.0 at scale=0
         assert!((mitigated - 1.0).abs() < 0.1);
@@ -836,7 +842,9 @@ mod tests {
         // Mock executor: result = 0.9 * exp(-0.1 * scale)
         let executor = |scale: f64| 0.9 * (-0.1 * scale).exp();
 
-        let mitigated = zne.mitigate(executor).unwrap();
+        let mitigated = zne
+            .mitigate(executor)
+            .expect("ZNE exponential extrapolation failed");
 
         // Should extrapolate close to 0.9 at scale=0
         assert!((mitigated - 0.9).abs() < 0.05);

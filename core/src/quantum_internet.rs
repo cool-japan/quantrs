@@ -316,7 +316,7 @@ pub struct QuantumInternetSecurity {
 }
 
 impl QuantumInternetSecurity {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             quantum_authentication: QuantumAuthentication::new(),
             quantum_encryption: QuantumEncryption::new(),
@@ -332,7 +332,7 @@ pub struct QuantumAuthentication {
 }
 
 impl QuantumAuthentication {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             authentication_method: AuthenticationMethod::QuantumSignature,
         }
@@ -352,7 +352,7 @@ pub struct QuantumEncryption {
 }
 
 impl QuantumEncryption {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             encryption_scheme: EncryptionScheme::OneTimePad,
         }
@@ -372,7 +372,7 @@ pub struct QuantumIntrusionDetection {
 }
 
 impl QuantumIntrusionDetection {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             detection_threshold: 0.95,
         }
@@ -771,11 +771,11 @@ impl QuantumInternet {
             let repeater = QuantumRepeater {
                 repeater_id: Self::generate_id(),
                 location: GeographicLocation {
-                    latitude: -90.0 + 180.0 * (i as f64 / 500.0),
-                    longitude: -180.0 + 360.0 * (i as f64 / 500.0),
+                    latitude: 180.0f64.mul_add(i as f64 / 500.0, -90.0),
+                    longitude: 360.0f64.mul_add(i as f64 / 500.0, -180.0),
                     altitude: 0.0,
                     country: "Global".to_string(),
-                    city: format!("Repeater-{}", i),
+                    city: format!("Repeater-{i}"),
                 },
                 repeater_type: RepeaterType::QuantumMemoryRepeater,
                 memory_slots: 100,
@@ -810,28 +810,28 @@ impl QuantumInternet {
     }
 
     // Benchmarking methods
-    fn benchmark_quantum_communication(&self) -> f64 {
+    const fn benchmark_quantum_communication(&self) -> f64 {
         18.7 // 18.7x advantage with quantum communication
     }
 
-    fn benchmark_distributed_computing(&self) -> f64 {
+    const fn benchmark_distributed_computing(&self) -> f64 {
         23.4 // 23.4x speedup with distributed quantum computing
     }
 
-    fn benchmark_quantum_sensing(&self) -> f64 {
+    const fn benchmark_quantum_sensing(&self) -> f64 {
         34.2 // 34.2x sensitivity improvement with quantum sensing
     }
 
-    fn benchmark_quantum_security(&self) -> f64 {
+    const fn benchmark_quantum_security(&self) -> f64 {
         156.8 // 156.8x stronger security with quantum protocols
     }
 
-    fn benchmark_network_scalability(&self) -> f64 {
+    const fn benchmark_network_scalability(&self) -> f64 {
         45.6 // 45.6x better scalability with quantum protocols
     }
 
     // Simulation methods (simplified implementations)
-    fn simulate_global_qkd_performance(
+    const fn simulate_global_qkd_performance(
         &self,
         _params: &SimulationParameters,
     ) -> QKDPerformanceMetrics {
@@ -843,7 +843,7 @@ impl QuantumInternet {
         }
     }
 
-    fn simulate_distributed_computing_performance(
+    const fn simulate_distributed_computing_performance(
         &self,
         _params: &SimulationParameters,
     ) -> DistributedComputingMetrics {
@@ -855,7 +855,7 @@ impl QuantumInternet {
         }
     }
 
-    fn simulate_sensing_network_performance(
+    const fn simulate_sensing_network_performance(
         &self,
         _params: &SimulationParameters,
     ) -> SensingNetworkMetrics {
@@ -867,7 +867,10 @@ impl QuantumInternet {
         }
     }
 
-    fn simulate_network_resilience(&self, _params: &SimulationParameters) -> ResilienceMetrics {
+    const fn simulate_network_resilience(
+        &self,
+        _params: &SimulationParameters,
+    ) -> ResilienceMetrics {
         ResilienceMetrics {
             fault_tolerance: 99.97,
             recovery_time: Duration::from_millis(100),
@@ -919,7 +922,7 @@ impl QuantumInternet {
         })
     }
 
-    fn analyze_key_security(
+    const fn analyze_key_security(
         &self,
         _key: &DistributedKey,
     ) -> Result<SecurityAnalysis, QuantRS2Error> {
@@ -929,7 +932,7 @@ impl QuantumInternet {
         })
     }
 
-    fn validate_computation_requirements(
+    const fn validate_computation_requirements(
         &self,
         _algorithm: &DistributedQuantumAlgorithm,
         _nodes: &[u64],
@@ -960,7 +963,7 @@ impl QuantumInternet {
         })
     }
 
-    fn execute_distributed_algorithm(
+    const fn execute_distributed_algorithm(
         &self,
         _plan: &ComputationPlan,
         _entanglement: &ComputationEntanglementNetwork,
@@ -973,7 +976,7 @@ impl QuantumInternet {
         })
     }
 
-    fn aggregate_computation_results(
+    const fn aggregate_computation_results(
         &self,
         _result: &DistributedAlgorithmResult,
     ) -> Result<AggregatedResult, QuantRS2Error> {
@@ -1023,7 +1026,7 @@ impl QuantumRouting {
         }
     }
 
-    pub fn build_initial_routing_table(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn build_initial_routing_table(&mut self) -> Result<(), QuantRS2Error> {
         // Build initial routing table
         Ok(())
     }
@@ -1065,7 +1068,7 @@ pub struct LocalQuantumMemory {
 }
 
 impl LocalQuantumMemory {
-    pub fn new(capacity: usize) -> Self {
+    pub const fn new(capacity: usize) -> Self {
         Self {
             capacity,
             coherence_time: Duration::from_secs(1),
@@ -1082,7 +1085,7 @@ pub struct QuantumProcessingPower {
 }
 
 impl QuantumProcessingPower {
-    pub fn high_performance() -> Self {
+    pub const fn high_performance() -> Self {
         Self {
             gate_rate: 1_000_000.0,
             qubit_count: 1000,
@@ -1099,7 +1102,7 @@ pub struct QuantumNetworkInterface {
 }
 
 impl QuantumNetworkInterface {
-    pub fn fiber_optic() -> Self {
+    pub const fn fiber_optic() -> Self {
         Self {
             interface_type: NetworkInterfaceType::FiberOptic,
             bandwidth: 10000.0,
@@ -1123,7 +1126,7 @@ pub struct QuantumCredentials {
 }
 
 impl QuantumCredentials {
-    pub fn high_security() -> Self {
+    pub const fn high_security() -> Self {
         Self {
             security_level: 256,
             certificates: vec![],
@@ -1173,7 +1176,7 @@ pub struct QuantumInternetAdvantageReport {
 }
 
 impl QuantumInternetAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             global_coverage: 0.0,
             total_nodes: 0,
@@ -1502,7 +1505,7 @@ impl TopologyDiscovery {
         }
     }
 
-    pub fn discover_global_topology(
+    pub const fn discover_global_topology(
         &self,
         _infrastructure: &QuantumNetworkInfrastructure,
     ) -> Result<(), QuantRS2Error> {
@@ -1868,7 +1871,7 @@ mod tests {
         let result = quantum_internet.deploy_global_quantum_network();
         assert!(result.is_ok());
 
-        let deployment_result = result.unwrap();
+        let deployment_result = result.expect("global network deployment should succeed");
         assert!(deployment_result.total_nodes > 0);
         assert!(deployment_result.satellite_coverage > 90.0);
         assert!(deployment_result.network_reliability > 99.0);
@@ -1891,7 +1894,9 @@ mod tests {
     #[test]
     fn test_global_qkd() {
         let mut quantum_internet = QuantumInternet::new();
-        quantum_internet.deploy_global_quantum_network().unwrap();
+        quantum_internet
+            .deploy_global_quantum_network()
+            .expect("network deployment should succeed for QKD test");
 
         let source = GeographicLocation {
             latitude: 40.7128,
@@ -1912,7 +1917,7 @@ mod tests {
         let result = quantum_internet.execute_global_qkd(source, destination, 256);
         assert!(result.is_ok());
 
-        let qkd_result = result.unwrap();
+        let qkd_result = result.expect("global QKD should succeed");
         assert_eq!(qkd_result.distributed_key.key_length, 256);
         assert!(qkd_result.quantum_advantage > 1.0);
     }

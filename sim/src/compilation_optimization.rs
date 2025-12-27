@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use std::fmt::Write;
 /// Analysis of module dependencies and compilation characteristics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilationAnalysis {
@@ -110,6 +111,7 @@ pub struct CompilationOptimizer {
 
 impl CompilationOptimizer {
     /// Create new compilation optimizer
+    #[must_use]
     pub fn new(config: CompilationOptimizerConfig) -> Self {
         Self {
             config,
@@ -197,8 +199,9 @@ impl CompilationOptimizer {
         use regex::Regex;
         use std::fs;
 
-        let use_regex = Regex::new(r"^use\s+([^;]+);").unwrap();
-        let mod_regex = Regex::new(r"^(?:pub\s+)?mod\s+(\w+)").unwrap();
+        // Safety: These regex patterns are compile-time constants and always valid
+        let use_regex = Regex::new(r"^use\s+([^;]+);").expect("Valid use regex pattern");
+        let mod_regex = Regex::new(r"^(?:pub\s+)?mod\s+(\w+)").expect("Valid mod regex pattern");
 
         for module_name in analysis.module_sizes.keys() {
             let mut module_path = self.config.root_path.clone();
@@ -212,22 +215,28 @@ impl CompilationOptimizer {
 
                     // Extract use statements
                     if let Some(captures) = use_regex.captures(line) {
-                        let use_path = captures.get(1).unwrap().as_str();
-                        // Extract the first component of the use path
-                        if let Some(first_component) = use_path.split("::").next() {
-                            if first_component.starts_with("crate::") {
-                                let module = first_component
-                                    .strip_prefix("crate::")
-                                    .unwrap_or(first_component);
-                                dependencies.push(module.to_string());
+                        // Safety: captures.get(1) guaranteed by successful regex match with group
+                        if let Some(use_path_match) = captures.get(1) {
+                            let use_path = use_path_match.as_str();
+                            // Extract the first component of the use path
+                            if let Some(first_component) = use_path.split("::").next() {
+                                if first_component.starts_with("crate::") {
+                                    let module = first_component
+                                        .strip_prefix("crate::")
+                                        .unwrap_or(first_component);
+                                    dependencies.push(module.to_string());
+                                }
                             }
                         }
                     }
 
                     // Extract mod statements
                     if let Some(captures) = mod_regex.captures(line) {
-                        let mod_name = captures.get(1).unwrap().as_str();
-                        dependencies.push(mod_name.to_string());
+                        // Safety: captures.get(1) guaranteed by successful regex match with group
+                        if let Some(mod_name_match) = captures.get(1) {
+                            let mod_name = mod_name_match.as_str();
+                            dependencies.push(mod_name.to_string());
+                        }
                     }
                 }
 
@@ -253,7 +262,7 @@ impl CompilationOptimizer {
             let dependency_count = analysis
                 .dependencies
                 .get(module_name)
-                .map_or(0, |deps| deps.len());
+                .map_or(0, std::vec::Vec::len);
             let dependency_penalty = dependency_count as f64 * 0.1;
 
             // Adjust for known heavy operations (simplified heuristic)
@@ -452,6 +461,7 @@ impl CompilationOptimizer {
     }
 
     /// Generate compilation optimization report
+    #[must_use]
     pub fn generate_report(&self, analysis: &CompilationAnalysis) -> String {
         let mut report = String::new();
 
@@ -467,17 +477,20 @@ impl CompilationOptimizer {
             0
         };
 
-        report.push_str(&format!("- Total modules: {total_modules}\n"));
-        report.push_str(&format!("- Total lines of code: {total_lines}\n"));
-        report.push_str(&format!("- Average module size: {average_size} lines\n"));
-        report.push_str(&format!(
-            "- Heavy dependencies: {}\n",
+        // Safety: Writing to String should not fail
+        let _ = writeln!(report, "- Total modules: {total_modules}");
+        let _ = writeln!(report, "- Total lines of code: {total_lines}");
+        let _ = writeln!(report, "- Average module size: {average_size} lines");
+        let _ = writeln!(
+            report,
+            "- Heavy dependencies: {}",
             analysis.heavy_dependencies.len()
-        ));
-        report.push_str(&format!(
+        );
+        let _ = write!(
+            report,
             "- Circular dependencies: {}\n\n",
             analysis.circular_dependencies.len()
-        ));
+        );
 
         // Largest modules
         let mut modules_by_size: Vec<_> = analysis.module_sizes.iter().collect();
@@ -485,22 +498,20 @@ impl CompilationOptimizer {
 
         report.push_str("## Largest Modules\n");
         for (module, size) in modules_by_size.iter().take(10) {
-            report.push_str(&format!("- {module}: {size} lines\n"));
+            let _ = writeln!(report, "- {module}: {size} lines");
         }
         report.push('\n');
 
         // Recommendations
         report.push_str("## Optimization Recommendations\n");
         for (i, rec) in analysis.recommendations.iter().enumerate() {
-            report.push_str(&format!(
-                "{}. **{:?}** (Priority: {:?})\n   - Modules: {}\n   - Expected improvement: {:.2}s\n   - {}\n\n",
+            let _ = write!(report, "{}. **{:?}** (Priority: {:?})\n   - Modules: {}\n   - Expected improvement: {:.2}s\n   - {}\n\n",
                 i + 1,
                 rec.optimization_type,
                 rec.priority,
                 rec.modules.join(", "),
                 rec.expected_improvement,
-                rec.description
-            ));
+                rec.description);
         }
 
         report
@@ -509,14 +520,16 @@ impl CompilationOptimizer {
 
 /// Utility functions for compilation optimization
 pub mod utils {
-    use super::*;
+    use super::{CompilationAnalysis, CompilationOptimizerConfig, Path};
 
     /// Estimate total compilation time from analysis
+    #[must_use]
     pub fn estimate_total_compilation_time(analysis: &CompilationAnalysis) -> f64 {
         analysis.compilation_times.values().sum()
     }
 
     /// Calculate potential time savings from recommendations
+    #[must_use]
     pub fn calculate_potential_savings(analysis: &CompilationAnalysis) -> f64 {
         analysis
             .recommendations
@@ -526,6 +539,7 @@ pub mod utils {
     }
 
     /// Get compilation efficiency score (0.0 to 1.0)
+    #[must_use]
     pub fn get_efficiency_score(analysis: &CompilationAnalysis) -> f64 {
         let total_time = estimate_total_compilation_time(analysis);
         let potential_savings = calculate_potential_savings(analysis);
@@ -538,6 +552,7 @@ pub mod utils {
     }
 
     /// Create default optimization configuration for quantum simulation codebase
+    #[must_use]
     pub fn create_quantum_sim_config(root_path: &Path) -> CompilationOptimizerConfig {
         CompilationOptimizerConfig {
             root_path: root_path.to_path_buf(),
@@ -557,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_compilation_optimizer() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let config = CompilationOptimizerConfig {
             root_path: temp_dir.path().to_path_buf(),
             ..Default::default()
@@ -568,16 +583,18 @@ mod tests {
             temp_dir.path().join("large_module.rs"),
             "use std::collections::HashMap;\n".repeat(3000),
         )
-        .unwrap();
+        .expect("Failed to write large_module.rs");
 
         fs::write(
             temp_dir.path().join("small_module.rs"),
             "use std::vec::Vec;\n".repeat(100),
         )
-        .unwrap();
+        .expect("Failed to write small_module.rs");
 
         let mut optimizer = CompilationOptimizer::new(config);
-        let analysis = optimizer.analyze_codebase().unwrap();
+        let analysis = optimizer
+            .analyze_codebase()
+            .expect("Failed to analyze codebase");
 
         assert!(analysis.module_sizes.contains_key("large_module"));
         assert!(analysis.module_sizes.contains_key("small_module"));
@@ -605,7 +622,9 @@ mod tests {
 
         let config = CompilationOptimizerConfig::default();
         let optimizer = CompilationOptimizer::new(config);
-        optimizer.generate_recommendations(&mut analysis).unwrap();
+        optimizer
+            .generate_recommendations(&mut analysis)
+            .expect("Failed to generate recommendations");
 
         assert!(!analysis.recommendations.is_empty());
         assert!(analysis

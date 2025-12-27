@@ -64,7 +64,7 @@ pub struct ChangePoint {
 }
 
 /// Types of changes detected
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeType {
     Mean,
     Variance,
@@ -99,7 +99,7 @@ pub struct TemporalAnalyzer {
 }
 
 /// Clustering algorithms for temporal analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClusteringAlgorithm {
     KMeans,
     HierarchicalClustering,
@@ -109,7 +109,7 @@ pub enum ClusteringAlgorithm {
 
 impl TemporalAnalyzer {
     /// Create a new temporal analyzer
-    pub fn new(max_ar_order: usize, change_detection_sensitivity: f64) -> Self {
+    pub const fn new(max_ar_order: usize, change_detection_sensitivity: f64) -> Self {
         Self {
             max_ar_order,
             change_detection_sensitivity,
@@ -336,7 +336,7 @@ impl TemporalAnalyzer {
         for i in order..n {
             let mut predicted = mean_y;
             for j in 0..order.min(coefficients.len()) {
-                if i >= j + 1 {
+                if i > j {
                     predicted += coefficients[j] * (data[i - j - 1] - mean_y);
                 }
             }
@@ -369,7 +369,7 @@ impl TemporalAnalyzer {
 
         let log_likelihood =
             -0.5 * n * (noise_variance.ln() + 1.0 + (2.0 * std::f64::consts::PI).ln());
-        2.0 * k - 2.0 * log_likelihood
+        2.0f64.mul_add(k, -(2.0 * log_likelihood))
     }
 
     fn calculate_bic(
@@ -388,7 +388,7 @@ impl TemporalAnalyzer {
 
         let log_likelihood =
             -0.5 * n * (noise_variance.ln() + 1.0 + (2.0 * std::f64::consts::PI).ln());
-        k * n.ln() - 2.0 * log_likelihood
+        k.mul_add(n.ln(), -(2.0 * log_likelihood))
     }
 
     fn calculate_prediction_error(
@@ -410,7 +410,7 @@ impl TemporalAnalyzer {
         for i in order..n {
             let mut prediction = mean;
             for j in 0..order {
-                if i >= j + 1 {
+                if i > j {
                     prediction += coefficients[j] * (data[i - j - 1] - mean);
                 }
             }
@@ -458,12 +458,12 @@ impl TemporalAnalyzer {
 
         // Hurst exponent estimation
         let hurst = if rs_ratio > 0.0 {
-            rs_ratio.ln() / (n as f64).ln()
+            rs_ratio.log(n as f64)
         } else {
             0.5
         };
 
-        Ok(hurst.max(0.0).min(1.0))
+        Ok(hurst.clamp(0.0, 1.0))
     }
 
     fn augmented_dickey_fuller_test(&self, data: &[f64]) -> DeviceResult<f64> {
@@ -493,8 +493,8 @@ impl TemporalAnalyzer {
         let mean_lag = sum_lag / n_obs;
 
         // Calculate regression coefficient
-        let numerator = sum_diff_lag - n_obs * mean_diff * mean_lag;
-        let denominator = sum_lag_sq - n_obs * mean_lag * mean_lag;
+        let numerator = (n_obs * mean_diff).mul_add(-mean_lag, sum_diff_lag);
+        let denominator = (n_obs * mean_lag).mul_add(-mean_lag, sum_lag_sq);
 
         let beta = if denominator.abs() > 1e-10 {
             numerator / denominator
@@ -608,7 +608,7 @@ impl TemporalAnalyzer {
         let data_max = data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
         for i in 0..k {
-            centroids[[i, 0]] = data_min + (i as f64 / k as f64) * (data_max - data_min);
+            centroids[[i, 0]] = (i as f64 / k as f64).mul_add(data_max - data_min, data_min);
         }
 
         let mut labels = vec![0; n];
@@ -755,7 +755,9 @@ mod tests {
             }
         });
 
-        let ar_model = analyzer.fit_ar_model(&test_data.view()).unwrap();
+        let ar_model = analyzer
+            .fit_ar_model(&test_data.view())
+            .expect("AR model fitting should succeed");
 
         assert!(ar_model.order > 0);
         assert!(ar_model.coefficients.len() > 0);
@@ -773,7 +775,9 @@ mod tests {
             (i as f64).sqrt() // Simple trend
         });
 
-        let long_memory = analyzer.analyze_long_memory(&test_data.view()).unwrap();
+        let long_memory = analyzer
+            .analyze_long_memory(&test_data.view())
+            .expect("Long memory analysis should succeed");
 
         assert!(long_memory.hurst_exponent >= 0.0);
         assert!(long_memory.hurst_exponent <= 1.0);
@@ -792,7 +796,9 @@ mod tests {
         test_data_vec.extend(vec![5.0; 25]);
         let test_data = Array2::from_shape_fn((50, 1), |(i, _)| test_data_vec[i]);
 
-        let change_points = analyzer.detect_change_points(&test_data.view()).unwrap();
+        let change_points = analyzer
+            .detect_change_points(&test_data.view())
+            .expect("Change point detection should succeed");
 
         // Should detect the change point around index 25
         assert!(!change_points.is_empty());
@@ -810,7 +816,7 @@ mod tests {
 
         let clusters = analyzer
             .cluster_temporal_patterns(&test_data.view())
-            .unwrap();
+            .expect("Temporal clustering should succeed");
 
         assert_eq!(clusters.cluster_labels.len(), 20);
         assert!(clusters.cluster_centers.nrows() > 0);
@@ -827,7 +833,9 @@ mod tests {
         // Create trending data (non-stationary)
         let test_data = Array2::from_shape_fn((30, 1), |(i, _)| i as f64);
 
-        let nonstationarity = analyzer.test_nonstationarity(&test_data.view()).unwrap();
+        let nonstationarity = analyzer
+            .test_nonstationarity(&test_data.view())
+            .expect("Nonstationarity test should succeed");
 
         assert!(nonstationarity.test_statistics.contains_key("ADF"));
         assert_eq!(nonstationarity.trend_components.len(), 30);

@@ -247,7 +247,7 @@ pub struct TrendAnalysis {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -308,7 +308,7 @@ pub struct GlobalMitigationStrategy {
 }
 
 /// Mitigation strategy types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationStrategyType {
     Temporal,
     Spatial,
@@ -318,7 +318,7 @@ pub enum MitigationStrategyType {
 }
 
 /// Mitigation difficulty levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationDifficulty {
     Easy,
     Moderate,
@@ -327,7 +327,7 @@ pub enum MitigationDifficulty {
 }
 
 /// Advanced crosstalk mitigation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdvancedCrosstalkMitigation {
     TemporalSeparation,
     SpatialRerouting,
@@ -350,7 +350,7 @@ pub struct CrosstalkConflict {
 }
 
 /// Conflict types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConflictType {
     Direct,
     Indirect,

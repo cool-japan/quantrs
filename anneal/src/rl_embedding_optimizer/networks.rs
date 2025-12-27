@@ -65,9 +65,9 @@ pub struct NetworkLayer {
 /// Activation functions
 #[derive(Debug, Clone, PartialEq)]
 pub enum ActivationFunction {
-    /// ReLU activation
+    /// `ReLU` activation
     ReLU,
-    /// Leaky ReLU
+    /// Leaky `ReLU`
     LeakyReLU(f64),
     /// Tanh activation
     Tanh,
@@ -112,7 +112,7 @@ pub struct NormalizationLayer {
 }
 
 /// Types of normalization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NormalizationType {
     /// Z-score normalization
     StandardScore,
@@ -159,9 +159,9 @@ pub enum OptimizerType {
     SGD,
     /// Adam optimizer
     Adam { beta1: f64, beta2: f64 },
-    /// RMSprop optimizer
+    /// `RMSprop` optimizer
     RMSprop { decay_rate: f64 },
-    /// AdaGrad optimizer
+    /// `AdaGrad` optimizer
     AdaGrad,
 }
 

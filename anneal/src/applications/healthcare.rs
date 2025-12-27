@@ -13,6 +13,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Medical Resource Allocation Problem
 #[derive(Debug, Clone)]
 pub struct MedicalResourceAllocation {
@@ -89,6 +90,7 @@ impl MedicalResourceAllocation {
     }
 
     /// Calculate resource utilization rate
+    #[must_use]
     pub fn calculate_utilization(&self, allocation: &MedicalResourceSolution) -> Vec<f64> {
         let mut utilization = vec![0.0; self.num_resource_types];
 
@@ -114,6 +116,7 @@ impl MedicalResourceAllocation {
     }
 
     /// Calculate patient satisfaction score
+    #[must_use]
     pub fn calculate_patient_satisfaction(&self, allocation: &MedicalResourceSolution) -> f64 {
         let mut total_satisfaction = 0.0;
         let mut total_patients = 0.0;
@@ -247,7 +250,7 @@ impl OptimizationProblem for MedicalResourceAllocation {
             for dept in 0..self.num_departments {
                 for resource in 0..self.num_resource_types {
                     for level in 0..precision {
-                        let var_name = format!("x_{}_{}_{}_{}", facility, dept, resource, level);
+                        let var_name = format!("x_{facility}_{dept}_{resource}_{level}");
                         var_map.insert((facility, dept, resource, level), var_counter);
                         string_var_map.insert(var_name, var_counter);
                         var_counter += 1;
@@ -263,7 +266,7 @@ impl OptimizationProblem for MedicalResourceAllocation {
 
                 for resource in 0..self.num_resource_types {
                     for level in 0..precision {
-                        let allocation = (level as f64) / (precision as f64);
+                        let allocation = f64::from(level) / f64::from(precision);
                         let var_idx = var_map[&(facility, dept, resource, level)];
 
                         // Service benefit (maximize patient care)
@@ -287,7 +290,7 @@ impl OptimizationProblem for MedicalResourceAllocation {
         }
 
         // Constraint: each resource-department pair gets exactly one allocation level
-        let constraint_penalty = 10000.0;
+        let constraint_penalty = 10_000.0;
         for facility in 0..self.num_facilities {
             for dept in 0..self.num_departments {
                 for resource in 0..self.num_resource_types {
@@ -320,8 +323,8 @@ impl OptimizationProblem for MedicalResourceAllocation {
                     for dept1 in 0..self.num_departments {
                         for level2 in 0..precision {
                             for dept2 in (dept1 + 1)..self.num_departments {
-                                let alloc1 = (level1 as f64) / (precision as f64) * available;
-                                let alloc2 = (level2 as f64) / (precision as f64) * available;
+                                let alloc1 = f64::from(level1) / f64::from(precision) * available;
+                                let alloc2 = f64::from(level2) / f64::from(precision) * available;
 
                                 if alloc1 + alloc2 > available {
                                     let var1 = var_map[&(facility, dept1, resource, level1)];
@@ -346,7 +349,7 @@ impl OptimizationProblem for MedicalResourceAllocation {
         let total_cost = solution.total_cost;
 
         // Objective: maximize satisfaction while minimizing cost
-        Ok(satisfaction * 1000.0 - total_cost)
+        Ok(satisfaction.mul_add(1000.0, -total_cost))
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
@@ -427,7 +430,7 @@ impl IndustrySolution for MedicalResourceSolution {
                 for resource in 0..problem.num_resource_types {
                     for level in 0..precision {
                         if var_idx < binary_solution.len() && binary_solution[var_idx] == 1 {
-                            let allocation_fraction = (level as f64) / (precision as f64);
+                            let allocation_fraction = f64::from(level) / f64::from(precision);
                             let available = problem.available_resources[facility][resource]
                                 * (1.0 - problem.emergency_reserves[resource]);
                             allocations[facility][dept][resource] = allocation_fraction * available;
@@ -450,7 +453,7 @@ impl IndustrySolution for MedicalResourceSolution {
             }
         }
 
-        let solution = MedicalResourceSolution {
+        let solution = Self {
             allocations,
             total_cost,
             patient_satisfaction: 0.0,
@@ -478,7 +481,7 @@ impl IndustrySolution for MedicalResourceSolution {
             quality_score: patient_satisfaction,
         };
 
-        Ok(MedicalResourceSolution {
+        Ok(Self {
             allocations: solution.allocations,
             total_cost,
             patient_satisfaction,
@@ -550,7 +553,7 @@ impl IndustrySolution for MedicalResourceSolution {
         );
 
         for (i, &util) in self.utilization_rates.iter().enumerate() {
-            metrics.insert(format!("resource_{}_utilization", i), util);
+            metrics.insert(format!("resource_{i}_utilization"), util);
         }
 
         metrics
@@ -561,47 +564,54 @@ impl IndustrySolution for MedicalResourceSolution {
         output.push_str("# Medical Resource Allocation Report\n\n");
 
         output.push_str("## Allocation Summary\n");
-        output.push_str(&format!("Total Cost: ${:.2}\n", self.total_cost));
-        output.push_str(&format!(
+        let _ = writeln!(output, "Total Cost: ${:.2}", self.total_cost);
+        let _ = write!(
+            output,
             "Patient Satisfaction: {:.1}%\n",
             self.patient_satisfaction * 100.0
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Quality Score: {:.3}\n",
             self.quality_metrics.quality_score
-        ));
+        );
 
         output.push_str("\n## Resource Utilization\n");
-        output.push_str(&format!(
+        let _ = write!(
+            output,
             "Bed Occupancy: {:.1}%\n",
             self.quality_metrics.bed_occupancy * 100.0
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Staff Utilization: {:.1}%\n",
             self.quality_metrics.staff_utilization * 100.0
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Equipment Utilization: {:.1}%\n",
             self.quality_metrics.equipment_utilization * 100.0
-        ));
+        );
 
         output.push_str("\n## Performance Metrics\n");
-        output.push_str(&format!(
+        let _ = write!(
+            output,
             "Average Wait Time: {:.1} minutes\n",
             self.quality_metrics.avg_wait_time
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Emergency Response Time: {:.1} minutes\n",
             self.quality_metrics.emergency_response_time
-        ));
+        );
 
         output.push_str("\n## Resource Allocations\n");
         for (facility, facility_allocs) in self.allocations.iter().enumerate() {
-            output.push_str(&format!("### Facility {}\n", facility + 1));
+            let _ = writeln!(output, "### Facility {}", facility + 1);
             for (dept, dept_allocs) in facility_allocs.iter().enumerate() {
-                output.push_str(&format!("Department {}: ", dept + 1));
+                let _ = write!(output, "Department {}: ", dept + 1);
                 for (resource, &allocation) in dept_allocs.iter().enumerate() {
-                    output.push_str(&format!("R{}: {:.1} ", resource, allocation));
+                    let _ = write!(output, "R{resource}: {allocation:.1} ");
                 }
                 output.push_str("\n");
             }
@@ -662,6 +672,7 @@ impl TreatmentPlanningOptimization {
     }
 
     /// Calculate total treatment benefit
+    #[must_use]
     pub fn calculate_benefit(&self, plan: &TreatmentPlan) -> f64 {
         let mut total_benefit = 0.0;
 
@@ -699,7 +710,8 @@ pub struct BinaryMedicalResourceAllocation {
 }
 
 impl BinaryMedicalResourceAllocation {
-    pub fn new(inner: MedicalResourceAllocation) -> Self {
+    #[must_use]
+    pub const fn new(inner: MedicalResourceAllocation) -> Self {
         Self { inner }
     }
 }
@@ -809,7 +821,7 @@ pub fn solve_medical_resource_allocation(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 20000;
+        p.num_sweeps = 20_000;
         p.num_repetitions = 30;
         p.initial_temperature = 4.0;
         p.final_temperature = 0.01;
@@ -838,7 +850,8 @@ mod tests {
         let patient_demands = vec![vec![40.0, 25.0, 15.0], vec![20.0, 18.0, 12.0]];
 
         let allocation =
-            MedicalResourceAllocation::new(2, 3, 3, available_resources, patient_demands).unwrap();
+            MedicalResourceAllocation::new(2, 3, 3, available_resources, patient_demands)
+                .expect("Failed to create medical resource allocation");
         assert_eq!(allocation.num_facilities, 2);
         assert_eq!(allocation.num_departments, 3);
         assert_eq!(allocation.num_resource_types, 3);
@@ -849,8 +862,8 @@ mod tests {
         let available_resources = vec![vec![100.0, 50.0]];
         let patient_demands = vec![vec![80.0, 40.0]];
 
-        let problem =
-            MedicalResourceAllocation::new(1, 2, 2, available_resources, patient_demands).unwrap();
+        let problem = MedicalResourceAllocation::new(1, 2, 2, available_resources, patient_demands)
+            .expect("Failed to create medical resource allocation");
 
         let solution = MedicalResourceSolution {
             allocations: vec![vec![vec![80.0, 20.0], vec![20.0, 30.0]]],
@@ -876,14 +889,15 @@ mod tests {
         let efficacy = vec![vec![0.8, 0.6, 0.9], vec![0.7, 0.9, 0.5]];
         let costs = vec![1000.0, 1500.0, 800.0];
 
-        let planning = TreatmentPlanningOptimization::new(2, 3, efficacy, costs).unwrap();
+        let planning = TreatmentPlanningOptimization::new(2, 3, efficacy, costs)
+            .expect("Failed to create treatment planning optimization");
         assert_eq!(planning.num_patients, 2);
         assert_eq!(planning.num_treatments, 3);
     }
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(4).unwrap();
+        let problems = create_benchmark_problems(4).expect("Failed to create benchmark problems");
         assert_eq!(problems.len(), 2);
 
         for problem in &problems {

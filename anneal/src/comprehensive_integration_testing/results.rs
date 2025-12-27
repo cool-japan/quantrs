@@ -25,7 +25,7 @@ pub struct IntegrationTestResult {
 }
 
 /// Test outcome
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestOutcome {
     Passed,
     Failed,
@@ -63,7 +63,7 @@ pub struct ValidationResults {
 }
 
 /// Validation status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationStatus {
     Passed,
     Failed,
@@ -115,7 +115,7 @@ pub struct ErrorInfo {
 }
 
 /// Error categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorCategory {
     Setup,
     Execution,
@@ -144,7 +144,7 @@ pub struct TestArtifact {
 }
 
 /// Artifact types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtifactType {
     Log,
     Screenshot,
@@ -210,7 +210,7 @@ pub struct ComponentResult {
 }
 
 /// Integration status between components
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntegrationStatus {
     Compatible,
     Incompatible,
@@ -308,7 +308,7 @@ pub struct PerformanceRegression {
 }
 
 /// Regression severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegressionSeverity {
     Low,
     Medium,
@@ -329,6 +329,7 @@ pub struct TestResultStorage {
 }
 
 impl TestResultStorage {
+    #[must_use]
     pub fn new(config: TestStorageConfig) -> Self {
         Self {
             storage_config: config,
@@ -365,11 +366,13 @@ impl TestResultStorage {
     }
 
     /// Retrieve a test result by execution ID
+    #[must_use]
     pub fn get_result(&self, execution_id: &str) -> Option<&super::execution::TestExecutionResult> {
         self.result_cache.get(execution_id)
     }
 
     /// Get results by time range
+    #[must_use]
     pub fn get_results_by_time_range(
         &self,
         start: SystemTime,
@@ -382,6 +385,7 @@ impl TestResultStorage {
     }
 
     /// Get the most recent N results
+    #[must_use]
     pub fn get_recent_results(&self, count: usize) -> Vec<&super::execution::TestExecutionResult> {
         self.result_index
             .iter()
@@ -392,6 +396,7 @@ impl TestResultStorage {
     }
 
     /// Get all results for a specific test case
+    #[must_use]
     pub fn get_results_for_test_case(
         &self,
         test_case_id: &str,
@@ -410,12 +415,13 @@ impl TestResultStorage {
     }
 
     /// Get storage statistics
-    pub fn get_statistics(&self) -> &StorageStatistics {
+    #[must_use]
+    pub const fn get_statistics(&self) -> &StorageStatistics {
         &self.storage_stats
     }
 
     /// Check if cleanup is needed
-    fn should_cleanup(&self) -> bool {
+    const fn should_cleanup(&self) -> bool {
         match &self.storage_config.retention_policy {
             super::config::RetentionPolicy::KeepLast(max_results) => {
                 self.storage_stats.total_results > *max_results
@@ -486,13 +492,13 @@ impl TestResultStorage {
     }
 
     /// Export results to a file (placeholder)
-    pub fn export_results(&self, _file_path: &str) -> Result<(), String> {
+    pub const fn export_results(&self, _file_path: &str) -> Result<(), String> {
         // Placeholder for file export functionality
         Ok(())
     }
 
     /// Import results from a file (placeholder)
-    pub fn import_results(&mut self, _file_path: &str) -> Result<usize, String> {
+    pub const fn import_results(&mut self, _file_path: &str) -> Result<usize, String> {
         // Placeholder for file import functionality
         Ok(0)
     }

@@ -842,7 +842,7 @@ impl Sequential {
                 for metric in &self.metrics {
                     let metric_value =
                         metric.compute(&predictions, &y_batch.to_owned().into_dyn())?;
-                    *epoch_metrics.get_mut(&metric.name()).unwrap() += metric_value;
+                    *epoch_metrics.entry(metric.name()).or_insert(0.0) += metric_value;
                 }
             }
 
@@ -945,18 +945,24 @@ impl LossFunction {
         match self {
             LossFunction::MeanSquaredError => {
                 let diff = predictions - targets;
-                Ok(diff.mapv(|x| x * x).mean().unwrap())
+                diff.mapv(|x| x * x).mean().ok_or_else(|| {
+                    MLError::ComputationError("Failed to compute mean of empty array".to_string())
+                })
             }
             LossFunction::BinaryCrossentropy => {
                 let epsilon = 1e-15;
                 let clipped_preds = predictions.mapv(|x| x.max(epsilon).min(1.0 - epsilon));
                 let loss = targets * clipped_preds.mapv(|x| x.ln())
                     + (1.0 - targets) * clipped_preds.mapv(|x| (1.0 - x).ln());
-                Ok(-loss.mean().unwrap())
+                loss.mean().map(|m| -m).ok_or_else(|| {
+                    MLError::ComputationError("Failed to compute mean of empty array".to_string())
+                })
             }
             LossFunction::MeanAbsoluteError => {
                 let diff = predictions - targets;
-                Ok(diff.mapv(|x| x.abs()).mean().unwrap())
+                diff.mapv(|x| x.abs()).mean().ok_or_else(|| {
+                    MLError::ComputationError("Failed to compute mean of empty array".to_string())
+                })
             }
             _ => Err(MLError::InvalidConfiguration(
                 "Loss function not implemented".to_string(),
@@ -1031,11 +1037,15 @@ impl MetricType {
             }
             MetricType::MeanAbsoluteError => {
                 let diff = predictions - targets;
-                Ok(diff.mapv(|x| x.abs()).mean().unwrap())
+                diff.mapv(|x| x.abs()).mean().ok_or_else(|| {
+                    MLError::ComputationError("Failed to compute mean of empty array".to_string())
+                })
             }
             MetricType::MeanSquaredError => {
                 let diff = predictions - targets;
-                Ok(diff.mapv(|x| x * x).mean().unwrap())
+                diff.mapv(|x| x * x).mean().ok_or_else(|| {
+                    MLError::ComputationError("Failed to compute mean of empty array".to_string())
+                })
             }
             _ => Err(MLError::InvalidConfiguration(
                 "Metric not implemented".to_string(),
@@ -1318,7 +1328,7 @@ mod tests {
 
         assert!(!dense.built());
 
-        dense.build(&[5]).unwrap();
+        dense.build(&[5]).expect("Failed to build dense layer");
         assert!(dense.built());
         assert_eq!(dense.compute_output_shape(&[32, 5]), vec![32, 10]);
 
@@ -1326,24 +1336,28 @@ mod tests {
             vec![2, 5],
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 0.5, 1.5, 2.5, 3.5, 4.5],
         )
-        .unwrap();
+        .expect("Failed to create input array");
 
         let output = dense.call(&input);
         assert!(output.is_ok());
-        assert_eq!(output.unwrap().shape(), &[2, 10]);
+        assert_eq!(output.expect("Forward pass failed").shape(), &[2, 10]);
     }
 
     #[test]
     fn test_activation_layer() {
         let mut activation = Activation::new(ActivationFunction::ReLU);
-        activation.build(&[10]).unwrap();
+        activation
+            .build(&[10])
+            .expect("Failed to build activation layer");
 
-        let input =
-            ArrayD::from_shape_vec(vec![2, 3], vec![-1.0, 0.0, 1.0, -2.0, 0.5, 2.0]).unwrap();
+        let input = ArrayD::from_shape_vec(vec![2, 3], vec![-1.0, 0.0, 1.0, -2.0, 0.5, 2.0])
+            .expect("Failed to create input array");
 
-        let output = activation.call(&input).unwrap();
-        let expected =
-            ArrayD::from_shape_vec(vec![2, 3], vec![0.0, 0.0, 1.0, 0.0, 0.5, 2.0]).unwrap();
+        let output = activation
+            .call(&input)
+            .expect("Activation forward pass failed");
+        let expected = ArrayD::from_shape_vec(vec![2, 3], vec![0.0, 0.0, 1.0, 0.0, 0.5, 2.0])
+            .expect("Failed to create expected array");
 
         assert_eq!(output.shape(), expected.shape());
     }
@@ -1359,7 +1373,9 @@ mod tests {
             Dense::new(1).activation(ActivationFunction::Sigmoid),
         ));
 
-        model.build(vec![5]).unwrap();
+        model
+            .build(vec![5])
+            .expect("Failed to build sequential model");
         assert!(model.built);
 
         let summary = model.summary();
@@ -1369,34 +1385,44 @@ mod tests {
             vec![2, 5],
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 0.5, 1.5, 2.5, 3.5, 4.5],
         )
-        .unwrap();
+        .expect("Failed to create input array");
 
         let output = model.predict(&input);
         assert!(output.is_ok());
-        assert_eq!(output.unwrap().shape(), &[2, 1]);
+        assert_eq!(output.expect("Prediction failed").shape(), &[2, 1]);
     }
 
     #[test]
     fn test_loss_functions() {
-        let predictions = ArrayD::from_shape_vec(vec![2, 1], vec![0.8, 0.3]).unwrap();
-        let targets = ArrayD::from_shape_vec(vec![2, 1], vec![1.0, 0.0]).unwrap();
+        let predictions = ArrayD::from_shape_vec(vec![2, 1], vec![0.8, 0.3])
+            .expect("Failed to create predictions array");
+        let targets = ArrayD::from_shape_vec(vec![2, 1], vec![1.0, 0.0])
+            .expect("Failed to create targets array");
 
         let mse = LossFunction::MeanSquaredError;
-        let loss = mse.compute(&predictions, &targets).unwrap();
+        let loss = mse
+            .compute(&predictions, &targets)
+            .expect("MSE computation failed");
         assert!(loss > 0.0);
 
         let bce = LossFunction::BinaryCrossentropy;
-        let loss = bce.compute(&predictions, &targets).unwrap();
+        let loss = bce
+            .compute(&predictions, &targets)
+            .expect("BCE computation failed");
         assert!(loss > 0.0);
     }
 
     #[test]
     fn test_metrics() {
-        let predictions = ArrayD::from_shape_vec(vec![4, 1], vec![0.8, 0.3, 0.9, 0.1]).unwrap();
-        let targets = ArrayD::from_shape_vec(vec![4, 1], vec![1.0, 0.0, 1.0, 0.0]).unwrap();
+        let predictions = ArrayD::from_shape_vec(vec![4, 1], vec![0.8, 0.3, 0.9, 0.1])
+            .expect("Failed to create predictions array");
+        let targets = ArrayD::from_shape_vec(vec![4, 1], vec![1.0, 0.0, 1.0, 0.0])
+            .expect("Failed to create targets array");
 
         let accuracy = MetricType::Accuracy;
-        let acc_value = accuracy.compute(&predictions, &targets).unwrap();
+        let acc_value = accuracy
+            .compute(&predictions, &targets)
+            .expect("Accuracy computation failed");
         assert!(acc_value >= 0.0 && acc_value <= 1.0);
     }
 

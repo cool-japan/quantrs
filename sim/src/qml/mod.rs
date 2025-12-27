@@ -32,12 +32,14 @@ pub const fn initialize() -> Result<()> {
 }
 
 /// Check if hardware-aware optimization is available
+#[must_use]
 pub const fn is_hardware_optimization_available() -> bool {
     // In practice, this would check for hardware-specific libraries
     true
 }
 
 /// Get supported hardware architectures
+#[must_use]
 pub fn get_supported_architectures() -> Vec<HardwareArchitecture> {
     vec![
         HardwareArchitecture::NISQ,
@@ -51,6 +53,7 @@ pub fn get_supported_architectures() -> Vec<HardwareArchitecture> {
 }
 
 /// Get supported QML algorithms
+#[must_use]
 pub fn get_supported_algorithms() -> Vec<QMLAlgorithmType> {
     vec![
         QMLAlgorithmType::VQE,
@@ -64,6 +67,7 @@ pub fn get_supported_algorithms() -> Vec<QMLAlgorithmType> {
 }
 
 /// Get supported gradient methods
+#[must_use]
 pub fn get_supported_gradient_methods() -> Vec<GradientMethod> {
     vec![
         GradientMethod::ParameterShift,
@@ -75,6 +79,7 @@ pub fn get_supported_gradient_methods() -> Vec<GradientMethod> {
 }
 
 /// Get supported optimizers
+#[must_use]
 pub fn get_supported_optimizers() -> Vec<OptimizerType> {
     vec![
         OptimizerType::Adam,
@@ -87,11 +92,13 @@ pub fn get_supported_optimizers() -> Vec<OptimizerType> {
 }
 
 /// Create a default configuration for a specific algorithm
+#[must_use]
 pub fn create_default_config(algorithm: QMLAlgorithmType) -> QMLConfig {
     QMLConfig::for_algorithm(algorithm)
 }
 
 /// Create a configuration optimized for specific hardware
+#[must_use]
 pub fn create_hardware_config(hardware: HardwareArchitecture) -> QMLConfig {
     QMLConfig::for_hardware(hardware)
 }

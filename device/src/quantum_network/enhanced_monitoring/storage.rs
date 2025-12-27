@@ -459,6 +459,12 @@ pub struct TimeSeriesDatabase {
     pub retention_policy: Duration,
 }
 
+impl Default for TimeSeriesDatabase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TimeSeriesDatabase {
     pub fn new() -> Self {
         Self {
@@ -474,6 +480,12 @@ impl TimeSeriesDatabase {
 pub struct DataRetentionManager {
     pub retention_policies: HashMap<String, Duration>,
     pub compression_enabled: bool,
+}
+
+impl Default for DataRetentionManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DataRetentionManager {
@@ -492,6 +504,12 @@ pub struct DataCompressionSystem {
     pub compression_ratio: f64,
 }
 
+impl Default for DataCompressionSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataCompressionSystem {
     pub fn new() -> Self {
         Self {
@@ -508,6 +526,12 @@ pub struct HistoricalAnalyticsEngine {
     pub aggregation_levels: Vec<String>,
 }
 
+impl Default for HistoricalAnalyticsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HistoricalAnalyticsEngine {
     pub fn new() -> Self {
         Self {
@@ -522,6 +546,12 @@ impl HistoricalAnalyticsEngine {
 pub struct DataExportSystem {
     pub supported_formats: Vec<String>,
     pub export_batch_size: usize,
+}
+
+impl Default for DataExportSystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DataExportSystem {

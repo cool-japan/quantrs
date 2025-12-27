@@ -34,13 +34,13 @@ pub enum HardwareArchitecture {
     GoogleQuantumAI,
     /// Rigetti superconducting processors
     Rigetti,
-    /// IonQ trapped ion systems
+    /// `IonQ` trapped ion systems
     IonQ,
     /// Honeywell/Quantinuum trapped ion systems
     Quantinuum,
     /// Xanadu photonic processors
     Xanadu,
-    /// PsiQuantum photonic systems
+    /// `PsiQuantum` photonic systems
     PsiQuantum,
     /// Generic superconducting architecture
     Superconducting,
@@ -90,7 +90,7 @@ impl Default for HardwareAwareConfig {
             enable_dynamic_adaptation: true,
             enable_cross_device_portability: false,
             optimization_level: HardwareOptimizationLevel::Balanced,
-            max_compilation_time_ms: 30000, // 30 seconds
+            max_compilation_time_ms: 30_000, // 30 seconds
             enable_performance_monitoring: true,
         }
     }
@@ -611,6 +611,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Get cross-device compatibility score
+    #[must_use]
     pub fn get_cross_device_compatibility(
         &self,
         source_arch: HardwareArchitecture,
@@ -658,7 +659,10 @@ impl HardwareAwareQMLOptimizer {
 
         self.device_metrics.gate_error_rates = gate_error_rates;
         self.device_metrics.measurement_error_rates = Array1::from_vec(vec![1e-2; 127]); // IBM's largest systems
-        self.device_metrics.coherence_times = Array2::from_shape_vec((127, 2), vec![100e-6; 254])?; // T1, T2
+        self.device_metrics.coherence_times = Array2::from_shape_vec((127, 2), vec![100e-6; 254])
+            .map_err(|e| {
+            SimulatorError::InvalidInput(format!("Failed to create coherence times array: {e}"))
+        })?; // T1, T2
 
         let mut gate_times = HashMap::new();
         gate_times.insert("CNOT".to_string(), Duration::from_nanos(300));
@@ -680,7 +684,10 @@ impl HardwareAwareQMLOptimizer {
 
         self.device_metrics.gate_error_rates = gate_error_rates;
         self.device_metrics.measurement_error_rates = Array1::from_vec(vec![2e-2; 70]); // Sycamore
-        self.device_metrics.coherence_times = Array2::from_shape_vec((70, 2), vec![50e-6; 140])?;
+        self.device_metrics.coherence_times = Array2::from_shape_vec((70, 2), vec![50e-6; 140])
+            .map_err(|e| {
+                SimulatorError::InvalidInput(format!("Failed to create coherence times array: {e}"))
+            })?;
 
         let mut gate_times = HashMap::new();
         gate_times.insert("CZ".to_string(), Duration::from_nanos(20));
@@ -700,12 +707,15 @@ impl HardwareAwareQMLOptimizer {
 
         self.device_metrics.gate_error_rates = gate_error_rates;
         self.device_metrics.measurement_error_rates = Array1::from_vec(vec![3e-2; 32]);
-        self.device_metrics.coherence_times = Array2::from_shape_vec((32, 2), vec![30e-6; 64])?;
+        self.device_metrics.coherence_times = Array2::from_shape_vec((32, 2), vec![30e-6; 64])
+            .map_err(|e| {
+                SimulatorError::InvalidInput(format!("Failed to create coherence times array: {e}"))
+            })?;
 
         Ok(())
     }
 
-    /// Initialize IonQ metrics
+    /// Initialize `IonQ` metrics
     fn initialize_ionq_metrics(&mut self) -> Result<()> {
         let mut gate_error_rates = HashMap::new();
         gate_error_rates.insert("CNOT".to_string(), 1e-2);
@@ -715,7 +725,10 @@ impl HardwareAwareQMLOptimizer {
 
         self.device_metrics.gate_error_rates = gate_error_rates;
         self.device_metrics.measurement_error_rates = Array1::from_vec(vec![1e-3; 32]);
-        self.device_metrics.coherence_times = Array2::from_shape_vec((32, 2), vec![10e3; 64])?; // Much longer for ions
+        self.device_metrics.coherence_times = Array2::from_shape_vec((32, 2), vec![10e3; 64])
+            .map_err(|e| {
+                SimulatorError::InvalidInput(format!("Failed to create coherence times array: {e}"))
+            })?; // Much longer for ions
 
         let mut gate_times = HashMap::new();
         gate_times.insert("CNOT".to_string(), Duration::from_micros(100));
@@ -751,7 +764,10 @@ impl HardwareAwareQMLOptimizer {
 
         self.device_metrics.gate_error_rates = gate_error_rates;
         self.device_metrics.measurement_error_rates = Array1::from_vec(vec![1e-2; 50]);
-        self.device_metrics.coherence_times = Array2::from_shape_vec((50, 2), vec![100e-6; 100])?;
+        self.device_metrics.coherence_times = Array2::from_shape_vec((50, 2), vec![100e-6; 100])
+            .map_err(|e| {
+                SimulatorError::InvalidInput(format!("Failed to create coherence times array: {e}"))
+            })?;
 
         Ok(())
     }
@@ -1375,7 +1391,7 @@ impl HardwareAwareQMLOptimizer {
 
         scored_patterns
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(pattern, _)| *pattern)
             .ok_or_else(|| {
                 SimulatorError::InvalidConfiguration("No suitable ansatz pattern found".to_string())
@@ -1592,6 +1608,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Check if gate is directly executable (public version)
+    #[must_use]
     pub const fn is_gate_directly_executable_public(
         &self,
         gate_type: &InterfaceGateType,
@@ -1615,6 +1632,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Check if gates cancel (public version)
+    #[must_use]
     pub fn gates_cancel_public(&self, gate1: &InterfaceGate, gate2: &InterfaceGate) -> bool {
         self.gates_cancel(gate1, gate2)
     }
@@ -1630,6 +1648,7 @@ impl HardwareAwareQMLOptimizer {
     }
 
     /// Get performance monitor reference
+    #[must_use]
     pub const fn get_performance_monitor(&self) -> &PerformanceMonitoringData {
         &self.performance_monitor
     }
@@ -1770,7 +1789,8 @@ mod tests {
     #[test]
     fn test_circuit_analysis() {
         let config = HardwareAwareConfig::default();
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -1779,7 +1799,7 @@ mod tests {
         let analysis = optimizer.analyze_circuit(&circuit);
         assert!(analysis.is_ok());
 
-        let analysis = analysis.unwrap();
+        let analysis = analysis.expect("Circuit analysis should succeed in test");
         assert_eq!(analysis.two_qubit_gates.len(), 1);
         assert!(analysis.gate_counts.contains_key("Hadamard"));
     }
@@ -1787,14 +1807,17 @@ mod tests {
     #[test]
     fn test_qubit_mapping_optimization() {
         let config = HardwareAwareConfig::default();
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let circuit = InterfaceCircuit::new(4, 0);
-        let analysis = optimizer.analyze_circuit(&circuit).unwrap();
+        let analysis = optimizer
+            .analyze_circuit(&circuit)
+            .expect("Circuit analysis should succeed in test");
         let mapping = optimizer.optimize_qubit_mapping(&circuit, &analysis);
 
         assert!(mapping.is_ok());
-        let mapping = mapping.unwrap();
+        let mapping = mapping.expect("Qubit mapping optimization should succeed in test");
         assert_eq!(mapping.len(), 4);
     }
 
@@ -1804,14 +1827,17 @@ mod tests {
             target_architecture: HardwareArchitecture::IBMQuantum,
             ..Default::default()
         };
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.1), vec![0]));
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.2), vec![0]));
 
         let original_gates = circuit.gates.len();
-        optimizer.apply_ibm_optimizations(&mut circuit).unwrap();
+        optimizer
+            .apply_ibm_optimizations(&mut circuit)
+            .expect("IBM optimizations should succeed in test");
 
         // Should fuse consecutive RZ gates
         assert!(circuit.gates.len() <= original_gates);
@@ -1820,7 +1846,8 @@ mod tests {
     #[test]
     fn test_gate_cancellation() {
         let config = HardwareAwareConfig::default();
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let gate1 = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
         let gate2 = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
@@ -1834,20 +1861,22 @@ mod tests {
     #[test]
     fn test_error_rate_estimation() {
         let config = HardwareAwareConfig::default();
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
 
         let error_rate = optimizer.estimate_error_rate(&circuit);
         assert!(error_rate.is_ok());
-        assert!(error_rate.unwrap() > 0.0);
+        assert!(error_rate.expect("Error rate estimation should succeed in test") > 0.0);
     }
 
     #[test]
     fn test_cross_device_compatibility() {
         let config = HardwareAwareConfig::default();
-        let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+        let optimizer = HardwareAwareQMLOptimizer::new(config)
+            .expect("Optimizer creation should succeed in test");
 
         let compatibility = optimizer.get_cross_device_compatibility(
             HardwareArchitecture::IBMQuantum,

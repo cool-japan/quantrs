@@ -108,11 +108,17 @@ impl ReconstructionMetrics {
     /// Compute reconstruction metrics
     pub fn compute(original: &Array2<f64>, reconstructed: &Array2<f64>) -> Self {
         let diff = original - reconstructed;
-        let mse = diff.mapv(|x| x * x).mean().unwrap();
-        let mae = diff.mapv(|x| x.abs()).mean().unwrap();
+        let mse = diff
+            .mapv(|x| x * x)
+            .mean()
+            .expect("diff array is non-empty");
+        let mae = diff
+            .mapv(|x| x.abs())
+            .mean()
+            .expect("diff array is non-empty");
 
         // Compute R-squared
-        let mean_original = original.mean().unwrap();
+        let mean_original = original.mean().expect("original array is non-empty");
         let ss_res = diff.mapv(|x| x * x).sum();
         let ss_tot = original.mapv(|x| (x - mean_original).powi(2)).sum();
         let r2_score = 1.0 - ss_res / ss_tot;

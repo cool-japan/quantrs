@@ -6,18 +6,13 @@ use std::time::Duration;
 use crate::adaptive_compilation::AdaptiveCompilationConfig;
 
 /// Analysis depth levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AnalysisDepth {
+    #[default]
     Basic,
     Intermediate,
     Advanced,
     Comprehensive,
-}
-
-impl Default for AnalysisDepth {
-    fn default() -> Self {
-        Self::Basic
-    }
 }
 
 /// Optimization objectives
@@ -131,7 +126,7 @@ impl Default for SciRS2Config {
 }
 
 /// SciRS2 optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SciRS2OptimizationMethod {
     NelderMead,
     BFGS,

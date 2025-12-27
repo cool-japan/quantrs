@@ -651,8 +651,14 @@ impl QuantumNeuralNetwork {
         }
 
         // Compute final training metrics
+        let final_loss = self
+            .training_history
+            .last()
+            .map(|epoch| epoch.training_loss)
+            .unwrap_or(f64::INFINITY);
+
         let training_metrics = TrainingMetrics {
-            final_training_loss: self.training_history.last().unwrap().training_loss,
+            final_training_loss: final_loss,
             convergence_rate: self.compute_convergence_rate(),
             epochs_to_convergence: self.training_history.len(),
             training_stability: self.compute_training_stability(),
@@ -1266,19 +1272,21 @@ impl QuantumNeuralNetwork {
             let pred_class = prediction
                 .iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .unwrap()
-                .0;
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
             let target_class = target
                 .iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .unwrap()
-                .0;
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
             pred_class == target_class
-        } else {
+        } else if !prediction.is_empty() && !target.is_empty() {
             // For regression: check if within tolerance
             (prediction[0] - target[0]).abs() < 0.1
+        } else {
+            false
         }
     }
 
@@ -1331,11 +1339,11 @@ impl QuantumNeuralNetwork {
         let ranges = vec![(
             *params
                 .iter()
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .unwrap_or(&0.0),
             *params
                 .iter()
-                .max_by(|a, b| a.partial_cmp(b).unwrap())
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .unwrap_or(&0.0),
         )];
         let correlations = Array2::eye(params.len());
@@ -1355,7 +1363,11 @@ impl QuantumNeuralNetwork {
         }
 
         let initial_loss = self.training_history[0].training_loss;
-        let final_loss = self.training_history.last().unwrap().training_loss;
+        let final_loss = self
+            .training_history
+            .last()
+            .expect("training_history verified to have at least 2 elements")
+            .training_loss;
 
         if initial_loss > 0.0 {
             (initial_loss - final_loss) / initial_loss
@@ -1391,7 +1403,10 @@ impl QuantumNeuralNetwork {
             return 0.0;
         }
 
-        let last_epoch = self.training_history.last().unwrap();
+        let last_epoch = self
+            .training_history
+            .last()
+            .expect("training_history verified to be non-empty");
         if let Some(val_loss) = last_epoch.validation_loss {
             (val_loss - last_epoch.training_loss).max(0.0)
         } else {
@@ -1641,7 +1656,8 @@ mod tests {
 
     #[test]
     fn test_qnn_creation() {
-        let mut qnn = create_binary_classification_qnn(4).unwrap();
+        let qnn = create_binary_classification_qnn(4)
+            .expect("Failed to create binary classification QNN with 4 qubits");
         assert_eq!(qnn.architecture.num_qubits, 4);
         assert_eq!(qnn.architecture.circuit_depth, 3);
         assert_eq!(qnn.layers.len(), 3);
@@ -1649,15 +1665,17 @@ mod tests {
 
     #[test]
     fn test_qnn_forward_pass() {
-        let mut qnn = create_binary_classification_qnn(2).unwrap();
+        let qnn = create_binary_classification_qnn(2)
+            .expect("Failed to create binary classification QNN with 2 qubits");
         let input = Array1::from_vec(vec![0.5, 0.7]);
-        let mut output = qnn.forward(&input);
+        let output = qnn.forward(&input);
         assert!(output.is_ok());
     }
 
     #[test]
     fn test_optimization_qnn_creation() {
-        let qnn = create_optimization_qnn(8).unwrap();
+        let qnn = create_optimization_qnn(8)
+            .expect("Failed to create optimization QNN with problem size 8");
         assert_eq!(qnn.architecture.input_dim, 8);
         assert_eq!(qnn.architecture.output_dim, 8);
         assert!(qnn.architecture.num_qubits >= 3); // log2(8) = 3
@@ -1665,21 +1683,26 @@ mod tests {
 
     #[test]
     fn test_parameter_initialization() {
-        let mut qnn = create_binary_classification_qnn(3).unwrap();
-        qnn.initialize_parameters().unwrap();
+        let mut qnn = create_binary_classification_qnn(3)
+            .expect("Failed to create binary classification QNN with 3 qubits");
+        qnn.initialize_parameters()
+            .expect("Failed to initialize QNN parameters");
 
         // Check that parameters are initialized within bounds
-        for &param in qnn.parameters.quantum_params.iter() {
-            assert!(param >= -PI && param <= PI);
+        for &param in &qnn.parameters.quantum_params {
+            assert!((-PI..=PI).contains(&param));
         }
     }
 
     #[test]
     fn test_quantum_gate_application() {
-        let mut qnn = create_binary_classification_qnn(2).unwrap();
-        let mut state = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]); // |00⟩
+        let qnn = create_binary_classification_qnn(2)
+            .expect("Failed to create binary classification QNN with 2 qubits");
+        let state = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]); // |00⟩
 
-        let mut new_state = qnn.apply_rx_gate(&state, 0, PI / 2.0).unwrap();
+        let new_state = qnn
+            .apply_rx_gate(&state, 0, PI / 2.0)
+            .expect("Failed to apply RX gate");
 
         // After RX(π/2) on qubit 0, should be in superposition
         assert!((new_state[0] - 1.0 / 2.0_f64.sqrt()).abs() < 1e-10);

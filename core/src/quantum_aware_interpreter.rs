@@ -225,7 +225,7 @@ impl QuantumAwareInterpreter {
 
     /// Execute operation with specific strategy
     async fn execute_with_strategy(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
         strategy: &ExecutionStrategy,
@@ -268,7 +268,7 @@ impl QuantumAwareInterpreter {
         let matrix_size = (operation_matrix_data.len() as f64).sqrt() as usize;
         let operation_matrix =
             Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data).map_err(
-                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)),
+                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {e}")),
             )?;
         let new_amplitudes = operation_matrix.dot(&state.amplitudes);
 
@@ -294,7 +294,7 @@ impl QuantumAwareInterpreter {
 
     /// Optimized execution with specific optimization type
     async fn execute_optimized(
-        &mut self,
+        &self,
         operation: &dyn GateOp,
         target_state_id: Uuid,
         optimization_type: &OptimizationType,
@@ -419,7 +419,7 @@ impl QuantumAwareInterpreter {
         let matrix_size = (operation_matrix_data.len() as f64).sqrt() as usize;
         let operation_matrix =
             Array2::from_shape_vec((matrix_size, matrix_size), operation_matrix_data).map_err(
-                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {}", e)),
+                |e| QuantRS2Error::MatrixConstruction(format!("Matrix conversion error: {e}")),
             )?;
 
         // Stream computation in chunks
@@ -508,7 +508,7 @@ impl QuantumAwareInterpreter {
         state: &TrackedQuantumState,
     ) -> f64 {
         // Check if operation qubits are available in state
-        let available_qubits: Vec<QubitId> = state.qubit_mapping.keys().cloned().collect();
+        let available_qubits: Vec<QubitId> = state.qubit_mapping.keys().copied().collect();
         let required_qubits = operation.qubits();
 
         let compatibility = required_qubits
@@ -704,11 +704,11 @@ impl QuantumStateTracker {
     }
 
     pub async fn get_state(&self, state_id: Uuid) -> Result<TrackedQuantumState, QuantRS2Error> {
-        let states = self.active_states.read().unwrap();
+        let states = self.active_states.read().unwrap_or_else(|e| e.into_inner());
         states
             .get(&state_id)
             .cloned()
-            .ok_or_else(|| QuantRS2Error::StateNotFound(format!("State {} not found", state_id)))
+            .ok_or_else(|| QuantRS2Error::StateNotFound(format!("State {state_id} not found")))
     }
 
     pub async fn get_state_mut(
@@ -723,7 +723,10 @@ impl QuantumStateTracker {
         state_id: Uuid,
         new_amplitudes: Array1<Complex64>,
     ) -> Result<(), QuantRS2Error> {
-        let mut states = self.active_states.write().unwrap();
+        let mut states = self
+            .active_states
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(state) = states.get_mut(&state_id) {
             state.amplitudes = new_amplitudes;
             state.access_count += 1;
@@ -908,7 +911,7 @@ pub struct QuantumMemoryManager {
 }
 
 impl QuantumMemoryManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             memory_pools: Vec::new(),
         }
@@ -945,7 +948,10 @@ impl QuantumProfiler {
     }
 
     pub async fn get_operation_history(&self, operation_name: &str) -> Option<OperationHistory> {
-        let profiles = self.operation_profiles.read().unwrap();
+        let profiles = self
+            .operation_profiles
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         profiles
             .get(operation_name)
             .map(|profile| OperationHistory {
@@ -1151,7 +1157,7 @@ mod tests {
                 .quantum_state_tracker
                 .active_states
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock on active_states")
                 .len(),
             0
         );
@@ -1160,13 +1166,27 @@ mod tests {
     #[tokio::test]
     async fn test_state_tracker_creation() {
         let tracker = QuantumStateTracker::new();
-        assert_eq!(tracker.active_states.read().unwrap().len(), 0);
+        assert_eq!(
+            tracker
+                .active_states
+                .read()
+                .expect("Failed to acquire read lock")
+                .len(),
+            0
+        );
     }
 
     #[test]
     fn test_jit_compiler_creation() {
         let compiler = QuantumJITCompiler::new();
-        assert_eq!(compiler.compilation_cache.read().unwrap().len(), 0);
+        assert_eq!(
+            compiler
+                .compilation_cache
+                .read()
+                .expect("Failed to acquire read lock")
+                .len(),
+            0
+        );
     }
 
     #[test]
@@ -1178,6 +1198,13 @@ mod tests {
     #[test]
     fn test_profiler_creation() {
         let profiler = QuantumProfiler::new();
-        assert_eq!(profiler.operation_profiles.read().unwrap().len(), 0);
+        assert_eq!(
+            profiler
+                .operation_profiles
+                .read()
+                .expect("Failed to acquire read lock")
+                .len(),
+            0
+        );
     }
 }

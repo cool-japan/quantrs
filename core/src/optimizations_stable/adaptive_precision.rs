@@ -23,32 +23,30 @@ pub enum PrecisionLevel {
 
 impl PrecisionLevel {
     /// Get the number of significant decimal digits for this precision level
-    pub fn decimal_digits(self) -> usize {
+    pub const fn decimal_digits(self) -> usize {
         match self {
-            PrecisionLevel::Single => 7,
-            PrecisionLevel::Double => 15,
-            PrecisionLevel::Extended => 34,
-            PrecisionLevel::Mixed => 15, // Default to double
+            Self::Single => 7,
+            Self::Double | Self::Mixed => 15, // Double or mixed default to double
+            Self::Extended => 34,
         }
     }
 
     /// Get the epsilon (machine precision) for this level
-    pub fn epsilon(self) -> f64 {
+    pub const fn epsilon(self) -> f64 {
         match self {
-            PrecisionLevel::Single => f32::EPSILON as f64,
-            PrecisionLevel::Double => f64::EPSILON,
-            PrecisionLevel::Extended => 1e-34,
-            PrecisionLevel::Mixed => f64::EPSILON,
+            Self::Single => f32::EPSILON as f64,
+            Self::Double | Self::Mixed => f64::EPSILON,
+            Self::Extended => 1e-34,
         }
     }
 
     /// Get relative performance factor (1.0 = baseline double precision)
-    pub fn performance_factor(self) -> f64 {
+    pub const fn performance_factor(self) -> f64 {
         match self {
-            PrecisionLevel::Single => 1.8,   // ~80% faster
-            PrecisionLevel::Double => 1.0,   // Baseline
-            PrecisionLevel::Extended => 0.3, // ~70% slower
-            PrecisionLevel::Mixed => 1.2,    // ~20% faster on average
+            Self::Single => 1.8,   // ~80% faster
+            Self::Double => 1.0,   // Baseline
+            Self::Extended => 0.3, // ~70% slower
+            Self::Mixed => 1.2,    // ~20% faster on average
         }
     }
 }
@@ -242,7 +240,7 @@ impl AdaptivePrecisionManager {
     }
 
     /// Calculate size factor for precision adjustment
-    fn calculate_size_factor(&self, input_size: usize) -> f64 {
+    const fn calculate_size_factor(&self, input_size: usize) -> f64 {
         // Larger problems may accumulate more numerical error
         match input_size {
             0..=100 => 1.0,
@@ -290,14 +288,11 @@ impl AdaptivePrecisionManager {
         requirements: &PrecisionRequirements,
     ) {
         match chosen_precision.cmp(&requirements.min_precision) {
-            std::cmp::Ordering::Less => {
-                // This shouldn't happen in a well-designed system
-            }
             std::cmp::Ordering::Greater => {
                 self.statistics.precision_upgrades += 1;
             }
-            std::cmp::Ordering::Equal => {
-                // No change
+            std::cmp::Ordering::Less | std::cmp::Ordering::Equal => {
+                // No change or unexpected downgrade
             }
         }
 
@@ -307,9 +302,10 @@ impl AdaptivePrecisionManager {
 
         // Update performance metrics
         let speedup = chosen_precision.performance_factor();
-        self.statistics.average_speedup = (self.statistics.average_speedup
-            * (self.statistics.total_operations - 1) as f64
-            + speedup)
+        self.statistics.average_speedup = self
+            .statistics
+            .average_speedup
+            .mul_add((self.statistics.total_operations - 1) as f64, speedup)
             / self.statistics.total_operations as f64;
 
         // Memory savings (rough estimate)
@@ -320,9 +316,10 @@ impl AdaptivePrecisionManager {
             PrecisionLevel::Mixed => 0.75,   // Average savings
         };
 
-        self.statistics.memory_savings = (self.statistics.memory_savings
-            * (self.statistics.total_operations - 1) as f64
-            + memory_factor)
+        self.statistics.memory_savings = self
+            .statistics
+            .memory_savings
+            .mul_add((self.statistics.total_operations - 1) as f64, memory_factor)
             / self.statistics.total_operations as f64;
     }
 
@@ -350,7 +347,7 @@ impl AdaptivePrecisionManager {
     }
 
     /// Get current precision statistics
-    pub fn get_statistics(&self) -> &PrecisionStatistics {
+    pub const fn get_statistics(&self) -> &PrecisionStatistics {
         &self.statistics
     }
 
@@ -405,10 +402,10 @@ impl AdaptivePrecisionManager {
             if per_operation_budget < requirements.error_tolerance {
                 max_precision = match max_precision {
                     PrecisionLevel::Single => {
-                        if requirements.min_precision != PrecisionLevel::Single {
-                            requirements.min_precision
-                        } else {
+                        if requirements.min_precision == PrecisionLevel::Single {
                             PrecisionLevel::Double
+                        } else {
+                            requirements.min_precision
                         }
                     }
                     PrecisionLevel::Double => {
@@ -469,8 +466,7 @@ impl PrecisionAwareOps {
                 let result32 = a32 + b32;
                 Complex64::new(result32.re as f64, result32.im as f64)
             }
-            PrecisionLevel::Double | PrecisionLevel::Mixed => a + b,
-            PrecisionLevel::Extended => a + b,
+            PrecisionLevel::Double | PrecisionLevel::Mixed | PrecisionLevel::Extended => a + b,
         }
     }
 

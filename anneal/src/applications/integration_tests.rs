@@ -18,6 +18,7 @@ use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator, QuantumAnne
 use std::collections::HashMap;
 use std::time::Instant;
 
+use std::fmt::Write;
 /// Comprehensive integration test suite
 #[derive(Debug, Clone)]
 pub struct IntegrationTestSuite {
@@ -91,7 +92,7 @@ pub struct TestResult {
 }
 
 /// Test categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestCategory {
     /// Basic functionality tests
     Functionality,
@@ -108,7 +109,7 @@ pub enum TestCategory {
 }
 
 /// Test execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestStatus {
     /// Test passed successfully
     Passed,
@@ -237,6 +238,7 @@ pub enum ErrorCategory {
 
 impl IntegrationTestSuite {
     /// Create a new integration test suite
+    #[must_use]
     pub fn new(config: TestConfiguration) -> Self {
         Self {
             config,
@@ -271,10 +273,7 @@ impl IntegrationTestSuite {
         self.calculate_performance_metrics();
 
         let total_time = start_time.elapsed().as_secs_f64();
-        println!(
-            "Integration test suite completed in {:.2} seconds",
-            total_time
-        );
+        println!("Integration test suite completed in {total_time:.2} seconds");
 
         self.generate_test_report()?;
 
@@ -287,7 +286,7 @@ impl IntegrationTestSuite {
 
         for industry in &self.config.test_industries.clone() {
             for &size in &self.config.test_sizes.clone() {
-                let test_id = format!("functionality_{}_{}", industry, size);
+                let test_id = format!("functionality_{industry}_{size}");
                 let start_time = Instant::now();
 
                 match self.test_industry_functionality(industry, size) {
@@ -337,11 +336,11 @@ impl IntegrationTestSuite {
         for industry1 in &self.config.test_industries.clone() {
             for industry2 in &self.config.test_industries.clone() {
                 if industry1 != industry2 {
-                    let test_id = format!("cross_industry_{}_{}", industry1, industry2);
+                    let test_id = format!("cross_industry_{industry1}_{industry2}");
                     let start_time = Instant::now();
 
                     match self.test_cross_industry_compatibility(&factory, industry1, industry2) {
-                        Ok(_) => {
+                        Ok(()) => {
                             let execution_time = start_time.elapsed().as_secs_f64();
                             self.results.push(TestResult {
                                 test_id,
@@ -388,7 +387,7 @@ impl IntegrationTestSuite {
             for industry in &self.config.test_industries.clone() {
                 let test_id = format!(
                     "solver_{}_{}",
-                    format!("{:?}", solver_type).to_lowercase(),
+                    format!("{solver_type:?}").to_lowercase(),
                     industry
                 );
                 let start_time = Instant::now();
@@ -439,7 +438,7 @@ impl IntegrationTestSuite {
 
         for industry in &self.config.test_industries.clone() {
             for &size in &test_sizes {
-                let test_id = format!("performance_{}_{}", industry, size);
+                let test_id = format!("performance_{industry}_{size}");
                 let start_time = Instant::now();
 
                 match self.test_performance_scaling(&factory, industry, size) {
@@ -490,7 +489,7 @@ impl IntegrationTestSuite {
     }
 
     /// Test error handling and edge cases
-    fn run_error_handling_tests(&mut self) -> ApplicationResult<()> {
+    fn run_error_handling_tests(&self) -> ApplicationResult<()> {
         println!("Running error handling tests...");
 
         // Test invalid problem configurations
@@ -512,7 +511,7 @@ impl IntegrationTestSuite {
         let factory = UnifiedSolverFactory::new();
 
         for industry in &self.config.test_industries.clone() {
-            let test_id = format!("end_to_end_{}", industry);
+            let test_id = format!("end_to_end_{industry}");
             let start_time = Instant::now();
 
             match self.test_complete_workflow(&factory, industry) {
@@ -560,11 +559,11 @@ impl IntegrationTestSuite {
         let factory = UnifiedSolverFactory::new();
 
         for &size in &stress_sizes {
-            let test_id = format!("stress_test_{}", size);
+            let test_id = format!("stress_test_{size}");
             let start_time = Instant::now();
 
             match self.test_system_limits(&factory, size) {
-                Ok(_) => {
+                Ok(()) => {
                     let execution_time = start_time.elapsed().as_secs_f64();
                     self.results.push(TestResult {
                         test_id,
@@ -771,13 +770,10 @@ impl IntegrationTestSuite {
         let solution = factory.solve_problem(&*problem, None)?;
 
         // Step 4: Verify solution format
-        let binary_sol = match &solution {
-            UnifiedSolution::Binary(b) => b,
-            _ => {
-                return Err(ApplicationError::OptimizationError(
-                    "Expected binary solution".to_string(),
-                ))
-            }
+        let UnifiedSolution::Binary(binary_sol) = &solution else {
+            return Err(ApplicationError::OptimizationError(
+                "Expected binary solution".to_string(),
+            ));
         };
 
         if binary_sol.is_empty() {
@@ -812,11 +808,16 @@ impl IntegrationTestSuite {
                 );
                 config.insert(
                     "budget".to_string(),
-                    serde_json::Value::Number(serde_json::Number::from_f64(100000.0).unwrap()),
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(100_000.0)
+                            .expect("100_000.0 is a valid f64 for JSON"),
+                    ),
                 );
                 config.insert(
                     "risk_tolerance".to_string(),
-                    serde_json::Value::Number(serde_json::Number::from_f64(0.5).unwrap()),
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(0.5).expect("0.5 is a valid f64 for JSON"),
+                    ),
                 );
             }
             "logistics" => {
@@ -847,7 +848,7 @@ impl IntegrationTestSuite {
     }
 
     /// Test invalid problem configurations
-    fn test_invalid_problem_configurations(&mut self) -> ApplicationResult<()> {
+    fn test_invalid_problem_configurations(&self) -> ApplicationResult<()> {
         let factory = UnifiedSolverFactory::new();
 
         // Test with invalid industry
@@ -864,10 +865,10 @@ impl IntegrationTestSuite {
     }
 
     /// Test resource limits
-    fn test_resource_limits(&mut self) -> ApplicationResult<()> {
+    fn test_resource_limits(&self) -> ApplicationResult<()> {
         // Test with very large problem sizes that should hit memory limits
         let factory = UnifiedSolverFactory::new();
-        let large_config = self.create_test_problem_config("finance", 10000)?;
+        let large_config = self.create_test_problem_config("finance", 10_000)?;
 
         // This should either succeed or fail gracefully
         match factory.create_problem("finance", "portfolio", large_config) {
@@ -879,7 +880,7 @@ impl IntegrationTestSuite {
     }
 
     /// Test malformed inputs
-    fn test_malformed_inputs(&mut self) -> ApplicationResult<()> {
+    fn test_malformed_inputs(&self) -> ApplicationResult<()> {
         let factory = UnifiedSolverFactory::new();
 
         // Test with negative values
@@ -1013,57 +1014,77 @@ impl IntegrationTestSuite {
 
         // Summary
         report.push_str("## Test Summary\n");
-        report.push_str(&format!(
+        write!(
+            report,
             "Total Tests: {}\n",
             self.performance_metrics.total_tests
-        ));
-        report.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            report,
             "Tests Passed: {}\n",
             self.performance_metrics.tests_passed
-        ));
-        report.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            report,
             "Tests Failed: {}\n",
             self.performance_metrics.tests_failed
-        ));
-        report.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            report,
             "Success Rate: {:.1}%\n",
             (self.performance_metrics.tests_passed as f64
                 / self.performance_metrics.total_tests as f64)
                 * 100.0
-        ));
-        report.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            report,
             "Average Execution Time: {:.3}s\n\n",
             self.performance_metrics.avg_execution_time
-        ));
+        )
+        .expect("Writing to String should not fail");
 
         // Industry Performance
         report.push_str("## Industry Performance\n");
         for (industry, perf) in &self.performance_metrics.industry_performance {
-            report.push_str(&format!("### {}\n", industry));
-            report.push_str(&format!("- Tests Run: {}\n", perf.tests_run));
-            report.push_str(&format!(
+            writeln!(report, "### {industry}").expect("Writing to String should not fail");
+            writeln!(report, "- Tests Run: {}", perf.tests_run)
+                .expect("Writing to String should not fail");
+            write!(
+                report,
                 "- Success Rate: {:.1}%\n",
                 perf.success_rate * 100.0
-            ));
-            report.push_str(&format!(
+            )
+            .expect("Writing to String should not fail");
+            write!(
+                report,
                 "- Average Execution Time: {:.3}s\n\n",
                 perf.avg_execution_time
-            ));
+            )
+            .expect("Writing to String should not fail");
         }
 
         // Solver Performance
         report.push_str("## Solver Performance\n");
         for (solver, perf) in &self.performance_metrics.solver_performance {
-            report.push_str(&format!("### {:?}\n", solver));
-            report.push_str(&format!("- Problems Solved: {}\n", perf.problems_solved));
-            report.push_str(&format!(
+            writeln!(report, "### {solver:?}").expect("Writing to String should not fail");
+            writeln!(report, "- Problems Solved: {}", perf.problems_solved)
+                .expect("Writing to String should not fail");
+            write!(
+                report,
                 "- Success Rate: {:.1}%\n",
                 perf.success_rate * 100.0
-            ));
-            report.push_str(&format!(
+            )
+            .expect("Writing to String should not fail");
+            write!(
+                report,
                 "- Memory Efficiency: {:.1}%\n\n",
                 perf.memory_efficiency * 100.0
-            ));
+            )
+            .expect("Writing to String should not fail");
         }
 
         // Error Summary
@@ -1075,7 +1096,8 @@ impl IntegrationTestSuite {
             }
 
             for (category, count) in error_counts {
-                report.push_str(&format!("- {:?}: {} errors\n", category, count));
+                writeln!(report, "- {category:?}: {count} errors")
+                    .expect("Writing to String should not fail");
             }
             report.push_str("\n");
         }
@@ -1103,20 +1125,19 @@ impl IntegrationTestSuite {
                     .iter()
                     .filter(|r| r.status == TestStatus::Passed)
                     .count();
-                report.push_str(&format!("### {:?}\n", category));
-                report.push_str(&format!(
-                    "- Passed: {}/{}\n",
-                    passed,
-                    category_results.len()
-                ));
-                report.push_str(&format!(
-                    "- Success Rate: {:.1}%\n\n",
+                writeln!(report, "### {category:?}").expect("Writing to String should not fail");
+                write!(report, "- Passed: {}/{}\n", passed, category_results.len())
+                    .expect("Writing to String should not fail");
+                writeln!(
+                    report,
+                    "- Success Rate: {:.1}%\n",
                     (passed as f64 / category_results.len() as f64) * 100.0
-                ));
+                )
+                .expect("Writing to String should not fail");
             }
         }
 
-        println!("{}", report);
+        println!("{report}");
         Ok(report)
     }
 }
@@ -1176,12 +1197,12 @@ mod tests {
 
         let finance_config = test_suite
             .create_test_problem_config("finance", 10)
-            .unwrap();
+            .expect("Finance config creation should succeed");
         assert!(finance_config.contains_key("num_assets"));
 
         let logistics_config = test_suite
             .create_test_problem_config("logistics", 8)
-            .unwrap();
+            .expect("Logistics config creation should succeed");
         assert!(logistics_config.contains_key("num_vehicles"));
     }
 

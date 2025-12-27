@@ -26,7 +26,7 @@ pub struct SessionAffinityConfig {
 }
 
 /// Affinity methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AffinityMethod {
     CookieBased,
     IPBased,
@@ -46,7 +46,7 @@ pub struct SessionPersistenceConfig {
 }
 
 /// Persistence types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PersistenceType {
     InMemory,
     Database,
@@ -89,7 +89,7 @@ pub struct KeyManagementConfig {
 }
 
 /// Key sources
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeySource {
     Static,
     Environment,
@@ -134,7 +134,7 @@ pub struct SessionReplicationConfig {
 }
 
 /// Replication strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReplicationStrategy {
     Synchronous,
     Asynchronous,
@@ -143,7 +143,7 @@ pub enum ReplicationStrategy {
 }
 
 /// Consistency levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConsistencyLevel {
     Strong,
     Eventual,

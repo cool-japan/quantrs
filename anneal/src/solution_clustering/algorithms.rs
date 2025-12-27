@@ -40,7 +40,7 @@ pub enum ClusteringAlgorithm {
 }
 
 /// Linkage types for hierarchical clustering
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LinkageType {
     /// Single linkage (minimum distance)
     Single,
@@ -53,7 +53,7 @@ pub enum LinkageType {
 }
 
 /// Distance metrics for clustering
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DistanceMetric {
     /// Euclidean distance
     Euclidean,

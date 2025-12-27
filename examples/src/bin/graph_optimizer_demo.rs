@@ -211,7 +211,7 @@ fn full_optimization_demo(optimizer: &GraphOptimizer) -> Result<(), Box<dyn std:
     println!("----------------------------------");
 
     // Create a circuit with optimization opportunities
-    let original_gates = vec![
+    let original_gates = [
         // Redundant H gates
         GraphGate {
             id: 0,

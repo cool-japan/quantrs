@@ -467,10 +467,10 @@ impl OptimizedShannonDecomposer {
                                 0
                             });
                     decomp.single_qubit_count = decomp.single_qubit_count.saturating_sub(
-                        if decomp.gates[i - 2].name() != "CNOT" {
-                            2
-                        } else {
+                        if decomp.gates[i - 2].name() == "CNOT" {
                             0
+                        } else {
+                            2
                         },
                     );
                     continue;
@@ -498,7 +498,7 @@ impl OptimizedShannonDecomposer {
     }
 
     /// Apply commutation-based optimization
-    fn apply_commutation_optimization(
+    const fn apply_commutation_optimization(
         &self,
         decomp: ShannonDecomposition,
     ) -> QuantRS2Result<ShannonDecomposition> {
@@ -582,11 +582,13 @@ mod tests {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("Failed to create Hadamard matrix")
             / Complex::new(2.0_f64.sqrt(), 0.0);
 
         let qubit_ids = vec![QubitId(0)];
-        let decomp = decomposer.decompose(&h, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&h, &qubit_ids)
+            .expect("Failed to decompose Hadamard gate");
 
         // Should decompose into at most 3 single-qubit gates
         assert!(decomp.single_qubit_count <= 3);
@@ -619,10 +621,12 @@ mod tests {
                 Complex::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create CNOT matrix");
 
         let qubit_ids = vec![QubitId(0), QubitId(1)];
-        let decomp = decomposer.decompose(&cnot, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&cnot, &qubit_ids)
+            .expect("Failed to decompose CNOT gate");
 
         // Should use at most 3 CNOTs for arbitrary two-qubit gate
         assert!(decomp.cnot_count <= 3);
@@ -637,7 +641,9 @@ mod tests {
         let identity_complex = identity.mapv(|x| Complex::new(x, 0.0));
 
         let qubit_ids = vec![QubitId(0), QubitId(1)];
-        let decomp = decomposer.decompose(&identity_complex, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&identity_complex, &qubit_ids)
+            .expect("Failed to decompose identity matrix");
 
         // Optimizations should eliminate all gates for identity
         assert_eq!(decomp.gates.len(), 0);

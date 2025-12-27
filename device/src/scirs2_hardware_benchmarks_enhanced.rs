@@ -85,7 +85,7 @@ pub struct QuantumCircuit {
 }
 
 impl QuantumCircuit {
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
             gates: Vec::new(),
@@ -335,7 +335,7 @@ impl EnhancedHardwareBenchmark {
         device: &impl QuantumDevice,
     ) -> QuantRS2Result<ComprehensiveBenchmarkResult> {
         let mut result = ComprehensiveBenchmarkResult::new();
-        result.device_info = self.collect_device_info(device)?;
+        result.device_info = Self::collect_device_info(device)?;
 
         // Run all benchmark suites in parallel
         let suite_results: Vec<_> = self
@@ -352,19 +352,20 @@ impl EnhancedHardwareBenchmark {
                     result.suite_results.insert(*suite, data);
                 }
                 Err(e) => {
-                    eprintln!("Error in suite {:?}: {}", suite, e);
+                    eprintln!("Error in suite {suite:?}: {e}");
                 }
             }
         }
 
         // Statistical analysis
         if self.config.enable_significance_testing {
-            result.statistical_analysis = Some(self.perform_statistical_analysis(&result)?);
+            result.statistical_analysis = Some(Self::perform_statistical_analysis(&result)?);
         }
 
         // ML predictions
         if let Some(ml_predictor) = &self.ml_predictor {
-            result.performance_predictions = Some(ml_predictor.predict_performance(&result)?);
+            result.performance_predictions =
+                Some(MLPerformancePredictor::predict_performance(&result)?);
         }
 
         // Comparative analysis
@@ -373,7 +374,7 @@ impl EnhancedHardwareBenchmark {
         }
 
         // Generate recommendations
-        result.recommendations = self.generate_recommendations(&result)?;
+        result.recommendations = Self::generate_recommendations(&result)?;
 
         // Create comprehensive report
         result.report = Some(self.create_comprehensive_report(&result)?);
@@ -389,13 +390,13 @@ impl EnhancedHardwareBenchmark {
     ) -> QuantRS2Result<BenchmarkSuiteResult> {
         match suite {
             BenchmarkSuite::QuantumVolume => self.run_quantum_volume_benchmark(device),
-            BenchmarkSuite::RandomizedBenchmarking => self.run_rb_benchmark(device),
-            BenchmarkSuite::CrossEntropyBenchmarking => self.run_xeb_benchmark(device),
-            BenchmarkSuite::LayerFidelity => self.run_layer_fidelity_benchmark(device),
+            BenchmarkSuite::RandomizedBenchmarking => Self::run_rb_benchmark(device),
+            BenchmarkSuite::CrossEntropyBenchmarking => Self::run_xeb_benchmark(device),
+            BenchmarkSuite::LayerFidelity => Self::run_layer_fidelity_benchmark(device),
             BenchmarkSuite::MirrorCircuits => self.run_mirror_circuit_benchmark(device),
-            BenchmarkSuite::ProcessTomography => self.run_process_tomography_benchmark(device),
-            BenchmarkSuite::GateSetTomography => self.run_gst_benchmark(device),
-            BenchmarkSuite::Applications => self.run_application_benchmark(device),
+            BenchmarkSuite::ProcessTomography => Self::run_process_tomography_benchmark(device),
+            BenchmarkSuite::GateSetTomography => Self::run_gst_benchmark(device),
+            BenchmarkSuite::Applications => Self::run_application_benchmark(device),
             BenchmarkSuite::Custom => Err(QuantRS2Error::InvalidOperation(
                 "Custom benchmarks not yet implemented".to_string(),
             )),
@@ -414,7 +415,7 @@ impl EnhancedHardwareBenchmark {
         for n in 2..=num_qubits.min(20) {
             if self.config.enable_adaptive_protocols {
                 // Adaptive selection of circuits
-                let circuits = self.adaptive_controller.select_qv_circuits(n, device)?;
+                let circuits = AdaptiveBenchmarkController::select_qv_circuits(n, device)?;
 
                 for circuit in circuits {
                     let result = self.execute_and_measure(device, &circuit)?;
@@ -437,7 +438,7 @@ impl EnhancedHardwareBenchmark {
         }
 
         // Calculate quantum volume
-        let qv = self.calculate_quantum_volume(&suite_result)?;
+        let qv = Self::calculate_quantum_volume(&suite_result)?;
         suite_result
             .summary_metrics
             .insert("quantum_volume".to_string(), qv as f64);
@@ -446,21 +447,18 @@ impl EnhancedHardwareBenchmark {
     }
 
     /// Run randomized benchmarking
-    fn run_rb_benchmark(
-        &self,
-        device: &impl QuantumDevice,
-    ) -> QuantRS2Result<BenchmarkSuiteResult> {
+    fn run_rb_benchmark(device: &impl QuantumDevice) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::RandomizedBenchmarking);
 
         // Single-qubit RB
         for qubit in 0..device.get_topology().num_qubits {
-            let rb_result = self.run_single_qubit_rb(device, qubit)?;
+            let rb_result = Self::run_single_qubit_rb(device, qubit)?;
             suite_result.single_qubit_results.insert(qubit, rb_result);
         }
 
         // Two-qubit RB
         for &(q1, q2) in &device.get_topology().connectivity {
-            let rb_result = self.run_two_qubit_rb(device, q1, q2)?;
+            let rb_result = Self::run_two_qubit_rb(device, q1, q2)?;
             suite_result.two_qubit_results.insert((q1, q2), rb_result);
         }
 
@@ -490,21 +488,18 @@ impl EnhancedHardwareBenchmark {
     }
 
     /// Run cross-entropy benchmarking
-    fn run_xeb_benchmark(
-        &self,
-        device: &impl QuantumDevice,
-    ) -> QuantRS2Result<BenchmarkSuiteResult> {
+    fn run_xeb_benchmark(device: &impl QuantumDevice) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::CrossEntropyBenchmarking);
 
         // Generate random circuits of varying depths
         let depths = vec![5, 10, 20, 40, 80];
 
         for depth in depths {
-            let circuits = self.generate_xeb_circuits(device.get_topology().num_qubits, depth)?;
+            let circuits = Self::generate_xeb_circuits(device.get_topology().num_qubits, depth)?;
 
             let xeb_scores: Vec<f64> = circuits
                 .par_iter()
-                .map(|circuit| self.calculate_xeb_score(device, circuit).unwrap_or(0.0))
+                .map(|circuit| Self::calculate_xeb_score(device, circuit).unwrap_or(0.0))
                 .collect();
 
             let avg_score = xeb_scores.iter().sum::<f64>() / xeb_scores.len() as f64;
@@ -512,7 +507,7 @@ impl EnhancedHardwareBenchmark {
                 depth,
                 DepthResult {
                     avg_fidelity: avg_score,
-                    std_dev: self.calculate_std_dev(&xeb_scores),
+                    std_dev: Self::calculate_std_dev(&xeb_scores),
                     samples: xeb_scores.len(),
                 },
             );
@@ -523,7 +518,6 @@ impl EnhancedHardwareBenchmark {
 
     /// Run layer fidelity benchmark
     fn run_layer_fidelity_benchmark(
-        &self,
         device: &impl QuantumDevice,
     ) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::LayerFidelity);
@@ -537,7 +531,7 @@ impl EnhancedHardwareBenchmark {
         ];
 
         for pattern in patterns {
-            let fidelity = self.measure_layer_fidelity(device, &pattern)?;
+            let fidelity = Self::measure_layer_fidelity(device, &pattern)?;
             suite_result.pattern_results.insert(pattern, fidelity);
         }
 
@@ -552,7 +546,7 @@ impl EnhancedHardwareBenchmark {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::MirrorCircuits);
 
         // Generate mirror circuits
-        let circuits = self.generate_mirror_circuits(device.get_topology())?;
+        let circuits = Self::generate_mirror_circuits(device.get_topology())?;
 
         let results: Vec<_> = circuits
             .par_iter()
@@ -564,7 +558,7 @@ impl EnhancedHardwareBenchmark {
             .collect();
 
         // Analyze mirror circuit results
-        let mirror_fidelities = self.analyze_mirror_results(&results)?;
+        let mirror_fidelities = Self::analyze_mirror_results(&results)?;
         suite_result.summary_metrics.insert(
             "avg_mirror_fidelity".to_string(),
             mirror_fidelities.iter().sum::<f64>() / mirror_fidelities.len() as f64,
@@ -575,7 +569,6 @@ impl EnhancedHardwareBenchmark {
 
     /// Run process tomography benchmark
     fn run_process_tomography_benchmark(
-        &self,
         device: &impl QuantumDevice,
     ) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::ProcessTomography);
@@ -585,8 +578,8 @@ impl EnhancedHardwareBenchmark {
 
         for gate_name in gate_names {
             let gate = Gate::from_name(gate_name, &[0, 1]);
-            let process_matrix = self.perform_process_tomography(device, &gate)?;
-            let fidelity = self.calculate_process_fidelity(&process_matrix, &gate)?;
+            let process_matrix = Self::perform_process_tomography(device, &gate)?;
+            let fidelity = Self::calculate_process_fidelity(&process_matrix, &gate)?;
 
             suite_result
                 .gate_fidelities
@@ -597,26 +590,23 @@ impl EnhancedHardwareBenchmark {
     }
 
     /// Run gate set tomography benchmark
-    fn run_gst_benchmark(
-        &self,
-        device: &impl QuantumDevice,
-    ) -> QuantRS2Result<BenchmarkSuiteResult> {
+    fn run_gst_benchmark(device: &impl QuantumDevice) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::GateSetTomography);
 
         // Simplified GST implementation
-        let gate_set = self.define_gate_set();
-        let germ_set = self.generate_germs(&gate_set)?;
-        let fiducials = self.generate_fiducials(&gate_set)?;
+        let gate_set = Self::define_gate_set();
+        let germ_set = Self::generate_germs(&gate_set)?;
+        let fiducials = Self::generate_fiducials(&gate_set)?;
 
         // Run GST experiments
-        let gst_data = self.collect_gst_data(device, &germ_set, &fiducials)?;
+        let gst_data = Self::collect_gst_data(device, &germ_set, &fiducials)?;
 
         // Reconstruct gate set
-        let reconstructed_gates = self.reconstruct_gate_set(&gst_data)?;
+        let reconstructed_gates = Self::reconstruct_gate_set(&gst_data)?;
 
         // Compare with ideal gates
         for (gate_name, reconstructed) in reconstructed_gates {
-            let fidelity = self.calculate_gate_fidelity(&reconstructed, &gate_set[&gate_name])?;
+            let fidelity = Self::calculate_gate_fidelity(&reconstructed, &gate_set[&gate_name])?;
             suite_result.gate_fidelities.insert(gate_name, fidelity);
         }
 
@@ -625,7 +615,6 @@ impl EnhancedHardwareBenchmark {
 
     /// Run application benchmark
     fn run_application_benchmark(
-        &self,
         device: &impl QuantumDevice,
     ) -> QuantRS2Result<BenchmarkSuiteResult> {
         let mut suite_result = BenchmarkSuiteResult::new(BenchmarkSuite::Applications);
@@ -639,7 +628,7 @@ impl EnhancedHardwareBenchmark {
         ];
 
         for algo in algorithms {
-            let perf = self.benchmark_application(device, &algo)?;
+            let perf = Self::benchmark_application(device, &algo)?;
             suite_result.application_results.insert(algo, perf);
         }
 
@@ -647,7 +636,7 @@ impl EnhancedHardwareBenchmark {
     }
 
     /// Collect device information
-    fn collect_device_info(&self, device: &impl QuantumDevice) -> QuantRS2Result<DeviceInfo> {
+    fn collect_device_info(device: &impl QuantumDevice) -> QuantRS2Result<DeviceInfo> {
         Ok(DeviceInfo {
             name: device.get_name(),
             num_qubits: device.get_topology().num_qubits,
@@ -660,54 +649,52 @@ impl EnhancedHardwareBenchmark {
 
     /// Perform statistical analysis
     fn perform_statistical_analysis(
-        &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<StatisticalAnalysis> {
         let mut analysis = StatisticalAnalysis::new();
 
         // Analyze each benchmark suite
         for (suite, suite_result) in &result.suite_results {
-            let suite_stats = self.analyze_suite_statistics(suite_result)?;
+            let suite_stats = Self::analyze_suite_statistics(suite_result)?;
             analysis.suite_statistics.insert(*suite, suite_stats);
         }
 
         // Cross-suite correlations
-        analysis.cross_suite_correlations = self.analyze_cross_suite_correlations(result)?;
+        analysis.cross_suite_correlations = Self::analyze_cross_suite_correlations(result)?;
 
         // Significance tests
         if result.suite_results.len() > 1 {
-            analysis.significance_tests = self.perform_significance_tests(result)?;
+            analysis.significance_tests = Self::perform_significance_tests(result)?;
         }
 
         // Confidence intervals
-        analysis.confidence_intervals = self.calculate_confidence_intervals(result)?;
+        analysis.confidence_intervals = Self::calculate_confidence_intervals(result)?;
 
         Ok(analysis)
     }
 
     /// Generate recommendations
     fn generate_recommendations(
-        &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<Vec<BenchmarkRecommendation>> {
         let mut recommendations = Vec::new();
 
         // Analyze performance bottlenecks
-        let bottlenecks = self.identify_bottlenecks(result)?;
+        let bottlenecks = Self::identify_bottlenecks(result)?;
 
         for bottleneck in bottlenecks {
             let recommendation = match bottleneck {
                 Bottleneck::LowGateFidelity(gate) => BenchmarkRecommendation {
                     category: RecommendationCategory::Calibration,
                     priority: Priority::High,
-                    description: format!("Recalibrate {} gate to improve fidelity", gate),
+                    description: format!("Recalibrate {gate} gate to improve fidelity"),
                     expected_improvement: 0.02,
                     effort: EffortLevel::Medium,
                 },
                 Bottleneck::HighCrosstalk(qubits) => BenchmarkRecommendation {
                     category: RecommendationCategory::Scheduling,
                     priority: Priority::Medium,
-                    description: format!("Implement crosstalk mitigation for qubits {:?}", qubits),
+                    description: format!("Implement crosstalk mitigation for qubits {qubits:?}"),
                     expected_improvement: 0.015,
                     effort: EffortLevel::Low,
                 },
@@ -729,7 +716,7 @@ impl EnhancedHardwareBenchmark {
             b.priority.cmp(&a.priority).then(
                 b.expected_improvement
                     .partial_cmp(&a.expected_improvement)
-                    .unwrap(),
+                    .unwrap_or(std::cmp::Ordering::Equal),
             )
         });
 
@@ -744,36 +731,36 @@ impl EnhancedHardwareBenchmark {
         let mut report = BenchmarkReport::new();
 
         // Executive summary
-        report.executive_summary = self.generate_executive_summary(result)?;
+        report.executive_summary = Self::generate_executive_summary(result)?;
 
         // Detailed results for each suite
         for (suite, suite_result) in &result.suite_results {
-            let suite_report = self.generate_suite_report(*suite, suite_result)?;
+            let suite_report = Self::generate_suite_report(*suite, suite_result)?;
             report.suite_reports.insert(*suite, suite_report);
         }
 
         // Statistical analysis summary
         if let Some(stats) = &result.statistical_analysis {
-            report.statistical_summary = Some(self.summarize_statistics(stats)?);
+            report.statistical_summary = Some(Self::summarize_statistics(stats)?);
         }
 
         // Performance predictions
         if let Some(predictions) = &result.performance_predictions {
-            report.prediction_summary = Some(self.summarize_predictions(predictions)?);
+            report.prediction_summary = Some(Self::summarize_predictions(predictions)?);
         }
 
         // Comparative analysis
         if let Some(comparative) = &result.comparative_analysis {
-            report.comparative_summary = Some(self.summarize_comparison(comparative)?);
+            report.comparative_summary = Some(Self::summarize_comparison(comparative)?);
         }
 
         // Visualizations
         if self.config.reporting_options.include_visualizations {
-            report.visualizations = Some(self.generate_visualizations(result)?);
+            report.visualizations = Some(Self::generate_visualizations(result)?);
         }
 
         // Recommendations
-        report.recommendations = result.recommendations.clone();
+        report.recommendations.clone_from(&result.recommendations);
 
         Ok(report)
     }
@@ -784,7 +771,7 @@ impl EnhancedHardwareBenchmark {
         let mut circuits = Vec::new();
 
         for _ in 0..self.config.base_config.num_repetitions {
-            let circuit = self.create_random_qv_circuit(num_qubits)?;
+            let circuit = Self::create_random_qv_circuit(num_qubits)?;
             circuits.push(circuit);
         }
 
@@ -801,7 +788,7 @@ impl EnhancedHardwareBenchmark {
         let execution_time = start.elapsed();
 
         let counts = job.get_counts()?;
-        let success_rate = self.calculate_success_rate(&counts, circuit)?;
+        let success_rate = Self::calculate_success_rate(&counts, circuit)?;
 
         Ok(ExecutionResult {
             success_rate,
@@ -810,13 +797,12 @@ impl EnhancedHardwareBenchmark {
         })
     }
 
-    fn create_random_qv_circuit(&self, _num_qubits: usize) -> QuantRS2Result<QuantumCircuit> {
+    fn create_random_qv_circuit(_num_qubits: usize) -> QuantRS2Result<QuantumCircuit> {
         // Stub implementation
         Ok(QuantumCircuit::new(_num_qubits))
     }
 
     fn calculate_success_rate(
-        &self,
         _counts: &HashMap<Vec<bool>, usize>,
         _circuit: &QuantumCircuit,
     ) -> QuantRS2Result<f64> {
@@ -825,7 +811,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn run_single_qubit_rb(
-        &self,
         _device: &impl QuantumDevice,
         _qubit: usize,
     ) -> QuantRS2Result<RBResult> {
@@ -838,7 +823,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn run_two_qubit_rb(
-        &self,
         _device: &impl QuantumDevice,
         _q1: usize,
         _q2: usize,
@@ -852,7 +836,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn generate_xeb_circuits(
-        &self,
         _num_qubits: usize,
         _depth: usize,
     ) -> QuantRS2Result<Vec<QuantumCircuit>> {
@@ -865,7 +848,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn calculate_xeb_score(
-        &self,
         _device: &impl QuantumDevice,
         _circuit: &QuantumCircuit,
     ) -> QuantRS2Result<f64> {
@@ -874,7 +856,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn measure_layer_fidelity(
-        &self,
         _device: &impl QuantumDevice,
         _pattern: &LayerPattern,
     ) -> QuantRS2Result<LayerFidelity> {
@@ -885,16 +866,12 @@ impl EnhancedHardwareBenchmark {
         })
     }
 
-    fn generate_mirror_circuits(
-        &self,
-        _topology: &DeviceTopology,
-    ) -> QuantRS2Result<Vec<MirrorCircuit>> {
+    fn generate_mirror_circuits(_topology: &DeviceTopology) -> QuantRS2Result<Vec<MirrorCircuit>> {
         // Stub implementation
         Ok(vec![])
     }
 
     fn analyze_mirror_results(
-        &self,
         _results: &[QuantRS2Result<(ExecutionResult, ExecutionResult)>],
     ) -> QuantRS2Result<Vec<f64>> {
         // Stub implementation
@@ -902,7 +879,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn perform_process_tomography(
-        &self,
         _device: &impl QuantumDevice,
         _gate: &Gate,
     ) -> QuantRS2Result<Array2<Complex64>> {
@@ -911,7 +887,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn calculate_process_fidelity(
-        &self,
         _process_matrix: &Array2<Complex64>,
         _gate: &Gate,
     ) -> QuantRS2Result<f64> {
@@ -919,13 +894,12 @@ impl EnhancedHardwareBenchmark {
         Ok(0.995)
     }
 
-    fn define_gate_set(&self) -> HashMap<String, Array2<Complex64>> {
+    fn define_gate_set() -> HashMap<String, Array2<Complex64>> {
         // Stub implementation
         HashMap::new()
     }
 
     fn generate_germs(
-        &self,
         _gate_set: &HashMap<String, Array2<Complex64>>,
     ) -> QuantRS2Result<Vec<Vec<String>>> {
         // Stub implementation
@@ -933,7 +907,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn generate_fiducials(
-        &self,
         _gate_set: &HashMap<String, Array2<Complex64>>,
     ) -> QuantRS2Result<Vec<Vec<String>>> {
         // Stub implementation
@@ -941,7 +914,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn collect_gst_data(
-        &self,
         _device: &impl QuantumDevice,
         _germ_set: &[Vec<String>],
         _fiducials: &[Vec<String>],
@@ -951,7 +923,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn reconstruct_gate_set(
-        &self,
         _gst_data: &HashMap<String, Vec<f64>>,
     ) -> QuantRS2Result<HashMap<String, Array2<Complex64>>> {
         // Stub implementation
@@ -959,7 +930,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn calculate_gate_fidelity(
-        &self,
         _reconstructed: &Array2<Complex64>,
         _ideal: &Array2<Complex64>,
     ) -> QuantRS2Result<f64> {
@@ -968,7 +938,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn benchmark_application(
-        &self,
         _device: &impl QuantumDevice,
         _algo: &ApplicationBenchmark,
     ) -> QuantRS2Result<ApplicationPerformance> {
@@ -985,7 +954,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn analyze_suite_statistics(
-        &self,
         _suite_result: &BenchmarkSuiteResult,
     ) -> QuantRS2Result<SuiteStatistics> {
         // Stub implementation
@@ -999,7 +967,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn analyze_cross_suite_correlations(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<CorrelationMatrix> {
         // Stub implementation
@@ -1007,7 +974,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn perform_significance_tests(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<Vec<SignificanceTest>> {
         // Stub implementation
@@ -1015,7 +981,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn calculate_confidence_intervals(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<HashMap<String, ConfidenceInterval>> {
         // Stub implementation
@@ -1023,7 +988,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn identify_bottlenecks(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<Vec<Bottleneck>> {
         // Stub implementation
@@ -1031,7 +995,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn generate_executive_summary(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<ExecutiveSummary> {
         // Stub implementation
@@ -1039,23 +1002,19 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn generate_suite_report(
-        &self,
         suite: BenchmarkSuite,
         _suite_result: &BenchmarkSuiteResult,
     ) -> QuantRS2Result<SuiteReport> {
         // Stub implementation
         Ok(SuiteReport {
-            suite_name: format!("{:?}", suite),
+            suite_name: format!("{suite:?}"),
             performance_summary: "Performance within expected range".to_string(),
             detailed_metrics: HashMap::new(),
             insights: vec![],
         })
     }
 
-    fn summarize_statistics(
-        &self,
-        _stats: &StatisticalAnalysis,
-    ) -> QuantRS2Result<StatisticalSummary> {
+    fn summarize_statistics(_stats: &StatisticalAnalysis) -> QuantRS2Result<StatisticalSummary> {
         // Stub implementation
         Ok(StatisticalSummary {
             key_statistics: HashMap::new(),
@@ -1065,7 +1024,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn summarize_predictions(
-        &self,
         _predictions: &PerformancePredictions,
     ) -> QuantRS2Result<PredictionSummary> {
         // Stub implementation
@@ -1077,7 +1035,6 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn summarize_comparison(
-        &self,
         _comparative: &ComparativeAnalysis,
     ) -> QuantRS2Result<ComparativeSummary> {
         // Stub implementation
@@ -1089,13 +1046,12 @@ impl EnhancedHardwareBenchmark {
     }
 
     fn generate_visualizations(
-        &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<BenchmarkVisualizations> {
-        self.visual_analyzer.generate_visualizations(result)
+        VisualAnalyzer::generate_visualizations(result)
     }
 
-    fn calculate_quantum_volume(&self, result: &BenchmarkSuiteResult) -> QuantRS2Result<usize> {
+    fn calculate_quantum_volume(result: &BenchmarkSuiteResult) -> QuantRS2Result<usize> {
         let mut max_qv = 1;
 
         for (n, measurements) in &result.measurements {
@@ -1112,7 +1068,7 @@ impl EnhancedHardwareBenchmark {
         Ok(max_qv)
     }
 
-    fn calculate_std_dev(&self, values: &[f64]) -> f64 {
+    fn calculate_std_dev(values: &[f64]) -> f64 {
         let mean = values.iter().sum::<f64>() / values.len() as f64;
         let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         variance.sqrt()
@@ -1140,13 +1096,10 @@ impl MLPerformancePredictor {
     }
 
     fn predict_performance(
-        &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<PerformancePredictions> {
-        let features = self.feature_extractor.extract_features(result)?;
-
-        let mut model = self.model.lock().unwrap();
-        let predictions = model.predict(&features)?;
+        let features = BenchmarkFeatureExtractor::extract_features(result)?;
+        let predictions = PerformanceModel::predict(&features)?;
 
         Ok(PerformancePredictions {
             future_performance: predictions.performance_trajectory,
@@ -1179,31 +1132,36 @@ impl ComparativeAnalyzer {
         &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<ComparativeAnalysis> {
-        let baselines = self.baseline_db.lock().unwrap().get_baselines()?;
+        let baselines = self
+            .baseline_db
+            .lock()
+            .map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Failed to acquire baseline DB lock: {e}"))
+            })?
+            .get_baselines()?;
 
         let mut analysis = ComparativeAnalysis::new();
 
         // Compare with historical performance
         if let Some(historical) = baselines.get(&result.device_info.name) {
             analysis.historical_comparison =
-                Some(self.compare_with_historical(result, historical)?);
+                Some(Self::compare_with_historical(result, historical)?);
         }
 
         // Compare with similar devices
-        let similar_devices = self.find_similar_devices(&result.device_info, &baselines)?;
+        let similar_devices = Self::find_similar_devices(&result.device_info, &baselines)?;
         for (device_name, baseline) in similar_devices {
-            let comparison = self.compare_devices(result, baseline)?;
+            let comparison = Self::compare_devices(result, baseline)?;
             analysis.device_comparisons.insert(device_name, comparison);
         }
 
         // Industry benchmarks
-        analysis.industry_position = self.calculate_industry_position(result, &baselines)?;
+        analysis.industry_position = Self::calculate_industry_position(result, &baselines)?;
 
         Ok(analysis)
     }
 
     fn compare_with_historical(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
         _historical: &DeviceBaseline,
     ) -> QuantRS2Result<HistoricalComparison> {
@@ -1215,17 +1173,15 @@ impl ComparativeAnalyzer {
         })
     }
 
-    fn find_similar_devices(
-        &self,
+    fn find_similar_devices<'a>(
         _device_info: &DeviceInfo,
-        _baselines: &HashMap<String, DeviceBaseline>,
-    ) -> QuantRS2Result<Vec<(String, &DeviceBaseline)>> {
+        _baselines: &'a HashMap<String, DeviceBaseline>,
+    ) -> QuantRS2Result<Vec<(String, &'a DeviceBaseline)>> {
         // Stub implementation
         Ok(vec![])
     }
 
     fn compare_devices(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
         _baseline: &DeviceBaseline,
     ) -> QuantRS2Result<DeviceComparison> {
@@ -1239,7 +1195,6 @@ impl ComparativeAnalyzer {
     }
 
     fn calculate_industry_position(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
         _baselines: &HashMap<String, DeviceBaseline>,
     ) -> QuantRS2Result<IndustryPosition> {
@@ -1269,21 +1224,20 @@ impl RealtimeMonitor {
     }
 
     fn update(&self, result: &BenchmarkSuiteResult) -> QuantRS2Result<()> {
-        let mut dashboard = self.dashboard.lock().unwrap();
-        dashboard.update(result)?;
+        let _dashboard = self.dashboard.lock().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to acquire dashboard lock: {e}"))
+        })?;
+        BenchmarkDashboard::update(result)?;
 
         // Check for anomalies
-        if let Some(anomaly) = self.detect_anomaly(result)? {
-            self.alert_manager.trigger_alert(anomaly)?;
+        if let Some(anomaly) = Self::detect_anomaly(result)? {
+            AlertManager::trigger_alert(anomaly)?;
         }
 
         Ok(())
     }
 
-    fn detect_anomaly(
-        &self,
-        result: &BenchmarkSuiteResult,
-    ) -> QuantRS2Result<Option<BenchmarkAnomaly>> {
+    fn detect_anomaly(_result: &BenchmarkSuiteResult) -> QuantRS2Result<Option<BenchmarkAnomaly>> {
         // Simple anomaly detection based on historical data
         // In practice, this would use more sophisticated methods
         Ok(None)
@@ -1309,41 +1263,33 @@ impl AdaptiveBenchmarkController {
     }
 
     fn select_qv_circuits(
-        &self,
         num_qubits: usize,
         device: &impl QuantumDevice,
     ) -> QuantRS2Result<Vec<QuantumCircuit>> {
         // Adaptive selection based on device characteristics
-        let device_profile = self.profile_device(device)?;
-        let optimal_circuits = self
-            .adaptation_engine
-            .optimize_circuits(num_qubits, &device_profile)?;
+        let device_profile = Self::profile_device(device)?;
+        let optimal_circuits = AdaptationEngine::optimize_circuits(num_qubits, &device_profile)?;
 
         Ok(optimal_circuits)
     }
 
-    fn profile_device(&self, device: &impl QuantumDevice) -> QuantRS2Result<DeviceProfile> {
+    fn profile_device(device: &impl QuantumDevice) -> QuantRS2Result<DeviceProfile> {
         Ok(DeviceProfile {
             error_rates: device.get_calibration_data().gate_errors.clone(),
-            connectivity_strength: self.analyze_connectivity(device.get_topology())?,
+            connectivity_strength: Self::analyze_connectivity(device.get_topology())?,
             coherence_profile: device.get_calibration_data().coherence_times.clone(),
         })
     }
 
-    fn analyze_connectivity(&self, _topology: &DeviceTopology) -> QuantRS2Result<f64> {
+    fn analyze_connectivity(_topology: &DeviceTopology) -> QuantRS2Result<f64> {
         // Stub implementation - return connectivity score
         Ok(0.8)
     }
 }
 
 /// Visual analyzer
+#[derive(Default)]
 struct VisualAnalyzer {}
-
-impl Default for VisualAnalyzer {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl VisualAnalyzer {
     fn new() -> Self {
@@ -1351,19 +1297,17 @@ impl VisualAnalyzer {
     }
 
     fn generate_visualizations(
-        &self,
         result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<BenchmarkVisualizations> {
         Ok(BenchmarkVisualizations {
-            performance_heatmap: self.create_performance_heatmap(result)?,
-            trend_plots: self.create_trend_plots(result)?,
-            comparison_charts: self.create_comparison_charts(result)?,
-            radar_chart: self.create_radar_chart(result)?,
+            performance_heatmap: Self::create_performance_heatmap(result)?,
+            trend_plots: Self::create_trend_plots(result)?,
+            comparison_charts: Self::create_comparison_charts(result)?,
+            radar_chart: Self::create_radar_chart(result)?,
         })
     }
 
     fn create_performance_heatmap(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<HeatmapVisualization> {
         // Stub implementation
@@ -1388,7 +1332,6 @@ impl VisualAnalyzer {
     }
 
     fn create_trend_plots(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<Vec<TrendPlot>> {
         // Stub implementation
@@ -1396,17 +1339,13 @@ impl VisualAnalyzer {
     }
 
     fn create_comparison_charts(
-        &self,
         _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<Vec<ComparisonChart>> {
         // Stub implementation
         Ok(vec![])
     }
 
-    fn create_radar_chart(
-        &self,
-        _result: &ComprehensiveBenchmarkResult,
-    ) -> QuantRS2Result<RadarChart> {
+    fn create_radar_chart(_result: &ComprehensiveBenchmarkResult) -> QuantRS2Result<RadarChart> {
         // Stub implementation
         Ok(RadarChart {
             axes: vec![
@@ -1531,7 +1470,7 @@ impl BenchmarkSuiteResult {
     fn add_measurement(&mut self, num_qubits: usize, result: ExecutionResult) {
         self.measurements
             .entry(num_qubits)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(result);
     }
 }
@@ -1661,7 +1600,7 @@ impl StatisticalAnalysis {
         }
 
         let n_f64 = n as f64;
-        let log_p = (n_f64 * sum_x_log_y - sum_x * sum_log_y) / (n_f64 * sum_x2 - sum_x * sum_x);
+        let log_p = (n_f64 * sum_x_log_y - sum_x * sum_log_y) / (n_f64 * sum_x2 - n_f64 * sum_x);
         let log_a = (sum_log_y - log_p * sum_x) / n_f64;
 
         let p = log_p.exp();
@@ -2294,11 +2233,11 @@ struct PerformanceModel {
 }
 
 impl PerformanceModel {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn predict(&self, features: &BenchmarkFeatures) -> QuantRS2Result<ModelPredictions> {
+    fn predict(_features: &BenchmarkFeatures) -> QuantRS2Result<ModelPredictions> {
         // Placeholder implementation
         Ok(ModelPredictions {
             performance_trajectory: vec![],
@@ -2318,13 +2257,12 @@ struct BenchmarkFeatureExtractor {
 }
 
 impl BenchmarkFeatureExtractor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
     fn extract_features(
-        &self,
-        result: &ComprehensiveBenchmarkResult,
+        _result: &ComprehensiveBenchmarkResult,
     ) -> QuantRS2Result<BenchmarkFeatures> {
         // Extract relevant features for ML analysis
         Ok(BenchmarkFeatures {
@@ -2398,7 +2336,7 @@ impl BenchmarkDashboard {
         }
     }
 
-    fn update(&mut self, result: &BenchmarkSuiteResult) -> QuantRS2Result<()> {
+    fn update(_result: &BenchmarkSuiteResult) -> QuantRS2Result<()> {
         // Update dashboard with latest results
         Ok(())
     }
@@ -2416,11 +2354,11 @@ struct AlertManager {
 }
 
 impl AlertManager {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn trigger_alert(&self, anomaly: BenchmarkAnomaly) -> QuantRS2Result<()> {
+    fn trigger_alert(_anomaly: BenchmarkAnomaly) -> QuantRS2Result<()> {
         // Handle alert
         Ok(())
     }
@@ -2439,12 +2377,11 @@ struct AdaptationEngine {
 }
 
 impl AdaptationEngine {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
     fn optimize_circuits(
-        &self,
         _num_qubits: usize,
         _profile: &DeviceProfile,
     ) -> QuantRS2Result<Vec<QuantumCircuit>> {
@@ -2470,16 +2407,9 @@ enum Bottleneck {
 }
 
 /// Benchmark cache
+#[derive(Default)]
 struct BenchmarkCache {
     results: HashMap<String, ComprehensiveBenchmarkResult>,
-}
-
-impl Default for BenchmarkCache {
-    fn default() -> Self {
-        Self {
-            results: HashMap::new(),
-        }
-    }
 }
 
 impl BenchmarkCache {

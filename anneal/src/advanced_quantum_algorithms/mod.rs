@@ -59,7 +59,7 @@ pub struct AdvancedAlgorithmConfig {
 }
 
 /// Strategy for selecting which algorithm to use
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlgorithmSelectionStrategy {
     /// Use the first available algorithm
     FirstAvailable,
@@ -75,6 +75,7 @@ pub enum AlgorithmSelectionStrategy {
 
 impl AdvancedQuantumAlgorithms {
     /// Create new advanced algorithms coordinator
+    #[must_use]
     pub fn new() -> Self {
         Self {
             default_config: AdvancedAlgorithmConfig::default(),
@@ -82,7 +83,8 @@ impl AdvancedQuantumAlgorithms {
     }
 
     /// Create with custom configuration
-    pub fn with_config(config: AdvancedAlgorithmConfig) -> Self {
+    #[must_use]
+    pub const fn with_config(config: AdvancedAlgorithmConfig) -> Self {
         Self {
             default_config: config,
         }
@@ -186,10 +188,7 @@ impl AdvancedQuantumAlgorithms {
         let runtime = start_time.elapsed();
 
         // Convert solution back to QUBO format (0/1 instead of -1/+1)
-        let qubo_solution: Vec<i8> = best_solution
-            .iter()
-            .map(|&s| if s == 1 { 1 } else { 0 })
-            .collect();
+        let qubo_solution: Vec<i8> = best_solution.iter().map(|&s| i8::from(s == 1)).collect();
 
         // Calculate energy in QUBO formulation
         let mut energy = 0.0;
@@ -321,7 +320,7 @@ impl AdvancedQuantumAlgorithms {
         if let Some(best_idx) = energies
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(idx, _)| idx)
         {
             Ok(results[best_idx].clone())
@@ -352,7 +351,7 @@ impl AdvancedQuantumAlgorithms {
         let config = InfiniteQAOAConfig::default();
         let mut qaoa = InfiniteDepthQAOA::new(config);
         let result = qaoa.solve(ising)?;
-        result.map_err(|e| AdvancedQuantumError::ConvergenceError(format!("QAOA failed: {:?}", e)))
+        result.map_err(|e| AdvancedQuantumError::ConvergenceError(format!("QAOA failed: {e:?}")))
     }
 
     /// Helper: optimize using Quantum Zeno annealing
@@ -360,8 +359,7 @@ impl AdvancedQuantumAlgorithms {
         let config = ZenoConfig::default();
         let mut zeno = QuantumZenoAnnealer::new(config);
         let result = zeno.solve(ising)?;
-        result
-            .map_err(|e| AdvancedQuantumError::ZenoError(format!("Zeno annealing failed: {:?}", e)))
+        result.map_err(|e| AdvancedQuantumError::ZenoError(format!("Zeno annealing failed: {e:?}")))
     }
 
     /// Helper: optimize using adiabatic shortcuts
@@ -373,7 +371,7 @@ impl AdvancedQuantumAlgorithms {
         let mut shortcuts = AdiabaticShortcutsOptimizer::new(config);
         let result = shortcuts.solve(ising)?;
         result.map_err(|e| {
-            AdvancedQuantumError::ConvergenceError(format!("Adiabatic shortcuts failed: {:?}", e))
+            AdvancedQuantumError::ConvergenceError(format!("Adiabatic shortcuts failed: {e:?}"))
         })
     }
 
@@ -385,10 +383,7 @@ impl AdvancedQuantumAlgorithms {
         let mut optimizer = AdiabaticShortcutsOptimizer::new(config);
         let result = optimizer.solve(ising)?;
         result.map_err(|e| {
-            AdvancedQuantumError::ConvergenceError(format!(
-                "Counterdiabatic driving failed: {:?}",
-                e
-            ))
+            AdvancedQuantumError::ConvergenceError(format!("Counterdiabatic driving failed: {e:?}"))
         })
     }
 
@@ -398,12 +393,14 @@ impl AdvancedQuantumAlgorithms {
 
         // Linear terms
         for (i, bias) in ising.biases() {
-            energy += bias * solution[i] as f64;
+            energy += bias * f64::from(solution[i]);
         }
 
         // Quadratic terms
         for coupling in ising.couplings() {
-            energy += coupling.strength * solution[coupling.i] as f64 * solution[coupling.j] as f64;
+            energy += coupling.strength
+                * f64::from(solution[coupling.i])
+                * f64::from(solution[coupling.j]);
         }
 
         energy

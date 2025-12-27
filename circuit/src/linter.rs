@@ -1438,9 +1438,8 @@ impl<const N: usize> QuantumLinter<N> {
             description: format!("Auto-fix for {}", issue.title),
             implementation: issue
                 .suggested_fix
-                .as_ref()
-                .unwrap_or(&"No implementation".to_string())
-                .clone(),
+                .clone()
+                .unwrap_or_else(|| "No implementation".to_string()),
             safety: SafetyLevel::ReviewRecommended,
             confidence: 0.8,
             preview_available: true,
@@ -1715,22 +1714,24 @@ mod tests {
     fn test_linter_creation() {
         let circuit = Circuit::<2>::new();
         let linter = QuantumLinter::new(circuit);
-        assert_eq!(linter.config.enable_pattern_detection, true);
+        assert!(linter.config.enable_pattern_detection);
     }
 
     #[test]
     fn test_linting_process() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let mut linter = QuantumLinter::new(circuit);
-        let result = linter.lint_circuit().unwrap();
+        let result = linter.lint_circuit().expect("lint_circuit should succeed");
 
         assert!(result.quality_score >= 0.0 && result.quality_score <= 1.0);
         assert!(result.metadata.analysis_scope.total_gates > 0);
@@ -1742,7 +1743,9 @@ mod tests {
         let detector = PatternDetector::new();
         let config = LinterConfig::default();
 
-        let result = detector.detect_all_patterns(&circuit, &config).unwrap();
+        let result = detector
+            .detect_all_patterns(&circuit, &config)
+            .expect("detect_all_patterns should succeed");
         assert!(result.pattern_score >= 0.0 && result.pattern_score <= 1.0);
     }
 
@@ -1752,7 +1755,9 @@ mod tests {
         let checker = StyleChecker::new();
         let config = LinterConfig::default();
 
-        let (issues, analysis) = checker.check_all_styles(&circuit, &config).unwrap();
+        let (issues, analysis) = checker
+            .check_all_styles(&circuit, &config)
+            .expect("check_all_styles should succeed");
         assert!(analysis.overall_score >= 0.0 && analysis.overall_score <= 1.0);
     }
 
@@ -1762,7 +1767,9 @@ mod tests {
         let analyzer = ComplexityAnalyzer::new();
         let config = LinterConfig::default();
 
-        let metrics = analyzer.analyze_complexity(&circuit, &config).unwrap();
+        let metrics = analyzer
+            .analyze_complexity(&circuit, &config)
+            .expect("analyze_complexity should succeed");
         assert!(metrics.overall_complexity >= 0.0);
     }
 }

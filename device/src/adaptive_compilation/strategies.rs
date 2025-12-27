@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 /// Optimization algorithms available
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     GradientDescent,
     LBFGS,
@@ -37,7 +37,7 @@ pub struct AdaptiveStrategiesConfig {
 }
 
 /// Triggers for adaptive optimization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationTrigger {
     PerformanceDegradation,
     TimeInterval,
@@ -57,7 +57,7 @@ pub struct ParallelOptimizationConfig {
 }
 
 /// Load balancing strategies for parallel optimization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     LeastLoaded,
@@ -66,7 +66,7 @@ pub enum LoadBalancingStrategy {
 }
 
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceAllocationStrategy {
     Static,
     Dynamic,
@@ -91,7 +91,7 @@ pub struct CircuitAnalysisConfig {
 }
 
 /// Analysis depth levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisDepth {
     Basic,
     Intermediate,
@@ -113,7 +113,7 @@ pub struct ComplexityAnalysisConfig {
 }
 
 /// Complexity metrics for circuit analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplexityMetric {
     CircuitDepth,
     GateCount,
@@ -152,7 +152,7 @@ pub struct OptimizationPotentialConfig {
 }
 
 /// Metrics for evaluating optimization potential
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PotentialMetric {
     GateReduction,
     DepthReduction,

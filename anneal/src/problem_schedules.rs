@@ -109,6 +109,7 @@ struct GraphProperties {
 
 impl ProblemSpecificScheduler {
     /// Create a new problem-specific scheduler
+    #[must_use]
     pub fn new() -> Self {
         let mut scheduler = Self {
             analyzer: ProblemAnalyzer::new(),
@@ -187,9 +188,9 @@ impl ProblemSpecificScheduler {
                     // Two-stage cooling
                     let progress = t / t_f;
                     if progress < 0.5 {
-                        10.0 * (1.0 - 2.0 * progress * 0.8)
+                        10.0 * (2.0 * progress).mul_add(-0.8, 1.0)
                     } else {
-                        2.0 * (2.0 - 2.0 * progress).powf(2.0)
+                        2.0 * 2.0f64.mul_add(-progress, 2.0).powi(2)
                     }
                 }),
                 initial_field: 4.0,
@@ -228,7 +229,7 @@ impl ProblemSpecificScheduler {
                 field_schedule: TransverseFieldSchedule::Custom(|t, t_f| {
                     // Non-monotonic schedule for spin glasses
                     let progress = t / t_f;
-                    3.0 * (1.0 - progress) * (1.0 + 0.3 * (10.0 * progress).sin())
+                    3.0 * (1.0 - progress) * 0.3f64.mul_add((10.0 * progress).sin(), 1.0)
                 }),
                 sweeps_factor: 200.0,
                 num_repetitions: 25,
@@ -278,9 +279,8 @@ impl ProblemSpecificScheduler {
             // Dense problem, might be QAP or TSP
             if stats.std_coupling > stats.mean_coupling.abs() * 2.0 {
                 return Ok(ProblemType::QAP);
-            } else {
-                return Ok(ProblemType::TSP);
             }
+            return Ok(ProblemType::TSP);
         }
 
         if stats.sparsity < 0.1 && props.clustering_coefficient < 0.1 {
@@ -388,9 +388,9 @@ impl ProblemAnalyzer {
             self.coupling_stats.mean_coupling =
                 strengths.iter().sum::<f64>() / strengths.len() as f64;
             self.coupling_stats.max_coupling =
-                strengths.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                strengths.iter().copied().fold(f64::NEG_INFINITY, f64::max);
             self.coupling_stats.min_coupling =
-                strengths.iter().cloned().fold(f64::INFINITY, f64::min);
+                strengths.iter().copied().fold(f64::INFINITY, f64::min);
 
             // Calculate standard deviation
             let variance = strengths
@@ -410,7 +410,7 @@ impl ProblemAnalyzer {
 
         self.graph_properties.avg_degree =
             degrees.iter().sum::<usize>() as f64 / model.num_qubits as f64;
-        self.graph_properties.max_degree = degrees.iter().cloned().max().unwrap_or(0);
+        self.graph_properties.max_degree = degrees.iter().copied().max().unwrap_or(0);
 
         // Sparsity
         let max_edges = model.num_qubits * (model.num_qubits - 1) / 2;
@@ -441,7 +441,7 @@ impl ProblemAnalyzer {
             queue.push(start);
 
             while let Some(node) = queue.pop() {
-                let node_color = colors[node].unwrap();
+                let node_color = colors[node].expect("node should have a color assigned");
 
                 for coupling in couplings {
                     let neighbor = if coupling.i == node {
@@ -487,7 +487,8 @@ struct SchedulePerformance {
 
 impl AdaptiveScheduleOptimizer {
     /// Create a new adaptive optimizer
-    pub fn new(learning_rate: f64) -> Self {
+    #[must_use]
+    pub const fn new(learning_rate: f64) -> Self {
         Self {
             performance_history: Vec::new(),
             learning_rate,
@@ -519,6 +520,7 @@ impl AdaptiveScheduleOptimizer {
     }
 
     /// Suggest improved schedule based on history
+    #[must_use]
     pub fn suggest_schedule(
         &self,
         problem_type: ProblemType,
@@ -548,11 +550,12 @@ impl AdaptiveScheduleOptimizer {
                 / similar_runs.len() as f64;
 
             // Blend with current parameters
-            params.initial_temperature = params.initial_temperature * (1.0 - self.learning_rate)
-                + avg_temp * self.learning_rate;
-            params.initial_transverse_field = params.initial_transverse_field
-                * (1.0 - self.learning_rate)
-                + avg_field * self.learning_rate;
+            params.initial_temperature = params
+                .initial_temperature
+                .mul_add(1.0 - self.learning_rate, avg_temp * self.learning_rate);
+            params.initial_transverse_field = params
+                .initial_transverse_field
+                .mul_add(1.0 - self.learning_rate, avg_field * self.learning_rate);
         }
 
         params
@@ -570,7 +573,7 @@ mod tests {
 
         let params = scheduler
             .create_schedule(&model, ProblemType::MaxCut)
-            .unwrap();
+            .expect("failed to create schedule in test");
         assert!(params.initial_temperature > 0.0);
         assert!(params.num_sweeps > 0);
     }
@@ -581,12 +584,22 @@ mod tests {
         let mut model = IsingModel::new(4);
 
         // Create a simple bipartite structure
-        model.set_coupling(0, 2, -1.0).unwrap();
-        model.set_coupling(0, 3, -1.0).unwrap();
-        model.set_coupling(1, 2, -1.0).unwrap();
-        model.set_coupling(1, 3, -1.0).unwrap();
+        model
+            .set_coupling(0, 2, -1.0)
+            .expect("failed to set coupling in test");
+        model
+            .set_coupling(0, 3, -1.0)
+            .expect("failed to set coupling in test");
+        model
+            .set_coupling(1, 2, -1.0)
+            .expect("failed to set coupling in test");
+        model
+            .set_coupling(1, 3, -1.0)
+            .expect("failed to set coupling in test");
 
-        let detected = scheduler.detect_problem_type(&model).unwrap();
+        let detected = scheduler
+            .detect_problem_type(&model)
+            .expect("failed to detect problem type in test");
         assert_eq!(detected, ProblemType::MaxCut);
     }
 

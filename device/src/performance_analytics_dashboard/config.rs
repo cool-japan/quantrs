@@ -131,7 +131,7 @@ pub enum ChartType {
 }
 
 /// Dashboard layout options
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DashboardLayout {
     Grid,
     Fluid,
@@ -141,7 +141,7 @@ pub enum DashboardLayout {
 }
 
 /// Color schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorScheme {
     Default,
     Dark,
@@ -194,7 +194,7 @@ pub struct AlertThreshold {
 }
 
 /// Threshold types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThresholdType {
     GreaterThan,
     LessThan,
@@ -279,7 +279,7 @@ pub struct EscalationStep {
 }
 
 /// Escalation action types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EscalationActionType {
     Notify,
     AutoRemediate,
@@ -289,7 +289,7 @@ pub enum EscalationActionType {
 }
 
 /// Export formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportFormat {
     JSON,
     CSV,
@@ -311,7 +311,7 @@ pub struct ExportSchedule {
 }
 
 /// Export frequency
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportFrequency {
     Hourly,
     Daily,
@@ -332,7 +332,7 @@ pub struct ReportTemplate {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportType {
     Executive,
     Technical,
@@ -352,7 +352,7 @@ pub struct ReportSection {
 }
 
 /// Report section types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportSectionType {
     Summary,
     Charts,
@@ -363,7 +363,7 @@ pub enum ReportSectionType {
 }
 
 /// Report layout
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportLayout {
     Standard,
     Compact,
@@ -372,7 +372,7 @@ pub enum ReportLayout {
 }
 
 /// Prediction models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionModel {
     LinearRegression,
     ARIMA,
@@ -466,7 +466,8 @@ impl Default for PerformanceDashboardConfig {
                 export_formats: vec![ExportFormat::JSON, ExportFormat::CSV, ExportFormat::PDF],
                 auto_export_schedule: Some(ExportSchedule {
                     frequency: ExportFrequency::Daily,
-                    time_of_day: Some(chrono::NaiveTime::from_hms_opt(9, 0, 0).unwrap()),
+                    // 9:00:00 is a valid time, use expect for infallible case
+                    time_of_day: chrono::NaiveTime::from_hms_opt(9, 0, 0),
                     recipients: vec!["reports@example.com".to_string()],
                     formats: vec![ExportFormat::PDF],
                 }),
@@ -495,7 +496,7 @@ impl Default for PerformanceDashboardConfig {
 
 impl AnalyticsConfig {
     /// Create a basic analytics configuration
-    pub fn basic() -> Self {
+    pub const fn basic() -> Self {
         Self {
             enable_statistical_analysis: true,
             enable_trend_analysis: false,
@@ -509,7 +510,7 @@ impl AnalyticsConfig {
     }
 
     /// Create a comprehensive analytics configuration
-    pub fn comprehensive() -> Self {
+    pub const fn comprehensive() -> Self {
         Self {
             enable_statistical_analysis: true,
             enable_trend_analysis: true,

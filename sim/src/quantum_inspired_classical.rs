@@ -354,7 +354,7 @@ pub enum ActivationFunction {
     QuantumInspiredTanh,
     /// Quantum-inspired sigmoid
     QuantumInspiredSigmoid,
-    /// Quantum-inspired ReLU
+    /// Quantum-inspired `ReLU`
     QuantumInspiredReLU,
     /// Quantum-inspired softmax
     QuantumInspiredSoftmax,
@@ -398,7 +398,7 @@ pub enum OptimizerType {
     QuantumInspiredSGD,
     /// Quantum natural gradient
     QuantumNaturalGradient,
-    /// Quantum-inspired RMSprop
+    /// Quantum-inspired `RMSprop`
     QuantumInspiredRMSprop,
 }
 
@@ -475,7 +475,7 @@ impl Default for SamplingConfig {
     fn default() -> Self {
         Self {
             algorithm_type: SamplingAlgorithm::QuantumInspiredMCMC,
-            num_samples: 10000,
+            num_samples: 10_000,
             burn_in: 1000,
             thinning: 10,
             proposal_distribution: ProposalDistribution::Gaussian,
@@ -720,7 +720,7 @@ pub struct QuantumInspiredFramework {
     config: QuantumInspiredConfig,
     /// Current state
     state: QuantumInspiredState,
-    /// SciRS2 backend for numerical operations
+    /// `SciRS2` backend for numerical operations
     backend: Option<SciRS2Backend>,
     /// Performance statistics
     stats: QuantumInspiredStats,
@@ -1071,7 +1071,7 @@ impl QuantumInspiredFramework {
         })
     }
 
-    /// Set SciRS2 backend for numerical operations
+    /// Set `SciRS2` backend for numerical operations
     pub fn set_backend(&mut self, backend: SciRS2Backend) {
         self.backend = Some(backend);
     }
@@ -1143,9 +1143,9 @@ impl QuantumInspiredFramework {
             let best_idx = fitness_values
                 .iter()
                 .enumerate()
-                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .unwrap()
-                .0;
+                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
 
             if fitness_values[best_idx] < self.state.best_objective {
                 self.state.best_objective = fitness_values[best_idx];
@@ -1174,7 +1174,7 @@ impl QuantumInspiredFramework {
 
     /// Initialize quantum-inspired population with superposition
     fn initialize_quantum_population(
-        &mut self,
+        &self,
         pop_size: usize,
         num_vars: usize,
     ) -> Result<Vec<Array1<f64>>> {
@@ -1193,7 +1193,7 @@ impl QuantumInspiredFramework {
                 };
 
                 // Quantum-inspired initialization with superposition
-                let mut rng = self.rng.lock().unwrap();
+                let mut rng = self.rng.lock().expect("RNG lock poisoned");
                 let base_value = rng.gen::<f64>().mul_add(max_bound - min_bound, min_bound);
 
                 // Add quantum superposition effect
@@ -1212,7 +1212,7 @@ impl QuantumInspiredFramework {
 
     /// Quantum-inspired selection using interference
     fn quantum_selection(
-        &mut self,
+        &self,
         population: &[Array1<f64>],
         fitness: &[f64],
     ) -> Result<Vec<Array1<f64>>> {
@@ -1223,7 +1223,7 @@ impl QuantumInspiredFramework {
         // Elite selection
         let mut indexed_fitness: Vec<(usize, f64)> =
             fitness.iter().enumerate().map(|(i, &f)| (i, f)).collect();
-        indexed_fitness.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        indexed_fitness.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut parents = Vec::new();
 
@@ -1233,7 +1233,7 @@ impl QuantumInspiredFramework {
         }
 
         // Quantum-inspired tournament selection for remaining parents
-        let mut rng = self.rng.lock().unwrap();
+        let mut rng = self.rng.lock().expect("RNG lock poisoned");
         while parents.len() < pop_size {
             let tournament_size = 3;
             let mut tournament_indices = Vec::new();
@@ -1275,11 +1275,11 @@ impl QuantumInspiredFramework {
     }
 
     /// Quantum-inspired crossover with entanglement
-    fn quantum_crossover(&mut self, parents: &[Array1<f64>]) -> Result<Vec<Array1<f64>>> {
+    fn quantum_crossover(&self, parents: &[Array1<f64>]) -> Result<Vec<Array1<f64>>> {
         let mut offspring = Vec::new();
         let crossover_rate = self.config.algorithm_config.crossover_rate;
         let quantum_params = &self.config.algorithm_config.quantum_parameters;
-        let mut rng = self.rng.lock().unwrap();
+        let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
         for i in (0..parents.len()).step_by(2) {
             if i + 1 < parents.len() && rng.gen::<f64>() < crossover_rate {
@@ -1325,7 +1325,7 @@ impl QuantumInspiredFramework {
         let mutation_rate = self.config.algorithm_config.mutation_rate;
         let quantum_params = &self.config.algorithm_config.quantum_parameters;
         let bounds = &self.config.optimization_config.bounds;
-        let mut rng = self.rng.lock().unwrap();
+        let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
         for individual in population.iter_mut() {
             for j in 0..individual.len() {
@@ -1365,7 +1365,7 @@ impl QuantumInspiredFramework {
 
     /// Quantum-inspired replacement using quantum measurement
     fn quantum_replacement(
-        &mut self,
+        &self,
         population: &mut Vec<Array1<f64>>,
         fitness: &mut Vec<f64>,
         offspring: Vec<Array1<f64>>,
@@ -1373,7 +1373,7 @@ impl QuantumInspiredFramework {
     ) -> Result<()> {
         let quantum_params = &self.config.algorithm_config.quantum_parameters;
         let measurement_prob = quantum_params.measurement_probability;
-        let mut rng = self.rng.lock().unwrap();
+        let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
         // Combine populations
         let mut combined_population = population.clone();
@@ -1393,7 +1393,7 @@ impl QuantumInspiredFramework {
             .enumerate()
             .map(|(i, &f)| (i, f))
             .collect();
-        indexed_combined.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        indexed_combined.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Select top individuals with quantum measurement probability
         for i in 0..pop_size {
@@ -1482,7 +1482,7 @@ impl QuantumInspiredFramework {
             self.state.iteration = iteration;
 
             for i in 0..pop_size {
-                let mut rng = self.rng.lock().unwrap();
+                let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
                 // Update velocity with quantum-inspired terms
                 for j in 0..num_vars {
@@ -1573,7 +1573,7 @@ impl QuantumInspiredFramework {
 
         // Initialize current solution randomly
         let mut current_solution = Array1::zeros(num_vars);
-        let mut rng = self.rng.lock().unwrap();
+        let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
         for i in 0..num_vars {
             let (min_bound, max_bound) = if i < bounds.len() {
@@ -1618,7 +1618,7 @@ impl QuantumInspiredFramework {
             // Generate neighbor solution with quantum-inspired moves
             let mut neighbor = current_solution.clone();
             let quantum_params = &quantum_parameters;
-            let mut rng = self.rng.lock().unwrap();
+            let mut rng = self.rng.lock().expect("RNG lock poisoned");
 
             for i in 0..num_vars {
                 if rng.gen::<f64>() < 0.5 {
@@ -1667,7 +1667,7 @@ impl QuantumInspiredFramework {
             };
 
             // Accept or reject
-            let mut rng = self.rng.lock().unwrap();
+            let mut rng = self.rng.lock().expect("RNG lock poisoned");
             if rng.gen::<f64>() < acceptance_prob {
                 current_solution = neighbor;
                 current_energy = neighbor_energy;
@@ -1701,7 +1701,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Quantum differential evolution
-    fn quantum_differential_evolution(&mut self) -> Result<OptimizationResult> {
+    fn quantum_differential_evolution(&self) -> Result<OptimizationResult> {
         // Implement quantum-inspired differential evolution
         // This is a placeholder for the full implementation
         Err(SimulatorError::NotImplemented(
@@ -1710,7 +1710,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Classical QAOA simulation
-    fn classical_qaoa_simulation(&mut self) -> Result<OptimizationResult> {
+    fn classical_qaoa_simulation(&self) -> Result<OptimizationResult> {
         // Implement classical simulation of QAOA
         // This is a placeholder for the full implementation
         Err(SimulatorError::NotImplemented(
@@ -1719,7 +1719,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Classical VQE simulation
-    fn classical_vqe_simulation(&mut self) -> Result<OptimizationResult> {
+    fn classical_vqe_simulation(&self) -> Result<OptimizationResult> {
         // Implement classical simulation of VQE
         // This is a placeholder for the full implementation
         Err(SimulatorError::NotImplemented(
@@ -1728,7 +1728,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Quantum ant colony optimization
-    fn quantum_ant_colony_optimization(&mut self) -> Result<OptimizationResult> {
+    fn quantum_ant_colony_optimization(&self) -> Result<OptimizationResult> {
         // Implement quantum-inspired ant colony optimization
         // This is a placeholder for the full implementation
         Err(SimulatorError::NotImplemented(
@@ -1737,7 +1737,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Quantum harmony search
-    fn quantum_harmony_search(&mut self) -> Result<OptimizationResult> {
+    fn quantum_harmony_search(&self) -> Result<OptimizationResult> {
         // Implement quantum-inspired harmony search
         // This is a placeholder for the full implementation
         Err(SimulatorError::NotImplemented(
@@ -1746,7 +1746,7 @@ impl QuantumInspiredFramework {
     }
 
     /// Evaluate objective function
-    fn evaluate_objective(&mut self, solution: &Array1<f64>) -> Result<f64> {
+    fn evaluate_objective(&self, solution: &Array1<f64>) -> Result<f64> {
         let result = match self.config.optimization_config.objective_function {
             ObjectiveFunction::Quadratic => solution.iter().map(|&x| x * x).sum(),
             ObjectiveFunction::Rastrigin => {
@@ -1815,7 +1815,10 @@ impl QuantumInspiredFramework {
         }
 
         // Check for convergence by comparing consecutive recent values
-        let last_value = recent_improvements.last().unwrap();
+        // Safety: length check above guarantees at least 2 elements
+        let last_value = recent_improvements
+            .last()
+            .expect("recent_improvements has at least 2 elements");
         let second_last_value = recent_improvements[recent_improvements.len() - 2];
         let change = (last_value - second_last_value).abs();
         Ok(change < tolerance)
@@ -1865,11 +1868,13 @@ impl QuantumInspiredFramework {
     }
 
     /// Get current statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &QuantumInspiredStats {
         &self.stats
     }
 
     /// Get current state
+    #[must_use]
     pub const fn get_state(&self) -> &QuantumInspiredState {
         &self.state
     }
@@ -1910,6 +1915,7 @@ pub struct QuantumInspiredUtils;
 
 impl QuantumInspiredUtils {
     /// Generate synthetic optimization problems
+    #[must_use]
     pub fn generate_optimization_problem(
         problem_type: ObjectiveFunction,
         dimension: usize,
@@ -1922,12 +1928,16 @@ impl QuantumInspiredUtils {
     }
 
     /// Analyze convergence behavior
+    #[must_use]
     pub fn analyze_convergence(convergence_history: &[f64]) -> ConvergenceAnalysis {
         if convergence_history.len() < 2 {
             return ConvergenceAnalysis::default();
         }
 
-        let final_value = *convergence_history.last().unwrap();
+        // Safety: length check above guarantees at least 2 elements
+        let final_value = *convergence_history
+            .last()
+            .expect("convergence_history has at least 2 elements");
         let initial_value = convergence_history[0];
         let improvement = initial_value - final_value;
 
@@ -1968,6 +1978,7 @@ impl QuantumInspiredUtils {
     }
 
     /// Compare algorithm performances
+    #[must_use]
     pub fn compare_algorithms(
         results1: &[OptimizationResult],
         results2: &[OptimizationResult],
@@ -1996,6 +2007,7 @@ impl QuantumInspiredUtils {
     }
 
     /// Estimate quantum advantage
+    #[must_use]
     pub fn estimate_quantum_advantage(
         problem_size: usize,
         algorithm_type: OptimizationAlgorithm,
@@ -2097,12 +2109,13 @@ mod tests {
     #[test]
     fn test_objective_functions() {
         let config = QuantumInspiredConfig::default();
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
 
         let solution = Array1::from(vec![1.0, 2.0, 3.0, 4.0]);
         let result = framework.evaluate_objective(&solution);
         assert!(result.is_ok());
-        assert!(result.unwrap() > 0.0);
+        assert!(result.expect("Failed to evaluate objective") > 0.0);
     }
 
     #[test]
@@ -2111,11 +2124,12 @@ mod tests {
         config.algorithm_config.max_iterations = 10; // Short test
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Failed to optimize");
         assert!(opt_result.iterations <= 10);
         assert!(opt_result.objective_value.is_finite());
     }
@@ -2127,7 +2141,8 @@ mod tests {
         config.algorithm_config.max_iterations = 10;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
     }
@@ -2140,7 +2155,8 @@ mod tests {
         config.algorithm_config.max_iterations = 10;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
     }
@@ -2171,7 +2187,7 @@ mod tests {
         let result = benchmark_quantum_inspired_algorithms(&config);
         assert!(result.is_ok());
 
-        let benchmark = result.unwrap();
+        let benchmark = result.expect("Failed to benchmark");
         assert_eq!(benchmark.execution_times.len(), 3);
         assert_eq!(benchmark.solution_qualities.len(), 3);
     }

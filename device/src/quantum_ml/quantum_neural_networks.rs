@@ -41,7 +41,7 @@ pub struct QNNArchitecture {
 }
 
 /// Types of quantum neural networks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QNNType {
     /// Parameterized Quantum Circuit
     PQC,
@@ -58,7 +58,7 @@ pub enum QNNType {
 }
 
 /// Input encoding strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InputEncoding {
     /// Amplitude encoding
     Amplitude,
@@ -73,7 +73,7 @@ pub enum InputEncoding {
 }
 
 /// Output decoding strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutputDecoding {
     /// Expectation value of Pauli operators
     PauliExpectation,
@@ -86,7 +86,7 @@ pub enum OutputDecoding {
 }
 
 /// Entangling strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntanglingStrategy {
     Linear,
     Circular,
@@ -137,7 +137,7 @@ impl PQCNetwork {
         }
     }
 
-    fn calculate_parameter_count(num_qubits: usize, num_layers: usize) -> usize {
+    const fn calculate_parameter_count(num_qubits: usize, num_layers: usize) -> usize {
         // Each layer has 3 rotation gates per qubit
         3 * num_qubits * num_layers
     }
@@ -381,7 +381,9 @@ impl PQCNetwork {
 impl QuantumNeuralNetwork for PQCNetwork {
     fn forward(&self, input: &[f64]) -> DeviceResult<Vec<f64>> {
         // This would need to be async in practice
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = tokio::runtime::Runtime::new().map_err(|e| {
+            DeviceError::ExecutionFailed(format!("Failed to create tokio runtime: {e}"))
+        })?;
         rt.block_on(async {
             let circuit = self.build_circuit(input).await?;
             let device = self.device.read().await;
@@ -449,7 +451,7 @@ pub struct QPoolingLayer {
     pub pool_type: QPoolingType,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QPoolingType {
     Max,
     Average,
@@ -614,7 +616,9 @@ impl QCNN {
 
 impl QuantumNeuralNetwork for QCNN {
     fn forward(&self, input: &[f64]) -> DeviceResult<Vec<f64>> {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let rt = tokio::runtime::Runtime::new().map_err(|e| {
+            DeviceError::ExecutionFailed(format!("Failed to create tokio runtime: {e}"))
+        })?;
         rt.block_on(async {
             let circuit = self.build_circuit(input).await?;
             let device = self.device.read().await;
@@ -718,7 +722,7 @@ impl VQC {
         );
 
         let class_mapping = (0..num_classes)
-            .map(|i| (i, format!("class_{}", i)))
+            .map(|i| (i, format!("class_{i}")))
             .collect();
 
         Self {
@@ -737,15 +741,14 @@ impl VQC {
         let (predicted_class, confidence) = class_probs
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(idx, &prob)| (idx, prob))
-            .unwrap_or((0, 0.0));
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map_or((0, 0.0), |(idx, &prob)| (idx, prob));
 
         let class_name = self
             .class_mapping
             .get(&predicted_class)
-            .unwrap_or(&"unknown".to_string())
-            .clone();
+            .cloned()
+            .unwrap_or_else(|| "unknown".to_string());
 
         Ok(ClassificationResult {
             predicted_class,
@@ -932,7 +935,9 @@ mod tests {
         let original_params = network.parameters().to_vec();
         let new_params = vec![0.0; network.parameter_count()];
 
-        network.set_parameters(new_params.clone()).unwrap();
+        network
+            .set_parameters(new_params.clone())
+            .expect("Setting parameters should succeed");
         assert_eq!(network.parameters(), &new_params);
         assert_ne!(network.parameters(), &original_params);
 

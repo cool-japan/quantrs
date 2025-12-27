@@ -1,7 +1,7 @@
 //! Logical Operations Configuration Types
 
 /// Logical operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LogicalOperation {
     /// Logical Pauli X
     LogicalX,

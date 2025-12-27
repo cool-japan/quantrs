@@ -1,4 +1,6 @@
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 use std::sync::Mutex;
 
@@ -42,7 +44,7 @@ pub struct StateVectorSimulator {
     /// Diagnostics system for monitoring and error handling
     pub diagnostics: Option<SimulationDiagnostics>,
 
-    /// SciRS2 backend for optimized linear algebra operations
+    /// `SciRS2` backend for optimized linear algebra operations
     scirs2_backend: SciRS2Backend,
 }
 
@@ -77,6 +79,7 @@ pub struct BufferPool {
 
 impl BufferPool {
     /// Create new buffer pool
+    #[must_use]
     pub fn new(max_buffers: usize, target_size: usize) -> Self {
         Self {
             working_buffers: std::collections::VecDeque::with_capacity(max_buffers),
@@ -121,6 +124,7 @@ impl BufferPool {
 
 impl StateVectorSimulator {
     /// Create a new state vector simulator with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self {
             parallel: true,
@@ -135,6 +139,7 @@ impl StateVectorSimulator {
     }
 
     /// Create a new state vector simulator with parallel execution disabled
+    #[must_use]
     pub fn sequential() -> Self {
         Self {
             parallel: false,
@@ -149,6 +154,7 @@ impl StateVectorSimulator {
     }
 
     /// Create a new state vector simulator with a basic noise model
+    #[must_use]
     pub fn with_noise(noise_model: crate::noise::NoiseModel) -> Self {
         Self {
             parallel: true,
@@ -163,6 +169,7 @@ impl StateVectorSimulator {
     }
 
     /// Create a new state vector simulator with an advanced noise model
+    #[must_use]
     pub fn with_advanced_noise(
         advanced_noise_model: crate::noise_advanced::AdvancedNoiseModel,
     ) -> Self {
@@ -179,6 +186,7 @@ impl StateVectorSimulator {
     }
 
     /// Create simulator with custom buffer pool configuration
+    #[must_use]
     pub fn with_buffer_pool(parallel: bool, max_buffers: usize, target_size: usize) -> Self {
         Self {
             parallel,
@@ -247,10 +255,13 @@ impl StateVectorSimulator {
 
     /// Get diagnostics report if diagnostics are enabled
     pub fn get_diagnostics_report(&self) -> Option<crate::diagnostics::DiagnosticReport> {
-        self.diagnostics.as_ref().map(|d| d.generate_report())
+        self.diagnostics
+            .as_ref()
+            .map(super::diagnostics::SimulationDiagnostics::generate_report)
     }
 
     /// Create a high-performance configuration
+    #[must_use]
     pub fn high_performance() -> Self {
         Self {
             parallel: true,
@@ -310,7 +321,13 @@ impl StateVectorSimulator {
             let result_array = scirs2_result.to_array1().map_err(|_| {
                 QuantRS2Error::ComputationError("Result conversion to array failed".to_string())
             })?;
-            result.copy_from_slice(result_array.as_slice().unwrap());
+            if let Some(slice) = result_array.as_slice() {
+                result.copy_from_slice(slice);
+            } else {
+                return Err(QuantRS2Error::ComputationError(
+                    "Result array is not contiguous".to_string(),
+                ));
+            }
 
             Ok(())
         } else {
@@ -325,10 +342,10 @@ impl StateVectorSimulator {
         }
     }
 
-    /// Fallback dense matrix-vector multiplication for when SciRS2 is not available
+    /// Fallback dense matrix-vector multiplication for when `SciRS2` is not available
     #[cfg(not(feature = "advanced_math"))]
     fn apply_dense_matrix_vector(
-        &mut self,
+        &self,
         matrix: &[Complex64],
         vector: &[Complex64],
         result: &mut [Complex64],
@@ -370,7 +387,11 @@ impl StateVectorSimulator {
         // Apply the gate to each amplitude
         if self.parallel {
             // Get buffer from pool for temporary storage
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
@@ -396,11 +417,18 @@ impl StateVectorSimulator {
             });
 
             // Return buffer to pool
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
             // Sequential implementation using buffer pool
             let dim = state.len();
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(dim);
 
             for i in 0..dim {
                 let bit_val = (i >> target_idx) & 1;
@@ -414,7 +442,10 @@ impl StateVectorSimulator {
 
             state.copy_from_slice(&new_state);
             // Return buffer to pool
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())
@@ -432,7 +463,7 @@ impl StateVectorSimulator {
         let total_pairs = dim / 2;
 
         // Get buffers for SIMD processing
-        let mut pool = self.buffer_pool.lock().unwrap();
+        let mut pool = self.buffer_pool.lock().expect("buffer pool lock poisoned");
         let mut in_amps0 = pool.get_buffer(total_pairs);
         let mut in_amps1 = pool.get_buffer(total_pairs);
         let mut out_amps0 = pool.get_buffer(total_pairs);
@@ -525,7 +556,11 @@ impl StateVectorSimulator {
         // Apply the gate to each amplitude
         if self.parallel {
             // Get buffer from pool for temporary storage
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
@@ -552,11 +587,18 @@ impl StateVectorSimulator {
             });
 
             // Return buffer to pool
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
             // Sequential implementation using buffer pool
             let dim = state.len();
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(dim);
 
             #[allow(clippy::needless_range_loop)]
             for i in 0..dim {
@@ -581,7 +623,10 @@ impl StateVectorSimulator {
 
             state.copy_from_slice(&new_state);
             // Return buffer to pool
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())
@@ -613,7 +658,11 @@ impl StateVectorSimulator {
 
         // Apply the CNOT gate - only swap amplitudes where control is 1
         if self.parallel {
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
@@ -623,10 +672,17 @@ impl StateVectorSimulator {
                 }
             });
 
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
             let dim = state.len();
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(dim);
 
             for i in 0..dim {
                 if (i >> control_idx) & 1 == 1 {
@@ -639,7 +695,10 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())
@@ -671,7 +730,11 @@ impl StateVectorSimulator {
 
         // Apply the SWAP gate - swap amplitudes where qubits have different values
         if self.parallel {
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
@@ -684,10 +747,17 @@ impl StateVectorSimulator {
                 }
             });
 
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
             let dim = state.len();
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(dim);
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(dim);
 
             for i in 0..dim {
                 let bit1 = (i >> q1_idx) & 1;
@@ -703,7 +773,10 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())
@@ -1008,7 +1081,11 @@ impl StateVectorSimulator {
 
         // Apply Toffoli gate by swapping amplitudes when both controls are |1⟩
         if self.parallel {
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
@@ -1021,9 +1098,16 @@ impl StateVectorSimulator {
                 }
             });
 
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             new_state.copy_from_slice(state);
 
             for i in 0..state.len() {
@@ -1038,7 +1122,10 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())
@@ -1068,7 +1155,11 @@ impl StateVectorSimulator {
 
         // Apply Fredkin gate by swapping target qubits when control is |1⟩
         if self.parallel {
-            let mut state_copy = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut state_copy = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             state_copy.copy_from_slice(state);
 
             state.par_iter_mut().enumerate().for_each(|(i, amp)| {
@@ -1082,9 +1173,16 @@ impl StateVectorSimulator {
                 }
             });
 
-            self.buffer_pool.lock().unwrap().return_buffer(state_copy);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(state_copy);
         } else {
-            let mut new_state = self.buffer_pool.lock().unwrap().get_buffer(state.len());
+            let mut new_state = self
+                .buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .get_buffer(state.len());
             new_state.copy_from_slice(state);
 
             for i in 0..state.len() {
@@ -1100,7 +1198,10 @@ impl StateVectorSimulator {
             }
 
             state.copy_from_slice(&new_state);
-            self.buffer_pool.lock().unwrap().return_buffer(new_state);
+            self.buffer_pool
+                .lock()
+                .expect("buffer pool lock poisoned")
+                .return_buffer(new_state);
         }
 
         Ok(())

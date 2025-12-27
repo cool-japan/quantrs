@@ -10,7 +10,7 @@ use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
-use std::io::Write;
+use std::io::Write as IoWrite;
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -18,6 +18,7 @@ use crate::circuit_interfaces::{InterfaceCircuit, InterfaceGate, InterfaceGateTy
 use crate::debugger::PerformanceMetrics;
 use crate::error::{Result, SimulatorError};
 
+use std::fmt::Write;
 /// Telemetry configuration
 #[derive(Debug, Clone)]
 pub struct TelemetryConfig {
@@ -48,7 +49,7 @@ impl Default for TelemetryConfig {
         Self {
             enabled: true,
             sampling_rate: 1.0,
-            max_history_size: 10000,
+            max_history_size: 10_000,
             export_interval: Duration::from_secs(60),
             enable_alerts: true,
             alert_thresholds: AlertThresholds::default(),
@@ -256,6 +257,7 @@ pub struct TelemetryCollector {
 
 impl TelemetryCollector {
     /// Create new telemetry collector
+    #[must_use]
     pub fn new(config: TelemetryConfig) -> Self {
         Self {
             config: config.clone(),
@@ -307,7 +309,10 @@ impl TelemetryCollector {
 
         // Store metric
         {
-            let mut history = self.metrics_history.write().unwrap();
+            let mut history = self
+                .metrics_history
+                .write()
+                .expect("Metrics history lock should not be poisoned");
             history.push_back(metric.clone());
             if history.len() > self.config.max_history_size {
                 history.pop_front();
@@ -335,7 +340,10 @@ impl TelemetryCollector {
         }
 
         {
-            let mut history = self.quantum_metrics_history.write().unwrap();
+            let mut history = self
+                .quantum_metrics_history
+                .write()
+                .expect("Quantum metrics history lock should not be poisoned");
             history.push_back(metrics.clone());
             if history.len() > 1000 {
                 history.pop_front();
@@ -345,7 +353,7 @@ impl TelemetryCollector {
         // Create telemetry metrics from quantum metrics
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs_f64();
 
         let quantum_gauge = TelemetryMetric::Gauge {
@@ -388,7 +396,7 @@ impl TelemetryCollector {
             tags,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -412,7 +420,7 @@ impl TelemetryCollector {
             tags: tags.clone(),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -425,7 +433,7 @@ impl TelemetryCollector {
             tags,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -444,7 +452,7 @@ impl TelemetryCollector {
             tags,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -464,7 +472,7 @@ impl TelemetryCollector {
             tags,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -474,9 +482,18 @@ impl TelemetryCollector {
 
     /// Get current metrics summary
     pub fn get_metrics_summary(&self) -> Result<MetricsSummary> {
-        let metrics_history = self.metrics_history.read().unwrap();
-        let quantum_history = self.quantum_metrics_history.read().unwrap();
-        let performance_history = self.performance_history.read().unwrap();
+        let metrics_history = self
+            .metrics_history
+            .read()
+            .expect("Metrics history lock should not be poisoned");
+        let quantum_history = self
+            .quantum_metrics_history
+            .read()
+            .expect("Quantum metrics history lock should not be poisoned");
+        let performance_history = self
+            .performance_history
+            .read()
+            .expect("Performance history lock should not be poisoned");
 
         let total_metrics = metrics_history.len();
         let total_quantum_metrics = quantum_history.len();
@@ -511,7 +528,11 @@ impl TelemetryCollector {
             avg_gate_execution_time: avg_gate_time,
             latest_quantum_metrics,
             latest_performance,
-            active_alerts_count: self.active_alerts.read().unwrap().len(),
+            active_alerts_count: self
+                .active_alerts
+                .read()
+                .expect("Active alerts lock should not be poisoned")
+                .len(),
         })
     }
 
@@ -529,7 +550,10 @@ impl TelemetryCollector {
             TelemetryExportFormat::Custom => self.export_custom(path)?,
         }
 
-        *self.last_export.lock().unwrap() = Instant::now();
+        *self
+            .last_export
+            .lock()
+            .expect("Last export lock should not be poisoned") = Instant::now();
         Ok(())
     }
 
@@ -542,7 +566,9 @@ impl TelemetryCollector {
             let snapshot = Self::collect_system_metrics();
 
             {
-                let mut history = performance_history.write().unwrap();
+                let mut history = performance_history
+                    .write()
+                    .expect("Performance history lock should not be poisoned");
                 history.push_back(snapshot);
                 if history.len() > 1000 {
                     history.pop_front();
@@ -560,7 +586,7 @@ impl TelemetryCollector {
     fn collect_system_metrics() -> PerformanceSnapshot {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs_f64();
 
         // Simplified system metrics collection
@@ -608,7 +634,7 @@ impl TelemetryCollector {
                         threshold_value: self.config.alert_thresholds.max_gate_execution_time,
                         timestamp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
-                            .unwrap()
+                            .unwrap_or_default()
                             .as_secs_f64(),
                         context: HashMap::new(),
                     });
@@ -626,7 +652,7 @@ impl TelemetryCollector {
                         threshold_value: self.config.alert_thresholds.max_memory_usage as f64,
                         timestamp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
-                            .unwrap()
+                            .unwrap_or_default()
                             .as_secs_f64(),
                         context: HashMap::new(),
                     });
@@ -637,7 +663,10 @@ impl TelemetryCollector {
 
         // Add alerts
         if !alerts_to_add.is_empty() {
-            let mut active_alerts = self.active_alerts.write().unwrap();
+            let mut active_alerts = self
+                .active_alerts
+                .write()
+                .expect("Active alerts lock should not be poisoned");
             active_alerts.extend(alerts_to_add);
 
             // Keep only recent alerts
@@ -652,7 +681,10 @@ impl TelemetryCollector {
 
     /// Check if export is scheduled
     fn check_export_schedule(&self) -> Result<()> {
-        let last_export = *self.last_export.lock().unwrap();
+        let last_export = *self
+            .last_export
+            .lock()
+            .expect("Last export lock should not be poisoned");
         if last_export.elapsed() > self.config.export_interval {
             self.export_data(&self.config.export_directory)?;
         }
@@ -661,7 +693,10 @@ impl TelemetryCollector {
 
     /// Export data as JSON
     fn export_json(&self, path: &str) -> Result<()> {
-        let metrics = self.metrics_history.read().unwrap();
+        let metrics = self
+            .metrics_history
+            .read()
+            .expect("Metrics history lock should not be poisoned");
         let data = serde_json::to_string_pretty(&*metrics).map_err(|e| {
             SimulatorError::InvalidInput(format!("Failed to serialize metrics: {e}"))
         })?;
@@ -678,7 +713,10 @@ impl TelemetryCollector {
 
     /// Export data as CSV
     fn export_csv(&self, path: &str) -> Result<()> {
-        let metrics = self.metrics_history.read().unwrap();
+        let metrics = self
+            .metrics_history
+            .read()
+            .expect("Metrics history lock should not be poisoned");
         let mut csv_data = String::new();
         csv_data.push_str("timestamp,metric_name,metric_type,value,tags\n");
 
@@ -706,9 +744,10 @@ impl TelemetryCollector {
             };
 
             let tags_str = serde_json::to_string(tags).unwrap_or_default();
-            csv_data.push_str(&format!(
-                "{timestamp},{name},{metric_type},{value},{tags_str}\n"
-            ));
+            let _ = writeln!(
+                csv_data,
+                "{timestamp},{name},{metric_type},{value},{tags_str}"
+            );
         }
 
         let file_path = format!("{path}/telemetry.csv");
@@ -723,7 +762,10 @@ impl TelemetryCollector {
 
     /// Export data in Prometheus format
     fn export_prometheus(&self, path: &str) -> Result<()> {
-        let metrics = self.metrics_history.read().unwrap();
+        let metrics = self
+            .metrics_history
+            .read()
+            .expect("Metrics history lock should not be poisoned");
         let mut prometheus_data = String::new();
 
         for metric in metrics.iter() {
@@ -734,14 +776,15 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    prometheus_data.push_str(&format!("# TYPE {name} counter\n"));
-                    prometheus_data.push_str(&format!(
-                        "{}{} {} {}\n",
+                    let _ = writeln!(prometheus_data, "# TYPE {name} counter");
+                    let _ = writeln!(
+                        prometheus_data,
+                        "{}{} {} {}",
                         name,
                         self.format_prometheus_labels(tags),
                         value,
                         (*timestamp * 1000.0) as u64
-                    ));
+                    );
                 }
                 TelemetryMetric::Gauge {
                     name,
@@ -749,14 +792,15 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    prometheus_data.push_str(&format!("# TYPE {name} gauge\n"));
-                    prometheus_data.push_str(&format!(
-                        "{}{} {} {}\n",
+                    let _ = writeln!(prometheus_data, "# TYPE {name} gauge");
+                    let _ = writeln!(
+                        prometheus_data,
+                        "{}{} {} {}",
                         name,
                         self.format_prometheus_labels(tags),
                         value,
                         (*timestamp * 1000.0) as u64
-                    ));
+                    );
                 }
                 _ => {}
             }
@@ -772,9 +816,12 @@ impl TelemetryCollector {
         Ok(())
     }
 
-    /// Export data in InfluxDB line protocol format
+    /// Export data in `InfluxDB` line protocol format
     fn export_influxdb(&self, path: &str) -> Result<()> {
-        let metrics = self.metrics_history.read().unwrap();
+        let metrics = self
+            .metrics_history
+            .read()
+            .expect("Metrics history lock should not be poisoned");
         let mut influx_data = String::new();
 
         for metric in metrics.iter() {
@@ -785,13 +832,14 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    influx_data.push_str(&format!(
-                        "{}{} value={} {}\n",
+                    let _ = writeln!(
+                        influx_data,
+                        "{}{} value={} {}",
                         name,
                         self.format_influx_tags(tags),
                         value,
                         (*timestamp * 1_000_000_000.0) as u64
-                    ));
+                    );
                 }
                 TelemetryMetric::Gauge {
                     name,
@@ -799,13 +847,14 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    influx_data.push_str(&format!(
-                        "{}{} value={} {}\n",
+                    let _ = writeln!(
+                        influx_data,
+                        "{}{} value={} {}",
                         name,
                         self.format_influx_tags(tags),
                         value,
                         (*timestamp * 1_000_000_000.0) as u64
-                    ));
+                    );
                 }
                 TelemetryMetric::Timer {
                     name,
@@ -813,13 +862,14 @@ impl TelemetryCollector {
                     tags,
                     timestamp,
                 } => {
-                    influx_data.push_str(&format!(
-                        "{}{} duration={} {}\n",
+                    let _ = writeln!(
+                        influx_data,
+                        "{}{} duration={} {}",
                         name,
                         self.format_influx_tags(tags),
                         duration.as_secs_f64(),
                         (*timestamp * 1_000_000_000.0) as u64
-                    ));
+                    );
                 }
                 _ => {}
             }
@@ -852,7 +902,7 @@ impl TelemetryCollector {
         format!("{{{}}}", labels.join(","))
     }
 
-    /// Format tags for InfluxDB
+    /// Format tags for `InfluxDB`
     fn format_influx_tags(&self, tags: &HashMap<String, String>) -> String {
         if tags.is_empty() {
             return String::new();
@@ -884,12 +934,12 @@ pub fn benchmark_telemetry() -> Result<HashMap<String, f64>> {
     let start = std::time::Instant::now();
     let mut collector = TelemetryCollector::new(TelemetryConfig::default());
 
-    for i in 0..10000 {
+    for i in 0..10_000 {
         let metric = TelemetryMetric::Gauge {
             name: "test.metric".to_string(),
-            value: i as f64,
+            value: f64::from(i),
             tags: HashMap::new(),
-            timestamp: i as f64,
+            timestamp: f64::from(i),
         };
         collector.record_metric(metric)?;
     }
@@ -904,7 +954,7 @@ pub fn benchmark_telemetry() -> Result<HashMap<String, f64>> {
     results.insert("export_metrics".to_string(), export_time);
 
     // Add benchmark-specific metrics that are expected by tests
-    let throughput = 10000.0 / (recording_time / 1000.0); // ops/sec
+    let throughput = 10_000.0 / (recording_time / 1000.0); // ops/sec
     results.insert("metric_collection_throughput".to_string(), throughput);
     results.insert("alert_processing_time".to_string(), 5.0); // milliseconds
     results.insert("export_generation_time".to_string(), export_time);
@@ -937,7 +987,10 @@ mod tests {
 
         assert!(collector.record_metric(metric).is_ok());
 
-        let history = collector.metrics_history.read().unwrap();
+        let history = collector
+            .metrics_history
+            .read()
+            .expect("Lock should not be poisoned");
         assert_eq!(history.len(), 1);
     }
 
@@ -958,7 +1011,10 @@ mod tests {
 
         assert!(collector.record_quantum_metrics(quantum_metrics).is_ok());
 
-        let history = collector.quantum_metrics_history.read().unwrap();
+        let history = collector
+            .quantum_metrics_history
+            .read()
+            .expect("Lock should not be poisoned");
         assert_eq!(history.len(), 1);
     }
 
@@ -978,7 +1034,10 @@ mod tests {
 
         assert!(collector.record_memory_usage(1024, "statevector").is_ok());
 
-        let history = collector.metrics_history.read().unwrap();
+        let history = collector
+            .metrics_history
+            .read()
+            .expect("Lock should not be poisoned");
         assert_eq!(history.len(), 1);
     }
 
@@ -990,7 +1049,10 @@ mod tests {
             .record_error("simulation_error", "Gate execution failed")
             .is_ok());
 
-        let history = collector.metrics_history.read().unwrap();
+        let history = collector
+            .metrics_history
+            .read()
+            .expect("Lock should not be poisoned");
         assert_eq!(history.len(), 1);
     }
 
@@ -1005,9 +1067,13 @@ mod tests {
             tags: HashMap::new(),
             timestamp: 0.0,
         };
-        collector.record_metric(metric).unwrap();
+        collector
+            .record_metric(metric)
+            .expect("Metric recording should succeed");
 
-        let summary = collector.get_metrics_summary().unwrap();
+        let summary = collector
+            .get_metrics_summary()
+            .expect("Get summary should succeed");
         assert_eq!(summary.total_metrics, 1);
         assert_abs_diff_eq!(summary.avg_gate_execution_time, 0.005, epsilon = 1e-6);
     }
@@ -1027,9 +1093,14 @@ mod tests {
             timestamp: 0.0,
         };
 
-        collector.record_metric(metric).unwrap();
+        collector
+            .record_metric(metric)
+            .expect("Metric recording should succeed");
 
-        let alerts = collector.active_alerts.read().unwrap();
+        let alerts = collector
+            .active_alerts
+            .read()
+            .expect("Lock should not be poisoned");
         assert_eq!(alerts.len(), 1);
         assert_eq!(alerts[0].level, AlertLevel::Warning);
     }
@@ -1077,6 +1148,8 @@ mod tests {
 
         // With 0% sampling rate, metric should still be recorded but might be filtered
         // The actual behavior depends on the random number generator
-        collector.record_metric(metric).unwrap();
+        collector
+            .record_metric(metric)
+            .expect("Metric recording should succeed");
     }
 }

@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
 
 /// Types of CV cluster states
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClusterStateType {
     /// Linear cluster (1D chain)
     Linear,
@@ -239,7 +239,7 @@ impl ClusterStateGenerator {
             squeezing_params,
             squeezing_phases,
         )
-        .map_err(|e| DeviceError::InvalidInput(format!("Failed to create squeezed states: {}", e)))
+        .map_err(|e| DeviceError::InvalidInput(format!("Failed to create squeezed states: {e}")))
     }
 
     /// Apply entangling gates according to the graph structure
@@ -372,7 +372,7 @@ impl ClusterStateGenerator {
         // Account for entanglement quality
         let entanglement_bonus = (self.generation_stats.average_entanglement / 2.0).tanh();
 
-        (variance_penalty * (0.8 + 0.2 * entanglement_bonus)).clamp(0.0, 1.0)
+        (variance_penalty * 0.2f64.mul_add(entanglement_bonus, 0.8)).clamp(0.0, 1.0)
     }
 
     /// Perform measurement-based computation on the cluster state
@@ -386,7 +386,11 @@ impl ClusterStateGenerator {
             ));
         }
 
-        let mut state = self.cluster_state.as_ref().unwrap().clone();
+        let mut state = self
+            .cluster_state
+            .as_ref()
+            .expect("cluster state verified to exist above")
+            .clone();
         let mut results = Vec::new();
 
         println!(
@@ -489,12 +493,12 @@ impl ClusterStateGenerator {
     }
 
     /// Get current cluster state
-    pub fn get_cluster_state(&self) -> Option<&GaussianState> {
+    pub const fn get_cluster_state(&self) -> Option<&GaussianState> {
         self.cluster_state.as_ref()
     }
 
     /// Get generation statistics
-    pub fn get_generation_statistics(&self) -> &GenerationStatistics {
+    pub const fn get_generation_statistics(&self) -> &GenerationStatistics {
         &self.generation_stats
     }
 
@@ -677,7 +681,8 @@ mod tests {
             vec![false, true, false],
         ];
 
-        let config = ClusterStateConfig::custom(adjacency, 1.0).unwrap();
+        let config =
+            ClusterStateConfig::custom(adjacency, 1.0).expect("Custom adjacency should be valid");
         assert_eq!(config.num_modes, 3);
 
         // Check custom connectivity
@@ -691,7 +696,10 @@ mod tests {
         let config = ClusterStateConfig::linear(3, 1.0);
         let mut generator = ClusterStateGenerator::new(config);
 
-        let state = generator.generate_cluster_state().await.unwrap();
+        let state = generator
+            .generate_cluster_state()
+            .await
+            .expect("Cluster state generation should succeed");
         assert_eq!(state.num_modes, 3);
 
         let stats = generator.get_generation_statistics();
@@ -703,7 +711,10 @@ mod tests {
     async fn test_mbqc_measurement() {
         let config = ClusterStateConfig::linear(3, 1.0);
         let mut generator = ClusterStateGenerator::new(config);
-        generator.generate_cluster_state().await.unwrap();
+        generator
+            .generate_cluster_state()
+            .await
+            .expect("Cluster state generation should succeed");
 
         let measurements = vec![MBQCMeasurement {
             mode: 0,
@@ -711,7 +722,10 @@ mod tests {
             is_adaptive: false,
         }];
 
-        let results = generator.perform_mbqc_sequence(measurements).await.unwrap();
+        let results = generator
+            .perform_mbqc_sequence(measurements)
+            .await
+            .expect("MBQC sequence should succeed");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].success_probability, 1.0);
     }

@@ -345,7 +345,11 @@ impl Sampler for NECVectorAnnealingSampler {
         let mut results = self.postprocess_solutions(vector_solutions, &preprocessed, var_map);
 
         // Sort by energy
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Generate additional samples if needed
         while results.len() < shots && !results.is_empty() {
@@ -399,7 +403,9 @@ mod tests {
         qubo[[0, 1]] = 1.0;
         qubo[[1, 0]] = 1.0;
 
-        let preprocessed = sampler.preprocess_qubo(&qubo).unwrap();
+        let preprocessed = sampler
+            .preprocess_qubo(&qubo)
+            .expect("Failed to preprocess QUBO");
 
         // Check that obvious variables were fixed
         assert!(preprocessed.fixed_variables.contains_key(&0));

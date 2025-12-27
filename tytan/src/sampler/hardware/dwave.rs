@@ -126,7 +126,9 @@ impl Sampler for DWaveSampler {
         if hobo.0.ndim() <= 2 {
             // If it's already 2D, just forward to run_qubo
             let qubo = (
-                hobo.0.clone().into_dimensionality::<Ix2>().unwrap(),
+                hobo.0.clone().into_dimensionality::<Ix2>().map_err(|e| {
+                    SamplerError::InvalidParameter(format!("Failed to convert to 2D array: {}", e))
+                })?,
                 hobo.1.clone(),
             );
             self.run_qubo(&qubo, shots)

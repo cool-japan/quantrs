@@ -3,7 +3,14 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use super::*;
+use super::{
+    BottleneckType, CommunityDetectionAlgorithm, ComplexityClass, ComplexityEstimate,
+    ComplexityMetric, ComplexityModelType, ConstraintType, DecomposabilityScore,
+    DecompositionAction, DecompositionRecommendation, DecompositionStrategy, DetectedCommunity,
+    DetectedStructure, GraphMetrics, MetricComputationConfig, PathFindingAlgorithm,
+    PatternMatchingAlgorithm, PatternType, RiskAssessment, RiskLevel, ScoringFunctionType,
+    StructureType, WeightCalculationMethod,
+};
 use crate::ising::IsingModel;
 
 /// Problem analyzer for decomposition
@@ -44,6 +51,7 @@ pub struct GraphAnalyzer {
 }
 
 impl GraphAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics_calculator: GraphMetricsCalculator::new(),
@@ -134,6 +142,7 @@ pub struct GraphMetricsCalculator {
 }
 
 impl GraphMetricsCalculator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             cached_metrics: HashMap::new(),
@@ -156,7 +165,8 @@ pub struct CommunityDetector {
 }
 
 impl CommunityDetector {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             algorithm: CommunityDetectionAlgorithm::Louvain,
             resolution: 1.0,
@@ -178,6 +188,7 @@ pub struct CriticalPathAnalyzer {
 }
 
 impl CriticalPathAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             algorithm: PathFindingAlgorithm::Dijkstra,
@@ -223,6 +234,7 @@ pub struct BottleneckDetector {
 }
 
 impl BottleneckDetector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             detection_threshold: 0.8,
@@ -265,6 +277,7 @@ pub struct StructureDetector {
 }
 
 impl StructureDetector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pattern_matchers: Vec::new(),
@@ -359,6 +372,7 @@ pub struct ComplexityEstimator {
 }
 
 impl ComplexityEstimator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             complexity_metrics: vec![
@@ -386,7 +400,7 @@ impl ComplexityEstimator {
 
         Ok(ComplexityEstimate {
             complexity_class,
-            numeric_estimate: (n as f64).powf(2.0),
+            numeric_estimate: (n as f64).powi(2),
             confidence_interval: (n as f64, (n * n) as f64),
             estimation_method: "simplified".to_string(),
         })
@@ -416,6 +430,7 @@ pub struct DecomposabilityScorer {
 }
 
 impl DecomposabilityScorer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             scoring_functions: vec![

@@ -24,6 +24,7 @@ pub struct MemoryVerifier {
 
 impl MemoryVerifier {
     /// Create a new memory verifier
+    #[must_use]
     pub fn new() -> Self {
         Self {
             test_qubit_counts: vec![4, 6, 8, 10],
@@ -32,6 +33,7 @@ impl MemoryVerifier {
     }
 
     /// Run simplified memory verification
+    #[must_use]
     pub fn verify_optimizations(&self) -> VerificationResults {
         println!("🔍 Starting memory efficiency verification...");
 
@@ -86,7 +88,10 @@ impl MemoryVerifier {
 
                 // Test buffer allocation and return
                 for _ in 0..self.test_iterations {
-                    let mut pool = sim.get_buffer_pool().lock().unwrap();
+                    let mut pool = sim
+                        .get_buffer_pool()
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner());
                     let buffer1 = pool.get_buffer(1 << num_qubits);
                     let buffer2 = pool.get_buffer(1 << num_qubits);
 
@@ -161,19 +166,25 @@ impl MemoryVerifier {
 
     /// Test parallel processing functionality
     fn test_parallel_functionality(&self) -> bool {
-        use scirs2_core::parallel_ops::*;
+        use scirs2_core::parallel_ops::{
+            IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator,
+        };
 
         let test_size = 1000;
 
         // Test parallel iteration and computation
         for _ in 0..self.test_iterations {
             let data: Vec<Complex64> = (0..test_size)
-                .map(|i| Complex64::new(i as f64, (i * 2) as f64))
+                .map(|i| Complex64::new(f64::from(i), f64::from(i * 2)))
                 .collect();
 
             // Test parallel map
-            let sequential_result: Vec<f64> = data.iter().map(|x| x.norm_sqr()).collect();
-            let parallel_result: Vec<f64> = data.par_iter().map(|x| x.norm_sqr()).collect();
+            let sequential_result: Vec<f64> =
+                data.iter().map(scirs2_core::Complex::norm_sqr).collect();
+            let parallel_result: Vec<f64> = data
+                .par_iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .collect();
 
             // Verify results are identical
             if sequential_result.len() != parallel_result.len() {
@@ -214,7 +225,10 @@ impl MemoryVerifier {
         for _ in 0..iterations {
             // Reuse buffers through pooling
             for _ in 0..10 {
-                let mut pool = sim.get_buffer_pool().lock().unwrap();
+                let mut pool = sim
+                    .get_buffer_pool()
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
                 let buffer1 = pool.get_buffer(1 << test_qubit_count);
                 let buffer2 = pool.get_buffer(1 << test_qubit_count);
 
@@ -236,6 +250,7 @@ impl MemoryVerifier {
     }
 
     /// Generate verification report
+    #[must_use]
     pub fn generate_report(&self, results: &VerificationResults) -> String {
         format!(
             r"
@@ -301,6 +316,7 @@ impl Default for MemoryVerifier {
 }
 
 /// Public interface for running memory verification
+#[must_use]
 pub fn run_memory_verification() -> VerificationResults {
     let verifier = MemoryVerifier::new();
     let results = verifier.verify_optimizations();

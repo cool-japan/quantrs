@@ -22,10 +22,10 @@ fn create_bell_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::new();
 
     // Apply Hadamard to qubit 0
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply Hadamard gate");
 
     // Apply CNOT with qubit 0 as control and qubit 1 as target
-    circuit.cnot(0, 1).unwrap();
+    circuit.cnot(0, 1).expect("Failed to apply CNOT gate");
 
     circuit
 }
@@ -35,11 +35,11 @@ fn create_ghz_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::new();
 
     // Apply Hadamard to qubit 0
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply Hadamard gate");
 
     // Apply CNOT gates to entangle all qubits
     for i in 1..N {
-        circuit.cnot(0, i).unwrap();
+        circuit.cnot(0, i).expect("Failed to apply CNOT gate");
     }
 
     circuit
@@ -60,18 +60,18 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
             0 => {
                 // Hadamard gate
                 let target = rng.gen_range(0..N);
-                circuit.h(target).unwrap();
+                circuit.h(target).expect("Failed to apply Hadamard gate");
             }
             1 => {
                 // Pauli-X gate
                 let target = rng.gen_range(0..N);
-                circuit.x(target).unwrap();
+                circuit.x(target).expect("Failed to apply Pauli-X gate");
             }
             2 => {
                 // Rotation-Z gate
                 let target = rng.gen_range(0..N);
                 let angle = rng.gen_range(0.0..2.0 * PI);
-                circuit.rz(target, angle).unwrap();
+                circuit.rz(target, angle).expect("Failed to apply RZ gate");
             }
             3 => {
                 // CNOT gate
@@ -80,7 +80,9 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
                 while target == control {
                     target = rng.gen_range(0..N);
                 }
-                circuit.cnot(control, target).unwrap();
+                circuit
+                    .cnot(control, target)
+                    .expect("Failed to apply CNOT gate");
             }
             4 => {
                 // CZ gate
@@ -89,7 +91,9 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
                 while target == control {
                     target = rng.gen_range(0..N);
                 }
-                circuit.cz(control, target).unwrap();
+                circuit
+                    .cz(control, target)
+                    .expect("Failed to apply CZ gate");
             }
             _ => unreachable!(),
         }
@@ -103,8 +107,12 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, epsilon: f64) -> boo
     let standard_sim = StateVectorSimulator::new();
     let optimized_sim = OptimizedSimulator::new();
 
-    let standard_result = standard_sim.run(circuit).unwrap();
-    let optimized_result = optimized_sim.run(circuit).unwrap();
+    let standard_result = standard_sim
+        .run(circuit)
+        .expect("Standard simulator failed");
+    let optimized_result = optimized_sim
+        .run(circuit)
+        .expect("Optimized simulator failed");
 
     let standard_state = standard_result.amplitudes();
     let optimized_state = optimized_result.amplitudes();
@@ -144,8 +152,12 @@ mod tests {
         let standard_sim = StateVectorSimulator::new();
         let optimized_sim = OptimizedSimulator::new();
 
-        let standard_result = standard_sim.run(&circuit).unwrap();
-        let optimized_result = optimized_sim.run(&circuit).unwrap();
+        let standard_result = standard_sim
+            .run(&circuit)
+            .expect("Standard simulator failed on Bell state");
+        let optimized_result = optimized_sim
+            .run(&circuit)
+            .expect("Optimized simulator failed on Bell state");
 
         // Expected result: (|00> + |11>) / sqrt(2)
         let expected_amplitudes = [
@@ -193,8 +205,12 @@ mod tests {
         let standard_sim = StateVectorSimulator::new();
         let optimized_sim = OptimizedSimulator::new();
 
-        let standard_result = standard_sim.run(&circuit).unwrap();
-        let optimized_result = optimized_sim.run(&circuit).unwrap();
+        let standard_result = standard_sim
+            .run(&circuit)
+            .expect("Standard simulator failed on GHZ state");
+        let optimized_result = optimized_sim
+            .run(&circuit)
+            .expect("Optimized simulator failed on GHZ state");
 
         // Expected result: (|000> + |111>) / sqrt(2)
         let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 1 << N];
@@ -326,7 +342,7 @@ mod ultrathink_tests {
         let result = DistributedGpuStateVector::new(3, config);
         assert!(result.is_ok());
 
-        let state_vector = result.unwrap();
+        let state_vector = result.expect("Failed to create distributed GPU state vector");
         assert_eq!(state_vector.num_qubits(), 3);
         assert_eq!(state_vector.state_size(), 8); // 2^3
     }
@@ -409,7 +425,8 @@ mod ultrathink_tests {
                 sync_strategy: strategy,
             };
 
-            let mut state_vector = DistributedGpuStateVector::new(3, config).unwrap();
+            let mut state_vector = DistributedGpuStateVector::new(3, config)
+                .expect("Failed to create distributed GPU state vector");
 
             // Test synchronization
             let result = state_vector.synchronize();
@@ -464,7 +481,8 @@ mod ultrathink_tests {
     #[test]
     fn test_gate_fusion_basic_sequence() {
         let config = AdaptiveFusionConfig::default();
-        let mut fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+        let mut fusion_engine =
+            AdaptiveGateFusion::new(config).expect("Failed to create gate fusion engine");
 
         // Create a simple gate sequence
         let gates = vec![
@@ -483,7 +501,7 @@ mod ultrathink_tests {
         let result = fusion_engine.fuse_gates(&gates);
         assert!(result.is_ok());
 
-        let (fused_blocks, remaining_gates) = result.unwrap();
+        let (fused_blocks, remaining_gates) = result.expect("Gate fusion failed");
         assert!(!fused_blocks.is_empty() || !remaining_gates.is_empty());
     }
 
@@ -518,7 +536,8 @@ mod ultrathink_tests {
     #[test]
     fn test_gate_fusion_known_beneficial_patterns() {
         let config = AdaptiveFusionConfig::default();
-        let mut fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+        let mut fusion_engine =
+            AdaptiveGateFusion::new(config).expect("Failed to create gate fusion engine");
 
         // Test known beneficial pattern: consecutive rotation gates
         let gates = vec![
@@ -530,7 +549,7 @@ mod ultrathink_tests {
         let result = fusion_engine.fuse_gates(&gates);
         assert!(result.is_ok());
 
-        let (fused_blocks, _) = result.unwrap();
+        let (fused_blocks, _) = result.expect("Gate fusion failed");
         assert!(
             !fused_blocks.is_empty(),
             "Should have identified beneficial fusion opportunity"
@@ -563,14 +582,15 @@ mod ultrathink_tests {
         let result = MixedPrecisionSimulator::new(3, config);
         assert!(result.is_ok());
 
-        let simulator = result.unwrap();
+        let simulator = result.expect("Failed to create mixed precision simulator");
         assert!(simulator.get_state().is_some());
     }
 
     #[test]
     fn test_mixed_precision_gate_application() {
         let config = MixedPrecisionConfig::default();
-        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        let mut simulator = MixedPrecisionSimulator::new(2, config)
+            .expect("Failed to create mixed precision simulator");
 
         let gate = QuantumGate::new(GateType::Hadamard, vec![0], vec![]);
         let result = simulator.apply_gate(&gate);
@@ -582,7 +602,8 @@ mod ultrathink_tests {
         let mut config = MixedPrecisionConfig::default();
         config.adaptive_precision = true;
 
-        let mut simulator = MixedPrecisionSimulator::new(2, config).unwrap();
+        let mut simulator = MixedPrecisionSimulator::new(2, config)
+            .expect("Failed to create mixed precision simulator");
 
         // Apply several gates and check that precision adaptation works
         let gates = vec![
@@ -614,7 +635,8 @@ mod ultrathink_tests {
     #[test]
     fn test_performance_benchmarking() {
         let config = MixedPrecisionConfig::default();
-        let mut simulator = MixedPrecisionSimulator::new(3, config).unwrap();
+        let mut simulator = MixedPrecisionSimulator::new(3, config)
+            .expect("Failed to create mixed precision simulator");
 
         // Create a benchmark circuit
         let gates = vec![
@@ -627,7 +649,7 @@ mod ultrathink_tests {
         let start_time = std::time::Instant::now();
 
         for gate in &gates {
-            simulator.apply_gate(gate).unwrap();
+            simulator.apply_gate(gate).expect("Failed to apply gate");
         }
 
         let execution_time = start_time.elapsed();
@@ -681,10 +703,12 @@ mod ultrathink_tests {
     fn test_comprehensive_ultrathink_pipeline() {
         // Test a complete pipeline using all new features
         let precision_config = MixedPrecisionConfig::default();
-        let mut precision_sim = MixedPrecisionSimulator::new(3, precision_config).unwrap();
+        let mut precision_sim = MixedPrecisionSimulator::new(3, precision_config)
+            .expect("Failed to create mixed precision simulator");
 
         let fusion_config = AdaptiveFusionConfig::default();
-        let mut fusion_engine = AdaptiveGateFusion::new(fusion_config).unwrap();
+        let mut fusion_engine =
+            AdaptiveGateFusion::new(fusion_config).expect("Failed to create gate fusion engine");
 
         // Create a test circuit
         let gates = vec![
@@ -797,14 +821,15 @@ mod ultrathink_tests {
         config.num_qubits = 3;
         config.architecture = QuantumReservoirArchitecture::SpinChain;
 
-        let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
+        let mut reservoir = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
         // Test single input processing
         let input = Array1::from(vec![0.5, 0.3, 0.2]);
         let result = reservoir.process_input(&input);
         assert!(result.is_ok());
 
-        let output = result.unwrap();
+        let output = result.expect("Failed to process input");
         assert!(!output.is_empty());
 
         // Output should be finite
@@ -820,7 +845,8 @@ mod ultrathink_tests {
         config.input_encoding = InputEncoding::Phase;
         config.adaptive_learning = true;
 
-        let reservoir = QuantumReservoirComputer::new(config).unwrap();
+        let reservoir = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
         let metrics = reservoir.get_metrics();
 
         // Check that metrics are properly initialized
@@ -840,7 +866,8 @@ mod ultrathink_tests {
         config.architecture = QuantumReservoirArchitecture::TransverseFieldIsing;
         config.dynamics = ReservoirDynamics::NISQ;
 
-        let mut reservoir = QuantumReservoirComputer::new(config).unwrap();
+        let mut reservoir = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
         // Process some input to change the state
         let input = Array1::from(vec![0.8, 0.2, 0.4]);
@@ -858,7 +885,7 @@ mod ultrathink_tests {
         let result = crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing();
         assert!(result.is_ok());
 
-        let benchmarks = result.unwrap();
+        let benchmarks = result.expect("Benchmark failed");
         assert!(!benchmarks.is_empty());
 
         // Check that benchmark results are reasonable

@@ -17,7 +17,7 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(
+    pub const fn new(
         gate_type: GateType,
         target_qubits: Vec<usize>,
         control_qubits: Option<Vec<usize>>,
@@ -29,7 +29,7 @@ impl QuantumGate {
         }
     }
 
-    pub fn gate_type(&self) -> &GateType {
+    pub const fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
 
@@ -84,11 +84,11 @@ impl PerformanceTracker {
         self.memory_usage.push(usage);
     }
 
-    pub fn increment_simd_ops(&mut self) {
+    pub const fn increment_simd_ops(&mut self) {
         self.simd_operations_count += 1;
     }
 
-    pub fn increment_parallel_ops(&mut self) {
+    pub const fn increment_parallel_ops(&mut self) {
         self.parallel_operations_count += 1;
     }
 
@@ -383,7 +383,7 @@ impl QuantumDebugger {
     fn apply_gate_to_state(
         &self,
         gate: &QuantumGate,
-        state: &mut Vec<Complex64>,
+        state: &mut [Complex64],
         num_qubits: usize,
     ) -> Result<(), QuantRS2Error> {
         use crate::gate_translation::GateType;
@@ -572,7 +572,7 @@ impl QuantumDebugger {
         let sample_size = (state.len() as f64 * self.config.sampling_rate).ceil() as usize;
         let step = state.len() / sample_size;
 
-        Ok(state.iter().step_by(step.max(1)).cloned().collect())
+        Ok(state.iter().step_by(step.max(1)).copied().collect())
     }
 
     /// Get previous state from history
@@ -691,8 +691,7 @@ impl QuantumDebugger {
             .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .map_or(0, |(i, _)| i);
 
         let mean_amplitude = amplitudes.iter().sum::<f64>() / amplitudes.len() as f64;
         let amplitude_variance = amplitudes
@@ -808,13 +807,13 @@ impl QuantumDebugger {
     }
 
     /// Calculate entanglement efficiency
-    fn calculate_entanglement_efficiency(&self) -> f64 {
+    const fn calculate_entanglement_efficiency(&self) -> f64 {
         // Simplified calculation
         0.85 // Placeholder
     }
 
     /// Calculate state overlap preservation
-    fn calculate_state_overlap_preservation(&self) -> f64 {
+    const fn calculate_state_overlap_preservation(&self) -> f64 {
         // Simplified calculation
         0.92 // Placeholder
     }
@@ -992,7 +991,7 @@ impl GateStatistics {
         self.total_count += 1;
     }
 
-    pub fn total_gates(&self) -> usize {
+    pub const fn total_gates(&self) -> usize {
         self.total_count
     }
 
@@ -1084,7 +1083,9 @@ mod tests {
 
         let initial_state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
 
-        let result = debugger.debug_circuit(&circuit, &initial_state, 1).unwrap();
+        let result = debugger
+            .debug_circuit(&circuit, &initial_state, 1)
+            .expect("debug_circuit should succeed with valid input");
         assert!(matches!(result.status, DebugStatus::Completed));
         assert_eq!(result.execution_trace.len(), 1);
     }
@@ -1097,7 +1098,9 @@ mod tests {
             Complex64::new(std::f64::consts::FRAC_1_SQRT_2, 0.0),
         ];
 
-        let analysis = debugger.analyze_amplitudes(&state).unwrap();
+        let analysis = debugger
+            .analyze_amplitudes(&state)
+            .expect("analyze_amplitudes should succeed with valid state");
         assert_eq!(analysis.amplitudes.len(), 2);
         assert!((analysis.mean_amplitude - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-4);
     }

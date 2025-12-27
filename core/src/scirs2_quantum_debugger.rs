@@ -8,6 +8,7 @@ use crate::gate_translation::GateType;
 use crate::error::QuantRS2Error;
 use crate::quantum_debugger::{QuantumGate, DebugConfig, DebugStep, StateSnapshot};
 use scirs2_core::Complex64;
+use std::fmt::Write;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
@@ -17,7 +18,7 @@ use std::collections::{HashMap, VecDeque, BTreeMap};
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use serde::{Serialize, Deserialize};
-use std::io::Write;
+use std::io::Write as IoWrite;
 
 /// Advanced visualization configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -458,7 +459,7 @@ impl AdvancedQuantumDebugger {
         }
 
         // Sort by probability
-        bins.sort_by(|a, b| b.probability.partial_cmp(&a.probability).unwrap());
+        bins.sort_by(|a, b| b.probability.partial_cmp(&a.probability).unwrap_or(std::cmp::Ordering::Equal));
 
         Ok(AmplitudeHistogram {
             bins: bins.into_iter().take(20).collect(),  // Top 20 states
@@ -943,14 +944,12 @@ impl AdvancedQuantumDebugger {
             let height = bin.probability * max_height;
             let y = 250.0 - height;
 
-            svg.push_str(&format!(
-                r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" />
+            let _ = write!(svg, r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" />
                    <text x="{}" y="270" font-size="10" text-anchor="middle">{}</text>"#,
                 x, y, bar_width, height,
                 self.config.viz_config.color_scheme.amplitude_positive,
                 x + bar_width / 2.0,
-                bin.state_label
-            ));
+                bin.state_label);
         }
 
         Ok(svg)
@@ -964,7 +963,7 @@ impl AdvancedQuantumDebugger {
             if i > 0 {
                 latex.push_str(r" \\ ");
             }
-            latex.push_str(&format!(r"\lstick{{|{}⟩}}", circuit.qubit_labels[i]));
+            let _ = write!(latex, r"\lstick{{|{}⟩}}", circuit.qubit_labels[i]);
 
             // Add gates for this qubit
             for layer in &circuit.layers {
@@ -974,7 +973,7 @@ impl AdvancedQuantumDebugger {
                     .find(|g| g.target_qubits.contains(&i));
 
                 if let Some(gate) = gate_on_qubit {
-                    latex.push_str(&format!(r"\gate{{{}}}", gate.symbol));
+                    let _ = write!(latex, r"\gate{{{}}}", gate.symbol);
                 } else {
                     latex.push_str(r"\qw");
                 }
@@ -989,14 +988,14 @@ impl AdvancedQuantumDebugger {
         let mut ascii = String::new();
 
         for i in 0..circuit.num_qubits {
-            ascii.push_str(&format!("q{}: ", i));
+            let _ = write!(ascii, "q{}: ", i);
 
             for layer in &circuit.layers {
                 let gate_on_qubit = layer.gates.iter()
                     .find(|g| g.target_qubits.contains(&i));
 
                 if let Some(gate) = gate_on_qubit {
-                    ascii.push_str(&format!("-[{}]-", gate.symbol));
+                    let _ = write!(ascii, "-[{}]-", gate.symbol);
                 } else {
                     ascii.push_str("-----");
                 }
@@ -1016,12 +1015,10 @@ impl AdvancedQuantumDebugger {
             let bar_length = (bin.probability * max_bar_length as f64) as usize;
             let bar = "█".repeat(bar_length);
 
-            ascii.push_str(&format!(
-                "{:>10} |{:<40} {:.3}\n",
+            let _ = writeln!(ascii, "{:>10} |{:<40} {:.3}",
                 bin.state_label,
                 bar,
-                bin.probability
-            ));
+                bin.probability);
         }
 
         Ok(ascii)
@@ -1223,7 +1220,7 @@ mod tests {
             Complex64::new(1.0 / std::f64::consts::SQRT_2, 0.0),
         ];
 
-        let viz = debugger.generate_visualization(&state, 1, 0).unwrap();
+        let viz = debugger.generate_visualization(&state, 1, 0).expect("visualization generation should succeed");
         assert!(viz.state_vector_viz.is_some());
         assert!(viz.amplitude_histogram.is_some());
     }
@@ -1239,7 +1236,7 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        let result = debugger.start_interactive_session(&circuit, &initial_state, 1).unwrap();
+        let result = debugger.start_interactive_session(&circuit, &initial_state, 1).expect("interactive session should start");
         assert!(!result.session_id.is_empty());
     }
 
@@ -1270,10 +1267,10 @@ mod tests {
             measurement_probabilities: None,
         };
 
-        let svg = debugger.export_as_svg(&viz).unwrap();
+        let svg = debugger.export_as_svg(&viz).expect("SVG export should succeed");
         assert!(svg.contains("<svg"));
 
-        let json = debugger.export_as_json(&viz).unwrap();
+        let json = debugger.export_as_json(&viz).expect("JSON export should succeed");
         assert!(json.contains("amplitude_histogram"));
     }
 
@@ -1282,11 +1279,11 @@ mod tests {
         let mut debugger = AdvancedQuantumDebugger::new();
 
         let wp = WatchpointType::AmplitudeWatch { qubit: 0, threshold: 0.5 };
-        let result = debugger.set_watchpoint(wp).unwrap();
+        let result = debugger.set_watchpoint(wp).expect("set_watchpoint should succeed");
         assert!(result.success);
         assert_eq!(debugger.watchpoints.len(), 1);
 
-        let clear_result = debugger.clear_watchpoint(0).unwrap();
+        let clear_result = debugger.clear_watchpoint(0).expect("clear_watchpoint should succeed");
         assert!(clear_result.success);
         assert!(!debugger.watchpoints[0].2);  // Should be disabled
     }

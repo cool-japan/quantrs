@@ -191,7 +191,11 @@ impl GroverAmplifiedSolver {
 
         // Keep elite solutions
         let mut sorted_pop = population.to_vec();
-        sorted_pop.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        sorted_pop.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for state in sorted_pop.iter().take(self.config.elite_count) {
             new_population.push(state.clone());
@@ -255,8 +259,9 @@ impl GroverAmplifiedSolver {
 
         // Check progress
         if self.energy_history.len() > 5 {
-            let recent_improvement = self.energy_history[self.energy_history.len() - 5]
-                - *self.energy_history.last().unwrap();
+            let last_energy = self.energy_history.last().copied().unwrap_or(f64::INFINITY);
+            let recent_improvement =
+                self.energy_history[self.energy_history.len() - 5] - last_energy;
 
             // If stuck, increase amplification
             if recent_improvement.abs() < 0.01 {
@@ -466,7 +471,9 @@ mod tests {
         qubo[[0, 0]] = 1.0;
         qubo[[1, 1]] = 1.0;
 
-        let _results = solver.optimize(&qubo).unwrap();
+        let _results = solver
+            .optimize(&qubo)
+            .expect("optimization should succeed for simple problem");
 
         // Best solution should be [false, false] with energy 0
         assert!(solver.best_energy <= 0.1);

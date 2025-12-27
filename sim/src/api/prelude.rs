@@ -1,7 +1,8 @@
 //! Organized prelude modules for simulation functionality
 
-/// Essential types for basic quantum simulation
 pub mod essentials {
+    //! Essential types for basic quantum simulation
+    //!
     //! Core types needed for quantum circuit simulation
 
     // Basic simulators
@@ -15,8 +16,9 @@ pub mod essentials {
     pub use crate::api::noise::{NoiseChannel, NoiseModel};
 }
 
-/// Complete toolkit for simulation development
 pub mod simulation {
+    //! Complete toolkit for simulation development
+    //!
     //! Everything needed for advanced quantum simulation
 
     pub use super::essentials::*;
@@ -33,8 +35,9 @@ pub mod simulation {
     pub use crate::api::memory::*;
 }
 
-/// GPU and high-performance computing
 pub mod gpu {
+    //! GPU and high-performance computing
+    //!
     //! GPU and accelerated simulation backends
 
     pub use super::essentials::*;
@@ -49,8 +52,9 @@ pub mod gpu {
     pub use crate::api::optimization::*;
 }
 
-/// Large-scale and distributed simulation
 pub mod distributed {
+    //! Large-scale and distributed simulation
+    //!
     //! Tools for large-scale distributed quantum simulation
 
     pub use super::simulation::*;
@@ -62,8 +66,9 @@ pub mod distributed {
     pub use crate::api::tensor_networks::*;
 }
 
-/// Algorithm development and research
 pub mod algorithms {
+    //! Algorithm development and research
+    //!
     //! Advanced quantum algorithms and applications
 
     pub use super::simulation::*;
@@ -78,8 +83,9 @@ pub mod algorithms {
     pub use crate::api::specialized::*;
 }
 
-/// Noise modeling and error correction
 pub mod noise_modeling {
+    //! Noise modeling and error correction
+    //!
     //! Comprehensive noise modeling and error correction
 
     pub use super::essentials::*;
@@ -91,8 +97,9 @@ pub mod noise_modeling {
     pub use crate::api::error_correction::*;
 }
 
-/// Developer tools and debugging
 pub mod dev_tools {
+    //! Developer tools and debugging
+    //!
     //! Tools for simulation debugging and development
 
     pub use super::essentials::*;
@@ -107,12 +114,13 @@ pub mod dev_tools {
     pub use crate::api::scirs2::*;
 }
 
-/// Legacy compatibility - provides the old flat API
 #[deprecated(
     since = "1.0.0",
     note = "Use organized modules like `essentials`, `simulation`, etc."
 )]
 pub mod legacy {
+    //! Legacy compatibility - provides the old flat API
+    //!
     //! Backward compatibility exports
 
     pub use crate::api::algorithms::*;
@@ -137,8 +145,9 @@ pub mod legacy {
     pub use crate::api::utils::*;
 }
 
-/// Full API re-export (non-deprecated flat access)
 pub mod full {
+    //! Full API re-export (non-deprecated flat access)
+    //!
     //! Complete API access with new naming conventions
 
     pub use crate::api::algorithms::*;

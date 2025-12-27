@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use super::*;
+use super::{DecompositionStrategy, EvaluationMetric, PerformanceRecord};
 
 /// Performance evaluator
 #[derive(Debug, Clone)]

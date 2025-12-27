@@ -588,7 +588,7 @@ impl IRBuilder {
                                     .or_default()
                                     .push(target_label.clone());
 
-                                current_block = target_label.clone();
+                                current_block.clone_from(target_label);
                             }
                         }
                         _ => {}

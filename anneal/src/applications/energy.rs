@@ -13,6 +13,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Smart Grid Optimization Problem
 #[derive(Debug, Clone)]
 pub struct SmartGridOptimization {
@@ -22,7 +23,7 @@ pub struct SmartGridOptimization {
     pub num_demand_nodes: usize,
     /// Generator capacities (MW)
     pub generator_capacities: Vec<f64>,
-    /// Generator marginal costs ($/MWh)
+    /// Generator marginal costs ($/`MWh`)
     pub generator_costs: Vec<f64>,
     /// Generator ramp rates (MW/hour)
     pub generator_ramp_rates: Vec<f64>,
@@ -45,7 +46,7 @@ pub struct SmartGridOptimization {
 /// Energy Storage System
 #[derive(Debug, Clone)]
 pub struct EnergyStorageSystem {
-    /// Storage capacity (MWh)
+    /// Storage capacity (`MWh`)
     pub capacity: f64,
     /// Maximum charge/discharge rate (MW)
     pub max_power: f64,
@@ -53,7 +54,7 @@ pub struct EnergyStorageSystem {
     pub efficiency: f64,
     /// Location (node index)
     pub location: usize,
-    /// Operating cost ($/MWh)
+    /// Operating cost ($/`MWh`)
     pub operating_cost: f64,
 }
 
@@ -149,6 +150,7 @@ impl SmartGridOptimization {
     }
 
     /// Calculate total demand for time period
+    #[must_use]
     pub fn calculate_total_demand(&self, time_period: usize) -> f64 {
         if time_period >= self.num_time_periods {
             return 0.0;
@@ -161,6 +163,7 @@ impl SmartGridOptimization {
     }
 
     /// Calculate generation cost
+    #[must_use]
     pub fn calculate_generation_cost(&self, solution: &GridSolution) -> f64 {
         let mut total_cost = 0.0;
 
@@ -175,6 +178,7 @@ impl SmartGridOptimization {
     }
 
     /// Calculate transmission cost
+    #[must_use]
     pub fn calculate_transmission_cost(&self, solution: &GridSolution) -> f64 {
         let mut total_cost = 0.0;
 
@@ -265,7 +269,7 @@ impl OptimizationProblem for SmartGridOptimization {
         for g in 0..self.num_generators {
             for t in 0..self.num_time_periods {
                 for level in 0..precision {
-                    let var_name = format!("g_{}_{}_{}", g, t, level);
+                    let var_name = format!("g_{g}_{t}_{level}");
                     gen_vars.insert((g, t, level), var_counter);
                     string_var_map.insert(var_name, var_counter);
                     var_counter += 1;
@@ -278,7 +282,7 @@ impl OptimizationProblem for SmartGridOptimization {
             for t in 0..self.num_time_periods {
                 for level in 0..precision {
                     let generation =
-                        (level as f64) * self.generator_capacities[g] / (precision as f64);
+                        f64::from(level) * self.generator_capacities[g] / f64::from(precision);
                     let cost = generation * self.generator_costs[g];
                     let var_idx = gen_vars[&(g, t, level)];
                     builder.add_bias(var_idx, cost);
@@ -287,7 +291,7 @@ impl OptimizationProblem for SmartGridOptimization {
         }
 
         // Constraint: exactly one generation level per generator per time
-        let constraint_penalty = 10000.0;
+        let constraint_penalty = 10_000.0;
         for g in 0..self.num_generators {
             for t in 0..self.num_time_periods {
                 let mut level_vars = Vec::new();
@@ -316,14 +320,14 @@ impl OptimizationProblem for SmartGridOptimization {
             for g in 0..self.num_generators {
                 for level in 0..precision {
                     let generation =
-                        (level as f64) * self.generator_capacities[g] / (precision as f64);
+                        f64::from(level) * self.generator_capacities[g] / f64::from(precision);
                     supply_vars.push(gen_vars[&(g, t, level)]);
                     supply_coeffs.push(generation);
                 }
             }
 
             // Penalty for supply-demand mismatch
-            let mismatch_penalty = 50000.0;
+            let mismatch_penalty = 50_000.0;
             for (i, &var1) in supply_vars.iter().enumerate() {
                 let coeff1 = supply_coeffs[i];
                 builder.add_bias(var1, -2.0 * mismatch_penalty * total_demand * coeff1);
@@ -409,7 +413,7 @@ pub struct GridMetrics {
     pub load_factor: f64,
     /// Peak demand (MW)
     pub peak_demand: f64,
-    /// Total energy generated (MWh)
+    /// Total energy generated (`MWh`)
     pub total_energy: f64,
     /// Renewable penetration
     pub renewable_penetration: f64,
@@ -433,8 +437,9 @@ impl IndustrySolution for GridSolution {
             for t in 0..problem.num_time_periods {
                 for level in 0..precision {
                     if var_idx < binary_solution.len() && binary_solution[var_idx] == 1 {
-                        generation_schedule[g][t] =
-                            (level as f64) * problem.generator_capacities[g] / (precision as f64);
+                        generation_schedule[g][t] = f64::from(level)
+                            * problem.generator_capacities[g]
+                            / f64::from(precision);
                         break;
                     }
                     var_idx += 1;
@@ -475,7 +480,7 @@ impl IndustrySolution for GridSolution {
             reliability_score: 0.99,    // Simplified
         };
 
-        let total_cost = problem.calculate_generation_cost(&GridSolution {
+        let total_cost = problem.calculate_generation_cost(&Self {
             generation_schedule: generation_schedule.clone(),
             transmission_flows: transmission_flows.clone(),
             storage_operations: storage_operations.clone(),
@@ -483,7 +488,7 @@ impl IndustrySolution for GridSolution {
             grid_metrics: grid_metrics.clone(),
         });
 
-        Ok(GridSolution {
+        Ok(Self {
             generation_schedule,
             transmission_flows,
             storage_operations,
@@ -561,30 +566,34 @@ impl IndustrySolution for GridSolution {
         output.push_str("# Smart Grid Optimization Solution\n\n");
 
         output.push_str("## Solution Summary\n");
-        output.push_str(&format!("Total Cost: ${:.2}\n", self.total_cost));
-        output.push_str(&format!(
+        let _ = writeln!(output, "Total Cost: ${:.2}", self.total_cost);
+        let _ = write!(
+            output,
             "Peak Demand: {:.1} MW\n",
             self.grid_metrics.peak_demand
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Total Energy: {:.1} MWh\n",
             self.grid_metrics.total_energy
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Load Factor: {:.1}%\n",
             self.grid_metrics.load_factor * 100.0
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Grid Efficiency: {:.1}%\n",
             self.grid_metrics.efficiency * 100.0
-        ));
+        );
 
         output.push_str("\n## Generation Schedule\n");
         for (g, schedule) in self.generation_schedule.iter().enumerate() {
-            output.push_str(&format!("Generator {}: ", g + 1));
+            let _ = write!(output, "Generator {}: ", g + 1);
             for (t, &generation) in schedule.iter().enumerate() {
                 if generation > 1e-6 {
-                    output.push_str(&format!("T{}: {:.1}MW ", t + 1, generation));
+                    let _ = write!(output, "T{}: {:.1}MW ", t + 1, generation);
                 }
             }
             output.push('\n');
@@ -592,7 +601,7 @@ impl IndustrySolution for GridSolution {
 
         output.push_str("\n## Grid Performance Metrics\n");
         for (key, value) in self.metrics() {
-            output.push_str(&format!("{}: {:.3}\n", key, value));
+            let _ = writeln!(output, "{key}: {value:.3}");
         }
 
         Ok(output)
@@ -645,13 +654,13 @@ pub struct WindFarm {
 /// Battery energy storage system
 #[derive(Debug, Clone)]
 pub struct BatterySystem {
-    /// Energy capacity (MWh)
+    /// Energy capacity (`MWh`)
     pub energy_capacity: f64,
     /// Power capacity (MW)
     pub power_capacity: f64,
     /// Round-trip efficiency
     pub efficiency: f64,
-    /// Installation cost ($/MWh)
+    /// Installation cost ($/`MWh`)
     pub installation_cost: f64,
     /// Cycle life
     pub cycle_life: usize,
@@ -664,7 +673,8 @@ pub struct BinarySmartGridOptimization {
 }
 
 impl BinarySmartGridOptimization {
-    pub fn new(inner: SmartGridOptimization) -> Self {
+    #[must_use]
+    pub const fn new(inner: SmartGridOptimization) -> Self {
         Self { inner }
     }
 }
@@ -739,10 +749,10 @@ pub fn create_benchmark_problems(
 
     // Problem 2: Larger grid with storage
     if size >= 5 {
-        let large_capacities = (0..size).map(|i| 50.0 + i as f64 * 20.0).collect();
-        let large_costs = (0..size).map(|i| 20.0 + i as f64 * 5.0).collect();
+        let large_capacities = (0..size).map(|i| (i as f64).mul_add(20.0, 50.0)).collect();
+        let large_costs = (0..size).map(|i| (i as f64).mul_add(5.0, 20.0)).collect();
         let large_demands = (0..3)
-            .map(|_| (0..6).map(|t| 30.0 + t as f64 * 15.0).collect())
+            .map(|_| (0..6).map(|t| f64::from(t).mul_add(15.0, 30.0)).collect())
             .collect();
 
         let mut large_grid =
@@ -782,7 +792,7 @@ pub fn solve_grid_optimization(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 20000;
+        p.num_sweeps = 20_000;
         p.num_repetitions = 30;
         p.initial_temperature = 4.0;
         p.final_temperature = 0.001;
@@ -819,7 +829,7 @@ mod tests {
             demand_forecasts,
             2,
         )
-        .unwrap();
+        .expect("failed to create smart grid in test");
 
         assert_eq!(grid.num_generators, 2);
         assert_eq!(grid.num_demand_nodes, 2);
@@ -836,7 +846,7 @@ mod tests {
             vec![vec![50.0], vec![30.0], vec![20.0]],
             1,
         )
-        .unwrap();
+        .expect("failed to create smart grid in test");
 
         assert!(grid.add_transmission_line(0, 1, 100.0, 2.0).is_ok());
         assert!(grid.add_transmission_line(1, 2, 150.0, 3.0).is_ok());
@@ -853,7 +863,7 @@ mod tests {
             vec![vec![50.0], vec![30.0]],
             1,
         )
-        .unwrap();
+        .expect("failed to create smart grid in test");
 
         let storage = EnergyStorageSystem {
             capacity: 100.0,
@@ -877,7 +887,7 @@ mod tests {
             vec![vec![50.0, 80.0], vec![30.0, 60.0]],
             2,
         )
-        .unwrap();
+        .expect("failed to create smart grid in test");
 
         assert_eq!(grid.calculate_total_demand(0), 80.0); // 50 + 30
         assert_eq!(grid.calculate_total_demand(1), 140.0); // 80 + 60
@@ -893,7 +903,7 @@ mod tests {
             vec![vec![50.0, 80.0], vec![30.0, 60.0]],
             2,
         )
-        .unwrap();
+        .expect("failed to create smart grid in test");
 
         assert!(grid.validate().is_ok());
 
@@ -906,14 +916,15 @@ mod tests {
             vec![vec![50.0, 80.0], vec![30.0, 60.0]],
             2,
         )
-        .unwrap();
+        .expect("failed to create insufficient grid in test");
 
         assert!(insufficient_grid.validate().is_err());
     }
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(5).unwrap();
+        let problems =
+            create_benchmark_problems(5).expect("failed to create benchmark problems in test");
         assert_eq!(problems.len(), 2);
 
         for problem in &problems {

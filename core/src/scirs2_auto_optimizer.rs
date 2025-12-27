@@ -717,8 +717,7 @@ impl AutoOptimizer {
             // Add reasoning for high-scoring backends
             if score > 0.7 {
                 reasoning.push(format!(
-                    "{:?} backend scores {:.2} due to good fit for problem characteristics",
-                    backend_type, score
+                    "{backend_type:?} backend scores {score:.2} due to good fit for problem characteristics"
                 ));
             }
         }
@@ -726,7 +725,7 @@ impl AutoOptimizer {
         // Find best backend
         let (best_backend, best_score) = scores
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or_else(|| QuantRS2Error::InvalidInput("No backends available".to_string()))?;
 
         // Generate alternatives
@@ -735,7 +734,7 @@ impl AutoOptimizer {
             .filter(|(backend, _)| *backend != best_backend)
             .map(|(backend, score)| (*backend, *score))
             .collect();
-        alternatives.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        alternatives.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         alternatives.truncate(3); // Top 3 alternatives
 
         // Generate configuration
@@ -746,8 +745,7 @@ impl AutoOptimizer {
 
         // Add selection reasoning
         reasoning.push(format!(
-            "Selected {:?} backend with confidence {:.2}",
-            best_backend, best_score
+            "Selected {best_backend:?} backend with confidence {best_score:.2}"
         ));
 
         if analysis.num_qubits >= self.config.gpu_threshold_qubits && self.platform_caps.has_gpu() {
@@ -782,7 +780,8 @@ impl AutoOptimizer {
         // Problem size compatibility
         let size_weight = 0.3;
         let size_score = if analysis.num_qubits <= profile.problem_size_limits.max_qubits {
-            1.0 - (analysis.num_qubits as f64 / profile.problem_size_limits.max_qubits as f64) * 0.5
+            (analysis.num_qubits as f64 / profile.problem_size_limits.max_qubits as f64)
+                .mul_add(-0.5, 1.0)
         } else {
             0.0 // Cannot handle problem size
         };
@@ -794,10 +793,10 @@ impl AutoOptimizer {
         let perf_score = match self.config.performance_bias {
             bias if bias > 0.7 => profile.metrics.throughput / 10000.0, // Prefer high throughput
             bias if bias < 0.3 => 1.0 / (profile.metrics.latency * 1000.0), // Prefer low latency
-            _ => {
-                (profile.metrics.throughput / 10000.0 + 1.0 / (profile.metrics.latency * 1000.0))
-                    / 2.0
-            }
+            _ => f64::midpoint(
+                profile.metrics.throughput / 10000.0,
+                1.0 / (profile.metrics.latency * 1000.0),
+            ),
         };
         score += perf_score.min(1.0) * perf_weight;
         weight_sum += perf_weight;
@@ -805,7 +804,7 @@ impl AutoOptimizer {
         // Resource constraints
         let resource_weight = 0.2;
         let resource_score = if analysis.memory_estimate_gb <= self.config.max_memory_gb {
-            1.0 - (analysis.memory_estimate_gb / self.config.max_memory_gb) * 0.3
+            (analysis.memory_estimate_gb / self.config.max_memory_gb).mul_add(-0.3, 1.0)
         } else {
             0.0 // Exceeds memory limits
         };
@@ -853,7 +852,7 @@ impl AutoOptimizer {
             score /= weight_sum;
         }
 
-        Ok(score.max(0.0).min(1.0))
+        Ok(score.clamp(0.0, 1.0))
     }
 
     /// Generate backend configuration
@@ -940,7 +939,7 @@ impl AutoOptimizer {
         let mut parameterized_gates = 0;
 
         for gate in gates {
-            let gate_name = format!("{:?}", gate);
+            let gate_name = format!("{gate:?}");
             *gate_types.entry(gate_name).or_insert(0) += 1;
 
             match gate {
@@ -1026,7 +1025,7 @@ impl AutoOptimizer {
         let complex_size = 16; // bytes per Complex64
         let base_memory = (state_vector_size * complex_size) as f64 / (1024.0 * 1024.0 * 1024.0);
         let overhead_factor = 1.5; // Account for intermediate calculations
-        let depth_factor = 1.0 + (circuit_depth as f64 * 0.01);
+        let depth_factor = (circuit_depth as f64).mul_add(0.01, 1.0);
 
         base_memory * overhead_factor * depth_factor
     }
@@ -1124,7 +1123,7 @@ impl AutoOptimizer {
         let memory_gb = Self::estimate_memory_requirements(num_qubits, circuit_depth);
 
         let cpu_cores = if parallelization.gate_parallelism > 0.5 {
-            (num_qubits / 2).max(2).min(16)
+            (num_qubits / 2).clamp(2, 16)
         } else {
             1
         };
@@ -1146,7 +1145,7 @@ impl AutoOptimizer {
         let base_time_ms = match complexity.time_complexity {
             ComplexityClass::Linear => circuit_depth as f64 * 0.1,
             ComplexityClass::Quadratic => circuit_depth as f64 * circuit_depth as f64 * 0.001,
-            ComplexityClass::Exponential => 2.0_f64.powf(num_qubits as f64 * 0.5),
+            ComplexityClass::Exponential => (num_qubits as f64 * 0.5).exp2(),
             _ => 1000.0,
         };
 
@@ -1196,8 +1195,7 @@ impl AutoOptimizer {
                     recommendations.push(OptimizationRecommendation {
                         recommendation_type: RecommendationType::BackendSwitch,
                         description: format!(
-                            "Consider switching to {:?} backend for better performance",
-                            alt_backend
+                            "Consider switching to {alt_backend:?} backend for better performance"
                         ),
                         expected_improvement: score - selection.confidence,
                         difficulty: 3,
@@ -1391,7 +1389,7 @@ mod tests {
     #[test]
     fn test_problem_analysis() {
         let config = AutoOptimizerConfig::default();
-        let mut optimizer = AutoOptimizer::new(config).unwrap();
+        let mut optimizer = AutoOptimizer::new(config).expect("Failed to create AutoOptimizer");
 
         let gates = vec![
             GateType::H,
@@ -1403,7 +1401,7 @@ mod tests {
         let analysis = optimizer.analyze_problem(&gates, 5, ProblemType::Simulation);
         assert!(analysis.is_ok());
 
-        let analysis = analysis.unwrap();
+        let analysis = analysis.expect("Failed to analyze problem");
         assert_eq!(analysis.num_qubits, 5);
         assert_eq!(analysis.gate_composition.total_gates, 4);
         assert_eq!(analysis.problem_type, ProblemType::Simulation);
@@ -1412,7 +1410,7 @@ mod tests {
     #[test]
     fn test_backend_selection() {
         let config = AutoOptimizerConfig::default();
-        let optimizer = AutoOptimizer::new(config).unwrap();
+        let optimizer = AutoOptimizer::new(config).expect("Failed to create AutoOptimizer");
 
         let analysis = ProblemAnalysis {
             num_qubits: 10,
@@ -1462,7 +1460,7 @@ mod tests {
         let selection = optimizer.select_backend(&analysis);
         assert!(selection.is_ok());
 
-        let selection = selection.unwrap();
+        let selection = selection.expect("Failed to select backend");
         assert!(selection.confidence > 0.0);
         assert!(!selection.reasoning.is_empty());
     }
@@ -1470,7 +1468,7 @@ mod tests {
     #[test]
     fn test_recommendations() {
         let config = AutoOptimizerConfig::default();
-        let optimizer = AutoOptimizer::new(config).unwrap();
+        let optimizer = AutoOptimizer::new(config).expect("Failed to create AutoOptimizer");
 
         let analysis = ProblemAnalysis {
             num_qubits: 15,
@@ -1517,7 +1515,9 @@ mod tests {
             },
         };
 
-        let selection = optimizer.select_backend(&analysis).unwrap();
+        let selection = optimizer
+            .select_backend(&analysis)
+            .expect("Failed to select backend");
         let recommendations = optimizer.get_recommendations(&analysis, &selection);
 
         assert!(!recommendations.is_empty());
@@ -1527,6 +1527,6 @@ mod tests {
             .iter()
             .any(|r| r.recommendation_type == RecommendationType::MemoryOptimization);
 
-        assert!(has_memory_rec || recommendations.len() > 0);
+        assert!(has_memory_rec || !recommendations.is_empty());
     }
 }

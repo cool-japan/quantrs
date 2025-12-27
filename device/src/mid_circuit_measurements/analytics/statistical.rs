@@ -11,7 +11,7 @@ pub struct StatisticalAnalyzer {
 
 impl StatisticalAnalyzer {
     /// Create new statistical analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -54,10 +54,10 @@ impl StatisticalAnalyzer {
 
         // Calculate median
         let mut sorted_latencies = latencies.to_vec();
-        sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median_latency = if sorted_latencies.len() % 2 == 0 {
             let mid = sorted_latencies.len() / 2;
-            (sorted_latencies[mid - 1] + sorted_latencies[mid]) / 2.0
+            f64::midpoint(sorted_latencies[mid - 1], sorted_latencies[mid])
         } else {
             sorted_latencies[sorted_latencies.len() / 2]
         };
@@ -96,7 +96,8 @@ impl StatisticalAnalyzer {
         if lower == upper {
             sorted_data[lower]
         } else {
-            sorted_data[lower] + (index - lower as f64) * (sorted_data[upper] - sorted_data[lower])
+            (index - lower as f64)
+                .mul_add(sorted_data[upper] - sorted_data[lower], sorted_data[lower])
         }
     }
 

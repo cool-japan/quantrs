@@ -291,6 +291,7 @@ impl Constraint {
     }
 
     /// Evaluate constraint violation for a given solution
+    #[must_use]
     pub fn evaluate(&self, solution: &[i8]) -> f64 {
         // Calculate sum of variables in the constraint
         let sum: i8 = self
@@ -299,7 +300,7 @@ impl Constraint {
             .filter_map(|&idx| solution.get(idx))
             .sum();
 
-        let value = sum as f64;
+        let value = f64::from(sum);
 
         match self.constraint_type {
             ConstraintType::Equality => (value - self.target_value).abs(),
@@ -314,6 +315,7 @@ impl Constraint {
     }
 
     /// Check if constraint is violated
+    #[must_use]
     pub fn is_violated(&self, solution: &[i8]) -> bool {
         let violation = self.evaluate(solution);
 
@@ -325,6 +327,7 @@ impl Constraint {
     }
 
     /// Get penalty term contribution
+    #[must_use]
     pub fn penalty_term(&self, solution: &[i8]) -> f64 {
         let violation = self.evaluate(solution);
         self.penalty_coefficient * violation * violation
@@ -336,7 +339,7 @@ impl Default for AdaptiveConstraintConfig {
         Self {
             initial_penalty: 10.0,
             min_penalty: 0.1,
-            max_penalty: 10000.0,
+            max_penalty: 10_000.0,
             penalty_strategy: PenaltyStrategy::Adaptive,
             penalty_increase_factor: 1.5,
             penalty_decrease_factor: 0.9,
@@ -353,6 +356,7 @@ impl Default for AdaptiveConstraintConfig {
 
 impl AdaptiveConstraintHandler {
     /// Create a new adaptive constraint handler
+    #[must_use]
     pub fn new(config: AdaptiveConstraintConfig) -> Self {
         Self {
             config,
@@ -379,6 +383,7 @@ impl AdaptiveConstraintHandler {
     }
 
     /// Evaluate all constraints for a solution
+    #[must_use]
     pub fn evaluate_all(&self, solution: &[i8]) -> HashMap<String, f64> {
         self.constraints
             .iter()
@@ -387,11 +392,13 @@ impl AdaptiveConstraintHandler {
     }
 
     /// Check if solution satisfies all constraints
+    #[must_use]
     pub fn is_feasible(&self, solution: &[i8]) -> bool {
         self.constraints.values().all(|c| !c.is_violated(solution))
     }
 
     /// Get total penalty for a solution
+    #[must_use]
     pub fn total_penalty(&self, solution: &[i8]) -> f64 {
         self.constraints
             .values()
@@ -479,7 +486,7 @@ impl AdaptiveConstraintHandler {
                 // Adaptive strategy based on violation history
                 let violation_factor =
                     (violation / constraint.target_value.abs().max(1.0)).min(10.0);
-                let increase_mult = 1.0 + (priority_factor * violation_factor * 0.1);
+                let increase_mult = (priority_factor * violation_factor).mul_add(0.1, 1.0);
                 constraint.penalty_coefficient *= increase_mult;
             }
             PenaltyStrategy::Exponential => {
@@ -591,7 +598,8 @@ impl AdaptiveConstraintHandler {
     }
 
     /// Get statistics
-    pub fn get_statistics(&self) -> &ConstraintStatistics {
+    #[must_use]
+    pub const fn get_statistics(&self) -> &ConstraintStatistics {
         &self.statistics
     }
 
@@ -652,6 +660,7 @@ impl AdaptiveConstraintHandler {
     }
 
     /// Get violation history for a specific constraint
+    #[must_use]
     pub fn get_constraint_history(&self, constraint_id: &str) -> Vec<&ViolationRecord> {
         self.violation_history
             .iter()
@@ -660,6 +669,7 @@ impl AdaptiveConstraintHandler {
     }
 
     /// Get most violated constraints
+    #[must_use]
     pub fn get_most_violated_constraints(&self, top_k: usize) -> Vec<&Constraint> {
         let mut constraints: Vec<&Constraint> = self.constraints.values().collect();
         constraints.sort_by(|a, b| b.violation_count.cmp(&a.violation_count));
@@ -798,7 +808,10 @@ mod tests {
         let violated_solution = vec![1, 1, 0];
         handler.adapt_penalties(&violated_solution);
 
-        let updated_constraint = handler.constraints.get("c1").unwrap();
+        let updated_constraint = handler
+            .constraints
+            .get("c1")
+            .expect("constraint 'c1' should exist");
         assert!(updated_constraint.penalty_coefficient > initial_penalty);
     }
 
@@ -873,7 +886,10 @@ mod tests {
 
         handler.apply_relaxation();
 
-        let updated_constraint = handler.constraints.get("c1").unwrap();
+        let updated_constraint = handler
+            .constraints
+            .get("c1")
+            .expect("constraint 'c1' should exist");
         assert!(updated_constraint.tolerance > initial_tolerance);
     }
 

@@ -68,7 +68,7 @@ pub struct ProjectiveMeasurement {
 
 impl ProjectiveMeasurement {
     /// Create a new projective measurement
-    pub fn new(qubits: Vec<QubitId>) -> Self {
+    pub const fn new(qubits: Vec<QubitId>) -> Self {
         Self {
             qubits,
             outcome: None,
@@ -76,7 +76,7 @@ impl ProjectiveMeasurement {
     }
 
     /// Create a measurement that projects onto a specific outcome
-    pub fn with_outcome(qubits: Vec<QubitId>, outcome: usize) -> Self {
+    pub const fn with_outcome(qubits: Vec<QubitId>, outcome: usize) -> Self {
         Self {
             qubits,
             outcome: Some(outcome),
@@ -141,34 +141,31 @@ impl ProjectiveMeasurement {
 
 impl QuantumOperation for ProjectiveMeasurement {
     fn apply_to_state(&self, state: &ArrayView1<Complex64>) -> QuantRS2Result<OperationResult> {
-        match self.outcome {
-            Some(outcome) => {
-                // Project onto specific outcome
-                let (prob, new_state) = self.project_onto_outcome(state, outcome)?;
-                Ok(OperationResult::Probabilistic {
-                    outcome,
-                    probability: prob,
-                    state: new_state,
-                })
-            }
-            None => {
-                // Calculate all outcomes
-                let probabilities = self.get_probabilities(state)?;
-                let mut outcomes = Vec::new();
+        if let Some(outcome) = self.outcome {
+            // Project onto specific outcome
+            let (prob, new_state) = self.project_onto_outcome(state, outcome)?;
+            Ok(OperationResult::Probabilistic {
+                outcome,
+                probability: prob,
+                state: new_state,
+            })
+        } else {
+            // Calculate all outcomes
+            let probabilities = self.get_probabilities(state)?;
+            let mut outcomes = Vec::new();
 
-                for (outcome, &prob) in probabilities.iter().enumerate() {
-                    if prob > 1e-10 {
-                        let (_, new_state) = self.project_onto_outcome(state, outcome)?;
-                        outcomes.push(MeasurementOutcome {
-                            outcome,
-                            probability: prob,
-                            state: new_state,
-                        });
-                    }
+            for (outcome, &prob) in probabilities.iter().enumerate() {
+                if prob > 1e-10 {
+                    let (_, new_state) = self.project_onto_outcome(state, outcome)?;
+                    outcomes.push(MeasurementOutcome {
+                        outcome,
+                        probability: prob,
+                        state: new_state,
+                    });
                 }
-
-                Ok(OperationResult::MultiOutcome(outcomes))
             }
+
+            Ok(OperationResult::MultiOutcome(outcomes))
         }
     }
 
@@ -337,7 +334,7 @@ pub struct Reset {
 
 impl Reset {
     /// Create a new reset operation
-    pub fn new(qubits: Vec<QubitId>) -> Self {
+    pub const fn new(qubits: Vec<QubitId>) -> Self {
         Self { qubits }
     }
 }
@@ -468,7 +465,9 @@ mod tests {
         ]);
 
         let measurement = ProjectiveMeasurement::new(vec![QubitId(0)]);
-        let probs = measurement.get_probabilities(&state.view()).unwrap();
+        let probs = measurement
+            .get_probabilities(&state.view())
+            .expect("Failed to compute measurement probabilities");
 
         assert!((probs[0] - 0.5).abs() < 1e-10);
         assert!((probs[1] - 0.5).abs() < 1e-10);
@@ -480,7 +479,9 @@ mod tests {
         let state = Array1::from_vec(vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)]);
 
         let reset = Reset::new(vec![QubitId(0)]);
-        let result = reset.apply_to_state(&state.view()).unwrap();
+        let result = reset
+            .apply_to_state(&state.view())
+            .expect("Failed to apply reset operation to state");
 
         match result {
             OperationResult::Deterministic(new_state) => {

@@ -170,7 +170,7 @@ impl CircuitVisualization {
         // Add qubit labels
         let mut result = String::new();
         for q in 0..self.n_qubits {
-            write!(result, "q{q}:").unwrap();
+            let _ = write!(result, "q{q}:");
             // Padding to align all circuits
             for _ in 0..3 {
                 result.push(' ');
@@ -206,7 +206,7 @@ impl CircuitVisualization {
                     // Single-qubit gate
                     gate_symbol = op.gate_type.symbol().to_string();
                     if let Some(params) = &op.params {
-                        write!(gate_symbol, "({params})").unwrap();
+                        let _ = write!(gate_symbol, "({params})");
                     }
                 } else {
                     // Multi-qubit gate
@@ -232,19 +232,19 @@ impl CircuitVisualization {
                                     GateType::CRX => {
                                         gate_symbol = "Rx".to_string();
                                         if let Some(params) = &op.params {
-                                            write!(gate_symbol, "({params})").unwrap();
+                                            let _ = write!(gate_symbol, "({params})");
                                         }
                                     }
                                     GateType::CRY => {
                                         gate_symbol = "Ry".to_string();
                                         if let Some(params) = &op.params {
-                                            write!(gate_symbol, "({params})").unwrap();
+                                            let _ = write!(gate_symbol, "({params})");
                                         }
                                     }
                                     GateType::CRZ => {
                                         gate_symbol = "Rz".to_string();
                                         if let Some(params) = &op.params {
-                                            write!(gate_symbol, "({params})").unwrap();
+                                            let _ = write!(gate_symbol, "({params})");
                                         }
                                     }
                                     _ => unreachable!(),

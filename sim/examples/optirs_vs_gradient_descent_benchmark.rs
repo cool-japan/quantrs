@@ -264,7 +264,7 @@ fn run_vqe_benchmark() -> Result<Vec<BenchmarkResult>> {
         ];
 
         for (name, opt_type, lr) in optimizers {
-            println!("  Running {}...", name);
+            println!("  Running {name}...");
             let mut vqe = VQEWithAutodiff {
                 ansatz: build_ansatz(num_qubits, num_layers),
                 hamiltonian: build_h2_hamiltonian()?,
@@ -315,7 +315,7 @@ fn run_qaoa_benchmark() -> Result<Vec<BenchmarkResult>> {
     let mut edge_weights = HashMap::new();
 
     // Square graph
-    for (i, j) in vec![(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)] {
+    for (i, j) in [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)] {
         adjacency_matrix[[i, j]] = 1.0;
         adjacency_matrix[[j, i]] = 1.0;
         edge_weights.insert((i, j), 1.0);
@@ -370,8 +370,7 @@ fn run_qaoa_benchmark() -> Result<Vec<BenchmarkResult>> {
         ..Default::default()
     };
 
-    let mut qaoa_optirs =
-        QAOAOptimizer::new(config_optirs, graph.clone(), QAOAProblemType::MaxCut)?;
+    let mut qaoa_optirs = QAOAOptimizer::new(config_optirs, graph, QAOAProblemType::MaxCut)?;
     let start = Instant::now();
     let result_optirs = qaoa_optirs.optimize()?;
     let time_optirs = start.elapsed();

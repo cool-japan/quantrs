@@ -34,22 +34,18 @@ impl PulseEnvelope {
     /// Evaluate the envelope at time t (normalized to pulse duration)
     pub fn evaluate(&self, t: f64) -> f64 {
         match self {
-            PulseEnvelope::Gaussian { sigma } => {
+            Self::Gaussian { sigma } | Self::DRAG { sigma, beta: _ } => {
                 let t_norm = (t - 0.5) / sigma;
                 (-0.5 * t_norm * t_norm).exp()
             }
-            PulseEnvelope::DRAG { sigma, beta: _ } => {
-                let t_norm = (t - 0.5) / sigma;
-                (-0.5 * t_norm * t_norm).exp()
-            }
-            PulseEnvelope::Square => {
+            Self::Square => {
                 if t >= 0.0 && t <= 1.0 {
                     1.0
                 } else {
                     0.0
                 }
             }
-            PulseEnvelope::RaisedCosine => {
+            Self::RaisedCosine => {
                 if t >= 0.0 && t <= 1.0 {
                     let phase = 2.0 * PI * t;
                     0.5 * (1.0 - phase.cos())
@@ -57,11 +53,11 @@ impl PulseEnvelope {
                     0.0
                 }
             }
-            PulseEnvelope::HyperbolicSecant { width } => {
+            Self::HyperbolicSecant { width } => {
                 let t_scaled = (t - 0.5) / width;
                 1.0 / t_scaled.cosh()
             }
-            PulseEnvelope::HermiteGaussian { n, sigma } => {
+            Self::HermiteGaussian { n, sigma } => {
                 let t_norm = (t - 0.5) / sigma;
                 let gaussian = (-0.5 * t_norm * t_norm).exp();
                 let hermite = self.hermite_polynomial(*n, t_norm);
@@ -79,7 +75,7 @@ impl PulseEnvelope {
                 let mut h_prev_prev = 1.0;
                 let mut h_prev = 2.0 * x;
                 for i in 2..=n {
-                    let h_curr = 2.0 * x * h_prev - 2.0 * (i - 1) as f64 * h_prev_prev;
+                    let h_curr = (2.0 * x).mul_add(h_prev, -(2.0 * (i - 1) as f64 * h_prev_prev));
                     h_prev_prev = h_prev;
                     h_prev = h_curr;
                 }
@@ -91,7 +87,7 @@ impl PulseEnvelope {
     /// Get DRAG derivative component for DRAG pulses
     pub fn drag_derivative(&self, t: f64) -> f64 {
         match self {
-            PulseEnvelope::DRAG { sigma, beta } => {
+            Self::DRAG { sigma, beta } => {
                 let t_norm = (t - 0.5) / sigma;
                 let gaussian = (-0.5 * t_norm * t_norm).exp();
                 let derivative = -t_norm / sigma * gaussian;
@@ -187,7 +183,7 @@ impl Pulse {
                 0.0
             };
 
-            let total_phase = 2.0 * PI * self.frequency * t + self.phase + phase_mod;
+            let total_phase = (2.0 * PI * self.frequency).mul_add(t, self.phase) + phase_mod;
             let complex_amplitude = Complex64::new(0.0, total_phase).exp();
 
             waveform[i] = self.amplitude * envelope_value * complex_amplitude;
@@ -217,7 +213,7 @@ impl Pulse {
                 0.0
             };
 
-            let total_phase = 2.0 * PI * self.frequency * t + self.phase + phase_mod;
+            let total_phase = (2.0 * PI * self.frequency).mul_add(t, self.phase) + phase_mod;
 
             // I component: normal pulse
             i_component[i] =
@@ -355,7 +351,7 @@ pub struct PulseSequence {
 
 impl PulseSequence {
     /// Create a new pulse sequence
-    pub fn new(name: String) -> Self {
+    pub const fn new(name: String) -> Self {
         Self {
             pulses: Vec::new(),
             duration: 0.0,
@@ -388,8 +384,7 @@ impl PulseSequence {
             for &(existing_start, existing_end) in timings.iter() {
                 if start_time < &existing_end && end_time > existing_start {
                     return Err(QuantRS2Error::InvalidOperation(format!(
-                        "Pulse overlap detected on qubit {:?}",
-                        qubit
+                        "Pulse overlap detected on qubit {qubit:?}"
                     )));
                 }
             }
@@ -593,8 +588,7 @@ impl PulseCompiler {
             }
             _ => {
                 return Err(QuantRS2Error::InvalidOperation(format!(
-                    "Gate '{}' not supported in pulse compiler",
-                    gate_name
+                    "Gate '{gate_name}' not supported in pulse compiler"
                 )));
             }
         }
@@ -617,7 +611,7 @@ impl PulseCompiler {
         // Ensure minimum pulse separation
         sequence
             .pulses
-            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         for i in 1..sequence.pulses.len() {
             let prev_end = sequence.pulses[i - 1].0 + sequence.pulses[i - 1].2.duration;
@@ -677,7 +671,7 @@ impl PulseCompiler {
             2.0,
         );
 
-        let mut sequence = PulseSequence::new(format!("R({:.3}, {:.3})", theta, phi));
+        let mut sequence = PulseSequence::new(format!("R({theta:.3}, {phi:.3})"));
         sequence.add_pulse(0.0, qubit, pulse);
 
         Ok(sequence)
@@ -718,15 +712,17 @@ impl PulseNoiseModel {
         use scirs2_core::random::prelude::*;
 
         // Apply amplitude noise
-        let amplitude_factor = 1.0 + rng.gen_range(0.0..1.0) * self.amplitude_noise;
+        let amplitude_factor = rng
+            .gen_range(0.0_f64..1.0_f64)
+            .mul_add(self.amplitude_noise, 1.0_f64);
         pulse.amplitude *= amplitude_factor;
 
         // Apply phase noise
-        let phase_shift = rng.gen_range(0.0..1.0) * self.phase_noise;
+        let phase_shift = rng.gen_range(0.0_f64..1.0_f64) * self.phase_noise;
         pulse.phase += phase_shift;
 
         // Apply frequency noise
-        let freq_shift = rng.gen_range(0.0..1.0) * self.flux_noise / 1000.0; // Convert MHz to GHz
+        let freq_shift = rng.gen_range(0.0_f64..1.0_f64) * self.flux_noise / 1000.0; // Convert MHz to GHz
         pulse.frequency += freq_shift;
 
         Ok(())
@@ -779,7 +775,9 @@ mod tests {
             2.0, // 2 GSa/s
         );
 
-        let waveform = pulse.generate_waveform().unwrap();
+        let waveform = pulse
+            .generate_waveform()
+            .expect("Failed to generate waveform");
         assert_eq!(waveform.len(), 20); // 10 ns * 2 GSa/s = 20 samples
 
         // Check that waveform is not all zeros
@@ -801,7 +799,9 @@ mod tests {
             2.0,
         );
 
-        let (i_comp, q_comp) = pulse.generate_drag_waveform().unwrap();
+        let (i_comp, q_comp) = pulse
+            .generate_drag_waveform()
+            .expect("Failed to generate DRAG waveform");
         assert_eq!(i_comp.len(), 40);
         assert_eq!(q_comp.len(), 40);
 
@@ -820,7 +820,9 @@ mod tests {
         let gate = PauliX { target: QubitId(0) };
         let qubits = vec![QubitId(0)];
 
-        let sequence = compiler.compile_gate(&gate, &qubits).unwrap();
+        let sequence = compiler
+            .compile_gate(&gate, &qubits)
+            .expect("Failed to compile single qubit gate");
         assert_eq!(sequence.pulses.len(), 1);
         assert_eq!(sequence.pulses[0].1, QubitId(0));
     }
@@ -836,7 +838,9 @@ mod tests {
         };
         let qubits = vec![QubitId(0), QubitId(1)];
 
-        let sequence = compiler.compile_gate(&gate, &qubits).unwrap();
+        let sequence = compiler
+            .compile_gate(&gate, &qubits)
+            .expect("Failed to compile CNOT gate");
         assert!(sequence.pulses.len() >= 2); // Should have multiple pulses for CNOT
     }
 
@@ -876,7 +880,7 @@ mod tests {
 
         let sequence = compiler
             .generate_arbitrary_rotation(QubitId(0), theta, phi)
-            .unwrap();
+            .expect("Failed to generate arbitrary rotation");
         assert_eq!(sequence.pulses.len(), 1);
 
         let (_, _, pulse) = &sequence.pulses[0];
@@ -896,7 +900,9 @@ mod tests {
 
         sequence.add_pulse(2.7, QubitId(0), pulse); // Non-aligned timing
 
-        compiler.optimize_sequence(&mut sequence).unwrap();
+        compiler
+            .optimize_sequence(&mut sequence)
+            .expect("Failed to optimize sequence");
 
         // Should be rounded to clock resolution
         assert!((sequence.pulses[0].0 - 3.0).abs() < 1e-10);

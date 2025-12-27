@@ -345,7 +345,7 @@ impl Default for AdvancedLearningConfig {
 pub enum ActivationFunction {
     /// Rectified Linear Unit
     ReLU,
-    /// Leaky ReLU
+    /// Leaky `ReLU`
     LeakyReLU,
     /// Exponential Linear Unit
     ELU,
@@ -736,7 +736,7 @@ pub enum QuantumPlatform {
     IBM,
     /// Google Quantum AI
     Google,
-    /// IonQ trapped ion
+    /// `IonQ` trapped ion
     IonQ,
     /// Rigetti superconducting
     Rigetti,
@@ -988,6 +988,7 @@ pub struct QuantumReservoirState {
 
 impl QuantumReservoirState {
     /// Create new reservoir state
+    #[must_use]
     pub fn new(num_qubits: usize, memory_capacity: usize) -> Self {
         let state_size = 1 << num_qubits;
         let mut state_vector = Array1::zeros(state_size);
@@ -1134,7 +1135,7 @@ impl QuantumReservoirComputer {
             simulator,
             circuit_interface,
             metrics: ReservoirMetrics::default(),
-            training_history: VecDeque::with_capacity(10000),
+            training_history: VecDeque::with_capacity(10_000),
         })
     }
 
@@ -1630,7 +1631,7 @@ impl QuantumReservoirComputer {
             .reservoir_state
             .state_vector
             .iter()
-            .map(|x| x.norm_sqr())
+            .map(scirs2_core::Complex::norm_sqr)
             .sum::<f64>()
             .sqrt();
 
@@ -1764,7 +1765,7 @@ impl QuantumReservoirComputer {
             .reservoir_state
             .state_vector
             .iter()
-            .map(|x| x.norm_sqr())
+            .map(scirs2_core::Complex::norm_sqr)
             .collect();
 
         // Limit size for large systems
@@ -2109,12 +2110,14 @@ pub fn benchmark_quantum_reservoir_computing() -> Result<HashMap<String, f64>> {
         // Generate test data
         let training_data = ReservoirTrainingData {
             inputs: (0..100)
-                .map(|i| Array1::from_vec(vec![(i as f64 * 0.1).sin(), (i as f64 * 0.1).cos()]))
+                .map(|i| {
+                    Array1::from_vec(vec![(f64::from(i) * 0.1).sin(), (f64::from(i) * 0.1).cos()])
+                })
                 .collect(),
             targets: (0..100)
-                .map(|i| Array1::from_vec(vec![(i as f64).mul_add(0.1, 1.0).sin()]))
+                .map(|i| Array1::from_vec(vec![f64::from(i).mul_add(0.1, 1.0).sin()]))
                 .collect(),
-            timestamps: (0..100).map(|i| i as f64 * 0.1).collect(),
+            timestamps: (0..100).map(|i| f64::from(i) * 0.1).collect(),
         };
 
         // Train and test
@@ -2163,13 +2166,14 @@ mod tests {
             evolution_steps: 2,
             ..Default::default()
         };
-        let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
         let input = Array1::from_vec(vec![0.5, 0.3, 0.8]);
         let result = qrc.process_input(&input);
         assert!(result.is_ok());
 
-        let features = result.unwrap();
+        let features = result.expect("Failed to process input");
         assert!(!features.is_empty());
     }
 
@@ -2201,9 +2205,10 @@ mod tests {
             output_measurement: OutputMeasurement::PauliExpectation,
             ..Default::default()
         };
-        let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
-        let features = qrc.extract_features().unwrap();
+        let features = qrc.extract_features().expect("Failed to extract features");
         assert_eq!(features.len(), 9); // 3 qubits × 3 Pauli operators
     }
 
@@ -2230,7 +2235,8 @@ mod tests {
             input_encoding: InputEncoding::Amplitude,
             ..Default::default()
         };
-        let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
         let input = Array1::from_vec(vec![0.5, 0.3]);
         let result = qrc.encode_input(&input);
@@ -2275,7 +2281,8 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+            let mut qrc = QuantumReservoirComputer::new(config)
+                .expect("Failed to create quantum reservoir computer");
             let result = qrc.evolve_reservoir();
             assert!(result.is_ok(), "Failed for dynamics: {dynamic:?}");
         }
@@ -2284,7 +2291,8 @@ mod tests {
     #[test]
     fn test_metrics_tracking() {
         let config = QuantumReservoirConfig::default();
-        let qrc = QuantumReservoirComputer::new(config).unwrap();
+        let qrc = QuantumReservoirComputer::new(config)
+            .expect("Failed to create quantum reservoir computer");
 
         let metrics = qrc.get_metrics();
         assert_eq!(metrics.training_examples, 0);

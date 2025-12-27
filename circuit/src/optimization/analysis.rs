@@ -9,6 +9,7 @@ use quantrs2_core::gate::GateOp;
 use quantrs2_core::qubit::QubitId;
 use std::collections::{HashMap, HashSet};
 
+use std::fmt::Write;
 /// Metrics for a quantum circuit
 #[derive(Debug, Clone)]
 pub struct CircuitMetrics {
@@ -361,30 +362,29 @@ impl OptimizationReport {
         report.push_str("Gate Type Breakdown:\n");
         report.push_str("Initial:\n");
         for (gate_type, count) in &self.initial_metrics.gate_types {
-            report.push_str(&format!("  {gate_type}: {count}\n"));
+            let _ = writeln!(report, "  {gate_type}: {count}");
         }
         report.push_str("Final:\n");
         for (gate_type, count) in &self.final_metrics.gate_types {
-            report.push_str(&format!("  {gate_type}: {count}\n"));
+            let _ = writeln!(report, "  {gate_type}: {count}");
         }
 
         // Additional metrics
         report.push_str("\nGate Density:\n");
-        report.push_str(&format!(
-            "  Initial: {:.2} gates/qubit\n",
+        let _ = writeln!(
+            report,
+            "  Initial: {:.2} gates/qubit",
             self.initial_metrics.gate_density
-        ));
-        report.push_str(&format!(
-            "  Final: {:.2} gates/qubit\n",
+        );
+        let _ = writeln!(
+            report,
+            "  Final: {:.2} gates/qubit",
             self.final_metrics.gate_density
-        ));
+        );
 
         report.push_str("\nParallelism Factor:\n");
-        report.push_str(&format!(
-            "  Initial: {:.2}\n",
-            self.initial_metrics.parallelism
-        ));
-        report.push_str(&format!("  Final: {:.2}\n", self.final_metrics.parallelism));
+        let _ = writeln!(report, "  Initial: {:.2}", self.initial_metrics.parallelism);
+        let _ = writeln!(report, "  Final: {:.2}", self.final_metrics.parallelism);
 
         report
     }

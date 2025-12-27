@@ -26,8 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         vec![1135.0, 961.0, 382.0, 0.0],
     ];
 
-    println!("Cities: {:?}", cities);
-    println!("Traveling between {} cities\n", num_cities);
+    println!("Cities: {cities:?}");
+    println!("Traveling between {num_cities} cities\n");
 
     // Convert TSP to QUBO formulation
     // Variables: x_{i,t} = 1 if city i is visited at time t
@@ -79,11 +79,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create variable mapping
     let var_map: HashMap<String, usize> = (0..num_cities)
         .flat_map(|city| {
-            (0..num_cities).map(move |time| (format!("x_{}_{}", city, time), var_idx(city, time)))
+            (0..num_cities).map(move |time| (format!("x_{city}_{time}"), var_idx(city, time)))
         })
         .collect();
 
-    println!("QUBO formulation complete with {} variables.\n", num_vars);
+    println!("QUBO formulation complete with {num_vars} variables.\n");
 
     // Example 1: Using Local Simulator (fastest, for development)
     println!("--- Example 1: Local Simulator ---");
@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_device(BraketDevice::LocalSimulator);
 
     println!("Running on local simulator...");
-    let local_results = local_sampler.run_qubo(&(qubo_matrix.clone(), var_map.clone()), 100)?;
+    let local_results = local_sampler.run_qubo(&(qubo_matrix.clone(), var_map), 100)?;
 
     println!("Top 3 routes from local simulator:");
     for (idx, result) in local_results.iter().take(3).enumerate() {

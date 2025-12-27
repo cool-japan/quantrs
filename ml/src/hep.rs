@@ -519,7 +519,7 @@ impl ParticleCollisionClassifier {
             10, // 10 features
             2,  // 2 classes
         )
-        .unwrap();
+        .expect("should create ParticleCollisionClassifier QNN");
 
         ParticleCollisionClassifier { qnn, num_qubits: 8 }
     }
@@ -602,7 +602,7 @@ impl EventReconstructor {
             10, // 10 input features
             10, // 10 output features
         )
-        .unwrap();
+        .expect("should create EventReconstructor QNN");
 
         EventReconstructor {
             qnn,

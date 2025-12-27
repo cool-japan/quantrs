@@ -99,7 +99,7 @@ pub struct BenchmarkingConfig {
 }
 
 /// Benchmark types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BenchmarkType {
     PerformanceStress,
     LoadTesting,
@@ -139,7 +139,7 @@ pub struct DashboardConfig {
 }
 
 /// Dashboard types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DashboardType {
     Overview,
     Detailed,
@@ -172,7 +172,7 @@ pub struct WidgetConfig {
 }
 
 /// Widget types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WidgetType {
     LineChart,
     BarChart,
@@ -225,7 +225,7 @@ impl Default for PerformanceThresholds {
 }
 
 impl ThresholdLevels {
-    pub fn warning_defaults() -> Self {
+    pub const fn warning_defaults() -> Self {
         Self {
             cpu_utilization: 70.0,
             memory_utilization: 75.0,
@@ -237,7 +237,7 @@ impl ThresholdLevels {
         }
     }
 
-    pub fn critical_defaults() -> Self {
+    pub const fn critical_defaults() -> Self {
         Self {
             cpu_utilization: 85.0,
             memory_utilization: 90.0,

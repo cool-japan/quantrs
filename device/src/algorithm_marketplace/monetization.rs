@@ -72,7 +72,7 @@ pub struct Subscription {
 }
 
 /// Subscription status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubscriptionStatus {
     Active,
     Inactive,
@@ -104,7 +104,7 @@ pub struct PlanPricing {
 }
 
 /// Billing period
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BillingPeriod {
     Daily,
     Weekly,
@@ -133,7 +133,7 @@ pub struct PlanFeature {
 }
 
 /// Feature types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureType {
     AlgorithmAccess,
     DeploymentSlots,
@@ -177,7 +177,7 @@ pub struct BillingCycle {
 }
 
 /// Billing status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BillingStatus {
     Pending,
     Paid,
@@ -207,7 +207,7 @@ pub struct RevenueRecord {
 }
 
 /// Transaction types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransactionType {
     AlgorithmPurchase,
     SubscriptionPayment,
@@ -227,7 +227,7 @@ pub struct RevenueShare {
 }
 
 /// Share types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShareType {
     Author,
     Platform,
@@ -291,7 +291,7 @@ pub struct UsageEvent {
 }
 
 /// Usage event types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UsageEventType {
     AlgorithmExecution,
     DataProcessing,
@@ -320,7 +320,7 @@ pub struct MarketConditions {
 }
 
 /// Demand levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DemandLevel {
     Low,
     Normal,
@@ -387,7 +387,7 @@ pub struct PriceExperiment {
 }
 
 /// Experiment types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExperimentType {
     ABTest,
     MultiVariate,
@@ -470,7 +470,7 @@ impl SubscriptionManager {
 }
 
 impl RevenueTracker {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             revenue_records: vec![],
             revenue_analytics: RevenueAnalytics {

@@ -78,7 +78,7 @@ impl Default for InfiniteQAOAConfig {
 }
 
 /// Depth increment strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DepthIncrementStrategy {
     /// Linear increment
     Linear,
@@ -93,7 +93,7 @@ pub enum DepthIncrementStrategy {
 }
 
 /// Parameter initialization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParameterInitializationMethod {
     /// Random initialization
     Random,
@@ -162,7 +162,7 @@ impl Default for ClassicalOptimizerConfig {
 }
 
 /// Classical optimizer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClassicalOptimizerType {
     /// Gradient Descent
     GradientDescent,
@@ -203,7 +203,7 @@ impl Default for MeasurementStrategy {
 }
 
 /// Observable decomposition methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ObservableDecomposition {
     /// Pauli string decomposition
     PauliStrings,
@@ -216,7 +216,7 @@ pub enum ObservableDecomposition {
 }
 
 /// Measurement error mitigation techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MeasurementErrorMitigation {
     /// No mitigation
     None,
@@ -231,7 +231,7 @@ pub enum MeasurementErrorMitigation {
 }
 
 /// Observable grouping strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ObservableGrouping {
     /// Group by qubit
     QubitWise,
@@ -271,7 +271,7 @@ impl Default for NoiseMitigationConfig {
 }
 
 /// Noise mitigation techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseMitigationTechnique {
     /// Zero-noise extrapolation
     ZeroNoiseExtrapolation,
@@ -344,7 +344,7 @@ pub struct DepthPerformance {
 }
 
 /// Depth selection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DepthSelectionStrategy {
     /// Conservative increment
     Conservative,
@@ -407,6 +407,7 @@ pub struct InfiniteQAOAStats {
 
 impl InfiniteDepthQAOA {
     /// Create a new infinite-depth QAOA optimizer
+    #[must_use]
     pub fn new(config: InfiniteQAOAConfig) -> Self {
         Self {
             config: config.clone(),
@@ -457,7 +458,7 @@ impl InfiniteDepthQAOA {
                     let spins: Vec<i32> = annealing_solution
                         .best_spins
                         .iter()
-                        .map(|&s| s as i32)
+                        .map(|&s| i32::from(s))
                         .collect();
                     Ok(Ok(spins))
                 }
@@ -522,17 +523,17 @@ impl InfiniteDepthQAOA {
     }
 
     /// Estimate problem size from generic type
-    fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
+    const fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // For now, use reasonable default
         16
     }
 
     /// Generate hash for problem to ensure consistent conversion
-    fn hash_problem<P>(&self, _problem: &P) -> u64 {
+    const fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure
         // For now, use fixed seed for reproducibility
-        12345
+        12_345
     }
 
     /// Optimize using infinite-depth QAOA
@@ -548,7 +549,7 @@ impl InfiniteDepthQAOA {
         let mut converged = false;
 
         while current_depth <= self.config.max_depth && !converged {
-            println!("Optimizing at depth {}", current_depth);
+            println!("Optimizing at depth {current_depth}");
             let depth_start_time = Instant::now();
 
             // Initialize parameters for current depth
@@ -594,7 +595,7 @@ impl InfiniteDepthQAOA {
                     repetitions: 1,
                     total_sweeps: current_depth * self.config.max_iterations_per_depth,
                     runtime: start_time.elapsed(),
-                    info: format!("Infinite-depth QAOA with depth {}", current_depth),
+                    info: format!("Infinite-depth QAOA with depth {current_depth}"),
                 }));
             }
 
@@ -713,7 +714,7 @@ impl InfiniteDepthQAOA {
 
     /// Optimize parameters at specific depth
     fn optimize_at_depth(
-        &mut self,
+        &self,
         problem: &IsingModel,
         depth: usize,
         initial_params: Vec<f64>,
@@ -731,13 +732,13 @@ impl InfiniteDepthQAOA {
 
             if energy < best_energy {
                 best_energy = energy;
-                best_params = current_params.clone();
+                best_params.clone_from(&current_params);
             }
 
             // Simple parameter update (placeholder for actual optimization)
             for param in &mut current_params {
                 *param += rng.gen_range(-0.1..0.1);
-                *param = param.max(0.0).min(2.0 * PI); // Keep in valid range
+                *param = param.clamp(0.0, 2.0 * PI); // Keep in valid range
             }
 
             // Check convergence
@@ -914,9 +915,13 @@ impl InfiniteDepthQAOA {
         }
 
         // Normalize
-        let norm = new_state.iter().map(|a| a.norm_sqr()).sum::<f64>().sqrt();
+        let norm = new_state
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            .sqrt();
         if norm > 1e-12 {
-            for amplitude in new_state.iter_mut() {
+            for amplitude in &mut new_state {
                 *amplitude /= norm;
             }
         }
@@ -1022,15 +1027,16 @@ impl InfiniteDepthQAOA {
             // Apply problem Hamiltonian effect (simplified single-qubit approximation)
             // This would depend on the local field and neighborhood
             let local_field = 0.0; // Would calculate from bias and neighbor coupling effects
-            state_prob_up = 0.5 + 0.5 * (2.0 * state_prob_up - 1.0) * (gamma * local_field).cos();
+            state_prob_up = (0.5 * 2.0f64.mul_add(state_prob_up, -1.0))
+                .mul_add((gamma * local_field).cos(), 0.5);
 
             // Apply mixer Hamiltonian effect (X rotation)
-            let x_expectation = 2.0 * state_prob_up - 1.0; // Convert to [-1, 1]
+            let x_expectation = 2.0f64.mul_add(state_prob_up, -1.0); // Convert to [-1, 1]
             let z_expectation = (beta * x_expectation).cos();
-            state_prob_up = 0.5 + 0.5 * z_expectation;
+            state_prob_up = 0.5f64.mul_add(z_expectation, 0.5);
         }
 
-        expectation = 2.0 * state_prob_up - 1.0; // Convert to Z expectation in [-1, 1]
+        expectation = 2.0f64.mul_add(state_prob_up, -1.0); // Convert to Z expectation in [-1, 1]
         expectation.tanh() // Ensure bounded
     }
 
@@ -1057,12 +1063,12 @@ impl InfiniteDepthQAOA {
             correlation_factor *= (beta / 2.0).cos().powi(2);
 
             // Problem Hamiltonian can increase or decrease correlation
-            correlation_factor *= 1.0 - 0.1 * gamma.abs(); // Simple approximation
+            correlation_factor *= 0.1f64.mul_add(-gamma.abs(), 1.0); // Simple approximation
         }
 
         // Return correlated expectation
         let independent_correlation = exp1 * exp2;
-        let qaoa_correlation = correlation_factor.max(0.1).min(1.0);
+        let qaoa_correlation = correlation_factor.clamp(0.1, 1.0);
 
         independent_correlation * qaoa_correlation
     }
@@ -1084,7 +1090,7 @@ impl InfiniteDepthQAOA {
     }
 
     /// Check convergence across depths
-    fn check_depth_convergence(&mut self) -> AdvancedQuantumResult<bool> {
+    fn check_depth_convergence(&self) -> AdvancedQuantumResult<bool> {
         let history_len = self.depth_controller.performance_history.len();
 
         if history_len < self.depth_controller.convergence_detector.min_depths {
@@ -1137,11 +1143,13 @@ impl InfiniteDepthQAOA {
 }
 
 /// Create default infinite-depth QAOA optimizer
+#[must_use]
 pub fn create_infinite_qaoa_optimizer() -> InfiniteDepthQAOA {
     InfiniteDepthQAOA::new(InfiniteQAOAConfig::default())
 }
 
 /// Create infinite-depth QAOA with custom configuration
+#[must_use]
 pub fn create_custom_infinite_qaoa(
     max_depth: usize,
     depth_strategy: DepthIncrementStrategy,
@@ -1170,7 +1178,9 @@ mod tests {
     #[test]
     fn test_parameter_initialization() {
         let optimizer = create_infinite_qaoa_optimizer();
-        let params = optimizer.initialize_parameters(3).unwrap();
+        let params = optimizer
+            .initialize_parameters(3)
+            .expect("should initialize parameters for depth 3");
         assert_eq!(params.len(), 6); // 2 * depth
 
         for &param in &params {
@@ -1182,7 +1192,9 @@ mod tests {
     fn test_parameter_interpolation() {
         let optimizer = create_infinite_qaoa_optimizer();
         let prev_params = vec![1.0, 2.0, 3.0, 4.0]; // depth 2
-        let interpolated = optimizer.interpolate_parameters(&prev_params, 3).unwrap();
+        let interpolated = optimizer
+            .interpolate_parameters(&prev_params, 3)
+            .expect("should interpolate parameters from depth 2 to 3");
 
         assert_eq!(interpolated.len(), 6); // 2 * 3
         assert_eq!(interpolated[0], 1.0);
@@ -1200,14 +1212,29 @@ mod tests {
 
         // Test linear increment
         optimizer.config.depth_strategy = DepthIncrementStrategy::Linear;
-        assert_eq!(optimizer.determine_next_depth(5).unwrap(), 6);
+        assert_eq!(
+            optimizer
+                .determine_next_depth(5)
+                .expect("should determine next depth for linear strategy"),
+            6
+        );
 
         // Test exponential increment
         optimizer.config.depth_strategy = DepthIncrementStrategy::Exponential;
-        assert_eq!(optimizer.determine_next_depth(4).unwrap(), 6); // 4 * 1.5 = 6
+        assert_eq!(
+            optimizer
+                .determine_next_depth(4)
+                .expect("should determine next depth for exponential strategy"),
+            6
+        ); // 4 * 1.5 = 6
 
         // Test golden ratio increment
         optimizer.config.depth_strategy = DepthIncrementStrategy::GoldenRatio;
-        assert_eq!(optimizer.determine_next_depth(3).unwrap(), 4); // 3 * 1.618 ≈ 4.85 -> 4
+        assert_eq!(
+            optimizer
+                .determine_next_depth(3)
+                .expect("should determine next depth for golden ratio strategy"),
+            4
+        ); // 3 * 1.618 ≈ 4.85 -> 4
     }
 }

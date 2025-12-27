@@ -198,32 +198,50 @@ impl Config {
 
     /// Get the number of threads
     pub fn num_threads(&self) -> Option<usize> {
-        self.data.read().unwrap().num_threads
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .num_threads
     }
 
     /// Set the number of threads
     pub fn set_num_threads(&self, num_threads: usize) {
-        self.data.write().unwrap().num_threads = Some(num_threads);
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .num_threads = Some(num_threads);
     }
 
     /// Get the logging level
     pub fn log_level(&self) -> LogLevel {
-        self.data.read().unwrap().log_level
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .log_level
     }
 
     /// Set the logging level
     pub fn set_log_level(&self, level: LogLevel) {
-        self.data.write().unwrap().log_level = level;
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .log_level = level;
     }
 
     /// Get the memory limit in bytes
     pub fn memory_limit_bytes(&self) -> Option<usize> {
-        self.data.read().unwrap().memory_limit_bytes
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .memory_limit_bytes
     }
 
     /// Set the memory limit in bytes
     pub fn set_memory_limit_bytes(&self, limit: usize) {
-        self.data.write().unwrap().memory_limit_bytes = Some(limit);
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .memory_limit_bytes = Some(limit);
     }
 
     /// Set the memory limit in gigabytes
@@ -233,62 +251,99 @@ impl Config {
 
     /// Get the default backend
     pub fn default_backend(&self) -> DefaultBackend {
-        self.data.read().unwrap().default_backend
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .default_backend
     }
 
     /// Set the default backend
     pub fn set_default_backend(&self, backend: DefaultBackend) {
-        self.data.write().unwrap().default_backend = backend;
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .default_backend = backend;
     }
 
     /// Check if GPU acceleration is enabled
     pub fn is_gpu_enabled(&self) -> bool {
-        self.data.read().unwrap().enable_gpu
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_gpu
     }
 
     /// Enable or disable GPU acceleration
     pub fn set_gpu_enabled(&self, enabled: bool) {
-        self.data.write().unwrap().enable_gpu = enabled;
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_gpu = enabled;
     }
 
     /// Check if SIMD optimizations are enabled
     pub fn is_simd_enabled(&self) -> bool {
-        self.data.read().unwrap().enable_simd
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_simd
     }
 
     /// Enable or disable SIMD optimizations
     pub fn set_simd_enabled(&self, enabled: bool) {
-        self.data.write().unwrap().enable_simd = enabled;
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_simd = enabled;
     }
 
     /// Check if telemetry is enabled
     pub fn is_telemetry_enabled(&self) -> bool {
-        self.data.read().unwrap().enable_telemetry
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_telemetry
     }
 
     /// Enable or disable telemetry
     pub fn set_telemetry_enabled(&self, enabled: bool) {
-        self.data.write().unwrap().enable_telemetry = enabled;
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .enable_telemetry = enabled;
     }
 
     /// Get the cache directory
     pub fn cache_dir(&self) -> Option<String> {
-        self.data.read().unwrap().cache_dir.clone()
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .cache_dir
+            .clone()
     }
 
     /// Set the cache directory
     pub fn set_cache_dir(&self, dir: impl Into<String>) {
-        self.data.write().unwrap().cache_dir = Some(dir.into());
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .cache_dir = Some(dir.into());
     }
 
     /// Get the maximum cache size in bytes
     pub fn max_cache_size_bytes(&self) -> Option<usize> {
-        self.data.read().unwrap().max_cache_size_bytes
+        self.data
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .max_cache_size_bytes
     }
 
     /// Set the maximum cache size in bytes
     pub fn set_max_cache_size_bytes(&self, size: usize) {
-        self.data.write().unwrap().max_cache_size_bytes = Some(size);
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .max_cache_size_bytes = Some(size);
     }
 
     /// Set the maximum cache size in megabytes
@@ -362,12 +417,12 @@ impl Config {
 
     /// Reset configuration to defaults
     pub fn reset(&self) {
-        *self.data.write().unwrap() = ConfigData::default();
+        *self.data.write().unwrap_or_else(|e| e.into_inner()) = ConfigData::default();
     }
 
     /// Get a copy of the current configuration data
     pub fn snapshot(&self) -> ConfigData {
-        self.data.read().unwrap().clone()
+        self.data.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 }
 
@@ -455,7 +510,7 @@ impl ConfigBuilder {
     /// Apply this configuration as the global configuration
     pub fn apply(self) {
         let config = Config::global();
-        *config.data.write().unwrap() = self.data;
+        *config.data.write().unwrap_or_else(|e| e.into_inner()) = self.data;
     }
 
     /// Build the configuration without applying it globally

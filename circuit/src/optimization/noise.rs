@@ -685,13 +685,15 @@ mod tests {
         let optimizer = CoherenceOptimization::new(noise_model.clone());
 
         let mut circuit = Circuit::<4>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
         let cost_model = NoiseAwareCostModel::new(noise_model);
         let result = optimizer.apply(&circuit, &cost_model);
@@ -704,15 +706,19 @@ mod tests {
         let optimizer = NoiseAwareOptimizer::new(noise_model);
 
         let mut circuit = Circuit::<4>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let optimized = optimizer.optimize(&circuit).unwrap();
+        let optimized = optimizer
+            .optimize(&circuit)
+            .expect("Optimization should succeed");
         let fidelity = optimizer.estimate_fidelity(&optimized);
 
         assert!(fidelity > 0.9); // Should have high fidelity for simple circuit

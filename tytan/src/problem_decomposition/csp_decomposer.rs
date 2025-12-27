@@ -52,7 +52,7 @@ impl ConstraintSatisfactionDecomposer {
                 self.constraint_clustering_decomposition(csp)
             }
             CSPDecompositionStrategy::CycleCutset => self.cycle_cutset_decomposition(csp),
-            _ => {
+            CSPDecompositionStrategy::BucketElimination => {
                 // Default to tree decomposition
                 self.tree_decomposition(csp)
             }
@@ -204,7 +204,7 @@ impl ConstraintSatisfactionDecomposer {
             VariableOrderingHeuristic::MinWidth => self.min_width_ordering(graph),
             VariableOrderingHeuristic::MaxCardinality => self.max_cardinality_ordering(graph),
             VariableOrderingHeuristic::MinFillIn => self.min_fill_in_ordering(graph),
-            _ => {
+            VariableOrderingHeuristic::WeightedMinFill => {
                 // Default to min width
                 self.min_width_ordering(graph)
             }
@@ -716,7 +716,7 @@ mod tests {
         // Create CSP with disconnected constraint groups
         let mut variables = HashMap::new();
         for i in 0..5 {
-            variables.insert(format!("x{}", i), DomainCsp { values: vec![0, 1] });
+            variables.insert(format!("x{i}"), DomainCsp { values: vec![0, 1] });
         }
 
         let mut constraints = vec![
@@ -752,7 +752,7 @@ mod tests {
         let mut result = decomposer.decompose(&csp);
         assert!(result.is_ok());
 
-        let decomposition = result.unwrap();
+        let decomposition = result.expect("CSP decomposition should succeed");
         // Should create at least 2 clusters due to disconnected constraints
         assert!(decomposition.clusters.len() >= 2);
     }

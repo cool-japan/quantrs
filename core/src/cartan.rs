@@ -46,7 +46,7 @@ pub struct CartanCoefficients {
 
 impl CartanCoefficients {
     /// Create new coefficients
-    pub fn new(xx: f64, yy: f64, zz: f64) -> Self {
+    pub const fn new(xx: f64, yy: f64, zz: f64) -> Self {
         Self { xx, yy, zz }
     }
 
@@ -146,25 +146,24 @@ impl CartanDecomposer {
         }
 
         // Transform to magic basis
-        let magic_basis = self.get_magic_basis();
-        let u_magic = self.to_magic_basis(unitary, &magic_basis);
+        let magic_basis = Self::get_magic_basis();
+        let u_magic = Self::to_magic_basis(unitary, &magic_basis);
 
         // Compute M = U_magic^T · U_magic
         let u_magic_t = u_magic.t().to_owned();
         let m = u_magic_t.dot(&u_magic);
 
         // Diagonalize M to find the canonical form
-        let (d, p) = self.diagonalize_symmetric(&m)?;
+        let (d, p) = Self::diagonalize_symmetric(&m)?;
 
         // Extract interaction coefficients from eigenvalues
-        let coeffs = self.extract_coefficients(&d);
+        let coeffs = Self::extract_coefficients(&d);
 
         // Compute single-qubit gates
         let (left_gates, right_gates) = self.compute_local_gates(unitary, &u_magic, &p, &coeffs)?;
 
         // Compute global phase
-        let global_phase =
-            self.compute_global_phase(unitary, &left_gates, &right_gates, &coeffs)?;
+        let global_phase = Self::compute_global_phase(unitary, &left_gates, &right_gates, &coeffs)?;
 
         Ok(CartanDecomposition {
             left_gates,
@@ -175,7 +174,7 @@ impl CartanDecomposer {
     }
 
     /// Get the magic basis transformation matrix
-    fn get_magic_basis(&self) -> Array2<Complex<f64>> {
+    fn get_magic_basis() -> Array2<Complex<f64>> {
         let sqrt2 = 2.0_f64.sqrt();
         Array2::from_shape_vec(
             (4, 4),
@@ -204,7 +203,6 @@ impl CartanDecomposer {
 
     /// Transform matrix to magic basis
     fn to_magic_basis(
-        &self,
         u: &Array2<Complex<f64>>,
         magic: &Array2<Complex<f64>>,
     ) -> Array2<Complex<f64>> {
@@ -214,7 +212,6 @@ impl CartanDecomposer {
 
     /// Diagonalize a symmetric complex matrix
     fn diagonalize_symmetric(
-        &self,
         m: &Array2<Complex<f64>>,
     ) -> QuantRS2Result<(Array1<f64>, Array2<Complex<f64>>)> {
         // For a unitary in magic basis, M = U^T U has special structure
@@ -236,7 +233,7 @@ impl CartanDecomposer {
     }
 
     /// Extract Cartan coefficients from eigenvalues
-    fn extract_coefficients(&self, eigenvalues: &Array1<f64>) -> CartanCoefficients {
+    fn extract_coefficients(eigenvalues: &Array1<f64>) -> CartanCoefficients {
         // The eigenvalues of M determine the interaction coefficients
         // For U = exp(i(aXX + bYY + cZZ)), the eigenvalues are:
         // exp(2i(a+b+c)), exp(2i(a-b-c)), exp(2i(-a+b-c)), exp(2i(-a-b+c))
@@ -270,7 +267,7 @@ impl CartanDecomposer {
         (SingleQubitDecomposition, SingleQubitDecomposition),
     )> {
         // Build the canonical gate
-        let _canonical = self.build_canonical_gate(coeffs);
+        let _canonical = Self::build_canonical_gate(coeffs);
 
         // The local gates satisfy:
         // U = (A₁ ⊗ B₁) · canonical · (A₂ ⊗ B₂)
@@ -294,7 +291,7 @@ impl CartanDecomposer {
     }
 
     /// Build the canonical gate from coefficients
-    fn build_canonical_gate(&self, coeffs: &CartanCoefficients) -> Array2<Complex<f64>> {
+    fn build_canonical_gate(coeffs: &CartanCoefficients) -> Array2<Complex<f64>> {
         // exp(i(aXX + bYY + cZZ))
         let a = coeffs.xx;
         let b = coeffs.yy;
@@ -315,8 +312,8 @@ impl CartanDecomposer {
         result[[0, 0]] = Complex::new(cos_a * cos_b * cos_c, sin_c);
         result[[0, 3]] = Complex::new(0.0, sin_a * cos_b * cos_c);
         result[[1, 1]] = Complex::new(cos_a * cos_c, -sin_a * sin_b * sin_c);
-        result[[1, 2]] = Complex::new(0.0, cos_a * sin_c + sin_a * sin_b * cos_c);
-        result[[2, 1]] = Complex::new(0.0, cos_a * sin_c - sin_a * sin_b * cos_c);
+        result[[1, 2]] = Complex::new(0.0, cos_a.mul_add(sin_c, sin_a * sin_b * cos_c));
+        result[[2, 1]] = Complex::new(0.0, cos_a.mul_add(sin_c, -(sin_a * sin_b * cos_c)));
         result[[2, 2]] = Complex::new(cos_a * cos_c, sin_a * sin_b * sin_c);
         result[[3, 0]] = Complex::new(0.0, sin_a * cos_b * cos_c);
         result[[3, 3]] = Complex::new(cos_a * cos_b * cos_c, -sin_c);
@@ -325,8 +322,7 @@ impl CartanDecomposer {
     }
 
     /// Compute global phase
-    fn compute_global_phase(
-        &self,
+    const fn compute_global_phase(
         _u: &Array2<Complex<f64>>,
         _left: &(SingleQubitDecomposition, SingleQubitDecomposition),
         _right: &(SingleQubitDecomposition, SingleQubitDecomposition),
@@ -534,17 +530,17 @@ impl OptimizedCartanDecomposer {
     ) -> QuantRS2Result<Option<CartanDecomposition>> {
         // Check for CNOT
         if self.is_cnot(unitary) {
-            return Ok(Some(self.cnot_decomposition()));
+            return Ok(Some(Self::cnot_decomposition()));
         }
 
         // Check for controlled-Z
         if self.is_cz(unitary) {
-            return Ok(Some(self.cz_decomposition()));
+            return Ok(Some(Self::cz_decomposition()));
         }
 
         // Check for SWAP
         if self.is_swap(unitary) {
-            return Ok(Some(self.swap_decomposition()));
+            return Ok(Some(Self::swap_decomposition()));
         }
 
         Ok(None)
@@ -660,7 +656,7 @@ impl OptimizedCartanDecomposer {
     }
 
     /// Decomposition for CNOT
-    fn cnot_decomposition(&self) -> CartanDecomposition {
+    fn cnot_decomposition() -> CartanDecomposition {
         let ident = Array2::eye(2);
         let ident_decomp = decompose_single_qubit_zyz(&ident.view()).expect(
             "Failed to decompose identity in OptimizedCartanDecomposer::cnot_decomposition",
@@ -668,28 +664,28 @@ impl OptimizedCartanDecomposer {
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
-            right_gates: (ident_decomp.clone(), ident_decomp.clone()),
+            right_gates: (ident_decomp.clone(), ident_decomp),
             interaction: CartanCoefficients::new(PI / 4.0, PI / 4.0, 0.0),
             global_phase: 0.0,
         }
     }
 
     /// Decomposition for CZ
-    fn cz_decomposition(&self) -> CartanDecomposition {
+    fn cz_decomposition() -> CartanDecomposition {
         let ident = Array2::eye(2);
         let ident_decomp = decompose_single_qubit_zyz(&ident.view())
             .expect("Failed to decompose identity in OptimizedCartanDecomposer::cz_decomposition");
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
-            right_gates: (ident_decomp.clone(), ident_decomp.clone()),
+            right_gates: (ident_decomp.clone(), ident_decomp),
             interaction: CartanCoefficients::new(0.0, 0.0, PI / 4.0),
             global_phase: 0.0,
         }
     }
 
     /// Decomposition for SWAP
-    fn swap_decomposition(&self) -> CartanDecomposition {
+    fn swap_decomposition() -> CartanDecomposition {
         let ident = Array2::eye(2);
         let ident_decomp = decompose_single_qubit_zyz(&ident.view()).expect(
             "Failed to decompose identity in OptimizedCartanDecomposer::swap_decomposition",
@@ -697,7 +693,7 @@ impl OptimizedCartanDecomposer {
 
         CartanDecomposition {
             left_gates: (ident_decomp.clone(), ident_decomp.clone()),
-            right_gates: (ident_decomp.clone(), ident_decomp.clone()),
+            right_gates: (ident_decomp.clone(), ident_decomp),
             interaction: CartanCoefficients::new(PI / 4.0, PI / 4.0, PI / 4.0),
             global_phase: 0.0,
         }
@@ -722,6 +718,12 @@ pub fn cartan_decompose(unitary: &Array2<Complex<f64>>) -> QuantRS2Result<Vec<Bo
 }
 
 impl Default for OptimizedCartanDecomposer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for CartanDecomposer {
     fn default() -> Self {
         Self::new()
     }
@@ -830,11 +832,5 @@ mod tests {
         // Identity should have zero interaction
         assert!(decomp.interaction.is_identity(1e-10));
         assert_eq!(decomp.interaction.cnot_count(1e-10), 0);
-    }
-}
-
-impl Default for CartanDecomposer {
-    fn default() -> Self {
-        Self::new()
     }
 }

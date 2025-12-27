@@ -50,7 +50,7 @@ pub struct PauliOperator {
 }
 
 /// Pauli operator types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PauliType {
     /// Identity
     I,
@@ -186,7 +186,7 @@ pub struct ErrorPattern {
 }
 
 /// Decoding algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodingAlgorithm {
     LookupTable,
     MinimumWeight,
@@ -243,7 +243,7 @@ pub struct LogicalEncoderConfig {
 }
 
 /// Encoding optimization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EncodingOptimizationStrategy {
     /// Minimize number of physical qubits
     MinimizeQubits,
@@ -258,7 +258,7 @@ pub enum EncodingOptimizationStrategy {
 }
 
 /// Hardware integration modes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HardwareIntegrationMode {
     /// Software simulation only
     Simulation,
@@ -286,7 +286,7 @@ pub struct AnnealingTopology {
 }
 
 /// Hardware topology types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopologyType {
     /// D-Wave Chimera graph
     Chimera { m: usize, n: usize, l: usize },
@@ -389,7 +389,7 @@ pub struct CodeBlock {
 }
 
 /// Code block types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodeBlockType {
     /// Data block (stores logical information)
     Data,
@@ -568,11 +568,7 @@ impl LogicalAnnealingEncoder {
         )?;
 
         // Initialize monitoring if enabled
-        let monitoring_data = if self.config.enable_monitoring {
-            Some(MonitoringData::new())
-        } else {
-            None
-        };
+        let monitoring_data = self.config.enable_monitoring.then(|| MonitoringData::new());
 
         // Update internal metrics
         self.performance_metrics = performance.clone();
@@ -598,7 +594,7 @@ impl LogicalAnnealingEncoder {
             let record = SyndromeRecord {
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("system time before UNIX_EPOCH")
                     .as_secs_f64(),
                 syndrome: syndrome_result.syndrome.iter().map(|&x| x as i8).collect(),
                 round: 0, // Would be properly tracked
@@ -628,8 +624,7 @@ impl LogicalAnnealingEncoder {
             .get(&logical_qubit)
             .ok_or_else(|| {
                 QuantumErrorCorrectionError::LogicalOperationError(format!(
-                    "Logical qubit {} not found in encoding map",
-                    logical_qubit
+                    "Logical qubit {logical_qubit} not found in encoding map"
                 ))
             })?;
 
@@ -647,8 +642,7 @@ impl LogicalAnnealingEncoder {
             }
             _ => {
                 return Err(QuantumErrorCorrectionError::LogicalOperationError(format!(
-                    "Logical operation {:?} not implemented",
-                    operation
+                    "Logical operation {operation:?} not implemented"
                 )));
             }
         }
@@ -695,8 +689,7 @@ impl LogicalAnnealingEncoder {
             }
             _ => {
                 return Err(QuantumErrorCorrectionError::CodeError(format!(
-                    "Stabilizer generation not implemented for {:?}",
-                    code
+                    "Stabilizer generation not implemented for {code:?}"
                 )));
             }
         }
@@ -850,31 +843,28 @@ impl LogicalAnnealingEncoder {
         parameters: &CodeParameters,
         logical_qubit: usize,
     ) -> QECResult<PauliOperator> {
-        match code {
-            ErrorCorrectionCode::RepetitionCode => {
-                // For repetition code, logical X acts on all qubits
-                let pauli_string = vec![PauliType::X; parameters.num_physical_qubits];
-                let support = (0..parameters.num_physical_qubits).collect();
+        if code == &ErrorCorrectionCode::RepetitionCode {
+            // For repetition code, logical X acts on all qubits
+            let pauli_string = vec![PauliType::X; parameters.num_physical_qubits];
+            let support = (0..parameters.num_physical_qubits).collect();
 
-                Ok(PauliOperator {
-                    pauli_string,
-                    phase: 0.0,
-                    coefficient: 1.0,
-                    support,
-                })
-            }
-            _ => {
-                // Default implementation - would need specific implementation per code
-                let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
-                pauli_string[0] = PauliType::X; // Simplified
+            Ok(PauliOperator {
+                pauli_string,
+                phase: 0.0,
+                coefficient: 1.0,
+                support,
+            })
+        } else {
+            // Default implementation - would need specific implementation per code
+            let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
+            pauli_string[0] = PauliType::X; // Simplified
 
-                Ok(PauliOperator {
-                    pauli_string,
-                    phase: 0.0,
-                    coefficient: 1.0,
-                    support: vec![0],
-                })
-            }
+            Ok(PauliOperator {
+                pauli_string,
+                phase: 0.0,
+                coefficient: 1.0,
+                support: vec![0],
+            })
         }
     }
 
@@ -884,31 +874,28 @@ impl LogicalAnnealingEncoder {
         parameters: &CodeParameters,
         logical_qubit: usize,
     ) -> QECResult<PauliOperator> {
-        match code {
-            ErrorCorrectionCode::RepetitionCode => {
-                // For repetition code, logical Z acts on first qubit
-                let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
-                pauli_string[0] = PauliType::Z;
+        if code == &ErrorCorrectionCode::RepetitionCode {
+            // For repetition code, logical Z acts on first qubit
+            let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
+            pauli_string[0] = PauliType::Z;
 
-                Ok(PauliOperator {
-                    pauli_string,
-                    phase: 0.0,
-                    coefficient: 1.0,
-                    support: vec![0],
-                })
-            }
-            _ => {
-                // Default implementation
-                let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
-                pauli_string[0] = PauliType::Z;
+            Ok(PauliOperator {
+                pauli_string,
+                phase: 0.0,
+                coefficient: 1.0,
+                support: vec![0],
+            })
+        } else {
+            // Default implementation
+            let mut pauli_string = vec![PauliType::I; parameters.num_physical_qubits];
+            pauli_string[0] = PauliType::Z;
 
-                Ok(PauliOperator {
-                    pauli_string,
-                    phase: 0.0,
-                    coefficient: 1.0,
-                    support: vec![0],
-                })
-            }
+            Ok(PauliOperator {
+                pauli_string,
+                phase: 0.0,
+                coefficient: 1.0,
+                support: vec![0],
+            })
         }
     }
 
@@ -931,7 +918,7 @@ impl LogicalAnnealingEncoder {
 
         let mut support = logical_x.support.clone();
         support.extend(logical_z.support.iter());
-        support.sort();
+        support.sort_unstable();
         support.dedup();
 
         Ok(PauliOperator {
@@ -1444,7 +1431,8 @@ impl LogicalAnnealingEncoder {
 
 impl EncodingPerformanceMetrics {
     /// Create new performance metrics
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             qubit_overhead: 1.0,
             encoding_fidelity: 1.0,
@@ -1459,7 +1447,8 @@ impl EncodingPerformanceMetrics {
 
 impl MonitoringData {
     /// Create new monitoring data
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             syndrome_measurements: Vec::new(),
             error_rates: Vec::new(),
@@ -1507,13 +1496,15 @@ mod tests {
     fn test_ising_problem_encoding() {
         let mut encoder = create_test_encoder();
         let mut ising = IsingModel::new(2);
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_coupling(0, 1, -0.5).unwrap();
+        ising.set_bias(0, 1.0).expect("failed to set bias in test");
+        ising
+            .set_coupling(0, 1, -0.5)
+            .expect("failed to set coupling in test");
 
         let result = encoder.encode_ising_problem(&ising);
         assert!(result.is_ok());
 
-        let encoding_result = result.unwrap();
+        let encoding_result = result.expect("failed to encode ising problem in test");
         assert_eq!(encoding_result.logical_hamiltonian.num_logical_qubits, 2);
     }
 
@@ -1528,8 +1519,8 @@ mod tests {
             threshold_probability: 0.1,
         };
 
-        let stabilizers =
-            LogicalAnnealingEncoder::repetition_code_stabilizers(&parameters).unwrap();
+        let stabilizers = LogicalAnnealingEncoder::repetition_code_stabilizers(&parameters)
+            .expect("failed to generate stabilizers in test");
         assert_eq!(stabilizers.len(), 2); // n-1 stabilizers for repetition code
     }
 
@@ -1545,8 +1536,8 @@ mod tests {
             threshold_probability: 0.1,
         };
 
-        let logical_ops =
-            LogicalAnnealingEncoder::generate_logical_operators(&code, &parameters).unwrap();
+        let logical_ops = LogicalAnnealingEncoder::generate_logical_operators(&code, &parameters)
+            .expect("failed to generate logical operators in test");
         assert_eq!(logical_ops.len(), 1);
         assert_eq!(logical_ops[0].logical_qubit, 0);
     }
@@ -1562,8 +1553,8 @@ mod tests {
             threshold_probability: 0.1,
         };
 
-        let circuit =
-            LogicalAnnealingEncoder::create_repetition_encoding_circuit(&parameters).unwrap();
+        let circuit = LogicalAnnealingEncoder::create_repetition_encoding_circuit(&parameters)
+            .expect("failed to create encoding circuit in test");
         assert_eq!(circuit.gates.len(), 2); // 2 CNOT gates for 3-qubit repetition code
         assert_eq!(circuit.num_qubits, 3);
     }
@@ -1580,6 +1571,7 @@ mod tests {
         };
         let config = LogicalEncoderConfig::default();
 
-        LogicalAnnealingEncoder::new(code, parameters, config).unwrap()
+        LogicalAnnealingEncoder::new(code, parameters, config)
+            .expect("failed to create test encoder")
     }
 }

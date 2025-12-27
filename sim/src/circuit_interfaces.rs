@@ -51,7 +51,7 @@ impl Default for CircuitInterfaceConfig {
             max_mps_bond_dim: 1024,
             parallel_compilation: true,
             enable_circuit_cache: true,
-            max_cache_size: 10000,
+            max_cache_size: 10_000,
             enable_profiling: true,
         }
     }
@@ -210,6 +210,7 @@ pub struct InterfaceGate {
 
 impl InterfaceGate {
     /// Create a new interface gate
+    #[must_use]
     pub const fn new(gate_type: InterfaceGateType, qubits: Vec<usize>) -> Self {
         Self {
             gate_type,
@@ -222,6 +223,7 @@ impl InterfaceGate {
     }
 
     /// Create a measurement gate
+    #[must_use]
     pub fn measurement(qubit: usize, classical_bit: usize) -> Self {
         Self {
             gate_type: InterfaceGateType::Measure,
@@ -234,12 +236,14 @@ impl InterfaceGate {
     }
 
     /// Create a conditional gate
+    #[must_use]
     pub const fn conditional(mut self, condition: usize) -> Self {
         self.condition = Some(condition);
         self
     }
 
     /// Add a label to the gate
+    #[must_use]
     pub fn with_label(mut self, label: String) -> Self {
         self.label = Some(label);
         self
@@ -258,7 +262,8 @@ impl InterfaceGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (2,2) requires exactly 4 elements which are provided
+            .expect("PauliX matrix shape matches data length")),
             InterfaceGateType::PauliY => Ok(Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -268,7 +273,8 @@ impl InterfaceGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (2,2) requires exactly 4 elements which are provided
+            .expect("PauliY matrix shape matches data length")),
             InterfaceGateType::PauliZ => Ok(Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -278,7 +284,8 @@ impl InterfaceGate {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (2,2) requires exactly 4 elements which are provided
+            .expect("PauliZ matrix shape matches data length")),
             InterfaceGateType::Hadamard => {
                 let inv_sqrt2 = 1.0 / (2.0_f64).sqrt();
                 Ok(Array2::from_shape_vec(
@@ -290,7 +297,8 @@ impl InterfaceGate {
                         Complex64::new(-inv_sqrt2, 0.0),
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("Hadamard matrix shape matches data length"))
             }
             InterfaceGateType::S => Ok(Array2::from_shape_vec(
                 (2, 2),
@@ -301,7 +309,8 @@ impl InterfaceGate {
                     Complex64::new(0.0, 1.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (2,2) requires exactly 4 elements which are provided
+            .expect("S gate matrix shape matches data length")),
             InterfaceGateType::T => {
                 let phase = Complex64::new(0.0, std::f64::consts::PI / 4.0).exp();
                 Ok(Array2::from_shape_vec(
@@ -313,7 +322,8 @@ impl InterfaceGate {
                         phase,
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("T gate matrix shape matches data length"))
             }
             InterfaceGateType::Phase(theta) => {
                 let phase = Complex64::new(0.0, *theta).exp();
@@ -326,7 +336,8 @@ impl InterfaceGate {
                         phase,
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("Phase gate matrix shape matches data length"))
             }
             InterfaceGateType::RX(theta) => {
                 let cos_half = (theta / 2.0).cos();
@@ -340,7 +351,8 @@ impl InterfaceGate {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("RX gate matrix shape matches data length"))
             }
             InterfaceGateType::RY(theta) => {
                 let cos_half = (theta / 2.0).cos();
@@ -354,7 +366,8 @@ impl InterfaceGate {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("RY gate matrix shape matches data length"))
             }
             InterfaceGateType::RZ(theta) => {
                 let exp_neg = Complex64::new(0.0, -theta / 2.0).exp();
@@ -368,7 +381,8 @@ impl InterfaceGate {
                         exp_pos,
                     ],
                 )
-                .unwrap())
+                // Safety: shape (2,2) requires exactly 4 elements which are provided
+                .expect("RZ gate matrix shape matches data length"))
             }
             InterfaceGateType::CNOT => Ok(Array2::from_shape_vec(
                 (4, 4),
@@ -391,7 +405,8 @@ impl InterfaceGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (4,4) requires exactly 16 elements which are provided
+            .expect("CNOT matrix shape matches data length")),
             InterfaceGateType::CZ => Ok(Array2::from_shape_vec(
                 (4, 4),
                 vec![
@@ -413,7 +428,8 @@ impl InterfaceGate {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (4,4) requires exactly 16 elements which are provided
+            .expect("CZ matrix shape matches data length")),
             InterfaceGateType::SWAP => Ok(Array2::from_shape_vec(
                 (4, 4),
                 vec![
@@ -435,7 +451,8 @@ impl InterfaceGate {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap()),
+            // Safety: shape (4,4) requires exactly 16 elements which are provided
+            .expect("SWAP matrix shape matches data length")),
             InterfaceGateType::MultiControlledZ(num_controls) => {
                 let total_qubits = num_controls + 1;
                 let dim = 1 << total_qubits;
@@ -490,7 +507,8 @@ impl InterfaceGate {
                         phase_factor,
                     ],
                 )
-                .unwrap())
+                // Safety: shape (4,4) requires exactly 16 elements which are provided
+                .expect("CPhase matrix shape matches data length"))
             }
             InterfaceGateType::Custom(_, matrix) => Ok(matrix.clone()),
             _ => Err(SimulatorError::UnsupportedOperation(format!(
@@ -501,11 +519,13 @@ impl InterfaceGate {
     }
 
     /// Check if this gate is a measurement
+    #[must_use]
     pub const fn is_measurement(&self) -> bool {
         matches!(self.gate_type, InterfaceGateType::Measure)
     }
 
     /// Check if this gate is unitary
+    #[must_use]
     pub const fn is_unitary(&self) -> bool {
         !matches!(
             self.gate_type,
@@ -514,6 +534,7 @@ impl InterfaceGate {
     }
 
     /// Get the number of qubits this gate acts on
+    #[must_use]
     pub fn num_qubits(&self) -> usize {
         match &self.gate_type {
             InterfaceGateType::MultiControlledX(n) | InterfaceGateType::MultiControlledZ(n) => {
@@ -559,6 +580,7 @@ pub struct CircuitMetadata {
 
 impl InterfaceCircuit {
     /// Create a new circuit
+    #[must_use]
     pub fn new(num_qubits: usize, num_classical: usize) -> Self {
         Self {
             num_qubits,
@@ -595,6 +617,7 @@ impl InterfaceCircuit {
     }
 
     /// Calculate circuit depth
+    #[must_use]
     pub fn calculate_depth(&self) -> usize {
         if self.gates.is_empty() {
             return 0;
@@ -843,7 +866,7 @@ pub enum SimulationBackend {
 pub struct CircuitInterface {
     /// Configuration
     config: CircuitInterfaceConfig,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Circuit cache
     circuit_cache: Arc<Mutex<HashMap<u64, CompiledCircuit>>>,
@@ -946,7 +969,7 @@ impl CircuitInterface {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -963,7 +986,10 @@ impl CircuitInterface {
         // Check cache first
         let circuit_hash = self.calculate_circuit_hash(circuit);
         if self.config.enable_circuit_cache {
-            let cache = self.circuit_cache.lock().unwrap();
+            let cache = self
+                .circuit_cache
+                .lock()
+                .expect("circuit cache lock should not be poisoned");
             if let Some(compiled) = cache.get(&circuit_hash) {
                 self.stats.cache_hit_rate = self
                     .stats
@@ -1019,7 +1045,10 @@ impl CircuitInterface {
 
         // Update cache
         if self.config.enable_circuit_cache {
-            let mut cache = self.circuit_cache.lock().unwrap();
+            let mut cache = self
+                .circuit_cache
+                .lock()
+                .expect("circuit cache lock should not be poisoned");
             if cache.len() >= self.config.max_cache_size {
                 // Simple LRU: remove oldest entry
                 if let Some(oldest_key) = cache.keys().next().copied() {
@@ -1416,6 +1445,7 @@ impl CircuitInterface {
     }
 
     /// Get performance statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &CircuitInterfaceStats {
         &self.stats
     }
@@ -1457,6 +1487,7 @@ pub struct CircuitInterfaceUtils;
 
 impl CircuitInterfaceUtils {
     /// Create a test circuit
+    #[must_use]
     pub fn create_test_circuit(circuit_type: &str, num_qubits: usize) -> InterfaceCircuit {
         let mut circuit = InterfaceCircuit::new(num_qubits, num_qubits);
 
@@ -1473,7 +1504,7 @@ impl CircuitInterfaceUtils {
                 for i in 0..num_qubits {
                     circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![i]));
                     for j in i + 1..num_qubits {
-                        let angle = std::f64::consts::PI / (1 << (j - i)) as f64;
+                        let angle = std::f64::consts::PI / f64::from(1 << (j - i));
                         circuit.add_gate(InterfaceGate::new(
                             InterfaceGateType::CRZ(angle),
                             vec![j, i],
@@ -1544,9 +1575,9 @@ impl CircuitInterfaceUtils {
 /// Interface benchmark results
 #[derive(Debug, Clone, Default)]
 pub struct InterfaceBenchmarkResults {
-    /// Compilation times (circuit_name, time_ms)
+    /// Compilation times (`circuit_name`, `time_ms`)
     pub compilation_times: Vec<(String, f64)>,
-    /// Execution times (circuit_name, time_ms)
+    /// Execution times (`circuit_name`, `time_ms`)
     pub execution_times: Vec<(String, f64)>,
     /// Interface statistics
     pub interface_stats: CircuitInterfaceStats,
@@ -1597,7 +1628,9 @@ mod tests {
     #[test]
     fn test_gate_unitary_matrices() {
         let hadamard = InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]);
-        let matrix = hadamard.unitary_matrix().unwrap();
+        let matrix = hadamard
+            .unitary_matrix()
+            .expect("should get Hadamard matrix");
 
         let inv_sqrt2 = 1.0 / (2.0_f64).sqrt();
         assert_abs_diff_eq!(matrix[[0, 0]].re, inv_sqrt2, epsilon = 1e-10);
@@ -1621,8 +1654,10 @@ mod tests {
     }
 
     #[test]
-    fn test_circuit_interface_config() {
+    fn test_circuit_interface_creation() {
         let config = CircuitInterfaceConfig::default();
+        let _interface =
+            CircuitInterface::new(config.clone()).expect("should create circuit interface");
         assert!(config.auto_backend_selection);
         assert!(config.enable_optimization);
         assert_eq!(config.max_statevector_qubits, 25);
@@ -1653,7 +1688,7 @@ mod tests {
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::S, vec![1]));
 
         let config = CircuitInterfaceConfig::default();
-        let interface = CircuitInterface::new(config).unwrap();
+        let interface = CircuitInterface::new(config).expect("should create circuit interface");
         assert!(interface.is_clifford_circuit(&circuit));
 
         // Add non-Clifford gate

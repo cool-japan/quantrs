@@ -10,7 +10,7 @@
 //! - Distributed quantum state management with automatic partitioning
 //! - Collective operations optimized for quantum state vectors
 //! - Support for both simulated MPI (testing) and real MPI backends
-//! - Integration with SciRS2 parallel operations
+//! - Integration with `SciRS2` parallel operations
 
 use crate::distributed_simulator::{
     CommunicationConfig, CommunicationPattern, DistributedSimulatorConfig, DistributionStrategy,
@@ -19,7 +19,7 @@ use crate::distributed_simulator::{
 use crate::large_scale_simulator::{LargeScaleSimulatorConfig, QuantumStateRepresentation};
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -498,7 +498,7 @@ impl MPIQuantumSimulator {
 
     /// Apply a single-qubit gate locally
     fn apply_local_single_qubit_gate(
-        &mut self,
+        &self,
         qubit: usize,
         gate_matrix: &Array2<Complex64>,
     ) -> QuantRS2Result<()> {
@@ -532,7 +532,7 @@ impl MPIQuantumSimulator {
 
     /// Apply a single-qubit gate that requires distribution
     fn apply_distributed_single_qubit_gate(
-        &mut self,
+        &self,
         qubit: usize,
         gate_matrix: &Array2<Complex64>,
     ) -> QuantRS2Result<()> {
@@ -599,7 +599,7 @@ impl MPIQuantumSimulator {
     }
 
     /// Exchange boundary data with a partner rank
-    fn exchange_boundary_data(&mut self, partner: usize) -> QuantRS2Result<()> {
+    fn exchange_boundary_data(&self, partner: usize) -> QuantRS2Result<()> {
         let state = self
             .local_state
             .read()
@@ -673,7 +673,7 @@ impl MPIQuantumSimulator {
 
     /// Apply a two-qubit gate locally
     fn apply_local_two_qubit_gate(
-        &mut self,
+        &self,
         control: usize,
         target: usize,
         gate_matrix: &Array2<Complex64>,
@@ -736,7 +736,7 @@ impl MPIQuantumSimulator {
 
     /// Apply partially distributed gate (one local, one remote qubit)
     fn apply_partial_distributed_gate(
-        &mut self,
+        &self,
         control: usize,
         target: usize,
         gate_matrix: &Array2<Complex64>,
@@ -790,7 +790,7 @@ impl MPIQuantumSimulator {
 
     /// Apply fully distributed gate (both qubits remote)
     fn apply_full_distributed_gate(
-        &mut self,
+        &self,
         control: usize,
         target: usize,
         gate_matrix: &Array2<Complex64>,
@@ -930,6 +930,7 @@ impl MPICommunicator {
     }
 
     /// Create communicator with specific configuration
+    #[must_use]
     pub fn with_config(rank: usize, size: usize, backend: MPIBackend) -> Self {
         Self {
             rank,
@@ -941,11 +942,13 @@ impl MPICommunicator {
     }
 
     /// Get rank of this process
+    #[must_use]
     pub const fn rank(&self) -> usize {
         self.rank
     }
 
     /// Get total number of processes
+    #[must_use]
     pub const fn size(&self) -> usize {
         self.size
     }
@@ -1090,10 +1093,12 @@ mod tests {
             total_qubits: 4,
             ..Default::default()
         };
-        let mut simulator = MPIQuantumSimulator::new(config).unwrap();
+        let mut simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
         assert!(simulator.initialize().is_ok());
 
-        let state = simulator.get_local_state().unwrap();
+        let state = simulator
+            .get_local_state()
+            .expect("failed to get local state");
         assert_eq!(state[0], Complex64::new(1.0, 0.0));
     }
 
@@ -1102,7 +1107,7 @@ mod tests {
         let comm = MPICommunicator::new();
         assert!(comm.is_ok());
 
-        let comm = comm.unwrap();
+        let comm = comm.expect("failed to create communicator");
         assert_eq!(comm.rank(), 0);
         assert_eq!(comm.size(), 1);
     }
@@ -1113,8 +1118,8 @@ mod tests {
             total_qubits: 4,
             ..Default::default()
         };
-        let mut simulator = MPIQuantumSimulator::new(config).unwrap();
-        simulator.initialize().unwrap();
+        let mut simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
+        simulator.initialize().expect("failed to initialize");
 
         // Apply X gate
         let x_gate = Array2::from_shape_vec(
@@ -1126,7 +1131,7 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("valid 2x2 matrix shape");
 
         let result = simulator.apply_single_qubit_gate(0, &x_gate);
         assert!(result.is_ok());
@@ -1138,10 +1143,12 @@ mod tests {
             total_qubits: 2,
             ..Default::default()
         };
-        let mut simulator = MPIQuantumSimulator::new(config).unwrap();
-        simulator.initialize().unwrap();
+        let mut simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
+        simulator.initialize().expect("failed to initialize");
 
-        let probs = simulator.get_probability_distribution().unwrap();
+        let probs = simulator
+            .get_probability_distribution()
+            .expect("failed to get probability distribution");
         assert_eq!(probs.len(), 4);
         assert!((probs[0] - 1.0).abs() < 1e-10);
     }
@@ -1152,9 +1159,9 @@ mod tests {
             total_qubits: 4,
             ..Default::default()
         };
-        let simulator = MPIQuantumSimulator::new(config).unwrap();
+        let simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
 
-        let stats = simulator.get_stats().unwrap();
+        let stats = simulator.get_stats().expect("failed to get stats");
         assert_eq!(stats.gates_executed, 0);
     }
 
@@ -1185,8 +1192,8 @@ mod tests {
             total_qubits: 4,
             ..Default::default()
         };
-        let mut simulator = MPIQuantumSimulator::new(config).unwrap();
-        simulator.initialize().unwrap();
+        let mut simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
+        simulator.initialize().expect("failed to initialize");
 
         // Apply some gates
         let h_gate = Array2::from_shape_vec(
@@ -1198,14 +1205,18 @@ mod tests {
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
-        simulator.apply_single_qubit_gate(0, &h_gate).unwrap();
+        .expect("valid 2x2 matrix shape");
+        simulator
+            .apply_single_qubit_gate(0, &h_gate)
+            .expect("failed to apply gate");
 
         // Reset
-        simulator.reset().unwrap();
+        simulator.reset().expect("failed to reset");
 
         // Check state is back to |0...0>
-        let state = simulator.get_local_state().unwrap();
+        let state = simulator
+            .get_local_state()
+            .expect("failed to get local state");
         assert!((state[0] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
     }
 
@@ -1244,8 +1255,8 @@ mod tests {
             total_qubits: 4,
             ..Default::default()
         };
-        let mut simulator = MPIQuantumSimulator::new(config).unwrap();
-        simulator.initialize().unwrap();
+        let mut simulator = MPIQuantumSimulator::new(config).expect("failed to create simulator");
+        simulator.initialize().expect("failed to initialize");
 
         // CNOT gate matrix
         let cnot_gate = Array2::from_shape_vec(
@@ -1269,7 +1280,7 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("valid 4x4 matrix shape");
 
         let result = simulator.apply_two_qubit_gate(0, 1, &cnot_gate);
         assert!(result.is_ok());

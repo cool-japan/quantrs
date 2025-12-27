@@ -249,9 +249,9 @@ impl QuantumModelSelector {
                 .max_by(|a, b| {
                     a.estimated_performance
                         .partial_cmp(&b.estimated_performance)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
-                .unwrap()
+                .expect("Candidates verified non-empty above")
                 .clone()),
             ModelSelectionStrategy::ResourceConstrained => Ok(suitable_candidates
                 .into_iter()
@@ -259,9 +259,9 @@ impl QuantumModelSelector {
                     a.resource_requirements
                         .computational_complexity
                         .partial_cmp(&b.resource_requirements.computational_complexity)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
-                .unwrap()
+                .expect("Candidates verified non-empty above")
                 .clone()),
             _ => {
                 // Default to best performance
@@ -270,9 +270,9 @@ impl QuantumModelSelector {
                     .max_by(|a, b| {
                         a.estimated_performance
                             .partial_cmp(&b.estimated_performance)
-                            .unwrap()
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
-                    .unwrap()
+                    .expect("Candidates verified non-empty above")
                     .clone())
             }
         }

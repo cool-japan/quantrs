@@ -331,7 +331,7 @@ impl UltraThinkQuantumComputer {
         let holonomic_gate = HolonomicGate {
             path_parameters,
             geometric_phase,
-            target_qubits: target_qubits.clone(),
+            target_qubits,
             fidelity: 0.9999, // Ultra-high fidelity due to geometric protection
         };
 
@@ -530,7 +530,7 @@ impl UltraThinkQuantumComputer {
         hasher.finish()
     }
 
-    fn apply_holonomic_gate(
+    const fn apply_holonomic_gate(
         &self,
         gate: &HolonomicGate,
     ) -> Result<GateApplicationResult, QuantRS2Error> {
@@ -548,7 +548,7 @@ impl UltraThinkQuantumComputer {
             .product()
     }
 
-    fn establish_distributed_entanglement(
+    const fn establish_distributed_entanglement(
         &self,
         nodes: &[u64],
     ) -> Result<EntanglementResults, QuantRS2Error> {
@@ -559,7 +559,7 @@ impl UltraThinkQuantumComputer {
         })
     }
 
-    fn execute_distributed_gates(
+    const fn execute_distributed_gates(
         &self,
         _plan: &ExecutionPlan,
         _entanglement: &EntanglementResults,
@@ -571,23 +571,23 @@ impl UltraThinkQuantumComputer {
     }
 
     // Benchmarking methods
-    fn benchmark_holonomic_gates(&self) -> f64 {
+    const fn benchmark_holonomic_gates(&self) -> f64 {
         5.2 // 5.2x speedup due to geometric protection
     }
 
-    fn benchmark_quantum_ml(&self) -> f64 {
+    const fn benchmark_quantum_ml(&self) -> f64 {
         8.1 // 8.1x speedup for quantum ML algorithms
     }
 
-    fn benchmark_quantum_memory(&self) -> f64 {
+    const fn benchmark_quantum_memory(&self) -> f64 {
         12.3 // 12.3x improvement in coherence time
     }
 
-    fn benchmark_real_time_compilation(&self) -> f64 {
+    const fn benchmark_real_time_compilation(&self) -> f64 {
         15.7 // 15.7x faster compilation
     }
 
-    fn benchmark_distributed_quantum(&self) -> f64 {
+    const fn benchmark_distributed_quantum(&self) -> f64 {
         4.9 // 4.9x advantage for distributed operations
     }
 }
@@ -695,7 +695,7 @@ impl NaturalGradientOptimizer {
 }
 
 impl TensorNetworkProcessor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             tensor_decompositions: Vec::new(),
             contraction_order: Vec::new(),
@@ -793,14 +793,14 @@ impl DistributedQuantumNetwork {
 }
 
 impl NetworkScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             active_operations: Vec::new(),
             scheduling_strategy: SchedulingStrategy::FidelityOptimized,
         }
     }
 
-    pub fn schedule_operation(
+    pub const fn schedule_operation(
         &self,
         operation: &DistributedOperation,
     ) -> Result<ExecutionPlan, QuantRS2Error> {
@@ -851,7 +851,7 @@ pub struct QuantumAdvantageReport {
 }
 
 impl QuantumAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             holonomic_advantage: 0.0,
             quantum_ml_advantage: 0.0,
@@ -914,7 +914,7 @@ mod tests {
         let result = computer.execute_holonomic_gate(path_params, qubits);
         assert!(result.is_ok());
 
-        let execution_result = result.unwrap();
+        let execution_result = result.expect("Failed to execute holonomic gate");
         assert!(execution_result.gate_fidelity > 0.999);
         assert!(execution_result.error_corrected);
     }
@@ -928,7 +928,7 @@ mod tests {
         let result = computer.execute_quantum_ml_circuit(&input_data, &parameters);
         assert!(result.is_ok());
 
-        let ml_result = result.unwrap();
+        let ml_result = result.expect("Failed to execute quantum ML circuit");
         assert!(ml_result.quantum_advantage_factor > 1.0);
     }
 
@@ -946,7 +946,7 @@ mod tests {
         let result = computer.store_quantum_state(state, coherence_time);
         assert!(result.is_ok());
 
-        let state_id = result.unwrap();
+        let state_id = result.expect("Failed to store quantum state");
         assert!(computer
             .quantum_memory
             .stored_states

@@ -630,7 +630,7 @@ impl PersistentHomology {
 
         // Sort samples by cost
         let mut sorted_samples = samples.to_vec();
-        sorted_samples.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        sorted_samples.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Add vertices
         for (idx, (_, cost)) in sorted_samples.iter().enumerate() {
@@ -858,7 +858,11 @@ impl PersistentHomology {
             }
         }
 
-        regions.sort_by(|a, b| a.min_cost.partial_cmp(&b.min_cost).unwrap());
+        regions.sort_by(|a, b| {
+            a.min_cost
+                .partial_cmp(&b.min_cost)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         regions
     }
 }
@@ -971,7 +975,7 @@ mod tests {
         let mut result = ph.analyze_landscape(&samples);
         assert!(result.is_ok());
 
-        let homology = result.unwrap();
+        let homology = result.expect("Homology analysis should succeed");
         assert!(!homology.persistence_pairs.is_empty());
     }
 }

@@ -66,6 +66,7 @@ pub struct LayoutAwareEmbedder {
 
 impl LayoutAwareEmbedder {
     /// Create a new layout-aware embedder
+    #[must_use]
     pub fn new(config: LayoutConfig) -> Self {
         Self {
             config,
@@ -195,7 +196,7 @@ impl LayoutAwareEmbedder {
 
     /// Build chains from initial placement
     fn build_chains(
-        &mut self,
+        &self,
         placement: &HashMap<usize, usize>,
         logical_edges: &[(usize, usize)],
         hardware: &HardwareGraph,
@@ -387,7 +388,7 @@ impl LayoutAwareEmbedder {
 
     /// Find a path to connect two chains
     fn find_connection_path(
-        &mut self,
+        &self,
         chain1: &[usize],
         chain2: &[usize],
         hardware: &HardwareGraph,
@@ -494,9 +495,8 @@ impl LayoutAwareEmbedder {
     ) -> IsingResult<()> {
         if let Some(chain) = embedding.chains.get_mut(&var) {
             for &qubit in extension {
-                if !used_qubits.contains(&qubit) {
+                if used_qubits.insert(qubit) {
                     chain.push(qubit);
-                    used_qubits.insert(qubit);
                     embedding.qubit_to_variable.insert(qubit, var);
                 }
             }
@@ -526,9 +526,9 @@ impl LayoutAwareEmbedder {
     }
 
     /// Try a local swap to improve embedding
-    fn try_local_swap(
+    const fn try_local_swap(
         &self,
-        embedding: &mut Embedding,
+        embedding: &Embedding,
         var: usize,
         logical_edges: &[(usize, usize)],
         hardware: &HardwareGraph,
@@ -572,7 +572,7 @@ impl LayoutAwareEmbedder {
 
     /// Compute embedding statistics
     fn compute_stats(&self, embedding: &Embedding) -> LayoutStats {
-        let chain_lengths: Vec<_> = embedding.chains.values().map(|chain| chain.len()).collect();
+        let chain_lengths: Vec<_> = embedding.chains.values().map(std::vec::Vec::len).collect();
 
         let total_length: usize = chain_lengths.iter().sum();
         let max_length = chain_lengths.iter().copied().max().unwrap_or(0);
@@ -613,6 +613,7 @@ pub struct MultiLevelEmbedder {
 
 impl MultiLevelEmbedder {
     /// Create a new multi-level embedder
+    #[must_use]
     pub fn new(config: LayoutConfig, num_levels: usize) -> Self {
         Self {
             base_embedder: LayoutAwareEmbedder::new(config),
@@ -631,12 +632,15 @@ impl MultiLevelEmbedder {
         // Coarsen the logical graph
         let coarsened_graphs = self.coarsen_graph(logical_edges, num_vars);
 
+        // Get the coarsest graph (coarsen_graph always returns at least one element)
+        let coarsest = coarsened_graphs
+            .last()
+            .expect("coarsen_graph should return at least the original graph");
+
         // Embed coarsest graph
-        let (mut embedding, _) = self.base_embedder.find_embedding(
-            &coarsened_graphs.last().unwrap().0,
-            coarsened_graphs.last().unwrap().1,
-            hardware,
-        )?;
+        let (mut embedding, _) =
+            self.base_embedder
+                .find_embedding(&coarsest.0, coarsest.1, hardware)?;
 
         // Refine through levels
         for level in (0..coarsened_graphs.len() - 1).rev() {
@@ -663,7 +667,7 @@ impl MultiLevelEmbedder {
     }
 
     /// Refine embedding from coarse to fine level
-    fn refine_level(
+    const fn refine_level(
         &self,
         coarse_embedding: Embedding,
         fine_graph: &(Vec<(usize, usize)>, usize),
@@ -691,7 +695,8 @@ mod tests {
         let config = LayoutConfig::default();
         let embedder = LayoutAwareEmbedder::new(config);
 
-        let hardware = HardwareGraph::new_chimera(2, 2, 2).unwrap();
+        let hardware = HardwareGraph::new_chimera(2, 2, 2)
+            .expect("should create Chimera hardware graph for testing");
 
         // Same qubit
         assert_eq!(embedder.qubit_distance(0, 0, &hardware), 0);

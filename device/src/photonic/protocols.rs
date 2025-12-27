@@ -106,7 +106,7 @@ pub struct ProtocolParty {
 }
 
 /// Role of a party in quantum protocols
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PartyRole {
     /// Alice (sender)
     Alice,
@@ -160,7 +160,7 @@ pub struct PrivacyAmplificationParams {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthenticationMethod {
     /// Classical authentication
     Classical { algorithm: String },
@@ -182,7 +182,7 @@ pub struct NetworkConfiguration {
 }
 
 /// Network topology types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetworkTopology {
     /// Point-to-point
     PointToPoint,
@@ -236,7 +236,7 @@ pub struct RoutingConfig {
 }
 
 /// Routing algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RoutingAlgorithm {
     /// Shortest path
     ShortestPath,
@@ -351,7 +351,9 @@ mod instant_serde {
     where
         S: Serializer,
     {
-        let duration_since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let duration_since_epoch = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default();
         duration_since_epoch.as_secs().serialize(serializer)
     }
 
@@ -365,7 +367,7 @@ mod instant_serde {
 }
 
 /// Types of security events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityEventType {
     /// Eavesdropping attempt detected
     EavesdroppingDetected,
@@ -380,7 +382,7 @@ pub enum SecurityEventType {
 }
 
 /// Security event severity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecuritySeverity {
     Low,
     Medium,
@@ -454,8 +456,7 @@ impl PhotonicProtocolEngine {
             QKDVariant::BB84 => self.execute_bb84(context),
             QKDVariant::CVQKD { modulation } => self.execute_cvqkd(context, modulation),
             _ => Err(PhotonicProtocolError::UnsupportedProtocol(format!(
-                "QKD variant {:?} not implemented",
-                variant
+                "QKD variant {variant:?} not implemented"
             ))),
         }
     }
@@ -564,7 +565,7 @@ impl PhotonicProtocolEngine {
             };
 
             // Quantize to bits (simplified)
-            key.push(if x_quad > 0.0 { 1 } else { 0 });
+            key.push(u8::from(x_quad > 0.0));
         }
 
         let error_rate = 0.02; // Lower error rate for CV-QKD
@@ -609,11 +610,11 @@ impl PhotonicProtocolEngine {
 
         // Simulate quantum teleportation
         let input_state = PhotonicQubitState::plus(PhotonicQubitEncoding::Polarization);
-        let fidelity = 0.95; // Typical teleportation fidelity
+        let fidelity: f64 = 0.95; // Typical teleportation fidelity
 
-        let mut output_state = input_state.clone();
-        output_state.amplitude_0 *= (fidelity as f64).sqrt();
-        output_state.amplitude_1 *= (fidelity as f64).sqrt();
+        let mut output_state = input_state;
+        output_state.amplitude_0 *= fidelity.sqrt();
+        output_state.amplitude_1 *= fidelity.sqrt();
 
         let metrics = ProtocolMetrics {
             execution_time: start_time.elapsed(),
@@ -640,7 +641,7 @@ impl PhotonicProtocolEngine {
     }
 
     /// Execute other protocols (placeholder implementations)
-    fn execute_state_distribution_protocol(
+    const fn execute_state_distribution_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
@@ -648,7 +649,7 @@ impl PhotonicProtocolEngine {
         Ok(self.create_placeholder_result(context))
     }
 
-    fn execute_clock_sync_protocol(
+    const fn execute_clock_sync_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
@@ -656,7 +657,7 @@ impl PhotonicProtocolEngine {
         Ok(self.create_placeholder_result(context))
     }
 
-    fn execute_sensing_protocol(
+    const fn execute_sensing_protocol(
         &self,
         context: &ProtocolContext,
     ) -> Result<ProtocolResult, PhotonicProtocolError> {
@@ -664,7 +665,7 @@ impl PhotonicProtocolEngine {
         Ok(self.create_placeholder_result(context))
     }
 
-    fn execute_quantum_internet_protocol(
+    const fn execute_quantum_internet_protocol(
         &self,
         context: &ProtocolContext,
         _protocol_version: &str,
@@ -674,7 +675,7 @@ impl PhotonicProtocolEngine {
     }
 
     /// Create placeholder result for unimplemented protocols
-    fn create_placeholder_result(&self, _context: &ProtocolContext) -> ProtocolResult {
+    const fn create_placeholder_result(&self, _context: &ProtocolContext) -> ProtocolResult {
         ProtocolResult {
             success: true,
             key: None,
@@ -700,22 +701,24 @@ impl PhotonicProtocolEngine {
         self.statistics.total_protocols += 1;
 
         let success_count = if result.success { 1.0 } else { 0.0 };
-        self.statistics.success_rate = (self.statistics.success_rate
-            * (self.statistics.total_protocols - 1) as f64
-            + success_count)
+        self.statistics.success_rate = self
+            .statistics
+            .success_rate
+            .mul_add((self.statistics.total_protocols - 1) as f64, success_count)
             / self.statistics.total_protocols as f64;
 
         if let Some(key_rate) = result.metrics.key_rate {
-            self.statistics.average_key_rate = (self.statistics.average_key_rate
-                * (self.statistics.total_protocols - 1) as f64
-                + key_rate)
+            self.statistics.average_key_rate = self
+                .statistics
+                .average_key_rate
+                .mul_add((self.statistics.total_protocols - 1) as f64, key_rate)
                 / self.statistics.total_protocols as f64;
         }
 
-        self.statistics.average_fidelity = (self.statistics.average_fidelity
-            * (self.statistics.total_protocols - 1) as f64
-            + result.metrics.fidelity)
-            / self.statistics.total_protocols as f64;
+        self.statistics.average_fidelity = self.statistics.average_fidelity.mul_add(
+            (self.statistics.total_protocols - 1) as f64,
+            result.metrics.fidelity,
+        ) / self.statistics.total_protocols as f64;
 
         if result.security_analysis.eavesdropping_detected {
             self.statistics.security_violations += 1;
@@ -728,11 +731,11 @@ impl PhotonicProtocolEngine {
         let u1 = thread_rng().gen::<f64>();
         let u2 = thread_rng().gen::<f64>();
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
-        mean + variance.sqrt() * z
+        variance.sqrt().mul_add(z, mean)
     }
 
     /// Get protocol statistics
-    pub fn get_statistics(&self) -> &ProtocolStatistics {
+    pub const fn get_statistics(&self) -> &ProtocolStatistics {
         &self.statistics
     }
 
@@ -797,7 +800,7 @@ mod tests {
                 },
                 context,
             )
-            .unwrap();
+            .expect("BB84 protocol execution should succeed");
 
         assert!(result.metrics.fidelity > 0.0);
         assert!(result.metrics.execution_time > Duration::ZERO);
@@ -836,7 +839,7 @@ mod tests {
 
         let result = engine
             .execute_protocol(PhotonicProtocolType::Teleportation, context)
-            .unwrap();
+            .expect("teleportation protocol execution should succeed");
 
         assert!(result.success);
         assert!(result.transmitted_state.is_some());
@@ -883,7 +886,7 @@ mod tests {
                 },
                 context,
             )
-            .unwrap();
+            .expect("CV-QKD protocol execution should succeed");
 
         assert!(result.key.is_some());
         assert!(result.metrics.key_rate.is_some());

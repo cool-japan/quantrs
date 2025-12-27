@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 /// Types of topological quantum error correcting codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologicalCodeType {
     /// Surface code (toric code)
     SurfaceCode,
@@ -40,7 +40,7 @@ pub struct TopologicalStabilizer {
 }
 
 /// Types of stabilizers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StabilizerType {
     /// X-type stabilizer (star operator)
     XType,
@@ -51,7 +51,7 @@ pub enum StabilizerType {
 }
 
 /// Pauli operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PauliOperator {
     I, // Identity
     X, // Pauli-X
@@ -75,7 +75,7 @@ pub struct LogicalOperator {
 }
 
 /// Types of logical operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogicalOperatorType {
     /// Logical X operator
     LogicalX,
@@ -294,7 +294,7 @@ impl SurfaceCode {
     }
 
     /// Get number of logical qubits
-    pub fn logical_qubit_count(&self) -> usize {
+    pub const fn logical_qubit_count(&self) -> usize {
         1 // Surface code encodes 1 logical qubit
     }
 
@@ -315,7 +315,7 @@ pub struct MWPMDecoder {
 
 impl MWPMDecoder {
     /// Create a new MWPM decoder
-    pub fn new(code_distance: usize, error_probability: f64) -> Self {
+    pub const fn new(code_distance: usize, error_probability: f64) -> Self {
         Self {
             code_distance,
             error_probability,
@@ -332,8 +332,13 @@ impl MWPMDecoder {
         let mut unmatched = defects.to_vec();
 
         while unmatched.len() >= 2 {
-            let defect1 = unmatched.pop().unwrap();
-            let defect2 = unmatched.pop().unwrap();
+            // Safe: loop condition guarantees at least 2 elements
+            let defect1 = unmatched
+                .pop()
+                .expect("Should have at least 2 elements in unmatched");
+            let defect2 = unmatched
+                .pop()
+                .expect("Should have at least 1 element in unmatched");
             matching.push((defect1, defect2));
         }
 
@@ -537,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_surface_code_creation() {
-        let surface_code = SurfaceCode::new(3).unwrap();
+        let surface_code = SurfaceCode::new(3).expect("Surface code creation should succeed");
         assert_eq!(surface_code.distance, 3);
         assert!(surface_code.physical_qubit_count() > 0);
         assert_eq!(surface_code.logical_qubit_count(), 1);
@@ -545,7 +550,7 @@ mod tests {
 
     #[test]
     fn test_surface_code_stabilizers() {
-        let surface_code = SurfaceCode::new(3).unwrap();
+        let surface_code = SurfaceCode::new(3).expect("Surface code creation should succeed");
         let stabilizers = surface_code.get_all_stabilizers();
         assert!(!stabilizers.is_empty());
 
@@ -582,13 +587,15 @@ mod tests {
             },
         ];
 
-        let corrections = decoder.decode_syndrome(&syndrome, 3).unwrap();
+        let corrections = decoder
+            .decode_syndrome(&syndrome, 3)
+            .expect("Syndrome decoding should succeed");
         assert!(!corrections.is_empty());
     }
 
     #[test]
     fn test_color_code_creation() {
-        let color_code = ColorCode::new(3).unwrap();
+        let color_code = ColorCode::new(3).expect("Color code creation should succeed");
         assert_eq!(color_code.distance, 3);
         assert!(color_code.physical_qubit_count() > 0);
     }

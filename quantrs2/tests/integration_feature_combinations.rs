@@ -446,7 +446,7 @@ mod api_consistency {
         use quantrs2::prelude::essentials::QuantRS2Error;
 
         let err = QuantRS2Error::InvalidQubitId(42);
-        let msg = format!("{}", err);
+        let msg = format!("{err}");
         assert!(msg.contains("42"));
     }
 

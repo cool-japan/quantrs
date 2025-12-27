@@ -36,7 +36,7 @@ pub struct CloudPerformanceConfig {
 }
 
 /// Performance optimization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceOptimizationStrategy {
     LatencyMinimization,
     ThroughputMaximization,

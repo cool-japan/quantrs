@@ -114,7 +114,7 @@ pub struct DynamicCircuit {
 }
 
 impl DynamicCircuit {
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
             gates: Vec::new(),
@@ -133,11 +133,11 @@ pub struct GateOp {
 struct TimeSeriesAnalyzer {}
 
 impl TimeSeriesAnalyzer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn analyze_trend(&self, _data: &Vec<(f64, f64)>) -> QuantRS2Result<TrendAnalysis> {
+    fn analyze_trend(_data: &Vec<(f64, f64)>) -> QuantRS2Result<TrendAnalysis> {
         Ok(TrendAnalysis::default())
     }
 }
@@ -146,15 +146,15 @@ impl TimeSeriesAnalyzer {
 struct SpectralAnalyzer {}
 
 impl SpectralAnalyzer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn analyze_spectrum(&self, _data: &Vec<f64>) -> QuantRS2Result<SpectralFeatures> {
+    fn analyze_spectrum(_data: &Vec<f64>) -> QuantRS2Result<SpectralFeatures> {
         Ok(SpectralFeatures::default())
     }
 
-    fn compute_fft(&self, time_series: &TimeSeries) -> QuantRS2Result<Vec<Complex64>> {
+    fn compute_fft(time_series: &TimeSeries) -> QuantRS2Result<Vec<Complex64>> {
         // Stub FFT implementation
         let n = time_series.values.len();
         let fft_result: Vec<Complex64> = time_series
@@ -165,7 +165,7 @@ impl SpectralAnalyzer {
         Ok(fft_result)
     }
 
-    fn compute_power_spectral_density(&self, spectrum: &[Complex64]) -> QuantRS2Result<Vec<f64>> {
+    fn compute_power_spectral_density(spectrum: &[Complex64]) -> QuantRS2Result<Vec<f64>> {
         // Stub PSD implementation
         let psd: Vec<f64> = spectrum.iter().map(|c| c.norm_sqr()).collect();
         Ok(psd)
@@ -406,7 +406,7 @@ impl EnhancedNoiseCharacterizer {
             temporal_tracker: Arc::new(TemporalNoiseTracker::new(config.clone())),
             spectral_analyzer: Arc::new(SpectralNoiseAnalyzer::new(config.clone())),
             correlation_analyzer: Arc::new(CorrelationAnalysis::default()),
-            predictive_modeler: Arc::new(PredictiveNoiseModeler::new(config.clone())),
+            predictive_modeler: Arc::new(PredictiveNoiseModeler::new(config)),
             buffer_pool,
             cache: Arc::new(Mutex::new(NoiseCache::new())),
         }
@@ -428,7 +428,7 @@ impl EnhancedNoiseCharacterizer {
             self.run_correlation_analysis(device, qubits),
         ];
 
-        let characterizations: Vec<_> = tasks.into_iter().map(|task| task).collect();
+        let characterizations: Vec<_> = tasks.into_iter().collect();
 
         // Combine results
         for char_result in characterizations {
@@ -474,7 +474,7 @@ impl EnhancedNoiseCharacterizer {
                 .collect();
 
             // Analyze results
-            let survival_prob = self.calculate_survival_probability(&results)?;
+            let survival_prob = Self::calculate_survival_probability(&results)?;
             rb_data.add_point(seq_length, survival_prob);
         }
 
@@ -495,8 +495,8 @@ impl EnhancedNoiseCharacterizer {
         let mut tomography_data = TomographyData::new();
 
         // Generate preparation and measurement bases
-        let prep_states = self.generate_preparation_states(qubits.len());
-        let meas_bases = self.generate_measurement_bases(qubits.len());
+        let prep_states = Self::generate_preparation_states(qubits.len());
+        let meas_bases = Self::generate_measurement_bases(qubits.len());
 
         // Run tomography experiments
         let experiments: Vec<_> = prep_states
@@ -510,11 +510,11 @@ impl EnhancedNoiseCharacterizer {
             .collect();
 
         // Reconstruct process matrix
-        let process_matrix = self.reconstruct_process_matrix(&results)?;
-        tomography_data.process_matrix = process_matrix.clone();
+        let process_matrix = Self::reconstruct_process_matrix(&results)?;
+        tomography_data.process_matrix.clone_from(&process_matrix);
 
         // Extract noise parameters
-        let noise_params = self.extract_noise_parameters(&process_matrix)?;
+        let noise_params = Self::extract_noise_parameters(&process_matrix)?;
 
         Ok(CharacterizationData::ProcessTomography(
             tomography_data,
@@ -531,7 +531,7 @@ impl EnhancedNoiseCharacterizer {
         let mut spectral_data = SpectralData::new();
 
         // Collect time series data
-        let time_series = self.collect_noise_time_series(device, qubits)?;
+        let time_series = Self::collect_noise_time_series(device, qubits)?;
 
         // Perform FFT analysis
         let spectrum = self
@@ -540,11 +540,11 @@ impl EnhancedNoiseCharacterizer {
         spectral_data.power_spectrum = spectrum.clone();
 
         // Identify noise peaks
-        let noise_peaks = self.identify_noise_peaks(&spectrum)?;
+        let noise_peaks = Self::identify_noise_peaks(&spectrum)?;
         spectral_data.noise_peaks = noise_peaks;
 
         // Analyze 1/f noise
-        let one_over_f_params = self.analyze_one_over_f_noise(&spectrum)?;
+        let one_over_f_params = Self::analyze_one_over_f_noise(&spectrum)?;
         spectral_data.one_over_f_params = Some(one_over_f_params);
 
         Ok(CharacterizationData::SpectralAnalysis(spectral_data))
@@ -559,20 +559,20 @@ impl EnhancedNoiseCharacterizer {
         let mut correlation_data = CorrelationData::new();
 
         // Measure simultaneous errors
-        let error_data = self.measure_correlated_errors(device, qubits)?;
+        let error_data = Self::measure_correlated_errors(device, qubits)?;
 
         // Compute correlation matrix
-        let correlationmatrix = self
-            .correlation_analyzer
-            .compute_correlationmatrix(&error_data)?;
-        correlation_data.correlationmatrix = correlationmatrix.clone();
+        let correlationmatrix = CorrelationAnalysis::compute_correlationmatrix(&error_data)?;
+        correlation_data
+            .correlationmatrix
+            .clone_from(&correlationmatrix);
 
         // Identify correlated error clusters
         let clusters = self.identify_error_clusters(&correlationmatrix)?;
         correlation_data.error_clusters = clusters;
 
         // Analyze spatial correlations
-        let spatial_corr = self.analyze_spatial_correlations(device, qubits)?;
+        let spatial_corr = Self::analyze_spatial_correlations(device, qubits)?;
         correlation_data.spatial_correlations = Some(spatial_corr);
 
         Ok(CharacterizationData::CorrelationAnalysis(correlation_data))
@@ -583,35 +583,35 @@ impl EnhancedNoiseCharacterizer {
         let mut report = NoiseReport::new();
 
         // Summary statistics
-        report.summary = self.generate_summary_statistics(result)?;
+        report.summary = Self::generate_summary_statistics(result)?;
 
         // Detailed analysis for each noise model
         for noise_model in &self.config.noise_models {
-            let analysis = self.analyze_noise_model(result, *noise_model)?;
+            let analysis = Self::analyze_noise_model(result, *noise_model)?;
             report.model_analyses.insert(*noise_model, analysis);
         }
 
         // Temporal evolution
         if self.config.enable_temporal_tracking {
-            report.temporal_analysis = Some(self.analyze_temporal_evolution(result)?);
+            report.temporal_analysis = Some(Self::analyze_temporal_evolution(result)?);
         }
 
         // Spectral characteristics
         if self.config.enable_spectral_analysis {
-            report.spectral_analysis = Some(self.analyze_spectral_characteristics(result)?);
+            report.spectral_analysis = Some(Self::analyze_spectral_characteristics(result)?);
         }
 
         // Correlation analysis
         if self.config.enable_correlation_analysis {
-            report.correlation_analysis = Some(self.analyze_correlations(result)?);
+            report.correlation_analysis = Some(Self::analyze_correlations(result)?);
         }
 
         // Recommendations
-        report.recommendations = self.generate_recommendations(result)?;
+        report.recommendations = Self::generate_recommendations(result)?;
 
         // Visualizations
         if self.config.reporting_options.generate_plots {
-            report.visualizations = Some(self.generate_visualizations(result)?);
+            report.visualizations = Some(Self::generate_visualizations(result)?);
         }
 
         Ok(report)
@@ -626,12 +626,12 @@ impl EnhancedNoiseCharacterizer {
 
             // Random Clifford gates
             for _ in 0..length {
-                let clifford = self.random_clifford_gate(num_qubits);
+                let clifford = Self::random_clifford_gate(num_qubits);
                 sequence.add_gate(clifford);
             }
 
             // Recovery gate
-            let recovery = self.compute_recovery_gate(&sequence);
+            let recovery = Self::compute_recovery_gate(&sequence);
             sequence.add_gate(recovery);
 
             sequences.push(sequence);
@@ -647,7 +647,7 @@ impl EnhancedNoiseCharacterizer {
         qubits: &[QubitId],
         sequence: &RBSequence,
     ) -> QuantRS2Result<RBResult> {
-        let circuit = sequence.to_circuit(qubits)?;
+        let circuit = RBSequence::to_circuit(qubits)?;
         let job = device.execute(circuit, self.config.base_config.shots_per_sequence)?;
         let counts = job.get_counts()?;
 
@@ -660,7 +660,7 @@ impl EnhancedNoiseCharacterizer {
         Ok(RBResult {
             sequence_length: sequence.length(),
             survival_probability: survival_prob,
-            error_bars: self.calculate_error_bars(survival_prob, total_shots as usize),
+            error_bars: Self::calculate_error_bars(survival_prob, total_shots as usize),
         })
     }
 
@@ -681,7 +681,7 @@ impl EnhancedNoiseCharacterizer {
             decay_parameter: p,
             offset: b,
             average_error_rate: r,
-            confidence_interval: self.calculate_fit_confidence_interval(&x, &y, a, p, b)?,
+            confidence_interval: Self::calculate_fit_confidence_interval(&x, &y, a, p, b)?,
         })
     }
 }
@@ -706,10 +706,12 @@ impl MLNoiseAnalyzer {
         &self,
         result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<MLNoiseInsights> {
-        let features = self.feature_extractor.extract_features(result)?;
+        let features = NoiseFeatureExtractor::extract_features(result)?;
 
-        let mut model = self.model.lock().unwrap();
-        let predictions = model.predict(&features)?;
+        let model = self.model.lock().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to acquire ML model lock: {e}"))
+        })?;
+        let predictions = NoiseMLModel::predict(&features)?;
 
         Ok(MLNoiseInsights {
             noise_classification: predictions.classification,
@@ -737,7 +739,9 @@ impl TemporalNoiseTracker {
     }
 
     fn track_noise_evolution(&self, timestamp: f64, noise_data: &NoiseData) -> QuantRS2Result<()> {
-        let mut history = self.history.lock().unwrap();
+        let mut history = self.history.lock().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to acquire noise history lock: {e}"))
+        })?;
         history.add_measurement(timestamp, noise_data.clone());
 
         // Analyze trends
@@ -750,7 +754,7 @@ impl TemporalNoiseTracker {
                 .map(|(&t, &v)| (t, v))
                 .collect();
 
-            let trend_analysis = self.time_series_analyzer.analyze_trend(&time_series_vec)?;
+            let trend_analysis = TimeSeriesAnalyzer::analyze_trend(&time_series_vec)?;
 
             // Convert TrendAnalysis to NoiseTrend
             let noise_trend = match trend_analysis.trend_type {
@@ -785,10 +789,8 @@ impl SpectralNoiseAnalyzer {
     }
 
     fn compute_power_spectrum(&self, time_series: &TimeSeries) -> QuantRS2Result<PowerSpectrum> {
-        let spectrum = self.spectral_analyzer.compute_fft(time_series)?;
-        let power = self
-            .spectral_analyzer
-            .compute_power_spectral_density(&spectrum)?;
+        let spectrum = SpectralAnalyzer::compute_fft(time_series)?;
+        let power = SpectralAnalyzer::compute_power_spectral_density(&spectrum)?;
 
         Ok(PowerSpectrum {
             frequencies: self.generate_frequency_bins(time_series.timestamps.len()),
@@ -823,14 +825,16 @@ impl PredictiveNoiseModeler {
         &self,
         result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<NoisePredictions> {
-        let mut predictor = self.predictor.lock().unwrap();
+        let predictor = self.predictor.lock().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to acquire noise predictor lock: {e}"))
+        })?;
 
         // Update model with latest data
-        predictor.update(result)?;
+        NoisePredictor::update(result)?;
 
         // Generate predictions
         let horizon = self.config.analysis_parameters.prediction_horizon;
-        let predictions = predictor.predict(horizon)?;
+        let predictions = NoisePredictor::predict(horizon)?;
 
         Ok(predictions)
     }
@@ -871,7 +875,7 @@ pub struct NoiseCharacterizationResult {
 }
 
 impl NoiseCharacterizationResult {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             timestamp: 0.0,
             device_id: String::new(),
@@ -928,7 +932,7 @@ struct RBData {
 }
 
 impl RBData {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             sequence_lengths: Vec::new(),
             survival_probabilities: Vec::new(),
@@ -992,7 +996,7 @@ struct SpectralData {
 }
 
 impl SpectralData {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             power_spectrum: PowerSpectrum::new(),
             noise_peaks: Vec::new(),
@@ -1010,7 +1014,7 @@ struct PowerSpectrum {
 }
 
 impl PowerSpectrum {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             frequencies: Vec::new(),
             power_density: Vec::new(),
@@ -1244,7 +1248,7 @@ pub struct NoiseSummary {
 }
 
 impl NoiseSummary {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             overall_noise_rate: 0.0,
             dominant_noise: NoiseModel::Depolarizing,
@@ -1468,7 +1472,7 @@ struct RBSequence {
 }
 
 impl RBSequence {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self { gates: Vec::new() }
     }
 
@@ -1480,7 +1484,7 @@ impl RBSequence {
         self.gates.len() - 1 // Exclude recovery gate
     }
 
-    fn to_circuit(&self, _qubits: &[QubitId]) -> QuantRS2Result<DynamicCircuit> {
+    fn to_circuit(_qubits: &[QubitId]) -> QuantRS2Result<DynamicCircuit> {
         // Convert to quantum circuit - stub implementation
         Ok(DynamicCircuit::new(1))
     }
@@ -1550,7 +1554,7 @@ struct NoiseHistory {
 }
 
 impl NoiseHistory {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             measurements: VecDeque::new(),
             max_size: 1000,
@@ -1580,7 +1584,7 @@ impl NoiseHistory {
         TimeSeries { timestamps, values }
     }
 
-    fn update_trend(&mut self, trend: NoiseTrend) {
+    const fn update_trend(&mut self, trend: NoiseTrend) {
         self.current_trend = Some(trend);
     }
 }
@@ -1591,11 +1595,11 @@ struct NoiseMLModel {
 }
 
 impl NoiseMLModel {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn predict(&self, features: &NoiseFeatures) -> QuantRS2Result<NoisePrediction> {
+    const fn predict(_features: &NoiseFeatures) -> QuantRS2Result<NoisePrediction> {
         // Placeholder implementation
         Ok(NoisePrediction {
             classification: NoiseClassification {
@@ -1616,13 +1620,12 @@ struct NoiseFeatureExtractor {
 }
 
 impl NoiseFeatureExtractor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn extract_features(
-        &self,
-        result: &NoiseCharacterizationResult,
+    const fn extract_features(
+        _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<NoiseFeatures> {
         // Extract relevant features for ML analysis
         Ok(NoiseFeatures {
@@ -1656,16 +1659,16 @@ struct NoisePredictor {
 }
 
 impl NoisePredictor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {}
     }
 
-    fn update(&mut self, result: &NoiseCharacterizationResult) -> QuantRS2Result<()> {
+    const fn update(_result: &NoiseCharacterizationResult) -> QuantRS2Result<()> {
         // Update prediction model with new data
         Ok(())
     }
 
-    fn predict(&self, horizon: f64) -> QuantRS2Result<NoisePredictions> {
+    const fn predict(horizon: f64) -> QuantRS2Result<NoisePredictions> {
         // Generate predictions
         Ok(NoisePredictions {
             horizon,
@@ -1839,7 +1842,6 @@ struct CorrelationNetwork {
 impl EnhancedNoiseCharacterizer {
     /// Analyze temporal characteristics
     fn analyze_temporal_characteristics(
-        &self,
         _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<TemporalAnalysis> {
         // Stub implementation
@@ -1860,7 +1862,6 @@ impl EnhancedNoiseCharacterizer {
 
     /// Analyze spectral characteristics
     fn analyze_spectral_characteristics(
-        &self,
         _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<SpectralAnalysis> {
         // Stub implementation
@@ -1872,8 +1873,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Analyze correlations
-    fn analyze_correlations(
-        &self,
+    const fn analyze_correlations(
         _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<CorrelationAnalysis> {
         // Stub implementation
@@ -1892,8 +1892,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Generate recommendations
-    fn generate_recommendations(
-        &self,
+    const fn generate_recommendations(
         _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<Vec<Recommendation>> {
         // Stub implementation
@@ -1902,7 +1901,6 @@ impl EnhancedNoiseCharacterizer {
 
     /// Generate visualizations
     fn generate_visualizations(
-        &self,
         _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<NoiseVisualizations> {
         // Stub implementation
@@ -1960,7 +1958,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Generate random Clifford gate
-    fn random_clifford_gate(&self, _num_qubits: usize) -> CliffordGate {
+    fn random_clifford_gate(_num_qubits: usize) -> CliffordGate {
         // Stub implementation - return identity gate
         CliffordGate {
             gate_type: CliffordType::Identity,
@@ -1969,7 +1967,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Compute recovery gate
-    fn compute_recovery_gate(&self, _sequence: &RBSequence) -> CliffordGate {
+    fn compute_recovery_gate(_sequence: &RBSequence) -> CliffordGate {
         // Stub implementation - return identity gate
         CliffordGate {
             gate_type: CliffordType::Identity,
@@ -1978,14 +1976,13 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Calculate error bars
-    fn calculate_error_bars(&self, _survival_prob: f64, _shots: usize) -> f64 {
+    const fn calculate_error_bars(_survival_prob: f64, _shots: usize) -> f64 {
         // Stub implementation using standard error
         0.01 // placeholder
     }
 
     /// Calculate fit confidence interval
-    fn calculate_fit_confidence_interval(
-        &self,
+    const fn calculate_fit_confidence_interval(
         _x: &[f64],
         _y: &[f64],
         _a: f64,
@@ -1997,18 +1994,13 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Calculate survival probability from RB results
-    fn calculate_survival_probability(
-        &self,
-        results: &[QuantRS2Result<RBResult>],
-    ) -> QuantRS2Result<f64> {
+    fn calculate_survival_probability(results: &[QuantRS2Result<RBResult>]) -> QuantRS2Result<f64> {
         let mut total = 0.0;
         let mut count = 0;
 
-        for result in results {
-            if let Ok(rb_result) = result {
-                total += rb_result.survival_probability;
-                count += 1;
-            }
+        for rb_result in results.iter().flatten() {
+            total += rb_result.survival_probability;
+            count += 1;
         }
 
         if count == 0 {
@@ -2021,7 +2013,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Generate preparation states for process tomography
-    fn generate_preparation_states(&self, num_qubits: usize) -> Vec<QuantumState> {
+    fn generate_preparation_states(num_qubits: usize) -> Vec<QuantumState> {
         let mut states = Vec::new();
 
         // Generate standard basis states and superpositions
@@ -2039,7 +2031,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Generate measurement bases for process tomography
-    fn generate_measurement_bases(&self, num_qubits: usize) -> Vec<MeasurementBasis> {
+    fn generate_measurement_bases(num_qubits: usize) -> Vec<MeasurementBasis> {
         let mut bases = Vec::new();
 
         // Generate Pauli measurement bases
@@ -2079,8 +2071,7 @@ impl EnhancedNoiseCharacterizer {
 
     /// Reconstruct process matrix from tomography results
     fn reconstruct_process_matrix(
-        &self,
-        results: &[QuantRS2Result<Vec<f64>>],
+        _results: &[QuantRS2Result<Vec<f64>>],
     ) -> QuantRS2Result<Array2<Complex64>> {
         // Stub implementation - simple identity process
         let dim = 4; // For single-qubit process (2^2)
@@ -2094,9 +2085,8 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Extract noise parameters from process matrix
-    fn extract_noise_parameters(
-        &self,
-        process_matrix: &Array2<Complex64>,
+    const fn extract_noise_parameters(
+        _process_matrix: &Array2<Complex64>,
     ) -> QuantRS2Result<NoiseParameters> {
         // Stub implementation - extract basic parameters
         Ok(NoiseParameters {
@@ -2110,16 +2100,17 @@ impl EnhancedNoiseCharacterizer {
 
     /// Collect noise time series data
     fn collect_noise_time_series(
-        &self,
-        device: &impl QuantumDevice,
-        qubits: &[QubitId],
+        _device: &impl QuantumDevice,
+        _qubits: &[QubitId],
     ) -> QuantRS2Result<TimeSeries> {
         // Stub implementation - collect time series of noise measurements
         use scirs2_core::random::thread_rng;
         use scirs2_core::random::Distribution;
 
         let mut rng = thread_rng();
-        let normal = Normal::new(0.01, 0.001).unwrap();
+        let normal = Normal::new(0.01, 0.001).map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to create normal distribution: {e}"))
+        })?;
 
         let num_points = 100;
         let timestamps: Vec<f64> = (0..num_points).map(|i| i as f64).collect();
@@ -2134,7 +2125,7 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Identify noise peaks in spectrum
-    fn identify_noise_peaks(&self, spectrum: &PowerSpectrum) -> QuantRS2Result<Vec<NoisePeak>> {
+    fn identify_noise_peaks(spectrum: &PowerSpectrum) -> QuantRS2Result<Vec<NoisePeak>> {
         // Stub implementation - identify peaks in power spectrum
         let mut peaks = Vec::new();
 
@@ -2157,9 +2148,8 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Analyze 1/f noise characteristics
-    fn analyze_one_over_f_noise(
-        &self,
-        spectrum: &PowerSpectrum,
+    const fn analyze_one_over_f_noise(
+        _spectrum: &PowerSpectrum,
     ) -> QuantRS2Result<OneOverFParameters> {
         // Stub implementation - fit 1/f noise model
         Ok(OneOverFParameters {
@@ -2171,8 +2161,7 @@ impl EnhancedNoiseCharacterizer {
 
     /// Measure correlated errors between qubits
     fn measure_correlated_errors(
-        &self,
-        device: &impl QuantumDevice,
+        _device: &impl QuantumDevice,
         qubits: &[QubitId],
     ) -> QuantRS2Result<Array2<f64>> {
         // Stub implementation - measure simultaneous errors
@@ -2183,7 +2172,9 @@ impl EnhancedNoiseCharacterizer {
         use scirs2_core::random::Distribution;
 
         let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 0.01).unwrap();
+        let normal = Normal::new(0.0, 0.01).map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to create normal distribution: {e}"))
+        })?;
 
         for i in 0..n {
             for j in 0..100 {
@@ -2222,10 +2213,9 @@ impl EnhancedNoiseCharacterizer {
     }
 
     /// Analyze spatial correlations
-    fn analyze_spatial_correlations(
-        &self,
-        device: &impl QuantumDevice,
-        qubits: &[QubitId],
+    const fn analyze_spatial_correlations(
+        _device: &impl QuantumDevice,
+        _qubits: &[QubitId],
     ) -> QuantRS2Result<SpatialCorrelations> {
         // Stub implementation - analyze spatial correlation patterns
         Ok(SpatialCorrelations {
@@ -2237,7 +2227,6 @@ impl EnhancedNoiseCharacterizer {
 
     /// Generate summary statistics
     fn generate_summary_statistics(
-        &self,
         result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<NoiseSummary> {
         // Stub implementation - generate summary from results
@@ -2257,9 +2246,8 @@ impl EnhancedNoiseCharacterizer {
 
     /// Analyze specific noise model
     fn analyze_noise_model(
-        &self,
-        result: &NoiseCharacterizationResult,
-        noise_model: NoiseModel,
+        _result: &NoiseCharacterizationResult,
+        _noise_model: NoiseModel,
     ) -> QuantRS2Result<ModelAnalysis> {
         // Stub implementation - analyze specific noise model
         let mut parameters = HashMap::new();
@@ -2278,8 +2266,7 @@ impl EnhancedNoiseCharacterizer {
 
     /// Analyze temporal evolution
     fn analyze_temporal_evolution(
-        &self,
-        result: &NoiseCharacterizationResult,
+        _result: &NoiseCharacterizationResult,
     ) -> QuantRS2Result<TemporalAnalysis> {
         // Stub implementation - analyze how noise evolves over time
         Ok(TemporalAnalysis {
@@ -2338,10 +2325,7 @@ impl Default for CorrelationAnalysis {
 
 impl CorrelationAnalysis {
     /// Compute correlation matrix from error data
-    pub fn compute_correlationmatrix(
-        &self,
-        error_data: &Array2<f64>,
-    ) -> QuantRS2Result<Array2<f64>> {
+    pub fn compute_correlationmatrix(error_data: &Array2<f64>) -> QuantRS2Result<Array2<f64>> {
         let n = error_data.nrows();
         let mut corr_matrix = Array2::zeros((n, n));
 

@@ -272,6 +272,7 @@ pub struct DepthAnalysis {
 
 impl SimulationDiagnostics {
     /// Create a new diagnostics system
+    #[must_use]
     pub fn new() -> Self {
         Self {
             error_tracker: Arc::new(Mutex::new(ErrorTracker::default())),
@@ -319,6 +320,7 @@ impl SimulationDiagnostics {
     }
 
     /// Generate comprehensive diagnostic report
+    #[must_use]
     pub fn generate_report(&self) -> DiagnosticReport {
         let timestamp = chrono::Utc::now().to_rfc3339();
 

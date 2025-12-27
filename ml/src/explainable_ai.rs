@@ -1148,7 +1148,8 @@ impl QuantumExplainableAI {
             .map(|(i, &val)| (i, val))
             .collect();
 
-        indexed_importance.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        indexed_importance
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Return top 5 parameter indices as critical path
         Ok(indexed_importance
@@ -1347,7 +1348,7 @@ mod tests {
             },
         ];
 
-        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("should create QNN");
         let methods = create_default_xai_config();
         let xai = QuantumExplainableAI::new(model, methods);
 

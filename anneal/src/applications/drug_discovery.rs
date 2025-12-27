@@ -35,6 +35,7 @@ use crate::quantum_error_correction::{
     NoiseResilientAnnealingProtocol, SyndromeDetector,
 };
 use crate::simulator::{AnnealingParams, AnnealingResult, QuantumAnnealingSimulator};
+use std::fmt::Write;
 
 /// Chemical elements for molecular representation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,51 +54,52 @@ pub enum AtomType {
 }
 
 impl AtomType {
-    pub fn atomic_number(&self) -> u8 {
+    #[must_use]
+    pub const fn atomic_number(&self) -> u8 {
         match self {
-            AtomType::Hydrogen => 1,
-            AtomType::Carbon => 6,
-            AtomType::Nitrogen => 7,
-            AtomType::Oxygen => 8,
-            AtomType::Phosphorus => 15,
-            AtomType::Sulfur => 16,
-            AtomType::Fluorine => 9,
-            AtomType::Chlorine => 17,
-            AtomType::Bromine => 35,
-            AtomType::Iodine => 53,
-            AtomType::Custom(n) => *n,
+            Self::Hydrogen => 1,
+            Self::Carbon => 6,
+            Self::Nitrogen => 7,
+            Self::Oxygen => 8,
+            Self::Phosphorus => 15,
+            Self::Sulfur => 16,
+            Self::Fluorine => 9,
+            Self::Chlorine => 17,
+            Self::Bromine => 35,
+            Self::Iodine => 53,
+            Self::Custom(n) => *n,
         }
     }
 
-    pub fn symbol(&self) -> &'static str {
+    #[must_use]
+    pub const fn symbol(&self) -> &'static str {
         match self {
-            AtomType::Hydrogen => "H",
-            AtomType::Carbon => "C",
-            AtomType::Nitrogen => "N",
-            AtomType::Oxygen => "O",
-            AtomType::Phosphorus => "P",
-            AtomType::Sulfur => "S",
-            AtomType::Fluorine => "F",
-            AtomType::Chlorine => "Cl",
-            AtomType::Bromine => "Br",
-            AtomType::Iodine => "I",
-            AtomType::Custom(_) => "X",
+            Self::Hydrogen => "H",
+            Self::Carbon => "C",
+            Self::Nitrogen => "N",
+            Self::Oxygen => "O",
+            Self::Phosphorus => "P",
+            Self::Sulfur => "S",
+            Self::Fluorine => "F",
+            Self::Chlorine => "Cl",
+            Self::Bromine => "Br",
+            Self::Iodine => "I",
+            Self::Custom(_) => "X",
         }
     }
 
-    pub fn valence(&self) -> u8 {
+    #[must_use]
+    pub const fn valence(&self) -> u8 {
         match self {
-            AtomType::Hydrogen => 1,
-            AtomType::Carbon => 4,
-            AtomType::Nitrogen => 3,
-            AtomType::Oxygen => 2,
-            AtomType::Phosphorus => 5,
-            AtomType::Sulfur => 6,
-            AtomType::Fluorine => 1,
-            AtomType::Chlorine => 1,
-            AtomType::Bromine => 1,
-            AtomType::Iodine => 1,
-            AtomType::Custom(_) => 4, // Default
+            Self::Hydrogen | Self::Fluorine | Self::Chlorine => 1,
+            Self::Carbon => 4,
+            Self::Nitrogen => 3,
+            Self::Oxygen => 2,
+            Self::Phosphorus => 5,
+            Self::Sulfur => 6,
+            Self::Bromine => 1,
+            Self::Iodine => 1,
+            Self::Custom(_) => 4, // Default
         }
     }
 }
@@ -121,12 +123,18 @@ pub struct Position3D {
 }
 
 impl Position3D {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    #[must_use]
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
 
-    pub fn distance(&self, other: &Position3D) -> f64 {
-        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
+    #[must_use]
+    pub fn distance(&self, other: &Self) -> f64 {
+        (self.z - other.z)
+            .mul_add(
+                self.z - other.z,
+                (self.y - other.y).mul_add(self.y - other.y, (self.x - other.x).powi(2)),
+            )
             .sqrt()
     }
 }
@@ -141,12 +149,13 @@ pub enum BondType {
 }
 
 impl BondType {
-    pub fn bond_order(&self) -> f64 {
+    #[must_use]
+    pub const fn bond_order(&self) -> f64 {
         match self {
-            BondType::Single => 1.0,
-            BondType::Double => 2.0,
-            BondType::Triple => 3.0,
-            BondType::Aromatic => 1.5,
+            Self::Single => 1.0,
+            Self::Double => 2.0,
+            Self::Triple => 3.0,
+            Self::Aromatic => 1.5,
         }
     }
 }
@@ -163,7 +172,8 @@ pub struct Atom {
 }
 
 impl Atom {
-    pub fn new(id: usize, atom_type: AtomType) -> Self {
+    #[must_use]
+    pub const fn new(id: usize, atom_type: AtomType) -> Self {
         Self {
             id,
             atom_type,
@@ -174,17 +184,20 @@ impl Atom {
         }
     }
 
-    pub fn with_charge(mut self, charge: i8) -> Self {
+    #[must_use]
+    pub const fn with_charge(mut self, charge: i8) -> Self {
         self.formal_charge = charge;
         self
     }
 
-    pub fn with_coordinates(mut self, coords: [f64; 3]) -> Self {
+    #[must_use]
+    pub const fn with_coordinates(mut self, coords: [f64; 3]) -> Self {
         self.coordinates = Some(coords);
         self
     }
 
-    pub fn set_aromatic(mut self, aromatic: bool) -> Self {
+    #[must_use]
+    pub const fn set_aromatic(mut self, aromatic: bool) -> Self {
         self.aromatic = aromatic;
         self
     }
@@ -201,7 +214,8 @@ pub struct Bond {
 }
 
 impl Bond {
-    pub fn new(atom1: usize, atom2: usize, bond_type: BondType) -> Self {
+    #[must_use]
+    pub const fn new(atom1: usize, atom2: usize, bond_type: BondType) -> Self {
         Self {
             atom1,
             atom2,
@@ -211,12 +225,14 @@ impl Bond {
         }
     }
 
-    pub fn set_aromatic(mut self, aromatic: bool) -> Self {
+    #[must_use]
+    pub const fn set_aromatic(mut self, aromatic: bool) -> Self {
         self.aromatic = aromatic;
         self
     }
 
-    pub fn set_in_ring(mut self, in_ring: bool) -> Self {
+    #[must_use]
+    pub const fn set_in_ring(mut self, in_ring: bool) -> Self {
         self.in_ring = in_ring;
         self
     }
@@ -233,6 +249,7 @@ pub struct Molecule {
 }
 
 impl Molecule {
+    #[must_use]
     pub fn new(id: String) -> Self {
         Self {
             id,
@@ -262,6 +279,7 @@ impl Molecule {
     }
 
     /// Calculate molecular weight
+    #[must_use]
     pub fn molecular_weight(&self) -> f64 {
         self.atoms
             .iter()
@@ -283,7 +301,8 @@ impl Molecule {
             .sum()
     }
 
-    /// Calculate LogP (lipophilicity) approximation
+    /// Calculate `LogP` (lipophilicity) approximation
+    #[must_use]
     pub fn logp_approximation(&self) -> f64 {
         let mut logp = 0.0;
 
@@ -305,6 +324,7 @@ impl Molecule {
     }
 
     /// Calculate topological polar surface area (TPSA) approximation
+    #[must_use]
     pub fn tpsa_approximation(&self) -> f64 {
         let mut tpsa = 0.0;
 
@@ -320,6 +340,7 @@ impl Molecule {
     }
 
     /// Count rotatable bonds
+    #[must_use]
     pub fn rotatable_bonds(&self) -> usize {
         self.bonds
             .iter()
@@ -333,17 +354,18 @@ impl Molecule {
         let atom1_degree = self
             .bonds
             .iter()
-            .filter(|b| b.atom1 == bond.atom1 || b.atom2 == bond.atom1)
+            .filter(|b| b.atom1 == bond.atom1 || b.atom2 == bond.atom2)
             .count();
         let atom2_degree = self
             .bonds
             .iter()
-            .filter(|b| b.atom1 == bond.atom2 || b.atom2 == bond.atom2)
+            .filter(|b| b.atom1 == bond.atom1 || b.atom2 == bond.atom2)
             .count();
         atom1_degree == 1 || atom2_degree == 1
     }
 
     /// Calculate drug-likeness score (Lipinski's Rule of Five compliance)
+    #[must_use]
     pub fn drug_likeness_score(&self) -> f64 {
         let mw = self.molecular_weight();
         let logp = self.logp_approximation();
@@ -388,7 +410,7 @@ pub struct DrugTargetInteraction {
 }
 
 /// Types of drug targets
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TargetType {
     Enzyme,
     Receptor,
@@ -491,7 +513,7 @@ pub enum DrugOptimizationObjective {
     /// Optimize ADMET properties
     OptimizeAdmet,
     /// Multi-objective combination
-    MultiObjective(Vec<(DrugOptimizationObjective, f64)>),
+    MultiObjective(Vec<(Self, f64)>),
 }
 
 /// Drug discovery optimization problem
@@ -516,7 +538,7 @@ pub struct DrugDiscoveryProblem {
 pub enum MolecularConstraint {
     /// Molecular weight range
     MolecularWeightRange { min: f64, max: f64 },
-    /// LogP range for lipophilicity
+    /// `LogP` range for lipophilicity
     LogPRange { min: f64, max: f64 },
     /// TPSA constraint
     TpsaLimit(f64),
@@ -533,6 +555,7 @@ pub enum MolecularConstraint {
 }
 
 impl DrugDiscoveryProblem {
+    #[must_use]
     pub fn new(target_interaction: DrugTargetInteraction) -> Self {
         Self {
             target_interaction,
@@ -551,21 +574,25 @@ impl DrugDiscoveryProblem {
         }
     }
 
+    #[must_use]
     pub fn with_quantum_error_correction(mut self, config: String) -> Self {
         self.qec_framework = Some(config);
         self
     }
 
+    #[must_use]
     pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
 
+    #[must_use]
     pub fn add_objective(mut self, objective: DrugOptimizationObjective) -> Self {
         self.objectives.push(objective);
         self
     }
 
+    #[must_use]
     pub fn add_constraint(mut self, constraint: MolecularConstraint) -> Self {
         self.constraints.push(constraint);
         self
@@ -586,12 +613,11 @@ impl DrugDiscoveryProblem {
 
         let mut qaoa = InfiniteDepthQAOA::new(qaoa_config);
         let result = qaoa.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Infinite QAOA failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Infinite QAOA failed: {e:?}"))
         })?;
 
-        let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("QAOA solver error: {}", e))
-        })?;
+        let solution = result
+            .map_err(|e| ApplicationError::OptimizationError(format!("QAOA solver error: {e}")))?;
 
         self.solution_to_molecule(&solution, &variable_map)
     }
@@ -611,12 +637,11 @@ impl DrugDiscoveryProblem {
 
         let mut zeno_annealer = QuantumZenoAnnealer::new(zeno_config);
         let result = zeno_annealer.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Zeno annealing failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Zeno annealing failed: {e:?}"))
         })?;
 
-        let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("Zeno solver error: {}", e))
-        })?;
+        let solution = result
+            .map_err(|e| ApplicationError::OptimizationError(format!("Zeno solver error: {e}")))?;
 
         self.solution_to_molecule(&solution, &variable_map)
     }
@@ -631,11 +656,11 @@ impl DrugDiscoveryProblem {
         let mut shortcuts_optimizer = AdiabaticShortcutsOptimizer::new(shortcuts_config);
 
         let result = shortcuts_optimizer.solve(&ising_model).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Adiabatic shortcuts failed: {e:?}"))
         })?;
 
         let solution = result.map_err(|e| {
-            ApplicationError::OptimizationError(format!("Shortcuts solver error: {}", e))
+            ApplicationError::OptimizationError(format!("Shortcuts solver error: {e}"))
         })?;
 
         self.solution_to_molecule(&solution, &variable_map)
@@ -652,18 +677,17 @@ impl DrugDiscoveryProblem {
             let error_config = ErrorMitigationConfig::default();
             let mut error_manager = ErrorMitigationManager::new(error_config).map_err(|e| {
                 ApplicationError::OptimizationError(format!(
-                    "Failed to create error manager: {:?}",
-                    e
+                    "Failed to create error manager: {e:?}"
                 ))
             })?;
 
             // First perform standard annealing
             let params = AnnealingParams::default();
             let annealer = QuantumAnnealingSimulator::new(params.clone()).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e))
+                ApplicationError::OptimizationError(format!("Failed to create annealer: {e:?}"))
             })?;
             let annealing_result = annealer.solve(&ising_model).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e))
+                ApplicationError::OptimizationError(format!("Annealing failed: {e:?}"))
             })?;
 
             // Convert simulator result to error mitigation format
@@ -672,7 +696,7 @@ impl DrugDiscoveryProblem {
                     solution: annealing_result
                         .best_spins
                         .iter()
-                        .map(|&x| x as i32)
+                        .map(|&x| i32::from(x))
                         .collect(),
                     energy: annealing_result.best_energy,
                     num_occurrences: 1,
@@ -685,7 +709,7 @@ impl DrugDiscoveryProblem {
             let mitigation_result = error_manager
                 .apply_mitigation(&ising_model, error_mitigation_result, &params)
                 .map_err(|e| {
-                    ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e))
+                    ApplicationError::OptimizationError(format!("Error mitigation failed: {e:?}"))
                 })?;
 
             let solution = &mitigation_result.mitigated_result.solution;
@@ -724,7 +748,7 @@ impl DrugDiscoveryProblem {
         };
 
         let best_params = optimize_annealing_parameters(objective, Some(40)).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {e:?}"))
         })?;
 
         let mut result = HashMap::new();
@@ -752,7 +776,7 @@ impl DrugDiscoveryProblem {
             .enumerate()
         {
             for bit in 0..8 {
-                variable_map.insert(format!("atom_{}_bit_{}", i, bit), i * 8 + bit);
+                variable_map.insert(format!("atom_{i}_bit_{bit}"), i * 8 + bit);
             }
         }
 
@@ -840,7 +864,7 @@ impl DrugDiscoveryProblem {
             let mut atom_encoding = 0u8;
 
             for bit in 0..8 {
-                if let Some(&var_index) = variable_map.get(&format!("atom_{}_bit_{}", i, bit)) {
+                if let Some(&var_index) = variable_map.get(&format!("atom_{i}_bit_{bit}")) {
                     if var_index < solution.len() && solution[var_index] > 0 {
                         atom_encoding |= 1 << bit;
                     }
@@ -933,8 +957,7 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                     let mw = self.target_interaction.drug_molecule.molecular_weight();
                     if mw < *min || mw > *max {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Molecular weight {} outside range [{}, {}]",
-                            mw, min, max
+                            "Molecular weight {mw} outside range [{min}, {max}]"
                         )));
                     }
                 }
@@ -942,8 +965,7 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                     let logp = self.target_interaction.drug_molecule.logp_approximation();
                     if logp < *min || logp > *max {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "LogP {} outside range [{}, {}]",
-                            logp, min, max
+                            "LogP {logp} outside range [{min}, {max}]"
                         )));
                     }
                 }
@@ -957,8 +979,7 @@ impl OptimizationProblem for DrugDiscoveryProblem {
                         .count();
                     if heavy_atoms > *max_atoms {
                         return Err(ApplicationError::ConstraintViolation(format!(
-                            "Heavy atom count {} exceeds maximum {}",
-                            heavy_atoms, max_atoms
+                            "Heavy atom count {heavy_atoms} exceeds maximum {max_atoms}"
                         )));
                     }
                 }
@@ -1054,7 +1075,7 @@ impl IndustrySolution for Molecule {
     type Problem = DrugDiscoveryProblem;
 
     fn from_binary(problem: &Self::Problem, binary_solution: &[i8]) -> ApplicationResult<Self> {
-        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| x as i32).collect();
+        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| i32::from(x)).collect();
         let variable_map = HashMap::new(); // Simplified
         problem.solution_to_molecule(&solution_i32, &variable_map)
     }
@@ -1122,55 +1143,70 @@ impl IndustrySolution for Molecule {
         let mut output = String::new();
 
         output.push_str("# Drug Discovery Molecular Result\n");
-        output.push_str(&format!("Molecule ID: {}\n", self.id));
-        output.push_str(&format!(
+        writeln!(output, "Molecule ID: {}", self.id).expect("Writing to String should not fail");
+        write!(
+            output,
             "Molecular Weight: {:.2} Da\n",
             self.molecular_weight()
-        ));
-        output.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            output,
             "LogP (Lipophilicity): {:.2}\n",
             self.logp_approximation()
-        ));
-        output.push_str(&format!("TPSA: {:.2} Ų\n", self.tpsa_approximation()));
-        output.push_str(&format!("Rotatable Bonds: {}\n", self.rotatable_bonds()));
-        output.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(output, "TPSA: {:.2} Ų\n", self.tpsa_approximation())
+            .expect("Writing to String should not fail");
+        write!(output, "Rotatable Bonds: {}\n", self.rotatable_bonds())
+            .expect("Writing to String should not fail");
+        write!(
+            output,
             "Drug-likeness Score: {:.3}\n",
             self.drug_likeness_score()
-        ));
+        )
+        .expect("Writing to String should not fail");
 
         if let Some(ref smiles) = self.smiles {
-            output.push_str(&format!("SMILES: {}\n", smiles));
+            writeln!(output, "SMILES: {smiles}").expect("Writing to String should not fail");
         }
 
         output.push_str("\n# Atoms\n");
         for (i, atom) in self.atoms.iter().enumerate() {
-            output.push_str(&format!(
+            write!(
+                output,
                 "Atom {}: {} ({})",
                 i,
                 atom.atom_type.symbol(),
                 atom.atom_type.atomic_number()
-            ));
+            )
+            .expect("Writing to String should not fail");
             if atom.formal_charge != 0 {
-                output.push_str(&format!(" charge={}", atom.formal_charge));
+                write!(output, " charge={}", atom.formal_charge)
+                    .expect("Writing to String should not fail");
             }
             if atom.aromatic {
                 output.push_str(" aromatic");
             }
             if let Some(coords) = atom.coordinates {
-                output.push_str(&format!(
+                write!(
+                    output,
                     " coords=({:.3}, {:.3}, {:.3})",
                     coords[0], coords[1], coords[2]
-                ));
+                )
+                .expect("Writing to String should not fail");
             }
             output.push('\n');
         }
 
         output.push_str("\n# Bonds\n");
         for (i, bond) in self.bonds.iter().enumerate() {
-            output.push_str(&format!(
+            write!(
+                output,
                 "Bond {}: {} - {} ({:?})",
                 i, bond.atom1, bond.atom2, bond.bond_type
-            ));
+            )
+            .expect("Writing to String should not fail");
             if bond.aromatic {
                 output.push_str(" aromatic");
             }
@@ -1183,7 +1219,7 @@ impl IndustrySolution for Molecule {
         if !self.properties.is_empty() {
             output.push_str("\n# Properties\n");
             for (key, value) in &self.properties {
-                output.push_str(&format!("{}: {:.6}\n", key, value));
+                writeln!(output, "{key}: {value:.6}").expect("Writing to String should not fail");
             }
         }
 
@@ -1278,7 +1314,7 @@ pub fn create_benchmark_problems(
     };
 
     for (i, (name, atom_composition)) in molecule_specs.iter().enumerate() {
-        let mut molecule = Molecule::new(format!("benchmark_{}", name));
+        let mut molecule = Molecule::new(format!("benchmark_{name}"));
 
         // Add atoms based on composition
         let mut atom_id = 0;
@@ -1299,7 +1335,7 @@ pub fn create_benchmark_problems(
         // Create drug-target interaction
         let target_interaction = DrugTargetInteraction {
             drug_molecule: molecule,
-            target_id: format!("target_{}", i),
+            target_id: format!("target_{i}"),
             target_type: TargetType::Enzyme,
             binding_affinity: Some(6.5), // Example pIC50
             selectivity: HashMap::new(),
@@ -1461,7 +1497,9 @@ mod tests {
         };
 
         let problem = DrugDiscoveryProblem::new(target_interaction);
-        let (ising, variable_map) = problem.to_ising_model().unwrap();
+        let (ising, variable_map) = problem
+            .to_ising_model()
+            .expect("should convert to Ising model");
 
         assert_eq!(ising.num_qubits, 16); // 2 atoms * 8 bits each
         assert!(!variable_map.is_empty());

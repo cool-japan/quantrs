@@ -63,8 +63,8 @@ fn demo_platt_scaling() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let labels = array![1, 1, 1, 1, 1, 0, 0, 0, 0, 0];
 
-    println!("   Input scores: {:?}", scores);
-    println!("   True labels:  {:?}\n", labels);
+    println!("   Input scores: {scores:?}");
+    println!("   True labels:  {labels:?}\n");
 
     // Fit Platt scaler
     let mut scaler = PlattScaler::new();
@@ -73,22 +73,19 @@ fn demo_platt_scaling() -> Result<(), Box<dyn std::error::Error>> {
     // Get fitted parameters
     if let Some((a, b)) = scaler.parameters() {
         println!("   Fitted parameters:");
-        println!("   - Slope (a):     {:.4}", a);
-        println!("   - Intercept (b): {:.4}", b);
+        println!("   - Slope (a):     {a:.4}");
+        println!("   - Intercept (b): {b:.4}");
     }
 
     // Transform scores to calibrated probabilities
     let calibrated_probs = scaler.transform(&scores)?;
     println!("\n   Calibrated probabilities:");
     for (i, (&score, &prob)) in scores.iter().zip(calibrated_probs.iter()).enumerate() {
-        println!(
-            "   Sample {}: score={:6.2} → P(class=1)={:.4}",
-            i, score, prob
-        );
+        println!("   Sample {i}: score={score:6.2} → P(class=1)={prob:.4}");
     }
 
     // Compute accuracy on predictions
-    let predictions: Array1<usize> = calibrated_probs.mapv(|p| if p > 0.5 { 1 } else { 0 });
+    let predictions: Array1<usize> = calibrated_probs.mapv(|p| usize::from(p > 0.5));
     let accuracy = metrics::accuracy(&predictions, &labels);
     println!("\n   Calibrated accuracy: {:.2}%", accuracy * 100.0);
 
@@ -106,8 +103,8 @@ fn demo_isotonic_regression() -> Result<(), Box<dyn std::error::Error>> {
     // Non-linear relationship with labels
     let labels = array![0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1];
 
-    println!("   Input scores: {:?}", scores);
-    println!("   True labels:  {:?}\n", labels);
+    println!("   Input scores: {scores:?}");
+    println!("   True labels:  {labels:?}\n");
 
     // Fit isotonic regression
     let mut iso = IsotonicRegression::new();
@@ -119,10 +116,7 @@ fn demo_isotonic_regression() -> Result<(), Box<dyn std::error::Error>> {
     let calibrated_probs = iso.transform(&scores)?;
     println!("\n   Calibrated probabilities:");
     for (i, (&score, &prob)) in scores.iter().zip(calibrated_probs.iter()).enumerate() {
-        println!(
-            "   Sample {}: score={:.2} → P(class=1)={:.4}",
-            i, score, prob
-        );
+        println!("   Sample {i}: score={score:.2} → P(class=1)={prob:.4}");
     }
 
     // Verify monotonicity
@@ -164,7 +158,7 @@ fn demo_temperature_scaling() -> Result<(), Box<dyn std::error::Error>> {
         let max_logit = logits
             .row(i)
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let exp_sum: f64 = logits.row(i).iter().map(|&x| (x - max_logit).exp()).sum();
         for j in 0..logits.ncols() {
@@ -178,7 +172,7 @@ fn demo_temperature_scaling() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get fitted temperature
     if let Some(temp) = scaler.temperature() {
-        println!("   Fitted temperature: T = {:.4}", temp);
+        println!("   Fitted temperature: T = {temp:.4}");
         println!(
             "   Interpretation: {}",
             if temp > 1.0 {
@@ -205,17 +199,14 @@ fn demo_temperature_scaling() -> Result<(), Box<dyn std::error::Error>> {
         let uncal_max = uncalibrated_probs
             .row(i)
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let cal_max = calibrated_probs
             .row(i)
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
-        println!(
-            "   Sample {:<2}  | {:.4}               | {:.4}",
-            i, uncal_max, cal_max
-        );
+        println!("   Sample {i:<2}  | {uncal_max:.4}               | {cal_max:.4}");
     }
 
     // Compute predictions
@@ -244,8 +235,8 @@ fn demo_calibration_curve() -> Result<(), Box<dyn std::error::Error>> {
     let probabilities = array![0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95];
     let labels = array![0, 0, 0, 1, 0, 1, 1, 1, 1, 1];
 
-    println!("   Probabilities: {:?}", probabilities);
-    println!("   True labels:   {:?}\n", labels);
+    println!("   Probabilities: {probabilities:?}");
+    println!("   True labels:   {labels:?}\n");
 
     // Compute calibration curve
     let (mean_predicted, fraction_positives) = calibration_curve(&probabilities, &labels, 5)?;
@@ -282,7 +273,7 @@ fn demo_calibration_curve() -> Result<(), Box<dyn std::error::Error>> {
 
     if total_samples > 0 {
         ece /= total_samples as f64;
-        println!("\n   Expected Calibration Error (ECE): {:.4}", ece);
+        println!("\n   Expected Calibration Error (ECE): {ece:.4}");
         println!(
             "   Interpretation: {}",
             if ece < 0.1 {

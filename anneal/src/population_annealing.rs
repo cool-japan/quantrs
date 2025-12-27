@@ -128,7 +128,8 @@ pub struct PopulationMember {
 
 impl PopulationMember {
     /// Create a new population member
-    pub fn new(configuration: Vec<i8>, energy: f64) -> Self {
+    #[must_use]
+    pub const fn new(configuration: Vec<i8>, energy: f64) -> Self {
         Self {
             configuration,
             energy,
@@ -524,14 +525,14 @@ struct MpiInterface {
 }
 
 impl MpiInterface {
-    fn new(config: MpiConfig) -> PopulationAnnealingResult<Self> {
+    const fn new(config: MpiConfig) -> PopulationAnnealingResult<Self> {
         // In a real implementation, this would initialize MPI
         // For now, we just store the config
         Ok(Self { config })
     }
 
-    fn exchange_populations(
-        &mut self,
+    const fn exchange_populations(
+        &self,
         _population: &mut Vec<PopulationMember>,
     ) -> PopulationAnnealingResult<()> {
         // In a real implementation, this would:
@@ -548,7 +549,7 @@ impl MpiInterface {
 /// Convert population annealing result to standard annealing solution
 impl From<PopulationAnnealingSolution> for AnnealingSolution {
     fn from(result: PopulationAnnealingSolution) -> Self {
-        AnnealingSolution {
+        Self {
             best_spins: result.best_configuration,
             best_energy: result.best_energy,
             repetitions: 1,
@@ -583,7 +584,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = PopulationAnnealingSimulator::new(config).unwrap();
+        let mut simulator =
+            PopulationAnnealingSimulator::new(config).expect("failed to create simulator in test");
         let temperatures = simulator.generate_temperature_schedule();
 
         assert_eq!(temperatures.len(), 5);
@@ -594,7 +596,9 @@ mod tests {
     #[test]
     fn test_population_initialization() {
         let mut model = IsingModel::new(4);
-        model.set_coupling(0, 1, -1.0).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("failed to set coupling in test");
 
         let config = PopulationAnnealingConfig {
             population_size: 10,
@@ -602,8 +606,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = PopulationAnnealingSimulator::new(config).unwrap();
-        let population = simulator.initialize_population(&model).unwrap();
+        let mut simulator =
+            PopulationAnnealingSimulator::new(config).expect("failed to create simulator in test");
+        let population = simulator
+            .initialize_population(&model)
+            .expect("failed to initialize population in test");
 
         assert_eq!(population.len(), 10);
         for member in &population {
@@ -615,8 +622,12 @@ mod tests {
     #[test]
     fn test_simple_population_annealing() {
         let mut model = IsingModel::new(3);
-        model.set_coupling(0, 1, -1.0).unwrap();
-        model.set_coupling(1, 2, -1.0).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("failed to set coupling in test");
+        model
+            .set_coupling(1, 2, -1.0)
+            .expect("failed to set coupling in test");
 
         let config = PopulationAnnealingConfig {
             population_size: 50,
@@ -626,8 +637,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = PopulationAnnealingSimulator::new(config).unwrap();
-        let result = simulator.solve(&model).unwrap();
+        let mut simulator =
+            PopulationAnnealingSimulator::new(config).expect("failed to create simulator in test");
+        let result = simulator
+            .solve(&model)
+            .expect("failed to solve model in test");
 
         assert!(result.best_energy <= 0.0); // Should find good solution
         assert_eq!(result.final_population.len(), 50);

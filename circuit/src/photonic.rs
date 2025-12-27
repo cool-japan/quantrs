@@ -115,10 +115,10 @@ impl PhotonicGate {
     pub fn modes(&self) -> Vec<PhotonicMode> {
         match self {
             Self::BeamSplitter { mode1, mode2, .. } => vec![*mode1, *mode2],
-            Self::PhaseShifter { mode, .. } => vec![*mode],
-            Self::PolarizationRotator { mode, .. } => vec![*mode],
-            Self::HalfWavePlate { mode, .. } => vec![*mode],
-            Self::QuarterWavePlate { mode, .. } => vec![*mode],
+            Self::PhaseShifter { mode, .. }
+            | Self::PolarizationRotator { mode, .. }
+            | Self::HalfWavePlate { mode, .. }
+            | Self::QuarterWavePlate { mode, .. } => vec![*mode],
             Self::PolarizingBeamSplitter {
                 input,
                 h_output,
@@ -607,13 +607,19 @@ mod tests {
     fn test_photonic_builder() {
         let mut builder = PhotonicCircuitBuilder::new(4);
 
-        builder.beam_splitter(0, 1, 0.5, 0.0).unwrap();
-        builder.phase_shifter(1, PI / 2.0).unwrap();
-        builder.mach_zehnder(0, 1, 2, 3, PI / 4.0).unwrap();
+        builder
+            .beam_splitter(0, 1, 0.5, 0.0)
+            .expect("Failed to add beam splitter");
+        builder
+            .phase_shifter(1, PI / 2.0)
+            .expect("Failed to add phase shifter");
+        builder
+            .mach_zehnder(0, 1, 2, 3, PI / 4.0)
+            .expect("Failed to add Mach-Zehnder interferometer");
         let result = builder.build();
 
         assert!(result.is_ok());
-        let circuit = result.unwrap();
+        let circuit = result.expect("Failed to build photonic circuit");
         assert_eq!(circuit.gates.len(), 3);
     }
 
@@ -622,12 +628,12 @@ mod tests {
         let mut quantum_circuit = Circuit::<2>::new();
         quantum_circuit
             .add_gate(Hadamard { target: QubitId(0) })
-            .unwrap();
+            .expect("Failed to add Hadamard gate");
 
         let photonic_result = PhotonicConverter::quantum_to_photonic(&quantum_circuit);
         assert!(photonic_result.is_ok());
 
-        let photonic_circuit = photonic_result.unwrap();
+        let photonic_circuit = photonic_result.expect("Failed to convert to photonic circuit");
         assert_eq!(photonic_circuit.num_modes, 4); // Dual-rail encoding
         assert!(!photonic_circuit.gates.is_empty());
     }
@@ -657,11 +663,13 @@ mod tests {
     #[test]
     fn test_hong_ou_mandel() {
         let mut builder = PhotonicCircuitBuilder::new(2);
-        builder.hong_ou_mandel(0, 1).unwrap();
+        builder
+            .hong_ou_mandel(0, 1)
+            .expect("Failed to add Hong-Ou-Mandel gate");
         let result = builder.build();
 
         assert!(result.is_ok());
-        let circuit = result.unwrap();
+        let circuit = result.expect("Failed to build photonic circuit");
         assert_eq!(circuit.gates.len(), 1);
 
         match &circuit.gates[0] {

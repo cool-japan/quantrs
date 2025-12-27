@@ -356,6 +356,7 @@ pub struct RealtimeStats {
 
 impl RealtimeHardwareManager {
     /// Create a new real-time hardware manager
+    #[must_use]
     pub fn new(config: RealtimeConfig) -> Self {
         Self {
             connections: Arc::new(RwLock::new(HashMap::new())),
@@ -868,14 +869,20 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::IBMQuantum, "ibm_qasm_simulator")
-            .unwrap();
+            .expect("Connection should succeed");
         assert!(!conn_id.is_empty());
 
-        let connections = manager.get_connections().unwrap();
+        let connections = manager
+            .get_connections()
+            .expect("Get connections should succeed");
         assert_eq!(connections.len(), 1);
 
-        manager.disconnect(&conn_id).unwrap();
-        let connections = manager.get_connections().unwrap();
+        manager
+            .disconnect(&conn_id)
+            .expect("Disconnect should succeed");
+        let connections = manager
+            .get_connections()
+            .expect("Get connections should succeed");
         assert_eq!(connections.len(), 0);
     }
 
@@ -886,14 +893,20 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::IBMQuantum, "ibm_qasm_simulator")
-            .unwrap();
+            .expect("Connection should succeed");
 
-        manager.submit_job("job_123", &conn_id).unwrap();
+        manager
+            .submit_job("job_123", &conn_id)
+            .expect("Job submission should succeed");
 
-        let status = manager.get_job_status("job_123").unwrap();
+        let status = manager
+            .get_job_status("job_123")
+            .expect("Get job status should succeed");
         assert_eq!(status, JobStatus::Queued);
 
-        let progress = manager.get_job_progress("job_123").unwrap();
+        let progress = manager
+            .get_job_progress("job_123")
+            .expect("Get job progress should succeed");
         assert_eq!(progress, 0.0);
     }
 
@@ -904,17 +917,23 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::IBMQuantum, "backend")
-            .unwrap();
+            .expect("Connection should succeed");
 
-        manager.submit_job("job_456", &conn_id).unwrap();
+        manager
+            .submit_job("job_456", &conn_id)
+            .expect("Job submission should succeed");
 
         manager
             .update_job_status("job_456", JobStatus::Running, 0.5)
-            .unwrap();
-        let status = manager.get_job_status("job_456").unwrap();
+            .expect("Status update should succeed");
+        let status = manager
+            .get_job_status("job_456")
+            .expect("Get job status should succeed");
         assert_eq!(status, JobStatus::Running);
 
-        let progress = manager.get_job_progress("job_456").unwrap();
+        let progress = manager
+            .get_job_progress("job_456")
+            .expect("Get job progress should succeed");
         assert_eq!(progress, 0.5);
     }
 
@@ -925,17 +944,23 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::GoogleQuantumAI, "backend")
-            .unwrap();
+            .expect("Connection should succeed");
 
-        manager.submit_job("job_789", &conn_id).unwrap();
+        manager
+            .submit_job("job_789", &conn_id)
+            .expect("Job submission should succeed");
 
         let mut counts = HashMap::new();
         counts.insert("00".to_string(), 450);
         counts.insert("11".to_string(), 550);
 
-        manager.add_partial_result("job_789", counts).unwrap();
+        manager
+            .add_partial_result("job_789", counts)
+            .expect("Add partial result should succeed");
 
-        let results = manager.get_partial_results("job_789").unwrap();
+        let results = manager
+            .get_partial_results("job_789")
+            .expect("Get partial results should succeed");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].counts.get("00"), Some(&450));
     }
@@ -952,7 +977,7 @@ mod tests {
 
         let calibration = CalibrationData {
             backend: "test_backend".to_string(),
-            timestamp: 12345,
+            timestamp: 12_345,
             single_qubit_errors,
             two_qubit_errors: HashMap::new(),
             readout_errors: HashMap::new(),
@@ -964,11 +989,18 @@ mod tests {
 
         manager
             .update_calibration("test_backend", calibration)
-            .unwrap();
+            .expect("Calibration update should succeed");
 
-        let cal = manager.get_calibration("test_backend").unwrap();
+        let cal = manager
+            .get_calibration("test_backend")
+            .expect("Get calibration should succeed");
         assert!(cal.is_some());
-        assert_eq!(cal.unwrap().single_qubit_errors.len(), 3);
+        assert_eq!(
+            cal.expect("Calibration data should exist")
+                .single_qubit_errors
+                .len(),
+            3
+        );
     }
 
     #[test]
@@ -984,7 +1016,7 @@ mod tests {
 
         let calibration = CalibrationData {
             backend: "backend".to_string(),
-            timestamp: 12345,
+            timestamp: 12_345,
             single_qubit_errors,
             two_qubit_errors: HashMap::new(),
             readout_errors: HashMap::new(),
@@ -994,9 +1026,13 @@ mod tests {
             connectivity: vec![],
         };
 
-        manager.update_calibration("backend", calibration).unwrap();
+        manager
+            .update_calibration("backend", calibration)
+            .expect("Calibration update should succeed");
 
-        let optimal = manager.get_optimal_qubits("backend", 2).unwrap();
+        let optimal = manager
+            .get_optimal_qubits("backend", 2)
+            .expect("Get optimal qubits should succeed");
         assert_eq!(optimal.len(), 2);
         // Should return qubits with lowest error rates (1 and 3)
         assert!(optimal.contains(&1));
@@ -1010,10 +1046,14 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::AmazonBraket, "backend")
-            .unwrap();
+            .expect("Connection should succeed");
 
-        assert!(manager.is_backend_available(&conn_id).unwrap());
-        assert!(!manager.is_backend_available("nonexistent").unwrap());
+        assert!(manager
+            .is_backend_available(&conn_id)
+            .expect("Backend availability check should succeed"));
+        assert!(!manager
+            .is_backend_available("nonexistent")
+            .expect("Backend availability check should succeed"));
     }
 
     #[test]
@@ -1021,19 +1061,25 @@ mod tests {
         let config = RealtimeConfig::default();
         let mut manager = RealtimeHardwareManager::new(config);
 
-        let conn_id = manager.connect(HardwareProvider::IonQ, "backend").unwrap();
+        let conn_id = manager
+            .connect(HardwareProvider::IonQ, "backend")
+            .expect("Connection should succeed");
 
-        manager.submit_job("job_a", &conn_id).unwrap();
-        manager.submit_job("job_b", &conn_id).unwrap();
+        manager
+            .submit_job("job_a", &conn_id)
+            .expect("Job submission should succeed");
+        manager
+            .submit_job("job_b", &conn_id)
+            .expect("Job submission should succeed");
 
         manager
             .update_job_status("job_a", JobStatus::Completed, 1.0)
-            .unwrap();
+            .expect("Status update should succeed");
         manager
             .update_job_status("job_b", JobStatus::Failed, 0.5)
-            .unwrap();
+            .expect("Status update should succeed");
 
-        let stats = manager.get_stats().unwrap();
+        let stats = manager.get_stats().expect("Get stats should succeed");
         assert_eq!(stats.jobs_monitored, 2);
         assert_eq!(stats.jobs_completed, 1);
         assert_eq!(stats.jobs_failed, 1);
@@ -1057,15 +1103,17 @@ mod tests {
 
         manager
             .connect(HardwareProvider::IBMQuantum, "ibm_backend")
-            .unwrap();
+            .expect("IBM connection should succeed");
         manager
             .connect(HardwareProvider::GoogleQuantumAI, "google_backend")
-            .unwrap();
+            .expect("Google connection should succeed");
         manager
             .connect(HardwareProvider::AzureQuantum, "azure_backend")
-            .unwrap();
+            .expect("Azure connection should succeed");
 
-        let connections = manager.get_connections().unwrap();
+        let connections = manager
+            .get_connections()
+            .expect("Get connections should succeed");
         assert_eq!(connections.len(), 3);
     }
 
@@ -1076,22 +1124,26 @@ mod tests {
 
         let conn_id = manager
             .connect(HardwareProvider::Rigetti, "backend")
-            .unwrap();
+            .expect("Connection should succeed");
 
-        manager.submit_job("job_complete", &conn_id).unwrap();
+        manager
+            .submit_job("job_complete", &conn_id)
+            .expect("Job submission should succeed");
 
         // Simulate job progress
         manager
             .update_job_status("job_complete", JobStatus::Running, 0.0)
-            .unwrap();
+            .expect("Status update should succeed");
         manager
             .update_job_status("job_complete", JobStatus::Running, 0.5)
-            .unwrap();
+            .expect("Status update should succeed");
         manager
             .update_job_status("job_complete", JobStatus::Completed, 1.0)
-            .unwrap();
+            .expect("Status update should succeed");
 
-        let status = manager.get_job_status("job_complete").unwrap();
+        let status = manager
+            .get_job_status("job_complete")
+            .expect("Get job status should succeed");
         assert_eq!(status, JobStatus::Completed);
     }
 }

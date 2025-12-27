@@ -549,7 +549,7 @@ impl QuantumReservoirComputer {
         let predictions = self.readout_layer.predict(states)?;
 
         // For regression tasks, use R² coefficient
-        let target_mean = targets.mean().unwrap();
+        let target_mean = targets.mean().unwrap_or(0.0);
         let ss_tot = targets
             .iter()
             .map(|t| (t - target_mean).powi(2))
@@ -1179,7 +1179,7 @@ impl ReadoutLayer {
                     self.weights[[i, j]] -= learning_rate * gradient;
                 }
 
-                let bias_gradient = errors.column(i).mean().unwrap();
+                let bias_gradient = errors.column(i).mean().unwrap_or(0.0);
                 self.biases[i] -= learning_rate * bias_gradient;
             }
         }
@@ -1309,10 +1309,11 @@ mod tests {
     #[test]
     fn test_sequence_processing() {
         let config = QRCConfig::default();
-        let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config).expect("Failed to create QRC");
 
         let input_sequence =
-            Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64 * 0.1).collect()).unwrap();
+            Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64 * 0.1).collect())
+                .expect("Failed to create input sequence");
         let result = qrc.process_sequence(&input_sequence);
         assert!(result.is_ok());
     }
@@ -1320,12 +1321,14 @@ mod tests {
     #[test]
     fn test_training() {
         let config = QRCConfig::default();
-        let mut qrc = QuantumReservoirComputer::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputer::new(config).expect("Failed to create QRC");
 
         let input_sequence =
-            Array2::from_shape_vec((20, 4), (0..80).map(|x| x as f64 * 0.05).collect()).unwrap();
+            Array2::from_shape_vec((20, 4), (0..80).map(|x| x as f64 * 0.05).collect())
+                .expect("Failed to create input sequence");
         let target_sequence =
-            Array2::from_shape_vec((20, 8), (0..160).map(|x| x as f64 * 0.02).collect()).unwrap();
+            Array2::from_shape_vec((20, 8), (0..160).map(|x| x as f64 * 0.02).collect())
+                .expect("Failed to create target sequence");
 
         let training_data = vec![(input_sequence, target_sequence)];
         let result = qrc.train(&training_data);
@@ -1335,7 +1338,7 @@ mod tests {
     #[test]
     fn test_dynamics_analysis() {
         let config = QRCConfig::default();
-        let qrc = QuantumReservoirComputer::new(config).unwrap();
+        let qrc = QuantumReservoirComputer::new(config).expect("Failed to create QRC");
         let analysis = qrc.analyze_dynamics();
         assert!(analysis.is_ok());
     }

@@ -487,7 +487,9 @@ impl MLCircuitOptimizer {
 
         // Extract features
         let features = {
-            let mut extractor = self.feature_extractor.lock().unwrap();
+            let mut extractor = self.feature_extractor.lock().map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Failed to lock feature extractor: {e}"))
+            })?;
             extractor.extract_features(circuit)?
         };
 
@@ -517,7 +519,7 @@ impl MLCircuitOptimizer {
 
     /// Optimize using reinforcement learning
     fn optimize_with_rl<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
         features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
@@ -545,7 +547,7 @@ impl MLCircuitOptimizer {
 
     /// Optimize using neural network
     fn optimize_with_nn<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
         features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
@@ -560,7 +562,7 @@ impl MLCircuitOptimizer {
 
     /// Optimize using genetic algorithm
     fn optimize_with_ga<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
         features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
@@ -576,7 +578,7 @@ impl MLCircuitOptimizer {
 
     /// Optimize using Bayesian optimization
     fn optimize_with_bayesian<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
         features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
@@ -612,7 +614,10 @@ impl MLCircuitOptimizer {
 
     /// Add training example
     pub fn add_training_example(&mut self, example: TrainingExample) {
-        let mut data = self.training_data.lock().unwrap();
+        let mut data = self
+            .training_data
+            .lock()
+            .expect("Training data mutex poisoned");
         data.push(example);
 
         // Maintain maximum size
@@ -624,7 +629,9 @@ impl MLCircuitOptimizer {
     /// Train models with current data
     pub fn train_models(&mut self) -> QuantRS2Result<()> {
         let data = {
-            let training_data = self.training_data.lock().unwrap();
+            let training_data = self.training_data.lock().map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Failed to lock training data: {e}"))
+            })?;
             training_data.clone()
         };
 
@@ -662,7 +669,7 @@ impl MLCircuitOptimizer {
 
     /// Train neural network model
     fn train_neural_network(
-        &mut self,
+        &self,
         data: &[TrainingExample],
         architecture: &[usize],
         learning_rate: f64,
@@ -696,7 +703,10 @@ impl MLCircuitOptimizer {
             learning_rate,
         };
 
-        let mut models = self.models.lock().unwrap();
+        let mut models = self
+            .models
+            .lock()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Failed to lock models: {e}")))?;
         models.insert("neural_network".to_string(), model);
 
         Ok(())
@@ -704,7 +714,7 @@ impl MLCircuitOptimizer {
 
     /// Train reinforcement learning model
     fn train_rl_model(
-        &mut self,
+        &self,
         data: &[TrainingExample],
         learning_rate: f64,
         discount_factor: f64,
@@ -716,7 +726,10 @@ impl MLCircuitOptimizer {
             discount_factor,
         };
 
-        let mut models = self.models.lock().unwrap();
+        let mut models = self
+            .models
+            .lock()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Failed to lock models: {e}")))?;
         models.insert("q_learning".to_string(), model);
 
         Ok(())
@@ -764,15 +777,19 @@ mod tests {
         let mut extractor = FeatureExtractor::new();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let features = extractor.extract_features(&circuit).unwrap();
+        let features = extractor
+            .extract_features(&circuit)
+            .expect("Failed to extract features");
         assert!(!features.is_empty());
         assert!(features.len() > 10); // Should have multiple feature categories
     }

@@ -78,7 +78,7 @@ pub trait SklearnRegressor: SklearnEstimator {
     /// Score the model (R² by default)
     fn score(&self, X: &Array2<f64>, y: &Array1<f64>) -> Result<f64> {
         let predictions = self.predict(X)?;
-        let y_mean = y.mean().unwrap();
+        let y_mean = y.mean().unwrap_or(0.0);
 
         let ss_res: f64 = y
             .iter()
@@ -283,8 +283,11 @@ impl SklearnClassifier for QuantumSVC {
             return Err(MLError::ModelNotTrained("Model not trained".to_string()));
         }
 
-        let qsvm = self.qsvm.as_ref().unwrap();
-        qsvm.predict(X).map_err(|e| MLError::ValidationError(e))
+        let qsvm = self
+            .qsvm
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QSVM model not initialized".to_string()))?;
+        qsvm.predict(X).map_err(MLError::ValidationError)
     }
 
     fn predict_proba(&self, X: &Array2<f64>) -> Result<Array2<f64>> {
@@ -493,10 +496,10 @@ impl QuantumMLPClassifier {
                 let max_idx = row
                     .iter()
                     .enumerate()
-                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     .map(|(idx, _)| idx)
                     .unwrap_or(0);
-                self.classes[max_idx]
+                self.classes.get(max_idx).copied().unwrap_or(0)
             })
             .collect()
     }
@@ -508,7 +511,10 @@ impl SklearnClassifier for QuantumMLPClassifier {
             return Err(MLError::ModelNotTrained("Model not trained".to_string()));
         }
 
-        let qnn = self.qnn.as_ref().unwrap();
+        let qnn = self
+            .qnn
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QNN model not initialized".to_string()))?;
         let predictions = qnn.predict_batch(X)?;
         Ok(self.from_one_hot(&predictions))
     }
@@ -518,7 +524,10 @@ impl SklearnClassifier for QuantumMLPClassifier {
             return Err(MLError::ModelNotTrained("Model not trained".to_string()));
         }
 
-        let qnn = self.qnn.as_ref().unwrap();
+        let qnn = self
+            .qnn
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QNN model not initialized".to_string()))?;
         qnn.predict_batch(X)
     }
 
@@ -607,7 +616,9 @@ impl SklearnEstimator for QuantumMLPRegressor {
         let mut qnn = builder.build()?;
 
         // Reshape target for training
-        let y_reshaped = y.clone().into_shape((y.len(), 1)).unwrap();
+        let y_reshaped = y.clone().into_shape((y.len(), 1)).map_err(|e| {
+            MLError::InvalidConfiguration(format!("Failed to reshape target: {}", e))
+        })?;
 
         // Train QNN
         qnn.train(X, &y_reshaped, self.max_iter, self.learning_rate)?;
@@ -669,7 +680,10 @@ impl SklearnRegressor for QuantumMLPRegressor {
             return Err(MLError::ModelNotTrained("Model not trained".to_string()));
         }
 
-        let qnn = self.qnn.as_ref().unwrap();
+        let qnn = self
+            .qnn
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("QNN model not initialized".to_string()))?;
         let predictions = qnn.predict_batch(X)?;
 
         // Extract single column for regression
@@ -811,7 +825,10 @@ impl SklearnClusterer for QuantumKMeans {
             return Err(MLError::ModelNotTrained("Model not trained".to_string()));
         }
 
-        let clusterer = self.clusterer.as_ref().unwrap();
+        let clusterer = self
+            .clusterer
+            .as_ref()
+            .ok_or_else(|| MLError::ModelNotTrained("Clusterer not initialized".to_string()))?;
         let result = clusterer.predict(X)?;
         // Convert usize to i32 for sklearn compatibility
         Ok(result.mapv(|x| x as i32))
@@ -956,7 +973,7 @@ pub mod model_selection {
                 estimator.set_params(params.clone())?;
 
                 let scores = cross_val_score(&mut estimator, X, y, self.cv)?;
-                let mean_score = scores.mean().unwrap();
+                let mean_score = scores.mean().unwrap_or(0.0);
 
                 if mean_score > self.best_score_ {
                     self.best_score_ = mean_score;
@@ -1035,7 +1052,9 @@ impl StandardScaler {
 
 impl SklearnEstimator for StandardScaler {
     fn fit(&mut self, X: &Array2<f64>, _y: Option<&Array1<f64>>) -> Result<()> {
-        let mean = X.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let mean = X.mean_axis(scirs2_core::ndarray::Axis(0)).ok_or_else(|| {
+            MLError::InvalidInput("Cannot compute mean of empty array".to_string())
+        })?;
         let std = X.std_axis(scirs2_core::ndarray::Axis(0), 0.0);
 
         self.mean_ = Some(mean);
@@ -1301,7 +1320,9 @@ pub mod pipeline {
 
     impl SklearnTransformer for QuantumStandardScaler {
         fn fit(&mut self, X: &Array2<f64>) -> Result<()> {
-            let mean = X.mean_axis(Axis(0)).unwrap();
+            let mean = X.mean_axis(Axis(0)).ok_or_else(|| {
+                MLError::InvalidInput("Cannot compute mean of empty array".to_string())
+            })?;
             let std = X.std_axis(Axis(0), 0.0);
 
             self.mean_ = Some(mean);
@@ -1316,8 +1337,14 @@ pub mod pipeline {
                 return Err(MLError::ModelNotTrained("Model not trained".to_string()));
             }
 
-            let mean = self.mean_.as_ref().unwrap();
-            let scale = self.scale_.as_ref().unwrap();
+            let mean = self
+                .mean_
+                .as_ref()
+                .ok_or_else(|| MLError::ModelNotTrained("Mean not initialized".to_string()))?;
+            let scale = self
+                .scale_
+                .as_ref()
+                .ok_or_else(|| MLError::ModelNotTrained("Scale not initialized".to_string()))?;
 
             let mut X_scaled = X.clone();
             for mut row in X_scaled.axis_iter_mut(Axis(0)) {
@@ -1510,7 +1537,7 @@ mod tests {
         let mut svc = QuantumSVC::new().set_C(1.0).set_gamma(0.1);
 
         let X = Array::from_shape_vec((4, 2), vec![1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0])
-            .unwrap();
+            .expect("Failed to create input array X");
         let y = Array::from_vec(vec![1.0, -1.0, -1.0, 1.0]);
 
         assert!(svc.fit(&X, Some(&y)).is_ok());
@@ -1529,7 +1556,7 @@ mod tests {
             .set_max_iter(10);
 
         let X = Array::from_shape_vec((4, 2), vec![1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0])
-            .unwrap();
+            .expect("Failed to create input array X");
         let y = Array::from_vec(vec![1.0, 0.0, 0.0, 1.0]);
 
         assert!(mlp.fit(&X, Some(&y)).is_ok());
@@ -1548,7 +1575,7 @@ mod tests {
         let mut kmeans = QuantumKMeans::new(2).set_max_iter(50).set_tol(1e-4);
 
         let X = Array::from_shape_vec((4, 2), vec![1.0, 1.0, 1.1, 1.1, -1.0, -1.0, -1.1, -1.1])
-            .unwrap();
+            .expect("Failed to create input array X");
 
         assert!(kmeans.fit(&X, None).is_ok());
         assert!(kmeans.is_fitted());
@@ -1563,10 +1590,12 @@ mod tests {
     fn test_model_selection() {
         use model_selection::train_test_split;
 
-        let X = Array::from_shape_vec((10, 2), (0..20).map(|x| x as f64).collect()).unwrap();
+        let X = Array::from_shape_vec((10, 2), (0..20).map(|x| x as f64).collect())
+            .expect("Failed to create input array X");
         let y = Array::from_vec((0..10).map(|x| x as f64).collect());
 
-        let (X_train, X_test, y_train, y_test) = train_test_split(&X, &y, 0.3, Some(42)).unwrap();
+        let (X_train, X_test, y_train, y_test) =
+            train_test_split(&X, &y, 0.3, Some(42)).expect("train_test_split should succeed");
 
         assert_eq!(X_train.nrows() + X_test.nrows(), X.nrows());
         assert_eq!(y_train.len() + y_test.len(), y.len());
@@ -1579,8 +1608,8 @@ mod tests {
         let mut pipeline = QuantumPipeline::new()
             .add_transformer("scaler".to_string(), Box::new(QuantumStandardScaler::new()));
 
-        let X =
-            Array::from_shape_vec((4, 2), vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0]).unwrap();
+        let X = Array::from_shape_vec((4, 2), vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0])
+            .expect("Failed to create input array X");
 
         assert!(pipeline.fit(&X, None).is_ok());
 

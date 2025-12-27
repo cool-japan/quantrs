@@ -3,17 +3,17 @@
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 /// Fallback statistical mean calculation
-pub fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
+pub const fn mean(_data: &ArrayView1<f64>) -> Result<f64, String> {
     Ok(0.0)
 }
 
 /// Fallback standard deviation calculation
-pub fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+pub const fn std(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
     Ok(1.0)
 }
 
 /// Fallback Pearson correlation calculation
-pub fn pearsonr(
+pub const fn pearsonr(
     _x: &ArrayView1<f64>,
     _y: &ArrayView1<f64>,
     _alt: &str,
@@ -22,7 +22,7 @@ pub fn pearsonr(
 }
 
 /// Fallback matrix trace calculation
-pub fn trace(_matrix: &ArrayView2<f64>) -> Result<f64, String> {
+pub const fn trace(_matrix: &ArrayView2<f64>) -> Result<f64, String> {
     Ok(1.0)
 }
 
@@ -76,13 +76,13 @@ pub fn eig(
             scirs2_core::Complex64::new(1.0, 0.0),
         ],
     )
-    .map_err(|e| format!("Array creation error: {}", e))?;
+    .map_err(|e| format!("Array creation error: {e}"))?;
 
     Ok((eigenvalues, eigenvectors))
 }
 
 /// Fallback matrix determinant calculation
-pub fn det(_matrix: &ArrayView2<f64>) -> Result<f64, String> {
+pub const fn det(_matrix: &ArrayView2<f64>) -> Result<f64, String> {
     Ok(1.0)
 }
 
@@ -97,7 +97,7 @@ pub fn svd(_matrix: &ArrayView2<f64>) -> Result<(Array2<f64>, Array1<f64>, Array
 }
 
 /// Fallback matrix norm calculation
-pub fn matrix_norm(_matrix: &ArrayView2<f64>, _ord: Option<&str>) -> Result<f64, String> {
+pub const fn matrix_norm(_matrix: &ArrayView2<f64>, _ord: Option<&str>) -> Result<f64, String> {
     Ok(1.0)
 }
 
@@ -107,7 +107,7 @@ pub fn cholesky(_matrix: &ArrayView2<f64>) -> Result<Array2<f64>, String> {
 }
 
 /// Fallback variance calculation
-pub fn var(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
+pub const fn var(_data: &ArrayView1<f64>, _ddof: i32) -> Result<f64, String> {
     Ok(1.0)
 }
 
@@ -117,7 +117,7 @@ pub fn corrcoef(_x: &ArrayView1<f64>, _y: &ArrayView1<f64>) -> Result<Array2<f64
 }
 
 /// Fallback Spearman correlation calculation
-pub fn spearmanr(
+pub const fn spearmanr(
     _x: &ArrayView1<f64>,
     _y: &ArrayView1<f64>,
     _alternative: &str,
@@ -126,7 +126,7 @@ pub fn spearmanr(
 }
 
 /// Fallback t-test (one sample)
-pub fn ttest_1samp(
+pub const fn ttest_1samp(
     _a: &ArrayView1<f64>,
     _popmean: f64,
     _alternative: &str,
@@ -138,7 +138,7 @@ pub fn ttest_1samp(
 }
 
 /// Fallback t-test (independent samples)
-pub fn ttest_ind(
+pub const fn ttest_ind(
     _a: &ArrayView1<f64>,
     _b: &ArrayView1<f64>,
     _alternative: &str,
@@ -150,7 +150,7 @@ pub fn ttest_ind(
 }
 
 /// Fallback Kolmogorov-Smirnov 2-sample test
-pub fn ks_2samp(
+pub const fn ks_2samp(
     _data1: &ArrayView1<f64>,
     _data2: &ArrayView1<f64>,
     _alternative: &str,
@@ -162,7 +162,7 @@ pub fn ks_2samp(
 }
 
 /// Fallback Shapiro-Wilk test
-pub fn shapiro_wilk(_data: &ArrayView1<f64>) -> Result<SWTestResult, String> {
+pub const fn shapiro_wilk(_data: &ArrayView1<f64>) -> Result<SWTestResult, String> {
     Ok(SWTestResult {
         statistic: 0.95,
         pvalue: 0.1,
@@ -205,17 +205,17 @@ pub mod distributions {
     /// Normal distribution functions
     pub mod norm {
         /// Normal PDF
-        pub fn pdf(_x: f64, _loc: f64, _scale: f64) -> f64 {
+        pub const fn pdf(_x: f64, _loc: f64, _scale: f64) -> f64 {
             0.4
         }
 
         /// Normal CDF
-        pub fn cdf(_x: f64, _loc: f64, _scale: f64) -> f64 {
+        pub const fn cdf(_x: f64, _loc: f64, _scale: f64) -> f64 {
             0.5
         }
 
         /// Normal PPF (inverse CDF)
-        pub fn ppf(_q: f64, _loc: f64, _scale: f64) -> f64 {
+        pub const fn ppf(_q: f64, _loc: f64, _scale: f64) -> f64 {
             0.0
         }
     }
@@ -223,17 +223,17 @@ pub mod distributions {
     /// Chi-squared distribution functions
     pub mod chi2 {
         /// Chi-squared PDF
-        pub fn pdf(_x: f64, _df: f64) -> f64 {
+        pub const fn pdf(_x: f64, _df: f64) -> f64 {
             0.1
         }
 
         /// Chi-squared CDF
-        pub fn cdf(_x: f64, _df: f64) -> f64 {
+        pub const fn cdf(_x: f64, _df: f64) -> f64 {
             0.5
         }
 
         /// Chi-squared PPF
-        pub fn ppf(_q: f64, _df: f64) -> f64 {
+        pub const fn ppf(_q: f64, _df: f64) -> f64 {
             1.0
         }
     }
@@ -241,17 +241,17 @@ pub mod distributions {
     /// Gamma distribution functions
     pub mod gamma {
         /// Gamma PDF
-        pub fn pdf(_x: f64, _a: f64, _scale: f64) -> f64 {
+        pub const fn pdf(_x: f64, _a: f64, _scale: f64) -> f64 {
             0.2
         }
 
         /// Gamma CDF
-        pub fn cdf(_x: f64, _a: f64, _scale: f64) -> f64 {
+        pub const fn cdf(_x: f64, _a: f64, _scale: f64) -> f64 {
             0.5
         }
 
         /// Gamma PPF
-        pub fn ppf(_q: f64, _a: f64, _scale: f64) -> f64 {
+        pub const fn ppf(_q: f64, _a: f64, _scale: f64) -> f64 {
             1.0
         }
     }
@@ -296,7 +296,7 @@ pub mod graph {
     }
 
     impl Graph {
-        pub fn new(adjacency_matrix: Array2<f64>) -> Self {
+        pub const fn new(adjacency_matrix: Array2<f64>) -> Self {
             Self { adjacency_matrix }
         }
     }

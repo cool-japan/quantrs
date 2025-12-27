@@ -10,6 +10,7 @@ use crate::resource_estimator::{
     ErrorCorrectionCode, EstimationMode, HardwarePlatform, QuantumGate, ResourceEstimationConfig,
 };
 use scirs2_core::Complex64;
+use std::fmt::Write;
 // use scirs2_core::parallel_ops::*;
 use crate::parallel_ops_stubs::*;
 // use scirs2_core::memory::BufferPool;
@@ -391,17 +392,17 @@ impl EnhancedResourceEstimator {
         gate_patterns = self.detect_gate_patterns(circuit)?;
 
         // Calculate gate depths
-        gate_depths = self.calculate_gate_depths(circuit)?;
+        gate_depths = Self::calculate_gate_depths(circuit)?;
 
         Ok(GateStatistics {
             total_gates: circuit.len(),
             gate_counts,
             gate_depths,
             gate_patterns,
-            clifford_count: self.count_clifford_gates(circuit),
-            non_clifford_count: self.count_non_clifford_gates(circuit),
-            two_qubit_count: self.count_two_qubit_gates(circuit),
-            multi_qubit_count: self.count_multi_qubit_gates(circuit),
+            clifford_count: Self::count_clifford_gates(circuit),
+            non_clifford_count: Self::count_non_clifford_gates(circuit),
+            two_qubit_count: Self::count_two_qubit_gates(circuit),
+            multi_qubit_count: Self::count_multi_qubit_gates(circuit),
         })
     }
 
@@ -414,11 +415,11 @@ impl EnhancedResourceEstimator {
 
         // Common patterns to detect
         let pattern_checks = vec![
-            ("QFT", self.detect_qft_pattern(circuit)?),
-            ("Grover", self.detect_grover_pattern(circuit)?),
-            ("QAOA", self.detect_qaoa_pattern(circuit)?),
-            ("VQE", self.detect_vqe_pattern(circuit)?),
-            ("Entanglement", self.detect_entanglement_pattern(circuit)?),
+            ("QFT", Self::detect_qft_pattern(circuit)?),
+            ("Grover", Self::detect_grover_pattern(circuit)?),
+            ("QAOA", Self::detect_qaoa_pattern(circuit)?),
+            ("VQE", Self::detect_vqe_pattern(circuit)?),
+            ("Entanglement", Self::detect_entanglement_pattern(circuit)?),
         ];
 
         for (name, instances_opt) in pattern_checks {
@@ -426,7 +427,7 @@ impl EnhancedResourceEstimator {
                 patterns.push(GatePattern {
                     pattern_type: name.to_string(),
                     instances,
-                    resource_impact: self.estimate_pattern_impact(name),
+                    resource_impact: Self::estimate_pattern_impact(name),
                 });
             }
         }
@@ -436,7 +437,6 @@ impl EnhancedResourceEstimator {
 
     /// Detect QFT pattern
     fn detect_qft_pattern(
-        &self,
         circuit: &[QuantumGate],
     ) -> Result<Option<Vec<PatternInstance>>, QuantRS2Error> {
         // Simplified QFT detection
@@ -472,8 +472,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Detect Grover pattern
-    fn detect_grover_pattern(
-        &self,
+    const fn detect_grover_pattern(
         _circuit: &[QuantumGate],
     ) -> Result<Option<Vec<PatternInstance>>, QuantRS2Error> {
         // Placeholder for Grover detection
@@ -481,8 +480,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Detect QAOA pattern
-    fn detect_qaoa_pattern(
-        &self,
+    const fn detect_qaoa_pattern(
         _circuit: &[QuantumGate],
     ) -> Result<Option<Vec<PatternInstance>>, QuantRS2Error> {
         // Placeholder for QAOA detection
@@ -490,8 +488,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Detect VQE pattern
-    fn detect_vqe_pattern(
-        &self,
+    const fn detect_vqe_pattern(
         _circuit: &[QuantumGate],
     ) -> Result<Option<Vec<PatternInstance>>, QuantRS2Error> {
         // Placeholder for VQE detection
@@ -500,7 +497,6 @@ impl EnhancedResourceEstimator {
 
     /// Detect entanglement pattern
     fn detect_entanglement_pattern(
-        &self,
         circuit: &[QuantumGate],
     ) -> Result<Option<Vec<PatternInstance>>, QuantRS2Error> {
         let mut instances = Vec::new();
@@ -533,7 +529,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Estimate pattern resource impact
-    fn estimate_pattern_impact(&self, pattern_name: &str) -> f64 {
+    fn estimate_pattern_impact(pattern_name: &str) -> f64 {
         match pattern_name {
             "QFT" => 2.5, // QFT has significant resource requirements
             "Grover" => 1.8,
@@ -546,7 +542,6 @@ impl EnhancedResourceEstimator {
 
     /// Calculate gate depths
     fn calculate_gate_depths(
-        &self,
         circuit: &[QuantumGate],
     ) -> Result<HashMap<String, usize>, QuantRS2Error> {
         let mut depths = HashMap::new();
@@ -578,7 +573,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Count Clifford gates
-    fn count_clifford_gates(&self, circuit: &[QuantumGate]) -> usize {
+    fn count_clifford_gates(circuit: &[QuantumGate]) -> usize {
         circuit
             .iter()
             .filter(|gate| {
@@ -597,7 +592,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Count non-Clifford gates
-    fn count_non_clifford_gates(&self, circuit: &[QuantumGate]) -> usize {
+    fn count_non_clifford_gates(circuit: &[QuantumGate]) -> usize {
         circuit
             .iter()
             .filter(|gate| {
@@ -614,7 +609,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Count two-qubit gates
-    fn count_two_qubit_gates(&self, circuit: &[QuantumGate]) -> usize {
+    fn count_two_qubit_gates(circuit: &[QuantumGate]) -> usize {
         circuit
             .iter()
             .filter(|gate| gate.target_qubits().len() == 2)
@@ -622,7 +617,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Count multi-qubit gates (3+ qubits)
-    fn count_multi_qubit_gates(&self, circuit: &[QuantumGate]) -> usize {
+    fn count_multi_qubit_gates(circuit: &[QuantumGate]) -> usize {
         circuit
             .iter()
             .filter(|gate| gate.target_qubits().len() > 2)
@@ -662,7 +657,7 @@ impl EnhancedResourceEstimator {
             .max()
             .unwrap_or(0);
 
-        let critical_qubits = self.identify_critical_qubits(&connectivity)?;
+        let critical_qubits = Self::identify_critical_qubits(&connectivity)?;
 
         Ok(CircuitTopology {
             num_qubits,
@@ -670,15 +665,12 @@ impl EnhancedResourceEstimator {
             connectivity_density,
             max_connections,
             critical_qubits,
-            topology_type: self.classify_topology(&connectivity, connectivity_density),
+            topology_type: Self::classify_topology(&connectivity, connectivity_density),
         })
     }
 
     /// Identify critical qubits with high connectivity
-    fn identify_critical_qubits(
-        &self,
-        connectivity: &[Vec<usize>],
-    ) -> Result<Vec<usize>, QuantRS2Error> {
+    fn identify_critical_qubits(connectivity: &[Vec<usize>]) -> Result<Vec<usize>, QuantRS2Error> {
         let mut critical = Vec::new();
         let avg_connections: f64 = connectivity
             .iter()
@@ -697,7 +689,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Classify topology type
-    fn classify_topology(&self, _connectivity: &[Vec<usize>], density: f64) -> TopologyType {
+    fn classify_topology(_connectivity: &[Vec<usize>], density: f64) -> TopologyType {
         if density < 0.1 {
             TopologyType::Sparse
         } else if density < 0.3 {
@@ -757,7 +749,7 @@ impl EnhancedResourceEstimator {
     }
 
     /// Estimate physical qubits
-    fn estimate_physical_qubits(
+    const fn estimate_physical_qubits(
         &self,
         logical_qubits: usize,
         code_distance: usize,
@@ -853,7 +845,10 @@ impl EnhancedResourceEstimator {
     }
 
     /// Estimate magic states
-    fn estimate_magic_states(&self, gate_stats: &GateStatistics) -> Result<usize, QuantRS2Error> {
+    const fn estimate_magic_states(
+        &self,
+        gate_stats: &GateStatistics,
+    ) -> Result<usize, QuantRS2Error> {
         let t_gates = gate_stats.non_clifford_count;
 
         // Conservative estimate including distillation overhead
@@ -960,7 +955,7 @@ impl EnhancedResourceEstimator {
     ) -> Result<String, QuantRS2Error> {
         let depth = circuit.len();
         let two_qubit_ratio =
-            self.count_two_qubit_gates(circuit) as f64 / circuit.len().max(1) as f64;
+            Self::count_two_qubit_gates(circuit) as f64 / circuit.len().max(1) as f64;
 
         if depth < 100 && two_qubit_ratio < 0.2 {
             Ok("Low (BQP-easy)".to_string())
@@ -1006,11 +1001,11 @@ impl EnhancedResourceEstimator {
         let connectivity_score = 1.0 - basic.circuit_topology.connectivity_density.min(1.0);
         let volume_score = 1.0 / (1.0 + (basic.complexity_metrics.circuit_volume as f64).log10());
 
-        (connectivity_score + volume_score) / 2.0
+        f64::midpoint(connectivity_score, volume_score)
     }
 
     /// Calculate feasibility score
-    fn calculate_feasibility_score(
+    const fn calculate_feasibility_score(
         &self,
         basic: &BasicResourceAnalysis,
         ml_predictions: &Option<MLPredictions>,
@@ -1024,7 +1019,7 @@ impl EnhancedResourceEstimator {
         };
 
         if let Some(predictions) = ml_predictions {
-            (base_score + predictions.feasibility_confidence) / 2.0
+            f64::midpoint(base_score, predictions.feasibility_confidence)
         } else {
             base_score
         }
@@ -1150,12 +1145,12 @@ impl EnhancedResourceEstimator {
     }
 
     /// Monitor resources in real-time
-    pub fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
         self.realtime_tracker.start_monitoring()
     }
 
     /// Stop resource monitoring
-    pub fn stop_monitoring(&mut self) -> Result<MonitoringReport, QuantRS2Error> {
+    pub const fn stop_monitoring(&mut self) -> Result<MonitoringReport, QuantRS2Error> {
         self.realtime_tracker.stop_monitoring()
     }
 
@@ -1171,7 +1166,7 @@ impl EnhancedResourceEstimator {
             ReportFormat::PDF => self.export_pdf_report(estimate),
             ReportFormat::Markdown => self.export_markdown_report(estimate),
             ReportFormat::LaTeX => self.export_latex_report(estimate),
-            _ => Err(QuantRS2Error::UnsupportedOperation(
+            ReportFormat::YAML => Err(QuantRS2Error::UnsupportedOperation(
                 "Format not supported".into(),
             )),
         }
@@ -1182,9 +1177,8 @@ impl EnhancedResourceEstimator {
         &self,
         estimate: &EnhancedResourceEstimate,
     ) -> Result<String, QuantRS2Error> {
-        serde_json::to_string_pretty(estimate).map_err(|e| {
-            QuantRS2Error::ComputationError(format!("JSON serialization failed: {}", e))
-        })
+        serde_json::to_string_pretty(estimate)
+            .map_err(|e| QuantRS2Error::ComputationError(format!("JSON serialization failed: {e}")))
     }
 
     /// Export HTML report
@@ -1197,14 +1191,18 @@ impl EnhancedResourceEstimator {
             "<!DOCTYPE html><html><head><title>Resource Estimation Report</title></head><body>",
         );
         html.push_str("<h1>Enhanced Resource Estimation Report</h1>");
-        html.push_str(&format!(
+        write!(
+            html,
             "<p>Estimation Time: {:?}</p>",
             estimate.estimation_time
-        ));
-        html.push_str(&format!(
+        )
+        .expect("Failed to write estimation time to HTML report");
+        write!(
+            html,
             "<p>Overall Score: {:.2}</p>",
             estimate.resource_scores.overall_score
-        ));
+        )
+        .expect("Failed to write overall score to HTML report");
         html.push_str("</body></html>");
         Ok(html)
     }
@@ -1225,27 +1223,37 @@ impl EnhancedResourceEstimator {
     ) -> Result<String, QuantRS2Error> {
         let mut md = String::new();
         md.push_str("# Enhanced Resource Estimation Report\n\n");
-        md.push_str(&format!(
+        write!(
+            md,
             "**Estimation Time**: {:?}\n\n",
             estimate.estimation_time
-        ));
+        )
+        .expect("Failed to write estimation time to Markdown report");
         md.push_str("## Resource Scores\n\n");
-        md.push_str(&format!(
-            "- Overall Score: {:.2}\n",
+        writeln!(
+            md,
+            "- Overall Score: {:.2}",
             estimate.resource_scores.overall_score
-        ));
-        md.push_str(&format!(
-            "- Efficiency: {:.2}\n",
+        )
+        .expect("Failed to write overall score to Markdown report");
+        writeln!(
+            md,
+            "- Efficiency: {:.2}",
             estimate.resource_scores.efficiency_score
-        ));
-        md.push_str(&format!(
-            "- Scalability: {:.2}\n",
+        )
+        .expect("Failed to write efficiency score to Markdown report");
+        writeln!(
+            md,
+            "- Scalability: {:.2}",
             estimate.resource_scores.scalability_score
-        ));
-        md.push_str(&format!(
-            "- Feasibility: {:.2}\n",
+        )
+        .expect("Failed to write scalability score to Markdown report");
+        writeln!(
+            md,
+            "- Feasibility: {:.2}",
             estimate.resource_scores.feasibility_score
-        ));
+        )
+        .expect("Failed to write feasibility score to Markdown report");
         Ok(md)
     }
 
@@ -1701,7 +1709,7 @@ pub struct MonitoringReport {
 pub struct MLResourcePredictor {}
 
 impl MLResourcePredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1733,7 +1741,7 @@ impl MLResourcePredictor {
 pub struct CostAnalyzer {}
 
 impl CostAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1754,7 +1762,7 @@ impl CostAnalyzer {
             };
 
             platform_costs.insert(
-                format!("{:?}", platform),
+                format!("{platform:?}"),
                 PlatformCost {
                     platform: *platform,
                     estimated_cost: cost * 1000.0, // Convert to reasonable dollar amount
@@ -1787,7 +1795,7 @@ impl CostAnalyzer {
 pub struct OptimizationEngine {}
 
 impl OptimizationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1801,7 +1809,7 @@ impl OptimizationEngine {
 
         for objective in objectives {
             strategies.push(OptimizationStrategy {
-                name: format!("Strategy for {:?}", objective),
+                name: format!("Strategy for {objective:?}"),
                 description: "Optimization strategy based on objective".to_string(),
                 expected_improvement: ResourceImprovement {
                     qubit_reduction: 0.1,
@@ -1826,7 +1834,7 @@ impl OptimizationEngine {
 pub struct ComparativeAnalyzer {}
 
 impl ComparativeAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1857,15 +1865,15 @@ impl ComparativeAnalyzer {
 pub struct RealtimeResourceTracker {}
 
 impl RealtimeResourceTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn stop_monitoring(&mut self) -> Result<MonitoringReport, QuantRS2Error> {
+    pub const fn stop_monitoring(&mut self) -> Result<MonitoringReport, QuantRS2Error> {
         Ok(MonitoringReport {
             monitoring_duration: std::time::Duration::from_secs(60),
             resource_usage: TrackingData {
@@ -1882,7 +1890,7 @@ impl RealtimeResourceTracker {
         })
     }
 
-    pub fn get_tracking_data(&self) -> Result<TrackingData, QuantRS2Error> {
+    pub const fn get_tracking_data(&self) -> Result<TrackingData, QuantRS2Error> {
         Ok(TrackingData {
             resource_timeline: Vec::new(),
             peak_usage: PeakUsage {
@@ -1899,7 +1907,7 @@ impl RealtimeResourceTracker {
 pub struct VisualResourceGenerator {}
 
 impl VisualResourceGenerator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1926,7 +1934,7 @@ impl VisualResourceGenerator {
 pub struct HardwareRecommender {}
 
 impl HardwareRecommender {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1950,7 +1958,7 @@ impl HardwareRecommender {
 pub struct ScalingPredictor {}
 
 impl ScalingPredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -2002,7 +2010,9 @@ mod tests {
             QuantumGate::new(GateType::T, vec![0], None),
         ];
 
-        let analysis = estimator.perform_basic_analysis(&circuit, 2).unwrap();
+        let analysis = estimator
+            .perform_basic_analysis(&circuit, 2)
+            .expect("Failed to perform basic analysis in test_basic_resource_analysis");
         assert_eq!(analysis.gate_statistics.total_gates, 3);
         assert_eq!(analysis.num_qubits, 2);
     }
@@ -2017,7 +2027,9 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![2, 3], None),
         ];
 
-        let patterns = estimator.detect_gate_patterns(&circuit).unwrap();
+        let patterns = estimator
+            .detect_gate_patterns(&circuit)
+            .expect("Failed to detect gate patterns in test_gate_pattern_detection");
         assert!(!patterns.is_empty());
     }
 
@@ -2077,7 +2089,9 @@ mod tests {
             circuit_size: 10,
         };
 
-        let predictions = predictor.predict_resources(&[], &basic).unwrap();
+        let predictions = predictor
+            .predict_resources(&[], &basic)
+            .expect("Failed to predict resources in test_ml_predictions");
         assert!(predictions.predicted_success_rate > 0.9);
     }
 
@@ -2144,7 +2158,9 @@ mod tests {
             max_alternatives: 3,
         };
 
-        let costs = analyzer.analyze_costs(&[], &basic, &options).unwrap();
+        let costs = analyzer
+            .analyze_costs(&[], &basic, &options)
+            .expect("Failed to analyze costs in test_cost_analysis");
         assert!(costs.total_estimated_cost > 0.0);
     }
 
@@ -2288,12 +2304,12 @@ mod tests {
 
         let json_report = estimator
             .export_report(&estimate, ReportFormat::JSON)
-            .unwrap();
+            .expect("Failed to export JSON report in test_export_report");
         assert!(json_report.contains("resource_scores"));
 
         let md_report = estimator
             .export_report(&estimate, ReportFormat::Markdown)
-            .unwrap();
+            .expect("Failed to export Markdown report in test_export_report");
         assert!(md_report.contains("# Enhanced Resource Estimation Report"));
     }
 }

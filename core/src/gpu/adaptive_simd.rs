@@ -83,7 +83,7 @@ impl AdaptiveSimdDispatcher {
         let cpu_features = Self::detect_cpu_features();
         let selected_variant = Self::select_optimal_variant(&cpu_features);
 
-        let dispatcher = AdaptiveSimdDispatcher {
+        let dispatcher = Self {
             cpu_features,
             selected_variant,
             performance_cache: Mutex::new(std::collections::HashMap::new()),
@@ -97,7 +97,7 @@ impl AdaptiveSimdDispatcher {
     }
 
     /// Get the global dispatcher instance
-    pub fn instance() -> QuantRS2Result<&'static AdaptiveSimdDispatcher> {
+    pub fn instance() -> QuantRS2Result<&'static Self> {
         GLOBAL_DISPATCHER.get().ok_or_else(|| {
             QuantRS2Error::RuntimeError("Adaptive SIMD dispatcher not initialized".to_string())
         })
@@ -124,7 +124,7 @@ impl AdaptiveSimdDispatcher {
     }
 
     /// Select the optimal SIMD variant based on CPU features
-    fn select_optimal_variant(features: &CpuFeatures) -> SimdVariant {
+    const fn select_optimal_variant(features: &CpuFeatures) -> SimdVariant {
         if features.has_avx512 && features.has_avx512vl && features.has_avx512dq {
             SimdVariant::Avx512
         } else if features.has_avx2 && features.has_fma {
@@ -149,9 +149,9 @@ impl AdaptiveSimdDispatcher {
         let start_time = std::time::Instant::now();
 
         let result = match variant {
-            SimdVariant::Avx512 => self.apply_single_qubit_sse4(state, target, matrix), // Fallback to SSE4
-            SimdVariant::Avx2 => self.apply_single_qubit_sse4(state, target, matrix), // Fallback to SSE4
-            SimdVariant::Sse4 => self.apply_single_qubit_sse4(state, target, matrix),
+            SimdVariant::Avx512 | SimdVariant::Avx2 | SimdVariant::Sse4 => {
+                self.apply_single_qubit_sse4(state, target, matrix) // Fallback to SSE4
+            }
             SimdVariant::Scalar => self.apply_single_qubit_scalar(state, target, matrix),
         };
 
@@ -253,7 +253,9 @@ impl AdaptiveSimdDispatcher {
                     });
 
             // Update running average
-            perf_data.avg_time = (perf_data.avg_time * perf_data.samples as f64 + execution_time)
+            perf_data.avg_time = perf_data
+                .avg_time
+                .mul_add(perf_data.samples as f64, execution_time)
                 / (perf_data.samples + 1) as f64;
             perf_data.samples += 1;
 
@@ -447,7 +449,7 @@ impl AdaptiveSimdDispatcher {
 
     // Similar implementations for two-qubit gates and batch operations
 
-    fn apply_two_qubit_avx512(
+    const fn apply_two_qubit_avx512(
         &self,
         _state: &mut [Complex64],
         _control: usize,
@@ -458,7 +460,7 @@ impl AdaptiveSimdDispatcher {
         Ok(())
     }
 
-    fn apply_two_qubit_avx2(
+    const fn apply_two_qubit_avx2(
         &self,
         _state: &mut [Complex64],
         _control: usize,
@@ -469,7 +471,7 @@ impl AdaptiveSimdDispatcher {
         Ok(())
     }
 
-    fn apply_two_qubit_sse4(
+    const fn apply_two_qubit_sse4(
         &self,
         _state: &mut [Complex64],
         _control: usize,
@@ -480,7 +482,7 @@ impl AdaptiveSimdDispatcher {
         Ok(())
     }
 
-    fn apply_two_qubit_scalar(
+    const fn apply_two_qubit_scalar(
         &self,
         _state: &mut [Complex64],
         _control: usize,
@@ -644,9 +646,9 @@ mod tests {
         let perf_data = dispatcher
             .performance_cache
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .get("test_op")
-            .unwrap()
+            .expect("Performance data for 'test_op' should exist after updates")
             .clone();
         assert_eq!(perf_data.samples, 2);
         assert!((perf_data.avg_time - 125.0).abs() < 1e-10);

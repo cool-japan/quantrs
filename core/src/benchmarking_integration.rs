@@ -89,7 +89,7 @@ impl ComprehensiveBenchmarkSuite {
     }
 
     /// Enable all advanced features
-    pub fn enable_all_features(&mut self) {
+    pub const fn enable_all_features(&mut self) {
         self.auto_mitigation = true;
         self.assess_qv = true;
         self.enable_tomography = true;
@@ -111,12 +111,8 @@ impl ComprehensiveBenchmarkSuite {
         let mitigation_strategy = self.select_mitigation_strategy(&noise_analysis)?;
 
         // Phase 3: Run QAOA with selected mitigation
-        let qaoa_results = self.run_qaoa_with_mitigation(
-            num_qubits,
-            edges.clone(),
-            num_layers,
-            &mitigation_strategy,
-        )?;
+        let qaoa_results =
+            self.run_qaoa_with_mitigation(num_qubits, edges, num_layers, &mitigation_strategy)?;
 
         // Phase 4: Quantum Volume assessment (optional)
         let qv_result = if self.assess_qv {
@@ -137,7 +133,7 @@ impl ComprehensiveBenchmarkSuite {
         let recommendations = self.generate_recommendations(&noise_analysis, &qaoa_results);
 
         Ok(ComprehensiveBenchmarkReport {
-            algorithm_name: format!("QAOA MaxCut ({} qubits, {} layers)", num_qubits, num_layers),
+            algorithm_name: format!("QAOA MaxCut ({num_qubits} qubits, {num_layers} layers)"),
             noise_analysis,
             mitigation_strategy,
             qaoa_results,
@@ -198,7 +194,7 @@ impl ComprehensiveBenchmarkSuite {
         num_layers: usize,
         strategy: &MitigationStrategy,
     ) -> QuantRS2Result<QAOABenchmarkResults> {
-        let cost_hamiltonian = CostHamiltonian::MaxCut(edges.clone());
+        let cost_hamiltonian = CostHamiltonian::MaxCut(edges);
         let mixer_hamiltonian = MixerHamiltonian::TransverseField;
         let params = QAOAParams::random(num_layers);
 
@@ -222,10 +218,10 @@ impl ComprehensiveBenchmarkSuite {
             }
         };
 
-        let improvement_factor = if noisy_expectation != 0.0 {
-            mitigated_expectation / noisy_expectation
-        } else {
+        let improvement_factor = if noisy_expectation == 0.0 {
             1.0
+        } else {
+            mitigated_expectation / noisy_expectation
         };
 
         Ok(QAOABenchmarkResults {
@@ -245,7 +241,7 @@ impl ComprehensiveBenchmarkSuite {
         circuit.execute(&mut state);
 
         // Apply noise
-        for amplitude in state.iter_mut() {
+        for amplitude in &mut state {
             let noise_factor = self.noise_model.single_qubit_fidelity();
             *amplitude *= Complex64::new(noise_factor.sqrt(), 0.0);
         }
@@ -264,7 +260,7 @@ impl ComprehensiveBenchmarkSuite {
             circuit.execute(&mut state);
 
             // Apply scaled noise
-            for amplitude in state.iter_mut() {
+            for amplitude in &mut state {
                 let noise_factor = self.noise_model.single_qubit_fidelity().powf(scale);
                 *amplitude *= Complex64::new(noise_factor.sqrt(), 0.0);
             }
@@ -289,7 +285,7 @@ impl ComprehensiveBenchmarkSuite {
         );
 
         // Apply improved noise model
-        for amplitude in state.iter_mut() {
+        for amplitude in &mut state {
             let improved_fidelity =
                 1.0 - (1.0 - self.noise_model.single_qubit_fidelity()) / improvement;
             *amplitude *= Complex64::new(improved_fidelity.sqrt(), 0.0);
@@ -498,10 +494,7 @@ impl ComprehensiveBenchmarkReport {
 
         if let Some(qv) = self.quantum_volume {
             println!("║                                                                ║");
-            println!(
-                "║   Quantum Volume:               {:>4}                          ║",
-                qv
-            );
+            println!("║   Quantum Volume:               {qv:>4}                          ║");
         }
 
         if let Some(fidelity) = self.tomography_fidelity {
@@ -525,7 +518,7 @@ impl ComprehensiveBenchmarkReport {
                 if j == 0 {
                     println!("║ {}. {:<60} ║", i + 1, line);
                 } else {
-                    println!("║    {:<60} ║", line);
+                    println!("║    {line:<60} ║");
                 }
             }
         }
@@ -630,7 +623,7 @@ mod tests {
 
         let strategy = suite
             .select_mitigation_strategy(&high_fidelity_analysis)
-            .unwrap();
+            .expect("strategy selection for high fidelity should succeed");
         assert!(matches!(strategy, MitigationStrategy::None));
 
         // Moderate noise case
@@ -644,7 +637,7 @@ mod tests {
 
         let strategy = suite
             .select_mitigation_strategy(&moderate_noise_analysis)
-            .unwrap();
+            .expect("strategy selection for moderate noise should succeed");
         assert!(matches!(
             strategy,
             MitigationStrategy::ZeroNoiseExtrapolation { .. }
@@ -661,7 +654,7 @@ mod tests {
 
         let strategy = suite
             .select_mitigation_strategy(&low_coherence_analysis)
-            .unwrap();
+            .expect("strategy selection for low coherence should succeed");
         assert!(matches!(
             strategy,
             MitigationStrategy::DynamicalDecoupling { .. }
@@ -674,7 +667,9 @@ mod tests {
 
         // Small 3-qubit MaxCut problem
         let edges = vec![(0, 1), (1, 2)];
-        let result = suite.benchmark_qaoa_comprehensive(3, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(3, edges, 1)
+            .expect("QAOA comprehensive benchmark should succeed");
 
         assert_eq!(result.algorithm_name, "QAOA MaxCut (3 qubits, 1 layers)");
         assert!(result.noise_analysis.avg_gate_fidelity > 0.0);
@@ -689,7 +684,9 @@ mod tests {
     fn test_report_json_export() {
         let suite = ComprehensiveBenchmarkSuite::new();
         let edges = vec![(0, 1)];
-        let result = suite.benchmark_qaoa_comprehensive(2, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(2, edges, 1)
+            .expect("QAOA benchmark should succeed");
 
         let json = result.to_json();
         assert!(json.contains("\"algorithm\""));
@@ -757,7 +754,9 @@ mod tests {
         let suite = ComprehensiveBenchmarkSuite::new();
         let edges = vec![(0, 1)];
 
-        let result = suite.benchmark_qaoa_comprehensive(2, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(2, edges, 1)
+            .expect("QAOA benchmark for single edge should succeed");
         assert!(result.qaoa_results.circuit_depth > 0);
         assert!(result.qaoa_results.num_parameters > 0);
     }
@@ -795,7 +794,9 @@ mod tests {
 
         let edges = vec![(0, 1), (1, 2), (2, 0)]; // Triangle graph
 
-        let result = suite.benchmark_qaoa_comprehensive(3, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(3, edges, 1)
+            .expect("QAOA benchmark with mitigation should succeed");
 
         // Should show improvement when mitigation is enabled
         assert!(result.qaoa_results.improvement_factor >= 1.0); // At least no degradation
@@ -815,7 +816,9 @@ mod tests {
         let suite = ComprehensiveBenchmarkSuite::with_noise_model(high_noise);
         let edges = vec![(0, 1), (1, 2)];
 
-        let result = suite.benchmark_qaoa_comprehensive(3, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(3, edges, 1)
+            .expect("QAOA benchmark in high noise should succeed");
 
         // Should recommend error mitigation for high noise
         assert!(result
@@ -840,10 +843,10 @@ mod tests {
 
         let result_low = suite_low
             .benchmark_qaoa_comprehensive(3, edges.clone(), 1)
-            .unwrap();
+            .expect("QAOA benchmark with low noise should succeed");
         let result_high = suite_high
             .benchmark_qaoa_comprehensive(3, edges, 1)
-            .unwrap();
+            .expect("QAOA benchmark with high noise should succeed");
 
         // Low noise should generally have better fidelity
         assert!(
@@ -856,7 +859,9 @@ mod tests {
     fn test_benchmark_report_formatting() {
         let suite = ComprehensiveBenchmarkSuite::new();
         let edges = vec![(0, 1)];
-        let result = suite.benchmark_qaoa_comprehensive(2, edges, 1).unwrap();
+        let result = suite
+            .benchmark_qaoa_comprehensive(2, edges, 1)
+            .expect("QAOA benchmark should succeed");
 
         // Test that report can be printed without panicking
         result.print_detailed_report();
@@ -876,7 +881,7 @@ mod tests {
         for layers in 1..=3 {
             let result = suite
                 .benchmark_qaoa_comprehensive(4, edges.clone(), layers)
-                .unwrap();
+                .expect("QAOA benchmark with multiple layers should succeed");
             // Circuit depth should increase with more layers
             assert!(result.qaoa_results.circuit_depth > 0);
             assert!(result.qaoa_results.num_parameters > 0);

@@ -664,7 +664,7 @@ impl SparseMatrix {
 
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
-        result.simd_ops = self.simd_ops.clone();
+        result.simd_ops.clone_from(&self.simd_ops);
 
         result
     }
@@ -684,7 +684,7 @@ impl SparseMatrix {
 
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
-        result.simd_ops = self.simd_ops.clone();
+        result.simd_ops.clone_from(&self.simd_ops);
 
         result
     }
@@ -818,7 +818,7 @@ impl SparseMatrix {
 
         result.metrics.operation_time = start_time.elapsed();
         result.metrics.memory_usage = result.nnz() * std::mem::size_of::<Complex64>();
-        result.simd_ops = self.simd_ops.clone();
+        result.simd_ops.clone_from(&self.simd_ops);
         result.buffer_pool = self.buffer_pool.clone();
 
         Ok(result)
@@ -1517,14 +1517,18 @@ mod tests {
         x_gate.insert(1, 0, Complex64::new(1.0, 0.0));
 
         // X * X = I
-        let result = x_gate.matmul(&x_gate).unwrap();
+        let result = x_gate
+            .matmul(&x_gate)
+            .expect("Failed to multiply X gate with itself");
         assert!(result.matrices_equal(&id, 1e-12));
     }
 
     #[test]
     fn test_unitary_check() {
         let library = SparseGateLibrary::new();
-        let h_gate = library.get_gate("H").unwrap();
+        let h_gate = library
+            .get_gate("H")
+            .expect("Hadamard gate should exist in library");
 
         // TODO: Fix matrix multiplication to ensure proper unitary check
         // The issue is in the sparse matrix multiplication implementation
@@ -1538,16 +1542,22 @@ mod tests {
     fn test_circuit_conversion() {
         let converter = CircuitToSparseMatrix::new();
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
 
-        let matrix = converter.convert(&circuit).unwrap();
+        let matrix = converter
+            .convert(&circuit)
+            .expect("Failed to convert circuit to sparse matrix");
         assert_eq!(matrix.shape, (2, 2));
     }
 
     #[test]
     fn test_enhanced_gate_properties_analysis() {
         let library = SparseGateLibrary::new();
-        let x_gate = library.get_gate("X").unwrap();
+        let x_gate = library
+            .get_gate("X")
+            .expect("X gate should exist in library");
         let optimizer = SparseOptimizer::new();
 
         let properties = optimizer.analyze_gate_properties(x_gate);
@@ -1568,7 +1578,9 @@ mod tests {
         };
 
         let library = SparseGateLibrary::new_for_hardware(hardware_spec);
-        let x_gate = library.get_gate("X").unwrap();
+        let x_gate = library
+            .get_gate("X")
+            .expect("X gate should exist in hardware-optimized library");
 
         // Should be optimized for GPU
         assert_eq!(x_gate.format, SparseFormat::GPUOptimized);
@@ -1597,7 +1609,7 @@ mod tests {
         let result = matrix1.matmul(&matrix2);
         assert!(result.is_ok());
 
-        let result_matrix = result.unwrap();
+        let result_matrix = result.expect("Failed to perform SIMD matrix multiplication");
         assert!(result_matrix.metrics.simd_utilization > 0.0);
     }
 }

@@ -207,7 +207,7 @@ impl HomodyneDetector {
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         // Measure visibility with known coherent state
-        self.calibration.visibility = 0.99 - 0.02 * thread_rng().gen::<f64>();
+        self.calibration.visibility = 0.02f64.mul_add(-thread_rng().gen::<f64>(), 0.99);
 
         // Measure DC offsets
         self.calibration.dc_offset = 0.001 * (thread_rng().gen::<f64>() - 0.5);
@@ -271,8 +271,7 @@ impl HomodyneDetector {
 
         if mode >= state.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -286,14 +285,16 @@ impl HomodyneDetector {
 
         let mean_x = state.mean_vector[2 * mode];
         let mean_p = state.mean_vector[2 * mode + 1];
-        let theoretical_mean = cos_phi * mean_x + sin_phi * mean_p;
+        let theoretical_mean = cos_phi.mul_add(mean_x, sin_phi * mean_p);
 
         let var_x = state.covariancematrix[2 * mode][2 * mode];
         let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
         let cov_xp = state.covariancematrix[2 * mode][2 * mode + 1];
 
-        let theoretical_variance =
-            cos_phi.powi(2) * var_x + sin_phi.powi(2) * var_p + 2.0 * cos_phi * sin_phi * cov_xp;
+        let theoretical_variance = (2.0 * cos_phi * sin_phi).mul_add(
+            cov_xp,
+            cos_phi.powi(2).mul_add(var_x, sin_phi.powi(2) * var_p),
+        );
 
         // Calculate noise contributions
         let shot_noise = self.calculate_shot_noise_level();
@@ -307,7 +308,7 @@ impl HomodyneDetector {
 
         // Simulate measurement
         let distribution = Normal::new(theoretical_mean, total_noise_variance.sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         let measured_value = distribution.sample(&mut rng);
@@ -368,8 +369,9 @@ impl HomodyneDetector {
 
         let thermal_noise = (4.0 * 1.381e-23 * 300.0 * self.config.bandwidth_hz / 50.0).sqrt(); // Johnson noise
 
-        let total_electronic_noise =
-            (current_noise.powi(2) + thermal_noise.powi(2) + self.config.electronic_noise).sqrt();
+        let total_electronic_noise = (thermal_noise.mul_add(thermal_noise, current_noise.powi(2))
+            + self.config.electronic_noise)
+            .sqrt();
 
         // Convert to quadrature variance units (simplified)
         total_electronic_noise
@@ -400,14 +402,19 @@ impl HomodyneDetector {
                 .sqrt();
 
         // Balanced detection
-        let current_a = lo_current
-            + signal_current * 0.5
-            + self.config.photodiode_config.dark_current_na * 1e-6;
-        let current_b = lo_current - signal_current * 0.5
-            + self.config.photodiode_config.dark_current_na * 1e-6;
+        let current_a = self
+            .config
+            .photodiode_config
+            .dark_current_na
+            .mul_add(1e-6, lo_current + signal_current * 0.5);
+        let current_b = self
+            .config
+            .photodiode_config
+            .dark_current_na
+            .mul_add(1e-6, lo_current - signal_current * 0.5);
 
         let difference_current = current_a - current_b;
-        let common_mode_current = (current_a + current_b) / 2.0;
+        let common_mode_current = f64::midpoint(current_a, current_b);
 
         DetectorCurrents {
             current_a,
@@ -435,7 +442,7 @@ impl HomodyneDetector {
         phase_stability: f64,
     ) -> f64 {
         let snr = signal_power / noise_power;
-        let phase_penalty = 1.0 / (1.0 + phase_stability.powi(2));
+        let phase_penalty = 1.0 / phase_stability.mul_add(phase_stability, 1.0);
         let efficiency_penalty = self.config.efficiency;
 
         let fidelity = (snr / (1.0 + snr)) * phase_penalty * efficiency_penalty;
@@ -495,7 +502,7 @@ impl HomodyneDetector {
     }
 
     /// Get calibration data
-    pub fn get_calibration(&self) -> &HomodyneCalibration {
+    pub const fn get_calibration(&self) -> &HomodyneCalibration {
         &self.calibration
     }
 }
@@ -543,7 +550,10 @@ mod tests {
         let config = HomodyneDetectorConfig::default();
         let mut detector = HomodyneDetector::new(config);
 
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
         assert!(detector.is_phase_locked);
     }
 
@@ -551,9 +561,15 @@ mod tests {
     async fn test_phase_setting() {
         let config = HomodyneDetectorConfig::default();
         let mut detector = HomodyneDetector::new(config);
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
 
-        detector.set_lo_phase(PI / 4.0).await.unwrap();
+        detector
+            .set_lo_phase(PI / 4.0)
+            .await
+            .expect("Setting LO phase should succeed");
         assert!((detector.lo_phase - PI / 4.0).abs() < 0.1); // Within calibration offset
     }
 
@@ -561,11 +577,18 @@ mod tests {
     async fn test_homodyne_measurement() {
         let config = HomodyneDetectorConfig::default();
         let mut detector = HomodyneDetector::new(config);
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
 
-        let mut state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 0.0)]).unwrap();
+        let mut state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 0.0)])
+            .expect("Coherent state creation should succeed");
 
-        let result = detector.measure(&mut state, 0, 0.0).await.unwrap();
+        let result = detector
+            .measure(&mut state, 0, 0.0)
+            .await
+            .expect("Homodyne measurement should succeed");
 
         assert!(result.quadrature_value.is_finite());
         assert!(result.fidelity > 0.0);
@@ -577,11 +600,18 @@ mod tests {
     async fn test_squeezing_measurement() {
         let config = HomodyneDetectorConfig::default();
         let mut detector = HomodyneDetector::new(config);
-        detector.initialize().await.unwrap();
+        detector
+            .initialize()
+            .await
+            .expect("Detector initialization should succeed");
 
-        let mut state = GaussianState::squeezed_vacuum_state(1, vec![1.0], vec![0.0]).unwrap();
+        let mut state = GaussianState::squeezed_vacuum_state(1, vec![1.0], vec![0.0])
+            .expect("Squeezed vacuum state creation should succeed");
 
-        let result = detector.measure(&mut state, 0, 0.0).await.unwrap();
+        let result = detector
+            .measure(&mut state, 0, 0.0)
+            .await
+            .expect("Homodyne measurement should succeed");
 
         // Should observe squeezing in x quadrature
         assert!(result.squeezing_db < 0.0); // Below shot noise

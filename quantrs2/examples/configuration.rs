@@ -85,8 +85,8 @@ fn main() {
     println!("   Log levels:");
     for level_str in &log_levels {
         match level_str.parse::<LogLevel>() {
-            Ok(level) => println!("     '{}' → {:?}", level_str, level),
-            Err(e) => println!("     '{}' → Error: {}", level_str, e),
+            Ok(level) => println!("     '{level_str}' → {level:?}"),
+            Err(e) => println!("     '{level_str}' → Error: {e}"),
         }
     }
     println!();
@@ -103,8 +103,8 @@ fn main() {
     println!("   Backends:");
     for backend_str in &backends {
         match backend_str.parse::<DefaultBackend>() {
-            Ok(backend) => println!("     '{}' → {:?}", backend_str, backend),
-            Err(e) => println!("     '{}' → Error: {}", backend_str, e),
+            Ok(backend) => println!("     '{backend_str}' → {backend:?}"),
+            Err(e) => println!("     '{backend_str}' → Error: {e}"),
         }
     }
     println!();

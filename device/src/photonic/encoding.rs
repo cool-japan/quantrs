@@ -41,8 +41,8 @@ pub enum PhotonicQECCode {
     Color { distance: usize },
     /// Concatenated code
     Concatenated {
-        inner_code: Box<PhotonicQECCode>,
-        outer_code: Box<PhotonicQECCode>,
+        inner_code: Box<Self>,
+        outer_code: Box<Self>,
         levels: usize,
     },
     /// CV quantum error correction
@@ -58,7 +58,7 @@ pub enum PhotonicQECCode {
 }
 
 /// Continuous variable QEC code types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CVCodeType {
     /// Gottesman-Kitaev-Preskill (GKP) code
     GKP,
@@ -132,7 +132,7 @@ pub struct LogicalState {
 
 impl LogicalState {
     /// Create logical |0⟩ state
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self {
             amplitude_0: 1.0,
             amplitude_1: 0.0,
@@ -142,7 +142,7 @@ impl LogicalState {
     }
 
     /// Create logical |1⟩ state
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self {
             amplitude_0: 0.0,
             amplitude_1: 1.0,
@@ -163,7 +163,7 @@ impl LogicalState {
 
     /// Create arbitrary logical state
     pub fn arbitrary(amplitude_0: f64, amplitude_1: f64, phase: f64) -> EncodingResult<Self> {
-        let norm_squared = amplitude_0 * amplitude_0 + amplitude_1 * amplitude_1;
+        let norm_squared = amplitude_0.mul_add(amplitude_0, amplitude_1 * amplitude_1);
         if (norm_squared - 1.0).abs() > 1e-6 {
             return Err(EncodingError::InvalidParameters(
                 "State amplitudes not normalized".to_string(),
@@ -203,7 +203,7 @@ pub struct ErrorSyndrome {
 }
 
 /// Types of quantum errors
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorType {
     /// Bit flip error (X error)
     BitFlip,
@@ -329,9 +329,8 @@ impl PhotonicEncoder {
                 *levels,
                 physical_qubits,
             ),
-            _ => Err(EncodingError::UnsupportedEncoding(format!(
-                "Code {:?} not yet implemented",
-                code
+            PhotonicQECCode::Color { .. } => Err(EncodingError::UnsupportedEncoding(format!(
+                "Code {code:?} not yet implemented"
             ))),
         }
     }
@@ -439,8 +438,7 @@ impl PhotonicEncoder {
                 })
             }
             _ => Err(EncodingError::UnsupportedEncoding(format!(
-                "CV code {:?} not implemented",
-                code_type
+                "CV code {code_type:?} not implemented"
             ))),
         }
     }
@@ -479,8 +477,7 @@ impl PhotonicEncoder {
                 })
             }
             _ => Err(EncodingError::UnsupportedEncoding(format!(
-                "Bosonic code {:?} not implemented",
-                code_type
+                "Bosonic code {code_type:?} not implemented"
             ))),
         }
     }
@@ -507,8 +504,7 @@ impl PhotonicEncoder {
 
         if physical_qubits.len() < total_required {
             return Err(EncodingError::InsufficientQubits(format!(
-                "Concatenated code needs {} qubits",
-                total_required
+                "Concatenated code needs {total_required} qubits"
             )));
         }
 
@@ -592,8 +588,7 @@ impl PhotonicEncoder {
             PhotonicQECCode::Repetition { distance } => Ok(*distance),
             PhotonicQECCode::Surface { distance } => Ok(2 * distance * distance - 1),
             PhotonicQECCode::Color { distance } => Ok(3 * distance * distance / 2),
-            PhotonicQECCode::ContinuousVariable { .. } => Ok(1), // Single mode
-            PhotonicQECCode::Bosonic { .. } => Ok(1),            // Single mode
+            PhotonicQECCode::ContinuousVariable { .. } | PhotonicQECCode::Bosonic { .. } => Ok(1), // Single mode
             PhotonicQECCode::Concatenated {
                 inner_code,
                 outer_code,
@@ -607,7 +602,7 @@ impl PhotonicEncoder {
     }
 
     /// Get decoding fidelity for a code
-    fn get_decoding_fidelity(&self, code: &PhotonicQECCode) -> EncodingResult<f64> {
+    const fn get_decoding_fidelity(&self, code: &PhotonicQECCode) -> EncodingResult<f64> {
         match code {
             PhotonicQECCode::Repetition { .. } => Ok(0.995),
             PhotonicQECCode::Surface { .. } => Ok(0.99),
@@ -618,7 +613,7 @@ impl PhotonicEncoder {
             },
             PhotonicQECCode::Bosonic { .. } => Ok(0.88),
             PhotonicQECCode::Concatenated { .. } => Ok(0.85),
-            _ => Ok(0.80),
+            PhotonicQECCode::Color { .. } => Ok(0.80),
         }
     }
 
@@ -701,7 +696,7 @@ impl PhotonicEncoder {
 
     /// Get performance metrics for a code
     pub fn get_performance(&self, code: &PhotonicQECCode) -> EncodingResult<EncodingPerformance> {
-        let cache_key = format!("{:?}", code);
+        let cache_key = format!("{code:?}");
 
         if let Some(performance) = self.performance_cache.get(&cache_key) {
             return Ok(performance.clone());
@@ -779,7 +774,7 @@ mod tests {
 
         let encoded = encoder
             .encode_logical_qubit(logical_state, &code, physical_qubits)
-            .unwrap();
+            .expect("Repetition code encoding should succeed");
         assert_eq!(encoded.physical_qubits.len(), 3);
         assert!(matches!(
             encoded.encoding,
@@ -796,7 +791,7 @@ mod tests {
 
         let encoded = encoder
             .encode_logical_qubit(logical_state, &code, physical_qubits)
-            .unwrap();
+            .expect("Surface code encoding should succeed");
         assert_eq!(encoded.physical_qubits.len(), 17);
     }
 
@@ -817,7 +812,7 @@ mod tests {
 
         let encoded = encoder
             .encode_logical_qubit(logical_state, &code, physical_modes)
-            .unwrap();
+            .expect("CV code encoding should succeed");
         assert_eq!(encoded.physical_qubits.len(), 1);
     }
 
@@ -826,7 +821,9 @@ mod tests {
         let encoder = PhotonicEncoder::new();
         let code = PhotonicQECCode::Repetition { distance: 5 };
 
-        let performance = encoder.get_performance(&code).unwrap();
+        let performance = encoder
+            .get_performance(&code)
+            .expect("Performance calculation should succeed");
         assert_eq!(performance.distance, 5);
         assert_eq!(performance.rate, 0.2); // 1/5
         assert_eq!(performance.overhead, 5);
@@ -839,9 +836,11 @@ mod tests {
         let code = PhotonicQECCode::Repetition { distance: 3 };
         let encoded = encoder
             .encode_logical_qubit(logical_state, &code, vec![0, 1, 2])
-            .unwrap();
+            .expect("Repetition code encoding should succeed");
 
-        let syndrome = encoder.calculate_syndrome(&encoded).unwrap();
+        let syndrome = encoder
+            .calculate_syndrome(&encoded)
+            .expect("Syndrome calculation should succeed");
         assert_eq!(syndrome.syndrome_bits.len(), 2); // d-1 = 2
     }
 
@@ -852,9 +851,11 @@ mod tests {
         let code = PhotonicQECCode::Repetition { distance: 3 };
         let encoded = encoder
             .encode_logical_qubit(original_state.clone(), &code, vec![0, 1, 2])
-            .unwrap();
+            .expect("Repetition code encoding should succeed");
 
-        let decoded = encoder.decode_logical_qubit(&encoded).unwrap();
+        let decoded = encoder
+            .decode_logical_qubit(&encoded)
+            .expect("Decoding should succeed");
         assert!((decoded.prob_zero() - original_state.prob_zero()).abs() < 0.1);
         assert!((decoded.prob_one() - original_state.prob_one()).abs() < 0.1);
     }

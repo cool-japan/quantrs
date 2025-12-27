@@ -17,10 +17,10 @@ fn create_bell_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::new();
 
     // Apply Hadamard to qubit 0
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply H gate");
 
     // Apply CNOT with qubit 0 as control and qubit 1 as target
-    circuit.cnot(0, 1).unwrap();
+    circuit.cnot(0, 1).expect("Failed to apply CNOT gate");
 
     circuit
 }
@@ -30,11 +30,11 @@ fn create_ghz_circuit<const N: usize>() -> Circuit<N> {
     let mut circuit = Circuit::new();
 
     // Apply Hadamard to qubit 0
-    circuit.h(0).unwrap();
+    circuit.h(0).expect("Failed to apply H gate");
 
     // Apply CNOT gates to entangle all qubits
     for i in 1..N {
-        circuit.cnot(0, i).unwrap();
+        circuit.cnot(0, i).expect("Failed to apply CNOT gate");
     }
 
     circuit
@@ -55,18 +55,18 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
             0 => {
                 // Hadamard gate
                 let target = rng.gen_range(0..N);
-                circuit.h(target).unwrap();
+                circuit.h(target).expect("Failed to apply H gate");
             }
             1 => {
                 // Pauli-X gate
                 let target = rng.gen_range(0..N);
-                circuit.x(target).unwrap();
+                circuit.x(target).expect("Failed to apply X gate");
             }
             2 => {
                 // Rotation-Z gate
                 let target = rng.gen_range(0..N);
                 let angle = rng.gen_range(0.0..2.0 * PI);
-                circuit.rz(target, angle).unwrap();
+                circuit.rz(target, angle).expect("Failed to apply RZ gate");
             }
             3 => {
                 // CNOT gate
@@ -75,7 +75,9 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
                 while target == control {
                     target = rng.gen_range(0..N);
                 }
-                circuit.cnot(control, target).unwrap();
+                circuit
+                    .cnot(control, target)
+                    .expect("Failed to apply CNOT gate");
             }
             4 => {
                 // CZ gate
@@ -84,7 +86,9 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
                 while target == control {
                     target = rng.gen_range(0..N);
                 }
-                circuit.cz(control, target).unwrap();
+                circuit
+                    .cz(control, target)
+                    .expect("Failed to apply CZ gate");
             }
             _ => unreachable!(),
         }
@@ -98,8 +102,12 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, epsilon: f64) -> boo
     let standard_sim = StateVectorSimulator::new();
     let optimized_sim = OptimizedSimulatorSimple::new();
 
-    let standard_result = standard_sim.run(circuit).unwrap();
-    let optimized_result = optimized_sim.run(circuit).unwrap();
+    let standard_result = standard_sim
+        .run(circuit)
+        .expect("Standard simulator failed");
+    let optimized_result = optimized_sim
+        .run(circuit)
+        .expect("Optimized simulator failed");
 
     let standard_state = standard_result.amplitudes();
     let optimized_state = optimized_result.amplitudes();
@@ -139,8 +147,12 @@ mod tests {
         let standard_sim = StateVectorSimulator::new();
         let optimized_sim = OptimizedSimulatorSimple::new();
 
-        let standard_result = standard_sim.run(&circuit).unwrap();
-        let optimized_result = optimized_sim.run(&circuit).unwrap();
+        let standard_result = standard_sim
+            .run(&circuit)
+            .expect("Standard simulator failed");
+        let optimized_result = optimized_sim
+            .run(&circuit)
+            .expect("Optimized simulator failed");
 
         // Expected result: (|00> + |11>) / sqrt(2)
         let expected_amplitudes = [
@@ -188,8 +200,12 @@ mod tests {
         let standard_sim = StateVectorSimulator::new();
         let optimized_sim = OptimizedSimulatorSimple::new();
 
-        let standard_result = standard_sim.run(&circuit).unwrap();
-        let optimized_result = optimized_sim.run(&circuit).unwrap();
+        let standard_result = standard_sim
+            .run(&circuit)
+            .expect("Standard simulator failed");
+        let optimized_result = optimized_sim
+            .run(&circuit)
+            .expect("Optimized simulator failed");
 
         // Expected result: (|000> + |111>) / sqrt(2)
         let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 1 << N];

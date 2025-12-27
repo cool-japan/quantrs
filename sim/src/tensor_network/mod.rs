@@ -122,6 +122,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Create a new tensor network simulator with specified bond dimension
+    #[must_use]
     pub const fn with_bond_dimension(mut self, max_bond_dimension: usize) -> Self {
         self.max_bond_dimension = max_bond_dimension;
         self.path_optimizer = self
@@ -136,6 +137,7 @@ impl TensorNetworkSimulator {
     /// 1 = Basic optimizations
     /// 2 = Advanced optimizations
     /// 3 = Aggressive optimizations (may impact accuracy)
+    #[must_use]
     pub fn with_optimization_level(mut self, level: u8) -> Self {
         self.optimization_level = level.min(3);
 
@@ -162,6 +164,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Set the contraction strategy
+    #[must_use]
     pub fn with_contraction_strategy(mut self, strategy: ContractionStrategy) -> Self {
         self.contraction_strategy = strategy.clone();
 

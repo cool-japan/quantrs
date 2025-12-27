@@ -96,12 +96,14 @@ impl GateEigenstructure {
         // The rotation axis is perpendicular to both Bloch vectors
         // (for pure rotation, eigenvectors should point opposite on sphere)
         let axis = [
-            (bloch0[0] + bloch1[0]) / 2.0,
-            (bloch0[1] + bloch1[1]) / 2.0,
-            (bloch0[2] + bloch1[2]) / 2.0,
+            f64::midpoint(bloch0[0], bloch1[0]),
+            f64::midpoint(bloch0[1], bloch1[1]),
+            f64::midpoint(bloch0[2], bloch1[2]),
         ];
 
-        let norm = (axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]).sqrt();
+        let norm = axis[2]
+            .mul_add(axis[2], axis[0].mul_add(axis[0], axis[1] * axis[1]))
+            .sqrt();
         if norm < tolerance {
             None
         } else {
@@ -133,7 +135,7 @@ pub struct GateCharacterizer {
 
 impl GateCharacterizer {
     /// Create a new gate characterizer
-    pub fn new(tolerance: f64) -> Self {
+    pub const fn new(tolerance: f64) -> Self {
         Self { tolerance }
     }
 
@@ -346,7 +348,7 @@ impl GateCharacterizer {
 
     /// Compare two matrices for equality
     #[allow(dead_code)]
-    fn matrix_equals(&self, a: &Array2<Complex>, b: &Array2<Complex>, tolerance: f64) -> bool {
+    fn matrix_equals(a: &Array2<Complex>, b: &Array2<Complex>, tolerance: f64) -> bool {
         a.shape() == b.shape()
             && a.iter()
                 .zip(b.iter())
@@ -361,7 +363,7 @@ impl GateCharacterizer {
         let eigen = self.eigenstructure(gate)?;
 
         match eigen.eigenvalues.len() {
-            2 => self.decompose_single_qubit(&eigen),
+            2 => Self::decompose_single_qubit(&eigen),
             _ => Err(QuantRS2Error::UnsupportedOperation(
                 "Rotation decomposition only supported for single-qubit gates".to_string(),
             )),
@@ -369,10 +371,7 @@ impl GateCharacterizer {
     }
 
     /// Decompose single-qubit gate
-    fn decompose_single_qubit(
-        &self,
-        eigen: &GateEigenstructure,
-    ) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
+    fn decompose_single_qubit(eigen: &GateEigenstructure) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         // Use Euler angle decomposition
         // Any single-qubit unitary can be written as Rz(γ)Ry(β)Rz(α)
 
@@ -533,7 +532,7 @@ impl QuantumVolumeResult {
     }
 
     /// Get quantum volume as integer
-    pub fn quantum_volume_int(&self) -> u64 {
+    pub const fn quantum_volume_int(&self) -> u64 {
         self.quantum_volume as u64
     }
 }
@@ -606,13 +605,13 @@ impl QuantumVolumeMeasurement {
         for _ in 0..self.config.num_circuits {
             let circuit = self.generate_random_circuit()?;
             let ideal_distribution = self.compute_ideal_distribution(&circuit)?;
-            let heavy_outputs = self.identify_heavy_outputs(&ideal_distribution)?;
+            let heavy_outputs = Self::identify_heavy_outputs(&ideal_distribution)?;
 
             // Execute circuit and measure
             let measurement_counts = circuit_executor(&circuit, self.config.shots_per_circuit)?;
 
             // Compute heavy output probability
-            let heavy_prob = self.compute_heavy_output_probability(
+            let heavy_prob = Self::compute_heavy_output_probability(
                 &measurement_counts,
                 &heavy_outputs,
                 self.config.shots_per_circuit,
@@ -630,7 +629,7 @@ impl QuantumVolumeMeasurement {
 
         // Compute confidence interval using Wilson score interval
         let confidence_interval =
-            self.compute_confidence_interval(success_count, self.config.num_circuits);
+            Self::compute_confidence_interval(success_count, self.config.num_circuits);
 
         // Determine quantum volume
         let quantum_volume_log2 = if success_probability > self.config.heavy_output_threshold {
@@ -638,7 +637,7 @@ impl QuantumVolumeMeasurement {
         } else {
             0.0
         };
-        let quantum_volume = 2_f64.powf(quantum_volume_log2);
+        let quantum_volume = quantum_volume_log2.exp2();
 
         Ok(QuantumVolumeResult {
             num_qubits: self.config.num_qubits,
@@ -697,7 +696,7 @@ impl QuantumVolumeMeasurement {
         use scirs2_core::random::distributions_unified::UnifiedNormal;
 
         let normal = UnifiedNormal::new(0.0, 1.0).map_err(|e| {
-            QuantRS2Error::ComputationError(format!("Normal distribution error: {}", e))
+            QuantRS2Error::ComputationError(format!("Normal distribution error: {e}"))
         })?;
 
         // Generate random complex matrix
@@ -711,11 +710,11 @@ impl QuantumVolumeMeasurement {
         }
 
         // Apply Gram-Schmidt orthogonalization to get unitary matrix
-        self.gram_schmidt(&matrix)
+        Self::gram_schmidt(&matrix)
     }
 
     /// Gram-Schmidt orthogonalization
-    fn gram_schmidt(&self, matrix: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
+    fn gram_schmidt(matrix: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
         let dim = matrix.nrows();
         let mut result = Array2::<Complex>::zeros((dim, dim));
 
@@ -779,13 +778,10 @@ impl QuantumVolumeMeasurement {
     }
 
     /// Identify heavy outputs (above median probability)
-    fn identify_heavy_outputs(
-        &self,
-        distribution: &HashMap<String, f64>,
-    ) -> QuantRS2Result<Vec<String>> {
+    fn identify_heavy_outputs(distribution: &HashMap<String, f64>) -> QuantRS2Result<Vec<String>> {
         let mut probs: Vec<(String, f64)> =
             distribution.iter().map(|(k, v)| (k.clone(), *v)).collect();
-        probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Find median
         let median_idx = probs.len() / 2;
@@ -803,7 +799,6 @@ impl QuantumVolumeMeasurement {
 
     /// Compute heavy output probability from measurement counts
     fn compute_heavy_output_probability(
-        &self,
         counts: &HashMap<String, usize>,
         heavy_outputs: &[String],
         total_shots: usize,
@@ -818,7 +813,7 @@ impl QuantumVolumeMeasurement {
     }
 
     /// Compute Wilson score confidence interval
-    fn compute_confidence_interval(&self, successes: usize, trials: usize) -> (f64, f64) {
+    fn compute_confidence_interval(successes: usize, trials: usize) -> (f64, f64) {
         let p = successes as f64 / trials as f64;
         let n = trials as f64;
 
@@ -923,7 +918,7 @@ pub struct ProcessTomography {
 
 impl ProcessTomography {
     /// Create a new process tomography instance
-    pub fn new(config: ProcessTomographyConfig) -> Self {
+    pub const fn new(config: ProcessTomographyConfig) -> Self {
         Self { config }
     }
 
@@ -967,20 +962,20 @@ impl ProcessTomography {
         }
 
         // Convert to chi matrix (process matrix in Pauli basis)
-        let chi_matrix = self.transfer_to_chi(&transfer_matrix)?;
+        let chi_matrix = Self::transfer_to_chi(&transfer_matrix)?;
 
         // Compute Choi matrix
-        let choi_matrix = self.chi_to_choi(&chi_matrix)?;
+        let choi_matrix = Self::chi_to_choi(&chi_matrix)?;
 
         // Compute Pauli transfer matrix
-        let pauli_transfer_matrix = self.compute_pauli_transfer_matrix(&chi_matrix)?;
+        let pauli_transfer_matrix = Self::compute_pauli_transfer_matrix(&chi_matrix)?;
 
         // Compute fidelities
-        let process_fidelity = self.compute_process_fidelity(&chi_matrix)?;
-        let average_gate_fidelity = self.compute_average_gate_fidelity(&chi_matrix)?;
+        let process_fidelity = Self::compute_process_fidelity(&chi_matrix)?;
+        let average_gate_fidelity = Self::compute_average_gate_fidelity(&chi_matrix)?;
 
         // Check completeness (trace preservation)
-        let completeness = self.check_completeness(&chi_matrix);
+        let completeness = Self::check_completeness(&chi_matrix);
 
         Ok(ProcessTomographyResult {
             num_qubits: self.config.num_qubits,
@@ -996,14 +991,14 @@ impl ProcessTomography {
     /// Generate basis states for tomography
     fn generate_basis_states(&self, dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
         match self.config.input_basis {
-            ProcessBasis::Computational => self.generate_computational_basis(dim),
-            ProcessBasis::Pauli => self.generate_pauli_basis(dim),
-            ProcessBasis::Bell => self.generate_bell_basis(dim),
+            ProcessBasis::Computational => Self::generate_computational_basis(dim),
+            ProcessBasis::Pauli => Self::generate_pauli_basis(dim),
+            ProcessBasis::Bell => Self::generate_bell_basis(dim),
         }
     }
 
     /// Generate computational basis states
-    fn generate_computational_basis(&self, dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
+    fn generate_computational_basis(dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
         let mut basis = Vec::new();
         for i in 0..dim {
             let mut state = Array1::zeros(dim);
@@ -1014,7 +1009,7 @@ impl ProcessTomography {
     }
 
     /// Generate Pauli basis states
-    fn generate_pauli_basis(&self, dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
+    fn generate_pauli_basis(dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
         if dim != 2 {
             return Err(QuantRS2Error::UnsupportedOperation(
                 "Pauli basis only supported for single qubit (dim=2)".to_string(),
@@ -1042,7 +1037,7 @@ impl ProcessTomography {
     }
 
     /// Generate Bell basis states
-    fn generate_bell_basis(&self, dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
+    fn generate_bell_basis(dim: usize) -> QuantRS2Result<Vec<Array1<Complex>>> {
         if dim != 4 {
             return Err(QuantRS2Error::UnsupportedOperation(
                 "Bell basis only supported for two qubits (dim=4)".to_string(),
@@ -1084,21 +1079,21 @@ impl ProcessTomography {
     }
 
     /// Convert transfer matrix to chi matrix
-    fn transfer_to_chi(&self, transfer: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
+    fn transfer_to_chi(transfer: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
         // For simplicity, we assume transfer matrix is already in Pauli basis
         // In full implementation, would convert bases as needed
         Ok(transfer.clone())
     }
 
     /// Convert chi matrix to Choi matrix
-    fn chi_to_choi(&self, chi: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
+    fn chi_to_choi(chi: &Array2<Complex>) -> QuantRS2Result<Array2<Complex>> {
         // Choi-Jamiolkowski isomorphism
         // In practice, this requires basis transformation
         Ok(chi.clone())
     }
 
     /// Compute Pauli transfer matrix (real-valued representation)
-    fn compute_pauli_transfer_matrix(&self, chi: &Array2<Complex>) -> QuantRS2Result<Array2<f64>> {
+    fn compute_pauli_transfer_matrix(chi: &Array2<Complex>) -> QuantRS2Result<Array2<f64>> {
         let dim = chi.nrows();
         let mut ptm = Array2::zeros((dim, dim));
 
@@ -1112,20 +1107,20 @@ impl ProcessTomography {
     }
 
     /// Compute process fidelity with ideal identity process
-    fn compute_process_fidelity(&self, _chi: &Array2<Complex>) -> QuantRS2Result<f64> {
+    const fn compute_process_fidelity(_chi: &Array2<Complex>) -> QuantRS2Result<f64> {
         // Simplified: would compare with ideal process matrix
         Ok(0.95)
     }
 
     /// Compute average gate fidelity
-    fn compute_average_gate_fidelity(&self, _chi: &Array2<Complex>) -> QuantRS2Result<f64> {
+    const fn compute_average_gate_fidelity(_chi: &Array2<Complex>) -> QuantRS2Result<f64> {
         // F_avg = (d F + 1) / (d + 1) where d is dimension
         // Simplified calculation
         Ok(0.96)
     }
 
     /// Check trace preservation (completeness)
-    fn check_completeness(&self, chi: &Array2<Complex>) -> f64 {
+    fn check_completeness(chi: &Array2<Complex>) -> f64 {
         // Sum of diagonal elements should be 1 for CPTP map
         let trace: Complex = (0..chi.nrows()).map(|i| chi[(i, i)]).sum();
         trace.norm()
@@ -1161,7 +1156,7 @@ impl NoiseModel {
     /// Get Kraus operators for this noise model
     pub fn kraus_operators(&self) -> Vec<Array2<Complex>> {
         match self {
-            NoiseModel::Depolarizing { probability } => {
+            Self::Depolarizing { probability } => {
                 let p = *probability;
                 let sqrt_p = p.sqrt();
                 let sqrt_1_p = (1.0 - p).sqrt();
@@ -1177,7 +1172,7 @@ impl NoiseModel {
                             Complex::new(sqrt_1_p, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     // X component
                     Array2::from_shape_vec(
                         (2, 2),
@@ -1188,7 +1183,7 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     // Y component
                     Array2::from_shape_vec(
                         (2, 2),
@@ -1199,7 +1194,7 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     // Z component
                     Array2::from_shape_vec(
                         (2, 2),
@@ -1210,10 +1205,10 @@ impl NoiseModel {
                             Complex::new(-sqrt_p / 3.0_f64.sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::AmplitudeDamping { gamma } => {
+            Self::AmplitudeDamping { gamma } => {
                 let g = *gamma;
                 vec![
                     Array2::from_shape_vec(
@@ -1225,7 +1220,7 @@ impl NoiseModel {
                             Complex::new((1.0 - g).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1235,10 +1230,10 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::PhaseDamping { lambda } => {
+            Self::PhaseDamping { lambda } => {
                 let l = *lambda;
                 vec![
                     Array2::from_shape_vec(
@@ -1250,7 +1245,7 @@ impl NoiseModel {
                             Complex::new((1.0 - l).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1260,10 +1255,10 @@ impl NoiseModel {
                             Complex::new(l.sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::BitFlip { probability } => {
+            Self::BitFlip { probability } => {
                 let p = *probability;
                 vec![
                     Array2::from_shape_vec(
@@ -1275,7 +1270,7 @@ impl NoiseModel {
                             Complex::new((1.0 - p).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1285,10 +1280,10 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::PhaseFlip { probability } => {
+            Self::PhaseFlip { probability } => {
                 let p = *probability;
                 vec![
                     Array2::from_shape_vec(
@@ -1300,7 +1295,7 @@ impl NoiseModel {
                             Complex::new((1.0 - p).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1310,10 +1305,10 @@ impl NoiseModel {
                             Complex::new(-p.sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::BitPhaseFlip { probability } => {
+            Self::BitPhaseFlip { probability } => {
                 let p = *probability;
                 vec![
                     Array2::from_shape_vec(
@@ -1325,7 +1320,7 @@ impl NoiseModel {
                             Complex::new((1.0 - p).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1335,10 +1330,10 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::Pauli { p_x, p_y, p_z } => {
+            Self::Pauli { p_x, p_y, p_z } => {
                 let p_i = 1.0 - p_x - p_y - p_z;
                 vec![
                     Array2::from_shape_vec(
@@ -1350,7 +1345,7 @@ impl NoiseModel {
                             Complex::new(p_i.sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1360,7 +1355,7 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1370,7 +1365,7 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1380,10 +1375,10 @@ impl NoiseModel {
                             Complex::new(-p_z.sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
-            NoiseModel::ThermalRelaxation { t1, t2, time } => {
+            Self::ThermalRelaxation { t1, t2, time } => {
                 let p1 = 1.0 - (-time / t1).exp();
                 let p2 = 1.0 - (-time / t2).exp();
 
@@ -1401,7 +1396,7 @@ impl NoiseModel {
                             Complex::new((1.0 - gamma) * (1.0 - lambda).sqrt(), 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                     Array2::from_shape_vec(
                         (2, 2),
                         vec![
@@ -1411,7 +1406,7 @@ impl NoiseModel {
                             Complex::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 matrix creation"),
                 ]
             }
         }
@@ -1465,7 +1460,7 @@ pub struct NoiseCharacterizer {
 
 impl NoiseCharacterizer {
     /// Create a new noise characterizer
-    pub fn new(num_samples: usize, confidence_level: f64) -> Self {
+    pub const fn new(num_samples: usize, confidence_level: f64) -> Self {
         Self {
             num_samples,
             confidence_level,
@@ -1484,22 +1479,20 @@ impl NoiseCharacterizer {
         F: Fn(&Vec<String>, usize) -> QuantRS2Result<HashMap<String, usize>>,
     {
         // Perform randomized benchmarking
-        let rb_results = self.randomized_benchmarking(&circuit_executor, num_qubits)?;
+        let rb_results = Self::randomized_benchmarking(&circuit_executor, num_qubits)?;
 
         // Estimate depolarizing noise parameter from decay
-        let depolarizing_prob = self.estimate_depolarizing_parameter(&rb_results)?;
+        let depolarizing_prob = Self::estimate_depolarizing_parameter(&rb_results)?;
 
         // Measure gate-specific error rates
-        let gate_error_rates = self.measure_gate_error_rates(&circuit_executor, num_qubits)?;
+        let gate_error_rates = Self::measure_gate_error_rates(&circuit_executor, num_qubits)?;
 
         // Estimate coherence times (if available)
-        let coherence_times = self
-            .estimate_coherence_times(&circuit_executor, num_qubits)
-            .ok();
+        let coherence_times = Self::estimate_coherence_times(&circuit_executor, num_qubits).ok();
 
         // Measure crosstalk (if multi-qubit)
         let crosstalk_matrix = if num_qubits > 1 {
-            self.measure_crosstalk(&circuit_executor, num_qubits).ok()
+            Self::measure_crosstalk(&circuit_executor, num_qubits).ok()
         } else {
             None
         };
@@ -1518,7 +1511,6 @@ impl NoiseCharacterizer {
 
     /// Randomized benchmarking to estimate average gate fidelity
     fn randomized_benchmarking<F>(
-        &self,
         _circuit_executor: &F,
         _num_qubits: usize,
     ) -> QuantRS2Result<Vec<(usize, f64)>>
@@ -1536,7 +1528,7 @@ impl NoiseCharacterizer {
     }
 
     /// Estimate depolarizing parameter from RB decay
-    fn estimate_depolarizing_parameter(&self, rb_results: &[(usize, f64)]) -> QuantRS2Result<f64> {
+    fn estimate_depolarizing_parameter(rb_results: &[(usize, f64)]) -> QuantRS2Result<f64> {
         // Fit exponential decay: F(m) = A*p^m + B
         // Extract p (average gate fidelity)
         if rb_results.len() < 2 {
@@ -1551,12 +1543,11 @@ impl NoiseCharacterizer {
         // p = 1 - (d/(d+1)) * epsilon where d=2 for single qubit
         let epsilon = (1.0 - p) * 3.0 / 2.0;
 
-        Ok(epsilon.max(0.0).min(1.0))
+        Ok(epsilon.clamp(0.0, 1.0))
     }
 
     /// Measure gate-specific error rates
     fn measure_gate_error_rates<F>(
-        &self,
         _circuit_executor: &F,
         _num_qubits: usize,
     ) -> QuantRS2Result<HashMap<String, f64>>
@@ -1575,8 +1566,7 @@ impl NoiseCharacterizer {
     }
 
     /// Estimate coherence times T1 and T2
-    fn estimate_coherence_times<F>(
-        &self,
+    const fn estimate_coherence_times<F>(
         _circuit_executor: &F,
         _num_qubits: usize,
     ) -> QuantRS2Result<(f64, f64)>
@@ -1588,11 +1578,7 @@ impl NoiseCharacterizer {
     }
 
     /// Measure crosstalk between qubits
-    fn measure_crosstalk<F>(
-        &self,
-        _circuit_executor: &F,
-        num_qubits: usize,
-    ) -> QuantRS2Result<Array2<f64>>
+    fn measure_crosstalk<F>(_circuit_executor: &F, num_qubits: usize) -> QuantRS2Result<Array2<f64>>
     where
         F: Fn(&Vec<String>, usize) -> QuantRS2Result<HashMap<String, usize>>,
     {
@@ -1646,7 +1632,7 @@ pub struct NoiseMitigator {
 
 impl NoiseMitigator {
     /// Create a new noise mitigator
-    pub fn new(technique: MitigationTechnique) -> Self {
+    pub const fn new(technique: MitigationTechnique) -> Self {
         Self { technique }
     }
 
@@ -1664,16 +1650,16 @@ impl NoiseMitigator {
                 self.zero_noise_extrapolation(circuit_executor, noise_levels)
             }
             MitigationTechnique::ProbabilisticErrorCancellation => {
-                self.probabilistic_error_cancellation(circuit_executor, noise_levels)
+                Self::probabilistic_error_cancellation(circuit_executor, noise_levels)
             }
             MitigationTechnique::CliffordDataRegression => {
-                self.clifford_data_regression(circuit_executor, noise_levels)
+                Self::clifford_data_regression(circuit_executor, noise_levels)
             }
             MitigationTechnique::SymmetryVerification => {
-                self.symmetry_verification(circuit_executor, noise_levels)
+                Self::symmetry_verification(circuit_executor, noise_levels)
             }
             MitigationTechnique::DynamicalDecoupling => {
-                self.dynamical_decoupling(circuit_executor, noise_levels)
+                Self::dynamical_decoupling(circuit_executor, noise_levels)
             }
         }
     }
@@ -1701,7 +1687,7 @@ impl NoiseMitigator {
         }
 
         // Fit linear extrapolation: E(λ) = a + b*λ
-        let (a, b) = self.fit_linear(&values)?;
+        let (a, b) = Self::fit_linear(&values)?;
 
         // Extrapolate to zero noise
         let mitigated_value = a;
@@ -1723,7 +1709,7 @@ impl NoiseMitigator {
     }
 
     /// Fit linear model to data points
-    fn fit_linear(&self, data: &[(f64, f64)]) -> QuantRS2Result<(f64, f64)> {
+    fn fit_linear(data: &[(f64, f64)]) -> QuantRS2Result<(f64, f64)> {
         let n = data.len() as f64;
         let sum_x: f64 = data.iter().map(|(x, _)| x).sum();
         let sum_y: f64 = data.iter().map(|(_, y)| y).sum();
@@ -1732,15 +1718,14 @@ impl NoiseMitigator {
 
         // Standard linear regression formula: slope = (n*Σxy - Σx*Σy) / (n*Σx² - (Σx)²)
         #[allow(clippy::suspicious_operation_groupings)]
-        let b = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-        let a = (sum_y - b * sum_x) / n;
+        let b = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_xx, -(sum_x * sum_x));
+        let a = b.mul_add(-sum_x, sum_y) / n;
 
         Ok((a, b))
     }
 
     /// Probabilistic error cancellation
     fn probabilistic_error_cancellation<F>(
-        &self,
         circuit_executor: F,
         noise_levels: &[f64],
     ) -> QuantRS2Result<MitigationResult>
@@ -1762,7 +1747,6 @@ impl NoiseMitigator {
 
     /// Clifford data regression
     fn clifford_data_regression<F>(
-        &self,
         circuit_executor: F,
         noise_levels: &[f64],
     ) -> QuantRS2Result<MitigationResult>
@@ -1783,7 +1767,6 @@ impl NoiseMitigator {
 
     /// Symmetry verification
     fn symmetry_verification<F>(
-        &self,
         circuit_executor: F,
         noise_levels: &[f64],
     ) -> QuantRS2Result<MitigationResult>
@@ -1804,7 +1787,6 @@ impl NoiseMitigator {
 
     /// Dynamical decoupling
     fn dynamical_decoupling<F>(
-        &self,
         circuit_executor: F,
         noise_levels: &[f64],
     ) -> QuantRS2Result<MitigationResult>
@@ -1864,19 +1846,19 @@ mod tests {
         assert_eq!(
             characterizer
                 .identify_gate_type(&PauliX { target: QubitId(0) })
-                .unwrap(),
+                .expect("identify PauliX failed"),
             GateType::PauliX
         );
         assert_eq!(
             characterizer
                 .identify_gate_type(&PauliY { target: QubitId(0) })
-                .unwrap(),
+                .expect("identify PauliY failed"),
             GateType::PauliY
         );
         assert_eq!(
             characterizer
                 .identify_gate_type(&PauliZ { target: QubitId(0) })
-                .unwrap(),
+                .expect("identify PauliZ failed"),
             GateType::PauliZ
         );
     }
@@ -1889,7 +1871,9 @@ mod tests {
             theta: PI / 4.0,
         };
 
-        let decomposition = characterizer.decompose_to_rotations(&rx).unwrap();
+        let decomposition = characterizer
+            .decompose_to_rotations(&rx)
+            .expect("decompose to rotations failed");
         assert_eq!(decomposition.len(), 3); // Rz-Ry-Rz decomposition
     }
 
@@ -1901,7 +1885,9 @@ mod tests {
             theta: PI / 2.0,
         };
 
-        let eigen = characterizer.eigenstructure(&rz).unwrap();
+        let eigen = characterizer
+            .eigenstructure(&rz)
+            .expect("eigenstructure failed");
         let phases = eigen.eigenphases();
 
         assert_eq!(phases.len(), 2);
@@ -1917,15 +1903,17 @@ mod tests {
             target: QubitId(0),
             theta: PI / 4.0,
         };
-        let closest = characterizer.find_closest_clifford(&t_like).unwrap();
+        let closest = characterizer
+            .find_closest_clifford(&t_like)
+            .expect("find closest clifford failed");
 
         // Should find S gate (Phase) as closest
         let s_distance = characterizer
             .gate_distance(&t_like, &Phase { target: QubitId(0) })
-            .unwrap();
+            .expect("gate distance to S failed");
         let actual_distance = characterizer
             .gate_distance(&t_like, closest.as_ref())
-            .unwrap();
+            .expect("gate distance to closest failed");
 
         assert!(actual_distance <= s_distance + 1e-10);
     }
@@ -1981,13 +1969,15 @@ mod tests {
         // Z gate global phase (det(Z) = -1, phase = π, global phase = π/2)
         let z_phase = characterizer
             .global_phase(&PauliZ { target: QubitId(0) })
-            .unwrap();
+            .expect("global phase of Z failed");
         // For Pauli Z: eigenvalues are 1 and -1, det = -1, phase = π, global phase = π/2
         assert!((z_phase - PI / 2.0).abs() < 1e-10 || (z_phase + PI / 2.0).abs() < 1e-10);
 
         // Phase gate has global phase (S gate applies phase e^(iπ/4) to |1>)
         let phase_gate = Phase { target: QubitId(0) };
-        let global_phase = characterizer.global_phase(&phase_gate).unwrap();
+        let global_phase = characterizer
+            .global_phase(&phase_gate)
+            .expect("global phase of S failed");
         // S gate eigenvalues are 1 and i, so average phase is π/4
         assert!((global_phase - PI / 4.0).abs() < 1e-10);
     }

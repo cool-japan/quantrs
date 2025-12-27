@@ -91,7 +91,7 @@ impl Default for MLNoiseConfig {
 }
 
 /// Neural network architectures for noise prediction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NeuralArchitecture {
     /// Long Short-Term Memory networks
     LSTM,
@@ -133,7 +133,7 @@ impl Default for FeatureConfig {
 }
 
 /// Feature normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureNormalization {
     /// Z-score normalization
     ZScore,
@@ -146,7 +146,7 @@ pub enum FeatureNormalization {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureSelection {
     /// Automatic feature selection
     Automatic,
@@ -186,7 +186,7 @@ impl Default for HierarchyConfig {
 }
 
 /// Hierarchy communication protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HierarchyCommunication {
     /// Cascade from low to high levels
     Cascade,
@@ -226,7 +226,7 @@ impl Default for ResourceManagementConfig {
 }
 
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceAllocationStrategy {
     /// Fixed allocation
     Fixed,
@@ -266,7 +266,7 @@ impl Default for PredictionConfig {
 }
 
 /// Prediction update strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionUpdateStrategy {
     /// Continuous updates
     Continuous,
@@ -313,7 +313,7 @@ pub enum NoiseType {
     /// Drift noise (slowly varying)
     Drift,
     /// Mixed noise types
-    Mixed(Vec<NoiseType>),
+    Mixed(Vec<Self>),
 }
 
 /// Adaptive error correction protocol
@@ -360,7 +360,7 @@ pub struct DetectionConfig {
 }
 
 /// Detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DetectionMethod {
     /// Parity check
     Parity,
@@ -373,7 +373,7 @@ pub enum DetectionMethod {
 }
 
 /// Actions on error detection
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DetectionAction {
     /// Flag error only
     Flag,
@@ -421,7 +421,7 @@ pub struct AdaptiveStrategyConfig {
 }
 
 /// Strategy selection algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StrategySelectionAlgorithm {
     /// Greedy selection
     Greedy,
@@ -490,7 +490,7 @@ pub enum AdaptationCondition {
     /// Time-based condition
     TimeBased(Duration),
     /// Composite condition
-    Composite(Vec<AdaptationCondition>),
+    Composite(Vec<Self>),
 }
 
 /// Actions for adaptation
@@ -615,7 +615,7 @@ pub struct FeatureDefinition {
 }
 
 /// Types of features
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureType {
     /// Temporal features
     Temporal,
@@ -688,7 +688,7 @@ pub struct NoiseSensor {
 }
 
 /// Types of noise sensors
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SensorType {
     /// Error rate sensor
     ErrorRate,
@@ -725,7 +725,7 @@ pub struct NoiseAnalyzer {
 }
 
 /// Noise analysis algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisAlgorithm {
     /// Spectral analysis
     Spectral,
@@ -763,7 +763,7 @@ pub struct ProtocolEvent {
 }
 
 /// Types of protocol events
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProtocolEventType {
     /// Protocol activation
     Activation,
@@ -791,7 +791,7 @@ pub struct AdaptationEngine {
 }
 
 /// Adaptation algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationAlgorithm {
     /// Rule-based adaptation
     RuleBased,
@@ -842,7 +842,7 @@ pub struct ModelEnsemble {
 }
 
 /// Ensemble methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnsembleMethod {
     /// Simple averaging
     Average,
@@ -947,7 +947,7 @@ pub struct PerformanceAnalysisAlgorithm {
 }
 
 /// Types of performance analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisType {
     /// Trend analysis
     Trend,
@@ -1024,7 +1024,7 @@ pub struct ResourceConstraints {
 }
 
 /// Constraint enforcement methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintEnforcement {
     /// Hard constraints (must be satisfied)
     Hard,
@@ -1046,7 +1046,7 @@ pub struct ResourceOptimizer {
 }
 
 /// Resource optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     /// Gradient descent
     GradientDescent,
@@ -1144,7 +1144,7 @@ pub struct HierarchyMessage {
 }
 
 /// Types of hierarchy messages
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageType {
     /// Error detection report
     ErrorReport,
@@ -1246,7 +1246,7 @@ pub struct CoordinationAlgorithm {
 }
 
 /// Coordination strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoordinationStrategy {
     /// Centralized coordination
     Centralized,
@@ -1262,6 +1262,7 @@ pub enum CoordinationStrategy {
 
 impl RealTimeAdaptiveQec {
     /// Create new real-time adaptive QEC system
+    #[must_use]
     pub fn new(config: AdaptiveQecConfig) -> Self {
         Self {
             config: config.clone(),
@@ -1401,12 +1402,15 @@ impl RealTimeAdaptiveQec {
 
         // Use ensemble prediction
         let predicted_noise_level = match assessment.trends.direction {
-            TrendDirection::Increasing => {
-                assessment.current_noise.noise_level + assessment.trends.rate * 2.0
-            }
-            TrendDirection::Decreasing => {
-                (assessment.current_noise.noise_level - assessment.trends.rate * 2.0).max(0.0)
-            }
+            TrendDirection::Increasing => assessment
+                .trends
+                .rate
+                .mul_add(2.0, assessment.current_noise.noise_level),
+            TrendDirection::Decreasing => assessment
+                .trends
+                .rate
+                .mul_add(-2.0, assessment.current_noise.noise_level)
+                .max(0.0),
             TrendDirection::Stable => assessment.current_noise.noise_level,
         };
 
@@ -1487,8 +1491,7 @@ impl RealTimeAdaptiveQec {
         };
 
         println!(
-            "Selected error correction strategy based on problem size {} and noise level {:.4}",
-            problem_size, noise_level
+            "Selected error correction strategy based on problem size {problem_size} and noise level {noise_level:.4}"
         );
         Ok(strategy)
     }
@@ -1733,7 +1736,7 @@ pub struct NoiseAssessment {
 }
 
 /// Noise severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseSeverity {
     Low,
     Medium,
@@ -1750,7 +1753,7 @@ pub struct NoiseTrends {
 }
 
 /// Trend directions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -1874,18 +1877,27 @@ impl PerformanceAnalyzer {
     fn update_performance(&mut self, metadata: &CorrectionMetadata) {
         // Update performance metrics based on correction results
         let efficiency = metadata.errors_corrected as f64 / metadata.errors_detected.max(1) as f64;
-        self.metrics.correction_efficiency =
-            (self.metrics.correction_efficiency * 0.9) + (efficiency * 0.1);
+        self.metrics.correction_efficiency = self
+            .metrics
+            .correction_efficiency
+            .mul_add(0.9, efficiency * 0.1);
 
         let resource_efficiency = 1.0 / (1.0 + metadata.correction_overhead);
-        self.metrics.resource_efficiency =
-            (self.metrics.resource_efficiency * 0.9) + (resource_efficiency * 0.1);
+        self.metrics.resource_efficiency = self
+            .metrics
+            .resource_efficiency
+            .mul_add(0.9, resource_efficiency * 0.1);
 
         // Update overall performance
-        self.metrics.overall_performance = self.metrics.correction_efficiency * 0.3
-            + self.metrics.resource_efficiency * 0.3
-            + self.metrics.adaptation_responsiveness * 0.2
-            + self.metrics.prediction_accuracy * 0.2;
+        self.metrics.overall_performance = self.metrics.prediction_accuracy.mul_add(
+            0.2,
+            self.metrics.adaptation_responsiveness.mul_add(
+                0.2,
+                self.metrics
+                    .correction_efficiency
+                    .mul_add(0.3, self.metrics.resource_efficiency * 0.3),
+            ),
+        );
     }
 }
 
@@ -1991,8 +2003,10 @@ mod tests {
 
     #[test]
     fn test_noise_assessment() {
-        let system = create_example_adaptive_qec().unwrap();
-        let assessment = system.assess_noise_conditions().unwrap();
+        let system = create_example_adaptive_qec().expect("Failed to create adaptive QEC system");
+        let assessment = system
+            .assess_noise_conditions()
+            .expect("Failed to assess noise conditions");
 
         assert!(assessment.confidence > 0.0);
         assert!(assessment.confidence <= 1.0);
@@ -2000,7 +2014,7 @@ mod tests {
 
     #[test]
     fn test_strategy_selection() {
-        let system = create_example_adaptive_qec().unwrap();
+        let system = create_example_adaptive_qec().expect("Failed to create adaptive QEC system");
         let problem = IsingModel::new(100);
 
         let noise_assessment = NoiseAssessment {
@@ -2034,7 +2048,7 @@ mod tests {
 
         let strategy = system
             .select_correction_strategy(&problem, &noise_assessment, &noise_prediction)
-            .unwrap();
+            .expect("Failed to select correction strategy");
 
         // Should select appropriate strategy for small problem with low noise
         match &strategy {

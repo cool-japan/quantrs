@@ -79,6 +79,7 @@ pub enum CachedData {
 
 impl CachedData {
     /// Estimate memory usage of cached data
+    #[must_use]
     pub fn estimate_size(&self) -> usize {
         match self {
             Self::SingleQubitMatrix(_) => 4 * std::mem::size_of::<Complex64>(),
@@ -127,7 +128,7 @@ pub struct CacheConfig {
 impl Default for CacheConfig {
     fn default() -> Self {
         Self {
-            max_entries: 10000,
+            max_entries: 10_000,
             max_memory_bytes: 256 * 1024 * 1024, // 256 MB
             eviction_policy: EvictionPolicy::LRU,
             ttl: Duration::from_secs(3600), // 1 hour
@@ -162,6 +163,7 @@ pub struct CacheStats {
 
 impl CacheStats {
     /// Calculate hit ratio
+    #[must_use]
     pub fn hit_ratio(&self) -> f64 {
         if self.total_requests == 0 {
             0.0
@@ -216,6 +218,7 @@ pub struct QuantumOperationCache {
 
 impl QuantumOperationCache {
     /// Create new quantum operation cache
+    #[must_use]
     pub fn new(config: CacheConfig) -> Self {
         Self {
             cache: RwLock::new(HashMap::new()),
@@ -232,7 +235,10 @@ impl QuantumOperationCache {
 
         let result = {
             let entry_data = {
-                let cache = self.cache.read().unwrap();
+                let cache = self
+                    .cache
+                    .read()
+                    .expect("QuantumOperationCache: cache lock poisoned");
                 cache.get(key).map(|entry| entry.data.clone())
             };
 
@@ -271,20 +277,30 @@ impl QuantumOperationCache {
 
         // Insert the new entry
         {
-            let mut cache = self.cache.write().unwrap();
+            let mut cache = self
+                .cache
+                .write()
+                .expect("QuantumOperationCache: cache lock poisoned");
             cache.insert(key.clone(), entry);
         }
 
         // Update access order
         {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("QuantumOperationCache: access_order lock poisoned");
             access_order.push_back(key);
         }
 
         // Update statistics
         if self.config.enable_stats {
             if let Ok(mut stats) = self.stats.lock() {
-                stats.current_entries = self.cache.read().unwrap().len();
+                stats.current_entries = self
+                    .cache
+                    .read()
+                    .expect("QuantumOperationCache: cache lock poisoned")
+                    .len();
                 stats.current_memory_bytes += size;
                 if stats.current_memory_bytes > stats.peak_memory_bytes {
                     stats.peak_memory_bytes = stats.current_memory_bytes;
@@ -298,7 +314,10 @@ impl QuantumOperationCache {
 
     /// Update access statistics for an entry
     fn update_access_stats(&self, key: &OperationKey) {
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self
+            .cache
+            .write()
+            .expect("QuantumOperationCache: cache lock poisoned");
         if let Some(entry) = cache.get_mut(key) {
             entry.access_count += 1;
             entry.last_accessed = Instant::now();
@@ -306,7 +325,10 @@ impl QuantumOperationCache {
 
         // Update access order for LRU
         if self.config.eviction_policy == EvictionPolicy::LRU {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("QuantumOperationCache: access_order lock poisoned");
             // Remove key from current position and add to back
             if let Some(pos) = access_order.iter().position(|k| k == key) {
                 access_order.remove(pos);
@@ -318,7 +340,10 @@ impl QuantumOperationCache {
     /// Check if eviction is needed and perform it
     fn maybe_evict(&self, _new_key: &OperationKey, new_size: usize) {
         let (current_entries, current_memory) = {
-            let cache = self.cache.read().unwrap();
+            let cache = self
+                .cache
+                .read()
+                .expect("QuantumOperationCache: cache lock poisoned");
             (cache.len(), self.get_current_memory_usage())
         };
 
@@ -344,7 +369,10 @@ impl QuantumOperationCache {
     /// Evict least recently used entries
     fn evict_lru(&self) {
         let keys_to_evict: Vec<OperationKey> = {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("QuantumOperationCache: access_order lock poisoned");
             let mut keys = Vec::new();
 
             // Evict 25% of entries or until memory constraint is satisfied
@@ -366,7 +394,10 @@ impl QuantumOperationCache {
     /// Evict least frequently used entries
     fn evict_lfu(&self) {
         let keys_to_evict: Vec<OperationKey> = {
-            let cache = self.cache.read().unwrap();
+            let cache = self
+                .cache
+                .read()
+                .expect("QuantumOperationCache: cache lock poisoned");
             let mut entries: Vec<_> = cache.iter().collect();
 
             // Sort by access count (ascending)
@@ -388,7 +419,10 @@ impl QuantumOperationCache {
     fn evict_expired(&self) {
         let now = Instant::now();
         let keys_to_evict: Vec<OperationKey> = {
-            let cache = self.cache.read().unwrap();
+            let cache = self
+                .cache
+                .read()
+                .expect("QuantumOperationCache: cache lock poisoned");
             cache
                 .iter()
                 .filter(|(_, entry)| now.duration_since(entry.created_at) > self.config.ttl)
@@ -403,7 +437,10 @@ impl QuantumOperationCache {
     fn evict_fifo(&self) {
         // Similar to LRU but based on creation time
         let keys_to_evict: Vec<OperationKey> = {
-            let cache = self.cache.read().unwrap();
+            let cache = self
+                .cache
+                .read()
+                .expect("QuantumOperationCache: cache lock poisoned");
             let mut entries: Vec<_> = cache.iter().collect();
 
             // Sort by creation time (ascending)
@@ -424,7 +461,10 @@ impl QuantumOperationCache {
     /// Hybrid eviction combining LRU and LFU
     fn evict_hybrid(&self) {
         let keys_to_evict: Vec<OperationKey> = {
-            let cache = self.cache.read().unwrap();
+            let cache = self
+                .cache
+                .read()
+                .expect("QuantumOperationCache: cache lock poisoned");
             let mut entries: Vec<_> = cache.iter().collect();
 
             // Hybrid score: combine recency and frequency
@@ -451,7 +491,10 @@ impl QuantumOperationCache {
         let mut total_freed_memory = 0usize;
 
         {
-            let mut cache = self.cache.write().unwrap();
+            let mut cache = self
+                .cache
+                .write()
+                .expect("QuantumOperationCache: cache lock poisoned");
             for key in &keys {
                 if let Some(entry) = cache.remove(key) {
                     total_freed_memory += entry.size_bytes;
@@ -461,7 +504,10 @@ impl QuantumOperationCache {
 
         // Update access order
         {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("QuantumOperationCache: access_order lock poisoned");
             access_order.retain(|key| !keys.contains(key));
         }
 
@@ -469,7 +515,11 @@ impl QuantumOperationCache {
         if self.config.enable_stats {
             if let Ok(mut stats) = self.stats.lock() {
                 stats.evictions += keys.len() as u64;
-                stats.current_entries = self.cache.read().unwrap().len();
+                stats.current_entries = self
+                    .cache
+                    .read()
+                    .expect("QuantumOperationCache: cache lock poisoned")
+                    .len();
                 stats.current_memory_bytes = stats
                     .current_memory_bytes
                     .saturating_sub(total_freed_memory);
@@ -479,7 +529,10 @@ impl QuantumOperationCache {
 
     /// Get current memory usage
     fn get_current_memory_usage(&self) -> usize {
-        let cache = self.cache.read().unwrap();
+        let cache = self
+            .cache
+            .read()
+            .expect("QuantumOperationCache: cache lock poisoned");
         cache.values().map(|entry| entry.size_bytes).sum()
     }
 
@@ -495,10 +548,16 @@ impl QuantumOperationCache {
 
     /// Clear all cached entries
     pub fn clear(&self) {
-        let mut cache = self.cache.write().unwrap();
+        let mut cache = self
+            .cache
+            .write()
+            .expect("QuantumOperationCache: cache lock poisoned");
         cache.clear();
 
-        let mut access_order = self.access_order.lock().unwrap();
+        let mut access_order = self
+            .access_order
+            .lock()
+            .expect("QuantumOperationCache: access_order lock poisoned");
         access_order.clear();
 
         if self.config.enable_stats {
@@ -511,7 +570,10 @@ impl QuantumOperationCache {
 
     /// Get cache statistics
     pub fn get_stats(&self) -> CacheStats {
-        self.stats.lock().unwrap().clone()
+        self.stats
+            .lock()
+            .expect("QuantumOperationCache: stats lock poisoned")
+            .clone()
     }
 
     /// Get cache configuration
@@ -534,6 +596,7 @@ impl Default for GateMatrixCache {
 
 impl GateMatrixCache {
     /// Create new gate matrix cache
+    #[must_use]
     pub fn new() -> Self {
         let config = CacheConfig {
             max_entries: 5000,
@@ -685,7 +748,9 @@ mod tests {
         // Test cache put and hit
         cache.put_single_qubit_gate("X", &[], pauli_x.clone());
 
-        let cached_matrix = cache.get_single_qubit_gate("X", &[]).unwrap();
+        let cached_matrix = cache
+            .get_single_qubit_gate("X", &[])
+            .expect("cached matrix should exist after put");
         assert_eq!(cached_matrix, pauli_x);
     }
 

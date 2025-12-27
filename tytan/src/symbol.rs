@@ -169,7 +169,7 @@ fn fill_symbol_array(
 /// use quantrs2_tytan::symbols_define;
 ///
 /// // Generate commands for a 2x2 grid
-/// let commands = symbols_define([2, 2], "q{}_{}").unwrap();
+/// let commands = symbols_define([2, 2], "q{}_{}").expect("Failed to define symbols");
 /// println!("{}", commands);
 /// // Output:
 /// // q0_0 = symbols("q0_0")

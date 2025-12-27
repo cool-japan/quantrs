@@ -241,8 +241,7 @@ impl RydbergSimulator {
         let atom_index = gate_params.target_atoms[0];
         if atom_index >= self.atom_states.len() {
             return Err(DeviceError::InvalidInput(format!(
-                "Atom index {} out of bounds",
-                atom_index
+                "Atom index {atom_index} out of bounds"
             )));
         }
 
@@ -368,8 +367,7 @@ impl RydbergSimulator {
         for &atom_index in atom_indices {
             if atom_index >= self.atom_states.len() {
                 return Err(DeviceError::InvalidInput(format!(
-                    "Atom index {} out of bounds",
-                    atom_index
+                    "Atom index {atom_index} out of bounds"
                 )));
             }
 
@@ -427,7 +425,7 @@ impl RydbergSimulator {
                 } => {
                     energy += amplitude_rydberg.powi(2);
                 }
-                _ => {} // Ground state has zero energy
+                RydbergState::Ground => {} // Ground state has zero energy
             }
         }
 
@@ -580,7 +578,9 @@ mod tests {
         let config = RydbergConfig::default();
         let mut simulator = RydbergSimulator::new(config, 2);
 
-        let results = simulator.measure_atoms(&[0, 1]).unwrap();
+        let results = simulator
+            .measure_atoms(&[0, 1])
+            .expect("measurement should succeed");
         assert_eq!(results.len(), 2);
         assert!(results.iter().all(|&r| !r)); // All should be false (ground state)
     }

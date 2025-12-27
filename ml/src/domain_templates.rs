@@ -1392,7 +1392,9 @@ mod tests {
         let manager = DomainTemplateManager::new();
         let finance_templates = manager.get_domain_templates(&Domain::Finance);
         assert!(finance_templates.is_some());
-        assert!(!finance_templates.unwrap().is_empty());
+        assert!(!finance_templates
+            .expect("finance_templates verified Some above")
+            .is_empty());
     }
 
     #[test]
@@ -1444,7 +1446,7 @@ mod tests {
         let model = manager.create_model_from_template("Portfolio Optimization", config);
         assert!(model.is_ok());
 
-        let model = model.unwrap();
+        let model = model.expect("model verified Ok above");
         assert_eq!(model.name(), "Portfolio Optimization");
         assert_eq!(model.domain(), Domain::Finance);
     }
@@ -1452,7 +1454,9 @@ mod tests {
     #[test]
     fn test_template_feasibility() {
         let manager = DomainTemplateManager::new();
-        let finance_templates = manager.get_domain_templates(&Domain::Finance).unwrap();
+        let finance_templates = manager
+            .get_domain_templates(&Domain::Finance)
+            .expect("Finance domain templates should exist");
         let template = &finance_templates[0];
 
         let (feasible, issues) = utils::check_template_feasibility(template, 20, 10.0);

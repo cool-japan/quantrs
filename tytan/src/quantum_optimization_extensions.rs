@@ -88,7 +88,11 @@ impl AdaptQAOA {
             let (best_op_idx, max_gradient) = gradients
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap())
+                .max_by(|(_, a), (_, b)| {
+                    a.abs()
+                        .partial_cmp(&b.abs())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
                 .ok_or("No operators in pool")?;
 
             if max_gradient.abs() < self.gradient_threshold {
@@ -536,7 +540,10 @@ impl RecursiveQAOA {
             }
             _ => {
                 // Other aggregation methods
-                Ok(subsolutions.into_iter().next().unwrap())
+                subsolutions
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| "No subsolutions available for aggregation".to_string())
             }
         }
     }

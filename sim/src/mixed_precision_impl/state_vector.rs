@@ -28,6 +28,7 @@ pub enum MixedPrecisionStateVector {
 
 impl MixedPrecisionStateVector {
     /// Create a new state vector with the specified precision
+    #[must_use]
     pub fn new(size: usize, precision: QuantumPrecision) -> Self {
         match precision {
             QuantumPrecision::Half => Self::Half(Array1::zeros(size)),
@@ -46,6 +47,7 @@ impl MixedPrecisionStateVector {
     }
 
     /// Create a computational basis state |0...0>
+    #[must_use]
     pub fn computational_basis(num_qubits: usize, precision: QuantumPrecision) -> Self {
         let size = 1 << num_qubits;
         let mut state = Self::new(size, precision);
@@ -66,6 +68,7 @@ impl MixedPrecisionStateVector {
     }
 
     /// Get the length of the state vector
+    #[must_use]
     pub fn len(&self) -> usize {
         match self {
             Self::Half(arr) => arr.len(),
@@ -76,11 +79,13 @@ impl MixedPrecisionStateVector {
     }
 
     /// Check if the state vector is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Get the current precision of the state vector
+    #[must_use]
     pub const fn precision(&self) -> QuantumPrecision {
         match self {
             Self::Half(_) => QuantumPrecision::Half,
@@ -102,7 +107,7 @@ impl MixedPrecisionStateVector {
         match (self, &mut result) {
             (Self::Single(src), Self::Double(dst)) => {
                 for (i, &val) in src.iter().enumerate() {
-                    dst[i] = Complex64::new(val.re as f64, val.im as f64);
+                    dst[i] = Complex64::new(f64::from(val.re), f64::from(val.im));
                 }
             }
             (Self::Double(src), Self::Single(dst)) => {
@@ -111,14 +116,14 @@ impl MixedPrecisionStateVector {
                 }
             }
             (Self::Half(src), Self::Single(dst)) => {
-                *dst = src.clone();
+                dst.clone_from(src);
             }
             (Self::Single(src), Self::Half(dst)) => {
-                *dst = src.clone();
+                dst.clone_from(src);
             }
             (Self::Half(src), Self::Double(dst)) => {
                 for (i, &val) in src.iter().enumerate() {
-                    dst[i] = Complex64::new(val.re as f64, val.im as f64);
+                    dst[i] = Complex64::new(f64::from(val.re), f64::from(val.im));
                 }
             }
             (Self::Double(src), Self::Half(dst)) => {
@@ -174,11 +179,24 @@ impl MixedPrecisionStateVector {
     }
 
     /// Calculate the L2 norm of the state vector
+    #[must_use]
     pub fn norm(&self) -> f64 {
         match self {
-            Self::Half(arr) => arr.iter().map(|x| x.norm_sqr() as f64).sum::<f64>().sqrt(),
-            Self::Single(arr) => arr.iter().map(|x| x.norm_sqr() as f64).sum::<f64>().sqrt(),
-            Self::Double(arr) => arr.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt(),
+            Self::Half(arr) => arr
+                .iter()
+                .map(|x| f64::from(x.norm_sqr()))
+                .sum::<f64>()
+                .sqrt(),
+            Self::Single(arr) => arr
+                .iter()
+                .map(|x| f64::from(x.norm_sqr()))
+                .sum::<f64>()
+                .sqrt(),
+            Self::Double(arr) => arr
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt(),
             Self::Adaptive { primary, .. } => primary.norm(),
         }
     }
@@ -194,8 +212,8 @@ impl MixedPrecisionStateVector {
         }
 
         let prob = match self {
-            Self::Half(arr) => arr[index].norm_sqr() as f64,
-            Self::Single(arr) => arr[index].norm_sqr() as f64,
+            Self::Half(arr) => f64::from(arr[index].norm_sqr()),
+            Self::Single(arr) => f64::from(arr[index].norm_sqr()),
             Self::Double(arr) => arr[index].norm_sqr(),
             Self::Adaptive { primary, .. } => primary.probability(index)?,
         };
@@ -216,11 +234,11 @@ impl MixedPrecisionStateVector {
         let amplitude = match self {
             Self::Half(arr) => {
                 let val = arr[index];
-                Complex64::new(val.re as f64, val.im as f64)
+                Complex64::new(f64::from(val.re), f64::from(val.im))
             }
             Self::Single(arr) => {
                 let val = arr[index];
-                Complex64::new(val.re as f64, val.im as f64)
+                Complex64::new(f64::from(val.re), f64::from(val.im))
             }
             Self::Double(arr) => arr[index],
             Self::Adaptive { primary, .. } => primary.amplitude(index)?,
@@ -284,6 +302,7 @@ impl MixedPrecisionStateVector {
     }
 
     /// Estimate memory usage in bytes
+    #[must_use]
     pub fn memory_usage(&self) -> usize {
         match self {
             Self::Half(arr) => arr.len() * std::mem::size_of::<Complex32>(),
@@ -303,11 +322,13 @@ impl MixedPrecisionStateVector {
     }
 
     /// Check if the state vector is normalized (within tolerance)
+    #[must_use]
     pub fn is_normalized(&self, tolerance: f64) -> bool {
         (self.norm() - 1.0).abs() < tolerance
     }
 
     /// Get the number of qubits this state vector represents
+    #[must_use]
     pub fn num_qubits(&self) -> usize {
         (self.len() as f64).log2() as usize
     }

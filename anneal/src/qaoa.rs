@@ -180,7 +180,7 @@ pub enum QaoaClassicalOptimizer {
         /// Temperature for acceptance probability
         temperature: f64,
         /// Local optimizer
-        local_optimizer: Box<QaoaClassicalOptimizer>,
+        local_optimizer: Box<Self>,
     },
 }
 
@@ -450,18 +450,22 @@ pub mod complex {
     }
 
     impl Complex64 {
-        pub fn new(re: f64, im: f64) -> Self {
+        #[must_use]
+        pub const fn new(re: f64, im: f64) -> Self {
             Self { re, im }
         }
 
+        #[must_use]
         pub fn norm_squared(&self) -> f64 {
-            self.re * self.re + self.im * self.im
+            self.re.mul_add(self.re, self.im * self.im)
         }
 
+        #[must_use]
         pub fn abs(&self) -> f64 {
-            (self.re * self.re + self.im * self.im).sqrt()
+            self.re.hypot(self.im)
         }
 
+        #[must_use]
         pub fn conj(&self) -> Self {
             Self {
                 re: self.re,
@@ -484,8 +488,8 @@ pub mod complex {
         type Output = Self;
         fn mul(self, rhs: Self) -> Self {
             Self {
-                re: self.re * rhs.re - self.im * rhs.im,
-                im: self.re * rhs.im + self.im * rhs.re,
+                re: self.re.mul_add(rhs.re, -(self.im * rhs.im)),
+                im: self.re.mul_add(rhs.im, self.im * rhs.re),
             }
         }
     }
@@ -503,6 +507,7 @@ pub mod complex {
 
 impl QuantumState {
     /// Create a new quantum state with all amplitudes in |0⟩ state
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let mut amplitudes = vec![complex::Complex64::new(0.0, 0.0); 1 << num_qubits];
         amplitudes[0] = complex::Complex64::new(1.0, 0.0); // |000...0⟩ state
@@ -514,8 +519,9 @@ impl QuantumState {
     }
 
     /// Initialize state with equal superposition (after Hadamard gates)
+    #[must_use]
     pub fn uniform_superposition(num_qubits: usize) -> Self {
-        let amplitude = (1.0 / (1 << num_qubits) as f64).sqrt();
+        let amplitude = (1.0 / f64::from(1 << num_qubits)).sqrt();
         let amplitudes = vec![complex::Complex64::new(amplitude, 0.0); 1 << num_qubits];
 
         Self {
@@ -525,6 +531,7 @@ impl QuantumState {
     }
 
     /// Get probability of measuring a specific bit string
+    #[must_use]
     pub fn get_probability(&self, bitstring: usize) -> f64 {
         if bitstring < self.amplitudes.len() {
             self.amplitudes[bitstring].norm_squared()
@@ -550,6 +557,7 @@ impl QuantumState {
     }
 
     /// Convert bit index to spin configuration
+    #[must_use]
     pub fn bitstring_to_spins(&self, bitstring: usize) -> Vec<i8> {
         let mut spins = Vec::new();
         for i in 0..self.num_qubits {
@@ -564,6 +572,7 @@ impl QuantumState {
     }
 
     /// Calculate expectation value of Pauli-Z on a qubit
+    #[must_use]
     pub fn expectation_z(&self, qubit: usize) -> f64 {
         let mut expectation = 0.0;
 
@@ -578,6 +587,7 @@ impl QuantumState {
     }
 
     /// Calculate expectation value of ZZ interaction
+    #[must_use]
     pub fn expectation_zz(&self, qubit1: usize, qubit2: usize) -> f64 {
         let mut expectation = 0.0;
 
@@ -674,7 +684,11 @@ impl QaoaOptimizer {
 
         // Calculate performance metrics
         let approximation_ratio = self.calculate_approximation_ratio(best_energy, problem);
-        let circuit_stats = self.calculate_circuit_stats(&self.current_circuit.as_ref().unwrap());
+        let circuit_stats = self.calculate_circuit_stats(
+            self.current_circuit
+                .as_ref()
+                .ok_or_else(|| QaoaError::CircuitError("Circuit not initialized".to_string()))?,
+        );
         let quantum_stats = self.calculate_quantum_stats(&final_state, problem);
         let performance_metrics = self.calculate_performance_metrics(
             &optimization_result,
@@ -682,11 +696,8 @@ impl QaoaOptimizer {
             optimization_time,
         );
 
-        println!("QAOA optimization completed in {:.2?}", optimization_time);
-        println!(
-            "Best energy: {:.6}, Approximation ratio: {:.3}",
-            best_energy, approximation_ratio
-        );
+        println!("QAOA optimization completed in {optimization_time:.2?}");
+        println!("Best energy: {best_energy:.6}, Approximation ratio: {approximation_ratio:.3}");
 
         Ok(QaoaResults {
             best_solution,
@@ -786,19 +797,19 @@ impl QaoaOptimizer {
     }
 
     /// Get number of QAOA layers
-    fn get_num_layers(&self) -> usize {
+    const fn get_num_layers(&self) -> usize {
         match &self.config.variant {
-            QaoaVariant::Standard { layers } => *layers,
-            QaoaVariant::QaoaPlus { layers, .. } => *layers,
-            QaoaVariant::MultiAngle { layers, .. } => *layers,
-            QaoaVariant::WarmStart { layers, .. } => *layers,
+            QaoaVariant::Standard { layers }
+            | QaoaVariant::QaoaPlus { layers, .. }
+            | QaoaVariant::MultiAngle { layers, .. }
+            | QaoaVariant::WarmStart { layers, .. } => *layers,
             QaoaVariant::Recursive { max_layers, .. } => *max_layers,
         }
     }
 
     /// Initialize problem-aware parameters
     fn initialize_problem_aware_parameters(
-        &mut self,
+        &self,
         parameters: &mut [f64],
         problem: &IsingModel,
     ) -> QaoaResult<()> {
@@ -843,7 +854,7 @@ impl QaoaOptimizer {
         }
 
         if num_couplings > 0 {
-            total_coupling / num_couplings as f64
+            total_coupling / f64::from(num_couplings)
         } else {
             1.0
         }
@@ -864,7 +875,7 @@ impl QaoaOptimizer {
         }
 
         if num_biases > 0 {
-            total_bias / num_biases as f64
+            total_bias / f64::from(num_biases)
         } else {
             1.0
         }
@@ -872,7 +883,7 @@ impl QaoaOptimizer {
 
     /// Initialize warm-start parameters from classical solution
     fn initialize_warm_start_parameters(
-        &mut self,
+        &self,
         parameters: &mut [f64],
         solution: &[i8],
     ) -> QaoaResult<()> {
@@ -1065,7 +1076,7 @@ impl QaoaOptimizer {
     }
 
     /// Calculate circuit depth
-    fn calculate_circuit_depth(&self, layers: &[QaoaLayer]) -> usize {
+    const fn calculate_circuit_depth(&self, layers: &[QaoaLayer]) -> usize {
         layers.len() * 2 // Each layer has problem + mixer parts
     }
 
@@ -1147,7 +1158,11 @@ impl QaoaOptimizer {
 
             // Find best, worst, and second worst vertices
             let mut indices: Vec<usize> = (0..simplex.len()).collect();
-            indices.sort_by(|&i, &j| function_values[i].partial_cmp(&function_values[j]).unwrap());
+            indices.sort_by(|&i, &j| {
+                function_values[i]
+                    .partial_cmp(&function_values[j])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let best_idx = indices[0];
             let worst_idx = indices[n];
@@ -1196,7 +1211,7 @@ impl QaoaOptimizer {
                 // Expansion
                 let mut expanded = vec![0.0; n];
                 for j in 0..n {
-                    expanded[j] = centroid[j] + 2.0 * (reflected[j] - centroid[j]);
+                    expanded[j] = 2.0f64.mul_add(reflected[j] - centroid[j], centroid[j]);
                 }
                 let expanded_value = self.evaluate_qaoa_energy(problem, &expanded)?;
 
@@ -1211,7 +1226,8 @@ impl QaoaOptimizer {
                 // Contraction
                 let mut contracted = vec![0.0; n];
                 for j in 0..n {
-                    contracted[j] = centroid[j] + 0.5 * (simplex[worst_idx][j] - centroid[j]);
+                    contracted[j] =
+                        0.5f64.mul_add(simplex[worst_idx][j] - centroid[j], centroid[j]);
                 }
                 let contracted_value = self.evaluate_qaoa_energy(problem, &contracted)?;
 
@@ -1222,8 +1238,10 @@ impl QaoaOptimizer {
                     // Shrink
                     for i in 1..simplex.len() {
                         for j in 0..n {
-                            simplex[i][j] =
-                                simplex[best_idx][j] + 0.5 * (simplex[i][j] - simplex[best_idx][j]);
+                            simplex[i][j] = 0.5f64.mul_add(
+                                simplex[i][j] - simplex[best_idx][j],
+                                simplex[best_idx][j],
+                            );
                         }
                         function_values[i] = self.evaluate_qaoa_energy(problem, &simplex[i])?;
                     }
@@ -1232,10 +1250,7 @@ impl QaoaOptimizer {
 
             // Logging
             if iteration % 10 == 0 && self.config.detailed_logging {
-                println!(
-                    "Nelder-Mead iter {}: Best energy = {:.6}",
-                    iteration, best_energy
-                );
+                println!("Nelder-Mead iter {iteration}: Best energy = {best_energy:.6}");
             }
         }
 
@@ -1288,8 +1303,7 @@ impl QaoaOptimizer {
             // Logging
             if iteration % 10 == 0 && self.config.detailed_logging {
                 println!(
-                    "Gradient iter {}: Energy = {:.6}, Grad norm = {:.6}",
-                    iteration, current_energy, gradient_norm
+                    "Gradient iter {iteration}: Energy = {current_energy:.6}, Grad norm = {gradient_norm:.6}"
                 );
             }
         }
@@ -1387,7 +1401,7 @@ impl QaoaOptimizer {
 
     /// Simulate QAOA circuit and return final quantum state
     fn simulate_qaoa_circuit(
-        &mut self,
+        &self,
         problem: &IsingModel,
         parameters: &[f64],
     ) -> QaoaResult<QuantumState> {
@@ -1661,7 +1675,7 @@ impl QaoaOptimizer {
         // Bias terms
         for i in 0..solution.len() {
             if let Ok(bias) = problem.get_bias(i) {
-                energy += bias * solution[i] as f64;
+                energy += bias * f64::from(solution[i]);
             }
         }
 
@@ -1669,7 +1683,7 @@ impl QaoaOptimizer {
         for i in 0..solution.len() {
             for j in (i + 1)..solution.len() {
                 if let Ok(coupling) = problem.get_coupling(i, j) {
-                    energy += coupling * solution[i] as f64 * solution[j] as f64;
+                    energy += coupling * f64::from(solution[i]) * f64::from(solution[j]);
                 }
             }
         }
@@ -1678,7 +1692,11 @@ impl QaoaOptimizer {
     }
 
     /// Calculate approximation ratio
-    fn calculate_approximation_ratio(&self, achieved_energy: f64, problem: &IsingModel) -> f64 {
+    const fn calculate_approximation_ratio(
+        &self,
+        achieved_energy: f64,
+        problem: &IsingModel,
+    ) -> f64 {
         // For now, return a placeholder approximation ratio
         // In a full implementation, this would require knowledge of the optimal solution
         0.95 // Placeholder
@@ -1699,16 +1717,28 @@ impl QaoaOptimizer {
                     | QuantumGate::H { .. } => {
                         single_qubit_gates += 1;
                         *gate_counts
-                            .entry(format!("{:?}", gate).split(' ').next().unwrap().to_string())
+                            .entry(
+                                format!("{gate:?}")
+                                    .split(' ')
+                                    .next()
+                                    .unwrap_or("Unknown")
+                                    .to_string(),
+                            )
                             .or_insert(0) += 1;
                     }
                     QuantumGate::CNOT { .. } | QuantumGate::CZ { .. } | QuantumGate::ZZ { .. } => {
                         two_qubit_gates += 1;
                         *gate_counts
-                            .entry(format!("{:?}", gate).split(' ').next().unwrap().to_string())
+                            .entry(
+                                format!("{gate:?}")
+                                    .split(' ')
+                                    .next()
+                                    .unwrap_or("Unknown")
+                                    .to_string(),
+                            )
                             .or_insert(0) += 1;
                     }
-                    _ => {}
+                    QuantumGate::Measure { .. } => {}
                 }
             }
 
@@ -1720,16 +1750,28 @@ impl QaoaOptimizer {
                     | QuantumGate::H { .. } => {
                         single_qubit_gates += 1;
                         *gate_counts
-                            .entry(format!("{:?}", gate).split(' ').next().unwrap().to_string())
+                            .entry(
+                                format!("{gate:?}")
+                                    .split(' ')
+                                    .next()
+                                    .unwrap_or("Unknown")
+                                    .to_string(),
+                            )
                             .or_insert(0) += 1;
                     }
                     QuantumGate::CNOT { .. } | QuantumGate::CZ { .. } | QuantumGate::ZZ { .. } => {
                         two_qubit_gates += 1;
                         *gate_counts
-                            .entry(format!("{:?}", gate).split(' ').next().unwrap().to_string())
+                            .entry(
+                                format!("{gate:?}")
+                                    .split(' ')
+                                    .next()
+                                    .unwrap_or("Unknown")
+                                    .to_string(),
+                            )
                             .or_insert(0) += 1;
                     }
-                    _ => {}
+                    QuantumGate::Measure { .. } => {}
                 }
             }
         }
@@ -1789,6 +1831,7 @@ struct OptimizationResult {
 /// Helper functions for creating common QAOA configurations
 
 /// Create a standard QAOA configuration
+#[must_use]
 pub fn create_standard_qaoa_config(layers: usize, shots: usize) -> QaoaConfig {
     QaoaConfig {
         variant: QaoaVariant::Standard { layers },
@@ -1798,6 +1841,7 @@ pub fn create_standard_qaoa_config(layers: usize, shots: usize) -> QaoaConfig {
 }
 
 /// Create a QAOA+ configuration with multi-angle mixers
+#[must_use]
 pub fn create_qaoa_plus_config(layers: usize, shots: usize) -> QaoaConfig {
     QaoaConfig {
         variant: QaoaVariant::QaoaPlus {
@@ -1811,6 +1855,7 @@ pub fn create_qaoa_plus_config(layers: usize, shots: usize) -> QaoaConfig {
 }
 
 /// Create a warm-start QAOA configuration
+#[must_use]
 pub fn create_warm_start_qaoa_config(
     layers: usize,
     initial_solution: Vec<i8>,
@@ -1830,6 +1875,7 @@ pub fn create_warm_start_qaoa_config(
 }
 
 /// Create a QAOA configuration with XY mixer for constrained problems
+#[must_use]
 pub fn create_constrained_qaoa_config(layers: usize, shots: usize) -> QaoaConfig {
     QaoaConfig {
         variant: QaoaVariant::Standard { layers },

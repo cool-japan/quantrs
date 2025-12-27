@@ -1322,8 +1322,8 @@ mod tests {
                     },
                 }],
                 properties: FragmentProperties {
-                    mw_contribution: 50.0 + i as f64 * 14.0,
-                    logp_contribution: 0.5 + i as f64 * 0.5,
+                    mw_contribution: (i as f64).mul_add(14.0, 50.0),
+                    logp_contribution: (i as f64).mul_add(0.5, 0.5),
                     hbd_count: 1,
                     hba_count: 1,
                     rotatable_count: i,
@@ -1446,7 +1446,7 @@ mod tests {
         let mut result = optimizer.build_qubo();
         assert!(result.is_ok());
 
-        let (_qubo, var_map) = result.unwrap();
-        assert!(var_map.len() > 0);
+        let (_qubo, var_map) = result.expect("QUBO building should succeed after is_ok check");
+        assert!(!var_map.is_empty());
     }
 }

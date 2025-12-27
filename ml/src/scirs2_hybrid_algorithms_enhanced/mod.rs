@@ -48,6 +48,11 @@ mod tests {
         history.record(1, 0.9, Array1::zeros(5));
 
         assert_eq!(history.iterations.len(), 2);
-        assert!(history.get_recent_improvement(1).unwrap() > 0.0);
+        assert!(
+            history
+                .get_recent_improvement(1)
+                .expect("should have recent improvement after recording two iterations")
+                > 0.0
+        );
     }
 }

@@ -186,7 +186,7 @@ fn demo_fidelity_comparison() -> quantrs2_core::error::QuantRS2Result<()> {
     println!("--- Fidelity Comparison Across Noise Models ---");
 
     // Create circuits of different complexity
-    let circuits = vec![
+    let circuits = [
         create_simple_circuit()?,
         create_medium_circuit()?,
         create_complex_circuit()?,

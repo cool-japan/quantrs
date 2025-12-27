@@ -82,10 +82,10 @@ impl HybridQuantumClassicalSolver {
         Ok(Self {
             config,
             quantum_solver: QuantumAnnealingSimulator::new(quantum_params).map_err(|e| {
-                IsingError::InvalidValue(format!("Failed to create quantum solver: {}", e))
+                IsingError::InvalidValue(format!("Failed to create quantum solver: {e}"))
             })?,
             classical_solver: ClassicalAnnealingSimulator::new(classical_params).map_err(|e| {
-                IsingError::InvalidValue(format!("Failed to create classical solver: {}", e))
+                IsingError::InvalidValue(format!("Failed to create classical solver: {e}"))
             })?,
             partitioner: SpectralPartitioner::default(),
         })
@@ -123,13 +123,13 @@ impl HybridQuantumClassicalSolver {
                     // Use classical solver for small problems
                     result.classical_calls += 1;
                     self.classical_solver.solve(&subproblem).map_err(|e| {
-                        IsingError::InvalidValue(format!("Classical solver failed: {}", e))
+                        IsingError::InvalidValue(format!("Classical solver failed: {e}"))
                     })?
                 } else {
                     // Use quantum solver for larger problems
                     result.quantum_calls += 1;
                     self.quantum_solver.solve(&subproblem).map_err(|e| {
-                        IsingError::InvalidValue(format!("Quantum solver failed: {}", e))
+                        IsingError::InvalidValue(format!("Quantum solver failed: {e}"))
                     })?
                 };
 
@@ -210,7 +210,7 @@ impl HybridQuantumClassicalSolver {
         model: &IsingModel,
         partition: &Partition,
     ) -> IsingResult<IsingModel> {
-        let indices: Vec<usize> = partition.assignment.keys().cloned().collect();
+        let indices: Vec<usize> = partition.assignment.keys().copied().collect();
         let mut submodel = IsingModel::new(indices.len());
 
         // Map original indices to subproblem indices
@@ -254,7 +254,7 @@ impl HybridQuantumClassicalSolver {
         index_map: &HashMap<usize, usize>,
     ) -> IsingResult<()> {
         let partition_nodes: std::collections::HashSet<usize> =
-            partition.assignment.keys().cloned().collect();
+            partition.assignment.keys().copied().collect();
 
         // For each node in partition, check connections to nodes outside
         for &node in partition.assignment.keys() {
@@ -291,7 +291,7 @@ impl HybridQuantumClassicalSolver {
 
         // Collect votes from each partition
         for (partition, result) in partition_solutions {
-            let indices: Vec<usize> = partition.assignment.keys().cloned().collect();
+            let indices: Vec<usize> = partition.assignment.keys().copied().collect();
 
             for (sub_idx, &orig_idx) in indices.iter().enumerate() {
                 if sub_idx < result.best_spins.len() {
@@ -389,6 +389,7 @@ pub struct VariationalHybridSolver {
 
 impl VariationalHybridSolver {
     /// Create a new variational hybrid solver
+    #[must_use]
     pub fn new(num_parameters: usize, learning_rate: f64, max_iterations: usize) -> Self {
         Self {
             num_parameters,
@@ -481,24 +482,30 @@ mod tests {
     #[test]
     fn test_hybrid_solver_creation() {
         let config = HybridSolverConfig::default();
-        let solver = HybridQuantumClassicalSolver::new(config).unwrap();
+        let solver =
+            HybridQuantumClassicalSolver::new(config).expect("Failed to create hybrid solver");
         assert!(solver.config.max_quantum_size > 0);
     }
 
     #[test]
     fn test_small_problem_solving() {
         let mut model = IsingModel::new(4);
-        model.set_bias(0, 1.0).unwrap();
-        model.set_coupling(0, 1, -2.0).unwrap();
-        model.set_coupling(1, 2, -1.0).unwrap();
+        model.set_bias(0, 1.0).expect("Failed to set bias");
+        model
+            .set_coupling(0, 1, -2.0)
+            .expect("Failed to set coupling");
+        model
+            .set_coupling(1, 2, -1.0)
+            .expect("Failed to set coupling");
 
         let config = HybridSolverConfig {
             max_quantum_size: 2,
             ..Default::default()
         };
 
-        let mut solver = HybridQuantumClassicalSolver::new(config).unwrap();
-        let result = solver.solve_ising(&model).unwrap();
+        let mut solver =
+            HybridQuantumClassicalSolver::new(config).expect("Failed to create hybrid solver");
+        let result = solver.solve_ising(&model).expect("Failed to solve Ising");
 
         assert_eq!(result.best_solution.len(), 4);
         assert!(result.best_energy.is_finite());
@@ -508,7 +515,7 @@ mod tests {
     fn test_variational_solver() {
         let model = IsingModel::new(3);
         let mut solver = VariationalHybridSolver::new(3, 0.1, 10);
-        let solution = solver.optimize(&model).unwrap();
+        let solution = solver.optimize(&model).expect("Failed to optimize");
         assert_eq!(solution.len(), 3);
     }
 }

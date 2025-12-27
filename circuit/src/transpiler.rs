@@ -503,18 +503,11 @@ impl DeviceTranspiler {
 
         // Enable advanced graph optimization features
         if let Some(ref mut optimizer) = transpiler.graph_optimizer {
-            Arc::get_mut(optimizer)
-                .unwrap()
-                .config
-                .insert("advanced_connectivity".to_string(), 1.0);
-            Arc::get_mut(optimizer)
-                .unwrap()
-                .config
-                .insert("spectral_analysis".to_string(), 1.0);
-            Arc::get_mut(optimizer)
-                .unwrap()
-                .config
-                .insert("parallel_processing".to_string(), 1.0);
+            if let Some(opt) = Arc::get_mut(optimizer) {
+                opt.config.insert("advanced_connectivity".to_string(), 1.0);
+                opt.config.insert("spectral_analysis".to_string(), 1.0);
+                opt.config.insert("parallel_processing".to_string(), 1.0);
+            }
         }
 
         transpiler
@@ -582,7 +575,11 @@ impl DeviceTranspiler {
         for _ in 0..N {
             let mut u = None;
             for v in 0..N {
-                if !visited[v] && (u.is_none() || min_cost[v] < min_cost[u.unwrap()]) {
+                let is_better = match u {
+                    None => true,
+                    Some(u_val) => min_cost[v] < min_cost[u_val],
+                };
+                if !visited[v] && is_better {
                     u = Some(v);
                 }
             }
@@ -753,7 +750,11 @@ impl DeviceTranspiler {
 
         // Create layout based on spectral properties (simplified)
         let mut sorted_indices: Vec<_> = (0..N).collect();
-        sorted_indices.sort_by(|&a, &b| degree[b].partial_cmp(&degree[a]).unwrap());
+        sorted_indices.sort_by(|&a, &b| {
+            degree[b]
+                .partial_cmp(&degree[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for (physical, &logical) in sorted_indices.iter().enumerate() {
             layout.insert(QubitId(logical as u32), physical);
@@ -986,7 +987,7 @@ impl DeviceTranspiler {
 
         // Step 3: Routing for connectivity constraints
         let routing_stats = if self.needs_routing(&current_circuit, &layout, &options) {
-            let routed_circuit = self.route_circuit(&current_circuit, &mut layout, &options)?;
+            let routed_circuit = self.route_circuit(&current_circuit, &layout, &options)?;
             // TODO: Convert routed circuit back to Circuit<N>
             // For now, keep the original circuit
             applied_passes.push("CircuitRouting".to_string());
@@ -1284,7 +1285,7 @@ impl DeviceTranspiler {
     fn route_circuit<const N: usize>(
         &self,
         circuit: &Circuit<N>,
-        layout: &mut HashMap<QubitId, usize>,
+        layout: &HashMap<QubitId, usize>,
         options: &TranspilationOptions,
     ) -> QuantRS2Result<RoutedCircuit<N>> {
         let config = crate::routing::SabreConfig::default();
@@ -1658,7 +1659,9 @@ mod tests {
         let spec = HardwareSpec::ibm_quantum();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
 
         // H gate should be native to IBM
         assert!(!transpiler.needs_decomposition(&circuit, &spec));

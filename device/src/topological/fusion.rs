@@ -20,7 +20,7 @@ pub struct FusionTreeNode {
     /// Fusion channel label
     pub channel: String,
     /// Child nodes in the fusion tree
-    pub children: Vec<FusionTreeNode>,
+    pub children: Vec<Self>,
 }
 
 /// Complete fusion tree for multi-anyon fusion
@@ -75,14 +75,9 @@ impl FusionTree {
         if charges.len() == 2 {
             // Base case: two charges
             let fusion_key = (charges[0].label.clone(), charges[1].label.clone());
-            let fusion_products =
-                fusion_rules
-                    .rules
-                    .get(&fusion_key)
-                    .ok_or(TopologicalError::FusionFailed(format!(
-                        "No fusion rule found for {:?}",
-                        fusion_key
-                    )))?;
+            let fusion_products = fusion_rules.rules.get(&fusion_key).ok_or_else(|| {
+                TopologicalError::FusionFailed(format!("No fusion rule found for {fusion_key:?}"))
+            })?;
 
             // For simplicity, take the first fusion product
             let output_charge = TopologicalCharge {
@@ -147,7 +142,7 @@ pub struct FSymbolCalculator {
 
 impl FSymbolCalculator {
     /// Create a new F-symbol calculator
-    pub fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
+    pub const fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
         Self {
             anyon_type,
             fusion_rules,
@@ -185,7 +180,7 @@ impl FSymbolCalculator {
         e: &TopologicalCharge,
         f: &TopologicalCharge,
     ) -> TopologicalResult<f64> {
-        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0; // Golden ratio
+        let phi = f64::midpoint(1.0, 5.0_f64.sqrt()); // Golden ratio
         let phi_inv = 1.0 / phi;
 
         // Fibonacci F-symbols (simplified subset)
@@ -224,8 +219,9 @@ impl FSymbolCalculator {
             e.label.as_str(),
             f.label.as_str(),
         ) {
-            ("σ", "σ", "σ", "σ", "I", "I") => Ok(1.0 / 2.0_f64.sqrt()),
-            ("σ", "σ", "σ", "σ", "ψ", "ψ") => Ok(1.0 / 2.0_f64.sqrt()),
+            ("σ", "σ", "σ", "σ", "I", "I") | ("σ", "σ", "σ", "σ", "ψ", "ψ") => {
+                Ok(1.0 / 2.0_f64.sqrt())
+            }
             ("σ", "σ", "ψ", "I", "σ", "σ") => Ok(-1.0),
             // Add more F-symbols as needed
             _ => Ok(1.0), // Default identity
@@ -241,7 +237,7 @@ pub struct FusionSpaceCalculator {
 
 impl FusionSpaceCalculator {
     /// Create a new fusion space calculator
-    pub fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
+    pub const fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
         Self {
             anyon_type,
             fusion_rules,
@@ -260,11 +256,7 @@ impl FusionSpaceCalculator {
 
         if input_charges.len() == 1 {
             // Single anyon case
-            return Ok(if input_charges[0].label == output_charge.label {
-                1
-            } else {
-                0
-            });
+            return Ok(usize::from(input_charges[0].label == output_charge.label));
         }
 
         // For multiple anyons, build all possible fusion trees
@@ -344,11 +336,12 @@ impl FusionSpaceCalculator {
         product: &TopologicalCharge,
     ) -> usize {
         let fusion_key = (charge1.label.clone(), charge2.label.clone());
-        if let Some(products) = self.fusion_rules.rules.get(&fusion_key) {
-            products.iter().filter(|&p| p == &product.label).count()
-        } else {
-            0
-        }
+        self.fusion_rules
+            .rules
+            .get(&fusion_key)
+            .map_or(0, |products| {
+                products.iter().filter(|&p| p == &product.label).count()
+            })
     }
 }
 
@@ -399,14 +392,9 @@ impl FusionOperationExecutor {
     ) -> TopologicalResult<Anyon> {
         // Get possible fusion products
         let fusion_key = (anyon1.charge.label.clone(), anyon2.charge.label.clone());
-        let fusion_products =
-            self.fusion_rules
-                .rules
-                .get(&fusion_key)
-                .ok_or(TopologicalError::FusionFailed(format!(
-                    "No fusion rule found for {:?}",
-                    fusion_key
-                )))?;
+        let fusion_products = self.fusion_rules.rules.get(&fusion_key).ok_or_else(|| {
+            TopologicalError::FusionFailed(format!("No fusion rule found for {fusion_key:?}"))
+        })?;
 
         // Select fusion channel
         let selected_channel = if let Some(channel) = preferred_channel {
@@ -414,8 +402,7 @@ impl FusionOperationExecutor {
                 channel.to_string()
             } else {
                 return Err(TopologicalError::FusionFailed(format!(
-                    "Requested fusion channel {} not available",
-                    channel
+                    "Requested fusion channel {channel} not available"
                 )));
             }
         } else {
@@ -434,8 +421,8 @@ impl FusionOperationExecutor {
             anyon_id: anyon1.anyon_id.max(anyon2.anyon_id) + 1, // Simple ID assignment
             charge: output_charge,
             position: (
-                (anyon1.position.0 + anyon2.position.0) / 2.0,
-                (anyon1.position.1 + anyon2.position.1) / 2.0,
+                f64::midpoint(anyon1.position.0, anyon2.position.0),
+                f64::midpoint(anyon1.position.1, anyon2.position.1),
             ),
             is_qubit_part: false,
             qubit_id: None,
@@ -530,7 +517,8 @@ mod tests {
         ];
         let fusion_rules = FusionRuleSet::fibonacci();
 
-        let tree = FusionTree::new(charges, &fusion_rules).unwrap();
+        let tree = FusionTree::new(charges, &fusion_rules)
+            .expect("FusionTree creation should succeed with valid charges");
         assert_eq!(tree.anyon_count, 2);
     }
 
@@ -544,7 +532,7 @@ mod tests {
 
         let f_symbol = calculator
             .calculate_f_symbol(&tau, &tau, &tau, &tau, &tau, &tau)
-            .unwrap();
+            .expect("F-symbol calculation should succeed for Fibonacci anyons");
 
         assert!(f_symbol > 0.0);
     }
@@ -557,7 +545,9 @@ mod tests {
         let tau = TopologicalCharge::fibonacci_tau();
         let charges = vec![tau.clone(), tau.clone()];
 
-        let dimension = calculator.fusion_space_dimension(&charges, &tau).unwrap();
+        let dimension = calculator
+            .fusion_space_dimension(&charges, &tau)
+            .expect("Fusion space dimension calculation should succeed");
         assert!(dimension > 0);
     }
 

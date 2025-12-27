@@ -37,7 +37,7 @@ impl QAOAParams {
 
         for i in 0..layers {
             // Simple pseudo-random for reproducibility
-            let rand_val = ((i as f64 * 1.234 + 5.678).sin() + 1.0) / 2.0;
+            let rand_val = f64::midpoint((i as f64).mul_add(1.234, 5.678).sin(), 1.0);
             beta.push(rand_val * PI);
             gamma.push(rand_val * 2.0 * PI);
         }
@@ -102,7 +102,7 @@ pub struct QAOACircuit {
 
 impl QAOACircuit {
     /// Create a new QAOA circuit
-    pub fn new(
+    pub const fn new(
         num_qubits: usize,
         cost_hamiltonian: CostHamiltonian,
         mixer_hamiltonian: MixerHamiltonian,
@@ -313,7 +313,7 @@ impl QAOACircuit {
         let sin_half = (angle / 2.0).sin();
 
         let n = state.len();
-        let _qubit_mask = 1 << qubit;
+        // let _qubit_mask = 1 << qubit;
         let stride = 1 << (qubit + 1);
 
         // Process in chunks for better cache efficiency
@@ -454,7 +454,7 @@ pub struct QAOAOptimizer {
 
 impl QAOAOptimizer {
     /// Create a new QAOA optimizer
-    pub fn new(circuit: QAOACircuit, max_iterations: usize, tolerance: f64) -> Self {
+    pub const fn new(circuit: QAOACircuit, max_iterations: usize, tolerance: f64) -> Self {
         Self {
             circuit,
             max_iterations,
@@ -480,8 +480,8 @@ impl QAOAOptimizer {
         let initial_beta = self.circuit.params.beta.clone();
         let initial_gamma = self.circuit.params.gamma.clone();
 
-        let mut best_beta = initial_beta.clone();
-        let mut best_gamma = initial_gamma.clone();
+        let mut best_beta = initial_beta;
+        let mut best_gamma = initial_gamma;
         let mut best_expectation = f64::NEG_INFINITY;
 
         // Simple grid search for better optimization
@@ -495,8 +495,8 @@ impl QAOAOptimizer {
                 let beta_params = vec![beta_val; self.circuit.params.layers];
                 let gamma_params = vec![gamma_val; self.circuit.params.layers];
 
-                self.circuit.params.beta = beta_params.clone();
-                self.circuit.params.gamma = gamma_params.clone();
+                self.circuit.params.beta.clone_from(&beta_params);
+                self.circuit.params.gamma.clone_from(&gamma_params);
 
                 let state = self.execute_circuit();
                 let expectation = self.circuit.compute_expectation(&state);
@@ -509,8 +509,8 @@ impl QAOAOptimizer {
             }
         }
 
-        self.circuit.params.beta = best_beta.clone();
-        self.circuit.params.gamma = best_gamma.clone();
+        self.circuit.params.beta.clone_from(&best_beta);
+        self.circuit.params.gamma.clone_from(&best_gamma);
 
         (best_beta, best_gamma, best_expectation)
     }
@@ -542,6 +542,7 @@ impl MaxCutQAOA {
     }
 
     /// Create with weighted edges
+    #[must_use]
     pub fn with_weights(mut self, weights: Vec<Vec<f64>>) -> Self {
         assert_eq!(weights.len(), self.num_vertices);
         self.weights = Some(weights);
@@ -595,7 +596,11 @@ impl MaxCutQAOA {
             self.build_circuit(2); // Default to 2 layers
         }
 
-        let circuit = self.circuit.as_mut().unwrap();
+        // SAFETY: We just called build_circuit above if None, so this is guaranteed to be Some
+        let circuit = self
+            .circuit
+            .as_mut()
+            .expect("Circuit should be built after build_circuit call");
         let mut optimizer = QAOAOptimizer::new(circuit.clone(), 100, 1e-6);
 
         let (_, _, best_expectation) = optimizer.optimize();
@@ -632,7 +637,7 @@ impl MaxCutQAOA {
         for i in 0..num_vertices {
             for j in i + 1..num_vertices {
                 // Simple pseudo-random for reproducibility
-                let rand_val = ((i * j) as f64 * 1.234 + 5.678).sin().abs();
+                let rand_val = ((i * j) as f64).mul_add(1.234, 5.678).sin().abs();
                 if rand_val < edge_probability {
                     graph[i].push(j);
                     graph[j].push(i);
@@ -764,7 +769,11 @@ impl TSPQAOA {
             self.build_circuit(3); // TSP typically needs more layers
         }
 
-        let circuit = self.circuit.as_mut().unwrap();
+        // SAFETY: We just called build_circuit above if None, so this is guaranteed to be Some
+        let circuit = self
+            .circuit
+            .as_mut()
+            .expect("Circuit should be built after build_circuit call");
         let mut optimizer = QAOAOptimizer::new(circuit.clone(), 200, 1e-6);
 
         let (_, _, _best_expectation) = optimizer.optimize();
@@ -844,7 +853,11 @@ impl TSPQAOA {
             for j in 0..num_cities {
                 if i != j {
                     // Generate symmetric random distances
-                    let dist = ((i * j + i + j) as f64 * 1.234 + 5.678).sin().abs() * 100.0 + 1.0;
+                    let dist = ((i * j + i + j) as f64)
+                        .mul_add(1.234, 5.678)
+                        .sin()
+                        .abs()
+                        .mul_add(100.0, 1.0);
                     distances[i][j] = dist;
                     distances[j][i] = dist;
                 }

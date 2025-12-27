@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{DeviceError, DeviceResult};
 
 /// Security classification levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityClassification {
     #[default]
     Public,
@@ -21,7 +21,7 @@ pub enum SecurityClassification {
 }
 
 /// Security objectives
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityObjective {
     Confidentiality,
     Integrity,
@@ -36,7 +36,7 @@ pub enum SecurityObjective {
 }
 
 /// Security standards
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityStandard {
     ISO27001,
     NistCsf,
@@ -52,9 +52,10 @@ pub enum SecurityStandard {
 }
 
 /// Post-quantum algorithms
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum PostQuantumAlgorithm {
     // NIST Post-Quantum Cryptography Standards
+    #[default]
     Kyber,
     Dilithium,
     Falcon,
@@ -70,15 +71,10 @@ pub enum PostQuantumAlgorithm {
     Custom(String),
 }
 
-impl Default for PostQuantumAlgorithm {
-    fn default() -> Self {
-        PostQuantumAlgorithm::Kyber
-    }
-}
-
 /// Authentication methods
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum AuthenticationMethod {
+    #[default]
     Password,
     Biometric,
     SmartCard,
@@ -91,16 +87,11 @@ pub enum AuthenticationMethod {
     Custom(String),
 }
 
-impl Default for AuthenticationMethod {
-    fn default() -> Self {
-        AuthenticationMethod::Password
-    }
-}
-
 /// Authorization models
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum AuthorizationModel {
-    RBAC,       // Role-Based Access Control
+    #[default]
+    RBAC, // Role-Based Access Control
     ABAC,       // Attribute-Based Access Control
     DAC,        // Discretionary Access Control
     MAC,        // Mandatory Access Control
@@ -110,14 +101,8 @@ pub enum AuthorizationModel {
     Custom(String),
 }
 
-impl Default for AuthorizationModel {
-    fn default() -> Self {
-        AuthorizationModel::RBAC
-    }
-}
-
 /// Threat detection algorithms
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ThreatDetectionAlgorithm {
     SignatureBased,
     BehaviorBased,
@@ -131,7 +116,7 @@ pub enum ThreatDetectionAlgorithm {
 }
 
 /// Security analytics engines
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityAnalyticsEngine {
     SIEM, // Security Information and Event Management
     SOAR, // Security Orchestration, Automation and Response
@@ -144,7 +129,7 @@ pub enum SecurityAnalyticsEngine {
 }
 
 /// Regulatory frameworks
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RegulatoryFramework {
     GDPR,
     CCPA,
@@ -159,7 +144,7 @@ pub enum RegulatoryFramework {
 }
 
 /// Compliance standards
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ComplianceStandard {
     ISO27001,
     Soc2Type1,
@@ -174,7 +159,7 @@ pub enum ComplianceStandard {
 }
 
 /// Encryption protocols
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EncryptionProtocol {
     Tls1_3,
     IPSec,
@@ -187,7 +172,7 @@ pub enum EncryptionProtocol {
 }
 
 /// Security ML models
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityMLModel {
     AnomalyDetection,
     ThreatClassification,
@@ -201,7 +186,7 @@ pub enum SecurityMLModel {
 }
 
 /// Security operation types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SecurityOperationType {
     Authentication,
     Authorization,
@@ -220,7 +205,7 @@ pub enum SecurityOperationType {
 }
 
 /// Quantum security execution status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum QuantumSecurityExecutionStatus {
     Pending,
     Initializing,
@@ -239,137 +224,92 @@ pub enum QuantumSecurityExecutionStatus {
 }
 
 /// Threat severity levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ThreatSeverity {
+    #[default]
     Low,
     Medium,
     High,
     Critical,
-}
-
-impl Default for ThreatSeverity {
-    fn default() -> Self {
-        ThreatSeverity::Low
-    }
 }
 
 /// Incident severity levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum IncidentSeverity {
+    #[default]
     Low,
     Medium,
     High,
     Critical,
 }
 
-impl Default for IncidentSeverity {
-    fn default() -> Self {
-        IncidentSeverity::Low
-    }
-}
-
 /// Data protection event types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum DataProtectionEventType {
+    #[default]
     AccessRequest,
     DataModification,
     DataDeletion,
     SecurityViolation,
 }
 
-impl Default for DataProtectionEventType {
-    fn default() -> Self {
-        DataProtectionEventType::AccessRequest
-    }
-}
-
 /// Security report types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityReportType {
+    #[default]
     Summary,
     Detailed,
     Compliance,
     ThreatAnalysis,
 }
 
-impl Default for SecurityReportType {
-    fn default() -> Self {
-        SecurityReportType::Summary
-    }
-}
-
 /// Security level
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityLevel {
     Low,
+    #[default]
     Medium,
     High,
     Critical,
 }
 
-impl Default for SecurityLevel {
-    fn default() -> Self {
-        SecurityLevel::Medium
-    }
-}
-
 /// Security recommendation category
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityRecommendationCategory {
+    #[default]
     ThreatDetection,
     Cryptography,
     AccessControl,
     Compliance,
 }
 
-impl Default for SecurityRecommendationCategory {
-    fn default() -> Self {
-        SecurityRecommendationCategory::ThreatDetection
-    }
-}
-
 /// Recommendation priority
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum RecommendationPriority {
     Low,
+    #[default]
     Medium,
     High,
     Critical,
 }
 
-impl Default for RecommendationPriority {
-    fn default() -> Self {
-        RecommendationPriority::Medium
-    }
-}
-
 /// Implementation effort
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ImplementationEffort {
     Low,
+    #[default]
     Medium,
     High,
 }
 
-impl Default for ImplementationEffort {
-    fn default() -> Self {
-        ImplementationEffort::Medium
-    }
-}
-
 /// Security maturity level
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SecurityMaturityLevel {
+    #[default]
     Basic,
     Intermediate,
     Advanced,
     Expert,
-}
-
-impl Default for SecurityMaturityLevel {
-    fn default() -> Self {
-        SecurityMaturityLevel::Basic
-    }
 }
 
 /// Helper trait for duration extensions
@@ -381,14 +321,14 @@ pub trait DurationExt {
 
 impl DurationExt for Duration {
     fn from_weeks(weeks: u64) -> Duration {
-        Duration::from_secs(weeks * 7 * 24 * 3600)
+        Self::from_secs(weeks * 7 * 24 * 3600)
     }
 
     fn from_hours(hours: u64) -> Duration {
-        Duration::from_secs(hours * 3600)
+        Self::from_secs(hours * 3600)
     }
 
     fn from_minutes(minutes: u64) -> Duration {
-        Duration::from_secs(minutes * 60)
+        Self::from_secs(minutes * 60)
     }
 }

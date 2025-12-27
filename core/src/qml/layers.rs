@@ -100,8 +100,7 @@ impl RotationLayer {
         for &axis in &axes {
             if !['X', 'Y', 'Z'].contains(&axis) {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Invalid rotation axis: {}",
-                    axis
+                    "Invalid rotation axis: {axis}"
                 )));
             }
         }
@@ -194,7 +193,7 @@ pub struct EntanglingLayer {
 impl EntanglingLayer {
     /// Create a new entangling layer with CNOT gates
     pub fn new(num_qubits: usize, pattern: EntanglementPattern) -> Self {
-        let name = format!("EntanglingLayer_{:?}", pattern);
+        let name = format!("EntanglingLayer_{pattern:?}");
 
         Self {
             num_qubits,
@@ -218,7 +217,7 @@ impl EntanglingLayer {
             })
             .collect();
 
-        let name = format!("ParameterizedEntanglingLayer_{:?}", pattern);
+        let name = format!("ParameterizedEntanglingLayer_{pattern:?}");
 
         Self {
             num_qubits,
@@ -324,7 +323,7 @@ impl StronglyEntanglingLayer {
             .sum::<usize>()
             + entangling_layer.parameters().len();
 
-        let name = format!("StronglyEntanglingLayer_{:?}", pattern);
+        let name = format!("StronglyEntanglingLayer_{pattern:?}");
 
         Ok(Self {
             num_qubits,
@@ -526,7 +525,7 @@ impl QuantumPoolingLayer {
             input_qubits,
             output_qubits,
             strategy,
-            name: format!("QuantumPoolingLayer_{:?}", strategy),
+            name: format!("QuantumPoolingLayer_{strategy:?}"),
         }
     }
 }
@@ -569,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_rotation_layer() {
-        let layer = RotationLayer::uniform(3, 'X').unwrap();
+        let layer = RotationLayer::uniform(3, 'X').expect("rotation layer creation should succeed");
         assert_eq!(layer.num_qubits(), 3);
         assert_eq!(layer.parameters().len(), 3);
 
@@ -588,7 +587,8 @@ mod tests {
 
     #[test]
     fn test_strongly_entangling_layer() {
-        let layer = StronglyEntanglingLayer::new(2, EntanglementPattern::Full).unwrap();
+        let layer = StronglyEntanglingLayer::new(2, EntanglementPattern::Full)
+            .expect("strongly entangling layer creation should succeed");
         assert_eq!(layer.num_qubits(), 2);
 
         let gates = layer.gates();
@@ -597,7 +597,8 @@ mod tests {
 
     #[test]
     fn test_hardware_efficient_layer() {
-        let layer = HardwareEfficientLayer::new(3).unwrap();
+        let layer = HardwareEfficientLayer::new(3)
+            .expect("hardware efficient layer creation should succeed");
         assert_eq!(layer.num_qubits(), 3);
 
         let gates = layer.gates();

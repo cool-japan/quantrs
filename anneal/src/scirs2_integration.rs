@@ -1,14 +1,14 @@
-//! SciRS2 Integration Module
+//! `SciRS2` Integration Module
 //!
-//! This module provides comprehensive integration between QuantRS2-Anneal and the SciRS2 scientific
-//! computing framework. It implements full SciRS2 integration including:
+//! This module provides comprehensive integration between QuantRS2-Anneal and the `SciRS2` scientific
+//! computing framework. It implements full `SciRS2` integration including:
 //! - Sparse matrix operations using scirs2-sparse for QUBO models
 //! - Graph algorithms using scirs2-graph for embedding and partitioning  
 //! - Statistical analysis using scirs2-stats for solution quality evaluation
 //! - Advanced analytics and performance monitoring
 //!
 //! This integration enhances the quantum annealing framework with high-performance
-//! scientific computing capabilities from the SciRS2 ecosystem.
+//! scientific computing capabilities from the `SciRS2` ecosystem.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -31,7 +31,7 @@ pub struct SciRS2QuboModel {
     pub num_variables: usize,
     /// Linear terms as dense array (typically sparse in practice)
     pub linear_terms: Array1<f64>,
-    /// Quadratic terms using SciRS2 sparse CSR matrix
+    /// Quadratic terms using `SciRS2` sparse CSR matrix
     pub quadratic_matrix: CsrArray<f64>,
     /// Constant offset
     pub offset: f64,
@@ -47,8 +47,7 @@ impl SciRS2QuboModel {
             CsrArray::from_triplets(&[], &[], &[], (num_variables, num_variables), false).map_err(
                 |e| {
                     ApplicationError::InvalidConfiguration(format!(
-                        "Failed to create empty sparse matrix: {:?}",
-                        e
+                        "Failed to create empty sparse matrix: {e:?}"
                     ))
                 },
             )?;
@@ -106,10 +105,7 @@ impl SciRS2QuboModel {
             false, // not sorted yet
         )
         .map_err(|e| {
-            ApplicationError::InvalidConfiguration(format!(
-                "Failed to create sparse matrix: {:?}",
-                e
-            ))
+            ApplicationError::InvalidConfiguration(format!("Failed to create sparse matrix: {e:?}"))
         })?;
 
         Ok(Self {
@@ -120,12 +116,11 @@ impl SciRS2QuboModel {
         })
     }
 
-    /// Set linear coefficient using SciRS2 array operations
+    /// Set linear coefficient using `SciRS2` array operations
     pub fn set_linear(&mut self, var: usize, value: f64) -> ApplicationResult<()> {
         if var >= self.num_variables {
             return Err(ApplicationError::InvalidConfiguration(format!(
-                "Variable index {} out of range",
-                var
+                "Variable index {var} out of range"
             )));
         }
         self.linear_terms[var] = value;
@@ -172,7 +167,7 @@ impl SciRS2QuboModel {
         let mut cols = Vec::new();
         let mut vals = Vec::new();
 
-        for ((i, j), v) in data.iter() {
+        for ((i, j), v) in &data {
             rows.push(*i);
             cols.push(*j);
             vals.push(*v);
@@ -186,16 +181,13 @@ impl SciRS2QuboModel {
             false,
         )
         .map_err(|e| {
-            ApplicationError::InvalidConfiguration(format!(
-                "Failed to update sparse matrix: {:?}",
-                e
-            ))
+            ApplicationError::InvalidConfiguration(format!("Failed to update sparse matrix: {e:?}"))
         })?;
 
         Ok(())
     }
 
-    /// Evaluate QUBO objective using SciRS2 sparse matrix operations
+    /// Evaluate QUBO objective using `SciRS2` sparse matrix operations
     pub fn evaluate(&self, solution: &[i8]) -> ApplicationResult<f64> {
         if solution.len() != self.num_variables {
             return Err(ApplicationError::InvalidConfiguration(
@@ -207,11 +199,11 @@ impl SciRS2QuboModel {
 
         // Linear terms using SciRS2 array operations
         for (i, &value) in self.linear_terms.iter().enumerate() {
-            energy += value * solution[i] as f64;
+            energy += value * f64::from(solution[i]);
         }
 
         // Quadratic terms using CSR structure directly
-        let sol_array: Vec<f64> = solution.iter().map(|&x| x as f64).collect();
+        let sol_array: Vec<f64> = solution.iter().map(|&x| f64::from(x)).collect();
         let indices = self.quadratic_matrix.get_indices();
         let indptr = self.quadratic_matrix.get_indptr();
         let values = self.quadratic_matrix.get_data();
@@ -234,7 +226,8 @@ impl SciRS2QuboModel {
         Ok(energy)
     }
 
-    /// Get problem statistics using SciRS2 operations
+    /// Get problem statistics using `SciRS2` operations
+    #[must_use]
     pub fn get_statistics(&self) -> QuboStatistics {
         let num_linear_terms = self
             .linear_terms
@@ -258,7 +251,7 @@ impl SciRS2QuboModel {
         }
 
         // For symmetric matrix, count unique entries (upper triangle)
-        let num_quadratic_terms = (nnz + diag_count) / 2;
+        let num_quadratic_terms = usize::midpoint(nnz, diag_count);
         let total_terms = num_linear_terms + num_quadratic_terms;
 
         let density = if self.num_variables > 0 {
@@ -300,7 +293,7 @@ impl SciRS2QuboModel {
     }
 }
 
-/// Statistics for QUBO problems computed with SciRS2
+/// Statistics for QUBO problems computed with `SciRS2`
 #[derive(Debug, Clone)]
 pub struct QuboStatistics {
     pub num_variables: usize,
@@ -321,6 +314,7 @@ pub struct SciRS2GraphAnalyzer {
 
 impl SciRS2GraphAnalyzer {
     /// Create new graph analyzer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             graph: None,
@@ -392,7 +386,7 @@ impl SciRS2GraphAnalyzer {
         num_edges as f64 / max_edges as f64
     }
 
-    fn estimate_clustering(&self, _num_nodes: usize, _num_edges: usize) -> f64 {
+    const fn estimate_clustering(&self, _num_nodes: usize, _num_edges: usize) -> f64 {
         // Simplified clustering estimation
         // Would use scirs2-graph algorithms when API is stabilized
         0.3
@@ -464,6 +458,7 @@ pub struct SciRS2SolutionAnalyzer {
 
 impl SciRS2SolutionAnalyzer {
     /// Create new solution analyzer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             stats: SolutionStatistics::default(),
@@ -490,11 +485,11 @@ impl SciRS2SolutionAnalyzer {
         let max_energy = energies.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
         let mean_energy = mean(&energy_array.view()).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Mean calculation error: {:?}", e))
+            ApplicationError::OptimizationError(format!("Mean calculation error: {e:?}"))
         })?;
 
         let std_energy = std(&energy_array.view(), 1, None).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Std dev calculation error: {:?}", e))
+            ApplicationError::OptimizationError(format!("Std dev calculation error: {e:?}"))
         })?;
 
         // Solution diversity analysis
@@ -537,7 +532,7 @@ impl SciRS2SolutionAnalyzer {
         }
 
         if count > 0 {
-            total_distance / count as f64
+            total_distance / f64::from(count)
         } else {
             0.0
         }
@@ -634,6 +629,7 @@ pub struct SciRS2EnergyPlotter {
 
 impl SciRS2EnergyPlotter {
     /// Create new energy landscape plotter
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: PlottingConfig::default(),
@@ -649,7 +645,7 @@ impl SciRS2EnergyPlotter {
         output_path: &Path,
     ) -> ApplicationResult<()> {
         println!("=== Energy Landscape Summary ===");
-        println!("Output path: {:?}", output_path);
+        println!("Output path: {output_path:?}");
         println!("Problem size: {} variables", qubo.num_variables);
         println!("Number of solutions: {}", solutions.len());
 
@@ -665,10 +661,10 @@ impl SciRS2EnergyPlotter {
             let std_e = std(&energy_arr.view(), 1, None).unwrap_or(0.0);
 
             println!("Energy statistics:");
-            println!("  Min:  {:.6}", min_e);
-            println!("  Max:  {:.6}", max_e);
-            println!("  Mean: {:.6}", mean_e);
-            println!("  Std:  {:.6}", std_e);
+            println!("  Min:  {min_e:.6}");
+            println!("  Max:  {max_e:.6}");
+            println!("  Mean: {mean_e:.6}");
+            println!("  Std:  {std_e:.6}");
         }
 
         println!("================================");
@@ -682,14 +678,14 @@ impl SciRS2EnergyPlotter {
         output_path: &Path,
     ) -> ApplicationResult<()> {
         println!("=== Solution Histogram ===");
-        println!("Output path: {:?}", output_path);
+        println!("Output path: {output_path:?}");
         println!("Number of samples: {}", energies.len());
 
         if !energies.is_empty() {
             let energy_arr = Array1::from_vec(energies.to_vec());
             let mean_e = mean(&energy_arr.view()).unwrap_or(0.0);
             let std_e = std(&energy_arr.view(), 1, None).unwrap_or(0.0);
-            println!("Distribution: mean={:.4}, std={:.4}", mean_e, std_e);
+            println!("Distribution: mean={mean_e:.4}, std={std_e:.4}");
         }
 
         println!("==========================");
@@ -728,7 +724,7 @@ mod tests {
 
     #[test]
     fn test_scirs2_qubo_creation() {
-        let qubo = SciRS2QuboModel::new(4).unwrap();
+        let qubo = SciRS2QuboModel::new(4).expect("Failed to create QUBO model");
         assert_eq!(qubo.num_variables, 4);
         assert_eq!(qubo.linear_terms.len(), 4);
         assert_eq!(qubo.quadratic_matrix.nnz(), 0);
@@ -736,12 +732,13 @@ mod tests {
 
     #[test]
     fn test_scirs2_qubo_operations() {
-        let mut qubo = SciRS2QuboModel::new(3).unwrap();
+        let mut qubo = SciRS2QuboModel::new(3).expect("Failed to create QUBO model");
 
-        qubo.set_linear(0, 1.5).unwrap();
+        qubo.set_linear(0, 1.5).expect("Failed to set linear term");
         assert_eq!(qubo.linear_terms[0], 1.5);
 
-        qubo.set_quadratic(0, 1, 2.0).unwrap();
+        qubo.set_quadratic(0, 1, 2.0)
+            .expect("Failed to set quadratic term");
         // Check that the sparse matrix has the entry
         let mut found = false;
         for (i, j, val) in qubo.iter_nonzeros() {
@@ -753,19 +750,26 @@ mod tests {
         assert!(found, "Quadratic term not found in sparse matrix");
 
         let solution = vec![1, 0, 1];
-        let energy = qubo.evaluate(&solution).unwrap();
+        let energy = qubo
+            .evaluate(&solution)
+            .expect("Failed to evaluate solution");
         assert!((energy - 1.5).abs() < 1e-10); // 1.5 * 1 + 0 = 1.5
     }
 
     #[test]
     fn test_graph_analysis() {
-        let mut qubo = SciRS2QuboModel::new(4).unwrap();
-        qubo.set_quadratic(0, 1, 1.0).unwrap();
-        qubo.set_quadratic(1, 2, 1.0).unwrap();
-        qubo.set_quadratic(2, 3, 1.0).unwrap();
+        let mut qubo = SciRS2QuboModel::new(4).expect("Failed to create QUBO model");
+        qubo.set_quadratic(0, 1, 1.0)
+            .expect("Failed to set quadratic term");
+        qubo.set_quadratic(1, 2, 1.0)
+            .expect("Failed to set quadratic term");
+        qubo.set_quadratic(2, 3, 1.0)
+            .expect("Failed to set quadratic term");
 
         let mut analyzer = SciRS2GraphAnalyzer::new();
-        let result = analyzer.analyze_problem_graph(&qubo).unwrap();
+        let result = analyzer
+            .analyze_problem_graph(&qubo)
+            .expect("Failed to analyze graph");
 
         assert_eq!(result.metrics.num_nodes, 4);
         assert_eq!(result.metrics.num_edges, 3);
@@ -779,24 +783,29 @@ mod tests {
         let energies = vec![-1.0, -0.5, -0.8];
 
         let mut analyzer = SciRS2SolutionAnalyzer::new();
-        let result = analyzer.analyze_solutions(&solutions, &energies).unwrap();
+        let result = analyzer
+            .analyze_solutions(&solutions, &energies)
+            .expect("Failed to analyze solutions");
 
         assert_eq!(result.statistics.num_solutions, 3);
         assert_eq!(result.statistics.min_energy, -1.0);
         assert_eq!(result.statistics.max_energy, -0.5);
         // scirs2-stats provides accurate mean
-        assert!((result.statistics.mean_energy - (-0.7666666666666667)).abs() < 1e-6);
+        assert!((result.statistics.mean_energy - (-0.7_666_666_666_666_667)).abs() < 1e-6);
     }
 
     #[test]
     fn test_sparse_matrix_efficiency() {
         // Test that sparse representation is actually efficient
-        let mut qubo = SciRS2QuboModel::new(1000).unwrap();
+        let mut qubo = SciRS2QuboModel::new(1000).expect("Failed to create QUBO model");
 
         // Add only a few non-zero terms
-        qubo.set_quadratic(0, 1, 1.0).unwrap();
-        qubo.set_quadratic(5, 10, 2.0).unwrap();
-        qubo.set_quadratic(100, 200, 3.0).unwrap();
+        qubo.set_quadratic(0, 1, 1.0)
+            .expect("Failed to set quadratic term");
+        qubo.set_quadratic(5, 10, 2.0)
+            .expect("Failed to set quadratic term");
+        qubo.set_quadratic(100, 200, 3.0)
+            .expect("Failed to set quadratic term");
 
         let stats = qubo.get_statistics();
 

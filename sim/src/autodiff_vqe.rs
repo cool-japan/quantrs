@@ -46,6 +46,7 @@ pub struct AutoDiffContext {
 
 impl AutoDiffContext {
     /// Create new autodiff context
+    #[must_use]
     pub fn new(parameters: Vec<f64>, method: GradientMethod) -> Self {
         let num_params = parameters.len();
         Self {
@@ -59,6 +60,7 @@ impl AutoDiffContext {
     }
 
     /// Set parameter names
+    #[must_use]
     pub fn with_parameter_names(mut self, names: Vec<String>) -> Self {
         assert_eq!(names.len(), self.parameters.len());
         self.parameter_names = names;
@@ -72,6 +74,7 @@ impl AutoDiffContext {
     }
 
     /// Get parameter by name
+    #[must_use]
     pub fn get_parameter(&self, name: &str) -> Option<f64> {
         self.parameter_names
             .iter()
@@ -292,6 +295,7 @@ pub struct ParametricCircuit {
 
 impl ParametricCircuit {
     /// Create new parametric circuit
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             gates: Vec::new(),
@@ -515,13 +519,14 @@ impl Default for ConvergenceCriteria {
             max_iterations: 1000,
             energy_tolerance: 1e-6,
             gradient_tolerance: 1e-6,
-            max_func_evals: 10000,
+            max_func_evals: 10_000,
         }
     }
 }
 
 impl VQEWithAutodiff {
     /// Create new VQE instance
+    #[must_use]
     pub fn new(
         ansatz: ParametricCircuit,
         hamiltonian: PauliOperatorSum,
@@ -539,6 +544,7 @@ impl VQEWithAutodiff {
     }
 
     /// Set convergence criteria
+    #[must_use]
     pub const fn with_convergence(mut self, convergence: ConvergenceCriteria) -> Self {
         self.convergence = convergence;
         self
@@ -559,7 +565,7 @@ impl VQEWithAutodiff {
             &self.context.parameters,
             self.context.method,
         )?;
-        self.context.gradients = gradients.clone();
+        self.context.gradients.clone_from(&gradients);
         self.context.grad_evaluations += 1;
         Ok(gradients)
     }
@@ -602,7 +608,9 @@ impl VQEWithAutodiff {
             }
         }
 
-        let final_iteration = self.history.last().unwrap();
+        let final_iteration = self.history.last().ok_or_else(|| {
+            SimulatorError::InvalidOperation("VQE optimization produced no iterations".to_string())
+        })?;
         Ok(VQEResult {
             optimal_parameters: final_iteration.parameters.clone(),
             optimal_energy: final_iteration.energy,
@@ -628,14 +636,14 @@ impl VQEWithAutodiff {
         Ok(energy_converged && gradient_converged)
     }
 
-    /// Run VQE optimization using OptiRS optimizers (Adam, SGD, RMSprop, etc.)
+    /// Run VQE optimization using `OptiRS` optimizers (Adam, SGD, `RMSprop`, etc.)
     ///
-    /// This method provides state-of-the-art optimization using OptiRS's advanced
+    /// This method provides state-of-the-art optimization using `OptiRS`'s advanced
     /// machine learning optimizers, which typically converge faster and more robustly
     /// than basic gradient descent.
     ///
     /// # Arguments
-    /// * `config` - OptiRS optimizer configuration
+    /// * `config` - `OptiRS` optimizer configuration
     ///
     /// # Returns
     /// * `VQEResult` - Optimization result with optimal parameters and energy
@@ -693,8 +701,12 @@ impl VQEWithAutodiff {
             }
         }
 
-        let optimization_time = start_time.elapsed();
-        let final_iteration = self.history.last().unwrap();
+        let _optimization_time = start_time.elapsed();
+        let final_iteration = self.history.last().ok_or_else(|| {
+            SimulatorError::InvalidOperation(
+                "VQE optimization with OptiRS produced no iterations".to_string(),
+            )
+        })?;
 
         Ok(VQEResult {
             optimal_parameters: final_iteration.parameters.clone(),
@@ -794,9 +806,10 @@ fn compute_pauli_expectation_from_state(
 
 /// Convenience functions for creating common ansätze
 pub mod ansatze {
-    use super::*;
+    use super::ParametricCircuit;
 
     /// Create a hardware-efficient ansatz
+    #[must_use]
     pub fn hardware_efficient(num_qubits: usize, num_layers: usize) -> ParametricCircuit {
         let mut circuit = ParametricCircuit::new(num_qubits);
         let mut param_idx = 0;
@@ -817,7 +830,8 @@ pub mod ansatze {
         circuit
     }
 
-    /// Create a QAOA ansatz for MaxCut problem
+    /// Create a QAOA ansatz for `MaxCut` problem
+    #[must_use]
     pub fn qaoa_maxcut(
         num_qubits: usize,
         num_layers: usize,
@@ -863,7 +877,9 @@ mod tests {
             param_idx: 0,
         };
         let params = vec![PI / 2.0];
-        let matrix = rx_gate.matrix(&params).unwrap();
+        let matrix = rx_gate
+            .matrix(&params)
+            .expect("RX gate matrix computation should succeed");
 
         // RX(π/2) should be approximately [[1/√2, -i/√2], [-i/√2, 1/√2]]
         let expected_val = 1.0 / 2.0_f64.sqrt();

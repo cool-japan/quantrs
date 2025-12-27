@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 #![allow(clippy::all)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
+#![allow(clippy::restriction)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unused_mut)]
@@ -13,7 +16,7 @@
 #![allow(unused_must_use)]
 #![allow(non_snake_case)]
 
-//! Quantum annealing support for the QuantRS2 framework.
+//! Quantum annealing support for the `QuantRS2` framework.
 //!
 //! This crate provides types and functions for quantum annealing,
 //! including Ising model representation, QUBO problem formulation,
@@ -28,11 +31,11 @@
 //! - D-Wave API client for connecting to quantum annealing hardware
 //! - AWS Braket client for accessing Amazon's quantum computing services
 //!
-//! ## Recent Updates (v0.1.0-beta.2)
+//! ## Recent Updates (v0.1.0-rc.1)
 //!
-//! - Enhanced performance using SciRS2 v0.1.0-beta.3's parallel algorithms
-//! - Improved minor graph embedding with refined SciRS2 graph algorithms
-//! - Memory-efficient sparse matrix operations via SciRS2
+//! - Enhanced performance using `SciRS2` v0.1.0-rc.1's parallel algorithms
+//! - Improved minor graph embedding with refined `SciRS2` graph algorithms
+//! - Memory-efficient sparse matrix operations via `SciRS2`
 //! - Stable APIs for D-Wave, AWS Braket, and Fujitsu integrations
 //!
 //! # Example
@@ -508,7 +511,8 @@ pub use visualization::{
 ///
 /// This function always returns `true` since the simulation capabilities
 /// are always available.
-pub fn is_available() -> bool {
+#[must_use]
+pub const fn is_available() -> bool {
     true
 }
 
@@ -516,6 +520,7 @@ pub fn is_available() -> bool {
 ///
 /// This function checks if any quantum annealing hardware API clients are available
 /// and enabled via their respective features (D-Wave or AWS Braket).
-pub fn is_hardware_available() -> bool {
+#[must_use]
+pub const fn is_hardware_available() -> bool {
     dwave::is_available() || braket::is_available()
 }

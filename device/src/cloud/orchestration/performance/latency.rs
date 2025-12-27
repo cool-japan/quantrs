@@ -18,7 +18,7 @@ pub struct LatencyOptimizationConfig {
 }
 
 /// Latency optimization techniques
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LatencyOptimizationTechnique {
     GeographicProximity,
     Caching,

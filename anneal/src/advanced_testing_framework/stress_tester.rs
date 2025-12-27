@@ -1,6 +1,10 @@
 //! Stress testing coordinator
 
-use super::*;
+use super::{
+    thread, ApplicationError, ApplicationResult, Duration, HashMap, Instant, LoadPattern,
+    ResourceType, ScalabilityAlgorithm, ScalabilityMetrics, SizeProgression, StressCriterionType,
+    StressResourceConstraints, StressTestResult, VecDeque,
+};
 use scirs2_core::random::prelude::*;
 
 /// Stress testing coordinator
@@ -58,7 +62,7 @@ pub struct LoadGenerator {
 }
 
 /// Load generation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadGenerationStrategy {
     /// Gradual increase
     Gradual,
@@ -110,6 +114,7 @@ pub struct ScalabilityAnalyzer {
 }
 
 impl StressTestCoordinator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             stress_configs: Self::create_default_configs(),
@@ -162,7 +167,7 @@ impl StressTestCoordinator {
                 },
                 size_progression: SizeProgression::Exponential {
                     start: 10,
-                    end: 10000,
+                    end: 10_000,
                     factor: 2.0,
                 },
                 resource_constraints: StressResourceConstraints {
@@ -294,8 +299,7 @@ impl StressTestCoordinator {
             .find(|c| c.id == config_id)
             .ok_or_else(|| {
                 ApplicationError::ConfigurationError(format!(
-                    "Stress test config not found: {}",
-                    config_id
+                    "Stress test config not found: {config_id}"
                 ))
             })?
             .clone();
@@ -313,7 +317,7 @@ impl StressTestCoordinator {
         self.stop_monitoring()?;
 
         let execution_time = start_time.elapsed();
-        println!("Stress test completed in {:?}", execution_time);
+        println!("Stress test completed in {execution_time:?}");
 
         Ok(StressTestResult {
             test_id: config.id,
@@ -328,7 +332,7 @@ impl StressTestCoordinator {
 
     /// Execute stress test with given configuration
     fn execute_stress_test(
-        &mut self,
+        &self,
         config: &StressTestConfig,
     ) -> ApplicationResult<StressTestExecutionResult> {
         let mut max_load_achieved = 0.0f64;
@@ -371,13 +375,13 @@ impl StressTestCoordinator {
         }
 
         let success_rate = if total_tests > 0 {
-            successful_tests as f64 / total_tests as f64
+            f64::from(successful_tests) / total_tests as f64
         } else {
             0.0
         };
 
         let average_throughput = if successful_tests > 0 {
-            throughput_sum / successful_tests as f64
+            throughput_sum / f64::from(successful_tests)
         } else {
             0.0
         };
@@ -473,11 +477,11 @@ impl StressTestCoordinator {
         let start_time = Instant::now();
 
         // Simulate test execution
-        let execution_time = Duration::from_millis((size as u64 * load as u64).min(10000));
+        let execution_time = Duration::from_millis((size as u64 * load as u64).min(10_000));
         thread::sleep(Duration::from_millis(1)); // Minimal actual delay
 
         // Simulate success/failure based on size and load
-        let stress_factor = (size as f64 * load) / 10000.0;
+        let stress_factor = (size as f64 * load) / 10_000.0;
         let success_probability = (1.0 - stress_factor * 0.1).max(0.1);
         let success = thread_rng().gen::<f64>() < success_probability;
 
@@ -503,7 +507,7 @@ impl StressTestCoordinator {
     }
 
     /// Check if test should continue after failure
-    fn should_continue_after_failure(
+    const fn should_continue_after_failure(
         &self,
         _test_result: &StressTestInstanceResult,
         _config: &StressTestConfig,
@@ -513,7 +517,7 @@ impl StressTestCoordinator {
     }
 
     /// Check if resource constraints are exceeded
-    fn check_resource_constraints_exceeded(
+    const fn check_resource_constraints_exceeded(
         &self,
         _constraints: &StressResourceConstraints,
     ) -> ApplicationResult<bool> {
@@ -522,7 +526,10 @@ impl StressTestCoordinator {
     }
 
     /// Analyze scalability from test results
-    fn analyze_scalability(&self, _test_sizes: &[usize]) -> ApplicationResult<ScalabilityMetrics> {
+    const fn analyze_scalability(
+        &self,
+        _test_sizes: &[usize],
+    ) -> ApplicationResult<ScalabilityMetrics> {
         // Simplified scalability analysis
         Ok(ScalabilityMetrics {
             scalability_factor: 0.85,
@@ -545,14 +552,14 @@ impl StressTestCoordinator {
     }
 
     /// Start resource monitoring
-    fn start_monitoring(&mut self) -> ApplicationResult<()> {
+    fn start_monitoring(&self) -> ApplicationResult<()> {
         println!("Starting resource monitoring");
         // Initialize monitoring systems
         Ok(())
     }
 
     /// Stop resource monitoring
-    fn stop_monitoring(&mut self) -> ApplicationResult<()> {
+    fn stop_monitoring(&self) -> ApplicationResult<()> {
         println!("Stopping resource monitoring");
         // Clean up monitoring systems
         Ok(())
@@ -564,6 +571,7 @@ impl StressTestCoordinator {
     }
 
     /// Get stress test configuration
+    #[must_use]
     pub fn get_config(&self, config_id: &str) -> Option<&StressTestConfig> {
         self.stress_configs.iter().find(|c| c.id == config_id)
     }

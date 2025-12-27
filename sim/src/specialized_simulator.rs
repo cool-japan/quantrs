@@ -3,7 +3,9 @@
 //! This simulator automatically detects and uses specialized gate implementations
 //! for improved performance compared to general matrix multiplication.
 
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 use std::sync::Arc;
 
@@ -75,6 +77,7 @@ pub struct SpecializedStateVectorSimulator {
 
 impl SpecializedStateVectorSimulator {
     /// Create a new specialized simulator
+    #[must_use]
     pub fn new(config: SpecializedSimulatorConfig) -> Self {
         let base_simulator = if config.parallel {
             StateVectorSimulator::new()
@@ -233,7 +236,7 @@ impl SpecializedStateVectorSimulator {
         let mut reordered = gates.to_vec();
 
         // Sort by first qubit to improve cache locality
-        reordered.sort_by_key(|gate| gate.qubits().first().map_or(0, |q| q.id()));
+        reordered.sort_by_key(|gate| gate.qubits().first().map_or(0, quantrs2_core::QubitId::id));
 
         Ok(reordered)
     }
@@ -400,6 +403,7 @@ impl SpecializedStateVectorSimulator {
 }
 
 /// Benchmark comparison between specialized and generic implementations
+#[must_use]
 pub fn benchmark_specialization(
     n_qubits: usize,
     n_gates: usize,
@@ -450,13 +454,17 @@ pub fn benchmark_specialization(
     // Run with specialized simulator
     let mut specialized_sim = SpecializedStateVectorSimulator::new(Default::default());
     let start = Instant::now();
-    let _ = specialized_sim.run(&circuit).unwrap();
+    let _ = specialized_sim
+        .run(&circuit)
+        .expect("Specialized simulator benchmark failed");
     let specialized_time = start.elapsed().as_secs_f64();
 
     // Run with base simulator
     let mut base_sim = StateVectorSimulator::new();
     let start = Instant::now();
-    let _ = base_sim.run(&circuit).unwrap();
+    let _ = base_sim
+        .run(&circuit)
+        .expect("Base simulator benchmark failed");
     let base_time = start.elapsed().as_secs_f64();
 
     (specialized_time, base_time, specialized_sim.stats.clone())
@@ -475,7 +483,9 @@ mod tests {
         let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let mut sim = SpecializedStateVectorSimulator::new(Default::default());
-        let state = sim.run(&circuit).unwrap();
+        let state = sim
+            .run(&circuit)
+            .expect("Failed to run specialized simulator test circuit");
 
         // Should create Bell state |00> + |11>
         let expected_amp = 1.0 / std::f64::consts::SQRT_2;

@@ -184,7 +184,7 @@ impl SciRS2ProcessTomographer {
 
         for method in &reconstruction_methods {
             // Reconstruct using method
-            let (process_matrix, quality) = match method.as_ref() {
+            let (process_matrix, quality) = match &**method {
                 "linear_inversion" => self.linear_inversion_reconstruction(experimental_data)?,
                 "maximum_likelihood" => {
                     self.maximum_likelihood_reconstruction(experimental_data)?
@@ -201,8 +201,8 @@ impl SciRS2ProcessTomographer {
             let log_likelihood = quality.log_likelihood;
             let n_data = experimental_data.measurement_results.len() as f64;
 
-            let aic = -2.0 * log_likelihood + 2.0 * num_params as f64;
-            let bic = -2.0 * log_likelihood + num_params as f64 * n_data.ln();
+            let aic = (-2.0f64).mul_add(log_likelihood, 2.0 * num_params as f64);
+            let bic = (-2.0f64).mul_add(log_likelihood, num_params as f64 * n_data.ln());
 
             // Cross-validation score
             let cv_score = self.calculate_cv_score_for_method(method, experimental_data)?;
@@ -219,7 +219,7 @@ impl SciRS2ProcessTomographer {
         }
 
         // Calculate model weights (Akaike weights)
-        let min_aic = aic_scores.values().cloned().fold(f64::INFINITY, f64::min);
+        let min_aic = aic_scores.values().copied().fold(f64::INFINITY, f64::min);
         let mut weight_sum = 0.0;
 
         for (model, &aic) in &aic_scores {
@@ -345,22 +345,22 @@ impl SciRS2ProcessTomographer {
     ) {
         bootstrap_metrics
             .entry("process_fidelity".to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(metrics.process_fidelity);
 
         bootstrap_metrics
             .entry("average_gate_fidelity".to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(metrics.average_gate_fidelity);
 
         bootstrap_metrics
             .entry("unitarity".to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(metrics.unitarity);
 
         bootstrap_metrics
             .entry("entangling_power".to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(metrics.entangling_power);
     }
 
@@ -373,7 +373,7 @@ impl SciRS2ProcessTomographer {
 
         for (metric_name, values) in bootstrap_metrics {
             let mut sorted_values = values.clone();
-            sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
             let n = sorted_values.len();
             let lower_idx = (0.025 * n as f64) as usize;
@@ -518,12 +518,11 @@ impl SciRS2ProcessTomographer {
         experimental_data: &ExperimentalData,
     ) -> DeviceResult<f64> {
         // Simplified CV score calculation
-        let (process_matrix, quality) = match method.as_ref() {
-            "linear_inversion" => self.linear_inversion_reconstruction(experimental_data)?,
+        let (process_matrix, quality) = match method {
             "maximum_likelihood" => self.maximum_likelihood_reconstruction(experimental_data)?,
             "compressed_sensing" => self.compressed_sensing_reconstruction(experimental_data)?,
             "bayesian" => self.bayesian_reconstruction(experimental_data)?,
-            _ => self.linear_inversion_reconstruction(experimental_data)?,
+            "linear_inversion" | _ => self.linear_inversion_reconstruction(experimental_data)?,
         };
 
         Ok(quality.log_likelihood)

@@ -192,11 +192,13 @@ impl RLEmbeddingOptimizer {
     }
 
     /// Get performance report
+    #[must_use]
     pub fn get_performance_report(&self) -> String {
         PerformanceTracker::generate_performance_report(&self.performance_metrics)
     }
 
     /// Get configuration summary
+    #[must_use]
     pub fn get_config_summary(&self) -> String {
         utils::config_summary(&self.config)
     }
@@ -212,6 +214,7 @@ impl RLEmbeddingOptimizer {
     }
 
     /// Get cache statistics
+    #[must_use]
     pub fn get_cache_statistics(&self) -> f64 {
         CacheManager::calculate_cache_hit_rate(&self.embedding_cache)
     }
@@ -222,7 +225,8 @@ impl RLEmbeddingOptimizer {
     }
 
     /// Get training statistics
-    pub fn get_training_stats(&self) -> &RLTrainingStats {
+    #[must_use]
+    pub const fn get_training_stats(&self) -> &RLTrainingStats {
         &self.training_stats
     }
 
@@ -257,14 +261,15 @@ mod tests {
 
     #[test]
     fn test_rl_optimizer_creation() {
-        let optimizer = create_rl_embedding_optimizer().unwrap();
+        let optimizer = create_rl_embedding_optimizer().expect("Failed to create RL optimizer");
         assert_eq!(optimizer.config.dqn_layers, vec![128, 256, 128, 64]);
         assert_eq!(optimizer.config.learning_rate, 0.0001);
     }
 
     #[test]
     fn test_embedding_network_creation() {
-        let network = EmbeddingNetwork::new(&[10, 20, 5], Some(42)).unwrap();
+        let network =
+            EmbeddingNetwork::new(&[10, 20, 5], Some(42)).expect("Failed to create network");
         assert_eq!(network.layers.len(), 2);
         assert_eq!(network.layers[0].weights.len(), 20);
         assert_eq!(network.layers[0].weights[0].len(), 10);
@@ -272,21 +277,25 @@ mod tests {
 
     #[test]
     fn test_network_forward_pass() {
-        let network = EmbeddingNetwork::new(&[3, 5, 2], Some(42)).unwrap();
+        let network =
+            EmbeddingNetwork::new(&[3, 5, 2], Some(42)).expect("Failed to create network");
         let input = vec![1.0, 0.5, -0.5];
-        let output = network.forward(&input).unwrap();
+        let output = network.forward(&input).expect("Failed forward pass");
         assert_eq!(output.len(), 2);
     }
 
     #[test]
     fn test_state_feature_extraction() {
-        let optimizer = create_rl_embedding_optimizer().unwrap();
+        let _optimizer = create_rl_embedding_optimizer().expect("Failed to create RL optimizer");
         let mut ising = IsingModel::new(4);
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_coupling(0, 1, -0.5).unwrap();
+        ising.set_bias(0, 1.0).expect("Failed to set bias");
+        ising
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling");
 
         let hardware = HardwareTopology::Chimera(2, 2, 4);
-        let state = StateActionProcessor::extract_state_features(&ising, &hardware).unwrap();
+        let state = StateActionProcessor::extract_state_features(&ising, &hardware)
+            .expect("Failed to extract state features");
 
         assert_eq!(state.problem_features.num_vertices, 4);
         // Chimera(2, 2, 4) = 2 * 2 * 2 * 4 = 32 physical qubits
@@ -295,12 +304,14 @@ mod tests {
 
     #[test]
     fn test_action_sampling() {
-        let optimizer = create_rl_embedding_optimizer().unwrap();
-        let mut ising = IsingModel::new(4);
+        let _optimizer = create_rl_embedding_optimizer().expect("Failed to create RL optimizer");
+        let ising = IsingModel::new(4);
         let hardware = HardwareTopology::Chimera(2, 2, 4);
-        let state = StateActionProcessor::extract_state_features(&ising, &hardware).unwrap();
+        let state = StateActionProcessor::extract_state_features(&ising, &hardware)
+            .expect("Failed to extract state features");
 
-        let action = StateActionProcessor::sample_random_action(&state).unwrap();
+        let action =
+            StateActionProcessor::sample_random_action(&state).expect("Failed to sample action");
         // Should not panic and return a valid action
         match action {
             DiscreteEmbeddingAction::AddToChain {
@@ -316,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_embedding_quality_evaluation() {
-        let optimizer = create_rl_embedding_optimizer().unwrap();
+        let _optimizer = create_rl_embedding_optimizer().expect("Failed to create RL optimizer");
         let hardware = HardwareTopology::Chimera(2, 2, 4);
 
         let mut embedding = Embedding {
@@ -327,8 +338,8 @@ mod tests {
         embedding.chains.insert(0, vec![0, 1]);
         embedding.chains.insert(1, vec![2]);
 
-        let quality =
-            EmbeddingOptimizer::evaluate_embedding_quality(&embedding, &hardware).unwrap();
+        let quality = EmbeddingOptimizer::evaluate_embedding_quality(&embedding, &hardware)
+            .expect("Failed to evaluate embedding quality");
         assert!(quality.is_finite());
     }
 

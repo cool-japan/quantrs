@@ -80,7 +80,7 @@ fn demonstrate_complex_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     // Complex arithmetic
     let norm_squared = (alpha * alpha.conj() + beta * beta.conj()).re;
-    println!("   Normalization: |α|² + |β|² = {:.6}", norm_squared);
+    println!("   Normalization: |α|² + |β|² = {norm_squared:.6}");
 
     // Phase operations
     let phase = Complex64::new(0.0, std::f64::consts::PI / 4.0).exp();
@@ -153,12 +153,12 @@ fn demonstrate_array_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     // Array aggregations
     let norm: f64 = state.iter().map(|c| (c * c.conj()).re).sum();
-    println!("\n   State normalization: {:.6}", norm);
+    println!("\n   State normalization: {norm:.6}");
 
     // Memory estimation using QuantRS2 utilities
     let qubits = 10;
     let memory = utils::estimate_statevector_memory(qubits);
-    println!("\n   Memory estimation for {} qubits:", qubits);
+    println!("\n   Memory estimation for {qubits} qubits:");
     println!("   Required: {}", utils::format_memory(memory));
 
     println!();
@@ -247,7 +247,7 @@ fn demonstrate_simd_operations() -> Result<(), Box<dyn std::error::Error>> {
     // Example: SIMD-accelerated quantum gate application
     let state_size = 1024;
     println!("\n   SIMD Performance Example:");
-    println!("   State size: {} complex amplitudes", state_size);
+    println!("   State size: {state_size} complex amplitudes");
 
     if caps.has_avx2() {
         println!("   ✅ AVX2 available: 2-4x speedup for gate operations");
@@ -309,7 +309,7 @@ fn demonstrate_quantum_computation() -> Result<(), Box<dyn std::error::Error>> {
         .map(|c| (c * c.conj()).re)
         .collect::<Vec<f64>>();
 
-    let mut counts = vec![0; 4];
+    let mut counts = [0; 4];
     for _ in 0..1000 {
         let r: f64 = rng.gen();
         let mut cumulative = 0.0;
@@ -346,7 +346,7 @@ fn demonstrate_quantum_computation() -> Result<(), Box<dyn std::error::Error>> {
         .sum::<f64>()
         .powi(2);
 
-    println!("\n   Quantum Fidelity with target: {:.6}", fidelity);
+    println!("\n   Quantum Fidelity with target: {fidelity:.6}");
     println!("   (1.0 = perfect match)");
 
     println!();

@@ -43,7 +43,7 @@ pub enum QbmError {
 pub type QbmResult<T> = Result<T, QbmError>;
 
 /// Type of Boltzmann machine unit
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitType {
     /// Binary units (0/1 or -1/+1)
     Binary,
@@ -74,7 +74,8 @@ pub struct LayerConfig {
 
 impl LayerConfig {
     /// Create a new layer configuration
-    pub fn new(name: String, num_units: usize, unit_type: UnitType) -> Self {
+    #[must_use]
+    pub const fn new(name: String, num_units: usize, unit_type: UnitType) -> Self {
         Self {
             num_units,
             unit_type,
@@ -85,13 +86,15 @@ impl LayerConfig {
     }
 
     /// Set bias initialization range
-    pub fn with_bias_range(mut self, min: f64, max: f64) -> Self {
+    #[must_use]
+    pub const fn with_bias_range(mut self, min: f64, max: f64) -> Self {
         self.bias_init_range = (min, max);
         self
     }
 
     /// Enable or disable quantum sampling
-    pub fn with_quantum_sampling(mut self, enabled: bool) -> Self {
+    #[must_use]
+    pub const fn with_quantum_sampling(mut self, enabled: bool) -> Self {
         self.quantum_sampling = enabled;
         self
     }
@@ -248,12 +251,14 @@ pub struct TrainingSample {
 
 impl TrainingSample {
     /// Create a new training sample
-    pub fn new(data: Vec<f64>) -> Self {
+    #[must_use]
+    pub const fn new(data: Vec<f64>) -> Self {
         Self { data, label: None }
     }
 
     /// Create a labeled training sample
-    pub fn labeled(data: Vec<f64>, label: Vec<f64>) -> Self {
+    #[must_use]
+    pub const fn labeled(data: Vec<f64>, label: Vec<f64>) -> Self {
         Self {
             data,
             label: Some(label),
@@ -414,8 +419,8 @@ impl QuantumRestrictedBoltzmannMachine {
                 num_batches += 1;
             }
 
-            let avg_error = epoch_error / num_batches as f64;
-            let avg_fe_diff = epoch_free_energy_diff / num_batches as f64;
+            let avg_error = epoch_error / f64::from(num_batches);
+            let avg_fe_diff = epoch_free_energy_diff / f64::from(num_batches);
 
             reconstruction_errors.push(avg_error);
             free_energy_diffs.push(avg_fe_diff);
@@ -434,7 +439,7 @@ impl QuantumRestrictedBoltzmannMachine {
             // Early stopping
             if let Some(threshold) = self.training_config.error_threshold {
                 if avg_error < threshold {
-                    println!("Converged at epoch {} with error {:.6}", epoch, avg_error);
+                    println!("Converged at epoch {epoch} with error {avg_error:.6}");
                     break;
                 }
             }
@@ -455,7 +460,7 @@ impl QuantumRestrictedBoltzmannMachine {
             quantum_sampling_stats: quantum_stats,
         });
 
-        println!("Training completed in {:.2?}", total_time);
+        println!("Training completed in {total_time:.2?}");
         Ok(())
     }
 
@@ -568,22 +573,22 @@ impl QuantumRestrictedBoltzmannMachine {
         for i in 0..self.visible_config.num_units {
             for j in 0..self.hidden_config.num_units {
                 let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
-                weight_momentum[i][j] = momentum * weight_momentum[i][j] + lr * gradient;
-                self.weights[i][j] += weight_momentum[i][j] - decay * self.weights[i][j];
+                weight_momentum[i][j] = momentum.mul_add(weight_momentum[i][j], lr * gradient);
+                self.weights[i][j] += decay.mul_add(-self.weights[i][j], weight_momentum[i][j]);
             }
         }
 
         // Update visible biases
         for i in 0..self.visible_config.num_units {
             let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
-            visible_bias_momentum[i] = momentum * visible_bias_momentum[i] + lr * gradient;
+            visible_bias_momentum[i] = momentum.mul_add(visible_bias_momentum[i], lr * gradient);
             self.visible_biases[i] += visible_bias_momentum[i];
         }
 
         // Update hidden biases
         for j in 0..self.hidden_config.num_units {
             let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
-            hidden_bias_momentum[j] = momentum * hidden_bias_momentum[j] + lr * gradient;
+            hidden_bias_momentum[j] = momentum.mul_add(hidden_bias_momentum[j], lr * gradient);
             self.hidden_biases[j] += hidden_bias_momentum[j];
         }
 
@@ -690,37 +695,34 @@ impl QuantumRestrictedBoltzmannMachine {
         }
 
         // Sample using quantum annealing
-        match self.quantum_annealing_sample(&ising_model) {
-            Ok(sample) => {
-                let sampling_time = start_time.elapsed();
-                let stats = QuantumSamplingStats {
-                    total_sampling_time: sampling_time,
-                    sampling_calls: 1,
-                    average_annealing_energy: 0.0, // Would compute from result
-                    success_rate: 1.0,
-                    classical_fallback_rate: 0.0,
-                };
+        if let Ok(sample) = self.quantum_annealing_sample(&ising_model) {
+            let sampling_time = start_time.elapsed();
+            let stats = QuantumSamplingStats {
+                total_sampling_time: sampling_time,
+                sampling_calls: 1,
+                average_annealing_energy: 0.0, // Would compute from result
+                success_rate: 1.0,
+                classical_fallback_rate: 0.0,
+            };
 
-                // Convert spins to 0/1
-                let binary_sample = sample
-                    .iter()
-                    .map(|&s| if s > 0 { 1.0 } else { 0.0 })
-                    .collect();
+            // Convert spins to 0/1
+            let binary_sample = sample
+                .iter()
+                .map(|&s| if s > 0 { 1.0 } else { 0.0 })
+                .collect();
 
-                Ok((binary_sample, stats))
-            }
-            Err(_) => {
-                // Fallback to classical sampling
-                let sample = self.sample_binary_units(probabilities)?;
-                let stats = QuantumSamplingStats {
-                    total_sampling_time: start_time.elapsed(),
-                    sampling_calls: 1,
-                    average_annealing_energy: 0.0,
-                    success_rate: 0.0,
-                    classical_fallback_rate: 1.0,
-                };
-                Ok((sample, stats))
-            }
+            Ok((binary_sample, stats))
+        } else {
+            // Fallback to classical sampling
+            let sample = self.sample_binary_units(probabilities)?;
+            let stats = QuantumSamplingStats {
+                total_sampling_time: start_time.elapsed(),
+                sampling_calls: 1,
+                average_annealing_energy: 0.0,
+                success_rate: 0.0,
+                classical_fallback_rate: 1.0,
+            };
+            Ok((sample, stats))
         }
     }
 
@@ -768,7 +770,7 @@ impl QuantumRestrictedBoltzmannMachine {
                         .enumerate()
                         .map(|(i, &v)| v * self.weights[i][j])
                         .sum::<f64>();
-                (1.0 + activation.exp()).ln()
+                activation.exp().ln_1p()
             })
             .sum();
 
@@ -824,7 +826,8 @@ impl QuantumRestrictedBoltzmannMachine {
     }
 
     /// Get training statistics
-    pub fn get_training_stats(&self) -> Option<&QbmTrainingStats> {
+    #[must_use]
+    pub const fn get_training_stats(&self) -> Option<&QbmTrainingStats> {
         self.training_stats.as_ref()
     }
 
@@ -832,7 +835,7 @@ impl QuantumRestrictedBoltzmannMachine {
     pub fn save_model(&self, path: &str) -> QbmResult<()> {
         // Implement model serialization
         // For now, return success
-        println!("Model would be saved to: {}", path);
+        println!("Model would be saved to: {path}");
         Ok(())
     }
 
@@ -840,32 +843,33 @@ impl QuantumRestrictedBoltzmannMachine {
     pub fn load_model(&mut self, path: &str) -> QbmResult<()> {
         // Implement model deserialization
         // For now, return success
-        println!("Model would be loaded from: {}", path);
+        println!("Model would be loaded from: {path}");
         Ok(())
     }
 }
 
 impl QuantumSamplingStats {
     /// Merge another stats object into this one
-    fn merge(&mut self, other: &QuantumSamplingStats) {
+    fn merge(&mut self, other: &Self) {
         self.total_sampling_time += other.total_sampling_time;
         self.sampling_calls += other.sampling_calls;
 
         if self.sampling_calls > 0 {
             let total_calls = self.sampling_calls as f64;
-            self.average_annealing_energy = (self.average_annealing_energy
-                * (total_calls - other.sampling_calls as f64)
-                + other.average_annealing_energy * other.sampling_calls as f64)
-                / total_calls;
+            self.average_annealing_energy = self.average_annealing_energy.mul_add(
+                total_calls - other.sampling_calls as f64,
+                other.average_annealing_energy * other.sampling_calls as f64,
+            ) / total_calls;
 
-            self.success_rate = (self.success_rate * (total_calls - other.sampling_calls as f64)
-                + other.success_rate * other.sampling_calls as f64)
-                / total_calls;
+            self.success_rate = self.success_rate.mul_add(
+                total_calls - other.sampling_calls as f64,
+                other.success_rate * other.sampling_calls as f64,
+            ) / total_calls;
 
-            self.classical_fallback_rate = (self.classical_fallback_rate
-                * (total_calls - other.sampling_calls as f64)
-                + other.classical_fallback_rate * other.sampling_calls as f64)
-                / total_calls;
+            self.classical_fallback_rate = self.classical_fallback_rate.mul_add(
+                total_calls - other.sampling_calls as f64,
+                other.classical_fallback_rate * other.sampling_calls as f64,
+            ) / total_calls;
         }
     }
 }
@@ -877,7 +881,7 @@ fn sigmoid(x: f64) -> f64 {
 
 /// Apply softmax normalization in-place
 fn softmax_normalize(values: &mut [f64]) {
-    let max_val = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let max_val = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let sum: f64 = values.iter().map(|&x| (x - max_val).exp()).sum();
 
     for value in values.iter_mut() {
@@ -922,7 +926,7 @@ mod tests {
             ..Default::default()
         };
 
-        let rbm = create_binary_rbm(4, 3, training_config).unwrap();
+        let rbm = create_binary_rbm(4, 3, training_config).expect("failed to create binary RBM");
         assert_eq!(rbm.visible_config.num_units, 4);
         assert_eq!(rbm.hidden_config.num_units, 3);
     }
@@ -952,7 +956,14 @@ mod tests {
 
         let labeled_sample = TrainingSample::labeled(vec![1.0, 0.0], vec![1.0]);
         assert_eq!(labeled_sample.data.len(), 2);
-        assert_eq!(labeled_sample.label.as_ref().unwrap().len(), 1);
+        assert_eq!(
+            labeled_sample
+                .label
+                .as_ref()
+                .expect("label should exist")
+                .len(),
+            1
+        );
     }
 
     #[test]

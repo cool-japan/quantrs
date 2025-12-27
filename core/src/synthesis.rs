@@ -102,6 +102,7 @@ pub fn decompose_single_qubit_xyx(
     unitary: &ArrayView2<Complex64>,
 ) -> QuantRS2Result<SingleQubitDecomposition> {
     // Convert to Pauli basis and use ZYZ decomposition
+    // Safety: 2x2 shape with 4 elements is guaranteed valid
     let h_gate = Array2::from_shape_vec(
         (2, 2),
         vec![
@@ -111,7 +112,7 @@ pub fn decompose_single_qubit_xyx(
             Complex64::new(-1.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("2x2 Hadamard matrix shape is always valid")
         / Complex64::new(2.0_f64.sqrt(), 0.0);
 
     // Transform: U' = H * U * H
@@ -255,8 +256,7 @@ pub fn synthesize_unitary(
             // For n-qubit gates, use recursive decomposition
             // This is a placeholder - would implement Cosine-Sine decomposition
             Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Synthesis for {}-qubit gates not yet implemented",
-                num_qubits
+                "Synthesis for {num_qubits}-qubit gates not yet implemented"
             )))
         }
     }
@@ -271,6 +271,7 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
             // Check common single-qubit gates
             let gates = vec![
                 ("I", Array2::eye(2)),
+                // Safety: All 2x2 shapes with 4 elements are guaranteed valid
                 (
                     "X",
                     Array2::from_shape_vec(
@@ -282,7 +283,7 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
                             Complex64::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 X gate shape is always valid"),
                 ),
                 (
                     "Y",
@@ -295,7 +296,7 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
                             Complex64::new(0.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 Y gate shape is always valid"),
                 ),
                 (
                     "Z",
@@ -308,7 +309,7 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
                             Complex64::new(-1.0, 0.0),
                         ],
                     )
-                    .unwrap(),
+                    .expect("2x2 Z gate shape is always valid"),
                 ),
                 (
                     "H",
@@ -321,7 +322,7 @@ pub fn identify_gate(unitary: &ArrayView2<Complex64>, tolerance: f64) -> Option<
                             Complex64::new(-1.0, 0.0),
                         ],
                     )
-                    .unwrap()
+                    .expect("2x2 H gate shape is always valid")
                         / Complex64::new(2.0_f64.sqrt(), 0.0),
                 ),
             ];
@@ -367,10 +368,11 @@ mod tests {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("Hadamard matrix shape is always valid 2x2")
             / Complex64::new(2.0_f64.sqrt(), 0.0);
 
-        let decomp = decompose_single_qubit_zyz(&h.view()).unwrap();
+        let decomp =
+            decompose_single_qubit_zyz(&h.view()).expect("ZYZ decomposition should succeed");
 
         // Reconstruct and verify
         let rz1 = Array2::from_shape_vec(
@@ -382,7 +384,7 @@ mod tests {
                 Complex64::new(0.0, decomp.theta1 / 2.0).exp(),
             ],
         )
-        .unwrap();
+        .expect("Rz1 matrix shape is always valid 2x2");
 
         let ry = Array2::from_shape_vec(
             (2, 2),
@@ -393,7 +395,7 @@ mod tests {
                 Complex64::new((decomp.phi / 2.0).cos(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("Ry matrix shape is always valid 2x2");
 
         let rz2 = Array2::from_shape_vec(
             (2, 2),
@@ -404,7 +406,7 @@ mod tests {
                 Complex64::new(0.0, decomp.theta2 / 2.0).exp(),
             ],
         )
-        .unwrap();
+        .expect("Rz2 matrix shape is always valid 2x2");
 
         // Reconstruct: e^(i*global_phase) * Rz(theta2) * Ry(phi) * Rz(theta1)
         let reconstructed = Complex64::new(0.0, decomp.global_phase).exp() * rz2.dot(&ry).dot(&rz1);
@@ -428,7 +430,7 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("X gate matrix shape is always valid 2x2");
 
         assert_eq!(identify_gate(&x.view(), 1e-10), Some("X".to_string()));
     }

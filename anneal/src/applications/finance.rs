@@ -12,6 +12,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Portfolio optimization problem
 #[derive(Debug, Clone)]
 pub struct PortfolioOptimization {
@@ -118,6 +119,7 @@ impl PortfolioOptimization {
     }
 
     /// Calculate portfolio risk
+    #[must_use]
     pub fn calculate_risk(&self, weights: &[f64]) -> f64 {
         let mut risk = 0.0;
 
@@ -131,6 +133,7 @@ impl PortfolioOptimization {
     }
 
     /// Calculate portfolio return
+    #[must_use]
     pub fn calculate_return(&self, weights: &[f64]) -> f64 {
         weights
             .iter()
@@ -140,6 +143,7 @@ impl PortfolioOptimization {
     }
 
     /// Calculate Sharpe ratio
+    #[must_use]
     pub fn calculate_sharpe_ratio(&self, weights: &[f64], risk_free_rate: f64) -> f64 {
         let portfolio_return = self.calculate_return(weights);
         let portfolio_risk = self.calculate_risk(weights);
@@ -227,7 +231,7 @@ impl OptimizationProblem for PortfolioOptimization {
         // Objective: maximize return - risk_penalty * risk
         for asset in 0..n_assets {
             for level in 0..precision {
-                let weight = (level as f64) / (precision as f64);
+                let weight = f64::from(level) / f64::from(precision);
                 let var_idx = var_map[&(asset, level)];
 
                 // Return term (to be maximized, so negate)
@@ -252,8 +256,8 @@ impl OptimizationProblem for PortfolioOptimization {
                 if covar.abs() > 1e-8 {
                     for level1 in 0..precision {
                         for level2 in 0..precision {
-                            let weight1 = (level1 as f64) / (precision as f64);
-                            let weight2 = (level2 as f64) / (precision as f64);
+                            let weight1 = f64::from(level1) / f64::from(precision);
+                            let weight2 = f64::from(level2) / f64::from(precision);
                             let var1 = var_map[&(asset1, level1)];
                             let var2 = var_map[&(asset2, level2)];
 
@@ -295,7 +299,7 @@ impl OptimizationProblem for PortfolioOptimization {
             builder.build(),
             var_map
                 .into_iter()
-                .map(|((asset, level), idx)| (format!("asset_{}_level_{}", asset, level), idx))
+                .map(|((asset, level), idx)| (format!("asset_{asset}_level_{level}"), idx))
                 .collect(),
         ))
     }
@@ -308,7 +312,7 @@ impl OptimizationProblem for PortfolioOptimization {
         let portfolio_risk = self.calculate_risk(&solution.weights);
 
         // Mean-variance objective: return - risk_penalty * risk
-        Ok(portfolio_return - self.risk_tolerance * portfolio_risk * portfolio_risk)
+        Ok((self.risk_tolerance * portfolio_risk).mul_add(-portfolio_risk, portfolio_return))
     }
 
     fn is_feasible(&self, solution: &Self::Solution) -> bool {
@@ -352,7 +356,8 @@ pub struct BinaryPortfolioOptimization {
 }
 
 impl BinaryPortfolioOptimization {
-    pub fn new(inner: PortfolioOptimization) -> Self {
+    #[must_use]
+    pub const fn new(inner: PortfolioOptimization) -> Self {
         Self { inner }
     }
 }
@@ -437,9 +442,9 @@ pub struct PortfolioMetrics {
     pub sharpe_ratio: f64,
     /// Maximum drawdown
     pub max_drawdown: f64,
-    /// Value at Risk (VaR)
+    /// Value at Risk (`VaR`)
     pub var_95: f64,
-    /// Conditional Value at Risk (CVaR)
+    /// Conditional Value at Risk (`CVaR`)
     pub cvar_95: f64,
 }
 
@@ -456,7 +461,7 @@ impl IndustrySolution for PortfolioSolution {
         for asset in 0..n_assets {
             for level in 0..precision {
                 if var_idx < binary_solution.len() && binary_solution[var_idx] == 1 {
-                    weights[asset] = (level as f64) / (precision as f64);
+                    weights[asset] = f64::from(level) / f64::from(precision);
                     break;
                 }
                 var_idx += 1;
@@ -512,7 +517,7 @@ impl IndustrySolution for PortfolioSolution {
             .enumerate()
             .map(|(i, &w)| (i, w))
             .collect();
-        indexed_weights.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        indexed_weights.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let top_positions: Vec<String> = indexed_weights
             .iter()
@@ -543,6 +548,8 @@ impl IndustrySolution for PortfolioSolution {
     }
 
     fn export_format(&self) -> ApplicationResult<String> {
+        use std::fmt::Write;
+
         let mut output = String::new();
         output.push_str("# Portfolio Allocation Report\n\n");
 
@@ -550,25 +557,30 @@ impl IndustrySolution for PortfolioSolution {
         for (i, &weight) in self.weights.iter().enumerate() {
             if weight > 0.001 {
                 // Only show significant positions
-                output.push_str(&format!("Asset {}: {:.2}%\n", i, weight * 100.0));
+                writeln!(output, "Asset {}: {:.2}%", i, weight * 100.0)
+                    .expect("Writing to String should not fail");
             }
         }
 
         output.push_str("\n## Risk Metrics\n");
-        output.push_str(&format!(
+        write!(
+            output,
             "Expected Return: {:.2}%\n",
             self.metrics.expected_return * 100.0
-        ));
-        output.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            output,
             "Volatility: {:.2}%\n",
             self.metrics.volatility * 100.0
-        ));
-        output.push_str(&format!("Sharpe Ratio: {:.3}\n", self.metrics.sharpe_ratio));
-        output.push_str(&format!("VaR (95%): {:.2}%\n", self.metrics.var_95 * 100.0));
-        output.push_str(&format!(
-            "CVaR (95%): {:.2}%\n",
-            self.metrics.cvar_95 * 100.0
-        ));
+        )
+        .expect("Writing to String should not fail");
+        writeln!(output, "Sharpe Ratio: {:.3}", self.metrics.sharpe_ratio)
+            .expect("Writing to String should not fail");
+        writeln!(output, "VaR (95%): {:.2}%", self.metrics.var_95 * 100.0)
+            .expect("Writing to String should not fail");
+        writeln!(output, "CVaR (95%): {:.2}%", self.metrics.cvar_95 * 100.0)
+            .expect("Writing to String should not fail");
 
         Ok(output)
     }
@@ -591,6 +603,7 @@ pub struct RiskManagement {
 
 impl RiskManagement {
     /// Create new risk management problem
+    #[must_use]
     pub fn new(positions: Vec<f64>) -> Self {
         Self {
             positions,
@@ -620,6 +633,7 @@ impl RiskManagement {
     }
 
     /// Calculate total risk exposure for a factor
+    #[must_use]
     pub fn calculate_factor_exposure(&self, factor: &str) -> f64 {
         if let Some(exposures) = self.risk_factors.get(factor) {
             self.positions
@@ -633,6 +647,7 @@ impl RiskManagement {
     }
 
     /// Run stress test
+    #[must_use]
     pub fn run_stress_test(&self, scenario: &HashMap<String, f64>) -> f64 {
         let mut total_impact = 0.0;
 
@@ -692,6 +707,7 @@ pub struct CreditRiskModel {
 
 impl CreditRiskAssessment {
     /// Calculate probability of default for an application
+    #[must_use]
     pub fn calculate_pd(&self, application: &CreditApplication) -> f64 {
         let mut score = 0.0;
 
@@ -721,6 +737,7 @@ impl CreditRiskAssessment {
     }
 
     /// Calculate expected loss for a portfolio selection
+    #[must_use]
     pub fn calculate_expected_loss(&self, selection: &[bool]) -> f64 {
         let mut total_loss = 0.0;
 
@@ -756,7 +773,7 @@ pub fn create_benchmark_problems(
     let conservative_portfolio = PortfolioOptimization::new(
         conservative_returns,
         conservative_covar,
-        1000000.0,
+        1_000_000.0,
         0.5, // Low risk tolerance
     )?;
 
@@ -773,7 +790,7 @@ pub fn create_benchmark_problems(
     let aggressive_portfolio = PortfolioOptimization::new(
         aggressive_returns,
         aggressive_covar,
-        1000000.0,
+        1_000_000.0,
         0.1, // High risk tolerance
     )?;
 
@@ -788,7 +805,7 @@ pub fn create_benchmark_problems(
             .map(|i| 0.04 + 0.06 * (i as f64) / (num_assets as f64))
             .collect(),
         create_sample_covariance_matrix(num_assets, 0.20),
-        1000000.0,
+        1_000_000.0,
         0.3,
     )?;
 
@@ -843,7 +860,7 @@ pub fn solve_portfolio_optimization(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 10000;
+        p.num_sweeps = 10_000;
         p.num_repetitions = 20;
         p.initial_temperature = 2.0;
         p.final_temperature = 0.01;
@@ -875,9 +892,10 @@ mod tests {
             vec![0.02, 0.03, 0.05],
         ];
 
-        let portfolio = PortfolioOptimization::new(returns, covar, 100000.0, 0.5).unwrap();
+        let portfolio = PortfolioOptimization::new(returns, covar, 100_000.0, 0.5)
+            .expect("Portfolio creation should succeed with valid inputs");
         assert_eq!(portfolio.expected_returns.len(), 3);
-        assert_eq!(portfolio.budget, 100000.0);
+        assert_eq!(portfolio.budget, 100_000.0);
     }
 
     #[test]
@@ -885,7 +903,8 @@ mod tests {
         let returns = vec![0.05, 0.08];
         let covar = vec![vec![0.04, 0.01], vec![0.01, 0.09]];
 
-        let portfolio = PortfolioOptimization::new(returns, covar, 100000.0, 0.5).unwrap();
+        let portfolio = PortfolioOptimization::new(returns, covar, 100_000.0, 0.5)
+            .expect("Portfolio creation should succeed with valid inputs");
 
         let weights = vec![0.6, 0.4];
         let risk = portfolio.calculate_risk(&weights);
@@ -901,7 +920,8 @@ mod tests {
         let returns = vec![0.05, 0.08];
         let covar = vec![vec![0.04, 0.01], vec![0.01, 0.09]];
 
-        let portfolio = PortfolioOptimization::new(returns, covar, 100000.0, 0.5).unwrap();
+        let portfolio = PortfolioOptimization::new(returns, covar, 100_000.0, 0.5)
+            .expect("Portfolio creation should succeed with valid inputs");
 
         let weights = vec![0.6, 0.4];
         let portfolio_return = portfolio.calculate_return(&weights);
@@ -916,7 +936,8 @@ mod tests {
         let returns = vec![0.05, 0.08];
         let covar = vec![vec![0.04, 0.01], vec![0.01, 0.09]];
 
-        let portfolio = PortfolioOptimization::new(returns, covar, 100000.0, 0.5).unwrap();
+        let portfolio = PortfolioOptimization::new(returns, covar, 100_000.0, 0.5)
+            .expect("Portfolio creation should succeed with valid inputs");
         assert!(portfolio.validate().is_ok());
 
         // Invalid portfolio (negative budget)
@@ -929,7 +950,8 @@ mod tests {
         let returns = vec![0.05, 0.08, 0.06];
         let covar = create_sample_covariance_matrix(3, 0.2);
 
-        let mut portfolio = PortfolioOptimization::new(returns, covar, 100000.0, 0.5).unwrap();
+        let mut portfolio = PortfolioOptimization::new(returns, covar, 100_000.0, 0.5)
+            .expect("Portfolio creation should succeed with valid inputs");
 
         assert!(portfolio
             .add_sector_constraint(0, "Tech".to_string(), 0.5)
@@ -946,11 +968,11 @@ mod tests {
     fn test_credit_risk_calculation() {
         let app = CreditApplication {
             id: "TEST001".to_string(),
-            amount: 50000.0,
+            amount: 50_000.0,
             credit_score: 720.0,
             debt_to_income: 0.3,
             employment_years: 5.0,
-            collateral_value: 60000.0,
+            collateral_value: 60_000.0,
             purpose: "Home".to_string(),
             features: HashMap::new(),
         };
@@ -978,7 +1000,8 @@ mod tests {
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(5).unwrap();
+        let problems =
+            create_benchmark_problems(5).expect("Benchmark problem creation should succeed");
         assert_eq!(problems.len(), 3);
 
         for problem in &problems {

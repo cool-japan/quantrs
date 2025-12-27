@@ -83,7 +83,7 @@ pub struct OutlierAnalysis {
 }
 
 /// Outlier detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutlierMethod {
     IsolationForest,
     LocalOutlierFactor,
@@ -103,7 +103,7 @@ pub struct DensityEstimate {
 }
 
 /// Density estimation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DensityMethod {
     KernelDensityEstimation,
     HistogramEstimation,
@@ -119,7 +119,7 @@ pub struct StatisticalAnalyzer {
 
 impl StatisticalAnalyzer {
     /// Create a new statistical analyzer
-    pub fn new(confidence_level: f64, bootstrap_samples: usize) -> Self {
+    pub const fn new(confidence_level: f64, bootstrap_samples: usize) -> Self {
         Self {
             confidence_level,
             bootstrap_samples,
@@ -143,9 +143,9 @@ impl StatisticalAnalyzer {
 
         // Test normal distribution
         let data_mean = mean(&data_array.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
         let data_std = std(&data_array.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {e:?}")))?;
 
         let (ks_stat, p_value) =
             self.kolmogorov_smirnov_test(&data_array, &DistributionType::Normal)?;
@@ -158,8 +158,8 @@ impl StatisticalAnalyzer {
                 parameters: vec![data_mean, data_std],
                 goodness_of_fit: 1.0 - ks_stat,
                 confidence_intervals: vec![(
-                    data_mean - 1.96 * data_std,
-                    data_mean + 1.96 * data_std,
+                    1.96f64.mul_add(-data_std, data_mean),
+                    1.96f64.mul_add(data_std, data_mean),
                 )],
                 p_value,
             };
@@ -211,16 +211,16 @@ impl StatisticalAnalyzer {
         let data_array = Array1::from_vec(flat_data);
 
         let data_mean = mean(&data_array.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
 
         let data_var = var(&data_array.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {e:?}")))?;
 
         let data_skew = skew(&data_array.view(), true, None)
-            .map_err(|e| DeviceError::APIError(format!("Skewness calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Skewness calculation error: {e:?}")))?;
 
         let data_kurt = kurtosis(&data_array.view(), true, true, None)
-            .map_err(|e| DeviceError::APIError(format!("Kurtosis calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Kurtosis calculation error: {e:?}")))?;
 
         // Calculate higher moments
         let higher_moments = self.calculate_higher_moments(&data_array, 6)?;
@@ -280,7 +280,7 @@ impl StatisticalAnalyzer {
 
         // Compute correlation matrices
         let correlationmatrix = corrcoef(&data_matrix.view(), "pearson")
-            .map_err(|e| DeviceError::APIError(format!("Correlation matrix error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Correlation matrix error: {e:?}")))?;
 
         // Compute rank correlations
         let rank_correlations = self.compute_rank_correlations(&data_matrix)?;
@@ -349,7 +349,7 @@ impl StatisticalAnalyzer {
 
         // Scott's rule for bandwidth selection
         let data_std = std(&data_array.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {e:?}")))?;
         let bandwidth = 1.06 * data_std * (n as f64).powf(-1.0 / 5.0);
 
         // Create support points
@@ -359,14 +359,15 @@ impl StatisticalAnalyzer {
         let support_points = 100;
 
         let support = Array1::from_shape_fn(support_points, |i| {
-            data_min - 0.2 * range + (i as f64 / (support_points - 1) as f64) * 1.4 * range
+            (i as f64 / (support_points - 1) as f64 * 1.4 * range)
+                .mul_add(1.0, 0.2f64.mul_add(-range, data_min))
         });
 
         // Compute density using Gaussian kernel
         let mut density = Array1::zeros(support_points);
         for (i, &x) in support.iter().enumerate() {
             let mut sum = 0.0;
-            for &data_point in data_array.iter() {
+            for &data_point in &data_array {
                 let z = (x - data_point) / bandwidth;
                 sum += (-0.5 * z * z).exp();
             }
@@ -375,9 +376,9 @@ impl StatisticalAnalyzer {
 
         // Compute log-likelihood for cross-validation
         let mut log_likelihood = 0.0;
-        for &data_point in data_array.iter() {
+        for &data_point in &data_array {
             let mut sum = 0.0;
-            for &other_point in data_array.iter() {
+            for &other_point in &data_array {
                 if (data_point - other_point).abs() > 1e-10 {
                     let z = (data_point - other_point) / bandwidth;
                     sum += (-0.5 * z * z).exp();
@@ -407,12 +408,12 @@ impl StatisticalAnalyzer {
     ) -> DeviceResult<(f64, f64)> {
         let n = data.len() as f64;
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let data_mean = mean(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
         let data_std = std(&data.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {e:?}")))?;
 
         let mut max_diff: f64 = 0.0;
         for (i, &value) in sorted_data.iter().enumerate() {
@@ -460,18 +461,19 @@ impl StatisticalAnalyzer {
     /// Error function approximation
     fn erf(&self, x: f64) -> f64 {
         // Abramowitz and Stegun approximation
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
+        let a1 = 0.254_829_592;
+        let a2 = -0.284_496_736;
+        let a3 = 1.421_413_741;
+        let a4 = -1.453_152_027;
+        let a5 = 1.061_405_429;
+        let p = 0.327_591_1;
 
         let sign = x.signum();
         let x = x.abs();
 
         let t = 1.0 / (1.0 + p * x);
-        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+        let y = ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+            .mul_add(-(-x * x).exp(), 1.0);
 
         sign * y
     }
@@ -500,9 +502,9 @@ impl StatisticalAnalyzer {
 
     fn estimate_gamma_parameters(&self, data: &Array1<f64>) -> DeviceResult<(f64, f64)> {
         let data_mean = mean(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
         let data_var = var(&data.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {e:?}")))?;
 
         if data_var > 0.0 {
             let scale = data_var / data_mean;
@@ -519,13 +521,13 @@ impl StatisticalAnalyzer {
         max_order: usize,
     ) -> DeviceResult<Vec<f64>> {
         let data_mean = mean(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
 
         let mut moments = Vec::new();
 
         for order in 3..=max_order {
             let mut sum = 0.0;
-            for &value in data.iter() {
+            for &value in data {
                 sum += (value - data_mean).powi(order as i32);
             }
             moments.push(sum / data.len() as f64);
@@ -554,7 +556,7 @@ impl StatisticalAnalyzer {
             }
         }
 
-        bootstrap_means.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        bootstrap_means.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let alpha = 1.0 - self.confidence_level;
         let lower_idx = (alpha / 2.0 * self.bootstrap_samples as f64) as usize;
         let upper_idx = ((1.0 - alpha / 2.0) * self.bootstrap_samples as f64) as usize;
@@ -647,12 +649,12 @@ impl StatisticalAnalyzer {
     ) -> DeviceResult<(Vec<usize>, Vec<f64>)> {
         // Modified Z-score method
         let data_median = median(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Median calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Median calculation error: {e:?}")))?;
 
         // Median absolute deviation
         let deviations: Vec<f64> = data.iter().map(|&x| (x - data_median).abs()).collect();
         let mad = median(&Array1::from_vec(deviations).view())
-            .map_err(|e| DeviceError::APIError(format!("MAD calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("MAD calculation error: {e:?}")))?;
 
         let threshold = 3.5;
         let mut outliers = Vec::new();

@@ -114,7 +114,7 @@ pub struct ZNEConfig {
 }
 
 /// Extrapolation methods for ZNE
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExtrapolationMethod {
     /// Linear extrapolation
     Linear,
@@ -127,7 +127,7 @@ pub enum ExtrapolationMethod {
 }
 
 /// Folding strategies for noise amplification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FoldingStrategy {
     /// Global folding (fold entire circuit)
     Global,
@@ -199,7 +199,7 @@ pub enum OperationType {
 }
 
 /// Sampling strategies for PEC
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PECSamplingStrategy {
     /// Uniform sampling
     Uniform,
@@ -238,7 +238,7 @@ pub struct Symmetry {
 }
 
 /// Types of symmetries
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymmetryType {
     /// Parity symmetry
     Parity,
@@ -264,7 +264,7 @@ pub struct SymmetryOperator {
 }
 
 /// Pauli types for symmetry operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PauliType {
     I, // Identity
     X, // Pauli X
@@ -273,7 +273,7 @@ pub enum PauliType {
 }
 
 /// Symmetry verification methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymmetryVerificationMethod {
     /// Direct measurement
     DirectMeasurement,
@@ -299,7 +299,7 @@ pub struct ReadoutConfig {
 }
 
 /// Readout error mitigation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReadoutMitigationMethod {
     /// Matrix inversion
     MatrixInversion,
@@ -312,7 +312,7 @@ pub enum ReadoutMitigationMethod {
 }
 
 /// Calibration frequency settings
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationFrequency {
     /// Before each measurement
     PerMeasurement,
@@ -351,7 +351,7 @@ pub struct DigitalProtocol {
 }
 
 /// Types of digital protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DigitalProtocolType {
     /// Dynamical decoupling
     DynamicalDecoupling,
@@ -403,7 +403,7 @@ pub struct TimeVaryingError {
 }
 
 /// Types of time dependence
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TimeDependenceType {
     /// Constant
     Constant,
@@ -431,7 +431,7 @@ pub struct VirtualZConfig {
 }
 
 /// Z-gate decomposition methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ZGateDecomposition {
     /// Virtual Z implementation
     Virtual,
@@ -485,7 +485,7 @@ pub struct PulseElement {
 }
 
 /// Types of pulses
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PulseType {
     /// Rectangular pulse
     Rectangular,
@@ -513,7 +513,7 @@ pub enum RobustnessCriterion {
 }
 
 /// Pulse optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PulseOptimizationMethod {
     /// Gradient-based optimization
     Gradient,
@@ -541,7 +541,7 @@ pub struct MitigationStrategy {
 }
 
 /// Types of mitigation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationStrategyType {
     /// Single technique
     Single,
@@ -582,7 +582,7 @@ pub struct ResourceConstraints {
 }
 
 /// Methods for combining mitigation techniques
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CombinationMethod {
     /// Sequential application
     Sequential,
@@ -891,7 +891,7 @@ impl ErrorMitigationManager {
     }
 
     /// Check if problem has exploitable symmetries
-    fn problem_has_symmetries(&self, problem: &IsingModel) -> bool {
+    const fn problem_has_symmetries(&self, problem: &IsingModel) -> bool {
         // Simplified symmetry detection
         // In practice, would analyze the problem structure
         problem.num_qubits >= 2
@@ -1032,8 +1032,8 @@ impl ErrorMitigationManager {
         let sum_xy: f64 = x.iter().zip(y.iter()).map(|(&xi, &yi)| xi * yi).sum();
         let sum_x2: f64 = x.iter().map(|&xi| xi * xi).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
-        let intercept = (sum_y - slope * sum_x) / n;
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x2, -(sum_x * sum_x));
+        let intercept = slope.mul_add(-sum_x, sum_y) / n;
 
         // Extrapolate to x = 0 (zero noise)
         Ok(intercept)
@@ -1044,8 +1044,7 @@ impl ErrorMitigationManager {
         // Simplified exponential fit: y = a * exp(b * x) + c
         // Use linear fit on log-transformed data
         let log_y: Vec<f64> = y.iter().map(|&yi| yi.abs().ln()).collect();
-        self.linear_extrapolation(x, &log_y)
-            .map(|log_result| log_result.exp())
+        self.linear_extrapolation(x, &log_y).map(f64::exp)
     }
 
     /// Polynomial extrapolation
@@ -1070,7 +1069,7 @@ impl ErrorMitigationManager {
 
         // Use the first two points for Richardson extrapolation
         let r = x[1] / x[0]; // Ratio of scaling factors
-        let extrapolated = (r * y[1] - y[0]) / (r - 1.0);
+        let extrapolated = r.mul_add(y[1], -y[0]) / (r - 1.0);
 
         Ok(extrapolated)
     }
@@ -1089,7 +1088,8 @@ impl ErrorMitigationManager {
         let mut mitigated_result = result.clone();
 
         // Apply error cancellation based on quasi-probabilities
-        let correction_factor = 1.0 + 0.1 * config.quasi_prob_decomposition.sampling_overhead;
+        let correction_factor =
+            0.1f64.mul_add(config.quasi_prob_decomposition.sampling_overhead, 1.0);
         mitigated_result.energy /= correction_factor;
 
         Ok(mitigated_result)
@@ -1115,7 +1115,7 @@ impl ErrorMitigationManager {
             }
         }
 
-        let violation_rate = symmetry_violations as f64 / config.symmetries.len() as f64;
+        let violation_rate = f64::from(symmetry_violations) / config.symmetries.len() as f64;
 
         if violation_rate <= config.post_selection_threshold {
             // Accept result
@@ -1138,7 +1138,7 @@ impl ErrorMitigationManager {
 
             for (&qubit, pauli) in operator.support.iter().zip(operator.pauli_string.iter()) {
                 if qubit < solution.len() {
-                    let spin_value = solution[qubit] as f64;
+                    let spin_value = f64::from(solution[qubit]);
 
                     match pauli {
                         PauliType::Z => operator_value *= spin_value,
@@ -1187,7 +1187,7 @@ impl ErrorMitigationManager {
                 let p10 = config.confusion_matrix[[1, 0]];
                 let p11 = config.confusion_matrix[[1, 1]];
 
-                let det = p00 * p11 - p01 * p10;
+                let det = p00.mul_add(p11, -(p01 * p10));
 
                 if det.abs() > config.inversion_threshold {
                     // Apply matrix inversion
@@ -1221,15 +1221,15 @@ impl ErrorMitigationManager {
 
         // Add bias terms
         for i in 0..solution.len() {
-            energy += problem.get_bias(i).unwrap_or(0.0) * solution[i] as f64;
+            energy += problem.get_bias(i).unwrap_or(0.0) * f64::from(solution[i]);
         }
 
         // Add coupling terms
         for i in 0..solution.len() {
             for j in (i + 1)..solution.len() {
                 energy += problem.get_coupling(i, j).unwrap_or(0.0)
-                    * solution[i] as f64
-                    * solution[j] as f64;
+                    * f64::from(solution[i])
+                    * f64::from(solution[j]);
             }
         }
 
@@ -1332,6 +1332,7 @@ impl ErrorMitigationManager {
 
 impl CalibrationData {
     /// Create new calibration data
+    #[must_use]
     pub fn new() -> Self {
         Self {
             readout_calibration: ReadoutCalibration {
@@ -1359,6 +1360,7 @@ impl CalibrationData {
 
 impl MitigationPerformanceTracker {
     /// Create new performance tracker
+    #[must_use]
     pub fn new() -> Self {
         Self {
             performance_history: Vec::new(),
@@ -1391,7 +1393,7 @@ impl Default for MitigationStrategy {
             selection_criteria: SelectionCriteria {
                 error_rate_threshold: 0.01,
                 resource_constraints: ResourceConstraints {
-                    max_additional_shots: 10000,
+                    max_additional_shots: 10_000,
                     max_time_overhead: 2.0,
                     max_classical_processing: 100.0,
                     memory_limit: 1000,
@@ -1421,7 +1423,7 @@ impl Default for ErrorMitigationConfig {
             num_noise_levels: 5,
             pec_sampling_overhead_limit: 10.0,
             symmetry_threshold: 0.1,
-            readout_calibration_shots: 10000,
+            readout_calibration_shots: 10_000,
         }
     }
 }
@@ -1439,17 +1441,21 @@ mod tests {
 
     #[test]
     fn test_linear_extrapolation() {
-        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
+        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default())
+            .expect("should create error mitigation manager");
         let x = vec![1.0, 2.0, 3.0];
         let y = vec![2.0, 4.0, 6.0];
 
-        let result = manager.linear_extrapolation(&x, &y).unwrap();
+        let result = manager
+            .linear_extrapolation(&x, &y)
+            .expect("should perform linear extrapolation");
         assert!((result - 0.0).abs() < 1e-10); // Should extrapolate to y = 0 at x = 0
     }
 
     #[test]
     fn test_technique_selection() {
-        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
+        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default())
+            .expect("should create error mitigation manager");
         let mut problem = IsingModel::new(4);
         let result = AnnealingResult {
             solution: vec![1, -1, 1, -1],
@@ -1463,19 +1469,24 @@ mod tests {
 
         let techniques = manager
             .select_techniques(&problem, &result, &params)
-            .unwrap();
+            .expect("should select mitigation techniques");
         assert!(!techniques.is_empty());
     }
 
     #[test]
     fn test_energy_calculation() {
-        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
+        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default())
+            .expect("should create error mitigation manager");
         let mut problem = IsingModel::new(2);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, -0.5).unwrap();
+        problem.set_bias(0, 1.0).expect("should set bias");
+        problem
+            .set_coupling(0, 1, -0.5)
+            .expect("should set coupling");
 
         let solution = vec![1, -1];
-        let energy = manager.calculate_energy(&problem, &solution).unwrap();
+        let energy = manager
+            .calculate_energy(&problem, &solution)
+            .expect("should calculate energy");
 
         // Energy = 1.0 * 1 + (-0.5) * 1 * (-1) = 1.0 + 0.5 = 1.5
         assert!((energy - 1.5).abs() < 1e-10);
@@ -1483,7 +1494,8 @@ mod tests {
 
     #[test]
     fn test_symmetry_measurement() {
-        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default()).unwrap();
+        let manager = ErrorMitigationManager::new(ErrorMitigationConfig::default())
+            .expect("should create error mitigation manager");
         let symmetry = Symmetry {
             symmetry_type: SymmetryType::Parity,
             operators: vec![SymmetryOperator {
@@ -1498,7 +1510,7 @@ mod tests {
         let solution = vec![1, 1]; // Both spins up
         let eigenvalue = manager
             .measure_symmetry_eigenvalue(&symmetry, &solution)
-            .unwrap();
+            .expect("should measure symmetry eigenvalue");
 
         // Z ⊗ Z |↑↑⟩ = +1 |↑↑⟩
         assert!((eigenvalue - 1.0).abs() < 1e-10);

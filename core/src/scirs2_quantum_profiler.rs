@@ -23,7 +23,7 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(
+    pub const fn new(
         gate_type: GateType,
         target_qubits: Vec<usize>,
         control_qubits: Option<Vec<usize>>,
@@ -35,7 +35,7 @@ impl QuantumGate {
         }
     }
 
-    pub fn gate_type(&self) -> &GateType {
+    pub const fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
 
@@ -118,7 +118,7 @@ impl SciRS2QuantumProfiler {
     }
 
     /// Create profiler with custom configuration
-    pub fn with_config(config: SciRS2ProfilingConfig) -> Self {
+    pub const fn with_config(config: SciRS2ProfilingConfig) -> Self {
         let buffer_pool = if config.profile_memory_allocations {
             Some(BufferPool::<f64>::new())
         } else {
@@ -499,26 +499,23 @@ impl SciRS2QuantumProfiler {
         num_qubits: usize,
     ) -> Result<(), QuantRS2Error> {
         // Standard implementation without SIMD tracking
-        match gate.gate_type() {
-            GateType::X => {
-                let target = gate.target_qubits()[0];
-                let target_bit = 1 << target;
-                for i in 0..(1 << num_qubits) {
-                    let j = i ^ target_bit;
-                    if i < j {
-                        state.swap(i, j);
-                    }
+        if gate.gate_type() == &GateType::X {
+            let target = gate.target_qubits()[0];
+            let target_bit = 1 << target;
+            for i in 0..(1 << num_qubits) {
+                let j = i ^ target_bit;
+                if i < j {
+                    state.swap(i, j);
                 }
             }
-            _ => {
-                // Other gates implemented similarly
-            }
+        } else {
+            // Other gates implemented similarly
         }
         Ok(())
     }
 
     /// Calculate circuit depth for metadata
-    fn calculate_circuit_depth(&self, circuit: &[QuantumGate]) -> usize {
+    const fn calculate_circuit_depth(&self, circuit: &[QuantumGate]) -> usize {
         // Simplified depth calculation
         circuit.len() // In practice, this would be more sophisticated
     }
@@ -534,7 +531,7 @@ impl SciRS2QuantumProfiler {
     }
 
     /// Get current memory usage
-    fn get_current_memory_usage(&self) -> usize {
+    const fn get_current_memory_usage(&self) -> usize {
         // In a real implementation, this would query system memory
         // For now, return a placeholder
         1024 * 1024 // 1MB placeholder
@@ -714,12 +711,11 @@ impl SciRS2QuantumProfiler {
 
         let peak_usage = timeline.iter().map(|s| s.memory_usage).max().unwrap_or(0);
         let average_usage = timeline.iter().map(|s| s.memory_usage).sum::<usize>() / timeline.len();
-        let memory_growth_rate = if timeline.len() > 1 {
-            (timeline.last().unwrap().memory_usage as f64
-                - timeline.first().unwrap().memory_usage as f64)
-                / timeline.len() as f64
-        } else {
-            0.0
+        let memory_growth_rate = match (timeline.first(), timeline.last()) {
+            (Some(first), Some(last)) if timeline.len() > 1 => {
+                (last.memory_usage as f64 - first.memory_usage as f64) / timeline.len() as f64
+            }
+            _ => 0.0,
         };
 
         Ok(MemoryAnalysis {
@@ -742,10 +738,10 @@ impl SciRS2QuantumProfiler {
             .map(|s| s.simd_operations)
             .max()
             .unwrap_or(0);
-        let simd_utilization_rate = if !timeline.is_empty() {
-            timeline.iter().filter(|s| s.simd_operations > 0).count() as f64 / timeline.len() as f64
-        } else {
+        let simd_utilization_rate = if timeline.is_empty() {
             0.0
+        } else {
+            timeline.iter().filter(|s| s.simd_operations > 0).count() as f64 / timeline.len() as f64
         };
 
         Ok(SimdAnalysis {
@@ -875,7 +871,8 @@ impl SciRS2QuantumProfiler {
         } else {
             1.0
         };
-        let memory_factor = 1.0 + (self.memory_tracker.get_optimizations_count() as f64 * 0.1);
+        let memory_factor =
+            (self.memory_tracker.get_optimizations_count() as f64).mul_add(0.1, 1.0);
 
         simd_factor * parallel_factor * memory_factor
     }
@@ -1066,15 +1063,15 @@ pub struct PerformanceMetrics {
 }
 
 impl PerformanceMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub fn reset(&mut self) {}
+    pub const fn reset(&mut self) {}
 
-    pub fn record_gate_execution(&mut self, _result: &GateProfilingResult) {}
+    pub const fn record_gate_execution(&mut self, _result: &GateProfilingResult) {}
 
-    pub fn generate_summary(&self) -> PerformanceSummary {
+    pub const fn generate_summary(&self) -> PerformanceSummary {
         PerformanceSummary {
             total_operations: 0,
             average_execution_time: Duration::from_nanos(0),
@@ -1097,35 +1094,38 @@ pub struct SimdTracker {
 }
 
 impl SimdTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             operation_count: 0,
             total_operations: 0,
         }
     }
 
-    pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
+    pub const fn start_session(
+        &mut self,
+        _session_id: ProfilingSessionId,
+    ) -> Result<(), QuantRS2Error> {
         self.operation_count = 0;
         Ok(())
     }
 
-    pub fn start_operation_tracking(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn start_operation_tracking(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn finish_operation_tracking(&mut self) -> Result<usize, QuantRS2Error> {
+    pub const fn finish_operation_tracking(&mut self) -> Result<usize, QuantRS2Error> {
         Ok(self.operation_count)
     }
 
-    pub fn get_operation_count(&self) -> usize {
+    pub const fn get_operation_count(&self) -> usize {
         self.operation_count
     }
 
-    pub fn get_total_operations(&self) -> usize {
+    pub const fn get_total_operations(&self) -> usize {
         self.total_operations
     }
 
-    pub fn record_simd_operation(&mut self, _operation_type: &str, count: usize) {
+    pub const fn record_simd_operation(&mut self, _operation_type: &str, count: usize) {
         self.operation_count += count;
         self.total_operations += count;
     }
@@ -1137,21 +1137,24 @@ pub struct MemoryTracker {
 }
 
 impl MemoryTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             optimizations_count: 0,
         }
     }
 
-    pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
+    pub const fn start_session(
+        &mut self,
+        _session_id: ProfilingSessionId,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn detected_efficient_allocation(&self) -> bool {
+    pub const fn detected_efficient_allocation(&self) -> bool {
         true // Placeholder
     }
 
-    pub fn get_optimizations_count(&self) -> usize {
+    pub const fn get_optimizations_count(&self) -> usize {
         self.optimizations_count
     }
 }
@@ -1162,29 +1165,32 @@ pub struct ParallelExecutionTracker {
 }
 
 impl ParallelExecutionTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             parallel_operations_count: 0,
         }
     }
 
-    pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
+    pub const fn start_session(
+        &mut self,
+        _session_id: ProfilingSessionId,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn record_parallel_operation(&mut self, _operation_type: &str) {
+    pub const fn record_parallel_operation(&mut self, _operation_type: &str) {
         self.parallel_operations_count += 1;
     }
 
-    pub fn detect_optimizations(&self, _duration: &Duration) -> Vec<String> {
+    pub const fn detect_optimizations(&self, _duration: &Duration) -> Vec<String> {
         vec![]
     }
 
-    pub fn detected_parallel_benefit(&self) -> bool {
+    pub const fn detected_parallel_benefit(&self) -> bool {
         self.parallel_operations_count > 0
     }
 
-    pub fn get_parallel_operations_count(&self) -> usize {
+    pub const fn get_parallel_operations_count(&self) -> usize {
         self.parallel_operations_count
     }
 }
@@ -1195,24 +1201,27 @@ pub struct CachePerformanceMonitor {
 }
 
 impl CachePerformanceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             average_improvement: 0.0,
         }
     }
 
-    pub fn start_session(&mut self, _session_id: ProfilingSessionId) -> Result<(), QuantRS2Error> {
+    pub const fn start_session(
+        &mut self,
+        _session_id: ProfilingSessionId,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn capture_cache_stats(&self) -> Result<CacheStats, QuantRS2Error> {
+    pub const fn capture_cache_stats(&self) -> Result<CacheStats, QuantRS2Error> {
         Ok(CacheStats {
             hits: 100,
             misses: 10,
         })
     }
 
-    pub fn get_average_improvement(&self) -> f64 {
+    pub const fn get_average_improvement(&self) -> f64 {
         self.average_improvement
     }
 }
@@ -1227,7 +1236,7 @@ pub struct CacheStats {
 pub struct NumericalStabilityAnalyzer {}
 
 impl NumericalStabilityAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -1243,7 +1252,7 @@ impl NumericalStabilityAnalyzer {
 pub struct PlatformOptimizationTracker {}
 
 impl PlatformOptimizationTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -1273,7 +1282,9 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
 
-        let session_id = profiler.start_profiling_session(&circuit, 2).unwrap();
+        let session_id = profiler
+            .start_profiling_session(&circuit, 2)
+            .expect("Failed to start profiling session");
         assert!(matches!(session_id, ProfilingSessionId(_)));
     }
 
@@ -1285,7 +1296,7 @@ mod tests {
 
         let result = profiler
             .profile_gate_execution(&gate, &mut state, 1)
-            .unwrap();
+            .expect("Failed to profile gate execution");
         assert_eq!(result.gate_type, "X");
         assert!(result.execution_time.as_nanos() > 0);
     }
@@ -1298,7 +1309,7 @@ mod tests {
 
         let result = profiler
             .profile_circuit_execution(&circuit, &initial_state, 1)
-            .unwrap();
+            .expect("Failed to profile circuit execution");
         assert_eq!(result.gate_results.len(), 1);
         assert!(result.scirs2_enhancement_factor >= 1.0);
     }
@@ -1308,7 +1319,9 @@ mod tests {
         let mut tracker = SimdTracker::new();
         let session_id = ProfilingSessionId(1);
 
-        tracker.start_session(session_id).unwrap();
+        tracker
+            .start_session(session_id)
+            .expect("Failed to start SIMD tracking session");
         tracker.record_simd_operation("test_op", 5);
         assert_eq!(tracker.get_operation_count(), 5);
     }
@@ -1328,7 +1341,7 @@ mod tests {
 
         let recommendations = profiler
             .generate_scirs2_optimization_recommendations(&analysis)
-            .unwrap();
+            .expect("Failed to generate optimization recommendations");
         assert!(!recommendations.is_empty());
         assert!(recommendations.iter().any(|r| r.category.contains("SIMD")));
     }

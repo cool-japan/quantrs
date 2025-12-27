@@ -24,9 +24,17 @@ pub struct VQEResult {
 impl fmt::Display for VQEResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "VQE Result:\n")?;
-        write!(f, "  Ground state energy: {:.6}\n", self.ground_state_energy)?;
+        write!(
+            f,
+            "  Ground state energy: {:.6}\n",
+            self.ground_state_energy
+        )?;
         write!(f, "  Convergence achieved: {}\n", self.convergence_achieved)?;
-        write!(f, "  Total iterations: {}\n", self.optimization_history.iterations.len())?;
+        write!(
+            f,
+            "  Total iterations: {}\n",
+            self.optimization_history.iterations.len()
+        )?;
         write!(f, "  Execution time: {:?}\n", self.execution_time)?;
         Ok(())
     }

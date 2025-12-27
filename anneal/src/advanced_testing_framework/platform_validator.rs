@@ -1,6 +1,9 @@
 //! Cross-platform validation system
 
-use super::*;
+use super::{
+    ApplicationError, ApplicationResult, Duration, ExpectedMetrics, HashMap, PlatformAvailability,
+    PlatformConfig, PlatformType, ProblemSpecification, ProblemType, TestExecutionResult,
+};
 
 /// Cross-platform validation system
 #[derive(Debug)]
@@ -109,7 +112,7 @@ pub struct ComparisonCriterion {
 }
 
 /// Types of comparisons
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonType {
     /// Absolute difference
     AbsoluteDifference,
@@ -146,7 +149,7 @@ pub struct CompatibilityMatrix {
 }
 
 /// Compatibility levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompatibilityLevel {
     /// Fully compatible
     Full,
@@ -174,7 +177,7 @@ pub struct CompatibilityIssue {
 }
 
 /// Issue severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IssueSeverity {
     /// Critical issue
     Critical,
@@ -187,6 +190,7 @@ pub enum IssueSeverity {
 }
 
 impl CrossPlatformValidator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             platforms: Self::create_default_platforms(),
@@ -208,7 +212,7 @@ impl CrossPlatformValidator {
                 platform_type: PlatformType::Classical,
                 availability: PlatformAvailability::Available,
                 capabilities: PlatformCapabilities {
-                    max_problem_size: 10000,
+                    max_problem_size: 10_000,
                     supported_types: vec![
                         ProblemType::RandomIsing,
                         ProblemType::MaxCut,
@@ -240,7 +244,7 @@ impl CrossPlatformValidator {
                     runtime_range: (Duration::from_millis(20), Duration::from_secs(20)),
                     quality_range: (0.7, 0.95),
                     reliability: 0.95,
-                    cost_per_problem: Some(0.00037),
+                    cost_per_problem: Some(0.00_037),
                 },
             },
             Platform {
@@ -269,6 +273,7 @@ impl CrossPlatformValidator {
     }
 
     /// Get platform by ID
+    #[must_use]
     pub fn get_platform(&self, platform_id: &str) -> Option<&Platform> {
         self.platforms.iter().find(|p| p.id == platform_id)
     }
@@ -284,7 +289,7 @@ impl CrossPlatformValidator {
         suite_id: &str,
     ) -> ApplicationResult<CrossPlatformValidationResult> {
         let suite = self.test_suites.get(suite_id).ok_or_else(|| {
-            ApplicationError::ConfigurationError(format!("Test suite not found: {}", suite_id))
+            ApplicationError::ConfigurationError(format!("Test suite not found: {suite_id}"))
         })?;
 
         let mut platform_results = HashMap::new();
@@ -365,7 +370,10 @@ impl CrossPlatformValidator {
             PlatformType::Custom(_) => 0.75,
         };
 
-        let problem_size = (test_case.problem.size_range.0 + test_case.problem.size_range.1) / 2;
+        let problem_size = usize::midpoint(
+            test_case.problem.size_range.0,
+            test_case.problem.size_range.1,
+        );
         let size_factor = (problem_size as f64 / 1000.0).min(1.0);
         let quality = base_quality * (1.0 - size_factor * 0.2);
 
@@ -420,7 +428,7 @@ impl CrossPlatformValidator {
                     _ => (value1 - value2).abs(), // Simplified
                 };
 
-                let pair_key = format!("{}_{}", platform1, platform2);
+                let pair_key = format!("{platform1}_{platform2}");
                 differences.insert(pair_key, difference);
             }
         }
@@ -477,6 +485,7 @@ impl CrossPlatformValidator {
     }
 
     /// Get compatibility information between platforms
+    #[must_use]
     pub fn get_compatibility(&self, platform1: &str, platform2: &str) -> CompatibilityInfo {
         let feature_compat = self
             .compatibility_matrix
@@ -496,7 +505,7 @@ impl CrossPlatformValidator {
         let issues = self
             .compatibility_matrix
             .known_issues
-            .get(&format!("{}_{}", platform1, platform2))
+            .get(&format!("{platform1}_{platform2}"))
             .unwrap_or(&default_issues);
 
         CompatibilityInfo {

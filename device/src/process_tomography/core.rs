@@ -62,7 +62,7 @@ pub struct SciRS2ProcessTomographer {
 
 impl SciRS2ProcessTomographer {
     /// Create a new SciRS2 process tomographer
-    pub fn new(
+    pub const fn new(
         config: SciRS2ProcessTomographyConfig,
         calibration_manager: CalibrationManager,
     ) -> Self {
@@ -262,7 +262,7 @@ impl SciRS2ProcessTomographer {
                 Complex64::new(1.0, 0.0),
             ],
         )
-        .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
+        .map_err(|e| DeviceError::APIError(format!("Array creation error: {e}")))?;
 
         let pauli_x = Array2::from_shape_vec(
             (2, 2),
@@ -273,7 +273,7 @@ impl SciRS2ProcessTomographer {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
+        .map_err(|e| DeviceError::APIError(format!("Array creation error: {e}")))?;
 
         let pauli_y = Array2::from_shape_vec(
             (2, 2),
@@ -284,7 +284,7 @@ impl SciRS2ProcessTomographer {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
+        .map_err(|e| DeviceError::APIError(format!("Array creation error: {e}")))?;
 
         let pauli_z = Array2::from_shape_vec(
             (2, 2),
@@ -295,7 +295,7 @@ impl SciRS2ProcessTomographer {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
+        .map_err(|e| DeviceError::APIError(format!("Array creation error: {e}")))?;
 
         let single_qubit_paulis = vec![pauli_i, pauli_x, pauli_y, pauli_z];
 

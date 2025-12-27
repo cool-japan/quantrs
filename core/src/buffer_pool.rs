@@ -13,7 +13,7 @@ pub struct BufferPool<T> {
 
 impl<T: Clone + Default> BufferPool<T> {
     /// Create a new buffer pool
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             pool: Mutex::new(VecDeque::new()),
             _phantom: PhantomData,
@@ -22,24 +22,25 @@ impl<T: Clone + Default> BufferPool<T> {
 
     /// Get a buffer from the pool
     pub fn get(&self, size: usize) -> Vec<T> {
-        let mut pool = self.pool.lock().unwrap();
-        if let Some(mut buffer) = pool.pop_front() {
-            buffer.resize(size, T::default());
-            buffer
-        } else {
-            vec![T::default(); size]
-        }
+        let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
+        pool.pop_front().map_or_else(
+            || vec![T::default(); size],
+            |mut buffer| {
+                buffer.resize(size, T::default());
+                buffer
+            },
+        )
     }
 
     /// Return a buffer to the pool
     pub fn put(&self, buffer: Vec<T>) {
-        let mut pool = self.pool.lock().unwrap();
+        let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
         pool.push_back(buffer);
     }
 
     /// Clear all buffers in the pool
     pub fn clear(&self) {
-        let mut pool = self.pool.lock().unwrap();
+        let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
         pool.clear();
     }
 }

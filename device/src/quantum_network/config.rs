@@ -63,7 +63,7 @@ impl Default for FlowControlConfig {
         Self {
             window_size: 64000,
             max_packet_size: 1500,
-            buffer_size: 128000,
+            buffer_size: 128_000,
             flow_control_algorithm: "sliding_window".to_string(),
             congestion_avoidance: true,
         }

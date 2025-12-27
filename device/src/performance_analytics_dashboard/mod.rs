@@ -202,7 +202,7 @@ pub struct DashboardState {
 }
 
 /// Dashboard view types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DashboardView {
     Overview,
     RealTimeMetrics,
@@ -221,7 +221,7 @@ pub struct DataFilter {
 }
 
 /// Filter operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FilterOperator {
     Equals,
     NotEquals,
@@ -260,7 +260,7 @@ pub struct UserAction {
 }
 
 /// Action types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionType {
     ViewChange,
     FilterApplied,
@@ -271,7 +271,7 @@ pub enum ActionType {
 }
 
 /// System status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemStatus {
     Healthy,
     Warning,
@@ -308,25 +308,28 @@ impl PerformanceAnalyticsDashboard {
                 config.prediction_config.clone(),
             ))),
             event_sender,
-            data_collector: Arc::new(Mutex::new(DataCollector::new(config.clone()))),
+            data_collector: Arc::new(Mutex::new(DataCollector::new(config))),
             dashboard_state: Arc::new(RwLock::new(DashboardState::default())),
             user_sessions: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
     /// Initialize dashboard with device manager
+    #[must_use]
     pub fn with_device_manager(mut self, manager: Arc<IntegratedQuantumDeviceManager>) -> Self {
         self.integrated_manager = Some(manager);
         self
     }
 
     /// Initialize dashboard with ML optimization engine
+    #[must_use]
     pub fn with_ml_engine(mut self, engine: Arc<Mutex<MLOptimizationConfig>>) -> Self {
         self.ml_engine = Some(engine);
         self
     }
 
     /// Initialize dashboard with compilation pipeline
+    #[must_use]
     pub fn with_compilation_pipeline(mut self, pipeline: Arc<AdaptiveCompilationConfig>) -> Self {
         self.compilation_pipeline = Some(pipeline);
         self
@@ -336,7 +339,7 @@ impl PerformanceAnalyticsDashboard {
     pub async fn start(&self) -> DeviceResult<()> {
         // Start data collection
         let collector = self.data_collector.clone();
-        let mut collector_guard = collector.lock().unwrap();
+        let mut collector_guard = collector.lock().unwrap_or_else(|e| e.into_inner());
         collector_guard.start_collection().await?;
         drop(collector_guard);
 
@@ -345,7 +348,7 @@ impl PerformanceAnalyticsDashboard {
 
         // Start alert monitoring
         let alert_manager = self.alert_manager.clone();
-        let mut alert_guard = alert_manager.lock().unwrap();
+        let mut alert_guard = alert_manager.lock().unwrap_or_else(|e| e.into_inner());
         alert_guard.start_monitoring().await?;
         drop(alert_guard);
 
@@ -356,7 +359,7 @@ impl PerformanceAnalyticsDashboard {
     pub async fn stop(&self) -> DeviceResult<()> {
         // Stop data collection
         let collector = self.data_collector.clone();
-        let mut collector_guard = collector.lock().unwrap();
+        let mut collector_guard = collector.lock().unwrap_or_else(|e| e.into_inner());
         collector_guard.stop_collection().await?;
         drop(collector_guard);
 
@@ -365,7 +368,7 @@ impl PerformanceAnalyticsDashboard {
 
         // Stop alert monitoring
         let alert_manager = self.alert_manager.clone();
-        let mut alert_guard = alert_manager.lock().unwrap();
+        let mut alert_guard = alert_manager.lock().unwrap_or_else(|e| e.into_inner());
         alert_guard.stop_monitoring().await?;
 
         Ok(())

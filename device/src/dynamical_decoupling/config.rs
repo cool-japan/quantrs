@@ -105,7 +105,7 @@ impl Default for AdaptationCriteria {
 }
 
 /// Adaptation frequency options
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationFrequency {
     /// Fixed time intervals
     Fixed(std::time::Duration),
@@ -197,7 +197,7 @@ impl Default for FeedbackControlConfig {
 }
 
 /// Control algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlAlgorithm {
     /// PID control
     PID,
@@ -317,7 +317,7 @@ impl Default for LearningConfig {
 }
 
 /// Learning algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LearningAlgorithm {
     /// Q-learning
     QLearning,
@@ -345,7 +345,7 @@ pub enum ExplorationStrategy {
 }
 
 /// Sequence selection strategies for adaptive DD
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SequenceSelectionStrategy {
     /// Performance-based selection
     PerformanceBased,
@@ -447,7 +447,7 @@ impl Default for DDOptimizationConfig {
 }
 
 /// DD optimization objectives
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DDOptimizationObjective {
     /// Maximize coherence time
     MaximizeCoherenceTime,
@@ -466,7 +466,7 @@ pub enum DDOptimizationObjective {
 }
 
 /// DD-specific optimization objectives
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DDOptimizationObjectiveType {
     /// Maximize fidelity
     MaximizeFidelity,
@@ -483,7 +483,7 @@ pub enum DDOptimizationObjectiveType {
 }
 
 /// DD optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DDOptimizationAlgorithm {
     /// Gradient-free optimization
     GradientFree,
@@ -502,7 +502,7 @@ pub enum DDOptimizationAlgorithm {
 }
 
 /// Platform types for hardware adaptation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformType {
     /// IBM Quantum platform
     IBMQuantum,
@@ -735,7 +735,7 @@ pub enum DDPerformanceMetric {
 }
 
 /// Statistical analysis depth
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalDepth {
     /// Basic statistical analysis
     Basic,
@@ -773,7 +773,7 @@ impl Default for DDBenchmarkingConfig {
 }
 
 /// Benchmark protocols for DD
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BenchmarkProtocol {
     /// Randomized benchmarking
     RandomizedBenchmarking,
@@ -873,7 +873,7 @@ impl Default for RealTimeDDConfig {
 }
 
 /// Scheduling priorities
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SchedulingPriority {
     Low,
     Normal,

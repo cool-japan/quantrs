@@ -325,15 +325,29 @@ impl QuantumAdvancedDiffusionModel {
         condition: Option<&Array1<f64>>,
     ) -> Result<DenoisingInput> {
         let mut features = Vec::new();
-        features.extend_from_slice(xt.as_slice().unwrap());
+        features.extend_from_slice(
+            xt.as_slice()
+                .expect("Array1 is contiguous in standard layout"),
+        );
         let timestep_embedding = self.compute_quantum_timestep_embedding(t)?;
-        features.extend_from_slice(timestep_embedding.as_slice().unwrap());
+        features.extend_from_slice(
+            timestep_embedding
+                .as_slice()
+                .expect("Array1 is contiguous in standard layout"),
+        );
         if let Some(cond) = condition {
-            features.extend_from_slice(cond.as_slice().unwrap());
+            features.extend_from_slice(
+                cond.as_slice()
+                    .expect("Array1 is contiguous in standard layout"),
+            );
         }
         if self.config.use_quantum_fourier_features {
             let fourier_features = self.compute_quantum_fourier_features(xt, t)?;
-            features.extend_from_slice(fourier_features.as_slice().unwrap());
+            features.extend_from_slice(
+                fourier_features
+                    .as_slice()
+                    .expect("Array1 is contiguous in standard layout"),
+            );
         }
         Ok(DenoisingInput {
             features: Array1::from_vec(features),
@@ -654,7 +668,10 @@ impl QuantumAdvancedDiffusionModel {
             samples.row_mut(sample_idx).assign(&xt);
             generation_metrics.push(GenerationMetrics {
                 sample_idx,
-                final_entanglement: step_metrics.last().unwrap().entanglement_preservation,
+                final_entanglement: step_metrics
+                    .last()
+                    .expect("step_metrics populated in reverse loop above")
+                    .entanglement_preservation,
                 average_confidence: step_metrics
                     .iter()
                     .map(|m| m.denoising_confidence)

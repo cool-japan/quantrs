@@ -18,7 +18,7 @@ pub struct MLValidationConfig {
 }
 
 /// Validation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationMethod {
     CrossValidation,
     HoldoutValidation,
@@ -28,7 +28,7 @@ pub enum ValidationMethod {
 }
 
 /// Performance metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceMetric {
     Accuracy,
     Precision,
@@ -93,7 +93,7 @@ pub struct ModelManagementConfig {
 }
 
 /// Inference precision options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InferencePrecision {
     Float32,
     Float64,
@@ -134,7 +134,7 @@ pub struct ModelMonitoringConfig {
 }
 
 /// Deployment strategy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStrategy {
     BlueGreen,
     Canary,
@@ -143,7 +143,7 @@ pub enum DeploymentStrategy {
 }
 
 /// Backup strategy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BackupStrategy {
     Daily,
     Weekly,

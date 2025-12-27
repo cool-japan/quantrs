@@ -61,7 +61,7 @@ impl Default for ZenoConfig {
 }
 
 /// Zeno subspace projection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ZenoSubspaceProjection {
     /// Strong projection (frequent measurements)
     Strong,
@@ -74,7 +74,7 @@ pub enum ZenoSubspaceProjection {
 }
 
 /// Adaptive strategies for Zeno effect
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ZenoAdaptiveStrategy {
     /// Fixed measurement intervals
     Fixed,
@@ -175,7 +175,7 @@ pub struct TimeCoefficient {
 }
 
 /// Time function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TimeFunctionType {
     /// Constant
     Constant,
@@ -192,7 +192,7 @@ pub enum TimeFunctionType {
 }
 
 /// Operator approximation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperatorApproximation {
     /// Trotter decomposition
     Trotter,
@@ -238,7 +238,8 @@ pub struct ZenoPerformanceMetrics {
 
 impl QuantumZenoAnnealer {
     /// Create a new quantum Zeno effect annealer
-    pub fn new(config: ZenoConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: ZenoConfig) -> Self {
         Self {
             config,
             measurement_history: Vec::new(),
@@ -281,7 +282,7 @@ impl QuantumZenoAnnealer {
                     let spins: Vec<i32> = annealing_solution
                         .best_spins
                         .iter()
-                        .map(|&s| s as i32)
+                        .map(|&s| i32::from(s))
                         .collect();
                     Ok(Ok(spins))
                 }
@@ -323,15 +324,15 @@ impl QuantumZenoAnnealer {
         match self.config.subspace_projection {
             ZenoSubspaceProjection::Strong => {
                 // Strong projection works well with clustered problems
-                self.generate_clustered_problem(&mut ising, &mut rng)?
+                self.generate_clustered_problem(&mut ising, &mut rng)?;
             }
             ZenoSubspaceProjection::Weak => {
                 // Weak projection handles distributed problems
-                self.generate_distributed_problem(&mut ising, &mut rng)?
+                self.generate_distributed_problem(&mut ising, &mut rng)?;
             }
             _ => {
                 // Default structured problem for adaptive and continuous
-                self.generate_default_zeno_problem(&mut ising, &mut rng)?
+                self.generate_default_zeno_problem(&mut ising, &mut rng)?;
             }
         }
 
@@ -463,17 +464,17 @@ impl QuantumZenoAnnealer {
     }
 
     /// Estimate problem size from generic type
-    fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
+    const fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // Use reasonable size for Zeno protocols (not too large for quantum simulation)
         10
     }
 
     /// Generate hash for problem to ensure consistent conversion
-    fn hash_problem<P>(&self, _problem: &P) -> u64 {
+    const fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure
         // Use fixed seed for reproducibility
-        98765
+        98_765
     }
 
     /// Perform Zeno effect annealing
@@ -542,7 +543,7 @@ impl QuantumZenoAnnealer {
         );
         self.performance_metrics.zeno_efficiency = self.calculate_zeno_efficiency()?;
 
-        println!("Zeno annealing completed. Final energy: {:.6}", best_energy);
+        println!("Zeno annealing completed. Final energy: {best_energy:.6}");
 
         Ok(Ok(AnnealingSolution {
             best_energy,
@@ -634,10 +635,14 @@ impl QuantumZenoAnnealer {
             let phase = self.calculate_phase_for_state(i, time_step, problem)?;
             let phase_complex = complex_phase(phase);
             evolved_state.amplitudes[i] = crate::qaoa::complex::Complex64 {
-                re: evolved_state.amplitudes[i].re * phase_complex.re
-                    - evolved_state.amplitudes[i].im * phase_complex.im,
-                im: evolved_state.amplitudes[i].re * phase_complex.im
-                    + evolved_state.amplitudes[i].im * phase_complex.re,
+                re: evolved_state.amplitudes[i].re.mul_add(
+                    phase_complex.re,
+                    -(evolved_state.amplitudes[i].im * phase_complex.im),
+                ),
+                im: evolved_state.amplitudes[i].re.mul_add(
+                    phase_complex.im,
+                    evolved_state.amplitudes[i].im * phase_complex.re,
+                ),
             };
         }
 
@@ -645,7 +650,7 @@ impl QuantumZenoAnnealer {
         let norm: f64 = evolved_state
             .amplitudes
             .iter()
-            .map(|a| a.re * a.re + a.im * a.im)
+            .map(|a| a.re.mul_add(a.re, a.im * a.im))
             .sum::<f64>()
             .sqrt();
         for amplitude in &mut evolved_state.amplitudes {
@@ -674,7 +679,7 @@ impl QuantumZenoAnnealer {
             };
 
             if let Ok(bias) = problem.get_bias(qubit) {
-                energy += bias * spin as f64;
+                energy += bias * f64::from(spin);
             }
         }
 
@@ -684,7 +689,7 @@ impl QuantumZenoAnnealer {
                     if coupling.abs() > 1e-10 {
                         let spin_i = if (state_index >> i) & 1 == 1 { 1 } else { -1 };
                         let spin_j = if (state_index >> j) & 1 == 1 { 1 } else { -1 };
-                        energy += coupling * (spin_i * spin_j) as f64;
+                        energy += coupling * f64::from(spin_i * spin_j);
                     }
                 }
             }
@@ -766,9 +771,12 @@ impl QuantumZenoAnnealer {
             .amplitudes
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.norm_squared().partial_cmp(&b.norm_squared()).unwrap())
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .max_by(|(_, a), (_, b)| {
+                a.norm_squared()
+                    .partial_cmp(&b.norm_squared())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map_or(0, |(i, _)| i);
 
         // Convert to spin configuration
         let mut solution = Vec::new();
@@ -799,8 +807,7 @@ impl QuantumZenoAnnealer {
             }
 
             // Keep frequency in reasonable bounds
-            self.config.measurement_frequency =
-                self.config.measurement_frequency.max(0.1).min(100.0);
+            self.config.measurement_frequency = self.config.measurement_frequency.clamp(0.1, 100.0);
         }
 
         Ok(())
@@ -813,7 +820,11 @@ impl QuantumZenoAnnealer {
         }
 
         // Simple efficiency metric: improvement per measurement
-        let initial_energy = self.measurement_history.first().unwrap().observable_value;
+        let initial_energy = self
+            .measurement_history
+            .first()
+            .map(|m| m.observable_value)
+            .unwrap_or(0.0);
         let final_energy = self.performance_metrics.final_energy;
         let improvement = initial_energy - final_energy;
 
@@ -830,7 +841,8 @@ fn complex_phase(phase: f64) -> Complex {
 }
 
 /// Create default quantum Zeno annealer
-pub fn create_quantum_zeno_annealer() -> QuantumZenoAnnealer {
+#[must_use]
+pub const fn create_quantum_zeno_annealer() -> QuantumZenoAnnealer {
     let config = ZenoConfig {
         measurement_frequency: 1.0,
         measurement_strength: 1.0,
@@ -851,7 +863,8 @@ pub fn create_quantum_zeno_annealer() -> QuantumZenoAnnealer {
 }
 
 /// Create Zeno annealer with custom configuration
-pub fn create_custom_zeno_annealer(
+#[must_use]
+pub const fn create_custom_zeno_annealer(
     measurement_frequency: f64,
     projection_type: ZenoSubspaceProjection,
     total_time: f64,
@@ -890,7 +903,9 @@ mod tests {
     #[test]
     fn test_measurement_schedule_generation() {
         let mut annealer = create_quantum_zeno_annealer();
-        annealer.generate_measurement_schedule().unwrap();
+        annealer
+            .generate_measurement_schedule()
+            .expect("Measurement schedule generation should succeed");
 
         assert!(!annealer
             .evolution_controller
@@ -908,9 +923,11 @@ mod tests {
     fn test_quantum_state_initialization() {
         let annealer = create_quantum_zeno_annealer();
         let mut ising = IsingModel::new(3);
-        ising.set_bias(0, 1.0).unwrap();
+        ising.set_bias(0, 1.0).expect("Setting bias should succeed");
 
-        let state = annealer.initialize_quantum_state(&ising).unwrap();
+        let state = annealer
+            .initialize_quantum_state(&ising)
+            .expect("Quantum state initialization should succeed");
         assert_eq!(state.num_qubits, 3);
         assert_eq!(state.amplitudes.len(), 8); // 2^3
 
@@ -934,7 +951,9 @@ mod tests {
             num_qubits: 2,
         };
 
-        let solution = annealer.extract_classical_solution(&state).unwrap();
+        let solution = annealer
+            .extract_classical_solution(&state)
+            .expect("Classical solution extraction should succeed");
         assert_eq!(solution.len(), 2);
         assert_eq!(solution[0], -1); // bit 0 is 0 -> spin -1
         assert_eq!(solution[1], 1); // bit 1 is 1 -> spin +1

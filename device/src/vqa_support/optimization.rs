@@ -37,12 +37,14 @@ impl OptimizationProblem {
     }
 
     /// Add parameter bounds
+    #[must_use]
     pub fn with_bounds(mut self, bounds: Vec<(f64, f64)>) -> Self {
         self.bounds = Some(bounds);
         self
     }
 
     /// Add optimization constraint
+    #[must_use]
     pub fn with_constraint(mut self, constraint: OptimizationConstraint) -> Self {
         self.constraints.push(constraint);
         self
@@ -155,7 +157,7 @@ impl OptimizationConstraint {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     Equality,
     Inequality,
@@ -195,26 +197,29 @@ impl OptimizationResult {
     }
 
     /// Add iteration information
-    pub fn with_iterations(mut self, iterations: usize, evaluations: usize) -> Self {
+    #[must_use]
+    pub const fn with_iterations(mut self, iterations: usize, evaluations: usize) -> Self {
         self.num_iterations = iterations;
         self.num_function_evaluations = evaluations;
         self
     }
 
     /// Add timing information
-    pub fn with_timing(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn with_timing(mut self, duration: Duration) -> Self {
         self.optimization_time = duration;
         self
     }
 
     /// Add trajectory information
+    #[must_use]
     pub fn with_trajectory(mut self, trajectory: OptimizationTrajectory) -> Self {
         self.trajectory = trajectory;
         self
     }
 
     /// Check if optimization was successful and converged
-    pub fn is_converged(&self) -> bool {
+    pub const fn is_converged(&self) -> bool {
         self.success && self.trajectory.convergence_indicators.objective_convergence
     }
 
@@ -227,10 +232,10 @@ impl OptimizationResult {
         let initial = self.trajectory.objective_history[0];
         let final_val = self.optimal_value;
 
-        if initial != 0.0 {
-            (initial - final_val).abs() / initial.abs()
-        } else {
+        if initial == 0.0 {
             0.0
+        } else {
+            (initial - final_val).abs() / initial.abs()
         }
     }
 }
@@ -241,6 +246,12 @@ pub struct OptimizerComparison {
     pub optimizer_results: HashMap<String, OptimizerPerformance>,
     pub best_optimizer: Option<String>,
     pub ranking: Vec<String>,
+}
+
+impl Default for OptimizerComparison {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OptimizerComparison {
@@ -298,7 +309,7 @@ pub struct OptimizerPerformance {
 }
 
 impl OptimizerPerformance {
-    pub fn new(best_value: f64) -> Self {
+    pub const fn new(best_value: f64) -> Self {
         Self {
             best_value,
             convergence_iterations: 0,
@@ -317,7 +328,7 @@ pub struct OptimizationStrategy {
 
 impl OptimizationStrategy {
     /// Create new optimization strategy
-    pub fn new(config: VQAOptimizationConfig) -> Self {
+    pub const fn new(config: VQAOptimizationConfig) -> Self {
         Self { config }
     }
 
@@ -360,7 +371,7 @@ impl OptimizationStrategy {
             let uniform_sample = segment + offset;
 
             // Scale to parameter range
-            -std::f64::consts::PI + 2.0 * std::f64::consts::PI * uniform_sample
+            (2.0 * std::f64::consts::PI).mul_add(uniform_sample, -std::f64::consts::PI)
         });
 
         Ok(params)
@@ -374,8 +385,8 @@ impl OptimizationStrategy {
 
         let params = Array1::from_shape_fn(num_params, |i| {
             let sobol_val = (i as f64 + 0.5) / num_params as f64;
-            let jittered = sobol_val + rng.gen::<f64>() * 0.1 - 0.05;
-            -std::f64::consts::PI + 2.0 * std::f64::consts::PI * jittered.clamp(0.0, 1.0)
+            let jittered = rng.gen::<f64>().mul_add(0.1, sobol_val) - 0.05;
+            (2.0 * std::f64::consts::PI).mul_add(jittered.clamp(0.0, 1.0), -std::f64::consts::PI)
         });
 
         Ok(params)
@@ -388,7 +399,7 @@ impl OptimizationStrategy {
         let params = Array1::from_shape_fn(num_params, |i| {
             let grid_pos = i % grid_size;
             let grid_val = grid_pos as f64 / (grid_size - 1).max(1) as f64;
-            -std::f64::consts::PI + 2.0 * std::f64::consts::PI * grid_val
+            (2.0 * std::f64::consts::PI).mul_add(grid_val, -std::f64::consts::PI)
         });
 
         Ok(params)
@@ -440,7 +451,7 @@ impl OptimizationStrategy {
                 self.run_single_optimizer(fallback_optimizer, problem, initial_params)?;
 
             let fallback_performance = OptimizerPerformance::new(fallback_result.optimal_value);
-            comparison.add_result(format!("{}", fallback_optimizer), fallback_performance);
+            comparison.add_result(format!("{fallback_optimizer}"), fallback_performance);
 
             if let Some(ref current_best) = best_result {
                 if fallback_result.optimal_value < current_best.optimal_value {
@@ -522,15 +533,15 @@ impl OptimizationStrategy {
             };
 
             // Configure L-BFGS-B optimization
-            let result = minimize(
-                objective,
-                &initial_params.as_slice().unwrap(),
-                Method::LBFGSB,
-                options,
-            )
-            .map_err(|e| {
-                crate::DeviceError::OptimizationError(format!("L-BFGS-B failed: {}", e))
+            let params_slice = initial_params.as_slice().ok_or_else(|| {
+                crate::DeviceError::ExecutionFailed(
+                    "Failed to get contiguous slice from parameters".into(),
+                )
             })?;
+            let result =
+                minimize(objective, params_slice, Method::LBFGSB, options).map_err(|e| {
+                    crate::DeviceError::OptimizationError(format!("L-BFGS-B failed: {e}"))
+                })?;
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(vec![result.fun]);
@@ -601,15 +612,15 @@ impl OptimizationStrategy {
                     .unwrap_or(f64::INFINITY)
             };
 
-            let result = minimize(
-                objective,
-                &initial_params.as_slice().unwrap(),
-                Method::NelderMead,
-                None,
-            )
-            .map_err(|e| {
-                crate::DeviceError::OptimizationError(format!("Optimization failed: {}", e))
+            let params_slice = initial_params.as_slice().ok_or_else(|| {
+                crate::DeviceError::ExecutionFailed(
+                    "Failed to get contiguous slice from parameters".into(),
+                )
             })?;
+            let result =
+                minimize(objective, params_slice, Method::NelderMead, None).map_err(|e| {
+                    crate::DeviceError::OptimizationError(format!("Optimization failed: {e}"))
+                })?;
 
             let mut trajectory = OptimizationTrajectory::new();
             trajectory.objective_history = Array1::from(vec![result.fun]);
@@ -742,10 +753,7 @@ impl OptimizationStrategy {
                 None, // No label
             )
             .map_err(|e| {
-                crate::DeviceError::OptimizationError(format!(
-                    "Differential Evolution failed: {}",
-                    e
-                ))
+                crate::DeviceError::OptimizationError(format!("Differential Evolution failed: {e}"))
             })?;
 
             let mut trajectory = OptimizationTrajectory::new();

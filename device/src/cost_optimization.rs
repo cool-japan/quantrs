@@ -1690,7 +1690,9 @@ impl CostOptimizationEngine {
         provider: HardwareBackend,
         shots: usize,
     ) -> DeviceResult<CostEstimate> {
-        let mut estimator = self.cost_estimator.write().unwrap();
+        let mut estimator = self.cost_estimator.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on cost_estimator: {e}"))
+        })?;
         estimator.estimate_cost(circuit, provider, shots).await
     }
 
@@ -1701,7 +1703,9 @@ impl CostOptimizationEngine {
         providers: Vec<HardwareBackend>,
         shots: usize,
     ) -> DeviceResult<ProviderComparisonResult> {
-        let mut comparator = self.provider_comparator.write().unwrap();
+        let mut comparator = self.provider_comparator.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on provider_comparator: {e}"))
+        })?;
         comparator.compare_providers(circuit, providers, shots).await
     }
 
@@ -1710,13 +1714,17 @@ impl CostOptimizationEngine {
         &self,
         requirements: &ResourceRequirements,
     ) -> DeviceResult<OptimizationResult> {
-        let mut optimizer = self.resource_optimizer.write().unwrap();
+        let mut optimizer = self.resource_optimizer.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on resource_optimizer: {e}"))
+        })?;
         optimizer.optimize_allocation(requirements).await
     }
 
     /// Get current budget status
     pub async fn get_budget_status(&self) -> DeviceResult<BudgetStatus> {
-        let budget_manager = self.budget_manager.read().unwrap();
+        let budget_manager = self.budget_manager.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire read lock on budget_manager: {e}"))
+        })?;
         Ok(budget_manager.get_current_status())
     }
 
@@ -1726,7 +1734,9 @@ impl CostOptimizationEngine {
         prediction_horizon: Duration,
         features: HashMap<String, f64>,
     ) -> DeviceResult<PredictionResult> {
-        let mut modeler = self.predictive_modeler.write().unwrap();
+        let mut modeler = self.predictive_modeler.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on predictive_modeler: {e}"))
+        })?;
         modeler.predict_costs(prediction_horizon, features).await
     }
 

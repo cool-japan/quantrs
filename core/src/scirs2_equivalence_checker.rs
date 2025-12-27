@@ -247,7 +247,7 @@ impl AdvancedEquivalenceChecker {
             };
 
             results.push(result);
-            methods_used.push(format!("{:?}", method));
+            methods_used.push(format!("{method:?}"));
         }
 
         // Aggregate results with confidence scoring
@@ -261,11 +261,11 @@ impl AdvancedEquivalenceChecker {
         };
 
         // Extract phase factor if circuits are equivalent up to phase
-        let phase_factor = if !equivalent {
+        let phase_factor = if equivalent {
+            Some(Complex64::new(1.0, 0.0))
+        } else {
             self.extract_global_phase(&canonical1, &canonical2, num_qubits)
                 .ok()
-        } else {
-            Some(Complex64::new(1.0, 0.0))
         };
 
         Ok(AdvancedEquivalenceResult {
@@ -357,13 +357,13 @@ impl AdvancedEquivalenceChecker {
             changed |= self.apply_commutation_rules(&mut canonical)?;
 
             // Rule 2: Merge adjacent gates
-            changed |= self.apply_gate_fusion(&mut canonical)?;
+            changed |= self.apply_gate_fusion(&canonical)?;
 
             // Rule 3: Cancel inverse gates
             changed |= self.apply_inverse_cancellation(&mut canonical)?;
 
             // Rule 4: Normalize phases
-            changed |= self.apply_phase_normalization(&mut canonical)?;
+            changed |= self.apply_phase_normalization(&canonical)?;
 
             if !changed {
                 break;
@@ -505,8 +505,8 @@ impl AdvancedEquivalenceChecker {
         // Sort eigenvalues for comparison
         let mut sorted_evals1: Vec<f64> = evals1.iter().copied().collect();
         let mut sorted_evals2: Vec<f64> = evals2.iter().copied().collect();
-        sorted_evals1.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        sorted_evals2.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_evals1.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_evals2.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         // Compare sorted eigenvalues
         let mut max_diff: f64 = 0.0;
@@ -802,7 +802,7 @@ impl AdvancedEquivalenceChecker {
     // Helper methods for canonicalization
     fn apply_commutation_rules(
         &self,
-        circuit: &mut Vec<crate::equivalence_checker::QuantumGate>,
+        circuit: &mut [crate::equivalence_checker::QuantumGate],
     ) -> Result<bool, QuantRS2Error> {
         let mut changed = false;
 
@@ -819,9 +819,9 @@ impl AdvancedEquivalenceChecker {
         Ok(changed)
     }
 
-    fn apply_gate_fusion(
+    const fn apply_gate_fusion(
         &self,
-        circuit: &Vec<crate::equivalence_checker::QuantumGate>,
+        circuit: &[crate::equivalence_checker::QuantumGate],
     ) -> Result<bool, QuantRS2Error> {
         // Simplified gate fusion - would be expanded in full implementation
         Ok(false)
@@ -847,15 +847,15 @@ impl AdvancedEquivalenceChecker {
         Ok(changed)
     }
 
-    fn apply_phase_normalization(
+    const fn apply_phase_normalization(
         &self,
-        circuit: &Vec<crate::equivalence_checker::QuantumGate>,
+        circuit: &[crate::equivalence_checker::QuantumGate],
     ) -> Result<bool, QuantRS2Error> {
         // Simplified phase normalization
         Ok(false)
     }
 
-    fn apply_canonical_ordering(&self, circuit: &mut Vec<crate::equivalence_checker::QuantumGate>) {
+    fn apply_canonical_ordering(&self, circuit: &mut [crate::equivalence_checker::QuantumGate]) {
         circuit.sort_by_key(|gate| {
             (
                 self.gate_priority(gate),
@@ -888,7 +888,7 @@ impl AdvancedEquivalenceChecker {
         qubits1.is_disjoint(&qubits2)
     }
 
-    fn gate_priority(&self, gate: &crate::equivalence_checker::QuantumGate) -> u32 {
+    const fn gate_priority(&self, gate: &crate::equivalence_checker::QuantumGate) -> u32 {
         match gate.gate_type() {
             GateType::X => 1,
             GateType::Y => 2,
@@ -909,10 +909,10 @@ impl AdvancedEquivalenceChecker {
         }
 
         match (gate1.gate_type(), gate2.gate_type()) {
-            (GateType::X, GateType::X) => true,
-            (GateType::Y, GateType::Y) => true,
-            (GateType::Z, GateType::Z) => true,
-            (GateType::H, GateType::H) => true,
+            (GateType::X, GateType::X)
+            | (GateType::Y, GateType::Y)
+            | (GateType::Z, GateType::Z)
+            | (GateType::H, GateType::H) => true,
             (GateType::CNOT, GateType::CNOT) => gate1.control_qubits() == gate2.control_qubits(),
             _ => false,
         }
@@ -949,7 +949,7 @@ impl AdvancedEquivalenceChecker {
         hasher.finish()
     }
 
-    fn hash_parameters(&self, circuit: &[crate::equivalence_checker::QuantumGate]) -> u64 {
+    const fn hash_parameters(&self, circuit: &[crate::equivalence_checker::QuantumGate]) -> u64 {
         // Placeholder - would hash parametric gate parameters
         0
     }
@@ -975,7 +975,7 @@ impl AdvancedEquivalenceChecker {
     }
 
     // Symmetry checking methods
-    fn check_time_reversal_symmetry(
+    const fn check_time_reversal_symmetry(
         &self,
         _circuit: &[crate::equivalence_checker::QuantumGate],
         _num_qubits: usize,
@@ -984,7 +984,7 @@ impl AdvancedEquivalenceChecker {
         Ok(false)
     }
 
-    fn check_spatial_symmetries(
+    const fn check_spatial_symmetries(
         &self,
         _circuit: &[crate::equivalence_checker::QuantumGate],
         _num_qubits: usize,
@@ -993,7 +993,7 @@ impl AdvancedEquivalenceChecker {
         Ok(vec![])
     }
 
-    fn check_phase_symmetries(
+    const fn check_phase_symmetries(
         &self,
         _circuit: &[crate::equivalence_checker::QuantumGate],
         _num_qubits: usize,
@@ -1074,7 +1074,7 @@ mod tests {
 
         let result = checker
             .comprehensive_equivalence_check(&circuit1, &circuit2, 1)
-            .unwrap();
+            .expect("Failed to perform comprehensive equivalence check");
         assert!(!result.equivalent); // H and X don't commute
     }
 
@@ -1087,8 +1087,12 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
 
-        let fp1 = checker.compute_fingerprint(&circuit).unwrap();
-        let fp2 = checker.compute_fingerprint(&circuit).unwrap();
+        let fp1 = checker
+            .compute_fingerprint(&circuit)
+            .expect("Failed to compute fingerprint 1");
+        let fp2 = checker
+            .compute_fingerprint(&circuit)
+            .expect("Failed to compute fingerprint 2");
 
         assert_eq!(fp1, fp2);
     }
@@ -1102,7 +1106,7 @@ mod tests {
 
         let result = checker
             .svd_based_comparison(&circuit1, &circuit2, 1)
-            .unwrap();
+            .expect("Failed to perform SVD-based comparison");
         assert!(result.equivalent);
         assert!(result.error_measure < 1e-10);
     }
@@ -1117,7 +1121,9 @@ mod tests {
             QuantumGate::new(GateType::X, vec![0], None),
         ];
 
-        let canonical = checker.canonicalize_circuit(&circuit, 1).unwrap();
+        let canonical = checker
+            .canonicalize_circuit(&circuit, 1)
+            .expect("Failed to canonicalize circuit");
         assert_eq!(canonical.len(), 0); // Should be empty after cancellation
     }
 

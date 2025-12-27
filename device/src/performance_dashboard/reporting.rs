@@ -23,7 +23,7 @@ pub struct ReportSchedule {
     pub custom_schedule: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ReportFormat {
     PDF,
     HTML,
@@ -40,7 +40,7 @@ pub struct DistributionConfig {
     pub api_endpoints: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ReportFrequency {
     Hourly,
     Daily,

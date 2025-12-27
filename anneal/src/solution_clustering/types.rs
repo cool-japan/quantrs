@@ -274,7 +274,7 @@ pub struct DistributionAnalysis {
 }
 
 /// Distribution types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DistributionType {
     /// Normal distribution
     Normal,
@@ -377,7 +377,7 @@ pub struct CorrelationPattern {
 }
 
 /// Types of correlation patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PatternType {
     /// Positive correlation
     Positive,
@@ -405,7 +405,7 @@ pub struct OutlierInfo {
 }
 
 /// Types of outliers
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutlierType {
     /// Energy outlier (unusually high/low energy)
     Energy,
@@ -476,7 +476,7 @@ pub struct OptimizationRecommendation {
 }
 
 /// Types of optimization recommendations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationType {
     /// Parameter tuning recommendation
     ParameterTuning,
@@ -497,7 +497,7 @@ pub enum RecommendationType {
 }
 
 /// Difficulty levels for implementing recommendations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DifficultyLevel {
     /// Easy to implement
     Easy,
@@ -510,7 +510,7 @@ pub enum DifficultyLevel {
 }
 
 /// Priority levels for recommendations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PriorityLevel {
     /// Low priority
     Low,

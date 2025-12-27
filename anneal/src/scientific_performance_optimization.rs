@@ -105,8 +105,8 @@ pub struct MemoryPoolConfig {
 impl Default for MemoryPoolConfig {
     fn default() -> Self {
         Self {
-            pool_size: 4096,                               // 4GB
-            block_sizes: vec![64, 256, 1024, 4096, 16384], // Various block sizes
+            pool_size: 4096,                                // 4GB
+            block_sizes: vec![64, 256, 1024, 4096, 16_384], // Various block sizes
             enable_preallocation: true,
             growth_strategy: PoolGrowthStrategy::Exponential,
         }
@@ -114,7 +114,7 @@ impl Default for MemoryPoolConfig {
 }
 
 /// Pool growth strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PoolGrowthStrategy {
     /// Fixed size pools
     Fixed,
@@ -151,7 +151,7 @@ impl Default for CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompressionAlgorithm {
     /// LZ4 - fast compression
     LZ4,
@@ -164,7 +164,7 @@ pub enum CompressionAlgorithm {
 }
 
 /// Garbage collection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GarbageCollectionStrategy {
     /// Manual garbage collection
     Manual,
@@ -224,14 +224,14 @@ impl Default for ThreadPoolConfig {
             core_pool_size: num_cpus::get(),
             max_pool_size: num_cpus::get() * 2,
             keep_alive_time: Duration::from_secs(60),
-            queue_size: 10000,
+            queue_size: 10_000,
             thread_priority: ThreadPriority::Normal,
         }
     }
 }
 
 /// Thread priorities
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ThreadPriority {
     Low,
     Normal,
@@ -261,7 +261,7 @@ impl Default for NUMAConfig {
 }
 
 /// NUMA memory binding strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NUMAMemoryBinding {
     /// No binding
     None,
@@ -274,7 +274,7 @@ pub enum NUMAMemoryBinding {
 }
 
 /// NUMA thread affinity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NUMAThreadAffinity {
     /// No affinity
     None,
@@ -285,7 +285,7 @@ pub enum NUMAThreadAffinity {
 }
 
 /// Task scheduling strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TaskSchedulingStrategy {
     /// First-In-First-Out
     FIFO,
@@ -322,7 +322,7 @@ impl Default for LoadBalancingConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     /// Round-robin assignment
     RoundRobin,
@@ -378,7 +378,7 @@ impl Default for DecompositionConfig {
     fn default() -> Self {
         Self {
             enable_hierarchical_decomposition: true,
-            max_subproblem_size: 10000,
+            max_subproblem_size: 10_000,
             decomposition_strategy: DecompositionStrategy::Adaptive,
             overlap_strategy: OverlapStrategy::MinimalOverlap,
         }
@@ -399,7 +399,7 @@ pub enum DecompositionStrategy {
 }
 
 /// Overlap strategies for subproblems
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OverlapStrategy {
     /// No overlap
     NoOverlap,
@@ -439,7 +439,7 @@ impl Default for CachingConfig {
 }
 
 /// Cache eviction policies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheEvictionPolicy {
     /// Least Recently Used
     LRU,
@@ -480,7 +480,7 @@ impl Default for ApproximationConfig {
 }
 
 /// Approximation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApproximationStrategy {
     /// Monte Carlo sampling
     Sampling,
@@ -511,7 +511,7 @@ impl Default for StreamingConfig {
     fn default() -> Self {
         Self {
             enable_streaming: true,
-            buffer_size: 10000,
+            buffer_size: 10_000,
             window_size: 1000,
             sliding_strategy: SlidingWindowStrategy::Tumbling,
         }
@@ -519,7 +519,7 @@ impl Default for StreamingConfig {
 }
 
 /// Sliding window strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlidingWindowStrategy {
     /// Tumbling windows
     Tumbling,
@@ -593,7 +593,7 @@ pub struct NodeResources {
 }
 
 /// Network topologies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NetworkTopology {
     /// Star topology (master-worker)
     StarTopology,
@@ -606,7 +606,7 @@ pub enum NetworkTopology {
 }
 
 /// Communication protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommunicationProtocol {
     /// TCP protocol
     TCP,
@@ -645,7 +645,7 @@ impl Default for DistributedFaultTolerance {
 }
 
 /// Recovery strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     /// Restart failed tasks
     Restart,
@@ -688,7 +688,7 @@ impl Default for ProfilingConfig {
 }
 
 /// Profiling granularity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProfilingGranularity {
     /// Line-by-line profiling
     Line,
@@ -725,7 +725,7 @@ impl Default for GPUAccelerationConfig {
 }
 
 /// GPU device selection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GPUDeviceSelection {
     /// Automatic device selection
     Automatic,
@@ -738,7 +738,7 @@ pub enum GPUDeviceSelection {
 }
 
 /// GPU memory management strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GPUMemoryStrategy {
     /// Unified memory
     Unified,
@@ -775,7 +775,7 @@ impl Default for GPUKernelConfig {
 }
 
 /// GPU optimization levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GPUOptimizationLevel {
     /// No optimization
     None,
@@ -970,7 +970,7 @@ pub enum TaskFunction {
 }
 
 /// Task priorities
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub enum TaskPriority {
     Low = 1,
     Medium = 2,
@@ -1147,7 +1147,7 @@ pub enum ProblemData {
 }
 
 /// Subproblem status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubproblemStatus {
     /// Not started
     Pending,
@@ -1285,7 +1285,7 @@ pub struct ClusterNode {
 }
 
 /// Node status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeStatus {
     /// Node is active and available
     Active,
@@ -1339,7 +1339,7 @@ pub struct Connection {
 }
 
 /// Connection status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
     /// Connection is active
     Active,
@@ -1369,7 +1369,7 @@ pub struct Message {
 }
 
 /// Message types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageType {
     /// Task assignment
     TaskAssignment,
@@ -1470,7 +1470,7 @@ pub struct GPUDevice {
 }
 
 /// GPU device status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GPUDeviceStatus {
     /// Device is available
     Available,
@@ -1484,6 +1484,7 @@ pub enum GPUDeviceStatus {
 
 impl ScientificPerformanceOptimizer {
     /// Create new performance optimizer
+    #[must_use]
     pub fn new(config: PerformanceOptimizationConfig) -> Self {
         Self {
             config: config.clone(),
@@ -1511,25 +1512,25 @@ impl ScientificPerformanceOptimizer {
         println!("Initializing scientific performance optimization system");
 
         // Initialize memory management
-        self.initialize_memory_management()?;
+        Self::initialize_memory_management();
 
         // Initialize parallel processing
-        self.initialize_parallel_processing()?;
+        Self::initialize_parallel_processing();
 
         // Initialize algorithm optimization
-        self.initialize_algorithm_optimization()?;
+        Self::initialize_algorithm_optimization();
 
         // Initialize distributed computing if enabled
         if self.config.distributed_config.enable_distributed {
-            self.initialize_distributed_computing()?;
+            Self::initialize_distributed_computing();
         }
 
         // Initialize profiling
-        self.initialize_profiling()?;
+        Self::initialize_profiling();
 
         // Initialize GPU acceleration if enabled
         if self.config.gpu_config.enable_gpu {
-            self.initialize_gpu_acceleration()?;
+            Self::initialize_gpu_acceleration();
         }
 
         println!("Scientific performance optimization system initialized successfully");
@@ -1546,19 +1547,19 @@ impl ScientificPerformanceOptimizer {
         let start_time = Instant::now();
 
         // Step 1: Analyze problem characteristics
-        let problem_analysis = self.analyze_protein_folding_problem(problem)?;
+        let problem_analysis = Self::analyze_protein_folding_problem(problem);
 
         // Step 2: Apply memory optimizations
-        let memory_optimizations = self.apply_memory_optimizations(&problem_analysis)?;
+        let memory_optimizations = Self::apply_memory_optimizations(&problem_analysis);
 
         // Step 3: Apply parallel processing optimizations
-        let parallel_optimizations = self.apply_parallel_optimizations(&problem_analysis)?;
+        let parallel_optimizations = Self::apply_parallel_optimizations(&problem_analysis);
 
         // Step 4: Apply algorithmic optimizations
-        let algorithm_optimizations = self.apply_algorithm_optimizations(&problem_analysis)?;
+        let algorithm_optimizations = Self::apply_algorithm_optimizations(&problem_analysis);
 
         // Step 5: Execute optimized computation
-        let result = self.execute_optimized_protein_folding(
+        let result = Self::execute_optimized_protein_folding(
             problem,
             &memory_optimizations,
             &parallel_optimizations,
@@ -1567,7 +1568,7 @@ impl ScientificPerformanceOptimizer {
 
         let total_time = start_time.elapsed();
 
-        println!("Protein folding optimization completed in {:?}", total_time);
+        println!("Protein folding optimization completed in {total_time:?}");
 
         Ok(OptimizedProteinFoldingResult {
             original_problem: problem.clone(),
@@ -1594,16 +1595,16 @@ impl ScientificPerformanceOptimizer {
         let start_time = Instant::now();
 
         // Step 1: Analyze crystal structure complexity
-        let structure_analysis = self.analyze_crystal_structure(problem)?;
+        let structure_analysis = Self::analyze_crystal_structure(problem)?;
 
         // Step 2: Apply decomposition strategies
-        let decomposition_strategy = self.select_decomposition_strategy(&structure_analysis)?;
+        let decomposition_strategy = Self::select_decomposition_strategy(&structure_analysis)?;
 
         // Step 3: Apply parallel lattice processing
-        let parallel_strategy = self.apply_parallel_lattice_processing(&structure_analysis)?;
+        let parallel_strategy = Self::apply_parallel_lattice_processing(&structure_analysis)?;
 
         // Step 4: Execute optimized simulation
-        let result = self.execute_optimized_materials_simulation(
+        let result = Self::execute_optimized_materials_simulation(
             problem,
             &decomposition_strategy,
             &parallel_strategy,
@@ -1611,10 +1612,7 @@ impl ScientificPerformanceOptimizer {
 
         let total_time = start_time.elapsed();
 
-        println!(
-            "Materials science optimization completed in {:?}",
-            total_time
-        );
+        println!("Materials science optimization completed in {total_time:?}");
 
         Ok(OptimizedMaterialsScienceResult {
             original_problem: problem.clone(),
@@ -1640,16 +1638,16 @@ impl ScientificPerformanceOptimizer {
         let start_time = Instant::now();
 
         // Step 1: Analyze molecular complexity
-        let molecular_analysis = self.analyze_molecular_complexity(problem)?;
+        let molecular_analysis = Self::analyze_molecular_complexity(problem)?;
 
         // Step 2: Apply molecular caching strategies
-        let caching_strategy = self.apply_molecular_caching(&molecular_analysis)?;
+        let caching_strategy = Self::apply_molecular_caching(&molecular_analysis)?;
 
         // Step 3: Apply distributed screening
-        let distributed_strategy = self.apply_distributed_screening(&molecular_analysis)?;
+        let distributed_strategy = Self::apply_distributed_screening(&molecular_analysis)?;
 
         // Step 4: Execute optimized discovery
-        let result = self.execute_optimized_drug_discovery(
+        let result = Self::execute_optimized_drug_discovery(
             problem,
             &caching_strategy,
             &distributed_strategy,
@@ -1657,7 +1655,7 @@ impl ScientificPerformanceOptimizer {
 
         let total_time = start_time.elapsed();
 
-        println!("Drug discovery optimization completed in {:?}", total_time);
+        println!("Drug discovery optimization completed in {total_time:?}");
 
         Ok(OptimizedDrugDiscoveryResult {
             original_problem: problem.clone(),
@@ -1697,54 +1695,44 @@ impl ScientificPerformanceOptimizer {
                     .cpu_profiler
                     .cpu_samples
                     .back()
-                    .map(|s| s.usage_percent)
-                    .unwrap_or(0.0),
+                    .map_or(0.0, |s| s.usage_percent),
                 parallel_efficiency: parallel_processor.performance_metrics.parallel_efficiency,
                 cache_hit_rate: memory_manager.cache_hierarchy.cache_stats.hit_rate,
             },
-            optimization_recommendations: self.generate_optimization_recommendations()?,
-            bottleneck_analysis: self.analyze_performance_bottlenecks()?,
-            resource_utilization: self.analyze_resource_utilization()?,
+            optimization_recommendations: Self::generate_optimization_recommendations()?,
+            bottleneck_analysis: Self::analyze_performance_bottlenecks()?,
+            resource_utilization: Self::analyze_resource_utilization()?,
         })
     }
 
     // Private helper methods
 
-    fn initialize_memory_management(&self) -> ApplicationResult<()> {
+    fn initialize_memory_management() {
         println!("Initializing memory management system");
-        Ok(())
     }
 
-    fn initialize_parallel_processing(&self) -> ApplicationResult<()> {
+    fn initialize_parallel_processing() {
         println!("Initializing parallel processing system");
-        Ok(())
     }
 
-    fn initialize_algorithm_optimization(&self) -> ApplicationResult<()> {
+    fn initialize_algorithm_optimization() {
         println!("Initializing algorithm optimization system");
-        Ok(())
     }
 
-    fn initialize_distributed_computing(&self) -> ApplicationResult<()> {
+    fn initialize_distributed_computing() {
         println!("Initializing distributed computing system");
-        Ok(())
     }
 
-    fn initialize_profiling(&self) -> ApplicationResult<()> {
+    fn initialize_profiling() {
         println!("Initializing performance profiling system");
-        Ok(())
     }
 
-    fn initialize_gpu_acceleration(&self) -> ApplicationResult<()> {
+    fn initialize_gpu_acceleration() {
         println!("Initializing GPU acceleration system");
-        Ok(())
     }
 
-    fn analyze_protein_folding_problem(
-        &self,
-        problem: &ProteinFoldingProblem,
-    ) -> ApplicationResult<ProblemAnalysis> {
-        Ok(ProblemAnalysis {
+    fn analyze_protein_folding_problem(_problem: &ProteinFoldingProblem) -> ProblemAnalysis {
+        ProblemAnalysis {
             problem_type: ProblemType::ProteinFolding,
             complexity_score: 0.7,
             memory_requirements: 1024 * 1024 * 100, // 100MB
@@ -1754,54 +1742,44 @@ impl ScientificPerformanceOptimizer {
                 OptimizationType::ParallelExecution,
                 OptimizationType::ResultCaching,
             ],
-        })
+        }
     }
 
-    fn apply_memory_optimizations(
-        &self,
-        analysis: &ProblemAnalysis,
-    ) -> ApplicationResult<MemoryOptimizations> {
-        Ok(MemoryOptimizations {
+    const fn apply_memory_optimizations(_analysis: &ProblemAnalysis) -> MemoryOptimizations {
+        MemoryOptimizations {
             memory_pool_enabled: true,
             cache_strategy: CacheStrategy::Hierarchical,
             compression_enabled: true,
             memory_mapping_enabled: true,
             estimated_savings: 0.3,
-        })
+        }
     }
 
-    fn apply_parallel_optimizations(
-        &self,
-        analysis: &ProblemAnalysis,
-    ) -> ApplicationResult<ParallelOptimizations> {
-        Ok(ParallelOptimizations {
+    fn apply_parallel_optimizations(_analysis: &ProblemAnalysis) -> ParallelOptimizations {
+        ParallelOptimizations {
             parallel_strategy: ParallelStrategy::TaskParallelism,
             thread_count: num_cpus::get(),
             load_balancing_enabled: true,
             numa_awareness_enabled: true,
             estimated_speedup: 5.2,
-        })
+        }
     }
 
-    fn apply_algorithm_optimizations(
-        &self,
-        analysis: &ProblemAnalysis,
-    ) -> ApplicationResult<AlgorithmOptimizations> {
-        Ok(AlgorithmOptimizations {
+    const fn apply_algorithm_optimizations(_analysis: &ProblemAnalysis) -> AlgorithmOptimizations {
+        AlgorithmOptimizations {
             decomposition_enabled: true,
             approximation_enabled: true,
             caching_enabled: true,
             streaming_enabled: false,
             estimated_improvement: 0.15,
-        })
+        }
     }
 
     fn execute_optimized_protein_folding(
-        &self,
-        problem: &ProteinFoldingProblem,
-        memory_opts: &MemoryOptimizations,
-        parallel_opts: &ParallelOptimizations,
-        algorithm_opts: &AlgorithmOptimizations,
+        _problem: &ProteinFoldingProblem,
+        _memory_opts: &MemoryOptimizations,
+        _parallel_opts: &ParallelOptimizations,
+        _algorithm_opts: &AlgorithmOptimizations,
     ) -> ApplicationResult<ProteinFoldingOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(100));
@@ -1815,8 +1793,7 @@ impl ScientificPerformanceOptimizer {
     }
 
     fn analyze_crystal_structure(
-        &self,
-        problem: &MaterialsOptimizationProblem,
+        _problem: &MaterialsOptimizationProblem,
     ) -> ApplicationResult<CrystalStructureAnalysis> {
         Ok(CrystalStructureAnalysis {
             lattice_complexity: 0.6,
@@ -1826,16 +1803,14 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn select_decomposition_strategy(
-        &self,
-        analysis: &CrystalStructureAnalysis,
+    const fn select_decomposition_strategy(
+        _analysis: &CrystalStructureAnalysis,
     ) -> ApplicationResult<DecompositionStrategy> {
         Ok(DecompositionStrategy::Hierarchical)
     }
 
-    fn apply_parallel_lattice_processing(
-        &self,
-        analysis: &CrystalStructureAnalysis,
+    const fn apply_parallel_lattice_processing(
+        _analysis: &CrystalStructureAnalysis,
     ) -> ApplicationResult<ParallelLatticeStrategy> {
         Ok(ParallelLatticeStrategy {
             partitioning_method: PartitioningMethod::Spatial,
@@ -1845,10 +1820,9 @@ impl ScientificPerformanceOptimizer {
     }
 
     fn execute_optimized_materials_simulation(
-        &self,
-        problem: &MaterialsOptimizationProblem,
-        decomposition: &DecompositionStrategy,
-        parallel: &ParallelLatticeStrategy,
+        _problem: &MaterialsOptimizationProblem,
+        _decomposition: &DecompositionStrategy,
+        _parallel: &ParallelLatticeStrategy,
     ) -> ApplicationResult<MaterialsOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(50));
@@ -1861,9 +1835,8 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn analyze_molecular_complexity(
-        &self,
-        problem: &DrugDiscoveryProblem,
+    const fn analyze_molecular_complexity(
+        _problem: &DrugDiscoveryProblem,
     ) -> ApplicationResult<MolecularComplexityAnalysis> {
         Ok(MolecularComplexityAnalysis {
             molecular_weight: 500.0,
@@ -1873,9 +1846,8 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn apply_molecular_caching(
-        &self,
-        analysis: &MolecularComplexityAnalysis,
+    const fn apply_molecular_caching(
+        _analysis: &MolecularComplexityAnalysis,
     ) -> ApplicationResult<MolecularCachingStrategy> {
         Ok(MolecularCachingStrategy {
             cache_type: MolecularCacheType::StructureBased,
@@ -1885,9 +1857,8 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn apply_distributed_screening(
-        &self,
-        analysis: &MolecularComplexityAnalysis,
+    const fn apply_distributed_screening(
+        _analysis: &MolecularComplexityAnalysis,
     ) -> ApplicationResult<DistributedScreeningStrategy> {
         Ok(DistributedScreeningStrategy {
             screening_method: ScreeningMethod::VirtualScreening,
@@ -1898,10 +1869,9 @@ impl ScientificPerformanceOptimizer {
     }
 
     fn execute_optimized_drug_discovery(
-        &self,
-        problem: &DrugDiscoveryProblem,
-        caching: &MolecularCachingStrategy,
-        distributed: &DistributedScreeningStrategy,
+        _problem: &DrugDiscoveryProblem,
+        _caching: &MolecularCachingStrategy,
+        _distributed: &DistributedScreeningStrategy,
     ) -> ApplicationResult<DrugDiscoveryOptimizationResult> {
         // Simulate optimized execution
         thread::sleep(Duration::from_millis(25));
@@ -1914,9 +1884,8 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn generate_optimization_recommendations(
-        &self,
-    ) -> ApplicationResult<Vec<OptimizationRecommendation>> {
+    fn generate_optimization_recommendations() -> ApplicationResult<Vec<OptimizationRecommendation>>
+    {
         Ok(vec![
             OptimizationRecommendation {
                 category: OptimizationCategory::Memory,
@@ -1940,7 +1909,7 @@ impl ScientificPerformanceOptimizer {
         ])
     }
 
-    fn analyze_performance_bottlenecks(&self) -> ApplicationResult<BottleneckAnalysis> {
+    fn analyze_performance_bottlenecks() -> ApplicationResult<BottleneckAnalysis> {
         Ok(BottleneckAnalysis {
             primary_bottleneck: BottleneckType::MemoryBandwidth,
             secondary_bottlenecks: vec![BottleneckType::CPUUtilization, BottleneckType::DiskIO],
@@ -1953,7 +1922,7 @@ impl ScientificPerformanceOptimizer {
         })
     }
 
-    fn analyze_resource_utilization(&self) -> ApplicationResult<ResourceUtilizationAnalysis> {
+    const fn analyze_resource_utilization() -> ApplicationResult<ResourceUtilizationAnalysis> {
         Ok(ResourceUtilizationAnalysis {
             cpu_utilization: 0.75,
             memory_utilization: 0.65,
@@ -2156,7 +2125,7 @@ impl CPUProfiler {
 }
 
 impl GPUAccelerator {
-    fn new(config: GPUAccelerationConfig) -> Self {
+    const fn new(config: GPUAccelerationConfig) -> Self {
         Self {
             config,
             devices: Vec::new(),
@@ -2255,7 +2224,7 @@ pub struct OptimizationRecommendation {
     pub estimated_improvement: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationCategory {
     Memory,
     Parallelization,
@@ -2264,7 +2233,7 @@ pub enum OptimizationCategory {
     GPU,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationImpact {
     Low,
     Medium,
@@ -2280,7 +2249,7 @@ pub struct BottleneckAnalysis {
     pub resolution_suggestions: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BottleneckType {
     CPUUtilization,
     MemoryBandwidth,
@@ -2352,7 +2321,8 @@ pub struct CommunicationStatistics {}
 pub struct FaultToleranceManager {}
 
 impl FaultToleranceManager {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -2361,7 +2331,8 @@ impl FaultToleranceManager {
 pub struct MemoryProfiler {}
 
 impl MemoryProfiler {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -2370,7 +2341,8 @@ impl MemoryProfiler {
 pub struct IOProfiler {}
 
 impl IOProfiler {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -2385,7 +2357,8 @@ pub struct CPUProfilingConfig {}
 pub struct GPUMemoryManager {}
 
 impl GPUMemoryManager {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -2394,7 +2367,8 @@ impl GPUMemoryManager {
 pub struct KernelRegistry {}
 
 impl KernelRegistry {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {}
     }
 }
@@ -2410,7 +2384,7 @@ pub struct ProblemAnalysis {
     pub recommended_optimizations: Vec<OptimizationType>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemType {
     ProteinFolding,
     MaterialsScience,
@@ -2418,7 +2392,7 @@ pub enum ProblemType {
     Generic,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationType {
     MemoryPooling,
     ParallelExecution,
@@ -2436,7 +2410,7 @@ pub struct MemoryOptimizations {
     pub estimated_savings: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheStrategy {
     Simple,
     Hierarchical,
@@ -2452,7 +2426,7 @@ pub struct ParallelOptimizations {
     pub estimated_speedup: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParallelStrategy {
     DataParallelism,
     TaskParallelism,
@@ -2492,21 +2466,21 @@ pub struct ParallelLatticeStrategy {
     pub load_balancing: LoadBalancingMethod,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PartitioningMethod {
     Spatial,
     Spectral,
     RandomizedBisection,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommunicationPattern {
     AllToAll,
     NearestNeighbor,
     TreeBased,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingMethod {
     Static,
     Dynamic,
@@ -2543,7 +2517,7 @@ pub struct MolecularCachingStrategy {
     pub hit_rate_target: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MolecularCacheType {
     StructureBased,
     PropertyBased,
@@ -2558,14 +2532,14 @@ pub struct DistributedScreeningStrategy {
     pub fault_tolerance: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScreeningMethod {
     VirtualScreening,
     PhysicalScreening,
     HybridScreening,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TaskDistributionMethod {
     RoundRobin,
     LoadBalanced,
@@ -2600,7 +2574,7 @@ pub struct InteractionTarget {}
 #[derive(Debug, Clone, Default)]
 pub struct PropertyConstraints {}
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComputationType {
     Optimization,
     Simulation,
@@ -2662,8 +2636,11 @@ mod tests {
 
     #[test]
     fn test_optimization_recommendations() {
-        let optimizer = create_example_performance_optimizer().unwrap();
-        let recommendations = optimizer.generate_optimization_recommendations().unwrap();
+        let optimizer = create_example_performance_optimizer()
+            .expect("Failed to create example performance optimizer");
+        let recommendations =
+            ScientificPerformanceOptimizer::generate_optimization_recommendations()
+                .expect("Failed to generate optimization recommendations");
 
         assert!(!recommendations.is_empty());
         assert!(recommendations
@@ -2673,8 +2650,11 @@ mod tests {
 
     #[test]
     fn test_performance_report_generation() {
-        let optimizer = create_example_performance_optimizer().unwrap();
-        let report = optimizer.get_performance_report().unwrap();
+        let optimizer = create_example_performance_optimizer()
+            .expect("Failed to create example performance optimizer");
+        let report = optimizer
+            .get_performance_report()
+            .expect("Failed to get performance report");
 
         assert!(report.system_metrics.overall_performance_score > 0.0);
         assert!(!report.optimization_recommendations.is_empty());

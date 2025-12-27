@@ -173,7 +173,7 @@ pub fn expectation_z_simd(amplitudes: &[Complex64], qubit: usize, _num_qubits: u
     let mut signs = Vec::with_capacity(len);
 
     for (i, amp) in amplitudes.iter().enumerate() {
-        norm_sqrs.push(amp.re * amp.re + amp.im * amp.im);
+        norm_sqrs.push(amp.re.mul_add(amp.re, amp.im * amp.im));
         signs.push(if (i & qubit_mask) == 0 { 1.0 } else { -1.0 });
     }
 
@@ -354,7 +354,7 @@ mod tests {
             Complex64::new(0.0, -1.0),
         ];
 
-        normalize_simd(&mut state).unwrap();
+        normalize_simd(&mut state).expect("normalize_simd should succeed with valid state");
 
         let norm_sqr: f64 = state.iter().map(|c| c.norm_sqr()).sum();
         assert!((norm_sqr - 1.0).abs() < 1e-10);
@@ -365,7 +365,8 @@ mod tests {
         let state1 = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
         let state2 = vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)];
 
-        let result = inner_product(&state1, &state2).unwrap();
+        let result = inner_product(&state1, &state2)
+            .expect("inner_product should succeed with equal length states");
         assert_eq!(result, Complex64::new(0.0, 0.0));
     }
 

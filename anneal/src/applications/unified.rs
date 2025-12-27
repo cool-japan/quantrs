@@ -36,19 +36,21 @@ pub enum UnifiedSolution {
 
 impl UnifiedSolution {
     /// Get the binary part of the solution if available
-    pub fn binary(&self) -> Option<&Vec<i8>> {
+    #[must_use]
+    pub const fn binary(&self) -> Option<&Vec<i8>> {
         match self {
-            UnifiedSolution::Binary(b) => Some(b),
-            UnifiedSolution::Mixed { binary, .. } => Some(binary),
+            Self::Binary(b) => Some(b),
+            Self::Mixed { binary, .. } => Some(binary),
             _ => None,
         }
     }
 
     /// Get the continuous part of the solution if available
-    pub fn continuous(&self) -> Option<&Vec<f64>> {
+    #[must_use]
+    pub const fn continuous(&self) -> Option<&Vec<f64>> {
         match self {
-            UnifiedSolution::Continuous(c) => Some(c),
-            UnifiedSolution::Mixed { continuous, .. } => Some(continuous),
+            Self::Continuous(c) => Some(c),
+            Self::Mixed { continuous, .. } => Some(continuous),
             _ => None,
         }
     }
@@ -87,15 +89,15 @@ pub trait UnifiedProblem:
 }
 
 /// Problem complexity categories for solver selection
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemComplexity {
     /// Small problems (< 100 variables)
     Small,
     /// Medium problems (100-1000 variables)
     Medium,
-    /// Large problems (1000-10000 variables)
+    /// Large problems (1000-10_000 variables)
     Large,
-    /// Extra large problems (> 10000 variables)
+    /// Extra large problems (> `10_000` variables)
     ExtraLarge,
 }
 
@@ -177,6 +179,7 @@ impl Default for UnifiedSolverFactory {
 
 impl UnifiedSolverFactory {
     /// Create a new solver factory with default configurations
+    #[must_use]
     pub fn new() -> Self {
         let mut factory = Self {
             default_configs: HashMap::new(),
@@ -196,7 +199,7 @@ impl UnifiedSolverFactory {
             SolverConfiguration {
                 solver_type: SolverType::Classical,
                 annealing_params: AnnealingParams {
-                    num_sweeps: 10000,
+                    num_sweeps: 10_000,
                     num_repetitions: 20,
                     initial_temperature: 2.0,
                     final_temperature: 0.01,
@@ -219,7 +222,7 @@ impl UnifiedSolverFactory {
             SolverConfiguration {
                 solver_type: SolverType::Hybrid,
                 annealing_params: AnnealingParams {
-                    num_sweeps: 15000,
+                    num_sweeps: 15_000,
                     num_repetitions: 25,
                     initial_temperature: 3.0,
                     final_temperature: 0.005,
@@ -245,7 +248,7 @@ impl UnifiedSolverFactory {
             SolverConfiguration {
                 solver_type: SolverType::QuantumSimulator,
                 annealing_params: AnnealingParams {
-                    num_sweeps: 25000,
+                    num_sweeps: 25_000,
                     num_repetitions: 40,
                     initial_temperature: 5.0,
                     final_temperature: 0.001,
@@ -290,7 +293,7 @@ impl UnifiedSolverFactory {
             SolverConfiguration {
                 solver_type: SolverType::Hybrid,
                 annealing_params: AnnealingParams {
-                    num_sweeps: 20000,
+                    num_sweeps: 20_000,
                     num_repetitions: 30,
                     initial_temperature: 4.0,
                     final_temperature: 0.01,
@@ -340,8 +343,7 @@ impl UnifiedSolverFactory {
                 Ok(Box::new(problem) as Box<dyn UnifiedProblem>)
             }
             _ => Err(ApplicationError::InvalidConfiguration(format!(
-                "Unknown problem type: {} / {}",
-                industry, problem_type
+                "Unknown problem type: {industry} / {problem_type}"
             ))),
         }
     }
@@ -381,13 +383,12 @@ impl UnifiedSolverFactory {
 
     /// Get recommended configuration for a problem
     fn get_recommended_config(&self, problem: &dyn UnifiedProblem) -> SolverConfiguration {
-        // Start with problem's own recommendation
-        let mut config = problem.recommended_solver_config();
-
-        // Override with category defaults if available
-        if let Some(default_config) = self.default_configs.get(&problem.category()) {
-            config = default_config.clone();
-        }
+        // Use category defaults if available, otherwise problem's own recommendation
+        let mut config = self
+            .default_configs
+            .get(&problem.category())
+            .cloned()
+            .unwrap_or_else(|| problem.recommended_solver_config());
 
         // Adjust based on problem complexity
         self.adjust_config_for_complexity(&mut config, problem.complexity());
@@ -411,13 +412,13 @@ impl UnifiedSolverFactory {
                 // Keep default values
             }
             ProblemComplexity::Large => {
-                config.annealing_params.num_sweeps = config.annealing_params.num_sweeps.max(20000);
+                config.annealing_params.num_sweeps = config.annealing_params.num_sweeps.max(20_000);
                 config.annealing_params.num_repetitions =
                     config.annealing_params.num_repetitions.max(30);
                 config.hardware_requirements.min_memory_gb *= 2.0;
             }
             ProblemComplexity::ExtraLarge => {
-                config.annealing_params.num_sweeps = config.annealing_params.num_sweeps.max(50000);
+                config.annealing_params.num_sweeps = config.annealing_params.num_sweeps.max(50_000);
                 config.annealing_params.num_repetitions =
                     config.annealing_params.num_repetitions.max(50);
                 config.hardware_requirements.min_memory_gb *= 4.0;
@@ -477,17 +478,17 @@ impl UnifiedSolverFactory {
         // Extract configuration parameters
         let num_assets = config
             .get("num_assets")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(10) as usize;
 
         let budget = config
             .get("budget")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(1000000.0);
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(1_000_000.0);
 
         let risk_tolerance = config
             .get("risk_tolerance")
-            .and_then(|v| v.as_f64())
+            .and_then(serde_json::Value::as_f64)
             .unwrap_or(0.5);
 
         // Generate sample data
@@ -514,12 +515,12 @@ impl UnifiedSolverFactory {
     ) -> ApplicationResult<UnifiedVehicleRoutingProblem> {
         let num_vehicles = config
             .get("num_vehicles")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(3) as usize;
 
         let num_customers = config
             .get("num_customers")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(10) as usize;
 
         // Generate sample problem
@@ -528,9 +529,9 @@ impl UnifiedSolverFactory {
 
         for i in 0..num_customers {
             let angle = 2.0 * std::f64::consts::PI * i as f64 / num_customers as f64;
-            let radius = 1.0 + (i as f64 * 0.1);
+            let radius = (i as f64).mul_add(0.1, 1.0);
             locations.push((radius * angle.cos(), radius * angle.sin()));
-            demands.push(5.0 + (i as f64 * 2.0));
+            demands.push((i as f64).mul_add(2.0, 5.0));
         }
 
         let capacities = vec![50.0; num_vehicles];
@@ -548,7 +549,7 @@ impl UnifiedSolverFactory {
     ) -> ApplicationResult<UnifiedNetworkTopologyOptimization> {
         let num_nodes = config
             .get("num_nodes")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .unwrap_or(6) as usize;
 
         // Generate fully connected potential connections
@@ -558,7 +559,7 @@ impl UnifiedSolverFactory {
         for i in 0..num_nodes {
             for j in (i + 1)..num_nodes {
                 potential_connections.push((i, j));
-                connection_costs.push(5.0 + (i + j) as f64 * 1.5);
+                connection_costs.push(((i + j) as f64).mul_add(1.5, 5.0));
             }
         }
 
@@ -811,7 +812,7 @@ impl UnifiedProblem for UnifiedPortfolioOptimization {
         SolverConfiguration {
             solver_type: SolverType::Classical,
             annealing_params: AnnealingParams {
-                num_sweeps: 10000,
+                num_sweeps: 10_000,
                 num_repetitions: 20,
                 initial_temperature: 2.0,
                 final_temperature: 0.01,
@@ -1386,7 +1387,7 @@ pub fn run_unified_benchmark(
 
     for size in problem_sizes {
         // Create benchmark problems
-        let problems = super::create_benchmark_suite(industry, &format!("{}", size))?;
+        let problems = super::create_benchmark_suite(industry, &format!("{size}"))?;
 
         for (i, problem) in problems.iter().enumerate() {
             let start_time = std::time::Instant::now();
@@ -1396,7 +1397,7 @@ pub fn run_unified_benchmark(
             let solve_time = start_time.elapsed().as_secs_f64() * 1000.0;
 
             results.add_result(
-                format!("{}_{}_problem_{}", industry, size, i),
+                format!("{industry}_{size}_problem_{i}"),
                 solve_time,
                 0.0,
                 true,
@@ -1491,14 +1492,14 @@ mod tests {
         let factory = UnifiedSolverFactory::new();
         let config = HashMap::from([
             ("num_assets".to_string(), json!(5)),
-            ("budget".to_string(), json!(100000.0)),
+            ("budget".to_string(), json!(100_000.0)),
             ("risk_tolerance".to_string(), json!(0.3)),
         ]);
 
         let problem = factory.create_problem("finance", "portfolio", config);
         assert!(problem.is_ok());
 
-        let unified_problem = problem.unwrap();
+        let unified_problem = problem.expect("problem creation should succeed");
         assert_eq!(unified_problem.industry(), "finance");
         assert_eq!(unified_problem.category(), ProblemCategory::Portfolio);
     }
@@ -1510,7 +1511,7 @@ mod tests {
 
         let problem = factory
             .create_problem("finance", "portfolio", config)
-            .unwrap();
+            .expect("problem creation should succeed");
         assert_eq!(problem.complexity(), ProblemComplexity::Small);
     }
 
@@ -1530,7 +1531,7 @@ mod tests {
         };
 
         factory.adjust_config_for_complexity(&mut config, ProblemComplexity::Large);
-        assert!(config.annealing_params.num_sweeps >= 20000);
+        assert!(config.annealing_params.num_sweeps >= 20_000);
         assert!(config.hardware_requirements.min_memory_gb >= 2.0);
     }
 }

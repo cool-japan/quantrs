@@ -35,8 +35,7 @@ impl AnomalyDetector for SimpleMLAnomalyDetector {
                         anomaly_type: AnomalyType::PerformanceDegradation,
                         severity: (value - mean).abs() / std_dev,
                         description: format!(
-                            "Value {} deviates significantly from mean {}",
-                            value, mean
+                            "Value {value} deviates significantly from mean {mean}"
                         ),
                         timestamp,
                         affected_metrics: vec!["performance".to_string()],

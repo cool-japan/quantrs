@@ -320,7 +320,7 @@ impl HybridNeuralNetwork {
                 } else {
                     patience_counter += 1;
                     if patience_counter >= self.config.early_stopping_patience {
-                        println!("Early stopping at epoch {}", epoch);
+                        println!("Early stopping at epoch {epoch}");
                         break;
                     }
                 }
@@ -390,15 +390,15 @@ impl HybridNeuralNetwork {
             let pred_class = prediction
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .unwrap()
-                .0;
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
             let true_class = adjusted_target
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .unwrap()
-                .0;
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
 
             if pred_class == true_class {
                 correct_predictions += 1;
@@ -480,7 +480,7 @@ impl HybridNeuralNetwork {
         let quantum_output = self.quantum_circuit.forward(&quantum_input)?;
 
         // Residual connection: classical + quantum
-        let mut residual_output = classical_output.clone();
+        let mut residual_output = classical_output;
         let min_len = residual_output.len().min(quantum_output.len());
         for i in 0..min_len {
             residual_output[i] += quantum_output[i];
@@ -571,15 +571,15 @@ impl HybridNeuralNetwork {
                 let pred_class = prediction
                     .iter()
                     .enumerate()
-                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                    .unwrap()
-                    .0;
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(idx, _)| idx)
+                    .unwrap_or(0);
                 let true_class = target
                     .iter()
                     .enumerate()
-                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                    .unwrap()
-                    .0;
+                    .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(idx, _)| idx)
+                    .unwrap_or(0);
 
                 if pred_class == true_class {
                     batch_correct += 1;
@@ -637,17 +637,17 @@ impl HybridNeuralNetwork {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         for layer in &mut self.classical_layers {
-            for weight in layer.weights.iter_mut() {
+            for weight in &mut layer.weights {
                 *weight += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
-            for bias in layer.biases.iter_mut() {
+            for bias in &mut layer.biases {
                 *bias += self.config.classical_learning_rate * (rng.gen::<f64>() - 0.5) * 0.1;
             }
         }
         Ok(())
     }
 
-    fn compute_quantum_contribution(&self) -> QuantRS2Result<f64> {
+    const fn compute_quantum_contribution(&self) -> QuantRS2Result<f64> {
         // Simplified quantum contribution analysis
         // In a full implementation, this would analyze the information flow
         Ok(0.3) // 30% quantum contribution
@@ -677,7 +677,7 @@ impl HybridNeuralNetwork {
     }
 
     /// Get training history
-    pub fn get_training_history(&self) -> &TrainingHistory {
+    pub const fn get_training_history(&self) -> &TrainingHistory {
         &self.training_history
     }
 
@@ -728,8 +728,9 @@ impl DenseLayer {
             ActivationFunction::GELU => input.mapv(|x| {
                 0.5 * x
                     * (1.0
-                        + ((2.0 / std::f64::consts::PI).sqrt() * (x + 0.044_715 * x.powi(3)))
-                            .tanh())
+                        + ((2.0 / std::f64::consts::PI).sqrt()
+                            * 0.044_715f64.mul_add(x.powi(3), x))
+                        .tanh())
             }),
         };
         Ok(output)
@@ -876,7 +877,9 @@ impl FusionLayer {
                         0.0
                     };
                     let q_val = if i < quantum.len() { quantum[i] } else { 0.0 };
-                    result[i] = self.classical_weight * c_val + self.quantum_weight * q_val;
+                    result[i] = self
+                        .classical_weight
+                        .mul_add(c_val, self.quantum_weight * q_val);
                 }
                 Ok(result)
             }
@@ -897,7 +900,7 @@ impl FusionLayer {
 }
 
 impl TrainingHistory {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             losses: Vec::new(),
             quantum_losses: Vec::new(),
@@ -995,29 +998,32 @@ mod tests {
 
     #[test]
     fn test_dense_layer() {
-        let layer = DenseLayer::new(4, 2, ActivationFunction::ReLU).unwrap();
+        let layer =
+            DenseLayer::new(4, 2, ActivationFunction::ReLU).expect("dense layer creation failed");
         let input = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
         let output = layer.forward(&input);
 
         assert!(output.is_ok());
-        let result = output.unwrap();
+        let result = output.expect("forward pass failed");
         assert_eq!(result.len(), 2);
     }
 
     #[test]
     fn test_quantum_circuit() {
-        let circuit = ParameterizedQuantumCircuit::new(3, 2).unwrap();
+        let circuit =
+            ParameterizedQuantumCircuit::new(3, 2).expect("quantum circuit creation failed");
         let input = Array1::from_vec(vec![0.5, 0.3, 0.2]);
         let output = circuit.forward(&input);
 
         assert!(output.is_ok());
-        let result = output.unwrap();
+        let result = output.expect("forward pass failed");
         assert_eq!(result.len(), 3);
     }
 
     #[test]
     fn test_fusion_layer() {
-        let fusion = FusionLayer::new(FusionType::WeightedSum, 3, 2).unwrap();
+        let fusion =
+            FusionLayer::new(FusionType::WeightedSum, 3, 2).expect("fusion layer creation failed");
         let classical = Array1::from_vec(vec![1.0, 2.0, 3.0]);
         let quantum = Array1::from_vec(vec![0.5, 1.5]);
 
@@ -1027,7 +1033,8 @@ mod tests {
 
     #[test]
     fn test_forward_pass() {
-        let mut network = HybridNeuralNetwork::new(HybridLearningConfig::default()).unwrap();
+        let mut network = HybridNeuralNetwork::new(HybridLearningConfig::default())
+            .expect("network creation failed");
         let input = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
 
         let output = network.forward(&input);
@@ -1038,31 +1045,37 @@ mod tests {
     fn test_training_data_evaluation() {
         let mut config = HybridLearningConfig::default();
         config.classical_layers = vec![8, 4, 2]; // Adjust output size to match targets
-        let mut network = HybridNeuralNetwork::new(config).unwrap();
+        let mut network = HybridNeuralNetwork::new(config).expect("network creation failed");
 
-        let inputs = Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64).collect()).unwrap();
-        let targets =
-            Array2::from_shape_vec((10, 2), (0..20).map(|x| x as f64 % 2.0).collect()).unwrap();
+        let inputs = Array2::from_shape_vec((10, 4), (0..40).map(|x| x as f64).collect())
+            .expect("inputs array creation failed");
+        let targets = Array2::from_shape_vec((10, 2), (0..20).map(|x| x as f64 % 2.0).collect())
+            .expect("targets array creation failed");
 
         let result = network.evaluate(&inputs, &targets);
         assert!(result.is_ok());
 
-        let (loss, accuracy) = result.unwrap();
+        let (loss, accuracy) = result.expect("evaluation failed");
         assert!(loss >= 0.0);
         assert!(accuracy >= 0.0 && accuracy <= 1.0);
     }
 
     #[test]
     fn test_activation_functions() {
-        let layer_relu = DenseLayer::new(2, 2, ActivationFunction::ReLU).unwrap();
-        let layer_sigmoid = DenseLayer::new(2, 2, ActivationFunction::Sigmoid).unwrap();
-        let layer_tanh = DenseLayer::new(2, 2, ActivationFunction::Tanh).unwrap();
+        let layer_relu =
+            DenseLayer::new(2, 2, ActivationFunction::ReLU).expect("relu layer creation failed");
+        let layer_sigmoid = DenseLayer::new(2, 2, ActivationFunction::Sigmoid)
+            .expect("sigmoid layer creation failed");
+        let layer_tanh =
+            DenseLayer::new(2, 2, ActivationFunction::Tanh).expect("tanh layer creation failed");
 
         let input = Array1::from_vec(vec![-1.0, 1.0]);
 
-        let _output_relu = layer_relu.forward(&input).unwrap();
-        let output_sigmoid = layer_sigmoid.forward(&input).unwrap();
-        let output_tanh = layer_tanh.forward(&input).unwrap();
+        let _output_relu = layer_relu.forward(&input).expect("relu forward failed");
+        let output_sigmoid = layer_sigmoid
+            .forward(&input)
+            .expect("sigmoid forward failed");
+        let output_tanh = layer_tanh.forward(&input).expect("tanh forward failed");
 
         // ReLU should clamp negative values to 0
         // Sigmoid should be between 0 and 1
@@ -1100,7 +1113,8 @@ mod tests {
             let mut config = HybridLearningConfig::default();
             config.interaction_type = interaction_type;
             config.classical_layers = vec![8, 4]; // Consistent layer sizes
-            let mut network = HybridNeuralNetwork::new(config).unwrap();
+            let mut network = HybridNeuralNetwork::new(config)
+                .expect("network creation failed for interaction type");
             let result = network.forward(&input);
             assert!(
                 result.is_ok(),
@@ -1122,7 +1136,8 @@ mod tests {
         ];
 
         for fusion_type in fusion_types {
-            let fusion = FusionLayer::new(fusion_type, 3, 3).unwrap();
+            let fusion = FusionLayer::new(fusion_type, 3, 3)
+                .expect("fusion layer creation failed for fusion type");
             let result = fusion.fuse(&classical, &quantum);
             assert!(result.is_ok(), "Failed for fusion type: {:?}", fusion_type);
         }

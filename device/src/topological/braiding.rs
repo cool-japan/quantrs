@@ -33,7 +33,7 @@ pub struct BraidGroupElement {
 
 impl BraidGroupElement {
     /// Create a new braid group element
-    pub fn new(anyon_count: usize) -> Self {
+    pub const fn new(anyon_count: usize) -> Self {
         Self {
             generators: Vec::new(),
             anyon_count,
@@ -54,7 +54,7 @@ impl BraidGroupElement {
     }
 
     /// Compose with another braid element
-    pub fn compose(&self, other: &BraidGroupElement) -> TopologicalResult<BraidGroupElement> {
+    pub fn compose(&self, other: &Self) -> TopologicalResult<Self> {
         if self.anyon_count != other.anyon_count {
             return Err(TopologicalError::InvalidBraiding(
                 "Cannot compose braids with different anyon counts".to_string(),
@@ -67,7 +67,8 @@ impl BraidGroupElement {
     }
 
     /// Calculate the inverse braid
-    pub fn inverse(&self) -> BraidGroupElement {
+    #[must_use]
+    pub fn inverse(&self) -> Self {
         let mut inverse_generators = Vec::new();
 
         for generator in self.generators.iter().rev() {
@@ -83,7 +84,7 @@ impl BraidGroupElement {
             });
         }
 
-        BraidGroupElement {
+        Self {
             generators: inverse_generators,
             anyon_count: self.anyon_count,
         }
@@ -97,7 +98,7 @@ pub struct BraidingMatrixCalculator {
 
 impl BraidingMatrixCalculator {
     /// Create a new braiding matrix calculator
-    pub fn new(anyon_type: NonAbelianAnyonType) -> Self {
+    pub const fn new(anyon_type: NonAbelianAnyonType) -> Self {
         Self { anyon_type }
     }
 
@@ -127,7 +128,7 @@ impl BraidingMatrixCalculator {
         charge2: &TopologicalCharge,
         fusion_channel: &str,
     ) -> TopologicalResult<Vec<Vec<f64>>> {
-        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0; // Golden ratio
+        let phi = f64::midpoint(1.0, 5.0_f64.sqrt()); // Golden ratio
 
         match (
             charge1.label.as_str(),
@@ -340,7 +341,7 @@ impl BraidingOperationManager {
             ));
         }
 
-        let det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+        let det = matrix[0][0].mul_add(matrix[1][1], -(matrix[0][1] * matrix[1][0]));
         if det.abs() < 1e-10 {
             return Err(TopologicalError::InvalidBraiding(
                 "Matrix is singular and cannot be inverted".to_string(),
@@ -378,7 +379,7 @@ pub struct BraidWordOptimizer {
 
 impl BraidWordOptimizer {
     /// Create a new braid word optimizer
-    pub fn new(anyon_count: usize) -> Self {
+    pub const fn new(anyon_count: usize) -> Self {
         Self { anyon_count }
     }
 
@@ -406,9 +407,7 @@ impl BraidWordOptimizer {
                 // Remove the inverse pair
                 braid.generators.remove(i);
                 braid.generators.remove(i);
-                if i > 0 {
-                    i -= 1;
-                }
+                i = i.saturating_sub(1);
             } else {
                 i += 1;
             }
@@ -467,8 +466,8 @@ impl BraidWordOptimizer {
 
             // Apply the transformation (simplified)
             braid.generators[start_index] = g2.clone();
-            braid.generators[start_index + 1] = g1.clone();
-            braid.generators[start_index + 2] = g2.clone();
+            braid.generators[start_index + 1] = g1;
+            braid.generators[start_index + 2] = g2;
         }
     }
 }
@@ -501,7 +500,9 @@ mod tests {
             direction: BraidingDirection::Clockwise,
         };
 
-        braid.add_generator(generator).unwrap();
+        braid
+            .add_generator(generator)
+            .expect("Generator should be valid for 3-anyon braid");
         let inverse = braid.inverse();
 
         assert_eq!(inverse.generators.len(), 1);
@@ -518,7 +519,7 @@ mod tests {
 
         let r_matrix = calculator
             .calculate_r_matrix(&tau_charge, &tau_charge, "I")
-            .unwrap();
+            .expect("Fibonacci tau x tau -> I R-matrix should be valid");
         assert_eq!(r_matrix.len(), 2);
         assert_eq!(r_matrix[0].len(), 2);
     }

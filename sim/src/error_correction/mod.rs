@@ -106,7 +106,7 @@ pub trait ErrorCorrection {
 
 /// Utility functions for error correction
 pub mod utils {
-    use super::*;
+    use super::{ErrorCorrection, QubitId, Result, SimulatorError};
     use quantrs2_circuit::builder::Circuit;
 
     /// Creates a complete error-corrected circuit including encoding, noise, and correction

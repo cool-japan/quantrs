@@ -7,7 +7,7 @@
 
 use crate::prelude::SimulatorError;
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -96,16 +96,19 @@ pub struct FockState {
 
 impl FockState {
     /// Create new Fock state
+    #[must_use]
     pub const fn new(photon_numbers: Vec<usize>) -> Self {
         Self { photon_numbers }
     }
 
     /// Create vacuum state
+    #[must_use]
     pub fn vacuum(num_modes: usize) -> Self {
         Self::new(vec![0; num_modes])
     }
 
     /// Create single-photon state in given mode
+    #[must_use]
     pub fn single_photon(mode: usize, num_modes: usize) -> Self {
         let mut photon_numbers = vec![0; num_modes];
         photon_numbers[mode] = 1;
@@ -113,11 +116,13 @@ impl FockState {
     }
 
     /// Total photon number
+    #[must_use]
     pub fn total_photons(&self) -> usize {
         self.photon_numbers.iter().sum()
     }
 
     /// Get photon number in specific mode
+    #[must_use]
     pub fn photons_in_mode(&self, mode: usize) -> usize {
         self.photon_numbers.get(mode).copied().unwrap_or(0)
     }
@@ -180,7 +185,7 @@ pub struct PhotonicSimulator {
     config: PhotonicConfig,
     /// Current state
     state: PhotonicState,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Basis state cache
     basis_cache: HashMap<FockState, usize>,
@@ -202,7 +207,7 @@ impl PhotonicSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -274,7 +279,7 @@ impl PhotonicSimulator {
                 // Normalize the truncated coherent state
                 let norm = state_vector
                     .iter()
-                    .map(|x| x.norm_sqr())
+                    .map(scirs2_core::Complex::norm_sqr)
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
@@ -331,7 +336,7 @@ impl PhotonicSimulator {
                 // Normalize
                 let norm = state_vector
                     .iter()
-                    .map(|x| x.norm_sqr())
+                    .map(scirs2_core::Complex::norm_sqr)
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-15 {
@@ -512,7 +517,7 @@ impl PhotonicSimulator {
             PhotonicMethod::SciRS2Continuous => {
                 self.apply_displacement_scirs2(mode, alpha)?;
             }
-            _ => {
+            PhotonicMethod::WignerFunction => {
                 return Err(SimulatorError::UnsupportedOperation(
                     "Displacement not supported for this method".to_string(),
                 ));
@@ -609,7 +614,8 @@ impl PhotonicSimulator {
 
         match &mut self.state {
             PhotonicState::Fock(state_vector) => {
-                let fock_states = fock_states.unwrap();
+                // Safety: fock_states is Some() since we checked for Fock state above
+                let fock_states = fock_states.expect("guaranteed by Fock state check above");
 
                 for (i, amplitude) in state_vector.iter_mut().enumerate() {
                     let n = fock_states[i].photon_numbers[mode] as f64;
@@ -969,11 +975,13 @@ impl PhotonicSimulator {
     }
 
     /// Get current state
+    #[must_use]
     pub const fn get_state(&self) -> &PhotonicState {
         &self.state
     }
 
     /// Get configuration
+    #[must_use]
     pub const fn get_config(&self) -> &PhotonicConfig {
         &self.config
     }
@@ -1029,7 +1037,7 @@ impl PhotonicUtils {
             PhotonicState::Fock(state_vector) => {
                 let probabilities: Vec<f64> = state_vector
                     .iter()
-                    .map(|amp| amp.norm_sqr())
+                    .map(scirs2_core::Complex::norm_sqr)
                     .filter(|&p| p > 1e-15)
                     .collect();
 
@@ -1128,15 +1136,18 @@ mod tests {
     #[test]
     fn test_photonic_simulator_creation() {
         let config = PhotonicConfig::default();
-        let simulator = PhotonicSimulator::new(config).unwrap();
+        let simulator = PhotonicSimulator::new(config).expect("should create photonic simulator");
         assert_eq!(simulator.config.num_modes, 1);
     }
 
     #[test]
     fn test_vacuum_initialization() {
         let config = PhotonicConfig::default();
-        let mut simulator = PhotonicSimulator::new(config).unwrap();
-        simulator.initialize_vacuum().unwrap();
+        let mut simulator =
+            PhotonicSimulator::new(config).expect("should create photonic simulator");
+        simulator
+            .initialize_vacuum()
+            .expect("should initialize vacuum state");
 
         if let PhotonicState::Fock(state) = &simulator.state {
             assert_abs_diff_eq!(state[0].norm(), 1.0, epsilon = 1e-10);
@@ -1149,10 +1160,13 @@ mod tests {
             max_photon_number: 10,
             ..Default::default()
         };
-        let mut simulator = PhotonicSimulator::new(config).unwrap();
+        let mut simulator =
+            PhotonicSimulator::new(config).expect("should create photonic simulator");
         let alpha = Complex64::new(1.0, 0.5);
 
-        simulator.initialize_coherent_state(alpha, 0).unwrap();
+        simulator
+            .initialize_coherent_state(alpha, 0)
+            .expect("should initialize coherent state");
 
         // Verify state is normalized
         if let PhotonicState::Fock(state) = &simulator.state {
@@ -1167,16 +1181,21 @@ mod tests {
             max_photon_number: 5,
             ..Default::default()
         };
-        let mut simulator = PhotonicSimulator::new(config).unwrap();
-        simulator.initialize_vacuum().unwrap();
+        let mut simulator =
+            PhotonicSimulator::new(config).expect("should create photonic simulator");
+        simulator
+            .initialize_vacuum()
+            .expect("should initialize vacuum state");
 
         // Apply creation operator
         simulator
             .apply_operator(PhotonicOperator::Creation(0))
-            .unwrap();
+            .expect("should apply creation operator");
 
         // Should now be in |1⟩ state
-        let photon_number = simulator.measure_photon_number(0).unwrap();
+        let photon_number = simulator
+            .measure_photon_number(0)
+            .expect("should measure photon number");
         assert_abs_diff_eq!(photon_number, 1.0, epsilon = 1e-10);
     }
 
@@ -1186,21 +1205,28 @@ mod tests {
             max_photon_number: 5,
             ..Default::default()
         };
-        let mut simulator = PhotonicSimulator::new(config).unwrap();
-        simulator.initialize_vacuum().unwrap();
+        let mut simulator =
+            PhotonicSimulator::new(config).expect("should create photonic simulator");
+        simulator
+            .initialize_vacuum()
+            .expect("should initialize vacuum state");
 
         // Apply first creation operator: |0⟩ -> |1⟩
         simulator
             .apply_operator(PhotonicOperator::Creation(0))
-            .unwrap();
-        let photon_number_1 = simulator.measure_photon_number(0).unwrap();
+            .expect("should apply creation operator");
+        let photon_number_1 = simulator
+            .measure_photon_number(0)
+            .expect("should measure photon number");
         assert_abs_diff_eq!(photon_number_1, 1.0, epsilon = 1e-10);
 
         // Apply second creation operator: |1⟩ -> √2 |2⟩
         simulator
             .apply_operator(PhotonicOperator::Creation(0))
-            .unwrap();
-        let photon_number_2 = simulator.measure_photon_number(0).unwrap();
+            .expect("should apply second creation operator");
+        let photon_number_2 = simulator
+            .measure_photon_number(0)
+            .expect("should measure photon number");
         assert_abs_diff_eq!(photon_number_2, 2.0, epsilon = 1e-10);
     }
 
@@ -1210,10 +1236,15 @@ mod tests {
             max_photon_number: 3,
             ..Default::default()
         };
-        let mut simulator = PhotonicSimulator::new(config).unwrap();
-        simulator.initialize_vacuum().unwrap();
+        let mut simulator =
+            PhotonicSimulator::new(config).expect("should create photonic simulator");
+        simulator
+            .initialize_vacuum()
+            .expect("should initialize vacuum state");
 
-        let distribution = simulator.photon_distribution(0).unwrap();
+        let distribution = simulator
+            .photon_distribution(0)
+            .expect("should get photon distribution");
 
         // Vacuum state should have probability 1 for n=0
         assert_abs_diff_eq!(distribution[0], 1.0, epsilon = 1e-10);

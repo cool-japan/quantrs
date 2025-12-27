@@ -145,7 +145,7 @@ pub struct CVMeasurementEngine {
 
 impl CVMeasurementEngine {
     /// Create a new measurement engine
-    pub fn new(config: CVMeasurementConfig) -> Self {
+    pub const fn new(config: CVMeasurementConfig) -> Self {
         Self {
             config,
             measurement_history: Vec::new(),
@@ -162,8 +162,10 @@ impl CVMeasurementEngine {
 
         // Update calibration factors
         for i in 0..self.config.calibration.efficiency.len() {
-            self.config.calibration.efficiency[i] = 0.95 + 0.03 * thread_rng().gen::<f64>();
-            self.config.calibration.gain_factors[i] = 1.0 + 0.1 * (thread_rng().gen::<f64>() - 0.5);
+            self.config.calibration.efficiency[i] =
+                0.03f64.mul_add(thread_rng().gen::<f64>(), 0.95);
+            self.config.calibration.gain_factors[i] =
+                0.1f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0);
             self.config.calibration.phase_offsets[i] = 0.1 * (thread_rng().gen::<f64>() - 0.5);
         }
 
@@ -187,8 +189,7 @@ impl CVMeasurementEngine {
 
         if mode >= state.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -213,8 +214,10 @@ impl CVMeasurementEngine {
         let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
         let cov_xp = state.covariancematrix[2 * mode][2 * mode + 1];
 
-        let theoretical_variance =
-            cos_phi.powi(2) * var_x + sin_phi.powi(2) * var_p + 2.0 * cos_phi * sin_phi * cov_xp;
+        let theoretical_variance = (2.0 * cos_phi * sin_phi).mul_add(
+            cov_xp,
+            cos_phi.powi(2).mul_add(var_x, sin_phi.powi(2) * var_p),
+        );
 
         // Add noise effects
         let efficiency = self
@@ -236,7 +239,7 @@ impl CVMeasurementEngine {
         // Perform multiple samples
         let mut samples = Vec::new();
         let distribution = Normal::new(theoretical_mean, total_variance.sqrt())
-            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         for _ in 0..self.config.num_samples {
@@ -264,7 +267,7 @@ impl CVMeasurementEngine {
             sample_count: samples.len(),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -289,8 +292,7 @@ impl CVMeasurementEngine {
 
         if mode >= state.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -322,10 +324,10 @@ impl CVMeasurementEngine {
 
         let x_distribution =
             Normal::new(mean_x, (var_x / efficiency + noise_variance / 2.0).sqrt())
-                .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+                .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
         let p_distribution =
             Normal::new(mean_p, (var_p / efficiency + noise_variance / 2.0).sqrt())
-                .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {}", e)))?;
+                .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
         let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
         for _ in 0..self.config.num_samples {
@@ -338,8 +340,8 @@ impl CVMeasurementEngine {
         let mean_p_outcome = p_samples.iter().sum::<f64>() / p_samples.len() as f64;
 
         let complex_outcome = Complex::new(
-            (mean_x_outcome + mean_p_outcome * Complex::i().real) / (2.0_f64).sqrt(),
-            (mean_p_outcome - mean_x_outcome * Complex::i().imag) / (2.0_f64).sqrt(),
+            mean_p_outcome.mul_add(Complex::i().real, mean_x_outcome) / (2.0_f64).sqrt(),
+            mean_x_outcome.mul_add(-Complex::i().imag, mean_p_outcome) / (2.0_f64).sqrt(),
         );
 
         // Calculate standard deviation
@@ -366,7 +368,7 @@ impl CVMeasurementEngine {
             sample_count: self.config.num_samples,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -391,8 +393,7 @@ impl CVMeasurementEngine {
 
         if mode >= state.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds available modes",
-                mode
+                "Mode {mode} exceeds available modes"
             )));
         }
 
@@ -403,7 +404,7 @@ impl CVMeasurementEngine {
         let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Average photon number for Gaussian state
-        let mean_n = 0.5 * ((mean_x.powi(2) + mean_p.powi(2)) / 2.0 + (var_x + var_p) - 1.0);
+        let mean_n = 0.5 * (mean_p.mul_add(mean_p, mean_x.powi(2)) / 2.0 + (var_x + var_p) - 1.0);
 
         // For thermal/squeezed states, photon number follows geometric/negative binomial distribution
         // Simplified: just add Poissonian noise around the mean
@@ -423,7 +424,7 @@ impl CVMeasurementEngine {
         for _ in 0..self.config.num_samples {
             let sample = if detected_n > 0.0 {
                 let poisson = Poisson::new(detected_n)
-                    .map_err(|e| DeviceError::InvalidInput(format!("Poisson error: {}", e)))?;
+                    .map_err(|e| DeviceError::InvalidInput(format!("Poisson error: {e}")))?;
                 poisson.sample(&mut rng) as f64
             } else {
                 0.0
@@ -448,7 +449,7 @@ impl CVMeasurementEngine {
             sample_count: samples.len(),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -481,7 +482,7 @@ impl CVMeasurementEngine {
             sample_count: photon_result.sample_count,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -524,21 +525,19 @@ impl CVMeasurementEngine {
         };
 
         let correlation = val1 * val2;
-        let avg_phase = (phase1 + phase2) / 2.0;
+        let avg_phase = f64::midpoint(phase1, phase2);
 
         let result = CVMeasurementResult {
             outcome: CVMeasurementOutcome::BellCorrelation {
                 correlation,
                 phase: avg_phase,
             },
-            fidelity: (result1.fidelity + result2.fidelity) / 2.0,
-            standard_deviation: (result1.standard_deviation.powi(2)
-                + result2.standard_deviation.powi(2))
-            .sqrt(),
+            fidelity: f64::midpoint(result1.fidelity, result2.fidelity),
+            standard_deviation: result1.standard_deviation.hypot(result2.standard_deviation),
             sample_count: result1.sample_count.min(result2.sample_count),
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs_f64(),
         };
 
@@ -668,7 +667,10 @@ mod tests {
         let config = CVMeasurementConfig::default();
         let mut engine = CVMeasurementEngine::new(config);
 
-        engine.calibrate().await.unwrap();
+        engine
+            .calibrate()
+            .await
+            .expect("Engine calibration should succeed");
         assert!(engine.is_calibrated);
     }
 
@@ -676,16 +678,19 @@ mod tests {
     async fn test_homodyne_measurement() {
         let config = CVMeasurementConfig::default();
         let mut engine = CVMeasurementEngine::new(config);
-        engine.calibrate().await.unwrap();
+        engine
+            .calibrate()
+            .await
+            .expect("Engine calibration should succeed");
 
         let mut state =
             GaussianState::coherent_state(2, vec![Complex::new(2.0, 0.0), Complex::new(0.0, 0.0)])
-                .unwrap();
+                .expect("Coherent state creation should succeed");
 
         let result = engine
             .homodyne_measurement(&mut state, 0, 0.0)
             .await
-            .unwrap();
+            .expect("Homodyne measurement should succeed");
 
         match result.outcome {
             CVMeasurementOutcome::Real(value) => {
@@ -702,11 +707,18 @@ mod tests {
     async fn test_heterodyne_measurement() {
         let config = CVMeasurementConfig::default();
         let mut engine = CVMeasurementEngine::new(config);
-        engine.calibrate().await.unwrap();
+        engine
+            .calibrate()
+            .await
+            .expect("Engine calibration should succeed");
 
-        let mut state = GaussianState::coherent_state(1, vec![Complex::new(1.0, 0.5)]).unwrap();
+        let mut state = GaussianState::coherent_state(1, vec![Complex::new(1.0, 0.5)])
+            .expect("Coherent state creation should succeed");
 
-        let result = engine.heterodyne_measurement(&mut state, 0).await.unwrap();
+        let result = engine
+            .heterodyne_measurement(&mut state, 0)
+            .await
+            .expect("Heterodyne measurement should succeed");
 
         match result.outcome {
             CVMeasurementOutcome::Complex(z) => {
@@ -720,11 +732,18 @@ mod tests {
     async fn test_photon_number_measurement() {
         let config = CVMeasurementConfig::default();
         let mut engine = CVMeasurementEngine::new(config);
-        engine.calibrate().await.unwrap();
+        engine
+            .calibrate()
+            .await
+            .expect("Engine calibration should succeed");
 
-        let state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 0.0)]).unwrap();
+        let state = GaussianState::coherent_state(1, vec![Complex::new(2.0, 0.0)])
+            .expect("Coherent state creation should succeed");
 
-        let result = engine.photon_number_measurement(&state, 0).await.unwrap();
+        let result = engine
+            .photon_number_measurement(&state, 0)
+            .await
+            .expect("Photon number measurement should succeed");
 
         match result.outcome {
             CVMeasurementOutcome::Integer(n) => {
@@ -738,11 +757,17 @@ mod tests {
     async fn test_parity_measurement() {
         let config = CVMeasurementConfig::default();
         let mut engine = CVMeasurementEngine::new(config);
-        engine.calibrate().await.unwrap();
+        engine
+            .calibrate()
+            .await
+            .expect("Engine calibration should succeed");
 
         let state = GaussianState::vacuum_state(1);
 
-        let result = engine.parity_measurement(&state, 0).await.unwrap();
+        let result = engine
+            .parity_measurement(&state, 0)
+            .await
+            .expect("Parity measurement should succeed");
 
         match result.outcome {
             CVMeasurementOutcome::Boolean(parity) => {

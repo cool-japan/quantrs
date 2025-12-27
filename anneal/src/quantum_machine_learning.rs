@@ -119,7 +119,8 @@ pub struct QuantumCircuit {
 
 impl QuantumCircuit {
     /// Create a new quantum circuit
-    pub fn new(num_qubits: usize) -> Self {
+    #[must_use]
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
             layers: Vec::new(),
@@ -136,6 +137,7 @@ impl QuantumCircuit {
     }
 
     /// Create a hardware-efficient ansatz
+    #[must_use]
     pub fn hardware_efficient_ansatz(num_qubits: usize, num_layers: usize) -> Self {
         let mut circuit = Self::new(num_qubits);
 
@@ -228,7 +230,7 @@ pub struct QuantumFeatureMap {
 }
 
 /// Types of quantum feature maps
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureMapType {
     /// Simple amplitude encoding
     AmplitudeEncoding,
@@ -243,7 +245,7 @@ pub enum FeatureMapType {
 }
 
 /// Types of entanglement for feature maps
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntanglementType {
     /// Linear entanglement
     Linear,
@@ -262,8 +264,7 @@ impl QuantumFeatureMap {
     ) -> QmlResult<Self> {
         if num_features > num_qubits {
             return Err(QmlError::ArchitectureError(format!(
-                "Cannot encode {} features into {} qubits",
-                num_features, num_qubits
+                "Cannot encode {num_features} features into {num_qubits} qubits"
             )));
         }
 
@@ -525,7 +526,8 @@ pub struct TrainingHistory {
 
 impl TrainingHistory {
     /// Create new training history
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             losses: Vec::new(),
             accuracies: Vec::new(),
@@ -595,12 +597,12 @@ impl VariationalQuantumClassifier {
         };
 
         let simulator = ClassicalAnnealingSimulator::new(annealing_params)
-            .map_err(|e| QmlError::OptimizationError(format!("Annealing setup failed: {}", e)))?;
+            .map_err(|e| QmlError::OptimizationError(format!("Annealing setup failed: {e}")))?;
 
         let start = Instant::now();
         let result = simulator
             .solve(&optimization_problem)
-            .map_err(|e| QmlError::OptimizationError(format!("Annealing failed: {}", e)))?;
+            .map_err(|e| QmlError::OptimizationError(format!("Annealing failed: {e}")))?;
 
         // Update parameters from annealing result
         self.update_parameters_from_solution(&result)?;
@@ -675,7 +677,7 @@ impl VariationalQuantumClassifier {
                 }
 
                 // Map to parameter range [-π, π]
-                let normalized = binary_val as f64 / ((1 << precision_bits) - 1) as f64;
+                let normalized = f64::from(binary_val) / f64::from((1 << precision_bits) - 1);
                 *param = (normalized - 0.5) * 2.0 * PI;
             }
         }
@@ -691,9 +693,8 @@ impl VariationalQuantumClassifier {
         let max_class = probabilities
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map_or(0, |(idx, _)| idx);
 
         Ok(max_class)
     }
@@ -759,7 +760,7 @@ impl VariationalQuantumClassifier {
             total += 1;
         }
 
-        Ok(correct as f64 / total as f64)
+        Ok(f64::from(correct) / f64::from(total))
     }
 }
 
@@ -790,13 +791,13 @@ pub struct QuantumNeuralLayer {
 }
 
 /// Activation function types for QNN
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActivationType {
     /// No activation (linear)
     Linear,
     /// Quantum sigmoid approximation
     QuantumSigmoid,
-    /// Quantum ReLU approximation
+    /// Quantum `ReLU` approximation
     QuantumReLU,
     /// Quantum tanh approximation
     QuantumTanh,
@@ -890,13 +891,12 @@ impl QuantumNeuralNetwork {
                 ..Default::default()
             };
 
-            let simulator = ClassicalAnnealingSimulator::new(annealing_params).map_err(|e| {
-                QmlError::OptimizationError(format!("Annealing setup failed: {}", e))
-            })?;
+            let simulator = ClassicalAnnealingSimulator::new(annealing_params)
+                .map_err(|e| QmlError::OptimizationError(format!("Annealing setup failed: {e}")))?;
 
             let result = simulator
                 .solve(&optimization_problem)
-                .map_err(|e| QmlError::OptimizationError(format!("Annealing failed: {}", e)))?;
+                .map_err(|e| QmlError::OptimizationError(format!("Annealing failed: {e}")))?;
 
             // Update network parameters
             self.update_from_annealing_result(&result)?;
@@ -908,12 +908,12 @@ impl QuantumNeuralNetwork {
             self.training_history.iteration_times.push(start.elapsed());
 
             if epoch % 10 == 0 {
-                println!("Epoch {}: Loss = {:.6}", epoch, loss);
+                println!("Epoch {epoch}: Loss = {loss:.6}");
             }
 
             // Check convergence
             if loss < self.config.tolerance {
-                println!("Converged at epoch {}", epoch);
+                println!("Converged at epoch {epoch}");
                 break;
             }
         }
@@ -970,7 +970,7 @@ impl QuantumNeuralNetwork {
                         }
                     }
 
-                    let normalized = binary_val as f64 / ((1 << precision_bits) - 1) as f64;
+                    let normalized = f64::from(binary_val) / f64::from((1 << precision_bits) - 1);
                     *param = (normalized - 0.5) * 2.0; // Scale to [-1, 1]
                 }
 
@@ -1103,7 +1103,8 @@ pub enum KernelMethodType {
 
 impl QuantumKernelMethod {
     /// Create a new quantum kernel method
-    pub fn new(feature_map: QuantumFeatureMap, method_type: KernelMethodType) -> Self {
+    #[must_use]
+    pub const fn new(feature_map: QuantumFeatureMap, method_type: KernelMethodType) -> Self {
         Self {
             feature_map,
             training_data: Vec::new(),
@@ -1316,10 +1317,7 @@ impl QuantumGAN {
             self.training_history.epoch_times.push(start.elapsed());
 
             if epoch % 10 == 0 {
-                println!(
-                    "Epoch {}: G_loss = {:.4}, D_loss = {:.4}",
-                    epoch, g_loss, d_loss
-                );
+                println!("Epoch {epoch}: G_loss = {g_loss:.4}, D_loss = {d_loss:.4}");
             }
         }
 
@@ -1520,9 +1518,8 @@ impl QuantumRLAgent {
             let best_action = action_values
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .map(|(idx, _)| idx)
-                .unwrap_or(0);
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map_or(0, |(idx, _)| idx);
 
             Ok(best_action)
         }
@@ -1555,8 +1552,9 @@ impl QuantumRLAgent {
                 let next_values = self.policy_network.forward(&experience.next_state)?;
                 let max_next_value = next_values
                     .iter()
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or(&0.0);
+                    .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .copied()
+                    .unwrap_or(0.0);
                 experience.reward + self.config.gamma * max_next_value
             };
 
@@ -1578,8 +1576,10 @@ impl QuantumRLAgent {
                 let target_value = if experience.done {
                     experience.reward
                 } else {
-                    experience.reward
-                        + self.config.gamma * value_net.forward(&experience.next_state)?[0]
+                    self.config.gamma.mul_add(
+                        value_net.forward(&experience.next_state)?[0],
+                        experience.reward,
+                    )
                 };
 
                 value_training_data.push((experience.state.clone(), vec![target_value]));
@@ -1706,7 +1706,7 @@ impl QuantumAutoencoder {
             self.training_history.iteration_times.push(start.elapsed());
 
             if epoch % 10 == 0 {
-                println!("Epoch {}: Reconstruction Loss = {:.6}", epoch, total_loss);
+                println!("Epoch {epoch}: Reconstruction Loss = {total_loss:.6}");
             }
         }
 
@@ -1766,7 +1766,11 @@ pub fn create_zz_feature_map(
 }
 
 /// Create a quantum kernel SVM
-pub fn create_quantum_svm(feature_map: QuantumFeatureMap, c_parameter: f64) -> QuantumKernelMethod {
+#[must_use]
+pub const fn create_quantum_svm(
+    feature_map: QuantumFeatureMap,
+    c_parameter: f64,
+) -> QuantumKernelMethod {
     QuantumKernelMethod::new(
         feature_map,
         KernelMethodType::SupportVectorMachine { c_parameter },
@@ -1790,7 +1794,7 @@ where
         total += 1;
     }
 
-    let accuracy = correct as f64 / total as f64;
+    let accuracy = f64::from(correct) / f64::from(total);
     let training_time = start.elapsed();
 
     Ok(QmlMetrics {
@@ -1819,19 +1823,21 @@ mod tests {
 
     #[test]
     fn test_quantum_feature_map() {
-        let feature_map = QuantumFeatureMap::new(3, 4, FeatureMapType::AngleEncoding).unwrap();
+        let feature_map = QuantumFeatureMap::new(3, 4, FeatureMapType::AngleEncoding)
+            .expect("should create quantum feature map");
 
         assert_eq!(feature_map.num_features, 3);
         assert_eq!(feature_map.num_qubits, 4);
 
         let data = vec![1.0, 0.5, -0.5];
-        let encoded = feature_map.encode(&data).unwrap();
+        let encoded = feature_map.encode(&data).expect("should encode data");
         assert_eq!(encoded.len(), 4); // Returns num_qubits parameters for AngleEncoding
     }
 
     #[test]
     fn test_vqc_creation() {
-        let vqc = VariationalQuantumClassifier::new(4, 4, 2, 2, VqcConfig::default()).unwrap();
+        let vqc = VariationalQuantumClassifier::new(4, 4, 2, 2, VqcConfig::default())
+            .expect("should create variational quantum classifier");
 
         assert_eq!(vqc.num_classes, 2);
         assert_eq!(vqc.feature_map.num_features, 4);
@@ -1839,18 +1845,20 @@ mod tests {
 
     #[test]
     fn test_quantum_neural_network() {
-        let qnn = QuantumNeuralNetwork::new(&[3, 4, 2], QnnConfig::default()).unwrap();
+        let qnn = QuantumNeuralNetwork::new(&[3, 4, 2], QnnConfig::default())
+            .expect("should create quantum neural network");
 
         assert_eq!(qnn.layers.len(), 2);
 
         let input = vec![0.5, -0.3, 0.8];
-        let output = qnn.forward(&input).unwrap();
+        let output = qnn.forward(&input).expect("should perform forward pass");
         assert_eq!(output.len(), 2);
     }
 
     #[test]
     fn test_quantum_kernel_method() {
-        let feature_map = QuantumFeatureMap::new(2, 2, FeatureMapType::AngleEncoding).unwrap();
+        let feature_map = QuantumFeatureMap::new(2, 2, FeatureMapType::AngleEncoding)
+            .expect("should create quantum feature map");
 
         let kernel_method = QuantumKernelMethod::new(
             feature_map,
@@ -1859,7 +1867,9 @@ mod tests {
 
         let x1 = vec![0.5, 0.3];
         let x2 = vec![0.7, 0.1];
-        let kernel_val = kernel_method.quantum_kernel(&x1, &x2).unwrap();
+        let kernel_val = kernel_method
+            .quantum_kernel(&x1, &x2)
+            .expect("should compute kernel value");
 
         assert!(kernel_val >= 0.0);
         assert!(kernel_val <= 1.0);
@@ -1876,22 +1886,27 @@ mod tests {
             seed: Some(42),
         };
 
-        let autoencoder = QuantumAutoencoder::new(config).unwrap();
+        let autoencoder =
+            QuantumAutoencoder::new(config).expect("should create quantum autoencoder");
 
         let input = vec![1.0, 0.5, -0.5, 0.3, 0.8, -0.2, 0.6, -0.8];
-        let latent = autoencoder.encode(&input).unwrap();
+        let latent = autoencoder
+            .encode(&input)
+            .expect("should encode input to latent space");
         assert_eq!(latent.len(), 3);
 
-        let reconstructed = autoencoder.decode(&latent).unwrap();
+        let reconstructed = autoencoder
+            .decode(&latent)
+            .expect("should decode latent to output");
         assert_eq!(reconstructed.len(), 8);
     }
 
     #[test]
     fn test_helper_functions() {
-        let vqc = create_binary_classifier(4, 4, 2).unwrap();
+        let vqc = create_binary_classifier(4, 4, 2).expect("should create binary classifier");
         assert_eq!(vqc.num_classes, 2);
 
-        let feature_map = create_zz_feature_map(3, 2).unwrap();
+        let feature_map = create_zz_feature_map(3, 2).expect("should create ZZ feature map");
         assert_eq!(feature_map.num_features, 3);
 
         let kernel_svm = create_quantum_svm(feature_map, 1.0);

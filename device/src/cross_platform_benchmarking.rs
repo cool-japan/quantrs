@@ -125,7 +125,7 @@ pub struct ParallelBenchmarkConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     WeightedRoundRobin,
@@ -145,7 +145,7 @@ pub struct ResourceAllocation {
 }
 
 /// Benchmark priority levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BenchmarkPriority {
     Low,
     Medium,
@@ -222,7 +222,7 @@ pub struct DeviceInfo {
 }
 
 /// Quantum technology types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantumTechnology {
     Superconducting,
     TrappedIon,
@@ -243,7 +243,7 @@ pub struct ConnectivityInfo {
 }
 
 /// Topology types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyType {
     Linear,
     Grid,
@@ -327,7 +327,7 @@ pub struct BottleneckAnalysis {
 }
 
 /// Types of performance bottlenecks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BottleneckType {
     QueueTime,
     ExecutionTime,
@@ -368,7 +368,7 @@ pub struct TrendAnalysis {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Improving,
     Stable,
@@ -440,7 +440,7 @@ pub struct StatisticalComparison {
 }
 
 /// Types of statistical comparisons
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonType {
     TTest,
     ANOVA,
@@ -517,7 +517,7 @@ pub struct CorrelationPair {
 }
 
 /// Types of correlations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CorrelationType {
     Pearson,
     Spearman,
@@ -636,7 +636,7 @@ pub struct CostOptimizationRecommendation {
 }
 
 /// Types of cost optimizations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostOptimizationType {
     PlatformSelection,
     ShotOptimization,
@@ -647,7 +647,7 @@ pub enum CostOptimizationType {
 }
 
 /// Implementation effort levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImplementationEffort {
     Low,
     Medium,
@@ -684,7 +684,7 @@ pub struct PlatformRecommendation {
 }
 
 /// Types of recommendations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationType {
     BestOverall,
     BestForUseCase,
@@ -793,7 +793,7 @@ pub struct CrossPlatformBenchmarker {
 
 impl CrossPlatformBenchmarker {
     /// Create a new cross-platform benchmarker
-    pub fn new(
+    pub const fn new(
         config: CrossPlatformBenchmarkConfig,
         calibration_manager: CalibrationManager,
     ) -> Self {
@@ -816,7 +816,7 @@ impl CrossPlatformBenchmarker {
             "benchmark_{}",
             timestamp
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .expect("System time should be after UNIX epoch")
                 .as_secs()
         );
 
@@ -860,11 +860,11 @@ impl CrossPlatformBenchmarker {
                     platform_results.insert(platform.clone(), result);
                 }
                 Ok(Err(e)) => {
-                    eprintln!("Platform benchmark failed for {:?}: {}", platform, e);
+                    eprintln!("Platform benchmark failed for {platform:?}: {e}");
                     failed_benchmarks += 1;
                 }
                 Err(_) => {
-                    eprintln!("Platform benchmark timed out for {:?}", platform);
+                    eprintln!("Platform benchmark timed out for {platform:?}");
                     failed_benchmarks += 1;
                 }
             }
@@ -977,7 +977,7 @@ impl CrossPlatformBenchmarker {
                             all_metrics.push(result.fidelity);
                         }
                         Err(e) => {
-                            eprintln!("Circuit execution failed: {}", e);
+                            eprintln!("Circuit execution failed: {e}");
                         }
                     }
                 }
@@ -1310,10 +1310,10 @@ impl CrossPlatformBenchmarker {
         let mean_latency = mean(&latency_array.view()).unwrap_or(0.0);
         let median_latency = {
             let mut sorted_latencies = latencies.clone();
-            sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
             let mid = sorted_latencies.len() / 2;
             if sorted_latencies.len() % 2 == 0 {
-                (sorted_latencies[mid - 1] + sorted_latencies[mid]) / 2.0
+                f64::midpoint(sorted_latencies[mid - 1], sorted_latencies[mid])
             } else {
                 sorted_latencies[mid]
             }
@@ -1321,8 +1321,8 @@ impl CrossPlatformBenchmarker {
         let std_dev_latency = std(&latency_array.view(), 1, None).unwrap_or(0.0);
 
         let mut percentiles = HashMap::new();
-        let mut sorted_latencies = latencies.clone();
-        sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut sorted_latencies = latencies;
+        sorted_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         percentiles.insert(50, median_latency);
         percentiles.insert(
             95,
@@ -1523,7 +1523,7 @@ impl CrossPlatformBenchmarker {
                 normalized_scores: HashMap::new(),
                 relative_performance: result.benchmark_metrics.overall_score / 100.0,
             };
-            platform_rankings.insert(format!("{:?}", platform), ranking);
+            platform_rankings.insert(format!("{platform:?}"), ranking);
 
             // Add to performance matrix
             performance_matrix_data.extend(vec![
@@ -1535,7 +1535,7 @@ impl CrossPlatformBenchmarker {
         }
 
         let performance_matrix = Array2::from_shape_vec((n_platforms, 4), performance_matrix_data)
-            .map_err(|e| DeviceError::APIError(format!("Matrix creation error: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Matrix creation error: {e}")))?;
 
         // Cost effectiveness analysis
         let mut cost_per_shot = HashMap::new();
@@ -1714,7 +1714,7 @@ impl CrossPlatformBenchmarker {
             a.1.benchmark_metrics
                 .overall_score
                 .partial_cmp(&b.1.benchmark_metrics.overall_score)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         }) {
             recommendations.push(PlatformRecommendation {
                 recommendation_type: RecommendationType::BestOverall,
@@ -1731,7 +1731,7 @@ impl CrossPlatformBenchmarker {
             .cost_effectiveness_analysis
             .value_for_money_score
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
         {
             recommendations.push(PlatformRecommendation {
                 recommendation_type: RecommendationType::MostCostEffective,

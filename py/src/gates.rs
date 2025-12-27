@@ -491,7 +491,7 @@ struct GateParameter {
 impl GateParameter {
     /// Create a constant parameter
     #[staticmethod]
-    fn constant(value: f64) -> Self {
+    const fn constant(value: f64) -> Self {
         Self {
             param: Parameter::constant(value),
         }
@@ -521,7 +521,7 @@ impl GateParameter {
 
     /// Check if parameter has a value
     #[getter]
-    fn has_value(&self) -> bool {
+    const fn has_value(&self) -> bool {
         self.param.has_value()
     }
 

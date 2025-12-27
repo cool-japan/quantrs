@@ -661,7 +661,7 @@ mod tests {
     fn test_format_duration() {
         let d = Duration::from_millis(1500);
         let formatted = format_duration(d);
-        assert!(formatted.contains("1") && (formatted.contains("s") || formatted.contains("500")));
+        assert!(formatted.contains('1') && (formatted.contains('s') || formatted.contains("500")));
 
         let d = Duration::from_millis(250);
         let formatted = format_duration(d);
@@ -720,12 +720,14 @@ mod tests {
     fn test_classical_fidelity() {
         let p = vec![0.5, 0.5];
         let q = vec![0.5, 0.5];
-        let fid = classical_fidelity(&p, &q).unwrap();
+        let fid =
+            classical_fidelity(&p, &q).expect("identical distributions should compute fidelity");
         assert!((fid - 1.0).abs() < 1e-10);
 
         let r = vec![1.0, 0.0];
         let s = vec![0.0, 1.0];
-        let fid2 = classical_fidelity(&r, &s).unwrap();
+        let fid2 =
+            classical_fidelity(&r, &s).expect("orthogonal distributions should compute fidelity");
         assert!((fid2 - 0.0).abs() < 1e-10);
     }
 
@@ -733,10 +735,11 @@ mod tests {
     fn test_trace_distance() {
         let p = vec![1.0, 0.0];
         let q = vec![0.0, 1.0];
-        let dist = trace_distance(&p, &q).unwrap();
+        let dist =
+            trace_distance(&p, &q).expect("orthogonal distributions should compute trace distance");
         assert!((dist - 1.0).abs() < 1e-10);
 
-        let same = trace_distance(&p, &p).unwrap();
+        let same = trace_distance(&p, &p).expect("same distribution should compute trace distance");
         assert!((same - 0.0).abs() < 1e-10);
     }
 
@@ -805,8 +808,8 @@ mod tests {
     #[test]
     fn test_quantum_constants() {
         assert!((SQRT_2 - std::f64::consts::SQRT_2).abs() < 1e-15);
-        assert!((INV_SQRT_2 * SQRT_2 - 1.0).abs() < 1e-15);
-        assert!((PI_OVER_2 * 2.0 - PI_CONST).abs() < 1e-15);
-        assert!((PI_OVER_4 * 4.0 - PI_CONST).abs() < 1e-15);
+        assert!(INV_SQRT_2.mul_add(SQRT_2, -1.0).abs() < 1e-15);
+        assert!(PI_OVER_2.mul_add(2.0, -PI_CONST).abs() < 1e-15);
+        assert!(PI_OVER_4.mul_add(4.0, -PI_CONST).abs() < 1e-15);
     }
 }

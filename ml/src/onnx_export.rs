@@ -232,7 +232,7 @@ impl ONNXTensor {
         let shape: Vec<i64> = array.shape().iter().map(|&s| s as i64).collect();
         let data = array
             .as_slice()
-            .unwrap()
+            .expect("ArrayD is contiguous in standard layout")
             .iter()
             .flat_map(|&f| f.to_le_bytes())
             .collect();
@@ -248,7 +248,10 @@ impl ONNXTensor {
     /// Create tensor from ndarray (f64)
     pub fn from_array_f64(name: impl Into<String>, array: &ArrayD<f64>) -> Self {
         let shape: Vec<i64> = array.shape().iter().map(|&s| s as i64).collect();
-        let data = array.as_slice().unwrap().iter()
+        let data = array
+            .as_slice()
+            .expect("ArrayD is contiguous in standard layout")
+            .iter()
             .flat_map(|&f| (f as f32).to_le_bytes()) // Convert to f32 for ONNX
             .collect();
 
@@ -847,7 +850,7 @@ mod tests {
             (2, 3),
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         )
-        .unwrap()
+        .expect("Shape and vec size are compatible")
         .into_dyn();
 
         let tensor = ONNXTensor::from_array_f64("test_tensor", &array);

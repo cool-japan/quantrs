@@ -940,50 +940,45 @@ pub struct TopologyAnalysis {
 impl TopologyAnalysis {
     /// Generate a report of the analysis
     pub fn report(&self) -> String {
+        use std::fmt::Write;
         let mut report = String::new();
 
         report.push_str("=== Hardware Topology Analysis ===\n");
-        report.push_str(&format!("Number of qubits: {}\n", self.num_qubits));
-        report.push_str(&format!(
-            "Number of connections: {}\n",
-            self.num_connections
-        ));
-        report.push_str(&format!(
-            "Connected components: {}\n",
+        let _ = writeln!(report, "Number of qubits: {}", self.num_qubits);
+        let _ = writeln!(report, "Number of connections: {}", self.num_connections);
+        let _ = writeln!(
+            report,
+            "Connected components: {}",
             self.connected_components
-        ));
+        );
         report.push_str("\nDistance metrics:\n");
-        report.push_str(&format!(
-            "  Average distance: {:.2}\n",
-            self.average_distance
-        ));
-        report.push_str(&format!("  Maximum distance: {:.2}\n", self.max_distance));
+        let _ = writeln!(report, "  Average distance: {:.2}", self.average_distance);
+        let _ = writeln!(report, "  Maximum distance: {:.2}", self.max_distance);
         report.push_str("\nConnectivity metrics:\n");
-        report.push_str(&format!(
-            "  Clustering coefficient: {:.3}\n",
+        let _ = writeln!(
+            report,
+            "  Clustering coefficient: {:.3}",
             self.clustering_coefficient
-        ));
-        report.push_str(&format!("  MST weight: {:.3}\n", self.mst_weight));
+        );
+        let _ = writeln!(report, "  MST weight: {:.3}", self.mst_weight);
 
         if let Some(q) = self.most_connected_qubit {
-            report.push_str(&format!("  Most connected qubit: {q}\n"));
+            let _ = writeln!(report, "  Most connected qubit: {q}");
         }
 
         report.push_str("\nQuality metrics:\n");
-        report.push_str(&format!(
-            "  Average gate error: {:.4}\n",
-            self.avg_gate_error
-        ));
-        report.push_str(&format!(
-            "  Average T2 time: {:.1} μs\n",
+        let _ = writeln!(report, "  Average gate error: {:.4}", self.avg_gate_error);
+        let _ = writeln!(
+            report,
+            "  Average T2 time: {:.1} μs",
             self.avg_coherence_time
-        ));
+        );
 
         report.push_str("\nDegree distribution:\n");
         let mut degrees: Vec<_> = self.degree_distribution.iter().collect();
         degrees.sort_by_key(|&(k, _)| k);
         for (degree, count) in degrees {
-            report.push_str(&format!("  {degree} connections: {count} qubits\n"));
+            let _ = writeln!(report, "  {degree} connections: {count} qubits");
         }
 
         report
@@ -1028,7 +1023,9 @@ mod tests {
     #[test]
     fn test_find_optimal_subset() {
         let topo = HardwareTopology::grid_topology(3, 3);
-        let subset = topo.find_optimal_subset(4).unwrap();
+        let subset = topo
+            .find_optimal_subset(4)
+            .expect("should find valid subset for 3x3 grid");
 
         assert_eq!(subset.len(), 4);
         // Should pick connected qubits

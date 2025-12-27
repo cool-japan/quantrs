@@ -94,14 +94,19 @@ pub struct MIKASAmpler {
 #[cfg(not(feature = "gpu"))]
 impl MIKASAmpler {
     #[must_use]
-    pub fn new(_seed: Option<u64>) -> Self {
+    pub const fn new(_seed: Option<u64>) -> Self {
         Self {
             fallback_sampler: ArminSampler::new(None),
         }
     }
 
     #[must_use]
-    pub fn with_params(_seed: Option<u64>, _mode: &str, _device: &str, _verbose: bool) -> Self {
+    pub const fn with_params(
+        _seed: Option<u64>,
+        _mode: &str,
+        _device: &str,
+        _verbose: bool,
+    ) -> Self {
         Self {
             fallback_sampler: ArminSampler::new(None),
         }

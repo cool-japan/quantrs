@@ -35,7 +35,7 @@ pub struct EarlyStoppingConfig {
 }
 
 /// Training optimizers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrainingOptimizer {
     SGD,
     Adam,

@@ -152,7 +152,7 @@ impl Default for VQEConfig {
             max_iterations: 100,
             energy_threshold: 1e-6,
             gradient_threshold: 1e-4,
-            shots: 10000,
+            shots: 10_000,
             enable_noise_mitigation: true,
         }
     }
@@ -270,7 +270,7 @@ pub struct MolecularHamiltonian {
 pub struct QuantumChemistrySimulator {
     /// Configuration
     config: ElectronicStructureConfig,
-    /// SciRS2 backend for linear algebra
+    /// `SciRS2` backend for linear algebra
     backend: Option<SciRS2Backend>,
     /// Current molecule
     molecule: Option<Molecule>,
@@ -373,7 +373,10 @@ impl QuantumChemistrySimulator {
 
         // Construct molecular Hamiltonian
         let hamiltonian_start = std::time::Instant::now();
-        let molecule_clone = self.molecule.clone().unwrap();
+        let molecule_clone = self
+            .molecule
+            .clone()
+            .ok_or_else(|| SimulatorError::InvalidConfiguration("Molecule not set".to_string()))?;
         self.construct_molecular_hamiltonian(&molecule_clone)?;
         self.stats.hamiltonian_time_ms = hamiltonian_start.elapsed().as_millis() as f64;
 
@@ -482,8 +485,8 @@ impl QuantumChemistrySimulator {
         } else {
             // Generic case: use simplified model
             for i in 0..num_orbitals {
-                integrals[[i, i]] =
-                    -0.5 * molecule.atomic_numbers[i.min(molecule.atomic_numbers.len() - 1)] as f64;
+                integrals[[i, i]] = -0.5
+                    * f64::from(molecule.atomic_numbers[i.min(molecule.atomic_numbers.len() - 1)]);
                 for j in i + 1..num_orbitals {
                     let distance = if i < molecule.positions.nrows()
                         && j < molecule.positions.nrows()
@@ -555,7 +558,8 @@ impl QuantumChemistrySimulator {
 
                 if distance > 1e-10 {
                     nuclear_repulsion +=
-                        (molecule.atomic_numbers[i] * molecule.atomic_numbers[j]) as f64 / distance;
+                        f64::from(molecule.atomic_numbers[i] * molecule.atomic_numbers[j])
+                            / distance;
                 } else {
                     return Err(SimulatorError::NumericalError(
                         "Atoms are too close together (distance < 1e-10)".to_string(),
@@ -785,7 +789,7 @@ impl QuantumChemistrySimulator {
         let num_orbitals = hamiltonian.num_orbitals;
 
         // Start with one-electron integrals
-        *fock = hamiltonian.one_electron_integrals.clone();
+        fock.clone_from(&hamiltonian.one_electron_integrals);
 
         // Add two-electron contributions
         for i in 0..num_orbitals {
@@ -936,7 +940,11 @@ impl QuantumChemistrySimulator {
 
         // Sort orbital indices by energy
         let mut orbital_indices: Vec<usize> = (0..energies.len()).collect();
-        orbital_indices.sort_by(|&a, &b| energies[a].partial_cmp(&energies[b]).unwrap());
+        orbital_indices.sort_by(|&a, &b| {
+            energies[a]
+                .partial_cmp(&energies[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Fill orbitals with electrons (Aufbau principle)
         for &orbital in &orbital_indices {
@@ -958,32 +966,24 @@ impl QuantumChemistrySimulator {
     fn run_vqe(&mut self) -> Result<ElectronicStructureResult> {
         let vqe_start = std::time::Instant::now();
 
-        if self.hamiltonian.is_none() {
-            return Err(SimulatorError::InvalidConfiguration(
-                "Hamiltonian not constructed".to_string(),
-            ));
-        }
+        // Extract values we need before mutable operations
+        let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Hamiltonian not constructed".to_string())
+        })?;
+        let nuclear_repulsion = hamiltonian.nuclear_repulsion;
+
+        let hf = self.hartree_fock.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Hartree-Fock not converged".to_string())
+        })?;
 
         // Extract values we need before mutable operations
-        let nuclear_repulsion = self.hamiltonian.as_ref().unwrap().nuclear_repulsion;
-
-        if self.hartree_fock.is_none() {
-            return Err(SimulatorError::InvalidConfiguration(
-                "Hartree-Fock not converged".to_string(),
-            ));
-        }
-
-        // Extract values we need before mutable operations
-        let hf_molecular_orbitals = self
-            .hartree_fock
-            .as_ref()
-            .unwrap()
-            .molecular_orbitals
-            .clone();
-        let hf_density_matrix = self.hartree_fock.as_ref().unwrap().density_matrix.clone();
+        let hf_molecular_orbitals = hf.molecular_orbitals.clone();
+        let hf_density_matrix = hf.density_matrix.clone();
 
         // Prepare initial state (Hartree-Fock)
-        let hf_result = self.hartree_fock.as_ref().unwrap();
+        let hf_result = self.hartree_fock.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Hartree-Fock not converged".to_string())
+        })?;
         let initial_state = self.prepare_hartree_fock_state(hf_result)?;
 
         // Create ansatz circuit
@@ -1005,7 +1005,9 @@ impl QuantumChemistrySimulator {
 
             // Evaluate energy expectation value
             let energy = {
-                let hamiltonian = self.hamiltonian.as_ref().unwrap();
+                let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+                    SimulatorError::InvalidConfiguration("Hamiltonian not available".to_string())
+                })?;
                 self.evaluate_energy_expectation(&parameterized_circuit, hamiltonian)?
             };
 
@@ -1027,7 +1029,9 @@ impl QuantumChemistrySimulator {
             }
 
             // Update parameters
-            let hamiltonian_clone = self.hamiltonian.clone().unwrap();
+            let hamiltonian_clone = self.hamiltonian.clone().ok_or_else(|| {
+                SimulatorError::InvalidConfiguration("Hamiltonian not available".to_string())
+            })?;
             self.update_vqe_parameters(&parameterized_circuit, &hamiltonian_clone)?;
 
             iteration += 1;
@@ -1457,9 +1461,9 @@ impl QuantumChemistrySimulator {
             // Nuclear contribution
             for (i, &atomic_number) in molecule.atomic_numbers.iter().enumerate() {
                 if i < molecule.positions.nrows() {
-                    dipole[0] += atomic_number as f64 * molecule.positions[[i, 0]];
-                    dipole[1] += atomic_number as f64 * molecule.positions[[i, 1]];
-                    dipole[2] += atomic_number as f64 * molecule.positions[[i, 2]];
+                    dipole[0] += f64::from(atomic_number) * molecule.positions[[i, 0]];
+                    dipole[1] += f64::from(atomic_number) * molecule.positions[[i, 1]];
+                    dipole[2] += f64::from(atomic_number) * molecule.positions[[i, 2]];
                 }
             }
 
@@ -1488,7 +1492,9 @@ impl QuantumChemistrySimulator {
 
     /// Placeholder implementations for other methods
     fn run_hartree_fock_only(&self) -> Result<ElectronicStructureResult> {
-        let hf_result = self.hartree_fock.as_ref().unwrap();
+        let hf_result = self.hartree_fock.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Hartree-Fock result not available".to_string())
+        })?;
 
         Ok(ElectronicStructureResult {
             ground_state_energy: hf_result.scf_energy,
@@ -1724,6 +1730,7 @@ impl QuantumChemistrySimulator {
     }
 
     /// Get molecule reference
+    #[must_use]
     pub const fn get_molecule(&self) -> Option<&Molecule> {
         self.molecule.as_ref()
     }
@@ -1762,6 +1769,7 @@ impl QuantumChemistrySimulator {
     }
 
     /// Get ansatz parameter count (public version)
+    #[must_use]
     pub fn get_ansatz_parameter_count_public(&self, circuit: &InterfaceCircuit) -> usize {
         self.get_ansatz_parameter_count(circuit)
     }
@@ -1787,6 +1795,7 @@ impl QuantumChemistrySimulator {
 }
 
 impl FermionMapper {
+    #[must_use]
     pub fn new(method: FermionMapping, num_spin_orbitals: usize) -> Self {
         Self {
             method,
@@ -1859,17 +1868,20 @@ impl FermionMapper {
     }
 
     /// Get method reference
+    #[must_use]
     pub const fn get_method(&self) -> &FermionMapping {
         &self.method
     }
 
     /// Get number of spin orbitals
+    #[must_use]
     pub const fn get_num_spin_orbitals(&self) -> usize {
         self.num_spin_orbitals
     }
 }
 
 impl VQEOptimizer {
+    #[must_use]
     pub fn new(method: ChemistryOptimizer) -> Self {
         Self {
             method,
@@ -1897,16 +1909,19 @@ impl VQEOptimizer {
     }
 
     /// Get parameters reference
+    #[must_use]
     pub const fn get_parameters(&self) -> &Array1<f64> {
         &self.parameters
     }
 
     /// Get bounds reference
+    #[must_use]
     pub fn get_bounds(&self) -> &[(f64, f64)] {
         &self.bounds
     }
 
     /// Get method reference
+    #[must_use]
     pub const fn get_method(&self) -> &ChemistryOptimizer {
         &self.method
     }
@@ -1969,7 +1984,8 @@ mod tests {
     fn test_h2_molecule_creation() {
         let h2 = Molecule {
             atomic_numbers: vec![1, 1],
-            positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4]).unwrap(),
+            positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
+                .expect("Failed to create H2 molecule positions array"),
             charge: 0,
             multiplicity: 1,
             basis_set: "STO-3G".to_string(),
@@ -1983,18 +1999,20 @@ mod tests {
     #[test]
     fn test_molecular_hamiltonian_construction() {
         let config = ElectronicStructureConfig::default();
-        let mut simulator = QuantumChemistrySimulator::new(config).unwrap();
+        let mut simulator = QuantumChemistrySimulator::new(config)
+            .expect("Failed to create quantum chemistry simulator");
 
         let h2 = Molecule {
             atomic_numbers: vec![1, 1],
-            positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4]).unwrap(),
+            positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
+                .expect("Failed to create H2 molecule positions array"),
             charge: 0,
             multiplicity: 1,
             basis_set: "STO-3G".to_string(),
         };
 
-        simulator.set_molecule(h2).unwrap();
-        let molecule_clone = simulator.molecule.clone().unwrap();
+        simulator.set_molecule(h2).expect("Failed to set molecule");
+        let molecule_clone = simulator.molecule.clone().expect("Molecule should be set");
         let result = simulator.construct_molecular_hamiltonian(&molecule_clone);
         assert!(result.is_ok());
     }
@@ -2017,7 +2035,8 @@ mod tests {
     #[test]
     fn test_ansatz_parameter_counting() {
         let config = ElectronicStructureConfig::default();
-        let simulator = QuantumChemistrySimulator::new(config).unwrap();
+        let simulator = QuantumChemistrySimulator::new(config)
+            .expect("Failed to create quantum chemistry simulator");
 
         let mut circuit = InterfaceCircuit::new(4, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(0.0), vec![0]));

@@ -339,7 +339,7 @@ pub struct QuantumFourierSampling {
 }
 
 impl QuantumFourierSampling {
-    pub fn new(qubit_count: usize) -> Self {
+    pub const fn new(qubit_count: usize) -> Self {
         Self {
             qft_implementation: QFTImplementation {
                 qubit_count,
@@ -567,7 +567,7 @@ impl SupremacyVerification {
         }
     }
 
-    pub fn verify_supremacy(
+    pub const fn verify_supremacy(
         &self,
         _samples: &[QuantumSample],
         _params: &RandomCircuitParameters,
@@ -895,7 +895,7 @@ impl QuantumSupremacyEngine {
         hasher.finish()
     }
 
-    fn verify_simulation_advantage(
+    const fn verify_simulation_advantage(
         &self,
         _result: &SimulationResult,
         _metrics: &AdvantageMetrics,
@@ -907,23 +907,23 @@ impl QuantumSupremacyEngine {
     }
 
     // Benchmarking methods
-    fn benchmark_random_circuits(&self) -> f64 {
+    const fn benchmark_random_circuits(&self) -> f64 {
         2e12 // 2 trillion fold advantage for random circuit sampling
     }
 
-    fn benchmark_boson_sampling(&self) -> f64 {
+    const fn benchmark_boson_sampling(&self) -> f64 {
         1e14 // 100 trillion fold advantage for boson sampling
     }
 
-    fn benchmark_iqp_sampling(&self) -> f64 {
+    const fn benchmark_iqp_sampling(&self) -> f64 {
         5e10 // 50 billion fold advantage for IQP sampling
     }
 
-    fn benchmark_quantum_simulation(&self) -> f64 {
+    const fn benchmark_quantum_simulation(&self) -> f64 {
         1e8 // 100 million fold advantage for quantum simulation
     }
 
-    fn benchmark_verification_protocols(&self) -> f64 {
+    const fn benchmark_verification_protocols(&self) -> f64 {
         100.0 // 100x more efficient verification
     }
 }
@@ -961,7 +961,7 @@ impl RandomCircuitGenerator {
         }
     }
 
-    pub fn generate_random_circuit(
+    pub const fn generate_random_circuit(
         &self,
         _parameters: &RandomCircuitParameters,
     ) -> Result<RandomCircuit, QuantRS2Error> {
@@ -1022,7 +1022,7 @@ impl LinearInterferometer {
 }
 
 impl PhotonSource {
-    pub fn spdc() -> Self {
+    pub const fn spdc() -> Self {
         Self {
             source_type: PhotonSourceType::SPDC,
             brightness: 1e6, // photons/second
@@ -1103,7 +1103,7 @@ pub struct QuantumSupremacyBenchmarkReport {
 }
 
 impl QuantumSupremacyBenchmarkReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             random_circuit_advantage: 0.0,
             boson_sampling_advantage: 0.0,
@@ -1144,7 +1144,7 @@ pub struct EntanglementStructure {
 }
 
 impl EntanglementStructure {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             connectivity: Vec::new(),
             entanglement_depth: 0,
@@ -1288,7 +1288,7 @@ impl PhotonDetectionSystem {
 }
 
 impl PhotonDetector {
-    pub fn snspd() -> Self {
+    pub const fn snspd() -> Self {
         Self {
             detector_type: DetectorType::SNSPD,
             quantum_efficiency: 0.95,
@@ -1326,7 +1326,7 @@ impl IQPSampling {
         ])
     }
 
-    pub fn verify_hardness_assumptions(
+    pub const fn verify_hardness_assumptions(
         &self,
         _samples: &[IQPSample],
         _complexity: &ComputationalComplexity,
@@ -1339,7 +1339,7 @@ impl IQPSampling {
 }
 
 impl IQPCircuitGenerator {
-    pub fn new(qubit_count: usize) -> Self {
+    pub const fn new(qubit_count: usize) -> Self {
         Self {
             qubit_count,
             diagonal_gates: Vec::new(),
@@ -1398,7 +1398,7 @@ mod tests {
         let result = engine.execute_random_circuit_sampling(circuit_params, sampling_params);
         assert!(result.is_ok());
 
-        let supremacy_result = result.unwrap();
+        let supremacy_result = result.expect("Random circuit sampling should succeed");
         assert!(supremacy_result.supremacy_factor > 1.0);
         assert!(supremacy_result.verification_confidence > 0.5);
     }
@@ -1409,7 +1409,7 @@ mod tests {
         let result = engine.execute_boson_sampling(6, 20, 10000);
         assert!(result.is_ok());
 
-        let boson_result = result.unwrap();
+        let boson_result = result.expect("Boson sampling should succeed");
         assert_eq!(boson_result.photon_count, 6);
         assert_eq!(boson_result.mode_count, 20);
         assert!(boson_result.supremacy_factor > 1.0);
@@ -1421,7 +1421,7 @@ mod tests {
         let result = engine.execute_iqp_sampling(30, 10, 100000);
         assert!(result.is_ok());
 
-        let iqp_result = result.unwrap();
+        let iqp_result = result.expect("IQP sampling should succeed");
         assert_eq!(iqp_result.circuit_depth, 10);
         assert!(iqp_result.computational_advantage > 1.0);
         assert!(iqp_result.hardness_verified);
@@ -1434,7 +1434,7 @@ mod tests {
             engine.execute_quantum_simulation_advantage(ManyBodySystemType::Hubbard, 40, 1.0);
         assert!(result.is_ok());
 
-        let simulation_result = result.unwrap();
+        let simulation_result = result.expect("Quantum simulation should succeed");
         assert_eq!(simulation_result.system_size, 40);
         assert!(simulation_result.advantage_factor > 1.0);
         assert!(simulation_result.verification_passed);
@@ -1460,7 +1460,7 @@ mod tests {
         let photon = source.generate_photon();
         assert!(photon.is_ok());
 
-        let p = photon.unwrap();
+        let p = photon.expect("Photon generation should succeed");
         assert_eq!(p.wavelength, 800e-9);
     }
 }
@@ -1487,7 +1487,7 @@ pub struct ClassicalSimulationCost {
 }
 
 impl ClassicalSimulationCost {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             time_complexity: Duration::from_secs(1_000_000),
             space_complexity: 1_000_000_000,
@@ -1498,7 +1498,7 @@ impl ClassicalSimulationCost {
 // QuantumFourierSampling already defined above
 
 impl QFTImplementation {
-    pub fn new(qubit_count: usize) -> Self {
+    pub const fn new(qubit_count: usize) -> Self {
         Self {
             qubit_count,
             approximation_level: qubit_count / 2,
@@ -1509,7 +1509,7 @@ impl QFTImplementation {
 }
 
 impl QFTDecomposition {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             decomposition_strategy: DecompositionStrategy::Standard,
             gate_count: 100,
@@ -1552,7 +1552,7 @@ pub struct ManyBodySystem {
 }
 
 impl HamiltonianSimulation {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             simulation_method: SimulationMethod::Trotter,
             evolution_time: 1.0,
@@ -1574,7 +1574,7 @@ impl HamiltonianSimulation {
 }
 
 impl ResourceScaling {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             time_scaling: ScalingBehavior {
                 exponent: 1.0,
@@ -1634,14 +1634,14 @@ pub struct AdvantageMetrics {
 }
 
 impl AdvantageMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             classical_bound: Duration::from_secs(1_000_000),
             advantage_factor: 1e8,
         }
     }
 
-    pub fn calculate_simulation_advantage(
+    pub const fn calculate_simulation_advantage(
         &self,
         _result: &SimulationResult,
         _size: usize,
@@ -1671,13 +1671,13 @@ pub struct ClassicalSimulationBounds {
 }
 
 impl ClassicalSimulationBounds {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             estimated_time: Duration::from_secs(1_000_000),
         }
     }
 
-    pub fn calculate_bounds(
+    pub const fn calculate_bounds(
         &self,
         _params: &RandomCircuitParameters,
     ) -> Result<&Self, QuantRS2Error> {
@@ -1706,7 +1706,7 @@ pub struct SamplingComplexity {
 }
 
 impl SamplingComplexity {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             permanent_count: 1_000_000,
             classical_time: Duration::from_secs(1_000_000),
@@ -1714,7 +1714,7 @@ impl SamplingComplexity {
         }
     }
 
-    pub fn analyze_complexity(
+    pub const fn analyze_complexity(
         &self,
         _photon_count: usize,
         _mode_count: usize,
@@ -1735,7 +1735,7 @@ impl ClassicalHardness {
         }
     }
 
-    pub fn verify_hardness(
+    pub const fn verify_hardness(
         &self,
         _samples: &[BosonSample],
         _complexity: &SamplingComplexity,
@@ -1763,7 +1763,7 @@ impl ComplexityAnalysis {
 }
 
 impl ComputationalComplexity {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             time_complexity: TimeComplexity {
                 quantum_time: ComplexityClass::BQP,
@@ -1783,7 +1783,10 @@ impl ComputationalComplexity {
         }
     }
 
-    pub fn analyze_iqp_complexity(&self, _circuit: &IQPCircuit) -> Result<&Self, QuantRS2Error> {
+    pub const fn analyze_iqp_complexity(
+        &self,
+        _circuit: &IQPCircuit,
+    ) -> Result<&Self, QuantRS2Error> {
         Ok(self)
     }
 }

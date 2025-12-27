@@ -29,7 +29,9 @@ impl QPCA {
         let n_components = self.config.n_components.min(n_features);
 
         // Compute mean
-        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let mean = data
+            .mean_axis(scirs2_core::ndarray::Axis(0))
+            .unwrap_or_else(|| scirs2_core::ndarray::Array1::zeros(data.ncols()));
 
         // Center the data
         let centered = data - &mean;

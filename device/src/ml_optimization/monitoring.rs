@@ -32,7 +32,7 @@ pub struct DriftDetectionConfig {
 }
 
 /// Drift detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftDetectionMethod {
     ADWIN,
     DDM,

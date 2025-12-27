@@ -31,8 +31,9 @@ impl CircuitTranspiler {
         let mut qasm = String::from("OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n");
 
         // Define the quantum and classical registers
-        qasm.push_str(&format!("qreg q[{}];\n", N));
-        qasm.push_str(&format!("creg c[{}];\n\n", N));
+        use std::fmt::Write;
+        let _ = writeln!(qasm, "qreg q[{N}];");
+        let _ = writeln!(qasm, "creg c[{N}];");
 
         // Track gate counts
         let mut gate_counts = HashMap::new();
@@ -47,7 +48,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("x".to_string()).or_insert(0) += 1;
-                    format!("x q[{}];", q)
+                    format!("x q[{q}];")
                 }
                 "Y" => {
                     if gate.qubits().len() != 1 {
@@ -56,7 +57,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("y".to_string()).or_insert(0) += 1;
-                    format!("y q[{}];", q)
+                    format!("y q[{q}];")
                 }
                 "Z" => {
                     if gate.qubits().len() != 1 {
@@ -65,7 +66,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("z".to_string()).or_insert(0) += 1;
-                    format!("z q[{}];", q)
+                    format!("z q[{q}];")
                 }
                 "H" => {
                     if gate.qubits().len() != 1 {
@@ -74,7 +75,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("h".to_string()).or_insert(0) += 1;
-                    format!("h q[{}];", q)
+                    format!("h q[{q}];")
                 }
                 "S" => {
                     if gate.qubits().len() != 1 {
@@ -83,7 +84,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("s".to_string()).or_insert(0) += 1;
-                    format!("s q[{}];", q)
+                    format!("s q[{q}];")
                 }
                 "S†" => {
                     if gate.qubits().len() != 1 {
@@ -92,7 +93,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("sdg".to_string()).or_insert(0) += 1;
-                    format!("sdg q[{}];", q)
+                    format!("sdg q[{q}];")
                 }
                 "T" => {
                     if gate.qubits().len() != 1 {
@@ -101,7 +102,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("t".to_string()).or_insert(0) += 1;
-                    format!("t q[{}];", q)
+                    format!("t q[{q}];")
                 }
                 "T†" => {
                     if gate.qubits().len() != 1 {
@@ -110,7 +111,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("tdg".to_string()).or_insert(0) += 1;
-                    format!("tdg q[{}];", q)
+                    format!("tdg q[{q}];")
                 }
                 "CNOT" => {
                     if gate.qubits().len() != 2 {
@@ -121,7 +122,7 @@ impl CircuitTranspiler {
                     let c = map_qubit(control.id() as usize, &qubit_mapping);
                     let t = map_qubit(target.id() as usize, &qubit_mapping);
                     *gate_counts.entry("cx".to_string()).or_insert(0) += 1;
-                    format!("cx q[{}], q[{}];", c, t)
+                    format!("cx q[{c}], q[{t}];")
                 }
                 "CZ" => {
                     if gate.qubits().len() != 2 {
@@ -132,7 +133,7 @@ impl CircuitTranspiler {
                     let c = map_qubit(control.id() as usize, &qubit_mapping);
                     let t = map_qubit(target.id() as usize, &qubit_mapping);
                     *gate_counts.entry("cz".to_string()).or_insert(0) += 1;
-                    format!("cz q[{}], q[{}];", c, t)
+                    format!("cz q[{c}], q[{t}];")
                 }
                 "SWAP" => {
                     if gate.qubits().len() != 2 {
@@ -143,7 +144,7 @@ impl CircuitTranspiler {
                     let q1_mapped = map_qubit(q1.id() as usize, &qubit_mapping);
                     let q2_mapped = map_qubit(q2.id() as usize, &qubit_mapping);
                     *gate_counts.entry("swap".to_string()).or_insert(0) += 1;
-                    format!("swap q[{}], q[{}];", q1_mapped, q2_mapped)
+                    format!("swap q[{q1_mapped}], q[{q2_mapped}];")
                 }
                 "RX" => {
                     if gate.qubits().len() != 1 {
@@ -154,7 +155,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("rx".to_string()).or_insert(0) += 1;
-                    format!("rx(0) q[{}];", q) // Placeholder value
+                    format!("rx(0) q[{q}];") // Placeholder value
                 }
                 "RY" => {
                     if gate.qubits().len() != 1 {
@@ -163,7 +164,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("ry".to_string()).or_insert(0) += 1;
-                    format!("ry(0) q[{}];", q) // Placeholder value
+                    format!("ry(0) q[{q}];") // Placeholder value
                 }
                 "RZ" => {
                     if gate.qubits().len() != 1 {
@@ -172,7 +173,7 @@ impl CircuitTranspiler {
                     let qubit = gate.qubits()[0];
                     let q = map_qubit(qubit.id() as usize, &qubit_mapping);
                     *gate_counts.entry("rz".to_string()).or_insert(0) += 1;
-                    format!("rz(0) q[{}];", q) // Placeholder value
+                    format!("rz(0) q[{q}];") // Placeholder value
                 }
                 _ => {
                     // For now, return an error for unsupported gates
@@ -183,7 +184,7 @@ impl CircuitTranspiler {
                 }
             };
 
-            qasm.push_str(&format!("{}\n", gate_qasm));
+            let _ = writeln!(qasm, "{gate_qasm}");
         }
 
         Ok(QasmCircuit {
@@ -272,9 +273,8 @@ impl CircuitTranspiler {
             if !mapping.contains_key(&q) {
                 // Find any unused device qubit
                 for dev_q in 0..N {
-                    if !used_device_qubits.contains(&dev_q) {
+                    if used_device_qubits.insert(dev_q) {
                         mapping.insert(q, dev_q);
-                        used_device_qubits.insert(dev_q);
                         break;
                     }
                 }
@@ -350,8 +350,7 @@ impl CircuitTranspiler {
                         let path = find_shortest_path(mapped_c, mapped_t, coupling_map);
                         if path.is_empty() {
                             return Err(DeviceError::CircuitConversion(format!(
-                                "No path found between qubits {} and {}",
-                                mapped_c, mapped_t
+                                "No path found between qubits {mapped_c} and {mapped_t}"
                             )));
                         }
 
@@ -484,9 +483,8 @@ fn find_shortest_path(start: usize, end: usize, coupling_map: &[(usize, usize)])
 
         if let Some(neighbors) = adj_list.get(&node) {
             for &neighbor in neighbors {
-                if !visited.contains(&neighbor) {
+                if visited.insert(neighbor) {
                     queue.push_back(neighbor);
-                    visited.insert(neighbor);
                     parent.insert(neighbor, node);
                 }
             }

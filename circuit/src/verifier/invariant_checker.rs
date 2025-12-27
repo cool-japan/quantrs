@@ -1,5 +1,4 @@
 //! Invariant checker for circuit invariants
-
 use super::config::VerifierConfig;
 use super::types::*;
 use crate::builder::Circuit;
@@ -8,7 +7,6 @@ use quantrs2_core::error::QuantRS2Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-
 /// Invariant checker for circuit invariants
 pub struct InvariantChecker<const N: usize> {
     /// Invariants to check
@@ -18,7 +16,6 @@ pub struct InvariantChecker<const N: usize> {
     /// `SciRS2` analyzer
     analyzer: SciRS2CircuitAnalyzer,
 }
-
 /// Circuit invariants
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CircuitInvariant<const N: usize> {
@@ -41,7 +38,6 @@ pub enum CircuitInvariant<const N: usize> {
         checker: CustomInvariantChecker<N>,
     },
 }
-
 /// Custom invariant checker
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomInvariantChecker<const N: usize> {
@@ -54,7 +50,6 @@ pub struct CustomInvariantChecker<const N: usize> {
     /// Tolerance for numerical comparison
     pub tolerance: f64,
 }
-
 /// Invariant checking result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InvariantCheckResult {
@@ -71,7 +66,6 @@ pub struct InvariantCheckResult {
     /// Checking time
     pub check_time: Duration,
 }
-
 impl<const N: usize> InvariantChecker<N> {
     /// Create new invariant checker
     #[must_use]
@@ -82,12 +76,10 @@ impl<const N: usize> InvariantChecker<N> {
             analyzer: SciRS2CircuitAnalyzer::new(),
         }
     }
-
     /// Add invariant to check
     pub fn add_invariant(&mut self, invariant: CircuitInvariant<N>) {
         self.invariants.push(invariant);
     }
-
     /// Check all invariants
     pub fn check_all_invariants(
         &self,
@@ -95,15 +87,12 @@ impl<const N: usize> InvariantChecker<N> {
         config: &VerifierConfig,
     ) -> QuantRS2Result<Vec<InvariantCheckResult>> {
         let mut results = Vec::new();
-
         for invariant in &self.invariants {
             let result = self.check_invariant(invariant, circuit, config)?;
             results.push(result);
         }
-
         Ok(results)
     }
-
     /// Check single invariant
     fn check_invariant(
         &self,
@@ -112,36 +101,34 @@ impl<const N: usize> InvariantChecker<N> {
         config: &VerifierConfig,
     ) -> QuantRS2Result<InvariantCheckResult> {
         let start_time = Instant::now();
-
         let (invariant_name, result, measured_value, expected_value, violation_severity) =
             match invariant {
                 CircuitInvariant::ProbabilityConservation { tolerance } => {
-                    self.check_probability_conservation(circuit, *tolerance)?
+                    Self::check_probability_conservation(circuit, *tolerance)?
                 }
                 CircuitInvariant::QubitCount { expected_count } => {
-                    self.check_qubit_count(circuit, *expected_count)?
+                    Self::check_qubit_count(circuit, *expected_count)?
                 }
                 CircuitInvariant::GateCountBounds {
                     min_gates,
                     max_gates,
-                } => self.check_gate_count_bounds(circuit, *min_gates, *max_gates)?,
+                } => Self::check_gate_count_bounds(circuit, *min_gates, *max_gates)?,
                 CircuitInvariant::DepthBounds {
                     min_depth,
                     max_depth,
-                } => self.check_depth_bounds(circuit, *min_depth, *max_depth)?,
+                } => Self::check_depth_bounds(circuit, *min_depth, *max_depth)?,
                 CircuitInvariant::MemoryBounds { max_memory_bytes } => {
-                    self.check_memory_bounds(circuit, *max_memory_bytes)?
+                    Self::check_memory_bounds(circuit, *max_memory_bytes)?
                 }
                 CircuitInvariant::TimeBounds { max_execution_time } => {
-                    self.check_time_bounds(circuit, *max_execution_time)?
+                    Self::check_time_bounds(circuit, *max_execution_time)?
                 }
                 CircuitInvariant::Custom {
                     name,
                     description: _,
                     checker,
-                } => self.check_custom_invariant(circuit, name, checker)?,
+                } => Self::check_custom_invariant(circuit, name, checker)?,
             };
-
         Ok(InvariantCheckResult {
             invariant_name,
             result,
@@ -151,9 +138,7 @@ impl<const N: usize> InvariantChecker<N> {
             check_time: start_time.elapsed(),
         })
     }
-
     fn check_probability_conservation(
-        &self,
         circuit: &Circuit<N>,
         tolerance: f64,
     ) -> QuantRS2Result<(
@@ -171,9 +156,7 @@ impl<const N: usize> InvariantChecker<N> {
             None,
         ))
     }
-
     fn check_qubit_count(
-        &self,
         circuit: &Circuit<N>,
         expected_count: usize,
     ) -> QuantRS2Result<(
@@ -195,7 +178,6 @@ impl<const N: usize> InvariantChecker<N> {
         } else {
             None
         };
-
         Ok((
             "Qubit Count".to_string(),
             result,
@@ -204,9 +186,7 @@ impl<const N: usize> InvariantChecker<N> {
             violation_severity,
         ))
     }
-
     fn check_gate_count_bounds(
-        &self,
         circuit: &Circuit<N>,
         min_gates: usize,
         max_gates: usize,
@@ -220,19 +200,16 @@ impl<const N: usize> InvariantChecker<N> {
         let gate_count = circuit.num_gates();
         let measured_value = gate_count as f64;
         let expected_value = usize::midpoint(min_gates, max_gates) as f64;
-
         let result = if gate_count >= min_gates && gate_count <= max_gates {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::Moderate)
         } else {
             None
         };
-
         Ok((
             "Gate Count Bounds".to_string(),
             result,
@@ -241,9 +218,7 @@ impl<const N: usize> InvariantChecker<N> {
             violation_severity,
         ))
     }
-
     fn check_depth_bounds(
-        &self,
         circuit: &Circuit<N>,
         min_depth: usize,
         max_depth: usize,
@@ -257,19 +232,16 @@ impl<const N: usize> InvariantChecker<N> {
         let circuit_depth = circuit.calculate_depth();
         let measured_value = circuit_depth as f64;
         let expected_value = usize::midpoint(min_depth, max_depth) as f64;
-
         let result = if circuit_depth >= min_depth && circuit_depth <= max_depth {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::Moderate)
         } else {
             None
         };
-
         Ok((
             "Depth Bounds".to_string(),
             result,
@@ -278,9 +250,7 @@ impl<const N: usize> InvariantChecker<N> {
             violation_severity,
         ))
     }
-
     fn check_memory_bounds(
-        &self,
         circuit: &Circuit<N>,
         max_memory_bytes: usize,
     ) -> QuantRS2Result<(
@@ -293,19 +263,16 @@ impl<const N: usize> InvariantChecker<N> {
         let estimated_memory = std::mem::size_of::<Circuit<N>>();
         let measured_value = estimated_memory as f64;
         let expected_value = max_memory_bytes as f64;
-
         let result = if estimated_memory <= max_memory_bytes {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::High)
         } else {
             None
         };
-
         Ok((
             "Memory Bounds".to_string(),
             result,
@@ -314,9 +281,7 @@ impl<const N: usize> InvariantChecker<N> {
             violation_severity,
         ))
     }
-
     fn check_time_bounds(
-        &self,
         circuit: &Circuit<N>,
         max_execution_time: Duration,
     ) -> QuantRS2Result<(
@@ -329,19 +294,16 @@ impl<const N: usize> InvariantChecker<N> {
         let estimated_time = Duration::from_millis(circuit.num_gates() as u64);
         let measured_value = estimated_time.as_secs_f64();
         let expected_value = max_execution_time.as_secs_f64();
-
         let result = if estimated_time <= max_execution_time {
             VerificationOutcome::Satisfied
         } else {
             VerificationOutcome::Violated
         };
-
         let violation_severity = if result == VerificationOutcome::Violated {
             Some(ViolationSeverity::High)
         } else {
             None
         };
-
         Ok((
             "Time Bounds".to_string(),
             result,
@@ -350,9 +312,7 @@ impl<const N: usize> InvariantChecker<N> {
             violation_severity,
         ))
     }
-
     fn check_custom_invariant(
-        &self,
         circuit: &Circuit<N>,
         name: &str,
         checker: &CustomInvariantChecker<N>,
@@ -372,7 +332,6 @@ impl<const N: usize> InvariantChecker<N> {
         ))
     }
 }
-
 impl<const N: usize> Default for InvariantChecker<N> {
     fn default() -> Self {
         Self::new()

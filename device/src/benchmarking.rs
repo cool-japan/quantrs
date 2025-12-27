@@ -290,7 +290,7 @@ pub struct HardwareBenchmarkSuite {
 
 impl HardwareBenchmarkSuite {
     /// Create a new benchmark suite
-    pub fn new(calibration_manager: CalibrationManager, config: BenchmarkConfig) -> Self {
+    pub const fn new(calibration_manager: CalibrationManager, config: BenchmarkConfig) -> Self {
         Self {
             calibration_manager,
             config,
@@ -306,7 +306,7 @@ impl HardwareBenchmarkSuite {
         let start_time = Instant::now();
 
         // Get device information
-        let backend_capabilities = query_backend_capabilities(self.get_backend_type(device_id)?);
+        let backend_capabilities = query_backend_capabilities(Self::get_backend_type(device_id)?);
 
         let calibration = self
             .calibration_manager
@@ -347,27 +347,33 @@ impl HardwareBenchmarkSuite {
         benchmark_results.extend(random_results);
 
         // Perform statistical analysis
-        let statistical_analysis = self.perform_statistical_analysis(&benchmark_results)?;
+        let statistical_analysis = Self::perform_statistical_analysis(&benchmark_results)?;
 
         // Perform graph analysis if enabled
         let graph_analysis = if self.config.enable_graph_analysis {
-            Some(self.perform_graph_analysis(calibration, &benchmark_results)?)
+            Some(Self::perform_graph_analysis(
+                calibration,
+                &benchmark_results,
+            )?)
         } else {
             None
         };
 
         // Perform noise analysis if enabled
         let noise_analysis = if self.config.enable_noise_analysis {
-            Some(self.perform_noise_analysis(calibration, &benchmark_results)?)
+            Some(Self::perform_noise_analysis(
+                calibration,
+                &benchmark_results,
+            )?)
         } else {
             None
         };
 
         // Calculate performance metrics
-        let performance_metrics = self.calculate_performance_metrics(
+        let performance_metrics = Self::calculate_performance_metrics(
             &benchmark_results,
             &statistical_analysis,
-            &graph_analysis,
+            graph_analysis.as_ref(),
         )?;
 
         let execution_time = start_time.elapsed();
@@ -400,7 +406,7 @@ impl HardwareBenchmarkSuite {
         let mut queue_times = Vec::new();
 
         for _ in 0..self.config.iterations {
-            let circuit: Circuit<8> = self.create_gate_benchmark_circuit(gate_type, num_qubits)?;
+            let circuit: Circuit<8> = Self::create_gate_benchmark_circuit(gate_type, num_qubits)?;
 
             let queue_start = Instant::now();
             let exec_start = Instant::now();
@@ -412,9 +418,9 @@ impl HardwareBenchmarkSuite {
             let queue_time = queue_start.elapsed().as_secs_f64();
 
             // Calculate metrics
-            let fidelity = self.calculate_fidelity(&result, &circuit, calibration)?;
+            let fidelity = Self::calculate_fidelity(&result, &circuit, calibration)?;
             let error_rate = 1.0 - fidelity;
-            let success_prob = self.calculate_success_probability(&result)?;
+            let success_prob = Self::calculate_success_probability(&result)?;
 
             execution_times.push(exec_time);
             fidelities.push(fidelity);
@@ -424,8 +430,8 @@ impl HardwareBenchmarkSuite {
         }
 
         Ok(BenchmarkResult {
-            name: format!("{}_gate_benchmark", gate_type),
-            circuit_description: format!("{} gate on {} qubits", gate_type, num_qubits),
+            name: format!("{gate_type}_gate_benchmark"),
+            circuit_description: format!("{gate_type} gate on {num_qubits} qubits"),
             num_qubits,
             circuit_depth: 1,
             gate_count: 1,
@@ -452,7 +458,7 @@ impl HardwareBenchmarkSuite {
         let mut queue_times = Vec::new();
 
         for _ in 0..self.config.iterations {
-            let circuit: Circuit<8> = self.create_depth_benchmark_circuit(depth, num_qubits)?;
+            let circuit: Circuit<8> = Self::create_depth_benchmark_circuit(depth, num_qubits)?;
 
             let queue_start = Instant::now();
             let exec_start = Instant::now();
@@ -462,9 +468,9 @@ impl HardwareBenchmarkSuite {
             let exec_time = exec_start.elapsed().as_secs_f64();
             let queue_time = queue_start.elapsed().as_secs_f64();
 
-            let fidelity = self.calculate_fidelity(&result, &circuit, calibration)?;
+            let fidelity = Self::calculate_fidelity(&result, &circuit, calibration)?;
             let error_rate = 1.0 - fidelity;
-            let success_prob = self.calculate_success_probability(&result)?;
+            let success_prob = Self::calculate_success_probability(&result)?;
 
             execution_times.push(exec_time);
             fidelities.push(fidelity);
@@ -474,8 +480,8 @@ impl HardwareBenchmarkSuite {
         }
 
         Ok(BenchmarkResult {
-            name: format!("depth_{}_benchmark", depth),
-            circuit_description: format!("Depth {} circuit on {} qubits", depth, num_qubits),
+            name: format!("depth_{depth}_benchmark"),
+            circuit_description: format!("Depth {depth} circuit on {num_qubits} qubits"),
             num_qubits,
             circuit_depth: depth,
             gate_count: depth * num_qubits / 2, // Rough estimate
@@ -527,7 +533,7 @@ impl HardwareBenchmarkSuite {
 
         for _ in 0..self.config.iterations.min(20) {
             // Limit for random circuits
-            let circuit = self.create_random_circuit(num_qubits, depth)?;
+            let circuit = Self::create_random_circuit(num_qubits, depth)?;
 
             let queue_start = Instant::now();
             let exec_start = Instant::now();
@@ -537,9 +543,9 @@ impl HardwareBenchmarkSuite {
             let exec_time = exec_start.elapsed().as_secs_f64();
             let queue_time = queue_start.elapsed().as_secs_f64();
 
-            let fidelity = self.calculate_fidelity(&result, &circuit, calibration)?;
+            let fidelity = Self::calculate_fidelity(&result, &circuit, calibration)?;
             let error_rate = 1.0 - fidelity;
-            let success_prob = self.calculate_success_probability(&result)?;
+            let success_prob = Self::calculate_success_probability(&result)?;
 
             execution_times.push(exec_time);
             fidelities.push(fidelity);
@@ -549,8 +555,8 @@ impl HardwareBenchmarkSuite {
         }
 
         Ok(BenchmarkResult {
-            name: format!("random_circuit_{}q_{}d", num_qubits, depth),
-            circuit_description: format!("Random {} qubit, depth {} circuit", num_qubits, depth),
+            name: format!("random_circuit_{num_qubits}q_{depth}d"),
+            circuit_description: format!("Random {num_qubits} qubit, depth {depth} circuit"),
             num_qubits,
             circuit_depth: depth,
             gate_count: depth * num_qubits,
@@ -564,7 +570,6 @@ impl HardwareBenchmarkSuite {
 
     /// Perform comprehensive statistical analysis using SciRS2
     fn perform_statistical_analysis(
-        &self,
         results: &[BenchmarkResult],
     ) -> DeviceResult<StatisticalAnalysis> {
         // Collect all execution times and fidelities
@@ -592,25 +597,29 @@ impl HardwareBenchmarkSuite {
         let error_rates_array = Array1::from_vec(all_error_rates);
 
         // Compute descriptive statistics
-        let execution_time_stats = self.compute_descriptive_stats(&exec_times_array)?;
-        let fidelity_stats = self.compute_descriptive_stats(&fidelities_array)?;
-        let error_rate_stats = self.compute_descriptive_stats(&error_rates_array)?;
+        let execution_time_stats = Self::compute_descriptive_stats(&exec_times_array)?;
+        let fidelity_stats = Self::compute_descriptive_stats(&fidelities_array)?;
+        let error_rate_stats = Self::compute_descriptive_stats(&error_rates_array)?;
 
         // Compute correlation matrix
+        let exec_slice = exec_times_array
+            .as_slice()
+            .ok_or_else(|| DeviceError::APIError("Failed to get exec_times slice".to_string()))?;
+        let fid_slice = fidelities_array
+            .as_slice()
+            .ok_or_else(|| DeviceError::APIError("Failed to get fidelities slice".to_string()))?;
+        let err_slice = error_rates_array
+            .as_slice()
+            .ok_or_else(|| DeviceError::APIError("Failed to get error_rates slice".to_string()))?;
+
         let data_matrix = Array2::from_shape_vec(
             (exec_times_array.len(), 3),
-            [
-                exec_times_array.as_slice().unwrap(),
-                fidelities_array.as_slice().unwrap(),
-                error_rates_array.as_slice().unwrap(),
-            ]
-            .concat(),
+            [exec_slice, fid_slice, err_slice].concat(),
         )
-        .map_err(|e| DeviceError::APIError(format!("Array creation error: {}", e)))?;
+        .map_err(|e| DeviceError::APIError(format!("Array creation error: {e}")))?;
 
-        let correlationmatrix = correlationmatrix(&data_matrix.view(), None).map_err(|e| {
-            DeviceError::APIError(format!("Correlation computation error: {:?}", e))
-        })?;
+        let correlationmatrix = correlationmatrix(&data_matrix.view(), None)
+            .map_err(|e| DeviceError::APIError(format!("Correlation computation error: {e:?}")))?;
 
         // Statistical tests
         let mut statistical_tests = HashMap::new();
@@ -625,7 +634,7 @@ impl HardwareBenchmarkSuite {
                 Alternative::TwoSided,
                 "propagate",
             )
-            .map_err(|e| DeviceError::APIError(format!("T-test error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("T-test error: {e:?}")))?;
 
             statistical_tests.insert(
                 "execution_time_t_test".to_string(),
@@ -649,8 +658,7 @@ impl HardwareBenchmarkSuite {
             distributions::norm(execution_time_stats.mean, execution_time_stats.std_dev)
         {
             // Calculate goodness of fit (simplified)
-            let goodness_of_fit =
-                self.calculate_goodness_of_fit(&exec_times_array, &normal_dist)?;
+            let goodness_of_fit = Self::calculate_goodness_of_fit(&exec_times_array, &normal_dist)?;
 
             distribution_fits.insert(
                 "execution_time_normal".to_string(),
@@ -675,7 +683,6 @@ impl HardwareBenchmarkSuite {
 
     /// Perform graph-theoretic analysis
     fn perform_graph_analysis(
-        &self,
         calibration: &DeviceCalibration,
         results: &[BenchmarkResult],
     ) -> DeviceResult<GraphAnalysis> {
@@ -700,10 +707,10 @@ impl HardwareBenchmarkSuite {
 
         // Calculate graph metrics
         let graph_density_val = graph_density(&graph)
-            .map_err(|e| DeviceError::APIError(format!("Graph density error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Graph density error: {e:?}")))?;
 
         let clustering_coeff = clustering_coefficient(&graph)
-            .map_err(|e| DeviceError::APIError(format!("Clustering coefficient error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Clustering coefficient error: {e:?}")))?;
 
         // Calculate centrality measures for each qubit
         let betweenness_values = betweenness_centrality(&graph, false);
@@ -730,12 +737,12 @@ impl HardwareBenchmarkSuite {
         }
 
         // Calculate spectral properties
-        let spectral_properties = self.calculate_spectral_properties(calibration)?;
+        let spectral_properties = Self::calculate_spectral_properties(calibration)?;
 
         // Find critical paths
         let compatible_node_map: HashMap<usize, usize> =
             node_map.iter().map(|(&k, &v)| (k, v.index())).collect();
-        let critical_paths = self.find_critical_paths(&graph, &compatible_node_map, results)?;
+        let critical_paths = Self::find_critical_paths(&graph, &compatible_node_map, results)?;
 
         // Calculate topology-performance correlations
         let mut topology_correlations = HashMap::new();
@@ -783,7 +790,6 @@ impl HardwareBenchmarkSuite {
 
     /// Perform noise correlation analysis
     fn perform_noise_analysis(
-        &self,
         calibration: &DeviceCalibration,
         results: &[BenchmarkResult],
     ) -> DeviceResult<NoiseAnalysis> {
@@ -821,7 +827,7 @@ impl HardwareBenchmarkSuite {
 
         // Noise model validation
         let noise_model = CalibrationNoiseModel::from_calibration(calibration);
-        let model_validation = self.validate_noise_model(&noise_model, results)?;
+        let model_validation = Self::validate_noise_model(&noise_model, results)?;
 
         Ok(NoiseAnalysis {
             crosstalk_correlations,
@@ -833,10 +839,9 @@ impl HardwareBenchmarkSuite {
 
     /// Calculate performance metrics
     fn calculate_performance_metrics(
-        &self,
         results: &[BenchmarkResult],
         stats: &StatisticalAnalysis,
-        graph_analysis: &Option<GraphAnalysis>,
+        graph_analysis: Option<&GraphAnalysis>,
     ) -> DeviceResult<PerformanceMetrics> {
         // Calculate component scores (0-100)
         let reliability_score = (stats.fidelity_stats.mean * 100.0).min(100.0);
@@ -844,15 +849,13 @@ impl HardwareBenchmarkSuite {
         let accuracy_score = ((1.0 - stats.error_rate_stats.mean) * 100.0).min(100.0);
 
         // Efficiency based on correlation between resources and performance
-        let efficiency_score = if let Some(graph) = graph_analysis {
+        let efficiency_score = graph_analysis.map_or(50.0, |graph| {
             // Use connectivity metrics to evaluate efficiency
             (graph.connectivity_metrics.clustering_coefficient * 100.0).min(100.0)
-        } else {
-            50.0 // Default
-        };
+        });
 
         // Scalability metrics
-        let scalability_metrics = self.calculate_scalability_metrics(results)?;
+        let scalability_metrics = Self::calculate_scalability_metrics(results)?;
 
         // Overall score (weighted average)
         let overall_score = (reliability_score * 0.3
@@ -873,10 +876,7 @@ impl HardwareBenchmarkSuite {
 
     // Helper methods
 
-    fn get_backend_type(
-        &self,
-        device_id: &str,
-    ) -> DeviceResult<crate::translation::HardwareBackend> {
+    fn get_backend_type(device_id: &str) -> DeviceResult<crate::translation::HardwareBackend> {
         // Infer backend type from device ID
         if device_id.contains("ibm") {
             Ok(crate::translation::HardwareBackend::IBMQuantum)
@@ -888,7 +888,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn create_gate_benchmark_circuit(
-        &self,
         gate_type: &str,
         num_qubits: usize,
     ) -> DeviceResult<Circuit<8>> {
@@ -906,8 +905,7 @@ impl HardwareBenchmarkSuite {
             }
             _ => {
                 return Err(DeviceError::UnsupportedOperation(format!(
-                    "Gate type: {}",
-                    gate_type
+                    "Gate type: {gate_type}"
                 )))
             }
         }
@@ -915,11 +913,7 @@ impl HardwareBenchmarkSuite {
         Ok(circuit)
     }
 
-    fn create_depth_benchmark_circuit(
-        &self,
-        depth: usize,
-        num_qubits: usize,
-    ) -> DeviceResult<Circuit<8>> {
+    fn create_depth_benchmark_circuit(depth: usize, num_qubits: usize) -> DeviceResult<Circuit<8>> {
         let mut circuit = Circuit::<8>::new();
 
         for layer in 0..depth {
@@ -936,7 +930,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn create_random_circuit<const N: usize>(
-        &self,
         num_qubits: usize,
         depth: usize,
     ) -> DeviceResult<Circuit<N>> {
@@ -982,7 +975,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn calculate_fidelity(
-        &self,
         result: &CircuitResult,
         circuit: &Circuit<8>,
         calibration: &DeviceCalibration,
@@ -1013,7 +1005,7 @@ impl HardwareBenchmarkSuite {
         Ok(total_fidelity)
     }
 
-    fn calculate_success_probability(&self, result: &CircuitResult) -> DeviceResult<f64> {
+    fn calculate_success_probability(result: &CircuitResult) -> DeviceResult<f64> {
         // Calculate success probability based on measurement outcomes
         let total_shots = result.shots as f64;
         let successful_outcomes = result
@@ -1025,25 +1017,25 @@ impl HardwareBenchmarkSuite {
         Ok(successful_outcomes / total_shots)
     }
 
-    fn compute_descriptive_stats(&self, data: &Array1<f64>) -> DeviceResult<DescriptiveStats> {
+    fn compute_descriptive_stats(data: &Array1<f64>) -> DeviceResult<DescriptiveStats> {
         let mean_val = mean(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Mean calculation error: {e:?}")))?;
 
         let median_val = median(&data.view())
-            .map_err(|e| DeviceError::APIError(format!("Median calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Median calculation error: {e:?}")))?;
 
         let std_val = std(&data.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Std calculation error: {e:?}")))?;
 
         let var_val = var(&data.view(), 1, None)
-            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {:?}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Variance calculation error: {e:?}")))?;
 
         let min_val = data.iter().fold(f64::INFINITY, |a, &b| a.min(b));
         let max_val = data.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
         // Calculate quartiles (simplified)
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let n = sorted_data.len();
         let q25 = sorted_data[n / 4];
@@ -1069,7 +1061,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn calculate_goodness_of_fit(
-        &self,
         data: &Array1<f64>,
         distribution: &dyn scirs2_stats::traits::Distribution<f64>,
     ) -> DeviceResult<f64> {
@@ -1077,7 +1068,7 @@ impl HardwareBenchmarkSuite {
         // In practice, would use proper KS test from SciRS2
 
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let n = sorted_data.len() as f64;
         let mut max_diff: f64 = 0.0;
@@ -1093,7 +1084,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn calculate_spectral_properties(
-        &self,
         calibration: &DeviceCalibration,
     ) -> DeviceResult<SpectralProperties> {
         let n = calibration.topology.num_qubits;
@@ -1117,7 +1107,7 @@ impl HardwareBenchmarkSuite {
 
         // Sort eigenvalues
         let mut sorted_eigenvals = eigenvalues.to_vec();
-        sorted_eigenvals.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        sorted_eigenvals.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         let algebraic_connectivity = if sorted_eigenvals.len() > 1 {
             sorted_eigenvals[sorted_eigenvals.len() - 2]
@@ -1140,7 +1130,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn find_critical_paths(
-        &self,
         graph: &Graph<usize, f64>,
         node_map: &HashMap<usize, usize>,
         results: &[BenchmarkResult],
@@ -1166,7 +1155,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn validate_noise_model(
-        &self,
         noise_model: &CalibrationNoiseModel,
         results: &[BenchmarkResult],
     ) -> DeviceResult<NoiseModelValidation> {
@@ -1232,7 +1220,6 @@ impl HardwareBenchmarkSuite {
     }
 
     fn calculate_scalability_metrics(
-        &self,
         results: &[BenchmarkResult],
     ) -> DeviceResult<ScalabilityMetrics> {
         // Analyze how performance scales with circuit size
@@ -1254,8 +1241,8 @@ impl HardwareBenchmarkSuite {
         }
 
         // Calculate scaling coefficients (simplified linear regression)
-        let depth_scaling_coefficient = self.calculate_scaling_coefficient(&depth_times)?;
-        let width_scaling_coefficient = self.calculate_scaling_coefficient(&width_times)?;
+        let depth_scaling_coefficient = Self::calculate_scaling_coefficient(&depth_times)?;
+        let width_scaling_coefficient = Self::calculate_scaling_coefficient(&width_times)?;
 
         let resource_efficiency =
             1.0 / (depth_scaling_coefficient + width_scaling_coefficient).max(0.1);
@@ -1269,7 +1256,7 @@ impl HardwareBenchmarkSuite {
         })
     }
 
-    fn calculate_scaling_coefficient(&self, data: &HashMap<usize, Vec<f64>>) -> DeviceResult<f64> {
+    fn calculate_scaling_coefficient(data: &HashMap<usize, Vec<f64>>) -> DeviceResult<f64> {
         if data.len() < 2 {
             return Ok(1.0); // Default linear scaling
         }
@@ -1297,7 +1284,7 @@ impl HardwareBenchmarkSuite {
             .sum();
         let sum_x_sq: f64 = x_values.iter().map(|x| x * x).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x_sq - sum_x * sum_x);
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_x_sq, -(sum_x * sum_x));
 
         Ok(slope.max(0.1)) // Ensure positive scaling
     }
@@ -1331,7 +1318,8 @@ mod tests {
         let suite =
             HardwareBenchmarkSuite::new(CalibrationManager::new(), BenchmarkConfig::default());
 
-        let stats = suite.compute_descriptive_stats(&data).unwrap();
+        let stats = HardwareBenchmarkSuite::compute_descriptive_stats(&data)
+            .expect("Descriptive stats computation should succeed");
         assert!((stats.mean - 3.0).abs() < 1e-10);
         assert!((stats.median - 3.0).abs() < 1e-10);
     }
@@ -1342,7 +1330,8 @@ mod tests {
         let suite =
             HardwareBenchmarkSuite::new(CalibrationManager::new(), BenchmarkConfig::default());
 
-        let spectral_props = suite.calculate_spectral_properties(&calibration).unwrap();
+        let spectral_props = HardwareBenchmarkSuite::calculate_spectral_properties(&calibration)
+            .expect("Spectral properties calculation should succeed");
         assert!(spectral_props.eigenvalues.len() == 4);
         assert!(spectral_props.spectral_radius >= 0.0);
     }

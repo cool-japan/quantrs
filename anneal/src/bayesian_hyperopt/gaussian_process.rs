@@ -25,7 +25,7 @@ impl Default for GaussianProcessSurrogate {
 
 impl GaussianProcessSurrogate {
     /// Simple predict method for compatibility
-    pub fn predict(&self, _x: &[f64]) -> BayesianOptResult<(f64, f64)> {
+    pub const fn predict(&self, _x: &[f64]) -> BayesianOptResult<(f64, f64)> {
         // Simplified prediction - in practice would use trained model
         // Returns (mean, variance)
         Ok((0.0, 1.0))
@@ -33,7 +33,7 @@ impl GaussianProcessSurrogate {
 }
 
 /// Kernel functions for Gaussian processes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KernelFunction {
     /// Radial Basis Function (RBF) kernel
     RBF,
@@ -389,8 +389,10 @@ impl GaussianProcessModel {
         // Compute log determinant (simplified - would use Cholesky in practice)
         let log_det = self.log_determinant()?;
 
-        let log_likelihood =
-            -0.5 * quad_form - 0.5 * log_det - 0.5 * n as f64 * (2.0 * std::f64::consts::PI).ln();
+        let log_likelihood = (0.5 * n as f64).mul_add(
+            -(2.0 * std::f64::consts::PI).ln(),
+            (-0.5f64).mul_add(quad_form, -(0.5 * log_det)),
+        );
 
         Ok(log_likelihood)
     }

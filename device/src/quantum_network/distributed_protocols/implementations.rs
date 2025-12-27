@@ -28,7 +28,10 @@ impl LoadBalancer for RoundRobinBalancer {
         }
 
         for partition in partitions {
-            let mut index = self.current_index.lock().unwrap();
+            let mut index = self
+                .current_index
+                .lock()
+                .expect("Round-robin index mutex poisoned");
             let selected_node = nodes[*index % nodes.len()].clone();
             *index += 1;
             assignments.insert(partition.partition_id, selected_node);
@@ -60,7 +63,10 @@ impl LoadBalancer for RoundRobinBalancer {
             ));
         }
 
-        let mut index = self.current_index.lock().unwrap();
+        let mut index = self
+            .current_index
+            .lock()
+            .expect("Round-robin index mutex poisoned");
         let selected_node = available_nodes[*index % available_nodes.len()]
             .node_id
             .clone();
@@ -88,6 +94,12 @@ impl LoadBalancer for RoundRobinBalancer {
             average_response_time: Duration::from_millis(0),
             node_utilization: HashMap::new(),
         }
+    }
+}
+
+impl Default for RoundRobinBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -775,7 +787,7 @@ impl DistributedQuantumOrchestrator {
         request: ExecutionRequest,
     ) -> Result<ComputationResult> {
         // Partition the circuit
-        let nodes = self.nodes.read().unwrap().clone();
+        let nodes = self.nodes.read().expect("Nodes RwLock poisoned").clone();
         let partitions =
             self.circuit_partitioner
                 .partition_circuit(&request.circuit, &nodes, &self.config)?;
@@ -849,19 +861,19 @@ impl DistributedQuantumOrchestrator {
     }
 
     pub async fn register_node(&self, node_info: NodeInfo) -> Result<()> {
-        let mut nodes = self.nodes.write().unwrap();
+        let mut nodes = self.nodes.write().expect("Nodes RwLock poisoned");
         nodes.insert(node_info.node_id.clone(), node_info);
         Ok(())
     }
 
     pub async fn unregister_node(&self, node_id: &NodeId) -> Result<()> {
-        let mut nodes = self.nodes.write().unwrap();
+        let mut nodes = self.nodes.write().expect("Nodes RwLock poisoned");
         nodes.remove(node_id);
         Ok(())
     }
 
     pub async fn get_system_status(&self) -> SystemStatus {
-        let nodes = self.nodes.read().unwrap();
+        let nodes = self.nodes.read().expect("Nodes RwLock poisoned");
 
         SystemStatus {
             total_nodes: nodes.len() as u32,
@@ -887,6 +899,12 @@ pub struct SystemStatus {
 }
 
 // Basic implementations for supporting structures
+impl Default for CircuitPartitioner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitPartitioner {
     pub fn new() -> Self {
         Self {
@@ -912,6 +930,12 @@ impl CircuitPartitioner {
                 "No partitioning strategies available".to_string(),
             ))
         }
+    }
+}
+
+impl Default for GraphBasedPartitioning {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -978,7 +1002,7 @@ impl PartitioningStrategy for GraphBasedPartitioning {
 
             // Calculate communication overhead between partitions
             let communication_cost = self.calculate_inter_partition_communication(
-                &gate_indices,
+                gate_indices,
                 &gate_partitions,
                 &circuit.gates,
             );
@@ -1151,7 +1175,7 @@ impl GraphBasedPartitioning {
         communication_bits
     }
 
-    fn calculate_partition_dependencies(
+    const fn calculate_partition_dependencies(
         &self,
         _partition_idx: usize,
         _all_partitions: &[Vec<usize>],
@@ -1233,6 +1257,12 @@ impl GraphBasedPartitioning {
     }
 }
 
+impl Default for LoadBalancedPartitioning {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadBalancedPartitioning {
     pub fn new() -> Self {
         Self {
@@ -1267,6 +1297,12 @@ impl PartitioningStrategy for LoadBalancedPartitioning {
     }
 }
 
+impl Default for PartitionOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PartitionOptimizer {
     pub fn new() -> Self {
         Self {
@@ -1278,6 +1314,12 @@ impl PartitionOptimizer {
             solver: "genetic_algorithm".to_string(),
             timeout: Duration::from_secs(30),
         }
+    }
+}
+
+impl Default for DistributedStateManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1297,8 +1339,14 @@ impl DistributedStateManager {
 #[derive(Debug)]
 pub struct BasicSynchronizationProtocol;
 
+impl Default for BasicSynchronizationProtocol {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BasicSynchronizationProtocol {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1336,6 +1384,12 @@ impl StateSynchronizationProtocol for BasicSynchronizationProtocol {
     }
 }
 
+impl Default for StateTransferEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StateTransferEngine {
     pub fn new() -> Self {
         Self {
@@ -1343,6 +1397,12 @@ impl StateTransferEngine {
             compression_engine: Arc::new(QuantumStateCompressor::new()),
             encryption_engine: Arc::new(QuantumCryptography::new()),
         }
+    }
+}
+
+impl Default for QuantumStateCompressor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1359,6 +1419,12 @@ impl QuantumStateCompressor {
     }
 }
 
+impl Default for QuantumCryptography {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumCryptography {
     pub fn new() -> Self {
         Self {
@@ -1372,6 +1438,12 @@ impl QuantumCryptography {
     }
 }
 
+impl Default for ConsistencyChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConsistencyChecker {
     pub fn new() -> Self {
         Self {
@@ -1382,6 +1454,12 @@ impl ConsistencyChecker {
             verification_frequency: Duration::from_secs(1),
             automatic_correction: true,
         }
+    }
+}
+
+impl Default for CapabilityBasedBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1479,6 +1557,12 @@ impl LoadBalancer for CapabilityBasedBalancer {
     }
 }
 
+impl Default for FaultToleranceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FaultToleranceManager {
     pub fn new() -> Self {
         Self {
@@ -1487,6 +1571,12 @@ impl FaultToleranceManager {
             checkpointing_system: Arc::new(CheckpointingSystem::new()),
             redundancy_manager: Arc::new(RedundancyManager::new()),
         }
+    }
+}
+
+impl Default for CheckpointingSystem {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1507,6 +1597,12 @@ pub struct InMemoryCheckpointStorage {
     checkpoints: Arc<RwLock<HashMap<Uuid, CheckpointData>>>,
 }
 
+impl Default for InMemoryCheckpointStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryCheckpointStorage {
     pub fn new() -> Self {
         Self {
@@ -1518,27 +1614,45 @@ impl InMemoryCheckpointStorage {
 #[async_trait]
 impl CheckpointStorage for InMemoryCheckpointStorage {
     async fn store_checkpoint(&self, checkpoint_id: Uuid, data: &CheckpointData) -> Result<()> {
-        let mut checkpoints = self.checkpoints.write().unwrap();
+        let mut checkpoints = self
+            .checkpoints
+            .write()
+            .expect("Checkpoints RwLock poisoned");
         checkpoints.insert(checkpoint_id, data.clone());
         Ok(())
     }
 
     async fn load_checkpoint(&self, checkpoint_id: Uuid) -> Result<CheckpointData> {
-        let checkpoints = self.checkpoints.read().unwrap();
+        let checkpoints = self
+            .checkpoints
+            .read()
+            .expect("Checkpoints RwLock poisoned");
         checkpoints.get(&checkpoint_id).cloned().ok_or_else(|| {
             DistributedComputationError::ResourceAllocation("Checkpoint not found".to_string())
         })
     }
 
     async fn list_checkpoints(&self) -> Result<Vec<Uuid>> {
-        let checkpoints = self.checkpoints.read().unwrap();
-        Ok(checkpoints.keys().cloned().collect())
+        let checkpoints = self
+            .checkpoints
+            .read()
+            .expect("Checkpoints RwLock poisoned");
+        Ok(checkpoints.keys().copied().collect())
     }
 
     async fn delete_checkpoint(&self, checkpoint_id: Uuid) -> Result<()> {
-        let mut checkpoints = self.checkpoints.write().unwrap();
+        let mut checkpoints = self
+            .checkpoints
+            .write()
+            .expect("Checkpoints RwLock poisoned");
         checkpoints.remove(&checkpoint_id);
         Ok(())
+    }
+}
+
+impl Default for RedundancyManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1549,6 +1663,12 @@ impl RedundancyManager {
             replication_factor: 3,
             consistency_protocol: "eventual_consistency".to_string(),
         }
+    }
+}
+
+impl Default for RaftConsensus {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1597,6 +1717,12 @@ impl ConsensusEngine for RaftConsensus {
     }
 }
 
+impl Default for LogReplication {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LogReplication {
     pub fn new() -> Self {
         Self {
@@ -1604,6 +1730,12 @@ impl LogReplication {
             commit_index: Arc::new(RwLock::new(0)),
             last_applied: Arc::new(RwLock::new(0)),
         }
+    }
+}
+
+impl Default for MetricsCollector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1624,6 +1756,12 @@ pub struct InMemoryMetricsStorage {
     metrics: Arc<RwLock<Vec<Metric>>>,
 }
 
+impl Default for InMemoryMetricsStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryMetricsStorage {
     pub fn new() -> Self {
         Self {
@@ -1635,13 +1773,13 @@ impl InMemoryMetricsStorage {
 #[async_trait]
 impl MetricsStorage for InMemoryMetricsStorage {
     async fn store_metric(&self, metric: &Metric) -> Result<()> {
-        let mut metrics = self.metrics.write().unwrap();
+        let mut metrics = self.metrics.write().expect("Metrics RwLock poisoned");
         metrics.push(metric.clone());
         Ok(())
     }
 
     async fn query_metrics(&self, query: &MetricsQuery) -> Result<Vec<Metric>> {
-        let metrics = self.metrics.read().unwrap();
+        let metrics = self.metrics.read().expect("Metrics RwLock poisoned");
         let filtered: Vec<Metric> = metrics
             .iter()
             .filter(|m| {
@@ -1655,7 +1793,7 @@ impl MetricsStorage for InMemoryMetricsStorage {
     }
 
     async fn aggregate_metrics(&self, aggregation: &AggregationQuery) -> Result<AggregatedMetrics> {
-        let metrics = self.metrics.read().unwrap();
+        let metrics = self.metrics.read().expect("Metrics RwLock poisoned");
         let filtered: Vec<&Metric> = metrics
             .iter()
             .filter(|m| {
@@ -1697,13 +1835,25 @@ impl MetricsStorage for InMemoryMetricsStorage {
     }
 }
 
+impl Default for MetricsAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetricsAggregator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             aggregation_strategies: vec![],
             real_time_aggregation: true,
             batch_size: 1000,
         }
+    }
+}
+
+impl Default for AlertingSystem {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1714,6 +1864,12 @@ impl AlertingSystem {
             notification_channels: HashMap::new(),
             alert_history: Arc::new(RwLock::new(VecDeque::new())),
         }
+    }
+}
+
+impl Default for ResourceAllocator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1755,6 +1911,12 @@ impl ResourceAllocator {
     }
 }
 
+impl Default for ResourceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceMonitor {
     pub fn new() -> Self {
         Self {
@@ -1762,6 +1924,12 @@ impl ResourceMonitor {
             monitoring_interval: Duration::from_secs(1),
             resource_predictions: Arc::new(ResourcePredictor::new()),
         }
+    }
+}
+
+impl Default for ResourcePredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1775,6 +1943,12 @@ impl ResourcePredictor {
     }
 }
 
+impl Default for TrainingScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrainingScheduler {
     pub fn new() -> Self {
         Self {
@@ -1782,6 +1956,12 @@ impl TrainingScheduler {
             auto_retraining: true,
             performance_threshold: 0.9,
         }
+    }
+}
+
+impl Default for ModelEvaluator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

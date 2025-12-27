@@ -274,7 +274,7 @@ pub struct ToffoliGate {
 
 impl ToffoliGate {
     /// Create a new Toffoli gate
-    pub fn new(control1: QubitId, control2: QubitId, target: QubitId) -> Self {
+    pub const fn new(control1: QubitId, control2: QubitId, target: QubitId) -> Self {
         Self {
             control1,
             control2,
@@ -329,7 +329,7 @@ pub struct FredkinGate {
 
 impl FredkinGate {
     /// Create a new Fredkin gate
-    pub fn new(control: QubitId, target1: QubitId, target2: QubitId) -> Self {
+    pub const fn new(control: QubitId, target1: QubitId, target2: QubitId) -> Self {
         Self {
             control,
             target1,

@@ -328,11 +328,18 @@ pub fn poly_divide(
         vec![Expression::from(0); dividend.degree().saturating_sub(divisor.degree()) + 1];
 
     while remainder.degree() >= divisor.degree()
-        && !remainder.leading_coefficient().unwrap().is_zero()
+        && remainder
+            .leading_coefficient()
+            .is_some_and(|c| !c.is_zero())
     {
         let deg_diff = remainder.degree() - divisor.degree();
-        let coeff = remainder.leading_coefficient().unwrap().clone()
-            / divisor.leading_coefficient().unwrap().clone();
+        let remainder_lead = remainder
+            .leading_coefficient()
+            .ok_or_else(|| crate::SymEngineError::runtime_error("No leading coefficient"))?;
+        let divisor_lead = divisor.leading_coefficient().ok_or_else(|| {
+            crate::SymEngineError::runtime_error("Divisor has no leading coefficient")
+        })?;
+        let coeff = remainder_lead.clone() / divisor_lead.clone();
 
         quotient_coeffs[deg_diff] = coeff.clone();
 
@@ -565,9 +572,24 @@ mod tests {
         let poly = Polynomial::new(coeffs, x);
 
         assert_eq!(poly.degree(), 2);
-        assert_eq!(poly.coefficient(0).unwrap().to_string(), "1");
-        assert_eq!(poly.coefficient(1).unwrap().to_string(), "2");
-        assert_eq!(poly.coefficient(2).unwrap().to_string(), "3");
+        assert_eq!(
+            poly.coefficient(0)
+                .expect("coefficient(0) should exist")
+                .to_string(),
+            "1"
+        );
+        assert_eq!(
+            poly.coefficient(1)
+                .expect("coefficient(1) should exist")
+                .to_string(),
+            "2"
+        );
+        assert_eq!(
+            poly.coefficient(2)
+                .expect("coefficient(2) should exist")
+                .to_string(),
+            "3"
+        );
     }
 
     #[test]
@@ -595,8 +617,18 @@ mod tests {
 
         let sum = poly1.add(&poly2);
         assert_eq!(sum.degree(), 1);
-        assert_eq!(sum.coefficient(0).unwrap().to_string(), "4");
-        assert_eq!(sum.coefficient(1).unwrap().to_string(), "6");
+        assert_eq!(
+            sum.coefficient(0)
+                .expect("sum coefficient(0) should exist")
+                .to_string(),
+            "4"
+        );
+        assert_eq!(
+            sum.coefficient(1)
+                .expect("sum coefficient(1) should exist")
+                .to_string(),
+            "6"
+        );
     }
 
     #[test]
@@ -624,8 +656,20 @@ mod tests {
 
         let derivative = poly.differentiate();
         assert_eq!(derivative.degree(), 1);
-        assert_eq!(derivative.coefficient(0).unwrap().to_string(), "2");
-        assert_eq!(derivative.coefficient(1).unwrap().to_string(), "6");
+        assert_eq!(
+            derivative
+                .coefficient(0)
+                .expect("derivative coefficient(0) should exist")
+                .to_string(),
+            "2"
+        );
+        assert_eq!(
+            derivative
+                .coefficient(1)
+                .expect("derivative coefficient(1) should exist")
+                .to_string(),
+            "6"
+        );
     }
 
     #[test]
@@ -638,7 +682,10 @@ mod tests {
         let integral = poly.integrate();
         assert_eq!(integral.degree(), 2);
         // Constant term should be 0 (integration constant)
-        assert!(integral.coefficient(0).unwrap().is_zero());
+        assert!(integral
+            .coefficient(0)
+            .expect("integral coefficient(0) should exist")
+            .is_zero());
     }
 
     #[test]

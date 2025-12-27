@@ -654,16 +654,16 @@ impl TopologicalCompiler {
         // Apply optimization based on strategy
         match self.braiding_optimizer.strategy {
             OptimizationStrategy::MinimizeLength => {
-                self.optimize_for_length(&mut circuit.braiding_sequence)?;
+                self.optimize_for_length(&circuit.braiding_sequence)?;
             }
             OptimizationStrategy::MinimizeCrossings => {
-                self.optimize_for_crossings(&mut circuit.braiding_sequence)?;
+                self.optimize_for_crossings(&circuit.braiding_sequence)?;
             }
             OptimizationStrategy::MinimizeTime => {
-                self.optimize_for_time(&mut circuit.braiding_sequence)?;
+                self.optimize_for_time(&circuit.braiding_sequence)?;
             }
             OptimizationStrategy::Balanced => {
-                self.optimize_balanced(&mut circuit.braiding_sequence)?;
+                self.optimize_balanced(&circuit.braiding_sequence)?;
             }
         }
 
@@ -693,37 +693,25 @@ impl TopologicalCompiler {
     }
 
     /// Optimize for minimum length
-    const fn optimize_for_length(
-        &self,
-        braidings: &mut Vec<BraidingOperation>,
-    ) -> QuantRS2Result<()> {
+    const fn optimize_for_length(&self, braidings: &[BraidingOperation]) -> QuantRS2Result<()> {
         // Implement length optimization
         Ok(())
     }
 
     /// Optimize for minimum crossings
-    const fn optimize_for_crossings(
-        &self,
-        braidings: &mut Vec<BraidingOperation>,
-    ) -> QuantRS2Result<()> {
+    const fn optimize_for_crossings(&self, braidings: &[BraidingOperation]) -> QuantRS2Result<()> {
         // Implement crossing optimization
         Ok(())
     }
 
     /// Optimize for minimum time
-    const fn optimize_for_time(
-        &self,
-        braidings: &mut Vec<BraidingOperation>,
-    ) -> QuantRS2Result<()> {
+    const fn optimize_for_time(&self, braidings: &[BraidingOperation]) -> QuantRS2Result<()> {
         // Implement time optimization
         Ok(())
     }
 
     /// Balanced optimization
-    const fn optimize_balanced(
-        &self,
-        braidings: &mut Vec<BraidingOperation>,
-    ) -> QuantRS2Result<()> {
+    const fn optimize_balanced(&self, braidings: &[BraidingOperation]) -> QuantRS2Result<()> {
         // Implement balanced optimization
         Ok(())
     }

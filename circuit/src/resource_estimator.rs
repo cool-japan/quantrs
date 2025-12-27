@@ -764,7 +764,7 @@ impl ResourceEstimator {
             }
         }
 
-        let fidelity = (1.0 - total_error_rate).max(0.0).min(1.0);
+        let fidelity = (1.0 - total_error_rate).clamp(0.0, 1.0);
         Ok(fidelity)
     }
 
@@ -1082,7 +1082,7 @@ impl ResourceEstimator {
             score *= 0.8; // Penalize for high two-qubit gate requirements
         }
 
-        score.max(0.0).min(1.0)
+        score.clamp(0.0, 1.0)
     }
 
     /// Generate reasoning for platform recommendation
@@ -1190,7 +1190,7 @@ impl ResourceEstimator {
             score *= 1.2;
         }
 
-        score.max(0.0).min(1.0)
+        score.clamp(0.0, 1.0)
     }
 
     /// Identify scalability bottlenecks
@@ -1390,16 +1390,21 @@ mod tests {
     #[test]
     fn test_basic_resource_estimation() {
         let mut circuit = Circuit::<3>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to qubit 0");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(2) }).unwrap();
+            .expect("Failed to add CNOT gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(2) })
+            .expect("Failed to add Hadamard gate to qubit 2");
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         assert_eq!(estimate.circuit_metrics.total_gates, 3);
         assert_eq!(estimate.circuit_metrics.qubit_count, 3);
@@ -1410,15 +1415,18 @@ mod tests {
     #[test]
     fn test_complexity_analysis() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         // Should classify as constant time complexity for small circuits
         match estimate.complexity_analysis.time_complexity {
@@ -1437,10 +1445,13 @@ mod tests {
     fn test_memory_estimation() {
         let mut circuit = Circuit::<4>::new();
         for i in 0..4 {
-            circuit.add_gate(Hadamard { target: QubitId(i) }).unwrap();
+            circuit
+                .add_gate(Hadamard { target: QubitId(i) })
+                .expect("Failed to add Hadamard gate");
         }
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         // 4 qubits should require 2^4 * 16 = 256 bytes for state vector
         assert_eq!(estimate.memory_requirements.state_vector_memory, 256);
@@ -1450,15 +1461,18 @@ mod tests {
     #[test]
     fn test_execution_time_estimation() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         assert!(estimate.execution_time.estimated_time > Duration::from_nanos(0));
         assert!(!estimate.execution_time.gate_time_breakdown.is_empty());
@@ -1474,10 +1488,11 @@ mod tests {
                     control: QubitId(i),
                     target: QubitId(i + 1),
                 })
-                .unwrap();
+                .expect("Failed to add CNOT gate");
         }
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         assert!(estimate.hardware_requirements.min_physical_qubits >= 10);
         assert!(!estimate
@@ -1491,10 +1506,13 @@ mod tests {
         let mut circuit = Circuit::<5>::new();
         // Create a circuit with many gates to trigger optimization suggestions
         for _ in 0..200 {
-            circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+            circuit
+                .add_gate(Hadamard { target: QubitId(0) })
+                .expect("Failed to add Hadamard gate");
         }
 
-        let estimate = estimate_circuit_resources(&circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
 
         assert!(!estimate.optimization_suggestions.is_empty());
 
@@ -1512,9 +1530,12 @@ mod tests {
         config.enable_scalability_analysis = true;
 
         let mut circuit = Circuit::<3>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
 
-        let estimate = estimate_circuit_resources_with_config(&circuit, config).unwrap();
+        let estimate = estimate_circuit_resources_with_config(&circuit, config)
+            .expect("Failed to estimate circuit resources with config");
 
         assert!(estimate.scalability_analysis.scalability_score >= 0.0);
         assert!(estimate.scalability_analysis.scalability_score <= 1.0);
@@ -1527,10 +1548,11 @@ mod tests {
         for i in 0..4 {
             qft_circuit
                 .add_gate(Hadamard { target: QubitId(i) })
-                .unwrap();
+                .expect("Failed to add Hadamard gate");
         }
 
-        let estimate = estimate_circuit_resources(&qft_circuit).unwrap();
+        let estimate =
+            estimate_circuit_resources(&qft_circuit).expect("Failed to estimate circuit resources");
         match estimate.complexity_analysis.algorithm_classification {
             AlgorithmClass::QftBased | AlgorithmClass::General => {}
             _ => panic!("Unexpected algorithm classification"),

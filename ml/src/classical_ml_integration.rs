@@ -457,7 +457,7 @@ impl HybridPipelineManager {
         recommendations.sort_by(|a, b| {
             b.compatibility_score
                 .partial_cmp(&a.compatibility_score)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         Ok(recommendations)
@@ -917,7 +917,9 @@ impl PipelineStageExecutor for PreprocessingStage {
         match self.method.as_str() {
             "standard_scaler" => {
                 // Simplified standard scaling
-                let mean = X.mean_axis(Axis(0)).unwrap();
+                let mean = X.mean_axis(Axis(0)).ok_or_else(|| {
+                    MLError::InvalidConfiguration("Cannot compute mean of empty array".to_string())
+                })?;
                 let std = X.std_axis(Axis(0), 0.0);
                 self.parameters.insert("mean".to_string(), mean[0]);
                 self.parameters.insert("std".to_string(), std[0]);
@@ -946,13 +948,21 @@ impl PipelineStageExecutor for PreprocessingStage {
 
         match self.method.as_str() {
             "standard_scaler" => {
-                let mean = self.parameters.get("mean").unwrap();
-                let std = self.parameters.get("std").unwrap();
+                let mean = self.parameters.get("mean").ok_or_else(|| {
+                    MLError::InvalidConfiguration("Mean parameter not found".to_string())
+                })?;
+                let std = self.parameters.get("std").ok_or_else(|| {
+                    MLError::InvalidConfiguration("Std parameter not found".to_string())
+                })?;
                 Ok((X - *mean) / *std)
             }
             "min_max_scaler" => {
-                let min = self.parameters.get("min").unwrap();
-                let max = self.parameters.get("max").unwrap();
+                let min = self.parameters.get("min").ok_or_else(|| {
+                    MLError::InvalidConfiguration("Min parameter not found".to_string())
+                })?;
+                let max = self.parameters.get("max").ok_or_else(|| {
+                    MLError::InvalidConfiguration("Max parameter not found".to_string())
+                })?;
                 Ok((X - *min) / (*max - *min))
             }
             _ => Ok(X.clone()),
@@ -1053,7 +1063,9 @@ impl StandardScaler {
 
 impl DataPreprocessor for StandardScaler {
     fn fit(&mut self, X: &ArrayD<f64>) -> Result<()> {
-        self.mean = Some(X.mean_axis(Axis(0)).unwrap());
+        self.mean = Some(X.mean_axis(Axis(0)).ok_or_else(|| {
+            MLError::InvalidConfiguration("Cannot compute mean of empty array".to_string())
+        })?);
         self.std = Some(X.std_axis(Axis(0), 0.0));
         Ok(())
     }
@@ -1470,7 +1482,9 @@ mod tests {
             has_categorical_features: false,
         };
 
-        let recommendations = manager.recommend_pipeline(&dataset_info).unwrap();
+        let recommendations = manager
+            .recommend_pipeline(&dataset_info)
+            .expect("Pipeline recommendation should succeed");
         assert!(!recommendations.is_empty());
 
         for rec in recommendations {
@@ -1490,19 +1504,26 @@ mod tests {
     #[test]
     fn test_preprocessor_functionality() {
         let mut scaler = StandardScaler::new();
-        let X = ArrayD::from_shape_vec(vec![3, 2], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
+        let X = ArrayD::from_shape_vec(vec![3, 2], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("Failed to create input array");
 
-        let X_scaled = scaler.fit_transform(&X).unwrap();
+        let X_scaled = scaler
+            .fit_transform(&X)
+            .expect("fit_transform should succeed");
         assert_eq!(X_scaled.shape(), X.shape());
     }
 
     #[test]
     fn test_ensemble_strategy() {
         let ensemble = WeightedVotingEnsemble::new();
-        let pred1 = ArrayD::from_shape_vec(vec![2, 1], vec![0.8, 0.3]).unwrap();
-        let pred2 = ArrayD::from_shape_vec(vec![2, 1], vec![0.6, 0.7]).unwrap();
+        let pred1 = ArrayD::from_shape_vec(vec![2, 1], vec![0.8, 0.3])
+            .expect("Failed to create pred1 array");
+        let pred2 = ArrayD::from_shape_vec(vec![2, 1], vec![0.6, 0.7])
+            .expect("Failed to create pred2 array");
 
-        let combined = ensemble.combine_predictions(vec![pred1, pred2]).unwrap();
+        let combined = ensemble
+            .combine_predictions(vec![pred1, pred2])
+            .expect("Combine predictions should succeed");
         assert_eq!(combined.shape(), &[2, 1]);
     }
 
@@ -1512,8 +1533,8 @@ mod tests {
         let X = ArrayD::zeros(vec![10, 5]);
         let y = ArrayD::zeros(vec![10, 1]);
 
-        model.fit(&X, &y).unwrap();
-        let predictions = model.predict(&X).unwrap();
+        model.fit(&X, &y).expect("Model fit should succeed");
+        let predictions = model.predict(&X).expect("Model predict should succeed");
         assert_eq!(predictions.shape(), &[10, 1]);
     }
 }

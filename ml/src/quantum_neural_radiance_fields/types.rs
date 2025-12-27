@@ -496,7 +496,7 @@ impl QuantumNeRF {
         }
         let output_layer = QuantumMLPLayer {
             layer_type: QuantumMLPLayerType::QuantumLinear,
-            input_dim: *hidden_dims.last().unwrap(),
+            input_dim: hidden_dims.last().copied().unwrap_or(128),
             output_dim,
             quantum_gates: Self::create_quantum_mlp_gates(config, output_dim)?,
             activation: QuantumActivationType::QuantumSigmoid,
@@ -921,7 +921,9 @@ impl QuantumNeRF {
             let mut input_features = encoded_position.features;
             input_features
                 .append(Axis(0), encoded_view.features.view())
-                .unwrap();
+                .map_err(|e| {
+                    MLError::ModelCreationError(format!("Failed to append features: {}", e))
+                })?;
             let attended_features =
                 self.apply_quantum_spatial_attention(&input_features, &point.position)?;
             let coarse_output =
@@ -1054,7 +1056,10 @@ impl QuantumNeRF {
     /// Standard quantum encoding
     fn standard_quantum_encoding(&self, position: &Array1<f64>) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
-        features.extend_from_slice(position.as_slice().unwrap());
+        let position_slice = position.as_slice().ok_or_else(|| {
+            MLError::ModelCreationError("Position array is not contiguous".to_string())
+        })?;
+        features.extend_from_slice(position_slice);
         for (i, &freq) in self
             .quantum_positional_encoder
             .quantum_frequencies
@@ -1151,7 +1156,10 @@ impl QuantumNeRF {
         view_direction: &Array1<f64>,
     ) -> Result<QuantumEncodingOutput> {
         let mut features = Vec::new();
-        features.extend_from_slice(view_direction.as_slice().unwrap());
+        let view_slice = view_direction.as_slice().ok_or_else(|| {
+            MLError::ModelCreationError("View direction array is not contiguous".to_string())
+        })?;
+        features.extend_from_slice(view_slice);
         for &freq in self.quantum_positional_encoder.quantum_frequencies.iter() {
             for &component in view_direction.iter() {
                 features.push((freq * component).sin());
@@ -1941,11 +1949,11 @@ mod tests {
     #[test]
     fn test_quantum_positional_encoding() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let position = Array1::from_vec(vec![0.1, 0.2, 0.3]);
         let encoding = nerf.quantum_positional_encoding(&position);
         assert!(encoding.is_ok());
-        let output = encoding.unwrap();
+        let output = encoding.expect("Positional encoding should succeed");
         assert!(output.features.len() > 3);
         assert!(output.entanglement_measure >= 0.0);
         assert!(output.entanglement_measure <= 1.0);
@@ -1953,7 +1961,7 @@ mod tests {
     #[test]
     fn test_quantum_ray_sampling() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let ray = Ray {
             origin: Array1::from_vec(vec![0.0, 0.0, 0.0]),
             direction: Array1::from_vec(vec![0.0, 0.0, 1.0]),
@@ -1962,7 +1970,7 @@ mod tests {
         };
         let sampling = nerf.quantum_ray_sampling(&ray);
         assert!(sampling.is_ok());
-        let output = sampling.unwrap();
+        let output = sampling.expect("Ray sampling should succeed");
         assert!(!output.points.is_empty());
         assert!(!output.distances.is_empty());
         assert_eq!(output.points.len(), output.distances.len());
@@ -1970,11 +1978,11 @@ mod tests {
     #[test]
     fn test_quantum_mlp_query() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let input_features = Array1::ones(64);
         let result = nerf.query_quantum_mlp(&nerf.quantum_mlp_coarse, &input_features);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("MLP query should succeed");
         assert_eq!(output.color.len(), 3);
         assert!(output.density >= 0.0);
         assert!(output.quantum_state.entanglement_measure >= 0.0);
@@ -1982,7 +1990,7 @@ mod tests {
     #[test]
     fn test_quantum_volume_rendering() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let colors = vec![
             Array1::from_vec(vec![1.0, 0.0, 0.0]),
             Array1::from_vec(vec![0.0, 1.0, 0.0]),
@@ -2001,25 +2009,25 @@ mod tests {
         let result =
             nerf.quantum_volume_rendering(&colors, &densities, &quantum_states, &distances);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("Volume rendering should succeed");
         assert_eq!(output.final_color.len(), 3);
         assert!(output.depth >= 0.0);
     }
     #[test]
     fn test_quantum_spherical_harmonics() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let view_direction = Array1::from_vec(vec![1.0, 0.0, 0.0]);
         let encoding = nerf.quantum_spherical_harmonics_encoding(&view_direction);
         assert!(encoding.is_ok());
-        let output = encoding.unwrap();
+        let output = encoding.expect("Spherical harmonics encoding should succeed");
         assert!(!output.features.is_empty());
         assert!(output.entanglement_measure > 0.0);
     }
     #[test]
     fn test_camera_ray_generation() {
         let config = QuantumNeRFConfig::default();
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let camera = CameraMatrix {
             position: Array1::from_vec(vec![0.0, 0.0, 0.0]),
             forward: Array1::from_vec(vec![0.0, 0.0, 1.0]),
@@ -2029,7 +2037,7 @@ mod tests {
         };
         let ray = nerf.generate_camera_ray(&camera, 100, 100, 200, 200, PI / 4.0);
         assert!(ray.is_ok());
-        let ray_output = ray.unwrap();
+        let ray_output = ray.expect("Camera ray generation should succeed");
         assert_eq!(ray_output.origin.len(), 3);
         assert_eq!(ray_output.direction.len(), 3);
         assert!(ray_output.near > 0.0);
@@ -2041,11 +2049,11 @@ mod tests {
             quantum_enhancement_level: 0.8,
             ..Default::default()
         };
-        let nerf = QuantumNeRF::new(config).unwrap();
+        let nerf = QuantumNeRF::new(config).expect("Failed to create QuantumNeRF");
         let position = Array1::from_vec(vec![0.5, 0.3, 0.7]);
         let encoding = nerf.entanglement_based_encoding(&position);
         assert!(encoding.is_ok());
-        let output = encoding.unwrap();
+        let output = encoding.expect("Entanglement encoding should succeed");
         assert!(output.entanglement_measure > 0.8);
         assert!(!output
             .quantum_amplitudes

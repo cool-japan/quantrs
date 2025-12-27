@@ -4,6 +4,8 @@
 //! enabling interactive quantum circuit visualization, quantum state plotting, and
 //! real-time quantum computation monitoring within Jupyter environments.
 
+#![allow(clippy::missing_const_for_fn)] // PyO3 methods cannot be const
+
 use pyo3::prelude::*;
 use scirs2_core::ndarray::Array1;
 use scirs2_core::Complex64;
@@ -11,6 +13,7 @@ use scirs2_numpy::{PyArray1, PyArrayMethods};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Quantum circuit visualization for Jupyter notebooks
 #[pyclass(name = "QuantumCircuitVisualizer")]
 pub struct PyQuantumCircuitVisualizer {
@@ -72,14 +75,14 @@ impl PyQuantumCircuitVisualizer {
 
         // Draw qubit lines
         for qubit in 0..self.num_qubits {
-            html.push_str(&format!(
+            let _ = write!(
+                html,
                 r#"
             <div style="display: flex; align-items: center; height: 40px;">
-                <span style="width: 60px; font-weight: bold; color: #34495e;">|q{}⟩</span>
+                <span style="width: 60px; font-weight: bold; color: #34495e;">|q{qubit}⟩</span>
                 <div style="flex: 1; height: 2px; background: #34495e; position: relative;">
-"#,
-                qubit
-            ));
+"#
+            );
 
             // Add gates on this qubit line
             for (step, gate) in self.gates.iter().enumerate() {
@@ -95,9 +98,10 @@ impl PyQuantumCircuitVisualizer {
                     };
                     let fidelity_info = gate
                         .fidelity
-                        .map(|f| format!(" (F: {:.3})", f))
+                        .map(|f| format!(" (F: {f:.3})"))
                         .unwrap_or_default();
-                    html.push_str(&format!(
+                    let _ = write!(
+                        html,
                         r#"
                     <div style="position: absolute; left: {}%; transform: translateX(-50%);
                                 width: 30px; height: 30px; background: {}; color: white;
@@ -114,14 +118,15 @@ impl PyQuantumCircuitVisualizer {
                         fidelity_info,
                         step,
                         gate.gate_type
-                    ));
+                    );
                 }
             }
 
             html.push_str("                </div>\n            </div>");
         }
 
-        html.push_str(&format!(
+        let _ = write!(
+            html,
             r#"
         </div>
     </div>
@@ -133,7 +138,7 @@ impl PyQuantumCircuitVisualizer {
             self.gates.len(),
             self.num_qubits,
             self.gates.len()
-        ));
+        );
 
         html
     }
@@ -166,7 +171,8 @@ impl PyQuantumCircuitVisualizer {
         // Draw qubit lines and labels
         for qubit in 0..self.num_qubits {
             let y = 60 + qubit * 80;
-            svg.push_str(&format!(
+            let _ = write!(
+                svg,
                 "
     <text x=\"50\" y=\"{}\" class=\"qubit-label\" dy=\"5\">|q{}⟩</text>
     <line x1=\"80\" y1=\"{}\" x2=\"{}\" y2=\"{}\" class=\"qubit-line\"/>",
@@ -175,7 +181,7 @@ impl PyQuantumCircuitVisualizer {
                 y,
                 width - 40,
                 y
-            ));
+            );
         }
 
         // Draw gates
@@ -192,21 +198,21 @@ impl PyQuantumCircuitVisualizer {
                     _ => ("gate-pauli", "#95a5a6"),
                 };
 
-                svg.push_str(&format!("
+                let _ = write!(svg, "
     <rect x=\"{}\" y=\"{}\" width=\"30\" height=\"30\" rx=\"4\" class=\"{}\" stroke=\"#2c3e50\" stroke-width=\"1\"/>
-    <text x=\"{}\" y=\"{}\" class=\"gate-text\">{}</text>", x - 15, y - 15, gate_class, x, y + 5, gate.gate_type));
+    <text x=\"{}\" y=\"{}\" class=\"gate-text\">{}</text>", x - 15, y - 15, gate_class, x, y + 5, gate.gate_type);
             }
 
             // Draw control lines for CNOT gates
             if gate.gate_type == "CNOT" && gate.qubits.len() == 2 {
                 let control_y = 60 + (gate.qubits[0] as usize) * 80;
                 let target_y = 60 + (gate.qubits[1] as usize) * 80;
-                svg.push_str(&format!(
+                let _ = write!(
+                    svg,
                     "
-    <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#9b59b6\" stroke-width=\"3\"/>
-    <circle cx=\"{}\" cy=\"{}\" r=\"4\" fill=\"#9b59b6\"/>",
-                    x, control_y, x, target_y, x, control_y
-                ));
+    <line x1=\"{x}\" y1=\"{control_y}\" x2=\"{x}\" y2=\"{target_y}\" stroke=\"#9b59b6\" stroke-width=\"3\"/>
+    <circle cx=\"{x}\" cy=\"{control_y}\" r=\"4\" fill=\"#9b59b6\"/>"
+                );
             }
         }
 
@@ -309,16 +315,19 @@ impl PyQuantumStateVisualizer {
             let color = if prob > 0.001 { "#3498db" } else { "#ecf0f1" };
 
             let binary_state = format!("{:0width$b}", i, width = self.num_qubits);
-            html.push_str(&format!(r#"
+            let _ = write!(
+                html,
+                r#"
         <div style="display: flex; flex-direction: column; align-items: center; margin: 2px;">
             <div style="width: 20px; height: 100px; background: #f8f9fa; border: 1px solid #ddd;
                         display: flex; align-items: flex-end; position: relative;">
-                <div style="width: 100%; height: {}%; background: {};
-                            transition: height 0.3s ease;" title="State |{}⟩: {:.3}"></div>
+                <div style="width: 100%; height: {height_percent}%; background: {color};
+                            transition: height 0.3s ease;" title="State |{binary_state}⟩: {prob:.3}"></div>
             </div>
-            <span style="font-size: 10px; margin-top: 4px; writing-mode: vertical-rl; text-orientation: mixed;">|{}⟩</span>
+            <span style="font-size: 10px; margin-top: 4px; writing-mode: vertical-rl; text-orientation: mixed;">|{binary_state}⟩</span>
         </div>
-"#, height_percent, color, binary_state, prob, binary_state));
+"#
+            );
         }
 
         html.push_str(r#"
@@ -414,7 +423,7 @@ impl PyQuantumStateVisualizer {
         let mut probs = HashMap::new();
         for (i, amplitude) in self.state_vector.iter().enumerate() {
             let binary_repr = format!("{:0width$b}", i, width = self.num_qubits);
-            let basis_state = format!("|{}⟩", binary_repr);
+            let basis_state = format!("|{binary_repr}⟩");
             probs.insert(basis_state, amplitude.norm_sqr());
         }
         probs
@@ -518,10 +527,12 @@ impl PyQuantumPerformanceMonitor {
 
             let fidelity_display = measurement
                 .fidelity
-                .map(|f| format!(" (F: {:.3})", f))
+                .map(|f| format!(" (F: {f:.3})"))
                 .unwrap_or_default();
 
-            html.push_str(&format!(r#"
+            let _ = write!(
+                html,
+                r#"
         <div style="margin: 8px 0; display: flex; align-items: center;">
             <span style="width: 150px; font-size: 12px; color: #34495e;">{}</span>
             <div style="flex: 1; height: 25px; background: #f8f9fa; border: 1px solid #ddd; position: relative; border-radius: 4px;">
@@ -532,13 +543,22 @@ impl PyQuantumPerformanceMonitor {
                 </div>
             </div>
         </div>
-"#, measurement.operation, width_percent, color, measurement.duration_ms,
-    measurement.gate_count, measurement.qubit_count, fidelity_display, measurement.duration_ms));
+"#,
+                measurement.operation,
+                width_percent,
+                color,
+                measurement.duration_ms,
+                measurement.gate_count,
+                measurement.qubit_count,
+                fidelity_display,
+                measurement.duration_ms
+            );
         }
 
         let avg_duration = self.measurements.iter().map(|m| m.duration_ms).sum::<f64>()
             / self.measurements.len() as f64;
-        html.push_str(&format!(
+        let _ = write!(
+            html,
             r#"
     </div>
     <div style="margin-top: 15px; font-size: 12px; color: #7f8c8d;">
@@ -548,7 +568,7 @@ impl PyQuantumPerformanceMonitor {
 "#,
             self.measurements.len(),
             avg_duration
-        ));
+        );
 
         html
     }
@@ -614,6 +634,6 @@ impl PyQuantumPerformanceMonitor {
 }
 
 /// Module initialization function for Python bindings
-pub fn init_jupyter_visualization() {
+pub const fn init_jupyter_visualization() {
     // Initialization code for Jupyter visualization tools
 }

@@ -120,7 +120,7 @@ pub struct ErrorReportingConfig {
     pub include_diagnostics: bool,
 }
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     Gzip,
     Zstd,
@@ -129,7 +129,7 @@ pub enum CompressionAlgorithm {
     Zlib,
 }
 /// Data storage strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataStorageStrategy {
     InMemory,
     Persistent,
@@ -149,7 +149,7 @@ pub struct StateEstimationConfig {
     pub noise_modeling: NoiseModelingConfig,
 }
 /// Cleanup strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CleanupStrategy {
     TimeBasedCleanup,
     SizeBasedCleanup,
@@ -157,7 +157,7 @@ pub enum CleanupStrategy {
     HybridCleanup,
 }
 /// Quantum execution strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantumExecutionStrategy {
     /// Single backend execution
     SingleBackend,
@@ -185,7 +185,7 @@ pub struct HybridPerformanceConfig {
     pub resource_monitoring: ResourceMonitoringConfig,
 }
 /// Optimization levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationLevel {
     None,
     Basic,
@@ -208,7 +208,7 @@ pub struct QuantumResourceUsage {
     pub queue_time: Duration,
 }
 /// Process priority levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProcessPriority {
     Low,
     Normal,
@@ -230,7 +230,7 @@ pub struct ClassicalComputationConfig {
     pub data_management: DataManagementConfig,
 }
 /// Optimization passes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationPass {
     GateFusion,
     CircuitDepthReduction,
@@ -251,7 +251,7 @@ pub enum ConvergenceCriterion {
     CustomCriterion(String),
 }
 /// Selection criteria
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SelectionCriterion {
     Fidelity,
     ExecutionTime,
@@ -301,7 +301,7 @@ pub struct ClassicalResourceUsage {
     pub network_io: Option<NetworkIOStats>,
 }
 /// Failure reasons
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FailureReason {
     QuantumBackendError,
     ClassicalComputationError,
@@ -350,7 +350,7 @@ enum ExecutionStatus {
     Cancelled,
 }
 /// Feedback algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeedbackAlgorithm {
     /// Proportional-Integral-Derivative control
     PID,
@@ -374,7 +374,7 @@ struct CachedResult {
     computation_time: Duration,
 }
 /// Error mitigation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorMitigationStrategy {
     ZeroNoiseExtrapolation,
     ReadoutErrorMitigation,
@@ -398,7 +398,7 @@ pub struct ClassicalResourceConfig {
     pub priority_level: ProcessPriority,
 }
 /// Convergence status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceStatus {
     NotConverged,
     Converged(ConvergenceReason),
@@ -447,7 +447,7 @@ pub struct DataManagementConfig {
     pub retention_policy: DataRetentionPolicy,
 }
 /// Profiling output formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProfilingOutputFormat {
     JSON,
     FlameGraph,
@@ -469,7 +469,7 @@ pub struct QuantumExecutionResult {
     pub resource_usage: QuantumResourceUsage,
 }
 /// Profiling levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProfilingLevel {
     Basic,
     Detailed,
@@ -486,7 +486,7 @@ pub struct ConvergenceConfig {
     pub monitoring: ConvergenceMonitoringConfig,
 }
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceAllocationStrategy {
     Greedy,
     Optimal,
@@ -504,7 +504,7 @@ struct FunctionTiming {
     min_time: Duration,
 }
 /// Retry conditions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RetryCondition {
     NetworkError,
     QuantumBackendError,
@@ -527,7 +527,7 @@ pub struct QuantumExecutionConfig {
     pub resource_management: QuantumResourceConfig,
 }
 /// Backoff strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BackoffStrategy {
     Linear,
     Exponential,
@@ -535,7 +535,7 @@ pub enum BackoffStrategy {
     Custom(Vec<Duration>),
 }
 /// Convergence metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceMetric {
     ObjectiveValue,
     GradientNorm,
@@ -563,7 +563,7 @@ struct ControlAlgorithm {
     internal_state: Vec<f64>,
 }
 /// Error recovery strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorRecoveryStrategy {
     Retry,
     Fallback,
@@ -652,8 +652,8 @@ impl HybridQuantumClassicalExecutor {
         };
         Self {
             config: config.clone(),
-            device_manager: device_manager.clone(),
-            calibration_manager: calibration_manager.clone(),
+            device_manager,
+            calibration_manager,
             parallelization_engine,
             scheduler,
             state: Arc::new(RwLock::new(initial_state)),
@@ -672,9 +672,7 @@ impl HybridQuantumClassicalExecutor {
             performance_tracker: Arc::new(RwLock::new(PerformanceTracker::new(
                 config.performance_config.clone(),
             ))),
-            error_handler: Arc::new(RwLock::new(ErrorHandler::new(
-                config.error_handling_config.clone(),
-            ))),
+            error_handler: Arc::new(RwLock::new(ErrorHandler::new(config.error_handling_config))),
         }
     }
     /// Execute a hybrid quantum-classical loop
@@ -690,8 +688,10 @@ impl HybridQuantumClassicalExecutor {
     {
         let start_time = Instant::now();
         {
-            let mut state = self.state.write().unwrap();
-            state.parameters = initial_parameters.clone();
+            let mut state = self.state.write().map_err(|e| {
+                DeviceError::LockError(format!("Failed to acquire state write lock: {e}"))
+            })?;
+            state.parameters.clone_from(&initial_parameters);
             state.iteration = 0;
             state.convergence_status = ConvergenceStatus::NotConverged;
         }
@@ -718,7 +718,7 @@ impl HybridQuantumClassicalExecutor {
             let objective_value = objective_function(&current_parameters, &quantum_result)?;
             if objective_value < best_objective {
                 best_objective = objective_value;
-                best_parameters = current_parameters.clone();
+                best_parameters.clone_from(&current_parameters);
             }
             let gradient = self
                 .compute_gradient(
@@ -729,7 +729,12 @@ impl HybridQuantumClassicalExecutor {
                 )
                 .await?;
             current_parameters = self
-                .update_parameters(&current_parameters, &gradient, objective_value, iteration)
+                .update_parameters(
+                    &current_parameters,
+                    gradient.as_deref(),
+                    objective_value,
+                    iteration,
+                )
                 .await?;
             if self.config.feedback_config.enable_realtime_feedback {
                 current_parameters = self
@@ -748,9 +753,11 @@ impl HybridQuantumClassicalExecutor {
             };
             execution_history.push(iteration_result.clone());
             {
-                let mut state = self.state.write().unwrap();
+                let mut state = self.state.write().map_err(|e| {
+                    DeviceError::LockError(format!("Failed to acquire state write lock: {e}"))
+                })?;
                 state.iteration = iteration;
-                state.parameters = current_parameters.clone();
+                state.parameters.clone_from(&current_parameters);
                 state.objective_value = objective_value;
                 state.gradient = gradient;
                 state.history.push_back(iteration_result);
@@ -769,7 +776,11 @@ impl HybridQuantumClassicalExecutor {
                 ConvergenceStatus::Converged(ConvergenceReason::ValueTolerance)
             };
         let performance_metrics = {
-            let tracker = self.performance_tracker.read().unwrap();
+            let tracker = self.performance_tracker.read().map_err(|e| {
+                DeviceError::LockError(format!(
+                    "Failed to acquire performance tracker read lock: {e}"
+                ))
+            })?;
             tracker.metrics.clone()
         };
         let optimization_summary = OptimizationSummary {
@@ -799,7 +810,9 @@ impl HybridQuantumClassicalExecutor {
         circuit: &Circuit<16>,
         iteration: usize,
     ) -> DeviceResult<QuantumExecutionResult> {
-        let quantum_executor = self.quantum_executor.read().unwrap();
+        let _quantum_executor = self.quantum_executor.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire quantum executor read lock: {e}"))
+        })?;
         let backend = self.select_optimal_backend(circuit, iteration).await?;
         let shots = self.calculate_optimal_shots(circuit, iteration);
         let circuit_results = vec![];
@@ -827,7 +840,11 @@ impl HybridQuantumClassicalExecutor {
         quantum_result: &QuantumExecutionResult,
         iteration: usize,
     ) -> DeviceResult<ClassicalComputationResult> {
-        let classical_executor = self.classical_executor.read().unwrap();
+        let _classical_executor = self.classical_executor.read().map_err(|e| {
+            DeviceError::LockError(format!(
+                "Failed to acquire classical executor read lock: {e}"
+            ))
+        })?;
         let processing_start = Instant::now();
         let results = HashMap::new();
         let processing_time = processing_start.elapsed();
@@ -886,7 +903,7 @@ impl HybridQuantumClassicalExecutor {
     async fn update_parameters(
         &self,
         current_parameters: &[f64],
-        gradient: &Option<Vec<f64>>,
+        gradient: Option<&[f64]>,
         objective_value: f64,
         iteration: usize,
     ) -> DeviceResult<Vec<f64>> {
@@ -929,7 +946,11 @@ impl HybridQuantumClassicalExecutor {
         quantum_result: &QuantumExecutionResult,
         iteration: usize,
     ) -> DeviceResult<Vec<f64>> {
-        let mut feedback_controller = self.feedback_controller.write().unwrap();
+        let mut feedback_controller = self.feedback_controller.write().map_err(|e| {
+            DeviceError::LockError(format!(
+                "Failed to acquire feedback controller write lock: {e}"
+            ))
+        })?;
         if !feedback_controller.control_loop_active {
             return Ok(parameters.to_vec());
         }
@@ -1014,7 +1035,7 @@ impl HybridQuantumClassicalExecutor {
     ) -> DeviceResult<HardwareBackend> {
         Ok(HardwareBackend::IBMQuantum)
     }
-    fn calculate_optimal_shots(&self, _circuit: &Circuit<16>, _iteration: usize) -> usize {
+    const fn calculate_optimal_shots(&self, _circuit: &Circuit<16>, _iteration: usize) -> usize {
         1000
     }
     async fn estimate_fidelity(
@@ -1061,7 +1082,11 @@ impl HybridQuantumClassicalExecutor {
         iteration: usize,
         iteration_time: Duration,
     ) -> DeviceResult<()> {
-        let mut tracker = self.performance_tracker.write().unwrap();
+        let mut tracker = self.performance_tracker.write().map_err(|e| {
+            DeviceError::LockError(format!(
+                "Failed to acquire performance tracker write lock: {e}"
+            ))
+        })?;
         tracker.metrics.average_iteration_time =
             (tracker.metrics.average_iteration_time * iteration as u32 + iteration_time)
                 / (iteration + 1) as u32;
@@ -1073,7 +1098,10 @@ impl HybridQuantumClassicalExecutor {
             return 0.0;
         }
         let initial_value = history[0].objective_value;
-        let final_value = history.last().unwrap().objective_value;
+        let final_value = history
+            .last()
+            .map(|h| h.objective_value)
+            .unwrap_or(initial_value);
         if initial_value == 0.0 {
             return 0.0;
         }
@@ -1093,7 +1121,7 @@ impl HybridQuantumClassicalExecutor {
         }
         total_qpu_time.as_secs_f64() / total_time.as_secs_f64()
     }
-    fn calculate_quality_metrics(
+    const fn calculate_quality_metrics(
         &self,
         history: &[IterationResult],
         best_parameters: &[f64],
@@ -1106,13 +1134,21 @@ impl HybridQuantumClassicalExecutor {
         }
     }
     /// Get current execution state
-    pub fn get_state(&self) -> HybridLoopState {
-        self.state.read().unwrap().clone()
+    pub fn get_state(&self) -> DeviceResult<HybridLoopState> {
+        Ok(self
+            .state
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Failed to acquire state read lock: {e}")))?
+            .clone())
     }
     /// Get performance metrics
-    pub fn get_performance_metrics(&self) -> PerformanceMetrics {
-        let tracker = self.performance_tracker.read().unwrap();
-        tracker.metrics.clone()
+    pub fn get_performance_metrics(&self) -> DeviceResult<PerformanceMetrics> {
+        let tracker = self.performance_tracker.read().map_err(|e| {
+            DeviceError::LockError(format!(
+                "Failed to acquire performance tracker read lock: {e}"
+            ))
+        })?;
+        Ok(tracker.metrics.clone())
     }
     /// Stop execution gracefully
     pub async fn stop_execution(&self) -> DeviceResult<()> {
@@ -1120,7 +1156,7 @@ impl HybridQuantumClassicalExecutor {
     }
 }
 /// Notification channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Email,
     Slack,
@@ -1153,7 +1189,7 @@ pub struct PerformanceMetrics {
     pub resource_utilization: ResourceUtilizationMetrics,
 }
 /// Export formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportFormat {
     PNG,
     SVG,
@@ -1162,7 +1198,7 @@ pub enum ExportFormat {
     CSV,
 }
 /// Fallback strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FallbackStrategy {
     BestAvailable,
     Simulator,
@@ -1170,7 +1206,7 @@ pub enum FallbackStrategy {
     Abort,
 }
 /// Fallback mechanisms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FallbackMechanism {
     AlternativeBackend,
     SimulatorFallback,
@@ -1272,7 +1308,7 @@ pub struct HybridOptimizationConfig {
     pub enable_scirs2_optimization: bool,
 }
 /// Hybrid optimizer types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HybridOptimizer {
     /// Gradient-based optimizers
     GradientDescent,
@@ -1333,7 +1369,7 @@ pub struct OptimizationSummary {
     pub quality_metrics: QualityMetrics,
 }
 /// Adaptation algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationAlgorithm {
     GradientDescent,
     EvolutionaryStrategy,
@@ -1354,7 +1390,7 @@ pub struct ResourceMonitoringConfig {
     pub alerting: AlertingConfig,
 }
 /// Error reporting channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorReportingChannel {
     Log,
     Metrics,
@@ -1362,7 +1398,7 @@ pub enum ErrorReportingChannel {
     Telemetry,
 }
 /// Error reporting levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorReportingLevel {
     Critical,
     Error,
@@ -1371,7 +1407,7 @@ pub enum ErrorReportingLevel {
     Debug,
 }
 /// Serialization formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SerializationFormat {
     JSON,
     MessagePack,
@@ -1387,7 +1423,7 @@ pub struct PerformanceTracker {
     benchmark_results: Vec<BenchmarkResult>,
 }
 impl PerformanceTracker {
-    fn new(config: HybridPerformanceConfig) -> Self {
+    const fn new(config: HybridPerformanceConfig) -> Self {
         Self {
             config,
             metrics: PerformanceMetrics {
@@ -1437,7 +1473,7 @@ pub struct LoadBalancingConfig {
     pub migration_cost_threshold: f64,
 }
 /// Benchmark suites
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BenchmarkSuite {
     StandardAlgorithms,
     CustomBenchmarks,
@@ -1506,7 +1542,7 @@ impl ErrorHandler {
     }
 }
 /// Noise mitigation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoiseMitigationStrategy {
     ZeroNoiseExtrapolation,
     DynamicalDecoupling,
@@ -1528,7 +1564,7 @@ pub struct VisualizationConfig {
     pub export_format: ExportFormat,
 }
 /// Cache eviction policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheEvictionPolicy {
     LRU,
     LFU,
@@ -1537,7 +1573,7 @@ pub enum CacheEvictionPolicy {
     TimeBasedExpiration,
 }
 /// Performance targets
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceTarget {
     MinimizeLatency,
     MaximizeThroughput,
@@ -1593,7 +1629,7 @@ pub struct ClassicalComputationResult {
     pub resource_usage: ClassicalResourceUsage,
 }
 /// Classical processing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClassicalProcessingStrategy {
     /// Sequential processing
     Sequential,
@@ -1661,7 +1697,7 @@ struct StateEstimator {
     confidence: f64,
 }
 /// Plot types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlotType {
     ConvergencePlot,
     ParameterTrajectory,
@@ -1682,7 +1718,7 @@ pub struct ClassicalParallelConfig {
     pub load_balancing: LoadBalancingConfig,
 }
 /// Work distribution algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkDistributionAlgorithm {
     RoundRobin,
     WorkStealing,
@@ -1690,7 +1726,7 @@ pub enum WorkDistributionAlgorithm {
     AffinityBased,
 }
 /// Monitoring granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringGranularity {
     System,
     Process,
@@ -1729,7 +1765,7 @@ struct MemorySample {
     peak_mb: f64,
 }
 /// Monitoring frequencies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringFrequency {
     EveryIteration,
     Periodic(usize),
@@ -1763,7 +1799,7 @@ pub struct DataRetentionPolicy {
     pub cleanup_strategy: CleanupStrategy,
 }
 /// Comparison targets
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonTarget {
     BaselineImplementation,
     PreviousVersion,
@@ -1771,7 +1807,7 @@ pub enum ComparisonTarget {
     TheoreticalOptimum,
 }
 /// Restoration strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RestorationStrategy {
     BestSoFar,
     LastValid,
@@ -1787,7 +1823,7 @@ struct PerformanceStats {
     throughput_trend: Vec<f64>,
 }
 /// State estimation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StateEstimationMethod {
     /// Maximum likelihood estimation
     MaximumLikelihood,
@@ -1833,7 +1869,7 @@ pub enum ResourceMetric {
     EnergyConsumption,
 }
 /// Convergence reasons
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceReason {
     ValueTolerance,
     GradientNorm,
@@ -1844,7 +1880,7 @@ pub enum ConvergenceReason {
     CustomCriterion(String),
 }
 /// Parallelization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ParallelizationStrategy {
     DataParallel,
     TaskParallel,

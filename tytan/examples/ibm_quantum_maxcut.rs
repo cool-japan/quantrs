@@ -20,8 +20,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let graph = vec![(0, 1), (0, 2), (1, 3), (2, 3)];
     let num_vertices = 4;
 
-    println!("Graph vertices: {}", num_vertices);
-    println!("Graph edges: {:?}\n", graph);
+    println!("Graph vertices: {num_vertices}");
+    println!("Graph edges: {graph:?}\n");
 
     // Convert MaxCut to QUBO formulation
     // For MaxCut, we want to maximize: sum of x_i(1-x_j) + x_j(1-x_i) for each edge (i,j)
@@ -39,11 +39,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create variable mapping
-    let var_map: HashMap<String, usize> =
-        (0..num_vertices).map(|i| (format!("v{}", i), i)).collect();
+    let var_map: HashMap<String, usize> = (0..num_vertices).map(|i| (format!("v{i}"), i)).collect();
 
     println!("QUBO Matrix:");
-    println!("{:.2}\n", qubo_matrix);
+    println!("{qubo_matrix:.2}\n");
 
     // Example 1: Using IBM Quantum Simulator
     println!("--- Example 1: IBM Quantum Simulator ---");
@@ -114,8 +113,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|(name, _)| name)
             .collect();
 
-        println!("  Partition 0: {:?}", partition_0);
-        println!("  Partition 1: {:?}", partition_1);
+        println!("  Partition 0: {partition_0:?}");
+        println!("  Partition 1: {partition_1:?}");
     }
 
     // Tips for using IBM Quantum

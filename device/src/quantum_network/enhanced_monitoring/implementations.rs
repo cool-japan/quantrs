@@ -159,11 +159,13 @@ impl EnhancedQuantumNetworkMonitor {
         let alert_health = self.alert_system.get_health_score().await?;
 
         // Weighted average of component health scores
-        let overall_health = metrics_health * 0.3
-            + analytics_health * 0.25
-            + anomaly_health * 0.2
-            + prediction_health * 0.15
-            + alert_health * 0.1;
+        let overall_health = alert_health.mul_add(
+            0.1,
+            prediction_health.mul_add(
+                0.15,
+                anomaly_health.mul_add(0.2, metrics_health.mul_add(0.3, analytics_health * 0.25)),
+            ),
+        );
 
         Ok(overall_health)
     }
@@ -467,6 +469,12 @@ impl QuantumNetworkDashboard {
 }
 
 // Stub implementations for supporting types
+impl Default for MetricsAggregationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetricsAggregationEngine {
     pub fn new() -> Self {
         Self {
@@ -474,6 +482,12 @@ impl MetricsAggregationEngine {
             aggregation_functions: vec!["mean".to_string(), "max".to_string()],
             buffer_size: 1000,
         }
+    }
+}
+
+impl Default for MetricsBuffer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -711,7 +725,7 @@ impl RealTimeMetricsCollector {
 
     pub async fn get_collection_statistics(&self) -> Result<CollectionStatistics> {
         Ok(CollectionStatistics {
-            total_data_points: 1000000,
+            total_data_points: 1_000_000,
             collection_rate: 1000.0,
             error_rate: 0.01,
             last_collection: Utc::now(),
@@ -918,7 +932,7 @@ impl Default for EnhancedMonitoringConfig {
                 training_requirements: TrainingRequirements {
                     min_training_points: 1000,
                     training_window: Duration::from_secs(7 * 86400),
-                    retraining_frequency: Duration::from_secs(1 * 86400),
+                    retraining_frequency: Duration::from_secs(86400),
                     quality_requirements: DataQualityRequirements {
                         min_completeness: 0.95,
                         max_missing_percentage: 0.05,
@@ -995,7 +1009,7 @@ impl Default for EnhancedMonitoringConfig {
                         severity_limits: HashMap::new(),
                         global_limits: FrequencyLimits {
                             max_notifications_per_window: 100,
-                            time_window: Duration::from_secs(1 * 3600),
+                            time_window: Duration::from_secs(3600),
                             cooldown_period: Duration::from_secs(15 * 60),
                             burst_allowance: 10,
                         },
@@ -1047,7 +1061,7 @@ pub struct ThresholdDetector {
 }
 
 impl ThresholdDetector {
-    pub fn new(lower: f64, upper: f64, sensitivity: f64) -> Self {
+    pub const fn new(lower: f64, upper: f64, sensitivity: f64) -> Self {
         Self {
             lower_threshold: lower,
             upper_threshold: upper,
@@ -1065,7 +1079,7 @@ pub struct MLAnomalyDetector {
 }
 
 impl MLAnomalyDetector {
-    pub fn new(model_type: String, sensitivity: f64) -> Self {
+    pub const fn new(model_type: String, sensitivity: f64) -> Self {
         Self {
             model_type,
             sensitivity,
@@ -1081,8 +1095,14 @@ pub struct RuleEvaluationEngine {
     pub rule_cache_size: usize,
 }
 
+impl Default for RuleEvaluationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuleEvaluationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             evaluation_frequency: Duration::from_secs(30),
             rule_cache_size: 1000,
@@ -1095,6 +1115,12 @@ impl RuleEvaluationEngine {
 pub struct CustomRuleCompiler {
     pub supported_languages: Vec<String>,
     pub compilation_timeout: Duration,
+}
+
+impl Default for CustomRuleCompiler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CustomRuleCompiler {
@@ -1113,8 +1139,14 @@ pub struct RulePerformanceTracker {
     pub performance_threshold: f64,
 }
 
+impl Default for RulePerformanceTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RulePerformanceTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             metrics_window: Duration::from_secs(600),
             performance_threshold: 0.95,

@@ -45,54 +45,79 @@ impl QuantumBufferPool {
     /// Acquire a state vector buffer from the pool
     pub fn acquire_state_vector(&self, size: usize) -> Vec<Complex64> {
         metrics::track_allocation("QuantumStateVector", size * 16, 0); // Complex64 is 16 bytes
-        *self.allocations.lock().unwrap() += 1;
+        *self.allocations.lock().expect("Allocations lock poisoned") += 1;
 
         let current_usage = size * 16;
-        let mut peak = self.peak_memory_usage.lock().unwrap();
+        let mut peak = self
+            .peak_memory_usage
+            .lock()
+            .expect("Peak memory usage lock poisoned");
         if current_usage > *peak {
             *peak = current_usage;
         }
 
-        self.state_vector_pool.lock().unwrap().acquire_vec(size)
+        self.state_vector_pool
+            .lock()
+            .expect("State vector pool lock poisoned")
+            .acquire_vec(size)
     }
 
     /// Release a state vector buffer back to the pool
     pub fn release_state_vector(&self, buffer: Vec<Complex64>) {
         let size = buffer.len();
         metrics::track_deallocation("QuantumStateVector", size * 16, 0);
-        *self.deallocations.lock().unwrap() += 1;
+        *self
+            .deallocations
+            .lock()
+            .expect("Deallocations lock poisoned") += 1;
 
-        self.state_vector_pool.lock().unwrap().release_vec(buffer);
+        self.state_vector_pool
+            .lock()
+            .expect("State vector pool lock poisoned")
+            .release_vec(buffer);
     }
 
     /// Acquire a probability buffer from the pool
     pub fn acquire_probability_buffer(&self, size: usize) -> Vec<f64> {
         metrics::track_allocation("ProbabilityBuffer", size * 8, 0); // f64 is 8 bytes
-        *self.allocations.lock().unwrap() += 1;
+        *self.allocations.lock().expect("Allocations lock poisoned") += 1;
 
-        self.probability_pool.lock().unwrap().acquire_vec(size)
+        self.probability_pool
+            .lock()
+            .expect("Probability pool lock poisoned")
+            .acquire_vec(size)
     }
 
     /// Release a probability buffer back to the pool
     pub fn release_probability_buffer(&self, buffer: Vec<f64>) {
         let size = buffer.len();
         metrics::track_deallocation("ProbabilityBuffer", size * 8, 0);
-        *self.deallocations.lock().unwrap() += 1;
+        *self
+            .deallocations
+            .lock()
+            .expect("Deallocations lock poisoned") += 1;
 
-        self.probability_pool.lock().unwrap().release_vec(buffer);
+        self.probability_pool
+            .lock()
+            .expect("Probability pool lock poisoned")
+            .release_vec(buffer);
     }
 
     /// Get buffer pool statistics
     pub fn get_stats(&self) -> MemoryUsageStats {
+        let allocations = *self.allocations.lock().expect("Allocations lock poisoned");
+        let deallocations = *self
+            .deallocations
+            .lock()
+            .expect("Deallocations lock poisoned");
         MemoryUsageStats {
-            total_allocations: *self.allocations.lock().unwrap(),
-            total_deallocations: *self.deallocations.lock().unwrap(),
-            peak_memory_usage_bytes: *self.peak_memory_usage.lock().unwrap(),
-            active_buffers: self
-                .allocations
+            total_allocations: allocations,
+            total_deallocations: deallocations,
+            peak_memory_usage_bytes: *self
+                .peak_memory_usage
                 .lock()
-                .unwrap()
-                .saturating_sub(*self.deallocations.lock().unwrap()),
+                .expect("Peak memory usage lock poisoned"),
+            active_buffers: allocations.saturating_sub(deallocations),
         }
     }
 }
@@ -120,7 +145,7 @@ pub struct StateVectorManager {
 
 impl StateVectorManager {
     /// Create a new state vector manager
-    pub fn new(num_qubits: usize, pool: Arc<QuantumBufferPool>) -> Self {
+    pub const fn new(num_qubits: usize, pool: Arc<QuantumBufferPool>) -> Self {
         let use_chunked_processing = num_qubits > 20; // Use chunking for >20 qubits (~16M elements)
 
         Self {
@@ -309,7 +334,9 @@ mod tests {
         let mut manager = StateVectorManager::new(2, pool); // 2-qubit system
 
         // Initialize state
-        manager.initialize_zero_state().unwrap();
+        manager
+            .initialize_zero_state()
+            .expect("Failed to initialize zero state");
 
         // Apply Hadamard-like gate to first qubit
         let h_gate = [
@@ -319,10 +346,14 @@ mod tests {
             Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
         ];
 
-        manager.apply_single_qubit_gate(&h_gate, 0).unwrap();
+        manager
+            .apply_single_qubit_gate(&h_gate, 0)
+            .expect("Failed to apply Hadamard gate");
 
         // Get probabilities
-        let probabilities = manager.get_probabilities().unwrap();
+        let probabilities = manager
+            .get_probabilities()
+            .expect("Failed to get probabilities");
         assert_eq!(probabilities.len(), 4);
 
         // Should be in equal superposition on first qubit

@@ -154,7 +154,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         let key_hash = self.hash_signature(key);
 
         let result = {
-            let entries = self.entries.read().unwrap();
+            let entries = self
+                .entries
+                .read()
+                .expect("Cache entries lock poisoned - another thread panicked");
             entries.get(&key_hash).map(|entry| entry.value.clone())
         };
 
@@ -188,7 +191,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         };
 
         {
-            let mut entries = self.entries.write().unwrap();
+            let mut entries = self
+                .entries
+                .write()
+                .expect("Cache entries lock poisoned - another thread panicked");
             entries.insert(key_hash, entry);
         }
 
@@ -204,7 +210,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
         let key_hash = self.hash_signature(key);
 
         let removed = {
-            let mut entries = self.entries.write().unwrap();
+            let mut entries = self
+                .entries
+                .write()
+                .expect("Cache entries lock poisoned - another thread panicked");
             entries.remove(&key_hash)
         };
 
@@ -219,12 +228,18 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     /// Clear all cache entries
     pub fn clear(&self) {
         {
-            let mut entries = self.entries.write().unwrap();
+            let mut entries = self
+                .entries
+                .write()
+                .expect("Cache entries lock poisoned - another thread panicked");
             entries.clear();
         }
 
         {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("Access order lock poisoned - another thread panicked");
             access_order.clear();
         }
 
@@ -236,20 +251,29 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
     /// Get cache statistics
     #[must_use]
     pub fn get_stats(&self) -> CacheStats {
-        self.stats.lock().unwrap().clone()
+        self.stats
+            .lock()
+            .expect("Cache stats lock poisoned - another thread panicked")
+            .clone()
     }
 
     /// Get current cache size
     #[must_use]
     pub fn size(&self) -> usize {
-        self.entries.read().unwrap().len()
+        self.entries
+            .read()
+            .expect("Cache entries lock poisoned - another thread panicked")
+            .len()
     }
 
     /// Check if cache contains key
     #[must_use]
     pub fn contains_key(&self, key: &CircuitSignature) -> bool {
         let key_hash = self.hash_signature(key);
-        self.entries.read().unwrap().contains_key(&key_hash)
+        self.entries
+            .read()
+            .expect("Cache entries lock poisoned - another thread panicked")
+            .contains_key(&key_hash)
     }
 
     /// Start background cleanup process
@@ -314,7 +338,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         // Update access order for LRU
         if matches!(self.config.eviction_policy, EvictionPolicy::LRU) {
-            let mut access_order = self.access_order.lock().unwrap();
+            let mut access_order = self
+                .access_order
+                .lock()
+                .expect("Access order lock poisoned - another thread panicked");
 
             // Remove from current position
             access_order.retain(|&x| x != key_hash);
@@ -326,7 +353,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
     /// Remove from access order tracking
     fn remove_from_access_order(&self, key_hash: u64) {
-        let mut access_order = self.access_order.lock().unwrap();
+        let mut access_order = self
+            .access_order
+            .lock()
+            .expect("Access order lock poisoned - another thread panicked");
         access_order.retain(|&x| x != key_hash);
     }
 
@@ -396,7 +426,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
-                let access_order = self.access_order.lock().unwrap();
+                let access_order = self
+                    .access_order
+                    .lock()
+                    .expect("Access order lock poisoned - another thread panicked");
                 access_order.back().copied()
             };
 
@@ -428,7 +461,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
-                let entries = self.entries.read().unwrap();
+                let entries = self
+                    .entries
+                    .read()
+                    .expect("Cache entries lock poisoned - another thread panicked");
                 entries
                     .iter()
                     .min_by_key(|(_, entry)| entry.access_count)
@@ -463,7 +499,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
-                let entries = self.entries.read().unwrap();
+                let entries = self
+                    .entries
+                    .read()
+                    .expect("Cache entries lock poisoned - another thread panicked");
                 entries
                     .iter()
                     .min_by_key(|(_, entry)| entry.created_at)
@@ -500,7 +539,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
-                let entries = self.entries.read().unwrap();
+                let entries = self
+                    .entries
+                    .read()
+                    .expect("Cache entries lock poisoned - another thread panicked");
                 let keys: Vec<u64> = entries.keys().copied().collect();
                 if keys.is_empty() {
                     None
@@ -538,7 +580,10 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
 
         while freed_space < needed_space && self.size() > 0 {
             let key_to_evict = {
-                let entries = self.entries.read().unwrap();
+                let entries = self
+                    .entries
+                    .read()
+                    .expect("Cache entries lock poisoned - another thread panicked");
                 entries
                     .iter()
                     .max_by_key(|(_, entry)| entry.size_bytes)
@@ -724,7 +769,7 @@ mod tests {
 
         cache
             .put(signature.clone(), "test_value".to_string())
-            .unwrap();
+            .expect("Failed to put value into cache");
         let result = cache.get(&signature);
         assert_eq!(result, Some("test_value".to_string()));
     }
@@ -746,7 +791,9 @@ mod tests {
     #[test]
     fn test_signature_generation() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
 
         let signature = SignatureGenerator::generate_circuit_signature(&circuit, 0);
         assert_eq!(signature.num_qubits, 2);
@@ -767,7 +814,9 @@ mod tests {
         let _ = cache.get(&signature);
 
         // Put and hit
-        cache.put(signature.clone(), "test".to_string()).unwrap();
+        cache
+            .put(signature.clone(), "test".to_string())
+            .expect("Failed to put value into cache");
         let _ = cache.get(&signature);
 
         let stats = cache.get_stats();

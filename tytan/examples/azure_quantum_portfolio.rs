@@ -34,9 +34,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     println!("Portfolio Parameters:");
-    println!("  Number of assets: {}", num_assets);
-    println!("  Budget (assets to select): {}", budget);
-    println!("  Expected returns: {:?}\n", returns);
+    println!("  Number of assets: {num_assets}");
+    println!("  Budget (assets to select): {budget}");
+    println!("  Expected returns: {returns:?}\n");
 
     // Convert to QUBO formulation
     // Objective: Maximize return - risk_penalty * correlation
@@ -64,16 +64,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Add budget constraint: (sum(x_i) - budget)^2
     for i in 0..num_assets {
-        qubo_matrix[[i, i]] += constraint_penalty * (1.0 - 2.0 * budget as f64);
+        qubo_matrix[[i, i]] += constraint_penalty * 2.0f64.mul_add(-(budget as f64), 1.0);
         for j in (i + 1)..num_assets {
             qubo_matrix[[i, j]] += 2.0 * constraint_penalty;
         }
     }
 
     // Create variable mapping
-    let var_map: HashMap<String, usize> = (0..num_assets)
-        .map(|i| (format!("asset_{}", i), i))
-        .collect();
+    let var_map: HashMap<String, usize> =
+        (0..num_assets).map(|i| (format!("asset_{i}"), i)).collect();
 
     println!("QUBO formulation complete.\n");
 
@@ -88,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_timeout(60);
 
     println!("Running Azure QIO Simulated Annealing...");
-    let sa_results = sa_sampler.run_qubo(&(qubo_matrix.clone(), var_map.clone()), 100)?;
+    let sa_results = sa_sampler.run_qubo(&(qubo_matrix.clone(), var_map), 100)?;
 
     println!("Top 3 portfolios from Simulated Annealing:");
     for (idx, result) in sa_results.iter().take(3).enumerate() {
@@ -97,9 +96,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let portfolio_risk = calculate_risk(&selected_assets, &risk_correlations);
 
         println!("  {}. Energy: {:.4}", idx + 1, result.energy);
-        println!("     Selected assets: {:?}", selected_assets);
+        println!("     Selected assets: {selected_assets:?}");
         println!("     Expected return: {:.2}%", portfolio_return * 100.0);
-        println!("     Portfolio risk: {:.4}", portfolio_risk);
+        println!("     Portfolio risk: {portfolio_risk:.4}");
     }
     println!();
 

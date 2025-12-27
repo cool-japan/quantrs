@@ -212,7 +212,7 @@ impl QuantumCircuit {
                 let angle1 = (*a1 as f64) / 1_000_000.0;
                 let angle2 = (*a2 as f64) / 1_000_000.0;
                 let sum = (angle1 + angle2) % (2.0 * std::f64::consts::PI);
-                sum.abs() < 1e-10 || (sum - 2.0 * std::f64::consts::PI).abs() < 1e-10
+                sum.abs() < 1e-10 || 2.0f64.mul_add(-std::f64::consts::PI, sum).abs() < 1e-10
             }
 
             _ => false,
@@ -226,7 +226,7 @@ impl QuantumCircuit {
 
         for gate in &self.gates {
             let mut qubits = gate.qubits.clone();
-            qubits.sort();
+            qubits.sort_unstable();
             qubit_sequences
                 .entry(qubits)
                 .or_insert_with(Vec::new)
@@ -324,9 +324,10 @@ impl CircuitOptimizer {
             1.0
         };
 
-        self.statistics.average_speedup = (self.statistics.average_speedup
-            * (self.statistics.circuits_optimized - 1) as f64
-            + speedup)
+        self.statistics.average_speedup = self
+            .statistics
+            .average_speedup
+            .mul_add((self.statistics.circuits_optimized - 1) as f64, speedup)
             / self.statistics.circuits_optimized as f64;
 
         Ok(circuit)
@@ -381,7 +382,11 @@ impl CircuitOptimizer {
     }
 
     /// Determine if swapping gates would improve optimization
-    fn should_swap_for_optimization(&self, _gate1: &QuantumGate, _gate2: &QuantumGate) -> bool {
+    const fn should_swap_for_optimization(
+        &self,
+        _gate1: &QuantumGate,
+        _gate2: &QuantumGate,
+    ) -> bool {
         // Simplified heuristic: prefer grouping similar gates together
         false // Conservative approach for now
     }
@@ -433,7 +438,7 @@ impl CircuitOptimizer {
                 let mut total_angle = 0u64;
                 let mut count = 0;
 
-                for gate in circuit.gates[start_idx..].iter() {
+                for gate in &circuit.gates[start_idx..] {
                     if gate.gate_type == start_gate.gate_type && gate.qubits == start_gate.qubits {
                         if let Some(angle) = self.extract_rotation_angle(&gate.gate_type) {
                             total_angle = (total_angle + angle) % (2 * 1_000_000 * 314_159); // 2π in quantized units
@@ -472,7 +477,7 @@ impl CircuitOptimizer {
     }
 
     /// Extract rotation angle from gate type
-    fn extract_rotation_angle(&self, gate_type: &GateType) -> Option<u64> {
+    const fn extract_rotation_angle(&self, gate_type: &GateType) -> Option<u64> {
         match gate_type {
             GateType::RX(angle) | GateType::RY(angle) | GateType::RZ(angle) => Some(*angle),
             _ => None,
@@ -480,7 +485,7 @@ impl CircuitOptimizer {
     }
 
     /// Get optimization statistics
-    pub fn get_statistics(&self) -> &CircuitOptimizationStats {
+    pub const fn get_statistics(&self) -> &CircuitOptimizationStats {
         &self.statistics
     }
 
@@ -513,7 +518,8 @@ mod tests {
     #[test]
     fn test_circuit_creation() {
         let mut circuit = QuantumCircuit::new(2);
-        let gate = QuantumGate::new(GateType::Hadamard, vec![0]).unwrap();
+        let gate =
+            QuantumGate::new(GateType::Hadamard, vec![0]).expect("Failed to create Hadamard gate");
 
         assert!(circuit.add_gate(gate).is_ok());
         assert_eq!(circuit.gates.len(), 1);
@@ -522,7 +528,8 @@ mod tests {
     #[test]
     fn test_invalid_qubit_rejection() {
         let mut circuit = QuantumCircuit::new(2);
-        let invalid_gate = QuantumGate::new(GateType::Hadamard, vec![3]).unwrap(); // Qubit 3 doesn't exist
+        let invalid_gate = QuantumGate::new(GateType::Hadamard, vec![3])
+            .expect("Failed to create gate with invalid qubit"); // Qubit 3 doesn't exist
 
         assert!(circuit.add_gate(invalid_gate).is_err());
     }
@@ -533,11 +540,17 @@ mod tests {
 
         // Add two X gates (should cancel out)
         circuit
-            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::PauliX, vec![0])
+                    .expect("Failed to create first PauliX gate"),
+            )
+            .expect("Failed to add first PauliX gate");
         circuit
-            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::PauliX, vec![0])
+                    .expect("Failed to create second PauliX gate"),
+            )
+            .expect("Failed to add second PauliX gate");
 
         let eliminated = circuit.eliminate_redundant_gates();
         assert_eq!(eliminated, 2);
@@ -549,11 +562,16 @@ mod tests {
         let mut circuit = QuantumCircuit::new(2);
 
         circuit
-            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::Hadamard, vec![0])
+                    .expect("Failed to create Hadamard gate"),
+            )
+            .expect("Failed to add Hadamard gate");
         circuit
-            .add_gate(QuantumGate::new(GateType::CNOT, vec![0, 1]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::CNOT, vec![0, 1]).expect("Failed to create CNOT gate"),
+            )
+            .expect("Failed to add CNOT gate");
 
         let metrics = circuit.calculate_metrics();
         assert_eq!(metrics.total_gates, 2);
@@ -568,16 +586,25 @@ mod tests {
 
         // Add redundant gates
         circuit
-            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::Hadamard, vec![0])
+                    .expect("Failed to create first Hadamard gate"),
+            )
+            .expect("Failed to add first Hadamard gate");
         circuit
-            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::Hadamard, vec![0])
+                    .expect("Failed to create second Hadamard gate"),
+            )
+            .expect("Failed to add second Hadamard gate");
         circuit
-            .add_gate(QuantumGate::new(GateType::PauliX, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::PauliX, vec![0]).expect("Failed to create PauliX gate"),
+            )
+            .expect("Failed to add PauliX gate");
 
-        let optimized = optimize_circuit(circuit, OptimizationLevel::Standard).unwrap();
+        let optimized = optimize_circuit(circuit, OptimizationLevel::Standard)
+            .expect("Failed to optimize circuit");
 
         // Should eliminate the two Hadamards, leaving only X
         assert_eq!(optimized.gates.len(), 1);
@@ -588,12 +615,15 @@ mod tests {
     fn test_gate_commutation() {
         let optimizer = CircuitOptimizer::new(OptimizationLevel::Aggressive);
 
-        let gate1 = QuantumGate::new(GateType::PauliZ, vec![0]).unwrap();
-        let gate2 = QuantumGate::new(GateType::RZ(1_570_796), vec![0]).unwrap(); // π/2
+        let gate1 =
+            QuantumGate::new(GateType::PauliZ, vec![0]).expect("Failed to create PauliZ gate");
+        let gate2 =
+            QuantumGate::new(GateType::RZ(1_570_796), vec![0]).expect("Failed to create RZ gate"); // pi/2
 
         assert!(optimizer.gates_commute(&gate1, &gate2));
 
-        let gate3 = QuantumGate::new(GateType::PauliX, vec![0]).unwrap();
+        let gate3 =
+            QuantumGate::new(GateType::PauliX, vec![0]).expect("Failed to create PauliX gate");
         assert!(!optimizer.gates_commute(&gate1, &gate3)); // X and Z don't commute
     }
 
@@ -603,11 +633,17 @@ mod tests {
 
         // Add gates on different qubits (should be parallelizable)
         circuit
-            .add_gate(QuantumGate::new(GateType::Hadamard, vec![0]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::Hadamard, vec![0])
+                    .expect("Failed to create Hadamard gate on qubit 0"),
+            )
+            .expect("Failed to add Hadamard gate on qubit 0");
         circuit
-            .add_gate(QuantumGate::new(GateType::Hadamard, vec![1]).unwrap())
-            .unwrap();
+            .add_gate(
+                QuantumGate::new(GateType::Hadamard, vec![1])
+                    .expect("Failed to create Hadamard gate on qubit 1"),
+            )
+            .expect("Failed to add Hadamard gate on qubit 1");
 
         let metrics = circuit.calculate_metrics();
         assert!(metrics.parallelizable_operations > 0);

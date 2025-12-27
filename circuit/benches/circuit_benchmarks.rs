@@ -160,7 +160,7 @@ fn benchmark_circuit_patterns(c: &mut Criterion) {
             for i in 0..5 {
                 circuit.h(i);
                 for j in (i + 1)..5 {
-                    let angle = std::f64::consts::PI / 2_f64.powi((j - i) as i32);
+                    let angle = std::f64::consts::PI / 2_f64.powi((j - i));
                     circuit.cp(i, j, angle);
                 }
             }

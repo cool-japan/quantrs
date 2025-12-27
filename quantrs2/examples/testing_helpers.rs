@@ -43,19 +43,19 @@ fn demonstrate_float_assertions() {
     let a = 1.0;
     let b = 1.0;
     testing::assert_approx_eq(a, b, testing::DEFAULT_TOLERANCE);
-    println!("   ✓ {} ≈ {} (exact)", a, b);
+    println!("   ✓ {a} ≈ {b} (exact)");
 
     // Close enough
     let a = 1.0;
     let b = 1.0000001;
     testing::assert_approx_eq(a, b, 1e-6);
-    println!("   ✓ {} ≈ {} (tolerance: 1e-6)", a, b);
+    println!("   ✓ {a} ≈ {b} (tolerance: 1e-6)");
 
     // Quantum probability (should sum to 1)
     let probs = vec![0.5, 0.3, 0.2];
     let sum: f64 = probs.iter().sum();
     testing::assert_approx_eq(sum, 1.0, 1e-10);
-    println!("   ✓ Probabilities sum to 1.0: {:?}", probs);
+    println!("   ✓ Probabilities sum to 1.0: {probs:?}");
 
     // Example: Would panic if tolerance exceeded
     // testing::assert_approx_eq(1.0, 2.0, 1e-6); // Panics!
@@ -68,8 +68,8 @@ fn demonstrate_vector_assertions() {
 
     testing::assert_vec_approx_eq(&state_a, &state_b, 1e-5);
     println!("   ✓ State vectors are approximately equal");
-    println!("     state_a: {:?}", state_a);
-    println!("     state_b: {:?}", state_b);
+    println!("     state_a: {state_a:?}");
+    println!("     state_b: {state_b:?}");
 
     // Probability distribution comparison
     let dist_a = vec![0.25, 0.25, 0.25, 0.25];
@@ -93,8 +93,8 @@ fn demonstrate_measurement_assertions() {
     // Allow 5% deviation (stochastic sampling)
     testing::assert_measurement_counts_close(&actual, &expected, 0.05);
     println!("   ✓ Bell state measurements within tolerance:");
-    println!("     Actual:   {:?}", actual);
-    println!("     Expected: {:?}", expected);
+    println!("     Actual:   {actual:?}");
+    println!("     Expected: {expected:?}");
     println!();
 
     // GHZ state example: |000⟩ + |111⟩
@@ -108,14 +108,14 @@ fn demonstrate_measurement_assertions() {
 
     testing::assert_measurement_counts_close(&actual, &expected, 0.10);
     println!("   ✓ GHZ state measurements within tolerance:");
-    println!("     Actual:   {:?}", actual);
-    println!("     Expected: {:?}", expected);
+    println!("     Actual:   {actual:?}");
+    println!("     Expected: {expected:?}");
 }
 
 fn demonstrate_test_data_generation() {
     // Generate reproducible test data
     let seed = testing::test_seed(); // Always returns 42
-    println!("   Test seed: {}", seed);
+    println!("   Test seed: {seed}");
 
     let data = testing::generate_random_test_data(10, seed);
     println!("   Generated {} values: {:?}", data.len(), data);
@@ -132,7 +132,7 @@ fn demonstrate_test_data_generation() {
     println!("   ✓ Different seed produces different data");
 
     // All values in [0, 1]
-    assert!(data.iter().all(|&x| x >= 0.0 && x <= 1.0));
+    assert!(data.iter().all(|&x| (0.0..=1.0).contains(&x)));
     println!("   ✓ All values in range [0, 1]");
 }
 
@@ -146,7 +146,7 @@ fn demonstrate_test_utilities() {
     let seed1 = testing::test_seed();
     let seed2 = testing::test_seed();
     assert_eq!(seed1, seed2);
-    println!("   ✓ Test seed is consistent: {}", seed1);
+    println!("   ✓ Test seed is consistent: {seed1}");
 
     // Suppressed output example
     testing::with_suppressed_output(|| {

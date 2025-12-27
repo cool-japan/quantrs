@@ -38,6 +38,7 @@ pub struct BitString {
 
 impl BitString {
     /// Create from vector of booleans
+    #[must_use]
     pub fn from_bools(bools: &[bool]) -> Self {
         Self {
             bits: bools.iter().map(|&b| u8::from(b)).collect(),
@@ -45,11 +46,13 @@ impl BitString {
     }
 
     /// Convert to vector of booleans
+    #[must_use]
     pub fn to_bools(&self) -> Vec<bool> {
         self.bits.iter().map(|&b| b == 1).collect()
     }
 
     /// Convert to integer (little-endian)
+    #[must_use]
     pub fn to_int(&self) -> usize {
         self.bits
             .iter()
@@ -59,6 +62,7 @@ impl BitString {
     }
 
     /// Create from integer (little-endian)
+    #[must_use]
     pub fn from_int(mut value: usize, num_bits: usize) -> Self {
         let mut bits = Vec::with_capacity(num_bits);
         for _ in 0..num_bits {
@@ -69,21 +73,25 @@ impl BitString {
     }
 
     /// Number of bits
+    #[must_use]
     pub fn len(&self) -> usize {
         self.bits.len()
     }
 
     /// Check if empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.bits.is_empty()
     }
 
     /// Hamming weight (number of 1s)
+    #[must_use]
     pub fn weight(&self) -> usize {
         self.bits.iter().map(|&b| b as usize).sum()
     }
 
     /// Hamming distance to another bit string
+    #[must_use]
     pub fn distance(&self, other: &Self) -> usize {
         if self.len() != other.len() {
             return usize::MAX; // Invalid comparison
@@ -155,7 +163,7 @@ impl Default for SamplingConfig {
             estimate_convergence: false,
             convergence_check_interval: 100,
             convergence_tolerance: 0.01,
-            max_shots_for_convergence: 10000,
+            max_shots_for_convergence: 10_000,
         }
     }
 }
@@ -170,6 +178,7 @@ pub struct QuantumSampler {
 
 impl QuantumSampler {
     /// Create new sampler with configuration
+    #[must_use]
     pub fn new(config: SamplingConfig) -> Self {
         let rng = if let Some(seed) = config.seed {
             ChaCha8Rng::seed_from_u64(seed)
@@ -190,7 +199,7 @@ impl QuantumSampler {
         }
 
         // Compute probability distribution
-        let probabilities: Vec<f64> = state.iter().map(|amp| amp.norm_sqr()).collect();
+        let probabilities: Vec<f64> = state.iter().map(scirs2_core::Complex::norm_sqr).collect();
 
         // Validate normalization
         let total_prob: f64 = probabilities.iter().sum();
@@ -543,6 +552,7 @@ pub struct SimpleReadoutNoise {
 
 impl SimpleReadoutNoise {
     /// Create uniform readout noise
+    #[must_use]
     pub fn uniform(num_qubits: usize, error_prob: f64) -> Self {
         Self {
             error_probs: vec![error_prob; num_qubits],
@@ -563,9 +573,10 @@ impl NoiseModel for SimpleReadoutNoise {
 
 /// Utility functions for shot sampling analysis
 pub mod analysis {
-    use super::*;
+    use super::{ComparisonResult, ShotResult};
 
     /// Compute statistical power for detecting effect
+    #[must_use]
     pub fn statistical_power(effect_size: f64, num_shots: usize, significance_level: f64) -> f64 {
         // Simplified power analysis
         let standard_error = 1.0 / (num_shots as f64).sqrt();
@@ -581,6 +592,7 @@ pub mod analysis {
     }
 
     /// Estimate required shots for desired precision
+    #[must_use]
     pub fn required_shots_for_precision(desired_error: f64, confidence_level: f64) -> usize {
         let z_score = match (confidence_level * 100.0) as i32 {
             90 => 1.645,
@@ -595,6 +607,7 @@ pub mod analysis {
     }
 
     /// Compare two shot results statistically
+    #[must_use]
     pub fn compare_shot_results(
         result1: &ShotResult,
         result2: &ShotResult,
@@ -657,12 +670,12 @@ pub mod analysis {
     /// Error function approximation
     fn erf(x: f64) -> f64 {
         // Abramowitz and Stegun approximation
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
+        let a1 = 0.254_829_592;
+        let a2 = -0.284_496_736;
+        let a3 = 1.421_413_741;
+        let a4 = -1.453_152_027;
+        let a5 = 1.061_405_429;
+        let p = 0.327_591_1;
 
         let sign = if x < 0.0 { -1.0 } else { 1.0 };
         let x = x.abs();
@@ -721,7 +734,9 @@ mod tests {
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
         ]);
 
-        let result = sampler.sample_state(&state).unwrap();
+        let result = sampler
+            .sample_state(&state)
+            .expect("Failed to sample state");
         assert_eq!(result.num_shots, 100);
         assert_eq!(result.outcomes.len(), 100);
 

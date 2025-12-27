@@ -24,6 +24,7 @@ pub struct Walker {
 
 impl Walker {
     /// Create a new walker
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let mut config = vec![false; num_qubits];
         // Random initial configuration
@@ -46,6 +47,7 @@ impl Walker {
     }
 
     /// Get configuration as integer
+    #[must_use]
     pub fn as_integer(&self) -> usize {
         let mut result = 0;
         for (i, &bit) in self.config.iter().enumerate() {
@@ -78,6 +80,7 @@ pub enum WaveFunction {
 
 impl WaveFunction {
     /// Evaluate wave function amplitude for a configuration
+    #[must_use]
     pub fn amplitude(&self, config: &[bool]) -> Complex64 {
         match self {
             Self::Product(amps) => {
@@ -138,6 +141,7 @@ impl WaveFunction {
     }
 
     /// Compute log derivative for parameter optimization
+    #[must_use]
     pub fn log_derivative(&self, config: &[bool], param_idx: usize) -> f64 {
         match self {
             Self::Jastrow { alpha, beta } => {
@@ -177,6 +181,7 @@ pub struct VMC {
 
 impl VMC {
     /// Create a new VMC simulator
+    #[must_use]
     pub const fn new(
         num_qubits: usize,
         wave_function: WaveFunction,
@@ -263,7 +268,7 @@ impl VMC {
         }
 
         Ok(VMCResult {
-            final_energy: *energies.last().unwrap(),
+            final_energy: energies.last().copied().unwrap_or(0.0),
             energy_history: energies,
             variance_history: variances,
         })
@@ -383,6 +388,7 @@ pub struct DMC {
 
 impl DMC {
     /// Create a new DMC simulator
+    #[must_use]
     pub const fn new(
         num_qubits: usize,
         hamiltonian: Hamiltonian,
@@ -466,7 +472,7 @@ impl DMC {
         }
 
         Ok(DMCResult {
-            ground_state_energy: *energies.last().unwrap(),
+            ground_state_energy: energies.last().copied().unwrap_or(0.0),
             energy_history: energies,
             walker_history: walker_counts,
         })
@@ -596,6 +602,7 @@ pub struct PIMC {
 
 impl PIMC {
     /// Create a new PIMC simulator
+    #[must_use]
     pub const fn new(
         num_qubits: usize,
         hamiltonian: Hamiltonian,
@@ -647,7 +654,7 @@ impl PIMC {
     }
 
     /// Update path configuration
-    fn update_path(&self, path: &mut Vec<Vec<bool>>, tau: f64) -> Result<()> {
+    fn update_path(&self, path: &mut [Vec<bool>], tau: f64) -> Result<()> {
         // World line updates
         for _ in 0..self.num_qubits * self.num_slices {
             let slice = fastrand::usize(..self.num_slices);
@@ -782,33 +789,35 @@ mod tests {
 
     #[test]
     fn test_vmc_ising() {
-        let ham = HamiltonianLibrary::transverse_ising_1d(3, 1.0, 0.5, false).unwrap();
+        let ham = HamiltonianLibrary::transverse_ising_1d(3, 1.0, 0.5, false)
+            .expect("transverse_ising_1d should succeed");
         let wf = WaveFunction::Jastrow {
             alpha: 0.5,
             beta: 0.1,
         };
         let mut vmc = VMC::new(3, wf, ham);
 
-        let result = vmc.run(100, 50, 10, 0.01).unwrap();
+        let result = vmc.run(100, 50, 10, 0.01).expect("VMC run should succeed");
         assert!(result.final_energy.is_finite());
     }
 
     #[test]
     fn test_dmc_simple() {
-        let ham = HamiltonianLibrary::transverse_ising_1d(2, 1.0, 1.0, false).unwrap();
+        let ham = HamiltonianLibrary::transverse_ising_1d(2, 1.0, 1.0, false)
+            .expect("transverse_ising_1d should succeed");
         // Use larger time step and fewer walkers for more stable test
         let mut dmc = DMC::new(2, ham, 0.1, 50);
 
-        let result = dmc.run(5, 5).unwrap();
+        let result = dmc.run(5, 5).expect("DMC run should succeed");
         assert!(result.ground_state_energy.is_finite());
     }
 
     #[test]
     fn test_pimc_thermal() {
-        let ham = HamiltonianLibrary::xy_model(3, 1.0, true).unwrap();
+        let ham = HamiltonianLibrary::xy_model(3, 1.0, true).expect("xy_model should succeed");
         let pimc = PIMC::new(3, ham, 1.0, 10);
 
-        let result = pimc.run(100, 50).unwrap();
+        let result = pimc.run(100, 50).expect("PIMC run should succeed");
         assert!(result.average_energy.is_finite());
     }
 }

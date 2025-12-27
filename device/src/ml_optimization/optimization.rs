@@ -32,7 +32,7 @@ pub struct MultiObjectiveConfig {
 }
 
 /// Scalarization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScalarizationMethod {
     WeightedSum,
     Chebyshev,
@@ -55,7 +55,7 @@ pub struct ConstraintHandlingConfig {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintType {
     Equality,
     Inequality,
@@ -65,7 +65,7 @@ pub enum ConstraintType {
 }
 
 /// Penalty methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PenaltyMethod {
     ExteriorPenalty,
     InteriorPenalty,
@@ -75,7 +75,7 @@ pub enum PenaltyMethod {
 }
 
 /// Search strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SearchStrategy {
     GradientBased,
     EvolutionaryAlgorithm,
@@ -115,7 +115,7 @@ pub struct AdaptiveStrategyConfig {
 }
 
 /// Strategy selection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StrategySelectionMethod {
     PerformanceBased,
     BanditAlgorithm,

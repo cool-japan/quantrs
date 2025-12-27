@@ -148,7 +148,7 @@ pub struct OptimizationHistory {
 }
 
 impl OptimizationHistory {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             parameters: Vec::new(),
             loss_values: Vec::new(),
@@ -241,28 +241,27 @@ impl VariationalQuantumOptimizer {
 
         // Create objective function for SciRS2
         let objective = move |params: &scirs2_core::ndarray::ArrayView1<f64>| -> f64 {
-            let params_slice = params.as_slice().unwrap();
+            let params_slice = match params.as_slice() {
+                Some(slice) => slice,
+                None => return f64::INFINITY, // Non-contiguous array - return infinity to skip
+            };
             let mut param_map = FxHashMap::default();
             for (name, &value) in param_names_clone.iter().zip(params_slice) {
                 param_map.insert(name.clone(), value);
             }
 
-            let mut circuit = circuit_clone.lock().unwrap();
+            let mut circuit = circuit_clone.lock().unwrap_or_else(|e| e.into_inner());
             if circuit.set_parameters(&param_map).is_err() {
                 return f64::INFINITY;
             }
 
-            match cost_fn(&*circuit) {
-                Ok(loss) => loss,
-                Err(_) => f64::INFINITY,
-            }
+            cost_fn(&*circuit).unwrap_or(f64::INFINITY)
         };
 
         // Set up SciRS2 method
         let method = match &self.method {
-            OptimizationMethod::BFGS => Method::BFGS,
+            OptimizationMethod::BFGS | OptimizationMethod::ConjugateGradient => Method::BFGS, // CG uses BFGS fallback
             OptimizationMethod::LBFGS { memory_size: _ } => Method::LBFGS,
-            OptimizationMethod::ConjugateGradient => Method::BFGS, // Use BFGS as fallback
             OptimizationMethod::NelderMead => Method::NelderMead,
             OptimizationMethod::Powell => Method::Powell,
             _ => unreachable!(),
@@ -279,13 +278,16 @@ impl VariationalQuantumOptimizer {
 
         // Run optimization
         let start_time = std::time::Instant::now();
-        let initial_array = scirs2_core::ndarray::Array1::from_vec(initial_params.clone());
+        let initial_array = scirs2_core::ndarray::Array1::from_vec(initial_params);
         let result = minimize(objective, &initial_array, method, Some(options))
-            .map_err(|e| QuantRS2Error::InvalidInput(format!("Optimization failed: {:?}", e)))?;
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Optimization failed: {e:?}")))?;
 
         // Update circuit with optimal parameters
         let mut final_params = FxHashMap::default();
-        for (name, &value) in param_names.iter().zip(result.x.as_slice().unwrap()) {
+        let result_slice = result.x.as_slice().ok_or_else(|| {
+            QuantRS2Error::RuntimeError("Optimization result array is non-contiguous".to_string())
+        })?;
+        for (name, &value) in param_names.iter().zip(result_slice) {
             final_params.insert(name.clone(), value);
         }
         circuit.set_parameters(&final_params)?;
@@ -463,7 +465,7 @@ impl VariationalQuantumOptimizer {
     ) -> QuantRS2Result<f64> {
         let current_params = circuit.get_parameters();
         let current_value = *current_params.get(param_name).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Parameter {} not found", param_name))
+            QuantRS2Error::InvalidInput(format!("Parameter {param_name} not found"))
         })?;
 
         // Shift parameter by +π/2
@@ -478,7 +480,7 @@ impl VariationalQuantumOptimizer {
 
         // Shift parameter by -π/2
         let mut circuit_minus = circuit.clone();
-        let mut params_minus = current_params.clone();
+        let mut params_minus = current_params;
         params_minus.insert(
             param_name.to_string(),
             current_value - std::f64::consts::PI / 2.0,
@@ -511,7 +513,7 @@ impl VariationalQuantumOptimizer {
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
         let mut params_plus = current_params.clone();
-        for (name, value) in params_plus.iter_mut() {
+        for (name, value) in &mut params_plus {
             if name == param_name {
                 *value += perturbation;
             }
@@ -521,8 +523,8 @@ impl VariationalQuantumOptimizer {
 
         // Negative perturbation
         let mut circuit_minus = circuit.clone();
-        let mut params_minus = current_params.clone();
-        for (name, value) in params_minus.iter_mut() {
+        let mut params_minus = current_params;
+        for (name, value) in &mut params_minus {
             if name == param_name {
                 *value -= perturbation;
             }
@@ -597,8 +599,8 @@ impl VariationalQuantumOptimizer {
                     let m = state.adam_m.entry(param_name.clone()).or_insert(0.0);
                     let v = state.adam_v.entry(param_name.clone()).or_insert(0.0);
 
-                    *m = beta1 * *m + (1.0 - beta1) * grad;
-                    *v = beta2 * *v + (1.0 - beta2) * grad * grad;
+                    *m = (1.0 - beta1).mul_add(grad, beta1 * *m);
+                    *v = ((1.0 - beta2) * grad).mul_add(grad, beta2 * *v);
 
                     if let Some(value) = new_params.get_mut(param_name) {
                         *value -= lr_t * *m / (v.sqrt() + epsilon);
@@ -613,7 +615,7 @@ impl VariationalQuantumOptimizer {
                 // RMSprop optimizer
                 for (param_name, &grad) in gradients {
                     let avg = state.rms_avg.entry(param_name.clone()).or_insert(0.0);
-                    *avg = decay_rate * *avg + (1.0 - decay_rate) * grad * grad;
+                    *avg = ((1.0 - decay_rate) * grad).mul_add(grad, decay_rate * *avg);
 
                     if let Some(value) = new_params.get_mut(param_name) {
                         *value -= learning_rate * grad / (avg.sqrt() + epsilon);
@@ -684,8 +686,16 @@ impl VariationalQuantumOptimizer {
 
         // Check cache
         if let Some(cache) = &self.fisher_cache {
-            if let Some(cached_matrix) = cache.matrix.lock().unwrap().as_ref() {
-                if let Some(cached_params) = cache.params.lock().unwrap().as_ref() {
+            let cached_matrix_opt = cache
+                .matrix
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
+            if let Some(cached_matrix) = cached_matrix_opt.as_ref() {
+                let cached_params_opt = cache
+                    .params
+                    .lock()
+                    .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
+                if let Some(cached_params) = cached_params_opt.as_ref() {
                     let current_params: Vec<f64> = param_names
                         .iter()
                         .map(|name| circuit.get_parameters().get(name).copied().unwrap_or(0.0))
@@ -735,7 +745,7 @@ impl VariationalQuantumOptimizer {
         if n == 1 {
             fisher_inv[[0, 0]] = 1.0 / fisher[[0, 0]];
         } else if n == 2 {
-            let det = fisher[[0, 0]] * fisher[[1, 1]] - fisher[[0, 1]] * fisher[[1, 0]];
+            let det = fisher[[0, 0]].mul_add(fisher[[1, 1]], -(fisher[[0, 1]] * fisher[[1, 0]]));
             if det.abs() < 1e-10 {
                 return Err(QuantRS2Error::InvalidInput(
                     "Fisher matrix is singular".to_string(),
@@ -757,8 +767,16 @@ impl VariationalQuantumOptimizer {
                 .map(|name| circuit.get_parameters().get(name).copied().unwrap_or(0.0))
                 .collect();
 
-            *cache.matrix.lock().unwrap() = Some(fisher_inv.clone());
-            *cache.params.lock().unwrap() = Some(current_params);
+            *cache
+                .matrix
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))? =
+                Some(fisher_inv.clone());
+            *cache
+                .params
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))? =
+                Some(current_params);
         }
 
         Ok(fisher_inv)
@@ -893,7 +911,7 @@ pub enum ConstraintType {
 
 impl ConstrainedVariationalOptimizer {
     /// Create a new constrained optimizer
-    pub fn new(base_optimizer: VariationalQuantumOptimizer) -> Self {
+    pub const fn new(base_optimizer: VariationalQuantumOptimizer) -> Self {
         Self {
             base_optimizer,
             constraints: Vec::new(),
@@ -1111,7 +1129,9 @@ mod tests {
             Ok((theta - 1.0).powi(2))
         };
 
-        let result = optimizer.optimize(&mut circuit, cost_fn).unwrap();
+        let result = optimizer
+            .optimize(&mut circuit, cost_fn)
+            .expect("Optimization should succeed");
 
         assert!(result.converged || result.iterations == 10);
         assert!((result.optimal_parameters["theta"] - 1.0).abs() < 0.1);
@@ -1148,7 +1168,9 @@ mod tests {
             Ok(alpha.powi(2) + beta.powi(2))
         };
 
-        let result = optimizer.optimize(&mut circuit, cost_fn).unwrap();
+        let result = optimizer
+            .optimize(&mut circuit, cost_fn)
+            .expect("Optimization should succeed");
 
         assert!(result.optimal_parameters["alpha"].abs() < 0.1);
         assert!(result.optimal_parameters["beta"].abs() < 0.1);
@@ -1174,7 +1196,9 @@ mod tests {
             Ok(x.powi(2))
         };
 
-        let result = constrained_opt.optimize(&mut circuit, cost_fn).unwrap();
+        let result = constrained_opt
+            .optimize(&mut circuit, cost_fn)
+            .expect("Constrained optimization should succeed");
 
         let optimized_x = result.optimal_parameters["x"];
         assert!(optimized_x >= 1.0 - 1e-6);

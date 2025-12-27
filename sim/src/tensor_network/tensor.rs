@@ -51,7 +51,9 @@ impl Tensor {
         // Fill the tensor with matrix elements
         // For simplicity, we're just creating a flat representation
         // In a full implementation, we'd properly reshape the matrix
-        let flat_data = data.as_slice_mut().unwrap();
+        let flat_data = data
+            .as_slice_mut()
+            .expect("Tensor data should be contiguous in memory");
         for (i, val) in matrix.iter().enumerate() {
             if i < flat_data.len() {
                 flat_data[i] = *val;
@@ -67,7 +69,7 @@ impl Tensor {
             IxDyn(&[2]),
             vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
         )
-        .unwrap();
+        .expect("Valid shape for qubit |0> state");
 
         Self::new(data)
     }
@@ -78,7 +80,7 @@ impl Tensor {
             IxDyn(&[2]),
             vec![Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
         )
-        .unwrap();
+        .expect("Valid shape for qubit |1> state");
 
         Self::new(data)
     }
@@ -92,7 +94,7 @@ impl Tensor {
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("Valid shape for qubit |+> state");
 
         Self::new(data)
     }

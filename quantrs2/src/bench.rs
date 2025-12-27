@@ -514,7 +514,9 @@ mod tests {
         stats.set_ops_per_sample(100);
         stats.record(Duration::from_secs(1));
 
-        let throughput = stats.throughput().unwrap();
+        let throughput = stats
+            .throughput()
+            .expect("throughput should be calculable with one sample");
         assert!((throughput - 100.0).abs() < 0.1);
     }
 
@@ -567,10 +569,14 @@ mod tests {
             stats.record(Duration::from_millis(i));
         }
 
-        let p50 = stats.percentile(50.0).unwrap();
+        let p50 = stats
+            .percentile(50.0)
+            .expect("p50 should be calculable with 100 samples");
         assert!(p50 >= Duration::from_millis(49) && p50 <= Duration::from_millis(51));
 
-        let p99 = stats.percentile(99.0).unwrap();
+        let p99 = stats
+            .percentile(99.0)
+            .expect("p99 should be calculable with 100 samples");
         assert!(p99 >= Duration::from_millis(98));
     }
 

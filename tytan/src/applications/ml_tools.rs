@@ -407,8 +407,8 @@ impl QuantumFeatureSelector {
 
         // Discretize if continuous
         let n_bins = 10;
-        let feature_discrete = self.discretize_array(&feature.to_owned(), n_bins);
-        let target_discrete = self.discretize_array(&target.to_owned(), n_bins);
+        let feature_discrete = self.discretize_array(&feature.to_owned(), n_bins)?;
+        let target_discrete = self.discretize_array(&target.to_owned(), n_bins)?;
 
         // Compute joint and marginal probabilities
         let mut joint_counts = Array2::<f64>::zeros((n_bins, n_bins));
@@ -435,22 +435,22 @@ impl QuantumFeatureSelector {
     }
 
     /// Discretize continuous array
-    fn discretize_array(&self, array: &Array1<f64>, n_bins: usize) -> Vec<usize> {
+    fn discretize_array(&self, array: &Array1<f64>, n_bins: usize) -> Result<Vec<usize>, String> {
         let min = array
             .iter()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| "Cannot discretize empty array: no minimum value".to_string())?;
         let max = array
             .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| "Cannot discretize empty array: no maximum value".to_string())?;
         let bin_width = (max - min) / n_bins as f64;
 
-        array
+        Ok(array
             .iter()
             .map(|&x| ((x - min) / bin_width).floor() as usize)
             .map(|b| b.min(n_bins - 1))
-            .collect()
+            .collect())
     }
 
     /// Add correlation penalty
@@ -578,7 +578,7 @@ impl QuantumFeatureSelector {
                     }
                 }
             }
-            _ => {}
+            RegularizationType::FusedLasso => {}
         }
 
         Ok(())
@@ -1230,12 +1230,14 @@ mod tests {
         let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.gen::<f64>());
         let target = Array1::from_shape_fn(n_samples, |_| rng.gen::<f64>());
 
-        let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{}", i)).collect();
+        let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{i}")).collect();
 
         let mut feature_types = vec![FeatureType::Continuous; n_features];
 
         let statistics = FeatureStatistics {
-            means: data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
+            means: data
+                .mean_axis(scirs2_core::ndarray::Axis(0))
+                .expect("test data should have valid axis for mean"),
             stds: data.std_axis(scirs2_core::ndarray::Axis(0), 0.0),
             target_correlations: Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()),
             feature_correlations: Array2::from_shape_fn((n_features, n_features), |(i, j)| {

@@ -34,7 +34,7 @@ pub enum QECCodeType {
 }
 
 /// Surface code layouts
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SurfaceCodeLayout {
     Square,
     Triangular,
@@ -44,7 +44,7 @@ pub enum SurfaceCodeLayout {
 }
 
 /// Color code types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorCodeType {
     TriangularLattice,
     HexagonalLattice,
@@ -52,7 +52,7 @@ pub enum ColorCodeType {
 }
 
 /// Topological code types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologicalCodeType {
     ToricCode,
     PlanarCode,
@@ -115,7 +115,7 @@ pub struct Stabilizer {
 }
 
 /// Pauli operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PauliOperator {
     I, // Identity
     X, // Pauli-X
@@ -137,7 +137,7 @@ pub struct MeasurementSchedule {
 }
 
 /// Boundary conditions for codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BoundaryConditions {
     Open,
     Periodic,
@@ -171,7 +171,7 @@ pub struct FaceColoring {
 }
 
 /// Color types for color codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Color {
     Red,
     Green,
@@ -190,7 +190,7 @@ pub struct ColorConstraint {
 }
 
 /// Types of color constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintType {
     AdjacentFaces,
     VertexNeighbors,
@@ -209,7 +209,7 @@ pub struct VertexOperator {
 }
 
 /// Types of vertex operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VertexOperatorType {
     XType,
     ZType,
@@ -265,7 +265,7 @@ pub struct DefectLocation {
 }
 
 /// Types of defects in topological codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DefectType {
     Hole,
     Twist,
@@ -296,7 +296,7 @@ pub struct LogicalOperator {
 }
 
 /// Types of logical operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogicalOperatorType {
     XOperator,
     ZOperator,
@@ -324,7 +324,7 @@ pub struct SyndromeExtractionConfig {
 }
 
 /// Syndrome extraction methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExtractionMethod {
     Standard,
     Fast,
@@ -357,7 +357,7 @@ pub struct Gate {
 }
 
 /// Types of gates
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GateType {
     X,
     Y,
@@ -411,7 +411,7 @@ pub struct ClassicalCode {
 }
 
 /// Dual relationship between classical codes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DualRelationship {
     SelfDual,
     MutuallyDual,
@@ -518,7 +518,7 @@ pub struct ErrorPattern {
 }
 
 /// Types of errors
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorType {
     X,
     Y,
@@ -607,7 +607,7 @@ pub struct MajorityVoting {
 }
 
 /// Voting strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VotingStrategy {
     Simple,
     Weighted,
@@ -615,7 +615,7 @@ pub enum VotingStrategy {
 }
 
 /// Tie-breaking rules
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TieBreaking {
     Random,
     Conservative,

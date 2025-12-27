@@ -57,7 +57,7 @@ pub struct AuthenticationConfig {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthMethod {
     Password,
     APIKey,
@@ -79,7 +79,7 @@ pub struct MFAConfig {
 }
 
 /// MFA methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MFAMethod {
     TOTP,
     SMS,
@@ -102,7 +102,7 @@ pub struct SSOConfig {
 }
 
 /// SSO providers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SSOProvider {
     SAML,
     OIDC,
@@ -145,7 +145,7 @@ pub struct AuthorizationConfig {
 }
 
 /// Authorization models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthorizationModel {
     RBAC,
     ABAC,
@@ -179,7 +179,7 @@ pub struct PermissionSystem {
 }
 
 /// Permission models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionModel {
     ResourceAction,
     CapabilityBased,
@@ -276,7 +276,7 @@ pub struct EncryptionKeyManagementConfig {
 }
 
 /// Key management services
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyManagementService {
     AwsKms,
     AzureKeyVault,
@@ -347,7 +347,7 @@ pub struct FirewallRule {
 }
 
 /// Firewall policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FirewallPolicy {
     Allow,
     Deny,
@@ -355,7 +355,7 @@ pub enum FirewallPolicy {
 }
 
 /// Firewall actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FirewallAction {
     Allow,
     Deny,
@@ -374,7 +374,7 @@ pub struct VPNConfig {
 }
 
 /// VPN types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VPNType {
     SiteToSite,
     PointToSite,
@@ -405,7 +405,7 @@ pub struct DDoSProtectionConfig {
 }
 
 /// DDoS protection levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DDoSProtectionLevel {
     Basic,
     Standard,
@@ -436,7 +436,7 @@ pub struct ComplianceConfig {
 }
 
 /// Compliance frameworks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComplianceFramework {
     SOC2,
     ISO27001,
@@ -458,7 +458,7 @@ pub struct AuditConfig {
 }
 
 /// Audit events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuditEvent {
     Authentication,
     Authorization,
@@ -520,7 +520,7 @@ pub struct RetentionPolicy {
 }
 
 /// Disposal methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DisposalMethod {
     Delete,
     Archive,
@@ -538,7 +538,7 @@ pub struct DataPrivacyConfig {
 }
 
 /// Privacy controls
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrivacyControl {
     Anonymization,
     Pseudonymization,
@@ -570,7 +570,7 @@ pub struct WithdrawalProcess {
 }
 
 /// Withdrawal methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WithdrawalMethod {
     Online,
     Email,
@@ -606,7 +606,7 @@ pub struct GlobalBudgetConfig {
 }
 
 /// Budget periods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BudgetPeriod {
     Monthly,
     Quarterly,
@@ -696,7 +696,7 @@ pub struct ProjectCostTracking {
 }
 
 /// Cost tracking granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostTrackingGranularity {
     Hourly,
     Daily,
@@ -740,7 +740,7 @@ pub struct ProjectBudgetAlerts {
 }
 
 /// Alert frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertFrequency {
     Immediate,
     Daily,
@@ -762,7 +762,7 @@ pub struct BudgetMonitoringConfig {
 }
 
 /// Reporting frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportingFrequency {
     RealTime,
     Hourly,
@@ -794,7 +794,7 @@ pub struct BudgetVarianceThresholds {
 }
 
 /// Variance analysis methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VarianceAnalysisMethod {
     AbsoluteVariance,
     PercentageVariance,
@@ -816,7 +816,7 @@ pub struct BudgetForecastingConfig {
 }
 
 /// Budget forecasting models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BudgetForecastingModel {
     LinearTrend,
     ExponentialSmoothing,

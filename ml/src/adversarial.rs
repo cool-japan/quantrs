@@ -398,14 +398,14 @@ impl QuantumAdversarialTrainer {
         let original_class = original_prediction
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
 
         let adversarial_class = adversarial_prediction
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
 
@@ -721,7 +721,7 @@ impl QuantumAdversarialTrainer {
             let clean_pred = clean_output
                 .iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(i, _)| i)
                 .unwrap_or(0);
 
@@ -839,7 +839,7 @@ impl QuantumAdversarialTrainer {
                 let pred = output
                     .iter()
                     .enumerate()
-                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                    .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
                     .map(|(i, _)| i)
                     .unwrap_or(0);
 
@@ -942,14 +942,16 @@ mod tests {
             },
         ];
 
-        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create model");
         let defense = create_comprehensive_defense();
         let config = create_default_adversarial_config();
 
         let trainer = QuantumAdversarialTrainer::new(model, defense, config);
 
         let input = Array1::from_vec(vec![0.5, 0.3, 0.8, 0.2]);
-        let adversarial_input = trainer.fgsm_attack(&input, 0, 0.1).unwrap();
+        let adversarial_input = trainer
+            .fgsm_attack(&input, 0, 0.1)
+            .expect("FGSM attack should succeed");
 
         assert_eq!(adversarial_input.len(), input.len());
 
@@ -971,7 +973,7 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
 
-        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create model");
 
         let defense = QuantumDefenseStrategy::InputPreprocessing {
             noise_addition: 0.05,
@@ -982,7 +984,9 @@ mod tests {
         let trainer = QuantumAdversarialTrainer::new(model, defense, config);
 
         let input = Array1::from_vec(vec![0.51, 0.32, 0.83, 0.24]);
-        let defended_input = trainer.apply_defense(&input).unwrap();
+        let defended_input = trainer
+            .apply_defense(&input)
+            .expect("Apply defense should succeed");
 
         assert_eq!(defended_input.len(), input.len());
 

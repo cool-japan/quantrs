@@ -39,6 +39,7 @@ impl OptimizationChain {
     }
 
     /// Add an optimization pass to the chain
+    #[must_use]
     pub fn add_pass(mut self, pass: Box<dyn OptimizationPass>) -> Self {
         self.passes.push(pass);
         self
@@ -96,19 +97,12 @@ pub fn gates_can_commute(gate1: &dyn GateOp, gate2: &dyn GateOp) -> bool {
     // Same single-qubit gates on same qubit might commute
     if gate1.qubits().len() == 1 && gate2.qubits().len() == 1 && gate1.qubits() == gate2.qubits() {
         match (gate1.name(), gate2.name()) {
-            // Z-basis gates commute with each other
-            ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "Z")
-            | ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "S")
-            | ("Z" | "S" | "S†" | "T" | "T†", "S†")
-            | ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "T")
-            | ("Z" | "S" | "S†" | "T" | "T†", "T†")
-            | ("RZ", "RZ") => true,
-
-            // X-basis gates commute with each other
-            ("X" | "RX", "X") | ("RX" | "X", "RX") => true,
-
-            // Y-basis gates commute with each other
-            ("Y" | "RY", "Y") | ("RY" | "Y", "RY") => true,
+            // Same-basis gates commute with each other
+            ("Z" | "S" | "S†" | "T" | "T†" | "RZ", "Z" | "S" | "T")
+            | ("Z" | "S" | "S†" | "T" | "T†", "S†" | "T†")
+            | ("RZ", "RZ")
+            | ("X" | "RX", "X" | "RX") // X-basis
+            | ("Y" | "RY", "Y" | "RY") => true, // Y-basis
 
             _ => false,
         }

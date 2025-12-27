@@ -76,7 +76,7 @@ impl Default for QuantumChemistryConfig {
 }
 
 /// Electronic structure calculation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElectronicStructureMethod {
     /// Hartree-Fock method
     HartreeFock,
@@ -93,7 +93,7 @@ pub enum ElectronicStructureMethod {
 }
 
 /// DFT functionals
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DFTFunctional {
     B3LYP,
     PBE,
@@ -103,7 +103,7 @@ pub enum DFTFunctional {
 }
 
 /// Configuration Interaction levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CILevel {
     CIS,
     CISD,
@@ -113,7 +113,7 @@ pub enum CILevel {
 }
 
 /// Coupled Cluster levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CCLevel {
     CCD,
     CCSD,
@@ -122,7 +122,7 @@ pub enum CCLevel {
 }
 
 /// Multi-reference methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MRMethod {
     CASSCF,
     CASPT2,
@@ -131,7 +131,7 @@ pub enum MRMethod {
 }
 
 /// Basis sets for quantum chemistry calculations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BasisSet {
     /// Minimal basis sets
     STO3G,
@@ -157,7 +157,7 @@ pub enum BasisSet {
 }
 
 /// Electron correlation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CorrelationMethod {
     /// No correlation
     None,
@@ -254,7 +254,7 @@ pub struct MolecularGeometry {
 }
 
 /// Coordinate systems
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoordinateSystem {
     Cartesian,
     ZMatrix,
@@ -359,7 +359,7 @@ pub struct BasisFunction {
 }
 
 /// Types of basis functions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BasisFunctionType {
     /// Slater-type orbital
     STO,
@@ -434,7 +434,7 @@ pub struct MolecularOrbital {
 }
 
 /// Types of molecular orbitals
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OrbitalType {
     Core,
     Valence,
@@ -561,7 +561,7 @@ pub struct ElementaryStep {
 }
 
 /// Types of elementary steps
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepType {
     Association,
     Dissociation,
@@ -831,7 +831,7 @@ impl QuantumChemistryOptimizer {
             ts_energy - total_reactant_energy
         } else {
             // Estimate activation energy using Bell-Evans-Polanyi relation
-            0.3 * reaction_energy.abs() + 20.0 // kcal/mol
+            0.3f64.mul_add(reaction_energy.abs(), 20.0) // kcal/mol
         };
 
         // Estimate reaction entropy using empirical formula
@@ -883,7 +883,7 @@ impl QuantumChemistryOptimizer {
         for i in 0..n_basis {
             // Kinetic energy terms
             qubo.set_linear(i, -1.0)?;
-            variable_mapping.insert(format!("orbital_{}", i), i);
+            variable_mapping.insert(format!("orbital_{i}"), i);
 
             // Electron-electron repulsion
             for j in (i + 1)..n_basis {
@@ -894,7 +894,7 @@ impl QuantumChemistryOptimizer {
         // Add nuclear-electron attraction terms
         for (atom_idx, atom) in system.atoms.iter().enumerate() {
             for i in 0..n_basis {
-                let attraction = -(atom.atomic_number as f64) / (atom_idx + 1) as f64;
+                let attraction = -f64::from(atom.atomic_number) / (atom_idx + 1) as f64;
                 qubo.add_linear(i, attraction)?;
             }
         }
@@ -1000,10 +1000,11 @@ impl QuantumChemistryOptimizer {
                     let dx = atom1.position[0] - atom2.position[0];
                     let dy = atom1.position[1] - atom2.position[1];
                     let dz = atom1.position[2] - atom2.position[2];
-                    let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+                    let distance = dz.mul_add(dz, dx.mul_add(dx, dy * dy)).sqrt();
 
                     if distance > 1e-10 {
-                        repulsion += (atom1.atomic_number * atom2.atomic_number) as f64 / distance;
+                        repulsion +=
+                            f64::from(atom1.atomic_number * atom2.atomic_number) / distance;
                     }
                 }
             }
@@ -1208,7 +1209,7 @@ impl QuantumChemistryOptimizer {
         let size_factor = (catalyst.atoms.len() as f64).sqrt();
 
         // Simple complexity metric
-        let complexity = element_diversity * 0.5 + size_factor * 0.3;
+        let complexity = element_diversity.mul_add(0.5, size_factor * 0.3);
 
         Ok(complexity)
     }
@@ -1294,7 +1295,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [0.758, 0.0, 0.586],
                 }],
@@ -1308,7 +1309,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [-0.758, 0.0, 0.586],
                 }],
@@ -1336,7 +1337,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 atom1: 1,
                 atom2: 0,
                 atom3: 2,
-                angle: 104.5 * PI / 180.0,
+                angle: 104.5_f64.to_radians(),
             }],
             dihedrals: vec![],
             point_group: Some("C2v".to_string()),
@@ -1375,7 +1376,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [0.629, 0.629, 0.629],
                 }],
@@ -1389,7 +1390,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [-0.629, -0.629, 0.629],
                 }],
@@ -1403,7 +1404,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [-0.629, 0.629, -0.629],
                 }],
@@ -1417,7 +1418,7 @@ pub fn create_example_molecular_systems() -> ApplicationResult<Vec<MolecularSyst
                 basis_functions: vec![BasisFunction {
                     function_type: BasisFunctionType::GTO,
                     angular_momentum: (0, 0, 0),
-                    exponent: 3.425251,
+                    exponent: 3.425_251,
                     coefficients: vec![0.1543],
                     center: [0.629, -0.629, -0.629],
                 }],
@@ -1585,7 +1586,8 @@ mod tests {
 
     #[test]
     fn test_molecular_system_creation() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems =
+            create_example_molecular_systems().expect("should create example molecular systems");
         assert_eq!(systems.len(), 2);
         assert_eq!(systems[0].id, "water");
         assert_eq!(systems[1].id, "methane");
@@ -1593,13 +1595,14 @@ mod tests {
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(5).unwrap();
+        let problems = create_benchmark_problems(5).expect("should create benchmark problems");
         assert_eq!(problems.len(), 5);
     }
 
     #[test]
     fn test_quantum_chemistry_problem_validation() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems =
+            create_example_molecular_systems().expect("should create molecular systems for test");
         let problem = QuantumChemistryProblem {
             system: systems[0].clone(),
             config: QuantumChemistryConfig::default(),

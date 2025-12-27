@@ -1,7 +1,7 @@
 //! Error Correction Code Types
 
 /// Error correction code types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorCorrectionCode {
     /// Surface code
     SurfaceCode,

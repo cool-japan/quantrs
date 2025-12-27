@@ -231,7 +231,7 @@ impl QasmExporter {
 
     /// Generate QASM program
     fn generate_program<const N: usize>(
-        &mut self,
+        &self,
         circuit: &Circuit<N>,
     ) -> Result<QasmProgram, ExportError> {
         let mut declarations = Vec::new();
@@ -427,18 +427,20 @@ mod tests {
     #[test]
     fn test_export_simple_circuit() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("adding Hadamard gate should succeed");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("adding CNOT gate should succeed");
 
         let result = export_qasm3(&circuit);
         assert!(result.is_ok());
 
-        let qasm = result.unwrap();
+        let qasm = result.expect("export_qasm3 should succeed for valid circuit");
         assert!(qasm.contains("OPENQASM 3.0"));
         assert!(qasm.contains("qubit[2] q"));
         assert!(qasm.contains("h q[0]"));
@@ -448,13 +450,15 @@ mod tests {
     #[test]
     fn test_export_with_measurements() {
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("adding Hadamard gate should succeed");
         // Note: measure gate would need to be implemented
 
         let result = export_qasm3(&circuit);
         assert!(result.is_ok());
 
-        let qasm = result.unwrap();
+        let qasm = result.expect("export_qasm3 should succeed for measurement test");
         // Basic check
         assert!(qasm.contains("OPENQASM 3.0"));
     }

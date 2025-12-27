@@ -385,7 +385,7 @@ impl ProblemVisualizer {
 
             ax.set_title(&format!(
                 "Graph Coloring: {} colors used",
-                node_colors.iter().max().unwrap() + 1
+                node_colors.iter().max().unwrap_or(&0) + 1
             ));
             ax.set_aspect("equal");
             ax.axis("off");
@@ -950,14 +950,22 @@ impl ProblemVisualizer {
     fn get_best_sample(&self) -> Result<&SampleResult, Box<dyn std::error::Error>> {
         self.samples
             .iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or("No samples available".into())
     }
 
     /// Get best k samples
     fn get_best_samples(&self) -> Vec<&SampleResult> {
         let mut sorted_samples: Vec<_> = self.samples.iter().collect();
-        sorted_samples.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        sorted_samples.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         sorted_samples
     }
 

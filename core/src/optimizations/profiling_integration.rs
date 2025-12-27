@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+use std::fmt::Write;
 /// Quantum operation profiling data
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct QuantumOperationProfile {
@@ -53,7 +54,7 @@ impl QuantumProfiler {
 
     /// Enable profiling
     pub fn enable(&self) {
-        *self.enabled.lock().unwrap() = true;
+        *self.enabled.lock().expect("Profiler enabled lock poisoned") = true;
 
         // Start global profiler
         if let Ok(mut profiler) = Profiler::global().lock() {
@@ -63,7 +64,7 @@ impl QuantumProfiler {
 
     /// Disable profiling
     pub fn disable(&self) {
-        *self.enabled.lock().unwrap() = false;
+        *self.enabled.lock().expect("Profiler enabled lock poisoned") = false;
 
         // Stop global profiler
         if let Ok(mut profiler) = Profiler::global().lock() {
@@ -73,7 +74,7 @@ impl QuantumProfiler {
 
     /// Check if profiling is enabled
     pub fn is_enabled(&self) -> bool {
-        *self.enabled.lock().unwrap()
+        *self.enabled.lock().expect("Profiler enabled lock poisoned")
     }
 
     /// Start profiling a quantum operation
@@ -82,11 +83,17 @@ impl QuantumProfiler {
             return;
         }
 
-        let mut timers = self.active_timers.lock().unwrap();
+        let mut timers = self
+            .active_timers
+            .lock()
+            .expect("Active timers lock poisoned");
         timers.insert(operation_name.to_string(), Instant::now());
 
         // Start memory tracking
-        let mut tracker = self.memory_tracker.lock().unwrap();
+        let mut tracker = self
+            .memory_tracker
+            .lock()
+            .expect("Memory tracker lock poisoned");
         *tracker = Some(MemoryTracker::start(operation_name));
     }
 
@@ -97,7 +104,10 @@ impl QuantumProfiler {
         }
 
         let start_time = {
-            let mut timers = self.active_timers.lock().unwrap();
+            let mut timers = self
+                .active_timers
+                .lock()
+                .expect("Active timers lock poisoned");
             timers.remove(operation_name)
         };
 
@@ -106,7 +116,10 @@ impl QuantumProfiler {
 
             // Stop memory tracking
             let memory_usage = {
-                let mut tracker = self.memory_tracker.lock().unwrap();
+                let mut tracker = self
+                    .memory_tracker
+                    .lock()
+                    .expect("Memory tracker lock poisoned");
                 if let Some(mem_tracker) = tracker.take() {
                     mem_tracker.stop();
                     // In a real implementation, this would return actual memory usage
@@ -117,7 +130,7 @@ impl QuantumProfiler {
             };
 
             // Update profile
-            let mut profiles = self.profiles.lock().unwrap();
+            let mut profiles = self.profiles.lock().expect("Profiles lock poisoned");
             let profile = profiles
                 .entry(operation_name.to_string())
                 .or_insert_with(|| QuantumOperationProfile {
@@ -158,12 +171,19 @@ impl QuantumProfiler {
 
     /// Get profiling results for all operations
     pub fn get_profiles(&self) -> HashMap<String, QuantumOperationProfile> {
-        self.profiles.lock().unwrap().clone()
+        self.profiles
+            .lock()
+            .expect("Profiles lock poisoned")
+            .clone()
     }
 
     /// Get profiling results for a specific operation
     pub fn get_operation_profile(&self, operation_name: &str) -> Option<QuantumOperationProfile> {
-        self.profiles.lock().unwrap().get(operation_name).cloned()
+        self.profiles
+            .lock()
+            .expect("Profiles lock poisoned")
+            .get(operation_name)
+            .cloned()
     }
 
     /// Generate a comprehensive profiling report
@@ -182,16 +202,19 @@ impl QuantumProfiler {
         let mut sorted_profiles: Vec<_> = profiles.values().collect();
         sorted_profiles.sort_by(|a, b| b.total_time.cmp(&a.total_time));
 
-        report.push_str(&format!(
-            "{:<30} {:<10} {:<12} {:<12} {:<12} {:<12} {:<10}\n",
+        writeln!(
+            report,
+            "{:<30} {:<10} {:<12} {:<12} {:<12} {:<12} {:<10}",
             "Operation", "Count", "Total (ms)", "Avg (ms)", "Min (ms)", "Max (ms)", "Gates"
-        ));
+        )
+        .expect("Writing to String cannot fail");
         report.push_str(&"-".repeat(110));
         report.push('\n');
 
         for profile in &sorted_profiles {
-            report.push_str(&format!(
-                "{:<30} {:<10} {:<12.3} {:<12.3} {:<12.3} {:<12.3} {:<10}\n",
+            writeln!(
+                report,
+                "{:<30} {:<10} {:<12.3} {:<12.3} {:<12.3} {:<12.3} {:<10}",
                 profile.operation_name,
                 profile.execution_count,
                 profile.total_time.as_secs_f64() * 1000.0,
@@ -199,27 +222,32 @@ impl QuantumProfiler {
                 profile.min_time.as_secs_f64() * 1000.0,
                 profile.max_time.as_secs_f64() * 1000.0,
                 profile.gate_count,
-            ));
+            )
+            .expect("Writing to String cannot fail");
         }
 
         report.push_str("\n=== Performance Insights ===\n");
 
         // Find the most time-consuming operation
         if let Some(slowest) = sorted_profiles.first() {
-            report.push_str(&format!(
-                "Most time-consuming operation: {} ({:.3}ms total)\n",
+            writeln!(
+                report,
+                "Most time-consuming operation: {} ({:.3}ms total)",
                 slowest.operation_name,
                 slowest.total_time.as_secs_f64() * 1000.0
-            ));
+            )
+            .expect("Writing to String cannot fail");
         }
 
         // Find the most frequent operation
         let most_frequent = sorted_profiles.iter().max_by_key(|p| p.execution_count);
         if let Some(frequent) = most_frequent {
-            report.push_str(&format!(
-                "Most frequent operation: {} ({} executions)\n",
+            writeln!(
+                report,
+                "Most frequent operation: {} ({} executions)",
                 frequent.operation_name, frequent.execution_count
-            ));
+            )
+            .expect("Writing to String cannot fail");
         }
 
         // Calculate total gate throughput
@@ -227,10 +255,11 @@ impl QuantumProfiler {
         let total_time: Duration = profiles.values().map(|p| p.total_time).sum();
         if total_time.as_secs_f64() > 0.0 {
             let gate_throughput = total_gates as f64 / total_time.as_secs_f64();
-            report.push_str(&format!(
-                "Total gate throughput: {:.0} gates/second\n",
-                gate_throughput
-            ));
+            writeln!(
+                report,
+                "Total gate throughput: {gate_throughput:.0} gates/second"
+            )
+            .expect("Writing to String cannot fail");
         }
 
         report
@@ -238,8 +267,14 @@ impl QuantumProfiler {
 
     /// Clear all profiling data
     pub fn clear(&self) {
-        self.profiles.lock().unwrap().clear();
-        self.active_timers.lock().unwrap().clear();
+        self.profiles
+            .lock()
+            .expect("Profiles lock poisoned")
+            .clear();
+        self.active_timers
+            .lock()
+            .expect("Active timers lock poisoned")
+            .clear();
     }
 
     /// Export profiling data to JSON
@@ -397,7 +432,7 @@ mod tests {
         let json_result = profiler.export_json();
         assert!(json_result.is_ok());
 
-        let json = json_result.unwrap();
+        let json = json_result.expect("Failed to export JSON");
         assert!(json.contains("test_operation"));
         assert!(json.contains("execution_count"));
     }

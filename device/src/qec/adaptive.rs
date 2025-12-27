@@ -36,7 +36,7 @@ pub struct AdaptiveQECConfig {
 }
 
 /// Adaptation strategies for QEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationStrategy {
     ErrorRateBased,
     PerformanceBased,
@@ -60,7 +60,7 @@ pub struct AdaptiveLearningConfig {
 }
 
 /// Learning algorithms for adaptive QEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LearningAlgorithm {
     ReinforcementLearning,
     SupervisedLearning,
@@ -84,7 +84,7 @@ pub struct OnlineLearningConfig {
 }
 
 /// Learning rate adaptation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LearningRateAdaptation {
     Fixed,
     Exponential,
@@ -105,7 +105,7 @@ pub struct ConceptDriftConfig {
 }
 
 /// Drift detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftDetectionMethod {
     StatisticalTest,
     PerformanceMonitoring,
@@ -114,7 +114,7 @@ pub enum DriftDetectionMethod {
 }
 
 /// Responses to concept drift
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftResponse {
     Retrain,
     Adapt,
@@ -134,7 +134,7 @@ pub struct ModelUpdateConfig {
 }
 
 /// Update frequency options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UpdateFrequency {
     Continuous,
     Periodic(Duration),
@@ -143,7 +143,7 @@ pub enum UpdateFrequency {
 }
 
 /// Update triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UpdateTrigger {
     PerformanceDegradation,
     NewData,
@@ -152,7 +152,7 @@ pub enum UpdateTrigger {
 }
 
 /// Update strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UpdateStrategy {
     FullRetrain,
     IncrementalUpdate,
@@ -196,7 +196,7 @@ pub struct SimilarityMetrics {
 }
 
 /// Transfer learning strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransferStrategy {
     FeatureTransfer,
     ParameterTransfer,
@@ -214,7 +214,7 @@ pub struct DomainAdaptationConfig {
 }
 
 /// Domain adaptation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationMethod {
     FeatureAlignment,
     DistributionMatching,
@@ -223,7 +223,7 @@ pub enum AdaptationMethod {
 }
 
 /// Validation strategies for domain adaptation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationStrategy {
     CrossDomainValidation,
     TargetValidation,
@@ -244,7 +244,7 @@ pub struct MetaLearningConfig {
 }
 
 /// Meta-learning algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetaLearningAlgorithm {
     MAML,
     Reptile,
@@ -265,7 +265,7 @@ pub struct TaskDistributionConfig {
 }
 
 /// Task generation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaskGenerationStrategy {
     Random,
     Curriculum,
@@ -285,7 +285,7 @@ pub struct MetaOptimizationConfig {
 }
 
 /// Meta-optimizers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetaOptimizer {
     SGD,
     Adam,
@@ -314,7 +314,7 @@ pub struct MetaRegularization {
 }
 
 /// Types of regularization
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegularizationType {
     L1,
     L2,
@@ -337,7 +337,7 @@ pub struct RealtimeOptimizationConfig {
 }
 
 /// Optimization objectives
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     MinimizeErrorRate,
     MaximizeFidelity,
@@ -348,7 +348,7 @@ pub enum OptimizationObjective {
 }
 
 /// Real-time optimization algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RealtimeAlgorithm {
     OnlineGradientDescent,
     AdaptiveMomentum,
@@ -418,7 +418,7 @@ pub struct FeedbackControlConfig {
 }
 
 /// Control algorithms for feedback
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ControlAlgorithm {
     PID,
     LQR,
@@ -440,7 +440,7 @@ pub struct SensorConfig {
 }
 
 /// Types of sensors
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SensorType {
     PerformanceMonitor,
     ErrorRateMonitor,
@@ -472,7 +472,7 @@ pub struct ActuatorConfig {
 }
 
 /// Types of actuators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActuatorType {
     PulseController,
     FrequencyController,
@@ -518,7 +518,7 @@ pub struct ConstraintSatisfactionConfig {
 }
 
 /// Hardware constraint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HardwareConstraint {
     ConnectivityGraph,
     GateTimes,
@@ -526,7 +526,7 @@ pub enum HardwareConstraint {
 }
 
 /// Resource constraint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceConstraint {
     QubitCount,
     CircuitDepth,
@@ -534,14 +534,14 @@ pub enum ResourceConstraint {
 }
 
 /// Performance constraint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceConstraint {
     LogicalErrorRate,
     ThroughputTarget,
 }
 
 /// Optimization targets
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationTarget {
     ErrorCorrection,
     ResourceEfficiency,
@@ -552,7 +552,7 @@ pub enum OptimizationTarget {
 }
 
 /// Performance metrics for QEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceMetric {
     LogicalErrorRate,
     DecodingLatency,
@@ -563,7 +563,7 @@ pub enum PerformanceMetric {
 }
 
 /// Optimization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationStrategy {
     HeuristicOptimization,
     ExactOptimization,
@@ -600,7 +600,7 @@ pub struct QECMLConfig {
 }
 
 /// ML models for QEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MLModel {
     NeuralNetwork,
     ConvolutionalNN,
@@ -637,7 +637,7 @@ pub struct TrainingDataConfig {
 }
 
 /// Data sources for ML training
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataSource {
     HistoricalData,
     SimulatedData,
@@ -658,7 +658,7 @@ pub struct DataPreprocessingConfig {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NormalizationMethod {
     MinMax,
     ZScore,
@@ -667,7 +667,7 @@ pub enum NormalizationMethod {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeatureSelectionMethod {
     Statistical,
     ModelBased,
@@ -676,7 +676,7 @@ pub enum FeatureSelectionMethod {
 }
 
 /// Dimensionality reduction methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DimensionalityReductionMethod {
     PCA,
     LDA,
@@ -697,7 +697,7 @@ pub struct DataAugmentationConfig {
 }
 
 /// Data augmentation techniques
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AugmentationTechnique {
     NoiseInjection,
     Rotation,
@@ -718,7 +718,7 @@ pub struct ModelArchitectureConfig {
 }
 
 /// Architecture types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArchitectureType {
     Sequential,
     Residual,
@@ -739,7 +739,7 @@ pub struct LayerConfig {
 }
 
 /// Layer types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LayerType {
     Dense,
     Convolutional,
@@ -750,7 +750,7 @@ pub enum LayerType {
 }
 
 /// Activation functions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActivationFunction {
     ReLU,
     Sigmoid,
@@ -761,7 +761,7 @@ pub enum ActivationFunction {
 }
 
 /// Connection patterns in neural networks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConnectionPattern {
     FullyConnected,
     Sparse,
@@ -786,7 +786,7 @@ pub struct TrainingParameters {
 }
 
 /// Optimizer types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizerType {
     SGD,
     Adam,
@@ -796,7 +796,7 @@ pub enum OptimizerType {
 }
 
 /// Loss functions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LossFunction {
     MeanSquaredError,
     CrossEntropy,
@@ -817,7 +817,7 @@ pub struct ValidationConfig {
 }
 
 /// Validation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationMethod {
     HoldOut,
     CrossValidation,
@@ -837,7 +837,7 @@ pub struct MLInferenceConfig {
 }
 
 /// Inference modes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InferenceMode {
     Synchronous,
     Asynchronous,
@@ -868,7 +868,7 @@ pub struct InferenceOptimizationConfig {
 }
 
 /// Model optimization techniques
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelOptimization {
     Quantization,
     Pruning,
@@ -878,7 +878,7 @@ pub enum ModelOptimization {
 }
 
 /// Hardware acceleration options
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HardwareAcceleration {
     GPU,
     TPU,
@@ -899,7 +899,7 @@ pub struct InferenceCaching {
 }
 
 /// Cache eviction policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheEvictionPolicy {
     LRU,
     LFU,
@@ -930,7 +930,7 @@ pub struct ModelVersioning {
 }
 
 /// Version control systems
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VersionControlSystem {
     Git,
     MLflow,
@@ -939,7 +939,7 @@ pub enum VersionControlSystem {
 }
 
 /// Rollback strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RollbackStrategy {
     Automatic,
     Manual,
@@ -959,7 +959,7 @@ pub struct ModelDeployment {
 }
 
 /// Deployment strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStrategy {
     BlueGreen,
     Canary,
@@ -979,7 +979,7 @@ pub struct EnvironmentConfig {
 }
 
 /// Environment types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnvironmentType {
     Development,
     Staging,
@@ -1012,7 +1012,7 @@ pub struct ScalingConfig {
 }
 
 /// Scaling metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScalingMetric {
     CpuUtilization,
     MemoryUtilization,
@@ -1044,7 +1044,7 @@ pub struct PerformanceMonitoring {
 }
 
 /// Monitoring metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringMetric {
     Accuracy,
     Precision,
@@ -1077,7 +1077,7 @@ pub struct AlertingConfig {
 }
 
 /// Alert channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertChannel {
     Email,
     Slack,
@@ -1132,7 +1132,7 @@ pub struct QECMonitoringConfig {
 }
 
 /// Monitoring targets
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringTarget {
     ErrorRates,
     CorrectionPerformance,
@@ -1155,7 +1155,7 @@ pub struct DashboardConfig {
 }
 
 /// Dashboard components
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DashboardComponent {
     RealTimeMetrics,
     HistoricalTrends,
@@ -1176,7 +1176,7 @@ pub struct AccessControl {
 }
 
 /// User roles
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserRole {
     Admin,
     Operator,
@@ -1207,7 +1207,7 @@ pub struct DataRetention {
 }
 
 /// Archival strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArchivalStrategy {
     CloudStorage,
     LocalStorage,
@@ -1227,7 +1227,7 @@ pub struct StorageConfig {
 }
 
 /// Storage backends
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageBackend {
     FileSystem,
     Database,
@@ -1236,7 +1236,7 @@ pub enum StorageBackend {
 }
 
 /// Consistency levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConsistencyLevel {
     Eventual,
     Strong,
@@ -1269,7 +1269,7 @@ pub struct AlertRule {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertSeverity {
     Critical,
     High,
@@ -1279,7 +1279,7 @@ pub enum AlertSeverity {
 }
 
 /// Alert actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertAction {
     Notify,
     Log,
@@ -1288,7 +1288,7 @@ pub enum AlertAction {
 }
 
 /// Notification channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Email,
     SMS,

@@ -217,15 +217,15 @@ impl LargeScaleSimAccelerator {
         match task_type {
             SimulationTaskType::StateVector => {
                 // Favor high-memory, high-compute devices
-                0.6 * memory_score + 0.4 * compute_score
+                0.6f64.mul_add(memory_score, 0.4 * compute_score)
             }
             SimulationTaskType::TensorContraction => {
                 // Favor high-compute devices
-                0.3 * memory_score + 0.7 * compute_score
+                0.3f64.mul_add(memory_score, 0.7 * compute_score)
             }
             SimulationTaskType::Distributed => {
                 // Favor balanced devices
-                0.5 * memory_score + 0.5 * compute_score
+                0.5f64.mul_add(memory_score, 0.5 * compute_score)
             }
         }
     }
@@ -273,8 +273,14 @@ impl LargeScaleSimAccelerator {
 
     /// Get performance statistics
     pub fn get_performance_stats(&self) -> LargeScalePerformanceStats {
-        let monitor = self.performance_monitor.read().unwrap();
-        let memory_manager = self.memory_manager.lock().unwrap();
+        let monitor = self
+            .performance_monitor
+            .read()
+            .expect("Performance monitor lock poisoned");
+        let memory_manager = self
+            .memory_manager
+            .lock()
+            .expect("Memory manager lock poisoned");
 
         LargeScalePerformanceStats {
             contraction_stats: monitor.contraction_stats.clone(),
@@ -330,7 +336,9 @@ impl LargeScaleStateVectorSim {
         let buffer_size = state_size * std::mem::size_of::<Complex64>();
 
         let (state_allocation, temp_allocation) = {
-            let mut mm = memory_manager.lock().unwrap();
+            let mut mm = memory_manager
+                .lock()
+                .expect("Memory manager lock poisoned during state vector init");
             let state_allocation =
                 mm.allocate(device_id, buffer_size, AllocationType::StateVector)?;
             let temp_allocation =
@@ -367,7 +375,7 @@ impl LargeScaleStateVectorSim {
         let duration = start_time.elapsed().as_millis() as f64;
         self.performance_monitor
             .write()
-            .unwrap()
+            .expect("Performance monitor lock poisoned during state initialization")
             .record_operation("state_initialization", duration);
 
         Ok(())
@@ -395,8 +403,11 @@ impl LargeScaleStateVectorSim {
 
         let duration = start_time.elapsed().as_millis() as f64;
 
-        let mut monitor = self.performance_monitor.write().unwrap();
-        monitor.record_operation(&format!("{:?}_gate", gate_type), duration);
+        let mut monitor = self
+            .performance_monitor
+            .write()
+            .expect("Performance monitor lock poisoned during gate application");
+        monitor.record_operation(&format!("{gate_type:?}_gate"), duration);
         monitor.state_vector_stats.total_gate_applications += 1;
 
         Ok(())
@@ -419,7 +430,7 @@ impl LargeScaleStateVectorSim {
         let duration = start_time.elapsed().as_millis() as f64;
         self.performance_monitor
             .write()
-            .unwrap()
+            .expect("Performance monitor lock poisoned during probability calculation")
             .record_operation("probability_calculation", duration);
 
         Ok(probabilities)
@@ -445,7 +456,7 @@ impl LargeScaleStateVectorSim {
         let duration = start_time.elapsed().as_millis() as f64;
         self.performance_monitor
             .write()
-            .unwrap()
+            .expect("Performance monitor lock poisoned during expectation value calculation")
             .record_operation("expectation_value", duration);
 
         // Mock expectation value
@@ -504,7 +515,10 @@ impl LargeScaleTensorContractor {
 
         let start_time = std::time::Instant::now();
 
-        let mut mm = self.memory_manager.lock().unwrap();
+        let mut mm = self
+            .memory_manager
+            .lock()
+            .expect("Memory manager lock poisoned during tensor upload");
         let allocation_id = mm.allocate(self.device_id, tensor_size, AllocationType::TensorData)?;
 
         self.tensor_cache.insert(tensor.id, allocation_id);
@@ -515,7 +529,7 @@ impl LargeScaleTensorContractor {
         let duration = start_time.elapsed().as_millis() as f64;
         self.performance_monitor
             .write()
-            .unwrap()
+            .expect("Performance monitor lock poisoned during tensor upload")
             .record_operation("tensor_upload", duration);
 
         Ok(())
@@ -541,7 +555,10 @@ impl LargeScaleTensorContractor {
 
         let duration = start_time.elapsed().as_millis() as f64;
 
-        let mut monitor = self.performance_monitor.write().unwrap();
+        let mut monitor = self
+            .performance_monitor
+            .write()
+            .expect("Performance monitor lock poisoned during tensor contraction");
         monitor.record_operation("tensor_contraction", duration);
         monitor.contraction_stats.total_contractions += 1;
         monitor.contraction_stats.total_contraction_time_ms += duration;
@@ -556,7 +573,7 @@ impl LargeScaleTensorContractor {
                 Complex64::new(1.0, 0.0),
             ],
         )
-        .map_err(|e| QuantRS2Error::InvalidInput(format!("Tensor creation failed: {}", e)))?;
+        .map_err(|e| QuantRS2Error::InvalidInput(format!("Tensor creation failed: {e}")))?;
 
         Ok(Tensor::new(
             tensor1_id + tensor2_id, // Simple ID generation
@@ -584,8 +601,11 @@ impl LargeScaleTensorContractor {
 
         let duration = start_time.elapsed().as_millis() as f64;
 
-        let mut monitor = self.performance_monitor.write().unwrap();
-        monitor.record_operation(&format!("{:?}_decomposition", decomp_type), duration);
+        let mut monitor = self
+            .performance_monitor
+            .write()
+            .expect("Performance monitor lock poisoned during tensor decomposition");
+        monitor.record_operation(&format!("{decomp_type:?}_decomposition"), duration);
         monitor.contraction_stats.decompositions_performed += 1;
 
         Ok(TensorDecomposition {
@@ -654,7 +674,7 @@ impl LargeScaleMemoryManager {
         alloc_type: AllocationType,
     ) -> QuantRS2Result<u64> {
         let pool = self.memory_pools.get_mut(&device_id).ok_or_else(|| {
-            QuantRS2Error::InvalidParameter(format!("Device {} not found", device_id))
+            QuantRS2Error::InvalidParameter(format!("Device {device_id} not found"))
         })?;
 
         // Find suitable free block
@@ -716,7 +736,7 @@ impl LargeScaleMemoryManager {
             .values()
             .map(|pool| pool.used_size)
             .max()
-            .unwrap_or(0)
+            .unwrap_or_default()
     }
 }
 
@@ -781,7 +801,8 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
+        let mut accelerator = LargeScaleSimAccelerator::new(config, devices)
+            .expect("Failed to create accelerator for device selection test");
 
         // Test state vector simulation device selection
         let device_id = accelerator.select_optimal_device(
@@ -790,7 +811,7 @@ mod tests {
         );
 
         assert!(device_id.is_ok());
-        assert!(device_id.unwrap() < 2);
+        assert!(device_id.expect("Device selection failed") < 2);
     }
 
     #[test]
@@ -798,12 +819,13 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
+        let mut accelerator =
+            LargeScaleSimAccelerator::new(config, devices).expect("Failed to create accelerator");
         let state_sim = accelerator.init_state_vector_simulation(5);
 
         assert!(state_sim.is_ok());
 
-        let mut sim = state_sim.unwrap();
+        let mut sim = state_sim.expect("Failed to initialize state vector simulation");
 
         // Test state initialization
         let initial_state = vec![Complex64::new(1.0, 0.0); 32]; // 2^5 = 32
@@ -824,12 +846,13 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
+        let mut accelerator =
+            LargeScaleSimAccelerator::new(config, devices).expect("Failed to create accelerator");
         let contractor = accelerator.init_tensor_contractor();
 
         assert!(contractor.is_ok());
 
-        let mut contractor = contractor.unwrap();
+        let mut contractor = contractor.expect("Failed to initialize tensor contractor");
 
         // Create test tensor
         let data = scirs2_core::ndarray::Array::from_shape_vec(
@@ -841,7 +864,7 @@ mod tests {
                 Complex64::new(1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create tensor data array");
 
         let tensor = Tensor::new(0, data, vec!["i".to_string(), "j".to_string()]);
 
@@ -861,7 +884,7 @@ mod tests {
         let memory_manager = LargeScaleMemoryManager::new(&devices, &config);
         assert!(memory_manager.is_ok());
 
-        let mut mm = memory_manager.unwrap();
+        let mut mm = memory_manager.expect("Failed to create memory manager");
 
         // Test allocation
         let allocation = mm.allocate(0, 1024, AllocationType::StateVector);
@@ -876,11 +899,15 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
+        let accelerator =
+            LargeScaleSimAccelerator::new(config, devices).expect("Failed to create accelerator");
 
         // Record some operations
         {
-            let mut monitor = accelerator.performance_monitor.write().unwrap();
+            let mut monitor = accelerator
+                .performance_monitor
+                .write()
+                .expect("Performance monitor lock poisoned in test");
             monitor.record_operation("test_operation", 10.5);
             monitor.record_operation("test_operation", 12.3);
         }
@@ -894,15 +921,14 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
+        let mut accelerator =
+            LargeScaleSimAccelerator::new(config, devices).expect("Failed to create accelerator");
 
         // Test exceeding qubit limit
         let result = accelerator.init_state_vector_simulation(100);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            QuantRS2Error::UnsupportedQubits(_, _)
-        ));
+        let err = result.expect_err("Expected UnsupportedQubits error");
+        assert!(matches!(err, QuantRS2Error::UnsupportedQubits(_, _)));
     }
 
     #[test]
@@ -910,13 +936,16 @@ mod tests {
         let config = LargeScaleSimConfig::default();
         let devices = create_test_devices();
 
-        let mut accelerator = LargeScaleSimAccelerator::new(config, devices).unwrap();
-        let mut contractor = accelerator.init_tensor_contractor().unwrap();
+        let mut accelerator =
+            LargeScaleSimAccelerator::new(config, devices).expect("Failed to create accelerator");
+        let mut contractor = accelerator
+            .init_tensor_contractor()
+            .expect("Failed to initialize tensor contractor");
 
         let decomp_result = contractor.decompose_tensor_gpu(0, TensorDecompositionType::SVD);
         assert!(decomp_result.is_ok());
 
-        let decomp = decomp_result.unwrap();
+        let decomp = decomp_result.expect("Failed to decompose tensor");
         assert_eq!(decomp.factors.len(), 2);
         assert!(!decomp.singular_values.is_empty());
     }

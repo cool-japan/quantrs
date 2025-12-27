@@ -62,16 +62,14 @@ impl ZXNode {
     #[must_use]
     pub const fn phase(&self) -> f64 {
         match self {
-            Self::ZSpider { phase, .. } => *phase,
-            Self::XSpider { phase, .. } => *phase,
+            Self::ZSpider { phase, .. } | Self::XSpider { phase, .. } => *phase,
             _ => 0.0,
         }
     }
 
     pub const fn set_phase(&mut self, new_phase: f64) {
         match self {
-            Self::ZSpider { phase, .. } => *phase = new_phase,
-            Self::XSpider { phase, .. } => *phase = new_phase,
+            Self::ZSpider { phase, .. } | Self::XSpider { phase, .. } => *phase = new_phase,
             _ => {}
         }
     }
@@ -680,7 +678,11 @@ mod tests {
         assert_eq!(diagram.nodes.len(), 1);
 
         // Remaining spider should have combined phase
-        let remaining_node = diagram.nodes.values().next().unwrap();
+        let remaining_node = diagram
+            .nodes
+            .values()
+            .next()
+            .expect("Expected at least one remaining node after fusion");
         assert!((remaining_node.phase() - (PI / 4.0 + PI / 8.0)).abs() < 1e-10);
     }
 
@@ -723,15 +725,19 @@ mod tests {
         let optimizer = ZXOptimizer::new();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let diagram = optimizer.circuit_to_zx(&circuit).unwrap();
+        let diagram = optimizer
+            .circuit_to_zx(&circuit)
+            .expect("Failed to convert circuit to ZX diagram");
 
         // Should have input/output nodes plus gate nodes
         assert!(diagram.nodes.len() >= 4); // 2 inputs + 2 outputs + gate nodes
@@ -743,10 +749,16 @@ mod tests {
         let optimizer = ZXOptimizer::new();
 
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap(); // Should cancel out
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add first Hadamard gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add second Hadamard gate"); // Should cancel out
 
-        let result = optimizer.optimize_circuit(&circuit).unwrap();
+        let result = optimizer
+            .optimize_circuit(&circuit)
+            .expect("Failed to optimize circuit");
 
         assert!(
             result.optimization_stats.final_node_count

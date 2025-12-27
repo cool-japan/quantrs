@@ -98,7 +98,7 @@ pub trait QMLLayer: Send + Sync {
 }
 
 /// Data encoding strategies for QML
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingStrategy {
     /// Amplitude encoding: data encoded in state amplitudes
     Amplitude,
@@ -138,7 +138,7 @@ impl Default for QMLConfig {
 }
 
 /// Entanglement patterns for QML layers
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntanglementPattern {
     /// No entanglement
     None,

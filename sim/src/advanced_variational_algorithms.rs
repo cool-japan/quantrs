@@ -153,7 +153,7 @@ pub enum QuantumActivation {
     ControlledRotation,
     /// Entangling activation
     EntanglingActivation,
-    /// Quantum ReLU approximation
+    /// Quantum `ReLU` approximation
     QuantumReLU,
 }
 
@@ -1192,7 +1192,12 @@ impl AdvancedVQATrainer {
                 Some(self.compute_fisher_information_matrix()?);
         }
 
-        let fisher_matrix = self.state.optimizer_state.fisher_matrix.as_ref().unwrap();
+        let fisher_matrix = self
+            .state
+            .optimizer_state
+            .fisher_matrix
+            .as_ref()
+            .expect("Fisher matrix should exist after computation above");
 
         // Solve Fisher * update = gradient
         let natural_gradient = self.solve_linear_system(fisher_matrix, gradient)?;
@@ -1233,7 +1238,12 @@ impl AdvancedVQATrainer {
 
         // Store gradient and parameter differences
         if !self.state.optimizer_state.lbfgs_history.is_empty() {
-            let (prev_params, prev_grad) = self.state.optimizer_state.lbfgs_history.back().unwrap();
+            let (prev_params, prev_grad) = self
+                .state
+                .optimizer_state
+                .lbfgs_history
+                .back()
+                .expect("L-BFGS history should not be empty after is_empty check");
             let s = self
                 .state
                 .parameters
@@ -1390,7 +1400,11 @@ impl AdvancedVQATrainer {
 
         // Select best candidates
         let mut indices: Vec<usize> = (0..population_size).collect();
-        indices.sort_by(|&a, &b| fitness_values[b].partial_cmp(&fitness_values[a]).unwrap());
+        indices.sort_by(|&a, &b| {
+            fitness_values[b]
+                .partial_cmp(&fitness_values[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Update parameters using weighted average of top candidates
         let top_n = population_size / 4;
@@ -1807,7 +1821,8 @@ mod tests {
             rotation_gates: vec![InterfaceGateType::RY(0.0)],
         };
 
-        let count = AdvancedVQATrainer::count_parameters(&ansatz).unwrap();
+        let count =
+            AdvancedVQATrainer::count_parameters(&ansatz).expect("Failed to count parameters");
         assert!(count > 0);
     }
 
@@ -1819,7 +1834,8 @@ mod tests {
             include_triples: false,
         };
 
-        let count = AdvancedVQATrainer::count_parameters(&ansatz).unwrap();
+        let count = AdvancedVQATrainer::count_parameters(&ansatz)
+            .expect("Failed to count UCCSD parameters");
         assert!(count > 0);
     }
 
@@ -1837,7 +1853,8 @@ mod tests {
             layers: 3,
         };
 
-        let count = AdvancedVQATrainer::count_parameters(&ansatz).unwrap();
+        let count =
+            AdvancedVQATrainer::count_parameters(&ansatz).expect("Failed to count QAOA parameters");
         assert_eq!(count, 6); // 2 parameters per layer
     }
 

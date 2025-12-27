@@ -53,12 +53,13 @@ pub struct ChunkedStateVector {
     num_qubits: usize,
     /// Size of each chunk (number of complex numbers)
     chunk_size: usize,
-    /// Total dimension of the state vector (2^num_qubits)
+    /// Total dimension of the state vector (`2^num_qubits`)
     dimension: usize,
 }
 
 impl ChunkedStateVector {
     /// Create a new chunked state vector for given number of qubits
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let dimension = 1 << num_qubits;
         let chunk_size = min(DEFAULT_CHUNK_SIZE, dimension);
@@ -92,16 +93,19 @@ impl ChunkedStateVector {
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
     /// Get the dimension of the state vector
+    #[must_use]
     pub const fn dimension(&self) -> usize {
         self.dimension
     }
 
     /// Access a specific amplitude by global index
+    #[must_use]
     pub fn get_amplitude(&self, idx: usize) -> Complex64 {
         let chunk_idx = idx / self.chunk_size;
         let local_idx = idx % self.chunk_size;
@@ -118,6 +122,7 @@ impl ChunkedStateVector {
 
     /// Get all amplitudes as a flattened vector (for testing and conversion)
     /// Warning: For large qubit counts, this will use a lot of memory
+    #[must_use]
     pub fn as_vec(&self) -> Vec<Complex64> {
         let mut result = Vec::with_capacity(self.dimension);
         for chunk in &self.chunks {
@@ -348,6 +353,7 @@ impl ChunkedStateVector {
     }
 
     /// Calculate probability of measuring a specific bit string
+    #[must_use]
     pub fn probability(&self, bit_string: &[u8]) -> f64 {
         assert!(
             (bit_string.len() == self.num_qubits),
@@ -368,15 +374,17 @@ impl ChunkedStateVector {
 
     /// Calculate probabilities for all basis states
     /// Warning: For large qubit counts, this will use a lot of memory
+    #[must_use]
     pub fn probabilities(&self) -> Vec<f64> {
         self.chunks
             .iter()
-            .flat_map(|chunk| chunk.as_slice().iter().map(|a| a.norm_sqr()))
+            .flat_map(|chunk| chunk.as_slice().iter().map(scirs2_core::Complex::norm_sqr))
             .collect()
     }
 
     /// Calculate the probability of a specified range of states
     /// More memory efficient for large qubit counts
+    #[must_use]
     pub fn probability_range(&self, start_idx: usize, end_idx: usize) -> Vec<f64> {
         let real_end = std::cmp::min(end_idx, self.dimension);
 

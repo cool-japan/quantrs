@@ -251,8 +251,8 @@ impl CircuitSimilarityAnalyzer {
         circuit2: &Circuit<M>,
     ) -> QuantRS2Result<CircuitSimilarityMetrics> {
         // Generate unique identifiers for caching
-        let id1 = self.generate_circuit_id(circuit1);
-        let id2 = self.generate_circuit_id(circuit2);
+        let id1 = Self::generate_circuit_id(circuit1);
+        let id2 = Self::generate_circuit_id(circuit2);
         let cache_key = if id1 < id2 { (id1, id2) } else { (id2, id1) };
 
         // Check cache
@@ -274,19 +274,19 @@ impl CircuitSimilarityAnalyzer {
         for algorithm in &algorithms {
             let similarity = match algorithm {
                 SimilarityAlgorithm::GateLevel => {
-                    self.compute_gate_level_similarity(&features1, &features2)?
+                    Self::compute_gate_level_similarity(&features1, &features2)?
                 }
                 SimilarityAlgorithm::DAGStructure => {
-                    self.compute_dag_similarity(circuit1, circuit2)?
+                    Self::compute_dag_similarity(circuit1, circuit2)?
                 }
                 SimilarityAlgorithm::UnitaryMatrix => {
-                    self.compute_unitary_similarity(circuit1, circuit2)?
+                    Self::compute_unitary_similarity(circuit1, circuit2)?
                 }
                 SimilarityAlgorithm::GraphBased {
                     algorithm: graph_alg,
-                } => self.compute_graph_similarity(&features1, &features2, graph_alg)?,
+                } => Self::compute_graph_similarity(&features1, &features2, graph_alg)?,
                 SimilarityAlgorithm::Statistical => {
-                    self.compute_statistical_similarity(&features1, &features2)?
+                    Self::compute_statistical_similarity(&features1, &features2)?
                 }
                 SimilarityAlgorithm::MLEmbeddings { model_type } => {
                     self.compute_ml_similarity(circuit1, circuit2, model_type)?
@@ -298,10 +298,10 @@ impl CircuitSimilarityAnalyzer {
         }
 
         // Compute component similarities
-        let structural_similarity = self.compute_structural_similarity(&features1, &features2)?;
-        let functional_similarity = self.compute_functional_similarity(circuit1, circuit2)?;
-        let sequence_similarity = self.compute_sequence_similarity(&features1, &features2)?;
-        let topological_similarity = self.compute_topological_similarity(&features1, &features2)?;
+        let structural_similarity = Self::compute_structural_similarity(&features1, &features2)?;
+        let functional_similarity = Self::compute_functional_similarity(circuit1, circuit2)?;
+        let sequence_similarity = Self::compute_sequence_similarity(&features1, &features2)?;
+        let topological_similarity = Self::compute_topological_similarity(&features1, &features2)?;
 
         // Compute overall similarity using weighted combination
         let overall_similarity = self.config.weights.topological.mul_add(
@@ -342,7 +342,7 @@ impl CircuitSimilarityAnalyzer {
         let features2 = self.extract_circuit_features(circuit2)?;
 
         // Compute edit distance
-        let edit_distance = self.compute_edit_distance(&features1, &features2)?;
+        let edit_distance = Self::compute_edit_distance(&features1, &features2)?;
         let max_gates = features1
             .gate_histogram
             .values()
@@ -355,11 +355,11 @@ impl CircuitSimilarityAnalyzer {
         };
 
         // Compute other distance measures
-        let wasserstein_distance = self.compute_wasserstein_distance(&features1, &features2)?;
-        let hausdorff_distance = self.compute_hausdorff_distance(circuit1, circuit2)?;
-        let earth_movers_distance = self.compute_earth_movers_distance(&features1, &features2)?;
+        let wasserstein_distance = Self::compute_wasserstein_distance(&features1, &features2)?;
+        let hausdorff_distance = Self::compute_hausdorff_distance(circuit1, circuit2)?;
+        let earth_movers_distance = Self::compute_earth_movers_distance(&features1, &features2)?;
         let process_fidelity_distance =
-            self.compute_process_fidelity_distance(circuit1, circuit2)?;
+            Self::compute_process_fidelity_distance(circuit1, circuit2)?;
 
         Ok(CircuitDistanceMetrics {
             edit_distance,
@@ -376,7 +376,7 @@ impl CircuitSimilarityAnalyzer {
         &mut self,
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<CircuitFeatures> {
-        let id = self.generate_circuit_id(circuit);
+        let id = Self::generate_circuit_id(circuit);
 
         if let Some(cached) = self.feature_cache.get(&id) {
             return Ok(cached.clone());
@@ -401,10 +401,10 @@ impl CircuitSimilarityAnalyzer {
         }
 
         // Compute parallelism profile
-        let parallelism_profile = self.compute_parallelism_profile(circuit)?;
+        let parallelism_profile = Self::compute_parallelism_profile(circuit)?;
 
         // Analyze entanglement structure
-        let entanglement_structure = self.analyze_entanglement_structure(circuit)?;
+        let entanglement_structure = Self::analyze_entanglement_structure(circuit)?;
 
         let features = CircuitFeatures {
             gate_histogram,
@@ -422,7 +422,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute gate-level similarity
     fn compute_gate_level_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
@@ -458,7 +457,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute DAG structure similarity
     fn compute_dag_similarity<const N: usize, const M: usize>(
-        &self,
         circuit1: &Circuit<N>,
         circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
@@ -488,9 +486,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute unitary matrix similarity
     const fn compute_unitary_similarity<const N: usize, const M: usize>(
-        &self,
-        circuit1: &Circuit<N>,
-        circuit2: &Circuit<M>,
+        _circuit1: &Circuit<N>,
+        _circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         if N != M {
             // Circuits with different qubit counts have zero unitary similarity
@@ -506,17 +503,16 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute graph-based similarity
     fn compute_graph_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
         algorithm: &GraphSimilarityAlgorithm,
     ) -> QuantRS2Result<f64> {
         match algorithm {
-            GraphSimilarityAlgorithm::GraphEditDistance => self.compute_graph_edit_distance(
+            GraphSimilarityAlgorithm::GraphEditDistance => Self::compute_graph_edit_distance(
                 &features1.entanglement_structure.entanglement_graph,
                 &features2.entanglement_structure.entanglement_graph,
             ),
-            GraphSimilarityAlgorithm::SpectralSimilarity => self.compute_spectral_similarity(
+            GraphSimilarityAlgorithm::SpectralSimilarity => Self::compute_spectral_similarity(
                 &features1.entanglement_structure.entanglement_graph,
                 &features2.entanglement_structure.entanglement_graph,
             ),
@@ -529,7 +525,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute statistical similarity
     fn compute_statistical_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
@@ -564,7 +559,7 @@ impl CircuitSimilarityAnalyzer {
         let embedding2 = self.generate_circuit_embedding(circuit2, model_type)?;
 
         // Compute cosine similarity between embeddings
-        let similarity = self.cosine_similarity(&embedding1, &embedding2);
+        let similarity = Self::cosine_similarity(&embedding1, &embedding2);
         Ok(similarity)
     }
 
@@ -574,7 +569,7 @@ impl CircuitSimilarityAnalyzer {
         circuit: &Circuit<N>,
         model_type: &MLModelType,
     ) -> QuantRS2Result<Vec<f64>> {
-        let id = format!("{}_{:?}", self.generate_circuit_id(circuit), model_type);
+        let id = format!("{}_{:?}", Self::generate_circuit_id(circuit), model_type);
 
         if let Some(cached) = self.embedding_cache.get(&id) {
             return Ok(cached.clone());
@@ -582,16 +577,14 @@ impl CircuitSimilarityAnalyzer {
 
         // Generate embedding based on model type
         let embedding = match model_type {
-            MLModelType::VAE { latent_dim } => self.generate_vae_embedding(circuit, *latent_dim)?,
-            MLModelType::GCN { hidden_dims } => {
-                self.generate_gcn_embedding(circuit, hidden_dims)?
-            }
+            MLModelType::VAE { latent_dim } => Self::generate_vae_embedding(circuit, *latent_dim)?,
+            MLModelType::GCN { hidden_dims } => Self::generate_gcn_embedding(circuit, hidden_dims)?,
             MLModelType::Transformer {
                 num_heads,
                 num_layers,
-            } => self.generate_transformer_embedding(circuit, *num_heads, *num_layers)?,
+            } => Self::generate_transformer_embedding(circuit, *num_heads, *num_layers)?,
             MLModelType::PreTrained { model_name } => {
-                self.generate_pretrained_embedding(circuit, model_name)?
+                Self::generate_pretrained_embedding(circuit, model_name)?
             }
         };
 
@@ -601,8 +594,7 @@ impl CircuitSimilarityAnalyzer {
 
     /// Generate VAE embedding (placeholder)
     fn generate_vae_embedding<const N: usize>(
-        &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
         latent_dim: usize,
     ) -> QuantRS2Result<Vec<f64>> {
         // Placeholder for VAE-based circuit embedding
@@ -611,8 +603,7 @@ impl CircuitSimilarityAnalyzer {
 
     /// Generate GCN embedding (placeholder)
     fn generate_gcn_embedding<const N: usize>(
-        &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
         hidden_dims: &[usize],
     ) -> QuantRS2Result<Vec<f64>> {
         // Placeholder for GCN-based circuit embedding
@@ -622,10 +613,9 @@ impl CircuitSimilarityAnalyzer {
 
     /// Generate Transformer embedding (placeholder)
     fn generate_transformer_embedding<const N: usize>(
-        &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
         num_heads: usize,
-        num_layers: usize,
+        _num_layers: usize,
     ) -> QuantRS2Result<Vec<f64>> {
         // Placeholder for Transformer-based circuit embedding
         let embedding_dim = num_heads * 64; // Typical dimension
@@ -634,8 +624,7 @@ impl CircuitSimilarityAnalyzer {
 
     /// Generate pre-trained model embedding (placeholder)
     fn generate_pretrained_embedding<const N: usize>(
-        &self,
-        circuit: &Circuit<N>,
+        _circuit: &Circuit<N>,
         model_name: &str,
     ) -> QuantRS2Result<Vec<f64>> {
         // Placeholder for pre-trained model embedding
@@ -649,12 +638,11 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute structural similarity
     fn compute_structural_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
         // Compare circuit structure
-        let connectivity_similarity = self.compare_connectivity_patterns(
+        let connectivity_similarity = Self::compare_connectivity_patterns(
             &features1.connectivity_pattern,
             &features2.connectivity_pattern,
         );
@@ -673,9 +661,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute functional similarity
     const fn compute_functional_similarity<const N: usize, const M: usize>(
-        &self,
-        circuit1: &Circuit<N>,
-        circuit2: &Circuit<M>,
+        _circuit1: &Circuit<N>,
+        _circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         if N != M {
             return Ok(0.0);
@@ -688,13 +675,12 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute sequence similarity
     fn compute_sequence_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
         // Compare gate sequences using edit distance
         let edit_distance =
-            self.string_edit_distance(&features1.critical_path, &features2.critical_path);
+            Self::string_edit_distance(&features1.critical_path, &features2.critical_path);
         let max_length = features1
             .critical_path
             .len()
@@ -711,7 +697,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute topological similarity
     fn compute_topological_similarity(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
@@ -736,7 +721,7 @@ impl CircuitSimilarityAnalyzer {
     /// Helper methods
 
     /// Generate unique circuit identifier
-    fn generate_circuit_id<const N: usize>(&self, circuit: &Circuit<N>) -> String {
+    fn generate_circuit_id<const N: usize>(circuit: &Circuit<N>) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -755,7 +740,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute parallelism profile
     fn compute_parallelism_profile<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<Vec<usize>> {
         // Simplified parallelism analysis
@@ -772,7 +756,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Analyze entanglement structure
     fn analyze_entanglement_structure<const N: usize>(
-        &self,
         circuit: &Circuit<N>,
     ) -> QuantRS2Result<EntanglementStructure> {
         let mut entangling_layers = Vec::new();
@@ -817,7 +800,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compare connectivity patterns
     fn compare_connectivity_patterns(
-        &self,
         pattern1: &[(usize, usize)],
         pattern2: &[(usize, usize)],
     ) -> f64 {
@@ -835,7 +817,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute edit distance between strings
-    fn string_edit_distance(&self, seq1: &[String], seq2: &[String]) -> usize {
+    fn string_edit_distance(seq1: &[String], seq2: &[String]) -> usize {
         let m = seq1.len();
         let n = seq2.len();
         let mut dp = vec![vec![0; n + 1]; m + 1];
@@ -863,7 +845,7 @@ impl CircuitSimilarityAnalyzer {
     }
 
     /// Compute cosine similarity between vectors
-    fn cosine_similarity(&self, vec1: &[f64], vec2: &[f64]) -> f64 {
+    fn cosine_similarity(vec1: &[f64], vec2: &[f64]) -> f64 {
         if vec1.len() != vec2.len() {
             return 0.0;
         }
@@ -881,21 +863,19 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute edit distance between circuit features
     fn compute_edit_distance(
-        &self,
         features1: &CircuitFeatures,
         features2: &CircuitFeatures,
     ) -> QuantRS2Result<usize> {
         // Simplified edit distance based on gate operations
         let distance =
-            self.string_edit_distance(&features1.critical_path, &features2.critical_path);
+            Self::string_edit_distance(&features1.critical_path, &features2.critical_path);
         Ok(distance)
     }
 
     /// Compute Wasserstein distance
     const fn compute_wasserstein_distance(
-        &self,
-        features1: &CircuitFeatures,
-        features2: &CircuitFeatures,
+        _features1: &CircuitFeatures,
+        _features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
         // Simplified Wasserstein distance computation
         // In practice, would use SciRS2's optimal transport algorithms
@@ -904,9 +884,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute Hausdorff distance
     const fn compute_hausdorff_distance<const N: usize, const M: usize>(
-        &self,
-        circuit1: &Circuit<N>,
-        circuit2: &Circuit<M>,
+        _circuit1: &Circuit<N>,
+        _circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         // Placeholder for Hausdorff distance computation
         Ok(0.25) // Placeholder
@@ -914,9 +893,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute Earth Mover's distance
     const fn compute_earth_movers_distance(
-        &self,
-        features1: &CircuitFeatures,
-        features2: &CircuitFeatures,
+        _features1: &CircuitFeatures,
+        _features2: &CircuitFeatures,
     ) -> QuantRS2Result<f64> {
         // Placeholder for Earth Mover's distance computation
         Ok(0.2) // Placeholder
@@ -924,9 +902,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute process fidelity distance
     const fn compute_process_fidelity_distance<const N: usize, const M: usize>(
-        &self,
-        circuit1: &Circuit<N>,
-        circuit2: &Circuit<M>,
+        _circuit1: &Circuit<N>,
+        _circuit2: &Circuit<M>,
     ) -> QuantRS2Result<f64> {
         if N != M {
             return Ok(1.0); // Maximum distance for different dimensions
@@ -938,7 +915,6 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute graph edit distance
     fn compute_graph_edit_distance(
-        &self,
         graph1: &SciRS2Graph,
         graph2: &SciRS2Graph,
     ) -> QuantRS2Result<f64> {
@@ -959,9 +935,8 @@ impl CircuitSimilarityAnalyzer {
 
     /// Compute spectral similarity
     const fn compute_spectral_similarity(
-        &self,
-        graph1: &SciRS2Graph,
-        graph2: &SciRS2Graph,
+        _graph1: &SciRS2Graph,
+        _graph2: &SciRS2Graph,
     ) -> QuantRS2Result<f64> {
         // Placeholder for spectral similarity computation
         // Would compute eigenvalues of graph Laplacians and compare
@@ -1021,7 +996,7 @@ impl BatchSimilarityComputer {
         }
 
         // Sort by similarity and return top-k
-        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         similarities.truncate(top_k);
 
         Ok(similarities)
@@ -1045,9 +1020,13 @@ mod tests {
         let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
 
-        let similarity = analyzer.compute_similarity(&circuit, &circuit).unwrap();
+        let similarity = analyzer
+            .compute_similarity(&circuit, &circuit)
+            .expect("Failed to compute similarity for identical circuits");
 
         // Fixed: Overall similarity should be 1.0 for identical circuits
         // All component similarities should also be 1.0 or very close to it
@@ -1088,7 +1067,9 @@ mod tests {
         let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
 
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
         circuit2
@@ -1096,9 +1077,11 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit2");
 
-        let similarity = analyzer.compute_similarity(&circuit1, &circuit2).unwrap();
+        let similarity = analyzer
+            .compute_similarity(&circuit1, &circuit2)
+            .expect("Failed to compute similarity for different circuits");
         assert!(similarity.overall_similarity < 1.0);
     }
 
@@ -1107,7 +1090,9 @@ mod tests {
         let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
 
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
         circuit2
@@ -1115,9 +1100,11 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit2");
 
-        let distance = analyzer.compute_distance(&circuit1, &circuit2).unwrap();
+        let distance = analyzer
+            .compute_distance(&circuit1, &circuit2)
+            .expect("Failed to compute distance between circuits");
         assert!(distance.edit_distance > 0);
         assert!(
             distance.normalized_edit_distance >= 0.0 && distance.normalized_edit_distance <= 1.0
@@ -1129,15 +1116,19 @@ mod tests {
         let mut analyzer = CircuitSimilarityAnalyzer::with_default_config();
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let features = analyzer.extract_circuit_features(&circuit).unwrap();
+        let features = analyzer
+            .extract_circuit_features(&circuit)
+            .expect("Failed to extract circuit features");
         assert_eq!(features.gate_histogram.get("H"), Some(&1));
         assert_eq!(features.gate_histogram.get("CNOT"), Some(&1));
         assert_eq!(features.two_qubit_gates, 1);
@@ -1148,7 +1139,9 @@ mod tests {
         let mut computer = BatchSimilarityComputer::new(SimilarityConfig::default());
 
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
         circuit2
@@ -1156,10 +1149,12 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit2");
 
         let circuits = vec![circuit1, circuit2];
-        let similarity_matrix = computer.compute_pairwise_similarities(&circuits).unwrap();
+        let similarity_matrix = computer
+            .compute_pairwise_similarities(&circuits)
+            .expect("Failed to compute pairwise similarities");
 
         assert_eq!(similarity_matrix.len(), 2);
         assert_eq!(similarity_matrix[0].len(), 2);

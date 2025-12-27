@@ -434,12 +434,20 @@ impl QuantumBoltzmannMachine {
                 &((pos_associations - neg_associations) * self.learning_rate / batch_size as f64);
 
             // Update biases
-            let pos_v_mean = data.mean_axis(Axis(0)).unwrap();
-            let neg_v_mean = neg_visible.mean_axis(Axis(0)).unwrap();
+            let pos_v_mean = data
+                .mean_axis(Axis(0))
+                .ok_or_else(|| "Empty data batch: cannot compute visible mean".to_string())?;
+            let neg_v_mean = neg_visible
+                .mean_axis(Axis(0))
+                .ok_or_else(|| "Empty negative visible batch: cannot compute mean".to_string())?;
             self.visible_bias += &((pos_v_mean - neg_v_mean) * self.learning_rate);
 
-            let pos_h_mean = pos_hidden.mean_axis(Axis(0)).unwrap();
-            let neg_h_mean = neg_hidden.mean_axis(Axis(0)).unwrap();
+            let pos_h_mean = pos_hidden
+                .mean_axis(Axis(0))
+                .ok_or_else(|| "Empty positive hidden batch: cannot compute mean".to_string())?;
+            let neg_h_mean = neg_hidden
+                .mean_axis(Axis(0))
+                .ok_or_else(|| "Empty negative hidden batch: cannot compute mean".to_string())?;
             self.hidden_bias += &((pos_h_mean - neg_h_mean) * self.learning_rate);
 
             // Calculate reconstruction error
@@ -797,9 +805,12 @@ mod tests {
 
         let sampler = SASampler::with_params(Some(42), params);
 
-        svm.fit(&x, &y, &sampler).unwrap();
+        svm.fit(&x, &y, &sampler)
+            .expect("SVM training should succeed on linearly separable data");
 
-        let mut predictions = svm.predict(&x).unwrap();
+        let mut predictions = svm
+            .predict(&x)
+            .expect("SVM prediction should succeed after training");
 
         // Check that it learned something reasonable
         assert!(svm.support_vectors.is_some());
@@ -814,7 +825,9 @@ mod tests {
         let clustering = QuantumClustering::new(2).with_distance_metric(DistanceMetric::Euclidean);
 
         let sampler = SASampler::new(Some(42));
-        let labels = clustering.fit_predict(&data, &sampler).unwrap();
+        let labels = clustering
+            .fit_predict(&data, &sampler)
+            .expect("Clustering should succeed on simple test data");
 
         // Check that similar points are in same cluster
         assert_eq!(labels[0], labels[1]);

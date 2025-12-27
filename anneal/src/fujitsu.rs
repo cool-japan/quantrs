@@ -70,9 +70,9 @@ pub struct FujitsuHardwareSpec {
 impl Default for FujitsuHardwareSpec {
     fn default() -> Self {
         Self {
-            max_variables: 8192,                // Generation 2 DAU
-            max_connections_per_variable: 8192, // Fully connected
-            coefficient_range: (-65536, 65535), // 17-bit signed integers
+            max_variables: 8192,                  // Generation 2 DAU
+            max_connections_per_variable: 8192,   // Fully connected
+            coefficient_range: (-65_536, 65_535), // 17-bit signed integers
             available_parameters: vec![
                 "number_iterations".to_string(),
                 "number_runs".to_string(),
@@ -289,7 +289,11 @@ impl FujitsuClient {
         let best_solution = response
             .solutions
             .into_iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or_else(|| FujitsuError::RetrievalError("No solutions returned".to_string()))?;
 
         Ok(best_solution
@@ -478,7 +482,11 @@ impl FujitsuClient {
         let best_solution = response
             .solutions
             .into_iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or_else(|| FujitsuError::RetrievalError("No solutions returned".to_string()))?;
 
         // Convert from binary (0/1) to spin (-1/+1)
@@ -533,7 +541,7 @@ mod tests {
     fn test_hardware_spec() {
         let spec = FujitsuHardwareSpec::default();
         assert_eq!(spec.max_variables, 8192);
-        assert_eq!(spec.coefficient_range, (-65536, 65535));
+        assert_eq!(spec.coefficient_range, (-65_536, 65_535));
     }
 
     #[test]
@@ -550,11 +558,13 @@ mod tests {
 
         // Test valid model
         let mut model = IsingModel::new(100);
-        model.set_coupling(0, 1, -1.0).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Setting coupling should succeed");
         assert!(client.validate_model(&model).is_ok());
 
         // Test model too large
-        let large_model = IsingModel::new(10000);
+        let large_model = IsingModel::new(10_000);
         assert!(client.validate_model(&large_model).is_err());
     }
 
@@ -563,11 +573,21 @@ mod tests {
         let client = FujitsuClient::new("http://test".to_string(), "test_key".to_string());
 
         // Test valid coefficient
-        assert_eq!(client.scale_coefficient(1.5).unwrap(), 1500);
-        assert_eq!(client.scale_coefficient(-2.7).unwrap(), -2700);
+        assert_eq!(
+            client
+                .scale_coefficient(1.5)
+                .expect("Scaling 1.5 should succeed"),
+            1500
+        );
+        assert_eq!(
+            client
+                .scale_coefficient(-2.7)
+                .expect("Scaling -2.7 should succeed"),
+            -2700
+        );
 
         // Test coefficient out of range
         assert!(client.scale_coefficient(100.0).is_err());
-        assert!(client.scale_coefficient(1000000.0).is_err());
+        assert!(client.scale_coefficient(1_000_000.0).is_err());
     }
 }

@@ -314,7 +314,10 @@ impl QuantumContinualLearner {
 
         // Update memory buffer if applicable
         if self.memory_buffer.is_some() {
-            let mut buffer = self.memory_buffer.take().unwrap();
+            let mut buffer = self
+                .memory_buffer
+                .take()
+                .expect("memory_buffer verified to be Some above");
             self.update_memory_buffer(&mut buffer, &task)?;
             self.memory_buffer = Some(buffer);
         }
@@ -668,7 +671,10 @@ impl QuantumContinualLearner {
     /// Compute gradient memory for GEM
     fn compute_gradient_memory(&mut self, task: &ContinualTask) -> Result<()> {
         if self.memory_buffer.is_some() {
-            let mut buffer = self.memory_buffer.take().unwrap();
+            let mut buffer = self
+                .memory_buffer
+                .take()
+                .expect("memory_buffer verified to be Some above");
 
             // Store representative examples with their gradients
             for i in 0..task.train_data.nrows().min(100) {
@@ -727,7 +733,7 @@ impl QuantumContinualLearner {
             let predicted = output
                 .iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(i, _)| i)
                 .unwrap_or(0);
 
@@ -870,7 +876,10 @@ impl MemoryBuffer {
     pub fn add_experience(&mut self, experience: Experience) {
         // Add to main buffer
         if self.experiences.len() >= self.max_size {
-            let removed = self.experiences.pop_front().unwrap();
+            let removed = self
+                .experiences
+                .pop_front()
+                .expect("Buffer is non-empty when len >= max_size");
             self.remove_from_task_index(&removed);
         }
 
@@ -905,7 +914,9 @@ impl MemoryBuffer {
                 indexed_experiences.sort_by(|a, b| {
                     let importance_a = a.1.importance;
                     let importance_b = b.1.importance;
-                    importance_b.partial_cmp(&importance_a).unwrap()
+                    importance_b
+                        .partial_cmp(&importance_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
 
                 for (_, experience) in indexed_experiences.into_iter().take(available) {
@@ -1073,7 +1084,7 @@ mod tests {
             },
         ];
 
-        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let model = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create model");
 
         let strategy = ContinualLearningStrategy::ElasticWeightConsolidation {
             importance_weight: 1000.0,

@@ -8,7 +8,7 @@
 
 use crate::prelude::{InterfaceGate, InterfaceGateType, SimulatorError};
 use scirs2_core::ndarray::Array1;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,13 +22,13 @@ use crate::scirs2_integration::SciRS2Backend;
 /// QML framework types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QMLFramework {
-    /// PyTorch integration
+    /// `PyTorch` integration
     PyTorch,
     /// TensorFlow/Keras integration
     TensorFlow,
     /// JAX integration
     JAX,
-    /// SciRS2 native ML
+    /// `SciRS2` native ML
     SciRS2,
     /// Custom framework
     Custom,
@@ -243,7 +243,7 @@ pub struct QMLIntegration {
     config: QMLIntegrationConfig,
     /// Circuit interface
     circuit_interface: CircuitInterface,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Autodiff context
     autodiff_context: Option<AutoDiffContext>,
@@ -296,7 +296,7 @@ impl QMLIntegration {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         self.circuit_interface = self.circuit_interface.with_backend()?;
@@ -495,15 +495,13 @@ impl QMLIntegration {
     ) -> Result<HashMap<String, Vec<f64>>> {
         let start_time = std::time::Instant::now();
 
-        let mut gradients = HashMap::new();
-
-        if self.config.enable_autodiff {
+        let mut gradients = if self.config.enable_autodiff {
             // Use automatic differentiation
-            gradients = self.compute_gradients_autodiff(qnn, batch, predictions)?;
+            self.compute_gradients_autodiff(qnn, batch, predictions)?
         } else {
             // Use parameter shift rule or finite differences
-            gradients = self.compute_gradients_parameter_shift(qnn, batch)?;
-        }
+            self.compute_gradients_parameter_shift(qnn, batch)?
+        };
 
         let grad_time = start_time.elapsed().as_secs_f64() * 1000.0;
         self.stats.avg_gradient_time_ms = self
@@ -515,7 +513,9 @@ impl QMLIntegration {
 
         // Cache gradients
         {
-            let mut cache = self.gradient_cache.lock().unwrap();
+            let mut cache = self.gradient_cache.lock().map_err(|e| {
+                SimulatorError::InvalidOperation(format!("Gradient cache lock poisoned: {e}"))
+            })?;
             for (param_name, grad) in &gradients {
                 cache.insert(param_name.clone(), grad.clone());
             }
@@ -572,7 +572,7 @@ impl QMLIntegration {
 
     /// Apply data encoding layer
     fn apply_data_encoding(
-        &mut self,
+        &self,
         layer: &QMLLayer,
         input: &Array1<f64>,
         state: &mut Array1<Complex64>,
@@ -727,7 +727,7 @@ impl QMLIntegration {
             }
             LossFunction::MeanAbsoluteError => {
                 let diff = prediction - target;
-                Ok(diff.mapv(|x| x.abs()).mean().unwrap_or(0.0))
+                Ok(diff.mapv(f64::abs).mean().unwrap_or(0.0))
             }
             LossFunction::CrossEntropy => {
                 // Simplified cross-entropy
@@ -865,7 +865,7 @@ impl QMLIntegration {
                 // Simple implementation - reduce LR if loss plateaus
                 optimizer.update_learning_rate(*factor);
             }
-            _ => {}
+            LRScheduler::CosineAnnealingLR { .. } => {}
         }
         Ok(())
     }
@@ -885,7 +885,9 @@ impl QMLIntegration {
 
     /// Compute last gradient norm
     fn compute_last_gradient_norm(&self) -> Result<f64> {
-        let cache = self.gradient_cache.lock().unwrap();
+        let cache = self.gradient_cache.lock().map_err(|e| {
+            SimulatorError::InvalidOperation(format!("Gradient cache lock poisoned: {e}"))
+        })?;
         let mut norm_squared = 0.0;
 
         for (_, grads) in cache.iter() {
@@ -898,6 +900,7 @@ impl QMLIntegration {
     }
 
     /// Get training statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &QMLTrainingStats {
         &self.stats
     }
@@ -962,6 +965,7 @@ pub struct AdamOptimizer {
 }
 
 impl AdamOptimizer {
+    #[must_use]
     pub fn new(learning_rate: f64) -> Self {
         Self {
             learning_rate,
@@ -993,8 +997,16 @@ impl QMLOptimizer for AdamOptimizer {
             let mut updates = Vec::new();
 
             {
-                let m = self.m.get_mut(param_name).unwrap();
-                let v = self.v.get_mut(param_name).unwrap();
+                let m = self.m.get_mut(param_name).ok_or_else(|| {
+                    SimulatorError::InvalidOperation(format!(
+                        "Parameter {param_name} not found in first moment estimates"
+                    ))
+                })?;
+                let v = self.v.get_mut(param_name).ok_or_else(|| {
+                    SimulatorError::InvalidOperation(format!(
+                        "Parameter {param_name} not found in second moment estimates"
+                    ))
+                })?;
 
                 for (i, &grad) in grads.iter().enumerate() {
                     // Update biased first moment estimate
@@ -1068,6 +1080,7 @@ pub struct SGDOptimizer {
 }
 
 impl SGDOptimizer {
+    #[must_use]
     pub fn new(learning_rate: f64) -> Self {
         Self {
             learning_rate,
@@ -1093,7 +1106,11 @@ impl QMLOptimizer for SGDOptimizer {
             let mut updates = Vec::new();
 
             {
-                let velocity = self.velocity.get_mut(param_name).unwrap();
+                let velocity = self.velocity.get_mut(param_name).ok_or_else(|| {
+                    SimulatorError::InvalidOperation(format!(
+                        "Parameter {param_name} not found in velocity cache"
+                    ))
+                })?;
 
                 for (i, &grad) in grads.iter().enumerate() {
                     // Update velocity with momentum
@@ -1154,6 +1171,7 @@ pub struct QMLUtils;
 
 impl QMLUtils {
     /// Create a simple variational quantum classifier
+    #[must_use]
     pub fn create_vqc(num_qubits: usize, num_layers: usize) -> QuantumNeuralNetwork {
         let mut layers = Vec::new();
 
@@ -1241,6 +1259,7 @@ impl QMLUtils {
     }
 
     /// Create training data for XOR problem
+    #[must_use]
     pub fn create_xor_training_data() -> Vec<TrainingExample> {
         vec![
             TrainingExample {
@@ -1373,7 +1392,7 @@ mod tests {
     #[test]
     fn test_measurement_probability_computation() {
         let config = QMLIntegrationConfig::default();
-        let integration = QMLIntegration::new(config).unwrap();
+        let integration = QMLIntegration::new(config).expect("Failed to create QML integration");
 
         // Create a simple state |01⟩
         let mut state = Array1::zeros(4);
@@ -1381,10 +1400,10 @@ mod tests {
 
         let prob0 = integration
             .compute_measurement_probability(0, &state)
-            .unwrap();
+            .expect("Failed to compute measurement probability for qubit 0");
         let prob1 = integration
             .compute_measurement_probability(1, &state)
-            .unwrap();
+            .expect("Failed to compute measurement probability for qubit 1");
 
         assert_abs_diff_eq!(prob0, 1.0, epsilon = 1e-10); // Qubit 0 is in |1⟩
         assert_abs_diff_eq!(prob1, 0.0, epsilon = 1e-10); // Qubit 1 is in |0⟩
@@ -1393,17 +1412,17 @@ mod tests {
     #[test]
     fn test_loss_computation() {
         let config = QMLIntegrationConfig::default();
-        let integration = QMLIntegration::new(config).unwrap();
+        let integration = QMLIntegration::new(config).expect("Failed to create QML integration");
 
         let prediction = Array1::from(vec![0.8, 0.2]);
         let target = Array1::from(vec![1.0, 0.0]);
 
         let mse = integration
             .compute_loss(&prediction, &target, &LossFunction::MeanSquaredError)
-            .unwrap();
+            .expect("Failed to compute MSE loss");
         let mae = integration
             .compute_loss(&prediction, &target, &LossFunction::MeanAbsoluteError)
-            .unwrap();
+            .expect("Failed to compute MAE loss");
 
         assert_abs_diff_eq!(mse, 0.04, epsilon = 1e-10); // ((0.8-1.0)^2 + (0.2-0.0)^2) / 2 = (0.04 + 0.04) / 2
         assert_abs_diff_eq!(mae, 0.2, epsilon = 1e-10); // (0.2 + 0.2) / 2

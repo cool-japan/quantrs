@@ -99,7 +99,7 @@ unwrap_used = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.0-beta.3"
+version = "0.1.0-rc.1"
 authors = ["QuantRS2 Contributors"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -110,17 +110,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.0-beta.3" }
-quantrs2-circuit = { path = "circuit", version = "0.1.0-beta.3" }
-quantrs2-sim = { path = "sim", version = "0.1.0-beta.3" }
-quantrs2-anneal = { path = "anneal", version = "0.1.0-beta.3" }
-quantrs2-device = { path = "device", version = "0.1.0-beta.3" }
-quantrs2-ml = { path = "ml", version = "0.1.0-beta.3" }
-quantrs2-tytan = { path = "tytan", version = "0.1.0-beta.3" }
+quantrs2-core = { path = "core", version = "0.1.0-rc.1" }
+quantrs2-circuit = { path = "circuit", version = "0.1.0-rc.1" }
+quantrs2-sim = { path = "sim", version = "0.1.0-rc.1" }
+quantrs2-anneal = { path = "anneal", version = "0.1.0-rc.1" }
+quantrs2-device = { path = "device", version = "0.1.0-rc.1" }
+quantrs2-ml = { path = "ml", version = "0.1.0-rc.1" }
+quantrs2-tytan = { path = "tytan", version = "0.1.0-rc.1" }
 
 # Symbolic computation (local workspace versions)
-quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-beta.3" }
-quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-beta.3" }
+quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-rc.1" }
+quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-rc.1" }
 
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
@@ -141,12 +141,12 @@ approx = "0.5"                   # Test-only usage, acceptable
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-# Using scirs2 0.1.0-rc.2 from crates.io
+# Using scirs2 0.1.0-rc.4 from crates.io (scirs2-linalg is rc.6)
 scirs2-core = { version = "0.1.0-rc.4", default-features = false }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
 scirs2-autograd = { version = "0.1.0-rc.4", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.0-rc.4", default-features = false }
+scirs2-linalg = { version = "0.1.0-rc.6", default-features = false }
 scirs2-optimize = { version = "0.1.0-rc.4", default-features = false }
 scirs2-special = { version = "0.1.0-rc.4", default-features = false }
 scirs2-sparse = { version = "0.1.0-rc.4", default-features = false }
@@ -208,7 +208,6 @@ uuid = { version = "1.19.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.12.2"
 colored = "3.0"
-tempfile = "3.23"
 petgraph = "0.8"
 pest = "2.8"
 pest_derive = "2.8"
@@ -244,7 +243,8 @@ tokio-test = "0.4"
 memmap2 = "0.9"
 
 # Development and testing
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
+tempfile = "3.24"
 
 # NumRS2 ecosystem dependencies
 numrs2 = "0.1.0-rc.3"

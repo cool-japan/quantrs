@@ -247,9 +247,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
             let sensitivity_index = self.compute_sensitivity_index(&objectives, baseline_objective);
             let (optimal_value, _) = response_curve
                 .iter()
-                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .copied()
-                .unwrap_or((baseline_params[&param_name], baseline_objective));
+                .unwrap_or_else(|| (baseline_params[&param_name], baseline_objective));
 
             sensitivities.insert(
                 param_name.clone(),
@@ -492,9 +492,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Find optimal configuration
         let (optimal_params, _) = results
             .iter()
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .cloned()
-            .unwrap();
+            .ok_or("No results available for Latin hypercube analysis")?;
 
         Ok(SensitivityResults {
             sensitivities: sensitivities.clone(),
@@ -550,9 +550,9 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         // Find optimal configuration
         let (optimal_params, _) = results
             .iter()
-            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .cloned()
-            .unwrap();
+            .ok_or("No results available for factorial analysis")?;
 
         Ok(SensitivityResults {
             sensitivities,
@@ -585,7 +585,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let best_objective = solutions
             .iter()
             .map(|s| s.energy)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(f64::INFINITY);
 
         // Compute constraint violations
@@ -675,7 +675,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let max_diff = objectives
             .iter()
             .map(|&obj| (obj - baseline).abs())
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0);
 
         max_diff / baseline.abs().max(1.0)
@@ -747,7 +747,10 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
         let mut optimal = HashMap::new();
 
         for (param_name, curve) in response_data {
-            if let Some((opt_val, _)) = curve.iter().min_by(|a, b| a.1.partial_cmp(&b.1).unwrap()) {
+            if let Some((opt_val, _)) = curve
+                .iter()
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            {
                 optimal.insert(param_name.clone(), *opt_val);
             }
         }
@@ -1082,7 +1085,11 @@ pub mod visualization {
 
             // Sort parameters by sensitivity
             let mut params: Vec<_> = results.main_effects.iter().collect();
-            params.sort_by(|a, b| b.1.abs().partial_cmp(&a.1.abs()).unwrap());
+            params.sort_by(|a, b| {
+                b.1.abs()
+                    .partial_cmp(&a.1.abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let names: Vec<String> = params.iter().map(|(k, _)| (*k).clone()).collect();
             let values: Vec<f64> = params.iter().map(|(_, v)| **v).collect();
@@ -1170,6 +1177,6 @@ mod tests {
         );
 
         // Would need a real compiled model to test
-        // let mut results = analyzer.analyze(&compiled_model).unwrap();
+        // let mut results = analyzer.analyze(&compiled_model).expect("Failed to analyze sensitivity");
     }
 }

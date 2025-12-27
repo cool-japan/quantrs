@@ -20,7 +20,7 @@ pub struct PerformanceMonitoringConfig {
 }
 
 /// Performance metrics to monitor
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PerformanceMetric {
     ExecutionTime,
     Fidelity,
@@ -50,7 +50,7 @@ pub struct AnomalyDetectionConfig {
 }
 
 /// Anomaly detection algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyDetectionAlgorithm {
     StatisticalOutlier,
     MachineLearningBased,
@@ -74,7 +74,7 @@ pub struct AnomalyResponseConfig {
 }
 
 /// Responses to detected anomalies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyResponse {
     LogOnly,
     RecalibrateDevice,
@@ -123,7 +123,7 @@ pub struct NotificationSettings {
 }
 
 /// Notification delivery channels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationChannel {
     Email,
     SMS,
@@ -158,7 +158,7 @@ pub struct NotificationContentConfig {
 }
 
 /// Verbosity levels for notifications
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerbosityLevel {
     Minimal,
     Standard,
@@ -182,7 +182,7 @@ pub struct PerformancePredictionConfig {
 }
 
 /// Types of prediction models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionModelType {
     LinearRegression,
     ARIMA,
@@ -219,7 +219,7 @@ pub struct ValidationRequirements {
 }
 
 /// Model validation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationMethod {
     CrossValidation,
     TimeSeriesSplit,

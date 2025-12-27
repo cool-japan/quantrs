@@ -21,7 +21,7 @@ fn test_version_info_detailed() {
 #[test]
 fn test_version_display() {
     let info = version::VersionInfo::current();
-    let display_str = format!("{}", info);
+    let display_str = format!("{info}");
     assert!(!display_str.is_empty());
     assert!(display_str.contains("QuantRS2"));
 }
@@ -34,7 +34,7 @@ fn test_compatibility_issue_display() {
         current: "1.60.0".to_string(),
         required: "1.86.0".to_string(),
     };
-    let display_str = format!("{}", issue);
+    let display_str = format!("{issue}");
     assert!(display_str.contains("1.60.0"));
     assert!(display_str.contains("1.86.0"));
     assert!(display_str.contains("too old"));
@@ -42,7 +42,7 @@ fn test_compatibility_issue_display() {
     let issue = CompatibilityIssue::UnsupportedFeatureCombination {
         description: "Test issue".to_string(),
     };
-    let display_str = format!("{}", issue);
+    let display_str = format!("{issue}");
     assert!(display_str.contains("Test issue"));
 
     let issue = CompatibilityIssue::DependencyVersionMismatch {
@@ -50,7 +50,7 @@ fn test_compatibility_issue_display() {
         expected: "0.1.0-rc.2".to_string(),
         detected: Some("0.1.0-rc.1".to_string()),
     };
-    let display_str = format!("{}", issue);
+    let display_str = format!("{issue}");
     assert!(display_str.contains("scirs2"));
     assert!(display_str.contains("0.1.0-rc.2"));
     assert!(display_str.contains("0.1.0-rc.1"));
@@ -87,7 +87,7 @@ fn test_diagnostic_report() {
 #[test]
 fn test_diagnostic_report_display() {
     let report = diagnostics::run_diagnostics();
-    let display_str = format!("{}", report);
+    let display_str = format!("{report}");
 
     // Check that key sections are present
     assert!(display_str.contains("QuantRS2 Diagnostic Report"));
@@ -118,7 +118,7 @@ fn test_diagnostic_issue_display() {
     let issue = DiagnosticIssue::new(Severity::Error, "CPU", "Not enough cores")
         .with_suggestion("Use a multi-core CPU");
 
-    let display_str = format!("{}", issue);
+    let display_str = format!("{issue}");
     assert!(display_str.contains("ERROR"));
     assert!(display_str.contains("CPU"));
     assert!(display_str.contains("Not enough cores"));
@@ -172,10 +172,10 @@ fn test_version_comparison() {
             for issue in &issues {
                 match issue {
                     CompatibilityIssue::RustVersionTooOld { current, required } => {
-                        eprintln!("Rust version issue: {} < {}", current, required);
+                        eprintln!("Rust version issue: {current} < {required}");
                     }
                     CompatibilityIssue::UnsupportedFeatureCombination { description } => {
-                        eprintln!("Feature issue: {}", description);
+                        eprintln!("Feature issue: {description}");
                     }
                     CompatibilityIssue::DependencyVersionMismatch {
                         dependency,
@@ -183,8 +183,7 @@ fn test_version_comparison() {
                         detected,
                     } => {
                         eprintln!(
-                            "Dependency issue: {} (expected {}, detected {:?})",
-                            dependency, expected, detected
+                            "Dependency issue: {dependency} (expected {expected}, detected {detected:?})"
                         );
                     }
                 }
@@ -208,8 +207,8 @@ fn test_config_in_diagnostics() {
     let report = diagnostics::run_diagnostics();
 
     // Test that configuration is captured
-    assert_eq!(report.config.enable_simd, true);
-    assert_eq!(report.config.enable_gpu, true);
+    assert!(report.config.enable_simd);
+    assert!(report.config.enable_gpu);
     assert_eq!(
         report.config.default_backend,
         quantrs2::config::DefaultBackend::Auto

@@ -100,7 +100,7 @@ impl Default for AdaptiveMLConfig {
             learning_strategy: LearningStrategy::Online,
             learning_rate: 0.001,
             batch_size: 32,
-            max_history_size: 10000,
+            max_history_size: 10_000,
             confidence_threshold: 0.8,
             real_time_learning: true,
             update_frequency: 100,
@@ -131,6 +131,7 @@ pub struct SyndromeClassificationNetwork {
 
 impl SyndromeClassificationNetwork {
     /// Create new neural network
+    #[must_use]
     pub fn new(
         input_size: usize,
         hidden_sizes: Vec<usize>,
@@ -171,14 +172,19 @@ impl SyndromeClassificationNetwork {
     }
 
     /// Forward pass through the network
+    #[must_use]
     pub fn forward(&self, input: &Array1<f64>) -> Array1<f64> {
         let mut activation = input.clone();
+
+        // Get reference to last weight for comparison
+        let last_weight = self.weights.last();
 
         for (weight, bias) in self.weights.iter().zip(self.biases.iter()) {
             activation = weight.dot(&activation) + bias;
 
             // Apply ReLU activation (except for output layer)
-            if weight == self.weights.last().unwrap() {
+            let is_output_layer = last_weight.map_or(false, |last| weight == last);
+            if is_output_layer {
                 // Softmax for output layer
                 let max_val = activation.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
                 activation.mapv_inplace(|x| (x - max_val).exp());
@@ -243,12 +249,20 @@ impl SyndromeClassificationNetwork {
         let mut activations = vec![input.clone()];
         let mut z_values = Vec::new();
 
+        // Get reference to last weight for comparison
+        let last_weight = self.weights.last();
+
         for (weight, bias) in self.weights.iter().zip(self.biases.iter()) {
-            let z = weight.dot(activations.last().unwrap()) + bias;
+            // Safety: activations always has at least one element (input)
+            let last_activation = activations
+                .last()
+                .expect("activations should never be empty");
+            let z = weight.dot(last_activation) + bias;
             z_values.push(z.clone());
 
             let mut activation = z;
-            if weight == self.weights.last().unwrap() {
+            let is_output_layer = last_weight.map_or(false, |last| weight == last);
+            if is_output_layer {
                 // Softmax
                 let max_val = activation.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
                 activation.mapv_inplace(|x| (x - max_val).exp());
@@ -261,7 +275,10 @@ impl SyndromeClassificationNetwork {
         }
 
         // Calculate loss (cross-entropy)
-        let output = activations.last().unwrap();
+        // Safety: activations has at least one element from the loop
+        let output = activations
+            .last()
+            .expect("activations should have output from forward pass");
         let loss = -target
             .iter()
             .zip(output.iter())
@@ -303,15 +320,16 @@ impl SyndromeClassificationNetwork {
     }
 
     /// Predict error class from syndrome
+    #[must_use]
     pub fn predict(&self, syndrome: &Array1<f64>) -> (usize, f64) {
         let output = self.forward(syndrome);
         let max_idx = output
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .unwrap()
-            .0;
-        let confidence = output[max_idx];
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(idx, _)| idx)
+            .unwrap_or(0);
+        let confidence = output.get(max_idx).copied().unwrap_or(0.0);
         (max_idx, confidence)
     }
 }
@@ -337,6 +355,7 @@ pub struct ErrorCorrectionAgent {
 
 impl ErrorCorrectionAgent {
     /// Create new RL agent
+    #[must_use]
     pub fn new(
         action_space_size: usize,
         learning_rate: f64,
@@ -369,9 +388,9 @@ impl ErrorCorrectionAgent {
             q_values
                 .iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .unwrap()
-                .0
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0)
         }
     }
 
@@ -403,10 +422,15 @@ impl ErrorCorrectionAgent {
         };
 
         let td_target = self.discount_factor.mul_add(next_q_max, reward);
-        let td_error = td_target - current_q[action];
+        let current_q_action = current_q.get(action).copied().unwrap_or(0.0);
+        let td_error = td_target - current_q_action;
 
-        let q_values = self.q_table.get_mut(state).unwrap();
-        q_values[action] += self.learning_rate * td_error;
+        // Safety: We just inserted this entry above with entry().or_insert_with()
+        if let Some(q_values) = self.q_table.get_mut(state) {
+            if action < q_values.len() {
+                q_values[action] += self.learning_rate * td_error;
+            }
+        }
 
         self.training_steps += 1;
 
@@ -417,6 +441,7 @@ impl ErrorCorrectionAgent {
     }
 
     /// Calculate reward based on correction success
+    #[must_use]
     pub fn calculate_reward(
         &self,
         errors_before: usize,
@@ -483,6 +508,7 @@ pub struct FeatureExtractor {
 
 impl FeatureExtractor {
     /// Create new feature extractor
+    #[must_use]
     pub const fn new(method: FeatureExtractionMethod) -> Self {
         Self {
             method,
@@ -492,6 +518,7 @@ impl FeatureExtractor {
     }
 
     /// Extract features from syndrome
+    #[must_use]
     pub fn extract_features(&self, syndrome: &[bool]) -> Array1<f64> {
         match self.method {
             FeatureExtractionMethod::RawSyndrome => {
@@ -641,6 +668,7 @@ pub struct CorrectionMetrics {
 
 impl CorrectionMetrics {
     /// Calculate correction accuracy
+    #[must_use]
     pub fn accuracy(&self) -> f64 {
         if self.total_corrections == 0 {
             return 1.0;
@@ -649,6 +677,7 @@ impl CorrectionMetrics {
     }
 
     /// Calculate precision
+    #[must_use]
     pub fn precision(&self) -> f64 {
         let true_positives = self.successful_corrections;
         let predicted_positives = true_positives + self.false_positives;
@@ -660,6 +689,7 @@ impl CorrectionMetrics {
     }
 
     /// Calculate recall
+    #[must_use]
     pub fn recall(&self) -> f64 {
         let true_positives = self.successful_corrections;
         let actual_positives = true_positives + self.false_negatives;
@@ -671,6 +701,7 @@ impl CorrectionMetrics {
     }
 
     /// Calculate F1 score
+    #[must_use]
     pub fn f1_score(&self) -> f64 {
         let precision = self.precision();
         let recall = self.recall();
@@ -790,8 +821,7 @@ impl AdaptiveMLErrorCorrection {
                 timestamp: start_time.elapsed().as_secs_f64(),
             };
 
-            {
-                let mut history = self.training_history.lock().unwrap();
+            if let Ok(mut history) = self.training_history.lock() {
                 history.push_back(training_example);
                 if history.len() > self.config.max_history_size {
                     history.pop_front();
@@ -1025,7 +1055,9 @@ impl AdaptiveMLErrorCorrection {
 
     /// Retrain models with accumulated data
     fn retrain_models(&mut self) -> Result<()> {
-        let history = self.training_history.lock().unwrap();
+        let history = self.training_history.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidOperation(format!("Lock poisoned: {e}"))
+        })?;
         if history.len() < self.config.batch_size {
             return Ok(());
         }
@@ -1060,6 +1092,7 @@ impl AdaptiveMLErrorCorrection {
     }
 
     /// Get current performance metrics
+    #[must_use]
     pub const fn get_metrics(&self) -> &CorrectionMetrics {
         &self.metrics
     }
@@ -1067,7 +1100,9 @@ impl AdaptiveMLErrorCorrection {
     /// Reset metrics and training history
     pub fn reset(&mut self) {
         self.metrics = CorrectionMetrics::default();
-        self.training_history.lock().unwrap().clear();
+        if let Ok(mut history) = self.training_history.lock() {
+            history.clear();
+        }
         self.update_counter = 0;
     }
 }
@@ -1197,7 +1232,8 @@ mod tests {
     #[test]
     fn test_error_correction_application() {
         let config = AdaptiveMLConfig::default();
-        let mut adaptive_ec = AdaptiveMLErrorCorrection::new(config).unwrap();
+        let mut adaptive_ec = AdaptiveMLErrorCorrection::new(config)
+            .expect("Failed to create AdaptiveMLErrorCorrection");
 
         let mut state = Array1::from_vec(vec![
             Complex64::new(1.0, 0.0),
@@ -1210,7 +1246,7 @@ mod tests {
         let result = adaptive_ec.correct_errors_adaptive(&mut state, &syndrome);
         assert!(result.is_ok());
 
-        let correction_result = result.unwrap();
+        let correction_result = result.expect("Failed to correct errors");
         assert!(correction_result.processing_time_ms >= 0.0);
     }
 
@@ -1230,7 +1266,8 @@ mod tests {
     #[test]
     fn test_different_error_types() {
         let config = AdaptiveMLConfig::default();
-        let adaptive_ec = AdaptiveMLErrorCorrection::new(config).unwrap();
+        let adaptive_ec = AdaptiveMLErrorCorrection::new(config)
+            .expect("Failed to create AdaptiveMLErrorCorrection");
 
         assert_eq!(adaptive_ec.class_to_error_type(0), ErrorType::Identity);
         assert_eq!(adaptive_ec.class_to_error_type(1), ErrorType::BitFlip);

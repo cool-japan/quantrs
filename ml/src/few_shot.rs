@@ -518,7 +518,7 @@ mod tests {
             5, // 5-shot
             5, // 5 query per class
         )
-        .unwrap();
+        .expect("Episode generation should succeed");
 
         assert_eq!(episode.num_classes, 3);
         assert_eq!(episode.k_shot, 5);
@@ -536,12 +536,12 @@ mod tests {
             },
         ];
 
-        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create QNN");
         let proto_net = QuantumPrototypicalNetwork::new(qnn, 8, DistanceMetric::Euclidean);
 
         // Test encoding
         let data = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        let encoded = proto_net.encode(&data).unwrap();
+        let encoded = proto_net.encode(&data).expect("Encoding should succeed");
         assert_eq!(encoded.len(), 8);
 
         // Test prototype computation
@@ -549,7 +549,9 @@ mod tests {
             Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]),
             Array1::from_vec(vec![0.2, 0.3, 0.4, 0.5]),
         ];
-        let prototype = proto_net.compute_prototype(&examples).unwrap();
+        let prototype = proto_net
+            .compute_prototype(&examples)
+            .expect("Prototype computation should succeed");
         assert_eq!(prototype.len(), 8);
     }
 
@@ -560,7 +562,7 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 6 },
         ];
 
-        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let qnn = QuantumNeuralNetwork::new(layers, 4, 4, 2).expect("Failed to create QNN");
         let mut maml = QuantumMAML::new(qnn, 0.01, 5);
 
         // Create support set
@@ -570,7 +572,8 @@ mod tests {
         ];
 
         // Adapt to task
-        maml.adapt_to_task(&support_set, "test_task").unwrap();
+        maml.adapt_to_task(&support_set, "test_task")
+            .expect("Task adaptation should succeed");
 
         // Check that task parameters were stored
         assert!(maml.task_params.contains_key("test_task"));

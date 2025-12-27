@@ -435,7 +435,7 @@ impl<const N: usize> QuantumProfiler<N> {
             "session_{}",
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .expect("SystemTime before UNIX_EPOCH is impossible")
                 .as_nanos()
         );
 
@@ -462,7 +462,11 @@ impl<const N: usize> QuantumProfiler<N> {
 
         // Create profiling session
         {
-            let mut session_manager = self.session_manager.write().unwrap();
+            let mut session_manager = self.session_manager.write().map_err(|e| {
+                QuantRS2Error::InvalidOperation(format!(
+                    "Failed to acquire session manager lock: {e}"
+                ))
+            })?;
             let session = ProfilingSession {
                 id: session_id.clone(),
                 start_time: SystemTime::now(),
@@ -494,7 +498,11 @@ impl<const N: usize> QuantumProfiler<N> {
 
         // Update session status
         {
-            let mut session_manager = self.session_manager.write().unwrap();
+            let mut session_manager = self.session_manager.write().map_err(|e| {
+                QuantRS2Error::InvalidOperation(format!(
+                    "Failed to acquire session manager lock: {e}"
+                ))
+            })?;
             if let Some(session) = session_manager.active_sessions.get_mut(session_id) {
                 session.status = SessionStatus::Completed;
                 session.end_time = Some(SystemTime::now());
@@ -506,10 +514,22 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Get real-time profiling metrics
     pub fn get_realtime_metrics(&self) -> QuantRS2Result<RealtimeMetrics> {
-        let metrics_collector = self.metrics_collector.read().unwrap();
-        let gate_profiler = self.gate_profiler.read().unwrap();
-        let memory_profiler = self.memory_profiler.read().unwrap();
-        let resource_profiler = self.resource_profiler.read().unwrap();
+        let metrics_collector = self.metrics_collector.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!(
+                "Failed to acquire metrics collector lock: {e}"
+            ))
+        })?;
+        let gate_profiler = self.gate_profiler.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!("Failed to acquire gate profiler lock: {e}"))
+        })?;
+        let memory_profiler = self.memory_profiler.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!("Failed to acquire memory profiler lock: {e}"))
+        })?;
+        let resource_profiler = self.resource_profiler.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!(
+                "Failed to acquire resource profiler lock: {e}"
+            ))
+        })?;
 
         Ok(RealtimeMetrics {
             current_metrics: metrics_collector.metrics.iter().take(10).cloned().collect(),
@@ -537,7 +557,11 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Analyze circuit performance
     pub fn analyze_performance(&mut self) -> QuantRS2Result<PerformanceAnalysisReport> {
-        let mut analyzer = self.performance_analyzer.write().unwrap();
+        let mut analyzer = self.performance_analyzer.write().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!(
+                "Failed to acquire performance analyzer lock: {e}"
+            ))
+        })?;
 
         // Collect current performance data
         let current_data = self.collect_performance_data()?;
@@ -562,7 +586,9 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Run benchmarks
     pub fn run_benchmarks(&mut self, suite_name: &str) -> QuantRS2Result<BenchmarkResult> {
-        let mut benchmark_engine = self.benchmark_engine.write().unwrap();
+        let mut benchmark_engine = self.benchmark_engine.write().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!("Failed to acquire benchmark engine lock: {e}"))
+        })?;
 
         if let Some(suite) = benchmark_engine.benchmark_suites.get(suite_name).cloned() {
             let result = self.execute_benchmark_suite(&suite)?;
@@ -579,10 +605,18 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Detect performance regressions
     pub fn detect_regressions(&mut self) -> QuantRS2Result<Vec<PerformanceRegression>> {
-        let mut detector = self.regression_detector.write().unwrap();
+        let mut detector = self.regression_detector.write().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!(
+                "Failed to acquire regression detector lock: {e}"
+            ))
+        })?;
 
         // Get recent performance data
-        let analyzer = self.performance_analyzer.read().unwrap();
+        let analyzer = self.performance_analyzer.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!(
+                "Failed to acquire performance analyzer lock: {e}"
+            ))
+        })?;
         let recent_data = analyzer
             .historical_data
             .snapshots
@@ -601,7 +635,9 @@ impl<const N: usize> QuantumProfiler<N> {
 
     /// Export profiling data
     pub fn export_data(&self, session_id: &str, format: ExportFormat) -> QuantRS2Result<String> {
-        let session_manager = self.session_manager.read().unwrap();
+        let session_manager = self.session_manager.read().map_err(|e| {
+            QuantRS2Error::InvalidOperation(format!("Failed to acquire session manager lock: {e}"))
+        })?;
 
         if let Some(session) = session_manager.active_sessions.get(session_id) {
             match format {
@@ -621,33 +657,33 @@ impl<const N: usize> QuantumProfiler<N> {
 
     // Private implementation methods...
 
-    fn initialize_scirs2_analysis(&mut self) -> QuantRS2Result<()> {
+    fn initialize_scirs2_analysis(&self) -> QuantRS2Result<()> {
         // Initialize SciRS2 circuit analysis
         let _graph = self.analyzer.circuit_to_scirs2_graph(&self.circuit)?;
         Ok(())
     }
 
-    const fn start_metrics_collection(&mut self) -> QuantRS2Result<()> {
+    const fn start_metrics_collection(&self) -> QuantRS2Result<()> {
         // Start metrics collection thread
         Ok(())
     }
 
-    const fn initialize_gate_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_gate_profiling(&self) -> QuantRS2Result<()> {
         // Initialize gate-level profiling
         Ok(())
     }
 
-    const fn initialize_memory_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_memory_profiling(&self) -> QuantRS2Result<()> {
         // Initialize memory profiling
         Ok(())
     }
 
-    const fn initialize_resource_profiling(&mut self) -> QuantRS2Result<()> {
+    const fn initialize_resource_profiling(&self) -> QuantRS2Result<()> {
         // Initialize resource profiling
         Ok(())
     }
 
-    const fn finalize_data_collection(&mut self) -> QuantRS2Result<()> {
+    const fn finalize_data_collection(&self) -> QuantRS2Result<()> {
         // Finalize and aggregate collected data
         Ok(())
     }

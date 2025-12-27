@@ -49,7 +49,7 @@ pub struct BosonOperator {
 
 impl BosonOperator {
     /// Create a new bosonic operator
-    pub fn new(
+    pub const fn new(
         op_type: BosonOperatorType,
         mode: usize,
         coefficient: Complex64,
@@ -64,7 +64,7 @@ impl BosonOperator {
     }
 
     /// Create a creation operator
-    pub fn creation(mode: usize, truncation: usize) -> Self {
+    pub const fn creation(mode: usize, truncation: usize) -> Self {
         Self::new(
             BosonOperatorType::Creation,
             mode,
@@ -74,7 +74,7 @@ impl BosonOperator {
     }
 
     /// Create an annihilation operator
-    pub fn annihilation(mode: usize, truncation: usize) -> Self {
+    pub const fn annihilation(mode: usize, truncation: usize) -> Self {
         Self::new(
             BosonOperatorType::Annihilation,
             mode,
@@ -84,7 +84,7 @@ impl BosonOperator {
     }
 
     /// Create a number operator
-    pub fn number(mode: usize, truncation: usize) -> Self {
+    pub const fn number(mode: usize, truncation: usize) -> Self {
         Self::new(
             BosonOperatorType::Number,
             mode,
@@ -94,7 +94,7 @@ impl BosonOperator {
     }
 
     /// Create a position operator
-    pub fn position(mode: usize, truncation: usize) -> Self {
+    pub const fn position(mode: usize, truncation: usize) -> Self {
         Self::new(
             BosonOperatorType::Position,
             mode,
@@ -104,7 +104,7 @@ impl BosonOperator {
     }
 
     /// Create a momentum operator
-    pub fn momentum(mode: usize, truncation: usize) -> Self {
+    pub const fn momentum(mode: usize, truncation: usize) -> Self {
         Self::new(
             BosonOperatorType::Momentum,
             mode,
@@ -114,12 +114,12 @@ impl BosonOperator {
     }
 
     /// Create a displacement operator D(α)
-    pub fn displacement(mode: usize, alpha: Complex64, truncation: usize) -> Self {
+    pub const fn displacement(mode: usize, alpha: Complex64, truncation: usize) -> Self {
         Self::new(BosonOperatorType::Displacement, mode, alpha, truncation)
     }
 
     /// Create a squeeze operator S(z)
-    pub fn squeeze(mode: usize, z: Complex64, truncation: usize) -> Self {
+    pub const fn squeeze(mode: usize, z: Complex64, truncation: usize) -> Self {
         Self::new(BosonOperatorType::Squeeze, mode, z, truncation)
     }
 
@@ -236,6 +236,7 @@ impl BosonOperator {
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let conj_coeff = self.coefficient.conj();
         match self.op_type {
@@ -302,7 +303,7 @@ pub struct BosonTerm {
 
 impl BosonTerm {
     /// Create a new bosonic term
-    pub fn new(operators: Vec<BosonOperator>, coefficient: Complex64) -> Self {
+    pub const fn new(operators: Vec<BosonOperator>, coefficient: Complex64) -> Self {
         Self {
             operators,
             coefficient,
@@ -310,7 +311,7 @@ impl BosonTerm {
     }
 
     /// Create an identity term
-    pub fn identity(_truncation: usize) -> Self {
+    pub const fn identity(_truncation: usize) -> Self {
         Self {
             operators: vec![],
             coefficient: Complex64::new(1.0, 0.0),
@@ -324,8 +325,7 @@ impl BosonTerm {
             let total_dim = self
                 .operators
                 .first()
-                .map(|op| op.truncation.pow(n_modes as u32))
-                .unwrap_or(1);
+                .map_or(1, |op| op.truncation.pow(n_modes as u32));
             let mut identity = Array2::zeros((total_dim, total_dim));
             for i in 0..total_dim {
                 identity[[i, i]] = self.coefficient;
@@ -406,21 +406,18 @@ impl BosonTerm {
         let op2 = &self.operators[idx + 1];
 
         // Check commutation relation
-        if op1.mode == op2.mode {
-            match (op1.op_type, op2.op_type) {
-                (BosonOperatorType::Annihilation, BosonOperatorType::Creation) => {
-                    // [a, a†] = 1
-                    // a a† = a† a + 1
-                    // This would require splitting into two terms
-                    return Err(QuantRS2Error::UnsupportedOperation(
-                        "Commutation that produces multiple terms not yet supported".into(),
-                    ));
-                }
-                _ => {
-                    // Other operators commute or have more complex relations
-                }
-            }
+        if op1.mode == op2.mode
+            && (op1.op_type, op2.op_type)
+                == (BosonOperatorType::Annihilation, BosonOperatorType::Creation)
+        {
+            // [a, a†] = 1
+            // a a† = a† a + 1
+            // This would require splitting into two terms
+            return Err(QuantRS2Error::UnsupportedOperation(
+                "Commutation that produces multiple terms not yet supported".into(),
+            ));
         }
+        // Other operators commute or have more complex relations
 
         // Different modes commute
         self.operators.swap(idx, idx + 1);
@@ -428,6 +425,7 @@ impl BosonTerm {
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let mut conj_ops = self.operators.clone();
         conj_ops.reverse();
@@ -453,7 +451,7 @@ pub struct BosonHamiltonian {
 
 impl BosonHamiltonian {
     /// Create a new bosonic Hamiltonian
-    pub fn new(n_modes: usize, truncation: usize) -> Self {
+    pub const fn new(n_modes: usize, truncation: usize) -> Self {
         Self {
             terms: Vec::new(),
             n_modes,
@@ -549,6 +547,7 @@ impl BosonHamiltonian {
     }
 
     /// Get the Hermitian conjugate
+    #[must_use]
     pub fn dagger(&self) -> Self {
         let conj_terms = self.terms.iter().map(|t| t.dagger()).collect();
         Self {
@@ -629,8 +628,8 @@ impl GaussianState {
         let sin_2phi = (2.0 * phi).sin();
 
         let idx = 2 * mode;
-        state.covariance[[idx, idx]] = 0.5 * (c + s * cos_2phi);
-        state.covariance[[idx + 1, idx + 1]] = 0.5 * (c - s * cos_2phi);
+        state.covariance[[idx, idx]] = 0.5 * s.mul_add(cos_2phi, c);
+        state.covariance[[idx + 1, idx + 1]] = 0.5 * s.mul_add(-cos_2phi, c);
         state.covariance[[idx, idx + 1]] = 0.5 * s * sin_2phi;
         state.covariance[[idx + 1, idx]] = 0.5 * s * sin_2phi;
 
@@ -647,10 +646,10 @@ impl GaussianState {
 
         // Transform displacement: d' = S d
         let d = Array2::from_shape_vec((2 * self.n_modes, 1), self.displacement.clone()).map_err(
-            |e| QuantRS2Error::LinalgError(format!("Failed to create displacement vector: {}", e)),
+            |e| QuantRS2Error::LinalgError(format!("Failed to create displacement vector: {e}")),
         )?;
         let d_prime = s.dot(&d);
-        self.displacement = d_prime.iter().cloned().collect();
+        self.displacement = d_prime.iter().copied().collect();
 
         // Transform covariance: V' = S V S^T
         self.covariance = s.dot(&self.covariance).dot(&s.t());
@@ -659,7 +658,7 @@ impl GaussianState {
     }
 
     /// Calculate the purity Tr(ρ²)
-    pub fn purity(&self) -> f64 {
+    pub const fn purity(&self) -> f64 {
         // For Gaussian states: purity = 1/√det(2V)
         // TODO: Implement determinant calculation
         // For now, return placeholder for pure states
@@ -697,8 +696,7 @@ pub fn boson_to_qubit_encoding(
             ))
         }
         _ => Err(QuantRS2Error::InvalidInput(format!(
-            "Unknown encoding: {}",
-            encoding
+            "Unknown encoding: {encoding}"
         ))),
     }
 }
@@ -878,7 +876,7 @@ pub struct SparseBosonOperator {
 
 impl SparseBosonOperator {
     /// Create from triplets
-    pub fn from_triplets(
+    pub const fn from_triplets(
         rows: Vec<usize>,
         cols: Vec<usize>,
         data: Vec<Complex64>,
@@ -925,8 +923,12 @@ mod tests {
         let a = BosonOperator::annihilation(0, truncation);
         let a_dag = BosonOperator::creation(0, truncation);
 
-        let a_mat = a.to_matrix().unwrap();
-        let a_dag_mat = a_dag.to_matrix().unwrap();
+        let a_mat = a
+            .to_matrix()
+            .expect("Annihilation matrix creation should succeed");
+        let a_dag_mat = a_dag
+            .to_matrix()
+            .expect("Creation matrix creation should succeed");
 
         // Check that a† is the conjugate transpose of a
         for i in 0..truncation {
@@ -941,7 +943,9 @@ mod tests {
     fn test_number_operator() {
         let truncation = 5;
         let n_op = BosonOperator::number(0, truncation);
-        let n_mat = n_op.to_matrix().unwrap();
+        let n_mat = n_op
+            .to_matrix()
+            .expect("Number operator matrix creation should succeed");
 
         // Check diagonal elements
         for i in 0..truncation {
@@ -965,8 +969,12 @@ mod tests {
         let x = BosonOperator::position(0, truncation);
         let p = BosonOperator::momentum(0, truncation);
 
-        let x_mat = x.to_matrix().unwrap();
-        let p_mat = p.to_matrix().unwrap();
+        let x_mat = x
+            .to_matrix()
+            .expect("Position operator matrix creation should succeed");
+        let p_mat = p
+            .to_matrix()
+            .expect("Momentum operator matrix creation should succeed");
 
         // Calculate [x, p] = xp - px
         let xp = x_mat.dot(&p_mat);

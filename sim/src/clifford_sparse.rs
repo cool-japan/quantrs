@@ -34,6 +34,7 @@ pub struct SparsePauli {
 
 impl SparsePauli {
     /// Create an identity Pauli operator
+    #[must_use]
     pub fn identity(num_qubits: usize) -> Self {
         let x_sparse = CsrMatrix::zeros(1, num_qubits);
         let z_sparse = CsrMatrix::zeros(1, num_qubits);
@@ -45,7 +46,11 @@ impl SparsePauli {
     }
 
     /// Create a single-qubit Pauli operator
-    pub fn single_qubit(num_qubits: usize, qubit: usize, pauli: char) -> Self {
+    pub fn single_qubit(
+        num_qubits: usize,
+        qubit: usize,
+        pauli: char,
+    ) -> Result<Self, QuantRS2Error> {
         let mut x_values = vec![];
         let mut x_indices = vec![];
         let mut z_values = vec![];
@@ -79,7 +84,9 @@ impl SparsePauli {
                 x_indices,
                 x_values,
             )
-            .unwrap();
+            .map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Failed to create sparse X matrix: {e}"))
+            })?;
             CsrMatrix::from(&coo)
         };
 
@@ -93,15 +100,17 @@ impl SparsePauli {
                 z_indices,
                 z_values,
             )
-            .unwrap();
+            .map_err(|e| {
+                QuantRS2Error::InvalidInput(format!("Failed to create sparse Z matrix: {e}"))
+            })?;
             CsrMatrix::from(&coo)
         };
 
-        Self {
+        Ok(Self {
             x_sparse,
             z_sparse,
             phase: 0,
-        }
+        })
     }
 
     /// Compute the commutation phase when multiplying two Paulis
@@ -113,19 +122,19 @@ impl SparsePauli {
             let self_x = self
                 .x_sparse
                 .get_entry(0, col)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let self_z = self
                 .z_sparse
                 .get_entry(0, col)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let other_x = other
                 .x_sparse
                 .get_entry(0, col)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let other_z = other
                 .z_sparse
                 .get_entry(0, col)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
 
             // Count anticommutations
             if self_x > 0 && other_z > 0 && self_z == 0 {
@@ -151,15 +160,22 @@ pub struct SparseStabilizerTableau {
 
 impl SparseStabilizerTableau {
     /// Create a new sparse tableau initialized to |0...0⟩
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let mut stabilizers = Vec::with_capacity(num_qubits);
         let mut destabilizers = Vec::with_capacity(num_qubits);
 
         for i in 0..num_qubits {
             // Stabilizer i is Z_i
-            stabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'Z'));
+            stabilizers.push(
+                SparsePauli::single_qubit(num_qubits, i, 'Z')
+                    .expect("Failed to create stabilizer Z operator"),
+            );
             // Destabilizer i is X_i
-            destabilizers.push(SparsePauli::single_qubit(num_qubits, i, 'X'));
+            destabilizers.push(
+                SparsePauli::single_qubit(num_qubits, i, 'X')
+                    .expect("Failed to create destabilizer X operator"),
+            );
         }
 
         Self {
@@ -182,11 +198,11 @@ impl SparseStabilizerTableau {
             let x_val = stab
                 .x_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let z_val = stab
                 .z_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
 
             // Update phase if both X and Z are present (Y gate)
             if x_val > 0 && z_val > 0 {
@@ -234,7 +250,11 @@ impl SparseStabilizerTableau {
                     new_x_indices,
                     new_x_values,
                 )
-                .unwrap();
+                .map_err(|e| {
+                    QuantRS2Error::GateApplicationFailed(format!(
+                        "Failed to rebuild sparse X matrix: {e}"
+                    ))
+                })?;
                 CsrMatrix::from(&coo)
             };
 
@@ -248,7 +268,11 @@ impl SparseStabilizerTableau {
                     new_z_indices,
                     new_z_values,
                 )
-                .unwrap();
+                .map_err(|e| {
+                    QuantRS2Error::GateApplicationFailed(format!(
+                        "Failed to rebuild sparse Z matrix: {e}"
+                    ))
+                })?;
                 CsrMatrix::from(&coo)
             };
 
@@ -257,11 +281,11 @@ impl SparseStabilizerTableau {
             let dx_val = destab
                 .x_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let dz_val = destab
                 .z_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
 
             if dx_val > 0 && dz_val > 0 {
                 destab.phase = (destab.phase + 2) % 4;
@@ -305,7 +329,11 @@ impl SparseStabilizerTableau {
                     new_dx_indices,
                     new_dx_values,
                 )
-                .unwrap();
+                .map_err(|e| {
+                    QuantRS2Error::GateApplicationFailed(format!(
+                        "Failed to rebuild destabilizer X matrix: {e}"
+                    ))
+                })?;
                 CsrMatrix::from(&coo)
             };
 
@@ -319,7 +347,11 @@ impl SparseStabilizerTableau {
                     new_dz_indices,
                     new_dz_values,
                 )
-                .unwrap();
+                .map_err(|e| {
+                    QuantRS2Error::GateApplicationFailed(format!(
+                        "Failed to rebuild destabilizer Z matrix: {e}"
+                    ))
+                })?;
                 CsrMatrix::from(&coo)
             };
         }
@@ -340,19 +372,19 @@ impl SparseStabilizerTableau {
             let control_x = stab
                 .x_sparse
                 .get_entry(0, control)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let control_z = stab
                 .z_sparse
                 .get_entry(0, control)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let target_x = stab
                 .x_sparse
                 .get_entry(0, target)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let target_z = stab
                 .z_sparse
                 .get_entry(0, target)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
 
             // If X on control, toggle X on target
             if control_x > 0 {
@@ -383,7 +415,11 @@ impl SparseStabilizerTableau {
                         new_x_indices,
                         new_x_values,
                     )
-                    .unwrap();
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to update X matrix in CNOT: {e}"
+                        ))
+                    })?;
                     CsrMatrix::from(&coo)
                 };
             }
@@ -416,7 +452,11 @@ impl SparseStabilizerTableau {
                         new_z_indices,
                         new_z_values,
                     )
-                    .unwrap();
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to update Z matrix in CNOT target: {e}"
+                        ))
+                    })?;
                     CsrMatrix::from(&coo)
                 };
             }
@@ -437,11 +477,11 @@ impl SparseStabilizerTableau {
             let x_val = stab
                 .x_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
             let z_val = stab
                 .z_sparse
                 .get_entry(0, qubit)
-                .map_or(0, |v| v.into_value());
+                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
 
             // If X but not Z, convert to Y (add Z and update phase)
             if x_val > 0 && z_val == 0 {
@@ -469,7 +509,11 @@ impl SparseStabilizerTableau {
                         new_z_indices,
                         new_z_values,
                     )
-                    .unwrap();
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to update Z matrix in S gate: {e}"
+                        ))
+                    })?;
                     CsrMatrix::from(&coo)
                 };
 
@@ -482,6 +526,7 @@ impl SparseStabilizerTableau {
     }
 
     /// Get stabilizer strings for verification
+    #[must_use]
     pub fn get_stabilizers(&self) -> Vec<String> {
         self.stabilizers
             .iter()
@@ -496,8 +541,16 @@ impl SparseStabilizerTableau {
                 });
 
                 for j in 0..self.num_qubits {
-                    let has_x = stab.x_sparse.get_entry(0, j).map_or(0, |v| v.into_value()) > 0;
-                    let has_z = stab.z_sparse.get_entry(0, j).map_or(0, |v| v.into_value()) > 0;
+                    let has_x = stab
+                        .x_sparse
+                        .get_entry(0, j)
+                        .map_or(0, nalgebra_sparse::SparseEntry::into_value)
+                        > 0;
+                    let has_z = stab
+                        .z_sparse
+                        .get_entry(0, j)
+                        .map_or(0, nalgebra_sparse::SparseEntry::into_value)
+                        > 0;
 
                     s.push(match (has_x, has_z) {
                         (false, false) => 'I',
@@ -513,6 +566,7 @@ impl SparseStabilizerTableau {
     }
 
     /// Check sparsity of the tableau
+    #[must_use]
     pub fn get_sparsity_info(&self) -> (f64, f64) {
         let total_entries = self.num_qubits * self.num_qubits;
 
@@ -543,6 +597,7 @@ pub struct SparseCliffordSimulator {
 
 impl SparseCliffordSimulator {
     /// Create a new sparse Clifford simulator
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             tableau: SparseStabilizerTableau::new(num_qubits),
@@ -564,16 +619,19 @@ impl SparseCliffordSimulator {
     }
 
     /// Get current stabilizers
+    #[must_use]
     pub fn get_stabilizers(&self) -> Vec<String> {
         self.tableau.get_stabilizers()
     }
 
     /// Get sparsity information
+    #[must_use]
     pub fn get_sparsity_info(&self) -> (f64, f64) {
         self.tableau.get_sparsity_info()
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.tableau.num_qubits
     }
@@ -607,7 +665,8 @@ mod tests {
     #[test]
     fn test_sparse_hadamard() {
         let mut sim = SparseCliffordSimulator::new(5);
-        sim.apply_gate(CliffordGate::H(0)).unwrap();
+        sim.apply_gate(CliffordGate::H(0))
+            .expect("Failed to apply Hadamard gate");
 
         let stabs = sim.get_stabilizers();
         assert_eq!(stabs[0], "+XIIII");
@@ -619,7 +678,8 @@ mod tests {
 
         // Create a chain of CNOTs
         for i in 0..9 {
-            sim.apply_gate(CliffordGate::CNOT(i, i + 1)).unwrap();
+            sim.apply_gate(CliffordGate::CNOT(i, i + 1))
+                .expect("Failed to apply CNOT gate");
         }
 
         let (stab_sparsity, _) = sim.get_sparsity_info();

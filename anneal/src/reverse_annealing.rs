@@ -18,7 +18,7 @@ pub struct ReverseAnnealingSchedule {
     pub s_start: f64,
     /// Target s-parameter for reversal (how far back to reverse)
     pub s_target: f64,
-    /// Pause duration at s_target (as fraction of total time)
+    /// Pause duration at `s_target` (as fraction of total time)
     pub pause_duration: f64,
     /// Quench rate for forward annealing
     pub quench_rate: f64,
@@ -43,14 +43,12 @@ impl ReverseAnnealingSchedule {
     pub fn new(s_target: f64, pause_duration: f64) -> AnnealingResult<Self> {
         if !(0.0..=1.0).contains(&s_target) {
             return Err(AnnealingError::InvalidSchedule(format!(
-                "s_target must be in [0,1], got {}",
-                s_target
+                "s_target must be in [0,1], got {s_target}"
             )));
         }
         if !(0.0..=1.0).contains(&pause_duration) {
             return Err(AnnealingError::InvalidSchedule(format!(
-                "pause_duration must be in [0,1], got {}",
-                pause_duration
+                "pause_duration must be in [0,1], got {pause_duration}"
             )));
         }
 
@@ -64,6 +62,7 @@ impl ReverseAnnealingSchedule {
     }
 
     /// Calculate s(t) for a given normalized time
+    #[must_use]
     pub fn s_of_t(&self, t_normalized: f64) -> f64 {
         // t_normalized is in [0, 1]
         let t1 = (1.0 - self.pause_duration - self.hold_duration) / 2.0;
@@ -72,14 +71,14 @@ impl ReverseAnnealingSchedule {
 
         if t_normalized <= t1 {
             // Reverse annealing phase
-            self.s_start + (self.s_target - self.s_start) * (t_normalized / t1)
+            (self.s_target - self.s_start).mul_add(t_normalized / t1, self.s_start)
         } else if t_normalized <= t2 {
             // Pause phase
             self.s_target
         } else if t_normalized <= t3 {
             // Forward annealing phase
             let forward_progress = (t_normalized - t2) / (t3 - t2);
-            self.s_target + (1.0 - self.s_target) * forward_progress * self.quench_rate
+            ((1.0 - self.s_target) * forward_progress).mul_add(self.quench_rate, self.s_target)
         } else {
             // Hold phase
             1.0
@@ -87,6 +86,7 @@ impl ReverseAnnealingSchedule {
     }
 
     /// Calculate transverse field strength A(s)
+    #[must_use]
     pub fn transverse_field(&self, s: f64) -> f64 {
         // Standard D-Wave schedule: A(s) = A(0) * (1 - s)
         let a_max = 2.0; // Maximum transverse field strength
@@ -94,6 +94,7 @@ impl ReverseAnnealingSchedule {
     }
 
     /// Calculate problem Hamiltonian strength B(s)
+    #[must_use]
     pub fn problem_strength(&self, s: f64) -> f64 {
         // Standard D-Wave schedule: B(s) = B(1) * s
         let b_max = 1.0; // Maximum problem strength
@@ -122,6 +123,7 @@ pub struct ReverseAnnealingParams {
 
 impl ReverseAnnealingParams {
     /// Create new reverse annealing parameters
+    #[must_use]
     pub fn new(initial_state: Vec<i8>) -> Self {
         Self {
             schedule: ReverseAnnealingSchedule::default(),
@@ -135,13 +137,15 @@ impl ReverseAnnealingParams {
     }
 
     /// Set targeted reverse annealing with local search
-    pub fn with_local_search(mut self, radius: usize) -> Self {
+    #[must_use]
+    pub const fn with_local_search(mut self, radius: usize) -> Self {
         self.local_search_radius = Some(radius);
         self
     }
 
     /// Set partial reinitialization
-    pub fn with_reinitialization(mut self, fraction: f64) -> Self {
+    #[must_use]
+    pub const fn with_reinitialization(mut self, fraction: f64) -> Self {
         self.reinitialize_fraction = fraction.clamp(0.0, 1.0);
         self
     }
@@ -266,6 +270,7 @@ impl ReverseAnnealingSimulator {
     }
 
     /// Run the reverse annealing process
+    #[must_use]
     fn run_reverse_annealing(
         &mut self,
         model: &IsingModel,
@@ -300,7 +305,7 @@ impl ReverseAnnealingSimulator {
                 for j in 0..model.num_qubits {
                     if i != j {
                         if let Ok(coupling) = model.get_coupling(i, j) {
-                            h_local += coupling * state[j] as f64 * problem_strength;
+                            h_local += coupling * f64::from(state[j]) * problem_strength;
                         }
                     }
                 }
@@ -309,10 +314,10 @@ impl ReverseAnnealingSimulator {
                 let quantum_term = transverse_field;
 
                 // Calculate energy difference for flip
-                let delta_e = 2.0 * state[i] as f64 * h_local;
+                let delta_e = 2.0 * f64::from(state[i]) * h_local;
 
                 // Metropolis acceptance with quantum fluctuations
-                let effective_temp = 0.1 + quantum_term * 0.5; // Simplified
+                let effective_temp = quantum_term.mul_add(0.5, 0.1); // Simplified
                 let accept_prob = (-delta_e / effective_temp).exp().min(1.0);
 
                 if self.rng.gen_bool(accept_prob) {
@@ -335,7 +340,8 @@ pub struct ReverseAnnealingScheduleBuilder {
 
 impl ReverseAnnealingScheduleBuilder {
     /// Create a new schedule builder
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             s_target: 0.45,
             pause_duration: 0.1,
@@ -345,25 +351,29 @@ impl ReverseAnnealingScheduleBuilder {
     }
 
     /// Set the target s-parameter for reversal
-    pub fn s_target(mut self, s: f64) -> Self {
+    #[must_use]
+    pub const fn s_target(mut self, s: f64) -> Self {
         self.s_target = s;
         self
     }
 
     /// Set the pause duration
-    pub fn pause_duration(mut self, duration: f64) -> Self {
+    #[must_use]
+    pub const fn pause_duration(mut self, duration: f64) -> Self {
         self.pause_duration = duration;
         self
     }
 
     /// Set the quench rate
-    pub fn quench_rate(mut self, rate: f64) -> Self {
+    #[must_use]
+    pub const fn quench_rate(mut self, rate: f64) -> Self {
         self.quench_rate = rate;
         self
     }
 
     /// Set the hold duration
-    pub fn hold_duration(mut self, duration: f64) -> Self {
+    #[must_use]
+    pub const fn hold_duration(mut self, duration: f64) -> Self {
         self.hold_duration = duration;
         self
     }
@@ -392,7 +402,8 @@ mod tests {
 
     #[test]
     fn test_reverse_schedule_creation() {
-        let schedule = ReverseAnnealingSchedule::new(0.45, 0.1).unwrap();
+        let schedule =
+            ReverseAnnealingSchedule::new(0.45, 0.1).expect("Schedule creation should succeed");
         assert_eq!(schedule.s_start, 1.0);
         assert_eq!(schedule.s_target, 0.45);
     }

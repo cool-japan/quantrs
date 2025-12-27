@@ -133,6 +133,7 @@ pub struct AnyonType {
 
 impl AnyonType {
     /// Create vacuum anyon (identity)
+    #[must_use]
     pub fn vacuum() -> Self {
         let mut fusion_rules = HashMap::new();
         fusion_rules.insert("vacuum".to_string(), vec!["vacuum".to_string()]);
@@ -148,6 +149,7 @@ impl AnyonType {
     }
 
     /// Create sigma anyon (Ising model)
+    #[must_use]
     pub fn sigma() -> Self {
         let mut fusion_rules = HashMap::new();
         fusion_rules.insert(
@@ -168,6 +170,7 @@ impl AnyonType {
     }
 
     /// Create tau anyon (Fibonacci model)
+    #[must_use]
     pub fn tau() -> Self {
         let golden_ratio = f64::midpoint(1.0, 5.0_f64.sqrt());
         let mut fusion_rules = HashMap::new();
@@ -1234,7 +1237,7 @@ impl TopologicalQuantumSimulator {
         invariants.berry_phase = self.calculate_berry_phase()?;
 
         // Calculate quantum Hall conductivity
-        invariants.hall_conductivity = invariants.chern_number as f64 * 2.0 * PI / 137.0; // e²/h units
+        invariants.hall_conductivity = f64::from(invariants.chern_number) * 2.0 * PI / 137.0; // e²/h units
 
         // Calculate topological entanglement entropy
         invariants.topological_entanglement_entropy =
@@ -1368,16 +1371,19 @@ impl TopologicalQuantumSimulator {
     }
 
     /// Get current topological state
+    #[must_use]
     pub const fn get_state(&self) -> &TopologicalState {
         &self.state
     }
 
     /// Get braiding history
+    #[must_use]
     pub fn get_braiding_history(&self) -> &[BraidingOperation] {
         &self.braiding_history
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &TopologicalSimulationStats {
         &self.stats
     }
@@ -1405,6 +1411,7 @@ impl Default for AbelianAnyons {
 }
 
 impl AbelianAnyons {
+    #[must_use]
     pub fn new() -> Self {
         let anyon_types = vec![AnyonType::vacuum()];
         Self { anyon_types }
@@ -1427,7 +1434,8 @@ impl AnyonModelImplementation for AbelianAnyons {
 
     fn braiding_matrix(&self, a: &AnyonType, b: &AnyonType) -> Array2<Complex64> {
         let phase = a.r_matrix * b.r_matrix.conj();
-        Array2::from_shape_vec((1, 1), vec![phase]).unwrap()
+        Array2::from_shape_vec((1, 1), vec![phase])
+            .expect("AbelianAnyons::braiding_matrix: 1x1 matrix shape is always valid")
     }
 
     fn f_matrix(
@@ -1462,6 +1470,7 @@ impl Default for NonAbelianAnyons {
 }
 
 impl NonAbelianAnyons {
+    #[must_use]
     pub fn new() -> Self {
         let anyon_types = vec![AnyonType::vacuum(), AnyonType::sigma()];
         Self { anyon_types }
@@ -1534,6 +1543,7 @@ impl Default for FibonacciAnyons {
 }
 
 impl FibonacciAnyons {
+    #[must_use]
     pub fn new() -> Self {
         let anyon_types = vec![AnyonType::vacuum(), AnyonType::tau()];
         Self { anyon_types }
@@ -1570,7 +1580,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
                     phase * Complex64::new(-1.0 / phi, 0.0),
                 ],
             )
-            .unwrap()
+            .expect("FibonacciAnyons::braiding_matrix: 2x2 matrix shape is always valid")
         } else {
             Array2::eye(1)
         }
@@ -1596,7 +1606,7 @@ impl AnyonModelImplementation for FibonacciAnyons {
                 Complex64::new(-inv_phi, 0.0),
             ],
         )
-        .unwrap()
+        .expect("FibonacciAnyons::f_matrix: 2x2 matrix shape is always valid")
     }
 
     fn is_abelian(&self) -> bool {
@@ -1620,6 +1630,7 @@ impl Default for IsingAnyons {
 }
 
 impl IsingAnyons {
+    #[must_use]
     pub fn new() -> Self {
         let mut psi = AnyonType {
             label: "psi".to_string(),
@@ -1669,9 +1680,10 @@ impl AnyonModelImplementation for IsingAnyons {
                     Complex64::new(0.0, -1.0) * (PI / 8.0).exp(),
                 ],
             )
-            .unwrap()
+            .expect("IsingAnyons::braiding_matrix: 2x2 matrix shape is always valid")
         } else {
-            Array2::from_shape_vec((1, 1), vec![phase]).unwrap()
+            Array2::from_shape_vec((1, 1), vec![phase])
+                .expect("IsingAnyons::braiding_matrix: 1x1 matrix shape is always valid")
         }
     }
 
@@ -1693,7 +1705,7 @@ impl AnyonModelImplementation for IsingAnyons {
                 Complex64::new(-sqrt_2_inv, 0.0),
             ],
         )
-        .unwrap()
+        .expect("IsingAnyons::f_matrix: 2x2 matrix shape is always valid")
     }
 
     fn is_abelian(&self) -> bool {
@@ -1717,6 +1729,7 @@ impl Default for ParafermionAnyons {
 }
 
 impl ParafermionAnyons {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             anyon_types: vec![AnyonType::vacuum()],
@@ -1757,6 +1770,7 @@ pub struct ChernSimonsAnyons {
 }
 
 impl ChernSimonsAnyons {
+    #[must_use]
     pub fn new(level: u32) -> Self {
         Self {
             level,
@@ -1797,6 +1811,7 @@ pub struct TopologicalUtils;
 
 impl TopologicalUtils {
     /// Create predefined topological configuration
+    #[must_use]
     pub fn create_predefined_config(config_type: &str, size: usize) -> TopologicalConfig {
         match config_type {
             "toric_code" => TopologicalConfig {
@@ -1926,7 +1941,8 @@ mod tests {
     #[test]
     fn test_square_lattice_creation() {
         let dimensions = vec![3, 3];
-        let lattice = TopologicalQuantumSimulator::create_square_lattice(&dimensions).unwrap();
+        let lattice = TopologicalQuantumSimulator::create_square_lattice(&dimensions)
+            .expect("failed to create square lattice");
 
         assert_eq!(lattice.sites.len(), 9); // 3x3 = 9 sites
         assert_eq!(lattice.coordination_number, 4);
@@ -1937,10 +1953,13 @@ mod tests {
     #[test]
     fn test_anyon_placement() {
         let config = TopologicalConfig::default();
-        let mut simulator = TopologicalQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TopologicalQuantumSimulator::new(config).expect("failed to create simulator");
 
         let vacuum = AnyonType::vacuum();
-        let anyon_id = simulator.place_anyon(vacuum, vec![2, 3]).unwrap();
+        let anyon_id = simulator
+            .place_anyon(vacuum, vec![2, 3])
+            .expect("failed to place anyon");
 
         assert_eq!(anyon_id, 0);
         assert_eq!(simulator.state.anyon_config.anyons.len(), 1);
@@ -1951,11 +1970,16 @@ mod tests {
     fn test_braiding_operation() {
         let mut config = TopologicalConfig::default();
         config.enable_braiding = true;
-        let mut simulator = TopologicalQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TopologicalQuantumSimulator::new(config).expect("failed to create simulator");
 
         let sigma = AnyonType::sigma();
-        let anyon_a = simulator.place_anyon(sigma.clone(), vec![1, 1]).unwrap();
-        let anyon_b = simulator.place_anyon(sigma, vec![2, 2]).unwrap();
+        let anyon_a = simulator
+            .place_anyon(sigma.clone(), vec![1, 1])
+            .expect("failed to place anyon A");
+        let anyon_b = simulator
+            .place_anyon(sigma, vec![2, 2])
+            .expect("failed to place anyon B");
 
         let braiding_phase = simulator.braid_anyons(anyon_a, anyon_b, BraidingType::Clockwise);
         assert!(braiding_phase.is_ok());
@@ -1966,11 +1990,16 @@ mod tests {
     #[test]
     fn test_anyon_fusion() {
         let config = TopologicalConfig::default();
-        let mut simulator = TopologicalQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TopologicalQuantumSimulator::new(config).expect("failed to create simulator");
 
         let sigma = AnyonType::sigma();
-        let anyon_a = simulator.place_anyon(sigma.clone(), vec![1, 1]).unwrap();
-        let anyon_b = simulator.place_anyon(sigma, vec![1, 2]).unwrap();
+        let anyon_a = simulator
+            .place_anyon(sigma.clone(), vec![1, 1])
+            .expect("failed to place anyon A");
+        let anyon_b = simulator
+            .place_anyon(sigma, vec![1, 2])
+            .expect("failed to place anyon B");
 
         let fusion_outcomes = simulator.fuse_anyons(anyon_a, anyon_b);
         assert!(fusion_outcomes.is_ok());
@@ -1999,8 +2028,8 @@ mod tests {
     #[test]
     fn test_surface_code_creation() {
         let dimensions = vec![4, 4];
-        let surface_code =
-            TopologicalQuantumSimulator::create_toric_surface_code(&dimensions).unwrap();
+        let surface_code = TopologicalQuantumSimulator::create_toric_surface_code(&dimensions)
+            .expect("failed to create surface code");
 
         assert_eq!(surface_code.distance, 4);
         assert!(!surface_code.data_qubits.is_empty());
@@ -2011,12 +2040,13 @@ mod tests {
     #[test]
     fn test_topological_invariants() {
         let config = TopologicalConfig::default();
-        let mut simulator = TopologicalQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TopologicalQuantumSimulator::new(config).expect("failed to create simulator");
 
         let invariants = simulator.calculate_topological_invariants();
         assert!(invariants.is_ok());
 
-        let inv = invariants.unwrap();
+        let inv = invariants.expect("failed to calculate invariants");
         assert!(inv.chern_number.abs() >= 0);
         assert!(inv.hall_conductivity.is_finite());
     }
@@ -2024,7 +2054,8 @@ mod tests {
     #[test]
     fn test_triangular_lattice() {
         let dimensions = vec![3, 3];
-        let lattice = TopologicalQuantumSimulator::create_triangular_lattice(&dimensions).unwrap();
+        let lattice = TopologicalQuantumSimulator::create_triangular_lattice(&dimensions)
+            .expect("failed to create triangular lattice");
 
         assert_eq!(lattice.lattice_type, LatticeType::TriangularLattice);
         assert_eq!(lattice.sites.len(), 9);
@@ -2034,7 +2065,8 @@ mod tests {
     #[test]
     fn test_honeycomb_lattice() {
         let dimensions = vec![2, 2];
-        let lattice = TopologicalQuantumSimulator::create_honeycomb_lattice(&dimensions).unwrap();
+        let lattice = TopologicalQuantumSimulator::create_honeycomb_lattice(&dimensions)
+            .expect("failed to create honeycomb lattice");
 
         assert_eq!(lattice.lattice_type, LatticeType::HoneycombLattice);
         assert_eq!(lattice.coordination_number, 3);
@@ -2045,7 +2077,8 @@ mod tests {
     fn test_error_detection_and_correction() {
         let mut config = TopologicalConfig::default();
         config.topological_protection = true;
-        let mut simulator = TopologicalQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TopologicalQuantumSimulator::new(config).expect("failed to create simulator");
 
         let syndrome = simulator.detect_and_correct_errors();
         assert!(syndrome.is_ok());

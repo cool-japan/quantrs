@@ -186,7 +186,7 @@ impl QuantumFederatedClient {
         // Softmax
         let max_exp = expectations
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let mut probs = Array1::zeros(2);
         let mut sum = 0.0;
@@ -233,7 +233,7 @@ impl QuantumFederatedClient {
     }
 
     /// Get model parameters
-    pub fn get_params(&self) -> &Array2<f64> {
+    pub const fn get_params(&self) -> &Array2<f64> {
         &self.params
     }
 
@@ -243,7 +243,7 @@ impl QuantumFederatedClient {
     }
 
     /// Get dataset size
-    pub fn dataset_size(&self) -> usize {
+    pub const fn dataset_size(&self) -> usize {
         self.dataset_size
     }
 
@@ -363,7 +363,7 @@ impl QuantumFederatedClient {
         }
 
         // Map from [-1, 1] to [0, 1]
-        Ok((expectation + 1.0) / 2.0)
+        Ok(f64::midpoint(expectation, 1.0))
     }
 }
 
@@ -542,10 +542,10 @@ impl QuantumFederatedServer {
         for i in 0..shape.0 {
             for j in 0..shape.1 {
                 let mut values: Vec<f64> = updates.iter().map(|u| u[[i, j]]).collect();
-                values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                 median_params[[i, j]] = if values.len() % 2 == 0 {
-                    (values[values.len() / 2 - 1] + values[values.len() / 2]) / 2.0
+                    f64::midpoint(values[values.len() / 2 - 1], values[values.len() / 2])
                 } else {
                     values[values.len() / 2]
                 };
@@ -569,7 +569,7 @@ impl QuantumFederatedServer {
         for i in 0..shape.0 {
             for j in 0..shape.1 {
                 let mut values: Vec<f64> = updates.iter().map(|u| u[[i, j]]).collect();
-                values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                 // Trim extremes
                 let trimmed: Vec<f64> = values[trim_count..values.len() - trim_count].to_vec();
@@ -602,7 +602,7 @@ impl QuantumFederatedServer {
             }
 
             // Sort by distance and sum closest n-f-2
-            distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+            distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
             scores[i] = distances
                 .iter()
                 .take(n_minus_f_minus_2)
@@ -614,11 +614,11 @@ impl QuantumFederatedServer {
         let best_client = scores
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(idx, _)| idx)
-            .unwrap();
+            .unwrap_or(0);
 
-        self.global_params = updates[best_client].clone();
+        self.global_params.clone_from(&updates[best_client]);
         Ok(())
     }
 
@@ -642,7 +642,7 @@ impl QuantumFederatedServer {
     }
 
     /// Get global model parameters
-    pub fn get_global_params(&self) -> &Array2<f64> {
+    pub const fn get_global_params(&self) -> &Array2<f64> {
         &self.global_params
     }
 
@@ -667,7 +667,9 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ]);
 
-        let probs = client.forward(&state).unwrap();
+        let probs = client
+            .forward(&state)
+            .expect("Failed to forward through client");
         assert_eq!(probs.len(), 2);
 
         let sum: f64 = probs.iter().sum();

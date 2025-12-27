@@ -6,7 +6,12 @@ use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-use super::*;
+use super::{
+    ActiveLearningConfig, BoundaryEdge, DecompositionKnowledgeBase, DecompositionMetadata,
+    DecompositionResult, DecompositionStrategy, DecompositionStrategyLearner, EvaluationMetric,
+    PerformanceEvaluator, PerformanceRecord, ProblemAnalysis, ProblemAnalyzer, QueryStrategy,
+    Subproblem, SubproblemGenerator, SubproblemMetadata,
+};
 use crate::ising::IsingModel;
 
 /// Active learning decomposer for optimization problems
@@ -134,12 +139,12 @@ impl ActiveLearningDecomposer {
                 }
             }
         }
-        features.push(num_couplings as f64);
+        features.push(f64::from(num_couplings));
 
         // Density
         let max_couplings = problem.num_qubits * (problem.num_qubits - 1) / 2;
         let density = if max_couplings > 0 {
-            num_couplings as f64 / max_couplings as f64
+            f64::from(num_couplings) / max_couplings as f64
         } else {
             0.0
         };
@@ -170,8 +175,8 @@ impl ActiveLearningDecomposer {
                     }
                 }
             }
-            let coupling_mean = coupling_sum / num_couplings as f64;
-            coupling_var = coupling_var / num_couplings as f64 - coupling_mean * coupling_mean;
+            let coupling_mean = coupling_sum / f64::from(num_couplings);
+            coupling_var = coupling_var / f64::from(num_couplings) - coupling_mean * coupling_mean;
             features.extend_from_slice(&[coupling_mean, coupling_var.sqrt()]);
         } else {
             features.extend_from_slice(&[0.0, 0.0]);
@@ -184,7 +189,7 @@ impl ActiveLearningDecomposer {
 
     /// Select decomposition strategy using active learning
     fn select_strategy(
-        &mut self,
+        &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
     ) -> Result<DecompositionStrategy, String> {
@@ -222,7 +227,7 @@ impl ActiveLearningDecomposer {
 
     /// Explore strategy selection
     fn explore_strategy(
-        &mut self,
+        &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
         base_recommendation: &DecompositionStrategy,
@@ -346,7 +351,7 @@ impl ActiveLearningDecomposer {
 
     /// Generate subproblems using selected strategy
     fn generate_subproblems(
-        &mut self,
+        &self,
         problem: &IsingModel,
         strategy: &DecompositionStrategy,
         analysis: &ProblemAnalysis,
@@ -373,7 +378,7 @@ impl ActiveLearningDecomposer {
 
     /// Graph partitioning decomposition
     fn graph_partitioning_decomposition(
-        &mut self,
+        &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
     ) -> Result<Vec<Subproblem>, String> {
@@ -392,7 +397,7 @@ impl ActiveLearningDecomposer {
 
     /// Community detection decomposition
     fn community_detection_decomposition(
-        &mut self,
+        &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
     ) -> Result<Vec<Subproblem>, String> {
@@ -417,7 +422,7 @@ impl ActiveLearningDecomposer {
 
     /// Spectral clustering decomposition
     fn spectral_clustering_decomposition(
-        &mut self,
+        &self,
         problem: &IsingModel,
         analysis: &ProblemAnalysis,
     ) -> Result<Vec<Subproblem>, String> {
@@ -521,13 +526,13 @@ impl ActiveLearningDecomposer {
         let covered_vertices: HashSet<usize> = subproblems
             .iter()
             .flat_map(|sp| sp.vertices.iter())
-            .cloned()
+            .copied()
             .collect();
         let coverage_score = covered_vertices.len() as f64 / original_problem.num_qubits as f64;
         total_score += coverage_score;
         num_criteria += 1;
 
-        Ok(total_score / num_criteria as f64)
+        Ok(total_score / f64::from(num_criteria))
     }
 
     /// Update knowledge base with new experience
@@ -552,7 +557,7 @@ impl ActiveLearningDecomposer {
 
         self.strategy_learner
             .performance_history
-            .entry(format!("{:?}", strategy))
+            .entry(format!("{strategy:?}"))
             .or_insert_with(Vec::new)
             .push(performance_record.clone());
 
@@ -567,7 +572,7 @@ impl ActiveLearningDecomposer {
         }
 
         // Update success rates
-        let strategy_key = format!("{:?}", strategy);
+        let strategy_key = format!("{strategy:?}");
         let history = &self.strategy_learner.performance_history[&strategy_key];
         let success_count = history
             .iter()

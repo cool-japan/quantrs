@@ -98,7 +98,7 @@ pub struct FibonacciModel {
 impl FibonacciModel {
     /// Create a new Fibonacci anyon model
     pub fn new() -> Self {
-        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
+        let phi = f64::midpoint(1.0, 5.0_f64.sqrt());
         let anyons = vec![
             AnyonType::new(0, "1"), // Vacuum
             AnyonType::new(1, "τ"), // Fibonacci anyon
@@ -142,8 +142,7 @@ impl AnyonModel for FibonacciModel {
     fn fusion_multiplicity(&self, a: AnyonType, b: AnyonType, c: AnyonType) -> u32 {
         match (a.id, b.id, c.id) {
             (0, x, y) | (x, 0, y) if x == y => 1, // 1 × a = a
-            (1, 1, 0) => 1,                       // τ × τ = 1
-            (1, 1, 1) => 1,                       // τ × τ = τ
+            (1, 1, 0 | 1) => 1,                   // τ × τ = 1 or τ
             _ => 0,
         }
     }
@@ -196,7 +195,7 @@ impl AnyonModel for FibonacciModel {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Fibonacci"
     }
 }
@@ -250,9 +249,8 @@ impl AnyonModel for IsingModel {
 
     fn quantum_dimension(&self, anyon: AnyonType) -> f64 {
         match anyon.id {
-            0 => 1.0,            // Vacuum
+            0 | 2 => 1.0,        // Vacuum and ψ fermion
             1 => 2.0_f64.sqrt(), // σ anyon
-            2 => 1.0,            // ψ fermion
             _ => 0.0,
         }
     }
@@ -274,12 +272,8 @@ impl AnyonModel for IsingModel {
         match (a.id, b.id, c.id) {
             // Vacuum fusion rules
             (0, x, y) | (x, 0, y) if x == y => 1,
-            // σ × σ = 1 + ψ
-            (1, 1, 0 | 2) => 1,
-            // σ × ψ = σ
-            (1, 2, 1) | (2, 1, 1) => 1,
-            // ψ × ψ = 1
-            (2, 2, 0) => 1,
+            // σ × σ = 1 + ψ, σ × ψ = σ, ψ × ψ = 1
+            (1, 1, 0 | 2) | (1, 2, 1) | (2, 1, 1) | (2, 2, 0) => 1,
             _ => 0,
         }
     }
@@ -297,8 +291,7 @@ impl AnyonModel for IsingModel {
         // Most non-trivial case is F^{σσσ}_σ
         if a.id == 1 && b.id == 1 && c.id == 1 && d.id == 1 {
             match (e.id, f.id) {
-                (0, 0) | (2, 2) => Complex64::new(0.5, 0.0),
-                (0, 2) | (2, 0) => Complex64::new(0.5, 0.0),
+                (0 | 2, 0 | 2) => Complex64::new(0.5, 0.0),
                 _ => Complex64::new(0.0, 0.0),
             }
         } else if self.is_valid_fusion_tree(a, b, c, d, e, f) {
@@ -311,10 +304,8 @@ impl AnyonModel for IsingModel {
     fn r_symbol(&self, a: AnyonType, b: AnyonType, c: AnyonType) -> FusionCoeff {
         // Special cases for Ising model
         match (a.id, b.id, c.id) {
-            // R^{σσ}_ψ = -1
-            (1, 1, 2) => Complex64::new(-1.0, 0.0),
-            // R^{ψψ}_1 = -1
-            (2, 2, 0) => Complex64::new(-1.0, 0.0),
+            // R^{σσ}_ψ = -1, R^{ψψ}_1 = -1
+            (1, 1, 2) | (2, 2, 0) => Complex64::new(-1.0, 0.0),
             // General case
             _ => {
                 if self.can_fuse(a, b, c) {
@@ -329,7 +320,7 @@ impl AnyonModel for IsingModel {
         }
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Ising"
     }
 }
@@ -421,7 +412,8 @@ impl FusionTree {
                 AnyonType::VACUUM
             }
         } else {
-            *self.internal.last().unwrap()
+            // internal is not empty in this branch, but handle gracefully
+            self.internal.last().copied().unwrap_or(AnyonType::VACUUM)
         }
     }
 
@@ -586,7 +578,7 @@ impl TopologicalQC {
 
         let (charge_id, prob) = charge_probs
             .into_iter()
-            .max_by(|(_, p1), (_, p2)| p1.partial_cmp(p2).unwrap())
+            .max_by(|(_, p1), (_, p2)| p1.partial_cmp(p2).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or((0, 0.0));
 
         let charge = self
@@ -612,7 +604,7 @@ pub struct TopologicalGate {
 
 impl TopologicalGate {
     /// Create a new topological gate
-    pub fn new(braids: Vec<BraidingOperation>, comp_dim: usize) -> Self {
+    pub const fn new(braids: Vec<BraidingOperation>, comp_dim: usize) -> Self {
         Self { braids, comp_dim }
     }
 
@@ -694,12 +686,12 @@ impl ToricCode {
     }
 
     /// Get the number of physical qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         2 * self.size * self.size
     }
 
     /// Get the number of logical qubits
-    pub fn num_logical_qubits(&self) -> usize {
+    pub const fn num_logical_qubits(&self) -> usize {
         2 // Toric code encodes 2 logical qubits
     }
 
@@ -795,7 +787,7 @@ mod tests {
         let model = Box::new(FibonacciModel::new());
         let anyons = vec![AnyonType::new(1, "τ"), AnyonType::new(1, "τ")];
 
-        let qc = TopologicalQC::new(model, anyons).unwrap();
+        let qc = TopologicalQC::new(model, anyons).expect("Failed to create TopologicalQC");
         // τ × τ = 1 + τ, so we should have 2 fusion trees
         assert_eq!(qc.fusion_trees.len(), 2);
 
@@ -821,7 +813,7 @@ mod tests {
         let model = Box::new(IsingModel::new());
         let anyons = vec![AnyonType::new(1, "σ"), AnyonType::new(1, "σ")];
 
-        let mut qc = TopologicalQC::new(model, anyons).unwrap();
+        let mut qc = TopologicalQC::new(model, anyons).expect("Failed to create TopologicalQC");
 
         // Check initial normalization
         let initial_norm: f64 = qc.amplitudes.iter().map(|a| a.norm_sqr()).sum();
@@ -838,7 +830,8 @@ mod tests {
             over: true,
         };
 
-        qc.braid(&braid).unwrap();
+        qc.braid(&braid)
+            .expect("Failed to apply braiding operation");
 
         // State should be normalized
         let norm: f64 = qc.amplitudes.iter().map(|a| a.norm_sqr()).sum();

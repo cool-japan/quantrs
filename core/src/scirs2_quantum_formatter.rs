@@ -7,6 +7,7 @@ use crate::error::QuantRS2Error;
 use crate::gate_translation::GateType;
 use std::collections::HashSet;
 
+use std::fmt::Write;
 /// SciRS2-enhanced quantum gate representation for formatting
 #[derive(Debug, Clone)]
 pub struct QuantumGate {
@@ -16,7 +17,7 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(
+    pub const fn new(
         gate_type: GateType,
         target_qubits: Vec<usize>,
         control_qubits: Option<Vec<usize>>,
@@ -28,7 +29,7 @@ impl QuantumGate {
         }
     }
 
-    pub fn gate_type(&self) -> &GateType {
+    pub const fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
 
@@ -136,7 +137,7 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Create formatter with custom configuration
-    pub fn with_config(config: FormattingConfig) -> Self {
+    pub const fn with_config(config: FormattingConfig) -> Self {
         Self {
             config,
             circuit_analyzer: CircuitAnalyzer::new(),
@@ -257,11 +258,13 @@ impl SciRS2QuantumFormatter {
         let mut formatted = String::new();
 
         for (i, gate) in gates.iter().enumerate() {
-            formatted.push_str(&format!(
-                "Step {}: {}\n",
+            writeln!(
+                formatted,
+                "Step {}: {}",
                 i + 1,
                 self.format_single_gate_verbose(gate)
-            ));
+            )
+            .expect("Writing to String cannot fail");
         }
 
         Ok(formatted)
@@ -287,22 +290,22 @@ impl SciRS2QuantumFormatter {
         let targets = gate
             .target_qubits()
             .iter()
-            .map(|q| format!("q{}", q))
+            .map(|q| format!("q{q}"))
             .collect::<Vec<_>>()
             .join(", ");
 
         let controls = if let Some(ctrl_qubits) = gate.control_qubits() {
             let ctrl_str = ctrl_qubits
                 .iter()
-                .map(|q| format!("q{}", q))
+                .map(|q| format!("q{q}"))
                 .collect::<Vec<_>>()
                 .join(", ");
-            format!(" controlled by [{}]", ctrl_str)
+            format!(" controlled by [{ctrl_str}]")
         } else {
             String::new()
         };
 
-        format!("{} on [{}]{}", gate_description, targets, controls)
+        format!("{gate_description} on [{targets}]{controls}")
     }
 
     /// Format in optimization-aware style
@@ -319,7 +322,8 @@ impl SciRS2QuantumFormatter {
         if !optimizations.is_empty() {
             formatted.push_str("// Detected optimizations:\n");
             for opt in &optimizations {
-                formatted.push_str(&format!("//   - {}\n", opt.description));
+                writeln!(formatted, "//   - {}", opt.description)
+                    .expect("Writing to String cannot fail");
             }
             formatted.push('\n');
         }
@@ -333,11 +337,13 @@ impl SciRS2QuantumFormatter {
         if !optimizable.is_empty() {
             formatted.push_str("// Gates with optimization potential:\n");
             for (i, gate) in optimizable {
-                formatted.push_str(&format!(
-                    "/* Opt {} */ {}\n",
+                writeln!(
+                    formatted,
+                    "/* Opt {} */ {}",
                     i,
                     self.format_single_gate_compact(gate)
-                ));
+                )
+                .expect("Writing to String cannot fail");
             }
             formatted.push('\n');
         }
@@ -345,11 +351,13 @@ impl SciRS2QuantumFormatter {
         if !regular.is_empty() {
             formatted.push_str("// Regular gates:\n");
             for (i, gate) in regular {
-                formatted.push_str(&format!(
-                    "/* {} */ {}\n",
+                writeln!(
+                    formatted,
+                    "/* {} */ {}",
                     i,
                     self.format_single_gate_compact(gate)
-                ));
+                )
+                .expect("Writing to String cannot fail");
             }
         }
 
@@ -380,11 +388,13 @@ impl SciRS2QuantumFormatter {
         if !simd_gates.is_empty() {
             formatted.push_str("// SIMD-optimizable gates (SciRS2 enhancement available):\n");
             for (_i, gate) in simd_gates {
-                formatted.push_str(&format!(
-                    "simd_gate!({}); // {}\n",
+                writeln!(
+                    formatted,
+                    "simd_gate!({}); // {}",
                     self.format_single_gate_compact(gate),
                     self.get_simd_hint(gate)
-                ));
+                )
+                .expect("Writing to String cannot fail");
             }
             formatted.push('\n');
         }
@@ -392,12 +402,15 @@ impl SciRS2QuantumFormatter {
         if !parallel_groups.is_empty() {
             formatted.push_str("// Parallel execution groups:\n");
             for (group_id, group) in parallel_groups.iter().enumerate() {
-                formatted.push_str(&format!("parallel_group!({}) {{\n", group_id));
+                writeln!(formatted, "parallel_group!({group_id}) {{")
+                    .expect("Writing to String cannot fail");
                 for &gate_idx in group {
-                    formatted.push_str(&format!(
-                        "    {};\n",
+                    writeln!(
+                        formatted,
+                        "    {};",
                         self.format_single_gate_compact(&gates[gate_idx])
-                    ));
+                    )
+                    .expect("Writing to String cannot fail");
                 }
                 formatted.push_str("}\n\n");
             }
@@ -406,17 +419,19 @@ impl SciRS2QuantumFormatter {
         // Memory usage annotation
         if self.config.annotate_memory_usage {
             let memory_estimate = self.estimate_memory_usage(gates);
-            formatted.push_str(&format!(
-                "// Estimated memory usage: {} KB\n",
+            writeln!(
+                formatted,
+                "// Estimated memory usage: {} KB",
                 memory_estimate / 1024
-            ));
+            )
+            .expect("Writing to String cannot fail");
         }
 
         Ok(formatted)
     }
 
     /// Check if gate is optimizable
-    fn is_gate_optimizable(&self, gate: &QuantumGate) -> bool {
+    const fn is_gate_optimizable(&self, gate: &QuantumGate) -> bool {
         matches!(
             gate.gate_type(),
             GateType::CNOT | GateType::T | GateType::Rx(_) | GateType::Ry(_) | GateType::Rz(_)
@@ -424,7 +439,7 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Check if gate is SIMD optimizable
-    fn is_simd_optimizable(&self, gate: &QuantumGate) -> bool {
+    const fn is_simd_optimizable(&self, gate: &QuantumGate) -> bool {
         matches!(
             gate.gate_type(),
             GateType::X
@@ -439,7 +454,7 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Get SIMD optimization hint for a gate
-    fn get_simd_hint(&self, gate: &QuantumGate) -> &'static str {
+    const fn get_simd_hint(&self, gate: &QuantumGate) -> &'static str {
         match gate.gate_type() {
             GateType::X | GateType::Y | GateType::Z => {
                 "Pauli gates benefit from SIMD vectorization"
@@ -489,7 +504,7 @@ impl SciRS2QuantumFormatter {
     }
 
     /// Estimate memory usage for gates
-    fn estimate_memory_usage(&self, gates: &[QuantumGate]) -> usize {
+    const fn estimate_memory_usage(&self, gates: &[QuantumGate]) -> usize {
         // Simplified estimation: assume each gate needs some working memory
         gates.len() * 1024 // 1KB per gate (simplified)
     }
@@ -525,7 +540,9 @@ impl SciRS2QuantumFormatter {
         let line_length_variance = self.calculate_line_length_variance(code);
 
         // Higher comment ratio and lower line length variance = better readability
-        (comment_ratio * 0.7 + (1.0 - line_length_variance) * 0.3).min(1.0)
+        comment_ratio
+            .mul_add(0.7, (1.0 - line_length_variance) * 0.3)
+            .min(1.0)
     }
 
     /// Calculate line length variance (normalized)
@@ -570,7 +587,8 @@ impl SciRS2QuantumFormatter {
         formatted.push_str("fn quantum_circuit(qubits: &mut [Qubit]) -> QuantRS2Result<()> {\n");
 
         for gate in circuit {
-            formatted.push_str(&format!("    {};\n", self.format_gate_for_rust(gate)));
+            writeln!(formatted, "    {};", self.format_gate_for_rust(gate))
+                .expect("Writing to String cannot fail");
         }
 
         formatted.push_str("    Ok(())\n");
@@ -610,7 +628,8 @@ impl SciRS2QuantumFormatter {
         formatted.push_str("    qc = QuantumCircuit(num_qubits)\n");
 
         for gate in circuit {
-            formatted.push_str(&format!("    {}\n", self.format_gate_for_python(gate)));
+            writeln!(formatted, "    {}", self.format_gate_for_python(gate))
+                .expect("Writing to String cannot fail");
         }
 
         formatted.push_str("    return qc\n");
@@ -653,11 +672,12 @@ impl SciRS2QuantumFormatter {
             .max()
             .unwrap_or(&0);
 
-        formatted.push_str(&format!("qreg q[{}];\n", max_qubit + 1));
-        formatted.push_str(&format!("creg c[{}];\n\n", max_qubit + 1));
+        writeln!(formatted, "qreg q[{}];", max_qubit + 1).expect("Writing to String cannot fail");
+        writeln!(formatted, "creg c[{}];\n", max_qubit + 1).expect("Writing to String cannot fail");
 
         for gate in circuit {
-            formatted.push_str(&format!("{};\n", self.format_gate_for_qasm(gate)));
+            writeln!(formatted, "{};", self.format_gate_for_qasm(gate))
+                .expect("Writing to String cannot fail");
         }
 
         Ok(formatted)
@@ -755,7 +775,7 @@ pub enum AnnotationLocation {
 pub struct CircuitAnalyzer {}
 
 impl CircuitAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -791,11 +811,11 @@ impl Default for CircuitAnalysis {
 pub struct OptimizationDetector {}
 
 impl OptimizationDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub fn detect_optimizations(
+    pub const fn detect_optimizations(
         &self,
         _circuit: &[QuantumGate],
         _analysis: &CircuitAnalysis,
@@ -815,11 +835,11 @@ pub struct OptimizationOpportunity {
 pub struct PatternRecognizer {}
 
 impl PatternRecognizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub fn recognize_patterns(
+    pub const fn recognize_patterns(
         &self,
         _circuit: &[QuantumGate],
     ) -> Result<Vec<RecognizedPattern>, QuantRS2Error> {
@@ -838,7 +858,7 @@ pub struct RecognizedPattern {
 pub struct LayoutOptimizer {}
 
 impl LayoutOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -874,11 +894,11 @@ pub struct LayoutSection {
 pub struct AnnotationGenerator {}
 
 impl AnnotationGenerator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
-    pub fn generate_annotations(
+    pub const fn generate_annotations(
         &self,
         _circuit: &[QuantumGate],
         _analysis: &CircuitAnalysis,
@@ -892,7 +912,7 @@ impl AnnotationGenerator {
 pub struct StyleEngine {}
 
 impl StyleEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -931,7 +951,7 @@ mod tests {
 
         let formatted = formatter
             .format_gate_sequence(&gates, FormattingStyle::Compact)
-            .unwrap();
+            .expect("Failed to format compact sequence");
         assert!(formatted.contains("H(0)"));
         assert!(formatted.contains("CNOT(0, 1)"));
     }
@@ -943,7 +963,7 @@ mod tests {
 
         let formatted = formatter
             .format_gate_sequence(&gates, FormattingStyle::Verbose)
-            .unwrap();
+            .expect("Failed to format verbose sequence");
         assert!(formatted.contains("Pauli-X"));
         assert!(formatted.contains("Step 1"));
     }
@@ -958,7 +978,7 @@ mod tests {
 
         let formatted = formatter
             .format_for_language(&gates, ProgrammingLanguage::Rust)
-            .unwrap();
+            .expect("Failed to format for Rust");
         assert!(formatted.contains("use quantrs2_core::prelude::*"));
         assert!(formatted.contains("qubits[0].h()"));
         assert!(formatted.contains("qubits[1].x()"));
@@ -971,7 +991,7 @@ mod tests {
 
         let formatted = formatter
             .format_for_language(&gates, ProgrammingLanguage::Python)
-            .unwrap();
+            .expect("Failed to format for Python");
         assert!(formatted.contains("from quantrs2 import QuantumCircuit"));
         assert!(formatted.contains("qc.h(0)"));
     }
@@ -986,7 +1006,7 @@ mod tests {
 
         let formatted = formatter
             .format_for_language(&gates, ProgrammingLanguage::QASM)
-            .unwrap();
+            .expect("Failed to format for QASM");
         assert!(formatted.contains("OPENQASM 2.0"));
         assert!(formatted.contains("h q[0]"));
         assert!(formatted.contains("cx q[0],q[1]"));

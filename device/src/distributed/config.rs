@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DistributedOrchestratorConfig {
     pub network_config: NetworkConfig,
     pub computing_config: DistributedComputingConfig,
@@ -15,21 +15,6 @@ pub struct DistributedOrchestratorConfig {
     pub optimization_config: DistributedOptimizationConfig,
     pub monitoring_config: DistributedMonitoringConfig,
     pub resource_config: DistributedResourceConfig,
-}
-
-impl Default for DistributedOrchestratorConfig {
-    fn default() -> Self {
-        Self {
-            network_config: NetworkConfig::default(),
-            computing_config: DistributedComputingConfig::default(),
-            load_balancing_config: LoadBalancingConfig::default(),
-            fault_tolerance_config: FaultToleranceConfig::default(),
-            security_config: SecurityConfig::default(),
-            optimization_config: DistributedOptimizationConfig::default(),
-            monitoring_config: DistributedMonitoringConfig::default(),
-            resource_config: DistributedResourceConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

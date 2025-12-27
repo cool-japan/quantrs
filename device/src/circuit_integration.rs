@@ -207,7 +207,7 @@ pub struct PlatformMetrics {
 }
 
 /// Platform status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlatformStatus {
     Available,
     Busy,
@@ -317,7 +317,7 @@ pub struct ErrorEstimates {
 }
 
 /// Types of optimizations that can be applied
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationType {
     GateOptimization,
     TopologyMapping,
@@ -394,7 +394,7 @@ pub struct TrendData {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -442,7 +442,7 @@ pub struct CostOptimizationTip {
 }
 
 /// Optimization difficulty levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationDifficulty {
     Easy,
     Medium,
@@ -560,7 +560,7 @@ pub struct ActiveExecution {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExecutionStatus {
     Queued,
     Running,
@@ -788,7 +788,10 @@ impl UniversalCircuitInterface {
 
     /// Register a quantum platform
     pub fn register_platform(&self, adapter: PlatformAdapter) -> DeviceResult<()> {
-        let mut platforms = self.platforms.write().unwrap();
+        let mut platforms = self
+            .platforms
+            .write()
+            .expect("Platforms RwLock should not be poisoned");
         platforms.insert(adapter.platform_id.clone(), adapter);
         Ok(())
     }
@@ -800,7 +803,7 @@ impl UniversalCircuitInterface {
         shots: usize,
     ) -> DeviceResult<ExecutionResult> {
         // Get circuit hash for caching
-        let circuit_hash = self.calculate_circuit_hash(circuit);
+        let circuit_hash = Self::calculate_circuit_hash(circuit);
 
         // Check optimization cache
         if self.config.enable_optimization {
@@ -845,30 +848,42 @@ impl UniversalCircuitInterface {
 
     /// Get available platforms
     pub fn get_available_platforms(&self) -> Vec<String> {
-        let platforms = self.platforms.read().unwrap();
+        let platforms = self
+            .platforms
+            .read()
+            .expect("Platforms RwLock should not be poisoned");
         platforms.keys().cloned().collect()
     }
 
     /// Get platform capabilities
     pub fn get_platform_capabilities(&self, platform_id: &str) -> Option<BackendCapabilities> {
-        let platforms = self.platforms.read().unwrap();
+        let platforms = self
+            .platforms
+            .read()
+            .expect("Platforms RwLock should not be poisoned");
         platforms.get(platform_id).map(|p| p.capabilities.clone())
     }
 
     /// Get execution analytics
     pub fn get_analytics(&self) -> ExecutionAnalytics {
-        self.analytics.read().unwrap().clone()
+        self.analytics
+            .read()
+            .expect("Analytics RwLock should not be poisoned")
+            .clone()
     }
 
     // Private implementation methods
 
-    fn calculate_circuit_hash<const N: usize>(&self, circuit: &Circuit<N>) -> String {
+    fn calculate_circuit_hash<const N: usize>(circuit: &Circuit<N>) -> String {
         // Simplified hash calculation - in production would use proper circuit hashing
         format!("circuit_{}_{}", N, circuit.gates().len())
     }
 
     fn get_cached_optimization(&self, circuit_hash: &str) -> Option<OptimizedCircuit> {
-        let cache = self.optimization_cache.read().unwrap();
+        let cache = self
+            .optimization_cache
+            .read()
+            .expect("Optimization cache RwLock should not be poisoned");
         cache.get(circuit_hash).cloned()
     }
 
@@ -877,7 +892,10 @@ impl UniversalCircuitInterface {
         circuit: &Circuit<N>,
     ) -> DeviceResult<String> {
         // Simplified platform selection - would use sophisticated algorithms
-        let platforms = self.platforms.read().unwrap();
+        let platforms = self
+            .platforms
+            .read()
+            .expect("Platforms RwLock should not be poisoned");
         if let Some((platform_id, _)) = platforms.iter().next() {
             Ok(platform_id.clone())
         } else {
@@ -888,7 +906,10 @@ impl UniversalCircuitInterface {
     }
 
     fn get_default_platform(&self) -> DeviceResult<String> {
-        let platforms = self.platforms.read().unwrap();
+        let platforms = self
+            .platforms
+            .read()
+            .expect("Platforms RwLock should not be poisoned");
         if let Some((platform_id, _)) = platforms.iter().next() {
             Ok(platform_id.clone())
         } else {
@@ -904,7 +925,7 @@ impl UniversalCircuitInterface {
         platform_id: &str,
     ) -> DeviceResult<OptimizedCircuit> {
         // Simplified optimization - would implement sophisticated optimization algorithms
-        let circuit_hash = self.calculate_circuit_hash(circuit);
+        let circuit_hash = Self::calculate_circuit_hash(circuit);
         let mut platform_circuits = HashMap::new();
 
         let variant = CircuitVariant {
@@ -960,7 +981,7 @@ impl UniversalCircuitInterface {
         platform_id: &str,
     ) -> DeviceResult<OptimizedCircuit> {
         // Create basic variant without optimization
-        let circuit_hash = self.calculate_circuit_hash(circuit);
+        let circuit_hash = Self::calculate_circuit_hash(circuit);
         let mut platform_circuits = HashMap::new();
 
         let variant = CircuitVariant {
@@ -1011,7 +1032,10 @@ impl UniversalCircuitInterface {
     }
 
     fn cache_optimization(&self, circuit_hash: &str, optimized: OptimizedCircuit) {
-        let mut cache = self.optimization_cache.write().unwrap();
+        let mut cache = self
+            .optimization_cache
+            .write()
+            .expect("Optimization cache RwLock should not be poisoned");
 
         // Implement LRU eviction if cache is full
         if cache.len() >= self.config.cache_config.max_cache_size {
@@ -1052,8 +1076,7 @@ impl UniversalCircuitInterface {
                 .await
         } else {
             Err(DeviceError::InvalidInput(format!(
-                "No variant for platform {}",
-                platform_id
+                "No variant for platform {platform_id}"
             )))
         }
     }
@@ -1070,7 +1093,7 @@ impl UniversalCircuitInterface {
             platform_id,
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .expect("System time should be after UNIX epoch")
                 .as_millis()
         );
 
@@ -1118,7 +1141,10 @@ impl UniversalCircuitInterface {
         result: &ExecutionResult,
     ) {
         // Record execution analytics
-        let mut analytics = self.analytics.write().unwrap();
+        let mut analytics = self
+            .analytics
+            .write()
+            .expect("Analytics RwLock should not be poisoned");
         analytics.record_execution(circuit_hash, platform_id, result);
     }
 }
@@ -1130,7 +1156,7 @@ pub struct GenericCircuitWrapper<const N: usize> {
 }
 
 impl<const N: usize> GenericCircuitWrapper<N> {
-    pub fn new(circuit: Circuit<N>) -> Self {
+    pub const fn new(circuit: Circuit<N>) -> Self {
         Self { circuit }
     }
 }
@@ -1204,6 +1230,12 @@ impl Clone for OptimizedCircuit {
     }
 }
 
+impl Default for ExecutionAnalytics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionAnalytics {
     pub fn new() -> Self {
         Self {
@@ -1253,7 +1285,7 @@ impl ExecutionAnalytics {
     }
 
     fn update_performance_trends(&mut self, platform_id: &str, result: &ExecutionResult) {
-        let trend_key = format!("{}_fidelity", platform_id);
+        let trend_key = format!("{platform_id}_fidelity");
         let trend_data = self
             .performance_trends
             .entry(trend_key)
@@ -1285,7 +1317,8 @@ impl ExecutionAnalytics {
             let sum_xy: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
             let sum_x2: f64 = (0..n).map(|i| (i as f64).powi(2)).sum();
 
-            let slope = (n as f64 * sum_xy - sum_x * sum_y) / (n as f64 * sum_x2 - sum_x.powi(2));
+            let slope = (n as f64).mul_add(sum_xy, -(sum_x * sum_y))
+                / sum_x.mul_add(-sum_x, n as f64 * sum_x2);
 
             trend_data.trend_strength = slope.abs();
             trend_data.trend_direction = if slope > 0.01 {
@@ -1321,7 +1354,7 @@ impl ExecutionAnalytics {
         }
     }
 
-    fn analyze_trend(&self, trend_data: &mut TrendData) {
+    fn analyze_trend(trend_data: &mut TrendData) {
         if trend_data.data_points.len() < 2 {
             return;
         }
@@ -1334,7 +1367,8 @@ impl ExecutionAnalytics {
         let sum_xy: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let sum_x2: f64 = (0..n).map(|i| (i as f64).powi(2)).sum();
 
-        let slope = (n as f64 * sum_xy - sum_x * sum_y) / (n as f64 * sum_x2 - sum_x.powi(2));
+        let slope =
+            (n as f64).mul_add(sum_xy, -(sum_x * sum_y)) / sum_x.mul_add(-sum_x, n as f64 * sum_x2);
 
         trend_data.trend_strength = slope.abs();
         trend_data.trend_direction = if slope > 0.01 {
@@ -1359,6 +1393,12 @@ impl Clone for ExecutionAnalytics {
     }
 }
 
+impl Default for PlatformSelector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PlatformSelector {
     pub fn new() -> Self {
         Self {
@@ -1367,6 +1407,12 @@ impl PlatformSelector {
             selection_history: Vec::new(),
             learning_model: None,
         }
+    }
+}
+
+impl Default for ExecutionMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1490,13 +1536,15 @@ mod tests {
             status: PlatformStatus::Available,
         };
 
-        interface.register_platform(platform).unwrap();
+        interface
+            .register_platform(platform)
+            .expect("Platform registration should succeed");
 
         // Test execution
         let result = interface.execute_circuit(&circuit, 1000).await;
         assert!(result.is_ok());
 
-        let execution_result = result.unwrap();
+        let execution_result = result.expect("Circuit execution should succeed");
         assert!(execution_result.performance.success);
         assert_eq!(execution_result.metadata.shots, 1000);
     }

@@ -91,7 +91,7 @@ pub struct QuantumAdvantage {
 }
 
 /// Types of quantum advantage
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdvantageType {
     Exponential,
     Polynomial,
@@ -124,7 +124,7 @@ pub struct ConnectivityRequirements {
 }
 
 /// Topology types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyType {
     Linear,
     Ring,
@@ -158,7 +158,7 @@ pub struct Dependency {
 }
 
 /// Dependency types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DependencyType {
     QuantumLibrary,
     ClassicalLibrary,
@@ -190,7 +190,7 @@ pub struct CodeFile {
 }
 
 /// File types in algorithm packages
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FileType {
     Source,
     Header,
@@ -255,7 +255,7 @@ pub struct UsageExample {
 }
 
 /// Example complexity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExampleComplexity {
     Beginner,
     Intermediate,
@@ -355,7 +355,7 @@ pub struct PerformanceMetric {
 }
 
 /// Metric types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetricType {
     ExecutionTime,
     MemoryUsage,
@@ -380,7 +380,7 @@ pub struct CorrectnessTest {
 }
 
 /// Verification methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationMethod {
     ExactComparison,
     NumericalComparison,
@@ -400,7 +400,7 @@ pub struct RegressionTest {
 }
 
 /// Test result types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TestResult {
     Pass,
     Fail,
@@ -442,7 +442,7 @@ pub struct EnvironmentInfo {
 }
 
 /// Verification status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationStatus {
     Verified,
     Unverified,
@@ -464,7 +464,7 @@ pub struct LicensingInfo {
 }
 
 /// License types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LicenseType {
     MIT,
     Apache2,
@@ -488,7 +488,7 @@ pub struct RegistrationInfo {
 }
 
 /// Registration status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegistrationStatus {
     Draft,
     Submitted,
@@ -500,7 +500,7 @@ pub enum RegistrationStatus {
 }
 
 /// Review status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReviewStatus {
     Pending,
     InProgress,
@@ -521,7 +521,7 @@ pub struct ModeratorNote {
 }
 
 /// Note types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoteType {
     Review,
     Approval,
@@ -532,7 +532,7 @@ pub enum NoteType {
 }
 
 /// Note visibility levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoteVisibility {
     Public,
     AuthorOnly,
@@ -551,7 +551,7 @@ pub struct VerificationBadge {
 }
 
 /// Badge types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BadgeType {
     Verified,
     HighPerformance,
@@ -625,7 +625,7 @@ pub struct PerformanceTrend {
 }
 
 /// Trend directions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Improving,
     Stable,
@@ -801,7 +801,7 @@ impl AlgorithmRegistry {
             self.search_index
                 .keyword_index
                 .entry(keyword.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(algorithm_id.to_string());
         }
 
@@ -810,7 +810,7 @@ impl AlgorithmRegistry {
             self.search_index
                 .tag_index
                 .entry(tag.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(algorithm_id.to_string());
         }
 
@@ -818,7 +818,7 @@ impl AlgorithmRegistry {
         self.search_index
             .author_index
             .entry(metadata.author.clone())
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(algorithm_id.to_string());
     }
 
@@ -826,7 +826,7 @@ impl AlgorithmRegistry {
         self.search_index
             .category_index
             .entry(category.clone())
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(algorithm_id.to_string());
     }
 
@@ -834,7 +834,7 @@ impl AlgorithmRegistry {
         for tag in tags {
             self.tags
                 .entry(tag.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(algorithm_id.to_string());
         }
     }

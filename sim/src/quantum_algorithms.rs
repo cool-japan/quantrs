@@ -7,7 +7,7 @@
 //! techniques like circuit synthesis, error mitigation, and resource estimation.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -155,7 +155,7 @@ pub struct AlgorithmResourceStats {
 pub struct OptimizedShorAlgorithm {
     /// Configuration
     config: QuantumAlgorithmConfig,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Circuit interface for compilation
     circuit_interface: CircuitInterface,
@@ -184,7 +184,7 @@ impl OptimizedShorAlgorithm {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         self.circuit_interface = self.circuit_interface.with_backend()?;
@@ -238,7 +238,7 @@ impl OptimizedShorAlgorithm {
         }
 
         // Check if n is a perfect power
-        if let Some((base, _exponent)) = self.find_perfect_power(n) {
+        if let Some((base, _exponent)) = Self::find_perfect_power(n) {
             return Ok(ShorResult {
                 n,
                 factors: vec![base],
@@ -266,7 +266,7 @@ impl OptimizedShorAlgorithm {
             let a = self.choose_random_base(n)?;
 
             // Check if gcd(a, n) > 1 (classical shortcut)
-            let gcd_val = self.gcd(a, n);
+            let gcd_val = Self::gcd(a, n);
             if gcd_val > 1 {
                 let other_factor = n / gcd_val;
                 return Ok(ShorResult {
@@ -290,7 +290,7 @@ impl OptimizedShorAlgorithm {
                     if let Some(factors) = self.extract_factors_from_period(a, n, period) {
                         let quantum_computation_ms = quantum_start.elapsed().as_secs_f64() * 1000.0;
 
-                        let resource_stats = self.estimate_resources(n);
+                        let resource_stats = Self::estimate_resources(n);
 
                         return Ok(ShorResult {
                             n,
@@ -300,8 +300,10 @@ impl OptimizedShorAlgorithm {
                             execution_time_ms: start_time.elapsed().as_secs_f64() * 1000.0,
                             classical_preprocessing_ms,
                             quantum_computation_ms,
-                            success_probability: self
-                                .estimate_success_probability(attempt, max_attempts),
+                            success_probability: Self::estimate_success_probability(
+                                attempt,
+                                max_attempts,
+                            ),
                             resource_stats,
                         });
                     }
@@ -319,7 +321,7 @@ impl OptimizedShorAlgorithm {
             classical_preprocessing_ms,
             quantum_computation_ms: quantum_start.elapsed().as_secs_f64() * 1000.0,
             success_probability: 0.0,
-            resource_stats: self.estimate_resources(n),
+            resource_stats: Self::estimate_resources(n),
         })
     }
 
@@ -377,7 +379,7 @@ impl OptimizedShorAlgorithm {
 
             // Apply error mitigation if enabled
             if self.config.enable_error_mitigation {
-                measured_value = self.apply_error_mitigation(measured_value, register_size)?;
+                measured_value = Self::apply_error_mitigation(measured_value, register_size)?;
             }
 
             // Extract period from measurement results using enhanced continued fractions
@@ -403,7 +405,7 @@ impl OptimizedShorAlgorithm {
 
         for i in 0..register_size {
             let power = 1u64 << i;
-            let a_power_mod_n = self.mod_exp(a, power, n);
+            let a_power_mod_n = Self::mod_exp(a, power, n);
 
             // Add optimized controlled multiplication by a^(2^i) mod n
             self.add_controlled_modular_multiplication_optimized(
@@ -444,13 +446,13 @@ impl OptimizedShorAlgorithm {
         let target_start = register_start + register_size;
 
         // Use Montgomery multiplication for efficiency
-        let mont_multiplier = self.montgomery_form(multiplier, modulus);
+        let mont_multiplier = Self::montgomery_form(multiplier, modulus);
 
         // Implement controlled addition with carry propagation
         for i in 0..register_size {
             if (mont_multiplier >> i) & 1 == 1 {
                 // Add controlled quantum adder with carry
-                self.add_controlled_quantum_adder(
+                Self::add_controlled_quantum_adder(
                     circuit,
                     control_qubit,
                     register_start + i,
@@ -461,7 +463,7 @@ impl OptimizedShorAlgorithm {
         }
 
         // Apply modular reduction
-        self.add_controlled_modular_reduction(
+        Self::add_controlled_modular_reduction(
             circuit,
             modulus,
             control_qubit,
@@ -474,7 +476,6 @@ impl OptimizedShorAlgorithm {
 
     /// Add controlled modular multiplication (legacy)
     fn add_controlled_modular_multiplication(
-        &self,
         circuit: &mut InterfaceCircuit,
         multiplier: u64,
         modulus: u64,
@@ -541,10 +542,10 @@ impl OptimizedShorAlgorithm {
         }
 
         let max_register_value = 1 << register_size;
-        let fraction = measured_value as f64 / max_register_value as f64;
+        let fraction = measured_value as f64 / f64::from(max_register_value);
 
         // Apply continued fractions algorithm
-        let convergents = self.continued_fractions(fraction, n);
+        let convergents = Self::continued_fractions(fraction, n);
 
         for (num, den) in convergents {
             if den > 0 && den < n {
@@ -556,7 +557,7 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Continued fractions algorithm for period extraction
-    fn continued_fractions(&self, x: f64, max_denominator: u64) -> Vec<(u64, u64)> {
+    fn continued_fractions(x: f64, max_denominator: u64) -> Vec<(u64, u64)> {
         let mut convergents = Vec::new();
         let mut a = x;
         let mut p_prev = 0u64;
@@ -603,16 +604,16 @@ impl OptimizedShorAlgorithm {
         }
 
         let max_register_value = 1 << register_size;
-        let fraction = measured_value as f64 / max_register_value as f64;
+        let fraction = measured_value as f64 / f64::from(max_register_value);
 
         // Apply enhanced continued fractions algorithm with error correction
-        let convergents = self.continued_fractions_enhanced(fraction, n);
+        let convergents = Self::continued_fractions_enhanced(fraction, n);
 
         // Try multiple candidates and verify them
         for (num, den) in convergents {
             if den > 0 && den < n {
                 // Additional verification for enhanced accuracy
-                if self.verify_period_enhanced(num, den, n) {
+                if Self::verify_period_enhanced(num, den, n) {
                     return Some(den);
                 }
             }
@@ -622,7 +623,7 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Enhanced continued fractions with better precision
-    fn continued_fractions_enhanced(&self, x: f64, max_denominator: u64) -> Vec<(u64, u64)> {
+    fn continued_fractions_enhanced(x: f64, max_denominator: u64) -> Vec<(u64, u64)> {
         let mut convergents = Vec::new();
         let mut a = x;
         let mut p_prev = 0u64;
@@ -659,7 +660,7 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Enhanced period verification with additional checks
-    const fn verify_period_enhanced(&self, _num: u64, period: u64, n: u64) -> bool {
+    const fn verify_period_enhanced(_num: u64, period: u64, n: u64) -> bool {
         if period == 0 || period >= n {
             return false;
         }
@@ -669,7 +670,7 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Apply error mitigation to measurement results
-    fn apply_error_mitigation(&self, measured_value: usize, register_size: usize) -> Result<usize> {
+    fn apply_error_mitigation(measured_value: usize, register_size: usize) -> Result<usize> {
         // Simple error mitigation using majority voting on nearby values
         let mut candidates = vec![measured_value];
 
@@ -686,7 +687,7 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Convert to Montgomery form for efficient modular arithmetic
-    const fn montgomery_form(&self, value: u64, modulus: u64) -> u64 {
+    const fn montgomery_form(value: u64, modulus: u64) -> u64 {
         // Simplified Montgomery form conversion
         // In practice, this would use proper Montgomery arithmetic
         value % modulus
@@ -694,7 +695,6 @@ impl OptimizedShorAlgorithm {
 
     /// Add controlled quantum adder with carry propagation
     fn add_controlled_quantum_adder(
-        &self,
         circuit: &mut InterfaceCircuit,
         control_qubit: usize,
         source_qubit: usize,
@@ -715,7 +715,6 @@ impl OptimizedShorAlgorithm {
 
     /// Add controlled modular reduction
     fn add_controlled_modular_reduction(
-        &self,
         circuit: &mut InterfaceCircuit,
         _modulus: u64,
         control_qubit: usize,
@@ -733,9 +732,9 @@ impl OptimizedShorAlgorithm {
     }
 
     /// Classical helper functions
-    fn find_perfect_power(&self, n: u64) -> Option<(u64, u32)> {
+    fn find_perfect_power(n: u64) -> Option<(u64, u32)> {
         for exponent in 2..=((n as f64).log2().floor() as u32) {
-            let base = (n as f64).powf(1.0 / exponent as f64).round() as u64;
+            let base = (n as f64).powf(1.0 / f64::from(exponent)).round() as u64;
             if base.pow(exponent) == n {
                 return Some((base, exponent));
             }
@@ -747,14 +746,14 @@ impl OptimizedShorAlgorithm {
         // For small numbers like 15, just try a few known good values
         let candidates = [2, 3, 4, 5, 6, 7, 8];
         for &a in &candidates {
-            if a < n && self.gcd(a, n) == 1 {
+            if a < n && Self::gcd(a, n) == 1 {
                 return Ok(a);
             }
         }
 
         // Fallback to simple iteration for larger numbers
         for a in 2..n {
-            if self.gcd(a, n) == 1 {
+            if Self::gcd(a, n) == 1 {
                 return Ok(a);
             }
         }
@@ -764,7 +763,7 @@ impl OptimizedShorAlgorithm {
         ))
     }
 
-    const fn gcd(&self, mut a: u64, mut b: u64) -> u64 {
+    const fn gcd(mut a: u64, mut b: u64) -> u64 {
         while b != 0 {
             let temp = b;
             b = a % b;
@@ -773,7 +772,7 @@ impl OptimizedShorAlgorithm {
         a
     }
 
-    const fn mod_exp(&self, base: u64, exp: u64, modulus: u64) -> u64 {
+    const fn mod_exp(base: u64, exp: u64, modulus: u64) -> u64 {
         let mut result = 1u64;
         let mut base = base % modulus;
         let mut exp = exp;
@@ -793,7 +792,7 @@ impl OptimizedShorAlgorithm {
         if period == 0 {
             return false;
         }
-        self.mod_exp(a, period, n) == 1
+        Self::mod_exp(a, period, n) == 1
     }
 
     fn extract_factors_from_period(&self, a: u64, n: u64, period: u64) -> Option<Vec<u64>> {
@@ -802,14 +801,14 @@ impl OptimizedShorAlgorithm {
         }
 
         let half_period = period / 2;
-        let a_to_half = self.mod_exp(a, half_period, n);
+        let a_to_half = Self::mod_exp(a, half_period, n);
 
         if a_to_half == n - 1 {
             return None; // Trivial case
         }
 
-        let factor1 = self.gcd(a_to_half - 1, n);
-        let factor2 = self.gcd(a_to_half + 1, n);
+        let factor1 = Self::gcd(a_to_half - 1, n);
+        let factor2 = Self::gcd(a_to_half + 1, n);
 
         let mut factors = Vec::new();
         if factor1 > 1 && factor1 < n {
@@ -827,13 +826,13 @@ impl OptimizedShorAlgorithm {
         }
     }
 
-    fn estimate_success_probability(&self, attempt: usize, max_attempts: usize) -> f64 {
+    fn estimate_success_probability(attempt: usize, max_attempts: usize) -> f64 {
         // Estimate based on theoretical analysis of Shor's algorithm
         let base_probability = 0.5; // Approximate success probability per attempt
         1.0f64 - (1.0f64 - base_probability).powi(attempt as i32 + 1)
     }
 
-    fn estimate_resources(&self, n: u64) -> AlgorithmResourceStats {
+    fn estimate_resources(n: u64) -> AlgorithmResourceStats {
         let n_bits = (n as f64).log2().ceil() as usize;
         let register_size = 2 * n_bits;
         let total_qubits = register_size + n_bits;
@@ -860,7 +859,7 @@ impl OptimizedShorAlgorithm {
 pub struct OptimizedGroverAlgorithm {
     /// Configuration
     config: QuantumAlgorithmConfig,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Circuit interface
     circuit_interface: CircuitInterface,
@@ -878,7 +877,7 @@ impl OptimizedGroverAlgorithm {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         self.circuit_interface = self.circuit_interface.with_backend()?;
@@ -924,7 +923,7 @@ impl OptimizedGroverAlgorithm {
 
         // Apply pre-measurement amplitude amplification if enabled
         if self.config.optimization_level == OptimizationLevel::Maximum {
-            self.add_pre_measurement_amplification(&mut circuit, &oracle, num_qubits)?;
+            Self::add_pre_measurement_amplification(&mut circuit, &oracle, num_qubits)?;
         }
 
         // Measure all qubits
@@ -955,7 +954,10 @@ impl OptimizedGroverAlgorithm {
             }
             state
         };
-        let probabilities: Vec<f64> = final_state.iter().map(|amp| amp.norm_sqr()).collect();
+        let probabilities: Vec<f64> = final_state
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
 
         // Find items with highest probabilities
         let mut items_with_probs: Vec<(usize, f64)> = probabilities
@@ -963,7 +965,7 @@ impl OptimizedGroverAlgorithm {
             .enumerate()
             .map(|(i, &p)| (i, p))
             .collect();
-        items_with_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        items_with_probs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let found_items: Vec<usize> = items_with_probs
             .iter()
@@ -1011,7 +1013,7 @@ impl OptimizedGroverAlgorithm {
             OptimizationLevel::Maximum => {
                 // Use enhanced calculation with error correction
                 let corrected = (optimal as f64 * 1.05).round() as usize; // 5% correction factor
-                corrected.max(1).min(num_items / 2)
+                corrected.clamp(1, num_items / 2)
             }
             OptimizationLevel::Speed => {
                 // Slightly reduce iterations for speed
@@ -1063,7 +1065,7 @@ impl OptimizedGroverAlgorithm {
         F: Fn(usize) -> bool + Send + Sync,
     {
         // Apply standard oracle
-        self.add_oracle_to_circuit(circuit, oracle, num_qubits)?;
+        Self::add_oracle_to_circuit(circuit, oracle, num_qubits)?;
 
         // Add iteration-dependent phase correction for enhanced amplitude amplification
         if self.config.optimization_level == OptimizationLevel::Maximum && iteration > 0 {
@@ -1086,7 +1088,7 @@ impl OptimizedGroverAlgorithm {
         total_iterations: usize,
     ) -> Result<()> {
         // Apply standard diffusion operator
-        self.add_diffusion_to_circuit(circuit, num_qubits)?;
+        Self::add_diffusion_to_circuit(circuit, num_qubits)?;
 
         // Add adaptive amplitude amplification enhancement
         if self.config.optimization_level == OptimizationLevel::Maximum {
@@ -1106,7 +1108,6 @@ impl OptimizedGroverAlgorithm {
 
     /// Add pre-measurement amplitude amplification
     fn add_pre_measurement_amplification<F>(
-        &self,
         circuit: &mut InterfaceCircuit,
         oracle: &F,
         num_qubits: usize,
@@ -1141,7 +1142,6 @@ impl OptimizedGroverAlgorithm {
 
     /// Apply oracle phase to mark target items
     fn apply_oracle_phase<F>(
-        &self,
         simulator: &mut StateVectorSimulator,
         oracle: &F,
         num_qubits: usize,
@@ -1164,7 +1164,6 @@ impl OptimizedGroverAlgorithm {
 
     /// Add oracle to circuit (marks target items with phase flip)
     fn add_oracle_to_circuit<F>(
-        &self,
         circuit: &mut InterfaceCircuit,
         oracle: &F,
         num_qubits: usize,
@@ -1221,11 +1220,7 @@ impl OptimizedGroverAlgorithm {
     }
 
     /// Add diffusion operator to circuit
-    fn add_diffusion_to_circuit(
-        &self,
-        circuit: &mut InterfaceCircuit,
-        num_qubits: usize,
-    ) -> Result<()> {
+    fn add_diffusion_to_circuit(circuit: &mut InterfaceCircuit, num_qubits: usize) -> Result<()> {
         // Implement diffusion operator: 2|s⟩⟨s| - I where |s⟩ is uniform superposition
 
         // Apply H to all qubits
@@ -1255,7 +1250,6 @@ impl OptimizedGroverAlgorithm {
 
     /// Apply diffusion operator (amplitude amplification) - legacy method
     fn apply_diffusion_operator(
-        &self,
         simulator: &mut StateVectorSimulator,
         num_qubits: usize,
     ) -> Result<()> {
@@ -1284,7 +1278,7 @@ impl OptimizedGroverAlgorithm {
 pub struct EnhancedPhaseEstimation {
     /// Configuration
     config: QuantumAlgorithmConfig,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Circuit interface
     circuit_interface: CircuitInterface,
@@ -1313,7 +1307,7 @@ impl EnhancedPhaseEstimation {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         self.circuit_interface = self.circuit_interface.with_backend()?;
@@ -1363,7 +1357,7 @@ impl EnhancedPhaseEstimation {
             )?;
 
             // Update best results if this iteration improved precision
-            let achieved_precision = 1.0 / (1 << phase_qubits) as f64;
+            let achieved_precision = 1.0 / f64::from(1 << phase_qubits);
 
             if achieved_precision < best_precision {
                 best_precision = achieved_precision;
@@ -1379,7 +1373,7 @@ impl EnhancedPhaseEstimation {
             // Adaptive precision enhancement for next iteration
             if iteration < max_iterations - 1 {
                 phase_qubits =
-                    self.adapt_phase_qubits(phase_qubits, achieved_precision, target_precision);
+                    Self::adapt_phase_qubits(phase_qubits, achieved_precision, target_precision);
                 total_qubits = phase_qubits + system_qubits;
 
                 // Update QFT engine for new size
@@ -1396,7 +1390,7 @@ impl EnhancedPhaseEstimation {
 
         // Enhanced resource estimation
         let resource_stats =
-            self.estimate_qpe_resources(phase_qubits, system_qubits, precision_iterations);
+            Self::estimate_qpe_resources(phase_qubits, system_qubits, precision_iterations);
 
         Ok(PhaseEstimationResult {
             eigenvalues: best_eigenvalues,
@@ -1483,7 +1477,7 @@ impl EnhancedPhaseEstimation {
 
         // Convert measurement to eigenvalue
         let eigenvalue =
-            best_measurement as f64 / (1 << phase_qubits) as f64 * 2.0 * std::f64::consts::PI;
+            best_measurement as f64 / f64::from(1 << phase_qubits) * 2.0 * std::f64::consts::PI;
         Ok(eigenvalue)
     }
 
@@ -1507,7 +1501,6 @@ impl EnhancedPhaseEstimation {
 
     /// Adapt phase qubits count based on current performance
     fn adapt_phase_qubits(
-        &self,
         current_qubits: usize,
         achieved_precision: f64,
         target_precision: f64,
@@ -1556,14 +1549,14 @@ impl EnhancedPhaseEstimation {
 
             // Add adaptive phase correction based on iteration
             if self.config.optimization_level == OptimizationLevel::Maximum && iteration > 0 {
-                let _correction_angle = PI / (4.0 * (iteration + 1) as f64);
+                // let _correction_angle = PI / (4.0 * (iteration + 1) as f64);
                 // Note: Simplified implementation - would need proper RZ gate method
                 // simulator.apply_rz_public(qubit, correction_angle)?;
             }
         }
 
         // Enhanced eigenstate preparation
-        self.prepare_enhanced_eigenstate(&mut simulator, eigenstate, system_qubits)?;
+        Self::prepare_enhanced_eigenstate(&mut simulator, eigenstate, system_qubits)?;
 
         // Apply enhanced controlled unitaries with error mitigation
         for (i, control_qubit) in (system_qubits..(system_qubits + phase_qubits)).enumerate() {
@@ -1591,11 +1584,12 @@ impl EnhancedPhaseEstimation {
         let amplitudes = simulator.get_state();
         let eigenvalues =
             self.extract_enhanced_eigenvalues(&amplitudes, phase_qubits, system_qubits)?;
-        let measurement_probs = self.calculate_measurement_probabilities(&amplitudes, phase_qubits);
+        let measurement_probs =
+            Self::calculate_measurement_probabilities(&amplitudes, phase_qubits);
 
         // Extract eigenvectors if enabled
         let eigenvectors = if self.config.optimization_level == OptimizationLevel::Maximum {
-            Some(self.extract_eigenvectors(&amplitudes, system_qubits)?)
+            Some(Self::extract_eigenvectors(&amplitudes, system_qubits)?)
         } else {
             None
         };
@@ -1609,7 +1603,6 @@ impl EnhancedPhaseEstimation {
 
     /// Prepare enhanced eigenstate with improved fidelity
     fn prepare_enhanced_eigenstate(
-        &self,
         simulator: &mut StateVectorSimulator,
         eigenstate: &Array1<Complex64>,
         system_qubits: usize,
@@ -1659,7 +1652,7 @@ impl EnhancedPhaseEstimation {
 
         // Add error mitigation if enabled (simplified)
         if self.config.enable_error_mitigation && iteration > 0 {
-            let _mitigation_angle = PI / (16.0 * (iteration + 1) as f64);
+            // let _mitigation_angle = PI / (16.0 * (iteration + 1) as f64);
             // simulator.apply_rz_public(control_qubit, mitigation_angle)?;
         }
 
@@ -1772,7 +1765,6 @@ impl EnhancedPhaseEstimation {
 
     /// Calculate measurement probabilities for analysis
     fn calculate_measurement_probabilities(
-        &self,
         amplitudes: &[Complex64],
         phase_qubits: usize,
     ) -> Vec<f64> {
@@ -1799,7 +1791,6 @@ impl EnhancedPhaseEstimation {
 
     /// Extract eigenvectors from quantum state
     fn extract_eigenvectors(
-        &self,
         amplitudes: &[Complex64],
         system_qubits: usize,
     ) -> Result<Array2<Complex64>> {
@@ -1816,7 +1807,6 @@ impl EnhancedPhaseEstimation {
 
     /// Estimate QPE resource requirements
     const fn estimate_qpe_resources(
-        &self,
         phase_qubits: usize,
         system_qubits: usize,
         iterations: usize,
@@ -1841,7 +1831,6 @@ impl EnhancedPhaseEstimation {
 
     /// Apply controlled modular exponentiation: C-U^k where U|x⟩ = |ax mod N⟩
     fn apply_controlled_modular_exp(
-        &self,
         simulator: &mut StateVectorSimulator,
         control_qubit: usize,
         target_range: std::ops::Range<usize>,
@@ -1943,10 +1932,11 @@ mod tests {
     #[test]
     fn test_shor_trivial_cases() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test even number
-        let result = shor.factor(14).unwrap();
+        let result = shor.factor(14).expect("Factoring 14 should succeed");
         assert!(result.factors.contains(&2));
         assert!(result.factors.contains(&7));
 
@@ -1963,7 +1953,8 @@ mod tests {
     #[test]
     fn test_grover_optimal_iterations() {
         let config = QuantumAlgorithmConfig::default();
-        let grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         let num_items = 16; // 4 qubits
         let num_targets = 1;
@@ -1983,9 +1974,10 @@ mod tests {
     #[test]
     fn test_continued_fractions() {
         let config = QuantumAlgorithmConfig::default();
-        let shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let _shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
-        let convergents = shor.continued_fractions(0.375, 100); // 3/8
+        let convergents = OptimizedShorAlgorithm::continued_fractions(0.375, 100); // 3/8
         assert!(!convergents.is_empty());
 
         // Should find the fraction 3/8
@@ -1995,16 +1987,18 @@ mod tests {
     #[test]
     fn test_modular_exponentiation() {
         let config = QuantumAlgorithmConfig::default();
-        let shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let _shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
-        assert_eq!(shor.mod_exp(2, 3, 5), 3); // 2^3 mod 5 = 8 mod 5 = 3
-        assert_eq!(shor.mod_exp(3, 4, 7), 4); // 3^4 mod 7 = 81 mod 7 = 4
+        assert_eq!(OptimizedShorAlgorithm::mod_exp(2, 3, 5), 3); // 2^3 mod 5 = 8 mod 5 = 3
+        assert_eq!(OptimizedShorAlgorithm::mod_exp(3, 4, 7), 4); // 3^4 mod 7 = 81 mod 7 = 4
     }
 
     #[test]
     fn test_phase_estimation_simple() {
         let config = QuantumAlgorithmConfig::default();
-        let mut qpe = EnhancedPhaseEstimation::new(config).unwrap();
+        let mut qpe =
+            EnhancedPhaseEstimation::new(config).expect("Phase estimation creation should succeed");
 
         // Test with simple eigenstate |0⟩ of the Z gate
         let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
@@ -2018,7 +2012,7 @@ mod tests {
         let result = qpe.estimate_eigenvalues(z_unitary, &eigenstate, 1e-2);
         assert!(result.is_ok());
 
-        let qpe_result = result.unwrap();
+        let qpe_result = result.expect("Phase estimation should succeed");
         assert!(!qpe_result.eigenvalues.is_empty());
         assert_eq!(qpe_result.eigenvalues.len(), qpe_result.precisions.len());
     }
@@ -2026,18 +2020,19 @@ mod tests {
     #[test]
     fn test_grover_search_functionality() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Simple oracle: search for state |3⟩ in 3-qubit space
         let oracle = |x: usize| x == 3;
 
         let result = grover.search(3, oracle, 1);
         if let Err(e) = &result {
-            eprintln!("Grover search failed: {e:?}")
+            eprintln!("Grover search failed: {e:?}");
         }
         assert!(result.is_ok());
 
-        let grover_result = result.unwrap();
+        let grover_result = result.expect("Grover search should succeed");
         assert_eq!(grover_result.iterations, grover_result.optimal_iterations);
         assert!(grover_result.success_probability >= 0.0);
         assert!(grover_result.success_probability <= 1.0);
@@ -2046,15 +2041,16 @@ mod tests {
     #[test]
     fn test_shor_algorithm_classical_cases() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test even number factorization
-        let result = shor.factor(10).unwrap();
+        let result = shor.factor(10).expect("Factoring 10 should succeed");
         assert!(!result.factors.is_empty());
         assert!(result.factors.contains(&2) || result.factors.contains(&5));
 
         // Test prime number (should not factor)
-        let result = shor.factor(7).unwrap();
+        let result = shor.factor(7).expect("Factoring 7 should succeed");
         if !result.factors.is_empty() {
             // If factors found, they should multiply to 7
             let product: u64 = result.factors.iter().product();
@@ -2067,7 +2063,7 @@ mod tests {
         let benchmarks = benchmark_quantum_algorithms();
         assert!(benchmarks.is_ok());
 
-        let results = benchmarks.unwrap();
+        let results = benchmarks.expect("Benchmarks should succeed");
         assert!(results.contains_key("shor_15"));
         assert!(results.contains_key("grover_4qubits"));
         assert!(results.contains_key("phase_estimation"));
@@ -2084,7 +2080,8 @@ mod tests {
     #[test]
     fn test_grover_optimal_iterations_calculation() {
         let config = QuantumAlgorithmConfig::default();
-        let grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Test for different problem sizes
         assert_eq!(grover.calculate_optimal_iterations(4, 1), 1); // 4 items, 1 target
@@ -2100,7 +2097,8 @@ mod tests {
             precision_tolerance: 1e-3,
             ..Default::default()
         };
-        let mut qpe = EnhancedPhaseEstimation::new(config).unwrap();
+        let mut qpe =
+            EnhancedPhaseEstimation::new(config).expect("Phase estimation creation should succeed");
 
         // Test with identity operator (eigenvalue should be 0)
         let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0)]);
@@ -2110,7 +2108,7 @@ mod tests {
         let result = qpe.estimate_eigenvalues(identity_op, &eigenstate, 1e-3);
         assert!(result.is_ok());
 
-        let qpe_result = result.unwrap();
+        let qpe_result = result.expect("Phase estimation should succeed");
         assert!(qpe_result.precisions[0] <= 1e-3);
         assert!(qpe_result.phase_qubits >= 3); // Should use enough qubits for target precision
     }
@@ -2118,7 +2116,8 @@ mod tests {
     #[test]
     fn test_grover_multiple_targets() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Oracle that marks multiple states: |2⟩ and |5⟩ in 3-qubit space
         let oracle = |x: usize| x == 2 || x == 5;
@@ -2126,7 +2125,7 @@ mod tests {
         let result = grover.search(3, oracle, 2);
         assert!(result.is_ok());
 
-        let grover_result = result.unwrap();
+        let grover_result = result.expect("Grover search should succeed");
         assert!(grover_result.success_probability >= 0.0);
         assert!(grover_result.success_probability <= 1.0);
         assert!(grover_result.iterations > 0);
@@ -2135,7 +2134,8 @@ mod tests {
     #[test]
     fn test_grover_four_qubits() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Search for state |7⟩ in 4-qubit space
         let oracle = |x: usize| x == 7;
@@ -2143,7 +2143,7 @@ mod tests {
         let result = grover.search(4, oracle, 1);
         assert!(result.is_ok());
 
-        let grover_result = result.unwrap();
+        let grover_result = result.expect("Grover search should succeed");
         assert!(grover_result.resource_stats.qubits_used >= 4);
         assert!(grover_result.iterations >= 2 && grover_result.iterations <= 5);
     }
@@ -2151,10 +2151,11 @@ mod tests {
     #[test]
     fn test_shor_perfect_square() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test perfect square (16 = 4 * 4)
-        let result = shor.factor(16).unwrap();
+        let result = shor.factor(16).expect("Factoring 16 should succeed");
         // Should find 4 or 2 as factors
         assert!(result.factors.contains(&4) || result.factors.contains(&2));
     }
@@ -2162,11 +2163,12 @@ mod tests {
     #[test]
     fn test_shor_semiprime() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test semiprime 15 = 3 * 5
         // Note: Shor's algorithm is probabilistic and may not always find factors
-        let result = shor.factor(15).unwrap();
+        let result = shor.factor(15).expect("Factoring 15 should succeed");
 
         // The algorithm ran successfully (quantum_iterations is unsigned, always >= 0)
         assert!(result.execution_time_ms >= 0.0);
@@ -2214,9 +2216,10 @@ mod tests {
     #[test]
     fn test_resource_stats() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
-        let result = shor.factor(6).unwrap();
+        let result = shor.factor(6).expect("Factoring 6 should succeed");
         let stats = &result.resource_stats;
 
         // Verify resource stats structure exists (may be 0 for trivial classical cases)
@@ -2228,10 +2231,13 @@ mod tests {
     #[test]
     fn test_grover_resource_stats() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         let oracle = |x: usize| x == 1;
-        let result = grover.search(2, oracle, 1).unwrap();
+        let result = grover
+            .search(2, oracle, 1)
+            .expect("Grover search should succeed");
 
         // Verify resource stats are populated
         assert!(result.resource_stats.qubits_used > 0);
@@ -2241,7 +2247,8 @@ mod tests {
     #[test]
     fn test_phase_estimation_resource_stats() {
         let config = QuantumAlgorithmConfig::default();
-        let mut qpe = EnhancedPhaseEstimation::new(config).unwrap();
+        let mut qpe =
+            EnhancedPhaseEstimation::new(config).expect("Phase estimation creation should succeed");
 
         let eigenstate = Array1::from_vec(vec![Complex64::new(1.0, 0.0)]);
         let identity_op =
@@ -2249,7 +2256,7 @@ mod tests {
 
         let result = qpe
             .estimate_eigenvalues(identity_op, &eigenstate, 1e-2)
-            .unwrap();
+            .expect("Phase estimation should succeed");
 
         // Verify resource stats are populated (circuit_depth is unsigned, always >= 0)
         assert!(result.resource_stats.qubits_used > 0);
@@ -2270,9 +2277,10 @@ mod tests {
     #[test]
     fn test_shor_result_structure() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
-        let result = shor.factor(6).unwrap();
+        let result = shor.factor(6).expect("Factoring 6 should succeed");
 
         // Verify result structure is complete
         assert_eq!(result.n, 6);
@@ -2286,10 +2294,13 @@ mod tests {
     #[test]
     fn test_grover_result_structure() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         let oracle = |x: usize| x == 0;
-        let result = grover.search(2, oracle, 1).unwrap();
+        let result = grover
+            .search(2, oracle, 1)
+            .expect("Grover search should succeed");
 
         // Verify result structure
         assert!(result.resource_stats.qubits_used > 0);
@@ -2301,32 +2312,35 @@ mod tests {
     #[test]
     fn test_modular_exponentiation_edge_cases() {
         let config = QuantumAlgorithmConfig::default();
-        let shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let _shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test edge cases
-        assert_eq!(shor.mod_exp(1, 100, 7), 1); // 1^anything = 1
-        assert_eq!(shor.mod_exp(5, 0, 7), 1); // anything^0 = 1
-        assert_eq!(shor.mod_exp(2, 10, 1024), 0); // 2^10 = 1024 mod 1024 = 0
+        assert_eq!(OptimizedShorAlgorithm::mod_exp(1, 100, 7), 1); // 1^anything = 1
+        assert_eq!(OptimizedShorAlgorithm::mod_exp(5, 0, 7), 1); // anything^0 = 1
+        assert_eq!(OptimizedShorAlgorithm::mod_exp(2, 10, 1024), 0); // 2^10 = 1024 mod 1024 = 0
     }
 
     #[test]
     fn test_continued_fractions_edge_cases() {
         let config = QuantumAlgorithmConfig::default();
-        let shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let _shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test simple fraction
-        let convergents = shor.continued_fractions(0.5, 10);
+        let convergents = OptimizedShorAlgorithm::continued_fractions(0.5, 10);
         assert!(convergents.iter().any(|&(num, den)| num == 1 && den == 2));
 
         // Test 1/3
-        let convergents = shor.continued_fractions(1.0 / 3.0, 20);
+        let convergents = OptimizedShorAlgorithm::continued_fractions(1.0 / 3.0, 20);
         assert!(convergents.iter().any(|&(num, den)| num == 1 && den == 3));
     }
 
     #[test]
     fn test_grover_iterations_scaling() {
         let config = QuantumAlgorithmConfig::default();
-        let grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Iterations should scale as sqrt(N)
         let iter_8 = grover.calculate_optimal_iterations(8, 1);
@@ -2343,7 +2357,8 @@ mod tests {
             enable_error_mitigation: false,
             ..Default::default()
         };
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         let oracle = |x: usize| x == 1;
         let result = grover.search(2, oracle, 1);
@@ -2356,7 +2371,8 @@ mod tests {
             enable_parallel: false,
             ..Default::default()
         };
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         let result = shor.factor(6);
         assert!(result.is_ok());
@@ -2378,7 +2394,8 @@ mod tests {
     #[test]
     fn test_shor_small_numbers() {
         let config = QuantumAlgorithmConfig::default();
-        let mut shor = OptimizedShorAlgorithm::new(config).unwrap();
+        let mut shor =
+            OptimizedShorAlgorithm::new(config).expect("Shor algorithm creation should succeed");
 
         // Test small composite numbers
         for n in [4, 6, 8, 9, 10, 12] {
@@ -2390,7 +2407,8 @@ mod tests {
     #[test]
     fn test_grover_single_qubit() {
         let config = QuantumAlgorithmConfig::default();
-        let mut grover = OptimizedGroverAlgorithm::new(config).unwrap();
+        let mut grover = OptimizedGroverAlgorithm::new(config)
+            .expect("Grover algorithm creation should succeed");
 
         // Single qubit search - trivial case
         let oracle = |x: usize| x == 1;

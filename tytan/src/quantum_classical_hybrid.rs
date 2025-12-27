@@ -34,7 +34,7 @@
 //!     ("x0".to_string(), true),
 //!     ("x1".to_string(), false),
 //! ]);
-//! let refined = optimizer.refine_solution(&quantum_solution, &qubo_matrix).unwrap();
+//! let refined = optimizer.refine_solution(&quantum_solution, &qubo_matrix).expect("refinement should succeed");
 //! assert!(refined.energy <= 0.0);
 //! ```
 
@@ -766,7 +766,9 @@ mod tests {
             ("x2".to_string(), false),
         ]);
 
-        let refined = optimizer.refine_solution(&initial_solution, &qubo).unwrap();
+        let refined = optimizer
+            .refine_solution(&initial_solution, &qubo)
+            .expect("refinement should succeed");
 
         assert!(refined.improvement >= 0.0);
         assert!(refined.energy <= optimizer.compute_energy(&initial_solution, &qubo));
@@ -784,7 +786,9 @@ mod tests {
         ];
 
         let criterion = FixingCriterion::HighFrequency { threshold: 0.8 };
-        let fixed = optimizer.fix_variables(&samples, criterion).unwrap();
+        let fixed = optimizer
+            .fix_variables(&samples, criterion)
+            .expect("variable fixing should succeed");
 
         // x0 should be fixed to true (100% frequency)
         assert!(!fixed.is_empty());

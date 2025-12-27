@@ -24,7 +24,9 @@ impl QICA {
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         let n_features = data.ncols();
         let n_components = self.config.n_components.min(n_features);
-        let mean = data.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap();
+        let mean = data
+            .mean_axis(scirs2_core::ndarray::Axis(0))
+            .unwrap_or_else(|| scirs2_core::ndarray::Array1::zeros(data.ncols()));
         let components = Array2::eye(n_features)
             .slice(s![..n_components, ..])
             .to_owned();

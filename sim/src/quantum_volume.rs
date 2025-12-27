@@ -5,7 +5,7 @@
 //! probability calculation, and quantum volume determination.
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::{ChaCha8Rng, Rng as RngTrait, SeedableRng}; // Rename to avoid conflict
 use scirs2_core::Complex64;
@@ -95,7 +95,7 @@ pub struct QVGate {
 pub struct QuantumVolumeCalculator {
     /// Random number generator
     rng: ChaCha8Rng,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// QV protocol parameters
     params: QVParams,
@@ -133,6 +133,7 @@ impl Default for QVParams {
 
 impl QuantumVolumeCalculator {
     /// Create new quantum volume calculator
+    #[must_use]
     pub fn new(params: QVParams) -> Self {
         let rng = if let Some(seed) = params.seed {
             ChaCha8Rng::seed_from_u64(seed)
@@ -147,7 +148,7 @@ impl QuantumVolumeCalculator {
         }
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_scirs2_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -450,8 +451,11 @@ impl QuantumVolumeCalculator {
 
     /// Calculate heavy output threshold (median probability)
     fn calculate_heavy_threshold(&self, amplitudes: &Array1<Complex64>) -> f64 {
-        let mut probabilities: Vec<f64> = amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
-        probabilities.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut probabilities: Vec<f64> = amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
+        probabilities.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let median_idx = probabilities.len() / 2;
         probabilities[median_idx]
@@ -536,12 +540,12 @@ impl QuantumVolumeCalculator {
     /// Error function approximation
     fn erf(&self, x: f64) -> f64 {
         // Abramowitz and Stegun approximation
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
+        let a1 = 0.254_829_592;
+        let a2 = -0.284_496_736;
+        let a3 = 1.421_413_741;
+        let a4 = -1.453_152_027;
+        let a5 = 1.061_405_429;
+        let p = 0.327_591_1;
 
         let sign = if x < 0.0 { -1.0 } else { 1.0 };
         let x = x.abs();
@@ -631,7 +635,9 @@ mod tests {
         let params = QVParams::default();
         let mut calculator = QuantumVolumeCalculator::new(params);
 
-        let matrix = calculator.generate_random_su4().unwrap();
+        let matrix = calculator
+            .generate_random_su4()
+            .expect("Failed to generate random SU(4) matrix");
         assert_eq!(matrix.shape(), [4, 4]);
 
         // Check that it's approximately unitary (U†U ≈ I)
@@ -650,7 +656,9 @@ mod tests {
         let params = QVParams::default();
         let mut calculator = QuantumVolumeCalculator::new(params);
 
-        let circuit = calculator.generate_qv_circuit(4, 4).unwrap();
+        let circuit = calculator
+            .generate_qv_circuit(4, 4)
+            .expect("Failed to generate QV circuit");
         assert_eq!(circuit.width, 4);
         assert_eq!(circuit.depth, 4);
         assert!(!circuit.gates.is_empty());
@@ -678,7 +686,8 @@ mod tests {
 
     #[test]
     fn test_small_quantum_volume() {
-        let result = calculate_quantum_volume_with_params(3, 10, Some(42)).unwrap();
+        let result = calculate_quantum_volume_with_params(3, 10, Some(42))
+            .expect("Failed to calculate quantum volume");
 
         assert_eq!(result.width, 3);
         assert_eq!(result.depth, 3);
@@ -701,7 +710,7 @@ mod tests {
         let permutation = vec![1, 0]; // Swap qubits
         let permuted = calculator
             .apply_permutation(&state, 2, &permutation)
-            .unwrap();
+            .expect("Failed to apply permutation");
 
         // |00⟩ should become |00⟩ (no change for this state)
         assert!((permuted[0].re - 1.0).abs() < 1e-10);

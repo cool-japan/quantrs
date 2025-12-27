@@ -116,7 +116,7 @@ pub struct AdiabaticQuantumComputer {
     evolution_history: Vec<AdiabaticSnapshot>,
     /// Gap tracking data
     gap_history: Vec<GapMeasurement>,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Statistics
     stats: AdiabaticStats,
@@ -208,7 +208,7 @@ impl AdiabaticQuantumComputer {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -223,7 +223,7 @@ impl AdiabaticQuantumComputer {
         let ground_idx = eigenvalues
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map_or(0, |(idx, _)| idx);
 
         // Set state to ground state
@@ -451,7 +451,12 @@ impl AdiabaticQuantumComputer {
         self.state = evolution_operator.dot(&self.state);
 
         // Renormalize (to handle numerical errors)
-        let norm: f64 = self.state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+        let norm: f64 = self
+            .state
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            .sqrt();
         if norm > 1e-15 {
             self.state.mapv_inplace(|x| x / norm);
         }
@@ -555,7 +560,7 @@ impl AdiabaticQuantumComputer {
     fn get_pauli_matrix(&self, pauli: &str) -> Result<Array2<Complex64>> {
         match pauli.to_uppercase().as_str() {
             "I" => Ok(Array2::eye(2)),
-            "X" => Ok(Array2::from_shape_vec(
+            "X" => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -564,8 +569,8 @@ impl AdiabaticQuantumComputer {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap()),
-            "Y" => Ok(Array2::from_shape_vec(
+            .map_err(|e| SimulatorError::InvalidInput(format!("Pauli X matrix error: {e}"))),
+            "Y" => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -574,8 +579,8 @@ impl AdiabaticQuantumComputer {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap()),
-            "Z" => Ok(Array2::from_shape_vec(
+            .map_err(|e| SimulatorError::InvalidInput(format!("Pauli Y matrix error: {e}"))),
+            "Z" => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -584,7 +589,7 @@ impl AdiabaticQuantumComputer {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap()),
+            .map_err(|e| SimulatorError::InvalidInput(format!("Pauli Z matrix error: {e}"))),
             _ => Err(SimulatorError::InvalidInput(format!(
                 "Unknown Pauli operator: {pauli}"
             ))),
@@ -650,8 +655,12 @@ impl AdiabaticQuantumComputer {
 
         for n in 1..=20 {
             // Limit iterations for convergence
-            term = term.dot(&scaled_matrix) / (n as f64);
-            let term_norm: f64 = term.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+            term = term.dot(&scaled_matrix) / f64::from(n);
+            let term_norm: f64 = term
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
 
             result += &term;
 
@@ -683,7 +692,7 @@ impl AdiabaticQuantumComputer {
 
         // Sort eigenvalues
         let mut sorted_eigenvalues = eigenvalues;
-        sorted_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let ground_energy = sorted_eigenvalues[0];
         let first_excited_energy = sorted_eigenvalues.get(1).copied().unwrap_or(ground_energy);
@@ -725,8 +734,9 @@ impl AdiabaticQuantumComputer {
             return None;
         }
 
-        let prev_gap = self.gap_history.last().unwrap().gap;
-        let prev_time = self.gap_history.last().unwrap().time;
+        let last_entry = self.gap_history.last()?;
+        let prev_gap = last_entry.gap;
+        let prev_time = last_entry.time;
         let dt = self.current_time - prev_time;
 
         if dt > 1e-15 {
@@ -781,22 +791,26 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Calculate adaptive time step based on gap
-    fn calculate_adaptive_timestep(&self, t: f64, default_dt: f64) -> Result<f64> {
+    fn calculate_adaptive_timestep(&self, _t: f64, default_dt: f64) -> Result<f64> {
         if self.gap_history.is_empty() {
             return Ok(default_dt);
         }
 
-        let current_gap = self.gap_history.last().unwrap().gap;
+        let current_gap = self
+            .gap_history
+            .last()
+            .ok_or_else(|| SimulatorError::InvalidState("Gap history is empty".to_string()))?
+            .gap;
 
         // Smaller time steps when gap is small
         let gap_factor = (current_gap / self.config.gap_tracking.min_gap_threshold).sqrt();
-        let adaptive_dt = default_dt * gap_factor.min(2.0).max(0.1); // Clamp between 0.1 and 2.0 times default
+        let adaptive_dt = default_dt * gap_factor.clamp(0.1, 2.0); // Clamp between 0.1 and 2.0 times default
 
         Ok(adaptive_dt)
     }
 
     /// Take snapshot of current state
-    fn take_snapshot(&mut self, t: f64) -> Result<AdiabaticSnapshot> {
+    fn take_snapshot(&self, t: f64) -> Result<AdiabaticSnapshot> {
         let s = self.schedule_function(t);
         let energy = self.calculate_current_energy()?;
 
@@ -814,7 +828,7 @@ impl AdiabaticQuantumComputer {
                 let ground_idx = eigenvalues
                     .iter()
                     .enumerate()
-                    .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                    .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                     .map_or(0, |(idx, _)| idx);
 
                 let ground_state = eigenvectors.column(ground_idx).to_owned();
@@ -895,7 +909,7 @@ impl AdiabaticQuantumComputer {
         }
 
         // Sort eigenvalues
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         Ok((eigenvalues, eigenvectors))
     }
@@ -914,7 +928,7 @@ impl AdiabaticQuantumComputer {
             eigenvalues.push(matrix[[i, i]].re);
         }
 
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let eigenvectors = Array2::eye(dim);
 
         Ok((eigenvalues, eigenvectors))
@@ -937,21 +951,25 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Get current state
+    #[must_use]
     pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
     /// Get evolution history
+    #[must_use]
     pub fn get_evolution_history(&self) -> &[AdiabaticSnapshot] {
         &self.evolution_history
     }
 
     /// Get gap history
+    #[must_use]
     pub fn get_gap_history(&self) -> &[GapMeasurement] {
         &self.gap_history
     }
 
     /// Get statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &AdiabaticStats {
         &self.stats
     }
@@ -996,6 +1014,7 @@ pub struct AdiabaticUtils;
 
 impl AdiabaticUtils {
     /// Create Max-Cut problem Hamiltonian
+    #[must_use]
     pub fn create_max_cut_hamiltonian(
         graph_edges: &[(usize, usize)],
         weights: &[f64],
@@ -1015,15 +1034,16 @@ impl AdiabaticUtils {
             // For Max-Cut, we want to maximize the number of edges cut
             // This corresponds to minimizing -weight/2 * (1 - Z_i Z_j) = -weight/2 + weight/2 * Z_i Z_j
             // So we add the ZZ interaction term with positive coefficient
-            hamiltonian
-                .add_two_pauli(u, v, "Z", "Z", weight / 2.0)
-                .unwrap();
+            if let Err(e) = hamiltonian.add_two_pauli(u, v, "Z", "Z", weight / 2.0) {
+                eprintln!("Warning: Failed to add Max-Cut term for edge ({u}, {v}): {e}");
+            }
         }
 
         hamiltonian
     }
 
     /// Create 3-SAT problem Hamiltonian
+    #[must_use]
     pub fn create_3sat_hamiltonian(clauses: &[Vec<i32>]) -> Hamiltonian {
         let max_var = clauses
             .iter()
@@ -1051,9 +1071,11 @@ impl AdiabaticUtils {
 
                     // Add weak coupling between variables in the same clause
                     if var1 < max_var && var2 < max_var {
-                        hamiltonian
-                            .add_two_pauli(var1, var2, "Z", "Z", 0.1)
-                            .unwrap();
+                        if let Err(e) = hamiltonian.add_two_pauli(var1, var2, "Z", "Z", 0.1) {
+                            eprintln!(
+                                "Warning: Failed to add 3-SAT term for vars ({var1}, {var2}): {e}"
+                            );
+                        }
                     }
                 }
             }
@@ -1063,6 +1085,7 @@ impl AdiabaticUtils {
     }
 
     /// Create transverse field Ising model (TFIM) Hamiltonian
+    #[must_use]
     pub fn create_tfim_hamiltonian(
         num_qubits: usize,
         j_coupling: f64,
@@ -1072,25 +1095,33 @@ impl AdiabaticUtils {
 
         // ZZ coupling terms
         for i in 0..num_qubits - 1 {
-            hamiltonian
-                .add_two_pauli(i, i + 1, "Z", "Z", -j_coupling)
-                .unwrap();
+            if let Err(e) = hamiltonian.add_two_pauli(i, i + 1, "Z", "Z", -j_coupling) {
+                eprintln!(
+                    "Warning: Failed to add TFIM ZZ term for qubits ({i}, {}): {e}",
+                    i + 1
+                );
+            }
         }
 
         // X field terms
         for i in 0..num_qubits {
-            hamiltonian.add_single_pauli(i, "X", -h_field).unwrap();
+            if let Err(e) = hamiltonian.add_single_pauli(i, "X", -h_field) {
+                eprintln!("Warning: Failed to add TFIM X term for qubit {i}: {e}");
+            }
         }
 
         hamiltonian
     }
 
     /// Create mixing Hamiltonian (typically all X)
+    #[must_use]
     pub fn create_mixing_hamiltonian(num_qubits: usize) -> Hamiltonian {
         let mut hamiltonian = Hamiltonian::new(num_qubits);
 
         for i in 0..num_qubits {
-            hamiltonian.add_single_pauli(i, "X", 1.0).unwrap();
+            if let Err(e) = hamiltonian.add_single_pauli(i, "X", 1.0) {
+                eprintln!("Warning: Failed to add mixing X term for qubit {i}: {e}");
+            }
         }
 
         hamiltonian
@@ -1177,7 +1208,8 @@ mod tests {
             schedule_type: ScheduleType::Linear,
             ..Default::default()
         };
-        let adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
 
         assert_abs_diff_eq!(adiabatic_qc.schedule_function(0.0), 0.0, epsilon = 1e-10);
         assert_abs_diff_eq!(adiabatic_qc.schedule_function(5.0), 0.5, epsilon = 1e-10);
@@ -1187,10 +1219,14 @@ mod tests {
     #[test]
     fn test_hamiltonian_interpolation() {
         let mut initial_h = Hamiltonian::new(1);
-        initial_h.add_pauli_term(1.0, &[(0, 'X')]).unwrap();
+        initial_h
+            .add_pauli_term(1.0, &[(0, 'X')])
+            .expect("Failed to add Pauli term");
 
         let mut final_h = Hamiltonian::new(1);
-        final_h.add_pauli_term(1.0, &[(0, 'Z')]).unwrap();
+        final_h
+            .add_pauli_term(1.0, &[(0, 'Z')])
+            .expect("Failed to add Pauli term");
 
         let config = AdiabaticConfig {
             initial_hamiltonian: initial_h,
@@ -1198,9 +1234,12 @@ mod tests {
             ..Default::default()
         };
 
-        let adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
 
-        let h_mid = adiabatic_qc.interpolate_hamiltonian(0.5).unwrap();
+        let h_mid = adiabatic_qc
+            .interpolate_hamiltonian(0.5)
+            .expect("Failed to interpolate Hamiltonian");
         assert_eq!(h_mid.terms.len(), 2); // Should have both X and Z terms
     }
 
@@ -1262,11 +1301,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let mut adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
         let result = adiabatic_qc.evolve();
         assert!(result.is_ok());
 
-        let evolution_result = result.unwrap();
+        let evolution_result = result.expect("Failed to evolve");
         assert_eq!(evolution_result.evolution_history.len(), 2); // Initial + final snapshots
     }
 
@@ -1287,11 +1327,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let mut adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
         let result = adiabatic_qc.evolve();
         assert!(result.is_ok());
 
-        let evolution_result = result.unwrap();
+        let evolution_result = result.expect("Failed to evolve");
         assert!(!evolution_result.gap_history.is_empty());
         assert!(evolution_result.min_gap >= 0.0);
     }
@@ -1307,7 +1348,8 @@ mod tests {
             ..Default::default()
         };
 
-        let adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
         let energy = adiabatic_qc.calculate_current_energy();
         assert!(energy.is_ok());
     }
@@ -1315,7 +1357,8 @@ mod tests {
     #[test]
     fn test_fidelity_calculation() {
         let config = AdiabaticConfig::default();
-        let adiabatic_qc = AdiabaticQuantumComputer::new(config).unwrap();
+        let adiabatic_qc =
+            AdiabaticQuantumComputer::new(config).expect("Failed to create adiabatic QC");
 
         let state1 = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
         let state2 = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);

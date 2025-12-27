@@ -36,10 +36,10 @@ impl AwsSignatureV4 {
         let canonical_request = Self::create_canonical_request(method, path, query, headers, body);
 
         // Step 2: Create string to sign
-        let string_to_sign = Self::create_string_to_sign(&canonical_request, &region, time);
+        let string_to_sign = Self::create_string_to_sign(&canonical_request, region, time);
 
         // Step 3: Calculate signature
-        let signature = Self::calculate_signature(&string_to_sign, secret_key, &region, time);
+        let signature = Self::calculate_signature(&string_to_sign, secret_key, region, time);
 
         // Step 4: Add signature to headers
         let credential = format!(
@@ -59,7 +59,8 @@ impl AwsSignatureV4 {
 
         headers.insert(
             HeaderName::from_static("authorization"),
-            HeaderValue::from_str(&auth_header).unwrap(),
+            HeaderValue::from_str(&auth_header)
+                .expect("Authorization header should only contain valid ASCII characters"),
         );
     }
 

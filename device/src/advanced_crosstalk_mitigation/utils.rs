@@ -648,8 +648,8 @@ pub mod profiling {
                 Some(TimingStatistics {
                     mean: Duration::from_nanos(mean_ns as u64),
                     std_dev: Duration::from_nanos(std_dev_ns as u64),
-                    min: Duration::from_nanos(*durations_ns.iter().min().unwrap()),
-                    max: Duration::from_nanos(*durations_ns.iter().max().unwrap()),
+                    min: Duration::from_nanos(durations_ns.iter().copied().min().unwrap_or(0)),
+                    max: Duration::from_nanos(durations_ns.iter().copied().max().unwrap_or(0)),
                     count: measurements.len(),
                 })
             } else {

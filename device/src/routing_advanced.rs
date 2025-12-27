@@ -396,17 +396,7 @@ impl AdvancedQubitRouter {
             // Get executable gates in front layer
             let executable = self.get_executable_gates(&state, &dependencies);
 
-            if !executable.is_empty() {
-                // Schedule executable gates
-                for gate_id in executable {
-                    state.scheduled_gates.insert(gate_id);
-                    dependencies[gate_id].scheduled = true;
-                }
-
-                // Update front layer
-                state.front_layer = self.update_front_layer(&state, &dependencies);
-                position += 1;
-            } else {
+            if executable.is_empty() {
                 // Need to insert swaps
                 let best_swap = self.find_best_swap_sabre(
                     &state,
@@ -418,6 +408,16 @@ impl AdvancedQubitRouter {
                 // Apply swap
                 self.apply_swap(&mut state, &best_swap, position);
                 metrics.swap_chain_lengths.push(1);
+            } else {
+                // Schedule executable gates
+                for gate_id in executable {
+                    state.scheduled_gates.insert(gate_id);
+                    dependencies[gate_id].scheduled = true;
+                }
+
+                // Update front layer
+                state.front_layer = self.update_front_layer(&state, &dependencies);
+                position += 1;
             }
         }
 
@@ -545,7 +545,7 @@ impl AdvancedQubitRouter {
             metrics.states_explored += 1;
         }
 
-        best_swap.ok_or(DeviceError::RoutingError("No valid swap found".to_string()))
+        best_swap.ok_or_else(|| DeviceError::RoutingError("No valid swap found".to_string()))
     }
 
     /// SABRE heuristic function
@@ -709,7 +709,7 @@ impl AdvancedQubitRouter {
 
             // Generate neighbors
             let neighbors =
-                self.generate_astar_neighbors(&current.routing_state, &dependencies, &mut metrics);
+                self.generate_astar_neighbors(&current.routing_state, &dependencies, &metrics);
 
             for (neighbor_state, action_cost) in neighbors {
                 let g_score = current.g_score + action_cost;
@@ -743,14 +743,7 @@ impl AdvancedQubitRouter {
 
         // Try executing gates
         let executable = self.get_executable_gates(state, dependencies);
-        if !executable.is_empty() {
-            let mut new_state = state.clone();
-            for gate_id in executable {
-                new_state.scheduled_gates.insert(gate_id);
-            }
-            new_state.front_layer = self.update_front_layer(&new_state, dependencies);
-            neighbors.push((new_state, 0.0)); // No cost for executing gates
-        } else {
+        if executable.is_empty() {
             // Try all possible swaps
             for edge in self.topology.connectivity.edge_references() {
                 let phys1 = self.topology.connectivity[edge.source()] as usize;
@@ -769,6 +762,13 @@ impl AdvancedQubitRouter {
                 self.apply_swap(&mut new_state, &swap, 0);
                 neighbors.push((new_state, 1.0)); // Cost of 1 for swap
             }
+        } else {
+            let mut new_state = state.clone();
+            for gate_id in executable {
+                new_state.scheduled_gates.insert(gate_id);
+            }
+            new_state.front_layer = self.update_front_layer(&new_state, dependencies);
+            neighbors.push((new_state, 0.0)); // No cost for executing gates
         }
 
         neighbors
@@ -902,18 +902,14 @@ impl AdvancedQubitRouter {
             .connectivity
             .node_indices()
             .find(|&n| self.topology.connectivity[n] == start as u32)
-            .ok_or(DeviceError::RoutingError(
-                "Start qubit not found".to_string(),
-            ))?;
+            .ok_or_else(|| DeviceError::RoutingError("Start qubit not found".to_string()))?;
 
         let target_node = self
             .topology
             .connectivity
             .node_indices()
             .find(|&n| self.topology.connectivity[n] == target as u32)
-            .ok_or(DeviceError::RoutingError(
-                "Target qubit not found".to_string(),
-            ))?;
+            .ok_or_else(|| DeviceError::RoutingError("Target qubit not found".to_string()))?;
 
         let result = astar(
             &self.topology.connectivity,
@@ -960,8 +956,7 @@ impl AdvancedQubitRouter {
         let mut best_cost = f64::INFINITY;
 
         for (strategy, weight) in strategies {
-            let mut temp_router =
-                AdvancedQubitRouter::new(self.topology.clone(), strategy, thread_rng().gen());
+            let mut temp_router = Self::new(self.topology.clone(), strategy, thread_rng().gen());
 
             if let Ok(result) = match strategy {
                 AdvancedRoutingStrategy::SABRE { heuristic_weight } => temp_router.route_sabre(
@@ -988,9 +983,7 @@ impl AdvancedQubitRouter {
             }
         }
 
-        best_result.ok_or(DeviceError::RoutingError(
-            "Hybrid routing failed".to_string(),
-        ))
+        best_result.ok_or_else(|| DeviceError::RoutingError("Hybrid routing failed".to_string()))
     }
 }
 
@@ -1011,7 +1004,8 @@ mod tests {
 
     #[test]
     fn test_sabre_routing() {
-        let topology = create_standard_topology("grid", 9).unwrap();
+        let topology =
+            create_standard_topology("grid", 9).expect("Grid topology creation should succeed");
         let mut router = AdvancedQubitRouter::new(
             topology,
             AdvancedRoutingStrategy::SABRE {
@@ -1027,15 +1021,17 @@ mod tests {
                 control: quantrs2_core::qubit::QubitId(0),
                 target: quantrs2_core::qubit::QubitId(2),
             })
-            .unwrap();
+            .expect("Adding first CNOT gate should succeed");
         circuit
             .add_gate(quantrs2_core::gate::multi::CNOT {
                 control: quantrs2_core::qubit::QubitId(1),
                 target: quantrs2_core::qubit::QubitId(3),
             })
-            .unwrap();
+            .expect("Adding second CNOT gate should succeed");
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("SABRE routing should succeed");
 
         assert!(!result.swap_sequence.is_empty());
         assert!(result.total_cost > 0.0);
@@ -1043,7 +1039,8 @@ mod tests {
 
     #[test]
     fn test_astar_routing() {
-        let topology = create_standard_topology("linear", 5).unwrap();
+        let topology =
+            create_standard_topology("linear", 5).expect("Linear topology creation should succeed");
         let mut router = AdvancedQubitRouter::new(
             topology,
             AdvancedRoutingStrategy::AStarLookahead { lookahead_depth: 2 },
@@ -1056,9 +1053,11 @@ mod tests {
                 control: quantrs2_core::qubit::QubitId(0),
                 target: quantrs2_core::qubit::QubitId(2),
             })
-            .unwrap();
+            .expect("Adding CNOT gate should succeed");
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("A* routing should succeed");
 
         assert!(result.metrics.iterations > 0);
         assert!(result.metrics.states_explored > 0);
@@ -1066,7 +1065,8 @@ mod tests {
 
     #[test]
     fn test_token_swapping() {
-        let topology = create_standard_topology("linear", 4).unwrap();
+        let topology =
+            create_standard_topology("linear", 4).expect("Linear topology creation should succeed");
         let mut router =
             AdvancedQubitRouter::new(topology, AdvancedRoutingStrategy::TokenSwapping, 42);
 
@@ -1076,9 +1076,11 @@ mod tests {
                 control: quantrs2_core::qubit::QubitId(0),
                 target: quantrs2_core::qubit::QubitId(3),
             })
-            .unwrap();
+            .expect("Adding CNOT gate should succeed");
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Token swapping routing should succeed");
 
         // Should require swaps for distant qubits
         assert!(!result.swap_sequence.is_empty());
@@ -1086,7 +1088,8 @@ mod tests {
 
     #[test]
     fn test_hybrid_routing() {
-        let topology = create_standard_topology("grid", 9).unwrap();
+        let topology =
+            create_standard_topology("grid", 9).expect("Grid topology creation should succeed");
         let mut router = AdvancedQubitRouter::new(topology, AdvancedRoutingStrategy::Hybrid, 42);
 
         let mut circuit = Circuit::<4>::new();
@@ -1094,15 +1097,17 @@ mod tests {
             .add_gate(quantrs2_core::gate::single::Hadamard {
                 target: quantrs2_core::qubit::QubitId(0),
             })
-            .unwrap();
+            .expect("Adding Hadamard gate should succeed");
         circuit
             .add_gate(quantrs2_core::gate::multi::CNOT {
                 control: quantrs2_core::qubit::QubitId(0),
                 target: quantrs2_core::qubit::QubitId(1),
             })
-            .unwrap();
+            .expect("Adding CNOT gate should succeed");
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Hybrid routing should succeed");
 
         // Routing time might be 0 on very fast systems or simple circuits
         // Note: routing_time is u128, so it's always >= 0

@@ -1312,7 +1312,7 @@ impl DistributedGpuUtils {
         let total_memory_needed = Self::estimate_memory_requirements(num_qubits, 1);
         let min_gpus_needed = (total_memory_needed + memory_per_gpu - 1) / memory_per_gpu;
 
-        min_gpus_needed.min(available_gpus).max(1)
+        min_gpus_needed.clamp(1, available_gpus)
     }
 
     /// Benchmark different partitioning strategies
@@ -1419,8 +1419,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = DistributedGpuStateVector::new(5, config).unwrap();
-        simulator.initialize_zero_state().unwrap();
+        let mut simulator =
+            DistributedGpuStateVector::new(5, config).expect("failed to create simulator");
+        simulator
+            .initialize_zero_state()
+            .expect("failed to initialize state");
 
         // Apply Pauli-X gate to first qubit
         let pauli_x = Array2::from_shape_vec(
@@ -1432,12 +1435,16 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("valid 2x2 matrix shape");
 
-        simulator.apply_single_qubit_gate(0, &pauli_x).unwrap();
+        simulator
+            .apply_single_qubit_gate(0, &pauli_x)
+            .expect("failed to apply gate");
 
         // Measure probability - should be 1.0 for |1⟩ on first qubit
-        let prob = simulator.measure_probability(0).unwrap();
+        let prob = simulator
+            .measure_probability(0)
+            .expect("failed to measure probability");
         assert_abs_diff_eq!(prob, 1.0, epsilon = 1e-10);
     }
 
@@ -1463,8 +1470,11 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut simulator = DistributedGpuStateVector::new(5, config).unwrap();
-            simulator.initialize_zero_state().unwrap();
+            let mut simulator =
+                DistributedGpuStateVector::new(5, config).expect("failed to create simulator");
+            simulator
+                .initialize_zero_state()
+                .expect("failed to initialize state");
 
             // Test synchronization by applying a two-qubit gate
             let cnot = Array2::from_shape_vec(
@@ -1488,7 +1498,7 @@ mod tests {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap();
+            .expect("valid 4x4 matrix shape");
 
             let result = simulator.apply_two_qubit_gate(0, 1, &cnot);
             assert!(
@@ -1555,7 +1565,7 @@ mod tests {
         let result = DistributedGpuUtils::benchmark_partitioning_strategies(16, 2);
         assert!(result.is_ok());
 
-        let benchmarks = result.unwrap();
+        let benchmarks = result.expect("benchmark should succeed");
         assert!(benchmarks.contains_key("Block"));
         assert!(benchmarks.contains_key("Interleaved"));
         assert!(benchmarks.contains_key("Adaptive"));
@@ -1579,13 +1589,18 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = DistributedGpuStateVector::new(5, config).unwrap();
-        simulator.initialize_zero_state().unwrap();
+        let mut simulator =
+            DistributedGpuStateVector::new(5, config).expect("failed to create simulator");
+        simulator
+            .initialize_zero_state()
+            .expect("failed to initialize state");
 
-        let state = simulator.get_state_vector().unwrap();
+        let state = simulator
+            .get_state_vector()
+            .expect("failed to get state vector");
         assert_eq!(state.len(), 32); // 2^5 = 32
 
-        // First amplitude should be 1.0 (|00000⟩ state)
+        // First amplitude should be 1.0 (|00_000⟩ state)
         assert_abs_diff_eq!(state[0].norm_sqr(), 1.0, epsilon = 1e-10);
 
         // All other amplitudes should be 0
@@ -1607,8 +1622,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = DistributedGpuStateVector::new(6, config).unwrap();
-        simulator.initialize_zero_state().unwrap();
+        let mut simulator =
+            DistributedGpuStateVector::new(6, config).expect("failed to create simulator");
+        simulator
+            .initialize_zero_state()
+            .expect("failed to initialize state");
 
         // Apply Hadamard gate
         let hadamard = Array2::from_shape_vec(
@@ -1620,14 +1638,19 @@ mod tests {
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("valid 2x2 matrix shape");
 
         let result = simulator.apply_single_qubit_gate(0, &hadamard);
         assert!(result.is_ok());
 
         // Probability for |0⟩ and |1⟩ should be 0.5 each
-        let prob_0 = 1.0 - simulator.measure_probability(0).unwrap();
-        let prob_1 = simulator.measure_probability(0).unwrap();
+        let prob_0 = 1.0
+            - simulator
+                .measure_probability(0)
+                .expect("failed to measure probability");
+        let prob_1 = simulator
+            .measure_probability(0)
+            .expect("failed to measure probability");
 
         assert_abs_diff_eq!(prob_0, 0.5, epsilon = 1e-6);
         assert_abs_diff_eq!(prob_1, 0.5, epsilon = 1e-6);
@@ -1646,7 +1669,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = DistributedGpuStateVector::new(6, config).unwrap();
+        let mut simulator =
+            DistributedGpuStateVector::new(6, config).expect("failed to create simulator");
 
         // Test partition requirement checking
         assert!(simulator.partitions_require_sync(0, 1));
@@ -1677,7 +1701,8 @@ mod tests {
             ..Default::default()
         };
 
-        let simulator = DistributedGpuStateVector::new(6, config).unwrap();
+        let simulator =
+            DistributedGpuStateVector::new(6, config).expect("failed to create simulator");
 
         // Test communication requirement detection
         let requires_comm = simulator.requires_inter_gpu_communication(0, 1);
@@ -1702,13 +1727,18 @@ mod tests {
             ..Default::default()
         };
 
-        let mut simulator = DistributedGpuStateVector::new(6, config).unwrap();
-        simulator.initialize_zero_state().unwrap();
+        let mut simulator =
+            DistributedGpuStateVector::new(6, config).expect("failed to create simulator");
+        simulator
+            .initialize_zero_state()
+            .expect("failed to initialize state");
 
         // Perform some operations to generate statistics
         let identity = Array2::eye(2);
         for i in 0..3 {
-            simulator.apply_single_qubit_gate(i, &identity).unwrap();
+            simulator
+                .apply_single_qubit_gate(i, &identity)
+                .expect("failed to apply gate");
         }
 
         let stats = simulator.get_stats();

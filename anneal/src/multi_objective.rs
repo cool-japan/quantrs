@@ -65,6 +65,7 @@ pub struct MultiObjectiveSolution {
 
 impl MultiObjectiveSolution {
     /// Create a new multi-objective solution
+    #[must_use]
     pub fn new(variables: Vec<i8>, objectives: Vec<f64>) -> Self {
         Self {
             variables,
@@ -76,6 +77,7 @@ impl MultiObjectiveSolution {
     }
 
     /// Check if this solution dominates another
+    #[must_use]
     pub fn dominates(&self, other: &Self) -> bool {
         if self.objectives.len() != other.objectives.len() {
             return false;
@@ -95,6 +97,7 @@ impl MultiObjectiveSolution {
     }
 
     /// Check if this solution is non-dominated by another
+    #[must_use]
     pub fn is_non_dominated_by(&self, other: &Self) -> bool {
         !other.dominates(self)
     }
@@ -103,10 +106,10 @@ impl MultiObjectiveSolution {
 /// Scalarization method for converting multi-objective to single-objective
 #[derive(Debug, Clone)]
 pub enum ScalarizationMethod {
-    /// Weighted sum: min Σ(w_i * f_i)
+    /// Weighted sum: min `Σ(w_i` * `f_i`)
     WeightedSum { weights: Vec<f64> },
 
-    /// Weighted Chebyshev: min max_i(w_i * |f_i - z_i*|)
+    /// Weighted Chebyshev: min `max_i(w_i` * |`f_i` - `z_i`*|)
     WeightedChebyshev {
         weights: Vec<f64>,
         reference_point: Vec<f64>,
@@ -136,7 +139,7 @@ impl ScalarizationMethod {
     /// Apply scalarization to convert multiple objectives to single value
     pub fn scalarize(&self, objectives: &[f64]) -> MultiObjectiveResult<f64> {
         match self {
-            ScalarizationMethod::WeightedSum { weights } => {
+            Self::WeightedSum { weights } => {
                 if weights.len() != objectives.len() {
                     return Err(MultiObjectiveError::ScalarizationError(
                         "Weights and objectives dimension mismatch".to_string(),
@@ -152,7 +155,7 @@ impl ScalarizationMethod {
                 Ok(weighted_sum)
             }
 
-            ScalarizationMethod::WeightedChebyshev {
+            Self::WeightedChebyshev {
                 weights,
                 reference_point,
             } => {
@@ -172,7 +175,7 @@ impl ScalarizationMethod {
                 Ok(max_weighted_deviation)
             }
 
-            ScalarizationMethod::AugmentedChebyshev {
+            Self::AugmentedChebyshev {
                 weights,
                 reference_point,
                 rho,
@@ -191,7 +194,7 @@ impl ScalarizationMethod {
                 Ok(chebyshev_value + augmentation_term)
             }
 
-            ScalarizationMethod::Achievement {
+            Self::Achievement {
                 weights,
                 reference_point,
             } => {
@@ -205,7 +208,7 @@ impl ScalarizationMethod {
                 Ok(achievement_value)
             }
 
-            ScalarizationMethod::EpsilonConstraint {
+            Self::EpsilonConstraint {
                 primary_objective,
                 constraints,
             } => {
@@ -348,6 +351,7 @@ pub struct MultiObjectiveOptimizer {
 
 impl MultiObjectiveOptimizer {
     /// Create a new multi-objective optimizer
+    #[must_use]
     pub fn new(config: MultiObjectiveConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
@@ -520,7 +524,7 @@ impl MultiObjectiveOptimizer {
 
     /// Solve a scalarized single-objective problem
     fn solve_scalarized_problem(
-        &mut self,
+        &self,
         model: &IsingModel,
         objective_function: &MultiObjectiveFunction,
         scalarization: &ScalarizationMethod,
@@ -759,7 +763,11 @@ impl QualityMetrics {
         // Simple hypervolume calculation for 2D case
         if num_objectives == 2 {
             let mut sorted_solutions = solutions.to_vec();
-            sorted_solutions.sort_by(|a, b| a.objectives[0].partial_cmp(&b.objectives[0]).unwrap());
+            sorted_solutions.sort_by(|a, b| {
+                a.objectives[0]
+                    .partial_cmp(&b.objectives[0])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let mut volume = 0.0;
             let mut prev_y = 0.0;
@@ -785,6 +793,7 @@ impl QualityMetrics {
     }
 
     /// Calculate spacing metric (diversity measure)
+    #[must_use]
     pub fn spacing(solutions: &[MultiObjectiveSolution]) -> f64 {
         if solutions.len() < 2 {
             return 0.0;
@@ -848,7 +857,9 @@ mod tests {
         let scalarization = ScalarizationMethod::WeightedSum { weights };
 
         let objectives = vec![2.0, 4.0];
-        let result = scalarization.scalarize(&objectives).unwrap();
+        let result = scalarization
+            .scalarize(&objectives)
+            .expect("Scalarization failed");
 
         assert_eq!(result, 0.3 * 2.0 + 0.7 * 4.0);
     }
@@ -863,7 +874,9 @@ mod tests {
         };
 
         let objectives = vec![3.0, 1.0];
-        let result = scalarization.scalarize(&objectives).unwrap();
+        let result = scalarization
+            .scalarize(&objectives)
+            .expect("Chebyshev scalarization failed");
 
         assert_eq!(result, 3.0); // max(1.0 * |3.0 - 0.0|, 1.0 * |1.0 - 0.0|)
     }
@@ -880,7 +893,8 @@ mod tests {
         assert!(spacing >= 0.0);
 
         let reference_point = vec![4.0, 4.0];
-        let hypervolume = QualityMetrics::hypervolume(&solutions, &reference_point).unwrap();
+        let hypervolume = QualityMetrics::hypervolume(&solutions, &reference_point)
+            .expect("Hypervolume calculation failed");
         assert!(hypervolume >= 0.0);
     }
 }

@@ -46,7 +46,7 @@ impl From<usize> for QubitId {
 impl From<QubitId> for usize {
     #[inline]
     fn from(qubit: QubitId) -> Self {
-        qubit.0 as usize
+        qubit.0 as Self
     }
 }
 
@@ -65,7 +65,7 @@ pub struct QubitSet {
 
 impl QubitSet {
     /// Create a new empty qubit set
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { qubits: Vec::new() }
     }
 

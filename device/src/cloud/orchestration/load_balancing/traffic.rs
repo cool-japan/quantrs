@@ -16,7 +16,7 @@ pub struct TrafficDistributionConfig {
 }
 
 /// Distribution algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistributionAlgorithm {
     Weighted,
     Random,

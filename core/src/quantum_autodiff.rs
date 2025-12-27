@@ -68,12 +68,12 @@ pub enum DifferentiationMethod {
 impl fmt::Display for DifferentiationMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DifferentiationMethod::ParameterShift => write!(f, "Parameter-Shift"),
-            DifferentiationMethod::FiniteDifference => write!(f, "Finite Difference"),
-            DifferentiationMethod::CentralDifference => write!(f, "Central Difference"),
-            DifferentiationMethod::ComplexStep => write!(f, "Complex Step"),
-            DifferentiationMethod::DualNumber => write!(f, "Dual Number"),
-            DifferentiationMethod::Hybrid => write!(f, "Hybrid"),
+            Self::ParameterShift => write!(f, "Parameter-Shift"),
+            Self::FiniteDifference => write!(f, "Finite Difference"),
+            Self::CentralDifference => write!(f, "Central Difference"),
+            Self::ComplexStep => write!(f, "Complex Step"),
+            Self::DualNumber => write!(f, "Dual Number"),
+            Self::Hybrid => write!(f, "Hybrid"),
         }
     }
 }
@@ -188,7 +188,10 @@ impl QuantumAutoDiff {
         initial_value: f64,
         bounds: Option<(f64, f64)>,
     ) -> QuantRS2Result<usize> {
-        let mut registry = self.parameter_registry.write().unwrap();
+        let mut registry = self
+            .parameter_registry
+            .write()
+            .expect("Parameter registry lock poisoned during registration");
         Ok(registry.add_parameter(name, initial_value, bounds))
     }
 
@@ -492,7 +495,10 @@ impl QuantumAutoDiff {
         F: Fn(&[f64]) -> QuantRS2Result<Complex64> + Copy,
     {
         // Use parameter-shift for most parameters, finite difference for others
-        let registry = self.parameter_registry.read().unwrap();
+        let registry = self
+            .parameter_registry
+            .read()
+            .expect("Parameter registry lock poisoned during hybrid gradient computation");
         let mut gradients = Vec::new();
 
         for (i, &param_id) in parameter_ids.iter().enumerate() {
@@ -619,7 +625,7 @@ impl QuantumAutoDiff {
                 let mut params_2h = params.clone();
                 let mut params_h = params.clone();
                 let mut params_neg_h = params.clone();
-                let mut params_neg_2h = params.clone();
+                let mut params_neg_2h = params;
 
                 params_2h[param_index] += 2.0 * h;
                 params_h[param_index] += h;
@@ -658,7 +664,7 @@ impl QuantumAutoDiff {
         let mut params_pp = params.clone();
         let mut params_pm = params.clone();
         let mut params_mp = params.clone();
-        let mut params_mm = params.clone();
+        let mut params_mm = params;
 
         params_pp[i] += h;
         params_pp[j] += h;
@@ -680,12 +686,15 @@ impl QuantumAutoDiff {
     // Helper methods
 
     fn get_parameter_values(&self, parameter_ids: &[usize]) -> QuantRS2Result<Vec<f64>> {
-        let registry = self.parameter_registry.read().unwrap();
+        let registry = self
+            .parameter_registry
+            .read()
+            .expect("Parameter registry lock poisoned during value retrieval");
         let mut values = Vec::new();
 
         for &id in parameter_ids {
             let param = registry.parameters.get(&id).ok_or_else(|| {
-                QuantRS2Error::InvalidParameter(format!("Parameter {} not found", id))
+                QuantRS2Error::InvalidParameter(format!("Parameter {id} not found"))
             })?;
             values.push(param.value);
         }
@@ -696,8 +705,9 @@ impl QuantumAutoDiff {
     fn select_optimal_method(&self, gate_name: &str) -> DifferentiationMethod {
         // Select optimal differentiation method based on gate type
         match gate_name {
-            "RX" | "RY" | "RZ" | "PhaseShift" => DifferentiationMethod::ParameterShift,
-            "U1" | "U2" | "U3" => DifferentiationMethod::ParameterShift,
+            "RX" | "RY" | "RZ" | "PhaseShift" | "U1" | "U2" | "U3" => {
+                DifferentiationMethod::ParameterShift
+            }
             _ => DifferentiationMethod::CentralDifference,
         }
     }
@@ -711,23 +721,26 @@ impl QuantumAutoDiff {
         let max_gradient = gradients.iter().map(|g| g.norm()).fold(0.0, f64::max);
 
         match method {
-            DifferentiationMethod::ParameterShift => max_gradient * 1e-15, // Machine precision
+            DifferentiationMethod::ParameterShift
+            | DifferentiationMethod::ComplexStep
+            | DifferentiationMethod::DualNumber => max_gradient * 1e-15, // Machine precision
             DifferentiationMethod::FiniteDifference => max_gradient * self.config.finite_diff_step,
             DifferentiationMethod::CentralDifference => {
                 max_gradient * self.config.finite_diff_step * self.config.finite_diff_step
             }
-            DifferentiationMethod::ComplexStep => max_gradient * 1e-15,
-            DifferentiationMethod::DualNumber => max_gradient * 1e-15,
             DifferentiationMethod::Hybrid => max_gradient * 1e-12,
         }
     }
 
     fn generate_cache_key(&self, parameter_ids: &[usize], method: DifferentiationMethod) -> String {
-        format!("{:?}_{:?}", parameter_ids, method)
+        format!("{parameter_ids:?}_{method:?}")
     }
 
     fn get_cached_gradient(&self, key: &str) -> Option<CacheEntry> {
-        let cache = self.gradient_cache.read().unwrap();
+        let cache = self
+            .gradient_cache
+            .read()
+            .expect("Gradient cache lock poisoned during cache retrieval");
         cache.entries.get(key).cloned()
     }
 
@@ -738,14 +751,20 @@ impl QuantumAutoDiff {
         cost: f64,
         method: DifferentiationMethod,
     ) {
-        let mut cache = self.gradient_cache.write().unwrap();
+        let mut cache = self
+            .gradient_cache
+            .write()
+            .expect("Gradient cache lock poisoned during cache insertion");
         cache.insert(key, gradients.to_vec(), cost, method);
     }
 
     // Optimizer implementations
 
     fn sgd_update(&self, gradients: &GradientResult, learning_rate: f64) -> QuantRS2Result<()> {
-        let mut registry = self.parameter_registry.write().unwrap();
+        let mut registry = self
+            .parameter_registry
+            .write()
+            .expect("Parameter registry lock poisoned during SGD update");
 
         for (i, &param_id) in gradients.parameter_ids.iter().enumerate() {
             if let Some(param) = registry.parameters.get_mut(&param_id) {
@@ -754,7 +773,7 @@ impl QuantumAutoDiff {
 
                 // Apply bounds if specified
                 if let Some((min_val, max_val)) = param.bounds {
-                    param.value = param.value.max(min_val).min(max_val);
+                    param.value = param.value.clamp(min_val, max_val);
                 }
             }
         }
@@ -762,18 +781,26 @@ impl QuantumAutoDiff {
         Ok(())
     }
 
-    fn adam_update(&self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
+    const fn adam_update(
+        &self,
+        _gradients: &GradientResult,
+        _learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         // Simplified Adam optimizer implementation
         // In a full implementation, this would track momentum and second moments
         Ok(())
     }
 
-    fn lbfgs_update(&self, _gradients: &GradientResult, _learning_rate: f64) -> QuantRS2Result<()> {
+    const fn lbfgs_update(
+        &self,
+        _gradients: &GradientResult,
+        _learning_rate: f64,
+    ) -> QuantRS2Result<()> {
         // Simplified L-BFGS implementation
         Ok(())
     }
 
-    fn adagrad_update(
+    const fn adagrad_update(
         &self,
         _gradients: &GradientResult,
         _learning_rate: f64,
@@ -945,19 +972,21 @@ mod tests {
             autodiff.register_parameter("theta", 0.5, Some((0.0, 2.0 * std::f64::consts::PI)));
         assert!(param_id.is_ok());
 
-        let id = param_id.unwrap();
+        let id = param_id.expect("Failed to register parameter");
         let values = autodiff.get_parameter_values(&[id]);
         assert!(values.is_ok());
-        assert_eq!(values.unwrap()[0], 0.5);
+        assert_eq!(values.expect("Failed to get parameter values")[0], 0.5);
     }
 
     #[test]
     fn test_gradient_computation() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
 
-        let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
+        let param_id = autodiff
+            .register_parameter("x", 1.0, None)
+            .expect("Failed to register parameter");
 
-        // Simple quadratic function: f(x) = x²
+        // Simple quadratic function: f(x) = x^2
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0] * params[0], 0.0))
         };
@@ -969,8 +998,8 @@ mod tests {
         );
         assert!(gradients.is_ok());
 
-        let result = gradients.unwrap();
-        // Gradient of x² at x=1 should be approximately 2
+        let result = gradients.expect("Failed to compute gradients");
+        // Gradient of x^2 at x=1 should be approximately 2
         // Use a more lenient tolerance since we're using parameter-shift rule
         assert!(
             (result.gradients[0].re - 2.0).abs() < 1.0,
@@ -982,7 +1011,9 @@ mod tests {
     #[test]
     fn test_different_differentiation_methods() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        let param_id = autodiff.register_parameter("x", 0.5, None).unwrap();
+        let param_id = autodiff
+            .register_parameter("x", 0.5, None)
+            .expect("Failed to register parameter");
 
         // f(x) = sin(x)
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
@@ -1002,7 +1033,7 @@ mod tests {
 
             // Gradient of sin(x) at x=0.5 should be approximately cos(0.5)
             let expected = 0.5_f64.cos();
-            let computed = result.unwrap().gradients[0].re;
+            let computed = result.expect("Failed to compute gradient").gradients[0].re;
             assert!(
                 (computed - expected).abs() < 0.1,
                 "Method {:?}: expected {}, got {}",
@@ -1016,9 +1047,11 @@ mod tests {
     #[test]
     fn test_higher_order_derivatives() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
+        let param_id = autodiff
+            .register_parameter("x", 1.0, None)
+            .expect("Failed to register parameter");
 
-        // f(x) = x³
+        // f(x) = x^3
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0].powi(3), 0.0))
         };
@@ -1026,7 +1059,7 @@ mod tests {
         let result = autodiff.compute_higher_order_derivatives(function, &[param_id], 3);
         assert!(result.is_ok());
 
-        let derivatives = result.unwrap();
+        let derivatives = result.expect("Failed to compute higher order derivatives");
         assert_eq!(derivatives.derivatives.len(), 3);
     }
 
@@ -1034,8 +1067,12 @@ mod tests {
     fn test_circuit_gradients() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
 
-        let theta_id = autodiff.register_parameter("theta", 0.0, None).unwrap();
-        let phi_id = autodiff.register_parameter("phi", 0.0, None).unwrap();
+        let theta_id = autodiff
+            .register_parameter("theta", 0.0, None)
+            .expect("Failed to register theta parameter");
+        let phi_id = autodiff
+            .register_parameter("phi", 0.0, None)
+            .expect("Failed to register phi parameter");
 
         let circuit_function = |params: &[f64], _observable: &str| -> QuantRS2Result<Complex64> {
             // Simple parameterized circuit expectation value
@@ -1053,14 +1090,16 @@ mod tests {
         let results = autodiff.circuit_gradients(circuit_function, &gate_parameters, "Z");
         assert!(results.is_ok());
 
-        let gradients = results.unwrap();
+        let gradients = results.expect("Failed to compute circuit gradients");
         assert_eq!(gradients.len(), 2);
     }
 
     #[test]
     fn test_parameter_update() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
+        let param_id = autodiff
+            .register_parameter("x", 1.0, None)
+            .expect("Failed to register parameter");
 
         let gradient_result = GradientResult {
             gradients: vec![Complex64::new(2.0, 0.0)],
@@ -1075,14 +1114,18 @@ mod tests {
         assert!(result.is_ok());
 
         // Parameter should be updated: x_new = x_old - lr * gradient = 1.0 - 0.1 * 2.0 = 0.8
-        let new_values = autodiff.get_parameter_values(&[param_id]).unwrap();
+        let new_values = autodiff
+            .get_parameter_values(&[param_id])
+            .expect("Failed to get updated parameter values");
         assert!((new_values[0] - 0.8).abs() < 1e-10);
     }
 
     #[test]
     fn test_gradient_caching() {
         let mut autodiff = QuantumAutoDiff::new(QuantumAutoDiffConfig::default());
-        let param_id = autodiff.register_parameter("x", 1.0, None).unwrap();
+        let param_id = autodiff
+            .register_parameter("x", 1.0, None)
+            .expect("Failed to register parameter");
 
         let function = |params: &[f64]| -> QuantRS2Result<Complex64> {
             Ok(Complex64::new(params[0] * params[0], 0.0))
@@ -1092,14 +1135,14 @@ mod tests {
         let start = std::time::Instant::now();
         let result1 = autodiff
             .compute_gradients(function, &[param_id], None)
-            .unwrap();
+            .expect("Failed to compute first gradient");
         let time1 = start.elapsed();
 
         // Second computation (should be cached)
         let start = std::time::Instant::now();
         let result2 = autodiff
             .compute_gradients(function, &[param_id], None)
-            .unwrap();
+            .expect("Failed to compute second gradient");
         let time2 = start.elapsed();
 
         // Results should be the same

@@ -178,7 +178,7 @@ impl<const N: usize> TranspilationCache<N> {
         None
     }
 
-    fn insert(&mut self, _circuit: Circuit<N>, _result: TranspilationResult<N>) {
+    fn insert(&self, _circuit: Circuit<N>, _result: TranspilationResult<N>) {
         // Insert with LRU eviction
     }
 }

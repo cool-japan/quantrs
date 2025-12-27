@@ -27,12 +27,14 @@ impl Default for ZXOptimizationPass {
 
 impl ZXOptimizationPass {
     /// Create a new ZX optimization pass
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Enable verbose output
-    pub fn with_verbose(mut self, verbose: bool) -> Self {
+    #[must_use]
+    pub const fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
     }
@@ -136,7 +138,9 @@ mod tests {
         let pass = ZXOptimizationPass::new();
         assert!(pass.is_applicable(&gates));
 
-        let optimized = pass.optimize(gates.clone()).unwrap();
+        let optimized = pass
+            .optimize(gates.clone())
+            .expect("Failed to optimize circuit with ZX pass");
 
         // Should optimize the circuit
         assert!(optimized.len() <= gates.len());
@@ -176,7 +180,9 @@ mod tests {
 
         let chain = OptimizationChain::new().add_pass(Box::new(ZXOptimizationPass::new()));
 
-        let optimized = chain.optimize(gates.clone()).unwrap();
+        let optimized = chain
+            .optimize(gates.clone())
+            .expect("Failed to optimize circuit with ZX chain");
 
         // Should optimize both the T gates and CNOT cancellation
         assert!(optimized.len() < gates.len());

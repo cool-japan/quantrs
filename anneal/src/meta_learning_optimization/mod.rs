@@ -106,6 +106,7 @@ pub struct MetaLearningStatistics {
 }
 
 /// Create example meta-learning optimizer
+#[must_use]
 pub fn create_meta_learning_optimizer() -> MetaLearningOptimizer {
     let config = MetaLearningConfig::default();
     MetaLearningOptimizer::new(config)

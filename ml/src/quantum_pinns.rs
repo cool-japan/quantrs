@@ -1028,13 +1028,15 @@ impl QuantumPINN {
             self.training_history.push(metrics);
 
             if epoch % 100 == 0 {
-                println!(
-                    "Epoch {}: Total Loss = {:.6}, PDE Loss = {:.6}, Boundary Loss = {:.6}",
-                    epoch,
-                    self.training_history.last().unwrap().total_loss,
-                    self.training_history.last().unwrap().pde_loss,
-                    self.training_history.last().unwrap().boundary_loss
-                );
+                if let Some(last_metrics) = self.training_history.last() {
+                    println!(
+                        "Epoch {}: Total Loss = {:.6}, PDE Loss = {:.6}, Boundary Loss = {:.6}",
+                        epoch,
+                        last_metrics.total_loss,
+                        last_metrics.pde_loss,
+                        last_metrics.boundary_loss
+                    );
+                }
             }
         }
 
@@ -1425,27 +1427,27 @@ mod tests {
     #[test]
     fn test_forward_pass() {
         let config = QPINNConfig::default();
-        let qpinn = QuantumPINN::new(config).unwrap();
+        let qpinn = QuantumPINN::new(config).expect("Failed to create QPINN");
         let input_points = Array2::from_shape_vec(
             (5, 3),
             vec![
                 0.1, 0.2, 0.0, 0.3, 0.4, 0.1, 0.5, 0.6, 0.2, 0.7, 0.8, 0.3, 0.9, 1.0, 0.4,
             ],
         )
-        .unwrap();
+        .expect("Failed to create input points");
 
         let result = qpinn.forward(&input_points);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().shape(), [5, 1]);
+        assert_eq!(result.expect("Forward pass should succeed").shape(), [5, 1]);
     }
 
     #[test]
     fn test_derivative_computation() {
         let config = QPINNConfig::default();
-        let qpinn = QuantumPINN::new(config).unwrap();
+        let qpinn = QuantumPINN::new(config).expect("Failed to create QPINN");
         let points =
             Array2::from_shape_vec((3, 3), vec![0.1, 0.2, 0.0, 0.3, 0.4, 0.1, 0.5, 0.6, 0.2])
-                .unwrap();
+                .expect("Failed to create points array");
 
         let result = qpinn.compute_derivatives(&points);
         assert!(result.is_ok());
@@ -1458,7 +1460,7 @@ mod tests {
         config.training_config.epochs = 5;
         config.training_config.num_collocation_points = 10;
 
-        let mut qpinn = QuantumPINN::new(config).unwrap();
+        let mut qpinn = QuantumPINN::new(config).expect("Failed to create QPINN");
         let result = qpinn.train(Some(5));
         assert!(result.is_ok());
         assert!(!qpinn.get_training_history().is_empty());

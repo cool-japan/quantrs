@@ -16,13 +16,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("==============================================");
 
     // Define the graph as an adjacency matrix
-    let graph = vec![
-        vec![0, 1, 1, 0, 0, 0], // Node 0 is connected to 1, 2
-        vec![1, 0, 1, 1, 0, 0], // Node 1 is connected to 0, 2, 3
-        vec![1, 1, 0, 1, 1, 0], // Node 2 is connected to 0, 1, 3, 4
-        vec![0, 1, 1, 0, 1, 1], // Node 3 is connected to 1, 2, 4, 5
-        vec![0, 0, 1, 1, 0, 1], // Node 4 is connected to 2, 3, 5
-        vec![0, 0, 0, 1, 1, 0], // Node 5 is connected to 3, 4
+    let graph = [
+        [0, 1, 1, 0, 0, 0], // Node 0 is connected to 1, 2
+        [1, 0, 1, 1, 0, 0], // Node 1 is connected to 0, 2, 3
+        [1, 1, 0, 1, 1, 0], // Node 2 is connected to 0, 1, 3, 4
+        [0, 1, 1, 0, 1, 1], // Node 3 is connected to 1, 2, 4, 5
+        [0, 0, 1, 1, 0, 1], // Node 4 is connected to 2, 3, 5
+        [0, 0, 0, 1, 1, 0], // Node 5 is connected to 3, 4
     ];
 
     let n_nodes = graph.len();

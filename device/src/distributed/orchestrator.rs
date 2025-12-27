@@ -24,11 +24,11 @@ impl DistributedQuantumOrchestrator {
         Ok(())
     }
 
-    pub fn remove_node(&mut self, _node_id: &str) -> Result<(), String> {
+    pub const fn remove_node(&mut self, _node_id: &str) -> Result<(), String> {
         Ok(())
     }
 
-    pub fn get_node_status(&self, _node_id: &str) -> Result<NodeStatus, String> {
+    pub const fn get_node_status(&self, _node_id: &str) -> Result<NodeStatus, String> {
         Ok(NodeStatus::Available)
     }
 

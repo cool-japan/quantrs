@@ -178,7 +178,7 @@ impl HardwareAssessment {
         let l3_cache = capabilities.cpu.cache.l3.unwrap_or(8 * 1024 * 1024);
         // Optimal batch size fits in L3 cache
         let complex_size = std::mem::size_of::<Complex64>();
-        (l3_cache / (complex_size * 16)).max(32).min(1024)
+        (l3_cache / (complex_size * 16)).clamp(32, 1024)
     }
 
     fn compute_optimal_tile_size(capabilities: &PlatformCapabilities) -> usize {
@@ -243,7 +243,7 @@ impl AdaptiveHardwareOptimizer {
     }
 
     /// Get hardware assessment
-    pub fn hardware_assessment(&self) -> &HardwareAssessment {
+    pub const fn hardware_assessment(&self) -> &HardwareAssessment {
         &self.hardware
     }
 
@@ -407,7 +407,10 @@ impl AdaptiveHardwareOptimizer {
         }
 
         // Fall back to current default
-        *self.current_strategy.lock().unwrap()
+        *self
+            .current_strategy
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
     }
 
     /// Get performance profile for workload
@@ -504,9 +507,8 @@ impl AdaptiveHardwareOptimizer {
         // Find best strategy
         let best_strategy = results
             .iter()
-            .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(s, _)| *s)
-            .unwrap_or(OptimizationStrategy::Balanced);
+            .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map_or(OptimizationStrategy::Balanced, |(s, _)| *s);
 
         CalibrationResult {
             best_strategy,
@@ -665,7 +667,7 @@ mod tests {
 
         let profile = optimizer.get_profile("test_workload");
         assert!(profile.is_some());
-        assert_eq!(profile.unwrap().sample_count, 20);
+        assert_eq!(profile.expect("profile should exist").sample_count, 20);
     }
 
     #[test]

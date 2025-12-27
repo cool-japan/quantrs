@@ -26,27 +26,32 @@ impl MLCompilationOptimizer {
     }
 
     pub fn optimize(&self, ir: &QuantumIR, target: TargetPlatform) -> QuantRS2Result<QuantumIR> {
+        use quantrs2_core::error::QuantRS2Error;
+
         let features = self.feature_extractor.extract_features(ir, target)?;
 
-        let model = self.model.lock().unwrap();
-        let _optimization_strategy = model.predict_strategy(&features)?;
+        {
+            let model = self
+                .model
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Model lock poisoned: {e}")))?;
+            let _optimization_strategy = model.predict_strategy(&features)?;
+        } // Early drop the lock guard
 
         // Apply ML-guided optimizations
-        let optimized = self.apply_ml_optimizations(ir)?;
+        let optimized = Self::apply_ml_optimizations(ir);
 
         Ok(optimized)
     }
 
-    fn apply_ml_optimizations(&self, ir: &QuantumIR) -> QuantRS2Result<QuantumIR> {
-        let optimized = ir.clone();
-
+    fn apply_ml_optimizations(ir: &QuantumIR) -> QuantumIR {
         // Apply predicted transformations
         // TODO: Implement apply_transform method
         // for transform in &strategy.transformations {
-        //     optimized = self.apply_transform(&optimized, transform)?;
+        //     optimized = Self::apply_transform(&optimized, transform)?;
         // }
 
-        Ok(optimized)
+        ir.clone()
     }
 }
 
@@ -65,11 +70,19 @@ impl CompilationMonitor {
     }
 
     pub fn update_optimization_progress(&self, ir: &QuantumIR) -> QuantRS2Result<()> {
-        let mut metrics = self.metrics.lock().unwrap();
-        metrics.update(ir)?;
+        use quantrs2_core::error::QuantRS2Error;
+
+        let anomaly = {
+            let mut metrics = self
+                .metrics
+                .lock()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Metrics lock poisoned: {e}")))?;
+            metrics.update(ir)?;
+            metrics.detect_anomaly()
+        }; // Early drop the lock guard
 
         // Check for anomalies
-        if metrics.detect_anomaly() {
+        if anomaly {
             // Handle anomaly
         }
 

@@ -5,7 +5,7 @@
 //! machine code for dramatic performance improvements.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
@@ -239,9 +239,9 @@ pub enum SIMDInstruction {
 /// SIMD data layout
 #[derive(Debug, Clone)]
 pub enum SIMDLayout {
-    /// Array of structures (AoS)
+    /// Array of structures (`AoS`)
     ArrayOfStructures,
-    /// Structure of arrays (SoA)
+    /// Structure of arrays (`SoA`)
     StructureOfArrays,
     /// Interleaved real/imaginary
     Interleaved,
@@ -354,6 +354,7 @@ pub struct JITCompiler {
 
 impl JITCompiler {
     /// Create a new JIT compiler
+    #[must_use]
     pub fn new(config: JITConfig) -> Self {
         Self {
             config,
@@ -373,16 +374,22 @@ impl JITCompiler {
 
         // Update patterns_analyzed counter
         {
-            let mut stats = self.stats.write().unwrap();
+            let mut stats = self
+                .stats
+                .write()
+                .expect("JIT stats lock should not be poisoned");
             stats.patterns_analyzed += 1;
         }
 
-        let pattern = self.extract_pattern(gates)?;
+        let pattern = Self::extract_pattern(gates)?;
         let pattern_hash = pattern.hash;
 
         // Update pattern frequency
         {
-            let mut patterns = self.patterns.write().unwrap();
+            let mut patterns = self
+                .patterns
+                .write()
+                .expect("JIT patterns lock should not be poisoned");
             if let Some(existing_pattern) = patterns.get_mut(&pattern_hash) {
                 existing_pattern.frequency += 1;
                 existing_pattern.last_used = Instant::now();
@@ -393,7 +400,10 @@ impl JITCompiler {
 
         // Check if compilation threshold is met (compile after threshold is exceeded)
         let should_compile = {
-            let patterns = self.patterns.read().unwrap();
+            let patterns = self
+                .patterns
+                .read()
+                .expect("JIT patterns lock should not be poisoned");
             if let Some(pattern) = patterns.get(&pattern_hash) {
                 pattern.frequency > self.config.compilation_threshold
                     && pattern.compilation_status == CompilationStatus::NotCompiled
@@ -410,7 +420,7 @@ impl JITCompiler {
     }
 
     /// Extract pattern from gate sequence
-    fn extract_pattern(&self, gates: &[InterfaceGate]) -> Result<GateSequencePattern> {
+    fn extract_pattern(gates: &[InterfaceGate]) -> Result<GateSequencePattern> {
         let mut gate_types = Vec::new();
         let mut target_qubits = Vec::new();
 
@@ -441,7 +451,10 @@ impl JITCompiler {
     fn compile_sequence(&self, pattern_hash: u64) -> Result<()> {
         // Mark as compiling
         {
-            let mut patterns = self.patterns.write().unwrap();
+            let mut patterns = self
+                .patterns
+                .write()
+                .expect("JIT patterns lock should not be poisoned");
             if let Some(pattern) = patterns.get_mut(&pattern_hash) {
                 pattern.compilation_status = CompilationStatus::Compiling;
             }
@@ -451,7 +464,10 @@ impl JITCompiler {
 
         // Get pattern for compilation
         let pattern = {
-            let patterns = self.patterns.read().unwrap();
+            let patterns = self
+                .patterns
+                .read()
+                .expect("JIT patterns lock should not be poisoned");
             patterns
                 .get(&pattern_hash)
                 .cloned()
@@ -468,19 +484,25 @@ impl JITCompiler {
             compiled_function,
             compilation_time,
             performance_stats: JITPerformanceStats::default(),
-            memory_usage: self.estimate_memory_usage(&pattern),
+            memory_usage: Self::estimate_memory_usage(&pattern),
             optimizations: self.apply_optimizations(&pattern)?,
         };
 
         // Store compiled sequence
         {
-            let mut cache = self.compiled_cache.write().unwrap();
+            let mut cache = self
+                .compiled_cache
+                .write()
+                .expect("JIT cache lock should not be poisoned");
             cache.insert(pattern_hash, compiled_sequence);
         }
 
         // Update pattern status
         {
-            let mut patterns = self.patterns.write().unwrap();
+            let mut patterns = self
+                .patterns
+                .write()
+                .expect("JIT patterns lock should not be poisoned");
             if let Some(pattern) = patterns.get_mut(&pattern_hash) {
                 pattern.compilation_status = CompilationStatus::Compiled;
             }
@@ -488,7 +510,10 @@ impl JITCompiler {
 
         // Update statistics
         {
-            let mut stats = self.stats.write().unwrap();
+            let mut stats = self
+                .stats
+                .write()
+                .expect("JIT stats lock should not be poisoned");
             stats.total_compilations += 1;
             stats.total_compilation_time += compilation_time;
         }
@@ -499,7 +524,7 @@ impl JITCompiler {
     /// Perform the actual compilation
     fn perform_compilation(&self, pattern: &GateSequencePattern) -> Result<CompiledFunction> {
         match self.config.optimization_level {
-            JITOptimizationLevel::None => self.compile_basic(pattern),
+            JITOptimizationLevel::None => Self::compile_basic(pattern),
             JITOptimizationLevel::Basic => self.compile_with_basic_optimizations(pattern),
             JITOptimizationLevel::Advanced => self.compile_with_advanced_optimizations(pattern),
             JITOptimizationLevel::Aggressive => self.compile_with_aggressive_optimizations(pattern),
@@ -507,7 +532,7 @@ impl JITCompiler {
     }
 
     /// Basic compilation (bytecode generation)
-    fn compile_basic(&self, pattern: &GateSequencePattern) -> Result<CompiledFunction> {
+    fn compile_basic(pattern: &GateSequencePattern) -> Result<CompiledFunction> {
         let mut instructions = Vec::new();
 
         for (i, gate_type) in pattern.gate_types.iter().enumerate() {
@@ -540,14 +565,14 @@ impl JITCompiler {
         &self,
         pattern: &GateSequencePattern,
     ) -> Result<CompiledFunction> {
-        let mut bytecode = self.compile_basic(pattern)?;
+        let mut bytecode = Self::compile_basic(pattern)?;
 
         if let CompiledFunction::Bytecode { instructions } = &mut bytecode {
             // Apply constant folding
-            self.apply_constant_folding(instructions)?;
+            Self::apply_constant_folding(instructions)?;
 
             // Apply dead code elimination
-            self.apply_dead_code_elimination(instructions)?;
+            Self::apply_dead_code_elimination(instructions)?;
         }
 
         Ok(bytecode)
@@ -565,7 +590,7 @@ impl JITCompiler {
             self.apply_loop_unrolling(instructions)?;
 
             // Apply vectorization
-            return self.apply_vectorization(instructions);
+            return Self::apply_vectorization(instructions);
         }
 
         Ok(bytecode)
@@ -603,7 +628,7 @@ impl JITCompiler {
     }
 
     /// Apply constant folding optimization
-    fn apply_constant_folding(&self, instructions: &mut Vec<BytecodeInstruction>) -> Result<()> {
+    fn apply_constant_folding(instructions: &mut [BytecodeInstruction]) -> Result<()> {
         // Constant folding for parameterized gates is now handled at the gate type level
         // Since parameters are embedded in the gate types, we can pre-compute
         // trigonometric functions and simplify zero rotations
@@ -631,10 +656,7 @@ impl JITCompiler {
     }
 
     /// Apply dead code elimination
-    fn apply_dead_code_elimination(
-        &self,
-        instructions: &mut Vec<BytecodeInstruction>,
-    ) -> Result<()> {
+    fn apply_dead_code_elimination(instructions: &mut Vec<BytecodeInstruction>) -> Result<()> {
         // Remove instructions that have no effect
         instructions.retain(|instruction| {
             match instruction {
@@ -656,7 +678,7 @@ impl JITCompiler {
 
         while i < instructions.len() {
             // Look for repeated sequences
-            if let Some(repeat_count) = self.find_repeated_sequence(&instructions[i..]) {
+            if let Some(repeat_count) = Self::find_repeated_sequence(&instructions[i..]) {
                 // Unroll the sequence
                 for _ in 0..repeat_count {
                     unrolled.push(instructions[i].clone());
@@ -673,7 +695,7 @@ impl JITCompiler {
     }
 
     /// Find repeated instruction sequences
-    fn find_repeated_sequence(&self, instructions: &[BytecodeInstruction]) -> Option<usize> {
+    fn find_repeated_sequence(instructions: &[BytecodeInstruction]) -> Option<usize> {
         if instructions.len() < 2 {
             return None;
         }
@@ -689,10 +711,7 @@ impl JITCompiler {
     }
 
     /// Apply vectorization optimization
-    fn apply_vectorization(
-        &self,
-        instructions: &[BytecodeInstruction],
-    ) -> Result<CompiledFunction> {
+    fn apply_vectorization(instructions: &[BytecodeInstruction]) -> Result<CompiledFunction> {
         let mut vectorized_ops = Vec::new();
 
         for instruction in instructions {
@@ -742,14 +761,14 @@ impl JITCompiler {
         for instruction in instructions {
             match instruction {
                 BytecodeInstruction::ApplySingleQubit { gate_type, target } => {
-                    let matrix = self.get_gate_matrix(gate_type)?;
+                    let matrix = Self::get_gate_matrix(gate_type)?;
                     operations.push(MatrixOperation {
                         op_type: MatrixOpType::DirectMult,
                         targets: vec![*target],
                         matrix: Some(matrix),
-                        compute_matrix: MatrixComputeFunction::Precomputed(
-                            self.get_gate_matrix(gate_type)?,
-                        ),
+                        compute_matrix: MatrixComputeFunction::Precomputed(Self::get_gate_matrix(
+                            gate_type,
+                        )?),
                     });
                 }
                 BytecodeInstruction::ApplyTwoQubit {
@@ -757,13 +776,13 @@ impl JITCompiler {
                     control,
                     target,
                 } => {
-                    let matrix = self.get_two_qubit_gate_matrix(gate_type)?;
+                    let matrix = Self::get_two_qubit_gate_matrix(gate_type)?;
                     operations.push(MatrixOperation {
                         op_type: MatrixOpType::KroneckerProduct,
                         targets: vec![*control, *target],
                         matrix: Some(matrix),
                         compute_matrix: MatrixComputeFunction::Precomputed(
-                            self.get_two_qubit_gate_matrix(gate_type)?,
+                            Self::get_two_qubit_gate_matrix(gate_type)?,
                         ),
                     });
                 }
@@ -792,13 +811,13 @@ impl JITCompiler {
 
         while i < instructions.len() {
             // Look for fusable gate sequences
-            if let Some(fused_length) = self.find_fusable_sequence(&instructions[i..]) {
+            if let Some(fused_length) = Self::find_fusable_sequence(&instructions[i..]) {
                 // Create fused operation
                 let gates =
-                    self.extract_gates_from_instructions(&instructions[i..i + fused_length])?;
-                let fused_matrix = self.compute_fused_matrix(&gates)?;
+                    Self::extract_gates_from_instructions(&instructions[i..i + fused_length])?;
+                let fused_matrix = Self::compute_fused_matrix(&gates)?;
                 let targets =
-                    self.extract_targets_from_instructions(&instructions[i..i + fused_length]);
+                    Self::extract_targets_from_instructions(&instructions[i..i + fused_length]);
 
                 let fused_op = FusedGateOperation {
                     gates,
@@ -822,7 +841,7 @@ impl JITCompiler {
     }
 
     /// Find fusable gate sequences
-    fn find_fusable_sequence(&self, instructions: &[BytecodeInstruction]) -> Option<usize> {
+    fn find_fusable_sequence(instructions: &[BytecodeInstruction]) -> Option<usize> {
         if instructions.len() < 2 {
             return None;
         }
@@ -847,7 +866,6 @@ impl JITCompiler {
 
     /// Extract gates from bytecode instructions
     fn extract_gates_from_instructions(
-        &self,
         instructions: &[BytecodeInstruction],
     ) -> Result<Vec<InterfaceGate>> {
         let mut gates = Vec::new();
@@ -882,10 +900,7 @@ impl JITCompiler {
     }
 
     /// Extract target qubits from instructions
-    fn extract_targets_from_instructions(
-        &self,
-        instructions: &[BytecodeInstruction],
-    ) -> Vec<usize> {
+    fn extract_targets_from_instructions(instructions: &[BytecodeInstruction]) -> Vec<usize> {
         let mut targets = std::collections::HashSet::new();
 
         for instruction in instructions {
@@ -915,7 +930,7 @@ impl JITCompiler {
     }
 
     /// Compute fused matrix for gate sequence
-    fn compute_fused_matrix(&self, gates: &[InterfaceGate]) -> Result<Array2<Complex64>> {
+    fn compute_fused_matrix(gates: &[InterfaceGate]) -> Result<Array2<Complex64>> {
         if gates.is_empty() {
             return Err(SimulatorError::InvalidParameter(
                 "Empty gate sequence".to_string(),
@@ -923,11 +938,11 @@ impl JITCompiler {
         }
 
         // Start with the first gate matrix
-        let mut result = self.get_gate_matrix(&gates[0].gate_type)?;
+        let mut result = Self::get_gate_matrix(&gates[0].gate_type)?;
 
         // Multiply with subsequent gates
         for gate in &gates[1..] {
-            let gate_matrix = self.get_gate_matrix(&gate.gate_type)?;
+            let gate_matrix = Self::get_gate_matrix(&gate.gate_type)?;
             result = result.dot(&gate_matrix);
         }
 
@@ -935,7 +950,7 @@ impl JITCompiler {
     }
 
     /// Get matrix representation of a gate
-    fn get_gate_matrix(&self, gate_type: &InterfaceGateType) -> Result<Array2<Complex64>> {
+    fn get_gate_matrix(gate_type: &InterfaceGateType) -> Result<Array2<Complex64>> {
         let matrix = match gate_type {
             InterfaceGateType::Identity => Array2::from_shape_vec(
                 (2, 2),
@@ -946,7 +961,7 @@ impl JITCompiler {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix shape should be valid"),
             InterfaceGateType::PauliX | InterfaceGateType::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -956,7 +971,7 @@ impl JITCompiler {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix shape should be valid"),
             InterfaceGateType::PauliY => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -966,7 +981,7 @@ impl JITCompiler {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix shape should be valid"),
             InterfaceGateType::PauliZ => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -976,7 +991,7 @@ impl JITCompiler {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix shape should be valid"),
             InterfaceGateType::Hadamard | InterfaceGateType::H => {
                 let sqrt2_inv = 1.0 / (2.0_f64).sqrt();
                 Array2::from_shape_vec(
@@ -988,7 +1003,7 @@ impl JITCompiler {
                         Complex64::new(-sqrt2_inv, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             InterfaceGateType::S => Array2::from_shape_vec(
                 (2, 2),
@@ -999,7 +1014,7 @@ impl JITCompiler {
                     Complex64::new(0.0, 1.0),
                 ],
             )
-            .unwrap(),
+            .expect("2x2 matrix shape should be valid"),
             InterfaceGateType::T => {
                 let phase = Complex64::new(0.0, std::f64::consts::PI / 4.0).exp();
                 Array2::from_shape_vec(
@@ -1011,7 +1026,7 @@ impl JITCompiler {
                         phase,
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             InterfaceGateType::RX(angle) => {
                 let cos_half = (angle / 2.0).cos();
@@ -1025,7 +1040,7 @@ impl JITCompiler {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             InterfaceGateType::RY(angle) => {
                 let cos_half = (angle / 2.0).cos();
@@ -1039,7 +1054,7 @@ impl JITCompiler {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             InterfaceGateType::RZ(angle) => {
                 let exp_neg = Complex64::new(0.0, -angle / 2.0).exp();
@@ -1053,7 +1068,7 @@ impl JITCompiler {
                         exp_pos,
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             InterfaceGateType::Phase(angle) => {
                 let phase = Complex64::new(0.0, *angle).exp();
@@ -1066,7 +1081,7 @@ impl JITCompiler {
                         phase,
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
             _ => {
                 // Default identity matrix for unknown gates
@@ -1079,7 +1094,7 @@ impl JITCompiler {
                         Complex64::new(1.0, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("2x2 matrix shape should be valid")
             }
         };
 
@@ -1087,10 +1102,7 @@ impl JITCompiler {
     }
 
     /// Get matrix representation of a two-qubit gate
-    fn get_two_qubit_gate_matrix(
-        &self,
-        gate_type: &InterfaceGateType,
-    ) -> Result<Array2<Complex64>> {
+    fn get_two_qubit_gate_matrix(gate_type: &InterfaceGateType) -> Result<Array2<Complex64>> {
         let matrix = match gate_type {
             InterfaceGateType::CNOT => Array2::from_shape_vec(
                 (4, 4),
@@ -1113,7 +1125,7 @@ impl JITCompiler {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("4x4 matrix shape should be valid"),
             InterfaceGateType::CZ => Array2::from_shape_vec(
                 (4, 4),
                 vec![
@@ -1135,7 +1147,7 @@ impl JITCompiler {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("4x4 matrix shape should be valid"),
             InterfaceGateType::SWAP => Array2::from_shape_vec(
                 (4, 4),
                 vec![
@@ -1157,7 +1169,7 @@ impl JITCompiler {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("4x4 matrix shape should be valid"),
             _ => {
                 // Default identity matrix for unknown two-qubit gates
                 Array2::from_shape_vec(
@@ -1181,7 +1193,7 @@ impl JITCompiler {
                         Complex64::new(1.0, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("4x4 matrix shape should be valid")
             }
         };
 
@@ -1189,7 +1201,7 @@ impl JITCompiler {
     }
 
     /// Estimate memory usage for a pattern
-    fn estimate_memory_usage(&self, pattern: &GateSequencePattern) -> usize {
+    fn estimate_memory_usage(pattern: &GateSequencePattern) -> usize {
         // Estimate based on pattern complexity
         let base_size = std::mem::size_of::<CompiledGateSequence>();
         let pattern_size = pattern.gate_types.len() * 64; // Rough estimate
@@ -1241,7 +1253,10 @@ impl JITCompiler {
         let execution_start = Instant::now();
 
         let compiled_sequence = {
-            let cache = self.compiled_cache.read().unwrap();
+            let cache = self
+                .compiled_cache
+                .read()
+                .expect("JIT cache lock should not be poisoned");
             cache.get(&pattern_hash).cloned().ok_or_else(|| {
                 SimulatorError::InvalidParameter("Compiled sequence not found".to_string())
             })?
@@ -1270,7 +1285,10 @@ impl JITCompiler {
 
         // Update performance statistics
         {
-            let mut cache = self.compiled_cache.write().unwrap();
+            let mut cache = self
+                .compiled_cache
+                .write()
+                .expect("JIT cache lock should not be poisoned");
             if let Some(sequence) = cache.get_mut(&pattern_hash) {
                 let stats = &mut sequence.performance_stats;
                 stats.execution_count += 1;
@@ -1295,20 +1313,20 @@ impl JITCompiler {
         for instruction in instructions {
             match instruction {
                 BytecodeInstruction::ApplySingleQubit { gate_type, target } => {
-                    self.apply_single_qubit_gate(gate_type, *target, state)?;
+                    Self::apply_single_qubit_gate(gate_type, *target, state)?;
                 }
                 BytecodeInstruction::ApplyTwoQubit {
                     gate_type,
                     control,
                     target,
                 } => {
-                    self.apply_two_qubit_gate(gate_type, *control, *target, state)?;
+                    Self::apply_two_qubit_gate(gate_type, *control, *target, state)?;
                 }
                 BytecodeInstruction::ApplyMultiQubit { gate_type, targets } => {
-                    self.apply_multi_qubit_gate(gate_type, targets, state)?;
+                    Self::apply_multi_qubit_gate(gate_type, targets, state)?;
                 }
                 BytecodeInstruction::FusedOperation { operation } => {
-                    self.apply_fused_operation(operation, state)?;
+                    Self::apply_fused_operation(operation, state)?;
                 }
                 BytecodeInstruction::Prefetch { .. } => {
                     // Prefetch hints are processed during compilation
@@ -1324,7 +1342,6 @@ impl JITCompiler {
 
     /// Apply single-qubit gate to state
     fn apply_single_qubit_gate(
-        &self,
         gate_type: &InterfaceGateType,
         target: usize,
         state: &mut Array1<Complex64>,
@@ -1336,7 +1353,7 @@ impl JITCompiler {
             ));
         }
 
-        let matrix = self.get_gate_matrix(gate_type)?;
+        let matrix = Self::get_gate_matrix(gate_type)?;
 
         // Apply gate using matrix multiplication
         for i in 0..(1 << num_qubits) {
@@ -1355,7 +1372,6 @@ impl JITCompiler {
 
     /// Apply two-qubit gate to state
     fn apply_two_qubit_gate(
-        &self,
         gate_type: &InterfaceGateType,
         control: usize,
         target: usize,
@@ -1407,8 +1423,8 @@ impl JITCompiler {
             }
             _ => {
                 // Use full matrix for unknown gates
-                let matrix = self.get_two_qubit_gate_matrix(gate_type)?;
-                self.apply_two_qubit_matrix(&matrix, control, target, state)?;
+                let matrix = Self::get_two_qubit_gate_matrix(gate_type)?;
+                Self::apply_two_qubit_matrix(&matrix, control, target, state)?;
             }
         }
 
@@ -1417,7 +1433,6 @@ impl JITCompiler {
 
     /// Apply multi-qubit gate to state
     fn apply_multi_qubit_gate(
-        &self,
         _gate_type: &InterfaceGateType,
         _targets: &[usize],
         _state: &mut Array1<Complex64>,
@@ -1430,7 +1445,6 @@ impl JITCompiler {
 
     /// Apply fused operation to state
     fn apply_fused_operation(
-        &self,
         operation: &FusedGateOperation,
         state: &mut Array1<Complex64>,
     ) -> Result<()> {
@@ -1468,7 +1482,7 @@ impl JITCompiler {
                     if let Some(matrix) = &operation.matrix {
                         // Apply matrix directly
                         for &target in &operation.targets {
-                            self.apply_matrix_to_target(matrix, target, state)?;
+                            Self::apply_matrix_to_target(matrix, target, state)?;
                         }
                     }
                 }
@@ -1477,8 +1491,11 @@ impl JITCompiler {
                     if operation.targets.len() == 2 && operation.matrix.is_some() {
                         let control = operation.targets[0];
                         let target = operation.targets[1];
-                        self.apply_two_qubit_matrix(
-                            operation.matrix.as_ref().unwrap(),
+                        Self::apply_two_qubit_matrix(
+                            operation
+                                .matrix
+                                .as_ref()
+                                .expect("matrix should exist after is_some check"),
                             control,
                             target,
                             state,
@@ -1497,7 +1514,6 @@ impl JITCompiler {
 
     /// Apply matrix to specific target qubit
     fn apply_matrix_to_target(
-        &self,
         matrix: &Array2<Complex64>,
         target: usize,
         state: &mut Array1<Complex64>,
@@ -1525,7 +1541,6 @@ impl JITCompiler {
 
     /// Apply two-qubit matrix
     fn apply_two_qubit_matrix(
-        &self,
         matrix: &Array2<Complex64>,
         control: usize,
         target: usize,
@@ -1588,18 +1603,18 @@ impl JITCompiler {
         for operation in operations {
             match operation.instruction {
                 SIMDInstruction::ComplexMul => {
-                    self.execute_simd_complex_mul(operation, state)?;
+                    Self::execute_simd_complex_mul(operation, state)?;
                 }
                 SIMDInstruction::ComplexAdd => {
-                    self.execute_simd_complex_add(operation, state)?;
+                    Self::execute_simd_complex_add(operation, state)?;
                 }
                 SIMDInstruction::Rotation => {
-                    self.execute_simd_rotation(operation, state)?;
+                    Self::execute_simd_rotation(operation, state)?;
                 }
                 SIMDInstruction::GateApplication => {
-                    self.execute_simd_gate_application(operation, state)?;
+                    Self::execute_simd_gate_application(operation, state)?;
                 }
-                _ => {
+                SIMDInstruction::TensorProduct => {
                     return Err(SimulatorError::NotImplemented(
                         "SIMD instruction".to_string(),
                     ));
@@ -1610,8 +1625,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD complex multiplication
-    const fn execute_simd_complex_mul(
-        &self,
+    fn execute_simd_complex_mul(
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
     ) -> Result<()> {
@@ -1620,8 +1634,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD complex addition
-    const fn execute_simd_complex_add(
-        &self,
+    fn execute_simd_complex_add(
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
     ) -> Result<()> {
@@ -1630,8 +1643,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD rotation
-    const fn execute_simd_rotation(
-        &self,
+    fn execute_simd_rotation(
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
     ) -> Result<()> {
@@ -1640,8 +1652,7 @@ impl JITCompiler {
     }
 
     /// Execute SIMD gate application
-    const fn execute_simd_gate_application(
-        &self,
+    fn execute_simd_gate_application(
         _operation: &VectorizedOperation,
         _state: &mut Array1<Complex64>,
     ) -> Result<()> {
@@ -1650,16 +1661,26 @@ impl JITCompiler {
     }
 
     /// Get compilation statistics
+    #[must_use]
     pub fn get_stats(&self) -> JITCompilerStats {
-        self.stats.read().unwrap().clone()
+        self.stats
+            .read()
+            .expect("JIT stats lock should not be poisoned")
+            .clone()
     }
 
     /// Clear compiled cache
     pub fn clear_cache(&self) {
-        let mut cache = self.compiled_cache.write().unwrap();
+        let mut cache = self
+            .compiled_cache
+            .write()
+            .expect("JIT cache lock should not be poisoned");
         cache.clear();
 
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self
+            .stats
+            .write()
+            .expect("JIT stats lock should not be poisoned");
         stats.cache_clears += 1;
     }
 }
@@ -1681,6 +1702,7 @@ impl Default for PatternAnalyzer {
 }
 
 impl PatternAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             pattern_frequencies: HashMap::new(),
@@ -1691,7 +1713,7 @@ impl PatternAnalyzer {
 
     /// Analyze gate sequence for patterns
     pub fn analyze_pattern(&mut self, gates: &[InterfaceGate]) -> PatternAnalysisResult {
-        let pattern_signature = self.compute_pattern_signature(gates);
+        let pattern_signature = Self::compute_pattern_signature(gates);
 
         // Update frequency
         *self
@@ -1717,7 +1739,7 @@ impl PatternAnalyzer {
     }
 
     /// Compute pattern signature
-    fn compute_pattern_signature(&self, gates: &[InterfaceGate]) -> String {
+    fn compute_pattern_signature(gates: &[InterfaceGate]) -> String {
         gates
             .iter()
             .map(|gate| format!("{:?}", gate.gate_type))
@@ -1734,7 +1756,7 @@ impl PatternAnalyzer {
         let mut suggestions = Vec::new();
 
         // Check for fusion opportunities
-        if self.can_fuse_gates(gates) {
+        if Self::can_fuse_gates(gates) {
             suggestions.push(OptimizationSuggestion::GateFusion);
         }
 
@@ -1752,7 +1774,7 @@ impl PatternAnalyzer {
     }
 
     /// Check if gates can be fused
-    fn can_fuse_gates(&self, gates: &[InterfaceGate]) -> bool {
+    fn can_fuse_gates(gates: &[InterfaceGate]) -> bool {
         if gates.len() < 2 {
             return false;
         }
@@ -1830,6 +1852,7 @@ impl Default for ComplexityAnalyzer {
 }
 
 impl ComplexityAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         let mut gate_costs = HashMap::new();
 
@@ -1844,13 +1867,14 @@ impl ComplexityAnalyzer {
     }
 
     /// Analyze pattern complexity
+    #[must_use]
     pub fn analyze_complexity(&self, gates: &[InterfaceGate]) -> PatternComplexity {
         let gate_count = gates.len();
         let computational_cost = self.compute_computational_cost(gates);
-        let memory_usage = self.estimate_memory_usage(gates);
-        let parallelizable_operations = self.count_parallelizable_operations(gates);
-        let constant_operations = self.count_constant_operations(gates);
-        let critical_path_length = self.compute_critical_path_length(gates);
+        let memory_usage = Self::estimate_memory_usage(gates);
+        let parallelizable_operations = Self::count_parallelizable_operations(gates);
+        let constant_operations = Self::count_constant_operations(gates);
+        let critical_path_length = Self::compute_critical_path_length(gates);
 
         PatternComplexity {
             gate_count,
@@ -1887,13 +1911,13 @@ impl ComplexityAnalyzer {
     }
 
     /// Estimate memory usage
-    fn estimate_memory_usage(&self, gates: &[InterfaceGate]) -> usize {
+    fn estimate_memory_usage(gates: &[InterfaceGate]) -> usize {
         // Rough estimate based on gate count and types
         gates.len() * 32 + gates.iter().map(|g| g.qubits.len() * 8).sum::<usize>()
     }
 
     /// Count parallelizable operations
-    fn count_parallelizable_operations(&self, gates: &[InterfaceGate]) -> usize {
+    fn count_parallelizable_operations(gates: &[InterfaceGate]) -> usize {
         // Operations that don't share targets can be parallelized
         let mut parallelizable = 0;
         let mut used_qubits = std::collections::HashSet::new();
@@ -1924,7 +1948,7 @@ impl ComplexityAnalyzer {
     }
 
     /// Count constant operations
-    fn count_constant_operations(&self, gates: &[InterfaceGate]) -> usize {
+    fn count_constant_operations(gates: &[InterfaceGate]) -> usize {
         gates
             .iter()
             .filter(|gate| {
@@ -1944,7 +1968,7 @@ impl ComplexityAnalyzer {
     }
 
     /// Compute critical path length
-    fn compute_critical_path_length(&self, gates: &[InterfaceGate]) -> usize {
+    fn compute_critical_path_length(gates: &[InterfaceGate]) -> usize {
         // Simple heuristic: maximum depth of dependency chain
         let mut qubit_depths = HashMap::new();
         let mut max_depth = 0;
@@ -2016,6 +2040,7 @@ impl Default for RuntimeProfiler {
 }
 
 impl RuntimeProfiler {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             execution_times: VecDeque::new(),
@@ -2072,6 +2097,7 @@ impl RuntimeProfiler {
     }
 
     /// Get current statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &RuntimeProfilerStats {
         &self.stats
     }
@@ -2160,6 +2186,7 @@ pub struct JITQuantumSimulator {
 
 impl JITQuantumSimulator {
     /// Create new JIT-enabled simulator
+    #[must_use]
     pub fn new(num_qubits: usize, config: JITConfig) -> Self {
         let state_size = 1 << num_qubits;
         let mut state = Array1::zeros(state_size);
@@ -2205,7 +2232,11 @@ impl JITQuantumSimulator {
 
     /// Check if pattern is compiled
     fn is_compiled(&self, pattern_hash: u64) -> bool {
-        let cache = self.compiler.compiled_cache.read().unwrap();
+        let cache = self
+            .compiler
+            .compiled_cache
+            .read()
+            .expect("JIT cache lock should not be poisoned");
         cache.contains_key(&pattern_hash)
     }
 
@@ -2459,16 +2490,19 @@ impl JITQuantumSimulator {
     }
 
     /// Get current state vector
+    #[must_use]
     pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
     /// Get simulator statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &JITSimulatorStats {
         &self.stats
     }
 
     /// Get compiler statistics
+    #[must_use]
     pub fn get_compiler_stats(&self) -> JITCompilerStats {
         self.compiler.get_stats()
     }
@@ -2727,14 +2761,15 @@ mod tests {
     #[test]
     fn test_pattern_extraction() {
         let config = JITConfig::default();
-        let compiler = JITCompiler::new(config);
+        let _compiler = JITCompiler::new(config);
 
         let gates = vec![
             InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]),
             InterfaceGate::new(InterfaceGateType::PauliX, vec![1]),
         ];
 
-        let pattern = compiler.extract_pattern(&gates).unwrap();
+        let pattern =
+            JITCompiler::extract_pattern(&gates).expect("Pattern extraction should succeed");
         assert_eq!(pattern.gate_types.len(), 2);
         assert_eq!(pattern.frequency, 1);
     }
@@ -2742,11 +2777,10 @@ mod tests {
     #[test]
     fn test_gate_matrix_generation() {
         let config = JITConfig::default();
-        let compiler = JITCompiler::new(config);
+        let _compiler = JITCompiler::new(config);
 
-        let pauli_x = compiler
-            .get_gate_matrix(&InterfaceGateType::PauliX)
-            .unwrap();
+        let pauli_x = JITCompiler::get_gate_matrix(&InterfaceGateType::PauliX)
+            .expect("PauliX matrix generation should succeed");
         assert_eq!(pauli_x.shape(), [2, 2]);
         assert_eq!(pauli_x[(0, 1)], Complex64::new(1.0, 0.0));
         assert_eq!(pauli_x[(1, 0)], Complex64::new(1.0, 0.0));
@@ -2799,7 +2833,9 @@ mod tests {
 
         let gate = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
 
-        simulator.apply_gate_interpreted(&gate).unwrap();
+        simulator
+            .apply_gate_interpreted(&gate)
+            .expect("PauliX gate application should succeed");
 
         // After Pauli-X, state should be |1⟩
         assert_eq!(simulator.state[0], Complex64::new(0.0, 0.0));
@@ -2813,7 +2849,9 @@ mod tests {
 
         let gate = InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]);
 
-        simulator.apply_gate_interpreted(&gate).unwrap();
+        simulator
+            .apply_gate_interpreted(&gate)
+            .expect("Hadamard gate application should succeed");
 
         // After Hadamard, state should be (|0⟩ + |1⟩)/√2
         let sqrt2_inv = 1.0 / (2.0_f64).sqrt();
@@ -2834,7 +2872,9 @@ mod tests {
 
         let gate = InterfaceGate::new(InterfaceGateType::CNOT, vec![1, 0]);
 
-        simulator.apply_gate_interpreted(&gate).unwrap();
+        simulator
+            .apply_gate_interpreted(&gate)
+            .expect("CNOT gate application should succeed");
 
         // After CNOT, |10⟩ → |11⟩
         assert_eq!(simulator.state[0], Complex64::new(0.0, 0.0));
@@ -2851,7 +2891,9 @@ mod tests {
         // Test RX gate
         let gate_rx = InterfaceGate::new(InterfaceGateType::RX(std::f64::consts::PI), vec![0]);
 
-        simulator.apply_gate_interpreted(&gate_rx).unwrap();
+        simulator
+            .apply_gate_interpreted(&gate_rx)
+            .expect("RX gate application should succeed");
 
         // RX(π) should be equivalent to Pauli-X up to global phase
         // RX(π)|0⟩ = -i|1⟩, so we check the magnitude
@@ -2872,11 +2914,15 @@ mod tests {
         ];
 
         // First execution should be interpreted
-        let _time1 = simulator.apply_gate_sequence(&sequence).unwrap();
+        let _time1 = simulator
+            .apply_gate_sequence(&sequence)
+            .expect("First gate sequence should succeed");
         assert_eq!(simulator.get_stats().interpreted_executions, 1);
 
         // Second execution might be compiled
-        let _time2 = simulator.apply_gate_sequence(&sequence).unwrap();
+        let _time2 = simulator
+            .apply_gate_sequence(&sequence)
+            .expect("Second gate sequence should succeed");
         // Check compilation occurred
         assert!(simulator.get_compiler_stats().patterns_analyzed > 0);
     }
@@ -2915,7 +2961,7 @@ mod tests {
     #[test]
     fn test_constant_folding_optimization() {
         let config = JITConfig::default();
-        let compiler = JITCompiler::new(config);
+        let _compiler = JITCompiler::new(config);
 
         let mut instructions = vec![
             BytecodeInstruction::ApplySingleQubit {
@@ -2928,7 +2974,8 @@ mod tests {
             },
         ];
 
-        compiler.apply_constant_folding(&mut instructions).unwrap();
+        JITCompiler::apply_constant_folding(&mut instructions)
+            .expect("Constant folding should succeed");
 
         // Check that zero rotation was folded to identity
         if let BytecodeInstruction::ApplySingleQubit { gate_type, .. } = &instructions[0] {
@@ -2939,7 +2986,7 @@ mod tests {
     #[test]
     fn test_dead_code_elimination() {
         let config = JITConfig::default();
-        let compiler = JITCompiler::new(config);
+        let _compiler = JITCompiler::new(config);
 
         let mut instructions = vec![
             BytecodeInstruction::ApplySingleQubit {
@@ -2953,9 +3000,8 @@ mod tests {
         ];
 
         let original_len = instructions.len();
-        compiler
-            .apply_dead_code_elimination(&mut instructions)
-            .unwrap();
+        JITCompiler::apply_dead_code_elimination(&mut instructions)
+            .expect("Dead code elimination should succeed");
 
         // Dead code should be eliminated
         assert!(instructions.len() <= original_len);
@@ -2963,7 +3009,8 @@ mod tests {
 
     #[test]
     fn test_benchmark_jit_compilation() {
-        let results = benchmark_jit_compilation().unwrap();
+        let results =
+            benchmark_jit_compilation().expect("JIT benchmark should complete successfully");
 
         assert!(results.total_sequences > 0);
         assert!(results.compilation_success_rate >= 0.0);

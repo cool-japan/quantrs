@@ -117,7 +117,7 @@ pub struct MonetizationConfig {
 }
 
 /// Payment methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaymentMethod {
     CreditCard,
     DigitalWallet,
@@ -128,7 +128,7 @@ pub enum PaymentMethod {
 }
 
 /// Subscription models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubscriptionModel {
     PayPerUse,
     Monthly,
@@ -140,7 +140,7 @@ pub enum SubscriptionModel {
 }
 
 /// Pricing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PricingStrategy {
     Fixed,
     Dynamic,
@@ -196,7 +196,7 @@ pub struct ActiveDeployment {
 }
 
 /// Deployment status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeploymentStatus {
     Pending,
     Deploying,
@@ -290,7 +290,7 @@ pub struct UserSession {
 }
 
 /// User types in the marketplace
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserType {
     Individual,
     Academic,
@@ -302,7 +302,7 @@ pub enum UserType {
 }
 
 /// Permissions for marketplace actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Permission {
     ViewAlgorithms,
     DownloadAlgorithms,
@@ -471,7 +471,7 @@ impl QuantumAlgorithmMarketplace {
     ) -> DeviceResult<DeploymentStatus> {
         let deployments = self.active_deployments.read().await;
         let deployment = deployments.get(deployment_id).ok_or_else(|| {
-            DeviceError::InvalidInput(format!("Deployment {} not found", deployment_id))
+            DeviceError::InvalidInput(format!("Deployment {deployment_id} not found"))
         })?;
 
         Ok(deployment.status.clone())

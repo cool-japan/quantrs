@@ -167,6 +167,7 @@ impl MetalQuantumState {
 
     /// Apply a single-qubit gate using Metal
     #[cfg(feature = "metal")]
+    #[allow(clippy::missing_const_for_fn)] // Runtime GPU operations cannot be const
     pub fn apply_single_qubit_gate(
         &mut self,
         gate_matrix: &[Complex64; 4],
@@ -204,8 +205,7 @@ impl MetalQuantumState {
         let valid_kernels = ["apply_single_qubit_gate", "compute_probabilities"];
         if !valid_kernels.contains(&function_name) {
             return Err(QuantRS2Error::BackendExecutionFailed(format!(
-                "Unknown kernel function: {}",
-                function_name
+                "Unknown kernel function: {function_name}"
             )));
         }
 
@@ -225,7 +225,7 @@ impl MetalQuantumState {
 }
 
 /// Check if Metal is available on this system
-pub fn is_metal_available() -> bool {
+pub const fn is_metal_available() -> bool {
     #[cfg(all(target_os = "macos", feature = "metal"))]
     {
         // This is a placeholder check

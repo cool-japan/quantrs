@@ -151,7 +151,7 @@ pub struct ClassicalError {
 }
 
 /// Types of classical errors
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClassicalErrorType {
     /// Timeout in classical condition evaluation
     Timeout,
@@ -179,7 +179,7 @@ pub struct TimingViolation {
 }
 
 /// Advanced analytics results for mid-circuit measurements
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AdvancedAnalyticsResults {
     /// Statistical analysis results
     pub statistical_analysis: StatisticalAnalysisResults,
@@ -196,7 +196,7 @@ pub struct AdvancedAnalyticsResults {
 }
 
 /// Statistical analysis results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StatisticalAnalysisResults {
     /// Descriptive statistics
     pub descriptive_stats: DescriptiveStatistics,
@@ -252,7 +252,7 @@ pub struct ErrorRateDistribution {
 }
 
 /// Hypothesis test results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HypothesisTestResults {
     /// Tests for measurement independence
     pub independence_tests: HashMap<String, StatisticalTest>,
@@ -322,7 +322,7 @@ pub struct ConfidenceIntervals {
 }
 
 /// Effect size analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EffectSizeAnalysis {
     /// Cohen's d for measurement differences
     pub cohens_d: HashMap<String, f64>,
@@ -367,7 +367,7 @@ pub struct CorrelationPair {
 }
 
 /// Types of correlation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CorrelationType {
     Pearson,
     Spearman,
@@ -391,7 +391,7 @@ pub struct CorrelationNetworkAnalysis {
 }
 
 /// Node centrality measures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NodeCentralityMeasures {
     /// Betweenness centrality
     pub betweenness: Vec<f64>,
@@ -434,7 +434,7 @@ pub struct TrendAnalysis {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -487,7 +487,7 @@ pub struct ChangePoint {
 }
 
 /// Change point types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChangePointType {
     MeanShift,
     VarianceChange,
@@ -539,7 +539,7 @@ pub struct AnomalyEvent {
 }
 
 /// Anomaly types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyType {
     PointAnomaly,
     ContextualAnomaly,
@@ -549,7 +549,7 @@ pub enum AnomalyType {
 }
 
 /// Anomaly severity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalySeverity {
     Low,
     Medium,
@@ -571,7 +571,7 @@ pub struct AnomalyMethodPerformance {
 }
 
 /// Distribution analysis results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DistributionAnalysisResults {
     /// Best-fit distributions
     pub best_fit_distributions: HashMap<String, DistributionFit>,
@@ -652,7 +652,7 @@ pub struct NormalityAssessment {
 }
 
 /// Causal analysis results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CausalAnalysisResults {
     /// Causal graph
     pub causal_graph: CausalGraph,
@@ -695,7 +695,7 @@ pub struct CausalEffect {
 }
 
 /// Causal mechanisms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CausalMechanism {
     Direct,
     Indirect,
@@ -705,7 +705,7 @@ pub enum CausalMechanism {
 }
 
 /// Confounding analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConfoundingAnalysis {
     /// Detected confounders
     pub confounders: Vec<String>,
@@ -791,7 +791,7 @@ pub struct SchedulingOptimization {
 }
 
 /// Scheduling optimization types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchedulingOptimizationType {
     MeasurementBatching,
     TemporalReordering,
@@ -831,7 +831,7 @@ pub struct ResourceOptimization {
 }
 
 /// Resource types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceType {
     QuantumProcessor,
     ClassicalProcessor,
@@ -856,7 +856,7 @@ pub struct PerformanceImprovement {
 }
 
 /// Performance areas
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceArea {
     MeasurementLatency,
     MeasurementAccuracy,
@@ -866,7 +866,7 @@ pub enum PerformanceArea {
 }
 
 /// Priority levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Priority {
     Low,
     Medium,
@@ -875,7 +875,7 @@ pub enum Priority {
 }
 
 /// Risk levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RiskLevel {
     Low,
     Medium,
@@ -884,7 +884,7 @@ pub enum RiskLevel {
 }
 
 /// Optimization difficulty levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationDifficulty {
     Easy,
     Moderate,
@@ -923,7 +923,7 @@ pub struct LearningProgress {
 }
 
 /// Convergence status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConvergenceStatus {
     NotStarted,
     InProgress,
@@ -960,7 +960,7 @@ pub struct AdaptationEvent {
 }
 
 /// Adaptation types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdaptationType {
     ParameterTuning,
     ArchitectureChange,
@@ -1002,7 +1002,7 @@ pub struct DriftDetectionResults {
 }
 
 /// Drift types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftType {
     Gradual,
     Sudden,
@@ -1051,7 +1051,7 @@ pub struct MidCircuitCapabilities {
 }
 
 /// Supported measurement types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MeasurementType {
     /// Standard Z-basis measurement
     ZBasis,
@@ -1117,7 +1117,7 @@ pub struct TemporalAnomaly {
 }
 
 /// Direction of change in temporal anomaly
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChangeDirection {
     Increase,
     Decrease,
@@ -1140,7 +1140,7 @@ pub struct PatternAnomaly {
 }
 
 /// Types of pattern anomalies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatternType {
     CorrelationAnomaly,
     ConstantSequence,
@@ -1184,7 +1184,7 @@ pub struct CausalRelationship {
 }
 
 /// Direction of causal relationship
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CausalDirection {
     Forward,
     Backward,
@@ -1193,7 +1193,7 @@ pub enum CausalDirection {
 }
 
 /// Edge type in causal graph
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EdgeType {
     Directed,
     Undirected,
@@ -1288,7 +1288,7 @@ impl Default for PredictionModel {
 }
 
 /// ML features for optimization
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MLFeatures {
     /// Statistical features
     pub statistical_features: StatisticalFeatures,
@@ -1298,17 +1298,6 @@ pub struct MLFeatures {
     pub pattern_features: PatternFeatures,
     /// Feature importance
     pub feature_importance: Vec<FeatureImportance>,
-}
-
-impl Default for MLFeatures {
-    fn default() -> Self {
-        Self {
-            statistical_features: StatisticalFeatures::default(),
-            temporal_features: TemporalFeatures::default(),
-            pattern_features: PatternFeatures::default(),
-            feature_importance: vec![],
-        }
-    }
 }
 
 /// Statistical features

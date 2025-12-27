@@ -20,6 +20,7 @@ pub struct OptimizedSimulator {
 
 impl OptimizedSimulator {
     /// Create a new optimized simulator with default settings
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             _use_simd: cfg!(feature = "simd"),
@@ -29,6 +30,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new optimized simulator with custom settings
+    #[must_use]
     pub const fn with_options(
         use_simd: bool,
         memory_efficient: bool,
@@ -42,6 +44,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new simulator optimized for maximum performance
+    #[must_use]
     pub const fn high_performance() -> Self {
         Self {
             _use_simd: true,
@@ -51,6 +54,7 @@ impl OptimizedSimulator {
     }
 
     /// Create a new simulator optimized for memory efficiency
+    #[must_use]
     pub const fn memory_efficient() -> Self {
         Self {
             _use_simd: true,
@@ -60,6 +64,7 @@ impl OptimizedSimulator {
     }
 
     /// Check if SIMD is available on this system
+    #[must_use]
     pub fn is_simd_available() -> bool {
         use quantrs2_core::platform::PlatformCapabilities;
         let platform = PlatformCapabilities::detect();

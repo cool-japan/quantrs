@@ -5,7 +5,7 @@
 
 use crate::prelude::HardwareOptimizations;
 use scirs2_core::ndarray::Array1;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 
 use crate::circuit_interfaces::{CircuitInterface, InterfaceCircuit};
@@ -224,7 +224,7 @@ impl QuantumMLTrainer {
     }
 
     /// Compute gradient using the specified method
-    fn compute_gradient<F>(&mut self, loss_function: &F) -> Result<Array1<f64>>
+    fn compute_gradient<F>(&self, loss_function: &F) -> Result<Array1<f64>>
     where
         F: Fn(&Array1<f64>) -> Result<f64> + Send + Sync,
     {
@@ -373,7 +373,7 @@ impl QuantumMLTrainer {
         Ok(())
     }
 
-    /// Update parameters using RMSprop
+    /// Update parameters using `RMSprop`
     fn update_parameters_rmsprop(&mut self) -> Result<()> {
         let alpha = 0.99;
         let eps = 1e-8;
@@ -421,11 +421,13 @@ impl QuantumMLTrainer {
     }
 
     /// Get current parameters
+    #[must_use]
     pub const fn get_parameters(&self) -> &Array1<f64> {
         &self.optimizer_state.parameters
     }
 
     /// Get training history
+    #[must_use]
     pub const fn get_training_history(&self) -> &TrainingHistory {
         &self.training_history
     }
@@ -448,6 +450,7 @@ impl QuantumMLTrainer {
 
 impl HardwareAwareCompiler {
     /// Create a new hardware-aware compiler
+    #[must_use]
     pub fn new(hardware_arch: HardwareArchitecture, hardware_opts: HardwareOptimizations) -> Self {
         Self {
             hardware_arch,
@@ -472,6 +475,7 @@ impl HardwareAwareCompiler {
     }
 
     /// Get compilation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &CompilationStats {
         &self.compilation_stats
     }
@@ -479,6 +483,7 @@ impl HardwareAwareCompiler {
 
 impl OptimizerState {
     /// Create new optimizer state
+    #[must_use]
     pub fn new(num_parameters: usize, learning_rate: f64) -> Self {
         Self {
             parameters: Array1::zeros(num_parameters),
@@ -493,19 +498,22 @@ impl OptimizerState {
 
 impl TrainingHistory {
     /// Get the latest loss value
+    #[must_use]
     pub fn latest_loss(&self) -> Option<f64> {
         self.loss_history.last().copied()
     }
 
     /// Get the best (minimum) loss value
+    #[must_use]
     pub fn best_loss(&self) -> Option<f64> {
         self.loss_history
             .iter()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .copied()
     }
 
     /// Get average epoch time
+    #[must_use]
     pub fn average_epoch_time(&self) -> f64 {
         if self.epoch_times.is_empty() {
             0.0

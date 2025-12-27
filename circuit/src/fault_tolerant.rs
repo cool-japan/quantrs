@@ -64,8 +64,7 @@ impl QECCode {
             Self::SurfaceCode { distance }
             | Self::ColorCode { distance }
             | Self::RepetitionCode { distance } => *distance,
-            Self::SteaneCode => 3,
-            Self::ShorCode => 3,
+            Self::SteaneCode | Self::ShorCode => 3,
             Self::BaconShorCode { m, n } => (*m).min(*n),
             Self::ConcatenatedCode {
                 inner_code, levels, ..
@@ -235,8 +234,7 @@ impl MagicState {
     #[must_use]
     pub const fn fidelity_threshold(&self) -> f64 {
         match self {
-            Self::TState => 0.95,
-            Self::YState => 0.95,
+            Self::TState | Self::YState => 0.95,
             Self::CCZState => 0.99,
             Self::Custom { fidelity, .. } => *fidelity,
         }
@@ -753,10 +751,10 @@ impl FaultTolerantCompiler {
         let ancilla_qubits = vec![7, 8, 9, 10, 11, 12]; // 6 ancilla qubits for Steane code
 
         // X-type stabilizers
-        let x_stabilizers = vec![
-            vec![0, 1, 2, 3], // First X stabilizer
-            vec![1, 2, 5, 6], // Second X stabilizer
-            vec![0, 3, 4, 5], // Third X stabilizer
+        let x_stabilizers = [
+            [0, 1, 2, 3], // First X stabilizer
+            [1, 2, 5, 6], // Second X stabilizer
+            [0, 3, 4, 5], // Third X stabilizer
         ];
 
         for (i, stabilizer) in x_stabilizers.iter().enumerate() {
@@ -772,10 +770,10 @@ impl FaultTolerantCompiler {
         }
 
         // Z-type stabilizers
-        let z_stabilizers = vec![
-            vec![0, 1, 4, 6], // First Z stabilizer
-            vec![1, 3, 4, 5], // Second Z stabilizer
-            vec![0, 2, 3, 6], // Third Z stabilizer
+        let z_stabilizers = [
+            [0, 1, 4, 6], // First Z stabilizer
+            [1, 3, 4, 5], // Second Z stabilizer
+            [0, 2, 3, 6], // Third Z stabilizer
         ];
 
         for (i, stabilizer) in z_stabilizers.iter().enumerate() {

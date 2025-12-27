@@ -180,7 +180,7 @@ impl PlatformCapabilities {
     }
 
     /// Check if the platform supports SIMD operations
-    pub fn has_simd(&self) -> bool {
+    pub const fn has_simd(&self) -> bool {
         self.cpu.simd.sse2
             || self.cpu.simd.avx
             || self.cpu.simd.avx2
@@ -189,17 +189,17 @@ impl PlatformCapabilities {
     }
 
     /// Check if SIMD is available (compatibility method)
-    pub fn simd_available(&self) -> bool {
+    pub const fn simd_available(&self) -> bool {
         self.has_simd()
     }
 
     /// Check if GPU is available (compatibility method)
-    pub fn gpu_available(&self) -> bool {
+    pub const fn gpu_available(&self) -> bool {
         self.gpu.available
     }
 
     /// Get the optimal SIMD width for f64 operations
-    pub fn optimal_simd_width_f64(&self) -> usize {
+    pub const fn optimal_simd_width_f64(&self) -> usize {
         if self.cpu.simd.avx512 {
             8
         } else if self.cpu.simd.avx || self.cpu.simd.avx2 {
@@ -224,7 +224,7 @@ impl PlatformCapabilities {
     }
 
     /// Check if the platform is suitable for large-scale quantum simulation
-    pub fn is_suitable_for_large_quantum_sim(&self) -> bool {
+    pub const fn is_suitable_for_large_quantum_sim(&self) -> bool {
         self.memory.total_memory >= 16 * 1024 * 1024 * 1024 // At least 16GB RAM
             && self.cpu.logical_cores >= 8
             && self.has_simd()

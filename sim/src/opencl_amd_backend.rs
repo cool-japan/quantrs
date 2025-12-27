@@ -1,29 +1,29 @@
-//! OpenCL Backend for AMD GPU Acceleration
+//! `OpenCL` Backend for AMD GPU Acceleration
 //!
-//! This module provides high-performance quantum circuit simulation using OpenCL
+//! This module provides high-performance quantum circuit simulation using `OpenCL`
 //! to leverage AMD GPU compute capabilities. It implements parallel state vector
 //! operations, gate applications, and quantum algorithm acceleration on AMD
 //! graphics processing units.
 //!
 //! Key features:
-//! - OpenCL kernel compilation and execution
+//! - `OpenCL` kernel compilation and execution
 //! - AMD GPU-optimized quantum gate operations
 //! - Parallel state vector manipulation
 //! - Memory management for large quantum states
-//! - Support for AMD ROCm and OpenCL 2.0+
+//! - Support for AMD `ROCm` and `OpenCL` 2.0+
 //! - Automatic device detection and selection
 //! - Performance profiling and optimization
 //! - Fallback to CPU when GPU is unavailable
 
 use crate::prelude::{SimulatorError, StateVectorSimulator};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::Result;
 
-/// OpenCL platform information
+/// `OpenCL` platform information
 #[derive(Debug, Clone)]
 pub struct OpenCLPlatform {
     /// Platform ID
@@ -38,7 +38,7 @@ pub struct OpenCLPlatform {
     pub extensions: Vec<String>,
 }
 
-/// OpenCL device information
+/// `OpenCL` device information
 #[derive(Debug, Clone)]
 pub struct OpenCLDevice {
     /// Device ID
@@ -69,7 +69,7 @@ pub struct OpenCLDevice {
     pub extensions: Vec<String>,
 }
 
-/// OpenCL device types
+/// `OpenCL` device types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenCLDeviceType {
     GPU,
@@ -79,7 +79,7 @@ pub enum OpenCLDeviceType {
     All,
 }
 
-/// OpenCL backend configuration
+/// `OpenCL` backend configuration
 #[derive(Debug, Clone)]
 pub struct OpenCLConfig {
     /// Preferred platform vendor
@@ -94,13 +94,13 @@ pub struct OpenCLConfig {
     pub work_group_size: usize,
     /// Enable kernel caching
     pub enable_kernel_cache: bool,
-    /// OpenCL optimization level
+    /// `OpenCL` optimization level
     pub optimization_level: OptimizationLevel,
     /// Enable automatic fallback to CPU
     pub enable_cpu_fallback: bool,
 }
 
-/// OpenCL optimization levels
+/// `OpenCL` optimization levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OptimizationLevel {
     /// No optimization (-O0)
@@ -128,7 +128,7 @@ impl Default for OpenCLConfig {
     }
 }
 
-/// OpenCL kernel information
+/// `OpenCL` kernel information
 #[derive(Debug, Clone)]
 pub struct OpenCLKernel {
     /// Kernel name
@@ -143,7 +143,7 @@ pub struct OpenCLKernel {
     pub work_group_size: usize,
 }
 
-/// AMD GPU-optimized quantum simulator using OpenCL
+/// AMD GPU-optimized quantum simulator using `OpenCL`
 pub struct AMDOpenCLSimulator {
     /// Configuration
     config: OpenCLConfig,
@@ -151,7 +151,7 @@ pub struct AMDOpenCLSimulator {
     platform: Option<OpenCLPlatform>,
     /// Selected device
     device: Option<OpenCLDevice>,
-    /// OpenCL context (simulated)
+    /// `OpenCL` context (simulated)
     context: Option<OpenCLContext>,
     /// Command queue (simulated)
     command_queue: Option<OpenCLCommandQueue>,
@@ -165,7 +165,7 @@ pub struct AMDOpenCLSimulator {
     cpu_fallback: Option<StateVectorSimulator>,
 }
 
-/// Simulated OpenCL context
+/// Simulated `OpenCL` context
 #[derive(Debug, Clone)]
 pub struct OpenCLContext {
     /// Context ID
@@ -174,7 +174,7 @@ pub struct OpenCLContext {
     pub devices: Vec<usize>,
 }
 
-/// Simulated OpenCL command queue
+/// Simulated `OpenCL` command queue
 #[derive(Debug, Clone)]
 pub struct OpenCLCommandQueue {
     /// Queue ID
@@ -187,7 +187,7 @@ pub struct OpenCLCommandQueue {
     pub profiling_enabled: bool,
 }
 
-/// Simulated OpenCL buffer
+/// Simulated `OpenCL` buffer
 #[derive(Debug, Clone)]
 pub struct OpenCLBuffer {
     /// Buffer ID
@@ -200,7 +200,7 @@ pub struct OpenCLBuffer {
     pub host_data: Option<Vec<u8>>,
 }
 
-/// OpenCL memory flags
+/// `OpenCL` memory flags
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryFlags {
     ReadWrite,
@@ -211,7 +211,7 @@ pub enum MemoryFlags {
     CopyHostPtr,
 }
 
-/// OpenCL performance statistics
+/// `OpenCL` performance statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OpenCLStats {
     /// Total kernel executions
@@ -245,6 +245,7 @@ impl OpenCLStats {
     }
 
     /// Calculate performance metrics
+    #[must_use]
     pub fn get_performance_metrics(&self) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
         metrics.insert(
@@ -261,7 +262,7 @@ impl OpenCLStats {
 }
 
 impl AMDOpenCLSimulator {
-    /// Create new AMD OpenCL simulator
+    /// Create new AMD `OpenCL` simulator
     pub fn new(config: OpenCLConfig) -> Result<Self> {
         let mut simulator = Self {
             config,
@@ -289,7 +290,7 @@ impl AMDOpenCLSimulator {
         Ok(simulator)
     }
 
-    /// Initialize OpenCL platform and device
+    /// Initialize `OpenCL` platform and device
     fn initialize_opencl(&mut self) -> Result<()> {
         // Simulate platform discovery
         let platforms = self.discover_platforms()?;
@@ -305,24 +306,32 @@ impl AMDOpenCLSimulator {
         let selected_device = self.select_device(&devices)?;
         self.device = Some(selected_device);
 
-        // Create context
+        // Create context and command queue using the selected device
+        let device_id = self
+            .device
+            .as_ref()
+            .ok_or_else(|| {
+                SimulatorError::InitializationError("Device not initialized".to_string())
+            })?
+            .device_id;
+
         self.context = Some(OpenCLContext {
             context_id: 1,
-            devices: vec![self.device.as_ref().unwrap().device_id],
+            devices: vec![device_id],
         });
 
         // Create command queue
         self.command_queue = Some(OpenCLCommandQueue {
             queue_id: 1,
             context_id: 1,
-            device_id: self.device.as_ref().unwrap().device_id,
+            device_id,
             profiling_enabled: self.config.enable_profiling,
         });
 
         Ok(())
     }
 
-    /// Discover available OpenCL platforms
+    /// Discover available `OpenCL` platforms
     fn discover_platforms(&self) -> Result<Vec<OpenCLPlatform>> {
         // Simulate AMD platform discovery
         let platforms = vec![
@@ -430,12 +439,14 @@ impl AMDOpenCLSimulator {
         let best_device = filtered_devices
             .iter()
             .max_by_key(|device| device.compute_units)
-            .unwrap();
+            .ok_or_else(|| {
+                SimulatorError::InitializationError("No devices available".to_string())
+            })?;
 
         Ok((*best_device).clone())
     }
 
-    /// Compile OpenCL kernels
+    /// Compile `OpenCL` kernels
     fn compile_kernels(&mut self) -> Result<()> {
         let start_time = std::time::Instant::now();
 
@@ -943,7 +954,7 @@ impl AMDOpenCLSimulator {
 
     /// Simulate kernel execution (for demonstration)
     fn simulate_kernel_execution(
-        &mut self,
+        &self,
         kernel_name: &str,
         global_work_size: &[usize],
         _args: &[KernelArg],
@@ -951,7 +962,10 @@ impl AMDOpenCLSimulator {
         let total_work_items: usize = global_work_size.iter().product();
 
         // Simulate execution time based on work items and device capabilities
-        let device = self.device.as_ref().unwrap();
+        let device = self
+            .device
+            .as_ref()
+            .ok_or_else(|| SimulatorError::InvalidState("Device not initialized".to_string()))?;
         let work_groups = total_work_items.div_ceil(self.config.work_group_size);
         let parallel_work_groups = device.compute_units as usize;
 
@@ -974,7 +988,7 @@ impl AMDOpenCLSimulator {
         Ok(execution_time * variation)
     }
 
-    /// Apply single qubit gate using OpenCL
+    /// Apply single qubit gate using `OpenCL`
     pub fn apply_single_qubit_gate_opencl(
         &mut self,
         gate_matrix: &[Complex64; 4],
@@ -1001,7 +1015,7 @@ impl AMDOpenCLSimulator {
         self.execute_kernel("single_qubit_gate", &global_work_size, None, &args)
     }
 
-    /// Apply two qubit gate using OpenCL
+    /// Apply two qubit gate using `OpenCL`
     pub fn apply_two_qubit_gate_opencl(
         &mut self,
         gate_matrix: &[Complex64; 16],
@@ -1030,7 +1044,7 @@ impl AMDOpenCLSimulator {
         self.execute_kernel("two_qubit_gate", &global_work_size, None, &args)
     }
 
-    /// Compute expectation value using OpenCL
+    /// Compute expectation value using `OpenCL`
     pub fn compute_expectation_value_opencl(
         &mut self,
         pauli_string: u32,
@@ -1075,7 +1089,7 @@ impl AMDOpenCLSimulator {
         self.stats = OpenCLStats::default();
     }
 
-    /// Check if OpenCL is available
+    /// Check if `OpenCL` is available
     pub const fn is_opencl_available(&self) -> bool {
         self.context.is_some() && self.device.is_some()
     }
@@ -1105,7 +1119,7 @@ pub enum KernelArg {
     LocalMemory(usize),
 }
 
-/// Benchmark AMD OpenCL backend performance
+/// Benchmark AMD `OpenCL` backend performance
 pub fn benchmark_amd_opencl_backend() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
 
@@ -1217,8 +1231,11 @@ mod tests {
     #[test]
     fn test_platform_discovery() {
         let config = OpenCLConfig::default();
-        let simulator = AMDOpenCLSimulator::new(config).unwrap();
-        let platforms = simulator.discover_platforms().unwrap();
+        let simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
+        let platforms = simulator
+            .discover_platforms()
+            .expect("Platform discovery should succeed");
 
         assert!(!platforms.is_empty());
         assert!(platforms
@@ -1229,8 +1246,11 @@ mod tests {
     #[test]
     fn test_device_discovery() {
         let config = OpenCLConfig::default();
-        let simulator = AMDOpenCLSimulator::new(config).unwrap();
-        let devices = simulator.discover_devices().unwrap();
+        let simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
+        let devices = simulator
+            .discover_devices()
+            .expect("Device discovery should succeed");
 
         assert!(!devices.is_empty());
         assert!(devices
@@ -1241,7 +1261,8 @@ mod tests {
     #[test]
     fn test_kernel_creation() {
         let config = OpenCLConfig::default();
-        let simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         assert!(simulator.kernels.contains_key("single_qubit_gate"));
         assert!(simulator.kernels.contains_key("two_qubit_gate"));
@@ -1253,7 +1274,8 @@ mod tests {
     #[test]
     fn test_buffer_creation() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let result = simulator.create_buffer("test_buffer", 1024, MemoryFlags::ReadWrite);
         assert!(result.is_ok());
@@ -1267,7 +1289,8 @@ mod tests {
             max_buffer_size: 512,
             ..Default::default()
         };
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let result = simulator.create_buffer("large_buffer", 1024, MemoryFlags::ReadWrite);
         assert!(result.is_err());
@@ -1276,7 +1299,8 @@ mod tests {
     #[test]
     fn test_kernel_execution() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let global_work_size = vec![256];
         let args = vec![
@@ -1288,14 +1312,15 @@ mod tests {
         let result = simulator.execute_kernel("single_qubit_gate", &global_work_size, None, &args);
         assert!(result.is_ok());
 
-        let execution_time = result.unwrap();
+        let execution_time = result.expect("Kernel execution should succeed");
         assert!(execution_time > 0.0);
     }
 
     #[test]
     fn test_single_qubit_gate_application() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let hadamard_matrix = [
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
@@ -1306,19 +1331,20 @@ mod tests {
 
         simulator
             .create_buffer("state", 1024 * 16, MemoryFlags::ReadWrite)
-            .unwrap();
+            .expect("Buffer creation should succeed");
 
         let result = simulator.apply_single_qubit_gate_opencl(&hadamard_matrix, 0, 8);
         assert!(result.is_ok());
 
-        let execution_time = result.unwrap();
+        let execution_time = result.expect("Single qubit gate application should succeed");
         assert!(execution_time > 0.0);
     }
 
     #[test]
     fn test_two_qubit_gate_application() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let cnot_matrix = [
             Complex64::new(1.0, 0.0),
@@ -1341,31 +1367,33 @@ mod tests {
 
         simulator
             .create_buffer("state", 1024 * 16, MemoryFlags::ReadWrite)
-            .unwrap();
+            .expect("Buffer creation should succeed");
 
         let result = simulator.apply_two_qubit_gate_opencl(&cnot_matrix, 0, 1, 8);
         assert!(result.is_ok());
 
-        let execution_time = result.unwrap();
+        let execution_time = result.expect("Two qubit gate application should succeed");
         assert!(execution_time > 0.0);
     }
 
     #[test]
     fn test_expectation_value_computation() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         simulator
             .create_buffer("state", 1024 * 16, MemoryFlags::ReadWrite)
-            .unwrap();
+            .expect("State buffer creation should succeed");
         simulator
             .create_buffer("partial_results", 64 * 8, MemoryFlags::ReadWrite)
-            .unwrap();
+            .expect("Partial results buffer creation should succeed");
 
         let result = simulator.compute_expectation_value_opencl(0b1010, 8);
         assert!(result.is_ok());
 
-        let (expectation, execution_time) = result.unwrap();
+        let (expectation, execution_time) =
+            result.expect("Expectation value computation should succeed");
         assert!((-1.0..=1.0).contains(&expectation));
         assert!(execution_time > 0.0);
     }
@@ -1376,7 +1404,8 @@ mod tests {
             optimization_level: OptimizationLevel::Aggressive,
             ..Default::default()
         };
-        let simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let build_options = simulator.get_build_options();
         assert!(build_options.contains("-O3"));
@@ -1387,7 +1416,8 @@ mod tests {
     #[test]
     fn test_stats_update() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         simulator.stats.update_kernel_execution(10.0);
         simulator.stats.update_kernel_execution(20.0);
@@ -1400,11 +1430,12 @@ mod tests {
     #[test]
     fn test_performance_metrics() {
         let config = OpenCLConfig::default();
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         simulator.stats.total_kernel_executions = 100;
         simulator.stats.total_execution_time = 1000.0; // 1 second
-        simulator.stats.gpu_memory_usage = 1000000000; // 1GB
+        simulator.stats.gpu_memory_usage = 1_000_000_000; // 1GB
         simulator.stats.memory_transfer_time = 100.0; // 0.1 second
         simulator.stats.gpu_utilization = 85.0;
 
@@ -1428,7 +1459,8 @@ mod tests {
             enable_cpu_fallback: true,
             ..Default::default()
         };
-        let mut simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let mut simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
         let result = simulator.fallback_to_cpu(10);
         assert!(result.is_ok());
@@ -1442,9 +1474,12 @@ mod tests {
             preferred_device_type: OpenCLDeviceType::GPU,
             ..Default::default()
         };
-        let simulator = AMDOpenCLSimulator::new(config).unwrap();
+        let simulator =
+            AMDOpenCLSimulator::new(config).expect("OpenCL simulator should be created");
 
-        let device_info = simulator.get_device_info().unwrap();
+        let device_info = simulator
+            .get_device_info()
+            .expect("Device info should be available");
         assert_eq!(device_info.device_type, OpenCLDeviceType::GPU);
         assert!(device_info.name.contains("Radeon"));
         assert_eq!(device_info.vendor, "Advanced Micro Devices, Inc.");

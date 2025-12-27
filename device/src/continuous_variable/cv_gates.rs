@@ -59,7 +59,7 @@ pub struct CVGateSequence {
 
 impl CVGateSequence {
     /// Create a new empty gate sequence
-    pub fn new(num_modes: usize) -> Self {
+    pub const fn new(num_modes: usize) -> Self {
         Self {
             gates: Vec::new(),
             num_modes,
@@ -70,8 +70,7 @@ impl CVGateSequence {
     pub fn displacement(&mut self, mode: usize, amplitude: Complex) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds sequence capacity",
-                mode
+                "Mode {mode} exceeds sequence capacity"
             )));
         }
 
@@ -92,8 +91,7 @@ impl CVGateSequence {
     pub fn squeezing(&mut self, mode: usize, parameter: f64, phase: f64) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds sequence capacity",
-                mode
+                "Mode {mode} exceeds sequence capacity"
             )));
         }
 
@@ -151,7 +149,7 @@ impl CVGateSequence {
             ));
         }
 
-        if transmittance < 0.0 || transmittance > 1.0 {
+        if !(0.0..=1.0).contains(&transmittance) {
             return Err(DeviceError::InvalidInput(
                 "Transmittance must be between 0 and 1".to_string(),
             ));
@@ -177,8 +175,7 @@ impl CVGateSequence {
     pub fn phase_rotation(&mut self, mode: usize, phase: f64) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds sequence capacity",
-                mode
+                "Mode {mode} exceeds sequence capacity"
             )));
         }
 
@@ -272,8 +269,7 @@ impl CVGateSequence {
     pub fn cubic_phase(&mut self, mode: usize, parameter: f64) -> DeviceResult<()> {
         if mode >= self.num_modes {
             return Err(DeviceError::InvalidInput(format!(
-                "Mode {} exceeds sequence capacity",
-                mode
+                "Mode {mode} exceeds sequence capacity"
             )));
         }
 
@@ -315,9 +311,9 @@ impl CVGateSequence {
     pub fn is_gaussian(&self) -> bool {
         for (gate_type, _) in &self.gates {
             match gate_type {
-                CVGateType::CubicPhase { .. } => return false,
-                CVGateType::PositionMeasurement { .. } => return false,
-                CVGateType::MomentumMeasurement { .. } => return false,
+                CVGateType::CubicPhase { .. }
+                | CVGateType::PositionMeasurement { .. }
+                | CVGateType::MomentumMeasurement { .. } => return false,
                 _ => continue,
             }
         }
@@ -529,7 +525,7 @@ impl CVGateSequence {
         let var_p = state.covariancematrix[2 * mode + 1][2 * mode + 1];
 
         // Average photon number approximation
-        0.5 * ((mean_x.powi(2) + mean_p.powi(2)) / 2.0 + (var_x + var_p) - 1.0)
+        0.5 * (mean_p.mul_add(mean_p, mean_x.powi(2)) / 2.0 + (var_x + var_p) - 1.0)
     }
 }
 
@@ -582,7 +578,9 @@ impl CVGateLibrary {
     /// Create a Hadamard-like operation for CV (Fourier transform)
     pub fn fourier_transform() -> CVGateSequence {
         let mut sequence = CVGateSequence::new(1);
-        sequence.phase_rotation(0, PI / 2.0).unwrap();
+        sequence
+            .phase_rotation(0, PI / 2.0)
+            .expect("Phase rotation on mode 0 should always succeed for single-mode sequence");
         sequence
     }
 
@@ -590,9 +588,15 @@ impl CVGateLibrary {
     pub fn cv_cnot() -> CVGateSequence {
         let mut sequence = CVGateSequence::new(2);
         // Simplified CV CNOT using beamsplitter and phase rotations
-        sequence.beamsplitter(0, 1, 0.5, 0.0).unwrap();
-        sequence.phase_rotation(1, PI).unwrap();
-        sequence.beamsplitter(0, 1, 0.5, 0.0).unwrap();
+        sequence
+            .beamsplitter(0, 1, 0.5, 0.0)
+            .expect("Beamsplitter on modes 0,1 should always succeed for two-mode sequence");
+        sequence
+            .phase_rotation(1, PI)
+            .expect("Phase rotation on mode 1 should always succeed for two-mode sequence");
+        sequence
+            .beamsplitter(0, 1, 0.5, 0.0)
+            .expect("Beamsplitter on modes 0,1 should always succeed for two-mode sequence");
         sequence
     }
 
@@ -601,7 +605,7 @@ impl CVGateLibrary {
         let mut sequence = CVGateSequence::new(2);
         sequence
             .two_mode_squeezing(0, 1, squeezing_param, 0.0)
-            .unwrap();
+            .expect("Two-mode squeezing on modes 0,1 should always succeed for two-mode sequence");
         sequence
     }
 
@@ -611,7 +615,9 @@ impl CVGateLibrary {
         // Simplified GKP preparation using multiple squeezing operations
         for i in 0..10 {
             let phase = 2.0 * PI * i as f64 / 10.0;
-            sequence.squeezing(0, 0.5, phase).unwrap();
+            sequence
+                .squeezing(0, 0.5, phase)
+                .expect("Squeezing on mode 0 should always succeed for single-mode sequence");
         }
         sequence
     }
@@ -633,7 +639,9 @@ mod tests {
         let mut sequence = CVGateSequence::new(2);
         let amplitude = Complex::new(1.0, 0.5);
 
-        sequence.displacement(0, amplitude).unwrap();
+        sequence
+            .displacement(0, amplitude)
+            .expect("Failed to add displacement gate");
         assert_eq!(sequence.gate_count(), 1);
 
         match &sequence.gates[0].0 {
@@ -648,7 +656,9 @@ mod tests {
     fn test_beamsplitter_gate_addition() {
         let mut sequence = CVGateSequence::new(2);
 
-        sequence.beamsplitter(0, 1, 0.7, PI / 4.0).unwrap();
+        sequence
+            .beamsplitter(0, 1, 0.7, PI / 4.0)
+            .expect("Failed to add beamsplitter gate");
         assert_eq!(sequence.gate_count(), 1);
 
         match &sequence.gates[0].0 {
@@ -667,13 +677,21 @@ mod tests {
     fn test_gaussian_property() {
         let mut sequence = CVGateSequence::new(2);
 
-        sequence.displacement(0, Complex::new(1.0, 0.0)).unwrap();
-        sequence.squeezing(1, 0.5, 0.0).unwrap();
-        sequence.beamsplitter(0, 1, 0.5, 0.0).unwrap();
+        sequence
+            .displacement(0, Complex::new(1.0, 0.0))
+            .expect("Failed to add displacement gate");
+        sequence
+            .squeezing(1, 0.5, 0.0)
+            .expect("Failed to add squeezing gate");
+        sequence
+            .beamsplitter(0, 1, 0.5, 0.0)
+            .expect("Failed to add beamsplitter gate");
 
         assert!(sequence.is_gaussian());
 
-        sequence.cubic_phase(0, 0.1).unwrap();
+        sequence
+            .cubic_phase(0, 0.1)
+            .expect("Failed to add cubic phase gate");
         assert!(!sequence.is_gaussian());
     }
 
@@ -681,10 +699,18 @@ mod tests {
     fn test_sequence_depth_calculation() {
         let mut sequence = CVGateSequence::new(3);
 
-        sequence.displacement(0, Complex::new(1.0, 0.0)).unwrap();
-        sequence.displacement(0, Complex::new(0.5, 0.0)).unwrap();
-        sequence.squeezing(1, 0.5, 0.0).unwrap();
-        sequence.beamsplitter(0, 2, 0.5, 0.0).unwrap();
+        sequence
+            .displacement(0, Complex::new(1.0, 0.0))
+            .expect("Failed to add first displacement gate");
+        sequence
+            .displacement(0, Complex::new(0.5, 0.0))
+            .expect("Failed to add second displacement gate");
+        sequence
+            .squeezing(1, 0.5, 0.0)
+            .expect("Failed to add squeezing gate");
+        sequence
+            .beamsplitter(0, 2, 0.5, 0.0)
+            .expect("Failed to add beamsplitter gate");
 
         assert_eq!(sequence.depth(), 3); // Mode 0 has 3 operations
     }
@@ -692,11 +718,17 @@ mod tests {
     #[test]
     fn test_gate_execution_on_state() {
         let mut sequence = CVGateSequence::new(2);
-        sequence.displacement(0, Complex::new(1.0, 0.0)).unwrap();
-        sequence.squeezing(1, 0.5, 0.0).unwrap();
+        sequence
+            .displacement(0, Complex::new(1.0, 0.0))
+            .expect("Failed to add displacement gate");
+        sequence
+            .squeezing(1, 0.5, 0.0)
+            .expect("Failed to add squeezing gate");
 
         let mut state = GaussianState::vacuum_state(2);
-        sequence.execute_on_state(&mut state).unwrap();
+        sequence
+            .execute_on_state(&mut state)
+            .expect("Failed to execute gate sequence on state");
 
         // Check that the displacement was applied
         assert!(state.mean_vector[0] > 0.0);
@@ -713,7 +745,9 @@ mod tests {
         assert_eq!(sequence.gate_count(), 1);
 
         let mut state = GaussianState::vacuum_state(2);
-        sequence.execute_on_state(&mut state).unwrap();
+        sequence
+            .execute_on_state(&mut state)
+            .expect("Failed to execute EPR pair generation sequence");
 
         // EPR state should have correlations between modes
         let entanglement = state.calculate_entanglement_measures();

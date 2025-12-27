@@ -382,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_qvae_creation() {
-        let qvae = QVAE::new(4, 2, 0).unwrap();
+        let qvae = QVAE::new(4, 2, 0).expect("Failed to create QVAE");
         assert_eq!(qvae.num_data_qubits, 4);
         assert_eq!(qvae.num_latent_qubits, 2);
         assert_eq!(qvae.total_qubits(), 6);
@@ -410,11 +410,12 @@ mod tests {
 
     #[test]
     fn test_parameter_management() {
-        let mut qvae = QVAE::new(4, 2, 0).unwrap();
+        let mut qvae = QVAE::new(4, 2, 0).expect("Failed to create QVAE");
         let params = qvae.get_parameters();
         let new_params = vec![0.2; params.len()];
 
-        qvae.set_parameters(&new_params).unwrap();
+        qvae.set_parameters(&new_params)
+            .expect("Failed to set parameters");
         let retrieved = qvae.get_parameters();
 
         assert_eq!(retrieved, new_params);
@@ -422,7 +423,7 @@ mod tests {
 
     #[test]
     fn test_reconstruction_fidelity() {
-        let qvae = QVAE::new(2, 1, 0).unwrap();
+        let qvae = QVAE::new(2, 1, 0).expect("Failed to create QVAE");
         let state = vec![
             Complex::new(0.5, 0.0),
             Complex::new(0.5, 0.0),
@@ -430,7 +431,9 @@ mod tests {
             Complex::new(0.5, 0.0),
         ];
 
-        let fidelity = qvae.reconstruction_fidelity(&state, &state).unwrap();
+        let fidelity = qvae
+            .reconstruction_fidelity(&state, &state)
+            .expect("Fidelity computation should succeed");
         assert!((fidelity - 1.0).abs() < 1e-10);
     }
 }

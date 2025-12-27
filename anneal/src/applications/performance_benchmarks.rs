@@ -19,6 +19,7 @@ use crate::simulator::{
     QuantumAnnealingSimulator,
 };
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -609,6 +610,7 @@ pub enum BenchmarkErrorType {
 
 impl PerformanceBenchmarkSuite {
     /// Create a new performance benchmark suite
+    #[must_use]
     pub fn new(config: BenchmarkConfiguration) -> Self {
         Self {
             config,
@@ -641,10 +643,7 @@ impl PerformanceBenchmarkSuite {
         self.perform_comprehensive_analysis()?;
 
         let total_time = start_time.elapsed().as_secs_f64();
-        println!(
-            "Performance benchmark suite completed in {:.2} seconds",
-            total_time
-        );
+        println!("Performance benchmark suite completed in {total_time:.2} seconds");
 
         // Generate detailed report
         self.generate_performance_report()?;
@@ -666,7 +665,7 @@ impl PerformanceBenchmarkSuite {
                             "algorithm_{}_{}_{}_{:?}",
                             industry,
                             size,
-                            format!("{:?}", solver_type).to_lowercase(),
+                            format!("{solver_type:?}").to_lowercase(),
                             temp_profile
                         );
 
@@ -679,7 +678,7 @@ impl PerformanceBenchmarkSuite {
                         ) {
                             Ok(result) => self.results.push(result),
                             Err(e) => {
-                                eprintln!("Benchmark {} failed: {}", test_id, e);
+                                eprintln!("Benchmark {test_id} failed: {e}");
                                 self.record_benchmark_error(
                                     &test_id,
                                     BenchmarkErrorType::SolverFailure,
@@ -708,12 +707,12 @@ impl PerformanceBenchmarkSuite {
 
         for industry in &self.config.benchmark_industries.clone() {
             for &size in &large_sizes {
-                let test_id = format!("scalability_{}_{}", industry, size);
+                let test_id = format!("scalability_{industry}_{size}");
 
                 match self.run_scalability_test(&factory, industry, size) {
                     Ok(result) => self.results.push(result),
                     Err(e) => {
-                        eprintln!("Scalability test {} failed: {}", test_id, e);
+                        eprintln!("Scalability test {test_id} failed: {e}");
                         self.record_benchmark_error(
                             &test_id,
                             BenchmarkErrorType::SolverFailure,
@@ -739,17 +738,15 @@ impl PerformanceBenchmarkSuite {
             for solver1 in &self.config.solver_types.clone() {
                 for solver2 in &self.config.solver_types.clone() {
                     if solver1 != solver2 {
-                        let test_id = format!(
-                            "comparison_{}_{}_{:?}_vs_{:?}",
-                            industry, test_size, solver1, solver2
-                        );
+                        let test_id =
+                            format!("comparison_{industry}_{test_size}_{solver1:?}_vs_{solver2:?}");
 
                         match self
                             .run_solver_comparison(&factory, industry, test_size, solver1, solver2)
                         {
                             Ok(result) => self.results.push(result),
                             Err(e) => {
-                                eprintln!("Solver comparison {} failed: {}", test_id, e);
+                                eprintln!("Solver comparison {test_id} failed: {e}");
                                 self.record_benchmark_error(
                                     &test_id,
                                     BenchmarkErrorType::SolverFailure,
@@ -774,16 +771,13 @@ impl PerformanceBenchmarkSuite {
 
         for industry in &self.config.benchmark_industries.clone() {
             for &threshold in &self.config.convergence_thresholds.clone() {
-                let test_id = format!(
-                    "sensitivity_{}_{}_threshold_{}",
-                    industry, base_size, threshold
-                );
+                let test_id = format!("sensitivity_{industry}_{base_size}_threshold_{threshold}");
 
                 match self.run_parameter_sensitivity_test(&factory, industry, base_size, threshold)
                 {
                     Ok(result) => self.results.push(result),
                     Err(e) => {
-                        eprintln!("Parameter sensitivity test {} failed: {}", test_id, e);
+                        eprintln!("Parameter sensitivity test {test_id} failed: {e}");
                         self.record_benchmark_error(
                             &test_id,
                             BenchmarkErrorType::SolverFailure,
@@ -802,15 +796,15 @@ impl PerformanceBenchmarkSuite {
         println!("Running stress tests...");
 
         let factory = UnifiedSolverFactory::new();
-        let stress_sizes = vec![1000, 5000, 10000];
+        let stress_sizes = vec![1000, 5000, 10_000];
 
         for &size in &stress_sizes {
-            let test_id = format!("stress_test_{}", size);
+            let test_id = format!("stress_test_{size}");
 
             match self.run_stress_test(&factory, size) {
                 Ok(result) => self.results.push(result),
                 Err(e) => {
-                    eprintln!("Stress test {} failed: {}", test_id, e);
+                    eprintln!("Stress test {test_id} failed: {e}");
                     self.record_benchmark_error(
                         &test_id,
                         BenchmarkErrorType::MemoryExhaustion,
@@ -836,7 +830,7 @@ impl PerformanceBenchmarkSuite {
             "algorithm_{}_{}_{}_{:?}",
             industry,
             size,
-            format!("{:?}", solver_type).to_lowercase(),
+            format!("{solver_type:?}").to_lowercase(),
             temp_profile
         );
 
@@ -976,11 +970,17 @@ impl PerformanceBenchmarkSuite {
                 );
                 config.insert(
                     "budget".to_string(),
-                    serde_json::Value::Number(serde_json::Number::from_f64(1000000.0).unwrap()),
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(1_000_000.0)
+                            .unwrap_or_else(|| serde_json::Number::from(1_000_000_i64)),
+                    ),
                 );
                 config.insert(
                     "risk_tolerance".to_string(),
-                    serde_json::Value::Number(serde_json::Number::from_f64(0.5).unwrap()),
+                    serde_json::Value::Number(
+                        serde_json::Number::from_f64(0.5)
+                            .unwrap_or_else(|| serde_json::Number::from(0_i64)),
+                    ),
                 );
             }
             "logistics" => {
@@ -1011,7 +1011,7 @@ impl PerformanceBenchmarkSuite {
     }
 
     /// Apply temperature profile to annealing parameters
-    fn apply_temperature_profile(
+    const fn apply_temperature_profile(
         &self,
         params: &mut AnnealingParams,
         profile: &TemperatureProfile,
@@ -1160,13 +1160,13 @@ impl PerformanceBenchmarkSuite {
     }
 
     /// Start hardware monitoring
-    fn start_hardware_monitoring(&mut self) -> ApplicationResult<()> {
+    const fn start_hardware_monitoring(&self) -> ApplicationResult<()> {
         // Placeholder for hardware monitoring initialization
         Ok(())
     }
 
     /// Stop hardware monitoring
-    fn stop_hardware_monitoring(&mut self) -> ApplicationResult<()> {
+    const fn stop_hardware_monitoring(&self) -> ApplicationResult<()> {
         // Placeholder for hardware monitoring cleanup
         Ok(())
     }
@@ -1426,17 +1426,9 @@ impl PerformanceBenchmarkSuite {
     }
 
     /// Record benchmark error
-    fn record_benchmark_error(
-        &mut self,
-        test_id: &str,
-        error_type: BenchmarkErrorType,
-        message: &str,
-    ) {
+    fn record_benchmark_error(&self, test_id: &str, error_type: BenchmarkErrorType, message: &str) {
         // Would record error for later analysis
-        eprintln!(
-            "Benchmark error in {}: {:?} - {}",
-            test_id, error_type, message
-        );
+        eprintln!("Benchmark error in {test_id}: {error_type:?} - {message}");
     }
 
     /// Generate comprehensive performance report
@@ -1447,114 +1439,126 @@ impl PerformanceBenchmarkSuite {
 
         // Executive Summary
         report.push_str("## Executive Summary\n");
-        report.push_str(&format!("Total Benchmarks Run: {}\n", self.results.len()));
-        report.push_str(&format!(
+        let _ = write!(report, "Total Benchmarks Run: {}\n", self.results.len());
+        let _ = write!(
+            report,
             "Industries Tested: {:?}\n",
             self.config.benchmark_industries
-        ));
-        report.push_str(&format!("Problem Sizes: {:?}\n", self.config.problem_sizes));
-        report.push_str(&format!("Solver Types: {:?}\n\n", self.config.solver_types));
+        );
+        let _ = writeln!(report, "Problem Sizes: {:?}", self.config.problem_sizes);
+        let _ = writeln!(report, "Solver Types: {:?}\n", self.config.solver_types);
 
         // System Information
         report.push_str("## System Information\n");
-        report.push_str(&format!("OS: {}\n", self.system_info.os));
-        report.push_str(&format!(
+        let _ = writeln!(report, "OS: {}", self.system_info.os);
+        let _ = write!(
+            report,
             "CPU Cores: {}\n",
             self.system_info.cpu_info.num_cores
-        ));
-        report.push_str(&format!(
+        );
+        let _ = write!(
+            report,
             "Total Memory: {:.1} GB\n\n",
             self.system_info.memory_info.total_memory_gb
-        ));
+        );
 
         // Performance Analysis
         report.push_str("## Performance Analysis\n");
 
         // Scalability
         report.push_str("### Scalability Analysis\n");
-        report.push_str(&format!(
+        let _ = write!(
+            report,
             "Time Complexity: {}\n",
             self.analysis.scalability.time_complexity.complexity_order
-        ));
-        report.push_str(&format!(
+        );
+        let _ = write!(
+            report,
             "Scalability Score: {:.2}\n\n",
             self.analysis.scalability.scalability_score
-        ));
+        );
 
         // Solver Comparison
         report.push_str("### Solver Performance Comparison\n");
         for (solver, ranking) in &self.analysis.solver_comparison.performance_rankings {
-            report.push_str(&format!("**{:?}**\n", solver));
-            report.push_str(&format!("- Overall Rank: {}\n", ranking.overall_rank));
-            report.push_str(&format!(
+            let _ = writeln!(report, "**{solver:?}**");
+            let _ = writeln!(report, "- Overall Rank: {}", ranking.overall_rank);
+            let _ = write!(
+                report,
                 "- Performance Score: {:.3}\n",
                 ranking.performance_score
-            ));
-            report.push_str(&format!("- Speed Rank: {}\n\n", ranking.speed_rank));
+            );
+            let _ = writeln!(report, "- Speed Rank: {}\n", ranking.speed_rank);
         }
 
         // Industry Analysis
         report.push_str("### Industry-Specific Performance\n");
         for (industry, analysis) in &self.analysis.industry_analysis {
-            report.push_str(&format!("**{}**\n", industry));
-            report.push_str(&format!(
+            let _ = writeln!(report, "**{industry}**");
+            let _ = write!(
+                report,
                 "- Average Time: {:.2} ms\n",
                 analysis.average_metrics.total_time_ms
-            ));
-            report.push_str(&format!("- Best Solver: {:?}\n", analysis.best_solver));
-            report.push_str(&format!(
+            );
+            let _ = writeln!(report, "- Best Solver: {:?}", analysis.best_solver);
+            let _ = write!(
+                report,
                 "- Recommendations: {}\n\n",
                 analysis.recommendations.join(", ")
-            ));
+            );
         }
 
         // Recommendations
         report.push_str("## Performance Recommendations\n");
         for (i, rec) in self.analysis.recommendations.iter().enumerate() {
-            report.push_str(&format!(
+            let _ = write!(
+                report,
                 "{}. **{:?}** (Priority {})\n",
                 i + 1,
                 rec.recommendation_type,
                 rec.priority
-            ));
-            report.push_str(&format!("   - {}\n", rec.description));
-            report.push_str(&format!(
+            );
+            let _ = writeln!(report, "   - {}", rec.description);
+            let _ = write!(
+                report,
                 "   - Expected Improvement: {:.1}%\n",
                 rec.expected_improvement * 100.0
-            ));
-            report.push_str(&format!(
+            );
+            let _ = write!(
+                report,
                 "   - Implementation Effort: {:?}\n\n",
                 rec.implementation_effort
-            ));
+            );
         }
 
         // Detailed Results
         report.push_str("## Detailed Results\n");
         for result in &self.results {
-            report.push_str(&format!("### {}\n", result.test_id));
-            report.push_str(&format!(
+            let _ = writeln!(report, "### {}", result.test_id);
+            let _ = write!(
+                report,
                 "- Problem: {} (size {})\n",
                 result.problem_info.industry, result.problem_info.size
-            ));
-            report.push_str(&format!(
-                "- Solver: {:?}\n",
-                result.solver_config.solver_type
-            ));
-            report.push_str(&format!(
+            );
+            let _ = writeln!(report, "- Solver: {:?}", result.solver_config.solver_type);
+            let _ = write!(
+                report,
                 "- Total Time: {:.2} ms\n",
                 result.performance_metrics.total_time_ms
-            ));
-            report.push_str(&format!(
+            );
+            let _ = write!(
+                report,
                 "- Solution Quality: {:.6}\n",
                 result.solution_quality.best_objective_value
-            ));
-            report.push_str(&format!(
+            );
+            let _ = write!(
+                report,
                 "- Memory Usage: {:.1} MB\n\n",
                 result.resource_usage.peak_memory_mb
-            ));
+            );
         }
 
-        println!("{}", report);
+        println!("{report}");
         Ok(report)
     }
 }
@@ -1631,12 +1635,12 @@ mod tests {
 
         let finance_config = suite
             .create_benchmark_problem_config("finance", 10)
-            .unwrap();
+            .expect("Failed to create finance benchmark problem config");
         assert!(finance_config.contains_key("num_assets"));
 
         let logistics_config = suite
             .create_benchmark_problem_config("logistics", 8)
-            .unwrap();
+            .expect("Failed to create logistics benchmark problem config");
         assert!(logistics_config.contains_key("num_vehicles"));
     }
 }

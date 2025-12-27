@@ -128,7 +128,7 @@ pub struct FeatureSelectionConfig {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeatureSelectionMethod {
     VarianceThreshold,
     UnivariateSelection,
@@ -153,7 +153,7 @@ pub struct DimensionalityReductionConfig {
 }
 
 /// Dimensionality reduction methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DimensionalityReductionMethod {
     PCA,
     ICA,

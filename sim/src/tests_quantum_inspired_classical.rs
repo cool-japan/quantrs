@@ -49,7 +49,7 @@ mod tests {
         let framework = QuantumInspiredFramework::new(config);
         assert!(framework.is_ok());
 
-        let framework = framework.unwrap();
+        let framework = framework.expect("Failed to create framework");
         assert_eq!(framework.get_state().variables.len(), 16);
         assert_eq!(framework.get_state().iteration, 0);
         assert_eq!(framework.get_state().best_objective, f64::INFINITY);
@@ -165,7 +165,7 @@ mod tests {
             config.algorithm_type,
             SamplingAlgorithm::QuantumInspiredMCMC
         );
-        assert_eq!(config.num_samples, 10000);
+        assert_eq!(config.num_samples, 10_000);
         assert_eq!(config.burn_in, 1000);
         assert_eq!(config.thinning, 10);
         assert_eq!(config.proposal_distribution, ProposalDistribution::Gaussian);
@@ -290,9 +290,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let solution = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]);
-        let result = framework.evaluate_objective_public(&solution).unwrap();
+        let result = framework
+            .evaluate_objective_public(&solution)
+            .expect("Failed to evaluate objective");
 
         // x^2 + 2^2 + 3^2 + 4^2 = 1 + 4 + 9 + 16 = 30
         assert!((result - 30.0).abs() < 1e-10);
@@ -308,9 +311,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let solution = Array1::from_vec(vec![1.0, 1.0, 1.0, 1.0]);
-        let result = framework.evaluate_objective_public(&solution).unwrap();
+        let result = framework
+            .evaluate_objective_public(&solution)
+            .expect("Failed to evaluate objective");
 
         assert!((result - 4.0).abs() < 1e-10);
     }
@@ -325,9 +331,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let solution = Array1::from_vec(vec![1.0, 1.0]); // Global minimum
-        let result = framework.evaluate_objective_public(&solution).unwrap();
+        let result = framework
+            .evaluate_objective_public(&solution)
+            .expect("Failed to evaluate objective");
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -342,9 +351,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let solution = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0]); // Global minimum
-        let result = framework.evaluate_objective_public(&solution).unwrap();
+        let result = framework
+            .evaluate_objective_public(&solution)
+            .expect("Failed to evaluate objective");
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -359,9 +371,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let solution = Array1::from_vec(vec![0.0, 0.0, 0.0, 0.0]); // Global minimum
-        let result = framework.evaluate_objective_public(&solution).unwrap();
+        let result = framework
+            .evaluate_objective_public(&solution)
+            .expect("Failed to evaluate objective");
 
         assert!(result < 1e-10); // Should be close to 0 at the global minimum
     }
@@ -374,11 +389,12 @@ mod tests {
         config.algorithm_config.population_size = 20;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Optimization failed");
         assert!(opt_result.iterations <= 10);
         assert!(opt_result.objective_value.is_finite());
         assert_eq!(opt_result.solution.len(), 4);
@@ -393,11 +409,12 @@ mod tests {
         config.algorithm_config.population_size = 20;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Optimization failed");
         assert!(opt_result.iterations <= 10);
         assert!(opt_result.objective_value.is_finite());
         assert_eq!(opt_result.solution.len(), 4);
@@ -411,11 +428,12 @@ mod tests {
         config.algorithm_config.max_iterations = 10;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Optimization failed");
         assert!(opt_result.iterations <= 10);
         assert!(opt_result.objective_value.is_finite());
         assert_eq!(opt_result.solution.len(), 4);
@@ -439,7 +457,8 @@ mod tests {
             config.algorithm_config.max_iterations = 5;
             config.num_variables = 2;
 
-            let mut framework = QuantumInspiredFramework::new(config).unwrap();
+            let mut framework =
+                QuantumInspiredFramework::new(config).expect("Failed to create framework");
             let result = framework.optimize();
             assert!(result.is_ok());
         }
@@ -461,7 +480,8 @@ mod tests {
         config.algorithm_config.max_iterations = 5;
         config.num_variables = 4;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
     }
@@ -475,11 +495,12 @@ mod tests {
         config.num_variables = 4;
 
         let bounds = config.optimization_config.bounds.clone();
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.optimize();
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("Optimization failed");
         // Check that solution respects bounds
         for (i, &val) in opt_result.solution.iter().enumerate() {
             let (min_bound, max_bound) = bounds[i];
@@ -495,19 +516,23 @@ mod tests {
         config.algorithm_config.max_iterations = 5;
         config.num_variables = 2;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
 
         // Manually set convergence history to test convergence detection
         framework.get_state_mut().convergence_history =
-            vec![10.0, 9.0, 8.0, 7.0, 6.999999, 6.999999];
-        let converged = framework.check_convergence_public().unwrap();
+            vec![10.0, 9.0, 8.0, 7.0, 6.999_999, 6.999_999];
+        let converged = framework
+            .check_convergence_public()
+            .expect("Failed to check convergence");
         assert!(converged);
     }
 
     #[test]
     fn test_framework_reset() {
         let config = QuantumInspiredConfig::default();
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
 
         // Modify state
         framework.get_state_mut().iteration = 10;
@@ -531,8 +556,9 @@ mod tests {
         config.algorithm_config.max_iterations = 3;
         config.num_variables = 2;
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
-        let result = framework.optimize().unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
+        let result = framework.optimize().expect("Optimization failed");
 
         assert_eq!(result.solution.len(), 2);
         assert!(result.objective_value.is_finite());
@@ -558,7 +584,8 @@ mod tests {
             config.algorithm_config.max_iterations = 3;
             config.num_variables = 4;
 
-            let mut framework = QuantumInspiredFramework::new(config).unwrap();
+            let mut framework =
+                QuantumInspiredFramework::new(config).expect("Failed to create framework");
             let result = framework.optimize();
             assert!(result.is_ok(), "Failed for objective: {objective:?}");
         }
@@ -571,7 +598,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let training_data = vec![(Array1::zeros(4), Array1::zeros(2))];
 
         let result = framework.train_ml_model(&training_data);
@@ -586,7 +614,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let result = framework.sample();
         // Should return not implemented error for now
         assert!(result.is_err());
@@ -599,7 +628,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let matrix = Array2::eye(4);
         let rhs = Array1::from_vec(vec![
             Complex64::new(1.0, 0.0),
@@ -620,7 +650,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut framework = QuantumInspiredFramework::new(config).unwrap();
+        let mut framework =
+            QuantumInspiredFramework::new(config).expect("Failed to create framework");
         let adjacency_matrix = Array2::eye(4);
 
         let result = framework.solve_graph_problem(&adjacency_matrix);
@@ -762,7 +793,7 @@ mod tests {
         let result = benchmark_quantum_inspired_algorithms(&config);
         assert!(result.is_ok());
 
-        let benchmark = result.unwrap();
+        let benchmark = result.expect("Benchmark failed");
         assert_eq!(benchmark.execution_times.len(), 3);
         assert_eq!(benchmark.solution_qualities.len(), 3);
         assert_eq!(benchmark.convergence_rates.len(), 3);
@@ -824,7 +855,8 @@ mod tests {
             config.optimization_config.algorithm_type = algorithm;
             config.num_variables = 4;
 
-            let mut framework = QuantumInspiredFramework::new(config).unwrap();
+            let mut framework =
+                QuantumInspiredFramework::new(config).expect("Failed to create framework");
             let result = framework.optimize();
 
             assert!(
@@ -845,7 +877,7 @@ mod tests {
     #[test]
     fn test_framework_statistics() {
         let config = QuantumInspiredConfig::default();
-        let framework = QuantumInspiredFramework::new(config).unwrap();
+        let framework = QuantumInspiredFramework::new(config).expect("Failed to create framework");
 
         let stats = framework.get_stats();
         assert_eq!(stats.execution_stats.total_runtime, 0.0);
@@ -937,7 +969,7 @@ mod tests {
             }),
             sampling_config: SamplingConfig {
                 algorithm_type: SamplingAlgorithm::QuantumInspiredVMC,
-                num_samples: 50000,
+                num_samples: 50_000,
                 burn_in: 5000,
                 thinning: 5,
                 proposal_distribution: ProposalDistribution::QuantumInspired,
@@ -985,13 +1017,13 @@ mod tests {
             },
             enable_quantum_heuristics: true,
             precision: 1e-12,
-            random_seed: Some(12345),
+            random_seed: Some(12_345),
         };
 
         let framework = QuantumInspiredFramework::new(config);
         assert!(framework.is_ok());
 
-        let framework = framework.unwrap();
+        let framework = framework.expect("Failed to create framework with comprehensive config");
         assert_eq!(framework.get_state().variables.len(), 32);
     }
 }

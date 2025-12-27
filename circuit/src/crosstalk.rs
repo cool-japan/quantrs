@@ -419,7 +419,8 @@ impl CrosstalkAnalyzer {
         }
 
         // Sort by crosstalk value
-        problematic_pairs.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
+        problematic_pairs
+            .sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
         let max_crosstalk = problematic_pairs.first().map_or(0.0, |p| p.2);
 
@@ -509,16 +510,22 @@ mod tests {
         let scheduler = CrosstalkScheduler::new(model);
 
         let mut circuit = Circuit::<4>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate on qubit 0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("Failed to add Hadamard gate on qubit 1");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
-        let schedule = scheduler.schedule(&circuit).unwrap();
+        let schedule = scheduler
+            .schedule(&circuit)
+            .expect("Failed to schedule circuit");
         assert!(schedule.time_slices.len() >= 2); // H gates might be parallel
     }
 
@@ -533,13 +540,13 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add first CNOT gate");
         circuit
             .add_gate(CNOT {
                 control: QubitId(2),
                 target: QubitId(3),
             })
-            .unwrap();
+            .expect("Failed to add second CNOT gate");
 
         let analysis = analyzer.analyze(&circuit);
         assert_eq!(analysis.total_gates, 2);

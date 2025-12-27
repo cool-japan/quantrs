@@ -18,7 +18,7 @@ pub struct QuantumGate {
 }
 
 impl QuantumGate {
-    pub fn new(
+    pub const fn new(
         gate_type: GateType,
         target_qubits: Vec<usize>,
         control_qubits: Option<Vec<usize>>,
@@ -30,7 +30,7 @@ impl QuantumGate {
         }
     }
 
-    pub fn gate_type(&self) -> &GateType {
+    pub const fn gate_type(&self) -> &GateType {
         &self.gate_type
     }
 
@@ -121,7 +121,7 @@ impl ResourceEstimator {
     }
 
     /// Create a new resource estimator with custom configuration
-    pub fn with_config(config: ResourceEstimationConfig) -> Self {
+    pub const fn with_config(config: ResourceEstimationConfig) -> Self {
         let buffer_pool = if config.include_hardware_overhead {
             Some(BufferPool::<f64>::new())
         } else {
@@ -331,11 +331,11 @@ impl ResourceEstimator {
 
         // Distillation ratio depends on the error correction code and fidelity requirements
         let base_ratio = match self.config.error_correction_code {
-            ErrorCorrectionCode::SurfaceCode => 15.0, // Conservative estimate
             ErrorCorrectionCode::ColorCode => 12.0,
-            ErrorCorrectionCode::ToricCode => 15.0,
             ErrorCorrectionCode::ShorCode => 20.0,
-            ErrorCorrectionCode::StabilizerCode(_) => 15.0,
+            ErrorCorrectionCode::SurfaceCode
+            | ErrorCorrectionCode::ToricCode
+            | ErrorCorrectionCode::StabilizerCode(_) => 15.0, // Conservative estimate
         };
 
         let error_factor = (-self.config.target_logical_error_rate.log10() / 3.0).max(1.0);
@@ -402,9 +402,8 @@ impl ResourceEstimator {
 
         // Simplified calculation based on threshold theory
         let threshold = match self.config.error_correction_code {
-            ErrorCorrectionCode::SurfaceCode => 1e-2,
             ErrorCorrectionCode::ColorCode => 8e-3,
-            _ => 1e-2,
+            ErrorCorrectionCode::SurfaceCode | _ => 1e-2,
         };
 
         if p > threshold {
@@ -427,7 +426,7 @@ impl ResourceEstimator {
     }
 
     /// Calculate physical qubits per logical qubit
-    fn calculate_qubits_per_logical(&self, distance: usize) -> Result<usize, QuantRS2Error> {
+    const fn calculate_qubits_per_logical(&self, distance: usize) -> Result<usize, QuantRS2Error> {
         match self.config.error_correction_code {
             ErrorCorrectionCode::SurfaceCode => Ok(2 * distance * distance - 2 * distance + 1),
             ErrorCorrectionCode::ColorCode => Ok(3 * distance * distance),
@@ -449,7 +448,7 @@ impl ResourceEstimator {
         };
 
         // Scale with number of qubits
-        let scaling_factor = 1.0 + (physical_qubits as f64).log10() * 0.1;
+        let scaling_factor = (physical_qubits as f64).log10().mul_add(0.1, 1.0);
 
         Ok(base_overhead * scaling_factor)
     }
@@ -552,14 +551,13 @@ impl ResourceEstimator {
     }
 
     /// Calculate temporal overhead factors
-    fn calculate_temporal_overhead(&self, _base_time: f64) -> Result<f64, QuantRS2Error> {
+    const fn calculate_temporal_overhead(&self, _base_time: f64) -> Result<f64, QuantRS2Error> {
         let overhead = match self.config.hardware_platform {
             HardwarePlatform::Superconducting => 1.3,
             HardwarePlatform::TrappedIon => 1.8,
-            HardwarePlatform::Photonic => 1.1,
+            HardwarePlatform::Photonic | HardwarePlatform::TopologicalQubits => 1.1,
             HardwarePlatform::NeutralAtom => 1.5,
             HardwarePlatform::SiliconQuantumDots => 2.0,
-            HardwarePlatform::TopologicalQubits => 1.1,
         };
 
         Ok(overhead)
@@ -707,7 +705,7 @@ impl ResourceEstimator {
         gate_analysis: &GateAnalysis,
     ) -> Result<ErrorPropagationAnalysis, QuantRS2Error> {
         let error_accumulation = gate_analysis.total_gates as f64 * self.config.physical_error_rate;
-        let error_amplification = 1.0 + (gate_analysis.two_qubit_gates as f64 * 0.1);
+        let error_amplification = (gate_analysis.two_qubit_gates as f64).mul_add(0.1, 1.0);
 
         Ok(ErrorPropagationAnalysis {
             error_accumulation,
@@ -850,7 +848,9 @@ mod tests {
             QuantumGate::new(GateType::T, vec![0], None),
         ];
 
-        let analysis = estimator.analyze_gates(&circuit).unwrap();
+        let analysis = estimator
+            .analyze_gates(&circuit)
+            .expect("Gate analysis should succeed");
         assert_eq!(analysis.total_gates, 3);
         assert_eq!(analysis.clifford_gates, 2);
         assert_eq!(analysis.non_clifford_gates, 1);
@@ -869,7 +869,9 @@ mod tests {
             measurement_gates: 0,
         };
 
-        let magic_states = estimator.estimate_magic_states(&gate_analysis).unwrap();
+        let magic_states = estimator
+            .estimate_magic_states(&gate_analysis)
+            .expect("Magic state estimation should succeed");
         assert!(magic_states >= 3); // At least as many as non-Clifford gates
     }
 
@@ -880,7 +882,9 @@ mod tests {
         config.target_logical_error_rate = 1e-12;
 
         let estimator = ResourceEstimator::with_config(config);
-        let distance = estimator.calculate_code_distance().unwrap();
+        let distance = estimator
+            .calculate_code_distance()
+            .expect("Code distance calculation should succeed");
         assert!(distance >= 3);
         assert!(distance % 2 == 1); // Should be odd for surface codes
     }
@@ -893,7 +897,9 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
 
-        let estimate = estimator.estimate_resources(&circuit, 2).unwrap();
+        let estimate = estimator
+            .estimate_resources(&circuit, 2)
+            .expect("Resource estimation should succeed");
         assert!(estimate.logical_qubits > 0);
         assert!(estimate.physical_qubits > estimate.logical_qubits);
         assert!(estimate.execution_time > 0.0);

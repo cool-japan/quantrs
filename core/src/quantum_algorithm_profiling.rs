@@ -365,7 +365,7 @@ impl QuantumAlgorithmProfiler {
         // Create comprehensive profiling report
         let profiling_report = QuantumProfilingReport {
             report_id: Self::generate_id(),
-            algorithm_info: algorithm.clone(),
+            algorithm_info: algorithm,
             profiling_duration: start_time.elapsed(),
             performance_analysis,
             complexity_analysis,
@@ -466,7 +466,7 @@ impl QuantumAlgorithmProfiler {
         hasher.finish()
     }
 
-    fn start_profiling_session(
+    const fn start_profiling_session(
         &self,
         _algorithm: &QuantumAlgorithm,
         _config: &ProfilingConfiguration,
@@ -476,23 +476,23 @@ impl QuantumAlgorithmProfiler {
     }
 
     // Benchmarking methods
-    fn benchmark_profiling_depth(&self) -> f64 {
+    const fn benchmark_profiling_depth(&self) -> f64 {
         534.2 // 534.2x more detailed profiling than classical tools
     }
 
-    fn benchmark_bottleneck_detection(&self) -> f64 {
+    const fn benchmark_bottleneck_detection(&self) -> f64 {
         378.9 // 378.9x better bottleneck detection for quantum algorithms
     }
 
-    fn benchmark_optimization_recommendations(&self) -> f64 {
+    const fn benchmark_optimization_recommendations(&self) -> f64 {
         445.7 // 445.7x more effective optimization recommendations
     }
 
-    fn benchmark_quantum_advantage_calculation(&self) -> f64 {
+    const fn benchmark_quantum_advantage_calculation(&self) -> f64 {
         687.3 // 687.3x more accurate quantum advantage calculations
     }
 
-    fn benchmark_real_time_monitoring(&self) -> f64 {
+    const fn benchmark_real_time_monitoring(&self) -> f64 {
         298.6 // 298.6x better real-time monitoring capabilities
     }
 }
@@ -568,7 +568,7 @@ impl QuantumBottleneckDetector {
         }
     }
 
-    pub fn detect_bottlenecks(
+    pub const fn detect_bottlenecks(
         &self,
         _algorithm: &QuantumAlgorithm,
         _performance: &PerformanceAnalysisResult,
@@ -595,7 +595,7 @@ impl QuantumOptimizationAdvisor {
         }
     }
 
-    pub fn generate_recommendations(
+    pub const fn generate_recommendations(
         &self,
         _algorithm: &QuantumAlgorithm,
         _bottlenecks: &BottleneckAnalysisResult,
@@ -623,7 +623,7 @@ impl QuantumAdvantageCalculator {
         }
     }
 
-    pub fn calculate_advantage(
+    pub const fn calculate_advantage(
         &self,
         _algorithm: &QuantumAlgorithm,
         _complexity: &ComplexityAnalysisResult,
@@ -651,7 +651,7 @@ impl QuantumResourceMonitor {
         }
     }
 
-    pub fn analyze_resource_utilization(
+    pub const fn analyze_resource_utilization(
         &self,
         _algorithm: &QuantumAlgorithm,
     ) -> Result<ResourceUtilizationResult, QuantRS2Error> {
@@ -751,7 +751,7 @@ pub struct QuantumProfilingAdvantageReport {
 }
 
 impl QuantumProfilingAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             profiling_depth_advantage: 0.0,
             bottleneck_detection_advantage: 0.0,
@@ -987,32 +987,32 @@ impl QuantumGateProfiler {
 }
 
 impl QuantumCircuitProfiler {
-    pub fn new() -> Self {
-        QuantumCircuitProfiler
+    pub const fn new() -> Self {
+        Self
     }
 }
 
 impl QuantumFidelityAnalyzer {
-    pub fn new() -> Self {
-        QuantumFidelityAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
 impl CoherenceProfiler {
-    pub fn new() -> Self {
-        CoherenceProfiler
+    pub const fn new() -> Self {
+        Self
     }
 }
 
 impl ErrorRateAnalyzer {
-    pub fn new() -> Self {
-        ErrorRateAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
 impl ScalabilityAnalyzer {
-    pub fn new() -> Self {
-        ScalabilityAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
@@ -1041,8 +1041,8 @@ impl Default for TimeComplexityAnalyzer {
 }
 
 impl SpaceComplexityAnalyzer {
-    pub fn new() -> Self {
-        SpaceComplexityAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
@@ -1053,8 +1053,8 @@ impl Default for SpaceComplexityAnalyzer {
 }
 
 impl QuantumResourceComplexityAnalyzer {
-    pub fn new() -> Self {
-        QuantumResourceComplexityAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
@@ -1065,8 +1065,8 @@ impl Default for QuantumResourceComplexityAnalyzer {
 }
 
 impl ClassicalComplexityComparator {
-    pub fn new() -> Self {
-        ClassicalComplexityComparator
+    pub const fn new() -> Self {
+        Self
     }
 }
 
@@ -1077,8 +1077,8 @@ impl Default for ClassicalComplexityComparator {
 }
 
 impl AsymptoticAnalyzer {
-    pub fn new() -> Self {
-        AsymptoticAnalyzer
+    pub const fn new() -> Self {
+        Self
     }
 }
 
@@ -1089,7 +1089,7 @@ impl Default for AsymptoticAnalyzer {
 }
 
 impl BottleneckAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1101,7 +1101,7 @@ impl Default for BottleneckAnalyzer {
 }
 
 impl CriticalPathAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1131,7 +1131,7 @@ impl Default for OptimizationRecommendationEngine {
 }
 
 impl GateOptimizationAdvisor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1149,7 +1149,7 @@ impl Default for CircuitOptimizationAdvisor {
 }
 
 impl CircuitOptimizationAdvisor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1161,7 +1161,7 @@ impl Default for ResourceOptimizationAdvisor {
 }
 
 impl ResourceOptimizationAdvisor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1173,7 +1173,7 @@ impl Default for AlgorithmOptimizationAdvisor {
 }
 
 impl AlgorithmOptimizationAdvisor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1185,7 +1185,7 @@ impl Default for MLOptimizationEngine {
 }
 
 impl MLOptimizationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1215,7 +1215,7 @@ impl Default for ComplexityAdvantageCalculator {
 }
 
 impl ComplexityAdvantageCalculator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1227,7 +1227,7 @@ impl Default for ResourceAdvantageCalculator {
 }
 
 impl ResourceAdvantageCalculator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1239,7 +1239,7 @@ impl Default for PracticalAdvantageAssessor {
 }
 
 impl PracticalAdvantageAssessor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1251,7 +1251,7 @@ impl Default for AdvantagePredictionEngine {
 }
 
 impl AdvantagePredictionEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1275,7 +1275,7 @@ impl QubitUtilizationMonitor {
 }
 
 impl GateUtilizationMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1287,7 +1287,7 @@ impl Default for GateUtilizationMonitor {
 }
 
 impl QuantumMemoryMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1299,7 +1299,7 @@ impl Default for QuantumMemoryMonitor {
 }
 
 impl QuantumCommunicationMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1311,7 +1311,7 @@ impl Default for QuantumCommunicationMonitor {
 }
 
 impl EnergyConsumptionMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1323,7 +1323,7 @@ impl Default for EnergyConsumptionMonitor {
 }
 
 impl RealTimeResourceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1335,7 +1335,7 @@ impl Default for RealTimeResourceMonitor {
 }
 
 impl QuantumExecutionTracer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1347,11 +1347,11 @@ impl Default for QuantumExecutionTracer {
 }
 
 impl QuantumBenchmarkEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn execute_benchmark_suite(
+    pub const fn execute_benchmark_suite(
         &self,
         _algorithm: &QuantumAlgorithm,
         _suite: &BenchmarkSuite,
@@ -1359,7 +1359,7 @@ impl QuantumBenchmarkEngine {
         Ok(BenchmarkMetrics)
     }
 
-    pub fn compare_with_classical(
+    pub const fn compare_with_classical(
         &self,
         _algorithm: &QuantumAlgorithm,
         _metrics: &BenchmarkMetrics,
@@ -1369,7 +1369,7 @@ impl QuantumBenchmarkEngine {
         })
     }
 
-    pub fn analyze_scalability(
+    pub const fn analyze_scalability(
         &self,
         _algorithm: &QuantumAlgorithm,
         _metrics: &BenchmarkMetrics,
@@ -1377,7 +1377,7 @@ impl QuantumBenchmarkEngine {
         Ok(ScalabilityAnalysisResult)
     }
 
-    pub fn project_performance(
+    pub const fn project_performance(
         &self,
         _algorithm: &QuantumAlgorithm,
         _scalability: &ScalabilityAnalysisResult,
@@ -1393,11 +1393,11 @@ impl Default for QuantumBenchmarkEngine {
 }
 
 impl ProfilingDashboard {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn update_dashboard(
+    pub const fn update_dashboard(
         &mut self,
         _report: &QuantumProfilingReport,
     ) -> Result<(), QuantRS2Error> {
@@ -1448,7 +1448,7 @@ mod tests {
         let result = profiler.profile_quantum_algorithm(algorithm, config);
         assert!(result.is_ok());
 
-        let profiling_report = result.unwrap();
+        let profiling_report = result.expect("Profiling should succeed");
         assert!(profiling_report.quantum_profiling_advantage > 1.0);
         assert!(profiling_report.profiling_overhead < 0.05); // Less than 5% overhead
         assert!(profiling_report.performance_analysis.fidelity > 0.9);
@@ -1468,7 +1468,7 @@ mod tests {
         let result = profiler.benchmark_quantum_algorithm(algorithm, benchmark_suite);
         assert!(result.is_ok());
 
-        let benchmark_result = result.unwrap();
+        let benchmark_result = result.expect("Benchmarking should succeed");
         assert!(benchmark_result.quantum_advantage_factor > 1.0);
         assert!(benchmark_result.benchmark_confidence > 0.95);
     }
@@ -1500,7 +1500,7 @@ mod tests {
         let result = analyzer.analyze_complexity(&algorithm);
         assert!(result.is_ok());
 
-        let complexity_result = result.unwrap();
+        let complexity_result = result.expect("Complexity analysis should succeed");
         assert!(matches!(
             complexity_result.time_complexity,
             ComplexityClass::Polynomial(_)
@@ -1531,7 +1531,7 @@ mod tests {
         let result = detector.detect_bottlenecks(&algorithm, &performance);
         assert!(result.is_ok());
 
-        let bottleneck_result = result.unwrap();
+        let bottleneck_result = result.expect("Bottleneck detection should succeed");
         assert!(bottleneck_result.optimization_potential > 0.0);
     }
 
@@ -1557,7 +1557,7 @@ mod tests {
         let result = calculator.calculate_advantage(&algorithm, &complexity);
         assert!(result.is_ok());
 
-        let advantage_result = result.unwrap();
+        let advantage_result = result.expect("Quantum advantage calculation should succeed");
         assert!(advantage_result.theoretical_speedup > 1.0);
         assert!(advantage_result.practical_speedup > 1.0);
         assert!(advantage_result.crossover_point > 0);

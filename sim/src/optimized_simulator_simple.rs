@@ -18,6 +18,7 @@ pub struct OptimizedSimulatorSimple;
 
 impl OptimizedSimulatorSimple {
     /// Create a new optimized simulator
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }

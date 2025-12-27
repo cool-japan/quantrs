@@ -50,7 +50,7 @@ mod tests {
                     info.is_some(),
                     "Should return device info on macOS with metal feature"
                 );
-                let info_str = info.unwrap();
+                let info_str = info.expect("Device info should be Some on macOS");
                 assert!(info_str.contains("Metal Device"));
                 assert!(info_str.contains("Max threads per threadgroup"));
                 assert!(info_str.contains("Max buffer length"));
@@ -76,7 +76,7 @@ mod tests {
             let result = MetalQuantumState::new(num_qubits);
             assert!(result.is_ok(), "Should create {}-qubit state", num_qubits);
 
-            let state = result.unwrap();
+            let state = result.expect("MetalQuantumState creation should succeed");
             assert_eq!(state.num_qubits, num_qubits);
         }
     }
@@ -84,7 +84,8 @@ mod tests {
     #[cfg(all(target_os = "macos", feature = "metal"))]
     #[test]
     fn test_single_qubit_gate_application() {
-        let mut state = MetalQuantumState::new(5).unwrap();
+        let mut state =
+            MetalQuantumState::new(5).expect("MetalQuantumState creation should succeed");
 
         // Test Pauli-X gate
         let pauli_x = [
@@ -117,13 +118,13 @@ mod tests {
     #[cfg(all(target_os = "macos", feature = "metal"))]
     #[test]
     fn test_kernel_compilation() {
-        let state = MetalQuantumState::new(3).unwrap();
+        let state = MetalQuantumState::new(3).expect("MetalQuantumState creation should succeed");
 
         // Test valid kernel names
         let result = state.get_or_compile_kernel("apply_single_qubit_gate");
         assert!(result.is_ok(), "Should compile single qubit gate kernel");
 
-        let kernel = result.unwrap();
+        let kernel = result.expect("Kernel compilation should succeed");
         assert_eq!(kernel.function_name, "apply_single_qubit_gate");
 
         let result = state.get_or_compile_kernel("compute_probabilities");

@@ -419,7 +419,7 @@ impl EnhancedCircuitVerifier {
         let start_time = std::time::Instant::now();
 
         // Check cache first
-        let cache_key = self.compute_cache_key(circuit, specification);
+        let cache_key = Self::compute_cache_key(circuit, specification);
         if let Some(cached_result) = self.check_cache(&cache_key) {
             return Ok(cached_result);
         }
@@ -649,7 +649,7 @@ impl EnhancedCircuitVerifier {
         num_qubits: usize,
     ) -> Result<VerificationVerdict, QuantRS2Error> {
         // Create inverse circuit
-        let inverse_circuit = self.create_inverse_circuit(circuit)?;
+        let inverse_circuit = Self::create_inverse_circuit(circuit)?;
 
         // Check that circuit followed by its inverse equals identity
         let mut combined_circuit = circuit.to_vec();
@@ -744,10 +744,10 @@ impl EnhancedCircuitVerifier {
     ) -> Result<VerificationVerdict, QuantRS2Error> {
         // Encode circuit and property as SMT constraints
         let constraints = self.encode_circuit_as_smt(circuit, num_qubits)?;
-        let property_constraint = self.encode_property_as_smt(property, num_qubits)?;
+        let property_constraint = Self::encode_property_as_smt(property, num_qubits)?;
 
         // Add negation of property for satisfiability check
-        let negated_property = self.negate_smt_constraint(&property_constraint)?;
+        let negated_property = Self::negate_smt_constraint(&property_constraint)?;
 
         // Check if negation is satisfiable (would mean property is violated)
         let is_sat = self.check_smt_satisfiability(&constraints, &negated_property)?;
@@ -769,10 +769,10 @@ impl EnhancedCircuitVerifier {
         num_qubits: usize,
     ) -> Result<VerificationVerdict, QuantRS2Error> {
         // Build state space model
-        let model = self.build_circuit_model(circuit, num_qubits)?;
+        let model = Self::build_circuit_model(circuit, num_qubits)?;
 
         // Convert property to temporal logic formula
-        let formula = self.property_to_temporal_logic(property)?;
+        let formula = Self::property_to_temporal_logic(property)?;
 
         // Run model checking algorithm
         let result = self.run_model_checking(&model, &formula)?;
@@ -790,11 +790,11 @@ impl EnhancedCircuitVerifier {
         match specification {
             SpecificationLanguage::QHL(qhl_spec) => {
                 // Parse precondition and postcondition
-                let precondition = self.parse_quantum_predicate(&qhl_spec.precondition)?;
-                let postcondition = self.parse_quantum_predicate(&qhl_spec.postcondition)?;
+                let precondition = Self::parse_quantum_predicate(&qhl_spec.precondition)?;
+                let postcondition = Self::parse_quantum_predicate(&qhl_spec.postcondition)?;
 
                 // Apply weakest precondition computation
-                let wp = self.compute_weakest_precondition(circuit, &postcondition)?;
+                let wp = Self::compute_weakest_precondition(circuit, &postcondition)?;
 
                 // Check if precondition implies weakest precondition
                 let implies = self.check_implication(&precondition, &wp)?;
@@ -844,7 +844,7 @@ impl EnhancedCircuitVerifier {
             description: format!(
                 "Circuit with {} gates on {} qubits",
                 circuit.len(),
-                self.count_qubits(circuit)
+                Self::count_qubits(circuit)
             ),
             justification: "Given".to_string(),
             intermediate_result: None,
@@ -853,14 +853,16 @@ impl EnhancedCircuitVerifier {
         // Add property statement
         proof_steps.push(ProofStep {
             step_type: ProofStepType::Theorem,
-            description: format!("Property to verify: {:?}", property),
+            description: format!("Property to verify: {property:?}"),
             justification: "Goal".to_string(),
             intermediate_result: None,
         });
 
         // Add technique-specific steps
         for technique in techniques {
-            proof_steps.extend(self.generate_technique_steps(technique, circuit, property)?);
+            proof_steps.extend(Self::generate_technique_steps(
+                technique, circuit, property,
+            )?);
         }
 
         // Add conclusion
@@ -914,16 +916,23 @@ impl EnhancedCircuitVerifier {
     }
 
     /// Helper methods
-    fn compute_cache_key(&self, circuit: &[QuantumGate], spec: &SpecificationLanguage) -> String {
-        format!("{:?}_{:?}", circuit, spec)
+    fn compute_cache_key(circuit: &[QuantumGate], spec: &SpecificationLanguage) -> String {
+        format!("{circuit:?}_{spec:?}")
     }
 
     fn check_cache(&self, key: &str) -> Option<FormalVerificationResult> {
-        self.verification_cache.lock().unwrap().get(key).cloned()
+        self.verification_cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
     }
 
     fn cache_result(&self, key: String, result: FormalVerificationResult) {
-        self.verification_cache.lock().unwrap().insert(key, result);
+        self.verification_cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key, result);
     }
 
     fn extract_property_from_spec(
@@ -973,14 +982,9 @@ impl EnhancedCircuitVerifier {
 
         // This would be expanded with actual gate matrices
         match gate.gate_type() {
-            GateType::H => {
-                // Apply Hadamard to appropriate qubits
-                // Simplified implementation
+            GateType::H | GateType::X | _ => {
+                // Apply gates (Hadamard, Pauli-X, others) - simplified implementation
             }
-            GateType::X => {
-                // Apply Pauli-X
-            }
-            _ => {}
         }
 
         Ok(matrix)
@@ -994,33 +998,30 @@ impl EnhancedCircuitVerifier {
         a.dot(b)
     }
 
-    fn compute_eigenvalues(
+    const fn compute_eigenvalues(
         &self,
-        matrix: &Array2<Complex64>,
+        _matrix: &Array2<Complex64>,
     ) -> Result<Vec<Complex64>, QuantRS2Error> {
         // Use ndarray-linalg for eigenvalue computation
         // Simplified implementation
         Ok(vec![])
     }
 
-    fn create_inverse_circuit(
-        &self,
-        circuit: &[QuantumGate],
-    ) -> Result<Vec<QuantumGate>, QuantRS2Error> {
+    fn create_inverse_circuit(circuit: &[QuantumGate]) -> Result<Vec<QuantumGate>, QuantRS2Error> {
         // Reverse the circuit and invert each gate
         Ok(circuit.iter().rev().map(|g| g.clone()).collect())
     }
 
-    fn verify_identity_probabilistic(
+    const fn verify_identity_probabilistic(
         &self,
-        circuit: &[QuantumGate],
-        num_qubits: usize,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
     ) -> Result<VerificationVerdict, QuantRS2Error> {
         // Similar to unitarity check but verify identity
         Ok(VerificationVerdict::Verified)
     }
 
-    fn estimate_gate_error(&self, gate: &QuantumGate) -> Result<f64, QuantRS2Error> {
+    const fn estimate_gate_error(&self, gate: &QuantumGate) -> Result<f64, QuantRS2Error> {
         // Estimate error based on gate type and fidelity
         match gate.gate_type() {
             GateType::H | GateType::X | GateType::Y | GateType::Z => Ok(1e-4),
@@ -1029,38 +1030,43 @@ impl EnhancedCircuitVerifier {
         }
     }
 
-    fn detect_syndrome_extraction(&self, circuit: &[QuantumGate]) -> Result<bool, QuantRS2Error> {
+    const fn detect_syndrome_extraction(
+        &self,
+        _circuit: &[QuantumGate],
+    ) -> Result<bool, QuantRS2Error> {
         // Look for measurement patterns typical of syndrome extraction
         Ok(false) // Simplified
     }
 
-    fn detect_error_correction(&self, circuit: &[QuantumGate]) -> Result<bool, QuantRS2Error> {
+    const fn detect_error_correction(
+        &self,
+        _circuit: &[QuantumGate],
+    ) -> Result<bool, QuantRS2Error> {
         // Look for error correction patterns
         Ok(false) // Simplified
     }
 
-    fn check_threshold_conditions(
+    const fn check_threshold_conditions(
         &self,
-        circuit: &[QuantumGate],
-        num_qubits: usize,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
     ) -> Result<bool, QuantRS2Error> {
         // Check if error rates satisfy threshold theorem
         Ok(true) // Simplified
     }
 
-    fn encode_circuit_as_smt(
+    const fn encode_circuit_as_smt(
         &self,
-        circuit: &[QuantumGate],
-        num_qubits: usize,
+        _circuit: &[QuantumGate],
+        _num_qubits: usize,
     ) -> Result<Vec<SMTConstraint>, QuantRS2Error> {
         // Encode quantum circuit as SMT constraints
         Ok(vec![])
     }
 
     fn encode_property_as_smt(
-        &self,
-        property: &CircuitProperty,
-        num_qubits: usize,
+        _property: &CircuitProperty,
+        _num_qubits: usize,
     ) -> Result<SMTConstraint, QuantRS2Error> {
         // Encode property as SMT constraint
         Ok(SMTConstraint {
@@ -1069,28 +1075,24 @@ impl EnhancedCircuitVerifier {
         })
     }
 
-    fn negate_smt_constraint(
-        &self,
-        constraint: &SMTConstraint,
-    ) -> Result<SMTConstraint, QuantRS2Error> {
+    fn negate_smt_constraint(constraint: &SMTConstraint) -> Result<SMTConstraint, QuantRS2Error> {
         Ok(SMTConstraint {
             constraint_type: ConstraintType::Equality,
             expression: format!("not ({})", constraint.expression),
         })
     }
 
-    fn check_smt_satisfiability(
+    const fn check_smt_satisfiability(
         &self,
-        constraints: &[SMTConstraint],
-        property: &SMTConstraint,
+        _constraints: &[SMTConstraint],
+        _property: &SMTConstraint,
     ) -> Result<bool, QuantRS2Error> {
         // Would interface with actual SMT solver
         Ok(false) // Assume unsat (property holds)
     }
 
     fn build_circuit_model(
-        &self,
-        circuit: &[QuantumGate],
+        _circuit: &[QuantumGate],
         num_qubits: usize,
     ) -> Result<QuantumModelChecker, QuantRS2Error> {
         // Build model for model checking
@@ -1108,61 +1110,55 @@ impl EnhancedCircuitVerifier {
         })
     }
 
-    fn property_to_temporal_logic(
-        &self,
-        property: &CircuitProperty,
-    ) -> Result<String, QuantRS2Error> {
+    fn property_to_temporal_logic(_property: &CircuitProperty) -> Result<String, QuantRS2Error> {
         // Convert property to temporal logic formula
         Ok("G (unitary)".to_string()) // Always globally unitary
     }
 
-    fn run_model_checking(
+    const fn run_model_checking(
         &self,
-        model: &QuantumModelChecker,
-        formula: &str,
+        _model: &QuantumModelChecker,
+        _formula: &str,
     ) -> Result<VerificationVerdict, QuantRS2Error> {
         // Run model checking algorithm
         Ok(VerificationVerdict::Verified)
     }
 
-    fn parse_quantum_predicate(&self, predicate: &str) -> Result<String, QuantRS2Error> {
+    fn parse_quantum_predicate(predicate: &str) -> Result<String, QuantRS2Error> {
         // Parse quantum predicate
         Ok(predicate.to_string())
     }
 
     fn compute_weakest_precondition(
-        &self,
-        circuit: &[QuantumGate],
-        postcondition: &str,
+        _circuit: &[QuantumGate],
+        _postcondition: &str,
     ) -> Result<String, QuantRS2Error> {
         // Compute weakest precondition
         Ok("true".to_string())
     }
 
-    fn check_implication(&self, p1: &str, p2: &str) -> Result<bool, QuantRS2Error> {
+    const fn check_implication(&self, _p1: &str, _p2: &str) -> Result<bool, QuantRS2Error> {
         // Check if p1 implies p2
         Ok(true)
     }
 
-    fn count_qubits(&self, circuit: &[QuantumGate]) -> usize {
+    fn count_qubits(circuit: &[QuantumGate]) -> usize {
         circuit
             .iter()
             .flat_map(|g| g.target_qubits())
             .max()
-            .map(|&q| q + 1)
-            .unwrap_or(0)
+            .map_or(0, |&q| q + 1)
     }
 
     fn generate_technique_steps(
-        &self,
         technique: &VerificationTechnique,
-        circuit: &[QuantumGate],
-        property: &CircuitProperty,
+        _circuit: &[QuantumGate],
+        _property: &CircuitProperty,
     ) -> Result<Vec<ProofStep>, QuantRS2Error> {
         // Generate proof steps for specific technique
         Ok(vec![ProofStep {
             step_type: ProofStepType::Computation,
-            description: format!("Applied {:?} technique", technique),
+            description: format!("Applied {technique:?} technique"),
             justification: "Automated verification".to_string(),
             intermediate_result: None,
         }])
@@ -1172,7 +1168,7 @@ impl EnhancedCircuitVerifier {
         if self.config.generate_certificates {
             // Generate cryptographic certificate
             let serialized = serde_json::to_vec(steps).map_err(|e| {
-                QuantRS2Error::ComputationError(format!("LaTeX generation failed: {}", e))
+                QuantRS2Error::ComputationError(format!("LaTeX generation failed: {e}"))
             })?;
             Ok(Some(serialized))
         } else {
@@ -1189,28 +1185,27 @@ impl EnhancedCircuitVerifier {
         let mut current_state = state.to_vec();
 
         for gate in circuit {
-            current_state = self.apply_gate(gate, &current_state, num_qubits)?;
+            current_state = Self::apply_gate(gate, &current_state, num_qubits)?;
         }
 
         Ok(current_state)
     }
 
     fn apply_gate(
-        &self,
-        gate: &QuantumGate,
+        _gate: &QuantumGate,
         state: &[Complex64],
-        num_qubits: usize,
+        _num_qubits: usize,
     ) -> Result<Vec<Complex64>, QuantRS2Error> {
         // Apply gate to state vector
         // Simplified implementation
         Ok(state.to_vec())
     }
 
-    fn check_property_on_output(
+    const fn check_property_on_output(
         &self,
-        output: &[Complex64],
-        property: &CircuitProperty,
-        num_qubits: usize,
+        _output: &[Complex64],
+        _property: &CircuitProperty,
+        _num_qubits: usize,
     ) -> Result<bool, QuantRS2Error> {
         // Check if output satisfies property
         Ok(true) // Simplified
@@ -1237,8 +1232,8 @@ impl EnhancedCircuitVerifier {
 
         let total_time: std::time::Duration = results.iter().map(|r| r.verification_time).sum();
 
-        let techniques_histogram = self.count_techniques(results);
-        let confidence_stats = self.compute_confidence_stats(results);
+        let techniques_histogram = Self::count_techniques(results);
+        let confidence_stats = Self::compute_confidence_stats(results);
 
         Ok(VerificationReport {
             summary: VerificationSummary {
@@ -1252,12 +1247,11 @@ impl EnhancedCircuitVerifier {
             detailed_results: results.to_vec(),
             techniques_used: techniques_histogram,
             confidence_statistics: confidence_stats,
-            recommendations: self.generate_recommendations(results),
+            recommendations: Self::generate_recommendations(results),
         })
     }
 
     fn count_techniques(
-        &self,
         results: &[FormalVerificationResult],
     ) -> HashMap<VerificationTechnique, usize> {
         let mut counts = HashMap::new();
@@ -1271,16 +1265,13 @@ impl EnhancedCircuitVerifier {
         counts
     }
 
-    fn compute_confidence_stats(
-        &self,
-        results: &[FormalVerificationResult],
-    ) -> ConfidenceStatistics {
+    fn compute_confidence_stats(results: &[FormalVerificationResult]) -> ConfidenceStatistics {
         let confidences: Vec<f64> = results.iter().map(|r| r.confidence).collect();
         let mean = confidences.iter().sum::<f64>() / confidences.len() as f64;
-        let min = confidences.iter().cloned().fold(f64::INFINITY, f64::min);
+        let min = confidences.iter().copied().fold(f64::INFINITY, f64::min);
         let max = confidences
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
 
         ConfidenceStatistics {
@@ -1291,7 +1282,7 @@ impl EnhancedCircuitVerifier {
         }
     }
 
-    fn generate_recommendations(&self, results: &[FormalVerificationResult]) -> Vec<String> {
+    fn generate_recommendations(results: &[FormalVerificationResult]) -> Vec<String> {
         let mut recommendations = Vec::new();
 
         let failed_count = results
@@ -1300,8 +1291,7 @@ impl EnhancedCircuitVerifier {
             .count();
         if failed_count > 0 {
             recommendations.push(format!(
-                "{} properties failed verification. Review counterexamples.",
-                failed_count
+                "{failed_count} properties failed verification. Review counterexamples."
             ));
         }
 
@@ -1365,7 +1355,7 @@ mod tests {
 
         let result = verifier
             .verify_property(&gates, &CircuitProperty::Unitary, 1)
-            .unwrap();
+            .expect("Failed to verify unitarity property");
         assert_eq!(result.verdict, VerificationVerdict::Verified);
     }
 
@@ -1379,7 +1369,7 @@ mod tests {
 
         let result = verifier
             .verify_property(&gates, &CircuitProperty::Reversible, 2)
-            .unwrap();
+            .expect("Failed to verify reversibility property");
         assert_eq!(result.verdict, VerificationVerdict::Verified);
     }
 
@@ -1394,7 +1384,9 @@ mod tests {
             CircuitProperty::InformationPreserving,
         ];
 
-        let results = verifier.verify_properties(&gates, &properties, 1).unwrap();
+        let results = verifier
+            .verify_properties(&gates, &properties, 1)
+            .expect("Failed to verify batch properties");
         assert_eq!(results.len(), 3);
     }
 
@@ -1404,9 +1396,13 @@ mod tests {
         let gates = vec![QuantumGate::new(GateType::H, vec![0], None)];
 
         let properties = vec![CircuitProperty::Unitary];
-        let results = verifier.verify_properties(&gates, &properties, 1).unwrap();
+        let results = verifier
+            .verify_properties(&gates, &properties, 1)
+            .expect("Failed to verify properties");
 
-        let report = verifier.generate_report(&results).unwrap();
+        let report = verifier
+            .generate_report(&results)
+            .expect("Failed to generate verification report");
         assert_eq!(report.summary.total_properties, 1);
         assert!(report.summary.verified > 0);
     }
@@ -1422,7 +1418,9 @@ mod tests {
             postcondition: "(|0⟩ + |1⟩)/√2".to_string(),
         });
 
-        let result = verifier.verify_specification(&gates, &spec, 1).unwrap();
+        let result = verifier
+            .verify_specification(&gates, &spec, 1)
+            .expect("Failed to verify specification");
         assert!(result.confidence > 0.0);
     }
 }

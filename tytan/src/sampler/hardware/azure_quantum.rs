@@ -265,7 +265,11 @@ impl Sampler for AzureQuantumSampler {
         }
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Limit results to requested number
         results.truncate(shots.min(100));
@@ -286,10 +290,12 @@ impl Sampler for AzureQuantumSampler {
         // For HOBO problems, convert to QUBO if possible
         if hobo.0.ndim() <= 2 {
             // If it's already 2D, just forward to run_qubo
-            let qubo = (
-                hobo.0.clone().into_dimensionality::<Ix2>().unwrap(),
-                hobo.1.clone(),
-            );
+            let qubo_matrix = hobo.0.clone().into_dimensionality::<Ix2>().map_err(|e| {
+                SamplerError::InvalidParameter(format!(
+                    "Failed to convert HOBO to QUBO dimensionality: {e}"
+                ))
+            })?;
+            let qubo = (qubo_matrix, hobo.1.clone());
             self.run_qubo(&qubo, shots)
         } else {
             // Azure Quantum doesn't directly support higher-order problems
@@ -331,7 +337,7 @@ mod tests {
 
     #[test]
     fn test_azure_solver_types() {
-        let solvers = vec![
+        let solvers = [
             AzureSolver::SimulatedAnnealing,
             AzureSolver::ParallelTempering,
             AzureSolver::TabuSearch,

@@ -25,7 +25,7 @@ impl Default for ConstraintConfig {
 }
 
 /// Constraint handling methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintHandlingMethod {
     /// Expected feasibility approach
     ExpectedFeasibility,
@@ -40,7 +40,7 @@ pub enum ConstraintHandlingMethod {
 }
 
 /// Constraint approximation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintApproximationMethod {
     /// Gaussian process model
     GaussianProcess,

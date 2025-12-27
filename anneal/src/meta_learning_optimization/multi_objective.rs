@@ -3,8 +3,11 @@
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
-use super::config::*;
-use super::feature_extraction::*;
+use super::config::{
+    ConstraintHandling, MultiObjectiveConfig, OptimizationObjective, ParetoFrontierConfig,
+    ScalarizationMethod,
+};
+use super::feature_extraction::{AlgorithmType, OptimizationConfiguration};
 
 /// Multi-objective optimizer
 pub struct MultiObjectiveOptimizer {
@@ -21,6 +24,7 @@ pub struct MultiObjectiveOptimizer {
 }
 
 impl MultiObjectiveOptimizer {
+    #[must_use]
     pub fn new(config: MultiObjectiveConfig) -> Self {
         Self {
             pareto_frontier: ParetoFrontier::new(&config.pareto_config),
@@ -41,7 +45,7 @@ impl MultiObjectiveOptimizer {
             let objective_values = self.evaluate_objectives(candidate)?;
 
             let solution = MultiObjectiveSolution {
-                id: format!("solution_{}", i),
+                id: format!("solution_{i}"),
                 objective_values,
                 decision_variables: candidate.clone(),
                 dominance_rank: 0,      // Will be calculated later
@@ -114,13 +118,13 @@ impl MultiObjectiveOptimizer {
 
     fn update_pareto_frontier(
         &mut self,
-        solutions: &mut Vec<MultiObjectiveSolution>,
+        solutions: &Vec<MultiObjectiveSolution>,
     ) -> Result<(), String> {
         let mut new_solutions = Vec::new();
         let mut updated_solutions: Vec<MultiObjectiveSolution> = Vec::new();
 
         // Check each solution for dominance
-        for solution in solutions.iter() {
+        for solution in solutions {
             let mut is_dominated = false;
             let mut dominated_solutions = Vec::new();
 
@@ -190,7 +194,7 @@ impl MultiObjectiveOptimizer {
         self.pareto_frontier.solutions.sort_by(|a, b| {
             b.crowding_distance
                 .partial_cmp(&a.crowding_distance)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         self.pareto_frontier
@@ -219,7 +223,7 @@ impl MultiObjectiveOptimizer {
             self.pareto_frontier.solutions.sort_by(|a, b| {
                 a.objective_values[obj_idx]
                     .partial_cmp(&b.objective_values[obj_idx])
-                    .unwrap()
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             // Set boundary solutions to infinite distance
@@ -315,7 +319,8 @@ pub struct ParetoFrontier {
 }
 
 impl ParetoFrontier {
-    pub fn new(config: &ParetoFrontierConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: &ParetoFrontierConfig) -> Self {
         Self {
             solutions: Vec::new(),
             statistics: FrontierStatistics {
@@ -374,7 +379,7 @@ pub struct FrontierUpdate {
 }
 
 /// Update reasons
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UpdateReason {
     /// New non-dominated solution
     NewNonDominated,
@@ -398,7 +403,8 @@ pub struct Scalarizer {
 }
 
 impl Scalarizer {
-    pub fn new(method: ScalarizationMethod) -> Self {
+    #[must_use]
+    pub const fn new(method: ScalarizationMethod) -> Self {
         Self {
             method,
             reference_point: None,
@@ -438,7 +444,7 @@ impl Scalarizer {
                     .map(|(obj, w)| obj * w)
                     .sum();
                 let max_objective: f64 = objectives.iter().fold(0.0_f64, |acc, &obj| acc.max(obj));
-                Ok(weighted_sum + 0.01 * max_objective)
+                Ok(0.01f64.mul_add(max_objective, weighted_sum))
             }
             ScalarizationMethod::PenaltyBoundaryIntersection => {
                 // Simplified PBI
@@ -476,14 +482,18 @@ pub struct ConstraintHandler {
 }
 
 impl ConstraintHandler {
-    pub fn new(method: ConstraintHandling) -> Self {
+    #[must_use]
+    pub const fn new(method: ConstraintHandling) -> Self {
         Self {
             method,
             constraints: Vec::new(),
         }
     }
 
-    pub fn handle_constraints(&self, solution: &MultiObjectiveSolution) -> Result<f64, String> {
+    pub const fn handle_constraints(
+        &self,
+        solution: &MultiObjectiveSolution,
+    ) -> Result<f64, String> {
         // Simplified constraint handling - return penalty value
         match self.method {
             ConstraintHandling::PenaltyMethod => Ok(0.0), // No penalty for now
@@ -509,7 +519,7 @@ pub struct Constraint {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Equality constraint
     Equality,
@@ -533,7 +543,8 @@ pub struct DecisionMaker {
 }
 
 impl DecisionMaker {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             strategy: DecisionStrategy::WeightedSum,
             preferences: None,
@@ -578,7 +589,9 @@ impl DecisionMaker {
                             .zip(weights.iter())
                             .map(|(obj, w)| obj * w)
                             .sum();
-                        score_a.partial_cmp(&score_b).unwrap()
+                        score_a
+                            .partial_cmp(&score_b)
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
                     .ok_or("Failed to select solution")?
             }
@@ -589,7 +602,7 @@ impl DecisionMaker {
                     .max_by(|a, b| {
                         a.objective_values[0]
                             .partial_cmp(&b.objective_values[0])
-                            .unwrap()
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
                     .ok_or("Failed to select solution")?
             }
@@ -614,7 +627,9 @@ impl DecisionMaker {
                             .map(|obj| (1.0 - obj).powi(2))
                             .sum::<f64>()
                             .sqrt();
-                        dist_a.partial_cmp(&dist_b).unwrap()
+                        dist_a
+                            .partial_cmp(&dist_b)
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
                     .ok_or("Failed to select solution")?
             }
@@ -625,7 +640,7 @@ impl DecisionMaker {
                     .max_by(|a, b| {
                         a.crowding_distance
                             .partial_cmp(&b.crowding_distance)
-                            .unwrap()
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     })
                     .ok_or("Failed to select solution")?
             }
@@ -636,7 +651,7 @@ impl DecisionMaker {
             timestamp: Instant::now(),
             selected_solution_id: selected_solution.id.clone(),
             strategy_used: self.strategy.clone(),
-            preferences_used: preferences.clone(),
+            preferences_used: preferences,
             confidence: 0.8,
         };
 
@@ -652,7 +667,7 @@ impl DecisionMaker {
 }
 
 /// Decision strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionStrategy {
     /// Weighted sum approach
     WeightedSum,
@@ -691,7 +706,7 @@ pub struct PreferenceFunction {
 }
 
 /// Types of preference functions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreferenceFunctionType {
     /// Linear preference
     Linear,
@@ -723,6 +738,7 @@ pub struct Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::meta_learning_optimization::feature_extraction::ResourceAllocation;
 
     #[test]
     fn test_multi_objective_optimizer_creation() {
@@ -747,7 +763,7 @@ mod tests {
         let result = scalarizer.scalarize(&objectives, &weights);
         assert!(result.is_ok());
 
-        let score = result.unwrap();
+        let score = result.expect("scalarize should succeed");
         assert!((score - 0.76).abs() < 1e-10); // 0.8*0.5 + 0.6*0.3 + 0.9*0.2 = 0.76
     }
 

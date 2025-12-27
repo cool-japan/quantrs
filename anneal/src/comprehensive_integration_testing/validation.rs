@@ -17,6 +17,7 @@ pub struct IntegrationVerification {
 }
 
 impl IntegrationVerification {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             verification_rules: vec![],
@@ -90,7 +91,7 @@ impl IntegrationVerification {
     }
 
     /// Check a verification rule against a test case
-    fn check_rule(
+    const fn check_rule(
         &self,
         rule: &VerificationRule,
         _test_case: &IntegrationTestCase,
@@ -113,7 +114,8 @@ impl IntegrationVerification {
     }
 
     /// Get verification statistics
-    pub fn get_statistics(&self) -> &VerificationStatistics {
+    #[must_use]
+    pub const fn get_statistics(&self) -> &VerificationStatistics {
         &self.statistics
     }
 
@@ -123,6 +125,7 @@ impl IntegrationVerification {
     }
 
     /// Get validation history
+    #[must_use]
     pub fn get_history(&self) -> &[ValidationHistoryEntry] {
         &self.validation_history
     }
@@ -137,9 +140,10 @@ impl IntegrationVerification {
         }
 
         // Update average verification time
-        let total_time = self.statistics.avg_verification_time.as_secs_f64()
-            * (self.statistics.total_verifications - 1) as f64
-            + duration.as_secs_f64();
+        let total_time = self.statistics.avg_verification_time.as_secs_f64().mul_add(
+            (self.statistics.total_verifications - 1) as f64,
+            duration.as_secs_f64(),
+        );
         self.statistics.avg_verification_time =
             Duration::from_secs_f64(total_time / self.statistics.total_verifications as f64);
     }
@@ -161,7 +165,7 @@ pub struct VerificationRule {
 }
 
 /// Verification rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerificationRuleType {
     /// Component compatibility
     ComponentCompatibility,
@@ -193,7 +197,7 @@ pub enum VerificationCondition {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonOperator {
     Equal,
     NotEqual,
@@ -213,11 +217,11 @@ pub enum VerificationValue {
     Number(f64),
     Boolean(bool),
     Duration(Duration),
-    Array(Vec<VerificationValue>),
+    Array(Vec<Self>),
 }
 
 /// Rule severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuleSeverity {
     Info,
     Warning,
@@ -326,6 +330,7 @@ pub struct ValidationExecutor {
 }
 
 impl ValidationExecutor {
+    #[must_use]
     pub fn new(context: ValidationContext) -> Self {
         Self {
             rules: vec![],
@@ -361,7 +366,7 @@ impl ValidationExecutor {
     }
 
     /// Validate a single rule
-    fn validate_rule(&self, rule: &VerificationRule) -> Result<ValidationStatus, String> {
+    const fn validate_rule(&self, rule: &VerificationRule) -> Result<ValidationStatus, String> {
         match &rule.condition {
             VerificationCondition::ValueComparison { .. } => Ok(ValidationStatus::Passed),
             VerificationCondition::RangeCheck { .. } => Ok(ValidationStatus::Passed),
@@ -381,6 +386,7 @@ impl ValidationExecutor {
     }
 
     /// Get rule count
+    #[must_use]
     pub fn rule_count(&self) -> usize {
         self.rules.len()
     }

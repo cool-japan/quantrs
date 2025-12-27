@@ -198,10 +198,10 @@ impl HolonomicGateOpSynthesis {
             // Higher dimensional case - generalized Gell-Mann matrices
             for i in 0..n {
                 for j in 0..n {
-                    if i != j {
-                        h[[i, j]] = param * Complex64::new((i + j) as f64, (i - j) as f64);
-                    } else {
+                    if i == j {
                         h[[i, i]] = (param.re * (i as f64 - n as f64 / 2.0)).into();
+                    } else {
+                        h[[i, j]] = param * Complex64::new((i + j) as f64, (i - j) as f64);
                     }
                 }
             }
@@ -303,7 +303,7 @@ impl HolonomicPath {
     }
 
     /// Get the effective gate matrix
-    pub fn gate_matrix(&self) -> &Array2<Complex64> {
+    pub const fn gate_matrix(&self) -> &Array2<Complex64> {
         &self.wilson_loop.holonomy
     }
 
@@ -379,7 +379,7 @@ impl GeometricErrorCorrection {
 
         for (i, &syn) in syndrome.iter().enumerate() {
             if syn && i < self.stabilizers.len() {
-                let phase_key = format!("stabilizer_{}", i);
+                let phase_key = format!("stabilizer_{i}");
                 if let Some(&phase) = self.geometric_phases.get(&phase_key) {
                     let phase_correction =
                         Array2::eye(self.code_space_dimension) * Complex64::from_polar(1.0, phase);
@@ -399,7 +399,7 @@ impl GeometricErrorCorrection {
             .filter(|(_, &bit)| bit)
             .map(|(i, _)| {
                 self.geometric_phases
-                    .get(&format!("stabilizer_{}", i))
+                    .get(&format!("stabilizer_{i}"))
                     .copied()
                     .unwrap_or(0.0)
             })
@@ -417,7 +417,7 @@ pub struct HolonomicGateOp {
 
 impl HolonomicGateOp {
     /// Create a new holonomic gate
-    pub fn new(path: HolonomicPath, target_qubits: Vec<QubitId>, gate_time: f64) -> Self {
+    pub const fn new(path: HolonomicPath, target_qubits: Vec<QubitId>, gate_time: f64) -> Self {
         Self {
             path,
             target_qubits,
@@ -531,7 +531,7 @@ impl HolonomicQuantumComputer {
     }
 
     /// Get the total Berry phase of the computation
-    pub fn total_berry_phase(&self) -> f64 {
+    pub const fn total_berry_phase(&self) -> f64 {
         self.total_geometric_phase
     }
 

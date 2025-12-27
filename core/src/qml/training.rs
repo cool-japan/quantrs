@@ -190,7 +190,7 @@ impl QMLTrainer {
                 } else if let Some(patience) = self.config.early_stopping_patience {
                     patience_counter += 1;
                     if patience_counter >= patience {
-                        println!("Early stopping at epoch {}", epoch);
+                        println!("Early stopping at epoch {epoch}");
                         break;
                     }
                 }
@@ -201,16 +201,16 @@ impl QMLTrainer {
                 let loss_change =
                     (self.metrics.loss_history[epoch] - self.metrics.loss_history[epoch - 1]).abs();
                 if loss_change < self.config.tolerance {
-                    println!("Converged at epoch {}", epoch);
+                    println!("Converged at epoch {epoch}");
                     break;
                 }
             }
 
             // Log progress
             if epoch % 10 == 0 {
-                println!("Epoch {}: train_loss = {:.6}", epoch, train_loss);
+                println!("Epoch {epoch}: train_loss = {train_loss:.6}");
                 if let Some(val_loss) = self.metrics.val_loss_history.last() {
-                    println!("         val_loss = {:.6}", val_loss);
+                    println!("         val_loss = {val_loss:.6}");
                 }
             }
         }
@@ -361,10 +361,11 @@ impl QMLTrainer {
                     let mut new_params = vec![0.0; current_params.len()];
                     for i in 0..current_params.len() {
                         // Update biased first moment estimate
-                        state.m[i] = *beta1 * state.m[i] + (1.0 - *beta1) * gradients[i];
+                        state.m[i] = (*beta1).mul_add(state.m[i], (1.0 - *beta1) * gradients[i]);
 
                         // Update biased second raw moment estimate
-                        state.v[i] = *beta2 * state.v[i] + (1.0 - *beta2) * gradients[i].powi(2);
+                        state.v[i] =
+                            (*beta2).mul_add(state.v[i], (1.0 - *beta2) * gradients[i].powi(2));
 
                         // Compute bias-corrected first moment estimate
                         let m_hat = state.m[i] / (1.0 - beta1.powf(t));
@@ -459,7 +460,7 @@ pub enum HPOStrategy {
 
 impl HyperparameterOptimizer {
     /// Create a new hyperparameter optimizer
-    pub fn new(
+    pub const fn new(
         search_space: HashMap<String, (f64, f64)>,
         num_trials: usize,
         strategy: HPOStrategy,
@@ -539,7 +540,9 @@ mod tests {
         let output = vec![0.0, 0.5, 1.0];
         let target = vec![0.0, 0.0, 1.0];
 
-        let loss = trainer.compute_loss(&output, &target).unwrap();
+        let loss = trainer
+            .compute_loss(&output, &target)
+            .expect("Loss computation should succeed");
         assert!((loss - 0.25 / 3.0).abs() < 1e-10); // MSE = (0 + 0.25 + 0) / 3
     }
 }

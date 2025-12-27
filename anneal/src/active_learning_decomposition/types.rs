@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 /// Types of learning models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModelType {
     /// Linear model
     Linear,
@@ -22,7 +22,7 @@ pub enum ModelType {
 }
 
 /// Query strategies for active learning
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueryStrategy {
     /// Uncertainty sampling
     UncertaintySampling,
@@ -37,7 +37,7 @@ pub enum QueryStrategy {
 }
 
 /// Diversity metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiversityMetric {
     /// Euclidean distance
     Euclidean,
@@ -50,7 +50,7 @@ pub enum DiversityMetric {
 }
 
 /// Structure types in problems
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructureType {
     /// Grid structure
     Grid,
@@ -67,7 +67,7 @@ pub enum StructureType {
 }
 
 /// Domain adaptation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DomainAdaptationStrategy {
     /// Fine-tuning
     FineTuning,
@@ -82,7 +82,7 @@ pub enum DomainAdaptationStrategy {
 }
 
 /// Community detection algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommunityDetectionAlgorithm {
     /// Louvain algorithm
     Louvain,
@@ -97,7 +97,7 @@ pub enum CommunityDetectionAlgorithm {
 }
 
 /// Path finding algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathFindingAlgorithm {
     /// Dijkstra's algorithm
     Dijkstra,
@@ -110,7 +110,7 @@ pub enum PathFindingAlgorithm {
 }
 
 /// Weight calculation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WeightCalculationMethod {
     /// Coupling strength based
     CouplingStrength,
@@ -123,7 +123,7 @@ pub enum WeightCalculationMethod {
 }
 
 /// Types of bottlenecks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BottleneckType {
     /// Vertex bottleneck
     Vertex,
@@ -136,7 +136,7 @@ pub enum BottleneckType {
 }
 
 /// Decomposition actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecompositionAction {
     /// Split at bottleneck
     SplitAtBottleneck,
@@ -151,7 +151,7 @@ pub enum DecompositionAction {
 }
 
 /// Pattern types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PatternType {
     /// Grid pattern
     Grid,
@@ -168,7 +168,7 @@ pub enum PatternType {
 }
 
 /// Pattern matching algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PatternMatchingAlgorithm {
     /// Subgraph isomorphism
     SubgraphIsomorphism,
@@ -181,7 +181,7 @@ pub enum PatternMatchingAlgorithm {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Size constraint
     Size,
@@ -207,7 +207,7 @@ pub enum ComplexityMetric {
 }
 
 /// Complexity model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplexityModelType {
     /// Polynomial model
     Polynomial,
@@ -220,7 +220,7 @@ pub enum ComplexityModelType {
 }
 
 /// Complexity classes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComplexityClass {
     /// Polynomial time
     P,
@@ -237,7 +237,7 @@ pub enum ComplexityClass {
 }
 
 /// Scoring function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScoringFunctionType {
     /// Modularity-based scoring
     Modularity,
@@ -252,7 +252,7 @@ pub enum ScoringFunctionType {
 }
 
 /// Types of cuts
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CutType {
     /// Minimum cut
     MinimumCut,
@@ -265,7 +265,7 @@ pub enum CutType {
 }
 
 /// Risk levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskLevel {
     /// Low risk
     Low,
@@ -278,7 +278,7 @@ pub enum RiskLevel {
 }
 
 /// Risk factor types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskFactorType {
     /// Solution quality degradation
     QualityDegradation,
@@ -293,7 +293,7 @@ pub enum RiskFactorType {
 }
 
 /// Mitigation strategy types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationStrategyType {
     /// Overlap regions
     OverlapRegions,
@@ -308,7 +308,7 @@ pub enum MitigationStrategyType {
 }
 
 /// Generation strategy types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerationStrategyType {
     /// Graph partitioning
     GraphPartitioning,
@@ -325,7 +325,7 @@ pub enum GenerationStrategyType {
 }
 
 /// Overlap strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OverlapStrategy {
     /// No overlap
     NoOverlap,
@@ -338,7 +338,7 @@ pub enum OverlapStrategy {
 }
 
 /// Overlap resolution methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OverlapResolutionMethod {
     /// Voting
     Voting,
@@ -351,7 +351,7 @@ pub enum OverlapResolutionMethod {
 }
 
 /// Size balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SizeBalancingStrategy {
     /// Strict balancing
     Strict,
@@ -364,7 +364,7 @@ pub enum SizeBalancingStrategy {
 }
 
 /// Validation criterion types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationCriterionType {
     /// Connectivity preservation
     ConnectivityPreservation,
@@ -394,7 +394,7 @@ pub enum EvaluationMetric {
 }
 
 /// Trend directions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     /// Improving performance
     Improving,
@@ -407,7 +407,7 @@ pub enum TrendDirection {
 }
 
 /// Condition types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionType {
     /// Size-based condition
     SizeBased,
@@ -420,7 +420,7 @@ pub enum ConditionType {
 }
 
 /// Logical operators
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LogicalOperator {
     /// AND
     And,
@@ -433,7 +433,7 @@ pub enum LogicalOperator {
 }
 
 /// Action types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionType {
     /// Recommend strategy
     RecommendStrategy,
@@ -446,7 +446,7 @@ pub enum ActionType {
 }
 
 /// Side effect types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SideEffectType {
     /// Increased computation time
     IncreasedTime,
@@ -459,7 +459,7 @@ pub enum SideEffectType {
 }
 
 /// Requirement types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RequirementType {
     /// Hardware requirement
     Hardware,

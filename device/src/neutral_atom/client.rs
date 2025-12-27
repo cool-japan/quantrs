@@ -30,7 +30,7 @@ impl NeutralAtomClient {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|e| DeviceError::Connection(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| DeviceError::Connection(format!("Failed to create HTTP client: {e}")))?;
 
         Ok(Self {
             base_url,
@@ -51,7 +51,7 @@ impl NeutralAtomClient {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .build()
-            .map_err(|e| DeviceError::Connection(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| DeviceError::Connection(format!("Failed to create HTTP client: {e}")))?;
 
         Ok(Self {
             base_url,
@@ -68,12 +68,12 @@ impl NeutralAtomClient {
         let response = timeout(self.timeout, self.get_request(&url))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::APIError(format!("Failed to get devices: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Failed to get devices: {e}")))?;
 
         response
             .json::<Vec<NeutralAtomDeviceInfo>>()
             .await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse devices: {}", e)))
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse devices: {e}")))
     }
 
     /// Get device information by ID
@@ -82,12 +82,12 @@ impl NeutralAtomClient {
         let response = timeout(self.timeout, self.get_request(&url))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::APIError(format!("Failed to get device: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Failed to get device: {e}")))?;
 
         response
             .json::<NeutralAtomDeviceInfo>()
             .await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse device: {}", e)))
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse device: {e}")))
     }
 
     /// Submit a job to a neutral atom device
@@ -96,10 +96,10 @@ impl NeutralAtomClient {
         let response = timeout(self.timeout, self.post_request(&url, job_request))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::JobSubmission(format!("Failed to submit job: {}", e)))?;
+            .map_err(|e| DeviceError::JobSubmission(format!("Failed to submit job: {e}")))?;
 
         let job_response: NeutralAtomJobResponse = response.json().await.map_err(|e| {
-            DeviceError::Deserialization(format!("Failed to parse job response: {}", e))
+            DeviceError::Deserialization(format!("Failed to parse job response: {e}"))
         })?;
 
         Ok(job_response.job_id)
@@ -111,12 +111,12 @@ impl NeutralAtomClient {
         let response = timeout(self.timeout, self.get_request(&url))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::APIError(format!("Failed to get job status: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Failed to get job status: {e}")))?;
 
         response
             .json::<NeutralAtomJobStatus>()
             .await
-            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job status: {}", e)))
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job status: {e}")))
     }
 
     /// Get job results
@@ -125,11 +125,12 @@ impl NeutralAtomClient {
         let response = timeout(self.timeout, self.get_request(&url))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::APIError(format!("Failed to get job results: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Failed to get job results: {e}")))?;
 
-        response.json::<NeutralAtomJobResult>().await.map_err(|e| {
-            DeviceError::Deserialization(format!("Failed to parse job results: {}", e))
-        })
+        response
+            .json::<NeutralAtomJobResult>()
+            .await
+            .map_err(|e| DeviceError::Deserialization(format!("Failed to parse job results: {e}")))
     }
 
     /// Cancel a job
@@ -138,7 +139,7 @@ impl NeutralAtomClient {
         timeout(self.timeout, self.delete_request(&url))
             .await
             .map_err(|_| DeviceError::Timeout("Request timed out".to_string()))?
-            .map_err(|e| DeviceError::APIError(format!("Failed to cancel job: {}", e)))?;
+            .map_err(|e| DeviceError::APIError(format!("Failed to cancel job: {e}")))?;
 
         Ok(())
     }
@@ -305,7 +306,7 @@ mod tests {
         assert!(serialized.is_ok());
 
         let deserialized: Result<NeutralAtomDeviceInfo, _> =
-            serde_json::from_str(&serialized.unwrap());
+            serde_json::from_str(&serialized.expect("serialization should succeed"));
         assert!(deserialized.is_ok());
     }
 }

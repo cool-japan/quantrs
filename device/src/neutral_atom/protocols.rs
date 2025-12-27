@@ -232,7 +232,7 @@ pub enum DeviceStatus {
 
 impl DeviceDiscoveryProtocol {
     /// Create a new device discovery protocol
-    pub fn new(config: ProtocolConfig) -> Self {
+    pub const fn new(config: ProtocolConfig) -> Self {
         Self {
             config,
             discovered_devices: Vec::new(),
@@ -279,8 +279,7 @@ impl DeviceDiscoveryProtocol {
         }
 
         Err(DeviceError::DeviceNotFound(format!(
-            "Device {} not found",
-            device_id
+            "Device {device_id} not found"
         )))
     }
 }
@@ -365,7 +364,7 @@ impl CommandExecutionProtocol {
         self.pending_commands
             .get(command_id)
             .map(|cmd| cmd.status.clone())
-            .ok_or_else(|| DeviceError::InvalidInput(format!("Command {} not found", command_id)))
+            .ok_or_else(|| DeviceError::InvalidInput(format!("Command {command_id} not found")))
     }
 
     /// Cancel a command
@@ -375,8 +374,7 @@ impl CommandExecutionProtocol {
             Ok(())
         } else {
             Err(DeviceError::InvalidInput(format!(
-                "Command {} not found",
-                command_id
+                "Command {command_id} not found"
             )))
         }
     }
@@ -475,8 +473,7 @@ impl StatusMonitoringProtocol {
             Ok(())
         } else {
             Err(DeviceError::DeviceNotFound(format!(
-                "Device {} not found in monitoring list",
-                device_id
+                "Device {device_id} not found in monitoring list"
             )))
         }
     }
@@ -484,10 +481,7 @@ impl StatusMonitoringProtocol {
     /// Get device status
     pub fn get_device_status(&self, device_id: &str) -> DeviceResult<&DeviceMonitoringInfo> {
         self.monitored_devices.get(device_id).ok_or_else(|| {
-            DeviceError::DeviceNotFound(format!(
-                "Device {} not found in monitoring list",
-                device_id
-            ))
+            DeviceError::DeviceNotFound(format!("Device {device_id} not found in monitoring list"))
         })
     }
 

@@ -115,7 +115,7 @@ pub struct DiscoveryConfig {
 }
 
 /// Discovery strategies for finding providers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscoveryStrategy {
     /// API-based discovery
     APIDiscovery,
@@ -149,7 +149,7 @@ pub struct VerificationConfig {
 }
 
 /// Verification strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationStrategy {
     /// API endpoint testing
     EndpointTesting,
@@ -211,7 +211,7 @@ pub enum ConnectivityRequirement {
 }
 
 /// Topology types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyType {
     Linear,
     Grid,
@@ -282,7 +282,7 @@ pub struct GeographicRestrictions {
 }
 
 /// Compliance standards
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComplianceStandard {
     GDPR,
     HIPAA,
@@ -310,7 +310,7 @@ pub struct CapabilityAnalyticsConfig {
 }
 
 /// Analysis depth levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalysisDepth {
     Basic,
     Standard,
@@ -351,7 +351,7 @@ pub struct ComparisonConfig {
 }
 
 /// Comparison criteria
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonCriterion {
     Performance,
     Cost,
@@ -366,7 +366,7 @@ pub enum ComparisonCriterion {
 }
 
 /// Ranking algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RankingAlgorithm {
     WeightedSum,
     TOPSIS,
@@ -407,7 +407,7 @@ pub struct ProviderInfo {
 }
 
 /// Provider types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProviderType {
     /// Cloud-based quantum computing provider
     CloudProvider,
@@ -460,7 +460,7 @@ pub struct ServiceEndpoint {
 }
 
 /// Endpoint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EndpointType {
     REST,
     GraphQL,
@@ -470,7 +470,7 @@ pub enum EndpointType {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthenticationMethod {
     APIKey,
     OAuth2,
@@ -496,7 +496,7 @@ pub struct RateLimits {
 }
 
 /// Endpoint health status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EndpointHealth {
     Healthy,
     Degraded,
@@ -541,7 +541,7 @@ pub struct PricingModel {
 }
 
 /// Pricing types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PricingType {
     PayPerUse,
     Subscription,
@@ -566,7 +566,7 @@ pub struct FreeTierLimits {
 }
 
 /// Billing models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingModel {
     Prepaid,
     Postpaid,
@@ -661,7 +661,7 @@ pub struct ConnectivityMetrics {
 }
 
 /// Measurement types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MeasurementType {
     ComputationalBasis,
     Pauli,
@@ -779,7 +779,7 @@ pub struct SoftwareCapabilities {
 }
 
 /// Quantum frameworks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuantumFramework {
     Qiskit,
     Cirq,
@@ -929,7 +929,7 @@ pub struct MaintenanceWindow {
 }
 
 /// Maintenance frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MaintenanceFrequency {
     Daily,
     Weekly,
@@ -940,7 +940,7 @@ pub enum MaintenanceFrequency {
 }
 
 /// Impact levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImpactLevel {
     None,
     Low,
@@ -1023,7 +1023,7 @@ pub struct CostModel {
 }
 
 /// Pricing structure
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PricingStructure {
     Fixed,
     Variable,
@@ -1049,7 +1049,7 @@ pub struct CostFactor {
 }
 
 /// Cost factor types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostFactorType {
     PerShot,
     PerCircuit,
@@ -1073,7 +1073,7 @@ pub struct VolumeDiscount {
 }
 
 /// Discount types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscountType {
     Percentage,
     Fixed,
@@ -1142,7 +1142,7 @@ pub struct SecurityCapabilities {
 }
 
 /// Authorization models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthorizationModel {
     RBAC, // Role-Based Access Control
     ABAC, // Attribute-Based Access Control
@@ -1213,7 +1213,7 @@ pub struct SupportCapabilities {
 }
 
 /// Support channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportChannel {
     Email,
     Phone,
@@ -1361,7 +1361,7 @@ pub struct ResearchCapabilities {
 }
 
 /// Verification status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VerificationStatus {
     Verified,
     PartiallyVerified,
@@ -1414,7 +1414,7 @@ pub enum DiscoveryCommand {
 }
 
 /// Report types for discovery
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {
     ProviderSummary,
     CapabilityMatrix,
@@ -1485,7 +1485,7 @@ pub struct ProviderRecommendation {
 }
 
 /// Recommendation types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationType {
     BestOverall,
     BestValue,
@@ -1559,7 +1559,7 @@ pub struct ProviderHealthStatus {
 }
 
 /// Health levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthLevel {
     Excellent,
     Good,
@@ -1585,7 +1585,7 @@ pub struct HealthIssue {
 }
 
 /// Issue types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IssueType {
     Performance,
     Availability,
@@ -1599,7 +1599,7 @@ pub enum IssueType {
 }
 
 /// Issue severity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IssueSeverity {
     Low,
     Medium,
@@ -1608,7 +1608,7 @@ pub enum IssueSeverity {
 }
 
 /// Resolution status
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResolutionStatus {
     Open,
     InProgress,
@@ -1664,7 +1664,7 @@ pub struct TrendModel {
 }
 
 /// Trend model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendModelType {
     Linear,
     Exponential,
@@ -1690,7 +1690,7 @@ pub struct PredictiveModel {
 }
 
 /// Predictive model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictiveModelType {
     LinearRegression,
     RandomForest,
@@ -1729,7 +1729,7 @@ pub struct MonitoringTarget {
 }
 
 /// Monitoring target types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringTargetType {
     Provider,
     Endpoint,
@@ -1756,7 +1756,7 @@ pub struct HealthCheckConfig {
 }
 
 /// Health check types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthCheckType {
     HTTP,
     TCP,
@@ -1775,7 +1775,7 @@ pub struct AnomalyDetector {
 }
 
 /// Anomaly detector types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyDetectorType {
     Statistical,
     MachineLearning,
@@ -1945,7 +1945,7 @@ impl ProviderCapabilityDiscoverySystem {
                 config.comparison_config.clone(),
             ))),
             monitor: Arc::new(RwLock::new(CapabilityMonitor::new(
-                config.monitoring_config.clone(),
+                config.monitoring_config,
             ))),
             event_sender,
             command_receiver: Arc::new(Mutex::new(command_receiver)),
@@ -1971,7 +1971,10 @@ impl ProviderCapabilityDiscoverySystem {
 
     /// Discover available providers
     pub async fn discover_providers(&self) -> DeviceResult<Vec<ProviderInfo>> {
-        let discovery_engine = self.discovery_engine.read().unwrap();
+        let discovery_engine = self
+            .discovery_engine
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         discovery_engine.discover_providers().await
     }
 
@@ -1982,7 +1985,10 @@ impl ProviderCapabilityDiscoverySystem {
     ) -> DeviceResult<Option<ProviderCapabilities>> {
         // Check cache first
         {
-            let cache = self.capability_cache.read().unwrap();
+            let cache = self
+                .capability_cache
+                .read()
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(cached) = cache.get(provider_id) {
                 if cached.expires_at > SystemTime::now() {
                     return Ok(Some(cached.capabilities.clone()));
@@ -2005,7 +2011,10 @@ impl ProviderCapabilityDiscoverySystem {
         provider_ids: &[String],
         criteria: &[ComparisonCriterion],
     ) -> DeviceResult<ComparisonResults> {
-        let comparison_engine = self.comparison_engine.read().unwrap();
+        let comparison_engine = self
+            .comparison_engine
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         comparison_engine
             .compare_providers(provider_ids, criteria)
             .await
@@ -2299,7 +2308,10 @@ impl ProviderCapabilityDiscoverySystem {
         provider_id: &str,
         capabilities: ProviderCapabilities,
     ) -> DeviceResult<()> {
-        let mut cache = self.capability_cache.write().unwrap();
+        let mut cache = self
+            .capability_cache
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let cached_capability = CachedCapability {
             provider_id: provider_id.to_string(),
             capabilities,

@@ -15,7 +15,8 @@ mod tests {
 
     #[test]
     fn test_quantum_chemistry_molecular_systems() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
 
         assert_eq!(systems.len(), 2);
 
@@ -38,16 +39,18 @@ mod tests {
     #[ignore] // Slow test: runs heavy quantum algorithms (~105s)
     fn test_quantum_chemistry_optimizer_basic_functionality() {
         let config = QuantumChemistryConfig::default();
-        let mut optimizer = QuantumChemistryOptimizer::new(config).unwrap();
+        let mut optimizer = QuantumChemistryOptimizer::new(config)
+            .expect("Creating QuantumChemistryOptimizer should succeed");
 
-        let systems = create_example_molecular_systems().unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
         let water = &systems[0];
 
         // Test electronic structure calculation
         let result = optimizer.calculate_electronic_structure(water);
         assert!(result.is_ok());
 
-        let chemistry_result = result.unwrap();
+        let chemistry_result = result.expect("Electronic structure calculation should succeed");
         assert_eq!(chemistry_result.system_id, "water");
         assert!(chemistry_result.total_energy.is_finite());
         assert!(!chemistry_result.molecular_orbitals.is_empty());
@@ -55,7 +58,8 @@ mod tests {
 
     #[test]
     fn test_quantum_chemistry_problem_creation() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
         let problem = QuantumChemistryProblem {
             system: systems[0].clone(),
             config: QuantumChemistryConfig::default(),
@@ -72,14 +76,15 @@ mod tests {
 
     #[test]
     fn test_quantum_chemistry_to_qubo_conversion() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
         let problem = QuantumChemistryProblem {
             system: systems[0].clone(),
             config: QuantumChemistryConfig::default(),
             objectives: vec![ChemistryObjective::MinimizeEnergy],
         };
 
-        let (qubo, mapping) = problem.to_qubo().unwrap();
+        let (qubo, mapping) = problem.to_qubo().expect("QUBO conversion should succeed");
         assert!(qubo.num_variables > 0);
         assert!(!mapping.is_empty());
     }
@@ -87,7 +92,8 @@ mod tests {
     #[test]
     #[ignore] // Slow test: runs heavy quantum algorithms (~106s)
     fn test_catalysis_optimization_problem() {
-        let systems = create_example_molecular_systems().unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
 
         // Create a simple reaction: H2O -> H2 + 1/2 O2
         let reaction = ChemicalReaction {
@@ -124,15 +130,16 @@ mod tests {
             },
         };
 
-        let mut optimizer =
-            QuantumChemistryOptimizer::new(QuantumChemistryConfig::default()).unwrap();
+        let mut optimizer = QuantumChemistryOptimizer::new(QuantumChemistryConfig::default())
+            .expect("Creating QuantumChemistryOptimizer should succeed");
         let result = optimizer.optimize_catalysis(&optimization);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_benchmark_problems_creation() {
-        let problems = create_benchmark_problems(3).unwrap();
+        let problems =
+            create_benchmark_problems(3).expect("Creating benchmark problems should succeed");
         assert_eq!(problems.len(), 3);
 
         for problem in problems {
@@ -148,13 +155,13 @@ mod tests {
             create_benchmark_suite("quantum_computational_chemistry", "small");
         assert!(chemistry_benchmarks.is_ok());
 
-        let benchmarks = chemistry_benchmarks.unwrap();
+        let benchmarks = chemistry_benchmarks.expect("Benchmark suite creation should succeed");
         assert_eq!(benchmarks.len(), 5);
 
         // Test each benchmark problem
         for benchmark in benchmarks {
             assert!(benchmark.validate().is_ok());
-            let (qubo, mapping) = benchmark.to_qubo().unwrap();
+            let (qubo, mapping) = benchmark.to_qubo().expect("QUBO conversion should succeed");
             assert!(qubo.num_variables > 0);
             assert!(!mapping.is_empty());
         }
@@ -168,8 +175,8 @@ mod tests {
         results.insert("convergence_iterations".to_string(), 15.0);
         results.insert("accuracy".to_string(), 0.99);
 
-        let report =
-            generate_performance_report("quantum_computational_chemistry", &results).unwrap();
+        let report = generate_performance_report("quantum_computational_chemistry", &results)
+            .expect("Performance report generation should succeed");
 
         assert!(report.contains("QUANTUM_COMPUTATIONAL_CHEMISTRY"));
         assert!(report.contains("Electronic structure optimized"));
@@ -181,9 +188,13 @@ mod tests {
 
     #[test]
     fn test_chemistry_binary_wrapper() {
-        let chemistry_problems = create_benchmark_problems(1).unwrap();
+        let chemistry_problems =
+            create_benchmark_problems(1).expect("Creating benchmark problems should succeed");
         let wrapper = ChemistryToBinaryWrapper {
-            inner: chemistry_problems.into_iter().next().unwrap(),
+            inner: chemistry_problems
+                .into_iter()
+                .next()
+                .expect("Should have at least one problem"),
         };
 
         assert!(wrapper.validate().is_ok());
@@ -207,12 +218,15 @@ mod tests {
 
         let evaluation = wrapper.evaluate_solution(&binary_solution);
         assert!(evaluation.is_ok());
-        assert!(evaluation.unwrap().is_finite());
+        assert!(evaluation
+            .expect("Solution evaluation should succeed")
+            .is_finite());
     }
 
     #[test]
     fn test_quantum_chemistry_with_enterprise_monitoring() {
-        let monitoring = create_example_enterprise_monitoring().unwrap();
+        let monitoring = create_example_enterprise_monitoring()
+            .expect("Creating enterprise monitoring should succeed");
 
         // Test logging quantum chemistry calculations
         let log_result = monitoring.log(
@@ -281,9 +295,10 @@ mod tests {
     #[test]
     #[ignore] // Slow test: runs heavy quantum algorithms (~105s)
     fn test_reaction_energetics_calculation() {
-        let systems = create_example_molecular_systems().unwrap();
-        let mut optimizer =
-            QuantumChemistryOptimizer::new(QuantumChemistryConfig::default()).unwrap();
+        let systems = create_example_molecular_systems()
+            .expect("Creating example molecular systems should succeed");
+        let mut optimizer = QuantumChemistryOptimizer::new(QuantumChemistryConfig::default())
+            .expect("Creating QuantumChemistryOptimizer should succeed");
 
         let reaction = ChemicalReaction {
             id: "test_reaction".to_string(),
@@ -309,7 +324,7 @@ mod tests {
         let energetics = optimizer.calculate_reaction_energetics(&reaction, None);
         assert!(energetics.is_ok());
 
-        let result = energetics.unwrap();
+        let result = energetics.expect("Reaction energetics calculation should succeed");
         assert!(!result.reactant_energies.is_empty());
         assert!(!result.product_energies.is_empty());
         assert!(result.reaction_energy.is_finite());

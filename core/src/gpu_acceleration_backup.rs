@@ -301,13 +301,19 @@ impl GpuContext {
 
         println!("Compiling kernel '{}' for {} device {}", name, self.backend, device_id);
 
-        self.kernels.write().unwrap().insert(name.to_string(), kernel);
+        self.kernels
+            .write()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Kernels RwLock poisoned: {e}")))?
+            .insert(name.to_string(), kernel);
         Ok(())
     }
 
     /// Execute a kernel
     pub fn execute_kernel(&self, name: &str, buffers: &[&GpuBuffer], params: &[f64]) -> QuantRS2Result<()> {
-        let kernels = self.kernels.read().unwrap();
+        let kernels = self
+            .kernels
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Kernels RwLock poisoned: {e}")))?;
         let kernel = kernels.get(name).ok_or_else(||
             QuantRS2Error::InvalidOperation(format!("Kernel '{}' not found", name)))?;
 
@@ -324,12 +330,19 @@ impl GpuContext {
         let device_id = self.active_device.ok_or_else(||
             QuantRS2Error::InvalidOperation("No active device".to_string()))?;
 
-        self.memory_pool.lock().unwrap().allocate(device_id, size)
+        self.memory_pool
+            .lock()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Memory pool Mutex poisoned: {e}")))?
+            .allocate(device_id, size)
     }
 
     /// Deallocate GPU buffer
-    pub fn deallocate_buffer(&self, buffer: GpuBuffer) {
-        self.memory_pool.lock().unwrap().deallocate(buffer);
+    pub fn deallocate_buffer(&self, buffer: GpuBuffer) -> QuantRS2Result<()> {
+        self.memory_pool
+            .lock()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Memory pool Mutex poisoned: {e}")))?
+            .deallocate(buffer);
+        Ok(())
     }
 }
 
@@ -734,25 +747,29 @@ mod tests {
         let context = GpuContext::new(GpuBackend::CUDA);
         assert!(context.is_ok());
 
-        let context = context.unwrap();
+        let context = context.expect("CUDA context should be created successfully");
         assert!(!context.devices.is_empty());
         assert!(context.active_device.is_some());
     }
 
     #[test]
     fn test_gpu_buffer_allocation() {
-        let context = GpuContext::new(GpuBackend::CUDA).unwrap();
+        let context =
+            GpuContext::new(GpuBackend::CUDA).expect("CUDA context should be created successfully");
         let buffer = context.allocate_buffer(1024);
         assert!(buffer.is_ok());
 
-        let buffer = buffer.unwrap();
+        let buffer = buffer.expect("Buffer should be allocated successfully");
         assert_eq!(buffer.size, 1024);
     }
 
     #[test]
     fn test_state_vector_simulator() {
-        let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
-        let mut simulator = GpuStateVectorSimulator::new(context, 3).unwrap();
+        let context = Arc::new(
+            GpuContext::new(GpuBackend::CUDA).expect("CUDA context should be created successfully"),
+        );
+        let mut simulator = GpuStateVectorSimulator::new(context, 3)
+            .expect("State vector simulator should be created successfully");
 
         // Initialize with |000⟩ state
         let initial_state = vec![
@@ -775,17 +792,23 @@ mod tests {
 
     #[test]
     fn test_tensor_network_contractor() {
-        let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
-        let mut contractor = GpuTensorNetworkContractor::new(context).unwrap();
+        let context = Arc::new(
+            GpuContext::new(GpuBackend::CUDA).expect("CUDA context should be created successfully"),
+        );
+        let mut contractor = GpuTensorNetworkContractor::new(context)
+            .expect("Tensor network contractor should be created successfully");
 
         // Create a simple tensor
         let data = scirs2_core::ndarray::Array::from_shape_vec(
             IxDyn(&[2, 2]),
             vec![
-                Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-            ]
-        ).unwrap();
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ],
+        )
+        .expect("Array should be created from valid shape and data");
 
         let tensor = Tensor::new(0, data, vec!["i".to_string(), "j".to_string()]);
         assert!(contractor.upload_tensor(&tensor).is_ok());
@@ -818,31 +841,44 @@ mod tests {
 
     #[test]
     fn test_invalid_qubit_operations() {
-        let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
-        let mut simulator = GpuStateVectorSimulator::new(context, 2).unwrap();
+        let context = Arc::new(
+            GpuContext::new(GpuBackend::CUDA).expect("CUDA context should be created successfully"),
+        );
+        let mut simulator = GpuStateVectorSimulator::new(context, 2)
+            .expect("State vector simulator should be created successfully");
 
         let initial_state = vec![
-            Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0),
-            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
+            Complex64::new(0.0, 0.0),
         ];
 
-        simulator.initialize_state(&initial_state).unwrap();
+        simulator
+            .initialize_state(&initial_state)
+            .expect("State should be initialized successfully");
 
         // Try to apply gate to non-existent qubit
         let hadamard = vec![
-            Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
-            Complex64::new(1.0/2.0_f64.sqrt(), 0.0), Complex64::new(-1.0/2.0_f64.sqrt(), 0.0),
+            Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+            Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+            Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
+            Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
         ];
 
         let result = simulator.apply_single_qubit_gate(5, &hadamard);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), QuantRS2Error::InvalidQubitId(_)));
+        let err = result.expect_err("Expected InvalidQubitId error for qubit 5");
+        assert!(matches!(err, QuantRS2Error::InvalidQubitId(_)));
     }
 
     #[test]
     fn test_expectation_value_calculation() {
-        let context = Arc::new(GpuContext::new(GpuBackend::CUDA).unwrap());
-        let simulator = GpuStateVectorSimulator::new(context, 3).unwrap();
+        let context = Arc::new(
+            GpuContext::new(GpuBackend::CUDA).expect("CUDA context should be created successfully"),
+        );
+        let simulator = GpuStateVectorSimulator::new(context, 3)
+            .expect("State vector simulator should be created successfully");
 
         // Test invalid Pauli string
         let result = simulator.expectation_value("XYZ");

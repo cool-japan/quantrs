@@ -218,7 +218,13 @@ impl EnhancedArminSampler {
         let n_vars = var_map.len();
 
         // Initialize GPU context
-        let ctx = GpuContext::new(self.device_id.try_into().unwrap())
+        let device_id_u32: u32 = self.device_id.try_into().map_err(|_| {
+            SamplerError::InvalidParameter(format!(
+                "Device ID {} is too large for u32",
+                self.device_id
+            ))
+        })?;
+        let ctx = GpuContext::new(device_id_u32)
             .map_err(|e| SamplerError::GpuError(format!("Failed to initialize GPU: {e}")))?;
 
         if self.verbose {
@@ -268,7 +274,11 @@ impl EnhancedArminSampler {
         }
 
         // Sort by energy
-        all_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        all_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(all_results)
     }
@@ -364,14 +374,16 @@ impl EnhancedArminSampler {
 
         for state in states {
             // Create variable assignments
-            let assignments: HashMap<String, bool> = state
-                .iter()
-                .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
-                })
-                .collect();
+            let mut assignments: HashMap<String, bool> = HashMap::new();
+            for (idx, &value) in state.iter().enumerate() {
+                let var_name = idx_to_var.get(&idx).ok_or_else(|| {
+                    SamplerError::InvalidParameter(format!(
+                        "Variable index {} not found in variable map",
+                        idx
+                    ))
+                })?;
+                assignments.insert(var_name.clone(), value);
+            }
 
             // Energy will be calculated on GPU in real implementation
             let energy = 0.0; // Placeholder
@@ -470,7 +482,9 @@ impl EnhancedArminSampler {
             let handle = std::thread::spawn(move || {
                 match sampler.run_gpu_optimized(&qubo_clone, &var_map_clone, gpu_shots) {
                     Ok(gpu_results) => {
-                        let mut all_results = results_clone.lock().unwrap();
+                        let mut all_results = results_clone
+                            .lock()
+                            .expect("Results mutex poisoned - a GPU thread panicked");
                         all_results.extend(gpu_results);
                     }
                     Err(e) => {
@@ -487,8 +501,15 @@ impl EnhancedArminSampler {
             handle.join().expect("GPU thread panicked");
         }
 
-        let mut final_results = results.lock().unwrap().clone();
-        final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        let mut final_results = results
+            .lock()
+            .expect("Results mutex poisoned - a GPU thread panicked")
+            .clone();
+        final_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(final_results)
     }

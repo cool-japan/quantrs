@@ -35,7 +35,7 @@ pub enum ResourceType {
 }
 
 /// Monitoring granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringGranularity {
     PerSecond,
     PerMinute,
@@ -75,7 +75,7 @@ pub struct UsageAnalyticsConfig {
 }
 
 /// Usage analytics methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UsageAnalyticsMethod {
     TrendAnalysis,
     SeasonalAnalysis,
@@ -101,7 +101,7 @@ pub struct HistoricalAnalysisConfig {
 }
 
 /// Statistical methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatisticalMethod {
     Mean,
     Median,
@@ -128,7 +128,7 @@ pub struct PredictiveAnalyticsConfig {
 }
 
 /// Predictive models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictiveModel {
     LinearRegression,
     TimeSeriesForecasting,
@@ -197,7 +197,7 @@ pub struct CapacityPlanningConfig {
 }
 
 /// Growth models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GrowthModel {
     Linear,
     Exponential,
@@ -231,7 +231,7 @@ pub struct ResourceOptimizationConfig {
 }
 
 /// Optimization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationStrategy {
     RightSizing,
     Consolidation,
@@ -242,7 +242,7 @@ pub enum OptimizationStrategy {
 }
 
 /// Automation levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AutomationLevel {
     Manual,
     SemiAutomatic,

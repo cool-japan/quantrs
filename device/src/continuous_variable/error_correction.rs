@@ -33,9 +33,9 @@ pub enum CVErrorCorrectionCode {
     /// Concatenated CV codes
     Concatenated {
         /// Inner code
-        inner_code: Box<CVErrorCorrectionCode>,
+        inner_code: Box<Self>,
         /// Outer code
-        outer_code: Box<CVErrorCorrectionCode>,
+        outer_code: Box<Self>,
     },
 }
 
@@ -49,7 +49,7 @@ pub struct CVStabilizer {
 }
 
 /// Types of quadrature operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QuadratureType {
     /// Position quadrature (x)
     Position,
@@ -103,7 +103,7 @@ pub struct CVDecoderConfig {
 }
 
 /// Types of CV decoders
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CVDecoderType {
     /// Maximum likelihood decoder
     MaximumLikelihood,
@@ -222,7 +222,7 @@ pub struct ModeCoupling {
 }
 
 /// Types of mode coupling
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CouplingType {
     /// Beamsplitter coupling
     Beamsplitter,
@@ -525,7 +525,7 @@ impl CVErrorCorrector {
             measurements,
             timestamp: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .expect("System time should be after UNIX epoch")
                 .as_secs_f64(),
             confidence,
         };
@@ -541,7 +541,10 @@ impl CVErrorCorrector {
         &self,
         spacing: f64,
     ) -> DeviceResult<Vec<SyndromeMeasurement>> {
-        let logical_state = self.logical_state.as_ref().unwrap();
+        let logical_state = self
+            .logical_state
+            .as_ref()
+            .ok_or_else(|| DeviceError::InvalidInput("No logical state initialized".to_string()))?;
         let mut measurements = Vec::new();
 
         // GKP stabilizers are periodic functions in phase space
@@ -569,7 +572,10 @@ impl CVErrorCorrector {
         quadrature_type: QuadratureType,
         spacing: f64,
     ) -> DeviceResult<SyndromeMeasurement> {
-        let logical_state = self.logical_state.as_ref().unwrap();
+        let logical_state = self
+            .logical_state
+            .as_ref()
+            .ok_or_else(|| DeviceError::InvalidInput("No logical state initialized".to_string()))?;
         let config = CVDeviceConfig::default();
 
         let phase = match quadrature_type {
@@ -587,12 +593,7 @@ impl CVErrorCorrector {
         let uncertainty = self.config.error_model.displacement_std;
 
         Ok(SyndromeMeasurement {
-            stabilizer_id: mode * 2
-                + if quadrature_type == QuadratureType::Position {
-                    0
-                } else {
-                    1
-                },
+            stabilizer_id: mode * 2 + usize::from(quadrature_type != QuadratureType::Position),
             outcome: syndrome_value,
             expected_value,
             uncertainty,
@@ -605,7 +606,10 @@ impl CVErrorCorrector {
         _amplitudes: &[Complex],
     ) -> DeviceResult<Vec<SyndromeMeasurement>> {
         // Simplified implementation for coherent state codes
-        let logical_state = self.logical_state.as_ref().unwrap();
+        let logical_state = self
+            .logical_state
+            .as_ref()
+            .ok_or_else(|| DeviceError::InvalidInput("No logical state initialized".to_string()))?;
         let mut measurements = Vec::new();
 
         for mode in 0..logical_state.physical_modes.num_modes {
@@ -650,7 +654,7 @@ impl CVErrorCorrector {
 
         for operation in &correction_operations {
             match self.apply_correction_operation(operation).await {
-                Ok(_) => applied_operations += 1,
+                Ok(()) => applied_operations += 1,
                 Err(_) => {
                     correction_success = false;
                     break;
@@ -660,12 +664,12 @@ impl CVErrorCorrector {
 
         // Calculate correction fidelity
         let fidelity = if correction_success {
-            0.95 - syndrome
+            syndrome
                 .measurements
                 .iter()
                 .map(|m| (m.outcome - m.expected_value).abs())
                 .sum::<f64>()
-                * 0.1
+                .mul_add(-0.1, 0.95)
         } else {
             0.5
         };
@@ -679,9 +683,11 @@ impl CVErrorCorrector {
 
         let total_corrections =
             self.correction_stats.successful_corrections + self.correction_stats.failed_corrections;
-        self.correction_stats.average_fidelity =
-            (self.correction_stats.average_fidelity * (total_corrections - 1) as f64 + fidelity)
-                / total_corrections as f64;
+        self.correction_stats.average_fidelity = self
+            .correction_stats
+            .average_fidelity
+            .mul_add((total_corrections - 1) as f64, fidelity)
+            / total_corrections as f64;
 
         Ok(CorrectionResult {
             syndrome_id: syndrome.syndrome_id,
@@ -813,12 +819,12 @@ impl CVErrorCorrector {
     }
 
     /// Get correction statistics
-    pub fn get_correction_statistics(&self) -> &CorrectionStatistics {
+    pub const fn get_correction_statistics(&self) -> &CorrectionStatistics {
         &self.correction_stats
     }
 
     /// Get current logical state
-    pub fn get_logical_state(&self) -> Option<&CVLogicalState> {
+    pub const fn get_logical_state(&self) -> Option<&CVLogicalState> {
         self.logical_state.as_ref()
     }
 
@@ -888,7 +894,7 @@ mod tests {
         let logical_state = corrector
             .initialize_logical_state(initial_state)
             .await
-            .unwrap();
+            .expect("Logical state initialization should succeed");
 
         assert_eq!(logical_state.physical_modes.num_modes, 2);
         assert_eq!(logical_state.logical_info.len(), 1);
@@ -903,9 +909,12 @@ mod tests {
         corrector
             .initialize_logical_state(initial_state)
             .await
-            .unwrap();
+            .expect("Logical state initialization should succeed");
 
-        let syndrome = corrector.measure_syndrome().await.unwrap();
+        let syndrome = corrector
+            .measure_syndrome()
+            .await
+            .expect("Syndrome measurement should succeed");
         assert_eq!(syndrome.syndrome_id, 0);
         assert!(!syndrome.measurements.is_empty());
         assert_eq!(corrector.syndrome_history.len(), 1);
@@ -920,10 +929,16 @@ mod tests {
         corrector
             .initialize_logical_state(initial_state)
             .await
-            .unwrap();
+            .expect("Logical state initialization should succeed");
 
-        let syndrome = corrector.measure_syndrome().await.unwrap();
-        let result = corrector.apply_correction(&syndrome).await.unwrap();
+        let syndrome = corrector
+            .measure_syndrome()
+            .await
+            .expect("Syndrome measurement should succeed");
+        let result = corrector
+            .apply_correction(&syndrome)
+            .await
+            .expect("Error correction should succeed");
 
         assert_eq!(result.syndrome_id, syndrome.syndrome_id);
         assert!(result.fidelity >= 0.0 && result.fidelity <= 1.0);

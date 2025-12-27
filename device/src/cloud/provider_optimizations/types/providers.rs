@@ -135,7 +135,7 @@ impl ProviderOptimizationEngine {
                 match optimizer.optimize_workload(workload) {
                     Ok(recommendation) => recommendations.push(recommendation),
                     Err(e) => {
-                        eprintln!("Error optimizing for provider {:?}: {}", provider, e);
+                        eprintln!("Error optimizing for provider {provider:?}: {e}");
                     }
                 }
             }

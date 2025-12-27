@@ -102,8 +102,8 @@ impl GPUBackend {
 
     /// Get or create a GPU simulator for the specified number of qubits
     fn get_simulator(&self, num_qubits: usize) -> Result<Arc<SciRS2GpuStateVectorSimulator>> {
-        let mut simulators = self.simulators.lock().unwrap();
-        let mut metrics = self.metrics.lock().unwrap();
+        let mut simulators = self.simulators.lock().expect("simulators mutex poisoned");
+        let mut metrics = self.metrics.lock().expect("metrics mutex poisoned");
 
         if let Some(simulator) = simulators.get(&num_qubits) {
             metrics.cache_hits += 1;
@@ -164,14 +164,16 @@ impl GPUBackend {
 
         // Handle measurements if requested
         let measurements = if let Some(n_shots) = shots {
-            Some(self.sample_measurements(probabilities.as_slice().unwrap(), n_shots))
+            probabilities
+                .as_slice()
+                .map(|probs| self.sample_measurements(probs, n_shots))
         } else {
             None
         };
 
         // Update metrics
         let elapsed_ms = start_time.elapsed().as_secs_f64() * 1000.0;
-        let mut metrics = self.metrics.lock().unwrap();
+        let mut metrics = self.metrics.lock().expect("metrics mutex poisoned");
         metrics.total_circuits_executed += 1;
         metrics.total_gpu_time_ms += elapsed_ms;
 
@@ -321,23 +323,26 @@ impl SimulatorBackend for GPUBackend {
         match observable {
             Observable::PauliString(pauli) => {
                 // Note: PauliString API has changed
-                Ok(self.compute_pauli_expectation(state.as_slice().unwrap(), "Z", &[0]))
+                let state_slice = state.as_slice().ok_or_else(|| {
+                    MLError::BackendError("State vector is not contiguous".to_string())
+                })?;
+                Ok(self.compute_pauli_expectation(state_slice, "Z", &[0]))
             }
             Observable::PauliZ(qubits) => {
                 let pauli_string = "Z".repeat(qubits.len());
-                Ok(
-                    self.compute_pauli_expectation(
-                        state.as_slice().unwrap(),
-                        &pauli_string,
-                        qubits,
-                    ),
-                )
+                let state_slice = state.as_slice().ok_or_else(|| {
+                    MLError::BackendError("State vector is not contiguous".to_string())
+                })?;
+                Ok(self.compute_pauli_expectation(state_slice, &pauli_string, qubits))
             }
             Observable::Hamiltonian(terms) => {
+                let state_slice = state.as_slice().ok_or_else(|| {
+                    MLError::BackendError("State vector is not contiguous".to_string())
+                })?;
                 let mut total = 0.0;
                 for (coeff, pauli) in terms {
                     // Note: PauliString API has changed
-                    let exp = self.compute_pauli_expectation(state.as_slice().unwrap(), "Z", &[0]);
+                    let exp = self.compute_pauli_expectation(state_slice, "Z", &[0]);
                     total += coeff * exp;
                 }
                 Ok(total)
@@ -429,7 +434,7 @@ impl GPUMemoryPool {
     }
 
     fn allocate(&self, size: usize) -> Vec<Complex64> {
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("buffers mutex poisoned");
 
         if let Some(buffer_list) = buffers.get_mut(&size) {
             if let Some(buffer) = buffer_list.pop() {
@@ -451,7 +456,7 @@ impl GPUMemoryPool {
             *val = Complex64::new(0.0, 0.0);
         }
 
-        let mut buffers = self.buffers.lock().unwrap();
+        let mut buffers = self.buffers.lock().expect("buffers mutex poisoned");
         buffers
             .entry(buffer.len())
             .or_insert_with(Vec::new)

@@ -50,7 +50,7 @@ fn test_sa_sampler_simple() {
     // The sampler should find solutions that minimize the objective
     // Just verify that we got a valid assignment and reasonable energy
     assert!(
-        results.len() > 0,
+        !results.is_empty(),
         "Sampler should return at least one solution"
     );
 
@@ -152,7 +152,7 @@ fn test_optimize_qubo() {
     // Verify that optimize_qubo returns valid results
     // The optimizer should find solutions that minimize the objective
     assert!(
-        results.len() > 0,
+        !results.is_empty(),
         "optimize_qubo should return at least one solution"
     );
 

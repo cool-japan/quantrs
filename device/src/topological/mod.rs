@@ -66,7 +66,7 @@ pub enum TopologicalSystemType {
 }
 
 /// Types of non-Abelian anyons
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NonAbelianAnyonType {
     /// Fibonacci anyons
     Fibonacci,
@@ -187,7 +187,7 @@ pub struct TopologicalQubitState {
 
 impl TopologicalQubitState {
     /// Create |0⟩ state
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self {
             amplitude_0: 1.0,
             amplitude_1: 0.0,
@@ -197,7 +197,7 @@ impl TopologicalQubitState {
     }
 
     /// Create |1⟩ state
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self {
             amplitude_0: 0.0,
             amplitude_1: 1.0,
@@ -247,7 +247,7 @@ pub struct BraidingOperation {
 }
 
 /// Direction of braiding operation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BraidingDirection {
     Clockwise,
     Counterclockwise,
@@ -364,7 +364,7 @@ pub struct TopologicalCapabilities {
 }
 
 /// Types of topological operations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologicalOperation {
     /// Create anyon pair
     AnyonCreation { charge_type: String },
@@ -454,14 +454,12 @@ impl TopologicalDevice {
             if let Some(anyon) = self.anyons.get(&anyon_id) {
                 if anyon.is_qubit_part {
                     return Err(TopologicalError::AnyonCreationFailed(format!(
-                        "Anyon {} is already part of a qubit",
-                        anyon_id
+                        "Anyon {anyon_id} is already part of a qubit"
                     )));
                 }
             } else {
                 return Err(TopologicalError::AnyonCreationFailed(format!(
-                    "Anyon {} not found",
-                    anyon_id
+                    "Anyon {anyon_id} not found"
                 )));
             }
         }
@@ -498,20 +496,12 @@ impl TopologicalDevice {
         braid_count: usize,
     ) -> TopologicalResult<BraidingResult> {
         // Check if anyons exist
-        let anyon1 = self
-            .anyons
-            .get(&anyon1_id)
-            .ok_or(TopologicalError::InvalidBraiding(format!(
-                "Anyon {} not found",
-                anyon1_id
-            )))?;
-        let anyon2 = self
-            .anyons
-            .get(&anyon2_id)
-            .ok_or(TopologicalError::InvalidBraiding(format!(
-                "Anyon {} not found",
-                anyon2_id
-            )))?;
+        let anyon1 = self.anyons.get(&anyon1_id).ok_or_else(|| {
+            TopologicalError::InvalidBraiding(format!("Anyon {anyon1_id} not found"))
+        })?;
+        let anyon2 = self.anyons.get(&anyon2_id).ok_or_else(|| {
+            TopologicalError::InvalidBraiding(format!("Anyon {anyon2_id} not found"))
+        })?;
 
         // Calculate braiding result based on anyon types
         let result = self.calculate_braiding_result(
@@ -537,8 +527,8 @@ impl TopologicalDevice {
             if qubit1_id == qubit2_id {
                 // Braiding within the same qubit
                 if let Some(qubit) = self.qubits.get_mut(&qubit1_id) {
-                    qubit.braiding_history.push(operation.clone());
-                    TopologicalDevice::apply_braiding_to_qubit_state_static(qubit, &result)?;
+                    qubit.braiding_history.push(operation);
+                    Self::apply_braiding_to_qubit_state_static(qubit, &result)?;
                 }
             }
         }
@@ -643,30 +633,19 @@ impl TopologicalDevice {
         let anyon1 = self
             .anyons
             .get(&anyon1_id)
-            .ok_or(TopologicalError::FusionFailed(format!(
-                "Anyon {} not found",
-                anyon1_id
-            )))?
+            .ok_or_else(|| TopologicalError::FusionFailed(format!("Anyon {anyon1_id} not found")))?
             .clone();
         let anyon2 = self
             .anyons
             .get(&anyon2_id)
-            .ok_or(TopologicalError::FusionFailed(format!(
-                "Anyon {} not found",
-                anyon2_id
-            )))?
+            .ok_or_else(|| TopologicalError::FusionFailed(format!("Anyon {anyon2_id} not found")))?
             .clone();
 
         // Look up fusion rules
         let fusion_key = (anyon1.charge.label.clone(), anyon2.charge.label.clone());
-        let fusion_products =
-            self.fusion_rules
-                .rules
-                .get(&fusion_key)
-                .ok_or(TopologicalError::FusionFailed(format!(
-                    "No fusion rule found for {:?}",
-                    fusion_key
-                )))?;
+        let fusion_products = self.fusion_rules.rules.get(&fusion_key).ok_or_else(|| {
+            TopologicalError::FusionFailed(format!("No fusion rule found for {fusion_key:?}"))
+        })?;
 
         // For simplicity, always pick the first fusion product
         // In practice, this would be probabilistic or determined by measurement
@@ -677,8 +656,8 @@ impl TopologicalDevice {
 
             // Create new anyon with product charge
             let new_position = (
-                (anyon1.position.0 + anyon2.position.0) / 2.0,
-                (anyon1.position.1 + anyon2.position.1) / 2.0,
+                f64::midpoint(anyon1.position.0, anyon2.position.0),
+                f64::midpoint(anyon1.position.1, anyon2.position.1),
             );
 
             let product_anyon = Anyon {
@@ -703,13 +682,9 @@ impl TopologicalDevice {
 
     /// Measure a topological qubit
     pub fn measure_qubit(&mut self, qubit_id: usize) -> TopologicalResult<bool> {
-        let qubit = self
-            .qubits
-            .get_mut(&qubit_id)
-            .ok_or(TopologicalError::InvalidBraiding(format!(
-                "Qubit {} not found",
-                qubit_id
-            )))?;
+        let qubit = self.qubits.get_mut(&qubit_id).ok_or_else(|| {
+            TopologicalError::InvalidBraiding(format!("Qubit {qubit_id} not found"))
+        })?;
 
         let prob_zero = qubit.state.prob_zero();
 
@@ -835,7 +810,7 @@ mod tests {
         let tau_tau_fusion = fibonacci_rules
             .rules
             .get(&("τ".to_string(), "τ".to_string()))
-            .unwrap();
+            .expect("Fibonacci fusion rules should contain tau-tau fusion");
         assert!(tau_tau_fusion.contains(&"I".to_string()));
         assert!(tau_tau_fusion.contains(&"τ".to_string()));
 
@@ -843,7 +818,7 @@ mod tests {
         let sigma_sigma_fusion = ising_rules
             .rules
             .get(&("σ".to_string(), "σ".to_string()))
-            .unwrap();
+            .expect("Ising fusion rules should contain sigma-sigma fusion");
         assert!(sigma_sigma_fusion.contains(&"I".to_string()));
         assert!(sigma_sigma_fusion.contains(&"ψ".to_string()));
     }
@@ -906,7 +881,7 @@ mod tests {
 
         let (anyon1_id, anyon2_id) = device
             .create_anyon_pair(TopologicalCharge::fibonacci_tau(), [(0.0, 0.0), (1.0, 0.0)])
-            .unwrap();
+            .expect("Anyon pair creation should succeed");
 
         assert_eq!(device.anyons.len(), 2);
         assert_eq!(anyon1_id, 0);
@@ -937,21 +912,24 @@ mod tests {
         // Create anyons
         let (anyon1_id, anyon2_id) = device
             .create_anyon_pair(TopologicalCharge::fibonacci_tau(), [(0.0, 0.0), (1.0, 0.0)])
-            .unwrap();
+            .expect("First anyon pair creation should succeed");
 
         let (anyon3_id, anyon4_id) = device
             .create_anyon_pair(TopologicalCharge::fibonacci_tau(), [(2.0, 0.0), (3.0, 0.0)])
-            .unwrap();
+            .expect("Second anyon pair creation should succeed");
 
         // Create topological qubit
         let qubit_id = device
             .create_topological_qubit(vec![anyon1_id, anyon2_id, anyon3_id, anyon4_id])
-            .unwrap();
+            .expect("Topological qubit creation should succeed");
 
         assert_eq!(device.qubits.len(), 1);
         assert_eq!(qubit_id, 0);
 
-        let qubit = device.qubits.get(&qubit_id).unwrap();
+        let qubit = device
+            .qubits
+            .get(&qubit_id)
+            .expect("Qubit should exist after creation");
         assert_eq!(qubit.anyons.len(), 4);
         assert_eq!(qubit.state.prob_zero(), 1.0);
     }
@@ -980,12 +958,12 @@ mod tests {
         // Create anyons
         let (anyon1_id, anyon2_id) = device
             .create_anyon_pair(TopologicalCharge::fibonacci_tau(), [(0.0, 0.0), (1.0, 0.0)])
-            .unwrap();
+            .expect("Anyon pair creation should succeed");
 
         // Perform braiding
         let result = device
             .braid_anyons(anyon1_id, anyon2_id, BraidingDirection::Clockwise, 1)
-            .unwrap();
+            .expect("Braiding operation should succeed");
 
         match result {
             BraidingResult::Phase(phase) => {
@@ -1019,20 +997,25 @@ mod tests {
         // Create anyons and qubit
         let (anyon1_id, anyon2_id) = device
             .create_anyon_pair(TopologicalCharge::fibonacci_tau(), [(0.0, 0.0), (1.0, 0.0)])
-            .unwrap();
+            .expect("Anyon pair creation should succeed");
 
         let qubit_id = device
             .create_topological_qubit(vec![anyon1_id, anyon2_id])
-            .unwrap();
+            .expect("Topological qubit creation should succeed");
 
         // Measure the qubit
-        let result = device.measure_qubit(qubit_id).unwrap();
+        let result = device
+            .measure_qubit(qubit_id)
+            .expect("Qubit measurement should succeed");
 
         // Should be false (0) since we started in |0⟩ state
         assert_eq!(result, false);
 
         // After measurement, state should be collapsed
-        let qubit = device.qubits.get(&qubit_id).unwrap();
+        let qubit = device
+            .qubits
+            .get(&qubit_id)
+            .expect("Qubit should exist after measurement");
         assert_eq!(qubit.state.prob_zero(), 1.0);
     }
 }

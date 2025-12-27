@@ -17,7 +17,7 @@ pub struct NeutralAtomDevice {
 }
 
 impl NeutralAtomDevice {
-    pub fn new(
+    pub const fn new(
         client: NeutralAtomClient,
         device_id: String,
         config: NeutralAtomDeviceConfig,
@@ -29,6 +29,7 @@ impl NeutralAtomDevice {
         }
     }
 
+    #[must_use]
     pub fn with_config(mut self, config: NeutralAtomDeviceConfig) -> Self {
         self.config = config;
         self
@@ -316,8 +317,11 @@ impl NeutralAtomQuantumDevice for NeutralAtomDevice {
         // Simplified implementation - would normally calculate quantum correlations
         let mut correlations = HashMap::new();
         for (i, (atom1, atom2)) in atom_pairs.iter().enumerate() {
-            let correlation_key = format!("{}_{}", atom1, atom2);
-            correlations.insert(correlation_key, thread_rng().gen::<f64>() * 2.0 - 1.0);
+            let correlation_key = format!("{atom1}_{atom2}");
+            correlations.insert(
+                correlation_key,
+                thread_rng().gen::<f64>().mul_add(2.0, -1.0),
+            );
         }
         Ok(correlations)
     }
@@ -342,7 +346,7 @@ mod tests {
             "https://test-neutral-atom-api.example.com".to_string(),
             "test-token".to_string(),
         )
-        .unwrap();
+        .expect("Failed to create neutral atom client");
         let config = NeutralAtomDeviceConfig::default();
         NeutralAtomDevice::new(client, "test-device-1".to_string(), config)
     }
@@ -360,20 +364,41 @@ mod tests {
     #[tokio::test]
     async fn test_device_properties() {
         let device = create_test_device();
-        let properties = device.properties().await.unwrap();
+        let properties = device.properties().await.expect("Failed to get properties");
 
-        assert_eq!(properties.get("device_id").unwrap(), "test-device-1");
-        assert_eq!(properties.get("system_type").unwrap(), "Rydberg");
-        assert_eq!(properties.get("atom_count").unwrap(), "100");
+        assert_eq!(
+            properties.get("device_id").expect("Missing device_id"),
+            "test-device-1"
+        );
+        assert_eq!(
+            properties.get("system_type").expect("Missing system_type"),
+            "Rydberg"
+        );
+        assert_eq!(
+            properties.get("atom_count").expect("Missing atom_count"),
+            "100"
+        );
     }
 
     #[tokio::test]
     async fn test_quantum_device_traits() {
         let device = create_test_device();
 
-        assert!(device.is_available().await.unwrap());
-        assert_eq!(device.qubit_count().await.unwrap(), 100);
-        assert!(!device.is_simulator().await.unwrap());
+        assert!(device
+            .is_available()
+            .await
+            .expect("Failed to check availability"));
+        assert_eq!(
+            device
+                .qubit_count()
+                .await
+                .expect("Failed to get qubit count"),
+            100
+        );
+        assert!(!device
+            .is_simulator()
+            .await
+            .expect("Failed to check is_simulator"));
     }
 
     #[tokio::test]
@@ -381,17 +406,38 @@ mod tests {
         let device = create_test_device();
 
         assert_eq!(
-            device.system_type().await.unwrap(),
+            device
+                .system_type()
+                .await
+                .expect("Failed to get system type"),
             NeutralAtomSystemType::Rydberg
         );
-        assert_eq!(device.atom_count().await.unwrap(), 100);
-        assert_eq!(device.atom_spacing().await.unwrap(), 5.0);
         assert_eq!(
-            device.state_encoding().await.unwrap(),
+            device.atom_count().await.expect("Failed to get atom count"),
+            100
+        );
+        assert_eq!(
+            device
+                .atom_spacing()
+                .await
+                .expect("Failed to get atom spacing"),
+            5.0
+        );
+        assert_eq!(
+            device
+                .state_encoding()
+                .await
+                .expect("Failed to get state encoding"),
             AtomStateEncoding::GroundExcited
         );
-        assert!(device.supports_rydberg_gates().await.unwrap());
-        assert!(!device.supports_tweezer_manipulation().await.unwrap());
+        assert!(device
+            .supports_rydberg_gates()
+            .await
+            .expect("Failed to check Rydberg gates support"));
+        assert!(!device
+            .supports_tweezer_manipulation()
+            .await
+            .expect("Failed to check tweezer manipulation support"));
     }
 
     #[tokio::test]
@@ -400,7 +446,10 @@ mod tests {
 
         // Test atom loading
         let positions = vec![(0.0, 0.0, 0.0), (5.0, 0.0, 0.0), (10.0, 0.0, 0.0)];
-        let loading_results = device.load_atoms(&positions).await.unwrap();
+        let loading_results = device
+            .load_atoms(&positions)
+            .await
+            .expect("Failed to load atoms");
         assert_eq!(loading_results.len(), 100); // Should match atom_count
 
         // Test Rydberg excitation
@@ -408,11 +457,14 @@ mod tests {
         let excitation_results = device
             .rydberg_excitation(&atom_indices, Duration::from_nanos(1000), 10.0)
             .await
-            .unwrap();
+            .expect("Failed to perform Rydberg excitation");
         assert_eq!(excitation_results.len(), 3);
 
         // Test state measurement
-        let states = device.measure_atom_states(&atom_indices).await.unwrap();
+        let states = device
+            .measure_atom_states(&atom_indices)
+            .await
+            .expect("Failed to measure atom states");
         assert_eq!(states.len(), 3);
         assert!(states.iter().all(|s| s == "ground" || s == "excited"));
     }

@@ -516,7 +516,7 @@ impl Default for UncertaintyConfig {
 }
 
 /// Uncertainty quantification methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UncertaintyMethod {
     Bootstrap,
     BayesianInference,

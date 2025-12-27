@@ -114,7 +114,7 @@ pub struct OutlierDetectionResults {
 }
 
 /// Outlier detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutlierDetectionMethod {
     IsolationForest,
     LocalOutlierFactor,
@@ -168,7 +168,7 @@ pub struct CriticalRegion {
 }
 
 /// Risk levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskLevel {
     Low,
     Medium,
@@ -294,7 +294,7 @@ pub struct ScalingLaw {
 }
 
 /// Scaling regimes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalingRegime {
     Linear,
     Polynomial,
@@ -344,7 +344,7 @@ pub struct ComplexityBottleneck {
 }
 
 /// Types of complexity bottlenecks
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BottleneckType {
     Computational,
     Memory,
@@ -361,7 +361,7 @@ pub struct DDValidator {
 
 impl DDValidator {
     /// Create new DD validator
-    pub fn new(config: DDValidationConfig) -> Self {
+    pub const fn new(config: DDValidationConfig) -> Self {
         Self { config }
     }
 
@@ -499,8 +499,8 @@ impl DDValidator {
         let start_time = std::time::Instant::now();
 
         // Simplified fold validation
-        let training_score = 0.9 + (fold_index as f64) * 0.01;
-        let validation_score = 0.85 + (fold_index as f64) * 0.01;
+        let training_score = (fold_index as f64).mul_add(0.01, 0.9);
+        let validation_score = (fold_index as f64).mul_add(0.01, 0.85);
 
         let mut performance_metrics = HashMap::new();
         performance_metrics.insert("accuracy".to_string(), validation_score);
@@ -601,13 +601,14 @@ impl DDValidator {
             for i in 0..n_points {
                 let param_value = min_val + (max_val - min_val) * i as f64 / (n_points - 1) as f64;
                 // Simplified performance calculation
-                performance_variation[i] = 0.9 - 0.1 * ((param_value - 1.0) / 0.2).powi(2);
+                performance_variation[i] =
+                    0.1f64.mul_add(-((param_value - 1.0) / 0.2).powi(2), 0.9);
             }
 
             let sensitivity_score = performance_variation.std(1.0);
             let robustness_margin = *performance_variation
                 .iter()
-                .min_by(|a, b| a.partial_cmp(b).unwrap())
+                .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .unwrap_or(&0.0);
 
             let critical_regions = vec![CriticalRegion {

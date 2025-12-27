@@ -23,6 +23,8 @@ use super::{
     DDCircuitExecutor,
 };
 use crate::{DeviceError, DeviceResult};
+#[allow(unused_imports)]
+use std::cmp::Ordering;
 
 /// Adaptive DD system state
 #[derive(Debug, Clone)]
@@ -102,7 +104,7 @@ pub struct AdaptationRecord {
 }
 
 /// Reasons for adaptation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationReason {
     /// Performance degradation
     PerformanceDegradation,
@@ -177,7 +179,7 @@ pub struct Alert {
 }
 
 /// Alert types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertType {
     PerformanceDegradation,
     NoiseIncrease,
@@ -188,7 +190,7 @@ pub enum AlertType {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -397,9 +399,7 @@ impl AdaptiveDDSystem {
         };
 
         let learning_agent =
-            if config.learning_config.learning_algorithm != LearningAlgorithm::QLearning {
-                None
-            } else {
+            if config.learning_config.learning_algorithm == LearningAlgorithm::QLearning {
                 Some(LearningAgent {
                     q_table: HashMap::new(),
                     replay_buffer: Vec::new(),
@@ -412,6 +412,8 @@ impl AdaptiveDDSystem {
                     },
                     action_counts: HashMap::new(),
                 })
+            } else {
+                None
             };
 
         Self {
@@ -460,7 +462,10 @@ impl AdaptiveDDSystem {
         performance_analysis: &DDPerformanceAnalysis,
         noise_analysis: &DDNoiseAnalysis,
     ) -> DeviceResult<()> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| DeviceError::LockError("Failed to lock adaptive DD state".to_string()))?;
 
         // Record performance
         let performance_record = PerformanceRecord {
@@ -501,7 +506,7 @@ impl AdaptiveDDSystem {
                 .noise_types
                 .iter()
                 .map(|(noise_type, characteristics)| {
-                    (format!("{:?}", noise_type), characteristics.strength)
+                    (format!("{noise_type:?}"), characteristics.strength)
                 })
                 .collect(),
             dominant_sources: noise_analysis
@@ -578,15 +583,17 @@ impl AdaptiveDDSystem {
         let new_sequence = self.generate_sequence(&new_sequence_type)?;
 
         // Record adaptation
+        let previous_sequence_type = self
+            .state
+            .lock()
+            .map_err(|_| DeviceError::LockError("Failed to lock adaptive DD state".to_string()))?
+            .current_sequence
+            .sequence_type
+            .clone();
+
         let adaptation_record = AdaptationRecord {
             timestamp: Instant::now(),
-            previous_sequence: self
-                .state
-                .lock()
-                .unwrap()
-                .current_sequence
-                .sequence_type
-                .clone(),
+            previous_sequence: previous_sequence_type,
             new_sequence: new_sequence_type,
             adaptation_reason: AdaptationReason::PerformanceDegradation,
             expected_improvement: 0.1, // Estimated improvement
@@ -595,7 +602,9 @@ impl AdaptiveDDSystem {
 
         // Update state
         {
-            let mut state = self.state.lock().unwrap();
+            let mut state = self.state.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock adaptive DD state".to_string())
+            })?;
             state.current_sequence = new_sequence;
             state.adaptation_history.push(adaptation_record);
         }
@@ -606,7 +615,10 @@ impl AdaptiveDDSystem {
 
     /// Analyze current system state
     fn analyze_current_state(&self) -> DeviceResult<String> {
-        let state = self.state.lock().unwrap();
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| DeviceError::LockError("Failed to lock adaptive DD state".to_string()))?;
 
         // Create state representation for learning
         let coherence_level = if state.current_metrics.coherence_time > 50e-6 {
@@ -638,8 +650,7 @@ impl AdaptiveDDSystem {
         };
 
         Ok(format!(
-            "coherence_{}_fidelity_{}_noise_{}",
-            coherence_level, fidelity_level, noise_level
+            "coherence_{coherence_level}_fidelity_{fidelity_level}_noise_{noise_level}"
         ))
     }
 
@@ -671,7 +682,7 @@ impl AdaptiveDDSystem {
         let mut best_q_value = f64::NEG_INFINITY;
 
         for sequence_type in available_sequences {
-            let action = format!("{:?}", sequence_type);
+            let action = format!("{sequence_type:?}");
             let q_value = agent
                 .q_table
                 .get(&(current_state.to_string(), action))
@@ -699,7 +710,7 @@ impl AdaptiveDDSystem {
                 let mut best_ucb = f64::NEG_INFINITY;
 
                 for sequence_type in available_sequences {
-                    let action = format!("{:?}", sequence_type);
+                    let action = format!("{sequence_type:?}");
                     let visits = agent.action_counts.get(&action).copied().unwrap_or(0) as f64;
                     let q_value = agent
                         .q_table
@@ -708,7 +719,7 @@ impl AdaptiveDDSystem {
                         .unwrap_or(0.0);
 
                     let ucb_value = if visits > 0.0 {
-                        q_value + c * (total_visits.ln() / visits).sqrt()
+                        c.mul_add((total_visits.ln() / visits).sqrt(), q_value)
                     } else {
                         f64::INFINITY // Unvisited actions get highest priority
                     };
@@ -725,7 +736,7 @@ impl AdaptiveDDSystem {
                 let mut exp_sum = 0.0;
 
                 for sequence_type in available_sequences {
-                    let action = format!("{:?}", sequence_type);
+                    let action = format!("{sequence_type:?}");
                     let q_value = agent
                         .q_table
                         .get(&(current_state.to_string(), action))
@@ -776,7 +787,7 @@ impl AdaptiveDDSystem {
         let mut best_q_value = f64::NEG_INFINITY;
 
         for sequence_type in &self.available_sequences {
-            let action = format!("{:?}", sequence_type);
+            let action = format!("{sequence_type:?}");
             let q_value = agent
                 .q_table
                 .get(&(current_state.to_string(), action))
@@ -790,17 +801,14 @@ impl AdaptiveDDSystem {
         }
 
         // Apply exploration
-        match agent.exploration_strategy {
-            ExplorationStrategy::EpsilonGreedy(epsilon) => {
-                if thread_rng().gen::<f64>() < epsilon {
-                    // Explore: select random sequence
-                    let random_idx = thread_rng().gen_range(0..self.available_sequences.len());
-                    best_sequence = self.available_sequences[random_idx].clone();
-                }
+        if let ExplorationStrategy::EpsilonGreedy(epsilon) = agent.exploration_strategy {
+            if thread_rng().gen::<f64>() < epsilon {
+                // Explore: select random sequence
+                let random_idx = thread_rng().gen_range(0..self.available_sequences.len());
+                best_sequence = self.available_sequences[random_idx].clone();
             }
-            _ => {
-                // Use greedy selection
-            }
+        } else {
+            // Use greedy selection
         }
 
         Ok(best_sequence)
@@ -820,7 +828,7 @@ impl AdaptiveDDSystem {
     /// Generate sequence of specified type
     fn generate_sequence(&mut self, sequence_type: &DDSequenceType) -> DeviceResult<DDSequence> {
         // Check cache first
-        let cache_key = format!("{:?}", sequence_type);
+        let cache_key = format!("{sequence_type:?}");
         if let Some(cached_sequence) = self.sequence_cache.get(&cache_key) {
             return Ok(cached_sequence.clone());
         }
@@ -890,17 +898,26 @@ impl AdaptiveDDSystem {
 
     /// Get current system state
     pub fn get_current_state(&self) -> AdaptiveDDState {
-        self.state.lock().unwrap().clone()
+        self.state
+            .lock()
+            .map(|state| state.clone())
+            .unwrap_or_else(|poisoned| poisoned.into_inner().clone())
     }
 
     /// Get performance history
     pub fn get_performance_history(&self) -> Vec<PerformanceRecord> {
-        self.state.lock().unwrap().performance_history.clone()
+        self.state
+            .lock()
+            .map(|state| state.performance_history.clone())
+            .unwrap_or_default()
     }
 
     /// Get adaptation statistics
     pub fn get_adaptation_statistics(&self) -> AdaptationStatistics {
-        let state = self.state.lock().unwrap();
+        let state = match self.state.lock() {
+            Ok(s) => s,
+            Err(poisoned) => poisoned.into_inner(),
+        };
 
         let total_adaptations = state.adaptation_history.len();
         let successful_adaptations = state
@@ -945,8 +962,9 @@ impl AdaptiveDDSystem {
         sequence_counts
             .into_iter()
             .max_by_key(|(_, count)| *count)
-            .map(|(sequence, _)| sequence)
-            .unwrap_or(DDSequenceType::CPMG { n_pulses: 1 })
+            .map_or(DDSequenceType::CPMG { n_pulses: 1 }, |(sequence, _)| {
+                sequence
+            })
     }
 
     /// Calculate adaptation frequency
@@ -955,8 +973,15 @@ impl AdaptiveDDSystem {
             return 0.0;
         }
 
-        let first_adaptation = state.adaptation_history.first().unwrap().timestamp;
-        let last_adaptation = state.adaptation_history.last().unwrap().timestamp;
+        // Safe to use expect here since we already checked len() >= 2
+        let first_adaptation = match state.adaptation_history.first() {
+            Some(record) => record.timestamp,
+            None => return 0.0,
+        };
+        let last_adaptation = match state.adaptation_history.last() {
+            Some(record) => record.timestamp,
+            None => return 0.0,
+        };
         let time_span = last_adaptation
             .duration_since(first_adaptation)
             .as_secs_f64();
@@ -1061,19 +1086,21 @@ mod tests {
         let low_fidelity_state = "coherence_medium_fidelity_low_noise_medium";
 
         assert_eq!(
-            system.select_sequence_rule_based(high_noise_state).unwrap(),
+            system
+                .select_sequence_rule_based(high_noise_state)
+                .expect("high noise state should return valid sequence"),
             DDSequenceType::XY8
         );
         assert_eq!(
             system
                 .select_sequence_rule_based(low_coherence_state)
-                .unwrap(),
+                .expect("low coherence state should return valid sequence"),
             DDSequenceType::UDD { n_pulses: 3 }
         );
         assert_eq!(
             system
                 .select_sequence_rule_based(low_fidelity_state)
-                .unwrap(),
+                .expect("low fidelity state should return valid sequence"),
             DDSequenceType::XY4
         );
     }

@@ -37,7 +37,7 @@ pub struct CachePolicy {
 }
 
 /// Cache key strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheKeyStrategy {
     Simple,
     Hierarchical,
@@ -90,7 +90,7 @@ pub struct CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     Gzip,
     Deflate,

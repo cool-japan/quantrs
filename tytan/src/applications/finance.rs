@@ -245,7 +245,12 @@ impl PortfolioOptimizer {
                 let var_idx = i * bits_per_asset + k;
 
                 // Scale by inverse of portfolio volatility (approximation)
-                let vol_scale = 1.0 / self.covariance.diag().mean().unwrap().sqrt();
+                let mean_var = self
+                    .covariance
+                    .diag()
+                    .mean()
+                    .ok_or_else(|| "Empty covariance diagonal".to_string())?;
+                let vol_scale = 1.0 / mean_var.sqrt();
                 qubo[[var_idx, var_idx]] -= adjusted_returns[i] * weight * vol_scale;
             }
         }
@@ -595,10 +600,11 @@ impl RiskParityOptimizer {
         let initial_weights = Array1::from_elem(n_assets, 1.0 / n_assets as f64);
         let _risk_contribs = self.calculate_risk_contributions(&initial_weights);
 
+        let default_targets = Array1::from_elem(n_assets, 1.0 / n_assets as f64);
         let _targets = self
             .target_contributions
             .as_ref()
-            .unwrap_or(&Array1::from_elem(n_assets, 1.0 / n_assets as f64));
+            .unwrap_or(&default_targets);
 
         // Linearize around current weights
         for i in 0..n_assets {
@@ -957,10 +963,11 @@ mod tests {
             (3, 3),
             vec![0.01, 0.002, 0.001, 0.002, 0.015, 0.002, 0.001, 0.002, 0.008],
         )
-        .unwrap();
+        .expect("Failed to create covariance matrix from shape vector");
 
-        let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0).unwrap();
-        let (qubo, var_map) = optimizer.build_qubo(3).unwrap();
+        let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0)
+            .expect("Failed to create portfolio optimizer");
+        let (qubo, var_map) = optimizer.build_qubo(3).expect("Failed to build QUBO");
 
         assert_eq!(var_map.len(), 9); // 3 assets * 3 bits
     }
@@ -970,7 +977,8 @@ mod tests {
         let returns = Array1::from_vec(vec![0.10, 0.12, 0.08]);
         let covariance = Array2::eye(3) * 0.01;
 
-        let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0).unwrap();
+        let optimizer = PortfolioOptimizer::new(returns, covariance, 2.0)
+            .expect("Failed to create portfolio optimizer");
         let mut weights = Array1::from_vec(vec![0.3, 0.5, 0.2]);
 
         let mut metrics = optimizer.calculate_metrics(&weights);
@@ -986,10 +994,10 @@ mod tests {
             (3, 3),
             vec![0.01, 0.002, 0.001, 0.002, 0.015, 0.002, 0.001, 0.002, 0.008],
         )
-        .unwrap();
+        .expect("Failed to create covariance matrix from shape vector");
 
         let rp_optimizer = RiskParityOptimizer::new(covariance);
-        let (qubo, var_map) = rp_optimizer.build_qubo(3).unwrap();
+        let (qubo, var_map) = rp_optimizer.build_qubo(3).expect("Failed to build QUBO");
 
         assert!(!var_map.is_empty());
     }

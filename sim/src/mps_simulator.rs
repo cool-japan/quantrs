@@ -17,7 +17,7 @@ use scirs2_core::Complex64;
 /// MPS tensor for a single qubit
 #[derive(Debug, Clone)]
 struct MPSTensor {
-    /// The tensor data: left_bond x physical x right_bond
+    /// The tensor data: `left_bond` x physical x `right_bond`
     data: Array3<Complex64>,
     /// Left bond dimension
     left_dim: usize,
@@ -79,6 +79,7 @@ pub struct MPS {
 
 impl MPS {
     /// Create a new MPS in the |0...0> state
+    #[must_use]
     pub fn new(num_qubits: usize, max_bond_dim: usize) -> Self {
         let tensors = (0..num_qubits)
             .map(|i| MPSTensor::zero_state(i == 0, i == num_qubits - 1))
@@ -375,15 +376,14 @@ impl MPS {
     }
 
     /// Sample from the MPS
+    #[must_use]
     pub fn sample(&self) -> Vec<bool> {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
         let mut result = vec![false; self.num_qubits];
         let mut accumulated_matrix = Array2::eye(1);
 
-        for i in 0..self.num_qubits {
-            let tensor = &self.tensors[i];
-
+        for (i, tensor) in self.tensors.iter().enumerate() {
             // Compute probabilities for this qubit
             let mut prob0 = Complex64::new(0.0, 0.0);
             let mut prob1 = Complex64::new(0.0, 0.0);
@@ -490,6 +490,7 @@ pub struct MPSSimulator {
 
 impl MPSSimulator {
     /// Create a new MPS simulator
+    #[must_use]
     pub const fn new(max_bond_dimension: usize) -> Self {
         Self {
             max_bond_dimension,
@@ -535,11 +536,16 @@ mod tests {
             target: QubitId::new(0),
         };
 
-        mps.apply_single_qubit_gate(&h, 0).unwrap();
+        mps.apply_single_qubit_gate(&h, 0)
+            .expect("Failed to apply single qubit gate");
 
         // Check amplitudes
-        let amp0 = mps.get_amplitude(&[false]).unwrap();
-        let amp1 = mps.get_amplitude(&[true]).unwrap();
+        let amp0 = mps
+            .get_amplitude(&[false])
+            .expect("Failed to get amplitude for |0>");
+        let amp1 = mps
+            .get_amplitude(&[true])
+            .expect("Failed to get amplitude for |1>");
 
         let expected = 1.0 / 2.0_f64.sqrt();
         assert!((amp0.re - expected).abs() < 1e-10);
@@ -550,13 +556,16 @@ mod tests {
     fn test_orthogonality_center() {
         let mut mps = MPS::new(5, 10);
 
-        mps.move_orthogonality_center(2).unwrap();
+        mps.move_orthogonality_center(2)
+            .expect("Failed to move orthogonality center to 2");
         assert_eq!(mps.orthogonality_center, 2);
 
-        mps.move_orthogonality_center(4).unwrap();
+        mps.move_orthogonality_center(4)
+            .expect("Failed to move orthogonality center to 4");
         assert_eq!(mps.orthogonality_center, 4);
 
-        mps.move_orthogonality_center(0).unwrap();
+        mps.move_orthogonality_center(0)
+            .expect("Failed to move orthogonality center to 0");
         assert_eq!(mps.orthogonality_center, 0);
     }
 }

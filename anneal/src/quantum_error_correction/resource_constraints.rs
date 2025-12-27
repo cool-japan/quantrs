@@ -43,7 +43,7 @@ impl Default for ResourceConstraints {
     fn default() -> Self {
         Self {
             max_physical_qubits: 1000,
-            max_circuit_depth: 10000,
+            max_circuit_depth: 10_000,
             max_correction_time: Duration::from_secs(60),
             memory_constraints: MemoryConstraints::default(),
             connectivity_constraints: ConnectivityConstraints::default(),

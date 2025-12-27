@@ -154,14 +154,14 @@ impl QuantumGate {
                 Complex64::new(1.0, 0.0),
                 Complex64::new(0.0, 0.0),
             ],
-            _ => return Err(QuantRS2Error::UnsupportedGate(format!("{:?}", gate_type))),
+            _ => return Err(QuantRS2Error::UnsupportedGate(format!("{gate_type:?}"))),
         };
 
         Ok(matrix)
     }
 
     /// Get the number of qubits this gate acts on
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         match self.gate_type {
             GateType::PauliX
             | GateType::PauliY
@@ -191,40 +191,40 @@ pub struct FusionRule {
 
 impl FusionRule {
     /// Create common fusion rules
-    pub fn common_rules() -> Vec<FusionRule> {
+    pub fn common_rules() -> Vec<Self> {
         vec![
             // X * X = I (eliminate double X)
-            FusionRule {
+            Self {
                 pattern: vec![GateType::PauliX, GateType::PauliX],
                 replacement: vec![], // Identity = no gates
                 efficiency_gain: 2.0,
             },
             // Y * Y = I
-            FusionRule {
+            Self {
                 pattern: vec![GateType::PauliY, GateType::PauliY],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
             // Z * Z = I
-            FusionRule {
+            Self {
                 pattern: vec![GateType::PauliZ, GateType::PauliZ],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
             // H * H = I
-            FusionRule {
+            Self {
                 pattern: vec![GateType::Hadamard, GateType::Hadamard],
                 replacement: vec![],
                 efficiency_gain: 2.0,
             },
             // S * S = Z
-            FusionRule {
+            Self {
                 pattern: vec![GateType::S, GateType::S],
                 replacement: vec![GateType::PauliZ],
                 efficiency_gain: 2.0,
             },
             // T * T * T * T = I
-            FusionRule {
+            Self {
                 pattern: vec![GateType::T, GateType::T, GateType::T, GateType::T],
                 replacement: vec![],
                 efficiency_gain: 4.0,
@@ -380,10 +380,15 @@ impl GateFusionEngine {
                 let fused_sequence = FusedGateSequence::from_gates(fusion_gates)?;
 
                 // Only add non-identity sequences
-                if !fused_sequence.is_identity_matrix() {
+                if fused_sequence.is_identity_matrix() {
+                    // Identity matrix - gates cancelled out, count them as eliminated
+                    if let Ok(mut stats) = self.statistics.write() {
+                        stats.total_fusions += 1;
+                        stats.gates_eliminated += fusion_length as u64; // All gates eliminated
+                    }
+                } else {
                     // Update statistics
-                    {
-                        let mut stats = self.statistics.write().unwrap();
+                    if let Ok(mut stats) = self.statistics.write() {
                         stats.total_fusions += 1;
                         stats.gates_eliminated += (fusion_length - 1) as u64;
                         stats.total_efficiency_gain += fused_sequence.efficiency_gain;
@@ -393,11 +398,6 @@ impl GateFusionEngine {
                     }
 
                     fused_sequences.push(fused_sequence);
-                } else {
-                    // Identity matrix - gates cancelled out, count them as eliminated
-                    let mut stats = self.statistics.write().unwrap();
-                    stats.total_fusions += 1;
-                    stats.gates_eliminated += fusion_length as u64; // All gates eliminated
                 }
                 i += fusion_length;
             } else {
@@ -469,7 +469,10 @@ impl GateFusionEngine {
 
     /// Get fusion statistics
     pub fn get_statistics(&self) -> FusionStatistics {
-        self.statistics.read().unwrap().clone()
+        self.statistics
+            .read()
+            .map(|guard| guard.clone())
+            .unwrap_or_default()
     }
 
     /// Get global fusion statistics
@@ -483,8 +486,9 @@ impl GateFusionEngine {
 
     /// Reset statistics
     pub fn reset_statistics(&self) {
-        let mut stats = self.statistics.write().unwrap();
-        *stats = FusionStatistics::default();
+        if let Ok(mut stats) = self.statistics.write() {
+            *stats = FusionStatistics::default();
+        }
     }
 }
 
@@ -515,12 +519,12 @@ mod tests {
     #[test]
     fn test_pauli_x_fusion() {
         let gates = vec![
-            QuantumGate::new(GateType::PauliX, vec![0]).unwrap(),
-            QuantumGate::new(GateType::PauliX, vec![0]).unwrap(),
+            QuantumGate::new(GateType::PauliX, vec![0]).expect("failed to create PauliX gate"),
+            QuantumGate::new(GateType::PauliX, vec![0]).expect("failed to create PauliX gate"),
         ];
 
         let engine = GateFusionEngine::new();
-        let fused = engine.fuse_gates(gates).unwrap();
+        let fused = engine.fuse_gates(gates).expect("failed to fuse gates");
 
         // Should eliminate both X gates (X*X = I)
         assert_eq!(fused.len(), 0);
@@ -532,12 +536,12 @@ mod tests {
     #[test]
     fn test_hadamard_fusion() {
         let gates = vec![
-            QuantumGate::new(GateType::Hadamard, vec![0]).unwrap(),
-            QuantumGate::new(GateType::Hadamard, vec![0]).unwrap(),
+            QuantumGate::new(GateType::Hadamard, vec![0]).expect("failed to create Hadamard gate"),
+            QuantumGate::new(GateType::Hadamard, vec![0]).expect("failed to create Hadamard gate"),
         ];
 
         let engine = GateFusionEngine::new();
-        let fused = engine.fuse_gates(gates).unwrap();
+        let fused = engine.fuse_gates(gates).expect("failed to fuse gates");
 
         // Should eliminate both H gates (H*H = I)
         assert_eq!(fused.len(), 0);
@@ -546,13 +550,13 @@ mod tests {
     #[test]
     fn test_mixed_gate_fusion() {
         let gates = vec![
-            QuantumGate::new(GateType::PauliX, vec![0]).unwrap(),
-            QuantumGate::new(GateType::PauliY, vec![0]).unwrap(),
-            QuantumGate::new(GateType::PauliZ, vec![0]).unwrap(),
+            QuantumGate::new(GateType::PauliX, vec![0]).expect("failed to create PauliX gate"),
+            QuantumGate::new(GateType::PauliY, vec![0]).expect("failed to create PauliY gate"),
+            QuantumGate::new(GateType::PauliZ, vec![0]).expect("failed to create PauliZ gate"),
         ];
 
         let engine = GateFusionEngine::new();
-        let fused = engine.fuse_gates(gates).unwrap();
+        let fused = engine.fuse_gates(gates).expect("failed to fuse gates");
 
         // Should create one fused sequence with all three gates
         assert_eq!(fused.len(), 1);
@@ -562,12 +566,12 @@ mod tests {
     #[test]
     fn test_no_fusion_different_qubits() {
         let gates = vec![
-            QuantumGate::new(GateType::PauliX, vec![0]).unwrap(),
-            QuantumGate::new(GateType::PauliX, vec![1]).unwrap(), // Different qubit
+            QuantumGate::new(GateType::PauliX, vec![0]).expect("failed to create PauliX gate"),
+            QuantumGate::new(GateType::PauliX, vec![1]).expect("failed to create PauliX gate"), // Different qubit
         ];
 
         let engine = GateFusionEngine::new();
-        let fused = engine.fuse_gates(gates).unwrap();
+        let fused = engine.fuse_gates(gates).expect("failed to fuse gates");
 
         // Should create two separate sequences
         assert_eq!(fused.len(), 2);
@@ -589,7 +593,8 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        let result = FusedGateSequence::matrix_multiply(&identity, &pauli_x, 2).unwrap();
+        let result = FusedGateSequence::matrix_multiply(&identity, &pauli_x, 2)
+            .expect("matrix multiplication failed");
 
         // I * X should equal X
         for (a, b) in result.iter().zip(pauli_x.iter()) {
@@ -600,12 +605,12 @@ mod tests {
     #[test]
     fn test_efficiency_gain_calculation() {
         let gates = vec![
-            QuantumGate::new(GateType::S, vec![0]).unwrap(),
-            QuantumGate::new(GateType::T, vec![0]).unwrap(),
-            QuantumGate::new(GateType::Hadamard, vec![0]).unwrap(),
+            QuantumGate::new(GateType::S, vec![0]).expect("failed to create S gate"),
+            QuantumGate::new(GateType::T, vec![0]).expect("failed to create T gate"),
+            QuantumGate::new(GateType::Hadamard, vec![0]).expect("failed to create Hadamard gate"),
         ];
 
-        let fused = FusedGateSequence::from_gates(gates).unwrap();
+        let fused = FusedGateSequence::from_gates(gates).expect("failed to create fused sequence");
         assert_eq!(fused.efficiency_gain, 3.0); // Three gates fused into one
     }
 }

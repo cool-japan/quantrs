@@ -3,7 +3,7 @@
 //! This module provides comprehensive noise models that accurately represent
 //! the characteristics of real quantum devices, including superconducting
 //! transmon qubits, trapped ions, photonic systems, and other quantum
-//! computing platforms. It integrates with SciRS2 for high-performance
+//! computing platforms. It integrates with `SciRS2` for high-performance
 //! noise simulation and calibration data analysis.
 
 use scirs2_core::ndarray::{Array1, Array2};
@@ -98,6 +98,7 @@ impl Default for DeviceTopology {
 
 impl DeviceTopology {
     /// Create a linear chain topology
+    #[must_use]
     pub fn linear_chain(num_qubits: usize) -> Self {
         let mut connectivity = Array2::from_elem((num_qubits, num_qubits), false);
         let mut coupling_strengths = HashMap::new();
@@ -125,6 +126,7 @@ impl DeviceTopology {
     }
 
     /// Create a square lattice topology
+    #[must_use]
     pub fn square_lattice(width: usize, height: usize) -> Self {
         let num_qubits = width * height;
         let mut connectivity = Array2::from_elem((num_qubits, num_qubits), false);
@@ -172,6 +174,7 @@ impl DeviceTopology {
     }
 
     /// Create IBM heavy-hex topology
+    #[must_use]
     pub fn heavy_hex(distance: usize) -> Self {
         // Simplified heavy-hex implementation
         let num_qubits = distance * distance * 2;
@@ -190,6 +193,7 @@ impl DeviceTopology {
     }
 
     /// Get nearest neighbors of a qubit
+    #[must_use]
     pub fn get_neighbors(&self, qubit: usize) -> Vec<usize> {
         (0..self.num_qubits)
             .filter(|&i| i != qubit && self.connectivity[[qubit, i]])
@@ -197,6 +201,7 @@ impl DeviceTopology {
     }
 
     /// Calculate distance between two qubits
+    #[must_use]
     pub fn distance(&self, qubit1: usize, qubit2: usize) -> f64 {
         let pos1 = &self.positions[qubit1];
         let pos2 = &self.positions[qubit2];
@@ -390,8 +395,8 @@ impl SuperconductingNoiseModel {
             use std::time::{SystemTime, UNIX_EPOCH};
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as u64
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or_else(|_| fastrand::u64(..))
         });
 
         Ok(Self {
@@ -413,8 +418,14 @@ impl SuperconductingNoiseModel {
         let mut model = Self::new(config)?;
 
         // Update parameters from calibration data
-        model.coherence_params.t1_times = calibration.t1_times.clone();
-        model.coherence_params.t2_times = calibration.t2_times.clone();
+        model
+            .coherence_params
+            .t1_times
+            .clone_from(&calibration.t1_times);
+        model
+            .coherence_params
+            .t2_times
+            .clone_from(&calibration.t2_times);
         model.gate_errors.single_qubit = calibration
             .single_qubit_fidelities
             .iter()
@@ -432,7 +443,7 @@ impl SuperconductingNoiseModel {
             model.readout_errors[[i, 1]] = 1.0 - fidelity; // |1⟩ → |0⟩ error
         }
 
-        model.crosstalk = calibration.crosstalk_matrices.clone();
+        model.crosstalk.clone_from(&calibration.crosstalk_matrices);
 
         Ok(model)
     }
@@ -447,7 +458,10 @@ impl SuperconductingNoiseModel {
     /// Sample from random number generator
     fn random(&mut self) -> f64 {
         // Simple linear congruential generator
-        self.rng_state = self.rng_state.wrapping_mul(1103515245).wrapping_add(12345);
+        self.rng_state = self
+            .rng_state
+            .wrapping_mul(1_103_515_245)
+            .wrapping_add(12_345);
         (self.rng_state as f64) / (u64::MAX as f64)
     }
 
@@ -562,7 +576,7 @@ impl SuperconductingNoiseModel {
 
     /// Apply small rotation due to cross-talk
     fn apply_small_rotation(
-        &mut self,
+        &self,
         qubit: usize,
         angle: f64,
         state: &mut Array1<Complex64>,
@@ -701,7 +715,7 @@ impl DeviceNoiseModel for SuperconductingNoiseModel {
 impl SuperconductingNoiseModel {
     /// Apply Pauli error
     fn apply_pauli_error(
-        &mut self,
+        &self,
         qubit: usize,
         pauli_type: usize,
         state: &mut Array1<Complex64>,
@@ -772,7 +786,7 @@ impl SuperconductingNoiseModel {
 pub struct DeviceNoiseSimulator {
     /// Device noise model
     noise_model: Box<dyn DeviceNoiseModel>,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Simulation statistics
     stats: NoiseSimulationStats,
@@ -810,7 +824,7 @@ impl DeviceNoiseSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -893,6 +907,7 @@ impl DeviceNoiseSimulator {
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &NoiseSimulationStats {
         &self.stats
     }
@@ -1050,7 +1065,8 @@ mod tests {
             ..Default::default()
         };
 
-        let model = SuperconductingNoiseModel::new(config).unwrap();
+        let model = SuperconductingNoiseModel::new(config)
+            .expect("SuperconductingNoiseModel creation should succeed");
         assert_eq!(model.device_type(), DeviceType::Superconducting);
         assert_eq!(model.coherence_params.t1_times.len(), 3);
     }
@@ -1060,12 +1076,14 @@ mod tests {
         let config = DeviceNoiseConfig {
             device_type: DeviceType::Superconducting,
             topology: DeviceTopology::linear_chain(2),
-            random_seed: Some(12345),
+            random_seed: Some(12_345),
             ..Default::default()
         };
 
-        let model = SuperconductingNoiseModel::new(config).unwrap();
-        let mut simulator = DeviceNoiseSimulator::new(Box::new(model)).unwrap();
+        let model = SuperconductingNoiseModel::new(config)
+            .expect("SuperconductingNoiseModel creation should succeed");
+        let mut simulator = DeviceNoiseSimulator::new(Box::new(model))
+            .expect("DeviceNoiseSimulator creation should succeed");
 
         let mut state = Array1::from_elem(4, Complex64::new(0.0, 0.0));
         state[0] = Complex64::new(1.0, 0.0);
@@ -1086,17 +1104,19 @@ mod tests {
         let config = DeviceNoiseConfig {
             device_type: DeviceType::Superconducting,
             topology: DeviceTopology::linear_chain(1),
-            random_seed: Some(12345),
+            random_seed: Some(12_345),
             ..Default::default()
         };
 
-        let model = SuperconductingNoiseModel::new(config).unwrap();
-        let mut simulator = DeviceNoiseSimulator::new(Box::new(model)).unwrap();
+        let model = SuperconductingNoiseModel::new(config)
+            .expect("SuperconductingNoiseModel creation should succeed");
+        let mut simulator = DeviceNoiseSimulator::new(Box::new(model))
+            .expect("DeviceNoiseSimulator creation should succeed");
 
         let mut results = vec![false, true, false];
         simulator
             .apply_measurement_noise(&[0, 0, 0], &mut results)
-            .unwrap();
+            .expect("apply_measurement_noise should succeed");
 
         // Some results might have flipped due to readout errors
         // We can't predict exactly which due to randomness, but the function should work
@@ -1144,7 +1164,8 @@ mod tests {
             ..Default::default()
         };
 
-        let model = SuperconductingNoiseModel::from_calibration_data(config, &calibration).unwrap();
+        let model = SuperconductingNoiseModel::from_calibration_data(config, &calibration)
+            .expect("from_calibration_data should succeed");
         assert_eq!(model.coherence_params.t1_times, calibration.t1_times);
         assert_eq!(model.coherence_params.t2_times, calibration.t2_times);
     }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     WeightedRoundRobin,
@@ -31,7 +31,7 @@ pub struct HealthCheckConfig {
 }
 
 /// Health check types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HealthCheckType {
     HTTP,
     HTTPS,

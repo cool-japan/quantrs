@@ -427,7 +427,7 @@ impl QasmValidator {
     }
 
     /// Validate a gate application
-    fn validate_gate(&mut self, gate: &QasmGate) -> Result<(), ValidationError> {
+    fn validate_gate(&self, gate: &QasmGate) -> Result<(), ValidationError> {
         // Check if gate exists
         let (expected_params, expected_qubits) =
             if let Some(&(p, q)) = self.standard_gates.get(&gate.name) {
@@ -482,7 +482,7 @@ impl QasmValidator {
     }
 
     /// Validate a measurement
-    fn validate_measure(&mut self, meas: &Measurement) -> Result<(), ValidationError> {
+    fn validate_measure(&self, meas: &Measurement) -> Result<(), ValidationError> {
         if meas.qubits.len() != meas.targets.len() {
             return Err(ValidationError::SemanticError(
                 "Measurement must have equal number of qubits and classical bits".to_string(),
@@ -856,7 +856,7 @@ cx q[0], q[1];
 measure q -> c;
 ";
 
-        let program = parse_qasm3(input).unwrap();
+        let program = parse_qasm3(input).expect("parse_qasm3 should succeed for valid circuit");
         let result = validate_qasm3(&program);
         assert!(result.is_ok());
     }
@@ -872,7 +872,8 @@ h q[0];
 cx q[0], r[1];  // r is undefined
 ";
 
-        let program = parse_qasm3(input).unwrap();
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for undefined register test");
         let result = validate_qasm3(&program);
         assert!(matches!(result, Err(ValidationError::UndefinedRegister(_))));
     }
@@ -887,7 +888,8 @@ qubit[2] q;
 h q[5];  // Index 5 is out of bounds
 ";
 
-        let program = parse_qasm3(input).unwrap();
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for out of bounds test");
         let result = validate_qasm3(&program);
         assert!(matches!(
             result,
@@ -906,7 +908,8 @@ rx(pi/2) q;  // Correct
 rx q;        // Missing parameter
 ";
 
-        let program = parse_qasm3(input).unwrap();
+        let program =
+            parse_qasm3(input).expect("parse_qasm3 should succeed for gate parameter test");
         let result = validate_qasm3(&program);
         assert!(matches!(
             result,

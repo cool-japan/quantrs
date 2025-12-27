@@ -61,7 +61,7 @@ impl Default for MultiChipConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     /// Equal distribution of problem size
     Equal,
@@ -74,7 +74,7 @@ pub enum LoadBalancingStrategy {
 }
 
 /// Communication protocols between chips
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommunicationProtocol {
     /// Synchronous communication (wait for all)
     Synchronous,
@@ -114,7 +114,7 @@ impl Default for FaultToleranceConfig {
 }
 
 /// Error recovery strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     /// Fail over to backup chips
     Failover,
@@ -194,7 +194,7 @@ pub struct QuantumChip {
 }
 
 /// Chip operational status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChipStatus {
     /// Available for new work
     Available,
@@ -321,7 +321,7 @@ pub struct Message {
 }
 
 /// Types of messages
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MessageType {
     /// Work assignment
     WorkAssignment,
@@ -338,7 +338,7 @@ pub enum MessageType {
 }
 
 /// Connection status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
     /// Active connection
     Active,
@@ -460,6 +460,7 @@ pub struct WorkTransfer {
 
 impl MultiChipCoordinator {
     /// Create new multi-chip coordinator
+    #[must_use]
     pub fn new(config: MultiChipConfig) -> Self {
         Self {
             config: config.clone(),
@@ -467,7 +468,7 @@ impl MultiChipCoordinator {
             partitions: Arc::new(RwLock::new(HashMap::new())),
             channels: Arc::new(Mutex::new(HashMap::new())),
             monitor: Arc::new(Mutex::new(PerformanceMonitor::new())),
-            load_balancer: Arc::new(Mutex::new(LoadBalancer::new(config.load_balancing.clone()))),
+            load_balancer: Arc::new(Mutex::new(LoadBalancer::new(config.load_balancing))),
         }
     }
 
@@ -487,13 +488,13 @@ impl MultiChipCoordinator {
             }
         }
 
-        println!("Registered quantum chip: {}", chip_id);
+        println!("Registered quantum chip: {chip_id}");
         Ok(())
     }
 
     /// Create communication channel between chips
     fn create_communication_channel(&self, chip1: &str, chip2: &str) -> ApplicationResult<()> {
-        let channel_id = format!("{}_{}", chip1, chip2);
+        let channel_id = format!("{chip1}_{chip2}");
         let channel = CommunicationChannel {
             id: channel_id.clone(),
             source: chip1.to_string(),
@@ -576,7 +577,7 @@ impl MultiChipCoordinator {
             let local_model = self.extract_subproblem(problem, &variables)?;
 
             let partition = ProblemPartition {
-                id: format!("partition_{}", i),
+                id: format!("partition_{i}"),
                 parent_problem_id: "main_problem".to_string(),
                 variables,
                 local_model,
@@ -789,7 +790,7 @@ impl MultiChipCoordinator {
 
         for chip_id in chips {
             let message = Message {
-                id: format!("sync_{}", chip_id),
+                id: format!("sync_{chip_id}"),
                 message_type: MessageType::Sync,
                 payload: Vec::new(),
                 timestamp: Instant::now(),
@@ -826,7 +827,7 @@ impl MultiChipCoordinator {
         let execution_time = start_time.elapsed();
         self.collect_execution_metrics(execution_time, &final_result)?;
 
-        println!("Distributed execution completed in {:?}", execution_time);
+        println!("Distributed execution completed in {execution_time:?}");
         Ok(final_result)
     }
 
@@ -953,7 +954,7 @@ impl PerformanceMonitor {
         }
     }
 
-    fn start_monitoring(&mut self) {
+    fn start_monitoring(&self) {
         println!("Performance monitoring started");
     }
 
@@ -961,10 +962,7 @@ impl PerformanceMonitor {
         self.system_metrics.total_throughput = solution_size as f64 / execution_time.as_secs_f64();
         self.system_metrics.average_latency = execution_time;
 
-        println!(
-            "Recorded execution: {} variables in {:?}",
-            solution_size, execution_time
-        );
+        println!("Recorded execution: {solution_size} variables in {execution_time:?}");
     }
 }
 
@@ -987,7 +985,7 @@ pub fn create_example_multi_chip_system() -> ApplicationResult<MultiChipCoordina
     // Create example chips
     for i in 0..4 {
         let chip = QuantumChip {
-            id: format!("chip_{}", i),
+            id: format!("chip_{i}"),
             topology: HardwareTopology::Pegasus(16), // D-Wave Advantage uses Pegasus-16
             status: ChipStatus::Available,
             performance: ChipPerformance::default(),
@@ -1019,15 +1017,22 @@ mod tests {
         let config = MultiChipConfig::default();
         let coordinator = MultiChipCoordinator::new(config);
 
-        let chips = coordinator.chips.read().unwrap();
+        let chips = coordinator
+            .chips
+            .read()
+            .expect("failed to acquire read lock in test");
         assert!(chips.is_empty());
     }
 
     #[test]
     fn test_chip_registration() {
-        let coordinator = create_example_multi_chip_system().unwrap();
+        let coordinator =
+            create_example_multi_chip_system().expect("failed to create multi-chip system in test");
 
-        let chips = coordinator.chips.read().unwrap();
+        let chips = coordinator
+            .chips
+            .read()
+            .expect("failed to acquire read lock in test");
         assert_eq!(chips.len(), 4);
 
         for i in 0..4 {
@@ -1039,7 +1044,8 @@ mod tests {
 
     #[test]
     fn test_problem_distribution() {
-        let coordinator = create_example_multi_chip_system().unwrap();
+        let coordinator =
+            create_example_multi_chip_system().expect("failed to create multi-chip system in test");
 
         // Create test problem
         let mut problem = IsingModel::new(200);
@@ -1048,19 +1054,22 @@ mod tests {
         let result = coordinator.distribute_problem(&problem);
         assert!(result.is_ok());
 
-        let selected_chips = result.unwrap();
+        let selected_chips = result.expect("failed to distribute problem in test");
         assert!(!selected_chips.is_empty());
         assert!(selected_chips.len() <= 4);
     }
 
     #[test]
     fn test_performance_monitoring() {
-        let coordinator = create_example_multi_chip_system().unwrap();
+        let coordinator =
+            create_example_multi_chip_system().expect("failed to create multi-chip system in test");
 
         let result = coordinator.start_performance_monitoring();
         assert!(result.is_ok());
 
-        let metrics = coordinator.get_performance_metrics().unwrap();
+        let metrics = coordinator
+            .get_performance_metrics()
+            .expect("failed to get performance metrics in test");
         assert_eq!(metrics.total_throughput, 0.0);
         assert_eq!(metrics.active_chips, 0);
     }

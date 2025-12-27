@@ -594,10 +594,12 @@ mod tests {
                 beta_end: 0.02,
             },
         )
-        .unwrap();
+        .expect("Failed to create diffusion model");
 
         let x0 = Array1::from_vec(vec![0.5, -0.3, 0.8, -0.1]);
-        let (xt, noise) = model.forward_diffusion(&x0, 50).unwrap();
+        let (xt, noise) = model
+            .forward_diffusion(&x0, 50)
+            .expect("Forward diffusion should succeed");
 
         assert_eq!(xt.len(), 4);
         assert_eq!(noise.len(), 4);
@@ -611,9 +613,9 @@ mod tests {
             50, // timesteps
             NoiseSchedule::Cosine { s: 0.008 },
         )
-        .unwrap();
+        .expect("Failed to create diffusion model");
 
-        let samples = model.generate(5).unwrap();
+        let samples = model.generate(5).expect("Generation should succeed");
         assert_eq!(samples.shape(), &[5, 2]);
     }
 
@@ -624,10 +626,12 @@ mod tests {
             4,  // num_qubits
             10, // noise levels
         )
-        .unwrap();
+        .expect("Failed to create score diffusion model");
 
         let x = Array1::from_vec(vec![0.1, 0.2, 0.3]);
-        let score = model.estimate_score(&x, 0.1).unwrap();
+        let score = model
+            .estimate_score(&x, 0.1)
+            .expect("Score estimation should succeed");
 
         assert_eq!(score.len(), 3);
     }

@@ -5,7 +5,7 @@
 //! and hardware-aware optimizations.
 
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
@@ -123,7 +123,7 @@ pub enum QAOAOptimizationStrategy {
     MLGuided,
     /// Adaptive parameter optimization
     Adaptive,
-    /// OptiRS optimization (Adam, SGD, RMSprop, etc.) - requires "optimize" feature
+    /// `OptiRS` optimization (Adam, SGD, `RMSprop`, etc.) - requires "optimize" feature
     #[cfg(feature = "optimize")]
     OptiRS,
 }
@@ -310,7 +310,7 @@ pub struct QAOAOptimizer {
     stats: QAOAStats,
     /// Parameter transfer database
     parameter_database: Arc<Mutex<ParameterDatabase>>,
-    /// OptiRS optimizer (optional, for OptiRS strategy)
+    /// `OptiRS` optimizer (optional, for `OptiRS` strategy)
     #[cfg(feature = "optimize")]
     optirs_optimizer: Option<OptiRSQuantumOptimizer>,
 }
@@ -554,7 +554,7 @@ impl QAOAOptimizer {
         Ok(())
     }
 
-    /// Apply MaxCut cost layer
+    /// Apply `MaxCut` cost layer
     fn apply_maxcut_cost_layer(&self, circuit: &mut InterfaceCircuit, gamma: f64) -> Result<()> {
         // Apply exp(-i*gamma*H_C) where H_C = sum_{(i,j)} w_{ij} * (1 - Z_i Z_j) / 2
         for i in 0..self.graph.num_vertices {
@@ -1115,7 +1115,7 @@ impl QAOAOptimizer {
         }
     }
 
-    /// Evaluate MaxCut cost
+    /// Evaluate `MaxCut` cost
     fn evaluate_maxcut_cost(&self, bits: &[bool]) -> Result<f64> {
         let mut cost = 0.0;
 
@@ -1273,7 +1273,7 @@ impl QAOAOptimizer {
         }
     }
 
-    /// Solve MaxCut classically (greedy approximation)
+    /// Solve `MaxCut` classically (greedy approximation)
     fn solve_maxcut_classically(&self) -> Result<f64> {
         let mut best_cost = 0.0;
         let num_vertices = self.graph.num_vertices;
@@ -1318,7 +1318,9 @@ impl QAOAOptimizer {
         vertices.sort_by(|&a, &b| {
             let weight_a = self.graph.vertex_weights.get(a).unwrap_or(&1.0);
             let weight_b = self.graph.vertex_weights.get(b).unwrap_or(&1.0);
-            weight_b.partial_cmp(weight_a).unwrap()
+            weight_b
+                .partial_cmp(weight_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let mut selected = vec![false; self.graph.num_vertices];
@@ -1486,9 +1488,9 @@ impl QAOAOptimizer {
         self.classical_parameter_optimization()
     }
 
-    /// OptiRS parameter optimization using Adam, SGD, RMSprop, etc.
+    /// `OptiRS` parameter optimization using Adam, SGD, `RMSprop`, etc.
     ///
-    /// This method uses state-of-the-art ML optimizers from OptiRS to optimize
+    /// This method uses state-of-the-art ML optimizers from `OptiRS` to optimize
     /// QAOA parameters more efficiently than classical gradient descent.
     #[cfg(feature = "optimize")]
     fn optirs_parameter_optimization(&mut self) -> Result<()> {
@@ -1542,7 +1544,11 @@ impl QAOAOptimizer {
         let current_cost = self.evaluate_qaoa_cost(&self.gammas, &self.betas)?;
 
         // OptiRS optimization step
-        let optimizer = self.optirs_optimizer.as_mut().unwrap();
+        let optimizer = self.optirs_optimizer.as_mut().ok_or_else(|| {
+            crate::error::SimulatorError::InvalidInput(
+                "OptiRS optimizer not initialized".to_string(),
+            )
+        })?;
         let new_params = optimizer.optimize_step(&all_params, &all_gradients, -current_cost)?; // Negate cost for minimization
 
         // Split updated parameters back into gammas and betas
@@ -1556,7 +1562,12 @@ impl QAOAOptimizer {
     fn apply_parameter_transfer(&mut self) -> Result<()> {
         // Load similar problem parameters from database
         let characteristics = self.extract_problem_characteristics()?;
-        let database = self.parameter_database.lock().unwrap();
+        let database = self.parameter_database.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidInput(format!(
+                "Failed to lock parameter database: {}",
+                e
+            ))
+        })?;
 
         if let Some(similar_params) = database.parameters.get(&characteristics) {
             if let Some((gammas, betas, _cost)) = similar_params.first() {
@@ -1567,9 +1578,14 @@ impl QAOAOptimizer {
         Ok(())
     }
 
-    fn store_parameters_for_transfer(&mut self) -> Result<()> {
+    fn store_parameters_for_transfer(&self) -> Result<()> {
         let characteristics = self.extract_problem_characteristics()?;
-        let mut database = self.parameter_database.lock().unwrap();
+        let mut database = self.parameter_database.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidInput(format!(
+                "Failed to lock parameter database: {}",
+                e
+            ))
+        })?;
 
         let entry = database.parameters.entry(characteristics).or_default();
         entry.push((
@@ -1579,7 +1595,7 @@ impl QAOAOptimizer {
         ));
 
         // Keep only best parameters
-        entry.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
+        entry.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
         entry.truncate(5);
 
         Ok(())
@@ -1609,15 +1625,13 @@ impl QAOAOptimizer {
     }
 
     fn extract_problem_features(&self) -> Result<Vec<f64>> {
-        let mut features = Vec::new();
-
-        // Graph features
-        features.push(self.graph.num_vertices as f64);
-        features.push(self.graph.adjacency_matrix.sum());
-        features.push(self.graph.vertex_weights.iter().sum::<f64>());
-
-        // Problem type encoding
-        features.push(self.problem_type as u32 as f64);
+        // Graph features and problem type encoding
+        let features = vec![
+            self.graph.num_vertices as f64,
+            self.graph.adjacency_matrix.sum(),
+            self.graph.vertex_weights.iter().sum::<f64>(),
+            f64::from(self.problem_type as u32),
+        ];
 
         Ok(features)
     }
@@ -1901,7 +1915,12 @@ pub fn benchmark_qaoa() -> Result<HashMap<String, f64>> {
                 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0,
             ],
         )
-        .unwrap(),
+        .map_err(|e| {
+            crate::error::SimulatorError::InvalidInput(format!(
+                "Failed to create adjacency matrix: {}",
+                e
+            ))
+        })?,
         vertex_weights: vec![1.0; 4],
         edge_weights: HashMap::new(),
         constraints: Vec::new(),
@@ -1945,7 +1964,9 @@ mod tests {
     fn test_maxcut_cost_evaluation() {
         let optimizer = create_test_optimizer();
         let bits = [true, false, true, false];
-        let cost = optimizer.evaluate_maxcut_cost(&bits).unwrap();
+        let cost = optimizer
+            .evaluate_maxcut_cost(&bits)
+            .expect("MaxCut cost evaluation should succeed");
         assert!(cost >= 0.0);
     }
 
@@ -1957,8 +1978,10 @@ mod tests {
         };
         let graph = create_test_graph();
 
-        let gammas = QAOAOptimizer::initialize_gammas(&config, &graph).unwrap();
-        let betas = QAOAOptimizer::initialize_betas(&config, &graph).unwrap();
+        let gammas = QAOAOptimizer::initialize_gammas(&config, &graph)
+            .expect("Gamma initialization should succeed");
+        let betas = QAOAOptimizer::initialize_betas(&config, &graph)
+            .expect("Beta initialization should succeed");
 
         assert_eq!(gammas.len(), 3);
         assert_eq!(betas.len(), 3);
@@ -1968,14 +1991,17 @@ mod tests {
     fn test_constraint_checking() {
         let optimizer = create_test_optimizer();
         let solution = "1010";
-        let feasible = optimizer.check_feasibility(solution).unwrap();
+        let feasible = optimizer
+            .check_feasibility(solution)
+            .expect("Feasibility check should succeed");
         assert!(feasible);
     }
 
     fn create_test_optimizer() -> QAOAOptimizer {
         let graph = create_test_graph();
         let config = QAOAConfig::default();
-        QAOAOptimizer::new(config, graph, QAOAProblemType::MaxCut).unwrap()
+        QAOAOptimizer::new(config, graph, QAOAProblemType::MaxCut)
+            .expect("Test optimizer creation should succeed")
     }
 
     fn create_test_graph() -> QAOAGraph {

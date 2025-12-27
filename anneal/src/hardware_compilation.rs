@@ -119,7 +119,7 @@ pub enum HardwareType {
 }
 
 /// Connectivity patterns for hardware topologies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectivityPattern {
     /// Nearest neighbor connectivity
     NearestNeighbor,
@@ -332,7 +332,7 @@ pub struct ResourceAllocation {
 }
 
 /// Qubit allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QubitAllocationStrategy {
     /// Minimize total qubits used
     MinimizeCount,
@@ -347,7 +347,7 @@ pub enum QubitAllocationStrategy {
 }
 
 /// Coupling utilization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CouplingUtilization {
     /// Conservative usage (high reliability)
     Conservative,
@@ -360,7 +360,7 @@ pub enum CouplingUtilization {
 }
 
 /// Parallelization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParallelizationStrategy {
     /// No parallelization
     None,
@@ -399,7 +399,7 @@ pub enum EmbeddingAlgorithm {
     /// Machine learning guided embedding
     MLGuided,
     /// Hybrid approach
-    Hybrid(Vec<EmbeddingAlgorithm>),
+    Hybrid(Vec<Self>),
 }
 
 /// Embedding quality thresholds
@@ -646,6 +646,7 @@ pub struct MLPerformanceModel {
 
 impl MLPerformanceModel {
     /// Create a new ML performance model
+    #[must_use]
     pub fn new() -> Self {
         Self {
             parameters: HashMap::new(),
@@ -704,7 +705,7 @@ impl PerformanceModel for MLPerformanceModel {
 
         // Apply simple feature-based adjustments
         if features.len() >= 3 {
-            success_prob *= 1.0 - 0.1 * features[2].max(0.0).min(2.0); // Chain length impact
+            success_prob *= 0.1f64.mul_add(-features[2].max(0.0).min(2.0), 1.0); // Chain length impact
             solution_quality *= features[3].max(0.5).min(1.0); // Efficiency impact
             time_to_solution *= features[0] / 100.0; // Problem size impact
         }
@@ -853,7 +854,7 @@ pub struct OptimizationConfig {
 }
 
 /// Optimization algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationAlgorithm {
     /// Simulated annealing
     SimulatedAnnealing,
@@ -869,6 +870,7 @@ pub enum OptimizationAlgorithm {
 
 impl OptimizationEngine {
     /// Create a new optimization engine
+    #[must_use]
     pub fn new(config: OptimizationConfig) -> Self {
         Self {
             state: OptimizationState {
@@ -910,7 +912,7 @@ impl OptimizationEngine {
 
             // Add random perturbations
             let mut rng = ChaCha8Rng::seed_from_u64(iteration as u64);
-            for (key, value) in candidate_params.iter_mut() {
+            for (key, value) in &mut candidate_params {
                 let perturbation = rng.gen_range(-0.1..0.1) * *value;
                 *value = (*value + perturbation).max(0.01);
             }
@@ -921,13 +923,13 @@ impl OptimizationEngine {
             // Accept if better
             if candidate_value < best_value {
                 best_value = candidate_value;
-                best_params = candidate_params.clone();
-                current_params = candidate_params.clone();
+                best_params.clone_from(&candidate_params);
+                current_params.clone_from(&candidate_params);
             }
 
             // Record step
             self.history.push(OptimizationStep {
-                description: format!("Iteration {}", iteration),
+                description: format!("Iteration {iteration}"),
                 objective_value: candidate_value,
                 parameters: candidate_params,
                 step_time: start_time.elapsed() / (iteration + 1) as u32,
@@ -953,6 +955,7 @@ impl OptimizationEngine {
 
 impl HardwareCompiler {
     /// Create a new hardware compiler
+    #[must_use]
     pub fn new(target_hardware: CompilationTarget, config: CompilerConfig) -> Self {
         Self {
             target_hardware,
@@ -1046,7 +1049,7 @@ impl HardwareCompiler {
             }
         }
         let max_couplings = problem.num_qubits * (problem.num_qubits - 1) / 2;
-        num_couplings as f64 / max_couplings as f64
+        f64::from(num_couplings) / max_couplings as f64
     }
 
     /// Analyze coupling strength distribution
@@ -1071,7 +1074,7 @@ impl HardwareCompiler {
             };
         }
 
-        couplings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        couplings.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let mean = couplings.iter().sum::<f64>() / couplings.len() as f64;
         let variance =
             couplings.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / couplings.len() as f64;
@@ -1167,7 +1170,7 @@ impl HardwareCompiler {
         })
     }
 
-    /// Convert EmbeddingResult to EmbeddingInfo
+    /// Convert `EmbeddingResult` to `EmbeddingInfo`
     fn convert_embedding_result_to_info(&self, result: &EmbeddingResult) -> EmbeddingInfo {
         let mut chains = Vec::new();
         for (logical, physical) in &result.embedding {
@@ -1361,7 +1364,7 @@ pub struct CouplingDistribution {
 }
 
 /// Distribution types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DistributionType {
     /// Uniform distribution
     Uniform,
@@ -1374,7 +1377,7 @@ pub enum DistributionType {
 }
 
 /// Problem structure types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemStructure {
     /// Sparse connectivity
     Sparse,
@@ -1507,6 +1510,7 @@ fn create_chimera_connectivity(unit_cells: (usize, usize), cell_size: usize) -> 
 }
 
 /// Create an ideal hardware target for testing
+#[must_use]
 pub fn create_ideal_target(num_qubits: usize) -> CompilationTarget {
     let connectivity = vec![vec![true; num_qubits]; num_qubits];
 
@@ -1584,7 +1588,7 @@ mod tests {
 
     #[test]
     fn test_chimera_target_creation() {
-        let target = create_chimera_target((2, 2), 4).unwrap();
+        let target = create_chimera_target((2, 2), 4).expect("should create Chimera target");
         assert_eq!(target.characteristics.num_qubits, 32); // 2*2*4*2
         assert!(matches!(
             target.hardware_type,
@@ -1599,11 +1603,17 @@ mod tests {
         let compiler = HardwareCompiler::new(target, config);
 
         let mut problem = IsingModel::new(5);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, 0.5).unwrap();
-        problem.set_coupling(1, 2, -0.3).unwrap();
+        problem.set_bias(0, 1.0).expect("should set bias");
+        problem
+            .set_coupling(0, 1, 0.5)
+            .expect("should set coupling");
+        problem
+            .set_coupling(1, 2, -0.3)
+            .expect("should set coupling");
 
-        let analysis = compiler.analyze_problem(&problem).unwrap();
+        let analysis = compiler
+            .analyze_problem(&problem)
+            .expect("should analyze problem");
         assert_eq!(analysis.num_variables, 5);
         assert!(analysis.connectivity_density > 0.0);
         assert!(analysis.connectivity_density < 1.0);
@@ -1616,12 +1626,16 @@ mod tests {
         let mut compiler = HardwareCompiler::new(target, config);
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_bias(1, -0.5).unwrap();
-        problem.set_coupling(0, 1, 0.3).unwrap();
-        problem.set_coupling(1, 2, -0.2).unwrap();
+        problem.set_bias(0, 1.0).expect("should set bias");
+        problem.set_bias(1, -0.5).expect("should set bias");
+        problem
+            .set_coupling(0, 1, 0.3)
+            .expect("should set coupling");
+        problem
+            .set_coupling(1, 2, -0.2)
+            .expect("should set coupling");
 
-        let result = compiler.compile(&problem).unwrap();
+        let result = compiler.compile(&problem).expect("should compile problem");
 
         assert_eq!(result.compiled_ising.num_qubits, 4);
         assert!(result.performance_prediction.success_probability > 0.0);
@@ -1714,7 +1728,7 @@ mod tests {
 
         let prediction = model
             .predict_performance(&problem, &embedding_info, &hardware)
-            .unwrap();
+            .expect("should predict performance");
 
         assert!(prediction.success_probability > 0.0 && prediction.success_probability <= 1.0);
         assert!(prediction.solution_quality > 0.0 && prediction.solution_quality <= 1.0);

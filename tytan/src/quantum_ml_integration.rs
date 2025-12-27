@@ -118,7 +118,9 @@ impl QuantumBoltzmannMachine {
             }
         }
 
-        let final_loss = *loss_history.last().unwrap();
+        let final_loss = *loss_history
+            .last()
+            .ok_or("Training failed: epochs must be > 0")?;
         let converged = final_loss < 0.01;
 
         Ok(TrainingResult {
@@ -536,8 +538,12 @@ impl QuantumGAN {
             disc_losses.push(epoch_disc_loss / self.config.disc_steps as f64);
         }
 
-        let final_gen_loss = *gen_losses.last().unwrap();
-        let final_disc_loss = *disc_losses.last().unwrap();
+        let final_gen_loss = *gen_losses
+            .last()
+            .ok_or("Training failed: epochs must be > 0")?;
+        let final_disc_loss = *disc_losses
+            .last()
+            .ok_or("Training failed: epochs must be > 0")?;
 
         Ok(QGANTrainingResult {
             generator_losses: gen_losses,
@@ -640,7 +646,8 @@ impl QuantumGenerator {
 impl QuantumDiscriminator {
     fn new(input_dim: usize, depth: usize) -> Self {
         let mut rng = thread_rng();
-        let normal = Normal::new(0.0, PI / 4.0).unwrap();
+        let normal =
+            Normal::new(0.0, PI / 4.0).expect("Normal distribution with std=PI/4 is always valid");
 
         let params = Array2::from_shape_fn((depth, input_dim), |_| normal.sample(&mut rng));
 
@@ -666,7 +673,9 @@ impl QuantumDiscriminator {
             // Pooling layer (reduce dimension)
             if layer == self.depth - 1 {
                 // Global pooling for final output
-                return Ok(state.mean().unwrap());
+                return state
+                    .mean()
+                    .ok_or_else(|| "Cannot compute mean of empty state".to_string());
             }
         }
 
@@ -771,9 +780,9 @@ impl QuantumRL {
             q_values
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(idx, _)| idx)
-                .unwrap()
+                .unwrap_or(0)
         }
     }
 
@@ -837,7 +846,8 @@ impl QuantumRL {
 impl QuantumQNetwork {
     fn new(input_dim: usize, output_dim: usize, n_layers: usize) -> Self {
         let mut rng = thread_rng();
-        let normal = Normal::new(0.0, 0.1).unwrap();
+        let normal =
+            Normal::new(0.0, 0.1).expect("Normal distribution with std=0.1 is always valid");
 
         let params = Array3::from_shape_fn(
             (n_layers, input_dim + output_dim, input_dim + output_dim),

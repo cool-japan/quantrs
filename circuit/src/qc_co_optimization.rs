@@ -587,7 +587,7 @@ impl HybridOptimizer {
 
             if current_value < best_value {
                 best_value = current_value;
-                best_parameters = current_parameters.clone();
+                best_parameters.clone_from(&current_parameters);
             }
 
             // Store history
@@ -736,7 +736,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         problem
             .add_quantum_component("q1".to_string(), circuit, vec![0, 1])
-            .unwrap();
+            .expect("add_quantum_component should succeed");
 
         assert_eq!(problem.quantum_circuits.len(), 1);
         assert_eq!(problem.data_flow.nodes.len(), 1);
@@ -750,7 +750,7 @@ mod tests {
         let circuit = Circuit::<2>::new();
         problem
             .add_quantum_component("q1".to_string(), circuit, vec![0])
-            .unwrap();
+            .expect("add_quantum_component should succeed");
         problem
             .add_classical_step(
                 "c1".to_string(),
@@ -758,7 +758,7 @@ mod tests {
                 vec!["q1".to_string()],
                 vec!["output".to_string()],
             )
-            .unwrap();
+            .expect("add_classical_step should succeed");
 
         problem
             .add_data_flow(
@@ -766,7 +766,7 @@ mod tests {
                 "c1".to_string(),
                 DataType::Measurements(vec![0.1, 0.2]),
             )
-            .unwrap();
+            .expect("add_data_flow should succeed");
 
         assert_eq!(problem.data_flow.edges.len(), 1);
     }

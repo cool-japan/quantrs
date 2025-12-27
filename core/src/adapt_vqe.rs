@@ -420,7 +420,7 @@ impl AdaptVQE {
             // Step 2: Select operator with largest gradient magnitude
             let (max_gradient_idx, max_gradient) = gradients.iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap())
+                .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap_or(std::cmp::Ordering::Equal))
                 .ok_or_else(|| QuantRS2Error::InvalidState("No gradients computed".to_string()))?;
 
             // Check convergence: if max gradient is below threshold, we're done
@@ -552,7 +552,7 @@ impl AdaptVQEResult {
     /// Get convergence rate (energy change per iteration)
     pub fn convergence_rate(&self) -> f64 {
         if self.num_iterations > 1 {
-            let energy_change = (self.ansatz.energy_history.first().unwrap() -
+            let energy_change = (self.ansatz.energy_history.first().unwrap_or(&0.0) -
                                self.final_energy).abs();
             energy_change / self.num_iterations as f64
         } else {

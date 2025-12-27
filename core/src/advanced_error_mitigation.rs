@@ -295,7 +295,7 @@ pub struct SymmetryVerification {
 
 impl SymmetryVerification {
     /// Create a new symmetry verification instance
-    pub fn new(symmetry_operators: Vec<Array1<Complex64>>, tolerance: f64) -> Self {
+    pub const fn new(symmetry_operators: Vec<Array1<Complex64>>, tolerance: f64) -> Self {
         Self {
             symmetry_operators,
             tolerance,
@@ -311,7 +311,7 @@ impl SymmetryVerification {
 
         for (idx, symmetry_op) in self.symmetry_operators.iter().enumerate() {
             // Check if state is eigenstate of symmetry operator
-            let expectation = self.compute_expectation(measurement_state, symmetry_op);
+            let expectation = Self::compute_expectation(measurement_state, symmetry_op);
 
             // For a perfect eigenstate, expectation should be ±1
             if (expectation.abs() - 1.0).abs() > self.tolerance {
@@ -323,7 +323,7 @@ impl SymmetryVerification {
     }
 
     /// Compute expectation value <ψ|O|ψ>
-    fn compute_expectation(&self, state: &Array1<Complex64>, operator: &Array1<Complex64>) -> f64 {
+    fn compute_expectation(state: &Array1<Complex64>, operator: &Array1<Complex64>) -> f64 {
         // Simplified: assuming operator is diagonal in computational basis
         state
             .iter()
@@ -361,7 +361,7 @@ pub struct QuantumSubspaceExpansion {
 
 impl QuantumSubspaceExpansion {
     /// Create a new QSE instance
-    pub fn new(num_qubits: usize) -> Self {
+    pub const fn new(num_qubits: usize) -> Self {
         let expansion_basis = Vec::new(); // Will be populated with error-aware basis states
         Self {
             expansion_basis,
@@ -491,18 +491,21 @@ impl HybridErrorMitigation {
     }
 
     /// Enable virtual distillation with specified number of copies
+    #[must_use]
     pub fn with_virtual_distillation(mut self, num_copies: usize) -> Self {
         self.virtual_distillation = Some(VirtualDistillation::new(num_copies));
         self
     }
 
     /// Enable Clifford data regression
+    #[must_use]
     pub fn with_clifford_regression(mut self, num_training: usize, degree: usize) -> Self {
         self.clifford_regression = Some(CliffordDataRegression::new(num_training, degree));
         self
     }
 
     /// Enable symmetry verification
+    #[must_use]
     pub fn with_symmetry_verification(
         mut self,
         operators: Vec<Array1<Complex64>>,
@@ -513,6 +516,7 @@ impl HybridErrorMitigation {
     }
 
     /// Enable quantum subspace expansion
+    #[must_use]
     pub fn with_subspace_expansion(mut self, num_qubits: usize) -> Self {
         self.subspace_expansion = Some(QuantumSubspaceExpansion::new(num_qubits));
         self
@@ -564,7 +568,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Mitigated value should be in reasonable range (virtual distillation produces product of measurements)
-        let mitigated = result.unwrap();
+        let mitigated = result.expect("Virtual distillation should produce a valid result");
         assert!(
             mitigated > 0.7 && mitigated < 1.0,
             "Expected mitigated value in range (0.7, 1.0), got {}",
@@ -586,7 +590,7 @@ mod tests {
         // Test mitigation
         let mitigated = cdr.mitigate(0.45);
         assert!(mitigated.is_ok());
-        assert!((mitigated.unwrap() - 0.5).abs() < 0.1);
+        assert!((mitigated.expect("CDR mitigation should succeed") - 0.5).abs() < 0.1);
     }
 
     #[test]

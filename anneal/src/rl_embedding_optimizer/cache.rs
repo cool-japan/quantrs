@@ -5,7 +5,11 @@ use std::time::{Duration, Instant};
 
 use super::embedding::EmbeddingOptimizer;
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
-use super::types::*;
+use super::types::{
+    CacheMetadata, CachedEmbedding, EmbeddingPerformanceResults, EmbeddingQualityMetrics,
+    EmbeddingState, RLPerformanceMetrics, RLTrainingStats, RuntimeStatistics,
+    TransferLearningStats,
+};
 use crate::embedding::{Embedding, HardwareTopology};
 use crate::ising::IsingModel;
 
@@ -14,6 +18,7 @@ pub struct CacheManager;
 
 impl CacheManager {
     /// Check cache for similar problems
+    #[must_use]
     pub fn check_cache<'a>(
         embedding_cache: &'a HashMap<String, CachedEmbedding>,
         state: &EmbeddingState,
@@ -108,6 +113,7 @@ impl CacheManager {
     }
 
     /// Calculate cache hit rate
+    #[must_use]
     pub fn calculate_cache_hit_rate(embedding_cache: &HashMap<String, CachedEmbedding>) -> f64 {
         let total_accesses: usize = embedding_cache
             .values()
@@ -150,6 +156,7 @@ impl PerformanceTracker {
     }
 
     /// Calculate computational efficiency
+    #[must_use]
     pub fn calculate_computational_efficiency(
         problems_solved: usize,
         total_time: Duration,
@@ -180,7 +187,7 @@ impl PerformanceTracker {
     }
 
     /// Update transfer learning effectiveness
-    pub fn update_transfer_effectiveness(
+    pub const fn update_transfer_effectiveness(
         metrics: &mut RLPerformanceMetrics,
         transfer_stats: &TransferLearningStats,
     ) {
@@ -188,6 +195,7 @@ impl PerformanceTracker {
     }
 
     /// Generate performance report
+    #[must_use]
     pub fn generate_performance_report(metrics: &RLPerformanceMetrics) -> String {
         format!(
             "RL Embedding Optimizer Performance Report:\n\

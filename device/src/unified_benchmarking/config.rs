@@ -88,7 +88,7 @@ pub struct AlgorithmBenchmarkConfig {
 }
 
 /// System-level benchmark configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SystemBenchmarkConfig {
     /// Cross-platform comparison benchmarks
     pub enable_cross_platform: bool,
@@ -238,16 +238,16 @@ pub enum SingleQubitGate {
 impl PartialEq for SingleQubitGate {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (SingleQubitGate::X, SingleQubitGate::X) => true,
-            (SingleQubitGate::Y, SingleQubitGate::Y) => true,
-            (SingleQubitGate::Z, SingleQubitGate::Z) => true,
-            (SingleQubitGate::H, SingleQubitGate::H) => true,
-            (SingleQubitGate::S, SingleQubitGate::S) => true,
-            (SingleQubitGate::T, SingleQubitGate::T) => true,
-            (SingleQubitGate::SqrtX, SingleQubitGate::SqrtX) => true,
-            (SingleQubitGate::RX(a), SingleQubitGate::RX(b)) => (a - b).abs() < 1e-10,
-            (SingleQubitGate::RY(a), SingleQubitGate::RY(b)) => (a - b).abs() < 1e-10,
-            (SingleQubitGate::RZ(a), SingleQubitGate::RZ(b)) => (a - b).abs() < 1e-10,
+            (Self::X, Self::X) => true,
+            (Self::Y, Self::Y) => true,
+            (Self::Z, Self::Z) => true,
+            (Self::H, Self::H) => true,
+            (Self::S, Self::S) => true,
+            (Self::T, Self::T) => true,
+            (Self::SqrtX, Self::SqrtX) => true,
+            (Self::RX(a), Self::RX(b)) => (a - b).abs() < 1e-10,
+            (Self::RY(a), Self::RY(b)) => (a - b).abs() < 1e-10,
+            (Self::RZ(a), Self::RZ(b)) => (a - b).abs() < 1e-10,
             _ => false,
         }
     }
@@ -258,22 +258,22 @@ impl Eq for SingleQubitGate {}
 impl std::hash::Hash for SingleQubitGate {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
-            SingleQubitGate::X => 0u8.hash(state),
-            SingleQubitGate::Y => 1u8.hash(state),
-            SingleQubitGate::Z => 2u8.hash(state),
-            SingleQubitGate::H => 3u8.hash(state),
-            SingleQubitGate::S => 4u8.hash(state),
-            SingleQubitGate::T => 5u8.hash(state),
-            SingleQubitGate::SqrtX => 6u8.hash(state),
-            SingleQubitGate::RX(f) => {
+            Self::X => 0u8.hash(state),
+            Self::Y => 1u8.hash(state),
+            Self::Z => 2u8.hash(state),
+            Self::H => 3u8.hash(state),
+            Self::S => 4u8.hash(state),
+            Self::T => 5u8.hash(state),
+            Self::SqrtX => 6u8.hash(state),
+            Self::RX(f) => {
                 7u8.hash(state);
                 (*f as u64).hash(state);
             }
-            SingleQubitGate::RY(f) => {
+            Self::RY(f) => {
                 8u8.hash(state);
                 (*f as u64).hash(state);
             }
-            SingleQubitGate::RZ(f) => {
+            Self::RZ(f) => {
                 9u8.hash(state);
                 (*f as u64).hash(state);
             }
@@ -296,13 +296,13 @@ pub enum TwoQubitGate {
 impl PartialEq for TwoQubitGate {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (TwoQubitGate::CNOT, TwoQubitGate::CNOT) => true,
-            (TwoQubitGate::CZ, TwoQubitGate::CZ) => true,
-            (TwoQubitGate::SWAP, TwoQubitGate::SWAP) => true,
-            (TwoQubitGate::ISwap, TwoQubitGate::ISwap) => true,
-            (TwoQubitGate::CRX(a), TwoQubitGate::CRX(b)) => (a - b).abs() < 1e-10,
-            (TwoQubitGate::CRY(a), TwoQubitGate::CRY(b)) => (a - b).abs() < 1e-10,
-            (TwoQubitGate::CRZ(a), TwoQubitGate::CRZ(b)) => (a - b).abs() < 1e-10,
+            (Self::CNOT, Self::CNOT) => true,
+            (Self::CZ, Self::CZ) => true,
+            (Self::SWAP, Self::SWAP) => true,
+            (Self::ISwap, Self::ISwap) => true,
+            (Self::CRX(a), Self::CRX(b)) => (a - b).abs() < 1e-10,
+            (Self::CRY(a), Self::CRY(b)) => (a - b).abs() < 1e-10,
+            (Self::CRZ(a), Self::CRZ(b)) => (a - b).abs() < 1e-10,
             _ => false,
         }
     }
@@ -313,19 +313,19 @@ impl Eq for TwoQubitGate {}
 impl std::hash::Hash for TwoQubitGate {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
-            TwoQubitGate::CNOT => 0u8.hash(state),
-            TwoQubitGate::CZ => 1u8.hash(state),
-            TwoQubitGate::SWAP => 2u8.hash(state),
-            TwoQubitGate::ISwap => 3u8.hash(state),
-            TwoQubitGate::CRX(f) => {
+            Self::CNOT => 0u8.hash(state),
+            Self::CZ => 1u8.hash(state),
+            Self::SWAP => 2u8.hash(state),
+            Self::ISwap => 3u8.hash(state),
+            Self::CRX(f) => {
                 4u8.hash(state);
                 (*f as u64).hash(state); // Approximate hash for f64
             }
-            TwoQubitGate::CRY(f) => {
+            Self::CRY(f) => {
                 5u8.hash(state);
                 (*f as u64).hash(state);
             }
-            TwoQubitGate::CRZ(f) => {
+            Self::CRZ(f) => {
                 6u8.hash(state);
                 (*f as u64).hash(state);
             }
@@ -341,7 +341,7 @@ pub enum MultiQubitGate {
     Controlled(Box<SingleQubitGate>, usize),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FidelityMeasurementMethod {
     ProcessTomography,
     RandomizedBenchmarking,
@@ -429,14 +429,14 @@ pub struct RetryConfig {
     pub exponential_backoff: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TimeoutHandling {
     AbortOnTimeout,
     ContinueWithPartialResults,
     ExtendTimeoutOnce,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorRecoveryStrategy {
     RetryOnDifferentDevice,
     ReduceCircuitComplexity,
@@ -451,7 +451,7 @@ pub struct HypothesisTestingConfig {
     pub effect_size_measures: Vec<EffectSizeMeasure>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatisticalTest {
     TTest,
     MannWhitneyU,
@@ -461,7 +461,7 @@ pub enum StatisticalTest {
     KruskalWallis,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MultipleComparisonsCorrection {
     Bonferroni,
     FDR,
@@ -469,7 +469,7 @@ pub enum MultipleComparisonsCorrection {
     Hochberg,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EffectSizeMeasure {
     CohenD,
     HedgeG,
@@ -477,7 +477,7 @@ pub enum EffectSizeMeasure {
     EtaSquared,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MLModelType {
     LinearRegression,
     RandomForest,
@@ -497,7 +497,7 @@ pub struct FeatureEngineeringConfig {
     pub dimensionality_reduction: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     MinimizeExecutionTime,
     MaximizeFidelity,
@@ -507,7 +507,7 @@ pub enum OptimizationObjective {
     MaximizeThroughput,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationAlgorithm {
     GradientDescent,
     ParticleSwarm,
@@ -517,7 +517,7 @@ pub enum OptimizationAlgorithm {
     SimulatedAnnealing,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GraphMetric {
     Betweenness,
     Closeness,
@@ -528,7 +528,7 @@ pub enum GraphMetric {
     AveragePathLength,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportFormat {
     PDF,
     HTML,
@@ -538,7 +538,7 @@ pub enum ReportFormat {
     Markdown,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VisualizationType {
     PerformanceCharts,
     StatisticalPlots,
@@ -550,7 +550,7 @@ pub enum VisualizationType {
     TimeSeries,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportDestination {
     LocalFile(String),
     S3Bucket(String),
@@ -567,7 +567,7 @@ pub struct DashboardConfig {
     pub authentication: DashboardAuth,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DashboardAuth {
     None,
     Basic { username: String, password: String },
@@ -583,7 +583,7 @@ pub struct AutomatedReportConfig {
     pub report_types: Vec<AutomatedReportType>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportSchedule {
     Daily,
     Weekly,
@@ -591,7 +591,7 @@ pub enum ReportSchedule {
     Custom(String), // Cron expression
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AutomatedReportType {
     PerformanceSummary,
     CostAnalysis,
@@ -615,7 +615,7 @@ pub struct CostTargets {
     pub cost_efficiency_target: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostOptimizationStrategy {
     PreferLowerCostPlatforms,
     OptimizeShotAllocation,
@@ -639,7 +639,7 @@ pub struct PerformanceTargets {
     pub min_throughput: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceOptimizationStrategy {
     OptimizeCircuitMapping,
     UseErrorMitigation,
@@ -655,7 +655,7 @@ pub struct LoadBalancingConfig {
     pub health_checks: HealthCheckConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingStrategy {
     RoundRobin,
     WeightedRoundRobin,
@@ -679,7 +679,7 @@ pub struct SchedulingOptimizationConfig {
     pub priority_handling: PriorityHandling,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchedulingStrategy {
     FIFO,
     SJF, // Shortest Job First
@@ -688,7 +688,7 @@ pub enum SchedulingStrategy {
     ResourceAware,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PriorityHandling {
     Strict,
     WeightedFair,
@@ -703,7 +703,7 @@ pub struct TrendAnalysisConfig {
     pub forecast_horizon: Duration,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDetectionMethod {
     LinearRegression,
     ARIMA,
@@ -725,7 +725,7 @@ pub struct ComparativeAnalysisConfig {
     pub significance_testing: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonMethod {
     PairwiseComparison,
     RankingAnalysis,
@@ -749,7 +749,7 @@ pub struct CustomCircuitDefinition {
     pub constraints: Vec<CircuitConstraint>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CustomCircuitType {
     QASM(String),
     PythonFunction(String),
@@ -757,7 +757,7 @@ pub enum CustomCircuitType {
     CircuitGenerator(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitConstraint {
     MaxDepth(usize),
     MaxQubits(usize),
@@ -779,16 +779,4 @@ pub struct SuccessCriteria {
     pub max_error_rate: Option<f64>,
     pub max_execution_time: Option<Duration>,
     pub custom_metrics: HashMap<String, f64>,
-}
-
-impl Default for SystemBenchmarkConfig {
-    fn default() -> Self {
-        Self {
-            enable_cross_platform: false,
-            enable_resource_benchmarks: false,
-            enable_cost_benchmarks: false,
-            enable_scalability_benchmarks: false,
-            enable_reliability_benchmarks: false,
-        }
-    }
 }

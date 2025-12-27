@@ -1,11 +1,11 @@
-//! OptiRS Integration for Quantum Variational Algorithms
+//! `OptiRS` Integration for Quantum Variational Algorithms
 //!
-//! This module provides integration between OptiRS optimizers and QuantRS2 variational
-//! quantum algorithms (VQE, QAOA, etc.). It bridges OptiRS's state-of-the-art ML
+//! This module provides integration between `OptiRS` optimizers and `QuantRS2` variational
+//! quantum algorithms (VQE, QAOA, etc.). It bridges `OptiRS`'s state-of-the-art ML
 //! optimization algorithms with quantum circuit parameter optimization.
 //!
 //! # Features
-//! - Production-ready optimizers from OptiRS (Adam, SGD, RMSprop, Adagrad)
+//! - Production-ready optimizers from `OptiRS` (Adam, SGD, `RMSprop`, Adagrad)
 //! - Gradient-based optimization for VQE/QAOA
 //! - Learning rate scheduling
 //! - Gradient clipping and regularization
@@ -20,20 +20,20 @@ use std::time::Duration;
 // Import OptiRS optimizers with proper type bounds
 use optirs_core::optimizers::{Adagrad, Adam, Optimizer, RMSprop, SGD};
 
-/// OptiRS optimizer types available for quantum optimization
+/// `OptiRS` optimizer types available for quantum optimization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptiRSOptimizerType {
     /// Stochastic Gradient Descent with momentum
     SGD { momentum: bool },
     /// Adam optimizer (Adaptive Moment Estimation)
     Adam,
-    /// RMSprop optimizer
+    /// `RMSprop` optimizer
     RMSprop,
     /// Adagrad optimizer
     Adagrad,
 }
 
-/// OptiRS optimizer configuration for quantum algorithms
+/// `OptiRS` optimizer configuration for quantum algorithms
 #[derive(Debug, Clone)]
 pub struct OptiRSConfig {
     /// Optimizer type
@@ -69,11 +69,11 @@ impl Default for OptiRSConfig {
     }
 }
 
-/// OptiRS quantum optimizer wrapper
+/// `OptiRS` quantum optimizer wrapper
 pub struct OptiRSQuantumOptimizer {
     /// Configuration
     config: OptiRSConfig,
-    /// Underlying OptiRS optimizer
+    /// Underlying `OptiRS` optimizer
     optimizer: OptiRSOptimizerImpl,
     /// Current iteration
     iteration: usize,
@@ -96,7 +96,7 @@ enum OptiRSOptimizerImpl {
 }
 
 impl OptiRSQuantumOptimizer {
-    /// Create a new OptiRS quantum optimizer
+    /// Create a new `OptiRS` quantum optimizer
     pub fn new(config: OptiRSConfig) -> Result<Self> {
         let optimizer = Self::create_optimizer(&config)?;
 
@@ -111,7 +111,7 @@ impl OptiRSQuantumOptimizer {
         })
     }
 
-    /// Create the underlying OptiRS optimizer
+    /// Create the underlying `OptiRS` optimizer
     fn create_optimizer(config: &OptiRSConfig) -> Result<OptiRSOptimizerImpl> {
         let optimizer = match config.optimizer_type {
             OptiRSOptimizerType::SGD { momentum } => {
@@ -203,6 +203,7 @@ impl OptiRSQuantumOptimizer {
     }
 
     /// Check if optimization has converged
+    #[must_use]
     pub fn has_converged(&self) -> bool {
         if self.cost_history.len() < 2 {
             return false;
@@ -226,43 +227,49 @@ impl OptiRSQuantumOptimizer {
     }
 
     /// Get the best parameters found
+    #[must_use]
     pub fn best_parameters(&self) -> Option<&[f64]> {
         self.best_parameters.as_deref()
     }
 
     /// Get the best cost found
+    #[must_use]
     pub const fn best_cost(&self) -> f64 {
         self.best_cost
     }
 
     /// Get the cost history
+    #[must_use]
     pub fn cost_history(&self) -> &[f64] {
         &self.cost_history
     }
 
     /// Get the gradient norms history
+    #[must_use]
     pub fn gradient_norms(&self) -> &[f64] {
         &self.gradient_norms
     }
 
     /// Get the current iteration
+    #[must_use]
     pub const fn iteration(&self) -> usize {
         self.iteration
     }
 
     /// Reset the optimizer state by recreating it
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> Result<()> {
         // Recreate the optimizer to reset its state
-        self.optimizer = Self::create_optimizer(&self.config).unwrap();
+        self.optimizer = Self::create_optimizer(&self.config)?;
         self.iteration = 0;
         self.best_parameters = None;
         self.best_cost = f64::INFINITY;
         self.cost_history.clear();
         self.gradient_norms.clear();
+        Ok(())
     }
 }
 
-/// OptiRS optimization result
+/// `OptiRS` optimization result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptiRSOptimizationResult {
     /// Optimal parameters found
@@ -283,6 +290,7 @@ pub struct OptiRSOptimizationResult {
 
 impl OptiRSOptimizationResult {
     /// Create a new result from the optimizer
+    #[must_use]
     pub fn from_optimizer(
         optimizer: &OptiRSQuantumOptimizer,
         converged: bool,
@@ -317,13 +325,16 @@ mod tests {
             optimizer_type: OptiRSOptimizerType::SGD { momentum: true },
             ..Default::default()
         };
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create SGD optimizer");
 
         let params = vec![1.0, 2.0, 3.0];
         let grads = vec![0.1, 0.2, 0.15];
         let cost = 1.5;
 
-        let new_params = optimizer.optimize_step(&params, &grads, cost).unwrap();
+        let new_params = optimizer
+            .optimize_step(&params, &grads, cost)
+            .expect("Failed to perform optimization step");
         assert_eq!(new_params.len(), params.len());
     }
 
@@ -334,13 +345,16 @@ mod tests {
             learning_rate: 0.001,
             ..Default::default()
         };
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create Adam optimizer");
 
         let params = vec![0.5, 1.5, 2.5];
         let grads = vec![0.05, 0.15, 0.1];
         let cost = 2.3;
 
-        let new_params = optimizer.optimize_step(&params, &grads, cost).unwrap();
+        let new_params = optimizer
+            .optimize_step(&params, &grads, cost)
+            .expect("Failed to perform optimization step");
         assert_eq!(new_params.len(), params.len());
         assert_eq!(optimizer.iteration(), 1);
     }
@@ -351,7 +365,8 @@ mod tests {
             convergence_tolerance: 1e-6,
             ..Default::default()
         };
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create optimizer");
 
         // Should not converge initially
         assert!(!optimizer.has_converged());
@@ -360,7 +375,9 @@ mod tests {
         for _ in 0..15 {
             let params = vec![1.0];
             let grads = vec![0.001];
-            optimizer.optimize_step(&params, &grads, 1.0).unwrap();
+            optimizer
+                .optimize_step(&params, &grads, 1.0)
+                .expect("Failed to perform optimization step");
         }
 
         // Should converge with stable costs
@@ -374,13 +391,16 @@ mod tests {
             learning_rate: 10.0, // Large LR to test bounds
             ..Default::default()
         };
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create optimizer");
 
         let params = vec![0.9];
         let grads = vec![-1.0]; // Would push parameter > 1.0 without bounds
         let cost = 1.0;
 
-        let new_params = optimizer.optimize_step(&params, &grads, cost).unwrap();
+        let new_params = optimizer
+            .optimize_step(&params, &grads, cost)
+            .expect("Failed to perform optimization step");
         assert!(new_params[0] <= 1.0);
         assert!(new_params[0] >= -1.0);
     }
@@ -391,7 +411,8 @@ mod tests {
             gradient_clip_norm: Some(0.5),
             ..Default::default()
         };
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create optimizer");
 
         let params = vec![1.0, 1.0];
         let large_grads = vec![10.0, 10.0]; // Norm = sqrt(200) >> 0.5
@@ -400,26 +421,29 @@ mod tests {
         // Should not crash with large gradients
         let new_params = optimizer
             .optimize_step(&params, &large_grads, cost)
-            .unwrap();
+            .expect("Failed to perform optimization step");
         assert_eq!(new_params.len(), params.len());
     }
 
     #[test]
     fn test_optirs_reset() {
         let config = OptiRSConfig::default();
-        let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+        let mut optimizer =
+            OptiRSQuantumOptimizer::new(config).expect("Failed to create optimizer");
 
         // Perform some steps
         for _ in 0..5 {
             let params = vec![1.0];
             let grads = vec![0.1];
-            optimizer.optimize_step(&params, &grads, 1.0).unwrap();
+            optimizer
+                .optimize_step(&params, &grads, 1.0)
+                .expect("Failed to perform optimization step");
         }
 
         assert_eq!(optimizer.iteration(), 5);
 
         // Reset
-        optimizer.reset();
+        optimizer.reset().expect("Failed to reset optimizer");
 
         assert_eq!(optimizer.iteration(), 0);
         assert_eq!(optimizer.cost_history().len(), 0);
@@ -440,7 +464,8 @@ mod tests {
                 optimizer_type: opt_type,
                 ..Default::default()
             };
-            let mut optimizer = OptiRSQuantumOptimizer::new(config).unwrap();
+            let mut optimizer =
+                OptiRSQuantumOptimizer::new(config).expect("Failed to create optimizer");
 
             let params = vec![1.0, 2.0];
             let grads = vec![0.1, 0.2];

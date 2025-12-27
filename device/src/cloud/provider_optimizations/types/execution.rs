@@ -380,7 +380,7 @@ pub struct CoolingRequirements {
     pub thermal_isolation: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ResourceAllocation {
     pub compute_resources: ComputeResourceAllocation,
     pub storage_resources: StorageResourceAllocation,

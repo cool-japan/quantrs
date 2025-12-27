@@ -642,7 +642,9 @@ mod tests {
         };
 
         let sampler = QuantumAnnealingSampler::new(config);
-        let mut results = sampler.run_qubo(&(matrix, var_map), 10).unwrap();
+        let results = sampler
+            .run_qubo(&(matrix, var_map), 10)
+            .expect("Failed to run QUBO sampling");
 
         assert_eq!(results.len(), 10);
 

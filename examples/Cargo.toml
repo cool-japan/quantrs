@@ -310,8 +310,9 @@ dead_code = "allow"
 deprecated = "allow"  # Allow deprecated methods from dependencies
 
 [lints.clippy]
-# Inherit clippy lints from workspace
-enum_glob_use = "warn"
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-unwrap_used = "warn"
+# Suppress clippy lints for examples (demo code, not production)
+enum_glob_use = "allow"
+pedantic = { level = "allow", priority = -1 }
+nursery = { level = "allow", priority = -1 }
+unwrap_used = "allow"
+all = { level = "allow", priority = -1 }

@@ -27,7 +27,7 @@ pub fn apply_single_qubit_gate_batch(
     }
 
     let batch_size = batch.batch_size();
-    let _state_size = 1 << n_qubits;
+    // let _state_size = 1 << n_qubits;
 
     // Use optimized SIMD batch processing for large batches
     if batch_size > 32 {
@@ -167,7 +167,7 @@ fn apply_single_qubit_batch_simd(
     // We'll process multiple batch items simultaneously using SIMD
     // Collect all pairs of amplitudes that need to be transformed
     let _pairs_per_batch = state_size / 2;
-    let _total_pairs = batch_size * _pairs_per_batch;
+    let total_pairs = batch_size * _pairs_per_batch;
 
     // For simpler implementation, process each batch item individually
     // but use SIMD within each batch item
@@ -402,8 +402,7 @@ pub fn batch_state_matrix_multiply(
 
     if num_matrices != batch_size {
         return Err(QuantRS2Error::InvalidInput(format!(
-            "Number of matrices {} doesn't match batch size {}",
-            num_matrices, batch_size
+            "Number of matrices {num_matrices} doesn't match batch size {batch_size}"
         )));
     }
 
@@ -500,14 +499,16 @@ mod tests {
 
     #[test]
     fn test_batch_hadamard() {
-        let mut batch = BatchStateVector::new(3, 1, Default::default()).unwrap();
+        let mut batch = BatchStateVector::new(3, 1, Default::default())
+            .expect("Failed to create batch state vector for Hadamard test");
         let h = Hadamard { target: QubitId(0) };
 
-        h.apply_batch(&mut batch, &[QubitId(0)]).unwrap();
+        h.apply_batch(&mut batch, &[QubitId(0)])
+            .expect("Failed to apply Hadamard gate to batch");
 
         // Check all states are in superposition
         for i in 0..3 {
-            let state = batch.get_state(i).unwrap();
+            let state = batch.get_state(i).expect("Failed to get state from batch");
             assert!((state[0].re - 1.0 / std::f64::consts::SQRT_2).abs() < 1e-10);
             assert!((state[1].re - 1.0 / std::f64::consts::SQRT_2).abs() < 1e-10);
         }
@@ -515,14 +516,16 @@ mod tests {
 
     #[test]
     fn test_batch_pauli_x() {
-        let mut batch = BatchStateVector::new(2, 1, Default::default()).unwrap();
+        let mut batch = BatchStateVector::new(2, 1, Default::default())
+            .expect("Failed to create batch state vector for Pauli X test");
         let x = PauliX { target: QubitId(0) };
 
-        x.apply_batch(&mut batch, &[QubitId(0)]).unwrap();
+        x.apply_batch(&mut batch, &[QubitId(0)])
+            .expect("Failed to apply Pauli X gate to batch");
 
         // Check all states are flipped
         for i in 0..2 {
-            let state = batch.get_state(i).unwrap();
+            let state = batch.get_state(i).expect("Failed to get state from batch");
             assert_eq!(state[0], Complex64::new(0.0, 0.0));
             assert_eq!(state[1], Complex64::new(1.0, 0.0));
         }
@@ -530,7 +533,8 @@ mod tests {
 
     #[test]
     fn test_expectation_values_batch() {
-        let batch = BatchStateVector::new(5, 1, Default::default()).unwrap();
+        let batch = BatchStateVector::new(5, 1, Default::default())
+            .expect("Failed to create batch state vector for expectation test");
 
         // Pauli Z observable
         let z_observable = array![
@@ -538,7 +542,8 @@ mod tests {
             [Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0)]
         ];
 
-        let expectations = compute_expectation_values_batch(&batch, &z_observable).unwrap();
+        let expectations = compute_expectation_values_batch(&batch, &z_observable)
+            .expect("Failed to compute expectation values");
 
         // All states are |0>, so expectation of Z should be 1
         for exp in expectations {

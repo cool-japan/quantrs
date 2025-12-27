@@ -338,13 +338,16 @@ mod tests {
     #[test]
     fn test_qml_model_type_serialization() {
         let model_type = QMLModelType::QuantumNeuralNetwork;
-        let serialized = serde_json::to_string(&model_type).unwrap();
-        let deserialized: QMLModelType = serde_json::from_str(&serialized).unwrap();
+        let serialized =
+            serde_json::to_string(&model_type).expect("QMLModelType serialization should succeed");
+        let deserialized: QMLModelType =
+            serde_json::from_str(&serialized).expect("QMLModelType deserialization should succeed");
         assert_eq!(model_type, deserialized);
     }
     #[tokio::test]
     async fn test_qml_hub_model_registration() {
-        let hub = create_qml_integration_hub().unwrap();
+        let hub = create_qml_integration_hub()
+            .expect("QML integration hub creation should succeed with default config");
         let model = QMLModel {
             model_id: "test_model".to_string(),
             model_type: QMLModelType::QuantumClassifier,

@@ -64,10 +64,10 @@ pub type NonStoquasticResult<T> = Result<T, NonStoquasticError>;
 /// Types of non-stoquastic Hamiltonians
 #[derive(Debug, Clone, PartialEq)]
 pub enum HamiltonianType {
-    /// XY model: H = Σ(J_x σ_x^i σ_x^j + J_y σ_y^i σ_y^j)
+    /// XY model: H = `Σ(J_x` `σ_x^i` `σ_x^j` + `J_y` `σ_y^i` `σ_y^j`)
     XYModel { j_x: f64, j_y: f64 },
 
-    /// XYZ (Heisenberg) model: H = Σ(J_x σ_x^i σ_x^j + J_y σ_y^i σ_y^j + J_z σ_z^i σ_z^j)
+    /// XYZ (Heisenberg) model: H = `Σ(J_x` `σ_x^i` `σ_x^j` + `J_y` `σ_y^i` `σ_y^j` + `J_z` `σ_z^i` `σ_z^j`)
     XYZModel { j_x: f64, j_y: f64, j_z: f64 },
 
     /// Complex-weighted Ising model
@@ -97,13 +97,13 @@ pub struct ComplexCoupling {
 /// Types of quantum interactions
 #[derive(Debug, Clone, PartialEq)]
 pub enum InteractionType {
-    /// XX interaction (σ_x^i σ_x^j)
+    /// XX interaction (`σ_x^i` `σ_x^j`)
     XX,
-    /// YY interaction (σ_y^i σ_y^j)
+    /// YY interaction (`σ_y^i` `σ_y^j`)
     YY,
-    /// ZZ interaction (σ_z^i σ_z^j)
+    /// ZZ interaction (`σ_z^i` `σ_z^j`)
     ZZ,
-    /// XY interaction (σ_x^i σ_y^j + σ_y^i σ_x^j)
+    /// XY interaction (`σ_x^i` `σ_y^j` + `σ_y^i` `σ_x^j`)
     XY,
     /// Complex XY interaction (σ_+^i σ_-^j + σ_-^i σ_+^j)
     ComplexXY,
@@ -138,6 +138,7 @@ pub struct NonStoquasticHamiltonian {
 
 impl NonStoquasticHamiltonian {
     /// Create a new non-stoquastic Hamiltonian
+    #[must_use]
     pub fn new(num_qubits: usize, hamiltonian_type: HamiltonianType) -> Self {
         let has_sign_problem = match hamiltonian_type {
             HamiltonianType::XYModel { .. }
@@ -217,6 +218,7 @@ impl NonStoquasticHamiltonian {
     }
 
     /// Create complex-weighted Ising model
+    #[must_use]
     pub fn complex_ising_model(num_qubits: usize) -> Self {
         Self::new(num_qubits, HamiltonianType::ComplexIsingModel)
     }
@@ -248,11 +250,13 @@ impl NonStoquasticHamiltonian {
     }
 
     /// Check if Hamiltonian is stoquastic
-    pub fn is_stoquastic(&self) -> bool {
+    #[must_use]
+    pub const fn is_stoquastic(&self) -> bool {
         !self.has_sign_problem
     }
 
     /// Estimate sign problem severity
+    #[must_use]
     pub fn sign_problem_severity(&self) -> f64 {
         if !self.has_sign_problem {
             return 0.0;
@@ -378,7 +382,7 @@ pub struct NonStoquasticQMCConfig {
 impl Default for NonStoquasticQMCConfig {
     fn default() -> Self {
         Self {
-            num_steps: 10000,
+            num_steps: 10_000,
             thermalization_steps: 1000,
             temperature: 1.0,
             tau: 0.1,
@@ -393,7 +397,7 @@ impl Default for NonStoquasticQMCConfig {
 }
 
 /// Strategies for mitigating the sign problem
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SignMitigationStrategy {
     /// Simple reweighting method
     ReweightingMethod,
@@ -489,6 +493,7 @@ pub struct QuantumState {
 
 impl QuantumState {
     /// Create a new quantum state
+    #[must_use]
     pub fn new(num_qubits: usize, num_time_slices: usize) -> Self {
         let configurations = vec![vec![1; num_qubits]; num_time_slices];
 
@@ -512,7 +517,8 @@ impl QuantumState {
     }
 
     /// Calculate overlap with another state
-    pub fn overlap(&self, other: &QuantumState) -> NComplex<f64> {
+    #[must_use]
+    pub fn overlap(&self, other: &Self) -> NComplex<f64> {
         if let (Some(ref amp1), Some(ref amp2)) = (&self.amplitudes, &other.amplitudes) {
             amp1.iter()
                 .zip(amp2.iter())
@@ -612,16 +618,16 @@ impl NonStoquasticSimulator {
         }
 
         // Calculate results
-        let ground_state_energy = if !energy_samples.is_empty() {
-            energy_samples.iter().sum::<NComplex<f64>>() / energy_samples.len() as f64
-        } else {
+        let ground_state_energy = if energy_samples.is_empty() {
             NComplex::new(0.0, 0.0)
+        } else {
+            energy_samples.iter().sum::<NComplex<f64>>() / energy_samples.len() as f64
         };
 
-        let average_sign = if !sign_samples.is_empty() {
-            sign_samples.iter().sum::<NComplex<f64>>() / sign_samples.len() as f64
-        } else {
+        let average_sign = if sign_samples.is_empty() {
             NComplex::new(1.0, 0.0)
+        } else {
+            sign_samples.iter().sum::<NComplex<f64>>() / sign_samples.len() as f64
         };
 
         let energy_variance = if energy_samples.len() > 1 {
@@ -635,7 +641,7 @@ impl NonStoquasticSimulator {
             0.0
         };
 
-        let acceptance_rate = acceptance_count as f64 / total_proposals as f64;
+        let acceptance_rate = f64::from(acceptance_count) / f64::from(total_proposals);
 
         Ok(NonStoquasticResults {
             ground_state_energy,
@@ -684,10 +690,10 @@ impl NonStoquasticSimulator {
             NComplex::new(0.0, 0.0)
         };
 
-        let average_sign = if !sign_samples.is_empty() {
-            sign_samples.iter().sum::<NComplex<f64>>() / sign_samples.len() as f64
-        } else {
+        let average_sign = if sign_samples.is_empty() {
             NComplex::new(1.0, 0.0)
+        } else {
+            sign_samples.iter().sum::<NComplex<f64>>() / sign_samples.len() as f64
         };
 
         Ok(NonStoquasticResults {
@@ -758,8 +764,12 @@ impl NonStoquasticSimulator {
 
         let ground_state_energy = final_energies
             .iter()
-            .min_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap())
-            .cloned()
+            .min_by(|a, b| {
+                a.norm()
+                    .partial_cmp(&b.norm())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .copied()
             .unwrap_or(NComplex::new(0.0, 0.0));
 
         Ok(NonStoquasticResults {
@@ -835,15 +845,15 @@ impl NonStoquasticSimulator {
         let mut energy = NComplex::new(0.0, 0.0);
 
         // Local field contribution
-        let spin = self.current_state.configurations[time_slice][site] as f64;
+        let spin = f64::from(self.current_state.configurations[time_slice][site]);
         energy += self.hamiltonian.local_fields[site] * spin;
 
         // Coupling contributions
         for coupling in &self.hamiltonian.complex_couplings {
             if coupling.sites.0 == site || coupling.sites.1 == site {
                 let (i, j) = coupling.sites;
-                let spin_i = self.current_state.configurations[time_slice][i] as f64;
-                let spin_j = self.current_state.configurations[time_slice][j] as f64;
+                let spin_i = f64::from(self.current_state.configurations[time_slice][i]);
+                let spin_j = f64::from(self.current_state.configurations[time_slice][j]);
 
                 match coupling.interaction_type {
                     InteractionType::ZZ => {
@@ -884,7 +894,7 @@ impl NonStoquasticSimulator {
         // Local fields
         for (site, &field) in self.hamiltonian.local_fields.iter().enumerate() {
             for time_slice in 0..state.num_time_slices {
-                let spin = state.configurations[time_slice][site] as f64;
+                let spin = f64::from(state.configurations[time_slice][site]);
                 energy += field * spin;
             }
         }
@@ -893,8 +903,8 @@ impl NonStoquasticSimulator {
         for coupling in &self.hamiltonian.complex_couplings {
             let (i, j) = coupling.sites;
             for time_slice in 0..state.num_time_slices {
-                let spin_i = state.configurations[time_slice][i] as f64;
-                let spin_j = state.configurations[time_slice][j] as f64;
+                let spin_i = f64::from(state.configurations[time_slice][i]);
+                let spin_j = f64::from(state.configurations[time_slice][j]);
 
                 match coupling.interaction_type {
                     InteractionType::ZZ => {
@@ -913,10 +923,7 @@ impl NonStoquasticSimulator {
     /// Calculate wavefunction sign
     fn calculate_sign(&self) -> NonStoquasticResult<NComplex<f64>> {
         // Simplified sign calculation
-        let mut sign = NComplex::new(1.0, 0.0);
-
-        // For XY models, sign depends on the configuration
-        if let HamiltonianType::XYModel { .. } = self.hamiltonian.hamiltonian_type {
+        let sign = if let HamiltonianType::XYModel { .. } = self.hamiltonian.hamiltonian_type {
             let mut phase = 0.0;
 
             for coupling in &self.hamiltonian.complex_couplings {
@@ -933,8 +940,10 @@ impl NonStoquasticSimulator {
                 }
             }
 
-            sign = NComplex::new(phase.cos(), phase.sin());
-        }
+            NComplex::new(phase.cos(), phase.sin())
+        } else {
+            NComplex::new(1.0, 0.0)
+        };
 
         Ok(sign)
     }
@@ -969,7 +978,7 @@ impl NonStoquasticSimulator {
 
         let mut i = 0;
         for j in 0..n {
-            let target = offset + j as f64 * step;
+            let target = (j as f64).mul_add(step, offset);
 
             while cumsum < target && i < probabilities.len() {
                 cumsum += probabilities[i];
@@ -988,7 +997,8 @@ impl NonStoquasticSimulator {
 /// Utility functions for non-stoquastic systems
 
 /// Detect whether a Hamiltonian is stoquastic
-pub fn is_hamiltonian_stoquastic(hamiltonian: &NonStoquasticHamiltonian) -> bool {
+#[must_use]
+pub const fn is_hamiltonian_stoquastic(hamiltonian: &NonStoquasticHamiltonian) -> bool {
     hamiltonian.is_stoquastic()
 }
 
@@ -1120,7 +1130,8 @@ mod tests {
 
     #[test]
     fn test_xy_model_creation() {
-        let hamiltonian = NonStoquasticHamiltonian::xy_model(4, 1.0, 0.5).unwrap();
+        let hamiltonian =
+            NonStoquasticHamiltonian::xy_model(4, 1.0, 0.5).expect("Failed to create XY model");
         assert_eq!(hamiltonian.num_qubits, 4);
         assert!(hamiltonian.has_sign_problem);
         assert_eq!(hamiltonian.complex_couplings.len(), 6); // 3 XX + 3 YY couplings
@@ -1128,7 +1139,8 @@ mod tests {
 
     #[test]
     fn test_xyz_model_creation() {
-        let hamiltonian = NonStoquasticHamiltonian::xyz_model(3, 1.0, 1.0, 0.5).unwrap();
+        let hamiltonian = NonStoquasticHamiltonian::xyz_model(3, 1.0, 1.0, 0.5)
+            .expect("Failed to create XYZ model");
         assert_eq!(hamiltonian.num_qubits, 3);
         assert!(hamiltonian.has_sign_problem);
         assert_eq!(hamiltonian.complex_couplings.len(), 6); // 2 XX + 2 YY + 2 ZZ couplings
@@ -1136,7 +1148,8 @@ mod tests {
 
     #[test]
     fn test_sign_problem_detection() {
-        let xy_hamiltonian = NonStoquasticHamiltonian::xy_model(4, 1.0, 1.0).unwrap();
+        let xy_hamiltonian =
+            NonStoquasticHamiltonian::xy_model(4, 1.0, 1.0).expect("Failed to create XY model");
         assert!(xy_hamiltonian.sign_problem_severity() > 0.0);
 
         let ising_like = NonStoquasticHamiltonian::new(
@@ -1150,9 +1163,14 @@ mod tests {
 
     #[test]
     fn test_local_field_setting() {
-        let mut hamiltonian = NonStoquasticHamiltonian::xy_model(3, 1.0, 1.0).unwrap();
-        hamiltonian.set_local_field(0, 0.5).unwrap();
-        hamiltonian.set_local_field(2, -0.3).unwrap();
+        let mut hamiltonian =
+            NonStoquasticHamiltonian::xy_model(3, 1.0, 1.0).expect("Failed to create XY model");
+        hamiltonian
+            .set_local_field(0, 0.5)
+            .expect("Failed to set local field");
+        hamiltonian
+            .set_local_field(2, -0.3)
+            .expect("Failed to set local field");
 
         assert_eq!(hamiltonian.local_fields[0], 0.5);
         assert_eq!(hamiltonian.local_fields[1], 0.0);
@@ -1169,7 +1187,9 @@ mod tests {
             interaction_type: InteractionType::XY,
         };
 
-        hamiltonian.add_complex_coupling(coupling.clone()).unwrap();
+        hamiltonian
+            .add_complex_coupling(coupling.clone())
+            .expect("Failed to add complex coupling");
         assert_eq!(hamiltonian.complex_couplings.len(), 1);
         assert_eq!(hamiltonian.complex_couplings[0].sites, (0, 2));
         assert_eq!(
@@ -1180,8 +1200,11 @@ mod tests {
 
     #[test]
     fn test_matrix_representation_small() {
-        let hamiltonian = NonStoquasticHamiltonian::xy_model(2, 1.0, 0.0).unwrap();
-        let matrix = hamiltonian.to_matrix().unwrap();
+        let hamiltonian =
+            NonStoquasticHamiltonian::xy_model(2, 1.0, 0.0).expect("Failed to create XY model");
+        let matrix = hamiltonian
+            .to_matrix()
+            .expect("Failed to convert to matrix");
 
         assert_eq!(matrix.len(), 4); // 2^2 = 4 states
         assert_eq!(matrix[0].len(), 4);
@@ -1206,26 +1229,29 @@ mod tests {
 
     #[test]
     fn test_xy_to_ising_conversion() {
-        let xy_hamiltonian = NonStoquasticHamiltonian::xy_model(3, 1.0, 1.0).unwrap();
-        let ising = xy_to_ising_approximation(&xy_hamiltonian).unwrap();
+        let xy_hamiltonian =
+            NonStoquasticHamiltonian::xy_model(3, 1.0, 1.0).expect("Failed to create XY model");
+        let ising = xy_to_ising_approximation(&xy_hamiltonian)
+            .expect("Failed to convert XY to Ising approximation");
 
         assert_eq!(ising.num_qubits, 3);
 
         // Check that couplings were converted
-        let coupling_01 = ising.get_coupling(0, 1).unwrap();
+        let coupling_01 = ising.get_coupling(0, 1).expect("Failed to get coupling");
         assert!(coupling_01.abs() > 1e-10); // Should have non-zero coupling
     }
 
     #[test]
     fn test_helper_functions() {
-        let xy_chain = create_xy_chain(4, 1.0, 0.5).unwrap();
+        let xy_chain = create_xy_chain(4, 1.0, 0.5).expect("Failed to create XY chain");
         assert_eq!(xy_chain.num_qubits, 4);
         assert!(xy_chain.complex_couplings.len() > 6); // Should have periodic boundary
 
-        let tfxy = create_tfxy_model(3, 1.0, 1.0, 0.5).unwrap();
+        let tfxy = create_tfxy_model(3, 1.0, 1.0, 0.5).expect("Failed to create TFXY model");
         assert!(tfxy.local_fields.iter().all(|&f| f.abs() > 1e-10)); // All sites should have fields
 
-        let triangle = create_frustrated_xy_triangle(1.0).unwrap();
+        let triangle =
+            create_frustrated_xy_triangle(1.0).expect("Failed to create frustrated triangle");
         assert_eq!(triangle.num_qubits, 3);
         assert_eq!(triangle.complex_couplings.len(), 6); // 3 pairs × 2 (XX, YY)
     }

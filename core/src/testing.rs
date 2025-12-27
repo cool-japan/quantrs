@@ -13,7 +13,7 @@ use std::fmt;
 pub const DEFAULT_TOLERANCE: f64 = 1e-10;
 
 /// Result of a quantum test
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestResult {
     /// Test passed
     Pass,
@@ -24,8 +24,8 @@ pub enum TestResult {
 }
 
 impl TestResult {
-    pub fn is_pass(&self) -> bool {
-        matches!(self, TestResult::Pass)
+    pub const fn is_pass(&self) -> bool {
+        matches!(self, Self::Pass)
     }
 }
 
@@ -44,7 +44,7 @@ impl Default for QuantumAssert {
 
 impl QuantumAssert {
     /// Create with custom tolerance
-    pub fn with_tolerance(tolerance: f64) -> Self {
+    pub const fn with_tolerance(tolerance: f64) -> Self {
         Self { tolerance }
     }
 
@@ -93,8 +93,7 @@ impl QuantumAssert {
 
         if (norm_squared - 1.0).abs() > self.tolerance {
             TestResult::Fail(format!(
-                "State not normalized: norm^2 = {} (expected 1.0)",
-                norm_squared
+                "State not normalized: norm^2 = {norm_squared} (expected 1.0)"
             ))
         } else {
             TestResult::Pass
@@ -119,8 +118,7 @@ impl QuantumAssert {
 
         if inner_product.norm() > self.tolerance {
             TestResult::Fail(format!(
-                "States not orthogonal: inner product = {}",
-                inner_product
+                "States not orthogonal: inner product = {inner_product}"
             ))
         } else {
             TestResult::Pass
@@ -131,7 +129,7 @@ impl QuantumAssert {
     pub fn matrix_unitary(&self, matrix: &Array2<Complex64>) -> TestResult {
         let (rows, cols) = matrix.dim();
         if rows != cols {
-            return TestResult::Fail(format!("Matrix not square: {}x{}", rows, cols));
+            return TestResult::Fail(format!("Matrix not square: {rows}x{cols}"));
         }
 
         // Compute U† U
@@ -179,8 +177,7 @@ impl QuantumAssert {
             let actual_prob = state[index].probability();
             if (actual_prob - expected_prob).abs() > self.tolerance {
                 return TestResult::Fail(format!(
-                    "Probability mismatch at index {}: expected {}, got {}",
-                    index, expected_prob, actual_prob
+                    "Probability mismatch at index {index}: expected {expected_prob}, got {actual_prob}"
                 ));
             }
         }
@@ -230,12 +227,14 @@ impl QuantumTest {
     }
 
     /// Add setup function
+    #[must_use]
     pub fn with_setup(mut self, setup: impl Fn() -> Result<(), QuantRS2Error> + 'static) -> Self {
         self.setup = Some(Box::new(setup));
         self
     }
 
     /// Add teardown function
+    #[must_use]
     pub fn with_teardown(mut self, teardown: impl Fn() + 'static) -> Self {
         self.teardown = Some(Box::new(teardown));
         self
@@ -246,7 +245,7 @@ impl QuantumTest {
         // Run setup
         if let Some(setup) = &self.setup {
             if let Err(e) = setup() {
-                return TestResult::Fail(format!("Setup failed: {}", e));
+                return TestResult::Fail(format!("Setup failed: {e}"));
             }
         }
 
@@ -349,12 +348,12 @@ impl fmt::Display for TestSuiteResult {
                 TestResult::Skip(_) => "⊙ SKIP",
             };
 
-            writeln!(f, "{:<6} {}", status, name)?;
+            writeln!(f, "{status:<6} {name}")?;
 
             if let TestResult::Fail(reason) = result {
-                writeln!(f, "       Reason: {}", reason)?;
+                writeln!(f, "       Reason: {reason}")?;
             } else if let TestResult::Skip(reason) = result {
-                writeln!(f, "       Reason: {}", reason)?;
+                writeln!(f, "       Reason: {reason}")?;
             }
         }
 

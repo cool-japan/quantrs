@@ -81,7 +81,7 @@ pub enum QuantumInstruction {
     },
     QuantumConditional {
         condition: String,
-        instruction: Box<QuantumInstruction>,
+        instruction: Box<Self>,
     },
     QuantumTeleportation {
         source: QubitId,
@@ -102,12 +102,12 @@ pub enum ClassicalInstruction {
     },
     Conditional {
         condition: String,
-        then_block: Vec<ClassicalInstruction>,
-        else_block: Vec<ClassicalInstruction>,
+        then_block: Vec<Self>,
+        else_block: Vec<Self>,
     },
     Loop {
         condition: String,
-        body: Vec<ClassicalInstruction>,
+        body: Vec<Self>,
     },
     FunctionCall {
         function: String,
@@ -125,7 +125,7 @@ pub enum ClassicalValue {
     Float(f64),
     Boolean(bool),
     String(String),
-    Array(Vec<ClassicalValue>),
+    Array(Vec<Self>),
 }
 
 #[derive(Debug, Clone)]
@@ -533,7 +533,7 @@ impl QuantumOperatingSystem {
         })
     }
 
-    fn execute_process_operations(
+    const fn execute_process_operations(
         &self,
         _process_id: u64,
     ) -> Result<ProcessExecutionResult, QuantRS2Error> {
@@ -545,23 +545,23 @@ impl QuantumOperatingSystem {
     }
 
     // Benchmarking methods
-    fn benchmark_quantum_scheduling(&self) -> f64 {
+    const fn benchmark_quantum_scheduling(&self) -> f64 {
         7.3 // 7.3x advantage with coherence-aware scheduling
     }
 
-    fn benchmark_quantum_memory(&self) -> f64 {
+    const fn benchmark_quantum_memory(&self) -> f64 {
         11.2 // 11.2x improvement with quantum memory hierarchy
     }
 
-    fn benchmark_quantum_isolation(&self) -> f64 {
+    const fn benchmark_quantum_isolation(&self) -> f64 {
         15.6 // 15.6x better isolation with quantum security
     }
 
-    fn benchmark_quantum_resources(&self) -> f64 {
+    const fn benchmark_quantum_resources(&self) -> f64 {
         9.8 // 9.8x better resource utilization
     }
 
-    fn benchmark_quantum_security(&self) -> f64 {
+    const fn benchmark_quantum_security(&self) -> f64 {
         25.4 // 25.4x stronger security with quantum protocols
     }
 }
@@ -651,7 +651,7 @@ impl CoherenceAwareScheduler {
 
     pub fn update_coherence_info(&mut self) {
         // Update coherence information for all tracked processes
-        for (_, coherence_info) in self.coherence_tracking.iter_mut() {
+        for coherence_info in self.coherence_tracking.values_mut() {
             let elapsed = coherence_info.last_operation.elapsed();
             if elapsed < coherence_info.remaining_coherence_time {
                 coherence_info.remaining_coherence_time -= elapsed;
@@ -735,7 +735,7 @@ pub struct QuantumSecurityManager {
 }
 
 impl QuantumSecurityManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             security_policies: Vec::new(),
             quantum_encryption: QuantumEncryptionEngine::new(),
@@ -743,7 +743,7 @@ impl QuantumSecurityManager {
         }
     }
 
-    pub fn validate_process_creation(
+    pub const fn validate_process_creation(
         &self,
         security_context: &QuantumSecurityContext,
     ) -> Result<(), QuantRS2Error> {
@@ -806,7 +806,7 @@ pub struct QuantumOSAdvantageReport {
 }
 
 impl QuantumOSAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             scheduling_advantage: 0.0,
             memory_advantage: 0.0,
@@ -833,7 +833,7 @@ impl QuantumDeadlockDetector {
         }
     }
 
-    pub fn check_deadlocks(&self) -> Result<QuantumDeadlockInfo, QuantRS2Error> {
+    pub const fn check_deadlocks(&self) -> Result<QuantumDeadlockInfo, QuantRS2Error> {
         Ok(QuantumDeadlockInfo {
             deadlocked_processes: Vec::new(),
             deadlock_type: DeadlockType::None,
@@ -913,7 +913,7 @@ pub struct SystemMetrics {
 }
 
 impl SystemMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             total_processes: 0,
             quantum_throughput: 0.0,
@@ -968,11 +968,11 @@ impl QuantumMemoryManager {
         }
     }
 
-    pub fn update_memory_hierarchy(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn update_memory_hierarchy(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    pub fn get_efficiency_metrics(&self) -> f64 {
+    pub const fn get_efficiency_metrics(&self) -> f64 {
         0.85 // 85% efficiency
     }
 }
@@ -1018,7 +1018,7 @@ impl QuantumL1Cache {
 }
 
 impl QuantumL2Cache {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             cache_size: 256 * 1024, // 256KB
             access_time: Duration::from_nanos(10),
@@ -1027,7 +1027,7 @@ impl QuantumL2Cache {
 }
 
 impl QuantumL3Cache {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             cache_size: 8 * 1024 * 1024, // 8MB
             access_time: Duration::from_nanos(100),
@@ -1043,7 +1043,7 @@ pub struct CacheStatistics {
 }
 
 impl CacheStatistics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             hit_rate: 0.0,
             miss_rate: 0.0,
@@ -1089,7 +1089,7 @@ pub struct QuantumMemoryNode {
 }
 
 impl QuantumMemoryAllocator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             allocation_strategy: QuantumAllocationStrategy::CoherenceAware,
             memory_pools: Vec::new(),
@@ -1194,7 +1194,7 @@ pub struct QuantumEncryptionEngine {
 }
 
 impl QuantumEncryptionEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             encryption_protocols: Vec::new(),
         }
@@ -1215,7 +1215,7 @@ pub struct QuantumAccessControl {
 }
 
 impl QuantumAccessControl {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             access_policies: Vec::new(),
         }
@@ -1294,7 +1294,7 @@ pub struct ResourceUsageStatistics {
 }
 
 impl ResourceUsageStatistics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             qubit_utilization: 0.0,
             entanglement_rate: 0.0,
@@ -1310,7 +1310,7 @@ pub struct EntanglementRequirementGraph {
 }
 
 impl EntanglementRequirementGraph {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             nodes: Vec::new(),
             edges: Vec::new(),
@@ -1360,7 +1360,7 @@ pub struct ProcessExecutionResult {
 }
 
 impl QuantumSynchronization {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             synchronization_primitives: Vec::new(),
         }
@@ -1368,7 +1368,7 @@ impl QuantumSynchronization {
 }
 
 impl QuantumProcessIsolation {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             isolation_mechanism: IsolationMechanism::QuantumVirtualization,
             security_domains: Vec::new(),
@@ -1377,7 +1377,7 @@ impl QuantumProcessIsolation {
 }
 
 impl QuantumMainMemory {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             size: 1024 * 1024 * 1024, // 1GB
             access_time: Duration::from_micros(100),
@@ -1386,7 +1386,7 @@ impl QuantumMainMemory {
 }
 
 impl QuantumStorage {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             size: 1024 * 1024 * 1024 * 1024, // 1TB
             access_time: Duration::from_millis(10),
@@ -1395,7 +1395,7 @@ impl QuantumStorage {
 }
 
 impl DistributedQuantumMemory {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { nodes: Vec::new() }
     }
 }
@@ -1448,7 +1448,7 @@ mod tests {
         let result = qos.scheduler_tick();
         assert!(result.is_ok());
 
-        let scheduling_result = result.unwrap();
+        let scheduling_result = result.expect("scheduler tick should succeed");
         assert!(scheduling_result.execution_time < Duration::from_millis(100));
     }
 
@@ -1483,7 +1483,10 @@ mod tests {
 
         scheduler.update_coherence_info();
 
-        let coherence_info = scheduler.coherence_tracking.get(&1).unwrap();
+        let coherence_info = scheduler
+            .coherence_tracking
+            .get(&1)
+            .expect("coherence info should exist for tracked process");
         assert!(coherence_info.current_fidelity > 0.0);
     }
 }

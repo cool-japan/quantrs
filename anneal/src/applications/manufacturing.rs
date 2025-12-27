@@ -13,6 +13,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Production Scheduling Problem
 #[derive(Debug, Clone)]
 pub struct ProductionScheduling {
@@ -55,8 +56,7 @@ impl ProductionScheduling {
         for (i, times) in processing_times.iter().enumerate() {
             if times.len() != num_machines {
                 return Err(ApplicationError::InvalidConfiguration(format!(
-                    "Processing times for job {} must match number of machines",
-                    i
+                    "Processing times for job {i} must match number of machines"
                 )));
             }
         }
@@ -131,6 +131,7 @@ impl ProductionScheduling {
     }
 
     /// Calculate makespan for a schedule
+    #[must_use]
     pub fn calculate_makespan(&self, schedule: &ProductionSchedule) -> f64 {
         let mut machine_finish_times = vec![0.0f64; self.num_machines];
 
@@ -149,6 +150,7 @@ impl ProductionScheduling {
     }
 
     /// Calculate total tardiness
+    #[must_use]
     pub fn calculate_tardiness(&self, schedule: &ProductionSchedule) -> f64 {
         let mut total_tardiness = 0.0;
 
@@ -164,6 +166,7 @@ impl ProductionScheduling {
     }
 
     /// Calculate resource utilization
+    #[must_use]
     pub fn calculate_resource_utilization(
         &self,
         schedule: &ProductionSchedule,
@@ -227,8 +230,7 @@ impl OptimizationProblem for ProductionScheduling {
         for (job, capabilities) in self.machine_capabilities.iter().enumerate() {
             if !capabilities.iter().any(|&capable| capable) {
                 return Err(ApplicationError::DataValidationError(format!(
-                    "Job {} cannot be processed on any machine",
-                    job
+                    "Job {job} cannot be processed on any machine"
                 )));
             }
         }
@@ -238,8 +240,7 @@ impl OptimizationProblem for ProductionScheduling {
             for (machine, &time) in times.iter().enumerate() {
                 if time < 0.0 {
                     return Err(ApplicationError::DataValidationError(format!(
-                        "Negative processing time for job {} on machine {}",
-                        job, machine
+                        "Negative processing time for job {job} on machine {machine}"
                     )));
                 }
             }
@@ -261,7 +262,7 @@ impl OptimizationProblem for ProductionScheduling {
             for machine in 0..self.num_machines {
                 if self.machine_capabilities[job][machine] {
                     for time in 0..time_horizon {
-                        let var_name = format!("x_{}_{}_{}", job, machine, time);
+                        let var_name = format!("x_{job}_{machine}_{time}");
                         var_map.insert((job, machine, time), var_counter);
                         string_var_map.insert(var_name, var_counter);
                         var_counter += 1;
@@ -293,7 +294,7 @@ impl OptimizationProblem for ProductionScheduling {
         }
 
         // Constraint: each job scheduled exactly once
-        let constraint_penalty = 10000.0;
+        let constraint_penalty = 10_000.0;
         for job in 0..self.num_jobs {
             let mut job_vars = Vec::new();
 
@@ -387,7 +388,8 @@ impl OptimizationProblem for ProductionScheduling {
 
         for schedule in &machine_schedules {
             let mut sorted_schedule = schedule.clone();
-            sorted_schedule.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            sorted_schedule
+                .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
             for i in 1..sorted_schedule.len() {
                 if sorted_schedule[i].0 < sorted_schedule[i - 1].1 {
@@ -468,7 +470,7 @@ impl IndustrySolution for ProductionSchedule {
                             job_assignments.push(JobAssignment {
                                 job_id: job,
                                 machine_id: machine,
-                                start_time: time as f64,
+                                start_time: f64::from(time),
                                 priority: problem.job_priorities[job],
                             });
                         }
@@ -479,7 +481,7 @@ impl IndustrySolution for ProductionSchedule {
         }
 
         // Calculate metrics
-        let makespan = problem.calculate_makespan(&ProductionSchedule {
+        let makespan = problem.calculate_makespan(&Self {
             job_assignments: job_assignments.clone(),
             makespan: 0.0,
             total_tardiness: 0.0,
@@ -493,7 +495,7 @@ impl IndustrySolution for ProductionSchedule {
             },
         });
 
-        let total_tardiness = problem.calculate_tardiness(&ProductionSchedule {
+        let total_tardiness = problem.calculate_tardiness(&Self {
             job_assignments: job_assignments.clone(),
             makespan,
             total_tardiness: 0.0,
@@ -528,9 +530,9 @@ impl IndustrySolution for ProductionSchedule {
                 on_time_count += 1;
             }
         }
-        let on_time_rate = on_time_count as f64 / problem.num_jobs as f64;
+        let on_time_rate = f64::from(on_time_count) / problem.num_jobs as f64;
 
-        let resource_utilization = problem.calculate_resource_utilization(&ProductionSchedule {
+        let resource_utilization = problem.calculate_resource_utilization(&Self {
             job_assignments: job_assignments.clone(),
             makespan,
             total_tardiness,
@@ -553,7 +555,7 @@ impl IndustrySolution for ProductionSchedule {
                 * (1.0 - total_tardiness / (makespan * problem.num_jobs as f64)),
         };
 
-        Ok(ProductionSchedule {
+        Ok(Self {
             job_assignments,
             makespan,
             total_tardiness,
@@ -608,11 +610,11 @@ impl IndustrySolution for ProductionSchedule {
         );
 
         for (i, &util) in self.metrics.machine_utilization.iter().enumerate() {
-            metrics.insert(format!("machine_{}_utilization", i), util);
+            metrics.insert(format!("machine_{i}_utilization"), util);
         }
 
         for (resource, &util) in &self.resource_utilization {
-            metrics.insert(format!("resource_{}_utilization", resource), util);
+            metrics.insert(format!("resource_{resource}_utilization"), util);
         }
 
         metrics
@@ -623,42 +625,50 @@ impl IndustrySolution for ProductionSchedule {
         output.push_str("# Production Schedule Report\n\n");
 
         output.push_str("## Schedule Summary\n");
-        output.push_str(&format!("Makespan: {:.2} hours\n", self.makespan));
-        output.push_str(&format!(
+        let _ = writeln!(output, "Makespan: {:.2} hours", self.makespan);
+        let _ = write!(
+            output,
             "Total Tardiness: {:.2} hours\n",
             self.total_tardiness
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "On-time Delivery Rate: {:.1}%\n",
             self.metrics.on_time_rate * 100.0
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Efficiency Score: {:.3}\n",
             self.metrics.efficiency_score
-        ));
+        );
 
         output.push_str("\n## Job Assignments\n");
         let mut sorted_assignments = self.job_assignments.clone();
-        sorted_assignments.sort_by(|a, b| a.start_time.partial_cmp(&b.start_time).unwrap());
+        sorted_assignments.sort_by(|a, b| {
+            a.start_time
+                .partial_cmp(&b.start_time)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for assignment in &sorted_assignments {
-            output.push_str(&format!(
+            let _ = write!(
+                output,
                 "Job {}: Machine {} at {:.1}h (Priority: {:.1})\n",
                 assignment.job_id,
                 assignment.machine_id,
                 assignment.start_time,
                 assignment.priority
-            ));
+            );
         }
 
         output.push_str("\n## Machine Utilization\n");
         for (i, &util) in self.metrics.machine_utilization.iter().enumerate() {
-            output.push_str(&format!("Machine {}: {:.1}%\n", i, util * 100.0));
+            let _ = writeln!(output, "Machine {}: {:.1}%", i, util * 100.0);
         }
 
         output.push_str("\n## Resource Utilization\n");
         for (resource, &util) in &self.resource_utilization {
-            output.push_str(&format!("{}: {:.1}%\n", resource, util * 100.0));
+            let _ = writeln!(output, "{}: {:.1}%", resource, util * 100.0);
         }
 
         Ok(output)
@@ -714,6 +724,7 @@ impl QualityControlOptimization {
     }
 
     /// Calculate total quality score
+    #[must_use]
     pub fn calculate_quality_score(&self, allocation: &[bool]) -> f64 {
         let mut total_score = 0.0;
 
@@ -758,7 +769,8 @@ pub struct BinaryProductionScheduling {
 }
 
 impl BinaryProductionScheduling {
-    pub fn new(inner: ProductionScheduling) -> Self {
+    #[must_use]
+    pub const fn new(inner: ProductionScheduling) -> Self {
         Self { inner }
     }
 }
@@ -830,7 +842,7 @@ pub fn create_benchmark_problems(
         let large_processing_times: Vec<Vec<f64>> = (0..size)
             .map(|i| (0..3).map(|j| 3.0 + ((i + j) as f64 * 2.0) % 8.0).collect())
             .collect();
-        let large_due_dates: Vec<f64> = (0..size).map(|i| 20.0 + (i as f64 * 5.0)).collect();
+        let large_due_dates: Vec<f64> = (0..size).map(|i| (i as f64).mul_add(5.0, 20.0)).collect();
 
         let large_scheduling =
             ProductionScheduling::new(size, 3, large_processing_times, large_due_dates)?;
@@ -870,7 +882,7 @@ pub fn solve_production_scheduling(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 25000;
+        p.num_sweeps = 25_000;
         p.num_repetitions = 30;
         p.initial_temperature = 5.0;
         p.final_temperature = 0.001;
@@ -898,7 +910,8 @@ mod tests {
         let processing_times = vec![vec![5.0, 8.0], vec![7.0, 4.0]];
         let due_dates = vec![15.0, 20.0];
 
-        let scheduling = ProductionScheduling::new(2, 2, processing_times, due_dates).unwrap();
+        let scheduling = ProductionScheduling::new(2, 2, processing_times, due_dates)
+            .expect("ProductionScheduling creation should succeed");
         assert_eq!(scheduling.num_jobs, 2);
         assert_eq!(scheduling.num_machines, 2);
     }
@@ -908,7 +921,8 @@ mod tests {
         let processing_times = vec![vec![5.0, 8.0], vec![7.0, 4.0]];
         let due_dates = vec![15.0, 20.0];
 
-        let scheduling = ProductionScheduling::new(2, 2, processing_times, due_dates).unwrap();
+        let scheduling = ProductionScheduling::new(2, 2, processing_times, due_dates)
+            .expect("ProductionScheduling creation should succeed");
 
         let schedule = ProductionSchedule {
             job_assignments: vec![
@@ -946,7 +960,8 @@ mod tests {
         let processing_times = vec![vec![10.0], vec![15.0]];
         let due_dates = vec![8.0, 12.0];
 
-        let mut scheduling = ProductionScheduling::new(2, 1, processing_times, due_dates).unwrap();
+        let mut scheduling = ProductionScheduling::new(2, 1, processing_times, due_dates)
+            .expect("ProductionScheduling creation should succeed");
         scheduling.job_priorities = vec![1.0, 2.0];
 
         let schedule = ProductionSchedule {
@@ -990,7 +1005,8 @@ mod tests {
         let defect_costs = vec![1000.0, 1500.0];
 
         let quality_control =
-            QualityControlOptimization::new(2, 2, costs, detection_probs, defect_costs).unwrap();
+            QualityControlOptimization::new(2, 2, costs, detection_probs, defect_costs)
+                .expect("QualityControlOptimization creation should succeed");
         assert_eq!(quality_control.num_stations, 2);
         assert_eq!(quality_control.num_parameters, 2);
     }
@@ -1002,7 +1018,8 @@ mod tests {
         let defect_costs = vec![1000.0, 1500.0];
 
         let quality_control =
-            QualityControlOptimization::new(2, 2, costs, detection_probs, defect_costs).unwrap();
+            QualityControlOptimization::new(2, 2, costs, detection_probs, defect_costs)
+                .expect("QualityControlOptimization creation should succeed");
 
         let allocation = vec![true, false]; // Only use station 0
         let score = quality_control.calculate_quality_score(&allocation);
@@ -1013,7 +1030,8 @@ mod tests {
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(5).unwrap();
+        let problems =
+            create_benchmark_problems(5).expect("create_benchmark_problems should succeed");
         assert_eq!(problems.len(), 2);
 
         for problem in &problems {

@@ -5,7 +5,7 @@
 //! and optimization recommendations across all major quantum computing platforms.
 
 use crate::{
-    error::QuantRS2Result,
+    error::{QuantRS2Error, QuantRS2Result},
     hardware_compilation::{HardwarePlatform, NativeGateType},
     qubit::QubitId,
 };
@@ -1060,7 +1060,9 @@ impl RealtimeMonitor {
 
         // Update monitoring status
         {
-            let mut status = self.monitoring_status.write().unwrap();
+            let mut status = self.monitoring_status.write().map_err(|e| {
+                QuantRS2Error::LockPoisoned(format!("Monitoring status RwLock poisoned: {e}"))
+            })?;
             status.overall_status = SystemStatus::Healthy;
         }
 
@@ -1068,7 +1070,7 @@ impl RealtimeMonitor {
     }
 
     /// Stop monitoring
-    pub fn stop_monitoring(&self) -> QuantRS2Result<()> {
+    pub const fn stop_monitoring(&self) -> QuantRS2Result<()> {
         // Implementation would stop all background threads and cleanup
         Ok(())
     }
@@ -1079,7 +1081,10 @@ impl RealtimeMonitor {
         platform: HardwarePlatform,
         collector: Box<dyn MetricCollector>,
     ) -> QuantRS2Result<()> {
-        let mut collectors = self.collectors.write().unwrap();
+        let mut collectors = self
+            .collectors
+            .write()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Collectors RwLock poisoned: {e}")))?;
         collectors.insert(platform, collector);
         Ok(())
     }
@@ -1089,7 +1094,10 @@ impl RealtimeMonitor {
         &self,
         metric_types: Option<Vec<MetricType>>,
     ) -> QuantRS2Result<Vec<MetricMeasurement>> {
-        let data_store = self.data_store.read().unwrap();
+        let data_store = self
+            .data_store
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Data store RwLock poisoned: {e}")))?;
 
         let mut results = Vec::new();
 
@@ -1122,7 +1130,10 @@ impl RealtimeMonitor {
         start_time: SystemTime,
         end_time: SystemTime,
     ) -> QuantRS2Result<Vec<MetricMeasurement>> {
-        let data_store = self.data_store.read().unwrap();
+        let data_store = self
+            .data_store
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Data store RwLock poisoned: {e}")))?;
 
         if let Some(time_series) = data_store.time_series.get(&metric_type) {
             let filtered: Vec<MetricMeasurement> = time_series
@@ -1144,13 +1155,18 @@ impl RealtimeMonitor {
         &self,
         metric_type: MetricType,
     ) -> QuantRS2Result<Option<AggregatedStats>> {
-        let data_store = self.data_store.read().unwrap();
+        let data_store = self
+            .data_store
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Data store RwLock poisoned: {e}")))?;
         Ok(data_store.aggregated_stats.get(&metric_type).cloned())
     }
 
     /// Get active alerts
     pub fn get_active_alerts(&self) -> QuantRS2Result<Vec<Alert>> {
-        let alert_manager = self.alert_manager.read().unwrap();
+        let alert_manager = self.alert_manager.read().map_err(|e| {
+            QuantRS2Error::LockPoisoned(format!("Alert manager RwLock poisoned: {e}"))
+        })?;
         Ok(alert_manager.active_alerts.values().cloned().collect())
     }
 
@@ -1158,18 +1174,29 @@ impl RealtimeMonitor {
     pub fn get_optimization_recommendations(
         &self,
     ) -> QuantRS2Result<Vec<OptimizationRecommendation>> {
-        let optimization_advisor = self.optimization_advisor.read().unwrap();
+        let optimization_advisor = self.optimization_advisor.read().map_err(|e| {
+            QuantRS2Error::LockPoisoned(format!("Optimization advisor RwLock poisoned: {e}"))
+        })?;
         Ok(optimization_advisor.active_recommendations.clone())
     }
 
     /// Get monitoring status
-    pub fn get_monitoring_status(&self) -> MonitoringStatus {
-        self.monitoring_status.read().unwrap().clone()
+    pub fn get_monitoring_status(&self) -> QuantRS2Result<MonitoringStatus> {
+        Ok(self
+            .monitoring_status
+            .read()
+            .map_err(|e| {
+                QuantRS2Error::LockPoisoned(format!("Monitoring status RwLock poisoned: {e}"))
+            })?
+            .clone())
     }
 
     /// Force data collection from all platforms
     pub fn collect_metrics_now(&self) -> QuantRS2Result<usize> {
-        let collectors = self.collectors.read().unwrap();
+        let collectors = self
+            .collectors
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Collectors RwLock poisoned: {e}")))?;
         let mut total_metrics = 0;
 
         for collector in collectors.values() {
@@ -1185,8 +1212,13 @@ impl RealtimeMonitor {
 
     /// Trigger analytics update
     pub fn update_analytics(&self) -> QuantRS2Result<()> {
-        let data_store = self.data_store.read().unwrap();
-        let analytics = self.analytics_engine.write().unwrap();
+        let data_store = self
+            .data_store
+            .read()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Data store RwLock poisoned: {e}")))?;
+        let analytics = self.analytics_engine.write().map_err(|e| {
+            QuantRS2Error::LockPoisoned(format!("Analytics engine RwLock poisoned: {e}"))
+        })?;
 
         // Run trend analysis on all metrics
         for (metric_type, time_series) in &data_store.time_series {
@@ -1238,12 +1270,15 @@ impl RealtimeMonitor {
         thread::spawn(move || loop {
             thread::sleep(monitoring_interval);
 
-            let collectors_guard = collectors.read().unwrap();
-            for collector in collectors_guard.values() {
-                if let Ok(metrics) = collector.collect_metrics() {
-                    let mut store = data_store.write().unwrap();
-                    for metric in metrics {
-                        store.add_measurement(metric);
+            // Use if-let to gracefully handle lock failures in background thread
+            if let Ok(collectors_guard) = collectors.read() {
+                for collector in collectors_guard.values() {
+                    if let Ok(metrics) = collector.collect_metrics() {
+                        if let Ok(mut store) = data_store.write() {
+                            for metric in metrics {
+                                store.add_measurement(metric);
+                            }
+                        }
                     }
                 }
             }
@@ -1252,23 +1287,26 @@ impl RealtimeMonitor {
         Ok(())
     }
 
-    fn start_analytics_engine(&self) -> QuantRS2Result<()> {
+    const fn start_analytics_engine(&self) -> QuantRS2Result<()> {
         // Start analytics processing
         Ok(())
     }
 
-    fn start_alert_processing(&self) -> QuantRS2Result<()> {
+    const fn start_alert_processing(&self) -> QuantRS2Result<()> {
         // Start alert processing
         Ok(())
     }
 
-    fn start_export_processing(&self) -> QuantRS2Result<()> {
+    const fn start_export_processing(&self) -> QuantRS2Result<()> {
         // Start export processing
         Ok(())
     }
 
     fn store_metrics(&self, metrics: Vec<MetricMeasurement>) -> QuantRS2Result<()> {
-        let mut data_store = self.data_store.write().unwrap();
+        let mut data_store = self
+            .data_store
+            .write()
+            .map_err(|e| QuantRS2Error::LockPoisoned(format!("Data store RwLock poisoned: {e}")))?;
         for metric in metrics {
             data_store.add_measurement(metric);
         }
@@ -1284,7 +1322,7 @@ struct SuperconductingCollector {
 }
 
 impl SuperconductingCollector {
-    fn new(config: PlatformMonitoringConfig) -> Self {
+    const fn new(config: PlatformMonitoringConfig) -> Self {
         Self {
             config,
             connected: false,
@@ -1358,7 +1396,7 @@ struct TrappedIonCollector {
 }
 
 impl TrappedIonCollector {
-    fn new(config: PlatformMonitoringConfig) -> Self {
+    const fn new(config: PlatformMonitoringConfig) -> Self {
         Self {
             config,
             connected: false,
@@ -1401,7 +1439,7 @@ struct PhotonicCollector {
 }
 
 impl PhotonicCollector {
-    fn new(config: PlatformMonitoringConfig) -> Self {
+    const fn new(config: PlatformMonitoringConfig) -> Self {
         Self {
             config,
             connected: false,
@@ -1444,7 +1482,7 @@ struct NeutralAtomCollector {
 }
 
 impl NeutralAtomCollector {
-    fn new(config: PlatformMonitoringConfig) -> Self {
+    const fn new(config: PlatformMonitoringConfig) -> Self {
         Self {
             config,
             connected: false,
@@ -1487,7 +1525,7 @@ struct GenericCollector {
 }
 
 impl GenericCollector {
-    fn new(config: PlatformMonitoringConfig) -> Self {
+    const fn new(config: PlatformMonitoringConfig) -> Self {
         Self {
             config,
             connected: false,
@@ -1580,12 +1618,12 @@ impl RealtimeDataStore {
             stats.last_updated = SystemTime::now();
 
             // Update mean (simplified)
-            stats.mean =
-                (stats.mean * (stats.sample_count - 1) as f64 + value) / stats.sample_count as f64;
+            stats.mean = stats.mean.mul_add((stats.sample_count - 1) as f64, value)
+                / stats.sample_count as f64;
         }
     }
 
-    fn cleanup_old_data(&self) {
+    const fn cleanup_old_data(&self) {
         // Remove old data based on retention settings
         // Implementation would be more sophisticated in practice
     }
@@ -1738,11 +1776,11 @@ impl Default for ExportSettings {
 impl fmt::Display for MetricType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MetricType::GateErrorRate => write!(f, "Gate Error Rate"),
-            MetricType::QubitCoherenceTime => write!(f, "Qubit Coherence Time"),
-            MetricType::SystemUptime => write!(f, "System Uptime"),
-            MetricType::Custom(name) => write!(f, "Custom: {}", name),
-            _ => write!(f, "{:?}", self),
+            Self::GateErrorRate => write!(f, "Gate Error Rate"),
+            Self::QubitCoherenceTime => write!(f, "Qubit Coherence Time"),
+            Self::SystemUptime => write!(f, "System Uptime"),
+            Self::Custom(name) => write!(f, "Custom: {name}"),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
@@ -1750,10 +1788,10 @@ impl fmt::Display for MetricType {
 impl fmt::Display for AlertLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AlertLevel::Info => write!(f, "INFO"),
-            AlertLevel::Warning => write!(f, "WARNING"),
-            AlertLevel::Critical => write!(f, "CRITICAL"),
-            AlertLevel::Emergency => write!(f, "EMERGENCY"),
+            Self::Info => write!(f, "INFO"),
+            Self::Warning => write!(f, "WARNING"),
+            Self::Critical => write!(f, "CRITICAL"),
+            Self::Emergency => write!(f, "EMERGENCY"),
         }
     }
 }
@@ -1804,7 +1842,9 @@ mod tests {
 
         let metrics = collector.collect_metrics();
         assert!(metrics.is_ok());
-        assert!(!metrics.unwrap().is_empty());
+        assert!(!metrics
+            .expect("Metrics collection should succeed")
+            .is_empty());
     }
 
     #[test]
@@ -1831,7 +1871,7 @@ mod tests {
         let stats = store
             .aggregated_stats
             .get(&MetricType::GateErrorRate)
-            .unwrap();
+            .expect("GateErrorRate stats should exist after adding measurement");
         assert_eq!(stats.sample_count, 1);
         assert_eq!(stats.mean, 0.001);
     }

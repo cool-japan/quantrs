@@ -1,6 +1,6 @@
 //! Configuration types for advanced testing framework
 
-use super::*;
+use super::{Duration, HashMap};
 
 /// Configuration for the testing framework
 #[derive(Debug, Clone)]
@@ -85,7 +85,7 @@ pub struct ArchivePolicy {
 }
 
 /// Archive format options
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArchiveFormat {
     /// JSON format
     JSON,
@@ -135,7 +135,7 @@ pub struct AuthSettings {
 }
 
 /// Authentication types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthType {
     /// API key authentication
     ApiKey,

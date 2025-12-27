@@ -276,7 +276,9 @@ impl BenchmarkRunner {
         metrics.timings = TimingMetrics {
             total_time: avg_time,
             setup_time: Duration::from_millis(10), // Estimate
-            compute_time: avg_time.checked_sub(Duration::from_millis(10)).unwrap(),
+            compute_time: avg_time
+                .checked_sub(Duration::from_millis(10))
+                .unwrap_or(Duration::ZERO),
             postprocess_time: Duration::ZERO,
             time_per_sample: avg_time / num_reads as u32,
             time_to_solution: Some(timings[0]),

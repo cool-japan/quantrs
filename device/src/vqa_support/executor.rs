@@ -116,7 +116,7 @@ impl VQAExecutor {
     }
 
     /// Create new VQA executor with config
-    pub fn with_config(config: VQAExecutorConfig) -> Self {
+    pub const fn with_config(config: VQAExecutorConfig) -> Self {
         Self { config }
     }
 
@@ -140,7 +140,7 @@ impl VQAExecutor {
             // Update best if improved
             if result.value < best_value {
                 best_value = result.value;
-                best_params = circuit.parameters.clone();
+                best_params.clone_from(&circuit.parameters);
             }
 
             // Check convergence

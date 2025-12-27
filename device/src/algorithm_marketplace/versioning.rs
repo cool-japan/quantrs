@@ -26,7 +26,7 @@ pub struct VersioningConfig {
 }
 
 /// Versioning schemes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VersioningScheme {
     Semantic,
     Sequential,
@@ -68,7 +68,7 @@ pub struct AlgorithmVersion {
 }
 
 /// Version types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VersionType {
     Major,
     Minor,
@@ -121,7 +121,7 @@ pub struct VersionChange {
 }
 
 /// Change types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeType {
     Feature,
     Bugfix,
@@ -134,7 +134,7 @@ pub enum ChangeType {
 }
 
 /// Impact levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImpactLevel {
     Low,
     Medium,
@@ -164,7 +164,7 @@ pub enum VersionConstraint {
 }
 
 /// Conflict resolution strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConflictResolution {
     UseLatest,
     UseEarliest,
@@ -202,7 +202,7 @@ pub struct BreakingChange {
 }
 
 /// Breaking change types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BreakingChangeType {
     RemovedAPI,
     ModifiedSignature,
@@ -230,7 +230,7 @@ pub struct NewFeature {
 }
 
 /// Stability levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StabilityLevel {
     Experimental,
     Beta,
@@ -258,7 +258,7 @@ pub struct SchemaChange {
 }
 
 /// Schema change types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SchemaChangeType {
     Added,
     Removed,
@@ -297,7 +297,7 @@ pub struct MigrationStep {
 }
 
 /// Migration step types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MigrationStepType {
     CodeUpdate,
     DataMigration,
@@ -307,7 +307,7 @@ pub enum MigrationStepType {
 }
 
 /// Automation levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AutomationLevel {
     FullyAutomated,
     SemiAutomated,
@@ -315,7 +315,7 @@ pub enum AutomationLevel {
 }
 
 /// Lifecycle status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LifecycleStatus {
     Development,
     Alpha,
@@ -347,7 +347,7 @@ pub struct Branch {
 }
 
 /// Branch types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BranchType {
     Main,
     Release,
@@ -366,7 +366,7 @@ pub struct ProtectionRule {
 }
 
 /// Protection rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProtectionRuleType {
     RequireReviews,
     RequireStatusChecks,
@@ -385,7 +385,7 @@ pub struct MergePolicy {
 }
 
 /// Merge strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MergeStrategy {
     Merge,
     Squash,
@@ -394,7 +394,7 @@ pub enum MergeStrategy {
 }
 
 /// Branching strategy
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BranchingStrategy {
     GitFlow,
     GitHubFlow,
@@ -422,7 +422,7 @@ pub struct Tag {
 }
 
 /// Tag types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TagType {
     Release,
     Milestone,
@@ -440,7 +440,7 @@ pub struct TagPolicy {
 }
 
 /// Tag protection levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TagProtectionLevel {
     None,
     Protected,
@@ -464,7 +464,7 @@ pub struct VersionAnalysisRule {
 }
 
 /// Analysis rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisRuleType {
     CompatibilityCheck,
     PerformanceRegression,
@@ -473,7 +473,7 @@ pub enum AnalysisRuleType {
 }
 
 /// Analysis actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisAction {
     Flag,
     Block,
@@ -507,7 +507,7 @@ pub struct VersionComparison {
 }
 
 /// Comparison types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonType {
     Identical,
     Compatible,
@@ -526,7 +526,7 @@ pub struct VersionDifference {
 }
 
 /// Difference types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DifferenceType {
     Added,
     Removed,
@@ -536,7 +536,7 @@ pub enum DifferenceType {
 }
 
 /// Difference impact
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DifferenceImpact {
     None,
     Low,
@@ -546,7 +546,7 @@ pub enum DifferenceImpact {
 }
 
 /// Migration complexity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MigrationComplexity {
     Trivial,
     Simple,
@@ -564,7 +564,7 @@ pub struct DiffAlgorithm {
 }
 
 /// Diff algorithm types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiffAlgorithmType {
     Textual,
     Syntactic,
@@ -573,7 +573,7 @@ pub enum DiffAlgorithmType {
 }
 
 /// Diff granularity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiffGranularity {
     Character,
     Word,
@@ -599,7 +599,7 @@ pub struct ImpactModel {
 }
 
 /// Impact categories
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImpactCategory {
     Functional,
     Performance,
@@ -617,7 +617,7 @@ pub struct AssessmentCriterion {
 }
 
 /// Evaluation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationMethod {
     Static,
     Dynamic,
@@ -643,7 +643,7 @@ pub struct DependencyNode {
 }
 
 /// Dependency node types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DependencyNodeType {
     Algorithm,
     Library,
@@ -676,7 +676,7 @@ pub struct PropagationRule {
 }
 
 /// Propagation patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropagationPattern {
     Direct,
     Transitive,
@@ -738,7 +738,7 @@ pub struct RiskAssessment {
 }
 
 /// Risk levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskLevel {
     Low,
     Medium,
@@ -829,7 +829,7 @@ pub struct CompatibilityRule {
 }
 
 /// Compatibility rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompatibilityRuleType {
     API,
     Data,
@@ -839,7 +839,7 @@ pub enum CompatibilityRuleType {
 }
 
 /// Compatibility levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompatibilityLevel {
     FullyCompatible,
     MostlyCompatible,
@@ -944,7 +944,7 @@ impl DependencyGraph {
 }
 
 impl ChangePropagation {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             propagation_rules: vec![],
             impact_chains: vec![],

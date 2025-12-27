@@ -21,7 +21,6 @@
 //! - Optimization for target platform
 //! - Preserves circuit structure and comments
 //! - Handles classical registers and measurements
-
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},
     gate::GateOp,
@@ -30,10 +29,11 @@ use crate::{
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;
 
-// ================================================================================================
-// Target Language Types
-// ================================================================================================
-
+/// Convert fmt::Error to QuantRS2Error for string formatting operations
+#[inline]
+fn fmt_err(e: std::fmt::Error) -> QuantRS2Error {
+    QuantRS2Error::ComputationError(format!("String formatting error: {e}"))
+}
 /// Supported quantum programming languages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum QuantumLanguage {
@@ -60,62 +60,55 @@ pub enum QuantumLanguage {
     /// Pennylane (Python)
     Pennylane,
 }
-
 impl QuantumLanguage {
     /// Get language name
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
-            QuantumLanguage::OpenQASM2 => "OpenQASM 2.0",
-            QuantumLanguage::OpenQASM3 => "OpenQASM 3.0",
-            QuantumLanguage::Quil => "Quil",
-            QuantumLanguage::QSharp => "Q#",
-            QuantumLanguage::Cirq => "Cirq",
-            QuantumLanguage::Qiskit => "Qiskit",
-            QuantumLanguage::PyQuil => "PyQuil",
-            QuantumLanguage::ProjectQ => "ProjectQ",
-            QuantumLanguage::BraketIR => "Braket IR",
-            QuantumLanguage::Silq => "Silq",
-            QuantumLanguage::Pennylane => "Pennylane",
+            Self::OpenQASM2 => "OpenQASM 2.0",
+            Self::OpenQASM3 => "OpenQASM 3.0",
+            Self::Quil => "Quil",
+            Self::QSharp => "Q#",
+            Self::Cirq => "Cirq",
+            Self::Qiskit => "Qiskit",
+            Self::PyQuil => "PyQuil",
+            Self::ProjectQ => "ProjectQ",
+            Self::BraketIR => "Braket IR",
+            Self::Silq => "Silq",
+            Self::Pennylane => "Pennylane",
         }
     }
-
     /// Get file extension
-    pub fn extension(&self) -> &'static str {
+    pub const fn extension(&self) -> &'static str {
         match self {
-            QuantumLanguage::OpenQASM2 | QuantumLanguage::OpenQASM3 => "qasm",
-            QuantumLanguage::Quil => "quil",
-            QuantumLanguage::QSharp => "qs",
-            QuantumLanguage::Cirq
-            | QuantumLanguage::Qiskit
-            | QuantumLanguage::PyQuil
-            | QuantumLanguage::ProjectQ
-            | QuantumLanguage::Pennylane => "py",
-            QuantumLanguage::BraketIR => "json",
-            QuantumLanguage::Silq => "slq",
+            Self::OpenQASM2 | Self::OpenQASM3 => "qasm",
+            Self::Quil => "quil",
+            Self::QSharp => "qs",
+            Self::Cirq | Self::Qiskit | Self::PyQuil | Self::ProjectQ | Self::Pennylane => "py",
+            Self::BraketIR => "json",
+            Self::Silq => "slq",
         }
     }
-
     /// Get supported gate set
     pub fn supported_gates(&self) -> Vec<&'static str> {
         match self {
-            QuantumLanguage::OpenQASM2 | QuantumLanguage::OpenQASM3 => {
+            Self::OpenQASM2 | Self::OpenQASM3 => {
                 vec![
                     "x", "y", "z", "h", "s", "sdg", "t", "tdg", "rx", "ry", "rz", "cx", "cy", "cz",
                     "ch", "swap", "ccx", "cswap",
                 ]
             }
-            QuantumLanguage::Quil => {
+            Self::Quil => {
                 vec![
                     "X", "Y", "Z", "H", "S", "T", "RX", "RY", "RZ", "CNOT", "CZ", "SWAP", "CCNOT",
                     "CSWAP", "PHASE",
                 ]
             }
-            QuantumLanguage::QSharp => {
+            Self::QSharp => {
                 vec![
                     "X", "Y", "Z", "H", "S", "T", "CNOT", "CCNOT", "SWAP", "Rx", "Ry", "Rz", "R1",
                 ]
             }
-            QuantumLanguage::Cirq => {
+            Self::Cirq => {
                 vec![
                     "X",
                     "Y",
@@ -133,32 +126,30 @@ impl QuantumLanguage {
                     "SQRT_ISWAP",
                 ]
             }
-            QuantumLanguage::Qiskit => {
+            Self::Qiskit => {
                 vec![
                     "x", "y", "z", "h", "s", "sdg", "t", "tdg", "rx", "ry", "rz", "cx", "cy", "cz",
                     "ch", "swap", "ccx",
                 ]
             }
-            QuantumLanguage::PyQuil => {
+            Self::PyQuil => {
                 vec![
                     "X", "Y", "Z", "H", "S", "T", "RX", "RY", "RZ", "CNOT", "CZ", "SWAP", "PHASE",
                 ]
             }
-            QuantumLanguage::ProjectQ => {
+            Self::ProjectQ => {
                 vec![
                     "X", "Y", "Z", "H", "S", "T", "Rx", "Ry", "Rz", "CNOT", "Swap",
                 ]
             }
-            QuantumLanguage::BraketIR => {
+            Self::BraketIR => {
                 vec![
                     "x", "y", "z", "h", "s", "si", "t", "ti", "rx", "ry", "rz", "cnot", "cy", "cz",
                     "swap", "iswap",
                 ]
             }
-            QuantumLanguage::Silq => {
-                vec!["X", "Y", "Z", "H", "S", "T", "CNOT", "phase"]
-            }
-            QuantumLanguage::Pennylane => {
+            Self::Silq => vec!["X", "Y", "Z", "H", "S", "T", "CNOT", "phase"],
+            Self::Pennylane => {
                 vec![
                     "PauliX", "PauliY", "PauliZ", "Hadamard", "S", "T", "RX", "RY", "RZ", "CNOT",
                     "CZ", "SWAP",
@@ -167,11 +158,6 @@ impl QuantumLanguage {
         }
     }
 }
-
-// ================================================================================================
-// Circuit Representation
-// ================================================================================================
-
 /// Quantum circuit for compilation
 #[derive(Debug, Clone)]
 pub struct CompilableCircuit {
@@ -182,9 +168,8 @@ pub struct CompilableCircuit {
     /// Circuit gates
     pub gates: Vec<GateInstruction>,
     /// Measurements
-    pub measurements: Vec<(usize, usize)>, // (qubit, cbit)
+    pub measurements: Vec<(usize, usize)>,
 }
-
 /// Gate instruction in the circuit
 #[derive(Debug, Clone)]
 pub struct GateInstruction {
@@ -197,10 +182,9 @@ pub struct GateInstruction {
     /// Control qubits (if controlled gate)
     pub controls: Vec<usize>,
 }
-
 impl CompilableCircuit {
     /// Create a new compilable circuit
-    pub fn new(num_qubits: usize, num_cbits: usize) -> Self {
+    pub const fn new(num_qubits: usize, num_cbits: usize) -> Self {
         Self {
             num_qubits,
             num_cbits,
@@ -208,131 +192,134 @@ impl CompilableCircuit {
             measurements: Vec::new(),
         }
     }
-
     /// Add a gate instruction
     pub fn add_gate(&mut self, instruction: GateInstruction) {
         self.gates.push(instruction);
     }
-
     /// Add measurement
     pub fn add_measurement(&mut self, qubit: usize, cbit: usize) {
         self.measurements.push((qubit, cbit));
     }
-
     /// Measure all qubits
+    #[must_use]
     pub fn measure_all(&mut self) {
         for i in 0..self.num_qubits.min(self.num_cbits) {
             self.measurements.push((i, i));
         }
     }
 }
-
-// ================================================================================================
-// Language Compiler
-// ================================================================================================
-
 /// Compiler for quantum programming languages
 pub struct QuantumLanguageCompiler {
     target_language: QuantumLanguage,
     optimize: bool,
     include_comments: bool,
 }
-
 impl QuantumLanguageCompiler {
     /// Create a new compiler
-    pub fn new(target_language: QuantumLanguage) -> Self {
+    pub const fn new(target_language: QuantumLanguage) -> Self {
         Self {
             target_language,
             optimize: true,
             include_comments: true,
         }
     }
-
     /// Enable/disable optimization
-    pub fn with_optimization(mut self, optimize: bool) -> Self {
+    #[must_use]
+    pub const fn with_optimization(mut self, optimize: bool) -> Self {
         self.optimize = optimize;
         self
     }
-
     /// Enable/disable comments
-    pub fn with_comments(mut self, include_comments: bool) -> Self {
+    #[must_use]
+    pub const fn with_comments(mut self, include_comments: bool) -> Self {
         self.include_comments = include_comments;
         self
     }
-
     /// Compile circuit to target language
     pub fn compile(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         match self.target_language {
-            QuantumLanguage::OpenQASM2 => self.compile_to_openqasm2(circuit),
-            QuantumLanguage::OpenQASM3 => self.compile_to_openqasm3(circuit),
-            QuantumLanguage::Quil => self.compile_to_quil(circuit),
-            QuantumLanguage::QSharp => self.compile_to_qsharp(circuit),
-            QuantumLanguage::Cirq => self.compile_to_cirq(circuit),
-            QuantumLanguage::Qiskit => self.compile_to_qiskit(circuit),
-            QuantumLanguage::PyQuil => self.compile_to_pyquil(circuit),
-            QuantumLanguage::ProjectQ => self.compile_to_projectq(circuit),
-            QuantumLanguage::BraketIR => self.compile_to_braket_ir(circuit),
-            QuantumLanguage::Silq => self.compile_to_silq(circuit),
-            QuantumLanguage::Pennylane => self.compile_to_pennylane(circuit),
+            QuantumLanguage::OpenQASM2 => Self::compile_to_openqasm2(circuit),
+            QuantumLanguage::OpenQASM3 => Self::compile_to_openqasm3(circuit),
+            QuantumLanguage::Quil => Self::compile_to_quil(circuit),
+            QuantumLanguage::QSharp => Self::compile_to_qsharp(circuit),
+            QuantumLanguage::Cirq => Self::compile_to_cirq(circuit),
+            QuantumLanguage::Qiskit => Self::compile_to_qiskit(circuit),
+            QuantumLanguage::PyQuil => Self::compile_to_pyquil(circuit),
+            QuantumLanguage::ProjectQ => Self::compile_to_projectq(circuit),
+            QuantumLanguage::BraketIR => Self::compile_to_braket_ir(circuit),
+            QuantumLanguage::Silq => Self::compile_to_silq(circuit),
+            QuantumLanguage::Pennylane => Self::compile_to_pennylane(circuit),
         }
     }
-
     /// Compile to OpenQASM 2.0
-    fn compile_to_openqasm2(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_openqasm2(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        // Header
-        writeln!(output, "OPENQASM 2.0;").unwrap();
-        writeln!(output, "include \"qelib1.inc\";").unwrap();
-        writeln!(output).unwrap();
-
-        // Quantum register
-        writeln!(output, "qreg q[{}];", circuit.num_qubits).unwrap();
-
-        // Classical register
+        writeln!(output, "OPENQASM 2.0;").map_err(fmt_err)?;
+        writeln!(output, "include \"qelib1.inc\";").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "qreg q[{}];", circuit.num_qubits).map_err(fmt_err)?;
         if circuit.num_cbits > 0 {
-            writeln!(output, "creg c[{}];", circuit.num_cbits).unwrap();
+            writeln!(output, "creg c[{}];", circuit.num_cbits).map_err(fmt_err)?;
         }
-        writeln!(output).unwrap();
-
-        // Gates
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
                 "H" | "h" => {
-                    writeln!(output, "h q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "h q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "X" | "x" => {
-                    writeln!(output, "x q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "x q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "Y" | "y" => {
-                    writeln!(output, "y q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "y q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "Z" | "z" => {
-                    writeln!(output, "z q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "z q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "S" | "s" => {
-                    writeln!(output, "s q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "s q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "T" | "t" => {
-                    writeln!(output, "t q[{}];", gate.qubits[0]).unwrap();
+                    writeln!(output, "t q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "RX" | "rx" => {
-                    writeln!(output, "rx({}) q[{}];", gate.params[0], gate.qubits[0]).unwrap();
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RX gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "rx({param}) q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "RY" | "ry" => {
-                    writeln!(output, "ry({}) q[{}];", gate.params[0], gate.qubits[0]).unwrap();
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RY gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "ry({param}) q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "RZ" | "rz" => {
-                    writeln!(output, "rz({}) q[{}];", gate.params[0], gate.qubits[0]).unwrap();
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RZ gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "rz({param}) q[{qubit0}];").map_err(fmt_err)?;
                 }
                 "CNOT" | "cx" => {
-                    writeln!(output, "cx q[{}], q[{}];", gate.qubits[0], gate.qubits[1]).unwrap();
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "cx q[{qubit0}], q[{qubit1}];").map_err(fmt_err)?;
                 }
                 "CZ" | "cz" => {
-                    writeln!(output, "cz q[{}], q[{}];", gate.qubits[0], gate.qubits[1]).unwrap();
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CZ gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "cz q[{qubit0}], q[{qubit1}];").map_err(fmt_err)?;
                 }
                 "SWAP" | "swap" => {
-                    writeln!(output, "swap q[{}], q[{}];", gate.qubits[0], gate.qubits[1]).unwrap();
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("SWAP gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "swap q[{qubit0}], q[{qubit1}];").map_err(fmt_err)?;
                 }
                 _ => {
                     return Err(QuantRS2Error::UnsupportedOperation(format!(
@@ -342,466 +329,470 @@ impl QuantumLanguageCompiler {
                 }
             }
         }
-
-        // Measurements
         if !circuit.measurements.is_empty() {
-            writeln!(output).unwrap();
+            writeln!(output).map_err(fmt_err)?;
             for (qubit, cbit) in &circuit.measurements {
-                writeln!(output, "measure q[{}] -> c[{}];", qubit, cbit).unwrap();
+                writeln!(output, "measure q[{qubit}] -> c[{cbit}];").map_err(fmt_err)?;
             }
         }
-
         Ok(output)
     }
-
     /// Compile to OpenQASM 3.0
-    fn compile_to_openqasm3(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_openqasm3(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        // Header
-        writeln!(output, "OPENQASM 3.0;").unwrap();
-        writeln!(output, "include \"stdgates.inc\";").unwrap();
-        writeln!(output).unwrap();
-
-        // Quantum bits
-        writeln!(output, "qubit[{}] q;", circuit.num_qubits).unwrap();
-
-        // Classical bits
+        writeln!(output, "OPENQASM 3.0;").map_err(fmt_err)?;
+        writeln!(output, "include \"stdgates.inc\";").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "qubit[{}] q;", circuit.num_qubits).map_err(fmt_err)?;
         if circuit.num_cbits > 0 {
-            writeln!(output, "bit[{}] c;", circuit.num_cbits).unwrap();
+            writeln!(output, "bit[{}] c;", circuit.num_cbits).map_err(fmt_err)?;
         }
-        writeln!(output).unwrap();
-
-        // Gates (similar to QASM 2.0)
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "h q[{}];", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "x q[{}];", gate.qubits[0]).unwrap(),
+                "H" | "h" => writeln!(output, "h q[{qubit0}];").map_err(fmt_err)?,
+                "X" | "x" => writeln!(output, "x q[{qubit0}];").map_err(fmt_err)?,
                 "CNOT" | "cx" => {
-                    writeln!(output, "cx q[{}], q[{}];", gate.qubits[0], gate.qubits[1]).unwrap()
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "cx q[{qubit0}], q[{qubit1}];").map_err(fmt_err)?;
                 }
                 _ => {}
             }
         }
-
-        // Measurements
         for (qubit, cbit) in &circuit.measurements {
-            writeln!(output, "c[{}] = measure q[{}];", cbit, qubit).unwrap();
+            writeln!(output, "c[{cbit}] = measure q[{qubit}];").map_err(fmt_err)?;
         }
-
         Ok(output)
     }
-
     /// Compile to Quil
-    fn compile_to_quil(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_quil(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        // Declare memory
         if circuit.num_cbits > 0 {
-            writeln!(output, "DECLARE ro BIT[{}]", circuit.num_cbits).unwrap();
-            writeln!(output).unwrap();
+            writeln!(output, "DECLARE ro BIT[{}]", circuit.num_cbits).map_err(fmt_err)?;
+            writeln!(output).map_err(fmt_err)?;
         }
-
-        // Gates
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "H {}", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "X {}", gate.qubits[0]).unwrap(),
-                "Y" | "y" => writeln!(output, "Y {}", gate.qubits[0]).unwrap(),
-                "Z" | "z" => writeln!(output, "Z {}", gate.qubits[0]).unwrap(),
+                "H" | "h" => writeln!(output, "H {qubit0}").map_err(fmt_err)?,
+                "X" | "x" => writeln!(output, "X {qubit0}").map_err(fmt_err)?,
+                "Y" | "y" => writeln!(output, "Y {qubit0}").map_err(fmt_err)?,
+                "Z" | "z" => writeln!(output, "Z {qubit0}").map_err(fmt_err)?,
                 "RX" | "rx" => {
-                    writeln!(output, "RX({}) {}", gate.params[0], gate.qubits[0]).unwrap()
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RX gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "RX({param}) {qubit0}").map_err(fmt_err)?;
                 }
                 "RY" | "ry" => {
-                    writeln!(output, "RY({}) {}", gate.params[0], gate.qubits[0]).unwrap()
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RY gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "RY({param}) {qubit0}").map_err(fmt_err)?;
                 }
                 "RZ" | "rz" => {
-                    writeln!(output, "RZ({}) {}", gate.params[0], gate.qubits[0]).unwrap()
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RZ gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(output, "RZ({param}) {qubit0}").map_err(fmt_err)?;
                 }
                 "CNOT" | "cx" => {
-                    writeln!(output, "CNOT {} {}", gate.qubits[0], gate.qubits[1]).unwrap()
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "CNOT {qubit0} {qubit1}").map_err(fmt_err)?;
                 }
                 "CZ" | "cz" => {
-                    writeln!(output, "CZ {} {}", gate.qubits[0], gate.qubits[1]).unwrap()
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CZ gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "CZ {qubit0} {qubit1}").map_err(fmt_err)?;
                 }
                 _ => {}
             }
         }
-
-        // Measurements
         for (qubit, cbit) in &circuit.measurements {
-            writeln!(output, "MEASURE {} ro[{}]", qubit, cbit).unwrap();
+            writeln!(output, "MEASURE {qubit} ro[{cbit}]").map_err(fmt_err)?;
         }
-
         Ok(output)
     }
-
     /// Compile to Q#
-    fn compile_to_qsharp(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_qsharp(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "namespace QuantumCircuit {{").unwrap();
-        writeln!(output, "    open Microsoft.Quantum.Canon;").unwrap();
-        writeln!(output, "    open Microsoft.Quantum.Intrinsic;").unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "    operation RunCircuit() : Result[] {{").unwrap();
+        writeln!(output, "namespace QuantumCircuit {{").map_err(fmt_err)?;
+        writeln!(output, "    open Microsoft.Quantum.Canon;").map_err(fmt_err)?;
+        writeln!(output, "    open Microsoft.Quantum.Intrinsic;").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "    operation RunCircuit() : Result[] {{").map_err(fmt_err)?;
         writeln!(
             output,
             "        use qubits = Qubit[{}];",
             circuit.num_qubits
         )
-        .unwrap();
-        writeln!(output).unwrap();
-
-        // Gates
+        .map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "        H(qubits[{}]);", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "        X(qubits[{}]);", gate.qubits[0]).unwrap(),
-                "Y" | "y" => writeln!(output, "        Y(qubits[{}]);", gate.qubits[0]).unwrap(),
-                "Z" | "z" => writeln!(output, "        Z(qubits[{}]);", gate.qubits[0]).unwrap(),
-                "CNOT" | "cx" => writeln!(
-                    output,
-                    "        CNOT(qubits[{}], qubits[{}]);",
-                    gate.qubits[0], gate.qubits[1]
-                )
-                .unwrap(),
+                "H" | "h" => {
+                    writeln!(output, "        H(qubits[{qubit0}]);").map_err(fmt_err)?;
+                }
+                "X" | "x" => {
+                    writeln!(output, "        X(qubits[{qubit0}]);").map_err(fmt_err)?;
+                }
+                "Y" | "y" => {
+                    writeln!(output, "        Y(qubits[{qubit0}]);").map_err(fmt_err)?;
+                }
+                "Z" | "z" => {
+                    writeln!(output, "        Z(qubits[{qubit0}]);").map_err(fmt_err)?;
+                }
+                "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "        CNOT(qubits[{qubit0}], qubits[{qubit1}]);")
+                        .map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
-        writeln!(output).unwrap();
-        writeln!(output, "        let results = ForEach(M, qubits);").unwrap();
-        writeln!(output, "        ResetAll(qubits);").unwrap();
-        writeln!(output, "        return results;").unwrap();
-        writeln!(output, "    }}").unwrap();
-        writeln!(output, "}}").unwrap();
-
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "        let results = ForEach(M, qubits);").map_err(fmt_err)?;
+        writeln!(output, "        ResetAll(qubits);").map_err(fmt_err)?;
+        writeln!(output, "        return results;").map_err(fmt_err)?;
+        writeln!(output, "    }}").map_err(fmt_err)?;
+        writeln!(output, "}}").map_err(fmt_err)?;
         Ok(output)
     }
-
     /// Compile to Cirq (Python)
-    fn compile_to_cirq(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_cirq(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "import cirq").unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "# Create qubits").unwrap();
+        writeln!(output, "import cirq").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "# Create qubits").map_err(fmt_err)?;
         writeln!(
             output,
             "qubits = [cirq.LineQubit(i) for i in range({})]",
             circuit.num_qubits
         )
-        .unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "# Create circuit").unwrap();
-        writeln!(output, "circuit = cirq.Circuit()").unwrap();
-        writeln!(output).unwrap();
-
-        // Gates
+        .map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "# Create circuit").map_err(fmt_err)?;
+        writeln!(output, "circuit = cirq.Circuit()").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
                 "H" | "h" => {
-                    writeln!(output, "circuit.append(cirq.H(qubits[{}]))", gate.qubits[0]).unwrap()
+                    writeln!(output, "circuit.append(cirq.H(qubits[{qubit0}]))")
+                        .map_err(fmt_err)?;
                 }
                 "X" | "x" => {
-                    writeln!(output, "circuit.append(cirq.X(qubits[{}]))", gate.qubits[0]).unwrap()
+                    writeln!(output, "circuit.append(cirq.X(qubits[{qubit0}]))")
+                        .map_err(fmt_err)?;
                 }
                 "Y" | "y" => {
-                    writeln!(output, "circuit.append(cirq.Y(qubits[{}]))", gate.qubits[0]).unwrap()
+                    writeln!(output, "circuit.append(cirq.Y(qubits[{qubit0}]))")
+                        .map_err(fmt_err)?;
                 }
                 "Z" | "z" => {
-                    writeln!(output, "circuit.append(cirq.Z(qubits[{}]))", gate.qubits[0]).unwrap()
+                    writeln!(output, "circuit.append(cirq.Z(qubits[{qubit0}]))")
+                        .map_err(fmt_err)?;
                 }
-                "CNOT" | "cx" => writeln!(
-                    output,
-                    "circuit.append(cirq.CNOT(qubits[{}], qubits[{}]))",
-                    gate.qubits[0], gate.qubits[1]
-                )
-                .unwrap(),
-                "RX" | "rx" => writeln!(
-                    output,
-                    "circuit.append(cirq.rx({}).on(qubits[{}]))",
-                    gate.params[0], gate.qubits[0]
-                )
-                .unwrap(),
-                "RY" | "ry" => writeln!(
-                    output,
-                    "circuit.append(cirq.ry({}).on(qubits[{}]))",
-                    gate.params[0], gate.qubits[0]
-                )
-                .unwrap(),
-                "RZ" | "rz" => writeln!(
-                    output,
-                    "circuit.append(cirq.rz({}).on(qubits[{}]))",
-                    gate.params[0], gate.qubits[0]
-                )
-                .unwrap(),
+                "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(
+                        output,
+                        "circuit.append(cirq.CNOT(qubits[{qubit0}], qubits[{qubit1}]))"
+                    )
+                    .map_err(fmt_err)?;
+                }
+                "RX" | "rx" => {
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RX gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(
+                        output,
+                        "circuit.append(cirq.rx({param}).on(qubits[{qubit0}]))"
+                    )
+                    .map_err(fmt_err)?;
+                }
+                "RY" | "ry" => {
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RY gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(
+                        output,
+                        "circuit.append(cirq.ry({param}).on(qubits[{qubit0}]))"
+                    )
+                    .map_err(fmt_err)?;
+                }
+                "RZ" | "rz" => {
+                    let param = gate.params.first().ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("RZ gate missing angle parameter".to_string())
+                    })?;
+                    writeln!(
+                        output,
+                        "circuit.append(cirq.rz({param}).on(qubits[{qubit0}]))"
+                    )
+                    .map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
-        // Measurements
         if !circuit.measurements.is_empty() {
-            writeln!(output).unwrap();
-            write!(output, "circuit.append(cirq.measure(").unwrap();
+            writeln!(output).map_err(fmt_err)?;
+            write!(output, "circuit.append(cirq.measure(").map_err(fmt_err)?;
             for (i, (qubit, _)) in circuit.measurements.iter().enumerate() {
                 if i > 0 {
-                    write!(output, ", ").unwrap();
+                    write!(output, ", ").map_err(fmt_err)?;
                 }
-                write!(output, "qubits[{}]", qubit).unwrap();
+                write!(output, "qubits[{qubit}]").map_err(fmt_err)?;
             }
-            writeln!(output, ", key='result'))").unwrap();
+            writeln!(output, ", key='result'))").map_err(fmt_err)?;
         }
-
-        writeln!(output).unwrap();
-        writeln!(output, "print(circuit)").unwrap();
-
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "print(circuit)").map_err(fmt_err)?;
         Ok(output)
     }
-
     /// Compile to Qiskit (Python)
-    fn compile_to_qiskit(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_qiskit(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
         writeln!(
             output,
             "from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister"
         )
-        .unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "# Create registers").unwrap();
+        .map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "# Create registers").map_err(fmt_err)?;
         writeln!(
             output,
             "qreg = QuantumRegister({}, 'q'))",
             circuit.num_qubits
         )
-        .unwrap();
-
+        .map_err(fmt_err)?;
         if circuit.num_cbits > 0 {
             writeln!(
                 output,
                 "creg = ClassicalRegister({}, 'c')",
                 circuit.num_cbits
             )
-            .unwrap();
-            writeln!(output, "circuit = QuantumCircuit(qreg, creg)").unwrap();
+            .map_err(fmt_err)?;
+            writeln!(output, "circuit = QuantumCircuit(qreg, creg)").map_err(fmt_err)?;
         } else {
-            writeln!(output, "circuit = QuantumCircuit(qreg)").unwrap();
+            writeln!(output, "circuit = QuantumCircuit(qreg)").map_err(fmt_err)?;
         }
-
-        writeln!(output).unwrap();
-
-        // Gates
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "circuit.h({})", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "circuit.x({})", gate.qubits[0]).unwrap(),
+                "H" | "h" => writeln!(output, "circuit.h({qubit0})").map_err(fmt_err)?,
+                "X" | "x" => writeln!(output, "circuit.x({qubit0})").map_err(fmt_err)?,
                 "CNOT" | "cx" => {
-                    writeln!(output, "circuit.cx({}, {})", gate.qubits[0], gate.qubits[1]).unwrap()
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "circuit.cx({qubit0}, {qubit1})").map_err(fmt_err)?;
                 }
                 _ => {}
             }
         }
-
-        // Measurements
         for (qubit, cbit) in &circuit.measurements {
-            writeln!(output, "circuit.measure({}, {})", qubit, cbit).unwrap();
+            writeln!(output, "circuit.measure({qubit}, {cbit})").map_err(fmt_err)?;
         }
-
-        writeln!(output).unwrap();
-        writeln!(output, "print(circuit)").unwrap();
-
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "print(circuit)").map_err(fmt_err)?;
         Ok(output)
     }
-
     /// Compile to PyQuil
-    fn compile_to_pyquil(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_pyquil(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "from pyquil import Program").unwrap();
-        writeln!(output, "from pyquil.gates import *").unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "program = Program()").unwrap();
-        writeln!(output).unwrap();
-
-        // Gates
+        writeln!(output, "from pyquil import Program").map_err(fmt_err)?;
+        writeln!(output, "from pyquil.gates import *").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "program = Program()").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "program += H({})", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "program += X({})", gate.qubits[0]).unwrap(),
-                "CNOT" | "cx" => writeln!(
-                    output,
-                    "program += CNOT({}, {})",
-                    gate.qubits[0], gate.qubits[1]
-                )
-                .unwrap(),
+                "H" | "h" => writeln!(output, "program += H({qubit0})").map_err(fmt_err)?,
+                "X" | "x" => writeln!(output, "program += X({qubit0})").map_err(fmt_err)?,
+                "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "program += CNOT({qubit0}, {qubit1})").map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
         Ok(output)
     }
-
     /// Compile to ProjectQ
-    fn compile_to_projectq(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_projectq(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "from projectq import MainEngine").unwrap();
-        writeln!(output, "from projectq.ops import *").unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "eng = MainEngine()").unwrap();
+        writeln!(output, "from projectq import MainEngine").map_err(fmt_err)?;
+        writeln!(output, "from projectq.ops import *").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "eng = MainEngine()").map_err(fmt_err)?;
         writeln!(
             output,
             "qubits = eng.allocate_qureg({}))",
             circuit.num_qubits
         )
-        .unwrap();
-        writeln!(output).unwrap();
-
-        // Gates
+        .map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(output, "H | qubits[{}]", gate.qubits[0]).unwrap(),
-                "X" | "x" => writeln!(output, "X | qubits[{}]", gate.qubits[0]).unwrap(),
-                "CNOT" | "cx" => writeln!(
-                    output,
-                    "CNOT | (qubits[{}], qubits[{}])",
-                    gate.qubits[0], gate.qubits[1]
-                )
-                .unwrap(),
+                "H" | "h" => writeln!(output, "H | qubits[{qubit0}]").map_err(fmt_err)?,
+                "X" | "x" => writeln!(output, "X | qubits[{qubit0}]").map_err(fmt_err)?,
+                "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "CNOT | (qubits[{qubit0}], qubits[{qubit1}])")
+                        .map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
         Ok(output)
     }
-
     /// Compile to Braket IR (JSON)
-    fn compile_to_braket_ir(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_braket_ir(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "{{").unwrap();
-        writeln!(output, "  \"braketSchemaHeader\": {{").unwrap();
-        writeln!(output, "    \"name\": \"braket.ir.jaqcd.program\",").unwrap();
-        writeln!(output, "    \"version\": \"1\"").unwrap();
-        writeln!(output, "  }},").unwrap();
-        writeln!(output, "  \"instructions\": [").unwrap();
-
+        writeln!(output, "{{").map_err(fmt_err)?;
+        writeln!(output, "  \"braketSchemaHeader\": {{").map_err(fmt_err)?;
+        writeln!(output, "    \"name\": \"braket.ir.jaqcd.program\",").map_err(fmt_err)?;
+        writeln!(output, "    \"version\": \"1\"").map_err(fmt_err)?;
+        writeln!(output, "  }},").map_err(fmt_err)?;
+        writeln!(output, "  \"instructions\": [").map_err(fmt_err)?;
         for (i, gate) in circuit.gates.iter().enumerate() {
             if i > 0 {
-                writeln!(output, ",").unwrap();
+                writeln!(output, ",").map_err(fmt_err)?;
             }
-            write!(output, "    {{").unwrap();
-
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
+            write!(output, "    {{").map_err(fmt_err)?;
             match gate.name.as_str() {
                 "H" | "h" => {
-                    write!(output, "\"type\": \"h\", \"target\": {}", gate.qubits[0]).unwrap();
+                    write!(output, "\"type\": \"h\", \"target\": {qubit0}").map_err(fmt_err)?;
                 }
                 "X" | "x" => {
-                    write!(output, "\"type\": \"x\", \"target\": {}", gate.qubits[0]).unwrap();
+                    write!(output, "\"type\": \"x\", \"target\": {qubit0}").map_err(fmt_err)?;
                 }
                 "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
                     write!(
                         output,
-                        "\"type\": \"cnot\", \"control\": {}, \"target\": {}",
-                        gate.qubits[0], gate.qubits[1]
+                        "\"type\": \"cnot\", \"control\": {qubit0}, \"target\": {qubit1}"
                     )
-                    .unwrap();
+                    .map_err(fmt_err)?;
                 }
                 _ => {}
             }
-
-            write!(output, "}}").unwrap();
+            write!(output, "}}").map_err(fmt_err)?;
         }
-
-        writeln!(output, "").unwrap();
-        writeln!(output, "  ]").unwrap();
-        writeln!(output, "}}").unwrap();
-
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "  ]").map_err(fmt_err)?;
+        writeln!(output, "}}").map_err(fmt_err)?;
         Ok(output)
     }
-
     /// Compile to Silq
-    fn compile_to_silq(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_silq(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "def circuit() {{").unwrap();
-        writeln!(output, "  // Allocate qubits").unwrap();
-        writeln!(output, "  q := 0:^{};", circuit.num_qubits).unwrap();
-        writeln!(output).unwrap();
-
+        writeln!(output, "def circuit() {{").map_err(fmt_err)?;
+        writeln!(output, "  // Allocate qubits").map_err(fmt_err)?;
+        writeln!(output, "  q := 0:^{};", circuit.num_qubits).map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
-                "H" | "h" => writeln!(
-                    output,
-                    "  q[{}] := H(q[{}]);",
-                    gate.qubits[0], gate.qubits[0]
-                )
-                .unwrap(),
-                "X" | "x" => writeln!(
-                    output,
-                    "  q[{}] := X(q[{}]);",
-                    gate.qubits[0], gate.qubits[0]
-                )
-                .unwrap(),
+                "H" | "h" => {
+                    writeln!(output, "  q[{qubit0}] := H(q[{qubit0}]);").map_err(fmt_err)?;
+                }
+                "X" | "x" => {
+                    writeln!(output, "  q[{qubit0}] := X(q[{qubit0}]);").map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
-        writeln!(output, "  return q;").unwrap();
-        writeln!(output, "}}").unwrap();
-
+        writeln!(output, "  return q;").map_err(fmt_err)?;
+        writeln!(output, "}}").map_err(fmt_err)?;
         Ok(output)
     }
-
     /// Compile to Pennylane
-    fn compile_to_pennylane(&self, circuit: &CompilableCircuit) -> QuantRS2Result<String> {
+    fn compile_to_pennylane(circuit: &CompilableCircuit) -> QuantRS2Result<String> {
         let mut output = String::new();
-
-        writeln!(output, "import pennylane as qml").unwrap();
-        writeln!(output).unwrap();
+        writeln!(output, "import pennylane as qml").map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
         writeln!(
             output,
             "dev = qml.device('default.qubit', wires={})",
             circuit.num_qubits
         )
-        .unwrap();
-        writeln!(output).unwrap();
-        writeln!(output, "@qml.qnode(dev)").unwrap();
-        writeln!(output, "def circuit():").unwrap();
-
+        .map_err(fmt_err)?;
+        writeln!(output).map_err(fmt_err)?;
+        writeln!(output, "@qml.qnode(dev)").map_err(fmt_err)?;
+        writeln!(output, "def circuit():").map_err(fmt_err)?;
         for gate in &circuit.gates {
+            let qubit0 = gate.qubits.first().ok_or_else(|| {
+                QuantRS2Error::InvalidInput("Gate missing target qubit".to_string())
+            })?;
             match gate.name.as_str() {
                 "H" | "h" => {
-                    writeln!(output, "    qml.Hadamard(wires={})", gate.qubits[0]).unwrap()
+                    writeln!(output, "    qml.Hadamard(wires={qubit0})").map_err(fmt_err)?;
                 }
-                "X" | "x" => writeln!(output, "    qml.PauliX(wires={})", gate.qubits[0]).unwrap(),
-                "CNOT" | "cx" => writeln!(
-                    output,
-                    "    qml.CNOT(wires=[{}, {}])",
-                    gate.qubits[0], gate.qubits[1]
-                )
-                .unwrap(),
+                "X" | "x" => {
+                    writeln!(output, "    qml.PauliX(wires={qubit0})").map_err(fmt_err)?;
+                }
+                "CNOT" | "cx" => {
+                    let qubit1 = gate.qubits.get(1).ok_or_else(|| {
+                        QuantRS2Error::InvalidInput("CNOT gate missing second qubit".to_string())
+                    })?;
+                    writeln!(output, "    qml.CNOT(wires=[{qubit0}, {qubit1}])")
+                        .map_err(fmt_err)?;
+                }
                 _ => {}
             }
         }
-
         writeln!(
             output,
             "    return qml.probs(wires=range({}))",
             circuit.num_qubits
         )
-        .unwrap();
-
+        .map_err(fmt_err)?;
         Ok(output)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_openqasm2_compilation() {
         let mut circuit = CompilableCircuit::new(2, 2);
@@ -819,16 +810,15 @@ mod tests {
         });
         circuit.add_measurement(0, 0);
         circuit.add_measurement(1, 1);
-
         let compiler = QuantumLanguageCompiler::new(QuantumLanguage::OpenQASM2);
-        let result = compiler.compile(&circuit).unwrap();
-
+        let result = compiler
+            .compile(&circuit)
+            .expect("OpenQASM 2.0 compilation should succeed");
         assert!(result.contains("OPENQASM 2.0"));
         assert!(result.contains("h q[0]"));
         assert!(result.contains("cx q[0], q[1]"));
         assert!(result.contains("measure q[0] -> c[0]"));
     }
-
     #[test]
     fn test_quil_compilation() {
         let mut circuit = CompilableCircuit::new(1, 1);
@@ -838,10 +828,10 @@ mod tests {
             qubits: vec![0],
             controls: vec![],
         });
-
         let compiler = QuantumLanguageCompiler::new(QuantumLanguage::Quil);
-        let result = compiler.compile(&circuit).unwrap();
-
+        let result = compiler
+            .compile(&circuit)
+            .expect("Quil compilation should succeed");
         assert!(result.contains("H 0"));
     }
 }

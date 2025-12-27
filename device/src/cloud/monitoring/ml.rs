@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// AutoML configuration for monitoring optimization
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AutoMLConfig {
     /// Enable AutoML
     pub enabled: bool,
@@ -19,7 +19,7 @@ pub struct AutoMLConfig {
 }
 
 /// AutoML tasks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AutoMLTask {
     AnomalyDetection,
     ForecastingOptimization,
@@ -44,7 +44,7 @@ pub struct ModelSelectionConfig {
 }
 
 /// Selection criteria
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SelectionCriterion {
     Accuracy,
     Precision,
@@ -58,7 +58,7 @@ pub enum SelectionCriterion {
 }
 
 /// Evaluation metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EvaluationMetric {
     Accuracy,
     Precision,
@@ -85,7 +85,7 @@ pub struct AutoMLCrossValidationConfig {
 }
 
 /// Cross-validation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CrossValidationMethod {
     KFold,
     StratifiedKFold,
@@ -94,7 +94,7 @@ pub enum CrossValidationMethod {
 }
 
 /// Model families
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelFamily {
     LinearModels,
     TreeModels,
@@ -120,7 +120,7 @@ pub struct HyperparameterOptimizationConfig {
 }
 
 /// Optimization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationMethod {
     RandomSearch,
     GridSearch,
@@ -131,7 +131,7 @@ pub enum OptimizationMethod {
 }
 
 /// Search space configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SearchSpaceConfig {
     /// Parameter definitions
     pub parameters: Vec<ParameterDefinition>,
@@ -174,7 +174,7 @@ pub struct ParameterConstraint {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintType {
     LinearEquality,
     LinearInequality,
@@ -234,7 +234,7 @@ pub struct ModelDeploymentConfig {
 }
 
 /// Deployment strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentStrategy {
     BlueGreen,
     Canary,
@@ -255,7 +255,7 @@ pub struct VersioningConfig {
 }
 
 /// Version schemes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VersionScheme {
     Semantic,
     Sequential,
@@ -275,7 +275,7 @@ pub struct ModelRegistryConfig {
 }
 
 /// Registry types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RegistryType {
     MLflow,
     ModelDB,
@@ -304,7 +304,7 @@ pub struct AuthConfig {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthMethod {
     Token,
     BasicAuth,
@@ -338,7 +338,7 @@ pub struct MetadataField {
 }
 
 /// Metadata field types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetadataFieldType {
     String,
     Number,
@@ -360,7 +360,7 @@ pub struct ArtifactStorageConfig {
 }
 
 /// Storage backends
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageBackend {
     Local,
     S3,
@@ -382,7 +382,7 @@ pub struct CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     Gzip,
     Lz4,
@@ -392,7 +392,7 @@ pub enum CompressionAlgorithm {
 }
 
 /// Model monitoring configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelMonitoringConfig {
     /// Performance monitoring
     pub performance: PerformanceMonitoringConfig,
@@ -416,7 +416,7 @@ pub struct PerformanceMonitoringConfig {
 }
 
 /// Performance metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceMetric {
     Accuracy,
     Precision,
@@ -456,7 +456,7 @@ pub struct DataDriftConfig {
 }
 
 /// Drift detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DriftDetectionMethod {
     KolmogorovSmirnov,
     ChiSquare,
@@ -479,7 +479,7 @@ pub struct ModelDriftConfig {
 }
 
 /// Retrain triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RetrainTrigger {
     PerformanceDegradation,
     DataDrift,
@@ -500,7 +500,7 @@ pub struct ModelAlertConfig {
 }
 
 /// Model alert types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelAlertType {
     PerformanceDegradation,
     DataDrift,
@@ -537,7 +537,7 @@ pub struct RollbackConfig {
 }
 
 /// Rollback triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RollbackTrigger {
     PerformanceDegradation,
     ErrorRateIncrease,
@@ -547,24 +547,12 @@ pub enum RollbackTrigger {
 }
 
 /// Rollback strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RollbackStrategy {
     PreviousVersion,
     StableVersion,
     SpecificVersion,
     Custom(String),
-}
-
-impl Default for AutoMLConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            tasks: vec![],
-            model_selection: ModelSelectionConfig::default(),
-            hyperparameter_optimization: HyperparameterOptimizationConfig::default(),
-            deployment: ModelDeploymentConfig::default(),
-        }
-    }
 }
 
 impl Default for ModelSelectionConfig {
@@ -596,15 +584,6 @@ impl Default for HyperparameterOptimizationConfig {
             search_space: SearchSpaceConfig::default(),
             budget: OptimizationBudget::default(),
             early_stopping: EarlyStoppingConfig::default(),
-        }
-    }
-}
-
-impl Default for SearchSpaceConfig {
-    fn default() -> Self {
-        Self {
-            parameters: vec![],
-            constraints: vec![],
         }
     }
 }
@@ -718,17 +697,6 @@ impl Default for CompressionConfig {
             enabled: true,
             algorithm: CompressionAlgorithm::Gzip,
             level: 6,
-        }
-    }
-}
-
-impl Default for ModelMonitoringConfig {
-    fn default() -> Self {
-        Self {
-            performance: PerformanceMonitoringConfig::default(),
-            data_drift: DataDriftConfig::default(),
-            model_drift: ModelDriftConfig::default(),
-            alerts: ModelAlertConfig::default(),
         }
     }
 }

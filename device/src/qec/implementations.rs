@@ -23,7 +23,7 @@ use super::{
 pub struct SteaneCode;
 
 impl SteaneCode {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -237,7 +237,7 @@ impl QuantumErrorCode for SteaneCode {
 pub struct ShorCode;
 
 impl ShorCode {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -533,7 +533,7 @@ pub struct SurfaceCode {
 }
 
 impl SurfaceCode {
-    pub fn new(distance: usize) -> Self {
+    pub const fn new(distance: usize) -> Self {
         Self { distance }
     }
 }
@@ -863,7 +863,7 @@ pub struct ToricCode {
 }
 
 impl ToricCode {
-    pub fn new(dimensions: (usize, usize)) -> Self {
+    pub const fn new(dimensions: (usize, usize)) -> Self {
         Self { dimensions }
     }
 }

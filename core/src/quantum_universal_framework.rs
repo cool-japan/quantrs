@@ -309,7 +309,7 @@ impl UniversalQuantumFramework {
         // Register hardware provider
         self.hardware_registry
             .hardware_providers
-            .insert(provider_info.provider_name.clone(), provider_info.clone());
+            .insert(provider_info.provider_name.clone(), provider_info);
 
         // Update capability matrix
         self.hardware_registry
@@ -368,7 +368,7 @@ impl UniversalQuantumFramework {
         Ok(UniversalCompilationResult {
             compilation_id: Self::generate_id(),
             source_circuit: circuit,
-            target_architectures: target_architectures.clone(),
+            target_architectures,
             compiled_circuits: compilations,
             portable_code,
             optimization_results: cross_platform_optimization,
@@ -460,7 +460,7 @@ impl UniversalQuantumFramework {
 
     fn analyze_architecture_compatibility(
         &self,
-        _architecture: &ArchitectureInfo,
+        architecture: &ArchitectureInfo,
     ) -> Result<CompatibilityAnalysis, QuantRS2Error> {
         Ok(CompatibilityAnalysis {
             compatibility_score: 0.95, // 95% compatibility
@@ -475,7 +475,7 @@ impl UniversalQuantumFramework {
 
     fn generate_compilation_strategies(
         &self,
-        _architecture: &ArchitectureInfo,
+        architecture: &ArchitectureInfo,
     ) -> Result<Vec<CompilationStrategy>, QuantRS2Error> {
         Ok(vec![
             CompilationStrategy::OptimalFidelity,
@@ -499,7 +499,7 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn analyze_circuit_requirements(
+    const fn analyze_circuit_requirements(
         &self,
         _circuit: &UniversalQuantumCircuit,
     ) -> Result<CircuitAnalysis, QuantRS2Error> {
@@ -515,19 +515,19 @@ impl UniversalQuantumFramework {
     fn compile_for_architecture(
         &self,
         _circuit: &UniversalQuantumCircuit,
-        _architecture: &ArchitectureType,
+        architecture: &ArchitectureType,
         _optimization: &OptimizationLevel,
     ) -> Result<ArchitectureCompiledCircuit, QuantRS2Error> {
         Ok(ArchitectureCompiledCircuit {
             circuit_id: Self::generate_id(),
-            architecture: _architecture.clone(),
+            architecture: architecture.clone(),
             compiled_gates: vec![],
             estimated_fidelity: 0.99,
             estimated_time: Duration::from_millis(10),
         })
     }
 
-    fn select_optimal_platform(
+    const fn select_optimal_platform(
         &self,
         _circuit: &UniversalCompiledCircuit,
         _preferences: &ExecutionPreferences,
@@ -549,32 +549,32 @@ impl UniversalQuantumFramework {
         })
     }
 
-    fn update_performance_models(
+    const fn update_performance_models(
         &self,
-        _selection: &PlatformSelection,
+        selection: &PlatformSelection,
         _result: &OptimizedExecutionResult,
     ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
     // Benchmarking methods
-    fn benchmark_architecture_support(&self) -> f64 {
+    const fn benchmark_architecture_support(&self) -> f64 {
         428.6 // 428.6x easier to support new quantum architectures
     }
 
-    fn benchmark_compilation_universality(&self) -> f64 {
+    const fn benchmark_compilation_universality(&self) -> f64 {
         312.4 // 312.4x more universal compilation capabilities
     }
 
-    fn benchmark_cross_platform_optimization(&self) -> f64 {
+    const fn benchmark_cross_platform_optimization(&self) -> f64 {
         289.7 // 289.7x better cross-platform optimization
     }
 
-    fn benchmark_adaptive_execution(&self) -> f64 {
+    const fn benchmark_adaptive_execution(&self) -> f64 {
         267.8 // 267.8x better adaptive execution
     }
 
-    fn benchmark_portability(&self) -> f64 {
+    const fn benchmark_portability(&self) -> f64 {
         378.9 // 378.9x better quantum code portability
     }
 }
@@ -713,7 +713,7 @@ impl CrossPlatformOptimizer {
         }
     }
 
-    pub fn optimize_across_platforms(
+    pub const fn optimize_across_platforms(
         &self,
         _compilations: &HashMap<ArchitectureType, ArchitectureCompiledCircuit>,
         _analysis: &CircuitAnalysis,
@@ -741,16 +741,16 @@ impl AdaptiveQuantumRuntime {
 
     pub fn prepare_execution_environment(
         &self,
-        _selection: &PlatformSelection,
+        selection: &PlatformSelection,
     ) -> Result<ExecutionEnvironment, QuantRS2Error> {
         Ok(ExecutionEnvironment {
-            platform: _selection.platform.clone(),
+            platform: selection.platform.clone(),
             calibration_state: CalibrationState::Optimal,
             resource_allocation: ResourceAllocation::default(),
         })
     }
 
-    pub fn execute_with_adaptation(
+    pub const fn execute_with_adaptation(
         &self,
         _circuit: &UniversalCompiledCircuit,
         _environment: &ExecutionEnvironment,
@@ -907,7 +907,7 @@ pub struct UniversalFrameworkAdvantageReport {
 }
 
 impl UniversalFrameworkAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             architecture_support_advantage: 0.0,
             compilation_universality_advantage: 0.0,
@@ -1150,139 +1150,139 @@ impl CoherenceCharacteristics {
 }
 
 impl PerformanceMetrics {
-    pub fn superconducting_default() -> Self {
+    pub const fn superconducting_default() -> Self {
         Self
     }
-    pub fn trapped_ion_default() -> Self {
+    pub const fn trapped_ion_default() -> Self {
         Self
     }
-    pub fn photonic_default() -> Self {
+    pub const fn photonic_default() -> Self {
         Self
     }
 }
 
 impl CalibrationRequirements {
-    pub fn standard() -> Self {
+    pub const fn standard() -> Self {
         Self
     }
-    pub fn high_precision() -> Self {
+    pub const fn high_precision() -> Self {
         Self
     }
-    pub fn low() -> Self {
+    pub const fn low() -> Self {
         Self
     }
 }
 
 impl CapabilityMatrix {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
-    pub fn update_capabilities(
+    pub const fn update_capabilities(
         &mut self,
-        _architecture: &ArchitectureInfo,
+        architecture: &ArchitectureInfo,
     ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
 
 impl CompatibilityGraph {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl DeviceDiscoveryEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl DynamicRegistrationSystem {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl UniversalCircuitOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl UniversalRoutingEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumTranspiler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl InstructionScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl ResourceAllocator {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl CompilationCache {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl ParetoOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl MultiObjectiveOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl CompatibilityLayer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl RealTimeCalibration {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl DynamicErrorCorrection {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl RuntimePerformanceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl AdaptiveScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl RuntimeResourceManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1300,37 +1300,37 @@ impl UniversalIntermediateRepresentation {
 }
 
 impl CompatibilityChecker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumMigrationTools {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl UniversalCalibrationManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl UniversalErrorMitigation {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl UniversalPerformanceAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumCompatibilityLayer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1451,7 +1451,7 @@ mod tests {
         let result = framework.register_quantum_architecture(architecture_info, provider_info);
         assert!(result.is_ok());
 
-        let registration_result = result.unwrap();
+        let registration_result = result.expect("architecture registration should succeed");
         assert!(registration_result.universal_advantage > 1.0);
         assert!(registration_result.compatibility_score > 0.9);
     }
@@ -1490,7 +1490,7 @@ mod tests {
         );
         assert!(result.is_ok());
 
-        let compilation_result = result.unwrap();
+        let compilation_result = result.expect("universal compilation should succeed");
         assert!(compilation_result.quantum_advantage > 1.0);
         assert!(compilation_result.universality_score > 0.9);
         assert_eq!(compilation_result.compiled_circuits.len(), 2);

@@ -1404,7 +1404,7 @@ mod tests {
                 },
             };
 
-            network.add_sensor(sensor).await.unwrap();
+            network.add_sensor(sensor).await.expect("add_sensor should succeed");
         }
 
         let advantage_metrics = network.calculate_quantum_advantage();
@@ -1423,7 +1423,7 @@ mod tests {
         let status = network.get_network_status().await;
         assert!(status.is_ok());
 
-        let status = status.unwrap();
+        let status = status.expect("network status should be available");
         assert!(matches!(status.operational_state, NetworkOperationalState::Operational));
         assert!(status.health_indicators.system_health_score > 0.0);
     }

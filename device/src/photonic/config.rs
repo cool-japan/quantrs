@@ -19,7 +19,7 @@ pub enum PhotonicSystem {
 }
 
 /// Advanced configuration for photonic quantum devices
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PhotonicConfig {
     /// Base system configuration
     pub system: SystemConfig,
@@ -51,7 +51,7 @@ pub struct SystemConfig {
 }
 
 /// Hardware configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HardwareConfig {
     /// Laser configuration
     pub laser: LaserConfig,
@@ -141,7 +141,7 @@ pub struct SqueezerConfig {
 }
 
 /// Measurement configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MeasurementConfig {
     /// Homodyne detection settings
     pub homodyne: HomodyneConfig,
@@ -280,18 +280,6 @@ pub enum OptimizationAlgorithm {
     Bayesian,
 }
 
-impl Default for PhotonicConfig {
-    fn default() -> Self {
-        Self {
-            system: SystemConfig::default(),
-            hardware: HardwareConfig::default(),
-            measurement: MeasurementConfig::default(),
-            error_correction: ErrorCorrectionConfig::default(),
-            optimization: OptimizationConfig::default(),
-        }
-    }
-}
-
 impl Default for SystemConfig {
     fn default() -> Self {
         Self {
@@ -301,18 +289,6 @@ impl Default for SystemConfig {
             max_photon_number: 50,
             squeezing_range: (-2.0, 2.0),
             displacement_range: (-5.0, 5.0),
-        }
-    }
-}
-
-impl Default for HardwareConfig {
-    fn default() -> Self {
-        Self {
-            laser: LaserConfig::default(),
-            detector: DetectorConfig::default(),
-            beam_splitter: BeamSplitterConfig::default(),
-            phase_shifter: PhaseShifterConfig::default(),
-            squeezer: SqueezerConfig::default(),
         }
     }
 }
@@ -373,17 +349,6 @@ impl Default for SqueezerConfig {
             bandwidth: 1e9,
             anti_squeezing_penalty: 3.0,
             pump_power: 100.0,
-        }
-    }
-}
-
-impl Default for MeasurementConfig {
-    fn default() -> Self {
-        Self {
-            homodyne: HomodyneConfig::default(),
-            heterodyne: HeterodyneConfig::default(),
-            photon_counting: PhotonCountingConfig::default(),
-            tomography: TomographyConfig::default(),
         }
     }
 }
@@ -469,42 +434,50 @@ impl PhotonicConfigBuilder {
         }
     }
 
-    pub fn system_type(mut self, system_type: PhotonicSystem) -> Self {
+    #[must_use]
+    pub const fn system_type(mut self, system_type: PhotonicSystem) -> Self {
         self.config.system.system_type = system_type;
         self
     }
 
-    pub fn mode_count(mut self, count: usize) -> Self {
+    #[must_use]
+    pub const fn mode_count(mut self, count: usize) -> Self {
         self.config.system.mode_count = count;
         self
     }
 
-    pub fn cutoff_dimension(mut self, cutoff: usize) -> Self {
+    #[must_use]
+    pub const fn cutoff_dimension(mut self, cutoff: usize) -> Self {
         self.config.system.cutoff_dimension = cutoff;
         self
     }
 
-    pub fn laser_wavelength(mut self, wavelength: f64) -> Self {
+    #[must_use]
+    pub const fn laser_wavelength(mut self, wavelength: f64) -> Self {
         self.config.hardware.laser.wavelength = wavelength;
         self
     }
 
-    pub fn detection_efficiency(mut self, efficiency: f64) -> Self {
+    #[must_use]
+    pub const fn detection_efficiency(mut self, efficiency: f64) -> Self {
         self.config.hardware.detector.efficiency = efficiency;
         self
     }
 
-    pub fn enable_error_correction(mut self, enabled: bool) -> Self {
+    #[must_use]
+    pub const fn enable_error_correction(mut self, enabled: bool) -> Self {
         self.config.error_correction.enabled = enabled;
         self
     }
 
-    pub fn error_correction_scheme(mut self, scheme: ErrorCorrectionScheme) -> Self {
+    #[must_use]
+    pub const fn error_correction_scheme(mut self, scheme: ErrorCorrectionScheme) -> Self {
         self.config.error_correction.scheme = scheme;
         self
     }
 
-    pub fn optimization_algorithm(mut self, algorithm: OptimizationAlgorithm) -> Self {
+    #[must_use]
+    pub const fn optimization_algorithm(mut self, algorithm: OptimizationAlgorithm) -> Self {
         self.config.optimization.algorithm = algorithm;
         self
     }
@@ -564,7 +537,7 @@ impl PhotonicConfigurations {
             .laser_wavelength(1550.0)
             .detection_efficiency(0.9)
             .build()
-            .unwrap()
+            .expect("CV config uses valid parameters")
     }
 
     /// Configuration for gate-based photonic quantum computing
@@ -578,7 +551,7 @@ impl PhotonicConfigurations {
             .enable_error_correction(true)
             .error_correction_scheme(ErrorCorrectionScheme::GKP)
             .build()
-            .unwrap()
+            .expect("Gate-based config uses valid parameters")
     }
 
     /// Configuration for measurement-based quantum computing
@@ -591,7 +564,7 @@ impl PhotonicConfigurations {
             .detection_efficiency(0.85)
             .optimization_algorithm(OptimizationAlgorithm::Bayesian)
             .build()
-            .unwrap()
+            .expect("MBQC config uses valid parameters")
     }
 
     /// Configuration for hybrid photonic systems
@@ -605,7 +578,7 @@ impl PhotonicConfigurations {
             .enable_error_correction(true)
             .error_correction_scheme(ErrorCorrectionScheme::Cat)
             .build()
-            .unwrap()
+            .expect("Hybrid config uses valid parameters")
     }
 }
 
@@ -622,7 +595,7 @@ mod tests {
             .build();
 
         assert!(config.is_ok());
-        let config = config.unwrap();
+        let config = config.expect("Config should be valid");
         assert_eq!(config.system.mode_count, 10);
         assert_eq!(config.system.cutoff_dimension, 15);
         assert_eq!(config.hardware.laser.wavelength, 1550.0);

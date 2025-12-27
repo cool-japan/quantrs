@@ -139,7 +139,7 @@ impl QuantumProfiler {
     }
 
     /// Get global statistics
-    pub fn global_statistics(&self) -> &GlobalStatistics {
+    pub const fn global_statistics(&self) -> &GlobalStatistics {
         &self.global_stats
     }
 
@@ -292,7 +292,7 @@ impl ProfilingReport {
             sorted_gates.sort_by_key(|(_, count)| std::cmp::Reverse(**count));
             for (gate, count) in sorted_gates.iter().take(10) {
                 let percentage = (**count as f64 / self.metrics.total_gates as f64) * 100.0;
-                println!("    {:<10} {:>6}  ({:>5.1}%)", gate, count, percentage);
+                println!("    {gate:<10} {count:>6}  ({percentage:>5.1}%)");
             }
             println!();
         }
@@ -318,7 +318,7 @@ impl ProfilingReport {
 
         println!("═══ Performance Metrics ═══");
         let gates_per_sec = self.metrics.total_gates as f64 / self.duration.as_secs_f64();
-        println!("  Gates per second: {:.2}", gates_per_sec);
+        println!("  Gates per second: {gates_per_sec:.2}");
         println!(
             "  Average gate time: {:.2} µs",
             self.duration.as_micros() as f64 / self.metrics.total_gates.max(1) as f64
@@ -380,7 +380,7 @@ mod tests {
         let handle = profiler.start_session("test_circuit");
         assert_eq!(handle.name, "test_circuit");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
         assert_eq!(report.session_name, "test_circuit");
         assert_eq!(profiler.global_stats.total_sessions, 1);
     }
@@ -390,14 +390,29 @@ mod tests {
         let mut profiler = QuantumProfiler::new();
         let handle = profiler.start_session("test");
 
-        profiler.record_gate("test", "H").unwrap();
-        profiler.record_gate("test", "CNOT").unwrap();
-        profiler.record_gate("test", "H").unwrap();
+        profiler
+            .record_gate("test", "H")
+            .expect("failed to record H gate");
+        profiler
+            .record_gate("test", "CNOT")
+            .expect("failed to record CNOT gate");
+        profiler
+            .record_gate("test", "H")
+            .expect("failed to record H gate");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
         assert_eq!(report.metrics.total_gates, 3);
-        assert_eq!(*report.gate_counts.get("H").unwrap(), 2);
-        assert_eq!(*report.gate_counts.get("CNOT").unwrap(), 1);
+        assert_eq!(
+            *report.gate_counts.get("H").expect("H gate count not found"),
+            2
+        );
+        assert_eq!(
+            *report
+                .gate_counts
+                .get("CNOT")
+                .expect("CNOT gate count not found"),
+            1
+        );
     }
 
     #[test]
@@ -405,10 +420,14 @@ mod tests {
         let mut profiler = QuantumProfiler::new();
         let handle = profiler.start_session("test");
 
-        profiler.record_measurement("test", 5).unwrap();
-        profiler.record_measurement("test", 3).unwrap();
+        profiler
+            .record_measurement("test", 5)
+            .expect("failed to record measurement");
+        profiler
+            .record_measurement("test", 3)
+            .expect("failed to record measurement");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
         assert_eq!(report.metrics.measurements, 2);
         assert_eq!(report.metrics.qubits_measured, 5);
     }
@@ -420,12 +439,12 @@ mod tests {
 
         profiler
             .record_memory("test", 1024 * 1024, "initialization")
-            .unwrap();
+            .expect("failed to record memory");
         profiler
             .record_memory("test", 2 * 1024 * 1024, "computation")
-            .unwrap();
+            .expect("failed to record memory");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
         assert_eq!(report.metrics.peak_memory, 2 * 1024 * 1024);
         assert_eq!(report.memory_usage.len(), 2);
     }
@@ -437,11 +456,15 @@ mod tests {
 
         // Record many gates to trigger deep circuit warning
         for _ in 0..150 {
-            profiler.record_gate("deep_circuit", "H").unwrap();
+            profiler
+                .record_gate("deep_circuit", "H")
+                .expect("failed to record gate");
         }
-        profiler.record_depth("deep_circuit", 150).unwrap();
+        profiler
+            .record_depth("deep_circuit", 150)
+            .expect("failed to record depth");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
         assert!(!report.recommendations.is_empty());
         assert!(report
             .recommendations
@@ -454,10 +477,14 @@ mod tests {
         let mut profiler = QuantumProfiler::new();
         let handle = profiler.start_session("test");
 
-        profiler.record_gate("test", "H").unwrap();
-        profiler.record_measurement("test", 1).unwrap();
+        profiler
+            .record_gate("test", "H")
+            .expect("failed to record gate");
+        profiler
+            .record_measurement("test", 1)
+            .expect("failed to record measurement");
 
-        let report = profiler.end_session(handle).unwrap();
+        let report = profiler.end_session(handle).expect("failed to end session");
 
         // Test that print_detailed doesn't panic
         report.print_detailed();
@@ -474,7 +501,7 @@ mod tests {
 
         for i in 0..5 {
             let handle = profiler.start_session(format!("session_{}", i));
-            profiler.end_session(handle).unwrap();
+            profiler.end_session(handle).expect("failed to end session");
         }
 
         let stats = profiler.global_statistics();

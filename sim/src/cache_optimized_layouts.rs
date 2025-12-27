@@ -666,7 +666,7 @@ impl CacheOptimizedStateVector {
                 }
 
                 if total_pairs > 0 {
-                    pattern.spatial_locality = spatial_hits as f64 / total_pairs as f64;
+                    pattern.spatial_locality = f64::from(spatial_hits) / f64::from(total_pairs);
                 }
             }
 
@@ -701,7 +701,9 @@ impl CacheOptimizedStateVector {
 
     /// Get cache performance statistics
     pub fn get_cache_stats(&self) -> Result<CachePerformanceStats> {
-        let pattern = self.access_pattern.lock().unwrap();
+        let pattern = self.access_pattern.lock().map_err(|e| {
+            SimulatorError::InvalidOperation(format!("Failed to acquire access pattern lock: {e}"))
+        })?;
         let total_accesses = pattern.cache_hits + pattern.cache_misses;
 
         Ok(CachePerformanceStats {
@@ -784,16 +786,19 @@ impl CacheOptimizedStateVector {
     }
 
     /// Get state vector data (read-only)
+    #[must_use]
     pub fn data(&self) -> &[Complex64] {
         &self.data
     }
 
     /// Get the current layout
+    #[must_use]
     pub const fn layout(&self) -> CacheOptimizedLayout {
         self.layout
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
@@ -848,6 +853,7 @@ pub struct CacheOptimizedGateManager {
 
 impl CacheOptimizedGateManager {
     /// Create a new cache-optimized gate manager
+    #[must_use]
     pub fn new(cache_config: CacheHierarchyConfig) -> Self {
         Self {
             cache_config,
@@ -902,6 +908,7 @@ impl CacheOptimizedGateManager {
     }
 
     /// Get comprehensive operation statistics
+    #[must_use]
     pub fn get_operation_statistics(&self) -> HashMap<String, CacheOperationStats> {
         self.operation_stats.clone()
     }
@@ -940,7 +947,7 @@ mod tests {
             cache_config,
             memory_config,
         )
-        .unwrap();
+        .expect("Failed to create cache-optimized state vector");
 
         assert_eq!(state_vector.num_qubits(), 3);
         assert_eq!(state_vector.data().len(), 8);
@@ -949,7 +956,8 @@ mod tests {
 
     #[test]
     fn test_blocked_layout_indices() {
-        let indices = CacheOptimizedStateVector::generate_blocked_indices(16).unwrap();
+        let indices = CacheOptimizedStateVector::generate_blocked_indices(16)
+            .expect("Failed to generate blocked indices");
         assert_eq!(indices.len(), 16);
 
         // Should maintain all indices
@@ -960,19 +968,22 @@ mod tests {
 
     #[test]
     fn test_z_order_layout() {
-        let indices = CacheOptimizedStateVector::generate_z_order_indices(16).unwrap();
+        let indices = CacheOptimizedStateVector::generate_z_order_indices(16)
+            .expect("Failed to generate Z-order indices");
         assert_eq!(indices.len(), 16);
     }
 
     #[test]
     fn test_hilbert_curve_layout() {
-        let indices = CacheOptimizedStateVector::generate_hilbert_indices(16).unwrap();
+        let indices = CacheOptimizedStateVector::generate_hilbert_indices(16)
+            .expect("Failed to generate Hilbert curve indices");
         assert_eq!(indices.len(), 16);
     }
 
     #[test]
     fn test_bit_reversal_layout() {
-        let indices = CacheOptimizedStateVector::generate_bit_reversal_indices(8).unwrap();
+        let indices = CacheOptimizedStateVector::generate_bit_reversal_indices(8)
+            .expect("Failed to generate bit reversal indices");
         assert_eq!(indices.len(), 8);
 
         // Check that bit reversal is working
@@ -992,7 +1003,7 @@ mod tests {
             cache_config,
             memory_config,
         )
-        .unwrap();
+        .expect("Failed to create state vector");
 
         // Pauli-X gate
         let gate_matrix = Array2::from_shape_vec(
@@ -1004,14 +1015,16 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create gate matrix");
 
         state_vector
             .apply_single_qubit_gate_cache_optimized(0, &gate_matrix)
-            .unwrap();
+            .expect("Failed to apply single qubit gate");
 
         // Check that state transformation occurred
-        let cache_stats = state_vector.get_cache_stats().unwrap();
+        let cache_stats = state_vector
+            .get_cache_stats()
+            .expect("Failed to get cache stats");
         assert!(cache_stats.total_cache_lines_accessed > 0);
     }
 
@@ -1026,9 +1039,11 @@ mod tests {
             cache_config,
             memory_config,
         )
-        .unwrap();
+        .expect("Failed to create state vector");
 
-        let stats = state_vector.get_cache_stats().unwrap();
+        let stats = state_vector
+            .get_cache_stats()
+            .expect("Failed to get cache stats");
         assert!(stats.cache_hit_rate >= 0.0 && stats.cache_hit_rate <= 1.0);
         assert!(stats.spatial_locality >= 0.0 && stats.spatial_locality <= 1.0);
         assert!(stats.temporal_locality >= 0.0 && stats.temporal_locality <= 1.0);
@@ -1045,9 +1060,11 @@ mod tests {
             cache_config,
             memory_config,
         )
-        .unwrap();
+        .expect("Failed to create state vector");
 
-        let adaptation_result = state_vector.adapt_cache_layout().unwrap();
+        let adaptation_result = state_vector
+            .adapt_cache_layout()
+            .expect("Failed to adapt cache layout");
 
         // Adaptation may or may not occur based on access patterns
         assert!(adaptation_result.performance_before >= 0.0);
@@ -1066,7 +1083,7 @@ mod tests {
             cache_config,
             memory_config,
         )
-        .unwrap();
+        .expect("Failed to create state vector");
 
         // Hadamard gate
         let gate_matrix = Array2::from_shape_vec(
@@ -1078,11 +1095,11 @@ mod tests {
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create gate matrix");
 
         let stats = manager
             .execute_gate(&mut state_vector, "H", &[0], &gate_matrix)
-            .unwrap();
+            .expect("Failed to execute gate");
 
         assert_eq!(stats.gate_name, "H");
         assert!(stats.execution_time > Duration::from_nanos(0));

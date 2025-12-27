@@ -180,7 +180,7 @@ impl QuantumNeuralNetwork {
         learning_rate: f64,
     ) -> Result<TrainingResult> {
         // Convert 1D labels to 2D
-        let y_2d = y_train.clone().into_shape((y_train.len(), 1)).unwrap();
+        let y_2d = y_train.clone().into_shape((y_train.len(), 1))?;
         self.train(x_train, &y_2d, epochs, learning_rate)
     }
 

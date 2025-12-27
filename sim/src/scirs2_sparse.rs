@@ -1,6 +1,6 @@
 //! SciRS2-optimized sparse matrix solvers for large quantum systems.
 //!
-//! This module provides sparse matrix operations optimized using SciRS2's
+//! This module provides sparse matrix operations optimized using `SciRS2`'s
 //! sparse linear algebra capabilities. It includes sparse Hamiltonian
 //! evolution, linear system solving, eigenvalue problems, and optimization
 //! routines for large-scale quantum simulations.
@@ -45,7 +45,7 @@ pub enum SparseSolverMethod {
     Arnoldi,
     Lanczos,
     LOBPCG,
-    /// SciRS2 optimized methods
+    /// `SciRS2` optimized methods
     SciRS2Auto,
     SciRS2Iterative,
     SciRS2Direct,
@@ -130,7 +130,7 @@ pub struct SparseEigenResult {
 
 /// SciRS2-optimized sparse matrix operations
 pub struct SciRS2SparseSolver {
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Solver configuration
     config: SparseSolverConfig,
@@ -165,6 +165,7 @@ pub struct SparseMatrix {
 
 impl SparseMatrix {
     /// Create new sparse matrix
+    #[must_use]
     pub const fn new(shape: (usize, usize), format: SparseFormat) -> Self {
         Self {
             shape,
@@ -179,6 +180,7 @@ impl SparseMatrix {
     }
 
     /// Create from CSR format
+    #[must_use]
     pub fn from_csr(
         shape: (usize, usize),
         row_ptr: Vec<usize>,
@@ -199,6 +201,7 @@ impl SparseMatrix {
     }
 
     /// Create identity matrix
+    #[must_use]
     pub fn identity(n: usize) -> Self {
         let mut row_ptr = vec![0; n + 1];
         let mut col_indices = Vec::with_capacity(n);
@@ -255,12 +258,14 @@ impl SparseMatrix {
         Ok(y)
     }
 
-    /// Get matrix density (nnz / total_elements)
+    /// Get matrix density (nnz / `total_elements`)
+    #[must_use]
     pub fn density(&self) -> f64 {
         self.nnz as f64 / (self.shape.0 * self.shape.1) as f64
     }
 
     /// Check if matrix is square
+    #[must_use]
     pub const fn is_square(&self) -> bool {
         self.shape.0 == self.shape.1
     }
@@ -307,7 +312,7 @@ impl SciRS2SparseSolver {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -402,7 +407,7 @@ impl SciRS2SparseSolver {
         })
     }
 
-    /// SciRS2 automatic solver selection
+    /// `SciRS2` automatic solver selection
     fn solve_scirs2_auto(
         &mut self,
         matrix: &SparseMatrix,
@@ -428,7 +433,7 @@ impl SciRS2SparseSolver {
         }
     }
 
-    /// SciRS2 direct solver
+    /// `SciRS2` direct solver
     fn solve_scirs2_direct(
         &mut self,
         matrix: &SparseMatrix,
@@ -450,7 +455,7 @@ impl SciRS2SparseSolver {
         }
     }
 
-    /// SciRS2 iterative solver
+    /// `SciRS2` iterative solver
     fn solve_scirs2_iterative(
         &mut self,
         matrix: &SparseMatrix,
@@ -594,7 +599,7 @@ impl SciRS2SparseSolver {
         Ok(x)
     }
 
-    /// BiCGSTAB solver
+    /// `BiCGSTAB` solver
     fn solve_bicgstab(
         &mut self,
         matrix: &SparseMatrix,
@@ -819,7 +824,7 @@ impl SciRS2SparseSolver {
         for i in 0..m.min(num_eigenvalues) {
             eigenvalues.push(h[[i, i]].re);
         }
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let eigenvectors = Array2::zeros((n, num_eigenvalues));
 
@@ -893,7 +898,7 @@ impl SciRS2SparseSolver {
 
         // Solve tridiagonal eigenvalue problem (simplified)
         let mut eigenvalues = alpha[..m.min(num_eigenvalues)].to_vec();
-        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let eigenvectors = Array2::zeros((n, num_eigenvalues));
 
@@ -914,7 +919,7 @@ impl SciRS2SparseSolver {
         self.solve_lanczos(matrix, num_eigenvalues, _which)
     }
 
-    /// SciRS2 automatic eigenvalue solver
+    /// `SciRS2` automatic eigenvalue solver
     fn solve_eigen_scirs2_auto(
         &mut self,
         matrix: &SparseMatrix,
@@ -939,6 +944,7 @@ impl SciRS2SparseSolver {
     }
 
     /// Get execution statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &SparseSolverStats {
         &self.stats
     }
@@ -1034,6 +1040,7 @@ impl SparseMatrixUtils {
     }
 
     /// Create sparse matrix from dense matrix
+    #[must_use]
     pub fn from_dense(dense: &Array2<Complex64>, threshold: f64) -> SparseMatrix {
         let (rows, cols) = dense.dim();
         let mut row_ptr = vec![0; rows + 1];
@@ -1057,6 +1064,7 @@ impl SparseMatrixUtils {
     }
 
     /// Create random sparse matrix for testing
+    #[must_use]
     pub fn random_sparse(n: usize, density: f64, hermitian: bool) -> SparseMatrix {
         let total_elements = n * n;
         let nnz_target = (total_elements as f64 * density) as usize;
@@ -1076,9 +1084,7 @@ impl SparseMatrixUtils {
                 fastrand::usize(0..n)
             };
 
-            if !added_elements.contains(&(i, j)) {
-                added_elements.insert((i, j));
-
+            if added_elements.insert((i, j)) {
                 let real = fastrand::f64() - 0.5;
                 let imag = if hermitian && i == j {
                     0.0
@@ -1159,9 +1165,9 @@ pub fn benchmark_sparse_solvers(
 
         let mut solver = SciRS2SparseSolver::new(config.clone())?;
         if method == SparseSolverMethod::SciRS2Auto {
-            solver = solver
-                .with_backend()
-                .unwrap_or_else(|_| SciRS2SparseSolver::new(config).unwrap());
+            solver = solver.with_backend().unwrap_or_else(|_| {
+                SciRS2SparseSolver::new(config).expect("fallback solver creation should succeed")
+            });
         }
 
         let _solution = solver.solve_linear_system(&matrix, &rhs)?;
@@ -1238,7 +1244,7 @@ mod tests {
             Complex64::new(3.0, 0.0),
         ]);
 
-        let y = matrix.matvec(&x).unwrap();
+        let y = matrix.matvec(&x).expect("matvec should succeed");
 
         for i in 0..3 {
             assert_abs_diff_eq!(y[i].re, x[i].re, epsilon = 1e-10);
@@ -1249,7 +1255,7 @@ mod tests {
     #[test]
     fn test_sparse_solver_creation() {
         let config = SparseSolverConfig::default();
-        let solver = SciRS2SparseSolver::new(config).unwrap();
+        let solver = SciRS2SparseSolver::new(config).expect("solver creation should succeed");
         assert!(solver.backend.is_none());
     }
 
@@ -1265,8 +1271,10 @@ mod tests {
             ..Default::default()
         };
 
-        let mut solver = SciRS2SparseSolver::new(config).unwrap();
-        let solution = solver.solve_linear_system(&matrix, &rhs).unwrap();
+        let mut solver = SciRS2SparseSolver::new(config).expect("solver creation should succeed");
+        let solution = solver
+            .solve_linear_system(&matrix, &rhs)
+            .expect("solve_linear_system should succeed");
 
         for i in 0..5 {
             assert_abs_diff_eq!(solution[i].re, rhs[i].re, epsilon = 1e-8);
@@ -1278,7 +1286,8 @@ mod tests {
     fn test_pauli_hamiltonian_creation() {
         let pauli_strings = vec![("ZZ".to_string(), 1.0), ("XX".to_string(), 0.5)];
 
-        let matrix = SparseMatrixUtils::hamiltonian_from_pauli_strings(2, &pauli_strings).unwrap();
+        let matrix = SparseMatrixUtils::hamiltonian_from_pauli_strings(2, &pauli_strings)
+            .expect("hamiltonian_from_pauli_strings should succeed");
 
         assert_eq!(matrix.shape, (4, 4));
         assert!(matrix.is_hermitian);
@@ -1297,7 +1306,7 @@ mod tests {
     #[test]
     fn test_dense_conversion() {
         let matrix = SparseMatrix::identity(3);
-        let dense = matrix.to_dense().unwrap();
+        let dense = matrix.to_dense().expect("to_dense should succeed");
 
         assert_eq!(dense.shape(), [3, 3]);
         for i in 0..3 {

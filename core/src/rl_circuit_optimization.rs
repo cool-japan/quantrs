@@ -209,7 +209,7 @@ impl QLearningOptimizer {
         available_actions: &[OptimizationAction],
     ) -> OptimizationAction {
         let state_key = self.state_to_key(state);
-        let q_table = self.q_table.read().unwrap();
+        let q_table = self.q_table.read().unwrap_or_else(|e| e.into_inner());
 
         let mut best_action = available_actions[0];
         let mut best_q_value = f64::NEG_INFINITY;
@@ -245,23 +245,25 @@ impl QLearningOptimizer {
         let next_state_key = self.state_to_key(next_state);
 
         // Find max Q-value for next state
-        let q_table = self.q_table.read().unwrap();
-        let max_next_q = if !next_actions.is_empty() {
+        let q_table = self.q_table.read().unwrap_or_else(|e| e.into_inner());
+        let max_next_q = if next_actions.is_empty() {
+            0.0
+        } else {
             next_actions
                 .iter()
                 .map(|&a| *q_table.get(&(next_state_key.clone(), a)).unwrap_or(&0.0))
                 .fold(f64::NEG_INFINITY, f64::max)
-        } else {
-            0.0
         };
         drop(q_table);
 
         // Q-learning update rule:
         // Q(s,a) = Q(s,a) + α * [r + γ * max Q(s',a') - Q(s,a)]
-        let mut q_table = self.q_table.write().unwrap();
+        let mut q_table = self.q_table.write().unwrap_or_else(|e| e.into_inner());
         let current_q = *q_table.get(&(state_key.clone(), action)).unwrap_or(&0.0);
-        let new_q = current_q
-            + self.learning_rate * (reward + self.discount_factor * max_next_q - current_q);
+        let new_q = self.learning_rate.mul_add(
+            self.discount_factor.mul_add(max_next_q, reward) - current_q,
+            current_q,
+        );
         q_table.insert((state_key, action), new_q);
     }
 
@@ -306,10 +308,13 @@ impl QLearningOptimizer {
 
         // Record episode
         {
-            let mut episodes = self.episodes.write().unwrap();
+            let mut episodes = self.episodes.write().unwrap_or_else(|e| e.into_inner());
             *episodes += 1;
 
-            let mut history = self.performance_history.write().unwrap();
+            let mut history = self
+                .performance_history
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             history.push(episode);
 
             // Keep last 1000 episodes
@@ -322,7 +327,10 @@ impl QLearningOptimizer {
 
     /// Get optimization statistics
     pub fn get_statistics(&self) -> OptimizationStatistics {
-        let history = self.performance_history.read().unwrap();
+        let history = self
+            .performance_history
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
 
         if history.is_empty() {
             return OptimizationStatistics {
@@ -331,7 +339,7 @@ impl QLearningOptimizer {
                 average_gate_reduction: 0.0,
                 average_reward: 0.0,
                 current_epsilon: self.epsilon,
-                q_table_size: self.q_table.read().unwrap().len(),
+                q_table_size: self.q_table.read().unwrap_or_else(|e| e.into_inner()).len(),
             };
         }
 
@@ -356,7 +364,7 @@ impl QLearningOptimizer {
             average_gate_reduction: avg_gate_reduction,
             average_reward: avg_reward,
             current_epsilon: self.epsilon,
-            q_table_size: self.q_table.read().unwrap().len(),
+            q_table_size: self.q_table.read().unwrap_or_else(|e| e.into_inner()).len(),
         }
     }
 
@@ -371,14 +379,14 @@ impl QLearningOptimizer {
     }
 
     /// Save Q-table to file
-    pub fn save_q_table(&self, path: &str) -> QuantRS2Result<()> {
+    pub const fn save_q_table(&self, path: &str) -> QuantRS2Result<()> {
         // In a real implementation, this would serialize the Q-table
         // For now, we'll just return Ok
         Ok(())
     }
 
     /// Load Q-table from file
-    pub fn load_q_table(&mut self, path: &str) -> QuantRS2Result<()> {
+    pub const fn load_q_table(&mut self, path: &str) -> QuantRS2Result<()> {
         // In a real implementation, this would deserialize the Q-table
         // For now, we'll just return Ok
         Ok(())
@@ -511,7 +519,10 @@ mod tests {
         optimizer.update_q_value(&state, action, 5.0, &next_state, &[]);
 
         // Q-value should have been updated
-        let q_table = optimizer.q_table.read().unwrap();
+        let q_table = optimizer
+            .q_table
+            .read()
+            .expect("Failed to acquire Q-table read lock");
         assert!(!q_table.is_empty());
     }
 

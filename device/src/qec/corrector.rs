@@ -84,8 +84,8 @@ impl QuantumErrorCorrector {
         calibration_manager: Option<CalibrationManager>,
         device_topology: Option<HardwareTopology>,
     ) -> QuantRS2Result<Self> {
-        let calibration = calibration_manager.unwrap_or_else(|| CalibrationManager::new());
-        let topology = device_topology.unwrap_or_else(|| HardwareTopology::default());
+        let calibration = calibration_manager.unwrap_or_else(CalibrationManager::new);
+        let topology = device_topology.unwrap_or_else(HardwareTopology::default);
         let noise_modeler = SciRS2NoiseModeler::new(device_id.clone());
 
         Ok(Self {
@@ -224,8 +224,12 @@ impl QuantumErrorCorrector {
         &self,
         execution_context: &ExecutionContext,
     ) -> QuantRS2Result<ErrorPatternAnalysis> {
-        let error_stats = self.error_statistics.read().unwrap();
-        let syndrome_history = self.syndrome_history.read().unwrap();
+        let error_stats = self.error_statistics.read().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to read error statistics: {}", e))
+        })?;
+        let syndrome_history = self.syndrome_history.read().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to read syndrome history: {}", e))
+        })?;
 
         // Perform temporal pattern analysis using SciRS2
         let temporal_analysis = self.analyze_temporal_patterns(&syndrome_history).await?;
@@ -260,7 +264,9 @@ impl QuantumErrorCorrector {
     ) -> QuantRS2Result<QECStrategy> {
         // Check optimization cache first
         let context_hash = self.calculate_context_hash(circuit, execution_context);
-        let cache = self.optimization_cache.read().unwrap();
+        let cache = self.optimization_cache.read().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to read optimization cache: {}", e))
+        })?;
 
         if let Some(cached) = cache.get(&context_hash.to_string()) {
             if cached.timestamp.elapsed().unwrap_or(Duration::MAX) < Duration::from_secs(300) {
@@ -288,7 +294,9 @@ impl QuantumErrorCorrector {
                         error_analysis,
                     )
                 },
-                initial_params.as_slice().unwrap(),
+                initial_params
+                    .as_slice()
+                    .expect("Array1 should be contiguous"),
                 scirs2_optimize::unconstrained::Method::LBFGSB,
                 None,
             );
@@ -298,7 +306,7 @@ impl QuantumErrorCorrector {
                     let metadata = (opt_result.fun, opt_result.success);
                     (opt_result.x, Some(metadata))
                 }
-                Err(_) => (initial_params.clone(), None),
+                Err(_) => (initial_params, None),
             }
         };
 
@@ -331,7 +339,9 @@ impl QuantumErrorCorrector {
             performance_score: predicted_performance,
         };
 
-        let mut cache = self.optimization_cache.write().unwrap();
+        let mut cache = self.optimization_cache.write().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to write optimization cache: {}", e))
+        })?;
         cache.insert(context_hash.to_string(), cached_result);
         drop(cache);
 
@@ -529,7 +539,7 @@ impl QuantumErrorCorrector {
             .ok_or_else(|| QuantRS2Error::InvalidInput("No calibration data available".into()))?;
 
         // Build readout error matrix
-        let readout_matrix = self.build_readout_error_matrix(&calibration).await?;
+        let readout_matrix = self.build_readout_error_matrix(calibration).await?;
 
         // Apply matrix inversion based on configuration
         let correction_matrix = self
@@ -537,11 +547,11 @@ impl QuantumErrorCorrector {
             .await?;
 
         // Apply tensored mitigation if configured
-        let final_correction = if !readout_config.tensored_mitigation.groups.is_empty() {
+        let final_correction = if readout_config.tensored_mitigation.groups.is_empty() {
+            correction_matrix
+        } else {
             self.apply_tensored_mitigation(&correction_matrix, &readout_config.tensored_mitigation)
                 .await?
-        } else {
-            correction_matrix
         };
 
         // Simulate corrected measurement results
@@ -603,7 +613,9 @@ impl QuantumErrorCorrector {
 
         // Add to history (with circular buffer behavior)
         {
-            let mut history = self.syndrome_history.write().unwrap();
+            let mut history = self.syndrome_history.write().map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Failed to write syndrome history: {}", e))
+            })?;
             if history.len() >= 10000 {
                 history.pop_front();
             }
@@ -629,8 +641,12 @@ impl QuantumErrorCorrector {
         &self,
         error_analysis: &ErrorPatternAnalysis,
     ) -> QuantRS2Result<StatisticalAnalysisResult> {
-        let syndrome_history = self.syndrome_history.read().unwrap();
-        let error_stats = self.error_statistics.read().unwrap();
+        let syndrome_history = self.syndrome_history.read().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to read syndrome history: {}", e))
+        })?;
+        let error_stats = self.error_statistics.read().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to read error statistics: {}", e))
+        })?;
 
         // Extract data for analysis
         let success_rates: Vec<f64> = syndrome_history
@@ -664,8 +680,8 @@ impl QuantumErrorCorrector {
             correlation_analysis,
             prediction_accuracy: error_stats.prediction_accuracy,
             confidence_interval: (
-                mean_success - 1.96 * std_success,
-                mean_success + 1.96 * std_success,
+                1.96f64.mul_add(-std_success, mean_success),
+                1.96f64.mul_add(std_success, mean_success),
             ),
             sample_size: syndrome_history.len(),
             last_updated: SystemTime::now(),
@@ -703,13 +719,13 @@ impl QuantumErrorCorrector {
         let time_weight = 0.2;
 
         // Estimate fidelity improvement (higher is better)
-        let fidelity_score = strategy_params[0].min(1.0).max(0.0);
+        let fidelity_score = strategy_params[0].clamp(0.0, 1.0);
 
         // Estimate resource usage (lower is better, so we negate)
-        let resource_score = -strategy_params.get(1).unwrap_or(&0.5).min(1.0).max(0.0);
+        let resource_score = -strategy_params.get(1).unwrap_or(&0.5).clamp(0.0, 1.0);
 
         // Estimate time overhead (lower is better, so we negate)
-        let time_score = -strategy_params.get(2).unwrap_or(&0.3).min(1.0).max(0.0);
+        let time_score = -strategy_params.get(2).unwrap_or(&0.3).clamp(0.0, 1.0);
 
         // Return negative for minimization (we want to maximize the overall score)
         -(fidelity_weight * fidelity_score
@@ -721,14 +737,16 @@ impl QuantumErrorCorrector {
         match strategy {
             QECStrategy::ActiveCorrection => Array1::from_vec(vec![0.7, 0.6, 0.5]),
             QECStrategy::PassiveMonitoring => Array1::from_vec(vec![0.3, 0.2, 0.1]),
-            QECStrategy::AdaptiveThreshold => Array1::from_vec(vec![0.8, 0.7, 0.6]),
-            QECStrategy::HybridApproach => Array1::from_vec(vec![0.85, 0.75, 0.65]),
+            QECStrategy::AdaptiveThreshold | QECStrategy::Adaptive => {
+                Array1::from_vec(vec![0.8, 0.7, 0.6])
+            }
+            QECStrategy::HybridApproach | QECStrategy::Hybrid { .. } => {
+                Array1::from_vec(vec![0.85, 0.75, 0.65])
+            }
             QECStrategy::Passive => Array1::from_vec(vec![0.1, 0.1, 0.1]),
             QECStrategy::ActivePeriodic { .. } => Array1::from_vec(vec![0.6, 0.5, 0.4]),
-            QECStrategy::Adaptive => Array1::from_vec(vec![0.8, 0.7, 0.6]),
             QECStrategy::MLDriven => Array1::from_vec(vec![0.9, 0.8, 0.7]),
             QECStrategy::FaultTolerant => Array1::from_vec(vec![0.95, 0.9, 0.8]),
-            QECStrategy::Hybrid { .. } => Array1::from_vec(vec![0.85, 0.75, 0.65]),
         }
     }
 
@@ -750,7 +768,7 @@ impl QuantumErrorCorrector {
         }
     }
 
-    fn estimate_resource_requirements(&self, strategy: &QECStrategy) -> ResourceRequirements {
+    const fn estimate_resource_requirements(&self, strategy: &QECStrategy) -> ResourceRequirements {
         match strategy {
             QECStrategy::Passive => ResourceRequirements {
                 auxiliary_qubits: 0,
@@ -842,17 +860,15 @@ impl QuantumErrorCorrector {
 
     async fn predict_error_patterns(
         &self,
-        execution_context: &ExecutionContext,
+        _execution_context: &ExecutionContext,
     ) -> QuantRS2Result<Vec<PredictedPattern>> {
-        let mut predictions = Vec::new();
-
         // Use ML models to predict future error patterns
-        predictions.push(PredictedPattern {
+        let predictions = vec![PredictedPattern {
             pattern_type: "gate_error_increase".to_string(),
             probability: 0.2,
             time_horizon: Duration::from_secs(300),
             affected_components: vec!["qubit_0".to_string(), "qubit_1".to_string()],
-        });
+        }];
 
         Ok(predictions)
     }
@@ -1062,7 +1078,9 @@ impl QuantumErrorCorrector {
         mitigation_result: &MitigationResult<N>,
         correction_time: Duration,
     ) -> QuantRS2Result<()> {
-        let mut metrics = self.correction_metrics.lock().unwrap();
+        let mut metrics = self.correction_metrics.lock().map_err(|e| {
+            QuantRS2Error::RuntimeError(format!("Failed to lock correction metrics: {}", e))
+        })?;
         metrics.total_corrections += 1;
         metrics.successful_corrections += 1;
         metrics.average_correction_time = (metrics.average_correction_time

@@ -1,10 +1,13 @@
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 
 use quantrs2_core::qubit::QubitId;
 
 /// Calculate the kronecker product of two matrices
+#[must_use]
 pub fn kron(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Array2<Complex64> {
     let a_shape = a.shape();
     let b_shape = b.shape();
@@ -32,6 +35,7 @@ pub fn kron(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Array2<Complex64> {
 }
 
 /// Calculate the tensor product of two state vectors
+#[must_use]
 pub fn tensor_product(a: &Array1<Complex64>, b: &Array1<Complex64>) -> Array1<Complex64> {
     let a_len = a.len();
     let b_len = b.len();
@@ -52,6 +56,7 @@ pub fn tensor_product(a: &Array1<Complex64>, b: &Array1<Complex64>) -> Array1<Co
 }
 
 /// Calculate the bit representation of an integer
+#[must_use]
 pub fn int_to_bits(n: usize, num_bits: usize) -> Vec<u8> {
     let mut bits = vec![0; num_bits];
     for i in 0..num_bits {
@@ -61,18 +66,21 @@ pub fn int_to_bits(n: usize, num_bits: usize) -> Vec<u8> {
 }
 
 /// Calculate the integer representation of a bit string
+#[must_use]
 pub fn bits_to_int(bits: &[u8]) -> usize {
     bits.iter().fold(0, |acc, &bit| (acc << 1) | bit as usize)
 }
 
 /// Compute the index with a bit flipped at the specified position
+#[must_use]
 pub const fn flip_bit(index: usize, pos: usize) -> usize {
     index ^ (1 << pos)
 }
 
 /// Compute the index with a controlled bit flip
 ///
-/// If the control bit at ctrl_pos is 1, then the target bit at target_pos is flipped.
+/// If the control bit at `ctrl_pos` is 1, then the target bit at `target_pos` is flipped.
+#[must_use]
 pub const fn controlled_flip(index: usize, ctrl_pos: usize, target_pos: usize) -> usize {
     if (index >> ctrl_pos) & 1 == 1 {
         flip_bit(index, target_pos)
@@ -84,6 +92,7 @@ pub const fn controlled_flip(index: usize, ctrl_pos: usize, target_pos: usize) -
 /// Compute the global index for a multi-qubit system
 ///
 /// Given a list of qubit indices, compute the global index into the state vector.
+#[must_use]
 pub fn compute_index(qubit_indices: &[QubitId], state_bits: &[u8]) -> usize {
     assert!(
         (qubit_indices.len() == state_bits.len()),
@@ -115,6 +124,7 @@ where
 }
 
 /// Convert a matrix representation of a gate (row-major) to a 2D ndarray
+#[must_use]
 pub fn gate_vec_to_array2(matrix: &[Complex64], dim: usize) -> Array2<Complex64> {
     let mut result = Array2::zeros((dim, dim));
 

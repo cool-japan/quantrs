@@ -4,7 +4,10 @@ use scirs2_core::ndarray::Array2;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use super::*;
+use super::{
+    ActionType, ConditionType, DecompositionStrategy, LogicalOperator, PerformanceRecord,
+    RequirementType, RequirementValue, ResourceConstraints, SideEffectType, TrendDirection,
+};
 
 /// Decomposition knowledge base
 #[derive(Debug, Clone)]
@@ -42,6 +45,7 @@ pub struct StrategyDatabase {
 }
 
 impl StrategyDatabase {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             strategies: vec![
@@ -69,6 +73,7 @@ pub struct PatternLibrary {
 }
 
 impl PatternLibrary {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             patterns: Vec::new(),
@@ -105,6 +110,7 @@ pub struct PerformanceRepository {
 }
 
 impl PerformanceRepository {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             historical_data: Vec::new(),
@@ -202,6 +208,7 @@ pub struct RuleEngine {
 }
 
 impl RuleEngine {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             rules: Vec::new(),

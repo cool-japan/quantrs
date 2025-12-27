@@ -25,7 +25,7 @@
 //!   adiabatic processes, and quantum error correction integration
 
 use scirs2_core::ndarray::{s, Array1, Array2, Array3, ArrayView1, ArrayView2, Axis};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
@@ -213,7 +213,7 @@ pub enum LearningAlgorithm {
 pub enum ActivationFunction {
     /// Rectified Linear Unit
     ReLU,
-    /// Leaky ReLU
+    /// Leaky `ReLU`
     LeakyReLU,
     /// Exponential Linear Unit
     ELU,
@@ -548,6 +548,7 @@ pub struct MemoryMetrics {
 
 impl QuantumReservoirState {
     /// Create new enhanced reservoir state
+    #[must_use]
     pub fn new(num_qubits: usize, memory_capacity: usize) -> Self {
         let state_size = 1 << num_qubits;
         let mut state_vector = Array1::zeros(state_size);
@@ -587,7 +588,11 @@ impl QuantumReservoirState {
 
     /// Update reservoir activity level
     fn update_activity_level(&mut self) {
-        let activity = self.state_vector.iter().map(|x| x.norm_sqr()).sum::<f64>()
+        let activity = self
+            .state_vector
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
             / self.state_vector.len() as f64;
 
         // Exponential moving average
@@ -596,6 +601,7 @@ impl QuantumReservoirState {
     }
 
     /// Calculate memory decay
+    #[must_use]
     pub fn calculate_memory_decay(&self) -> f64 {
         if self.state_history.len() < 2 {
             return 0.0;
@@ -649,6 +655,7 @@ pub struct ReservoirTrainingData {
 
 impl ReservoirTrainingData {
     /// Create new training data
+    #[must_use]
     pub const fn new(
         inputs: Vec<Array1<f64>>,
         targets: Vec<Array1<f64>>,
@@ -668,34 +675,40 @@ impl ReservoirTrainingData {
     }
 
     /// Add features to training data
+    #[must_use]
     pub fn with_features(mut self, features: Vec<Array1<f64>>) -> Self {
         self.features = Some(features);
         self
     }
 
     /// Add labels for classification
+    #[must_use]
     pub fn with_labels(mut self, labels: Vec<usize>) -> Self {
         self.labels = Some(labels);
         self
     }
 
     /// Add sample weights
+    #[must_use]
     pub fn with_weights(mut self, weights: Vec<f64>) -> Self {
         self.sample_weights = Some(weights);
         self
     }
 
     /// Get data length
+    #[must_use]
     pub fn len(&self) -> usize {
         self.inputs.len()
     }
 
     /// Check if data is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.inputs.is_empty()
     }
 
     /// Split data into train/test sets
+    #[must_use]
     pub fn train_test_split(&self, test_ratio: f64) -> (Self, Self) {
         let test_size = (self.len() as f64 * test_ratio) as usize;
         let train_size = self.len() - test_size;
@@ -826,7 +839,7 @@ pub struct QuantumReservoirComputerEnhanced {
     metrics: ReservoirMetrics,
     /// Training history
     training_history: VecDeque<TrainingExample>,
-    /// SciRS2 backend for advanced computations
+    /// `SciRS2` backend for advanced computations
     backend: Option<SciRS2Backend>,
     /// Random number generator
     rng: Arc<Mutex<scirs2_core::random::CoreRandom>>,
@@ -946,7 +959,7 @@ impl QuantumReservoirComputerEnhanced {
             simulator,
             circuit_interface,
             metrics: ReservoirMetrics::default(),
-            training_history: VecDeque::with_capacity(10000),
+            training_history: VecDeque::with_capacity(10_000),
             backend: None,
             rng: Arc::new(Mutex::new(thread_rng())),
         })
@@ -1652,7 +1665,7 @@ impl QuantumReservoirComputerEnhanced {
             .reservoir_state
             .state_vector
             .iter()
-            .map(|x| x.norm_sqr())
+            .map(scirs2_core::Complex::norm_sqr)
             .sum::<f64>()
             .sqrt();
 
@@ -1790,7 +1803,7 @@ impl QuantumReservoirComputerEnhanced {
             .reservoir_state
             .state_vector
             .iter()
-            .map(|x| x.norm_sqr())
+            .map(scirs2_core::Complex::norm_sqr)
             .collect();
 
         // Limit size for large systems
@@ -2425,7 +2438,7 @@ impl QuantumReservoirComputerEnhanced {
                 }
 
                 if count > 0 {
-                    correlation /= count as f64;
+                    correlation /= f64::from(count);
                     capacity += correlation.abs();
                 }
             }
@@ -2470,7 +2483,7 @@ impl QuantumReservoirComputerEnhanced {
                 }
 
                 if count > 0 {
-                    correlation /= count as f64;
+                    correlation /= f64::from(count);
                     capacity += correlation.abs() / order as f64; // Normalize by order
                 }
             }
@@ -2532,7 +2545,7 @@ impl QuantumReservoirComputerEnhanced {
                 }
 
                 if count > 0 {
-                    correlation /= count as f64;
+                    correlation /= f64::from(count);
                     capacity += correlation.abs();
                 }
             }
@@ -2654,6 +2667,7 @@ impl QuantumReservoirComputerEnhanced {
 
 impl TimeSeriesPredictor {
     /// Create new time series predictor
+    #[must_use]
     pub fn new(config: &TimeSeriesConfig) -> Self {
         Self {
             arima_params: ARIMAParams {
@@ -2681,6 +2695,7 @@ impl TimeSeriesPredictor {
 
 impl MemoryAnalyzer {
     /// Create new memory analyzer
+    #[must_use]
     pub fn new(config: MemoryAnalysisConfig) -> Self {
         Self {
             config,
@@ -2771,16 +2786,16 @@ pub fn benchmark_enhanced_quantum_reservoir_computing() -> Result<HashMap<String
             (0..200)
                 .map(|i| {
                     Array1::from_vec(vec![
-                        (i as f64 * 0.1).sin(),
-                        (i as f64 * 0.1).cos(),
-                        (i as f64 * 0.05).sin() * (i as f64 * 0.2).cos(),
+                        (f64::from(i) * 0.1).sin(),
+                        (f64::from(i) * 0.1).cos(),
+                        (f64::from(i) * 0.05).sin() * (f64::from(i) * 0.2).cos(),
                     ])
                 })
                 .collect(),
             (0..200)
-                .map(|i| Array1::from_vec(vec![(i as f64).mul_add(0.1, 1.0).sin()]))
+                .map(|i| Array1::from_vec(vec![f64::from(i).mul_add(0.1, 1.0).sin()]))
                 .collect(),
-            (0..200).map(|i| i as f64 * 0.1).collect(),
+            (0..200).map(|i| f64::from(i) * 0.1).collect(),
         );
 
         // Train and test
@@ -2860,13 +2875,13 @@ mod tests {
             evolution_steps: 2,
             ..Default::default()
         };
-        let mut qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
+        let mut qrc = QuantumReservoirComputerEnhanced::new(config).expect("Failed to create QRC");
 
         let input = Array1::from_vec(vec![0.5, 0.3, 0.8]);
         let result = qrc.process_input(&input);
         assert!(result.is_ok());
 
-        let features = result.unwrap();
+        let features = result.expect("Failed to process input");
         assert!(!features.is_empty());
     }
 
@@ -2933,7 +2948,8 @@ mod tests {
                 input_encoding: encoding,
                 ..Default::default()
             };
-            let mut qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
+            let mut qrc =
+                QuantumReservoirComputerEnhanced::new(config).expect("Failed to create QRC");
 
             let input = Array1::from_vec(vec![0.5, 0.3]);
             let result = qrc.encode_input(&input);
@@ -2984,7 +3000,8 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
+            let mut qrc =
+                QuantumReservoirComputerEnhanced::new(config).expect("Failed to create QRC");
             let result = qrc.evolve_reservoir();
             assert!(result.is_ok(), "Failed for dynamics: {dynamic:?}");
         }
@@ -3003,7 +3020,7 @@ mod tests {
             ..Default::default()
         };
 
-        let qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
+        let qrc = QuantumReservoirComputerEnhanced::new(config).expect("Failed to create QRC");
         let memory_analyzer = qrc.get_memory_analysis();
 
         assert!(memory_analyzer.config.enable_capacity_estimation);
@@ -3051,7 +3068,7 @@ mod tests {
     #[test]
     fn test_enhanced_metrics_tracking() {
         let config = QuantumReservoirConfig::default();
-        let qrc = QuantumReservoirComputerEnhanced::new(config).unwrap();
+        let qrc = QuantumReservoirComputerEnhanced::new(config).expect("Failed to create QRC");
 
         let metrics = qrc.get_metrics();
         assert_eq!(metrics.training_examples, 0);

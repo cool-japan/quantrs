@@ -135,10 +135,10 @@ impl QuantumGradientCalculator {
             for (param_idx, task_plus, task_minus) in tasks {
                 let result_plus = task_plus
                     .await
-                    .map_err(|e| DeviceError::InvalidInput(format!("Task error: {}", e)))??;
+                    .map_err(|e| DeviceError::InvalidInput(format!("Task error: {e}")))??;
                 let result_minus = task_minus
                     .await
-                    .map_err(|e| DeviceError::InvalidInput(format!("Task error: {}", e)))??;
+                    .map_err(|e| DeviceError::InvalidInput(format!("Task error: {e}")))??;
 
                 let expectation_plus = self.compute_expectation_value(&result_plus)?;
                 let expectation_minus = self.compute_expectation_value(&result_minus)?;
@@ -651,7 +651,7 @@ impl GradientUtils {
 
         let mut updated_gradients = Vec::with_capacity(gradients.len());
         for i in 0..gradients.len() {
-            momentum_buffer[i] = momentum * momentum_buffer[i] + gradients[i];
+            momentum_buffer[i] = momentum.mul_add(momentum_buffer[i], gradients[i]);
             updated_gradients.push(momentum_buffer[i]);
         }
 
@@ -695,7 +695,8 @@ mod tests {
     #[tokio::test]
     async fn test_gradient_calculator_creation() {
         let device = create_mock_quantum_device();
-        let calculator = QuantumGradientCalculator::new(device, GradientConfig::default()).unwrap();
+        let calculator = QuantumGradientCalculator::new(device, GradientConfig::default())
+            .expect("QuantumGradientCalculator creation should succeed with default config");
 
         assert_eq!(calculator.config.method, GradientMethod::ParameterShift);
         assert_eq!(calculator.config.shots, 1024);
@@ -715,10 +716,14 @@ mod tests {
     fn test_observable_evaluation() {
         let obs = Observable::single_z(0);
 
-        let value_0 = obs.evaluate_bitstring("0").unwrap();
+        let value_0 = obs
+            .evaluate_bitstring("0")
+            .expect("Observable evaluation should succeed for bitstring '0'");
         assert_eq!(value_0, 1.0);
 
-        let value_1 = obs.evaluate_bitstring("1").unwrap();
+        let value_1 = obs
+            .evaluate_bitstring("1")
+            .expect("Observable evaluation should succeed for bitstring '1'");
         assert_eq!(value_1, -1.0);
     }
 

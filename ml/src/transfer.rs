@@ -596,7 +596,8 @@ mod tests {
 
     #[test]
     fn test_transfer_learning_creation() {
-        let source = QuantumModelZoo::get_image_classifier().unwrap();
+        let source = QuantumModelZoo::get_image_classifier()
+            .expect("Failed to create image classifier model");
         let target_layers = vec![
             QNNLayerType::VariationalLayer { num_params: 4 },
             QNNLayerType::MeasurementLayer {
@@ -611,7 +612,7 @@ mod tests {
                 num_trainable_layers: 2,
             },
         )
-        .unwrap();
+        .expect("Failed to create transfer learning instance");
 
         assert_eq!(transfer.current_epoch, 0);
         assert!(transfer.layer_configs.len() > 0);
@@ -619,7 +620,8 @@ mod tests {
 
     #[test]
     fn test_layer_freezing() {
-        let source = QuantumModelZoo::get_chemistry_model().unwrap();
+        let source =
+            QuantumModelZoo::get_chemistry_model().expect("Failed to create chemistry model");
         let target_layers = vec![];
 
         let transfer = QuantumTransferLearning::new(
@@ -627,7 +629,7 @@ mod tests {
             target_layers,
             TransferStrategy::FeatureExtraction,
         )
-        .unwrap();
+        .expect("Failed to create transfer learning instance for feature extraction");
 
         // Check that early layers are frozen
         assert!(transfer.layer_configs[0].frozen);
@@ -636,7 +638,8 @@ mod tests {
 
     #[test]
     fn test_progressive_unfreezing() {
-        let source = QuantumModelZoo::get_image_classifier().unwrap();
+        let source = QuantumModelZoo::get_image_classifier()
+            .expect("Failed to create image classifier model");
         let target_layers = vec![];
 
         let mut transfer = QuantumTransferLearning::new(
@@ -644,7 +647,7 @@ mod tests {
             target_layers,
             TransferStrategy::ProgressiveUnfreezing { unfreeze_rate: 5 },
         )
-        .unwrap();
+        .expect("Failed to create transfer learning instance for progressive unfreezing");
 
         // Initially most layers should be frozen
         let frozen_count = transfer.layer_configs.iter().filter(|c| c.frozen).count();

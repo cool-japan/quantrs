@@ -365,12 +365,20 @@ mod tests {
     fn test_simulator_equivalence() {
         // Two circuits that create |00> + |11> (Bell state)
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard::new(QubitId(0))).unwrap();
-        circuit1.add_gate(CNOT::new(QubitId(0), QubitId(1))).unwrap();
+        circuit1
+            .add_gate(Hadamard::new(QubitId(0)))
+            .expect("add H gate to circuit1");
+        circuit1
+            .add_gate(CNOT::new(QubitId(0), QubitId(1)))
+            .expect("add CNOT gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
-        circuit2.add_gate(Hadamard::new(QubitId(0))).unwrap();
-        circuit2.add_gate(CNOT::new(QubitId(0), QubitId(1))).unwrap();
+        circuit2
+            .add_gate(Hadamard::new(QubitId(0)))
+            .expect("add H gate to circuit2");
+        circuit2
+            .add_gate(CNOT::new(QubitId(0), QubitId(1)))
+            .expect("add CNOT gate to circuit2");
 
         let checker = SimulatorEquivalenceChecker::new(EquivalenceOptions::default());
         let result = checker.check_state_equivalence(&circuit1, &circuit2);

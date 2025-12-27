@@ -34,7 +34,7 @@ impl Default for MetaLearningConfig {
         Self {
             enable_transfer_learning: true,
             enable_few_shot_learning: true,
-            experience_buffer_size: 10000,
+            experience_buffer_size: 10_000,
             meta_learning_rate: 0.001,
             inner_steps: 5,
             feature_config: FeatureExtractionConfig::default(),
@@ -79,7 +79,7 @@ impl Default for FeatureExtractionConfig {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureSelectionMethod {
     /// Automatic relevance determination
     AutomaticRelevance,
@@ -94,7 +94,7 @@ pub enum FeatureSelectionMethod {
 }
 
 /// Dimensionality reduction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DimensionalityReduction {
     /// Principal Component Analysis
     PCA,
@@ -111,7 +111,7 @@ pub enum DimensionalityReduction {
 }
 
 /// Feature normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureNormalization {
     /// Standard scaling (z-score)
     StandardScaling,
@@ -197,7 +197,7 @@ impl Default for SearchSpace {
 }
 
 /// Neural network layer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LayerType {
     /// Dense/Linear layer
     Dense,
@@ -228,7 +228,7 @@ pub enum ActivationFunction {
 }
 
 /// Search strategies for NAS
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchStrategy {
     /// Differentiable NAS
     DifferentiableNAS,
@@ -358,7 +358,7 @@ impl Default for DiversityCriteria {
 }
 
 /// Diversity measurement methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiversityMethod {
     /// Kullback-Leibler divergence
     KullbackLeibler,
@@ -404,7 +404,7 @@ impl Default for MultiObjectiveConfig {
 }
 
 /// Optimization objectives
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationObjective {
     /// Solution quality
     SolutionQuality,
@@ -447,7 +447,7 @@ impl Default for ParetoFrontierConfig {
 }
 
 /// Frontier update strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FrontierUpdateStrategy {
     /// Non-dominated sorting
     NonDominatedSort,
@@ -460,7 +460,7 @@ pub enum FrontierUpdateStrategy {
 }
 
 /// Scalarization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalarizationMethod {
     /// Weighted sum
     WeightedSum,
@@ -475,7 +475,7 @@ pub enum ScalarizationMethod {
 }
 
 /// Constraint handling methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintHandling {
     /// Penalty method
     PenaltyMethod,
@@ -507,7 +507,7 @@ pub enum AlgorithmType {
     /// Variable neighborhood search
     VariableNeighborhood,
     /// Hybrid algorithm
-    Hybrid(Vec<AlgorithmType>),
+    Hybrid(Vec<Self>),
 }
 
 /// Architecture specification
@@ -539,7 +539,7 @@ pub struct LayerSpec {
 }
 
 /// Connection patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionPattern {
     /// Sequential connections
     Sequential,
@@ -569,7 +569,7 @@ pub struct OptimizationSettings {
 }
 
 /// Optimizer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizerType {
     SGD,
     Adam,

@@ -326,7 +326,7 @@ impl DataPreprocessor {
             for j in 0..n_features {
                 let column = data.column(j);
                 let mut sorted_values: Vec<f64> = column.iter().cloned().collect();
-                sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
                 let q1_idx = sorted_values.len() / 4;
                 let q3_idx = 3 * sorted_values.len() / 4;

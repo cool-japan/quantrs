@@ -196,8 +196,8 @@ impl HardwareCompiler {
         let compilation_time = start_time.elapsed();
 
         Ok(CompilationResult {
-            original_circuit: format!("{:?}", circuit),
-            optimized_circuit: format!("{:?}", optimized_circuit),
+            original_circuit: format!("{circuit:?}"),
+            optimized_circuit: format!("{optimized_circuit:?}"),
             optimization_stats,
             applied_passes,
             hardware_allocation,
@@ -211,7 +211,7 @@ impl HardwareCompiler {
     }
 
     /// Initialize optimization statistics
-    fn initialize_optimization_stats<const N: usize>(
+    const fn initialize_optimization_stats<const N: usize>(
         &self,
         circuit: &Circuit<N>,
     ) -> OptimizationStats {
@@ -286,7 +286,7 @@ impl HardwareCompiler {
     }
 
     /// Finalize optimization statistics
-    fn finalize_optimization_stats<const N: usize>(
+    const fn finalize_optimization_stats<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
         mut stats: OptimizationStats,
@@ -351,7 +351,7 @@ impl HardwareCompiler {
     }
 
     /// Verify circuit equivalence
-    fn verify_circuit_equivalence<const N: usize>(
+    const fn verify_circuit_equivalence<const N: usize>(
         &self,
         _optimized: &Circuit<N>,
         _original: &Circuit<N>,
@@ -374,21 +374,21 @@ impl HardwareCompiler {
         })
     }
 
-    fn verify_circuit_constraints<const N: usize>(
+    const fn verify_circuit_constraints<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
     ) -> DeviceResult<ConstraintVerificationResult> {
         Ok(ConstraintVerificationResult { is_valid: true })
     }
 
-    fn verify_semantic_correctness<const N: usize>(
+    const fn verify_semantic_correctness<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
     ) -> DeviceResult<SemanticVerificationResult> {
         Ok(SemanticVerificationResult { is_valid: true })
     }
 
-    fn evaluate_circuit_objective<const N: usize>(
+    const fn evaluate_circuit_objective<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
         _params: &Array1<f64>,
@@ -396,7 +396,7 @@ impl HardwareCompiler {
         Ok(0.95)
     }
 
-    fn apply_optimized_parameters<const N: usize>(
+    const fn apply_optimized_parameters<const N: usize>(
         &self,
         _circuit: &mut Circuit<N>,
         _params: &Array1<f64>,

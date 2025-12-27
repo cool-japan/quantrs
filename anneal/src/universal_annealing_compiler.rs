@@ -2492,7 +2492,7 @@ impl UniversalResourceScheduler {
             performance_tracker: PerformanceTracker {
                 config: TrackerConfig {
                     collection_interval: Duration::from_secs(10),
-                    retention_period: Duration::from_secs(86400),
+                    retention_period: Duration::from_secs(86_400),
                     alerting: AlertingConfig {
                         enabled: true,
                         thresholds: HashMap::new(),
@@ -2538,7 +2538,7 @@ mod tests {
 
     #[test]
     fn test_universal_compiler_creation() {
-        let compiler = create_example_universal_compiler().unwrap();
+        let compiler = create_example_universal_compiler().expect("Compiler creation should succeed");
         assert!(compiler.config.auto_platform_discovery);
         assert_eq!(compiler.config.optimization_level, OptimizationLevel::Aggressive);
     }

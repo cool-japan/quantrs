@@ -98,7 +98,7 @@ impl ParametricCircuit {
             Parameter::Expression(expr) => {
                 self.extract_expr_parameter_names(expr);
             }
-            _ => {}
+            Parameter::Fixed(_) => {}
         }
     }
 
@@ -121,7 +121,7 @@ impl ParametricCircuit {
             | ParameterExpression::Pow(p, _) => {
                 self.extract_parameter_names(p);
             }
-            _ => {}
+            ParameterExpression::Const(_) => {}
         }
     }
 
@@ -284,7 +284,7 @@ impl ParametricCircuit {
             Parameter::Named(name) => values
                 .get(name)
                 .copied()
-                .ok_or_else(|| DeviceError::APIError(format!("Missing parameter: {}", name))),
+                .ok_or_else(|| DeviceError::APIError(format!("Missing parameter: {name}"))),
             Parameter::Expression(expr) => self.evaluate_expression(expr, values),
         }
     }
@@ -299,7 +299,7 @@ impl ParametricCircuit {
             ParameterExpression::Param(name) => values
                 .get(name)
                 .copied()
-                .ok_or_else(|| DeviceError::APIError(format!("Missing parameter: {}", name))),
+                .ok_or_else(|| DeviceError::APIError(format!("Missing parameter: {name}"))),
             ParameterExpression::Const(val) => Ok(*val),
             ParameterExpression::Add(p1, p2) => {
                 let v1 = self.evaluate_parameter(p1, values)?;
@@ -427,6 +427,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a Hadamard gate
+    #[must_use]
     pub fn h(mut self, qubit: usize) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "H".to_string(),
@@ -437,6 +438,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a parametric RX gate
+    #[must_use]
     pub fn rx(mut self, qubit: usize, param: Parameter) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "RX".to_string(),
@@ -447,6 +449,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a parametric RY gate
+    #[must_use]
     pub fn ry(mut self, qubit: usize, param: Parameter) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "RY".to_string(),
@@ -457,6 +460,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a parametric RZ gate
+    #[must_use]
     pub fn rz(mut self, qubit: usize, param: Parameter) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "RZ".to_string(),
@@ -467,6 +471,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a CNOT gate
+    #[must_use]
     pub fn cnot(mut self, control: usize, target: usize) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "CNOT".to_string(),
@@ -477,6 +482,7 @@ impl ParametricCircuitBuilder {
     }
 
     /// Add a parametric controlled rotation
+    #[must_use]
     pub fn crx(mut self, control: usize, target: usize, param: Parameter) -> Self {
         self.circuit.add_gate(ParametricGate {
             gate_type: "CRX".to_string(),
@@ -547,8 +553,8 @@ impl ParametricTemplates {
             // Single-qubit rotations
             for q in 0..num_qubits {
                 builder = builder
-                    .ry(q, Parameter::Named(format!("theta_{}_{}_y", layer, q)))
-                    .rz(q, Parameter::Named(format!("theta_{}_{}_z", layer, q)));
+                    .ry(q, Parameter::Named(format!("theta_{layer}_{q}_y")))
+                    .rz(q, Parameter::Named(format!("theta_{layer}_{q}_z")));
                 param_idx += 2;
             }
 
@@ -560,7 +566,7 @@ impl ParametricTemplates {
 
         // Final layer of rotations
         for q in 0..num_qubits {
-            builder = builder.ry(q, Parameter::Named(format!("theta_final_{}", q)));
+            builder = builder.ry(q, Parameter::Named(format!("theta_final_{q}")));
         }
 
         builder.build()
@@ -581,13 +587,13 @@ impl ParametricTemplates {
 
         for p in 0..num_layers {
             // Problem Hamiltonian layer
-            let gamma = Parameter::Named(format!("gamma_{}", p));
+            let gamma = Parameter::Named(format!("gamma_{p}"));
             for (u, v) in &problem_edges {
                 builder = builder.cnot(*u, *v).rz(*v, gamma.clone()).cnot(*u, *v);
             }
 
             // Mixer Hamiltonian layer
-            let beta = Parameter::Named(format!("beta_{}", p));
+            let beta = Parameter::Named(format!("beta_{p}"));
             for q in 0..num_qubits {
                 builder = builder.rx(q, beta.clone());
             }
@@ -604,9 +610,9 @@ impl ParametricTemplates {
             // Rotation layer
             for q in 0..num_qubits {
                 builder = builder
-                    .rx(q, Parameter::Named(format!("r_{}_{}_x", layer, q)))
-                    .ry(q, Parameter::Named(format!("r_{}_{}_y", layer, q)))
-                    .rz(q, Parameter::Named(format!("r_{}_{}_z", layer, q)));
+                    .rx(q, Parameter::Named(format!("r_{layer}_{q}_x")))
+                    .ry(q, Parameter::Named(format!("r_{layer}_{q}_y")))
+                    .rz(q, Parameter::Named(format!("r_{layer}_{q}_z")));
             }
 
             // Entangling layer with circular connectivity
@@ -629,7 +635,7 @@ impl ParametricTemplates {
         // Single excitations
         for i in 0..num_electrons {
             for a in num_electrons..num_qubits {
-                let theta = Parameter::Named(format!("t1_{}_{}", i, a));
+                let theta = Parameter::Named(format!("t1_{i}_{a}"));
                 // Simplified - real implementation would use controlled rotations
                 builder = builder.cnot(i, a).ry(a, theta).cnot(i, a);
             }
@@ -640,7 +646,7 @@ impl ParametricTemplates {
             for j in i + 1..num_electrons {
                 for a in num_electrons..num_qubits - 1 {
                     for b in a + 1..num_qubits {
-                        let theta = Parameter::Named(format!("t2_{}_{}_{}", i, j, a));
+                        let theta = Parameter::Named(format!("t2_{i}_{j}_{a}"));
                         // Very simplified - real implementation is more complex
                         builder = builder
                             .cnot(i, a)
@@ -738,7 +744,9 @@ mod tests {
         params.insert("a".to_string(), 1.0);
         params.insert("b".to_string(), 2.0);
 
-        let concrete = circuit.bind_parameters::<2>(&params).unwrap();
+        let concrete = circuit
+            .bind_parameters::<2>(&params)
+            .expect("Parameter binding should succeed with valid params");
         assert_eq!(concrete.num_gates(), 2);
     }
 
@@ -756,7 +764,9 @@ mod tests {
         let mut params = HashMap::new();
         params.insert("theta".to_string(), PI / 4.0);
 
-        let concrete = circuit.bind_parameters::<1>(&params).unwrap();
+        let concrete = circuit
+            .bind_parameters::<1>(&params)
+            .expect("Parameter expression binding should succeed");
         assert_eq!(concrete.num_gates(), 1);
     }
 

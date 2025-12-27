@@ -384,7 +384,7 @@ impl SabreRouter {
         if self.config.stochastic {
             // Stochastic selection from top candidates
             let mut rng = thread_rng();
-            sorted_swaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            sorted_swaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
             let top_candidates = sorted_swaps.len().min(5);
 
             if top_candidates > 0 {
@@ -395,7 +395,7 @@ impl SabreRouter {
             }
         } else {
             // Deterministic selection of best SWAP
-            sorted_swaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+            sorted_swaps.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
             if sorted_swaps.is_empty() {
                 Ok(Vec::new())
             } else {
@@ -441,8 +441,7 @@ impl SabreRouter {
 
             let node = &dag.nodes()[gate_id];
             for &succ in &node.successors {
-                if !extended_set.contains(&succ) {
-                    extended_set.insert(succ);
+                if extended_set.insert(succ) {
                     to_visit.push_back((succ, depth + 1));
                 }
             }
@@ -515,13 +514,15 @@ mod tests {
         let router = SabreRouter::new(coupling_map, config);
 
         let mut circuit = Circuit::<3>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(2),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let result = router.route(&circuit);
         assert!(result.is_ok());
@@ -539,7 +540,7 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let dag = circuit_to_dag(&circuit);
         let mapping = router.initial_mapping(&dag);

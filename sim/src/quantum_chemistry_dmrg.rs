@@ -378,7 +378,7 @@ pub struct QuantumChemistryDMRGSimulator {
     hamiltonian: Option<MolecularHamiltonian>,
     /// Current DMRG state
     current_state: Option<DMRGState>,
-    /// SciRS2 backend for numerical computations
+    /// `SciRS2` backend for numerical computations
     backend: Option<SciRS2Backend>,
     /// Calculation history
     calculation_history: Vec<DMRGResult>,
@@ -453,7 +453,7 @@ impl QuantumChemistryDMRGSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend for optimized calculations
+    /// Initialize with `SciRS2` backend for optimized calculations
     pub fn with_backend(mut self, backend: SciRS2Backend) -> Result<Self> {
         self.backend = Some(backend);
         Ok(self)
@@ -663,12 +663,9 @@ impl QuantumChemistryDMRGSimulator {
 
     /// Analyze molecular orbitals and active space
     pub fn analyze_active_space(&self) -> Result<ActiveSpaceAnalysis> {
-        let hamiltonian = self
-            .hamiltonian
-            .as_ref()
-            .ok_or(SimulatorError::InvalidConfiguration(
-                "Required data not initialized".to_string(),
-            ))?;
+        let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Required data not initialized".to_string())
+        })?;
 
         let orbital_energies = &hamiltonian.orbital_energies;
         let num_orbitals = orbital_energies.len();
@@ -854,12 +851,9 @@ impl QuantumChemistryDMRGSimulator {
         // This would involve constructing the effective Hamiltonian for the local site
         // and solving the eigenvalue problem. For simplicity, we simulate the optimization.
 
-        let hamiltonian = self
-            .hamiltonian
-            .as_ref()
-            .ok_or(SimulatorError::InvalidConfiguration(
-                "Required data not initialized".to_string(),
-            ))?;
+        let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Required data not initialized".to_string())
+        })?;
 
         // Simulate local energy calculation
         let local_energy = if site < hamiltonian.one_electron_integrals.nrows() {
@@ -989,12 +983,9 @@ impl QuantumChemistryDMRGSimulator {
     }
 
     fn calculate_hartree_fock_energy(&self) -> Result<f64> {
-        let hamiltonian = self
-            .hamiltonian
-            .as_ref()
-            .ok_or(SimulatorError::InvalidConfiguration(
-                "Required data not initialized".to_string(),
-            ))?;
+        let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Required data not initialized".to_string())
+        })?;
 
         // Simplified HF energy calculation
         let mut hf_energy = hamiltonian.nuclear_repulsion;
@@ -1202,12 +1193,9 @@ impl QuantumChemistryDMRGSimulator {
     }
 
     fn calculate_orbital_contribution(&self, orbital_index: usize) -> Result<f64> {
-        let hamiltonian = self
-            .hamiltonian
-            .as_ref()
-            .ok_or(SimulatorError::InvalidConfiguration(
-                "Required data not initialized".to_string(),
-            ))?;
+        let hamiltonian = self.hamiltonian.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidConfiguration("Required data not initialized".to_string())
+        })?;
 
         if orbital_index < hamiltonian.orbital_energies.len() {
             // Contribution based on orbital energy and occupancy
@@ -1383,6 +1371,7 @@ pub struct QuantumChemistryDMRGUtils;
 
 impl QuantumChemistryDMRGUtils {
     /// Create standard test molecules for benchmarking
+    #[must_use]
     pub fn create_standard_test_molecules() -> Vec<TestMolecule> {
         vec![
             TestMolecule {
@@ -1462,6 +1451,7 @@ impl QuantumChemistryDMRGUtils {
     }
 
     /// Validate DMRG results against reference data
+    #[must_use]
     pub fn validate_results(results: &DMRGResult, reference_energy: f64) -> ValidationResult {
         let energy_error = (results.ground_state_energy - reference_energy).abs();
         let relative_error = energy_error / reference_energy.abs();
@@ -1487,6 +1477,7 @@ impl QuantumChemistryDMRGUtils {
     }
 
     /// Estimate computational cost for given system size
+    #[must_use]
     pub fn estimate_computational_cost(
         config: &QuantumChemistryDMRGConfig,
     ) -> ComputationalCostEstimate {
@@ -1597,11 +1588,12 @@ mod tests {
             },
         ];
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
         let hamiltonian = simulator.construct_hamiltonian();
         assert!(hamiltonian.is_ok());
 
-        let h = hamiltonian.unwrap();
+        let h = hamiltonian.expect("Failed to construct Hamiltonian");
         assert!(h.nuclear_repulsion > 0.0);
         assert_eq!(h.one_electron_integrals.shape(), [10, 10]);
         assert_eq!(h.two_electron_integrals.shape(), [10, 10, 10, 10]);
@@ -1610,11 +1602,12 @@ mod tests {
     #[test]
     fn test_dmrg_state_initialization() {
         let config = QuantumChemistryDMRGConfig::default();
-        let simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
+        let simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
         let state = simulator.initialize_dmrg_state();
         assert!(state.is_ok());
 
-        let s = state.unwrap();
+        let s = state.expect("Failed to initialize DMRG state");
         assert_eq!(s.site_tensors.len(), 10);
         assert!(!s.bond_matrices.is_empty());
         assert_eq!(s.quantum_numbers.particle_number, 10);
@@ -1627,11 +1620,12 @@ mod tests {
         config.num_orbitals = 4;
         config.num_electrons = 4;
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
         let result = simulator.calculate_ground_state();
         assert!(result.is_ok());
 
-        let r = result.unwrap();
+        let r = result.expect("Failed to calculate ground state");
         assert!(r.ground_state_energy < 0.0); // Should be negative for bound states
         assert!(r.correlation_energy.abs() > 0.0);
         assert_eq!(r.natural_occupations.len(), 4);
@@ -1646,11 +1640,12 @@ mod tests {
         config.num_orbitals = 4;
         config.num_electrons = 4;
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
         let result = simulator.calculate_excited_states(2);
         assert!(result.is_ok());
 
-        let r = result.unwrap();
+        let r = result.expect("Failed to calculate excited states");
         assert_eq!(r.excited_state_energies.len(), 2);
         assert_eq!(r.excited_states.len(), 2);
         assert!(r.excited_state_energies[0] > r.ground_state_energy);
@@ -1662,11 +1657,19 @@ mod tests {
         config.num_orbitals = 4;
         config.num_electrons = 4;
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
-        let result = simulator.calculate_ground_state().unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
+        let result = simulator
+            .calculate_ground_state()
+            .expect("Failed to calculate ground state");
         let correlation_energy = simulator.calculate_correlation_energy(&result);
         assert!(correlation_energy.is_ok());
-        assert!(correlation_energy.unwrap().abs() > 0.0);
+        assert!(
+            correlation_energy
+                .expect("Failed to calculate correlation energy")
+                .abs()
+                > 0.0
+        );
     }
 
     #[test]
@@ -1674,13 +1677,16 @@ mod tests {
         let mut config = QuantumChemistryDMRGConfig::default();
         config.num_orbitals = 6;
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
-        simulator.construct_hamiltonian().unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
+        simulator
+            .construct_hamiltonian()
+            .expect("Failed to construct Hamiltonian");
 
         let analysis = simulator.analyze_active_space();
         assert!(analysis.is_ok());
 
-        let a = analysis.unwrap();
+        let a = analysis.expect("Failed to analyze active space");
         assert_eq!(a.orbital_contributions.len(), 6);
         assert!(!a.suggested_active_orbitals.is_empty());
         assert!(a.correlation_strength >= 0.0 && a.correlation_strength <= 1.0);
@@ -1708,8 +1714,11 @@ mod tests {
         config.num_orbitals = 4;
         config.num_electrons = 2;
 
-        let mut simulator = QuantumChemistryDMRGSimulator::new(config).unwrap();
-        let result = simulator.calculate_ground_state().unwrap();
+        let mut simulator =
+            QuantumChemistryDMRGSimulator::new(config).expect("Failed to create DMRG simulator");
+        let result = simulator
+            .calculate_ground_state()
+            .expect("Failed to calculate ground state");
 
         // Check that properties are calculated
         assert_eq!(result.dipole_moments.len(), 3);
@@ -1822,7 +1831,7 @@ mod tests {
         let result = benchmark_quantum_chemistry_dmrg();
         assert!(result.is_ok());
 
-        let benchmark = result.unwrap();
+        let benchmark = result.expect("Failed to run benchmark");
         assert!(benchmark.total_molecules_tested > 0);
         assert!(benchmark.success_rate >= 0.0 && benchmark.success_rate <= 1.0);
         assert!(!benchmark.individual_results.is_empty());

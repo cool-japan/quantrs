@@ -93,7 +93,7 @@ pub struct QualityRequirements {
 }
 
 /// Quality assessment methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QualityAssessmentMethod {
     /// Static quality metrics
     Static,
@@ -119,7 +119,7 @@ pub struct TimingConstraints {
 }
 
 /// Scheduling flexibility levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SchedulingFlexibility {
     /// Rigid scheduling (exact timing required)
     Rigid,
@@ -199,7 +199,7 @@ pub struct ParallelizationHints {
 }
 
 /// Resource affinity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceAffinity {
     /// No preference
     None,
@@ -270,7 +270,7 @@ pub struct LoadPredictions {
 }
 
 /// Rebalancing strategy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RebalancingStrategy {
     /// Reactive rebalancing
     Reactive,
@@ -302,7 +302,7 @@ pub struct MigrationStatus {
 }
 
 /// Migration types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MigrationType {
     /// Circuit migration
     Circuit,

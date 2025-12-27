@@ -152,7 +152,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze VQE scaling
     if !vqe_results.is_empty() {
         println!("   VQE Algorithm Scaling:");
-        vqe_results.sort_by_key(|(name, _)| (*name).to_string());
+        vqe_results.sort_by_key(|(name, _)| (*name).clone());
         for (name, summary) in vqe_results {
             let qubits = extract_qubit_count(name);
             println!(
@@ -168,7 +168,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze QAOA scaling
     if !qaoa_results.is_empty() {
         println!("   QAOA Algorithm Scaling:");
-        qaoa_results.sort_by_key(|(name, _)| (*name).to_string());
+        qaoa_results.sort_by_key(|(name, _)| (*name).clone());
         for (name, summary) in qaoa_results {
             let qubits = extract_qubit_count(name);
             println!(
@@ -184,7 +184,7 @@ fn print_scaling_analysis(results: &BenchmarkResults) {
     // Analyze QNN scaling
     if !qnn_results.is_empty() {
         println!("   QNN Algorithm Scaling:");
-        qnn_results.sort_by_key(|(name, _)| (*name).to_string());
+        qnn_results.sort_by_key(|(name, _)| (*name).clone());
         for (name, summary) in qnn_results {
             let qubits = extract_qubit_count(name);
             println!(

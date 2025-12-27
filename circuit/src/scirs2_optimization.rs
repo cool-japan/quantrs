@@ -364,12 +364,18 @@ impl QuantumCircuitOptimizer {
             )),
         }?;
 
+        let history = self
+            .history
+            .lock()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Failed to lock history: {}", e)))?
+            .clone();
+
         Ok(OptimizationResult {
             optimal_parameters: result.0,
             optimal_value: result.1,
             num_evaluations: result.2,
             converged: result.3,
-            history: self.history.lock().unwrap().clone(),
+            history,
             algorithm_info: HashMap::new(),
             optimization_time: start_time.elapsed(),
         })
@@ -396,8 +402,12 @@ impl QuantumCircuitOptimizer {
             // Update best
             if value < best_value {
                 best_value = value;
-                *self.best_parameters.lock().unwrap() = Some(params.clone());
-                *self.best_value.lock().unwrap() = best_value;
+                if let Ok(mut guard) = self.best_parameters.lock() {
+                    *guard = Some(params.clone());
+                }
+                if let Ok(mut guard) = self.best_value.lock() {
+                    *guard = best_value;
+                }
             }
 
             // Record history
@@ -405,7 +415,12 @@ impl QuantumCircuitOptimizer {
 
             // Check convergence
             if iteration > 0 {
-                let prev_value = self.history.lock().unwrap().objective_values[iteration - 1];
+                let prev_value = self
+                    .history
+                    .lock()
+                    .ok()
+                    .and_then(|h| h.objective_values.get(iteration - 1).copied())
+                    .unwrap_or(value);
                 if (prev_value - value).abs() < self.config.tolerance {
                     return Ok((params, best_value, evaluations, true));
                 }
@@ -463,8 +478,12 @@ impl QuantumCircuitOptimizer {
             // Update best
             if value < best_value {
                 best_value = value;
-                *self.best_parameters.lock().unwrap() = Some(params.clone());
-                *self.best_value.lock().unwrap() = best_value;
+                if let Ok(mut guard) = self.best_parameters.lock() {
+                    *guard = Some(params.clone());
+                }
+                if let Ok(mut guard) = self.best_value.lock() {
+                    *guard = best_value;
+                }
             }
 
             // Record history
@@ -472,7 +491,12 @@ impl QuantumCircuitOptimizer {
 
             // Check convergence
             if iteration > 0 {
-                let prev_value = self.history.lock().unwrap().objective_values[iteration - 1];
+                let prev_value = self
+                    .history
+                    .lock()
+                    .ok()
+                    .and_then(|h| h.objective_values.get(iteration - 1).copied())
+                    .unwrap_or(value);
                 if (prev_value - value).abs() < self.config.tolerance {
                     return Ok((params, best_value, evaluations, true));
                 }
@@ -560,7 +584,11 @@ impl QuantumCircuitOptimizer {
         for iteration in 0..max_iterations {
             // Sort simplex by objective values
             let mut indices: Vec<usize> = (0..simplex.len()).collect();
-            indices.sort_by(|&i, &j| values[i].partial_cmp(&values[j]).unwrap());
+            indices.sort_by(|&i, &j| {
+                values[i]
+                    .partial_cmp(&values[j])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let best_value = values[indices[0]];
             let worst_idx = indices[n];
@@ -720,7 +748,7 @@ impl QuantumCircuitOptimizer {
                 current_value = neighbor_value;
 
                 if current_value < best_value {
-                    best_params = current_params.clone();
+                    best_params.clone_from(&current_params);
                     best_value = current_value;
                 }
             }
@@ -803,13 +831,13 @@ impl QuantumCircuitOptimizer {
     /// Get current best parameters
     #[must_use]
     pub fn get_best_parameters(&self) -> Option<Vec<f64>> {
-        self.best_parameters.lock().unwrap().clone()
+        self.best_parameters.lock().ok().and_then(|g| g.clone())
     }
 
     /// Get current best value
     #[must_use]
     pub fn get_best_value(&self) -> f64 {
-        *self.best_value.lock().unwrap()
+        self.best_value.lock().ok().map_or(f64::INFINITY, |g| *g)
     }
 
     /// Build circuit from parameters

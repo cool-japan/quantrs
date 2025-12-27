@@ -118,9 +118,9 @@ fn ml_output_to_process_matrix(
                 for l in 0..dim {
                     if idx < ml_output.len() {
                         // Convert real output to complex with appropriate scaling
-                        let real_part = ml_output[idx] * 2.0 - 1.0; // Scale from [0,1] to [-1,1]
+                        let real_part = ml_output[idx].mul_add(2.0, -1.0); // Scale from [0,1] to [-1,1]
                         let imag_part = if idx + 1 < ml_output.len() {
-                            ml_output[idx + 1] * 2.0 - 1.0
+                            ml_output[idx + 1].mul_add(2.0, -1.0)
                         } else {
                             0.0
                         };
@@ -191,6 +191,6 @@ fn sigmoid_activation(x: f64) -> f64 {
     1.0 / (1.0 + (-x).exp())
 }
 
-fn relu_activation(x: f64) -> f64 {
+const fn relu_activation(x: f64) -> f64 {
     x.max(0.0)
 }

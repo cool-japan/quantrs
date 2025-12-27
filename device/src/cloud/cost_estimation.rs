@@ -42,7 +42,7 @@ pub struct CostEstimationConfig {
 }
 
 /// Estimation accuracy levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EstimationAccuracyLevel {
     Quick,
     Standard,
@@ -62,7 +62,7 @@ pub struct DiscountThreshold {
 }
 
 /// Threshold types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThresholdType {
     Volume,
     Frequency,
@@ -72,7 +72,7 @@ pub enum ThresholdType {
 }
 
 /// Cost categories
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostCategory {
     Compute,
     Storage,
@@ -99,7 +99,7 @@ pub struct PredictiveModelingConfig {
 }
 
 /// Predictive model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictiveModelType {
     Linear,
     TimeSeries,
@@ -121,7 +121,7 @@ pub struct BudgetTrackingConfig {
 }
 
 /// Budget periods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BudgetPeriod {
     Daily,
     Weekly,
@@ -154,7 +154,7 @@ pub struct PricingStructure {
 }
 
 /// Base pricing models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BasePricingModel {
     PayPerUse,
     Subscription,
@@ -165,7 +165,7 @@ pub enum BasePricingModel {
 }
 
 /// Billing granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingGranularity {
     Second,
     Minute,
@@ -216,7 +216,7 @@ pub struct UsageMetric {
 }
 
 /// Usage metric types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UsageMetricType {
     Cumulative,
     Peak,
@@ -249,7 +249,7 @@ pub struct CostComponent {
 }
 
 /// Cost component types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostComponentType {
     Fixed,
     Variable,
@@ -268,7 +268,7 @@ pub struct PricingFormula {
 }
 
 /// Formula types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FormulaType {
     Linear,
     Polynomial,
@@ -288,7 +288,7 @@ pub struct ServiceBillingModel {
 }
 
 /// Billing cycle
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingCycle {
     RealTime,
     Daily,
@@ -308,7 +308,7 @@ pub struct PaymentTerms {
 }
 
 /// Payment methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaymentMethod {
     CreditCard,
     BankTransfer,
@@ -361,7 +361,7 @@ pub struct PromotionalOffer {
 }
 
 /// Offer types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OfferType {
     PercentageDiscount,
     FixedAmountDiscount,
@@ -430,7 +430,7 @@ pub struct CostAssumption {
 }
 
 /// Assumption types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AssumptionType {
     PricingStability,
     UsagePattern,
@@ -450,7 +450,7 @@ pub struct RiskFactor {
 }
 
 /// Risk types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RiskType {
     PriceVolatility,
     DemandSpike,
@@ -473,7 +473,7 @@ pub struct CostOptimizationOpportunity {
 }
 
 /// Optimization types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationType {
     ProviderSwitch,
     ServiceTierChange,
@@ -485,7 +485,7 @@ pub enum OptimizationType {
 }
 
 /// Implementation effort
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplementationEffort {
     Low,
     Medium,
@@ -528,7 +528,7 @@ pub struct BudgetPerformance {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -547,7 +547,7 @@ pub struct AlertThreshold {
 }
 
 /// Alert severity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -556,7 +556,7 @@ pub enum AlertSeverity {
 }
 
 /// Notification channels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationChannel {
     Email,
     SMS,
@@ -576,7 +576,7 @@ pub struct AutoAction {
 }
 
 /// Auto action types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AutoActionType {
     ScaleDown,
     SuspendJobs,
@@ -597,7 +597,7 @@ pub struct AutoAdjustment {
 }
 
 /// Adjustment types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdjustmentType {
     BudgetIncrease,
     BudgetDecrease,
@@ -644,7 +644,7 @@ pub struct VarianceCause {
 }
 
 /// Variance cause types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VarianceCauseType {
     VolumeVariance,
     RateVariance,
@@ -655,7 +655,7 @@ pub enum VarianceCauseType {
 }
 
 /// Controllability level
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControllabilityLevel {
     FullyControllable,
     PartiallyControllable,
@@ -674,7 +674,7 @@ pub struct VarianceRecommendation {
 }
 
 /// Variance recommendation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VarianceRecommendationType {
     BudgetAdjustment,
     ProcessImprovement,
@@ -684,7 +684,7 @@ pub enum VarianceRecommendationType {
 }
 
 /// Recommendation priority
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationPriority {
     Low,
     Medium,
@@ -744,7 +744,7 @@ pub struct RegressionAnalysis {
 }
 
 /// Regression model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegressionModelType {
     Linear,
     Polynomial,
@@ -764,7 +764,7 @@ pub struct ResidualAnalysis {
 }
 
 /// Residual patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResidualPattern {
     Random,
     Heteroscedastic,
@@ -803,7 +803,7 @@ pub struct Anomaly {
 }
 
 /// Anomaly types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyType {
     PointAnomaly,
     ContextualAnomaly,
@@ -851,7 +851,7 @@ pub struct Trend {
 }
 
 /// Trend types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendType {
     Linear,
     Exponential,
@@ -928,7 +928,7 @@ pub struct ForecastScenario {
 }
 
 /// Scenario types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScenarioType {
     Optimistic,
     Pessimistic,
@@ -973,7 +973,7 @@ pub struct UncertaintySource {
 }
 
 /// Uncertainty source types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UncertaintySourceType {
     ModelUncertainty,
     ParameterUncertainty,
@@ -991,7 +991,7 @@ pub struct UncertaintyDistribution {
 }
 
 /// Distribution types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DistributionType {
     Normal,
     LogNormal,
@@ -1011,7 +1011,7 @@ pub struct UncertaintyPropagation {
 }
 
 /// Propagation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropagationMethod {
     MonteCarlo,
     LinearPropagation,
@@ -1047,7 +1047,7 @@ pub struct InteractionEffect {
 }
 
 /// Interaction types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InteractionType {
     Synergistic,
     Antagonistic,
@@ -1105,7 +1105,7 @@ pub struct CostDriver {
 }
 
 /// Cost driver types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CostDriverType {
     Volume,
     Complexity,
@@ -1125,7 +1125,7 @@ pub struct BenchmarkComparison {
 }
 
 /// Benchmark types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BenchmarkType {
     IndustryAverage,
     BestInClass,
@@ -1167,7 +1167,7 @@ pub struct CostInefficiency {
 }
 
 /// Inefficiency types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InefficiencyType {
     Overprovisioning,
     Underutilization,
@@ -1319,7 +1319,7 @@ pub struct PrioritizationCriterion {
 }
 
 /// Criterion types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CriterionType {
     Financial,
     Strategic,
@@ -1337,7 +1337,7 @@ pub struct ScoringFunction {
 }
 
 /// Function types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FunctionType {
     Linear,
     Exponential,
@@ -1355,7 +1355,7 @@ pub struct WeightingScheme {
 }
 
 /// Weighting scheme types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WeightingSchemeType {
     Equal,
     Hierarchical,
@@ -1365,7 +1365,7 @@ pub enum WeightingSchemeType {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NormalizationMethod {
     MinMax,
     ZScore,
@@ -1425,7 +1425,7 @@ pub struct ValidationRule {
 }
 
 /// Validation rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationRuleType {
     BusinessRule,
     TechnicalConstraint,
@@ -1435,7 +1435,7 @@ pub enum ValidationRuleType {
 }
 
 /// Validation severity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationSeverity {
     Warning,
     Error,
@@ -1483,7 +1483,7 @@ pub struct CacheStatistics {
 }
 
 /// Eviction policy
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvictionPolicy {
     LRU,
     LFU,

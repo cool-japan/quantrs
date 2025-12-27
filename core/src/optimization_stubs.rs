@@ -1,4 +1,5 @@
 //! Optimization utilities backed by OptiRS optimizers.
+//!
 //!\n//! This module preserves the historical `Method`/`Options` interface that the
 //! rest of the QuantRS2 codebase depends on, while delegating the actual work to
 //! OptiRS implementations. Gradient-based methods rely on finite-difference
@@ -55,7 +56,7 @@ impl Default for Options {
 }
 
 impl Options {
-    fn resolved_max_iter(&self) -> usize {
+    const fn resolved_max_iter(&self) -> usize {
         let base = if self.max_iter == 0 {
             self.max_iterations
         } else {
@@ -125,18 +126,18 @@ enum OptiRSBackend {
 }
 
 impl OptiRSBackend {
-    fn name(&self) -> &'static str {
+    const fn name(&self) -> &'static str {
         match self {
-            OptiRSBackend::LBFGS(_) => "L-BFGS",
-            OptiRSBackend::Adam(_) => "Adam",
+            Self::LBFGS(_) => "L-BFGS",
+            Self::Adam(_) => "Adam",
         }
     }
 
     fn set_learning_rate(&mut self, learning_rate: f64) {
         match self {
-            OptiRSBackend::LBFGS(optimizer) => optimizer.set_lr(learning_rate),
-            OptiRSBackend::Adam(optimizer) => {
-                <Adam<f64> as Optimizer<f64, Ix1>>::set_learning_rate(optimizer, learning_rate)
+            Self::LBFGS(optimizer) => optimizer.set_lr(learning_rate),
+            Self::Adam(optimizer) => {
+                <Adam<f64> as Optimizer<f64, Ix1>>::set_learning_rate(optimizer, learning_rate);
             }
         }
     }
@@ -147,8 +148,8 @@ impl OptiRSBackend {
         gradients: &Array1<f64>,
     ) -> Result<Array1<f64>, OptimError> {
         match self {
-            OptiRSBackend::LBFGS(optimizer) => optimizer.step(params, gradients),
-            OptiRSBackend::Adam(optimizer) => optimizer.step(params, gradients),
+            Self::LBFGS(optimizer) => optimizer.step(params, gradients),
+            Self::Adam(optimizer) => optimizer.step(params, gradients),
         }
     }
 }
@@ -254,7 +255,7 @@ fn check_convergence(
         return Some("Gradient tolerance reached".to_string());
     }
 
-    let step_norm = (&*new_params - params).mapv(|v| v * v).sum().sqrt();
+    let step_norm = (new_params - params).mapv(|v| v * v).sum().sqrt();
     if step_norm <= options.resolved_xtol() {
         return Some("Parameter tolerance reached".to_string());
     }
@@ -382,7 +383,7 @@ where
         .iter()
         .enumerate()
         .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(Ordering::Equal))
-        .unwrap();
+        .expect("Simplex values should never be empty");
 
     Ok(OptimizeResult {
         x: simplex[best_idx].clone(),
@@ -390,7 +391,7 @@ where
         nit: iterations,
         iterations,
         success: true,
-        message: format!("Nelder-Mead completed in {} iterations", iterations),
+        message: format!("Nelder-Mead completed in {iterations} iterations"),
     })
 }
 
@@ -451,7 +452,7 @@ where
         }
 
         // Ensure gradients are finite
-        for value in gradient.iter_mut() {
+        for value in &mut gradient {
             if !value.is_finite() {
                 *value = 0.0;
             }
@@ -464,7 +465,7 @@ where
 
         if new_fun < best_fun {
             best_fun = new_fun;
-            best_params = updated_params.clone();
+            best_params.clone_from(&updated_params);
         }
 
         if let Some(reason) = check_convergence(
@@ -574,13 +575,12 @@ where
         1e-9
     };
 
-    let mut rng = match random_state {
-        Some(seed) => StdRng::seed_from_u64(seed),
-        None => {
-            let mut seed_rng = thread_rng();
-            let seed: u64 = seed_rng.gen();
-            StdRng::seed_from_u64(seed)
-        }
+    let mut rng = if let Some(seed) = random_state {
+        StdRng::seed_from_u64(seed)
+    } else {
+        let mut seed_rng = thread_rng();
+        let seed: u64 = seed_rng.gen();
+        StdRng::seed_from_u64(seed)
     };
 
     let mut population = Vec::with_capacity(pop_size);
@@ -591,12 +591,11 @@ where
         for (idx, &(lower, upper)) in bounds.iter().enumerate() {
             if !(lower.is_finite() && upper.is_finite() && upper > lower) {
                 return Err(QuantRS2Error::InvalidParameter(format!(
-                    "Invalid bounds for dimension {}: [{}, {}]",
-                    idx, lower, upper
+                    "Invalid bounds for dimension {idx}: [{lower}, {upper}]"
                 )));
             }
             let span = upper - lower;
-            candidate[idx] = lower + rng.gen::<f64>() * span;
+            candidate[idx] = rng.gen::<f64>().mul_add(span, lower);
         }
         let score = safe_fun_eval(&fun, &candidate);
         population.push(candidate);
@@ -626,7 +625,8 @@ where
 
             for j in 0..dim {
                 if rng.gen::<f64>() < 0.7 || j == j_rand {
-                    trial[j] = population[r1][j] + 0.8 * (population[r2][j] - population[r3][j]);
+                    trial[j] =
+                        0.8f64.mul_add(population[r2][j] - population[r3][j], population[r1][j]);
                 }
                 let (lower, upper) = bounds[j];
                 if trial[j] < lower {
@@ -645,7 +645,7 @@ where
                 scores[i] = trial_score;
                 if trial_score < best_score {
                     best_score = trial_score;
-                    best_candidate = population[i].clone();
+                    best_candidate.clone_from(&population[i]);
                 }
             }
         }
@@ -669,8 +669,7 @@ where
         iterations,
         success: true,
         message: format!(
-            "Differential evolution converged in {} generations ({} evaluations)",
-            iterations, evals
+            "Differential evolution converged in {iterations} generations ({evals} evaluations)"
         ),
     })
 }

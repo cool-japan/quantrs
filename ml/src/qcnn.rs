@@ -395,7 +395,7 @@ mod tests {
             vec![2, 2],           // Two pooling layers
             4,                    // FC layer params
         )
-        .unwrap();
+        .expect("Failed to create QCNN with valid configuration");
 
         assert_eq!(qcnn.num_qubits, 8);
         assert_eq!(qcnn.conv_layers.len(), 2);
@@ -414,7 +414,9 @@ mod tests {
         let mut circuit = Circuit::<8>::new();
 
         // Apply filter starting at qubit 0
-        filter.apply_filter(&mut circuit, 0).unwrap();
+        filter
+            .apply_filter(&mut circuit, 0)
+            .expect("Failed to apply quantum filter to circuit");
 
         // Should have applied gates
         assert!(circuit.num_gates() > 0);
@@ -428,7 +430,7 @@ mod tests {
 
         pooling
             .apply_pooling(&mut circuit, &mut active_qubits)
-            .unwrap();
+            .expect("Failed to apply trace-out pooling");
 
         // Should reduce active qubits by pool_size
         assert_eq!(active_qubits.len(), 4);
@@ -442,7 +444,7 @@ mod tests {
 
         pooling
             .apply_pooling(&mut circuit, &mut active_qubits)
-            .unwrap();
+            .expect("Failed to apply measure-reset pooling");
 
         // Should keep every 2nd qubit
         assert_eq!(active_qubits.len(), 4);
@@ -454,7 +456,7 @@ mod tests {
         let encoder = QuantumImageEncoder::new(2, 2, 2);
         let image = vec![vec![0.5, 0.5], vec![0.5, 0.5]];
 
-        let encoded = encoder.encode(&image).unwrap();
+        let encoded = encoder.encode(&image).expect("Failed to encode image");
         assert_eq!(encoded.len(), 4); // 2^2 = 4
 
         // Check normalization
@@ -485,13 +487,13 @@ mod tests {
             vec![2],      // One pooling layer
             2,            // FC layer params
         )
-        .unwrap();
+        .expect("Failed to create QCNN");
 
         let input_state = vec![Complex::new(1.0, 0.0); 16]; // 2^4 = 16
-        let output = qcnn.forward(&input_state).unwrap();
+        let output = qcnn.forward(&input_state).expect("Failed to forward pass");
 
         // Output should be for reduced qubits after pooling
-        assert!(output.len() > 0);
+        assert!(!output.is_empty());
     }
 
     #[test]
@@ -502,14 +504,15 @@ mod tests {
             vec![2],      // One pooling layer
             2,            // FC layer params
         )
-        .unwrap();
+        .expect("Failed to create QCNN");
 
         let params = qcnn.get_parameters();
         let num_params = params.len();
 
         // Modify parameters
         let new_params: Vec<f64> = (0..num_params).map(|i| i as f64 * 0.1).collect();
-        qcnn.set_parameters(&new_params).unwrap();
+        qcnn.set_parameters(&new_params)
+            .expect("Failed to set parameters");
 
         let retrieved_params = qcnn.get_parameters();
         assert_eq!(retrieved_params, new_params);
@@ -523,7 +526,7 @@ mod tests {
             vec![2],      // One pooling layer
             2,            // FC layer params
         )
-        .unwrap();
+        .expect("Failed to create QCNN");
 
         let input_state = vec![Complex::new(0.5, 0.0); 16];
         let target_state = vec![Complex::new(0.707, 0.0); 2];
@@ -539,7 +542,7 @@ mod tests {
 
         let gradients = qcnn
             .compute_gradients(&input_state, &target_state, loss_fn)
-            .unwrap();
+            .expect("Failed to compute gradients");
 
         // Should have gradients for all parameters
         assert_eq!(gradients.len(), qcnn.get_parameters().len());
@@ -566,8 +569,12 @@ mod tests {
         let mut circuit = Circuit::<8>::new();
 
         // Apply with stride - should skip positions
-        filter.apply_filter(&mut circuit, 0).unwrap();
-        filter.apply_filter(&mut circuit, 2).unwrap(); // Next position based on stride
+        filter
+            .apply_filter(&mut circuit, 0)
+            .expect("Failed to apply filter at position 0");
+        filter
+            .apply_filter(&mut circuit, 2)
+            .expect("Failed to apply filter at position 2"); // Next position based on stride
     }
 
     #[test]
@@ -575,7 +582,7 @@ mod tests {
         let encoder = QuantumImageEncoder::new(4, 4, 4); // 4x4 image, 4 qubits
         let image = vec![vec![0.25; 4]; 4];
 
-        let encoded = encoder.encode(&image).unwrap();
+        let encoded = encoder.encode(&image).expect("Failed to encode 4x4 image");
         assert_eq!(encoded.len(), 16); // 2^4 = 16
 
         // Verify partial encoding (16 pixels into 16 amplitudes)

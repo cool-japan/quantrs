@@ -17,6 +17,7 @@ pub struct OptimizedStateVector {
 
 impl OptimizedStateVector {
     /// Create a new optimized state vector for given number of qubits
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let dim = 1 << num_qubits;
         let mut state = vec![Complex64::new(0.0, 0.0); dim];
@@ -26,6 +27,7 @@ impl OptimizedStateVector {
     }
 
     /// Get a reference to the state vector
+    #[must_use]
     pub fn state(&self) -> &[Complex64] {
         &self.state
     }
@@ -36,11 +38,13 @@ impl OptimizedStateVector {
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
     /// Get the dimension of the state vector
+    #[must_use]
     pub const fn dimension(&self) -> usize {
         1 << self.num_qubits
     }
@@ -163,6 +167,7 @@ impl OptimizedStateVector {
     }
 
     /// Calculate probability of measuring a specific bit string
+    #[must_use]
     pub fn probability(&self, bit_string: &[u8]) -> f64 {
         assert!(
             (bit_string.len() == self.num_qubits),
@@ -182,8 +187,12 @@ impl OptimizedStateVector {
     }
 
     /// Calculate probabilities for all basis states
+    #[must_use]
     pub fn probabilities(&self) -> Vec<f64> {
-        self.state.iter().map(|a| a.norm_sqr()).collect()
+        self.state
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect()
     }
 }
 

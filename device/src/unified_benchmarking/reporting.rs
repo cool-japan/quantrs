@@ -33,7 +33,7 @@ pub struct ReportSection {
     pub data_queries: Vec<DataQuery>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SectionContentType {
     Text,
     Table,
@@ -51,7 +51,7 @@ pub struct DataQuery {
     pub aggregations: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueryType {
     PerformanceMetrics,
     CostAnalysis,
@@ -125,6 +125,12 @@ pub struct VisualizationEngine {
     pub color_palette: Vec<String>,
     pub font_size: f32,
     pub marker_size: f32,
+}
+
+impl Default for ReportGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ReportGenerator {

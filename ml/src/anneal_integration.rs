@@ -763,12 +763,14 @@ impl DWaveClient {
 
         // Standard Ising to QUBO transformation
         for i in 0..n {
-            qubo.set_coefficient(i, i, -2.0 * ising.h[i]).unwrap();
+            qubo.set_coefficient(i, i, -2.0 * ising.h[i])
+                .expect("Index within bounds for diagonal coefficient");
         }
 
         for i in 0..n {
             for j in i + 1..n {
-                qubo.set_coefficient(i, j, -4.0 * ising.j[[i, j]]).unwrap();
+                qubo.set_coefficient(i, j, -4.0 * ising.j[[i, j]])
+                    .expect("Index within bounds for off-diagonal coefficient");
             }
         }
 
@@ -856,8 +858,10 @@ mod tests {
     #[test]
     fn test_qubo_creation() {
         let mut qubo = QuantumMLQUBO::new(3, "Test QUBO");
-        qubo.set_coefficient(0, 0, 1.0).unwrap();
-        qubo.set_coefficient(0, 1, -2.0).unwrap();
+        qubo.set_coefficient(0, 0, 1.0)
+            .expect("Failed to set coefficient (0,0)");
+        qubo.set_coefficient(0, 1, -2.0)
+            .expect("Failed to set coefficient (0,1)");
 
         assert_eq!(qubo.qubo_matrix[[0, 0]], 1.0);
         assert_eq!(qubo.qubo_matrix[[0, 1]], -2.0);
@@ -866,9 +870,12 @@ mod tests {
     #[test]
     fn test_ising_conversion() {
         let mut qubo = QuantumMLQUBO::new(2, "Test");
-        qubo.set_coefficient(0, 0, 1.0).unwrap();
-        qubo.set_coefficient(1, 1, -1.0).unwrap();
-        qubo.set_coefficient(0, 1, 2.0).unwrap();
+        qubo.set_coefficient(0, 0, 1.0)
+            .expect("Failed to set coefficient (0,0)");
+        qubo.set_coefficient(1, 1, -1.0)
+            .expect("Failed to set coefficient (1,1)");
+        qubo.set_coefficient(0, 1, 2.0)
+            .expect("Failed to set coefficient (0,1)");
 
         let ising = qubo.to_ising();
         assert_eq!(ising.h.len(), 2);

@@ -504,7 +504,7 @@ pub struct PyPulseLibrary;
 impl PyPulseLibrary {
     /// Create a standard X gate pulse
     #[staticmethod]
-    fn x_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
+    const fn x_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
         let pulse = if let Some(cal) = calibration {
             PulseLibrary::x_pulse(&cal.inner, qubit)
         } else {
@@ -515,7 +515,7 @@ impl PyPulseLibrary {
 
     /// Create a standard Y gate pulse
     #[staticmethod]
-    fn y_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
+    const fn y_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
         let pulse = if let Some(cal) = calibration {
             PulseLibrary::y_pulse(&cal.inner, qubit)
         } else {
@@ -530,7 +530,7 @@ impl PyPulseLibrary {
 
     /// Create a standard SX (√X) gate pulse
     #[staticmethod]
-    fn sx_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
+    const fn sx_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
         let pulse = if let Some(cal) = calibration {
             PulseLibrary::sx_pulse(&cal.inner, qubit)
         } else {
@@ -541,7 +541,7 @@ impl PyPulseLibrary {
 
     /// Create a measurement pulse
     #[staticmethod]
-    fn measure_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
+    const fn measure_pulse(qubit: u32, calibration: Option<&PyPulseCalibration>) -> PyPulseShape {
         let pulse = if let Some(cal) = calibration {
             PulseLibrary::measure_pulse(&cal.inner, qubit)
         } else {

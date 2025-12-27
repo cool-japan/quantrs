@@ -19,7 +19,7 @@ pub struct AnyonFactory {
 
 impl AnyonFactory {
     /// Create a new anyon factory
-    pub fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
+    pub const fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
         Self {
             anyon_type,
             fusion_rules,
@@ -28,7 +28,7 @@ impl AnyonFactory {
     }
 
     /// Create a new anyon with specified charge
-    pub fn create_anyon(
+    pub const fn create_anyon(
         &mut self,
         charge: TopologicalCharge,
         position: (f64, f64),
@@ -80,7 +80,7 @@ pub struct AnyonInteraction {
 }
 
 /// Types of anyon interactions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnyonInteractionType {
     /// Braiding interaction
     Braiding,
@@ -140,13 +140,11 @@ impl AnyonTracker {
         new_position: (f64, f64),
         timestamp: f64,
     ) -> TopologicalResult<()> {
-        let worldline =
-            self.worldlines
-                .get_mut(&anyon_id)
-                .ok_or(TopologicalError::AnyonCreationFailed(format!(
-                    "Anyon {} not found for position update",
-                    anyon_id
-                )))?;
+        let worldline = self.worldlines.get_mut(&anyon_id).ok_or_else(|| {
+            TopologicalError::AnyonCreationFailed(format!(
+                "Anyon {anyon_id} not found for position update"
+            ))
+        })?;
         worldline
             .positions
             .push((new_position.0, new_position.1, timestamp));
@@ -175,36 +173,30 @@ impl AnyonTracker {
         self.interactions.push(interaction.clone());
 
         // Add to individual worldlines (create if they don't exist)
-        if !self.worldlines.contains_key(&anyon1_id) {
-            self.worldlines.insert(
-                anyon1_id,
-                AnyonWorldline {
-                    anyon_id: anyon1_id,
-                    positions: vec![(0.0, 0.0, timestamp)],
-                    charge_history: vec![TopologicalCharge {
-                        label: "I".to_string(),
-                        quantum_dimension: "1".to_string(),
-                        scaling_dimension: 0.0,
-                    }],
-                    interaction_history: vec![],
-                },
-            );
-        }
-        if !self.worldlines.contains_key(&anyon2_id) {
-            self.worldlines.insert(
-                anyon2_id,
-                AnyonWorldline {
-                    anyon_id: anyon2_id,
-                    positions: vec![(0.0, 0.0, timestamp)],
-                    charge_history: vec![TopologicalCharge {
-                        label: "I".to_string(),
-                        quantum_dimension: "1".to_string(),
-                        scaling_dimension: 0.0,
-                    }],
-                    interaction_history: vec![],
-                },
-            );
-        }
+        self.worldlines
+            .entry(anyon1_id)
+            .or_insert_with(|| AnyonWorldline {
+                anyon_id: anyon1_id,
+                positions: vec![(0.0, 0.0, timestamp)],
+                charge_history: vec![TopologicalCharge {
+                    label: "I".to_string(),
+                    quantum_dimension: "1".to_string(),
+                    scaling_dimension: 0.0,
+                }],
+                interaction_history: vec![],
+            });
+        self.worldlines
+            .entry(anyon2_id)
+            .or_insert_with(|| AnyonWorldline {
+                anyon_id: anyon2_id,
+                positions: vec![(0.0, 0.0, timestamp)],
+                charge_history: vec![TopologicalCharge {
+                    label: "I".to_string(),
+                    quantum_dimension: "1".to_string(),
+                    scaling_dimension: 0.0,
+                }],
+                interaction_history: vec![],
+            });
 
         if let Some(worldline1) = self.worldlines.get_mut(&anyon1_id) {
             worldline1.interaction_history.push(interaction.clone());
@@ -224,7 +216,7 @@ impl AnyonTracker {
 
     /// Calculate total braiding phase for an anyon
     pub fn calculate_total_phase(&self, anyon_id: usize) -> f64 {
-        if let Some(worldline) = self.worldlines.get(&anyon_id) {
+        self.worldlines.get(&anyon_id).map_or(0.0, |worldline| {
             worldline
                 .interaction_history
                 .iter()
@@ -234,9 +226,7 @@ impl AnyonTracker {
                     _ => 0.0,
                 })
                 .sum()
-        } else {
-            0.0
-        }
+        })
     }
 }
 
@@ -248,7 +238,7 @@ pub struct ChargeAlgebra {
 
 impl ChargeAlgebra {
     /// Create a new charge algebra handler
-    pub fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
+    pub const fn new(anyon_type: NonAbelianAnyonType, fusion_rules: FusionRuleSet) -> Self {
         Self {
             anyon_type,
             fusion_rules,
@@ -279,21 +269,20 @@ impl ChargeAlgebra {
             .rules
             .get(&fusion_key)
             .cloned()
-            .ok_or(TopologicalError::FusionFailed(format!(
-                "No fusion rule found for {:?}",
-                fusion_key
-            )))
+            .ok_or_else(|| {
+                TopologicalError::FusionFailed(format!("No fusion rule found for {fusion_key:?}"))
+            })
     }
 
     /// Calculate quantum dimension of a charge
     pub fn quantum_dimension(&self, charge: &TopologicalCharge) -> f64 {
         match (&self.anyon_type, charge.label.as_str()) {
-            (&NonAbelianAnyonType::Fibonacci, "I") => 1.0,
-            (&NonAbelianAnyonType::Fibonacci, "τ") => (1.0 + 5.0_f64.sqrt()) / 2.0, // Golden ratio
-            (&NonAbelianAnyonType::Ising, "I") => 1.0,
+            (&NonAbelianAnyonType::Fibonacci, "τ") => f64::midpoint(1.0, 5.0_f64.sqrt()), // Golden ratio
             (&NonAbelianAnyonType::Ising, "σ") => 2.0_f64.sqrt(),
-            (&NonAbelianAnyonType::Ising, "ψ") => 1.0,
-            _ => 1.0, // Default for unknown charges
+            (&NonAbelianAnyonType::Fibonacci, "I")
+            | (&NonAbelianAnyonType::Ising, "I")
+            | (&NonAbelianAnyonType::Ising, "ψ")
+            | _ => 1.0, // Identity quantum dimension or unknown charges
         }
     }
 
@@ -339,8 +328,12 @@ mod tests {
         tracker.track_anyon(&anyon);
         assert!(tracker.get_worldline(0).is_some());
 
-        tracker.update_position(0, (1.0, 1.0), 1.0).unwrap();
-        let worldline = tracker.get_worldline(0).unwrap();
+        tracker
+            .update_position(0, (1.0, 1.0), 1.0)
+            .expect("Position update should succeed for tracked anyon");
+        let worldline = tracker
+            .get_worldline(0)
+            .expect("Worldline should exist for tracked anyon");
         assert_eq!(worldline.positions.len(), 2);
     }
 
@@ -368,7 +361,7 @@ mod tests {
                 InteractionResult::PhaseChange(std::f64::consts::PI / 4.0),
                 1.0,
             )
-            .unwrap();
+            .expect("Recording braiding interaction should succeed");
 
         assert_eq!(tracker.interactions.len(), 1);
         assert_eq!(tracker.calculate_total_phase(0), std::f64::consts::PI / 4.0);

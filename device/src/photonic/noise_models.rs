@@ -159,10 +159,9 @@ impl PhotonicNoiseSimulator {
         state: &mut GaussianState,
         loss_rate: f64,
     ) -> Result<(), PhotonicNoiseError> {
-        if loss_rate < 0.0 || loss_rate > 1.0 {
+        if !(0.0..=1.0).contains(&loss_rate) {
             return Err(PhotonicNoiseError::InvalidParameter(format!(
-                "Loss rate must be between 0 and 1, got {}",
-                loss_rate
+                "Loss rate must be between 0 and 1, got {loss_rate}"
             )));
         }
 
@@ -236,8 +235,7 @@ impl PhotonicNoiseSimulator {
             let phase_noise = self.generate_gaussian_noise(0.0, variance);
             if let Err(e) = state.phase_rotation(phase_noise, mode) {
                 return Err(PhotonicNoiseError::ApplicationFailed(format!(
-                    "Failed to apply phase noise: {:?}",
-                    e
+                    "Failed to apply phase noise: {e:?}"
                 )));
             }
         }
@@ -278,10 +276,9 @@ impl PhotonicNoiseSimulator {
         state: &mut GaussianState,
         efficiency: f64,
     ) -> Result<(), PhotonicNoiseError> {
-        if efficiency < 0.0 || efficiency > 1.0 {
+        if !(0.0..=1.0).contains(&efficiency) {
             return Err(PhotonicNoiseError::InvalidParameter(format!(
-                "Detector efficiency must be between 0 and 1, got {}",
-                efficiency
+                "Detector efficiency must be between 0 and 1, got {efficiency}"
             )));
         }
 
@@ -305,8 +302,7 @@ impl PhotonicNoiseSimulator {
             let coupling_angle = coupling_strength * PI / 4.0;
             if let Err(e) = state.beamsplitter(coupling_angle, 0.0, mode, mode + 1) {
                 return Err(PhotonicNoiseError::ApplicationFailed(format!(
-                    "Failed to apply crosstalk: {:?}",
-                    e
+                    "Failed to apply crosstalk: {e:?}"
                 )));
             }
         }
@@ -338,8 +334,7 @@ impl PhotonicNoiseSimulator {
                 let phase_noise = self.generate_gaussian_noise(0.0, *variance);
                 if let Err(e) = state.phase_rotation(phase_noise, mode) {
                     return Err(PhotonicNoiseError::ApplicationFailed(format!(
-                        "Mode-specific phase noise failed: {:?}",
-                        e
+                        "Mode-specific phase noise failed: {e:?}"
                     )));
                 }
             }
@@ -366,18 +361,18 @@ impl PhotonicNoiseSimulator {
         // Simple Box-Muller transform
         self.rng_state = self
             .rng_state
-            .wrapping_mul(1664525)
-            .wrapping_add(1013904223);
+            .wrapping_mul(1_664_525)
+            .wrapping_add(1_013_904_223);
         let u1 = (self.rng_state as f64) / (u64::MAX as f64);
 
         self.rng_state = self
             .rng_state
-            .wrapping_mul(1664525)
-            .wrapping_add(1013904223);
+            .wrapping_mul(1_664_525)
+            .wrapping_add(1_013_904_223);
         let u2 = (self.rng_state as f64) / (u64::MAX as f64);
 
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
-        mean + variance.sqrt() * z
+        variance.sqrt().mul_add(z, mean)
     }
 
     /// Create a realistic noise model for photonic systems
@@ -434,7 +429,7 @@ impl PhotonicNoiseSimulator {
             }
         }
 
-        fidelity.max(0.0).min(1.0)
+        fidelity.clamp(0.0, 1.0)
     }
 }
 
@@ -458,10 +453,13 @@ mod tests {
     #[test]
     fn test_loss_noise() {
         let mut simulator = PhotonicNoiseSimulator::new();
-        let mut state = GaussianState::coherent(Complex::new(2.0, 0.0), 0, 1).unwrap();
+        let mut state = GaussianState::coherent(Complex::new(2.0, 0.0), 0, 1)
+            .expect("Coherent state creation should succeed");
 
         let original_mean = state.mean[0];
-        simulator.apply_loss_noise(&mut state, 0.1).unwrap();
+        simulator
+            .apply_loss_noise(&mut state, 0.1)
+            .expect("Loss noise application should succeed with valid rate");
 
         // Mean should be reduced due to loss
         assert!(state.mean[0] < original_mean);
@@ -475,7 +473,7 @@ mod tests {
         let original_variance = state.covariance[0][0];
         simulator
             .apply_thermal_noise(&mut state, 0.01, 1e14)
-            .unwrap();
+            .expect("Thermal noise application should succeed with valid parameters");
 
         // Variance should increase due to thermal noise
         assert!(state.covariance[0][0] > original_variance);

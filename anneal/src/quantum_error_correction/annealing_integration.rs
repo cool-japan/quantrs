@@ -14,7 +14,7 @@ pub struct AnnealingIntegration {
 }
 
 /// Integration strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntegrationStrategy {
     /// Interleaved correction and annealing
     Interleaved,

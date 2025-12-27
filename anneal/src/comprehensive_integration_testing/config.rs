@@ -64,7 +64,7 @@ impl Default for TestStorageConfig {
 }
 
 /// Storage formats for test results
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StorageFormat {
     JSON,
     Binary,
@@ -107,7 +107,7 @@ impl Default for CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompressionAlgorithm {
     Gzip,
     Zstd,
@@ -144,7 +144,7 @@ impl Default for BenchmarkConfig {
 }
 
 /// Benchmark suite types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BenchmarkSuite {
     /// Performance benchmarks
     Performance,
@@ -182,7 +182,7 @@ impl Default for BaselineConfig {
 }
 
 /// Baseline update strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BaselineUpdateStrategy {
     /// Automatic updates based on performance
     Automatic,
@@ -247,7 +247,7 @@ impl Default for StatisticalConfig {
 }
 
 /// Statistical tests for analysis
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalTest {
     /// Student's t-test
     TTest,
@@ -262,7 +262,7 @@ pub enum StatisticalTest {
 }
 
 /// Outlier detection methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutlierDetection {
     /// Interquartile range method
     IQR,
@@ -308,7 +308,7 @@ impl Default for StressTestConfig {
 }
 
 /// Stress test scenarios
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StressScenario {
     /// High computational load
     HighLoad,
@@ -325,7 +325,7 @@ pub enum StressScenario {
 }
 
 /// Stress ramp-up strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RampUpStrategy {
     /// Linear ramp-up
     Linear,
@@ -393,7 +393,7 @@ impl Default for FaultInjectionConfig {
 }
 
 /// Types of faults to inject
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FaultType {
     /// Network connectivity failures
     NetworkFailure,
@@ -412,7 +412,7 @@ pub enum FaultType {
 }
 
 /// Fault injection timing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InjectionTiming {
     /// Random injection times
     Random,
@@ -464,7 +464,7 @@ pub struct ChaosExperiment {
 }
 
 /// Types of chaos experiments
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChaosType {
     /// Service degradation
     ServiceDegradation,
@@ -479,7 +479,7 @@ pub enum ChaosType {
 }
 
 /// Blast radius control for chaos experiments
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlastRadius {
     /// Limited to single components
     Limited,
@@ -601,7 +601,7 @@ impl Default for AlertConfig {
 }
 
 /// Alert channels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertChannel {
     /// Console output
     Console,
@@ -661,7 +661,7 @@ impl Default for ReportingConfig {
 }
 
 /// Report formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportFormat {
     /// HTML reports
     HTML,
@@ -676,7 +676,7 @@ pub enum ReportFormat {
 }
 
 /// Report generation frequency
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportFrequency {
     /// After each test
     AfterEachTest,

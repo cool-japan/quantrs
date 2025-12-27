@@ -1,6 +1,12 @@
 //! Core advanced testing framework implementation
 
-use super::*;
+use super::{
+    AnnealingParams, ApplicationError, ApplicationResult, Arc, CriterionType, CriterionValue,
+    CrossPlatformValidator, Duration, ExpectedMetrics, HashMap, Instant, IsingModel, Mutex,
+    ProblemSpecification, PropertyBasedTester, QuantumAnnealingSimulator, RegressionDetector,
+    ResourceType, StressTestCoordinator, TestAnalytics, TestExecutionResult, TestScenario,
+    TestScenarioEngine, TestingConfig, ValidationCriterion, ValidationResult,
+};
 
 /// Advanced testing framework coordinator
 #[derive(Debug)]
@@ -147,9 +153,10 @@ pub struct PropertyTestResult {
 
 impl AdvancedTestingFramework {
     /// Create new advanced testing framework
+    #[must_use]
     pub fn new(config: TestingConfig) -> Self {
         Self {
-            config: config.clone(),
+            config,
             scenario_engine: Arc::new(Mutex::new(TestScenarioEngine::new())),
             regression_detector: Arc::new(Mutex::new(RegressionDetector::new())),
             platform_validator: Arc::new(Mutex::new(CrossPlatformValidator::new())),
@@ -258,7 +265,7 @@ impl AdvancedTestingFramework {
         &self,
         spec: &ProblemSpecification,
     ) -> ApplicationResult<IsingModel> {
-        let size = (spec.size_range.0 + spec.size_range.1) / 2; // Use average size
+        let size = usize::midpoint(spec.size_range.0, spec.size_range.1); // Use average size
         let mut problem = IsingModel::new(size);
 
         // Add random biases
@@ -268,7 +275,8 @@ impl AdvancedTestingFramework {
         }
 
         // Add random couplings based on density
-        let target_density = (spec.density.edge_density.0 + spec.density.edge_density.1) / 2.0;
+        let target_density =
+            f64::midpoint(spec.density.edge_density.0, spec.density.edge_density.1);
         let max_edges = size * (size - 1) / 2;
         let target_edges = (max_edges as f64 * target_density) as usize;
 

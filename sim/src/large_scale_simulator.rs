@@ -2,7 +2,7 @@
 //!
 //! This module provides state-of-the-art memory optimization techniques to enable
 //! simulation of 40+ qubit quantum circuits on standard hardware through sparse
-//! representations, compression, memory mapping, and SciRS2 high-performance computing.
+//! representations, compression, memory mapping, and `SciRS2` high-performance computing.
 
 use quantrs2_circuit::builder::{Circuit, Simulator};
 use quantrs2_core::{
@@ -11,11 +11,11 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
-                                  // use quantrs2_core::platform::PlatformCapabilities;
-                                  // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
-                                  // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
-                                  // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator}; // SciRS2 POLICY compliant
+                                                                            // use quantrs2_core::platform::PlatformCapabilities;
+                                                                            // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
+                                                                            // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
+                                                                            // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
 use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use memmap2::{MmapMut, MmapOptions};
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
@@ -62,7 +62,7 @@ pub struct LargeScaleSimulatorConfig {
     /// Working directory for temporary files
     pub working_directory: PathBuf,
 
-    /// Enable SciRS2 optimizations
+    /// Enable `SciRS2` optimizations
     pub enable_scirs2_optimizations: bool,
 
     /// Memory budget in bytes
@@ -111,6 +111,7 @@ pub struct SimpleSparseMatrix {
 }
 
 impl SimpleSparseMatrix {
+    #[must_use]
     pub fn from_dense(dense: &[Complex64], threshold: f64) -> Self {
         let rows = dense.len();
         let cols = 1; // For state vectors
@@ -135,6 +136,7 @@ impl SimpleSparseMatrix {
         }
     }
 
+    #[must_use]
     pub fn to_dense(&self) -> Vec<Complex64> {
         let mut dense = vec![Complex64::new(0.0, 0.0); self.rows];
 
@@ -154,6 +156,7 @@ impl SimpleSparseMatrix {
         dense
     }
 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.values.len()
     }
@@ -168,7 +171,7 @@ pub struct SparseQuantumState {
     /// Number of qubits
     num_qubits: usize,
 
-    /// Total dimension (2^num_qubits)
+    /// Total dimension (`2^num_qubits`)
     dimension: usize,
 
     /// Non-zero indices and their positions
@@ -371,11 +374,13 @@ impl SparseQuantumState {
     }
 
     /// Get current sparsity ratio
+    #[must_use]
     pub const fn sparsity_ratio(&self) -> f64 {
         self.sparsity_ratio
     }
 
     /// Get memory usage in bytes
+    #[must_use]
     pub fn memory_usage(&self) -> usize {
         self.nonzero_indices.len()
             * (std::mem::size_of::<usize>() + std::mem::size_of::<Complex64>())
@@ -396,6 +401,7 @@ impl Default for SimpleCompressionEngine {
 }
 
 impl SimpleCompressionEngine {
+    #[must_use]
     pub const fn new() -> Self {
         Self { buffer: Vec::new() }
     }
@@ -627,9 +633,9 @@ impl CompressedQuantumState {
             let phase = amplitude.arg();
 
             // Quantize magnitude and phase for better compression
-            let quantized_magnitude = (magnitude * 65535.0) as u16;
+            let quantized_magnitude = (magnitude * 65_535.0) as u16;
             let quantized_phase =
-                ((phase + std::f64::consts::PI) / (2.0 * std::f64::consts::PI) * 65535.0) as u16;
+                ((phase + std::f64::consts::PI) / (2.0 * std::f64::consts::PI) * 65_535.0) as u16;
 
             compressed.extend_from_slice(&quantized_magnitude.to_le_bytes());
             compressed.extend_from_slice(&quantized_phase.to_le_bytes());
@@ -652,8 +658,8 @@ impl CompressedQuantumState {
                 let quantized_magnitude = u16::from_le_bytes(magnitude_bytes);
                 let quantized_phase = u16::from_le_bytes(phase_bytes);
 
-                let magnitude = quantized_magnitude as f64 / 65535.0;
-                let phase = ((quantized_phase as f64 / 65535.0) * 2.0)
+                let magnitude = f64::from(quantized_magnitude) / 65_535.0;
+                let phase = ((f64::from(quantized_phase) / 65_535.0) * 2.0)
                     .mul_add(std::f64::consts::PI, -std::f64::consts::PI);
 
                 let amplitude = Complex64::new(magnitude * phase.cos(), magnitude * phase.sin());
@@ -677,16 +683,18 @@ impl CompressedQuantumState {
         // Simple checksum implementation
         data.iter()
             .enumerate()
-            .map(|(i, &b)| (i as u64).wrapping_mul(b as u64))
+            .map(|(i, &b)| (i as u64).wrapping_mul(u64::from(b)))
             .sum()
     }
 
     /// Get compression ratio
+    #[must_use]
     pub const fn compression_ratio(&self) -> f64 {
         self.compression_metadata.compression_ratio
     }
 
     /// Get memory usage in bytes
+    #[must_use]
     pub fn memory_usage(&self) -> usize {
         self.compressed_data.len()
     }
@@ -867,11 +875,13 @@ impl MemoryMappedQuantumState {
     }
 
     /// Get memory usage (just metadata, actual state is in file)
+    #[must_use]
     pub const fn memory_usage(&self) -> usize {
         std::mem::size_of::<Self>()
     }
 
     /// Get file size
+    #[must_use]
     pub const fn file_size(&self) -> usize {
         self.dimension * std::mem::size_of::<Complex64>()
     }
@@ -1215,16 +1225,22 @@ impl LargeScaleQuantumSimulator {
     }
 
     /// Get memory statistics
+    #[must_use]
     pub fn get_memory_stats(&self) -> MemoryStatistics {
-        self.memory_stats.lock().unwrap().clone()
+        self.memory_stats
+            .lock()
+            .map(|stats| stats.clone())
+            .unwrap_or_default()
     }
 
     /// Get configuration
+    #[must_use]
     pub const fn get_config(&self) -> &LargeScaleSimulatorConfig {
         &self.config
     }
 
     /// Check if current state can simulate given number of qubits
+    #[must_use]
     pub const fn can_simulate(&self, num_qubits: usize) -> bool {
         if num_qubits > self.config.max_qubits {
             return false;
@@ -1237,6 +1253,7 @@ impl LargeScaleQuantumSimulator {
     }
 
     /// Estimate memory requirements for given number of qubits
+    #[must_use]
     pub fn estimate_memory_requirements(&self, num_qubits: usize) -> usize {
         let dimension = 1usize << num_qubits;
         let base_memory = dimension * std::mem::size_of::<Complex64>();
@@ -1272,12 +1289,15 @@ mod tests {
 
     #[test]
     fn test_sparse_quantum_state() {
-        let mut sparse_state = SparseQuantumState::new(3).unwrap();
+        let mut sparse_state =
+            SparseQuantumState::new(3).expect("Sparse state creation should succeed in test");
         assert_eq!(sparse_state.num_qubits, 3);
         assert_eq!(sparse_state.dimension, 8);
         assert!(sparse_state.sparsity_ratio() < 0.2);
 
-        let dense = sparse_state.to_dense().unwrap();
+        let dense = sparse_state
+            .to_dense()
+            .expect("Sparse to dense conversion should succeed in test");
         assert_eq!(dense.len(), 8);
         assert!((dense[0] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
     }
@@ -1291,9 +1311,11 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        let compressed =
-            CompressedQuantumState::from_dense(&amplitudes, CompressionAlgorithm::LZ4).unwrap();
-        let decompressed = compressed.to_dense().unwrap();
+        let compressed = CompressedQuantumState::from_dense(&amplitudes, CompressionAlgorithm::LZ4)
+            .expect("Compression should succeed in test");
+        let decompressed = compressed
+            .to_dense()
+            .expect("Decompression should succeed in test");
 
         assert_eq!(decompressed.len(), 4);
         assert!((decompressed[0] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
@@ -1302,29 +1324,41 @@ mod tests {
     #[test]
     fn test_large_scale_simulator() {
         let config = LargeScaleSimulatorConfig::default();
-        let mut simulator = LargeScaleQuantumSimulator::new(config).unwrap();
+        let mut simulator = LargeScaleQuantumSimulator::new(config)
+            .expect("Simulator creation should succeed in test");
 
         // Test with 10 qubits (medium scale)
-        simulator.initialize_state(10).unwrap();
+        simulator
+            .initialize_state(10)
+            .expect("State initialization should succeed in test");
         assert!(simulator.can_simulate(10));
 
         // Test basic gates
         let x_gate = PauliX { target: QubitId(0) };
-        simulator.apply_gate(&x_gate).unwrap();
+        simulator
+            .apply_gate(&x_gate)
+            .expect("X gate application should succeed in test");
 
         let h_gate = Hadamard { target: QubitId(1) };
-        simulator.apply_gate(&h_gate).unwrap();
+        simulator
+            .apply_gate(&h_gate)
+            .expect("H gate application should succeed in test");
 
-        let final_state = simulator.get_dense_state().unwrap();
+        let final_state = simulator
+            .get_dense_state()
+            .expect("State retrieval should succeed in test");
         assert_eq!(final_state.len(), 1024); // 2^10
     }
 
     #[test]
     fn test_memory_stats() {
         let config = LargeScaleSimulatorConfig::default();
-        let mut simulator = LargeScaleQuantumSimulator::new(config).unwrap();
+        let mut simulator = LargeScaleQuantumSimulator::new(config)
+            .expect("Simulator creation should succeed in test");
 
-        simulator.initialize_state(5).unwrap();
+        simulator
+            .initialize_state(5)
+            .expect("State initialization should succeed in test");
         let stats = simulator.get_memory_stats();
 
         assert!(stats.current_usage > 0);

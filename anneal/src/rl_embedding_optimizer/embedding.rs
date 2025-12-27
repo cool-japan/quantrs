@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
 use super::state_action::StateActionProcessor;
-use super::types::*;
+use super::types::{EmbeddingAction, EmbeddingState, ObjectiveWeights};
 use crate::embedding::{Embedding, HardwareTopology};
 use crate::ising::IsingModel;
 
@@ -101,17 +101,18 @@ impl EmbeddingOptimizer {
             return 0.0;
         }
 
-        let total_length: usize = embedding.chains.values().map(|chain| chain.len()).sum();
+        let total_length: usize = embedding.chains.values().map(std::vec::Vec::len).sum();
         total_length as f64 / embedding.chains.len() as f64
     }
 
     /// Calculate hardware utilization
+    #[must_use]
     pub fn calculate_hardware_utilization(
         embedding: &Embedding,
         hardware: &HardwareTopology,
     ) -> f64 {
         let used_qubits: std::collections::HashSet<usize> =
-            embedding.chains.values().flatten().cloned().collect();
+            embedding.chains.values().flatten().copied().collect();
 
         used_qubits.len() as f64 / StateActionProcessor::get_num_qubits(hardware) as f64
     }
@@ -150,7 +151,7 @@ impl EmbeddingOptimizer {
         new_state.embedding_state.chain_lengths = new_embedding
             .chains
             .values()
-            .map(|chain| chain.len())
+            .map(std::vec::Vec::len)
             .collect();
 
         // Update efficiency metrics
@@ -164,7 +165,7 @@ impl EmbeddingOptimizer {
             .max_chain_length = new_embedding
             .chains
             .values()
-            .map(|chain| chain.len())
+            .map(std::vec::Vec::len)
             .max()
             .unwrap_or(0);
         new_state
@@ -188,6 +189,7 @@ impl EmbeddingOptimizer {
     }
 
     /// Check if state is terminal
+    #[must_use]
     pub fn is_terminal_state(state: &EmbeddingState) -> bool {
         // Terminal if quality score is very high or improvement has plateaued
         state.embedding_state.quality_score > 0.95
@@ -199,6 +201,7 @@ impl EmbeddingOptimizer {
     }
 
     /// Calculate problem density
+    #[must_use]
     pub fn calculate_problem_density(problem: &IsingModel) -> f64 {
         let mut num_edges = 0;
         for i in 0..problem.num_qubits {
@@ -211,10 +214,11 @@ impl EmbeddingOptimizer {
             }
         }
 
-        2.0 * num_edges as f64 / (problem.num_qubits * (problem.num_qubits - 1)) as f64
+        2.0 * f64::from(num_edges) / (problem.num_qubits * (problem.num_qubits - 1)) as f64
     }
 
     /// Classify problem type for transfer learning
+    #[must_use]
     pub fn classify_problem_type(problem: &IsingModel) -> String {
         let density = Self::calculate_problem_density(problem);
 

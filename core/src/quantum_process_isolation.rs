@@ -496,7 +496,7 @@ impl QuantumProcessIsolation {
         })
     }
 
-    fn configure_quantum_sandbox(
+    const fn configure_quantum_sandbox(
         &self,
         _config: &ProcessConfiguration,
         _requirements: &SecurityRequirements,
@@ -504,7 +504,7 @@ impl QuantumProcessIsolation {
         Ok(SandboxConfiguration::new())
     }
 
-    fn apply_security_policies(
+    const fn apply_security_policies(
         &self,
         _process: &IsolatedQuantumProcess,
         _requirements: &SecurityRequirements,
@@ -512,7 +512,7 @@ impl QuantumProcessIsolation {
         Ok(())
     }
 
-    fn verify_operation_permissions(
+    const fn verify_operation_permissions(
         &self,
         _process: &IsolatedQuantumProcess,
         _operation: &SecureQuantumOperation,
@@ -520,7 +520,7 @@ impl QuantumProcessIsolation {
         Ok(())
     }
 
-    fn execute_in_isolation(
+    const fn execute_in_isolation(
         &self,
         _process: &IsolatedQuantumProcess,
         _operation: &SecureQuantumOperation,
@@ -532,7 +532,7 @@ impl QuantumProcessIsolation {
         })
     }
 
-    fn apply_post_execution_security(
+    const fn apply_post_execution_security(
         &self,
         _process: &IsolatedQuantumProcess,
         _result: &ExecutionResult,
@@ -541,23 +541,23 @@ impl QuantumProcessIsolation {
     }
 
     // Benchmarking methods
-    fn benchmark_isolation_effectiveness(&self) -> f64 {
+    const fn benchmark_isolation_effectiveness(&self) -> f64 {
         387.2 // 387.2x more effective isolation than classical systems
     }
 
-    fn benchmark_encryption_strength(&self) -> f64 {
+    const fn benchmark_encryption_strength(&self) -> f64 {
         724.8 // 724.8x stronger encryption with quantum cryptography
     }
 
-    fn benchmark_access_control(&self) -> f64 {
+    const fn benchmark_access_control(&self) -> f64 {
         198.6 // 198.6x better access control
     }
 
-    fn benchmark_intrusion_detection(&self) -> f64 {
+    const fn benchmark_intrusion_detection(&self) -> f64 {
         452.3 // 452.3x better intrusion detection
     }
 
-    fn benchmark_audit_capabilities(&self) -> f64 {
+    const fn benchmark_audit_capabilities(&self) -> f64 {
         312.7 // 312.7x better audit capabilities
     }
 }
@@ -640,7 +640,10 @@ impl QuantumSecurityMonitor {
         }
     }
 
-    pub fn start_monitoring(&self, _process: &IsolatedQuantumProcess) -> Result<(), QuantRS2Error> {
+    pub const fn start_monitoring(
+        &self,
+        _process: &IsolatedQuantumProcess,
+    ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
@@ -723,7 +726,7 @@ pub struct QuantumSecurityAdvantageReport {
 }
 
 impl QuantumSecurityAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             isolation_effectiveness: 0.0,
             encryption_strength_advantage: 0.0,
@@ -919,55 +922,55 @@ impl Default for ResourceQuotas {
 }
 
 impl MemorySegment {
-    pub fn new(size: usize) -> Self {
+    pub const fn new(size: usize) -> Self {
         Self { size }
     }
 }
 
 impl SecurityContext {
-    pub fn new(_requirements: &SecurityRequirements) -> Self {
+    pub const fn new(_requirements: &SecurityRequirements) -> Self {
         Self
     }
 }
 
 impl ResourceLimits {
-    pub fn from_config(_config: &ProcessConfiguration) -> Self {
+    pub const fn from_config(_config: &ProcessConfiguration) -> Self {
         Self
     }
 }
 
 impl AccessPolicy {
-    pub fn new(_requirements: &SecurityRequirements) -> Self {
+    pub const fn new(_requirements: &SecurityRequirements) -> Self {
         Self
     }
 }
 
 impl QuantumIsolationPolicy {
-    pub fn new(_requirements: &SecurityRequirements) -> Self {
+    pub const fn new(_requirements: &SecurityRequirements) -> Self {
         Self
     }
 }
 
 impl VirtualQuantumMemory {
-    pub fn new(size: usize) -> Self {
+    pub const fn new(size: usize) -> Self {
         Self { size }
     }
 }
 
 impl QuantumHypervisor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl VMSecurityFeatures {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl IsolationGuarantees {
-    pub fn maximum() -> Self {
+    pub const fn maximum() -> Self {
         Self
     }
 }
@@ -984,101 +987,101 @@ impl AccessControlMatrix {
 }
 
 impl RoleBasedAccessControl {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl CapabilityBasedAccess {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl MandatoryAccessControl {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl DiscretionaryAccessControl {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl EntanglementMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumAnomalyDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumThreatAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumIncidentResponder {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl SecurityMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumKeyManagement {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumCryptographyProtocols {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl PostQuantumCryptography {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumHomomorphicEncryption {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumAuthenticationSystem {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumIntrusionDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumAuditLogger {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn log_secure_operation(
+    pub const fn log_secure_operation(
         &self,
         _process: &IsolatedQuantumProcess,
         _operation: &SecureQuantumOperation,
@@ -1089,11 +1092,11 @@ impl QuantumAuditLogger {
 }
 
 impl QuantumSecurityPolicyEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn evaluate_operation_security(
+    pub const fn evaluate_operation_security(
         &self,
         _process: &IsolatedQuantumProcess,
         _operation: &SecureQuantumOperation,
@@ -1103,19 +1106,19 @@ impl QuantumSecurityPolicyEngine {
 }
 
 impl SandboxConfiguration {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumStateProtection {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
 impl QuantumErrorIsolation {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1151,7 +1154,7 @@ mod tests {
         let result = isolation_system.create_isolated_process(config, requirements);
         assert!(result.is_ok());
 
-        let process_result = result.unwrap();
+        let process_result = result.expect("isolated process creation should succeed");
         assert!(process_result.isolation_effectiveness > 99.0);
         assert!(process_result.quantum_advantage > 1.0);
         assert_eq!(process_result.security_strength, 256.0);
@@ -1179,7 +1182,7 @@ mod tests {
 
         let process_result = isolation_system
             .create_isolated_process(config, requirements)
-            .unwrap();
+            .expect("process creation should succeed for secure operation test");
 
         // Now test secure operation
         let operation = SecureQuantumOperation {
@@ -1193,7 +1196,7 @@ mod tests {
             isolation_system.execute_secure_quantum_operation(process_result.process_id, operation);
         assert!(result.is_ok());
 
-        let operation_result = result.unwrap();
+        let operation_result = result.expect("secure quantum operation should succeed");
         assert!(operation_result.security_verified);
         assert!(operation_result.isolation_maintained);
         assert!(operation_result.quantum_advantage > 1.0);

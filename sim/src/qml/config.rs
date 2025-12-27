@@ -65,7 +65,7 @@ pub enum OptimizerType {
     Adam,
     /// Stochastic gradient descent
     SGD,
-    /// RMSprop
+    /// `RMSprop`
     RMSprop,
     /// L-BFGS
     LBFGS,
@@ -131,9 +131,12 @@ impl Default for QMLConfig {
 
 impl QMLConfig {
     /// Create a new QML configuration for a specific algorithm type
+    #[must_use]
     pub fn for_algorithm(algorithm_type: QMLAlgorithmType) -> Self {
-        let mut config = Self::default();
-        config.algorithm_type = algorithm_type;
+        let mut config = Self {
+            algorithm_type,
+            ..Self::default()
+        };
 
         // Adjust default parameters based on algorithm
         match algorithm_type {
@@ -185,9 +188,12 @@ impl QMLConfig {
     }
 
     /// Create a configuration optimized for a specific hardware architecture
+    #[must_use]
     pub fn for_hardware(hardware: HardwareArchitecture) -> Self {
-        let mut config = Self::default();
-        config.hardware_architecture = hardware;
+        let mut config = Self {
+            hardware_architecture: hardware,
+            ..Self::default()
+        };
 
         // Adjust parameters based on hardware constraints
         match hardware {
@@ -203,12 +209,12 @@ impl QMLConfig {
             }
             HardwareArchitecture::Superconducting => {
                 config.circuit_depth = 5;
-                config.shot_budget = 16384;
+                config.shot_budget = 16_384;
                 config.noise_adaptive_training = true;
             }
             HardwareArchitecture::TrappedIon => {
                 config.circuit_depth = 8;
-                config.shot_budget = 32768;
+                config.shot_budget = 32_768;
                 config.noise_adaptive_training = true;
             }
             HardwareArchitecture::Photonic => {
@@ -218,7 +224,7 @@ impl QMLConfig {
             }
             HardwareArchitecture::NeutralAtom => {
                 config.circuit_depth = 6;
-                config.shot_budget = 16384;
+                config.shot_budget = 16_384;
                 config.noise_adaptive_training = true;
             }
             HardwareArchitecture::ClassicalSimulation => {

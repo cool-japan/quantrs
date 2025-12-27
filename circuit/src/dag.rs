@@ -9,6 +9,7 @@ use std::fmt;
 
 use quantrs2_core::{gate::GateOp, qubit::QubitId};
 
+use std::fmt::Write;
 /// A node in the circuit DAG
 #[derive(Debug, Clone)]
 pub struct DagNode {
@@ -326,12 +327,14 @@ impl CircuitDag {
 
         // Add nodes
         for node in &self.nodes {
-            dot.push_str(&format!(
-                "  {} [label=\"{}: {}\"];\n",
+            writeln!(
+                dot,
+                "  {} [label=\"{}: {}\"];",
                 node.id,
                 node.id,
                 node.gate.name()
-            ));
+            )
+            .expect("writeln! to String cannot fail");
         }
 
         // Add edges
@@ -341,10 +344,12 @@ impl CircuitDag {
                 EdgeType::ClassicalDependency => "classical".to_string(),
                 EdgeType::BarrierDependency => "barrier".to_string(),
             };
-            dot.push_str(&format!(
-                "  {} -> {} [label=\"{}\"];\n",
+            writeln!(
+                dot,
+                "  {} -> {} [label=\"{}\"];",
                 edge.source, edge.target, label
-            ));
+            )
+            .expect("writeln! to String cannot fail");
         }
 
         dot.push_str("}\n");
@@ -432,7 +437,9 @@ mod tests {
         });
         let cnot_id = dag.add_gate(cnot_gate);
 
-        let sorted = dag.topological_sort().unwrap();
+        let sorted = dag
+            .topological_sort()
+            .expect("topological_sort should succeed");
 
         // H and X can be in any order, but CNOT must be last
         assert_eq!(sorted.len(), 3);

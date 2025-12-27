@@ -24,7 +24,7 @@ pub struct ClusteringConfig {
 }
 
 /// Feature extraction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureExtractionMethod {
     /// Use raw solution vectors
     Raw,
@@ -43,7 +43,7 @@ pub enum FeatureExtractionMethod {
 }
 
 /// Analysis depth levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisDepth {
     /// Basic clustering only
     Basic,
@@ -86,7 +86,7 @@ pub enum DimensionalityReduction {
 }
 
 /// Plot types for visualization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlotType {
     /// Scatter plot of solutions
     ScatterPlot,
@@ -105,7 +105,7 @@ pub enum PlotType {
 }
 
 /// Color schemes for visualization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorScheme {
     /// Default color scheme
     Default,
@@ -120,7 +120,7 @@ pub enum ColorScheme {
 }
 
 /// Output formats for visualization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutputFormat {
     /// PNG image
     PNG,
@@ -157,6 +157,7 @@ impl Default for ClusteringConfig {
 }
 
 /// Create a basic clustering configuration
+#[must_use]
 pub fn create_basic_clustering_config() -> ClusteringConfig {
     ClusteringConfig {
         algorithm: ClusteringAlgorithm::KMeans {
@@ -171,6 +172,7 @@ pub fn create_basic_clustering_config() -> ClusteringConfig {
 }
 
 /// Create a comprehensive clustering configuration
+#[must_use]
 pub fn create_comprehensive_clustering_config() -> ClusteringConfig {
     ClusteringConfig {
         algorithm: ClusteringAlgorithm::DBSCAN {

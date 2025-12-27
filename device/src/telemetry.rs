@@ -224,7 +224,7 @@ pub struct MonitoringTarget {
 }
 
 /// Types of monitoring targets
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringTargetType {
     Device,
     Circuit,
@@ -379,7 +379,7 @@ pub enum ExportAuth {
 }
 
 /// Export format
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportFormat {
     JSON,
     Prometheus,
@@ -450,7 +450,7 @@ pub enum TelemetryCommand {
 }
 
 /// System status enumeration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SystemStatus {
     Healthy,
     Degraded,
@@ -461,7 +461,7 @@ pub enum SystemStatus {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {
     Performance,
     Resource,
@@ -507,7 +507,7 @@ pub struct Metric {
 }
 
 /// Types of metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetricType {
     Counter,
     Gauge,
@@ -549,7 +549,7 @@ pub struct MetricSnapshot {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -616,7 +616,7 @@ pub struct AnomalyResult {
 }
 
 /// Types of anomalies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyType {
     Outlier,
     ChangePoint,
@@ -644,7 +644,7 @@ pub struct AnomalyDetectorConfig {
 }
 
 /// Anomaly detector types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyDetectorType {
     Statistical,
     MachineLearning,
@@ -688,7 +688,7 @@ pub struct StatisticalModel {
 }
 
 /// Statistical model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatisticalModelType {
     Normal,
     Exponential,
@@ -731,7 +731,7 @@ pub struct PredictiveModel {
 }
 
 /// Predictive model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictiveModelType {
     LinearRegression,
     PolynomialRegression,
@@ -775,7 +775,7 @@ pub struct Pattern {
 }
 
 /// Pattern types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PatternType {
     Periodic,
     Cyclic,
@@ -832,7 +832,7 @@ pub struct Alert {
 }
 
 /// Alert state
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertState {
     Triggered,
     Acknowledged,
@@ -930,7 +930,7 @@ pub struct CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     None,
     Gzip,
@@ -953,7 +953,7 @@ pub struct PersistenceConfig {
 }
 
 /// Storage backends
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageBackend {
     Memory,
     File,
@@ -1113,7 +1113,7 @@ impl QuantumTelemetrySystem {
             analytics: Arc::new(RwLock::new(TelemetryAnalytics::new(
                 config.analytics_config.clone(),
             ))),
-            alert_manager: Arc::new(RwLock::new(AlertManager::new(config.alert_config.clone()))),
+            alert_manager: Arc::new(RwLock::new(AlertManager::new(config.alert_config))),
             storage: Arc::new(RwLock::new(TelemetryStorage::new(StorageConfig::default()))),
             event_sender,
             command_receiver: Arc::new(Mutex::new(command_receiver)),
@@ -1158,14 +1158,18 @@ impl QuantumTelemetrySystem {
         &self,
         collector: Box<dyn MetricCollector + Send + Sync>,
     ) -> DeviceResult<()> {
-        let mut collectors = self.collectors.write().unwrap();
+        let mut collectors = self.collectors.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on collectors: {e}"))
+        })?;
         collectors.insert(collector.name().to_string(), collector);
         Ok(())
     }
 
     /// Collect metrics from all collectors
     pub async fn collect_metrics(&self) -> DeviceResult<Vec<Metric>> {
-        let collectors = self.collectors.read().unwrap();
+        let collectors = self.collectors.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire read lock on collectors: {e}"))
+        })?;
         let mut all_metrics = Vec::new();
 
         for collector in collectors.values() {
@@ -1186,7 +1190,9 @@ impl QuantumTelemetrySystem {
 
         // Store metrics
         {
-            let mut storage = self.storage.write().unwrap();
+            let mut storage = self.storage.write().map_err(|e| {
+                DeviceError::LockError(format!("Failed to acquire write lock on storage: {e}"))
+            })?;
             storage.store_metrics(&all_metrics)?;
         }
 
@@ -1204,14 +1210,18 @@ impl QuantumTelemetrySystem {
     }
 
     /// Get current system health
-    pub fn get_system_health(&self) -> SystemHealth {
-        let monitor = self.monitor.read().unwrap();
-        monitor.get_system_health()
+    pub fn get_system_health(&self) -> DeviceResult<SystemHealth> {
+        let monitor = self.monitor.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire read lock on monitor: {e}"))
+        })?;
+        Ok(monitor.get_system_health())
     }
 
     /// Generate telemetry report
     pub async fn generate_report(&self, report_type: ReportType) -> DeviceResult<TelemetryReport> {
-        let analytics = self.analytics.read().unwrap();
+        let analytics = self.analytics.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire read lock on analytics: {e}"))
+        })?;
         analytics.generate_report(report_type).await
     }
 
@@ -1320,7 +1330,7 @@ pub struct ReportInsight {
 }
 
 /// Insight types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InsightType {
     Performance,
     Efficiency,
@@ -1333,7 +1343,7 @@ pub enum InsightType {
 }
 
 /// Impact levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImpactLevel {
     Low,
     Medium,
@@ -1472,10 +1482,7 @@ impl TelemetryStorage {
     fn store_metrics(&mut self, metrics: &[Metric]) -> DeviceResult<()> {
         for metric in metrics {
             // Store in real-time buffer
-            let buffer = self
-                .realtime_buffer
-                .entry(metric.name.clone())
-                .or_insert_with(VecDeque::new);
+            let buffer = self.realtime_buffer.entry(metric.name.clone()).or_default();
             buffer.push_back(metric.clone());
 
             // Limit buffer size
@@ -1484,10 +1491,7 @@ impl TelemetryStorage {
             }
 
             // Update time series index
-            let metric_names = self
-                .time_series_index
-                .entry(metric.timestamp)
-                .or_insert_with(Vec::new);
+            let metric_names = self.time_series_index.entry(metric.timestamp).or_default();
             metric_names.push(metric.name.clone());
         }
 

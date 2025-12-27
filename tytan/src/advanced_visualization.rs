@@ -1524,7 +1524,9 @@ impl AdvancedVisualizationManager {
             "energy_landscape_{}",
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .map_err(|e| {
+                    VisualizationError::DataProcessingFailed(format!("System time error: {e}"))
+                })?
                 .as_nanos()
         );
 
@@ -1563,7 +1565,7 @@ impl AdvancedVisualizationManager {
 
         self.active_visualizations
             .write()
-            .unwrap()
+            .map_err(|e| VisualizationError::ResourceExhausted(format!("Lock poisoned: {e}")))?
             .insert(viz_id.clone(), active_viz);
 
         Ok(viz_id)
@@ -1580,7 +1582,9 @@ impl AdvancedVisualizationManager {
             algorithm,
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .map_err(|e| {
+                    VisualizationError::DataProcessingFailed(format!("System time error: {e}"))
+                })?
                 .as_nanos()
         );
 
@@ -1612,7 +1616,9 @@ impl AdvancedVisualizationManager {
             "quantum_state_{}",
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .map_err(|e| {
+                    VisualizationError::DataProcessingFailed(format!("System time error: {e}"))
+                })?
                 .as_nanos()
         );
 
@@ -1632,7 +1638,9 @@ impl AdvancedVisualizationManager {
             "dashboard_{}",
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .map_err(|e| {
+                    VisualizationError::DataProcessingFailed(format!("System time error: {e}"))
+                })?
                 .as_nanos()
         );
 
@@ -1669,9 +1677,8 @@ impl AdvancedVisualizationManager {
     pub fn get_visualization_status(&self, viz_id: &str) -> Option<ActiveVisualization> {
         self.active_visualizations
             .read()
-            .unwrap()
-            .get(viz_id)
-            .cloned()
+            .ok()
+            .and_then(|guard| guard.get(viz_id).cloned())
     }
 
     /// Update configuration
@@ -1748,7 +1755,7 @@ impl EnergyLandscapeVisualizer {
                     engine_type: RenderingEngineType::WebGL,
                     capabilities: RenderingCapabilities {
                         max_texture_size: 4096,
-                        max_vertices: 1000000,
+                        max_vertices: 1_000_000,
                         supports_3d: true,
                         supports_shaders: true,
                         supports_instancing: true,

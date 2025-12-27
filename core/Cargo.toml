@@ -60,7 +60,7 @@ symbolic = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys"]  # Enable sy
 python = ["dep:pyo3", "dep:scirs2-numpy"]  # Enable Python bindings with PyO3 and scirs2-numpy
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion.workspace = true
 
 [[bench]]
 name = "simd_performance"

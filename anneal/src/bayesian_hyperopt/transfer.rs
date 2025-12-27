@@ -28,7 +28,7 @@ impl Default for TransferConfig {
 }
 
 /// Transfer learning methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferLearningMethod {
     /// Transfer entire model
     ModelTransfer,
@@ -41,7 +41,7 @@ pub enum TransferLearningMethod {
 }
 
 /// Domain adaptation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DomainAdaptationStrategy {
     /// Immediate adaptation
     Immediate,

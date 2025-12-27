@@ -597,14 +597,14 @@ impl QuantumGraphAttentionNetwork {
         let pred_class = pred_flat
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
 
         let target_class = target
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
             .unwrap_or(0);
 
@@ -1229,7 +1229,7 @@ impl LayerNormalization {
 
         for i in 0..num_samples {
             let row = input.row(i);
-            let mean = row.mean().unwrap();
+            let mean = row.mean().unwrap_or(0.0);
             let variance = row.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / feature_dim as f64;
             let std = (variance + self.epsilon).sqrt();
 
@@ -1259,7 +1259,11 @@ impl QuantumPoolingLayer {
     /// Forward pass
     pub fn forward(&self, node_embeddings: &Array2<f64>, _graph: &Graph) -> Result<Array1<f64>> {
         match self.pooling_type {
-            PoolingType::GlobalMeanPool => Ok(node_embeddings.mean_axis(Axis(0)).unwrap()),
+            PoolingType::GlobalMeanPool => node_embeddings.mean_axis(Axis(0)).ok_or_else(|| {
+                crate::error::MLError::ComputationError(
+                    "Failed to compute mean axis for global pooling".to_string(),
+                )
+            }),
             PoolingType::GlobalMaxPool => {
                 let max_values = node_embeddings.map_axis(Axis(0), |row| {
                     row.iter().cloned().fold(f64::NEG_INFINITY, f64::max)
@@ -1267,7 +1271,11 @@ impl QuantumPoolingLayer {
                 Ok(max_values)
             }
             PoolingType::QuantumGlobalPool => self.quantum_global_pooling(node_embeddings),
-            _ => Ok(node_embeddings.mean_axis(Axis(0)).unwrap()),
+            _ => node_embeddings.mean_axis(Axis(0)).ok_or_else(|| {
+                crate::error::MLError::ComputationError(
+                    "Failed to compute mean axis for default pooling".to_string(),
+                )
+            }),
         }
     }
 
@@ -1414,9 +1422,10 @@ mod tests {
                 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
             ],
         )
-        .unwrap();
+        .expect("Failed to create node features array");
 
-        let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3]).unwrap();
+        let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3])
+            .expect("Failed to create edge indices array");
 
         let graph = Graph::new(node_features, edge_indices, None, None);
         assert_eq!(graph.num_nodes, 4);
@@ -1426,11 +1435,14 @@ mod tests {
     #[test]
     fn test_forward_pass() {
         let config = QGATConfig::default();
-        let qgat = QuantumGraphAttentionNetwork::new(config).unwrap();
+        let qgat =
+            QuantumGraphAttentionNetwork::new(config).expect("Failed to create QGAT network");
 
         let node_features =
-            Array2::from_shape_vec((4, 64), (0..256).map(|x| x as f64 * 0.01).collect()).unwrap();
-        let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3]).unwrap();
+            Array2::from_shape_vec((4, 64), (0..256).map(|x| x as f64 * 0.01).collect())
+                .expect("Failed to create node features");
+        let edge_indices = Array2::from_shape_vec((2, 3), vec![0, 1, 2, 1, 2, 3])
+            .expect("Failed to create edge indices");
         let graph = Graph::new(node_features, edge_indices, None, None);
 
         let result = qgat.forward(&graph);
@@ -1440,11 +1452,14 @@ mod tests {
     #[test]
     fn test_attention_analysis() {
         let config = QGATConfig::default();
-        let qgat = QuantumGraphAttentionNetwork::new(config).unwrap();
+        let qgat =
+            QuantumGraphAttentionNetwork::new(config).expect("Failed to create QGAT network");
 
         let node_features =
-            Array2::from_shape_vec((3, 64), (0..192).map(|x| x as f64 * 0.01).collect()).unwrap();
-        let edge_indices = Array2::from_shape_vec((2, 2), vec![0, 1, 1, 2]).unwrap();
+            Array2::from_shape_vec((3, 64), (0..192).map(|x| x as f64 * 0.01).collect())
+                .expect("Failed to create node features");
+        let edge_indices = Array2::from_shape_vec((2, 2), vec![0, 1, 1, 2])
+            .expect("Failed to create edge indices");
         let graph = Graph::new(node_features, edge_indices, None, None);
 
         let analysis = qgat.analyze_attention(&graph);

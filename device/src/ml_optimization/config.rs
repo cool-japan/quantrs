@@ -47,7 +47,7 @@ pub struct MLModelConfig {
 }
 
 /// ML algorithms available
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MLAlgorithm {
     /// Deep Neural Network
     DeepNeuralNetwork,
@@ -85,7 +85,7 @@ pub struct MLHyperparameter {
 }
 
 /// Hyperparameter types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HyperparameterType {
     Integer,
     Float,
@@ -115,7 +115,7 @@ pub enum HyperparameterSearchSpace {
 }
 
 /// Model selection strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelSelectionStrategy {
     CrossValidation,
     HoldoutValidation,

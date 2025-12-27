@@ -388,9 +388,27 @@ impl PyCircuitTranspiler {
                 "sdg" => OptimizationGate::SDag(qubits[0]),
                 "t" => OptimizationGate::T(qubits[0]),
                 "tdg" => OptimizationGate::TDag(qubits[0]),
-                "rx" => OptimizationGate::RX(qubits[0], params.unwrap()[0]),
-                "ry" => OptimizationGate::RY(qubits[0], params.unwrap()[0]),
-                "rz" => OptimizationGate::RZ(qubits[0], params.unwrap()[0]),
+                "rx" => OptimizationGate::RX(
+                    qubits[0],
+                    params
+                        .as_ref()
+                        .and_then(|p| p.first().copied())
+                        .ok_or_else(|| PyValueError::new_err("RX gate requires angle parameter"))?,
+                ),
+                "ry" => OptimizationGate::RY(
+                    qubits[0],
+                    params
+                        .as_ref()
+                        .and_then(|p| p.first().copied())
+                        .ok_or_else(|| PyValueError::new_err("RY gate requires angle parameter"))?,
+                ),
+                "rz" => OptimizationGate::RZ(
+                    qubits[0],
+                    params
+                        .as_ref()
+                        .and_then(|p| p.first().copied())
+                        .ok_or_else(|| PyValueError::new_err("RZ gate requires angle parameter"))?,
+                ),
                 "cnot" => OptimizationGate::CNOT(qubits[0], qubits[1]),
                 "cy" => OptimizationGate::CY(qubits[0], qubits[1]),
                 "cz" => OptimizationGate::CZ(qubits[0], qubits[1]),

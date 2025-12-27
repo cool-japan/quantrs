@@ -78,7 +78,7 @@ pub struct GradientDescentOptimizer {
 
 impl GradientDescentOptimizer {
     /// Create a new gradient descent optimizer
-    pub fn new(initial_params: Vec<f64>, learning_rate: f64) -> Self {
+    pub const fn new(initial_params: Vec<f64>, learning_rate: f64) -> Self {
         Self {
             params: initial_params,
             learning_rate,
@@ -134,10 +134,14 @@ impl ClassicalOptimizer for AdamOptimizer {
 
         for i in 0..self.params.len() {
             // Update biased first moment estimate
-            self.m[i] = self.beta1 * self.m[i] + (1.0 - self.beta1) * gradient[i];
+            self.m[i] = self
+                .beta1
+                .mul_add(self.m[i], (1.0 - self.beta1) * gradient[i]);
 
             // Update biased second raw moment estimate
-            self.v[i] = self.beta2 * self.v[i] + (1.0 - self.beta2) * gradient[i].powi(2);
+            self.v[i] = self
+                .beta2
+                .mul_add(self.v[i], (1.0 - self.beta2) * gradient[i].powi(2));
 
             // Compute bias-corrected first moment estimate
             let m_hat = self.m[i] / (1.0 - self.beta1.powi(self.t as i32));
@@ -178,7 +182,7 @@ pub struct LayerSpec {
 
 impl CircuitEvaluator {
     /// Create a new circuit evaluator
-    pub fn new(num_qubits: usize, circuit_structure: Vec<LayerSpec>) -> Self {
+    pub const fn new(num_qubits: usize, circuit_structure: Vec<LayerSpec>) -> Self {
         Self {
             num_qubits,
             circuit_structure,
@@ -279,7 +283,7 @@ impl VariationalQCOptimizer {
 
             if cost < best_value {
                 best_value = cost;
-                best_params = new_params.clone();
+                best_params.clone_from(&new_params);
             }
 
             // Check convergence
@@ -452,7 +456,7 @@ impl QuantumLayer {
 
 impl QuantumClassicalNN {
     /// Create a new quantum-classical neural network
-    pub fn new(
+    pub const fn new(
         classical_pre: Vec<ClassicalLayer>,
         quantum_layer: QuantumLayer,
         classical_post: Vec<ClassicalLayer>,
@@ -547,7 +551,7 @@ pub enum FeatureMapType {
 
 impl QuantumFeatureMap {
     /// Create a new quantum feature map
-    pub fn new(num_qubits: usize, feature_map_type: FeatureMapType) -> Self {
+    pub const fn new(num_qubits: usize, feature_map_type: FeatureMapType) -> Self {
         Self {
             num_qubits,
             feature_map_type,
@@ -679,7 +683,9 @@ mod tests {
         let feature_map = QuantumFeatureMap::new(2, FeatureMapType::Amplitude);
         let data = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]);
 
-        let state = feature_map.encode(&data).unwrap();
+        let state = feature_map
+            .encode(&data)
+            .expect("Failed to encode data in quantum feature map");
 
         // First amplitude should be 1
         assert!((state[0].norm() - 1.0).abs() < 1e-10);
@@ -691,7 +697,9 @@ mod tests {
         let data1 = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]);
         let data2 = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]);
 
-        let kernel_value = feature_map.kernel(&data1, &data2).unwrap();
+        let kernel_value = feature_map
+            .kernel(&data1, &data2)
+            .expect("Failed to compute quantum kernel");
 
         // Kernel of identical points should be 1
         assert!((kernel_value - 1.0).abs() < 1e-10);

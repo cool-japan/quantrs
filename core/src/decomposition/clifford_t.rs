@@ -37,28 +37,30 @@ impl CliffordGate {
         let mh_val = Complex64::new(-1.0 / SQRT_2, 0.0);
 
         match self {
-            CliffordGate::Hadamard => {
-                Array2::from_shape_vec((2, 2), vec![h_val, h_val, h_val, mh_val]).unwrap()
-            }
-            CliffordGate::Phase => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, ci]).unwrap(),
-            CliffordGate::PhaseDagger => {
-                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cmi]).unwrap()
-            }
-            CliffordGate::PauliX => Array2::from_shape_vec((2, 2), vec![c0, c1, c1, c0]).unwrap(),
-            CliffordGate::PauliY => Array2::from_shape_vec((2, 2), vec![c0, cmi, ci, c0]).unwrap(),
-            CliffordGate::PauliZ => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cm1]).unwrap(),
+            Self::Hadamard => Array2::from_shape_vec((2, 2), vec![h_val, h_val, h_val, mh_val])
+                .expect("Hadamard matrix has valid 2x2 shape"),
+            Self::Phase => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, ci])
+                .expect("Phase matrix has valid 2x2 shape"),
+            Self::PhaseDagger => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cmi])
+                .expect("PhaseDagger matrix has valid 2x2 shape"),
+            Self::PauliX => Array2::from_shape_vec((2, 2), vec![c0, c1, c1, c0])
+                .expect("PauliX matrix has valid 2x2 shape"),
+            Self::PauliY => Array2::from_shape_vec((2, 2), vec![c0, cmi, ci, c0])
+                .expect("PauliY matrix has valid 2x2 shape"),
+            Self::PauliZ => Array2::from_shape_vec((2, 2), vec![c1, c0, c0, cm1])
+                .expect("PauliZ matrix has valid 2x2 shape"),
         }
     }
 
     /// Convert to a gate operation
     pub fn to_gate(&self, qubit: QubitId) -> Box<dyn GateOp> {
         match self {
-            CliffordGate::Hadamard => Box::new(Hadamard { target: qubit }),
-            CliffordGate::Phase => Box::new(Phase { target: qubit }),
-            CliffordGate::PhaseDagger => Box::new(PhaseDagger { target: qubit }),
-            CliffordGate::PauliX => Box::new(PauliX { target: qubit }),
-            CliffordGate::PauliY => Box::new(PauliY { target: qubit }),
-            CliffordGate::PauliZ => Box::new(PauliZ { target: qubit }),
+            Self::Hadamard => Box::new(Hadamard { target: qubit }),
+            Self::Phase => Box::new(Phase { target: qubit }),
+            Self::PhaseDagger => Box::new(PhaseDagger { target: qubit }),
+            Self::PauliX => Box::new(PauliX { target: qubit }),
+            Self::PauliY => Box::new(PauliY { target: qubit }),
+            Self::PauliZ => Box::new(PauliZ { target: qubit }),
         }
     }
 }
@@ -86,18 +88,20 @@ impl CliffordTGate {
     /// Get the matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            CliffordTGate::Clifford(c) => c.matrix(),
-            CliffordTGate::T => {
+            Self::Clifford(c) => c.matrix(),
+            Self::T => {
                 let c1 = Complex64::new(1.0, 0.0);
                 let c0 = Complex64::new(0.0, 0.0);
                 let t_phase = Complex64::from_polar(1.0, PI / 4.0);
-                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, t_phase]).unwrap()
+                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, t_phase])
+                    .expect("T gate matrix has valid 2x2 shape")
             }
-            CliffordTGate::TDagger => {
+            Self::TDagger => {
                 let c1 = Complex64::new(1.0, 0.0);
                 let c0 = Complex64::new(0.0, 0.0);
                 let t_phase = Complex64::from_polar(1.0, -PI / 4.0);
-                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, t_phase]).unwrap()
+                Array2::from_shape_vec((2, 2), vec![c1, c0, c0, t_phase])
+                    .expect("TDagger gate matrix has valid 2x2 shape")
             }
         }
     }
@@ -105,15 +109,15 @@ impl CliffordTGate {
     /// Convert to a gate operation
     pub fn to_gate(&self, qubit: QubitId) -> Box<dyn GateOp> {
         match self {
-            CliffordTGate::Clifford(c) => c.to_gate(qubit),
-            CliffordTGate::T => Box::new(T { target: qubit }),
-            CliffordTGate::TDagger => Box::new(TDagger { target: qubit }),
+            Self::Clifford(c) => c.to_gate(qubit),
+            Self::T => Box::new(T { target: qubit }),
+            Self::TDagger => Box::new(TDagger { target: qubit }),
         }
     }
 
     /// Check if this is a T gate
-    pub fn is_t_gate(&self) -> bool {
-        matches!(self, CliffordTGate::T | CliffordTGate::TDagger)
+    pub const fn is_t_gate(&self) -> bool {
+        matches!(self, Self::T | Self::TDagger)
     }
 }
 
@@ -160,7 +164,10 @@ impl CliffordTSequence {
             }
             self.matrix = Some(matrix);
         }
-        self.matrix.as_ref().unwrap()
+        // SAFETY: We just set self.matrix to Some if it was None, so it's always Some here
+        self.matrix
+            .as_ref()
+            .expect("Matrix should be Some after compute_matrix initialization")
     }
 
     /// Convert to a sequence of gate operations
@@ -329,7 +336,7 @@ impl CliffordTDecomposer {
     fn compute_distance_key(&self, matrix: &Array2<Complex64>) -> u64 {
         // Use a hash of the matrix elements for fast lookup
         let mut key = 0u64;
-        for elem in matrix.iter() {
+        for elem in matrix {
             let re_bits = elem.re.to_bits();
             let im_bits = elem.im.to_bits();
             key = key.wrapping_mul(31).wrapping_add(re_bits);
@@ -477,7 +484,7 @@ impl CliffordTDecomposer {
             // Compute distance
             let diff = unitary.to_owned() - &point.matrix;
             let mut distance = 0.0;
-            for elem in diff.iter() {
+            for elem in &diff {
                 distance += elem.norm_sqr();
             }
             let distance = distance.sqrt();
@@ -528,7 +535,7 @@ impl CliffordTDecomposer {
             if point.sequence.t_count <= max_t_count {
                 let diff = unitary.to_owned() - &point.matrix;
                 let mut distance = 0.0;
-                for elem in diff.iter() {
+                for elem in &diff {
                     distance += elem.norm_sqr();
                 }
                 let distance = distance.sqrt();
@@ -540,8 +547,7 @@ impl CliffordTDecomposer {
         }
 
         Err(QuantRS2Error::ComputationError(format!(
-            "Cannot achieve T-count <= {}",
-            max_t_count
+            "Cannot achieve T-count <= {max_t_count}"
         )))
     }
 }
@@ -613,7 +619,9 @@ mod tests {
         let mut decomposer = CliffordTDecomposer::new(1e-10);
         let h_matrix = CliffordGate::Hadamard.matrix();
 
-        let result = decomposer.decompose(&h_matrix.view()).unwrap();
+        let result = decomposer
+            .decompose(&h_matrix.view())
+            .expect("Hadamard decomposition should succeed");
         assert_eq!(result.t_count, 0);
         assert_eq!(result.gates.len(), 1);
     }
@@ -637,7 +645,9 @@ mod tests {
 
         // Test approximation of a T gate (which should be exact)
         let t_matrix = CliffordTGate::T.matrix();
-        let result = decomposer.decompose(&t_matrix.view()).unwrap();
+        let result = decomposer
+            .decompose(&t_matrix.view())
+            .expect("T gate decomposition should succeed");
 
         // Should get exactly a T gate
         assert_eq!(result.gates.len(), 1);
@@ -647,7 +657,9 @@ mod tests {
         // Test approximation of a gate that's in our grid
         // T^2 = S gate
         let s_matrix = t_matrix.dot(&t_matrix);
-        let mut result2 = decomposer.decompose(&s_matrix.view()).unwrap();
+        let mut result2 = decomposer
+            .decompose(&s_matrix.view())
+            .expect("S gate decomposition should succeed");
 
         // Should find this exactly or as T*T
         assert!(result2.t_count <= 2);
@@ -679,7 +691,7 @@ mod tests {
                 Complex64::new(c, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Rotation matrix has valid 2x2 shape");
 
         // Should still find some approximation
         let result = decomposer.decompose(&rotation.view());
@@ -687,7 +699,7 @@ mod tests {
 
         // For general rotations, we should get some sequence
         // (could be empty if no good approximation exists in our limited grid)
-        let mut seq = result.unwrap();
+        let mut seq = result.expect("General rotation decomposition should succeed");
 
         // If we got a sequence, check it's valid
         if !seq.gates.is_empty() {
@@ -702,7 +714,9 @@ mod tests {
 
         // Test that Clifford gates are recognized exactly
         let s_gate = CliffordGate::Phase.matrix();
-        let result = decomposer.decompose(&s_gate.view()).unwrap();
+        let result = decomposer
+            .decompose(&s_gate.view())
+            .expect("Phase gate decomposition should succeed");
 
         assert_eq!(result.t_count, 0);
         assert_eq!(result.gates.len(), 1);
@@ -715,7 +729,9 @@ mod tests {
         let h_gate = CliffordGate::Hadamard.matrix();
         let combined = h_gate.dot(&s_gate).dot(&h_gate);
 
-        let result2 = decomposer.decompose(&combined.view()).unwrap();
+        let result2 = decomposer
+            .decompose(&combined.view())
+            .expect("Combined Clifford gate decomposition should succeed");
         assert_eq!(result2.t_count, 0); // Should still be Clifford
     }
 

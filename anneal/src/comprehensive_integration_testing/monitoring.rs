@@ -16,6 +16,7 @@ pub struct TestPerformanceMonitor {
 }
 
 impl TestPerformanceMonitor {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: TestPerformanceMetrics::default(),
@@ -76,7 +77,7 @@ impl TestPerformanceMonitor {
     /// Set a benchmark baseline
     pub fn set_benchmark(&mut self, name: String, baseline: PerformanceBaseline) {
         let comparison = BenchmarkComparison {
-            baseline: baseline.clone(),
+            baseline,
             current: self.metrics.clone(),
             delta: PerformanceDelta {
                 execution_time_change: 0.0,
@@ -90,12 +91,14 @@ impl TestPerformanceMonitor {
     }
 
     /// Get current metrics
-    pub fn get_metrics(&self) -> &TestPerformanceMetrics {
+    #[must_use]
+    pub const fn get_metrics(&self) -> &TestPerformanceMetrics {
         &self.metrics
     }
 
     /// Get performance trends
-    pub fn get_trends(&self) -> &PerformanceTrends {
+    #[must_use]
+    pub const fn get_trends(&self) -> &PerformanceTrends {
         &self.trends
     }
 
@@ -262,7 +265,7 @@ impl Default for TrendAnalysis {
 }
 
 /// Trend directions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Improving,
     Stable,
@@ -282,6 +285,7 @@ pub struct PerformanceAlertSystem {
 }
 
 impl PerformanceAlertSystem {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             alert_rules: vec![],
@@ -323,11 +327,7 @@ impl PerformanceAlertSystem {
                     AlertCondition::Custom(_) => false,
                 };
 
-                if should_alert {
-                    Some(rule.name.clone())
-                } else {
-                    None
-                }
+                should_alert.then(|| rule.name.clone())
             })
             .collect();
 
@@ -347,11 +347,11 @@ impl PerformanceAlertSystem {
                     rule_name,
                     SystemTime::now()
                         .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or(Duration::ZERO)
                         .as_secs()
                 ),
                 rule_name: rule_name.to_string(),
-                message: format!("Performance alert triggered for rule: {}", rule_name),
+                message: format!("Performance alert triggered for rule: {rule_name}"),
                 severity: rule.severity.clone(),
                 timestamp: SystemTime::now(),
                 metric_value: metrics.avg_execution_time.as_secs_f64(),
@@ -374,7 +374,7 @@ impl PerformanceAlertSystem {
         let alert = self
             .active_alerts
             .get_mut(alert_id)
-            .ok_or_else(|| format!("Alert {} not found", alert_id))?;
+            .ok_or_else(|| format!("Alert {alert_id} not found"))?;
         alert.status = AlertStatus::Acknowledged;
         Ok(())
     }
@@ -384,7 +384,7 @@ impl PerformanceAlertSystem {
         let alert = self
             .active_alerts
             .remove(alert_id)
-            .ok_or_else(|| format!("Alert {} not found", alert_id))?;
+            .ok_or_else(|| format!("Alert {alert_id} not found"))?;
 
         // Update in history
         for hist_alert in &mut self.alert_history {
@@ -396,11 +396,13 @@ impl PerformanceAlertSystem {
     }
 
     /// Get active alerts
+    #[must_use]
     pub fn get_active_alerts(&self) -> Vec<&PerformanceAlert> {
         self.active_alerts.values().collect()
     }
 
     /// Get alert history
+    #[must_use]
     pub fn get_alert_history(&self) -> &[PerformanceAlert] {
         &self.alert_history
     }
@@ -441,7 +443,7 @@ pub enum AlertCondition {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -484,7 +486,7 @@ pub struct PerformanceAlert {
 }
 
 /// Alert status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertStatus {
     Active,
     Resolved,

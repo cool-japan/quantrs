@@ -221,7 +221,9 @@ impl QuantumDQN {
         let mut target_q_network = QuantumValueNetwork::new(&config)?;
 
         // Initialize target network with same parameters
-        target_q_network.parameters = q_network.parameters.clone();
+        target_q_network
+            .parameters
+            .clone_from(&q_network.parameters);
 
         // Create policy network
         let policy_network = QuantumPolicyNetwork::new(&config)?;
@@ -359,7 +361,7 @@ impl QuantumDQN {
             } else {
                 let next_state = next_states.row(i).to_owned();
                 let max_next_q = self.target_q_network.get_max_q_value(&next_state)?;
-                target_q_values[i] = rewards[i] + self.config.discount_factor * max_next_q;
+                target_q_values[i] = self.config.discount_factor.mul_add(max_next_q, rewards[i]);
             }
         }
 
@@ -423,7 +425,7 @@ impl QuantumDQN {
     }
 
     /// End episode and update statistics
-    pub fn end_episode(&mut self, _total_reward: f64) {
+    pub const fn end_episode(&mut self, _total_reward: f64) {
         self.episodes += 1;
     }
 
@@ -456,7 +458,7 @@ impl QuantumValueNetwork {
             None => StdRng::from_seed([0; 32]),
         };
 
-        for param in parameters.iter_mut() {
+        for param in &mut parameters {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
@@ -530,7 +532,7 @@ impl QuantumPolicyNetwork {
             None => StdRng::from_seed([0; 32]),
         };
 
-        for param in parameters.iter_mut() {
+        for param in &mut parameters {
             *param = rng.random_range(-std::f64::consts::PI..std::f64::consts::PI);
         }
 
@@ -595,7 +597,7 @@ impl QuantumPolicyNetwork {
 
 impl QuantumValueCircuit {
     /// Create a new quantum value circuit
-    fn new(state_qubits: usize, value_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
+    const fn new(state_qubits: usize, value_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
         let total_qubits = state_qubits + value_qubits;
 
         Ok(Self {
@@ -607,7 +609,7 @@ impl QuantumValueCircuit {
     }
 
     /// Get number of parameters in the circuit
-    fn get_parameter_count(&self) -> usize {
+    const fn get_parameter_count(&self) -> usize {
         // Each layer has rotation gates on each qubit (3 parameters each) plus entangling gates
         let rotations_per_layer = self.get_total_qubits() * 3;
         let entangling_per_layer = self.get_total_qubits(); // Simplified estimate
@@ -615,12 +617,12 @@ impl QuantumValueCircuit {
     }
 
     /// Get total number of qubits
-    fn get_total_qubits(&self) -> usize {
+    const fn get_total_qubits(&self) -> usize {
         self.state_qubits + self.value_qubits
     }
 
     /// Get number of action qubits (for external interface)
-    fn get_action_qubits(&self) -> usize {
+    const fn get_action_qubits(&self) -> usize {
         // This is a bit of a hack - in a real implementation,
         // the value circuit wouldn't directly know about actions
         2 // Default action qubits
@@ -756,7 +758,7 @@ impl QuantumValueCircuit {
 
 impl QuantumPolicyCircuit {
     /// Create a new quantum policy circuit
-    fn new(state_qubits: usize, action_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
+    const fn new(state_qubits: usize, action_qubits: usize, depth: usize) -> QuantRS2Result<Self> {
         let total_qubits = state_qubits + action_qubits;
 
         Ok(Self {
@@ -768,7 +770,7 @@ impl QuantumPolicyCircuit {
     }
 
     /// Get number of parameters
-    fn get_parameter_count(&self) -> usize {
+    const fn get_parameter_count(&self) -> usize {
         let total_qubits = self.state_qubits + self.action_qubits;
         let rotations_per_layer = total_qubits * 3;
         let entangling_per_layer = total_qubits;
@@ -945,7 +947,7 @@ impl QuantumActorCritic {
             self.critic.get_max_q_value(next_state)?
         };
 
-        let target_value = reward + self.config.discount_factor * next_value;
+        let target_value = self.config.discount_factor.mul_add(next_value, reward);
         let td_error = target_value - current_value;
 
         // Update critic
@@ -972,7 +974,7 @@ impl QuantumActorCritic {
     }
 
     /// Get training metrics
-    pub fn get_metrics(&self) -> &TrainingMetrics {
+    pub const fn get_metrics(&self) -> &TrainingMetrics {
         &self.metrics
     }
 }
@@ -984,7 +986,7 @@ mod tests {
     #[test]
     fn test_quantum_dqn_creation() {
         let config = QuantumRLConfig::default();
-        let agent = QuantumDQN::new(config).unwrap();
+        let agent = QuantumDQN::new(config).expect("Failed to create QuantumDQN agent");
 
         let stats = agent.get_statistics();
         assert_eq!(stats.episodes, 0);
@@ -1012,31 +1014,37 @@ mod tests {
 
     #[test]
     fn test_quantum_value_circuit() {
-        let circuit = QuantumValueCircuit::new(3, 2, 4).unwrap();
+        let circuit =
+            QuantumValueCircuit::new(3, 2, 4).expect("Failed to create QuantumValueCircuit");
         let param_count = circuit.get_parameter_count();
         assert!(param_count > 0);
 
         let state = Array1::from_vec(vec![0.5, -0.5, 0.0]);
         let parameters = Array1::zeros(param_count);
 
-        let q_value = circuit.evaluate_q_value(&state, 1, &parameters).unwrap();
+        let q_value = circuit
+            .evaluate_q_value(&state, 1, &parameters)
+            .expect("Failed to evaluate Q-value");
         assert!(q_value.is_finite());
     }
 
     #[test]
     fn test_quantum_actor_critic() {
         let config = QuantumRLConfig::default();
-        let mut agent = QuantumActorCritic::new(config).unwrap();
+        let mut agent =
+            QuantumActorCritic::new(config).expect("Failed to create QuantumActorCritic agent");
 
         let state = Array1::from_vec(vec![0.5, -0.5]);
         let next_state = Array1::from_vec(vec![0.0, 1.0]);
 
-        let action = agent.select_action(&state).unwrap();
+        let action = agent
+            .select_action(&state)
+            .expect("Failed to select action");
         assert!(action < 4); // 2^2 actions for 2 action qubits
 
         agent
             .update(&state, action, 1.0, &next_state, false)
-            .unwrap();
+            .expect("Failed to update agent");
 
         let metrics = agent.get_metrics();
         assert!(metrics.q_loss >= 0.0);

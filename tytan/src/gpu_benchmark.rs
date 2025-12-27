@@ -239,9 +239,9 @@ impl<S: Sampler> GpuBenchmark<S> {
                 .iter()
                 .map(|&t| {
                     let diff = if t > avg_time {
-                        t.checked_sub(avg_time).unwrap().as_secs_f64()
+                        t.checked_sub(avg_time).unwrap_or_default().as_secs_f64()
                     } else {
-                        avg_time.checked_sub(t).unwrap().as_secs_f64()
+                        avg_time.checked_sub(t).unwrap_or_default().as_secs_f64()
                     };
                     diff * diff
                 })
@@ -414,13 +414,18 @@ impl<S: Sampler> GpuBenchmark<S> {
         let mut file =
             File::create(&report_path).map_err(|e| format!("Failed to create report file: {e}"))?;
 
-        writeln!(file, "GPU Benchmark Report").unwrap();
-        writeln!(file, "====================").unwrap();
-        writeln!(file, "Timestamp: {}", results.timestamp).unwrap();
-        writeln!(file, "Device: {}", results.device_info).unwrap();
-        writeln!(file).unwrap();
+        writeln!(file, "GPU Benchmark Report")
+            .map_err(|e| format!("Failed to write report: {e}"))?;
+        writeln!(file, "====================")
+            .map_err(|e| format!("Failed to write report: {e}"))?;
+        writeln!(file, "Timestamp: {}", results.timestamp)
+            .map_err(|e| format!("Failed to write report: {e}"))?;
+        writeln!(file, "Device: {}", results.device_info)
+            .map_err(|e| format!("Failed to write report: {e}"))?;
+        writeln!(file).map_err(|e| format!("Failed to write report: {e}"))?;
 
-        writeln!(file, "Problem Size Scaling:").unwrap();
+        writeln!(file, "Problem Size Scaling:")
+            .map_err(|e| format!("Failed to write report: {e}"))?;
         for (size, res) in &results.size_results {
             writeln!(
                 file,
@@ -429,25 +434,27 @@ impl<S: Sampler> GpuBenchmark<S> {
                 res.avg_time.as_secs_f64() * 1000.0,
                 res.throughput
             )
-            .unwrap();
+            .map_err(|e| format!("Failed to write report: {e}"))?;
         }
 
         if let Some(energy) = &results.energy_metrics {
-            writeln!(file).unwrap();
-            writeln!(file, "Energy Efficiency:").unwrap();
-            writeln!(file, "  Average Power: {:.1} W", energy.avg_power).unwrap();
+            writeln!(file).map_err(|e| format!("Failed to write report: {e}"))?;
+            writeln!(file, "Energy Efficiency:")
+                .map_err(|e| format!("Failed to write report: {e}"))?;
+            writeln!(file, "  Average Power: {:.1} W", energy.avg_power)
+                .map_err(|e| format!("Failed to write report: {e}"))?;
             writeln!(
                 file,
                 "  Energy per Sample: {:.3} mJ",
                 energy.energy_per_sample * 1000.0
             )
-            .unwrap();
+            .map_err(|e| format!("Failed to write report: {e}"))?;
             writeln!(
                 file,
                 "  Performance per Watt: {:.1} samples/J",
                 energy.perf_per_watt
             )
-            .unwrap();
+            .map_err(|e| format!("Failed to write report: {e}"))?;
         }
 
         if self.config.verbose {
@@ -668,7 +675,7 @@ impl GpuComparison {
             .max_by(|a, b| {
                 a.1.avg_performance
                     .partial_cmp(&b.1.avg_performance)
-                    .unwrap()
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|(name, _)| name.clone())
             .unwrap_or_default();

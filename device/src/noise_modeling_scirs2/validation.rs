@@ -264,7 +264,7 @@ impl ModelValidator {
         }
 
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let alpha = 1.0 - confidence_level;
         let lower_idx = ((alpha / 2.0) * sorted_data.len() as f64) as usize;
@@ -505,8 +505,8 @@ impl ModelValidator {
         // Simplified 1-Wasserstein distance (Earth Mover's Distance)
         let mut pred_sorted = predictions.to_vec();
         let mut target_sorted = targets.to_vec();
-        pred_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        target_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        pred_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        target_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let wasserstein = pred_sorted.iter().zip(target_sorted.iter())
             .map(|(p, t)| (p - t).abs())

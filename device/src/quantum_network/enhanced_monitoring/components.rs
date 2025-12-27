@@ -530,6 +530,12 @@ pub struct AlertRulesEngine {
     pub performance_tracker: Arc<RulePerformanceTracker>,
 }
 
+impl Default for AlertRulesEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AlertRulesEngine {
     pub fn new() -> Self {
         Self {
@@ -872,7 +878,7 @@ pub struct ThresholdDetector {
 }
 
 impl ThresholdDetector {
-    pub fn new(lower: f64, upper: f64, sensitivity: f64) -> Self {
+    pub const fn new(lower: f64, upper: f64, sensitivity: f64) -> Self {
         Self {
             lower_threshold: lower,
             upper_threshold: upper,
@@ -890,7 +896,7 @@ pub struct MLAnomalyDetector {
 }
 
 impl MLAnomalyDetector {
-    pub fn new(model_type: String, sensitivity: f64) -> Self {
+    pub const fn new(model_type: String, sensitivity: f64) -> Self {
         Self {
             model_type,
             sensitivity,
@@ -904,6 +910,12 @@ impl MLAnomalyDetector {
 pub struct AnomalySeverityClassifier {
     pub thresholds: HashMap<String, f64>,
     pub weights: HashMap<String, f64>,
+}
+
+impl Default for AnomalySeverityClassifier {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AnomalySeverityClassifier {
@@ -922,8 +934,14 @@ pub struct QuantumFailurePredictor {
     pub prediction_window: Duration,
 }
 
+impl Default for QuantumFailurePredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumFailurePredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             model_accuracy: 0.9,
             prediction_window: Duration::from_secs(300),
@@ -938,8 +956,14 @@ pub struct QuantumCapacityPredictor {
     pub confidence_interval: f64,
 }
 
+impl Default for QuantumCapacityPredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumCapacityPredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             prediction_horizon: Duration::from_secs(600),
             confidence_interval: 0.95,
@@ -954,8 +978,14 @@ pub struct QuantumLoadForecaster {
     pub update_frequency: Duration,
 }
 
+impl Default for QuantumLoadForecaster {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumLoadForecaster {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             forecast_window: Duration::from_secs(1800),
             update_frequency: Duration::from_secs(60),
@@ -968,6 +998,12 @@ impl QuantumLoadForecaster {
 pub struct QuantumOptimizationOpportunityPredictor {
     pub opportunity_types: Vec<String>,
     pub detection_threshold: f64,
+}
+
+impl Default for QuantumOptimizationOpportunityPredictor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl QuantumOptimizationOpportunityPredictor {
@@ -989,6 +1025,12 @@ pub struct AlertSeverityClassifier {
     pub confidence_threshold: f64,
 }
 
+impl Default for AlertSeverityClassifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AlertSeverityClassifier {
     pub fn new() -> Self {
         Self {
@@ -1005,8 +1047,14 @@ pub struct AlertCorrelationEngine {
     pub correlation_threshold: f64,
 }
 
+impl Default for AlertCorrelationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AlertCorrelationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             correlation_window: Duration::from_secs(300),
             correlation_threshold: 0.7,
@@ -1019,6 +1067,12 @@ impl AlertCorrelationEngine {
 pub struct AlertEscalationManager {
     pub escalation_levels: Vec<String>,
     pub escalation_timeouts: Vec<Duration>,
+}
+
+impl Default for AlertEscalationManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AlertEscalationManager {
@@ -1045,8 +1099,14 @@ pub struct RuleEvaluationEngine {
     pub rule_cache_size: usize,
 }
 
+impl Default for RuleEvaluationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuleEvaluationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             evaluation_frequency: Duration::from_secs(30),
             rule_cache_size: 1000,
@@ -1059,6 +1119,12 @@ impl RuleEvaluationEngine {
 pub struct CustomRuleCompiler {
     pub supported_languages: Vec<String>,
     pub compilation_timeout: Duration,
+}
+
+impl Default for CustomRuleCompiler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CustomRuleCompiler {
@@ -1077,8 +1143,14 @@ pub struct RulePerformanceTracker {
     pub performance_threshold: f64,
 }
 
+impl Default for RulePerformanceTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RulePerformanceTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             metrics_window: Duration::from_secs(600),
             performance_threshold: 0.95,

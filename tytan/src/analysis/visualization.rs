@@ -90,7 +90,7 @@ pub fn prepare_energy_landscape(
         .enumerate()
         .map(|(i, r)| (i, r.energy))
         .collect();
-    indexed_energies.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    indexed_energies.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let indices: Vec<usize> = indexed_energies.iter().map(|(i, _)| *i).collect();
     let energies: Vec<f64> = indexed_energies.iter().map(|(_, e)| *e).collect();

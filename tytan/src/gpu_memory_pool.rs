@@ -103,7 +103,10 @@ impl GpuMemoryPool {
     /// Allocate memory from the pool
     #[cfg(feature = "scirs")]
     pub fn allocate(&mut self, size: usize) -> Result<GpuMemory, String> {
-        let _lock = self.mutex.lock().unwrap();
+        let _lock = self
+            .mutex
+            .lock()
+            .map_err(|e| format!("Failed to acquire lock in allocate: {e}"))?;
 
         self.stats.total_allocations += 1;
 
@@ -144,7 +147,10 @@ impl GpuMemoryPool {
             drop(_lock);
             self.evict_lru_blocks(aligned_size)?;
             // Re-acquire lock
-            let _lock = self.mutex.lock().unwrap();
+            let _lock = self
+                .mutex
+                .lock()
+                .map_err(|e| format!("Failed to re-acquire lock after eviction: {e}"))?;
         }
 
         // Allocate new block
@@ -175,23 +181,25 @@ impl GpuMemoryPool {
     /// Release memory back to the pool
     #[cfg(feature = "scirs")]
     pub fn release(&mut self, memory: GpuMemory) {
-        let _lock = self.mutex.lock().unwrap();
+        // Use if let to gracefully handle lock poisoning
+        if let Ok(_lock) = self.mutex.lock() {
+            // Find the block and mark it as free
+            for block in &mut self.all_blocks {
+                if block.id == memory.id {
+                    block.in_use = false;
+                    block.last_access = std::time::Instant::now();
 
-        // Find the block and mark it as free
-        for block in &mut self.all_blocks {
-            if block.id == memory.id {
-                block.in_use = false;
-                block.last_access = std::time::Instant::now();
+                    // Add to the pool for reuse
+                    self.blocks_by_size
+                        .entry(block.size)
+                        .or_default()
+                        .push_back(block.clone());
 
-                // Add to the pool for reuse
-                self.blocks_by_size
-                    .entry(block.size)
-                    .or_default()
-                    .push_back(block.clone());
-
-                break;
+                    break;
+                }
             }
         }
+        // If lock is poisoned, we silently skip releasing to avoid panic
     }
 
     /// Evict least recently used blocks to make space
@@ -250,7 +258,10 @@ impl GpuMemoryPool {
     /// Clear the entire pool
     #[cfg(feature = "scirs")]
     pub fn clear(&mut self) -> Result<(), String> {
-        let _lock = self.mutex.lock().unwrap();
+        let _lock = self
+            .mutex
+            .lock()
+            .map_err(|e| format!("Failed to acquire lock in clear: {e}"))?;
 
         // Clear all blocks (in a real implementation, this would free GPU memory)
         // For our stub implementation, we just clear the tracking structures
@@ -265,7 +276,10 @@ impl GpuMemoryPool {
     /// Defragment the pool to reduce fragmentation
     #[cfg(feature = "scirs")]
     pub fn defragment(&mut self) -> Result<(), String> {
-        let _lock = self.mutex.lock().unwrap();
+        let _lock = self
+            .mutex
+            .lock()
+            .map_err(|e| format!("Failed to acquire lock in defragment: {e}"))?;
 
         // This is a complex operation that would involve:
         // 1. Identifying fragmented regions
@@ -293,7 +307,10 @@ impl ScopedGpuMemory {
     /// Create a new scoped allocation
     #[cfg(feature = "scirs")]
     pub fn new(pool: Arc<Mutex<GpuMemoryPool>>, size: usize) -> Result<Self, String> {
-        let memory = pool.lock().unwrap().allocate(size)?;
+        let memory = pool
+            .lock()
+            .map_err(|e| format!("Failed to acquire pool lock: {e}"))?
+            .allocate(size)?;
         Ok(Self {
             memory: Some(memory),
             pool,
@@ -301,15 +318,25 @@ impl ScopedGpuMemory {
     }
 
     /// Get the underlying memory
+    ///
+    /// # Panics
+    /// Panics if called after the memory has been released (should never happen in normal use)
     #[cfg(feature = "scirs")]
-    pub const fn memory(&self) -> &GpuMemory {
-        self.memory.as_ref().unwrap()
+    pub fn memory(&self) -> &GpuMemory {
+        self.memory
+            .as_ref()
+            .expect("ScopedGpuMemory::memory called after memory was released - this is a bug")
     }
 
     /// Get mutable access to memory
+    ///
+    /// # Panics
+    /// Panics if called after the memory has been released (should never happen in normal use)
     #[cfg(feature = "scirs")]
-    pub const fn memory_mut(&mut self) -> &mut GpuMemory {
-        self.memory.as_mut().unwrap()
+    pub fn memory_mut(&mut self) -> &mut GpuMemory {
+        self.memory
+            .as_mut()
+            .expect("ScopedGpuMemory::memory_mut called after memory was released - this is a bug")
     }
 }
 
@@ -317,7 +344,11 @@ impl ScopedGpuMemory {
 impl Drop for ScopedGpuMemory {
     fn drop(&mut self) {
         if let Some(memory) = self.memory.take() {
-            self.pool.lock().unwrap().release(memory);
+            // Use if let to gracefully handle lock poisoning during drop
+            if let Ok(mut pool) = self.pool.lock() {
+                pool.release(memory);
+            }
+            // If lock is poisoned, we silently skip releasing to avoid panic in Drop
         }
     }
 }
@@ -365,17 +396,23 @@ impl MultiDeviceMemoryPool {
     }
 
     /// Get combined statistics
+    ///
+    /// Note: Skips any device pools that cannot be locked (e.g., due to lock poisoning)
     pub fn combined_stats(&self) -> AllocationStats {
         let mut combined = AllocationStats::default();
 
         for pool in self.device_pools.values() {
-            let stats = pool.lock().unwrap().stats();
-            combined.total_allocations += stats.total_allocations;
-            combined.cache_hits += stats.cache_hits;
-            combined.cache_misses += stats.cache_misses;
-            combined.total_bytes_allocated += stats.total_bytes_allocated;
-            combined.peak_memory_usage += stats.peak_memory_usage;
-            combined.evictions += stats.evictions;
+            // Use if let to gracefully handle lock poisoning
+            if let Ok(pool_guard) = pool.lock() {
+                let stats = pool_guard.stats();
+                combined.total_allocations += stats.total_allocations;
+                combined.cache_hits += stats.cache_hits;
+                combined.cache_misses += stats.cache_misses;
+                combined.total_bytes_allocated += stats.total_bytes_allocated;
+                combined.peak_memory_usage += stats.peak_memory_usage;
+                combined.evictions += stats.evictions;
+            }
+            // Silently skip pools we can't lock to avoid panic
         }
 
         combined
@@ -434,17 +471,21 @@ mod tests {
     fn test_memory_pool_basic() {
         use crate::gpu_memory_pool::GpuContext;
 
-        let context = Arc::new(GpuContext::new(0).unwrap());
+        let context = Arc::new(GpuContext::new(0).expect("Failed to create GPU context for test"));
         let mut pool = GpuMemoryPool::new(context, 1024 * 1024); // 1MB pool
 
         // First allocation should be a cache miss
-        let mem1 = pool.allocate(1024).unwrap();
+        let mem1 = pool
+            .allocate(1024)
+            .expect("First allocation should succeed");
         assert_eq!(pool.stats().cache_misses, 1);
         assert_eq!(pool.stats().cache_hits, 0);
 
         // Release and reallocate should be a cache hit
         pool.release(mem1);
-        let _mem2 = pool.allocate(1024).unwrap();
+        let _mem2 = pool
+            .allocate(1024)
+            .expect("Second allocation should succeed");
         assert_eq!(pool.stats().cache_misses, 1);
         assert_eq!(pool.stats().cache_hits, 1);
     }

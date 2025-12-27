@@ -18,7 +18,7 @@ pub fn create_test_ibm_target() -> CompilationTarget {
     }
 }
 
-pub fn create_test_scirs2_config() -> SciRS2Config {
+pub const fn create_test_scirs2_config() -> SciRS2Config {
     SciRS2Config {
         enable_graph_optimization: true,
         enable_statistical_analysis: true,
@@ -63,7 +63,7 @@ pub fn create_test_compiler_config() -> CompilerConfig {
 }
 
 /// Helper function to create test grid topology
-pub fn create_test_grid_topology() -> GridTopology {
+pub const fn create_test_grid_topology() -> GridTopology {
     GridTopology {
         rows: 2,
         cols: 2,
@@ -89,7 +89,7 @@ pub fn create_test_performance_prediction() -> PerformancePrediction {
 }
 
 /// Helper function to create test advanced metrics
-pub fn create_test_advanced_metrics() -> AdvancedMetrics {
+pub const fn create_test_advanced_metrics() -> AdvancedMetrics {
     AdvancedMetrics {
         quantum_volume: 32,
         expressivity: 0.75,
@@ -102,7 +102,7 @@ pub fn create_test_advanced_metrics() -> AdvancedMetrics {
 }
 
 /// Helper function to create test optimization stats
-pub fn create_test_optimization_stats() -> OptimizationStats {
+pub const fn create_test_optimization_stats() -> OptimizationStats {
     OptimizationStats {
         original_gate_count: 20,
         optimized_gate_count: 15,
@@ -257,6 +257,7 @@ impl TestConfigBuilder {
     }
 
     /// Enable specific optimization
+    #[must_use]
     pub fn enable_optimization(mut self, optimization: &str, enabled: bool) -> Self {
         match optimization {
             "gate_synthesis" => self.config.enable_gate_synthesis = enabled,
@@ -270,13 +271,15 @@ impl TestConfigBuilder {
     }
 
     /// Set target platform
+    #[must_use]
     pub fn with_target(mut self, target: CompilationTarget) -> Self {
         self.config.target = target;
         self
     }
 
     /// Set analysis depth
-    pub fn with_analysis_depth(mut self, depth: AnalysisDepth) -> Self {
+    #[must_use]
+    pub const fn with_analysis_depth(mut self, depth: AnalysisDepth) -> Self {
         self.config.analysis_depth = depth;
         self
     }

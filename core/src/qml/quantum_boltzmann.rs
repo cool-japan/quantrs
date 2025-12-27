@@ -314,7 +314,7 @@ impl QuantumRBM {
                 h_input += self.weights[[i, j]] * visible[i];
             }
 
-            energy -= (1.0 + h_input.exp()).ln();
+            energy -= h_input.exp().ln_1p();
         }
 
         Ok(energy)
@@ -326,7 +326,7 @@ impl QuantumRBM {
     }
 
     /// Get weights
-    pub fn weights(&self) -> &Array2<f64> {
+    pub const fn weights(&self) -> &Array2<f64> {
         &self.weights
     }
 }
@@ -365,7 +365,7 @@ impl DeepQuantumBoltzmannMachine {
         let num_layers = self.layers.len();
 
         for layer_idx in 0..num_layers {
-            println!("Pretraining layer {}...", layer_idx);
+            println!("Pretraining layer {layer_idx}...");
             let mut layer_history = Vec::new();
 
             for epoch in 0..epochs_per_layer {
@@ -373,7 +373,7 @@ impl DeepQuantumBoltzmannMachine {
                 layer_history.push(error);
 
                 if epoch % 10 == 0 {
-                    println!("  Epoch {}: Error = {:.6}", epoch, error);
+                    println!("  Epoch {epoch}: Error = {error:.6}");
                 }
             }
 
@@ -411,7 +411,15 @@ impl DeepQuantumBoltzmannMachine {
     /// Generate sample from deep model
     pub fn generate(&self) -> QuantRS2Result<Array1<Complex64>> {
         // Start from top layer
-        let mut sample = self.layers.last().unwrap().generate_sample()?;
+        let mut sample = self
+            .layers
+            .last()
+            .ok_or_else(|| {
+                QuantRS2Error::RuntimeError(
+                    "No layers in deep quantum Boltzmann machine".to_string(),
+                )
+            })?
+            .generate_sample()?;
 
         // Propagate down through layers
         for layer in self.layers.iter().rev().skip(1) {
@@ -449,7 +457,9 @@ mod tests {
             Complex64::new(0.6, 0.0),
         ]);
 
-        let error = rbm.train_batch(&[state]).unwrap();
+        let error = rbm
+            .train_batch(&[state])
+            .expect("Failed to train quantum RBM on batch");
         assert!(error >= 0.0);
     }
 

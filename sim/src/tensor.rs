@@ -98,7 +98,7 @@ pub struct TensorNetwork {
 pub struct TensorNetworkSimulator {
     /// Current tensor network
     network: TensorNetwork,
-    /// SciRS2 backend for optimizations
+    /// `SciRS2` backend for optimizations
     backend: Option<SciRS2Backend>,
     /// Contraction strategy
     strategy: ContractionStrategy,
@@ -138,6 +138,7 @@ pub struct TensorNetworkStats {
 
 impl Tensor {
     /// Create a new tensor
+    #[must_use]
     pub const fn new(data: Array3<Complex64>, indices: Vec<TensorIndex>, label: String) -> Self {
         Self {
             data,
@@ -439,11 +440,13 @@ impl Tensor {
     }
 
     /// Get the rank (number of indices) of this tensor
+    #[must_use]
     pub fn rank(&self) -> usize {
         self.indices.len()
     }
 
     /// Get the total size of this tensor
+    #[must_use]
     pub fn size(&self) -> usize {
         self.data.len()
     }
@@ -451,6 +454,7 @@ impl Tensor {
 
 impl TensorNetwork {
     /// Create a new empty tensor network
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             tensors: HashMap::new(),
@@ -489,6 +493,7 @@ impl TensorNetwork {
     }
 
     /// Get all tensors connected to the given tensor
+    #[must_use]
     pub fn get_neighbors(&self, tensor_id: usize) -> Vec<usize> {
         let mut neighbors = HashSet::new();
 
@@ -568,11 +573,13 @@ impl TensorNetwork {
     }
 
     /// Get the total number of elements across all tensors
+    #[must_use]
     pub fn total_elements(&self) -> usize {
-        self.tensors.values().map(|t| t.size()).sum()
+        self.tensors.values().map(Tensor::size).sum()
     }
 
     /// Estimate memory usage in bytes
+    #[must_use]
     pub fn memory_usage(&self) -> usize {
         self.total_elements() * std::mem::size_of::<Complex64>()
     }
@@ -650,6 +657,7 @@ impl TensorNetwork {
     }
 
     /// Estimate the computational cost of contracting two tensors
+    #[must_use]
     pub fn estimate_contraction_cost(&self, tensor_a: &Tensor, tensor_b: &Tensor) -> f64 {
         // Cost is roughly proportional to the product of tensor sizes
         let size_a = tensor_a.size() as f64;
@@ -895,6 +903,7 @@ impl TensorNetwork {
 
 impl TensorNetworkSimulator {
     /// Create a new tensor network simulator
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             network: TensorNetwork::new(num_qubits),
@@ -905,25 +914,29 @@ impl TensorNetworkSimulator {
         }
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
+    #[must_use]
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
     }
 
     /// Set contraction strategy
+    #[must_use]
     pub fn with_strategy(mut self, strategy: ContractionStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     /// Set maximum bond dimension
+    #[must_use]
     pub const fn with_max_bond_dim(mut self, max_bond_dim: usize) -> Self {
         self.max_bond_dim = max_bond_dim;
         self
     }
 
     /// Create tensor network simulator optimized for QFT circuits
+    #[must_use]
     pub fn qft() -> Self {
         Self::new(5).with_strategy(ContractionStrategy::Greedy)
     }
@@ -1229,6 +1242,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &TensorNetworkStats {
         &self.stats
     }
@@ -1266,6 +1280,7 @@ impl TensorNetworkSimulator {
     }
 
     /// Estimate contraction cost for current network
+    #[must_use]
     pub fn estimate_contraction_cost(&self) -> u64 {
         // Simplified cost estimation
         let num_tensors = self.network.tensors.len() as u64;
@@ -1476,7 +1491,7 @@ fn pauli_x() -> Array2<Complex64> {
             Complex64::new(0.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Pauli-X matrix has valid 2x2 shape")
 }
 
 fn pauli_y() -> Array2<Complex64> {
@@ -1489,7 +1504,7 @@ fn pauli_y() -> Array2<Complex64> {
             Complex64::new(0.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Pauli-Y matrix has valid 2x2 shape")
 }
 
 fn pauli_z() -> Array2<Complex64> {
@@ -1502,7 +1517,7 @@ fn pauli_z() -> Array2<Complex64> {
             Complex64::new(-1.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Pauli-Z matrix has valid 2x2 shape")
 }
 
 fn pauli_h() -> Array2<Complex64> {
@@ -1516,7 +1531,7 @@ fn pauli_h() -> Array2<Complex64> {
             Complex64::new(-inv_sqrt2, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Hadamard matrix has valid 2x2 shape")
 }
 
 fn cnot_matrix() -> Array2<Complex64> {
@@ -1541,7 +1556,7 @@ fn cnot_matrix() -> Array2<Complex64> {
             Complex64::new(0.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("CNOT matrix has valid 4x4 shape")
 }
 
 fn rotation_x(theta: f64) -> Array2<Complex64> {
@@ -1556,7 +1571,7 @@ fn rotation_x(theta: f64) -> Array2<Complex64> {
             Complex64::new(cos_half, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Rotation-X matrix has valid 2x2 shape")
 }
 
 fn rotation_y(theta: f64) -> Array2<Complex64> {
@@ -1571,7 +1586,7 @@ fn rotation_y(theta: f64) -> Array2<Complex64> {
             Complex64::new(cos_half, 0.0),
         ],
     )
-    .unwrap()
+    .expect("Rotation-Y matrix has valid 2x2 shape")
 }
 
 fn rotation_z(theta: f64) -> Array2<Complex64> {
@@ -1586,7 +1601,7 @@ fn rotation_z(theta: f64) -> Array2<Complex64> {
             exp_pos,
         ],
     )
-    .unwrap()
+    .expect("Rotation-Z matrix has valid 2x2 shape")
 }
 
 /// S gate (phase gate)
@@ -1600,7 +1615,7 @@ fn s_gate() -> Array2<Complex64> {
             Complex64::new(0.0, 1.0), // i
         ],
     )
-    .unwrap()
+    .expect("S gate matrix has valid 2x2 shape")
 }
 
 /// T gate (π/8 gate)
@@ -1615,7 +1630,7 @@ fn t_gate() -> Array2<Complex64> {
             phase,
         ],
     )
-    .unwrap()
+    .expect("T gate matrix has valid 2x2 shape")
 }
 
 /// CZ gate (controlled-Z)
@@ -1641,7 +1656,7 @@ fn cz_gate() -> Array2<Complex64> {
             Complex64::new(-1.0, 0.0), // -1 on |11⟩
         ],
     )
-    .unwrap()
+    .expect("CZ gate matrix has valid 4x4 shape")
 }
 
 /// SWAP gate
@@ -1667,7 +1682,7 @@ fn swap_gate() -> Array2<Complex64> {
             Complex64::new(1.0, 0.0),
         ],
     )
-    .unwrap()
+    .expect("SWAP gate matrix has valid 4x4 shape")
 }
 
 /// Advanced tensor contraction algorithms
@@ -1838,7 +1853,8 @@ mod tests {
     #[test]
     fn test_simulator_initialization() {
         let mut sim = TensorNetworkSimulator::new(2);
-        sim.initialize_zero_state().unwrap();
+        sim.initialize_zero_state()
+            .expect("Failed to initialize zero state");
 
         assert_eq!(sim.network.tensors.len(), 2);
     }
@@ -1846,7 +1862,8 @@ mod tests {
     #[test]
     fn test_single_qubit_gate() {
         let mut sim = TensorNetworkSimulator::new(1);
-        sim.initialize_zero_state().unwrap();
+        sim.initialize_zero_state()
+            .expect("Failed to initialize zero state");
 
         let initial_tensors = sim.network.tensors.len();
         let h_gate = QuantumGate::new(
@@ -1854,7 +1871,8 @@ mod tests {
             vec![0],
             vec![],
         );
-        sim.apply_gate(h_gate).unwrap();
+        sim.apply_gate(h_gate)
+            .expect("Failed to apply Hadamard gate");
 
         // Should add one more tensor for the gate
         assert_eq!(sim.network.tensors.len(), initial_tensors + 1);
@@ -1863,9 +1881,10 @@ mod tests {
     #[test]
     fn test_measurement() {
         let mut sim = TensorNetworkSimulator::new(1);
-        sim.initialize_zero_state().unwrap();
+        sim.initialize_zero_state()
+            .expect("Failed to initialize zero state");
 
-        let result = sim.measure(0).unwrap();
+        let result = sim.measure(0).expect("Failed to measure qubit");
         assert!(result || !result); // Just check it returns a bool
     }
 
@@ -1904,7 +1923,7 @@ mod tests {
         let result = tensor_a.contract(&tensor_b, 1, 0);
         assert!(result.is_ok());
 
-        let contracted = result.unwrap();
+        let contracted = result.expect("Failed to contract tensors");
         assert!(!contracted.data.is_empty());
     }
 
@@ -1935,7 +1954,7 @@ mod tests {
         let order = network.find_optimal_contraction_order();
         assert!(order.is_ok());
 
-        let order_vec = order.unwrap();
+        let order_vec = order.expect("Failed to find optimal contraction order");
         assert!(!order_vec.is_empty());
     }
 
@@ -1954,7 +1973,7 @@ mod tests {
         let result = simulator.contract_greedy();
         assert!(result.is_ok());
 
-        let amplitude = result.unwrap();
+        let amplitude = result.expect("Failed to contract network");
         assert!(amplitude.norm() >= 0.0);
     }
 
@@ -1981,7 +2000,7 @@ mod tests {
         let result = simulator.contract_network_to_state_vector();
         assert!(result.is_ok());
 
-        let state_vector = result.unwrap();
+        let state_vector = result.expect("Failed to contract network to state vector");
         assert_eq!(state_vector.len(), 4); // 2^2 = 4 for 2 qubits
 
         // Should default to |00⟩ state
@@ -1997,7 +2016,7 @@ mod tests {
         let qr_result = AdvancedContractionAlgorithms::hotqr_decomposition(&tensor);
         assert!(qr_result.is_ok());
 
-        let (q, r) = qr_result.unwrap();
+        let (q, r) = qr_result.expect("Failed to perform HOTQR decomposition");
         assert_eq!(q.label, "Q");
         assert_eq!(r.label, "R");
     }
@@ -2013,7 +2032,7 @@ mod tests {
         let result = AdvancedContractionAlgorithms::tree_contraction(&tensors);
         assert!(result.is_ok());
 
-        let amplitude = result.unwrap();
+        let amplitude = result.expect("Failed to perform tree contraction");
         assert!(amplitude.norm() >= 0.0);
     }
 }

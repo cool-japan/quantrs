@@ -95,7 +95,7 @@ pub enum QECStrategy {
     /// Fault-tolerant error correction
     FaultTolerant,
     /// Hybrid approach (legacy)
-    Hybrid { strategies: Vec<QECStrategy> },
+    Hybrid { strategies: Vec<Self> },
 }
 
 #[derive(Debug, Clone)]
@@ -976,7 +976,7 @@ pub struct MLInferenceConfig {
 }
 
 /// Inference modes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InferenceMode {
     Synchronous,
     Asynchronous,
@@ -1062,7 +1062,7 @@ pub struct QECOptimizationConfig {
 }
 
 /// Optimization objectives for QEC
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     MaximizeLogicalFidelity,
     MinimizeOverhead,
@@ -1080,7 +1080,7 @@ pub struct ConstraintSatisfactionConfig {
 }
 
 /// Hardware constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HardwareConstraint {
     ConnectivityGraph,
     GateTimes,
@@ -1090,7 +1090,7 @@ pub enum HardwareConstraint {
 }
 
 /// Resource constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceConstraint {
     QubitCount,
     CircuitDepth,
@@ -1100,7 +1100,7 @@ pub enum ResourceConstraint {
 }
 
 /// Performance constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceConstraint {
     LogicalErrorRate,
     ThroughputTarget,
@@ -1311,7 +1311,8 @@ fn create_stub_feature_extraction_config() -> crate::ml_optimization::FeatureExt
     }
 }
 
-fn create_stub_hardware_prediction_config() -> crate::ml_optimization::HardwarePredictionConfig {
+const fn create_stub_hardware_prediction_config() -> crate::ml_optimization::HardwarePredictionConfig
+{
     crate::ml_optimization::HardwarePredictionConfig {
         enable_prediction: false,
         prediction_targets: vec![],
@@ -1327,7 +1328,7 @@ fn create_stub_hardware_prediction_config() -> crate::ml_optimization::HardwareP
     }
 }
 
-fn create_stub_online_learning_config() -> crate::ml_optimization::OnlineLearningConfig {
+const fn create_stub_online_learning_config() -> crate::ml_optimization::OnlineLearningConfig {
     crate::ml_optimization::OnlineLearningConfig {
         enable_online_learning: false,
         learning_rate_schedule:
@@ -1354,7 +1355,7 @@ fn create_stub_online_learning_config() -> crate::ml_optimization::OnlineLearnin
     }
 }
 
-fn create_stub_transfer_learning_config() -> crate::ml_optimization::TransferLearningConfig {
+const fn create_stub_transfer_learning_config() -> crate::ml_optimization::TransferLearningConfig {
     crate::ml_optimization::TransferLearningConfig {
         enable_transfer_learning: false,
         source_domains: vec![],
@@ -1374,7 +1375,7 @@ fn create_stub_transfer_learning_config() -> crate::ml_optimization::TransferLea
     }
 }
 
-fn create_stub_ensemble_config() -> crate::ml_optimization::EnsembleConfig {
+const fn create_stub_ensemble_config() -> crate::ml_optimization::EnsembleConfig {
     crate::ml_optimization::EnsembleConfig {
         enable_ensemble: false,
         ensemble_methods: vec![],

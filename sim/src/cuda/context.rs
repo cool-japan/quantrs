@@ -92,7 +92,7 @@ impl CudaContext {
             total_global_memory: 8_000_000_000, // 8GB
             max_threads_per_block: 1024,
             max_block_dimensions: [1024, 1024, 64],
-            max_grid_dimensions: [2147483647, 65535, 65535],
+            max_grid_dimensions: [2_147_483_647, 65_535, 65_535],
             warp_size: 32,
             memory_clock_rate: 7000, // MHz
             memory_bus_width: 256,
@@ -116,7 +116,7 @@ impl CudaContext {
     pub fn get_memory_info(&self) -> Result<(usize, usize)> {
         // Return (free_memory, total_memory)
         // In real implementation: cudaMemGetInfo
-        let pool = self.memory_pool.lock().unwrap();
+        let pool = self.memory_pool.lock().unwrap_or_else(|e| e.into_inner());
         let total = self.device_properties.total_global_memory;
         let used = pool.total_allocated;
         Ok((total - used, total))

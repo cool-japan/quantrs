@@ -39,7 +39,8 @@ mod tests {
     }
     #[test]
     fn test_image_encoder() {
-        let encoder = QuantumImageEncoder::new(ImageEncodingMethod::AmplitudeEncoding, 8).unwrap();
+        let encoder = QuantumImageEncoder::new(ImageEncodingMethod::AmplitudeEncoding, 8)
+            .expect("should create encoder");
         assert_eq!(encoder.num_qubits, 8);
         assert!(!encoder.encoding_circuits.is_empty());
     }
@@ -48,7 +49,9 @@ mod tests {
         let config = PreprocessingConfig::default();
         let preprocessor = ImagePreprocessor::new(config);
         let images = Array4::zeros((2, 3, 256, 256));
-        let processed = preprocessor.preprocess(&images).unwrap();
+        let processed = preprocessor
+            .preprocess(&images)
+            .expect("preprocess should succeed");
         assert_eq!(processed.dim(), (2, 3, 224, 224));
     }
 }

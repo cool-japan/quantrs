@@ -3,7 +3,10 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::time::Instant;
 
-use super::config::*;
+use super::config::{
+    ActivationFunction, DimensionalityReduction, FeatureExtractionConfig, FeatureSelectionMethod,
+    LayerType,
+};
 use crate::applications::ApplicationResult;
 use crate::ising::IsingModel;
 
@@ -241,7 +244,8 @@ pub struct FeatureExtractor {
 }
 
 impl FeatureExtractor {
-    pub fn new(config: FeatureExtractionConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: FeatureExtractionConfig) -> Self {
         Self {
             config,
             transformers: Vec::new(),
@@ -394,7 +398,7 @@ impl FeatureExtractor {
         }
 
         if max_edges > 0 {
-            num_edges as f64 / max_edges as f64
+            f64::from(num_edges) / max_edges as f64
         } else {
             0.0
         }
@@ -421,6 +425,7 @@ impl FeatureExtractor {
         }
     }
 
+    #[must_use]
     pub fn vectorize_features(&self, features: &ProblemFeatures) -> FeatureVector {
         let mut values = Vec::new();
         let mut names = Vec::new();
@@ -485,7 +490,7 @@ pub struct FeatureTransformer {
 }
 
 /// Transformer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransformerType {
     /// Polynomial features
     Polynomial,
@@ -587,7 +592,7 @@ pub enum AlgorithmType {
     /// Variable neighborhood search
     VariableNeighborhood,
     /// Hybrid algorithm
-    Hybrid(Vec<AlgorithmType>),
+    Hybrid(Vec<Self>),
 }
 
 /// Architecture specification
@@ -619,7 +624,7 @@ pub struct LayerSpec {
 }
 
 /// Connection patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionPattern {
     /// Sequential connections
     Sequential,
@@ -649,7 +654,7 @@ pub struct OptimizationSettings {
 }
 
 /// Optimizer types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizerType {
     SGD,
     Adam,
@@ -816,6 +821,7 @@ pub struct CoverageStatistics {
 }
 
 impl ExperienceDatabase {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             experiences: VecDeque::new(),
@@ -846,7 +852,7 @@ impl ExperienceDatabase {
         self.update_statistics();
 
         // Limit buffer size
-        if self.experiences.len() > 10000 {
+        if self.experiences.len() > 10_000 {
             if let Some(removed) = self.experiences.pop_front() {
                 self.remove_from_index(&removed);
             }
@@ -943,7 +949,7 @@ impl ExperienceDatabase {
         let size_similarity = 1.0 - size_diff;
         let density_similarity = 1.0 - density_diff;
 
-        (size_similarity + density_similarity) / 2.0
+        f64::midpoint(size_similarity, density_similarity)
     }
 }
 

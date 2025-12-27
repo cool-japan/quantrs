@@ -448,7 +448,7 @@ let mut qnn_builder = QNNBuilder::new(4) // 4 qubits
 let mut qnn = qnn_builder.build()?;
 
 // Train on sample data
-let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0).unwrap());
+let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0)?);
 let y = Array1::from_vec(vec![0.0; 50].into_iter().chain(vec![1.0; 50]).collect());
 
 qnn.train(&X.into_dyn(), &y.into_dyn().insert_axis(Axis(1)))?;
@@ -521,7 +521,7 @@ let qsvm_params = QSVMParams {
 let mut qsvm = QSVM::new(qsvm_params)?;
 
 // Generate sample data
-let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0).unwrap());
+let X = Array2::random((100, 4), Uniform::new(-1.0, 1.0)?);
 let y = Array1::from_vec((0..100).map(|i| if i < 50 { -1.0 } else { 1.0 }).collect());
 
 // Train the QSVM
@@ -748,14 +748,14 @@ let config = PipelineConfig::default();
 let mut pipeline = manager.create_pipeline("hybrid_classification", config)?;
 
 // Sample data
-let X = Array2::random((1000, 10), Uniform::new(-1.0, 1.0).unwrap());
+let X = Array2::random((1000, 10), Uniform::new(-1.0, 1.0)?);
 let y = Array1::from_vec((0..1000).map(|i| if i < 500 { 0.0 } else { 1.0 }).collect());
 
 // Train hybrid pipeline
 pipeline.fit(&X.into_dyn(), &y.into_dyn().insert_axis(Axis(1)))?;
 
 // Make predictions
-let test_X = Array2::random((100, 10), Uniform::new(-1.0, 1.0).unwrap());
+let test_X = Array2::random((100, 10), Uniform::new(-1.0, 1.0)?);
 let predictions = pipeline.predict(&test_X.into_dyn())?;
 "#.to_string(),
                             expected_output: Some("Hybrid pipeline trained and predictions made".to_string()),
@@ -834,7 +834,8 @@ let mut portfolio_model = template_manager.create_model_from_template(
 let returns = Array2::random((252, 20), Normal::new(0.001, 0.02)?);
 
 // Risk-return optimization
-let expected_returns = returns.mean_axis(Axis(0)).unwrap();
+let expected_returns = returns.mean_axis(Axis(0))
+    .ok_or_else(|| MLError::InvalidConfiguration("Failed to compute mean returns".to_string()))?;
 portfolio_model.train(&returns.into_dyn(), &expected_returns.into_dyn().insert_axis(Axis(1)))?;
 
 // Get optimal portfolio weights
@@ -1421,7 +1422,10 @@ mod tests {
         let manager = TutorialManager::new();
         let tutorial = manager.get_tutorial("qc_intro");
         assert!(tutorial.is_some());
-        assert_eq!(tutorial.unwrap().title, "Introduction to Quantum Computing");
+        assert_eq!(
+            tutorial.expect("Tutorial should exist").title,
+            "Introduction to Quantum Computing"
+        );
     }
 
     #[test]
@@ -1460,14 +1464,17 @@ mod tests {
         // Start tutorial
         manager
             .start_tutorial(user_id.clone(), tutorial_id.clone())
-            .unwrap();
+            .expect("Should start tutorial successfully");
 
         // Complete tutorial
         manager
             .complete_tutorial(&user_id, tutorial_id.clone(), 0.95, 45)
-            .unwrap();
+            .expect("Should complete tutorial successfully");
 
-        let progress = manager.progress.get(&user_id).unwrap();
+        let progress = manager
+            .progress
+            .get(&user_id)
+            .expect("User progress should exist");
         assert!(progress.completed_tutorials.contains(&tutorial_id));
         assert_eq!(progress.scores.get(&tutorial_id), Some(&0.95));
     }
@@ -1475,7 +1482,9 @@ mod tests {
     #[test]
     fn test_exercise_validation() {
         let manager = TutorialManager::new();
-        let exercise = manager.get_exercise("qc_basic_gates").unwrap();
+        let exercise = manager
+            .get_exercise("qc_basic_gates")
+            .expect("Exercise should exist");
 
         let good_solution = r#"
         use quantrs2_circuit::prelude::*;
@@ -1497,7 +1506,9 @@ mod tests {
     #[test]
     fn test_interactive_session() {
         let manager = TutorialManager::new();
-        let session = manager.run_interactive_session("qc_intro").unwrap();
+        let session = manager
+            .run_interactive_session("qc_intro")
+            .expect("Should create interactive session");
 
         assert_eq!(session.tutorial_id, "qc_intro");
         assert_eq!(session.current_section, 0);

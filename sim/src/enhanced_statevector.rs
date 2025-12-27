@@ -1,7 +1,7 @@
-//! Enhanced state vector simulator using SciRS2 features
+//! Enhanced state vector simulator using `SciRS2` features
 //!
 //! This module provides an enhanced state vector simulator that leverages
-//! SciRS2's advanced features for better performance and memory efficiency.
+//! `SciRS2`'s advanced features for better performance and memory efficiency.
 
 use scirs2_core::Complex64;
 
@@ -19,7 +19,7 @@ use crate::linalg_ops;
 
 use crate::statevector::StateVectorSimulator;
 
-/// An enhanced state vector simulator that uses SciRS2 features
+/// An enhanced state vector simulator that uses `SciRS2` features
 ///
 /// This simulator provides better performance through:
 /// - SIMD acceleration for vector operations
@@ -41,6 +41,7 @@ pub struct EnhancedStateVectorSimulator {
 
 impl EnhancedStateVectorSimulator {
     /// Create a new enhanced state vector simulator
+    #[must_use]
     pub fn new() -> Self {
         Self {
             base_simulator: StateVectorSimulator::new(),
@@ -200,7 +201,7 @@ mod tests {
         let _ = circuit.cnot(QubitId(0), QubitId(1));
 
         let mut simulator = EnhancedStateVectorSimulator::new();
-        let result = simulator.run(&circuit).unwrap();
+        let result = simulator.run(&circuit).expect("simulation should succeed");
 
         // Should produce Bell state |00⟩ + |11⟩
         let probs = result.probabilities();

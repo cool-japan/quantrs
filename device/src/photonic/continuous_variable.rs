@@ -36,18 +36,19 @@ pub struct Complex {
 }
 
 impl Complex {
-    pub fn new(real: f64, imag: f64) -> Self {
+    pub const fn new(real: f64, imag: f64) -> Self {
         Self { real, imag }
     }
 
     pub fn magnitude(&self) -> f64 {
-        (self.real * self.real + self.imag * self.imag).sqrt()
+        self.real.hypot(self.imag)
     }
 
     pub fn phase(&self) -> f64 {
         self.imag.atan2(self.real)
     }
 
+    #[must_use]
     pub fn conj(&self) -> Self {
         Self {
             real: self.real,
@@ -126,9 +127,9 @@ impl GaussianState {
         // Update covariance matrix elements using correct squeezing formulas
         // For phi=0: x-variance = 0.5 * e^(-2r), p-variance = 0.5 * e^(2r)
         state.covariance[x_idx][x_idx] =
-            0.5 * (exp_neg_2r + exp_2r - (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
+            0.5 * (exp_2r - exp_neg_2r).mul_add(-cos_2phi, exp_neg_2r + exp_2r) / 2.0;
         state.covariance[p_idx][p_idx] =
-            0.5 * (exp_2r + exp_neg_2r + (exp_2r - exp_neg_2r) * cos_2phi) / 2.0;
+            0.5 * (exp_2r - exp_neg_2r).mul_add(cos_2phi, exp_2r + exp_neg_2r) / 2.0;
         state.covariance[x_idx][p_idx] = 0.5 * (exp_2r - exp_neg_2r) * sin_2phi / 2.0;
         state.covariance[p_idx][x_idx] = state.covariance[x_idx][p_idx];
 
@@ -150,7 +151,7 @@ impl GaussianState {
         let mut state = Self::vacuum(num_modes);
 
         // Add thermal noise
-        let thermal_variance = 0.5 * (2.0 * n_bar + 1.0);
+        let thermal_variance = 0.5 * 2.0f64.mul_add(n_bar, 1.0);
         state.covariance[2 * mode][2 * mode] = thermal_variance;
         state.covariance[2 * mode + 1][2 * mode + 1] = thermal_variance;
 
@@ -189,8 +190,8 @@ impl GaussianState {
         let sinh_r = r.sinh();
 
         let s_matrix = [
-            [cosh_r - sinh_r * cos_phi, -sinh_r * sin_phi],
-            [-sinh_r * sin_phi, cosh_r + sinh_r * cos_phi],
+            [sinh_r.mul_add(-cos_phi, cosh_r), -sinh_r * sin_phi],
+            [-sinh_r * sin_phi, sinh_r.mul_add(cos_phi, cosh_r)],
         ];
 
         // Apply transformation to covariance matrix
@@ -415,8 +416,8 @@ impl GaussianState {
         let old_x = self.mean[x_idx];
         let old_p = self.mean[p_idx];
 
-        self.mean[x_idx] = rotation_matrix[0][0] * old_x + rotation_matrix[0][1] * old_p;
-        self.mean[p_idx] = rotation_matrix[1][0] * old_x + rotation_matrix[1][1] * old_p;
+        self.mean[x_idx] = rotation_matrix[0][0].mul_add(old_x, rotation_matrix[0][1] * old_p);
+        self.mean[p_idx] = rotation_matrix[1][0].mul_add(old_x, rotation_matrix[1][1] * old_p);
 
         // Transform covariance matrix
         let old_cov = [
@@ -442,7 +443,7 @@ impl GaussianState {
     }
 
     /// Calculate fidelity with another Gaussian state
-    pub fn fidelity(&self, other: &GaussianState) -> CVResult<f64> {
+    pub fn fidelity(&self, other: &Self) -> CVResult<f64> {
         if self.num_modes != other.num_modes {
             return Err(CVError::MatrixDimensionMismatch(
                 "States must have same number of modes".to_string(),
@@ -575,10 +576,14 @@ impl CVMeasurements {
         let cos_phi = phase.cos();
         let sin_phi = phase.sin();
 
-        let mean_value = cos_phi * state.mean[x_idx] + sin_phi * state.mean[p_idx];
-        let variance = cos_phi * cos_phi * state.covariance[x_idx][x_idx]
-            + sin_phi * sin_phi * state.covariance[p_idx][p_idx]
-            + 2.0 * cos_phi * sin_phi * state.covariance[x_idx][p_idx];
+        let mean_value = cos_phi.mul_add(state.mean[x_idx], sin_phi * state.mean[p_idx]);
+        let variance = (2.0 * cos_phi * sin_phi).mul_add(
+            state.covariance[x_idx][p_idx],
+            (cos_phi * cos_phi).mul_add(
+                state.covariance[x_idx][x_idx],
+                sin_phi * sin_phi * state.covariance[p_idx][p_idx],
+            ),
+        );
 
         // Return mean value (in a real implementation, this would be sampled)
         Ok(mean_value)
@@ -627,7 +632,8 @@ mod tests {
     #[test]
     fn test_coherent_state() {
         let alpha = Complex::new(1.0, 0.5);
-        let coherent = GaussianState::coherent(alpha, 0, 1).unwrap();
+        let coherent =
+            GaussianState::coherent(alpha, 0, 1).expect("Coherent state creation should succeed");
 
         assert!((coherent.mean[0] - alpha.real * SQRT_2).abs() < 1e-10);
         assert!((coherent.mean[1] - alpha.imag * SQRT_2).abs() < 1e-10);
@@ -635,7 +641,8 @@ mod tests {
 
     #[test]
     fn test_squeezed_vacuum() {
-        let squeezed = GaussianState::squeezed_vacuum(1.0, 0.0, 0, 1).unwrap();
+        let squeezed = GaussianState::squeezed_vacuum(1.0, 0.0, 0, 1)
+            .expect("Squeezed vacuum creation should succeed");
 
         // For squeezing in X quadrature (phi=0), Var(X) should be reduced
         assert!(squeezed.covariance[0][0] < 0.5);
@@ -647,7 +654,9 @@ mod tests {
         let mut state = GaussianState::vacuum(1);
         let alpha = Complex::new(2.0, 1.0);
 
-        state.displace(alpha, 0).unwrap();
+        state
+            .displace(alpha, 0)
+            .expect("Displacement operation should succeed");
 
         assert!((state.mean[0] - alpha.real * SQRT_2).abs() < 1e-10);
         assert!((state.mean[1] - alpha.imag * SQRT_2).abs() < 1e-10);
@@ -655,10 +664,13 @@ mod tests {
 
     #[test]
     fn test_beamsplitter() {
-        let mut state = GaussianState::coherent(Complex::new(1.0, 0.0), 0, 2).unwrap();
+        let mut state = GaussianState::coherent(Complex::new(1.0, 0.0), 0, 2)
+            .expect("Coherent state creation should succeed");
 
         // 50:50 beamsplitter
-        state.beamsplitter(PI / 4.0, 0.0, 0, 1).unwrap();
+        state
+            .beamsplitter(PI / 4.0, 0.0, 0, 1)
+            .expect("Beamsplitter operation should succeed");
 
         // Check that amplitude is distributed between modes
         assert!(state.mean[0].abs() > 0.0);
@@ -668,9 +680,12 @@ mod tests {
     #[test]
     fn test_average_photon_number() {
         let alpha = Complex::new(2.0, 0.0);
-        let coherent = GaussianState::coherent(alpha, 0, 1).unwrap();
+        let coherent =
+            GaussianState::coherent(alpha, 0, 1).expect("Coherent state creation should succeed");
 
-        let n_avg = coherent.average_photon_number(0).unwrap();
+        let n_avg = coherent
+            .average_photon_number(0)
+            .expect("Photon number calculation should succeed");
         let expected = alpha.magnitude() * alpha.magnitude();
 
         assert!((n_avg - expected).abs() < 1e-10);
@@ -679,14 +694,17 @@ mod tests {
     #[test]
     fn test_homodyne_measurement() {
         let alpha = Complex::new(2.0, 1.0);
-        let coherent = GaussianState::coherent(alpha, 0, 1).unwrap();
+        let coherent =
+            GaussianState::coherent(alpha, 0, 1).expect("Coherent state creation should succeed");
 
         // Measure X quadrature
-        let x_result = CVMeasurements::homodyne(&coherent, 0, 0.0).unwrap();
+        let x_result = CVMeasurements::homodyne(&coherent, 0, 0.0)
+            .expect("X quadrature homodyne measurement should succeed");
         assert!((x_result - alpha.real * SQRT_2).abs() < 1e-10);
 
         // Measure P quadrature
-        let p_result = CVMeasurements::homodyne(&coherent, 0, PI / 2.0).unwrap();
+        let p_result = CVMeasurements::homodyne(&coherent, 0, PI / 2.0)
+            .expect("P quadrature homodyne measurement should succeed");
         assert!((p_result - alpha.imag * SQRT_2).abs() < 1e-10);
     }
 
@@ -695,11 +713,16 @@ mod tests {
         let state1 = GaussianState::vacuum(1);
         let state2 = GaussianState::vacuum(1);
 
-        let fidelity = state1.fidelity(&state2).unwrap();
+        let fidelity = state1
+            .fidelity(&state2)
+            .expect("Fidelity calculation should succeed");
         assert!((fidelity - 1.0).abs() < 1e-6); // Identical states should have fidelity 1
 
-        let coherent = GaussianState::coherent(Complex::new(1.0, 0.0), 0, 1).unwrap();
-        let fidelity_diff = state1.fidelity(&coherent).unwrap();
+        let coherent = GaussianState::coherent(Complex::new(1.0, 0.0), 0, 1)
+            .expect("Coherent state creation should succeed");
+        let fidelity_diff = state1
+            .fidelity(&coherent)
+            .expect("Fidelity calculation should succeed");
         assert!(fidelity_diff < 1.0); // Different states should have fidelity < 1
     }
 }

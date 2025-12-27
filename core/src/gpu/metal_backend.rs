@@ -117,7 +117,7 @@ impl GpuBackend for MetalBackend {
         false // TODO: Check for Metal availability
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Metal"
     }
 

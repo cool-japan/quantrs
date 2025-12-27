@@ -73,6 +73,7 @@ pub struct HardwareGraph {
 
 impl HardwareGraph {
     /// Create a new hardware graph with custom adjacency
+    #[must_use]
     pub fn new_custom(num_qubits: usize, edges: Vec<(usize, usize)>) -> Self {
         let mut adjacency = HashMap::new();
 
@@ -81,8 +82,14 @@ impl HardwareGraph {
         }
 
         for (u, v) in edges {
-            adjacency.get_mut(&u).unwrap().push(v);
-            adjacency.get_mut(&v).unwrap().push(u);
+            adjacency
+                .get_mut(&u)
+                .expect("key was just inserted")
+                .push(v);
+            adjacency
+                .get_mut(&v)
+                .expect("key was just inserted")
+                .push(u);
         }
 
         Self {
@@ -113,8 +120,14 @@ impl HardwareGraph {
                     for l in 0..t {
                         let q1 = cell_offset + k;
                         let q2 = cell_offset + t + l;
-                        adjacency.get_mut(&q1).unwrap().push(q2);
-                        adjacency.get_mut(&q2).unwrap().push(q1);
+                        adjacency
+                            .get_mut(&q1)
+                            .expect("key was just inserted")
+                            .push(q2);
+                        adjacency
+                            .get_mut(&q2)
+                            .expect("key was just inserted")
+                            .push(q1);
                     }
                 }
 
@@ -123,8 +136,14 @@ impl HardwareGraph {
                     for k in 0..t {
                         let q1 = cell_offset + k;
                         let q2 = cell_offset + 2 * t + k;
-                        adjacency.get_mut(&q1).unwrap().push(q2);
-                        adjacency.get_mut(&q2).unwrap().push(q1);
+                        adjacency
+                            .get_mut(&q1)
+                            .expect("key was just inserted")
+                            .push(q2);
+                        adjacency
+                            .get_mut(&q2)
+                            .expect("key was just inserted")
+                            .push(q1);
                     }
                 }
 
@@ -133,8 +152,14 @@ impl HardwareGraph {
                     for k in 0..t {
                         let q1 = cell_offset + t + k;
                         let q2 = cell_offset + 2 * t * n + t + k;
-                        adjacency.get_mut(&q1).unwrap().push(q2);
-                        adjacency.get_mut(&q2).unwrap().push(q1);
+                        adjacency
+                            .get_mut(&q1)
+                            .expect("key was just inserted")
+                            .push(q2);
+                        adjacency
+                            .get_mut(&q2)
+                            .expect("key was just inserted")
+                            .push(q1);
                     }
                 }
             }
@@ -161,6 +186,7 @@ impl HardwareGraph {
     }
 
     /// Get the neighbors of a qubit
+    #[must_use]
     pub fn neighbors(&self, qubit: usize) -> Vec<usize> {
         if qubit >= self.num_qubits {
             return Vec::new();
@@ -170,14 +196,14 @@ impl HardwareGraph {
     }
 
     /// Check if two qubits are connected
+    #[must_use]
     pub fn are_connected(&self, q1: usize, q2: usize) -> bool {
         if q1 >= self.num_qubits || q2 >= self.num_qubits {
             return false;
         }
         self.adjacency
             .get(&q1)
-            .map(|neighbors| neighbors.contains(&q2))
-            .unwrap_or(false)
+            .is_some_and(|neighbors| neighbors.contains(&q2))
     }
 }
 
@@ -192,6 +218,7 @@ pub struct Embedding {
 
 impl Embedding {
     /// Create a new empty embedding
+    #[must_use]
     pub fn new() -> Self {
         Self {
             chains: HashMap::new(),
@@ -237,21 +264,18 @@ impl Embedding {
         for (var, chain) in &self.chains {
             if !is_chain_connected(chain, hardware) {
                 return Err(IsingError::HardwareConstraint(format!(
-                    "Chain for variable {} is not connected",
-                    var
+                    "Chain for variable {var} is not connected"
                 )));
             }
         }
 
         // Check logical edges are preserved
         for &(u, v) in logical_edges {
-            let chain1 = match self.chains.get(&u) {
-                Some(c) => c,
-                None => return Err(IsingError::InvalidQubit(u)),
+            let Some(chain1) = self.chains.get(&u) else {
+                return Err(IsingError::InvalidQubit(u));
             };
-            let chain2 = match self.chains.get(&v) {
-                Some(c) => c,
-                None => return Err(IsingError::InvalidQubit(v)),
+            let Some(chain2) = self.chains.get(&v) else {
+                return Err(IsingError::InvalidQubit(v));
             };
 
             let mut connected = false;
@@ -266,8 +290,7 @@ impl Embedding {
 
             if !connected {
                 return Err(IsingError::HardwareConstraint(format!(
-                    "Logical edge ({}, {}) has no physical connection",
-                    u, v
+                    "Logical edge ({u}, {v}) has no physical connection"
                 )));
             }
         }
@@ -636,7 +659,7 @@ mod tests {
 
     #[test]
     fn test_chimera_graph() {
-        let graph = HardwareGraph::new_chimera(2, 2, 4).unwrap();
+        let graph = HardwareGraph::new_chimera(2, 2, 4).expect("should create Chimera graph");
         assert_eq!(graph.num_qubits, 32);
 
         // Test internal bipartite connections
@@ -656,7 +679,7 @@ mod tests {
         let num_vars = 2;
 
         // Create a small chimera graph
-        let hardware = HardwareGraph::new_chimera(1, 1, 2).unwrap();
+        let hardware = HardwareGraph::new_chimera(1, 1, 2).expect("should create Chimera graph");
 
         // Find embedding
         let embedder = MinorMiner::default();
@@ -702,7 +725,7 @@ mod tests {
         let num_vars = 3;
 
         // Create a larger chimera graph for triangle
-        let hardware = HardwareGraph::new_chimera(2, 2, 2).unwrap();
+        let hardware = HardwareGraph::new_chimera(2, 2, 2).expect("should create Chimera graph");
 
         // Find embedding
         let embedder = MinorMiner {
@@ -723,7 +746,7 @@ mod tests {
 
     #[test]
     fn test_chain_connectivity() {
-        let hardware = HardwareGraph::new_chimera(2, 2, 2).unwrap();
+        let hardware = HardwareGraph::new_chimera(2, 2, 2).expect("should create Chimera graph");
 
         // Test connected chain
         let chain1 = vec![0, 2]; // Connected in chimera

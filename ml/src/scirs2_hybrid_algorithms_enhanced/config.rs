@@ -112,14 +112,14 @@ impl Default for HybridAlgorithmConfig {
 /// Hybrid algorithm types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HybridAlgorithm {
-    VQE,        // Variational Quantum Eigensolver
-    QAOA,       // Quantum Approximate Optimization Algorithm
-    VQC,        // Variational Quantum Classifier
-    QNN,        // Quantum Neural Network
-    QGAN,       // Quantum Generative Adversarial Network
-    VQA,        // Variational Quantum Algorithm (generic)
-    ADAPT,      // Adaptive Derivative-Assembled Pseudo-Trotter
-    QuantumRL,  // Quantum Reinforcement Learning
+    VQE,       // Variational Quantum Eigensolver
+    QAOA,      // Quantum Approximate Optimization Algorithm
+    VQC,       // Variational Quantum Classifier
+    QNN,       // Quantum Neural Network
+    QGAN,      // Quantum Generative Adversarial Network
+    VQA,       // Variational Quantum Algorithm (generic)
+    ADAPT,     // Adaptive Derivative-Assembled Pseudo-Trotter
+    QuantumRL, // Quantum Reinforcement Learning
 }
 
 /// Optimization strategies
@@ -129,8 +129,8 @@ pub enum OptimizationStrategy {
     AdaptiveGradient,
     NaturalGradient,
     QuantumNaturalGradient,
-    SPSA,              // Simultaneous Perturbation Stochastic Approximation
-    COBYLA,            // Constrained Optimization BY Linear Approximation
+    SPSA,   // Simultaneous Perturbation Stochastic Approximation
+    COBYLA, // Constrained Optimization BY Linear Approximation
     NelderMead,
     Bayesian,
     EvolutionaryStrategies,

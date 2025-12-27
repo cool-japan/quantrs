@@ -136,7 +136,7 @@ pub struct NetworkLayer {
 /// Activation functions for neural network
 #[derive(Debug, Clone, PartialEq)]
 pub enum ActivationFunction {
-    /// ReLU activation
+    /// `ReLU` activation
     ReLU,
     /// Sigmoid activation
     Sigmoid,
@@ -144,7 +144,7 @@ pub enum ActivationFunction {
     Tanh,
     /// Linear activation
     Linear,
-    /// Leaky ReLU
+    /// Leaky `ReLU`
     LeakyReLU(f64),
 }
 
@@ -286,7 +286,7 @@ pub struct CouplingStatistics {
 }
 
 /// Problem type classification
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemType {
     /// Random Ising model
     Random,
@@ -514,10 +514,18 @@ impl NeuralAnnealingScheduler {
         }
 
         let max_possible_couplings = size * (size - 1) / 2;
-        let connectivity_density = num_couplings as f64 / max_possible_couplings as f64;
+        let connectivity_density = f64::from(num_couplings) / max_possible_couplings as f64;
 
         // Calculate coupling statistics
-        let coupling_stats = if !coupling_values.is_empty() {
+        let coupling_stats = if coupling_values.is_empty() {
+            CouplingStatistics {
+                mean: 0.0,
+                std: 0.0,
+                max_abs: 0.0,
+                range: 0.0,
+                skewness: 0.0,
+            }
+        } else {
             let mean = coupling_values.iter().sum::<f64>() / coupling_values.len() as f64;
             let variance = coupling_values
                 .iter()
@@ -546,14 +554,6 @@ impl NeuralAnnealingScheduler {
                 max_abs,
                 range,
                 skewness,
-            }
-        } else {
-            CouplingStatistics {
-                mean: 0.0,
-                std: 0.0,
-                max_abs: 0.0,
-                range: 0.0,
-                skewness: 0.0,
             }
         };
 
@@ -630,7 +630,7 @@ impl NeuralAnnealingScheduler {
         let schedule_params = ScheduleParameters {
             initial_temp,
             final_temp,
-            num_sweeps: (output[2].max(100.0).min(100000.0)) as usize,
+            num_sweeps: (output[2].max(100.0).min(100_000.0)) as usize,
             cooling_rate: output[3].max(0.01).min(0.99),
             schedule_type: ScheduleType::Exponential, // Default
             additional_params: HashMap::new(),
@@ -663,7 +663,7 @@ impl NeuralAnnealingScheduler {
 
     /// Use RL agent to refine schedule parameters
     fn refine_with_rl(
-        &mut self,
+        &self,
         features: &ProblemFeatures,
         initial_params: ScheduleParameters,
     ) -> AdaptiveScheduleResult<ScheduleParameters> {
@@ -687,7 +687,7 @@ impl NeuralAnnealingScheduler {
         state.extend(vec![
             params.initial_temp / 100.0, // Normalized
             params.final_temp / 1.0,
-            params.num_sweeps as f64 / 10000.0,
+            params.num_sweeps as f64 / 10_000.0,
             params.cooling_rate,
         ]);
 
@@ -723,7 +723,7 @@ impl NeuralAnnealingScheduler {
         Ok(params)
     }
 
-    /// Convert schedule parameters to AnnealingParams
+    /// Convert schedule parameters to `AnnealingParams`
     fn convert_to_annealing_params(
         &self,
         params: ScheduleParameters,
@@ -776,8 +776,7 @@ impl NeuralAnnealingScheduler {
 
             if epoch % 10 == 0 {
                 println!(
-                    "Epoch {}: Network Loss = {:.6}, RL Reward = {:.6}",
-                    epoch, network_loss, rl_reward
+                    "Epoch {epoch}: Network Loss = {network_loss:.6}, RL Reward = {rl_reward:.6}"
                 );
             }
         }
@@ -858,7 +857,7 @@ impl NeuralAnnealingScheduler {
         vec![
             params.initial_temp / 100.0,
             params.final_temp,
-            params.num_sweeps as f64 / 10000.0,
+            params.num_sweeps as f64 / 10_000.0,
             params.cooling_rate,
         ]
     }
@@ -1007,7 +1006,7 @@ impl SchedulePredictionNetwork {
     }
 
     /// Backward pass (simplified implementation)
-    pub fn backward(
+    pub const fn backward(
         &mut self,
         _input: &[f64],
         _target: &[f64],
@@ -1057,9 +1056,8 @@ impl ScheduleRLAgent {
             let best_action = q_values
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .map(|(idx, _)| idx)
-                .unwrap_or(0);
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map_or(0, |(idx, _)| idx);
             Ok(best_action)
         }
     }
@@ -1114,13 +1112,14 @@ mod tests {
 
     #[test]
     fn test_neural_scheduler_creation() {
-        let scheduler = create_neural_scheduler().unwrap();
+        let scheduler = create_neural_scheduler().expect("Failed to create scheduler");
         assert_eq!(scheduler.config.network_layers, vec![32, 64, 32, 16]);
     }
 
     #[test]
     fn test_network_creation() {
-        let network = SchedulePredictionNetwork::new(&[10, 20, 5], Some(42)).unwrap();
+        let network = SchedulePredictionNetwork::new(&[10, 20, 5], Some(42))
+            .expect("Failed to create network");
         assert_eq!(network.layers.len(), 2);
         assert_eq!(network.layers[0].weights.len(), 20);
         assert_eq!(network.layers[0].weights[0].len(), 10);
@@ -1128,21 +1127,28 @@ mod tests {
 
     #[test]
     fn test_network_forward_pass() {
-        let network = SchedulePredictionNetwork::new(&[3, 5, 2], Some(42)).unwrap();
+        let network =
+            SchedulePredictionNetwork::new(&[3, 5, 2], Some(42)).expect("Failed to create network");
         let input = vec![1.0, 0.5, -0.5];
-        let output = network.forward(&input).unwrap();
+        let output = network.forward(&input).expect("Failed forward pass");
         assert_eq!(output.len(), 2);
     }
 
     #[test]
     fn test_feature_extraction() {
         let mut ising = IsingModel::new(4);
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_coupling(0, 1, -0.5).unwrap();
-        ising.set_coupling(1, 2, 0.3).unwrap();
+        ising.set_bias(0, 1.0).expect("Failed to set bias");
+        ising
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling");
+        ising
+            .set_coupling(1, 2, 0.3)
+            .expect("Failed to set coupling");
 
-        let scheduler = create_neural_scheduler().unwrap();
-        let features = scheduler.extract_problem_features(&ising).unwrap();
+        let scheduler = create_neural_scheduler().expect("Failed to create scheduler");
+        let features = scheduler
+            .extract_problem_features(&ising)
+            .expect("Failed to extract features");
 
         assert_eq!(features.size, 4);
         assert!(features.connectivity_density > 0.0);
@@ -1160,7 +1166,7 @@ mod tests {
             min_epsilon: 0.01,
         };
 
-        let agent = ScheduleRLAgent::new(config).unwrap();
+        let agent = ScheduleRLAgent::new(config).expect("Failed to create RL agent");
         assert_eq!(agent.config.action_space_size, 10);
         assert_eq!(agent.config.state_space_size, 15);
     }
@@ -1173,12 +1179,16 @@ mod tests {
             0.001,
             0.1,
         )
-        .unwrap();
+        .expect("Failed to create custom scheduler");
         let mut ising = IsingModel::new(5);
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_coupling(0, 1, -0.5).unwrap();
+        ising.set_bias(0, 1.0).expect("Failed to set bias");
+        ising
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling");
 
-        let schedule = scheduler.generate_schedule(&ising).unwrap();
+        let schedule = scheduler
+            .generate_schedule(&ising)
+            .expect("Failed to generate schedule");
         assert!(schedule.num_sweeps > 0);
         assert!(schedule.initial_temperature > 0.0);
         assert!(schedule.final_temperature > 0.0);

@@ -717,7 +717,7 @@ impl CircuitCompiler {
                 serialized_circuit: format!("circuit_for_{name}"),
                 format: "qasm".to_string(),
             }),
-            _ => Ok(BackendData::StateVector {
+            SimulatorBackend::DensityMatrix { .. } => Ok(BackendData::StateVector {
                 initial_state: None,
                 measurement_strategy: MeasurementStrategy::EndMeasurement,
             }),
@@ -914,10 +914,14 @@ mod tests {
         let compiler = CircuitCompiler::new();
 
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
-        circuit2.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit2
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit2");
 
         let key1 = compiler.generate_cache_key(&circuit1);
         let key2 = compiler.generate_cache_key(&circuit2);

@@ -218,13 +218,14 @@ pub trait EnhancedGpuBackend: GpuBackend {
         holonomy_matrix: &[Complex64],
         target_qubits: &[QubitId],
     ) -> QuantRS2Result<()> {
-        if let Some(kernel) = self.specialized_kernel() {
-            kernel.apply_holonomic_gate(state, holonomy_matrix, target_qubits)
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                "Holonomic gates not supported by this backend".to_string(),
-            ))
-        }
+        self.specialized_kernel().map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(
+                    "Holonomic gates not supported by this backend".to_string(),
+                ))
+            },
+            |kernel| kernel.apply_holonomic_gate(state, holonomy_matrix, target_qubits),
+        )
     }
 
     /// Apply post-quantum cryptographic operations
@@ -234,13 +235,14 @@ pub trait EnhancedGpuBackend: GpuBackend {
         hash_circuit: &[Complex64],
         compression_type: PostQuantumCompressionType,
     ) -> QuantRS2Result<()> {
-        if let Some(kernel) = self.specialized_kernel() {
-            kernel.apply_post_quantum_hash_gate(state, hash_circuit, compression_type)
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                "Post-quantum crypto gates not supported by this backend".to_string(),
-            ))
-        }
+        self.specialized_kernel().map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(
+                    "Post-quantum crypto gates not supported by this backend".to_string(),
+                ))
+            },
+            |kernel| kernel.apply_post_quantum_hash_gate(state, hash_circuit, compression_type),
+        )
     }
 
     /// Apply quantum ML operations
@@ -252,19 +254,22 @@ pub trait EnhancedGpuBackend: GpuBackend {
         value_params: &[Complex64],
         num_heads: usize,
     ) -> QuantRS2Result<()> {
-        if let Some(kernel) = self.specialized_kernel() {
-            kernel.apply_quantum_ml_attention(
-                state,
-                query_params,
-                key_params,
-                value_params,
-                num_heads,
-            )
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(
-                "Quantum ML attention not supported by this backend".to_string(),
-            ))
-        }
+        self.specialized_kernel().map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(
+                    "Quantum ML attention not supported by this backend".to_string(),
+                ))
+            },
+            |kernel| {
+                kernel.apply_quantum_ml_attention(
+                    state,
+                    query_params,
+                    key_params,
+                    value_params,
+                    num_heads,
+                )
+            },
+        )
     }
 
     /// Apply optimized gate fusion
@@ -482,8 +487,7 @@ impl GpuBackendFactory {
             "cpu" => Ok(Arc::new(cpu_backend::CpuBackend::new())),
 
             _ => Err(QuantRS2Error::InvalidInput(format!(
-                "Unknown backend type: {}",
-                backend_type
+                "Unknown backend type: {backend_type}"
             ))),
         }
     }
@@ -547,24 +551,32 @@ mod tests {
         assert!(backends.contains(&"cpu"));
 
         // Should always be able to create CPU backend
-        let backend = GpuBackendFactory::create_backend("cpu").unwrap();
+        let backend =
+            GpuBackendFactory::create_backend("cpu").expect("Failed to create CPU backend");
         assert_eq!(backend.name(), "CPU");
     }
 
     #[test]
     fn test_gpu_state_vector() {
-        let backend = GpuBackendFactory::create_best_available().unwrap();
-        let mut state = GpuStateVector::new(backend, 2).unwrap();
+        let backend =
+            GpuBackendFactory::create_best_available().expect("Failed to create GPU backend");
+        let mut state = GpuStateVector::new(backend, 2).expect("Failed to create GPU state vector");
 
         // Initialize to |00⟩
-        state.initialize_zero_state().unwrap();
+        state
+            .initialize_zero_state()
+            .expect("Failed to initialize zero state");
 
         // Apply Hadamard to first qubit
         let h_gate = Hadamard { target: QubitId(0) };
-        state.apply_gate(&h_gate, &[QubitId(0)]).unwrap();
+        state
+            .apply_gate(&h_gate, &[QubitId(0)])
+            .expect("Failed to apply Hadamard gate");
 
         // Get probabilities
-        let probs = state.get_probabilities().unwrap();
+        let probs = state
+            .get_probabilities()
+            .expect("Failed to get probabilities");
         assert_eq!(probs.len(), 4);
 
         // Should be in equal superposition on first qubit

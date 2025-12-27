@@ -5,7 +5,9 @@
 //! bond dimension management, and SciRS2-accelerated tensor operations.
 
 use scirs2_core::ndarray::{Array, Array2, ArrayD, IxDyn};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
@@ -50,7 +52,7 @@ pub struct EnhancedTensorNetworkConfig {
     pub max_optimization_time_ms: u64,
     /// Enable parallel tensor operations
     pub parallel_contractions: bool,
-    /// Use SciRS2 acceleration
+    /// Use `SciRS2` acceleration
     pub use_scirs2_acceleration: bool,
     /// Enable tensor slicing for large networks
     pub enable_slicing: bool,
@@ -255,7 +257,7 @@ pub struct EnhancedTensorNetworkSimulator {
     config: EnhancedTensorNetworkConfig,
     /// Current tensor network
     network: TensorNetwork,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Contraction optimizer
     #[cfg(feature = "advanced_math")]
@@ -391,7 +393,7 @@ impl EnhancedTensorNetworkSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
 
@@ -443,7 +445,7 @@ impl EnhancedTensorNetworkSimulator {
         let start_time = std::time::Instant::now();
 
         // Create gate tensor
-        let gate_tensor = self.create_gate_tensor(gate_matrix, vec![qubit], None)?;
+        let gate_tensor = Self::create_gate_tensor(gate_matrix, vec![qubit], None)?;
         let gate_id = self.network.add_tensor(gate_tensor);
 
         // Find qubit tensor
@@ -469,7 +471,7 @@ impl EnhancedTensorNetworkSimulator {
         let start_time = std::time::Instant::now();
 
         // Create two-qubit gate tensor
-        let gate_tensor = self.create_gate_tensor(gate_matrix, vec![control, target], None)?;
+        let gate_tensor = Self::create_gate_tensor(gate_matrix, vec![control, target], None)?;
         let gate_id = self.network.add_tensor(gate_tensor);
 
         // Contract with qubit tensors
@@ -508,10 +510,10 @@ impl EnhancedTensorNetworkSimulator {
             .clone();
 
         // Find common indices
-        let common_indices = self.find_common_indices(&tensor1, &tensor2);
+        let common_indices = Self::find_common_indices(&tensor1, &tensor2);
 
         // Estimate contraction cost
-        let cost_estimate = self.estimate_contraction_cost(&tensor1, &tensor2, &common_indices);
+        let cost_estimate = Self::estimate_contraction_cost(&tensor1, &tensor2, &common_indices);
 
         // Choose contraction method based on cost and configuration
         let result = if cost_estimate > 1e9 && self.config.enable_slicing {
@@ -596,18 +598,23 @@ impl EnhancedTensorNetworkSimulator {
             )));
         }
 
-        let result_tensor = self.network.tensors.values().next().unwrap();
+        let result_tensor = self
+            .network
+            .tensors
+            .values()
+            .next()
+            .ok_or_else(|| SimulatorError::InvalidInput("No tensors in network".to_string()))?;
         Ok(result_tensor.data.clone())
     }
 
     /// Get performance statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &TensorNetworkStats {
         &self.stats
     }
 
     /// Internal helper methods
     fn create_gate_tensor(
-        &self,
         gate_matrix: &Array2<Complex64>,
         qubits: Vec<usize>,
         aux_indices: Option<Vec<TensorIndex>>,
@@ -626,7 +633,9 @@ impl EnhancedTensorNetworkSimulator {
         let tensor_data = gate_matrix
             .clone()
             .into_shape(IxDyn(&tensor_shape))
-            .unwrap();
+            .map_err(|e| {
+                SimulatorError::DimensionMismatch(format!("Failed to reshape gate matrix: {e}"))
+            })?;
 
         // Create indices
         let mut indices = Vec::new();
@@ -670,11 +679,7 @@ impl EnhancedTensorNetworkSimulator {
         })
     }
 
-    fn find_common_indices(
-        &self,
-        tensor1: &EnhancedTensor,
-        tensor2: &EnhancedTensor,
-    ) -> Vec<String> {
+    fn find_common_indices(tensor1: &EnhancedTensor, tensor2: &EnhancedTensor) -> Vec<String> {
         let indices1: HashSet<_> = tensor1.indices.iter().map(|i| &i.label).collect();
         let indices2: HashSet<_> = tensor2.indices.iter().map(|i| &i.label).collect();
 
@@ -682,7 +687,6 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     fn estimate_contraction_cost(
-        &self,
         tensor1: &EnhancedTensor,
         tensor2: &EnhancedTensor,
         common_indices: &[String],
@@ -722,12 +726,12 @@ impl EnhancedTensorNetworkSimulator {
         backend: &SciRS2Backend,
     ) -> Result<EnhancedTensor> {
         // Convert to SciRS2 tensor format
-        let scirs2_tensor1 = self.convert_to_scirs2_tensor(tensor1)?;
-        let scirs2_tensor2 = self.convert_to_scirs2_tensor(tensor2)?;
+        let scirs2_tensor1 = Self::convert_to_scirs2_tensor(tensor1)?;
+        let scirs2_tensor2 = Self::convert_to_scirs2_tensor(tensor2)?;
 
         // Perform optimized contraction using SciRS2
         let contraction_indices =
-            self.prepare_contraction_indices(tensor1, tensor2, common_indices)?;
+            Self::prepare_contraction_indices(tensor1, tensor2, common_indices)?;
 
         // Use SciRS2's optimized Einstein summation
         let result_scirs2 =
@@ -744,7 +748,7 @@ impl EnhancedTensorNetworkSimulator {
         common_indices: &[String],
     ) -> Result<EnhancedTensor> {
         // Optimized contraction using advanced algorithms
-        let contraction_size = self.estimate_contraction_size(tensor1, tensor2, common_indices);
+        let contraction_size = Self::estimate_contraction_size(tensor1, tensor2, common_indices);
 
         if contraction_size > 1e6 {
             // Use memory-efficient blocked contraction for large tensors
@@ -768,8 +772,8 @@ impl EnhancedTensorNetworkSimulator {
         let block_size = self.config.memory_limit / (8 * std::mem::size_of::<Complex64>());
         let num_blocks = ((tensor1.data.len() + tensor2.data.len()) / block_size).max(1);
 
-        let result_indices = self.calculate_result_indices(tensor1, tensor2, common_indices);
-        let result_shape = self.calculate_result_shape(&result_indices)?;
+        let result_indices = Self::calculate_result_indices(tensor1, tensor2, common_indices);
+        let result_shape = Self::calculate_result_shape(&result_indices)?;
         let mut result_data = ArrayD::zeros(IxDyn(&result_shape));
 
         // Process in blocks to manage memory usage
@@ -780,14 +784,14 @@ impl EnhancedTensorNetworkSimulator {
 
             if start_idx < end_idx {
                 // Extract tensor blocks
-                let block1 = self.extract_tensor_block(tensor1, start_idx, end_idx)?;
-                let block2 = self.extract_tensor_block(tensor2, start_idx, end_idx)?;
+                let block1 = Self::extract_tensor_block(tensor1, start_idx, end_idx)?;
+                let block2 = Self::extract_tensor_block(tensor2, start_idx, end_idx)?;
 
                 // Contract blocks
-                let block_result = self.contract_tensor_blocks(&block1, &block2, common_indices)?;
+                let block_result = Self::contract_tensor_blocks(&block1, &block2, common_indices)?;
 
                 // Accumulate result
-                self.accumulate_block_result(&mut result_data, &block_result, block_idx)?;
+                Self::accumulate_block_result(&result_data, &block_result, block_idx)?;
             }
         }
 
@@ -799,7 +803,7 @@ impl EnhancedTensorNetworkSimulator {
             bond_dimensions: result_shape,
             id: 0,
             memory_size,
-            contraction_cost: self.estimate_contraction_cost(tensor1, tensor2, common_indices),
+            contraction_cost: Self::estimate_contraction_cost(tensor1, tensor2, common_indices),
             priority: 1.0,
         })
     }
@@ -811,14 +815,13 @@ impl EnhancedTensorNetworkSimulator {
         common_indices: &[String],
     ) -> Result<EnhancedTensor> {
         // Optimized multi-index tensor contraction using advanced index ordering
-        let optimal_index_order =
-            self.find_optimal_index_order(tensor1, tensor2, common_indices)?;
+        let optimal_index_order = Self::find_optimal_index_order(tensor1, tensor2, common_indices)?;
 
         // Reorder indices for optimal memory access patterns
         let reordered_tensor1 =
-            self.reorder_tensor_indices(tensor1, &optimal_index_order.tensor1_order)?;
+            Self::reorder_tensor_indices(tensor1, &optimal_index_order.tensor1_order)?;
         let reordered_tensor2 =
-            self.reorder_tensor_indices(tensor2, &optimal_index_order.tensor2_order)?;
+            Self::reorder_tensor_indices(tensor2, &optimal_index_order.tensor2_order)?;
 
         // Perform contraction with optimized index order
         self.contract_tensors_direct_optimized(
@@ -835,12 +838,12 @@ impl EnhancedTensorNetworkSimulator {
         common_indices: &[String],
     ) -> Result<EnhancedTensor> {
         // Direct optimized contraction using vectorized operations
-        let result_indices = self.calculate_result_indices(tensor1, tensor2, common_indices);
-        let result_shape = self.calculate_result_shape(&result_indices)?;
+        let result_indices = Self::calculate_result_indices(tensor1, tensor2, common_indices);
+        let result_shape = Self::calculate_result_shape(&result_indices)?;
         let mut result_data = ArrayD::zeros(IxDyn(&result_shape));
 
         // Use parallel processing for the contraction
-        let contraction_plan = self.create_contraction_plan(tensor1, tensor2, common_indices)?;
+        let contraction_plan = Self::create_contraction_plan(tensor1, tensor2, common_indices)?;
 
         // Execute contraction plan using parallel iterators
         result_data.par_mapv_inplace(|_| Complex64::new(0.0, 0.0));
@@ -859,7 +862,7 @@ impl EnhancedTensorNetworkSimulator {
             bond_dimensions: result_shape,
             id: 0,
             memory_size,
-            contraction_cost: self.estimate_contraction_cost(tensor1, tensor2, common_indices),
+            contraction_cost: Self::estimate_contraction_cost(tensor1, tensor2, common_indices),
             priority: 1.0,
         })
     }
@@ -867,7 +870,6 @@ impl EnhancedTensorNetworkSimulator {
     // Helper methods for advanced contraction
 
     fn estimate_contraction_size(
-        &self,
         tensor1: &EnhancedTensor,
         tensor2: &EnhancedTensor,
         common_indices: &[String],
@@ -878,12 +880,11 @@ impl EnhancedTensorNetworkSimulator {
         size1 * size2 * common_size
     }
 
-    fn calculate_result_shape(&self, indices: &[TensorIndex]) -> Result<Vec<usize>> {
+    fn calculate_result_shape(indices: &[TensorIndex]) -> Result<Vec<usize>> {
         Ok(indices.iter().map(|idx| idx.dimension).collect())
     }
 
     fn extract_tensor_block(
-        &self,
         tensor: &EnhancedTensor,
         start_idx: usize,
         end_idx: usize,
@@ -906,22 +907,20 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     fn contract_tensor_blocks(
-        &self,
         block1: &EnhancedTensor,
         block2: &EnhancedTensor,
         common_indices: &[String],
     ) -> Result<ArrayD<Complex64>> {
         // Contract two tensor blocks
-        let result_indices = self.calculate_result_indices(block1, block2, common_indices);
-        let result_shape = self.calculate_result_shape(&result_indices)?;
+        let result_indices = Self::calculate_result_indices(block1, block2, common_indices);
+        let result_shape = Self::calculate_result_shape(&result_indices)?;
         Ok(ArrayD::zeros(IxDyn(&result_shape)))
     }
 
     const fn accumulate_block_result(
-        &self,
-        result: &mut ArrayD<Complex64>,
-        block_result: &ArrayD<Complex64>,
-        block_idx: usize,
+        _result: &ArrayD<Complex64>,
+        _block_result: &ArrayD<Complex64>,
+        _block_idx: usize,
     ) -> Result<()> {
         // Accumulate block results into the final result tensor
         // This is a simplified implementation
@@ -929,10 +928,9 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     fn find_optimal_index_order(
-        &self,
         tensor1: &EnhancedTensor,
         tensor2: &EnhancedTensor,
-        common_indices: &[String],
+        _common_indices: &[String],
     ) -> Result<OptimalIndexOrder> {
         // Find optimal index ordering for memory access
         Ok(OptimalIndexOrder {
@@ -941,20 +939,15 @@ impl EnhancedTensorNetworkSimulator {
         })
     }
 
-    fn reorder_tensor_indices(
-        &self,
-        tensor: &EnhancedTensor,
-        order: &[usize],
-    ) -> Result<EnhancedTensor> {
+    fn reorder_tensor_indices(tensor: &EnhancedTensor, _order: &[usize]) -> Result<EnhancedTensor> {
         // Reorder tensor indices for optimal access patterns
         Ok(tensor.clone())
     }
 
     fn create_contraction_plan(
-        &self,
-        tensor1: &EnhancedTensor,
-        tensor2: &EnhancedTensor,
-        common_indices: &[String],
+        _tensor1: &EnhancedTensor,
+        _tensor2: &EnhancedTensor,
+        _common_indices: &[String],
     ) -> Result<ContractionPlan> {
         Ok(ContractionPlan {
             operations: vec![ContractionOperation {
@@ -967,7 +960,6 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     const fn execute_contraction_operation(
-        &self,
         _op: &ContractionOperation,
         _tensor1: &EnhancedTensor,
         _tensor2: &EnhancedTensor,
@@ -980,7 +972,7 @@ impl EnhancedTensorNetworkSimulator {
     // SciRS2 integration helpers
 
     #[cfg(feature = "advanced_math")]
-    fn convert_to_scirs2_tensor(&self, tensor: &EnhancedTensor) -> Result<SciRS2Tensor> {
+    fn convert_to_scirs2_tensor(tensor: &EnhancedTensor) -> Result<SciRS2Tensor> {
         // Convert our tensor format to SciRS2 format
         Ok(SciRS2Tensor {
             data: tensor.data.clone(),
@@ -996,7 +988,7 @@ impl EnhancedTensorNetworkSimulator {
         tensor2: &EnhancedTensor,
         common_indices: &[String],
     ) -> Result<EnhancedTensor> {
-        let result_indices = self.calculate_result_indices(tensor1, tensor2, common_indices);
+        let result_indices = Self::calculate_result_indices(tensor1, tensor2, common_indices);
 
         Ok(EnhancedTensor {
             data: scirs2_tensor.data.clone(),
@@ -1011,7 +1003,6 @@ impl EnhancedTensorNetworkSimulator {
 
     #[cfg(feature = "advanced_math")]
     fn prepare_contraction_indices(
-        &self,
         tensor1: &EnhancedTensor,
         tensor2: &EnhancedTensor,
         common_indices: &[String],
@@ -1036,7 +1027,7 @@ impl EnhancedTensorNetworkSimulator {
         let result_shape = vec![2, 2]; // Simplified
         let result_data = Array::zeros(IxDyn(&result_shape));
 
-        let result_indices = self.calculate_result_indices(tensor1, tensor2, common_indices);
+        let result_indices = Self::calculate_result_indices(tensor1, tensor2, common_indices);
         let memory_size = result_data.len() * std::mem::size_of::<Complex64>();
 
         Ok(EnhancedTensor {
@@ -1074,7 +1065,6 @@ impl EnhancedTensorNetworkSimulator {
     }
 
     fn calculate_result_indices(
-        &self,
         tensor1: &EnhancedTensor,
         tensor2: &EnhancedTensor,
         common_indices: &[String],
@@ -1356,8 +1346,8 @@ impl EnhancedTensorNetworkSimulator {
                     self.network.get_tensor(tensor_ids[i]),
                     self.network.get_tensor(tensor_ids[j]),
                 ) {
-                    let common_indices = self.find_common_indices(tensor1, tensor2);
-                    let cost = self.estimate_contraction_cost(tensor1, tensor2, &common_indices);
+                    let common_indices = Self::find_common_indices(tensor1, tensor2);
+                    let cost = Self::estimate_contraction_cost(tensor1, tensor2, &common_indices);
 
                     if cost < best_cost {
                         best_cost = cost;
@@ -1409,14 +1399,14 @@ impl EnhancedTensorNetworkSimulator {
                     self.network.get_tensor(tensor_ids[i]),
                     self.network.get_tensor(tensor_ids[j]),
                 ) {
-                    if !self.find_common_indices(tensor1, tensor2).is_empty() {
+                    if !Self::find_common_indices(tensor1, tensor2).is_empty() {
                         total_connections += 1;
                     }
                 }
             }
         }
 
-        total_connections as f64 / max_connections as f64
+        f64::from(total_connections) / max_connections as f64
     }
 
     fn execute_path_sequential(&mut self, path: &EnhancedContractionPath) -> Result<()> {
@@ -1470,8 +1460,8 @@ impl EnhancedTensorNetworkSimulator {
                 self.network.get_tensor(sorted_ids[0]),
                 self.network.get_tensor(sorted_ids[1]),
             ) {
-                let common = self.find_common_indices(t1, t2);
-                self.estimate_contraction_cost(t1, t2, &common)
+                let common = Self::find_common_indices(t1, t2);
+                Self::estimate_contraction_cost(t1, t2, &common)
             } else {
                 1.0
             };
@@ -1515,8 +1505,8 @@ impl EnhancedTensorNetworkSimulator {
                         self.network.get_tensor(tensor_a),
                         self.network.get_tensor(tensor_b),
                     ) {
-                        let common = self.find_common_indices(t1, t2);
-                        self.estimate_contraction_cost(t1, t2, &common)
+                        let common = Self::find_common_indices(t1, t2);
+                        Self::estimate_contraction_cost(t1, t2, &common)
                     } else {
                         1.0
                     };
@@ -1610,8 +1600,9 @@ impl EnhancedTensorNetworkSimulator {
         let mut current_section = Vec::new();
         let mut completed_steps = HashSet::new();
 
+        let empty_deps: Vec<usize> = Vec::new();
         for (i, _) in steps.iter().enumerate() {
-            let deps = dependencies.get(&i).unwrap();
+            let deps = dependencies.get(&i).unwrap_or(&empty_deps);
             let ready = deps.iter().all(|&dep| completed_steps.contains(&dep));
 
             if ready {
@@ -1666,7 +1657,7 @@ impl EnhancedTensorNetworkSimulator {
                     if let (Some(t1), Some(t2)) =
                         (self.network.get_tensor(id1), self.network.get_tensor(id2))
                     {
-                        let common = self.find_common_indices(t1, t2);
+                        let common = Self::find_common_indices(t1, t2);
                         if !common.is_empty() {
                             let weight = common.len() as f64; // Weight by number of shared indices
                             neighbors.push((id2, weight));
@@ -1839,8 +1830,7 @@ impl EnhancedTensorNetworkSimulator {
             for &bag_id in &current_level {
                 if let Some(bag) = decomposition.bags.get(bag_id) {
                     for &child_id in &bag.children {
-                        if !visited.contains(&child_id) {
-                            visited.insert(child_id);
+                        if visited.insert(child_id) {
                             next_level.push(child_id);
                         }
                     }
@@ -1995,6 +1985,7 @@ pub struct EnhancedTensorNetworkUtils;
 
 impl EnhancedTensorNetworkUtils {
     /// Estimate memory requirements for a tensor network
+    #[must_use]
     pub const fn estimate_memory_requirements(
         num_qubits: usize,
         circuit_depth: usize,
@@ -2042,6 +2033,7 @@ impl EnhancedTensorNetworkUtils {
     }
 
     /// Analyze contraction complexity for a given circuit
+    #[must_use]
     pub fn analyze_contraction_complexity(
         num_qubits: usize,
         gate_structure: &[Vec<usize>], // Gates as lists of qubits they act on
@@ -2129,9 +2121,12 @@ mod tests {
     #[test]
     fn test_enhanced_tensor_network_simulator() {
         let config = EnhancedTensorNetworkConfig::default();
-        let mut simulator = EnhancedTensorNetworkSimulator::new(config).unwrap();
+        let mut simulator =
+            EnhancedTensorNetworkSimulator::new(config).expect("simulator creation should succeed");
 
-        simulator.initialize_state(3).unwrap();
+        simulator
+            .initialize_state(3)
+            .expect("state initialization should succeed");
         assert_eq!(simulator.network.tensors.len(), 3);
     }
 
@@ -2186,7 +2181,8 @@ mod tests {
     fn test_enhanced_tensor_network_algorithms() {
         // Test dynamic programming optimization
         let config = EnhancedTensorNetworkConfig::default();
-        let simulator = EnhancedTensorNetworkSimulator::new(config).unwrap();
+        let simulator =
+            EnhancedTensorNetworkSimulator::new(config).expect("simulator creation should succeed");
 
         let tensor_ids = vec![0, 1, 2];
         let dp_result = simulator.optimize_path_dp(&tensor_ids);
@@ -2204,7 +2200,7 @@ mod tests {
         let features_result = simulator.extract_network_features(&tensor_ids);
         assert!(features_result.is_ok());
 
-        let features = features_result.unwrap();
+        let features = features_result.expect("features extraction should succeed");
         assert_eq!(features.num_tensors, 3);
         assert!(features.connectivity_density >= 0.0);
 
@@ -2212,7 +2208,7 @@ mod tests {
         let prediction_result = simulator.ml_predict_strategy(&features);
         assert!(prediction_result.is_ok());
 
-        let prediction = prediction_result.unwrap();
+        let prediction = prediction_result.expect("ML prediction should succeed");
         assert!(prediction.confidence >= 0.0 && prediction.confidence <= 1.0);
     }
 }

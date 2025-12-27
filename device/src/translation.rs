@@ -88,7 +88,7 @@ pub enum RotationAxis {
 }
 
 /// Backend-specific constraints
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BackendConstraints {
     /// Maximum circuit depth
     pub max_depth: Option<usize>,
@@ -100,18 +100,6 @@ pub struct BackendConstraints {
     pub coupling_map: Option<Vec<(usize, usize)>>,
     /// Gate timing constraints
     pub timing_constraints: Option<TimingConstraints>,
-}
-
-impl Default for BackendConstraints {
-    fn default() -> Self {
-        Self {
-            max_depth: None,
-            discrete_angles: None,
-            virtual_z: false,
-            coupling_map: None,
-            timing_constraints: None,
-        }
-    }
 }
 
 /// Timing constraints for hardware
@@ -175,12 +163,12 @@ pub enum TranslationMethod {
 impl std::fmt::Debug for TranslationMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Direct(s) => write!(f, "Direct({})", s),
-            Self::FixedDecomposition(gates) => write!(f, "FixedDecomposition({:?})", gates),
+            Self::Direct(s) => write!(f, "Direct({s})"),
+            Self::FixedDecomposition(gates) => write!(f, "FixedDecomposition({gates:?})"),
             Self::ParameterizedDecomposition(_) => {
                 write!(f, "ParameterizedDecomposition(<function>)")
             }
-            Self::Synthesis(method) => write!(f, "Synthesis({:?})", method),
+            Self::Synthesis(method) => write!(f, "Synthesis({method:?})"),
             Self::Custom(_) => write!(f, "Custom(<function>)"),
         }
     }
@@ -196,7 +184,7 @@ impl Clone for TranslationMethod {
                     "Cannot clone ParameterizedDecomposition - use Arc<TranslationMethod> instead"
                 )
             }
-            Self::Synthesis(method) => Self::Synthesis(method.clone()),
+            Self::Synthesis(method) => Self::Synthesis(*method),
             Self::Custom(_) => {
                 panic!("Cannot clone Custom - use Arc<TranslationMethod> instead")
             }
@@ -686,13 +674,11 @@ impl GateTranslator {
 
     /// Check if a gate is native to a backend
     pub fn is_native_gate(&self, backend: HardwareBackend, gate_name: &str) -> bool {
-        if let Some(gate_set) = self.native_gates.get(&backend) {
+        self.native_gates.get(&backend).map_or(false, |gate_set| {
             gate_set.single_qubit_gates.contains(&gate_name.to_string())
                 || gate_set.two_qubit_gates.contains(&gate_name.to_string())
                 || gate_set.multi_qubit_gates.contains(&gate_name.to_string())
-        } else {
-            false
-        }
+        })
     }
 
     /// Translate a gate to native gate set
@@ -714,7 +700,7 @@ impl GateTranslator {
         }
 
         // Check cache
-        let cache_key = format!("{}_{:?}", gate_name, backend);
+        let cache_key = format!("{gate_name}_{backend:?}");
         if let Some(cached) = self.decomposition_cache.get(&cache_key) {
             return Ok(self.remap_qubits(cached.clone(), &gate.qubits()));
         }
@@ -862,8 +848,7 @@ impl GateTranslator {
                 Ok(vec![])
             }
             _ => Err(QuantRS2Error::InvalidInput(format!(
-                "Synthesis method {:?} not yet implemented",
-                method
+                "Synthesis method {method:?} not yet implemented"
             ))),
         }
     }
@@ -1104,7 +1089,7 @@ mod tests {
 
         let decomposed = translator
             .translate_gate(&h_gate, HardwareBackend::IBMQuantum)
-            .unwrap();
+            .expect("Hadamard gate translation should succeed");
 
         // H = RZ(π/2) SX RZ(π/2)
         assert_eq!(decomposed.len(), 3);
@@ -1123,7 +1108,7 @@ mod tests {
 
         let translated = translator
             .translate_circuit(&circuit, HardwareBackend::IBMQuantum)
-            .unwrap();
+            .expect("Circuit translation should succeed");
 
         // Original: H, CNOT
         // Translated: RZ, SX, RZ, CX

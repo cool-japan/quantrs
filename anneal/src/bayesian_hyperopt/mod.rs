@@ -47,6 +47,7 @@ pub use parallel::*;
 pub use transfer::*;
 
 /// Create parameter space for annealing hyperparameters
+#[must_use]
 pub fn create_annealing_parameter_space() -> ParameterSpace {
     let mut parameters = Vec::new();
 
@@ -65,7 +66,7 @@ pub fn create_annealing_parameter_space() -> ParameterSpace {
         param_type: ParameterType::Discrete,
         bounds: ParameterBounds::Discrete {
             min: 100,
-            max: 10000,
+            max: 10_000,
         },
     });
 
@@ -85,6 +86,7 @@ pub fn create_annealing_parameter_space() -> ParameterSpace {
 }
 
 /// Create Bayesian optimizer with default configuration
+#[must_use]
 pub fn create_bayesian_optimizer() -> BayesianHyperoptimizer {
     let config = BayesianOptConfig {
         max_iterations: 50,
@@ -114,6 +116,7 @@ pub fn create_bayesian_optimizer() -> BayesianHyperoptimizer {
 }
 
 /// Create custom Bayesian optimizer with specified parameters
+#[must_use]
 pub fn create_custom_bayesian_optimizer(
     max_iterations: usize,
     acquisition_function: AcquisitionFunctionType,
@@ -224,12 +227,12 @@ mod tests {
         let result = optimize_annealing_parameters(objective, Some(10));
         assert!(result.is_ok());
 
-        let best_params = result.unwrap();
+        let best_params = result.expect("Optimization should return best params");
         assert_eq!(best_params.len(), 3);
 
         // Check that parameters are within bounds
         assert!(best_params[0] >= 0.1 && best_params[0] <= 10.0); // temperature
-        assert!(best_params[1] >= 100.0 && best_params[1] <= 10000.0); // num_sweeps
+        assert!(best_params[1] >= 100.0 && best_params[1] <= 10_000.0); // num_sweeps
         assert!(best_params[2] >= 0.0 && best_params[2] <= 2.0); // schedule_type (categorical index)
     }
 }

@@ -60,7 +60,7 @@ impl Default for QFTConfig {
             coupling_constants: couplings,
             gauge_invariant: true,
             renormalization_scheme: RenormalizationScheme::DimensionalRegularization,
-            mc_steps: 10000,
+            mc_steps: 10_000,
         }
     }
 }
@@ -377,7 +377,7 @@ pub struct QuantumFieldTheorySimulator {
     rg_flow: Option<RGFlow>,
     /// Correlation function cache
     correlations: HashMap<String, CorrelationFunction>,
-    /// SciRS2 backend for numerical computations
+    /// `SciRS2` backend for numerical computations
     backend: Option<SciRS2Backend>,
     /// Simulation statistics
     stats: QFTStats,
@@ -1097,6 +1097,7 @@ impl QuantumFieldTheorySimulator {
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_statistics(&self) -> &QFTStats {
         &self.stats
     }
@@ -1191,7 +1192,11 @@ impl ActionEvaluator {
 
         // This would normally involve gauge field kinetic terms,
         // fermion kinetic terms, and interaction terms
-        action += config.iter().map(|phi| phi.norm_sqr()).sum::<f64>() * lattice_spacing.powi(4);
+        action += config
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            * lattice_spacing.powi(4);
 
         Ok(action)
     }
@@ -1270,7 +1275,11 @@ impl ActionEvaluator {
         let lattice_spacing = self.lattice_params.spacing;
 
         // Simple kinetic + mass action
-        let action = config.iter().map(|phi| phi.norm_sqr()).sum::<f64>() * lattice_spacing.powi(4);
+        let action = config
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum::<f64>()
+            * lattice_spacing.powi(4);
 
         Ok(action)
     }
@@ -1310,7 +1319,7 @@ mod tests {
         let simulator = QuantumFieldTheorySimulator::new(config);
         assert!(simulator.is_ok());
 
-        let sim = simulator.unwrap();
+        let sim = simulator.expect("ScalarPhi4 simulator should be created successfully");
         assert!(sim.field_configs.contains_key("phi"));
     }
 
@@ -1323,7 +1332,7 @@ mod tests {
         let simulator = QuantumFieldTheorySimulator::new(config);
         assert!(simulator.is_ok());
 
-        let sim = simulator.unwrap();
+        let sim = simulator.expect("QED simulator should be created successfully");
         assert!(sim.field_configs.contains_key("psi"));
         assert!(sim.field_configs.contains_key("A_0"));
         assert!(sim.field_configs.contains_key("A_1"));
@@ -1334,7 +1343,8 @@ mod tests {
     #[test]
     fn test_path_integral_initialization() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let pi_config = PathIntegralConfig {
             time_slices: 32,
@@ -1353,7 +1363,8 @@ mod tests {
     #[test]
     fn test_gauge_field_setup_u1() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let gauge_config = GaugeFieldConfig {
             gauge_group: GaugeGroup::U1,
@@ -1371,7 +1382,8 @@ mod tests {
     #[test]
     fn test_gauge_field_setup_su3() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let gauge_config = GaugeFieldConfig {
             gauge_group: GaugeGroup::SU(3),
@@ -1394,9 +1406,12 @@ mod tests {
     #[test]
     fn test_wilson_loop_generation() {
         let config = QFTConfig::default();
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
-        let path = simulator.generate_wilson_loop_path(2, 3).unwrap();
+        let path = simulator
+            .generate_wilson_loop_path(2, 3)
+            .expect("Wilson loop path generation should succeed");
         assert_eq!(path.len(), 10); // 2+3+2+3 = 10 links for rectangular loop
 
         // Check that path forms a closed loop
@@ -1406,7 +1421,8 @@ mod tests {
     #[test]
     fn test_action_evaluation_phi4() {
         let config = QFTConfig::default();
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let _simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let lattice_params = LatticeParameters {
             spacing: 1.0,
@@ -1427,13 +1443,17 @@ mod tests {
         let field_config = Array4::zeros((4, 4, 4, 4));
         let action = evaluator.evaluate_action(&field_config);
         assert!(action.is_ok());
-        assert_eq!(action.unwrap(), 0.0); // Zero field gives zero action
+        assert_eq!(
+            action.expect("Action evaluation should succeed for zero field"),
+            0.0
+        ); // Zero field gives zero action
     }
 
     #[test]
     fn test_beta_function_phi4() {
         let config = QFTConfig::default();
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let mut couplings = HashMap::new();
         couplings.insert("lambda".to_string(), 0.1);
@@ -1441,15 +1461,16 @@ mod tests {
         let beta_lambda = simulator.calculate_beta_function("lambda", 1.0, &couplings);
         assert!(beta_lambda.is_ok());
 
-        let beta_val = beta_lambda.unwrap();
-        assert!(beta_val > 0.0); // Positive beta function in φ⁴ theory
+        let beta_val = beta_lambda.expect("Beta function calculation should succeed");
+        assert!(beta_val > 0.0); // Positive beta function in phi^4 theory
     }
 
     #[test]
     fn test_beta_function_qed() {
         let mut config = QFTConfig::default();
         config.field_theory = FieldTheoryType::QED;
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QED simulator should be created successfully");
 
         let mut couplings = HashMap::new();
         couplings.insert("e".to_string(), 0.3);
@@ -1457,7 +1478,7 @@ mod tests {
         let beta_e = simulator.calculate_beta_function("e", 1.0, &couplings);
         assert!(beta_e.is_ok());
 
-        let beta_val = beta_e.unwrap();
+        let beta_val = beta_e.expect("QED beta function calculation should succeed");
         assert!(beta_val > 0.0); // QED has positive beta function (Landau pole)
     }
 
@@ -1465,7 +1486,8 @@ mod tests {
     fn test_beta_function_yang_mills() {
         let mut config = QFTConfig::default();
         config.field_theory = FieldTheoryType::YangMills;
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("Yang-Mills simulator should be created successfully");
 
         let mut couplings = HashMap::new();
         couplings.insert("g".to_string(), 0.5);
@@ -1473,20 +1495,21 @@ mod tests {
         let beta_g = simulator.calculate_beta_function("g", 1.0, &couplings);
         assert!(beta_g.is_ok());
 
-        let beta_val = beta_g.unwrap();
+        let beta_val = beta_g.expect("Yang-Mills beta function calculation should succeed");
         assert!(beta_val < 0.0); // Yang-Mills has negative beta function (asymptotic freedom)
     }
 
     #[test]
     fn test_rg_flow_analysis() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let energy_scales = [0.1, 1.0, 10.0, 100.0];
         let rg_flow = simulator.analyze_rg_flow(&energy_scales);
         assert!(rg_flow.is_ok());
 
-        let flow = rg_flow.unwrap();
+        let flow = rg_flow.expect("RG flow analysis should succeed");
         assert!(flow.beta_functions.contains_key("lambda"));
         assert!(!flow.fixed_points.is_empty());
         assert!(flow
@@ -1498,7 +1521,8 @@ mod tests {
     #[test]
     fn test_scattering_cross_section_phi4() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let process = ScatteringProcess {
             initial_state: vec![
@@ -1538,7 +1562,7 @@ mod tests {
         let cross_section = simulator.calculate_scattering_cross_section(&process);
         assert!(cross_section.is_ok());
 
-        let sigma = cross_section.unwrap();
+        let sigma = cross_section.expect("Cross section calculation should succeed");
         assert!(sigma > 0.0);
         assert!(sigma.is_finite());
     }
@@ -1563,7 +1587,8 @@ mod tests {
     #[ignore]
     fn test_path_integral_monte_carlo_short() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let pi_config = PathIntegralConfig {
             time_slices: 8,
@@ -1574,13 +1599,15 @@ mod tests {
             target_acceptance_rate: 0.5,
         };
 
-        simulator.initialize_path_integral(pi_config).unwrap();
+        simulator
+            .initialize_path_integral(pi_config)
+            .expect("Path integral initialization should succeed");
 
         // Run short Monte Carlo simulation
         let result = simulator.run_path_integral_mc(100);
         assert!(result.is_ok());
 
-        let action_history = result.unwrap();
+        let action_history = result.expect("Path integral MC should complete successfully");
         assert_eq!(action_history.len(), 100);
         assert!(action_history.iter().all(|&a| a.is_finite()));
     }
@@ -1589,7 +1616,8 @@ mod tests {
     #[ignore]
     fn test_correlation_function_calculation() {
         let config = QFTConfig::default();
-        let mut simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let mut simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let pi_config = PathIntegralConfig {
             time_slices: 8,
@@ -1600,10 +1628,14 @@ mod tests {
             target_acceptance_rate: 0.5,
         };
 
-        simulator.initialize_path_integral(pi_config).unwrap();
+        simulator
+            .initialize_path_integral(pi_config)
+            .expect("Path integral initialization should succeed");
 
         // Generate some samples first
-        simulator.run_path_integral_mc(50).unwrap();
+        simulator
+            .run_path_integral_mc(50)
+            .expect("Path integral MC should complete successfully");
 
         let operators = vec![
             FieldOperator {
@@ -1627,7 +1659,7 @@ mod tests {
         let correlation = simulator.calculate_correlation_function(&operators, 4);
         assert!(correlation.is_ok());
 
-        let corr_fn = correlation.unwrap();
+        let corr_fn = correlation.expect("Correlation function calculation should succeed");
         assert_eq!(corr_fn.separations.len(), 5); // 0, 1, 2, 3, 4
         assert_eq!(corr_fn.values.len(), 5);
         assert_eq!(corr_fn.errors.len(), 5);
@@ -1636,12 +1668,13 @@ mod tests {
     #[test]
     fn test_export_field_configuration() {
         let config = QFTConfig::default();
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let field_config = simulator.export_field_configuration("phi");
         assert!(field_config.is_ok());
 
-        let config_array = field_config.unwrap();
+        let config_array = field_config.expect("Field configuration export should succeed");
         assert_eq!(config_array.ndim(), 4);
 
         // Test non-existent field
@@ -1652,7 +1685,8 @@ mod tests {
     #[test]
     fn test_statistics_tracking() {
         let config = QFTConfig::default();
-        let simulator = QuantumFieldTheorySimulator::new(config).unwrap();
+        let simulator = QuantumFieldTheorySimulator::new(config)
+            .expect("QFT simulator should be created successfully");
 
         let stats = simulator.get_statistics();
         assert_eq!(stats.field_evaluations, 0);

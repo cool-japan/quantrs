@@ -82,6 +82,7 @@ impl DynamicCircuit {
     }
 
     /// Get the list of gate names in the circuit
+    #[must_use]
     pub fn gates(&self) -> Vec<String> {
         self.get_gate_names()
     }
@@ -97,6 +98,7 @@ impl DynamicCircuit {
     // This method is duplicated later in the file, removing it here
 
     /// Get the number of qubits in the circuit
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         match self {
             Self::Q2(_) => 2,
@@ -117,6 +119,7 @@ impl DynamicCircuit {
     }
 
     /// Get the gate names in the circuit
+    #[must_use]
     pub fn get_gate_names(&self) -> Vec<String> {
         match self {
             Self::Q2(c) => c
@@ -618,6 +621,7 @@ impl DynamicCircuit {
 
     /// Check if GPU acceleration is available (stub for macOS)
     #[cfg(not(all(feature = "gpu", not(target_os = "macos"))))]
+    #[must_use]
     pub const fn is_gpu_available() -> bool {
         false
     }
@@ -666,16 +670,22 @@ pub struct DynamicResult {
 
 impl DynamicResult {
     /// Get the state vector amplitudes
+    #[must_use]
     pub fn amplitudes(&self) -> &[Complex64] {
         &self.amplitudes
     }
 
     /// Get the probabilities for each basis state
+    #[must_use]
     pub fn probabilities(&self) -> Vec<f64> {
-        self.amplitudes.iter().map(|amp| amp.norm_sqr()).collect()
+        self.amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect()
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }

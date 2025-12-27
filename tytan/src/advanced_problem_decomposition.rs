@@ -29,7 +29,7 @@
 //!         0.0, 1.0, -1.0, 3.0,
 //!         0.0, 0.0, 3.0, -2.0,
 //!     ]
-//! ).unwrap();
+//! ).expect("valid 4x4 shape");
 //!
 //! // Configure decomposer
 //! let config = DecompositionConfig::default()
@@ -38,7 +38,7 @@
 //!
 //! // Decompose problem
 //! let decomposer = AdvancedDecomposer::new(config);
-//! let partitions = decomposer.spectral_partition(&qubo).unwrap();
+//! let partitions = decomposer.spectral_partition(&qubo).expect("decomposition should succeed");
 //! ```
 
 use scirs2_core::ndarray::{Array1, Array2};
@@ -138,36 +138,42 @@ impl Default for DecompositionConfig {
 
 impl DecompositionConfig {
     /// Set the number of partitions
+    #[must_use]
     pub const fn with_num_partitions(mut self, n: usize) -> Self {
         self.num_partitions = n;
         self
     }
 
     /// Set the spectral method
+    #[must_use]
     pub const fn with_method(mut self, method: SpectralMethod) -> Self {
         self.spectral_method = method;
         self
     }
 
     /// Set the community detection algorithm
+    #[must_use]
     pub const fn with_community_algorithm(mut self, alg: CommunityDetection) -> Self {
         self.community_algorithm = alg;
         self
     }
 
     /// Set the overlap size
+    #[must_use]
     pub const fn with_overlap_size(mut self, size: usize) -> Self {
         self.overlap_size = size;
         self
     }
 
     /// Enable or disable adaptive granularity
+    #[must_use]
     pub const fn with_adaptive_granularity(mut self, enable: bool) -> Self {
         self.adaptive_granularity = enable;
         self
     }
 
     /// Set the target partition size
+    #[must_use]
     pub const fn with_target_partition_size(mut self, size: usize) -> Self {
         self.target_partition_size = size;
         self
@@ -594,11 +600,12 @@ impl AdvancedDecomposer {
 
                 if !label_counts.is_empty() {
                     // Choose most common label
+                    // Since label_counts is non-empty, max_by is guaranteed to return Some
                     let new_label = *label_counts
                         .iter()
-                        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
                         .map(|(k, _)| k)
-                        .unwrap();
+                        .expect("label_counts verified non-empty");
 
                     if new_label != labels[node] {
                         labels[node] = new_label;
@@ -710,15 +717,14 @@ mod tests {
                 -1.0, 2.0, 0.0, 0.0, 2.0, -2.0, 1.0, 0.0, 0.0, 1.0, -1.0, 3.0, 0.0, 0.0, 3.0, -2.0,
             ],
         )
-        .unwrap();
+        .expect("valid 4x4 QUBO matrix shape");
 
         let config = DecompositionConfig::default().with_num_partitions(2);
         let decomposer = AdvancedDecomposer::new(config);
 
-        let result = decomposer.spectral_partition(&qubo);
-        assert!(result.is_ok());
-
-        let partitions = result.unwrap();
+        let partitions = decomposer
+            .spectral_partition(&qubo)
+            .expect("spectral partition should succeed");
         assert!(!partitions.is_empty());
         assert!(partitions.len() <= 2);
     }
@@ -727,15 +733,14 @@ mod tests {
     fn test_laplacian_computation() {
         let qubo =
             Array2::from_shape_vec((3, 3), vec![1.0, 2.0, 0.0, 2.0, 3.0, 1.0, 0.0, 1.0, 2.0])
-                .unwrap();
+                .expect("valid 3x3 QUBO matrix shape");
 
         let config = DecompositionConfig::default();
         let decomposer = AdvancedDecomposer::new(config);
 
-        let result = decomposer.compute_laplacian(&qubo);
-        assert!(result.is_ok());
-
-        let laplacian = result.unwrap();
+        let laplacian = decomposer
+            .compute_laplacian(&qubo)
+            .expect("laplacian computation should succeed");
         assert_eq!(laplacian.nrows(), 3);
         assert_eq!(laplacian.ncols(), 3);
     }
@@ -748,15 +753,14 @@ mod tests {
                 1.0, 2.0, 0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 0.1, 0.1, 1.0, 2.0, 0.1, 0.1, 2.0, 1.0,
             ],
         )
-        .unwrap();
+        .expect("valid 4x4 QUBO matrix shape");
 
         let config = DecompositionConfig::default();
         let decomposer = AdvancedDecomposer::new(config);
 
-        let result = decomposer.detect_communities(&qubo);
-        assert!(result.is_ok());
-
-        let communities = result.unwrap();
+        let communities = decomposer
+            .detect_communities(&qubo)
+            .expect("community detection should succeed");
         assert_eq!(communities.len(), 4);
     }
 
@@ -768,14 +772,15 @@ mod tests {
                 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
             ],
         )
-        .unwrap();
+        .expect("valid 4x4 QUBO matrix shape");
 
         let config = DecompositionConfig::default()
             .with_community_algorithm(CommunityDetection::LabelPropagation);
         let decomposer = AdvancedDecomposer::new(config);
 
-        let result = decomposer.label_propagation(&qubo);
-        assert!(result.is_ok());
+        let _labels = decomposer
+            .label_propagation(&qubo)
+            .expect("label propagation should succeed");
     }
 
     #[test]
@@ -798,10 +803,9 @@ mod tests {
 
         let subsolvers = vec![vec![1, 0], vec![0, 1]];
 
-        let result = decomposer.consensus_solve(&partitions, subsolvers);
-        assert!(result.is_ok());
-
-        let consensus = result.unwrap();
+        let consensus = decomposer
+            .consensus_solve(&partitions, subsolvers)
+            .expect("consensus solve should succeed");
         assert_eq!(consensus.solution.len(), 3);
         assert!(consensus.converged);
     }
@@ -828,7 +832,7 @@ mod tests {
                 1.0, 2.0, 3.0, 4.0, 2.0, 5.0, 6.0, 7.0, 3.0, 6.0, 8.0, 9.0, 4.0, 7.0, 9.0, 10.0,
             ],
         )
-        .unwrap();
+        .expect("valid 4x4 QUBO matrix shape");
 
         let config = DecompositionConfig::default();
         let decomposer = AdvancedDecomposer::new(config);
@@ -869,10 +873,9 @@ mod tests {
             .with_overlap_size(1);
         let decomposer = AdvancedDecomposer::new(config);
 
-        let result = decomposer.create_overlapping_partitions(&assignments, 4);
-        assert!(result.is_ok());
-
-        let partitions = result.unwrap();
+        let partitions = decomposer
+            .create_overlapping_partitions(&assignments, 4)
+            .expect("overlapping partitions creation should succeed");
         assert_eq!(partitions.len(), 2);
     }
 }

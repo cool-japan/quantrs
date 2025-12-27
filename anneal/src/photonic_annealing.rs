@@ -95,7 +95,7 @@ pub enum PhotonicArchitecture {
 }
 
 /// Connectivity patterns for spatial architectures
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectivityType {
     /// All-to-all connectivity
     FullyConnected,
@@ -108,7 +108,7 @@ pub enum ConnectivityType {
 }
 
 /// Measurement types for measurement-based architectures
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeasurementType {
     /// Homodyne detection
     Homodyne,
@@ -179,6 +179,7 @@ pub struct PhotonicState {
 
 impl PhotonicState {
     /// Create a vacuum state
+    #[must_use]
     pub fn vacuum(num_modes: usize) -> Self {
         let dim = 2 * num_modes;
         Self {
@@ -244,8 +245,8 @@ impl PhotonicState {
             let exp_neg_2r = (-2.0 * r).exp();
 
             // Simplified squeezing on diagonal
-            covariance_diag[idx] = exp_neg_2r * c * c + exp_2r * s * s;
-            covariance_diag[idx + 1] = exp_neg_2r * s * s + exp_2r * c * c;
+            covariance_diag[idx] = (exp_neg_2r * c).mul_add(c, exp_2r * s * s);
+            covariance_diag[idx + 1] = (exp_neg_2r * s).mul_add(s, exp_2r * c * c);
         }
 
         Ok(Self {
@@ -254,11 +255,12 @@ impl PhotonicState {
             covariance_diag,
             correlations: vec![0.0; dim * dim],
             photon_statistics: None,
-            squeezing_params: squeezing_params.clone(),
+            squeezing_params,
         })
     }
 
     /// Calculate the purity of the state (simplified)
+    #[must_use]
     pub fn purity(&self) -> f64 {
         // Simplified purity calculation using diagonal elements
         let det_approx: f64 = self.covariance_diag.iter().product();
@@ -270,6 +272,7 @@ impl PhotonicState {
     }
 
     /// Calculate mean photon number
+    #[must_use]
     pub fn mean_photon_number(&self) -> f64 {
         let mut total = 0.0;
 
@@ -281,7 +284,7 @@ impl PhotonicState {
             let q_mean = self.displacement[idx];
             let p_mean = self.displacement[idx + 1];
 
-            total += (q_var + p_var + q_mean * q_mean + p_mean * p_mean - 2.0) / 4.0;
+            total += (p_mean.mul_add(p_mean, q_mean.mul_add(q_mean, q_var + p_var)) - 2.0) / 4.0;
         }
 
         total
@@ -605,7 +608,7 @@ impl PhotonicAnnealer {
     /// Create a thermal state
     fn create_thermal_state(num_modes: usize, mean_photons: f64) -> PhotonicResult<PhotonicState> {
         let dim = 2 * num_modes;
-        let scale = 2.0 * mean_photons + 1.0;
+        let scale = 2.0f64.mul_add(mean_photons, 1.0);
 
         Ok(PhotonicState {
             num_modes,
@@ -721,7 +724,7 @@ impl PhotonicAnnealer {
         for i in 0..self.state.displacement.len() {
             self.state.displacement[i] *= decay_factor.sqrt();
             self.state.covariance_diag[i] =
-                self.state.covariance_diag[i] * decay_factor + (1.0 - decay_factor);
+                self.state.covariance_diag[i].mul_add(decay_factor, 1.0 - decay_factor);
         }
 
         Ok(())
@@ -758,7 +761,7 @@ impl PhotonicAnnealer {
         let q_mean = self.state.displacement[idx];
         let p_mean = self.state.displacement[idx + 1];
 
-        (q_var + p_var + q_mean * q_mean + p_mean * p_mean - 2.0) / 4.0
+        (p_mean.mul_add(p_mean, q_mean.mul_add(q_mean, q_var + p_var)) - 2.0) / 4.0
     }
 
     /// Calculate energy expectation value
@@ -802,7 +805,7 @@ impl PhotonicAnnealer {
             let variance = self.state.covariance_diag[idx];
 
             // Sample from Gaussian
-            let value = mean + variance.sqrt() * self.rng.gen_range(-3.0..3.0);
+            let value = variance.sqrt().mul_add(self.rng.gen_range(-3.0..3.0), mean);
             values.push(value);
 
             solution[i] = if value > 0.0 { 1 } else { -1 };
@@ -819,7 +822,7 @@ impl PhotonicAnnealer {
     }
 
     /// Heterodyne measurement
-    fn heterodyne_measurement(&mut self) -> PhotonicResult<MeasurementOutcome> {
+    fn heterodyne_measurement(&self) -> PhotonicResult<MeasurementOutcome> {
         let mut values = Vec::new();
         let mut solution = vec![0i8; self.hamiltonian.num_modes];
 
@@ -840,10 +843,7 @@ impl PhotonicAnnealer {
     }
 
     /// Photon counting measurement
-    fn photon_counting_measurement(
-        &mut self,
-        threshold: f64,
-    ) -> PhotonicResult<MeasurementOutcome> {
+    fn photon_counting_measurement(&self, threshold: f64) -> PhotonicResult<MeasurementOutcome> {
         let mut values = Vec::new();
         let mut solution = vec![0i8; self.hamiltonian.num_modes];
 
@@ -864,7 +864,7 @@ impl PhotonicAnnealer {
     }
 
     /// Parity measurement
-    fn parity_measurement(&mut self) -> PhotonicResult<MeasurementOutcome> {
+    fn parity_measurement(&self) -> PhotonicResult<MeasurementOutcome> {
         let mut values = Vec::new();
         let mut solution = vec![0i8; self.hamiltonian.num_modes];
 
@@ -905,13 +905,15 @@ impl PhotonicAnnealer {
 
         // Single qubit terms
         for i in 0..solution.len() {
-            energy += self.hamiltonian.single_mode[i] * solution[i] as f64;
+            energy += self.hamiltonian.single_mode[i] * f64::from(solution[i]);
         }
 
         // Two qubit terms
         for i in 0..solution.len() {
             for j in (i + 1)..solution.len() {
-                energy += self.hamiltonian.coupling[i][j] * solution[i] as f64 * solution[j] as f64;
+                energy += self.hamiltonian.coupling[i][j]
+                    * f64::from(solution[i])
+                    * f64::from(solution[j]);
             }
         }
 
@@ -927,7 +929,7 @@ impl PhotonicAnnealer {
         let ground_state_energy = outcomes
             .iter()
             .map(|o| o.energy)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0);
 
         let success_count = outcomes
@@ -942,7 +944,7 @@ impl PhotonicAnnealer {
         let energy_range = outcomes
             .iter()
             .map(|o| o.energy)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(0.0)
             - ground_state_energy;
 
@@ -968,6 +970,7 @@ impl PhotonicAnnealer {
 /// Helper functions for creating common photonic states and configurations
 
 /// Create a coherent state configuration
+#[must_use]
 pub fn create_coherent_state_config(alpha: f64) -> PhotonicAnnealingConfig {
     PhotonicAnnealingConfig {
         initial_state: InitialStateType::Coherent { alpha },
@@ -976,6 +979,7 @@ pub fn create_coherent_state_config(alpha: f64) -> PhotonicAnnealingConfig {
 }
 
 /// Create a squeezed state configuration
+#[must_use]
 pub fn create_squeezed_state_config(squeezing: f64) -> PhotonicAnnealingConfig {
     PhotonicAnnealingConfig {
         initial_state: InitialStateType::SqueezedVacuum { squeezing },
@@ -984,6 +988,7 @@ pub fn create_squeezed_state_config(squeezing: f64) -> PhotonicAnnealingConfig {
 }
 
 /// Create a temporal multiplexing configuration
+#[must_use]
 pub fn create_temporal_multiplexing_config(
     num_time_bins: usize,
     repetition_rate: f64,
@@ -998,6 +1003,7 @@ pub fn create_temporal_multiplexing_config(
 }
 
 /// Create a measurement-based configuration
+#[must_use]
 pub fn create_measurement_based_config(resource_size: usize) -> PhotonicAnnealingConfig {
     PhotonicAnnealingConfig {
         architecture: PhotonicArchitecture::MeasurementBased {
@@ -1012,6 +1018,7 @@ pub fn create_measurement_based_config(resource_size: usize) -> PhotonicAnnealin
 }
 
 /// Create a low-noise configuration
+#[must_use]
 pub fn create_low_noise_config() -> PhotonicAnnealingConfig {
     PhotonicAnnealingConfig {
         loss_rate: 0.001,
@@ -1022,13 +1029,14 @@ pub fn create_low_noise_config() -> PhotonicAnnealingConfig {
 }
 
 /// Create a realistic experimental configuration
+#[must_use]
 pub fn create_realistic_config() -> PhotonicAnnealingConfig {
     PhotonicAnnealingConfig {
         loss_rate: 0.1,
         temperature: 300.0, // Room temperature
         quantum_noise: true,
         kerr_strength: 0.01,
-        num_shots: 10000,
+        num_shots: 10_000,
         ..Default::default()
     }
 }
@@ -1051,18 +1059,19 @@ mod tests {
                 NComplex::new(1.0, 1.0),
             ],
         )
-        .unwrap();
+        .expect("Coherent state creation should succeed");
         assert_eq!(coherent.num_modes, 3);
 
-        let squeezed =
-            PhotonicState::squeezed_vacuum(2, vec![(1.0, 0.0), (0.5, PI / 4.0)]).unwrap();
+        let squeezed = PhotonicState::squeezed_vacuum(2, vec![(1.0, 0.0), (0.5, PI / 4.0)])
+            .expect("Squeezed vacuum creation should succeed");
         assert_eq!(squeezed.num_modes, 2);
     }
 
     #[test]
     fn test_photonic_annealer_creation() {
         let config = PhotonicAnnealingConfig::default();
-        let annealer = PhotonicAnnealer::new(config).unwrap();
+        let annealer =
+            PhotonicAnnealer::new(config).expect("PhotonicAnnealer creation should succeed");
         assert_eq!(annealer.hamiltonian.num_modes, 10);
     }
 

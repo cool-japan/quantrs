@@ -16,16 +16,20 @@ fn test_formatter_creation() {
 #[test]
 fn test_formatting_process() {
     let mut circuit = Circuit::<2>::new();
-    circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+    circuit
+        .add_gate(Hadamard { target: QubitId(0) })
+        .expect("add H gate to circuit");
     circuit
         .add_gate(CNOT {
             control: QubitId(0),
             target: QubitId(1),
         })
-        .unwrap();
+        .expect("add CNOT gate to circuit");
 
     let mut formatter = QuantumFormatter::new(circuit);
-    let result = formatter.format_circuit().unwrap();
+    let result = formatter
+        .format_circuit()
+        .expect("format_circuit should succeed");
 
     assert!(!result.formatted_circuit.code.is_empty());
     assert!(result.statistics.total_lines > 0);
@@ -57,7 +61,9 @@ fn test_style_compliance() {
         },
     };
 
-    let compliance = formatter.assess_style_compliance(&style_info).unwrap();
+    let compliance = formatter
+        .assess_style_compliance(&style_info)
+        .expect("assess_style_compliance should succeed");
     assert!(matches!(
         compliance.compliance_level,
         ComplianceLevel::Excellent

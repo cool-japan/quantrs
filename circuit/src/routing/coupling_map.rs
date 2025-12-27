@@ -426,10 +426,14 @@ mod tests {
     fn test_shortest_path() {
         let coupling_map = CouplingMap::linear(5);
 
-        let path = coupling_map.shortest_path(0, 4).unwrap();
+        let path = coupling_map
+            .shortest_path(0, 4)
+            .expect("shortest_path 0->4 should succeed");
         assert_eq!(path, vec![0, 1, 2, 3, 4]);
 
-        let path = coupling_map.shortest_path(2, 2).unwrap();
+        let path = coupling_map
+            .shortest_path(2, 2)
+            .expect("shortest_path 2->2 should succeed");
         assert_eq!(path, vec![2]);
     }
 

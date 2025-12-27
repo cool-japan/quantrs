@@ -55,7 +55,7 @@ impl Default for DynamicTopologyConfig {
 }
 
 /// Reconfiguration strategies for topology changes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReconfigurationStrategy {
     /// Immediate switch to new topology
     ImmediateSwitch,
@@ -190,7 +190,7 @@ pub struct FeatureExtractor {
 }
 
 /// Types of features for prediction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureType {
     /// Temporal patterns in hardware state
     Temporal,
@@ -332,7 +332,7 @@ pub struct MigrationStrategy {
 }
 
 /// Types of migration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MigrationType {
     /// Hot migration (no downtime)
     Hot,
@@ -371,7 +371,7 @@ pub struct SuccessCriterion {
 }
 
 /// Types of success criteria
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CriterionType {
     /// Performance maintained above threshold
     PerformanceThreshold,
@@ -498,7 +498,7 @@ pub struct HardwareSensor {
 }
 
 /// Types of hardware sensors
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SensorType {
     /// Qubit coherence sensor
     QubitCoherence,
@@ -515,7 +515,7 @@ pub enum SensorType {
 }
 
 /// Status of individual sensors
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SensorStatus {
     /// Sensor operational
     Operational,
@@ -541,7 +541,7 @@ pub struct DataCollector {
 }
 
 /// Data collection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CollectionStrategy {
     /// Continuous monitoring
     Continuous,
@@ -569,7 +569,7 @@ pub struct SensorReading {
 }
 
 /// Quality of sensor readings
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReadingQuality {
     /// High quality reading
     High,
@@ -639,7 +639,7 @@ pub struct MonitoringState {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertLevel {
     /// Normal operation
     Normal,
@@ -723,7 +723,7 @@ pub struct AnalysisAlgorithm {
 }
 
 /// Types of analysis algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalysisType {
     /// Statistical analysis
     Statistical,
@@ -755,7 +755,7 @@ pub struct ReconfigurationExecution {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStatus {
     /// Execution in progress
     InProgress,
@@ -785,7 +785,7 @@ pub struct ExecutionLog {
 }
 
 /// Log levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LogLevel {
     Debug,
     Info,
@@ -839,6 +839,7 @@ pub struct ReconfigurationMetrics {
 
 impl DynamicTopologyManager {
     /// Create new dynamic topology manager
+    #[must_use]
     pub fn new(config: DynamicTopologyConfig) -> Self {
         let current_state = Arc::new(RwLock::new(Self::create_initial_state()));
         let hardware_monitor = Arc::new(Mutex::new(HardwareStateMonitor::new()));
@@ -846,7 +847,7 @@ impl DynamicTopologyManager {
         let impact_analyzer = Arc::new(Mutex::new(PerformanceImpactAnalyzer::new()));
 
         Self {
-            config: config.clone(),
+            config,
             current_state,
             hardware_monitor,
             prediction_engine,
@@ -937,7 +938,7 @@ impl DynamicTopologyManager {
             recommendations.push(ReconfigurationRecommendation {
                 recommendation_type: RecommendationType::FailureAvoidance,
                 priority: RecommendationPriority::High,
-                affected_qubits: failed_qubits.clone(),
+                affected_qubits: failed_qubits,
                 suggested_action: "Remap problem to avoid failed qubits".to_string(),
                 estimated_impact: PerformanceImpact {
                     performance_change: -0.05,
@@ -984,8 +985,7 @@ impl DynamicTopologyManager {
                         priority: RecommendationPriority::High,
                         affected_qubits: vec![qubit_id],
                         suggested_action: format!(
-                            "Proactively avoid qubit {} due to predicted failure",
-                            qubit_id
+                            "Proactively avoid qubit {qubit_id} due to predicted failure"
                         ),
                         estimated_impact: PerformanceImpact {
                             performance_change: -0.02,
@@ -1041,10 +1041,7 @@ impl DynamicTopologyManager {
         // Execute migration strategy
         self.execute_migration_strategy(&execution_id, &decision.migration_strategy)?;
 
-        println!(
-            "Topology reconfiguration initiated with ID: {}",
-            execution_id
-        );
+        println!("Topology reconfiguration initiated with ID: {execution_id}");
         Ok(execution_id)
     }
 
@@ -1068,7 +1065,7 @@ impl DynamicTopologyManager {
         execution_id: &str,
         strategy: &MigrationStrategy,
     ) -> ApplicationResult<()> {
-        println!("Executing hot migration for {}", execution_id);
+        println!("Executing hot migration for {execution_id}");
 
         // Simulate hot migration phases
         for (i, phase) in strategy.phases.iter().enumerate() {
@@ -1099,7 +1096,7 @@ impl DynamicTopologyManager {
         execution_id: &str,
         strategy: &MigrationStrategy,
     ) -> ApplicationResult<()> {
-        println!("Executing warm migration for {}", execution_id);
+        println!("Executing warm migration for {execution_id}");
 
         // Similar to hot migration but with brief pause
         for (i, phase) in strategy.phases.iter().enumerate() {
@@ -1128,7 +1125,7 @@ impl DynamicTopologyManager {
         execution_id: &str,
         strategy: &MigrationStrategy,
     ) -> ApplicationResult<()> {
-        println!("Executing cold migration for {}", execution_id);
+        println!("Executing cold migration for {execution_id}");
 
         // Simulate longer migration with restart
         for (i, phase) in strategy.phases.iter().enumerate() {
@@ -1157,7 +1154,7 @@ impl DynamicTopologyManager {
         execution_id: &str,
         strategy: &MigrationStrategy,
     ) -> ApplicationResult<()> {
-        println!("Executing hybrid migration for {}", execution_id);
+        println!("Executing hybrid migration for {execution_id}");
 
         // Adaptive migration based on phase requirements
         for (i, phase) in strategy.phases.iter().enumerate() {
@@ -1226,7 +1223,7 @@ impl DynamicTopologyManager {
                 timestamp: Instant::now(),
                 level,
                 message: message.to_string(),
-                phase: phase.map(|p| p.to_string()),
+                phase: phase.map(std::string::ToString::to_string),
             });
         }
 
@@ -1367,7 +1364,7 @@ pub struct ReconfigurationRecommendation {
 }
 
 /// Types of reconfiguration recommendations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationType {
     /// Avoid hardware failures
     FailureAvoidance,
@@ -1382,7 +1379,7 @@ pub enum RecommendationType {
 }
 
 /// Priority levels for recommendations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationPriority {
     Low,
     Medium,
@@ -1463,7 +1460,7 @@ impl HardwareStateMonitor {
         Ok(())
     }
 
-    fn collect_hardware_state(&mut self) -> ApplicationResult<HardwareState> {
+    fn collect_hardware_state(&self) -> ApplicationResult<HardwareState> {
         // Simulate hardware state collection
         let mut qubit_status = HashMap::new();
         let mut coupler_status = HashMap::new();
@@ -1492,7 +1489,7 @@ impl HardwareStateMonitor {
             coupler_status.insert((i, i + 1), status);
         }
 
-        let health_score = 0.85 + (Instant::now().elapsed().as_secs() % 100) as f64 * 0.001;
+        let health_score = ((Instant::now().elapsed().as_secs() % 100) as f64).mul_add(0.001, 0.85);
 
         Ok(HardwareState {
             timestamp: Instant::now(),
@@ -1549,12 +1546,12 @@ impl TopologyPredictionEngine {
         ]
     }
 
-    fn start_predictions(&mut self) -> ApplicationResult<()> {
+    fn start_predictions(&self) -> ApplicationResult<()> {
         println!("Starting topology prediction engine");
         Ok(())
     }
 
-    fn update_predictions(&mut self) -> ApplicationResult<()> {
+    const fn update_predictions(&self) -> ApplicationResult<()> {
         // Simulate prediction updates
         Ok(())
     }
@@ -1640,7 +1637,7 @@ mod tests {
         let state = monitor.collect_hardware_state();
         assert!(state.is_ok());
 
-        let hardware_state = state.unwrap();
+        let hardware_state = state.expect("collect_hardware_state should succeed");
         assert!(!hardware_state.qubit_status.is_empty());
         assert!(!hardware_state.coupler_status.is_empty());
     }
@@ -1656,13 +1653,14 @@ mod tests {
         let predictions = engine.get_predictions(Duration::from_secs(2 * 3600));
         assert!(predictions.is_ok());
 
-        let prediction_list = predictions.unwrap();
+        let prediction_list = predictions.expect("get_predictions should succeed");
         assert!(!prediction_list.is_empty()); // Should have at least one prediction
     }
 
     #[test]
     fn test_topology_analysis() {
-        let manager = create_example_dynamic_topology_manager().unwrap();
+        let manager = create_example_dynamic_topology_manager()
+            .expect("create_example_dynamic_topology_manager should succeed");
         println!("Created dynamic topology manager with default configuration");
         let problem = IsingModel::new(50);
 
@@ -1670,7 +1668,7 @@ mod tests {
         let recommendations = manager.analyze_topology(&problem);
         assert!(recommendations.is_ok());
 
-        let recs = recommendations.unwrap();
+        let recs = recommendations.expect("analyze_topology should succeed");
         println!("Generated {} topology recommendations", recs.len());
 
         // A healthy system may not generate recommendations - that's expected behavior
@@ -1688,7 +1686,8 @@ mod tests {
 
     #[test]
     fn test_reconfiguration_execution() {
-        let manager = create_example_dynamic_topology_manager().unwrap();
+        let manager = create_example_dynamic_topology_manager()
+            .expect("create_example_dynamic_topology_manager should succeed");
 
         let decision = ReconfigurationDecision {
             timestamp: Instant::now(),
@@ -1726,7 +1725,7 @@ mod tests {
         let result = manager.execute_reconfiguration(decision);
         assert!(result.is_ok());
 
-        let execution_id = result.unwrap();
+        let execution_id = result.expect("execute_reconfiguration should succeed");
         assert!(!execution_id.is_empty());
 
         // Wait a bit for execution to complete

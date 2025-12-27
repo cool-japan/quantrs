@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 /// Advanced configuration for neutral atom quantum devices
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AdvancedNeutralAtomConfig {
     /// Hardware-specific settings
     pub hardware_settings: HardwareSettings,
@@ -19,7 +19,7 @@ pub struct AdvancedNeutralAtomConfig {
 }
 
 /// Hardware-specific settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HardwareSettings {
     /// Laser control parameters
     pub laser_control: LaserControlConfig,
@@ -187,27 +187,6 @@ pub enum CalibrationProcedure {
     Custom(String),
 }
 
-impl Default for AdvancedNeutralAtomConfig {
-    fn default() -> Self {
-        Self {
-            hardware_settings: HardwareSettings::default(),
-            optimization: OptimizationConfig::default(),
-            error_correction: ErrorCorrectionConfig::default(),
-            calibration: CalibrationConfig::default(),
-        }
-    }
-}
-
-impl Default for HardwareSettings {
-    fn default() -> Self {
-        Self {
-            laser_control: LaserControlConfig::default(),
-            trap_config: TrapConfig::default(),
-            detection: DetectionConfig::default(),
-        }
-    }
-}
-
 impl Default for LaserControlConfig {
     fn default() -> Self {
         Self {
@@ -234,7 +213,7 @@ impl Default for TrapConfig {
     fn default() -> Self {
         Self {
             trap_depth: 1000.0,
-            trap_frequency: 100000.0,
+            trap_frequency: 100_000.0,
             anharmonicity: 0.01,
             loading_rate: 1000.0,
         }
@@ -327,7 +306,7 @@ pub fn validate_advanced_config(config: &AdvancedNeutralAtomConfig) -> DeviceRes
 
     // Validate detection efficiency
     let efficiency = config.hardware_settings.detection.efficiency;
-    if efficiency < 0.0 || efficiency > 1.0 {
+    if !(0.0..=1.0).contains(&efficiency) {
         return Err(crate::DeviceError::InvalidInput(
             "Detection efficiency must be between 0 and 1".to_string(),
         ));

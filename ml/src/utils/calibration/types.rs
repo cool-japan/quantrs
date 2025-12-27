@@ -164,8 +164,14 @@ impl MatrixScaler {
                 "Scaler must be fitted before transform".to_string(),
             ));
         }
-        let weight_matrix = self.weight_matrix.as_ref().unwrap();
-        let bias_vector = self.bias_vector.as_ref().unwrap();
+        let weight_matrix = self
+            .weight_matrix
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Weight matrix not initialized".to_string()))?;
+        let bias_vector = self
+            .bias_vector
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Bias vector not initialized".to_string()))?;
         let n_classes = logits.ncols();
         let mut calibrated_probs = Array2::zeros((logits.nrows(), logits.ncols()));
         for i in 0..logits.nrows() {
@@ -206,8 +212,8 @@ impl MatrixScaler {
     pub fn parameters(&self) -> Option<(Array2<f64>, Array1<f64>)> {
         if self.fitted {
             Some((
-                self.weight_matrix.as_ref().unwrap().clone(),
-                self.bias_vector.as_ref().unwrap().clone(),
+                self.weight_matrix.as_ref()?.clone(),
+                self.bias_vector.as_ref()?.clone(),
             ))
         } else {
             None
@@ -219,7 +225,7 @@ impl MatrixScaler {
         if !self.fitted {
             return None;
         }
-        let w = self.weight_matrix.as_ref().unwrap();
+        let w = self.weight_matrix.as_ref()?;
         let norm = w.iter().map(|&x| x * x).sum::<f64>().sqrt();
         Some(norm)
     }
@@ -310,7 +316,7 @@ impl IsotonicRegression {
             if pos == 0 {
                 calibrated[i] = self.y_thresholds[0];
             } else if pos >= self.x_thresholds.len() {
-                calibrated[i] = *self.y_thresholds.last().unwrap();
+                calibrated[i] = self.y_thresholds.last().copied().unwrap_or(0.0);
             } else {
                 let x0 = self.x_thresholds[pos - 1];
                 let x1 = self.x_thresholds[pos];
@@ -427,9 +433,18 @@ impl BayesianBinningQuantiles {
                 "Calibrator must be fitted before transform".to_string(),
             ));
         }
-        let bin_edges = self.bin_edges.as_ref().unwrap();
-        let alphas = self.alphas.as_ref().unwrap();
-        let betas = self.betas.as_ref().unwrap();
+        let bin_edges = self
+            .bin_edges
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Bin edges not initialized".to_string()))?;
+        let alphas = self
+            .alphas
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Alphas not initialized".to_string()))?;
+        let betas = self
+            .betas
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Betas not initialized".to_string()))?;
         let mut calibrated = Array1::zeros(probabilities.len());
         for (i, &prob) in probabilities.iter().enumerate() {
             let bin_idx = self.find_bin(bin_edges, prob);
@@ -465,9 +480,18 @@ impl BayesianBinningQuantiles {
                 "Confidence must be between 0 and 1".to_string(),
             ));
         }
-        let bin_edges = self.bin_edges.as_ref().unwrap();
-        let alphas = self.alphas.as_ref().unwrap();
-        let betas = self.betas.as_ref().unwrap();
+        let bin_edges = self
+            .bin_edges
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Bin edges not initialized".to_string()))?;
+        let alphas = self
+            .alphas
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Alphas not initialized".to_string()))?;
+        let betas = self
+            .betas
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Betas not initialized".to_string()))?;
         let lower_quantile = (1.0 - confidence) / 2.0;
         let upper_quantile = 1.0 - lower_quantile;
         let mut results = Vec::new();
@@ -500,9 +524,9 @@ impl BayesianBinningQuantiles {
     pub fn bin_statistics(&self) -> Option<(Vec<f64>, Array1<f64>, Array1<f64>)> {
         if self.fitted {
             Some((
-                self.bin_edges.as_ref().unwrap().clone(),
-                self.alphas.as_ref().unwrap().clone(),
-                self.betas.as_ref().unwrap().clone(),
+                self.bin_edges.as_ref()?.clone(),
+                self.alphas.as_ref()?.clone(),
+                self.betas.as_ref()?.clone(),
             ))
         } else {
             None
@@ -879,8 +903,14 @@ impl VectorScaler {
                 "Scaler must be fitted before transform".to_string(),
             ));
         }
-        let weights = self.weights.as_ref().unwrap();
-        let biases = self.biases.as_ref().unwrap();
+        let weights = self
+            .weights
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Weights not initialized".to_string()))?;
+        let biases = self
+            .biases
+            .as_ref()
+            .ok_or_else(|| MLError::InvalidInput("Biases not initialized".to_string()))?;
         let mut calibrated_probs = Array2::zeros((logits.nrows(), logits.ncols()));
         for i in 0..logits.nrows() {
             let scaled_logits = logits.row(i).to_owned() * weights + biases;
@@ -912,8 +942,8 @@ impl VectorScaler {
     pub fn parameters(&self) -> Option<(Array1<f64>, Array1<f64>)> {
         if self.fitted {
             Some((
-                self.weights.as_ref().unwrap().clone(),
-                self.biases.as_ref().unwrap().clone(),
+                self.weights.as_ref()?.clone(),
+                self.biases.as_ref()?.clone(),
             ))
         } else {
             None

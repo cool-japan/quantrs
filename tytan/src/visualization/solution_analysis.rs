@@ -216,7 +216,7 @@ impl SolutionDistribution {
 
         // Compute quantiles
         let mut sorted_energies = energies;
-        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut energy_quantiles = HashMap::new();
         for &q in &[25, 50, 75] {
@@ -518,7 +518,11 @@ impl SolutionDistribution {
             // Simple clustering by energy
             let energies: Vec<f64> = self.samples.iter().map(|s| s.energy).collect();
             let mut sorted_indices: Vec<usize> = (0..energies.len()).collect();
-            sorted_indices.sort_by(|&a, &b| energies[a].partial_cmp(&energies[b]).unwrap());
+            sorted_indices.sort_by(|&a, &b| {
+                energies[a]
+                    .partial_cmp(&energies[b])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             let n_clusters = self.config.n_clusters.unwrap_or(5);
             let cluster_size = energies.len() / n_clusters;
@@ -740,7 +744,7 @@ impl SolutionDistribution {
 
         // Calculate percentiles
         let mut sorted_energies = energies;
-        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut percentile_values = HashMap::new();
         for p in &[1, 5, 10, 25, 50, 75, 90, 95, 99] {

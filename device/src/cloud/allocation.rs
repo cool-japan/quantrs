@@ -22,7 +22,7 @@ pub struct ResourceAllocationConfig {
 }
 
 /// Allocation algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationAlgorithm {
     FirstFit,
     BestFit,
@@ -39,7 +39,7 @@ pub enum AllocationAlgorithm {
 }
 
 /// Resource optimization objectives
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResourceOptimizationObjective {
     MinimizeCost,
     MaximizePerformance,
@@ -52,7 +52,7 @@ pub enum ResourceOptimizationObjective {
 }
 
 /// Allocation constraints
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AllocationConstraints {
     pub max_memory: Option<usize>,
     pub max_cpu: Option<usize>,
@@ -69,7 +69,7 @@ pub struct AllocationConstraints {
 }
 
 /// Geographic constraints
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GeographicConstraints {
     /// Allowed regions
     pub allowed_regions: Vec<String>,
@@ -82,7 +82,7 @@ pub struct GeographicConstraints {
 }
 
 /// Data residency requirements
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DataResidencyRequirements {
     /// Required countries
     pub required_countries: Vec<String>,
@@ -93,7 +93,7 @@ pub struct DataResidencyRequirements {
 }
 
 /// Compliance frameworks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComplianceFramework {
     GDPR,
     HIPAA,
@@ -128,7 +128,7 @@ pub struct SecurityConstraints {
 }
 
 /// Security features
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityFeature {
     EncryptionAtRest,
     EncryptionInTransit,
@@ -185,7 +185,7 @@ pub struct AccessControlRequirements {
 }
 
 /// Authentication methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthenticationMethod {
     Password,
     TwoFactor,
@@ -197,7 +197,7 @@ pub enum AuthenticationMethod {
 }
 
 /// Authorization models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthorizationModel {
     RBAC,
     ABAC,
@@ -229,7 +229,7 @@ pub struct AuditRequirements {
 }
 
 /// Audit events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuditEvent {
     Login,
     Logout,
@@ -289,7 +289,7 @@ pub struct CostConstraints {
 }
 
 /// Cost optimization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostOptimizationStrategy {
     MinimizeTotal,
     OptimizePerformancePerDollar,
@@ -314,7 +314,7 @@ pub struct DynamicReallocationConfig {
 }
 
 /// Reallocation triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReallocationTrigger {
     ResourceUtilization,
     PerformanceDegradation,
@@ -351,7 +351,7 @@ pub struct PolicyCondition {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     GreaterThan,
     LessThan,
@@ -362,7 +362,7 @@ pub enum ComparisonOperator {
 }
 
 /// Policy actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolicyAction {
     ScaleUp,
     ScaleDown,
@@ -386,7 +386,7 @@ pub struct MigrationSettings {
 }
 
 /// Migration strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MigrationStrategy {
     LiveMigration,
     ColdMigration,
@@ -408,7 +408,7 @@ pub struct DataTransferSettings {
 }
 
 /// Data transfer methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataTransferMethod {
     NetworkCopy,
     PhysicalTransfer,
@@ -439,7 +439,7 @@ pub struct RollbackCondition {
 }
 
 /// Rollback condition types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RollbackConditionType {
     PerformanceDegradation,
     ErrorRateIncrease,
@@ -462,7 +462,7 @@ pub struct PredictiveAllocationConfig {
 }
 
 /// Prediction algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PredictionAlgorithm {
     LinearRegression,
     ARIMA,
@@ -498,7 +498,7 @@ pub struct FeatureSelectionConfig {
 }
 
 /// Feature selection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeatureSelectionMethod {
     VarianceThreshold,
     UnivariateSelection,
@@ -519,7 +519,7 @@ pub struct ModelValidationConfig {
 }
 
 /// Validation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValidationMethod {
     HoldOut,
     CrossValidation,
@@ -577,7 +577,7 @@ pub struct ConstraintHandlingConfig {
 }
 
 /// Constraint handling methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintHandlingMethod {
     PenaltyMethod,
     BarrierMethod,
@@ -587,7 +587,7 @@ pub enum ConstraintHandlingMethod {
 }
 
 /// Repair mechanisms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RepairMechanism {
     RandomRepair,
     GreedyRepair,
@@ -607,7 +607,7 @@ pub struct SolutionSelectionConfig {
 }
 
 /// Solution selection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SolutionSelectionMethod {
     WeightedSum,
     TOPSIS,
@@ -617,7 +617,7 @@ pub enum SolutionSelectionMethod {
 }
 
 /// Selection criteria
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SelectionCriterion {
     MinDistance,
     MaxUtility,
@@ -626,7 +626,7 @@ pub enum SelectionCriterion {
 }
 
 /// User preferences
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserPreferences {
     /// Preference weights
     pub weights: HashMap<String, f64>,
@@ -664,42 +664,6 @@ impl Default for ResourceAllocationConfig {
             dynamic_reallocation: DynamicReallocationConfig::default(),
             predictive_allocation: PredictiveAllocationConfig::default(),
             multi_objective_config: MultiObjectiveAllocationConfig::default(),
-        }
-    }
-}
-
-impl Default for AllocationConstraints {
-    fn default() -> Self {
-        Self {
-            max_memory: None,
-            max_cpu: None,
-            max_gpus: None,
-            required_features: vec![],
-            geographic: GeographicConstraints::default(),
-            security: SecurityConstraints::default(),
-            performance: PerformanceConstraints::default(),
-            cost: CostConstraints::default(),
-        }
-    }
-}
-
-impl Default for GeographicConstraints {
-    fn default() -> Self {
-        Self {
-            allowed_regions: vec![],
-            prohibited_regions: vec![],
-            data_residency: DataResidencyRequirements::default(),
-            latency_constraints: LatencyConstraints::default(),
-        }
-    }
-}
-
-impl Default for DataResidencyRequirements {
-    fn default() -> Self {
-        Self {
-            required_countries: vec![],
-            prohibited_countries: vec![],
-            compliance_frameworks: vec![],
         }
     }
 }
@@ -976,16 +940,6 @@ impl Default for SolutionSelectionConfig {
             method: SolutionSelectionMethod::TOPSIS,
             criteria: vec![SelectionCriterion::MinDistance],
             preferences: UserPreferences::default(),
-        }
-    }
-}
-
-impl Default for UserPreferences {
-    fn default() -> Self {
-        Self {
-            weights: HashMap::new(),
-            constraints: vec![],
-            interactive_feedback: false,
         }
     }
 }

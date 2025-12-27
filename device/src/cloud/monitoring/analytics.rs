@@ -34,7 +34,7 @@ pub struct DataCollectionConfig {
 }
 
 /// Data sources
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataSource {
     Metrics,
     Logs,
@@ -77,7 +77,7 @@ pub struct CompressionSettings {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     Gzip,
     Lz4,
@@ -110,7 +110,7 @@ pub struct QualityRule {
 }
 
 /// Quality rule types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QualityRuleType {
     Completeness,
     Accuracy,
@@ -121,7 +121,7 @@ pub enum QualityRuleType {
 }
 
 /// Quality failure actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QualityFailureAction {
     Alert,
     Quarantine,
@@ -144,7 +144,7 @@ pub struct AnalysisEngine {
 }
 
 /// Analysis engine types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalysisEngineType {
     Statistical,
     MachineLearning,
@@ -204,7 +204,7 @@ pub struct CacheSettings {
 }
 
 /// Cache policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CachePolicy {
     LRU,
     LFU,
@@ -213,7 +213,7 @@ pub enum CachePolicy {
 }
 
 /// Analysis types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalysisType {
     TrendAnalysis,
     SeasonalAnalysis,
@@ -225,7 +225,7 @@ pub enum AnalysisType {
 }
 
 /// Reporting configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ReportingConfig {
     /// Enable automated reporting
     pub enabled: bool,
@@ -253,7 +253,7 @@ pub struct ReportSchedule {
 }
 
 /// Report frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportFrequency {
     Hourly,
     Daily,
@@ -277,7 +277,7 @@ pub struct ReportTemplate {
 }
 
 /// Report template types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportTemplateType {
     Executive,
     Technical,
@@ -300,7 +300,7 @@ pub struct ReportSection {
 }
 
 /// Report section types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportSectionType {
     Summary,
     Metrics,
@@ -311,7 +311,7 @@ pub enum ReportSectionType {
 }
 
 /// Visualization types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VisualizationType {
     Table,
     LineChart,
@@ -334,7 +334,7 @@ pub struct ReportFormatting {
 }
 
 /// Output formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutputFormat {
     PDF,
     HTML,
@@ -378,7 +378,7 @@ pub struct LayoutOptions {
 }
 
 /// Page orientation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PageOrientation {
     Portrait,
     Landscape,
@@ -420,7 +420,7 @@ pub struct DistributionConfig {
 }
 
 /// Distribution channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DistributionChannel {
     Email,
     S3,
@@ -431,7 +431,7 @@ pub enum DistributionChannel {
 }
 
 /// Access control configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AccessControlConfig {
     /// Enable access control
     pub enabled: bool,
@@ -453,7 +453,7 @@ pub struct Permission {
 }
 
 /// Actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Action {
     Read,
     Write,
@@ -487,7 +487,7 @@ pub struct AnomalyDetectionConfig {
 }
 
 /// Anomaly detection algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnomalyAlgorithm {
     Statistical,
     IsolationForest,
@@ -509,7 +509,7 @@ pub struct SensitivitySettings {
 }
 
 /// Anomaly severity
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
 pub enum AnomalySeverity {
     Critical,
     High,
@@ -540,7 +540,7 @@ pub struct NotificationFrequencyLimits {
 }
 
 /// Dashboard configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DashboardConfig {
     /// Enable dashboards
     pub enabled: bool,
@@ -564,7 +564,7 @@ pub struct Dashboard {
 }
 
 /// Dashboard type
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DashboardType {
     Overview,
     Detailed,
@@ -587,7 +587,7 @@ pub struct Widget {
 }
 
 /// Widget type
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WidgetType {
     Metric,
     Chart,
@@ -715,32 +715,11 @@ impl Default for DataQualityConfig {
     }
 }
 
-impl Default for ReportingConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            schedules: vec![],
-            templates: vec![],
-            distribution: DistributionConfig::default(),
-        }
-    }
-}
-
 impl Default for DistributionConfig {
     fn default() -> Self {
         Self {
             channels: vec![DistributionChannel::Email],
             access_control: AccessControlConfig::default(),
-        }
-    }
-}
-
-impl Default for AccessControlConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            permissions: vec![],
-            roles: vec![],
         }
     }
 }
@@ -782,16 +761,6 @@ impl Default for NotificationFrequencyLimits {
             max_per_hour: 10,
             max_per_day: 50,
             cooldown: Duration::from_secs(300), // 5 minutes
-        }
-    }
-}
-
-impl Default for DashboardConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            dashboards: vec![],
-            refresh: RefreshSettings::default(),
         }
     }
 }

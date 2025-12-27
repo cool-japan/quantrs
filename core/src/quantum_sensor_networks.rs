@@ -805,7 +805,7 @@ impl QuantumSensorNetwork {
         Ok(deployed_sensors)
     }
 
-    fn establish_sensor_entanglement_network(
+    const fn establish_sensor_entanglement_network(
         &self,
         sensors: &[u64],
     ) -> Result<EntanglementNetwork, QuantRS2Error> {
@@ -816,37 +816,37 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn calculate_coverage_efficiency(&self, _area: &CoverageArea) -> f64 {
+    const fn calculate_coverage_efficiency(&self, _area: &CoverageArea) -> f64 {
         0.92 // 92% coverage efficiency
     }
 
     // Benchmarking methods
-    fn benchmark_sensitivity_improvements(&self) -> f64 {
+    const fn benchmark_sensitivity_improvements(&self) -> f64 {
         34.2 // 34.2x sensitivity improvement with quantum sensors
     }
 
-    fn benchmark_precision_enhancements(&self) -> f64 {
+    const fn benchmark_precision_enhancements(&self) -> f64 {
         18.7 // 18.7x precision enhancement
     }
 
-    fn benchmark_distributed_sensing(&self) -> f64 {
+    const fn benchmark_distributed_sensing(&self) -> f64 {
         12.4 // 12.4x advantage for distributed sensing
     }
 
-    fn benchmark_environmental_monitoring(&self) -> f64 {
+    const fn benchmark_environmental_monitoring(&self) -> f64 {
         9.8 // 9.8x better environmental monitoring
     }
 
-    fn benchmark_network_scalability(&self) -> f64 {
+    const fn benchmark_network_scalability(&self) -> f64 {
         15.6 // 15.6x better scalability
     }
 
     // Placeholder implementations for complex operations
-    fn initialize_sensor_calibration(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
+    const fn initialize_sensor_calibration(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn configure_data_fusion_protocols(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
+    const fn configure_data_fusion_protocols(&self, _sensors: &[u64]) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
@@ -855,10 +855,10 @@ impl QuantumSensorNetwork {
         _target: &MeasurementTarget,
         _requirements: &PrecisionRequirements,
     ) -> Result<Vec<u64>, QuantRS2Error> {
-        Ok(self.quantum_sensors.keys().take(4).cloned().collect())
+        Ok(self.quantum_sensors.keys().take(4).copied().collect())
     }
 
-    fn prepare_entangled_probe_states(
+    const fn prepare_entangled_probe_states(
         &self,
         _sensors: &[u64],
         _protocol: &SensingProtocol,
@@ -869,7 +869,7 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn execute_coordinated_measurements(
+    const fn execute_coordinated_measurements(
         &self,
         _sensors: &[u64],
         _probes: &EntangledProbeStates,
@@ -878,7 +878,7 @@ impl QuantumSensorNetwork {
         Ok(vec![])
     }
 
-    fn calculate_quantum_sensing_advantage(
+    const fn calculate_quantum_sensing_advantage(
         &self,
         _result: &FusedMeasurementResult,
         _requirements: &PrecisionRequirements,
@@ -965,7 +965,7 @@ pub struct QuantumSensorCalibration {
 }
 
 impl QuantumSensorCalibration {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             calibration_protocols: Vec::new(),
         }
@@ -984,13 +984,13 @@ pub struct QuantumDataFusion {
 }
 
 impl QuantumDataFusion {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             fusion_algorithms: Vec::new(),
         }
     }
 
-    pub fn fuse_quantum_measurements(
+    pub const fn fuse_quantum_measurements(
         &self,
         _measurements: &[SensorMeasurement],
         _requirements: &PrecisionRequirements,
@@ -1024,7 +1024,7 @@ pub struct EnvironmentalMonitoring {
 }
 
 impl EnvironmentalMonitoring {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             monitoring_protocols: Vec::new(),
         }
@@ -1056,7 +1056,7 @@ pub struct NetworkSynchronization {
 }
 
 impl NetworkSynchronization {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             synchronization_protocol: SynchronizationProtocol::GPS,
             time_accuracy: Duration::from_nanos(1),
@@ -1118,7 +1118,7 @@ pub struct QuantumSensorAdvantageReport {
 }
 
 impl QuantumSensorAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             sensitivity_advantage: 0.0,
             precision_advantage: 0.0,
@@ -1271,7 +1271,7 @@ pub struct TrendPrediction {
 
 // Placeholder implementations (simplified)
 impl QuantumSensorNetwork {
-    fn create_monitoring_schedule(
+    const fn create_monitoring_schedule(
         &self,
         _region: &MonitoringRegion,
         _parameters: &[EnvironmentalParameter],
@@ -1282,7 +1282,7 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn deploy_environmental_sensing_grid(
+    const fn deploy_environmental_sensing_grid(
         &self,
         _region: &MonitoringRegion,
         _parameters: &[EnvironmentalParameter],
@@ -1293,7 +1293,7 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn execute_quantum_environmental_monitoring(
+    const fn execute_quantum_environmental_monitoring(
         &self,
         _grid: &SensingGrid,
         _schedule: &MonitoringSchedule,
@@ -1305,7 +1305,7 @@ impl QuantumSensorNetwork {
         })
     }
 
-    fn analyze_environmental_trends(
+    const fn analyze_environmental_trends(
         &self,
         _results: &MonitoringResults,
     ) -> Result<TrendAnalysis, QuantRS2Error> {
@@ -1472,7 +1472,7 @@ mod tests {
             network.deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area);
         assert!(result.is_ok());
 
-        let deployment_result = result.unwrap();
+        let deployment_result = result.expect("sensor deployment should succeed");
         assert!(deployment_result.deployed_sensor_count > 0);
         assert!(deployment_result.quantum_advantage_factor > 1.0);
         assert!(deployment_result.coverage_efficiency > 0.8);
@@ -1496,7 +1496,7 @@ mod tests {
         };
         network
             .deploy_quantum_sensors(sensor_types, deployment_pattern, coverage_area)
-            .unwrap();
+            .expect("initial sensor deployment should succeed");
 
         let measurement_target = MeasurementTarget {
             target_type: TargetType::PointSource,
@@ -1526,7 +1526,7 @@ mod tests {
         );
         assert!(result.is_ok());
 
-        let sensing_result = result.unwrap();
+        let sensing_result = result.expect("distributed sensing should succeed");
         assert!(sensing_result.quantum_advantage > 1.0);
         assert!(sensing_result.measurement_uncertainty < 1e-10);
     }

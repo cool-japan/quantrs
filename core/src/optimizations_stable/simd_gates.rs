@@ -36,7 +36,7 @@ pub enum VectorizedOperation {
 }
 
 /// Types of vectorized state vector operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StateVectorOpType {
     Normalization,
     ProbabilityCalculation,
@@ -192,13 +192,14 @@ impl SIMDGateProcessor {
         };
 
         // Update statistics
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self.statistics.write().unwrap_or_else(|e| e.into_inner());
         stats.operations_vectorized += 1;
         stats.total_elements_processed += state_vector.len() as u64;
 
         let elapsed = start_time.elapsed().as_nanos() as f64;
-        stats.average_speedup = (stats.average_speedup * (stats.operations_vectorized - 1) as f64
-            + speedup)
+        stats.average_speedup = stats
+            .average_speedup
+            .mul_add((stats.operations_vectorized - 1) as f64, speedup)
             / stats.operations_vectorized as f64;
 
         Ok(speedup)
@@ -399,7 +400,7 @@ impl SIMDGateProcessor {
             }
         }
 
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self.statistics.write().unwrap_or_else(|e| e.into_inner());
         stats.operations_scalar += 1;
 
         Ok(())
@@ -587,7 +588,10 @@ impl SIMDGateProcessor {
 
     /// Get SIMD processor statistics
     pub fn get_statistics(&self) -> SIMDStatistics {
-        self.statistics.read().unwrap().clone()
+        self.statistics
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Get global SIMD statistics
@@ -601,17 +605,17 @@ impl SIMDGateProcessor {
 
     /// Reset statistics
     pub fn reset_statistics(&self) {
-        let mut stats = self.statistics.write().unwrap();
+        let mut stats = self.statistics.write().unwrap_or_else(|e| e.into_inner());
         *stats = SIMDStatistics::default();
     }
 
     /// Get optimal chunk size for SIMD operations
-    pub fn get_optimal_chunk_size(&self) -> usize {
+    pub const fn get_optimal_chunk_size(&self) -> usize {
         self.optimal_chunk_size
     }
 
     /// Get SIMD feature information
-    pub fn get_simd_features(&self) -> &SIMDFeatures {
+    pub const fn get_simd_features(&self) -> &SIMDFeatures {
         &self.simd_features
     }
 }

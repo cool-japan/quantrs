@@ -396,8 +396,8 @@ impl VehicleRoutingOptimizer {
                     route.total_distance += self.distance_matrix[[current, next]];
                     route.total_demand += self.demands[next];
 
-                    let arrival_time =
-                        route.arrival_times.last().unwrap() + self.distance_matrix[[current, next]];
+                    let arrival_time = route.arrival_times.last().copied().unwrap_or(0.0)
+                        + self.distance_matrix[[current, next]];
                     route.arrival_times.push(arrival_time);
 
                     visited.insert(next);
@@ -412,7 +412,7 @@ impl VehicleRoutingOptimizer {
                 route.path.push(self.depot);
                 route.total_distance += self.distance_matrix[[current, self.depot]];
                 route.arrival_times.push(
-                    route.arrival_times.last().unwrap()
+                    route.arrival_times.last().copied().unwrap_or(0.0)
                         + self.distance_matrix[[current, self.depot]],
                 );
                 routes.push(route);
@@ -670,13 +670,13 @@ pub fn create_benchmark_problems() -> Vec<BinaryVehicleRoutingProblem> {
             0.0,
         ],
     )
-    .unwrap();
+    .expect("Small benchmark distance matrix has valid shape");
 
     let small_demands = Array1::from_vec(vec![0.0, 10.0, 15.0, 20.0]);
 
     let small_optimizer =
         VehicleRoutingOptimizer::new(small_distances.clone(), 50.0, small_demands.clone(), 2)
-            .unwrap();
+            .expect("Small benchmark VRP has valid configuration");
 
     problems.push(BinaryVehicleRoutingProblem::new(small_optimizer));
 
@@ -689,12 +689,12 @@ pub fn create_benchmark_problems() -> Vec<BinaryVehicleRoutingProblem> {
             30.0, 40.0, 45.0, 50.0, 55.0, 0.0,
         ],
     )
-    .unwrap();
+    .expect("Medium benchmark distance matrix has valid shape");
 
     let medium_demands = Array1::from_vec(vec![0.0, 12.0, 18.0, 22.0, 16.0, 14.0]);
 
-    let medium_optimizer =
-        VehicleRoutingOptimizer::new(medium_distances, 60.0, medium_demands, 3).unwrap();
+    let medium_optimizer = VehicleRoutingOptimizer::new(medium_distances, 60.0, medium_demands, 3)
+        .expect("Medium benchmark VRP has valid configuration");
 
     problems.push(BinaryVehicleRoutingProblem::new(medium_optimizer));
 
@@ -705,7 +705,7 @@ pub fn create_benchmark_problems() -> Vec<BinaryVehicleRoutingProblem> {
         small_demands,
         2,
     )
-    .unwrap()
+    .expect("CVRPTW benchmark VRP has valid configuration")
     .with_time_windows(vec![
         TimeWindow {
             start: 0.0,
@@ -1570,13 +1570,16 @@ mod tests {
                 35.0, 0.0,
             ],
         )
-        .unwrap();
+        .expect("Test distance matrix has valid shape");
 
         let demands = Array1::from_vec(vec![0.0, 10.0, 15.0, 20.0]);
 
-        let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2).unwrap();
+        let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2)
+            .expect("Test VRP optimizer should be created with valid inputs");
 
-        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer
+            .build_qubo()
+            .expect("VRP QUBO should build successfully");
         assert!(!var_map.is_empty());
     }
 
@@ -1589,10 +1592,13 @@ mod tests {
                 35.0, 0.0,
             ],
         )
-        .unwrap();
+        .expect("Test distance matrix has valid shape");
 
-        let optimizer = TSPOptimizer::new(distances).unwrap();
-        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
+        let optimizer =
+            TSPOptimizer::new(distances).expect("TSP optimizer should be created with valid input");
+        let (_qubo, var_map) = optimizer
+            .build_qubo()
+            .expect("TSP QUBO should build successfully");
 
         assert_eq!(var_map.len(), 16); // 4 cities * 4 time slots
     }
@@ -1630,7 +1636,9 @@ mod tests {
         };
 
         let optimizer = SupplyChainOptimizer::new(network, 3);
-        let (_qubo, var_map) = optimizer.build_qubo().unwrap();
+        let (_qubo, var_map) = optimizer
+            .build_qubo()
+            .expect("Supply chain QUBO should build successfully");
 
         assert!(!var_map.is_empty());
     }
@@ -1644,11 +1652,12 @@ mod tests {
                 35.0, 0.0,
             ],
         )
-        .unwrap();
+        .expect("Test distance matrix has valid shape");
 
         let demands = Array1::from_vec(vec![0.0, 10.0, 15.0, 20.0]);
 
-        let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2).unwrap();
+        let optimizer = VehicleRoutingOptimizer::new(distances, 50.0, demands, 2)
+            .expect("Test VRP optimizer should be created with valid inputs");
 
         let binary_vrp = BinaryVehicleRoutingProblem::new(optimizer);
 
@@ -1660,7 +1669,7 @@ mod tests {
         assert_eq!(solution.len(), 32);
 
         // Test solution evaluation
-        let mut energy = binary_vrp.evaluate_binary(&solution);
+        let energy = binary_vrp.evaluate_binary(&solution);
         assert!(energy.is_finite());
 
         // Test solution decoding
@@ -1676,19 +1685,14 @@ mod tests {
         // Test each problem
         for (i, problem) in problems.iter().enumerate() {
             let solution = problem.random_solution();
-            let mut energy = problem.evaluate_binary(&solution);
-            assert!(
-                energy.is_finite(),
-                "Problem {} should have finite energy",
-                i
-            );
+            let energy = problem.evaluate_binary(&solution);
+            assert!(energy.is_finite(), "Problem {i} should have finite energy");
 
             let routes = problem.decode_binary_solution(&solution);
             // Each problem should be able to decode solutions
             assert!(
                 routes.len() <= 3,
-                "Problem {} should have at most 3 routes",
-                i
+                "Problem {i} should have at most 3 routes"
             );
         }
     }

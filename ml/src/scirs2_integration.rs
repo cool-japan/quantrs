@@ -243,10 +243,14 @@ impl SciRS2Tensor for SciRS2Array {
             Some(ax) => self
                 .data
                 .mean_axis(scirs2_core::ndarray::Axis(ax))
-                .unwrap()
+                .ok_or_else(|| {
+                    MLError::ComputationError("Empty axis for mean computation".to_string())
+                })?
                 .into_dyn(),
             None => {
-                let mean_val = self.data.mean().unwrap();
+                let mean_val = self.data.mean().ok_or_else(|| {
+                    MLError::ComputationError("Empty array for mean computation".to_string())
+                })?;
                 ArrayD::from_elem(IxDyn(&[]), mean_val)
             }
         };
@@ -260,16 +264,18 @@ impl SciRS2Tensor for SciRS2Array {
                 .map_axis(scirs2_core::ndarray::Axis(ax), |view| {
                     *view
                         .iter()
-                        .max_by(|a, b| a.partial_cmp(b).unwrap())
-                        .unwrap()
+                        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                        .expect("map_axis guarantees non-empty view for valid axis")
                 })
                 .into_dyn(),
             None => {
                 let max_val = *self
                     .data
                     .iter()
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap();
+                    .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .ok_or_else(|| {
+                        MLError::ComputationError("Empty array for max computation".to_string())
+                    })?;
                 ArrayD::from_elem(IxDyn(&[]), max_val)
             }
         };
@@ -283,16 +289,18 @@ impl SciRS2Tensor for SciRS2Array {
                 .map_axis(scirs2_core::ndarray::Axis(ax), |view| {
                     *view
                         .iter()
-                        .min_by(|a, b| a.partial_cmp(b).unwrap())
-                        .unwrap()
+                        .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                        .expect("map_axis guarantees non-empty view for valid axis")
                 })
                 .into_dyn(),
             None => {
                 let min_val = *self
                     .data
                     .iter()
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap();
+                    .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                    .ok_or_else(|| {
+                        MLError::ComputationError("Empty array for min computation".to_string())
+                    })?;
                 ArrayD::from_elem(IxDyn(&[]), min_val)
             }
         };
@@ -418,19 +426,33 @@ impl SciRS2Optimizer {
 
                 // Update first moment estimate
                 {
-                    let m = self.state.get_mut(&m_key).unwrap();
+                    let m = self
+                        .state
+                        .get_mut(&m_key)
+                        .expect("m_key was just inserted if not present");
                     *m = *beta1 * &*m + (1.0 - *beta1) * grad;
                 }
 
                 // Update second moment estimate
                 {
-                    let v = self.state.get_mut(&v_key).unwrap();
+                    let v = self
+                        .state
+                        .get_mut(&v_key)
+                        .expect("v_key was just inserted if not present");
                     *v = *beta2 * &*v + (1.0 - *beta2) * grad * grad;
                 }
 
                 // Get references for bias correction
-                let m_hat = self.state.get(&m_key).unwrap().clone();
-                let v_hat = self.state.get(&v_key).unwrap().clone();
+                let m_hat = self
+                    .state
+                    .get(&m_key)
+                    .expect("m_key exists after update")
+                    .clone();
+                let v_hat = self
+                    .state
+                    .get(&v_key)
+                    .expect("v_key exists after update")
+                    .clone();
 
                 // Update parameters
                 param.data =
@@ -455,7 +477,10 @@ impl SciRS2Optimizer {
                             .insert(v_key.clone(), ArrayD::zeros(grad.raw_dim()));
                     }
 
-                    let v = self.state.get_mut(&v_key).unwrap();
+                    let v = self
+                        .state
+                        .get_mut(&v_key)
+                        .expect("v_key was just inserted if not present");
                     *v = *momentum * &*v + *learning_rate * grad;
                     param.data = &param.data - &*v;
                 } else {
@@ -758,7 +783,8 @@ mod tests {
 
     #[test]
     fn test_scirs2_array_creation() {
-        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
+        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])
+            .expect("valid shape for 2x2 array");
         let scirs2_arr = SciRS2Array::from_array(arr);
 
         assert_eq!(scirs2_arr.data.shape(), &[2, 2]);
@@ -767,7 +793,8 @@ mod tests {
 
     #[test]
     fn test_scirs2_array_with_grad() {
-        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
+        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])
+            .expect("valid shape for 2x2 array");
         let scirs2_arr = SciRS2Array::with_grad(arr);
 
         assert!(scirs2_arr.requires_grad);
@@ -776,13 +803,17 @@ mod tests {
 
     #[test]
     fn test_scirs2_matmul() {
-        let arr1 = Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
-        let arr2 = Array2::from_shape_vec((3, 2), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
+        let arr1 = Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("valid shape for 2x3 array");
+        let arr2 = Array2::from_shape_vec((3, 2), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("valid shape for 3x2 array");
 
         let scirs2_arr1 = SciRS2Array::from_array(arr1);
         let scirs2_arr2 = SciRS2Array::from_array(arr2);
 
-        let result = scirs2_arr1.matmul(&scirs2_arr2).unwrap();
+        let result = scirs2_arr1
+            .matmul(&scirs2_arr2)
+            .expect("matmul should succeed for compatible shapes");
         assert_eq!(result.data.shape(), &[2, 2]);
     }
 
@@ -802,10 +833,12 @@ mod tests {
 
     #[test]
     fn test_integration_helpers() {
-        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
+        let arr = Array2::from_shape_vec((2, 2), vec![1.0, 2.0, 3.0, 4.0])
+            .expect("valid shape for 2x2 array");
         let scirs2_arr = integration::from_ndarray(arr.clone());
 
-        let back_to_ndarray: Array2<f64> = integration::to_ndarray(&scirs2_arr).unwrap();
+        let back_to_ndarray: Array2<f64> = integration::to_ndarray(&scirs2_arr)
+            .expect("conversion back to ndarray should succeed");
         assert_eq!(arr, back_to_ndarray);
     }
 }

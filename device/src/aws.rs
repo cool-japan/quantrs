@@ -74,7 +74,7 @@ pub struct AWSCircuitConfig {
 }
 
 /// Status of a task in AWS Braket
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "aws", derive(Deserialize))]
 pub enum AWSTaskStatus {
     #[cfg_attr(feature = "aws", serde(rename = "CREATED"))]
@@ -256,14 +256,15 @@ impl AWSBraketClient {
         let host = format!("braket.{}.amazonaws.com", self.region);
         headers.insert(
             reqwest::header::HOST,
-            reqwest::header::HeaderValue::from_str(&host).unwrap(),
+            reqwest::header::HeaderValue::from_str(&host)
+                .expect("AWS region contains invalid header characters"),
         );
 
         let now = Utc::now();
         headers.insert(
             reqwest::header::HeaderName::from_static("x-amz-date"),
             reqwest::header::HeaderValue::from_str(&now.format("%Y%m%dT%H%M%SZ").to_string())
-                .unwrap(),
+                .expect("Date format produces valid header value"),
         );
 
         // Create region information

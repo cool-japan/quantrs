@@ -9,7 +9,7 @@ use super::monitoring::*;
 use super::strategies::*;
 
 /// Configuration for adaptive compilation pipeline
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AdaptiveCompilationConfig {
     /// Real-time optimization settings
     pub realtime_optimization: RealtimeOptimizationConfig,
@@ -92,7 +92,7 @@ pub struct OptimizationConstraint {
 }
 
 /// Types of optimization constraints
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     MaxExecutionTime,
     MinFidelity,
@@ -128,7 +128,7 @@ pub struct ParetoExplorationConfig {
 }
 
 /// Trade-off strategies between objectives
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TradeOffStrategy {
     WeightedSum,
     EpsilonConstraint,
@@ -139,7 +139,7 @@ pub enum TradeOffStrategy {
 }
 
 /// Solution ranking methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RankingMethod {
     Dominance,
     TOPSIS,
@@ -175,7 +175,7 @@ pub struct DynamicWeightingConfig {
 }
 
 /// Weighting adaptation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WeightingStrategy {
     PerformanceBased,
     AdaptiveBayesian,
@@ -209,7 +209,7 @@ pub struct EvictionPolicies {
 }
 
 /// Cache eviction policy types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvictionPolicy {
     LRU,
     LFU,
@@ -246,7 +246,7 @@ pub struct DistributedCachingConfig {
 }
 
 /// Cache consistency models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConsistencyModel {
     StrongConsistency,
     EventualConsistency,
@@ -255,27 +255,12 @@ pub enum ConsistencyModel {
 }
 
 /// Cache synchronization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SynchronizationStrategy {
     Immediate,
     Batch,
     LazyPropagation,
     ConflictFree,
-}
-
-impl Default for AdaptiveCompilationConfig {
-    fn default() -> Self {
-        Self {
-            realtime_optimization: RealtimeOptimizationConfig::default(),
-            adaptive_strategies: AdaptiveStrategiesConfig::default(),
-            performance_monitoring: PerformanceMonitoringConfig::default(),
-            ml_optimization: MLOptimizationConfig::default(),
-            circuit_analysis: CircuitAnalysisConfig::default(),
-            hardware_adaptation: HardwareAdaptationConfig::default(),
-            optimization_objectives: OptimizationObjectivesConfig::default(),
-            caching_learning: CachingLearningConfig::default(),
-        }
-    }
 }
 
 impl Default for RealtimeOptimizationConfig {

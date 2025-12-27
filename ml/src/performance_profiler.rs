@@ -423,7 +423,11 @@ impl QuantumMLProfiler {
         }
 
         // Sort by severity (Critical first)
-        bottlenecks.sort_by(|a, b| b.time_percentage.partial_cmp(&a.time_percentage).unwrap());
+        bottlenecks.sort_by(|a, b| {
+            b.time_percentage
+                .partial_cmp(&a.time_percentage)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         bottlenecks
     }
@@ -532,7 +536,7 @@ impl QuantumMLProfiler {
         sorted_ops.sort_by(|a, b| {
             b.percentage_of_total
                 .partial_cmp(&a.percentage_of_total)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for stats in sorted_ops.iter().take(10) {
@@ -640,7 +644,14 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         });
 
-        assert_eq!(profiler.timings.get("test_op").unwrap().len(), 1);
+        assert_eq!(
+            profiler
+                .timings
+                .get("test_op")
+                .expect("test_op timing should exist")
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -656,7 +667,7 @@ mod tests {
             thread::sleep(Duration::from_millis(20));
         });
 
-        let report = profiler.end_session().unwrap();
+        let report = profiler.end_session().expect("End session should succeed");
         assert_eq!(report.operation_stats.len(), 2);
         assert!(report.total_duration >= Duration::from_millis(25));
     }
@@ -676,7 +687,7 @@ mod tests {
             Some(0.95),
         );
 
-        let report = profiler.end_session().unwrap();
+        let report = profiler.end_session().expect("End session should succeed");
         assert_eq!(report.circuit_stats.total_circuits_executed, 1);
         assert_eq!(report.circuit_stats.average_qubit_count, 5.0);
     }

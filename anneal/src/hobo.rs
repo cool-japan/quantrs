@@ -19,8 +19,9 @@ pub struct HigherOrderTerm {
 
 impl HigherOrderTerm {
     /// Create a new higher-order term
+    #[must_use]
     pub fn new(mut variables: Vec<usize>, coefficient: f64) -> Self {
-        variables.sort();
+        variables.sort_unstable();
         variables.dedup();
         Self {
             variables,
@@ -29,11 +30,13 @@ impl HigherOrderTerm {
     }
 
     /// Get the order of this term (number of variables)
+    #[must_use]
     pub fn order(&self) -> usize {
         self.variables.len()
     }
 
     /// Check if this term contains a specific variable
+    #[must_use]
     pub fn contains(&self, var: usize) -> bool {
         self.variables.binary_search(&var).is_ok()
     }
@@ -56,6 +59,7 @@ pub struct HoboProblem {
 
 impl HoboProblem {
     /// Create a new HOBO problem
+    #[must_use]
     pub fn new(num_vars: usize) -> Self {
         Self {
             num_vars,
@@ -121,18 +125,19 @@ impl HoboProblem {
     pub fn max_order(&self) -> usize {
         self.higher_order_terms
             .iter()
-            .map(|term| term.order())
+            .map(HigherOrderTerm::order)
             .max()
             .unwrap_or(2)
-            .max(if !self.quadratic_terms.is_empty() {
-                2
-            } else {
+            .max(if self.quadratic_terms.is_empty() {
                 0
+            } else {
+                2
             })
-            .max(if !self.linear_terms.is_empty() { 1 } else { 0 })
+            .max(usize::from(!self.linear_terms.is_empty()))
     }
 
     /// Check if this is already a QUBO (no higher-order terms)
+    #[must_use]
     pub fn is_qubo(&self) -> bool {
         self.higher_order_terms.is_empty()
     }
@@ -208,7 +213,7 @@ impl HoboProblem {
             // Replace v1 and v2 with aux_var in the term
             current_vars = current_vars[2..].to_vec();
             current_vars.push(aux_var);
-            current_vars.sort();
+            current_vars.sort_unstable();
         }
 
         // Add the final quadratic term
@@ -284,6 +289,7 @@ impl HoboProblem {
     }
 
     /// Evaluate the energy for a given solution
+    #[must_use]
     pub fn evaluate(&self, solution: &[bool]) -> f64 {
         let mut energy = self.offset;
 
@@ -379,6 +385,7 @@ impl QuboReduction {
     }
 
     /// Extract solution for original variables from QUBO solution
+    #[must_use]
     pub fn extract_original_solution(&self, qubo_solution: &[bool]) -> Vec<bool> {
         let mut original_solution = vec![false; self.variable_mapping.len()];
 
@@ -392,6 +399,7 @@ impl QuboReduction {
     }
 
     /// Verify that auxiliary variable constraints are satisfied
+    #[must_use]
     pub fn verify_constraints(&self, solution: &[bool]) -> ConstraintViolations {
         let mut violations = ConstraintViolations::default();
 
@@ -418,7 +426,7 @@ impl QuboReduction {
                         violations.multi_product_violations += 1;
                     }
                 }
-                _ => {}
+                ReductionType::Custom(_) => {}
             }
         }
 
@@ -448,6 +456,7 @@ pub struct HoboAnalyzer;
 
 impl HoboAnalyzer {
     /// Analyze a HOBO problem and provide statistics
+    #[must_use]
     pub fn analyze(problem: &HoboProblem) -> HoboStats {
         let mut stats = HoboStats::default();
 
@@ -463,7 +472,8 @@ impl HoboAnalyzer {
         }
 
         if !order_counts.is_empty() {
-            stats.max_order = *order_counts.keys().max().unwrap();
+            // Safety: we just checked that order_counts is not empty
+            stats.max_order = order_counts.keys().copied().max().unwrap_or(0);
             stats.order_distribution = order_counts;
         } else if !problem.quadratic_terms.is_empty() {
             stats.max_order = 2;
@@ -531,7 +541,9 @@ mod tests {
         let mut hobo = HoboProblem::new(3);
         hobo.add_higher_order(vec![0, 1, 2], 1.0);
 
-        let reduction = hobo.to_qubo(ReductionMethod::SubstitutionMethod).unwrap();
+        let reduction = hobo
+            .to_qubo(ReductionMethod::SubstitutionMethod)
+            .expect("substitution reduction should succeed");
 
         // Should have created 1 auxiliary variable
         assert_eq!(reduction.auxiliary_vars.len(), 1);
@@ -548,7 +560,9 @@ mod tests {
         let mut hobo = HoboProblem::new(4);
         hobo.add_higher_order(vec![0, 1, 2, 3], 2.0);
 
-        let reduction = hobo.to_qubo(ReductionMethod::BooleanProduct).unwrap();
+        let reduction = hobo
+            .to_qubo(ReductionMethod::BooleanProduct)
+            .expect("boolean product reduction should succeed");
 
         // Should have created 1 auxiliary variable for the 4-way term
         assert_eq!(reduction.auxiliary_vars.len(), 1);

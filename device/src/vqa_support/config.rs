@@ -22,7 +22,7 @@ pub struct VQAConfig {
 }
 
 /// Types of VQA algorithms supported
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VQAAlgorithmType {
     /// Variational Quantum Eigensolver
     VQE,
@@ -62,7 +62,7 @@ pub struct VQAOptimizationConfig {
 }
 
 /// VQA optimizers leveraging SciRS2
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VQAOptimizer {
     /// L-BFGS-B (for bounded optimization)
     LBFGSB,
@@ -91,7 +91,7 @@ pub enum VQAOptimizer {
 }
 
 /// Gradient estimation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GradientMethod {
     /// Parameter shift rule
     ParameterShift,
@@ -117,7 +117,7 @@ pub struct MultiStartConfig {
 }
 
 /// Strategies for generating initial points
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InitialPointStrategy {
     Random,
     LatinHypercube,
@@ -128,7 +128,7 @@ pub enum InitialPointStrategy {
 }
 
 /// Convergence criteria for multi-start optimization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConvergenceCriterion {
     BestValue,
     ValueStability,
@@ -146,7 +146,7 @@ pub struct WarmRestartConfig {
 }
 
 /// Restart strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RestartStrategy {
     RandomPerturbation,
     BestKnownSolution,
@@ -198,7 +198,7 @@ pub struct AdaptiveShotConfig {
 }
 
 /// Shot allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShotAllocationStrategy {
     Uniform,
     ProportionalToVariance,
@@ -256,7 +256,7 @@ pub struct VQAValidationConfig {
 }
 
 /// Validation metrics for VQA
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationMetric {
     /// Mean squared error
     MSE,
@@ -389,7 +389,7 @@ impl Default for VQAConfig {
                     enable_adaptive: true,
                     initial_shots: 1000,
                     max_shots: 10000,
-                    shot_budget: 100000,
+                    shot_budget: 100_000,
                     allocation_strategy: ShotAllocationStrategy::UncertaintyBased,
                     precision_target: 1e-3,
                 },
@@ -431,9 +431,10 @@ impl Default for VQAConfig {
 impl VQAConfig {
     /// Create new VQA configuration with algorithm type
     pub fn new(algorithm_type: VQAAlgorithmType) -> Self {
-        let mut config = Self::default();
-        config.algorithm_type = algorithm_type;
-        config
+        Self {
+            algorithm_type,
+            ..Default::default()
+        }
     }
 
     /// Create VQE-specific configuration
@@ -461,25 +462,29 @@ impl VQAConfig {
     }
 
     /// Enable hardware-aware optimization
-    pub fn with_hardware_aware(mut self, enable: bool) -> Self {
+    #[must_use]
+    pub const fn with_hardware_aware(mut self, enable: bool) -> Self {
         self.hardware_config.enable_hardware_aware = enable;
         self
     }
 
     /// Set optimization method
+    #[must_use]
     pub fn with_optimizer(mut self, optimizer: VQAOptimizer) -> Self {
         self.optimization_config.primary_optimizer = optimizer;
         self
     }
 
     /// Set maximum iterations
-    pub fn with_max_iterations(mut self, max_iter: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_iterations(mut self, max_iter: usize) -> Self {
         self.optimization_config.max_iterations = max_iter;
         self
     }
 
     /// Set convergence tolerance
-    pub fn with_tolerance(mut self, tolerance: f64) -> Self {
+    #[must_use]
+    pub const fn with_tolerance(mut self, tolerance: f64) -> Self {
         self.optimization_config.convergence_tolerance = tolerance;
         self
     }
@@ -507,19 +512,19 @@ impl OptimizationTrajectory {
 impl std::fmt::Display for VQAOptimizer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            VQAOptimizer::LBFGSB => "L-BFGS-B",
-            VQAOptimizer::COBYLA => "COBYLA",
-            VQAOptimizer::NelderMead => "Nelder-Mead",
-            VQAOptimizer::DifferentialEvolution => "Differential Evolution",
-            VQAOptimizer::SimulatedAnnealing => "Simulated Annealing",
-            VQAOptimizer::BasinHopping => "Basin Hopping",
-            VQAOptimizer::DualAnnealing => "Dual Annealing",
-            VQAOptimizer::Powell => "Powell",
-            VQAOptimizer::PSO => "Particle Swarm Optimization",
-            VQAOptimizer::QNG => "Quantum Natural Gradient",
-            VQAOptimizer::SPSA => "SPSA",
-            VQAOptimizer::Custom(name) => name,
+            Self::LBFGSB => "L-BFGS-B",
+            Self::COBYLA => "COBYLA",
+            Self::NelderMead => "Nelder-Mead",
+            Self::DifferentialEvolution => "Differential Evolution",
+            Self::SimulatedAnnealing => "Simulated Annealing",
+            Self::BasinHopping => "Basin Hopping",
+            Self::DualAnnealing => "Dual Annealing",
+            Self::Powell => "Powell",
+            Self::PSO => "Particle Swarm Optimization",
+            Self::QNG => "Quantum Natural Gradient",
+            Self::SPSA => "SPSA",
+            Self::Custom(name) => name,
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }

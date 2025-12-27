@@ -40,18 +40,19 @@ pub type AnnealingResult<T> = Result<T, AnnealingError>;
 /// which decreases over time during the annealing process.
 #[derive(Debug, Clone)]
 pub enum TransverseFieldSchedule {
-    /// Linear schedule: A(t) = A_0 * (1 - t/t_f)
+    /// Linear schedule: A(t) = `A_0` * (1 - `t/t_f`)
     Linear,
 
-    /// Exponential schedule: A(t) = A_0 * exp(-alpha * t/t_f)
+    /// Exponential schedule: A(t) = `A_0` * exp(-alpha * `t/t_f`)
     Exponential(f64), // alpha parameter
 
-    /// Custom schedule function: A(t, t_f) -> A
+    /// Custom schedule function: A(t, `t_f`) -> A
     Custom(fn(f64, f64) -> f64),
 }
 
 impl TransverseFieldSchedule {
     /// Calculate the transverse field strength at time t
+    #[must_use]
     pub fn calculate(&self, t: f64, t_f: f64, a_0: f64) -> f64 {
         match self {
             Self::Linear => a_0 * (1.0 - t / t_f),
@@ -67,21 +68,22 @@ impl TransverseFieldSchedule {
 /// and typically decreases over time during the annealing process.
 #[derive(Debug, Clone)]
 pub enum TemperatureSchedule {
-    /// Linear schedule: T(t) = T_0 * (1 - t/t_f)
+    /// Linear schedule: T(t) = `T_0` * (1 - `t/t_f`)
     Linear,
 
-    /// Exponential schedule: T(t) = T_0 * exp(-alpha * t/t_f)
+    /// Exponential schedule: T(t) = `T_0` * exp(-alpha * `t/t_f`)
     Exponential(f64), // alpha parameter
 
-    /// Geometric schedule: T(t) = T_0 * alpha^(t/delta_t)
+    /// Geometric schedule: T(t) = `T_0` * `alpha^(t/delta_t)`
     Geometric(f64, f64), // alpha and delta_t parameters
 
-    /// Custom schedule function: T(t, t_f) -> T
+    /// Custom schedule function: T(t, `t_f`) -> T
     Custom(fn(f64, f64) -> f64),
 }
 
 impl TemperatureSchedule {
     /// Calculate the temperature at time t
+    #[must_use]
     pub fn calculate(&self, t: f64, t_f: f64, t_0: f64) -> f64 {
         match self {
             Self::Linear => t_0 * (1.0 - t / t_f),
@@ -131,7 +133,8 @@ pub struct AnnealingParams {
 
 impl AnnealingParams {
     /// Create new annealing parameters with default values
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             initial_transverse_field: 2.0,
             transverse_field_schedule: TransverseFieldSchedule::Linear,
@@ -191,8 +194,7 @@ impl AnnealingParams {
         if let Some(timeout) = self.timeout {
             if timeout <= 0.0 || !timeout.is_finite() {
                 return Err(AnnealingError::InvalidParameter(format!(
-                    "Timeout must be positive and finite, got {}",
-                    timeout
+                    "Timeout must be positive and finite, got {timeout}"
                 )));
             }
         }
@@ -368,11 +370,11 @@ impl QuantumAnnealingSimulator {
                     let next_slice = (slice + 1) % trotter_slices;
 
                     // Convert spins to f64 for the calculations
-                    let new_spin_f64 = new_spin as f64;
-                    let current_spin_f64 = current_spin as f64;
-                    let neighbor_sum = (trotter_spins[prev_slice][qubit]
-                        + trotter_spins[next_slice][qubit])
-                        as f64;
+                    let new_spin_f64 = f64::from(new_spin);
+                    let current_spin_f64 = f64::from(current_spin);
+                    let neighbor_sum = f64::from(
+                        trotter_spins[prev_slice][qubit] + trotter_spins[next_slice][qubit],
+                    );
 
                     delta_e += j_perp * new_spin_f64 * neighbor_sum;
                     delta_e -= j_perp * current_spin_f64 * neighbor_sum;
@@ -396,7 +398,10 @@ impl QuantumAnnealingSimulator {
             // After annealing, compute the average spin configuration
             let mut avg_spins = vec![0; num_qubits];
             for qubit in 0..num_qubits {
-                let sum: i32 = trotter_spins.iter().map(|slice| slice[qubit] as i32).sum();
+                let sum: i32 = trotter_spins
+                    .iter()
+                    .map(|slice| i32::from(slice[qubit]))
+                    .sum();
                 avg_spins[qubit] = if sum >= 0 { 1 } else { -1 };
             }
 
@@ -426,8 +431,7 @@ impl QuantumAnnealingSimulator {
             total_sweeps,
             runtime,
             info: format!(
-                "Performed {} repetitions with {} total sweeps in {:?}",
-                completed_repetitions, total_sweeps, runtime
+                "Performed {completed_repetitions} repetitions with {total_sweeps} total sweeps in {runtime:?}"
             ),
         })
     }
@@ -586,8 +590,7 @@ impl ClassicalAnnealingSimulator {
             total_sweeps,
             runtime,
             info: format!(
-                "Performed {} repetitions with {} total sweeps in {:?}",
-                completed_repetitions, total_sweeps, runtime
+                "Performed {completed_repetitions} repetitions with {total_sweeps} total sweeps in {runtime:?}"
             ),
         })
     }
@@ -621,7 +624,9 @@ mod tests {
     fn test_classical_annealing_simple() {
         // Create a simple 2-qubit ferromagnetic Ising model
         let mut model = IsingModel::new(2);
-        model.set_coupling(0, 1, -1.0).unwrap(); // Ferromagnetic coupling
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling"); // Ferromagnetic coupling
 
         // Create annealing simulator with fixed seed for reproducibility
         let mut params = AnnealingParams::default();
@@ -629,10 +634,11 @@ mod tests {
         params.num_sweeps = 100;
         params.num_repetitions = 5;
 
-        let simulator = ClassicalAnnealingSimulator::new(params).unwrap();
+        let simulator =
+            ClassicalAnnealingSimulator::new(params).expect("Failed to create simulator");
 
         // Solve the model
-        let result = simulator.solve(&model).unwrap();
+        let result = simulator.solve(&model).expect("Failed to solve model");
 
         // Check that we found the ground state (all spins aligned)
         assert_eq!(result.best_spins.len(), 2);
@@ -649,7 +655,9 @@ mod tests {
     fn test_quantum_annealing_simple() {
         // Create a simple 2-qubit ferromagnetic Ising model
         let mut model = IsingModel::new(2);
-        model.set_coupling(0, 1, -1.0).unwrap(); // Ferromagnetic coupling
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling"); // Ferromagnetic coupling
 
         // Create annealing simulator with fixed seed for reproducibility
         let mut params = AnnealingParams::default();
@@ -658,10 +666,11 @@ mod tests {
         params.num_repetitions = 5;
         params.trotter_slices = 10;
 
-        let simulator = QuantumAnnealingSimulator::new(params).unwrap();
+        let simulator =
+            QuantumAnnealingSimulator::new(params).expect("Failed to create quantum simulator");
 
         // Solve the model
-        let result = simulator.solve(&model).unwrap();
+        let result = simulator.solve(&model).expect("Failed to solve model");
 
         // Check that we found the ground state (all spins aligned)
         assert_eq!(result.best_spins.len(), 2);
@@ -678,9 +687,15 @@ mod tests {
     fn test_classical_annealing_frustrated() {
         // Create a 3-qubit frustrated Ising model
         let mut model = IsingModel::new(3);
-        model.set_coupling(0, 1, -1.0).unwrap(); // Ferromagnetic coupling
-        model.set_coupling(1, 2, -1.0).unwrap(); // Ferromagnetic coupling
-        model.set_coupling(0, 2, 1.0).unwrap(); // Antiferromagnetic coupling
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling"); // Ferromagnetic coupling
+        model
+            .set_coupling(1, 2, -1.0)
+            .expect("Failed to set coupling"); // Ferromagnetic coupling
+        model
+            .set_coupling(0, 2, 1.0)
+            .expect("Failed to set coupling"); // Antiferromagnetic coupling
 
         // Create annealing simulator with fixed seed for reproducibility
         let mut params = AnnealingParams::default();
@@ -688,10 +703,11 @@ mod tests {
         params.num_sweeps = 200;
         params.num_repetitions = 10;
 
-        let simulator = ClassicalAnnealingSimulator::new(params).unwrap();
+        let simulator =
+            ClassicalAnnealingSimulator::new(params).expect("Failed to create simulator");
 
         // Solve the model
-        let result = simulator.solve(&model).unwrap();
+        let result = simulator.solve(&model).expect("Failed to solve model");
 
         // Check energy (should be -1.0 for the ground state)
         assert!(result.best_energy <= -1.0);

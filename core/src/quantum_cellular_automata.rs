@@ -10,7 +10,7 @@ use scirs2_core::ndarray::{Array1, Array2, Array3};
 use scirs2_core::Complex64;
 
 /// Types of quantum cellular automata
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QCAType {
     /// Partitioned QCA (PQCA) - alternating between different partitions
     Partitioned,
@@ -23,7 +23,7 @@ pub enum QCAType {
 }
 
 /// Boundary conditions for the lattice
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundaryCondition {
     /// Periodic boundary conditions (toroidal topology)
     Periodic,
@@ -119,9 +119,9 @@ impl UnitaryRule {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("CNOT matrix has valid 4x4 shape");
 
-        Self::new(unitary).unwrap()
+        Self::new(unitary).expect("CNOT matrix is a valid unitary")
     }
 
     /// Create Hadamard rule for 1 qubit
@@ -136,9 +136,9 @@ impl UnitaryRule {
                 Complex64::new(-sqrt2_inv, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Hadamard matrix has valid 2x2 shape");
 
-        Self::new(unitary).unwrap()
+        Self::new(unitary).expect("Hadamard matrix is a valid unitary")
     }
 
     /// Create Toffoli rule for 3 qubits
@@ -154,7 +154,7 @@ impl UnitaryRule {
         unitary[[6, 7]] = Complex64::new(1.0, 0.0);
         unitary[[7, 6]] = Complex64::new(1.0, 0.0);
 
-        Self::new(unitary).unwrap()
+        Self::new(unitary).expect("Toffoli matrix is a valid unitary")
     }
 }
 
@@ -385,7 +385,7 @@ impl QuantumCellularAutomaton1D {
     }
 
     /// Get neighbor index with boundary conditions
-    fn get_neighbor(&self, site: usize, offset: isize) -> usize {
+    const fn get_neighbor(&self, site: usize, offset: isize) -> usize {
         match self.boundary {
             BoundaryCondition::Periodic => {
                 let new_site = site as isize + offset;
@@ -785,7 +785,7 @@ impl QuantumCellularAutomaton2D {
     }
 
     /// Get neighbor x-coordinate with boundary conditions
-    fn get_neighbor_x(&self, x: usize, offset: isize) -> usize {
+    const fn get_neighbor_x(&self, x: usize, offset: isize) -> usize {
         match self.boundary {
             BoundaryCondition::Periodic => {
                 let new_x = x as isize + offset;
@@ -805,7 +805,7 @@ impl QuantumCellularAutomaton2D {
     }
 
     /// Get neighbor y-coordinate with boundary conditions
-    fn get_neighbor_y(&self, y: usize, offset: isize) -> usize {
+    const fn get_neighbor_y(&self, y: usize, offset: isize) -> usize {
         match self.boundary {
             BoundaryCondition::Periodic => {
                 let new_y = y as isize + offset;
@@ -933,7 +933,9 @@ mod tests {
 
         // Check initial state (all |0⟩)
         for i in 0..10 {
-            let state = qca.get_site_state(i).unwrap();
+            let state = qca
+                .get_site_state(i)
+                .expect("Site state should be retrievable");
             assert!((state[0] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
             assert!((state[1] - Complex64::new(0.0, 0.0)).norm() < 1e-10);
         }
@@ -951,10 +953,10 @@ mod tests {
 
         // Set middle site to |1⟩
         qca.set_site_state(1, [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)])
-            .unwrap();
+            .expect("Site state should be set successfully");
 
         // Evolve one step
-        qca.step().unwrap();
+        qca.step().expect("QCA evolution step should succeed");
         assert_eq!(qca.time_step, 1);
 
         // Check that evolution occurred
@@ -980,7 +982,9 @@ mod tests {
         // Check initial state
         for i in 0..5 {
             for j in 0..5 {
-                let state = qca.get_site_state(i, j).unwrap();
+                let state = qca
+                    .get_site_state(i, j)
+                    .expect("Site state should be retrievable");
                 assert!((state[0] - Complex64::new(1.0, 0.0)).norm() < 1e-10);
                 assert!((state[1] - Complex64::new(0.0, 0.0)).norm() < 1e-10);
             }
@@ -1006,9 +1010,11 @@ mod tests {
                 Complex64::new(sqrt2_inv, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Site state should be set successfully");
 
-        let entropy = qca.entanglement_entropy(0, 2).unwrap();
+        let entropy = qca
+            .entanglement_entropy(0, 2)
+            .expect("Entanglement entropy calculation should succeed");
         assert!(entropy >= 0.0);
     }
 
@@ -1024,11 +1030,13 @@ mod tests {
 
         // Set sites to definite states
         qca.set_site_state(0, [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)])
-            .unwrap(); // |0⟩
+            .expect("Site 0 state should be set to |0>"); // |0⟩
         qca.set_site_state(1, [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)])
-            .unwrap(); // |1⟩
+            .expect("Site 1 state should be set to |1>"); // |1⟩
 
-        let correlation = qca.correlation(0, 1).unwrap();
+        let correlation = qca
+            .correlation(0, 1)
+            .expect("Correlation calculation should succeed");
         assert!((correlation - Complex64::new(-1.0, 0.0)).norm() < 1e-10);
     }
 
@@ -1051,7 +1059,7 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 qca.set_site_state(i, j, [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)])
-                    .unwrap();
+                    .expect("Site state should be set to |1>");
             }
         }
 
@@ -1077,7 +1085,9 @@ mod tests {
             Complex64::new(0.0, 0.0), // |111⟩
         ];
 
-        let output = toffoli.apply(&input).unwrap();
+        let output = toffoli
+            .apply(&input)
+            .expect("Toffoli rule application should succeed");
 
         // Should flip to |111⟩
         assert!((output[6] - Complex64::new(0.0, 0.0)).norm() < 1e-10);

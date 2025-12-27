@@ -47,6 +47,7 @@ impl SciRS2MatrixMultiplier {
         Ok(builder.build())
     }
 
+    #[must_use]
     fn multiply_dense(a: &Array2<Complex64>, b: &Array2<Complex64>) -> Result<Array2<Complex64>> {
         // Stub implementation for SciRS2 dense matrix multiplication
         if a.ncols() != b.nrows() {
@@ -103,6 +104,7 @@ pub struct GateFusion {
 
 impl GateFusion {
     /// Create a new gate fusion optimizer
+    #[must_use]
     pub const fn new(strategy: FusionStrategy) -> Self {
         Self {
             strategy,
@@ -113,6 +115,7 @@ impl GateFusion {
     }
 
     /// Configure fusion parameters
+    #[must_use]
     pub const fn with_params(
         mut self,
         max_qubits: usize,
@@ -235,7 +238,7 @@ impl GateFusion {
 
         // Cost factors:
         // 1. Matrix size (2^n x 2^n for n qubits)
-        let matrix_size_cost = (1 << num_qubits) as f64;
+        let matrix_size_cost = f64::from(1 << num_qubits);
 
         // 2. Number of operations saved
         let ops_saved = (num_gates - 1) as f64;
@@ -505,6 +508,7 @@ impl FusedGate {
     }
 
     /// Get the dimension of the gate
+    #[must_use]
     pub fn dimension(&self) -> usize {
         self.matrix.nrows()
     }
@@ -534,11 +538,13 @@ pub struct OptimizedCircuit {
 
 impl OptimizedCircuit {
     /// Get the effective gate count after fusion
+    #[must_use]
     pub fn gate_count(&self) -> usize {
         self.gates.len()
     }
 
     /// Get memory usage estimate
+    #[must_use]
     pub fn memory_usage(&self) -> usize {
         self.gates
             .iter()
@@ -640,7 +646,8 @@ mod tests {
         builder2.set_value(1, 0, Complex64::new(1.0, 0.0));
         let m2 = builder2.build();
 
-        let result = SciRS2MatrixMultiplier::multiply_sparse(&m1, &m2).unwrap();
+        let result = SciRS2MatrixMultiplier::multiply_sparse(&m1, &m2)
+            .expect("sparse matrix multiplication should succeed");
         assert_eq!(result.num_rows, 2);
         assert_eq!(result.num_cols, 2);
     }
@@ -655,7 +662,9 @@ mod tests {
         };
 
         assert_eq!(fused.dimension(), 4);
-        let sparse = fused.to_sparse().unwrap();
+        let sparse = fused
+            .to_sparse()
+            .expect("conversion to sparse should succeed");
         assert_eq!(sparse.num_rows, 4);
     }
 
@@ -679,7 +688,9 @@ mod tests {
             }),
         ];
 
-        let cost = fusion.compute_fusion_cost(&group, &gates).unwrap();
+        let cost = fusion
+            .compute_fusion_cost(&group, &gates)
+            .expect("fusion cost computation should succeed");
         assert!(cost > 0.0);
     }
 }

@@ -126,11 +126,19 @@ impl PhotonicQuantumDeviceImpl {
     async fn initialize(&self) -> DeviceResult<()> {
         // Load capabilities
         let capabilities = self.load_capabilities().await?;
-        *self.capabilities.write().unwrap() = Some(capabilities);
+        *self
+            .capabilities
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("Capabilities lock poisoned: {e}")))? =
+            Some(capabilities);
 
         // Load calibration data
         let calibration = self.load_calibration_data().await?;
-        *self.calibration.write().unwrap() = calibration;
+        *self
+            .calibration
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("Calibration lock poisoned: {e}")))? =
+            calibration;
 
         Ok(())
     }
@@ -228,7 +236,10 @@ impl PhotonicQuantumDeviceImpl {
 
     /// Update performance metrics
     fn update_metrics(&self, execution_time: Duration, success: bool, fidelity: Option<f64>) {
-        let mut metrics = self.metrics.write().unwrap();
+        let Ok(mut metrics) = self.metrics.write() else {
+            // If lock is poisoned, skip metrics update rather than panic
+            return;
+        };
 
         metrics.circuits_executed += 1;
 
@@ -238,21 +249,27 @@ impl PhotonicQuantumDeviceImpl {
         metrics.avg_execution_time = total_time / metrics.circuits_executed as u32;
 
         // Update success rate
-        let total_success = metrics.success_rate * (metrics.circuits_executed - 1) as f64
-            + if success { 1.0 } else { 0.0 };
+        let total_success = metrics.success_rate.mul_add(
+            (metrics.circuits_executed - 1) as f64,
+            if success { 1.0 } else { 0.0 },
+        );
         metrics.success_rate = total_success / metrics.circuits_executed as f64;
 
         // Update average fidelity if provided
         if let Some(fid) = fidelity {
-            let total_fidelity =
-                metrics.avg_fidelity * (metrics.circuits_executed - 1) as f64 + fid;
+            let total_fidelity = metrics
+                .avg_fidelity
+                .mul_add((metrics.circuits_executed - 1) as f64, fid);
             metrics.avg_fidelity = total_fidelity / metrics.circuits_executed as f64;
         }
     }
 
     /// Check if calibration is valid
     fn is_calibration_valid(&self) -> bool {
-        let calibration = self.calibration.read().unwrap();
+        let Ok(calibration) = self.calibration.read() else {
+            // If lock is poisoned, assume calibration is invalid
+            return false;
+        };
         calibration.last_calibration.elapsed() < calibration.validity_duration
     }
 
@@ -260,7 +277,11 @@ impl PhotonicQuantumDeviceImpl {
     async fn ensure_calibrated(&self) -> DeviceResult<()> {
         if !self.is_calibration_valid() {
             let new_calibration = self.load_calibration_data().await?;
-            *self.calibration.write().unwrap() = new_calibration;
+            *self
+                .calibration
+                .write()
+                .map_err(|e| DeviceError::LockError(format!("Calibration lock poisoned: {e}")))? =
+                new_calibration;
         }
         Ok(())
     }
@@ -306,7 +327,10 @@ impl QuantumDevice for PhotonicQuantumDeviceImpl {
         );
 
         // Add performance metrics
-        let metrics = self.metrics.read().unwrap();
+        let metrics = self
+            .metrics
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Metrics lock poisoned: {e}")))?;
         properties.insert(
             "circuits_executed".to_string(),
             metrics.circuits_executed.to_string(),
@@ -391,43 +415,50 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
     }
 
     async fn supports_cv_operations(&self) -> DeviceResult<bool> {
-        let capabilities = self.capabilities.read().unwrap();
-        if let Some(caps) = capabilities.as_ref() {
-            Ok(caps
-                .supported_systems
-                .contains(&PhotonicSystemType::ContinuousVariable))
-        } else {
-            Ok(false)
-        }
+        let capabilities = self
+            .capabilities
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Capabilities lock poisoned: {e}")))?;
+        Ok(capabilities.as_ref().map_or(false, |caps| {
+            caps.supported_systems
+                .contains(&PhotonicSystemType::ContinuousVariable)
+        }))
     }
 
     async fn supports_gate_based(&self) -> DeviceResult<bool> {
-        let capabilities = self.capabilities.read().unwrap();
-        if let Some(caps) = capabilities.as_ref() {
-            Ok(caps
-                .supported_systems
-                .contains(&PhotonicSystemType::GateBased))
-        } else {
-            Ok(false)
-        }
+        let capabilities = self
+            .capabilities
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Capabilities lock poisoned: {e}")))?;
+        Ok(capabilities.as_ref().map_or(false, |caps| {
+            caps.supported_systems
+                .contains(&PhotonicSystemType::GateBased)
+        }))
     }
 
     async fn supports_measurement_based(&self) -> DeviceResult<bool> {
-        let capabilities = self.capabilities.read().unwrap();
-        if let Some(caps) = capabilities.as_ref() {
-            Ok(caps
-                .supported_systems
-                .contains(&PhotonicSystemType::MeasurementBased))
-        } else {
-            Ok(false)
-        }
+        let capabilities = self
+            .capabilities
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Capabilities lock poisoned: {e}")))?;
+        Ok(capabilities.as_ref().map_or(false, |caps| {
+            caps.supported_systems
+                .contains(&PhotonicSystemType::MeasurementBased)
+        }))
     }
 
     async fn quadrature_precision(&self) -> DeviceResult<f64> {
         // Return precision based on calibration data
-        let calibration = self.calibration.read().unwrap();
-        let avg_precision = calibration.phase_accuracies.values().copied().sum::<f64>()
-            / calibration.phase_accuracies.len() as f64;
+        let calibration = self
+            .calibration
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("Calibration lock poisoned: {e}")))?;
+        let len = calibration.phase_accuracies.len();
+        if len == 0 {
+            return Ok(0.0);
+        }
+        let avg_precision =
+            calibration.phase_accuracies.values().copied().sum::<f64>() / len as f64;
         Ok(avg_precision)
     }
 
@@ -458,7 +489,7 @@ impl PhotonicQuantumDevice for PhotonicQuantumDeviceImpl {
 
         // Convert config to JSON
         let config_json = serde_json::to_value(&exec_config).map_err(|e| {
-            DeviceError::CircuitConversion(format!("Failed to serialize config: {}", e))
+            DeviceError::CircuitConversion(format!("Failed to serialize config: {e}"))
         })?;
         let mut config_map = std::collections::HashMap::new();
         if let serde_json::Value::Object(map) = config_json {
@@ -610,16 +641,19 @@ impl PhotonicQuantumDeviceImpl {
         }
 
         // Calculate correlations
-        correlations.insert("g2".to_string(), 1.0 + thread_rng().gen::<f64>() * 0.1);
+        correlations.insert(
+            "g2".to_string(),
+            thread_rng().gen::<f64>().mul_add(0.1, 1.0),
+        );
         correlations.insert(
             "visibility".to_string(),
-            0.9 + thread_rng().gen::<f64>() * 0.09,
+            thread_rng().gen::<f64>().mul_add(0.09, 0.9),
         );
 
         // Estimate fidelities
         fidelities.insert(
             "overall".to_string(),
-            0.95 + thread_rng().gen::<f64>() * 0.04,
+            thread_rng().gen::<f64>().mul_add(0.04, 0.95),
         );
         fidelities.insert(
             "gate_fidelity".to_string(),
@@ -677,7 +711,7 @@ mod tests {
             "http://localhost:8080".to_string(),
             "test_token".to_string(),
         )
-        .unwrap();
+        .expect("Failed to create photonic client");
         let config = PhotonicDeviceConfig::default();
 
         let device =
@@ -691,13 +725,16 @@ mod tests {
             "http://localhost:8080".to_string(),
             "test_token".to_string(),
         )
-        .unwrap();
+        .expect("Failed to create photonic client");
         let config = PhotonicDeviceConfig::default();
         let device = PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config)
             .await
-            .unwrap();
+            .expect("Failed to create photonic device");
 
-        let properties = device.properties().await.unwrap();
+        let properties = device
+            .properties()
+            .await
+            .expect("Failed to get device properties");
         assert!(properties.contains_key("system_type"));
         assert!(properties.contains_key("mode_count"));
     }
@@ -708,13 +745,19 @@ mod tests {
             "http://localhost:8080".to_string(),
             "test_token".to_string(),
         )
-        .unwrap();
+        .expect("Failed to create photonic client");
         let config = PhotonicDeviceConfig::default();
         let device = PhotonicQuantumDeviceImpl::new("test_device".to_string(), client, config)
             .await
-            .unwrap();
+            .expect("Failed to create photonic device");
 
-        assert!(device.supports_cv_operations().await.unwrap());
-        assert_eq!(device.mode_count().await.unwrap(), 8);
+        assert!(device
+            .supports_cv_operations()
+            .await
+            .expect("Failed to check CV operations support"));
+        assert_eq!(
+            device.mode_count().await.expect("Failed to get mode count"),
+            8
+        );
     }
 }

@@ -537,7 +537,9 @@ impl<const N: usize> QuantumDebugger<N> {
             self.snapshots.pop_front();
         }
 
-        let circuit = self.circuit.as_ref().unwrap();
+        let circuit = self.circuit.as_ref().ok_or_else(|| {
+            SimulatorError::InvalidOperation("No circuit loaded for snapshot".to_string())
+        })?;
         let state = self.get_current_state()?;
 
         let snapshot = ExecutionSnapshot {
@@ -623,7 +625,10 @@ impl<const N: usize> QuantumDebugger<N> {
                     }
                     WatchProperty::Normalization => {
                         let state = self.get_current_state()?;
-                        state.iter().map(|x| x.norm_sqr()).sum::<f64>()
+                        state
+                            .iter()
+                            .map(scirs2_core::Complex::norm_sqr)
+                            .sum::<f64>()
                     }
                     _ => 0.0, // Other properties would be implemented
                 };
@@ -788,26 +793,31 @@ mod tests {
     #[test]
     fn test_debugger_creation() {
         let config = DebugConfig::default();
-        let debugger: QuantumDebugger<3> = QuantumDebugger::new(config).unwrap();
+        let debugger: QuantumDebugger<3> =
+            QuantumDebugger::new(config).expect("Failed to create debugger");
         assert!(matches!(debugger.execution_state, ExecutionState::Idle));
     }
 
     #[test]
     fn test_breakpoint_management() {
         let config = DebugConfig::default();
-        let mut debugger: QuantumDebugger<3> = QuantumDebugger::new(config).unwrap();
+        let mut debugger: QuantumDebugger<3> =
+            QuantumDebugger::new(config).expect("Failed to create debugger");
 
         debugger.add_breakpoint(BreakCondition::GateIndex(5));
         assert_eq!(debugger.breakpoints.len(), 1);
 
-        debugger.remove_breakpoint(0).unwrap();
+        debugger
+            .remove_breakpoint(0)
+            .expect("Failed to remove breakpoint");
         assert_eq!(debugger.breakpoints.len(), 0);
     }
 
     #[test]
     fn test_watchpoint_management() {
         let config = DebugConfig::default();
-        let mut debugger: QuantumDebugger<3> = QuantumDebugger::new(config).unwrap();
+        let mut debugger: QuantumDebugger<3> =
+            QuantumDebugger::new(config).expect("Failed to create debugger");
 
         let watchpoint = Watchpoint {
             id: "test".to_string(),
@@ -820,7 +830,9 @@ mod tests {
         debugger.add_watchpoint(watchpoint);
         assert!(debugger.get_watchpoint("test").is_some());
 
-        debugger.remove_watchpoint("test").unwrap();
+        debugger
+            .remove_watchpoint("test")
+            .expect("Failed to remove watchpoint");
         assert!(debugger.get_watchpoint("test").is_none());
     }
 }

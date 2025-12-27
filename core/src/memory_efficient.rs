@@ -159,7 +159,7 @@ impl EfficientStateVector {
     }
 
     /// Get the number of qubits
-    pub fn num_qubits(&self) -> usize {
+    pub const fn num_qubits(&self) -> usize {
         self.num_qubits
     }
 
@@ -364,7 +364,7 @@ impl EfficientStateVector {
     }
 
     /// Get memory configuration
-    pub fn get_config(&self) -> &MemoryConfig {
+    pub const fn get_config(&self) -> &MemoryConfig {
         &self.config
     }
 
@@ -407,7 +407,7 @@ pub struct StateMemoryStats {
 }
 
 /// Memory pressure levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MemoryPressureLevel {
     Low,      // < 50% usage
     Medium,   // 50-80% usage
@@ -604,7 +604,7 @@ mod tests {
 
     #[test]
     fn test_efficient_state_vector() {
-        let state = EfficientStateVector::new(3).unwrap();
+        let state = EfficientStateVector::new(3).expect("Failed to create EfficientStateVector");
         assert_eq!(state.num_qubits(), 3);
         assert_eq!(state.size(), 8);
 
@@ -617,13 +617,14 @@ mod tests {
 
     #[test]
     fn test_normalization() {
-        let mut state = EfficientStateVector::new(2).unwrap();
+        let mut state =
+            EfficientStateVector::new(2).expect("Failed to create EfficientStateVector");
         state.data_mut()[0] = Complex64::new(1.0, 0.0);
         state.data_mut()[1] = Complex64::new(0.0, 1.0);
         state.data_mut()[2] = Complex64::new(1.0, 0.0);
         state.data_mut()[3] = Complex64::new(0.0, -1.0);
 
-        state.normalize().unwrap();
+        state.normalize().expect("Normalization should succeed");
 
         let norm_sqr: f64 = state.data().iter().map(|c| c.norm_sqr()).sum();
         assert!((norm_sqr - 1.0).abs() < 1e-10);
@@ -631,7 +632,8 @@ mod tests {
 
     #[test]
     fn test_chunk_processing() {
-        let mut state = EfficientStateVector::new(3).unwrap();
+        let mut state =
+            EfficientStateVector::new(3).expect("Failed to create EfficientStateVector");
 
         // Process in chunks of 2
         state
@@ -640,7 +642,7 @@ mod tests {
                     *amp = Complex64::new((start_idx + i) as f64, 0.0);
                 }
             })
-            .unwrap();
+            .expect("Chunk processing should succeed");
 
         // Verify the result
         for i in 0..8 {

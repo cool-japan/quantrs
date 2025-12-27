@@ -884,7 +884,7 @@ mod tests {
     #[test]
     fn test_forward_pass() {
         let config = QNODEConfig::default();
-        let mut qnode = QuantumNeuralODE::new(config).unwrap();
+        let mut qnode = QuantumNeuralODE::new(config).expect("should create QuantumNeuralODE");
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let result = qnode.forward(&input, (0.0, 1.0));
         assert!(result.is_ok());
@@ -899,7 +899,7 @@ mod tests {
             max_evals: 100, // Reduced from 10000
             ..Default::default()
         };
-        let mut qnode = QuantumNeuralODE::new(config).unwrap();
+        let mut qnode = QuantumNeuralODE::new(config).expect("should create QuantumNeuralODE");
 
         let training_data = vec![(
             Array1::from_vec(vec![0.1, 0.2]), // Match num_qubits

@@ -34,7 +34,7 @@ pub use resource::*;
 pub use security::*;
 
 /// Main cloud monitoring configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CloudMonitoringConfig {
     /// Performance monitoring
     pub performance_monitoring: performance::CloudPerformanceMonitoringConfig,
@@ -48,17 +48,4 @@ pub struct CloudMonitoringConfig {
     pub alerting: alerting::CloudAlertingConfig,
     /// Analytics and reporting
     pub analytics: analytics::CloudAnalyticsConfig,
-}
-
-impl Default for CloudMonitoringConfig {
-    fn default() -> Self {
-        Self {
-            performance_monitoring: performance::CloudPerformanceMonitoringConfig::default(),
-            resource_monitoring: resource::CloudResourceMonitoringConfig::default(),
-            cost_monitoring: cost::CloudCostMonitoringConfig::default(),
-            security_monitoring: security::CloudSecurityMonitoringConfig::default(),
-            alerting: alerting::CloudAlertingConfig::default(),
-            analytics: analytics::CloudAnalyticsConfig::default(),
-        }
-    }
 }

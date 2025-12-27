@@ -641,9 +641,13 @@ mod tests {
         let compiler = PulseCompiler::new(device_config);
 
         let mut circuit = Circuit::<2>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
 
-        let schedule = compiler.compile(&circuit).unwrap();
+        let schedule = compiler
+            .compile(&circuit)
+            .expect("pulse compilation should succeed");
         assert!(schedule.duration > 0.0);
     }
 }

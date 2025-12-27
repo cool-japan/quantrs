@@ -166,7 +166,7 @@ impl QuantumAttention {
 
         for i in 0..seq_len {
             let row = scores.row(i);
-            let max_score = row.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let max_score = row.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
             // Compute exp(score - max) for numerical stability
             let mut exp_scores = Array1::zeros(seq_len);
@@ -485,7 +485,7 @@ impl QuantumTransformerLayer {
             // Compute mean and variance of quantum state amplitudes
             let mut mean_real = 0.0;
             let mut mean_imag = 0.0;
-            for val in row.iter() {
+            for val in row {
                 mean_real += val.re;
                 mean_imag += val.im;
             }
@@ -494,7 +494,7 @@ impl QuantumTransformerLayer {
             let mean = Complex64::new(mean_real, mean_imag);
 
             let mut variance = 0.0;
-            for val in row.iter() {
+            for val in row {
                 let diff = val - mean;
                 variance += diff.norm_sqr();
             }
@@ -554,7 +554,7 @@ impl QuantumTransformer {
     }
 
     /// Get configuration
-    pub fn config(&self) -> &QuantumTransformerConfig {
+    pub const fn config(&self) -> &QuantumTransformerConfig {
         &self.config
     }
 }
@@ -565,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_quantum_attention() {
-        let attention = QuantumAttention::new(4, 2, 2).unwrap();
+        let attention = QuantumAttention::new(4, 2, 2).expect("Failed to create QuantumAttention");
 
         // Create test input (sequence of 3 quantum states)
         let mut input = Array2::zeros((3, 4));
@@ -575,7 +575,9 @@ mod tests {
             }
         }
 
-        let output = attention.forward(&input).unwrap();
+        let output = attention
+            .forward(&input)
+            .expect("Attention forward pass should succeed");
         assert_eq!(output.shape(), &[3, 4]);
     }
 
@@ -590,7 +592,9 @@ mod tests {
             }
         }
 
-        let encoded = pos_enc.encode(&input).unwrap();
+        let encoded = pos_enc
+            .encode(&input)
+            .expect("Positional encoding should succeed");
         assert_eq!(encoded.shape(), &[3, 4]);
     }
 
@@ -607,7 +611,8 @@ mod tests {
             use_layer_norm: true,
         };
 
-        let transformer = QuantumTransformer::new(config).unwrap();
+        let transformer =
+            QuantumTransformer::new(config).expect("Failed to create QuantumTransformer");
 
         // Create test input
         let mut input = Array2::zeros((3, 4));
@@ -617,7 +622,9 @@ mod tests {
             }
         }
 
-        let output = transformer.forward(&input).unwrap();
+        let output = transformer
+            .forward(&input)
+            .expect("Transformer forward pass should succeed");
         assert_eq!(output.shape(), &[3, 4]);
     }
 }

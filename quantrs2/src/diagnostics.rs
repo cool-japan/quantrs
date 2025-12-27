@@ -702,7 +702,7 @@ mod tests {
         // This should generally pass unless there are compatibility issues
         let ready = is_ready();
         // We don't assert true/false as it depends on the environment
-        println!("System ready: {}", ready);
+        println!("System ready: {ready}");
     }
 
     #[test]

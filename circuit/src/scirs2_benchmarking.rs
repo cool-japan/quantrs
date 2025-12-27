@@ -754,7 +754,7 @@ impl StatisticalAnalyzer {
         }
 
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let count = data.len();
         let mean = data.iter().sum::<f64>() / count as f64;
@@ -902,10 +902,10 @@ impl StatisticalAnalyzer {
     ) -> QuantRS2Result<OutlierAnalysis> {
         let outlier_indices = match method {
             OutlierDetectionMethod::IQR { multiplier } => {
-                self.detect_outliers_iqr(data, multiplier)
+                self.detect_outliers_iqr(data, multiplier)?
             }
             OutlierDetectionMethod::ZScore { threshold } => {
-                self.detect_outliers_zscore(data, threshold)
+                self.detect_outliers_zscore(data, threshold)?
             }
             _ => Vec::new(), // Other methods would be implemented
         };
@@ -934,12 +934,13 @@ impl StatisticalAnalyzer {
     }
 
     /// Detect outliers using IQR method
-    fn detect_outliers_iqr(&self, data: &[f64], multiplier: f64) -> Vec<usize> {
-        let stats = self.calculate_descriptive_stats(data).unwrap();
+    fn detect_outliers_iqr(&self, data: &[f64], multiplier: f64) -> QuantRS2Result<Vec<usize>> {
+        let stats = self.calculate_descriptive_stats(data)?;
         let lower_bound = multiplier.mul_add(-stats.iqr, stats.q1);
         let upper_bound = multiplier.mul_add(stats.iqr, stats.q3);
 
-        data.iter()
+        Ok(data
+            .iter()
             .enumerate()
             .filter_map(|(i, &value)| {
                 if value < lower_bound || value > upper_bound {
@@ -948,14 +949,15 @@ impl StatisticalAnalyzer {
                     None
                 }
             })
-            .collect()
+            .collect())
     }
 
     /// Detect outliers using Z-score method
-    fn detect_outliers_zscore(&self, data: &[f64], threshold: f64) -> Vec<usize> {
-        let stats = self.calculate_descriptive_stats(data).unwrap();
+    fn detect_outliers_zscore(&self, data: &[f64], threshold: f64) -> QuantRS2Result<Vec<usize>> {
+        let stats = self.calculate_descriptive_stats(data)?;
 
-        data.iter()
+        Ok(data
+            .iter()
             .enumerate()
             .filter_map(|(i, &value)| {
                 let z_score = (value - stats.mean) / stats.std_dev;
@@ -965,7 +967,7 @@ impl StatisticalAnalyzer {
                     None
                 }
             })
-            .collect()
+            .collect())
     }
 
     /// Calculate impact of outliers on statistics
@@ -1049,7 +1051,9 @@ mod tests {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
 
-        let stats = analyzer.calculate_descriptive_stats(&data).unwrap();
+        let stats = analyzer
+            .calculate_descriptive_stats(&data)
+            .expect("calculate_descriptive_stats should succeed");
         assert_eq!(stats.mean, 3.0);
         assert_eq!(stats.median, 3.0);
         assert_eq!(stats.min, 1.0);
@@ -1061,7 +1065,9 @@ mod tests {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 100.0]; // 100.0 is an outlier
 
-        let outliers = analyzer.detect_outliers_iqr(&data, 1.5);
+        let outliers = analyzer
+            .detect_outliers_iqr(&data, 1.5)
+            .expect("outlier detection should succeed");
         assert_eq!(outliers.len(), 1);
         assert_eq!(outliers[0], 5); // Index of 100.0
     }
@@ -1071,7 +1077,9 @@ mod tests {
         let analyzer = StatisticalAnalyzer::new();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0]; // Perfect linear trend
 
-        let regression = analyzer.perform_regression_analysis(&data).unwrap();
+        let regression = analyzer
+            .perform_regression_analysis(&data)
+            .expect("perform_regression_analysis should succeed");
         assert!((regression.slope - 1.0).abs() < 1e-10);
         assert!((regression.r_squared - 1.0).abs() < 1e-10);
     }

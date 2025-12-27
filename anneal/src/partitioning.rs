@@ -21,6 +21,7 @@ pub struct Partition {
 
 impl Partition {
     /// Create a new partition
+    #[must_use]
     pub fn new(num_partitions: usize) -> Self {
         Self {
             assignment: HashMap::new(),
@@ -30,16 +31,11 @@ impl Partition {
     }
 
     /// Get variables in a specific partition
+    #[must_use]
     pub fn get_partition(&self, partition_id: usize) -> Vec<usize> {
         self.assignment
             .iter()
-            .filter_map(|(&var, &part)| {
-                if part == partition_id {
-                    Some(var)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(&var, &part)| (part == partition_id).then_some(var))
             .collect()
     }
 
@@ -83,6 +79,7 @@ impl Default for SpectralPartitioner {
 
 impl SpectralPartitioner {
     /// Create a new spectral partitioner with default settings
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -124,7 +121,8 @@ impl SpectralPartitioner {
                 // Create indices sorted by Fiedler vector values
                 let mut sorted_indices: Vec<(usize, f64)> =
                     fiedler.iter().enumerate().map(|(i, &v)| (i, v)).collect();
-                sorted_indices.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+                sorted_indices
+                    .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
                 // Assign first half to partition 0, second half to partition 1
                 for i in 0..sorted_indices.len() / 2 {
@@ -138,7 +136,7 @@ impl SpectralPartitioner {
                 for var in 0..num_vars {
                     partition
                         .assignment
-                        .insert(var, if var < num_vars / 2 { 0 } else { 1 });
+                        .insert(var, usize::from(var >= num_vars / 2));
                 }
             }
         } else {
@@ -305,7 +303,7 @@ fn kmeans_clustering(eigenvectors: &[Vec<f64>], num_points: usize, k: usize) -> 
 
             if count > 0 {
                 for feature in 0..num_features {
-                    centroids[cluster][feature] /= count as f64;
+                    centroids[cluster][feature] /= f64::from(count);
                 }
             }
         }
@@ -370,8 +368,12 @@ impl KernighanLinPartitioner {
 
         for &(u, v, weight) in edges {
             if u != v {
-                adj.get_mut(&u).unwrap().push((v, weight));
-                adj.get_mut(&v).unwrap().push((u, weight));
+                if let Some(u_adj) = adj.get_mut(&u) {
+                    u_adj.push((v, weight));
+                }
+                if let Some(v_adj) = adj.get_mut(&v) {
+                    v_adj.push((u, weight));
+                }
             }
         }
 
@@ -380,7 +382,7 @@ impl KernighanLinPartitioner {
         for i in 0..num_vars {
             partition
                 .assignment
-                .insert(i, if i < num_vars / 2 { 0 } else { 1 });
+                .insert(i, usize::from(i >= num_vars / 2));
         }
 
         // Kernighan-Lin iterations
@@ -416,7 +418,7 @@ impl KernighanLinPartitioner {
             }
 
             // Sort by gain (descending)
-            gains.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+            gains.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 
             // Apply best swaps
             let mut cumulative_gain = 0.0;
@@ -561,7 +563,9 @@ impl RecursiveBisectionPartitioner {
                 .iter()
                 .enumerate()
                 .max_by_key(|(_, p)| p.len())
-                .unwrap();
+                .ok_or_else(|| {
+                    IsingError::InvalidValue("No partitions available to split".to_string())
+                })?;
 
             let to_split = current_partitions.remove(largest_idx);
 
@@ -635,7 +639,9 @@ mod tests {
         let edges = vec![(0, 1, 1.0), (1, 2, 1.0), (2, 3, 1.0)];
 
         let partitioner = SpectralPartitioner::default();
-        let partition = partitioner.partition_graph(4, &edges, 2).unwrap();
+        let partition = partitioner
+            .partition_graph(4, &edges, 2)
+            .expect("partition_graph should succeed for valid input");
 
         // Check that we have a valid bipartition
         assert_eq!(partition.num_partitions, 2);
@@ -666,7 +672,9 @@ mod tests {
         ];
 
         let partitioner = KernighanLinPartitioner::default();
-        let partition = partitioner.bipartition(6, &edges).unwrap();
+        let partition = partitioner
+            .bipartition(6, &edges)
+            .expect("bipartition should succeed for valid input");
 
         // Should find the natural clustering
         assert_eq!(partition.num_partitions, 2);
@@ -697,7 +705,9 @@ mod tests {
         }
 
         let partitioner = RecursiveBisectionPartitioner::default();
-        let partition = partitioner.partition(n * n, &edges, 4).unwrap();
+        let partition = partitioner
+            .partition(n * n, &edges, 4)
+            .expect("partition should succeed for valid grid graph");
 
         // Should create 4 partitions
         assert_eq!(partition.num_partitions, 4);

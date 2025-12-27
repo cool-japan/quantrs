@@ -618,7 +618,7 @@ mod tests {
         let stability = get_module_stability("quantrs2::core");
         assert!(stability.is_some());
 
-        let stability = stability.unwrap();
+        let stability = stability.expect("quantrs2::core module stability should exist");
         assert_eq!(stability.stability, StabilityLevel::Stable);
     }
 

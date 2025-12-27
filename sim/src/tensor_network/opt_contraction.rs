@@ -64,30 +64,35 @@ impl PathOptimizer {
     }
 
     /// Set the maximum optimization time
+    #[must_use]
     pub const fn with_max_time(mut self, time: Duration) -> Self {
         self.max_optimization_time = time;
         self
     }
 
     /// Set the contraction method
+    #[must_use]
     pub const fn with_method(mut self, method: ContractionOptMethod) -> Self {
         self.method = method;
         self
     }
 
     /// Set the maximum number of slices
+    #[must_use]
     pub const fn with_max_slices(mut self, slices: usize) -> Self {
         self.max_slices = slices;
         self
     }
 
     /// Set the maximum bond dimension
+    #[must_use]
     pub const fn with_max_bond_dimension(mut self, dim: usize) -> Self {
         self.max_bond_dimension = dim;
         self
     }
 
     /// Enable or disable memory estimation
+    #[must_use]
     pub const fn with_memory_estimates(mut self, use_estimates: bool) -> Self {
         self.use_memory_estimates = use_estimates;
         self
@@ -334,6 +339,7 @@ impl OptimizedTensorNetwork {
     }
 
     /// Set the path optimization method
+    #[must_use]
     pub const fn with_optimization_method(mut self, method: ContractionOptMethod) -> Self {
         self.optimizer = self.optimizer.with_method(method);
         self
@@ -413,7 +419,10 @@ impl OptimizedTensorNetwork {
         }
 
         // Return the final tensor
-        Ok(working_tensors.into_values().next().unwrap())
+        Ok(working_tensors
+            .into_values()
+            .next()
+            .expect("Exactly one tensor should remain after contraction"))
     }
 }
 
@@ -607,12 +616,19 @@ pub fn generate_contraction_plan(
     }
 
     // Best plan found so far
-    let mut best_plan = plan_queue.peek().unwrap().0.clone();
+    let mut best_plan = plan_queue
+        .peek()
+        .expect("Plan queue should not be empty at this point")
+        .0
+        .clone();
 
     // Main optimization loop
     while !plan_queue.is_empty() && start_time.elapsed() < max_time {
         // Get the current best plan
-        let current_plan = plan_queue.pop().unwrap().0;
+        let current_plan = plan_queue
+            .pop()
+            .expect("Plan queue verified non-empty in loop condition")
+            .0;
 
         // If this plan is complete, update best plan if better
         if current_plan.pairs.len() == tensors.len() - 1 {

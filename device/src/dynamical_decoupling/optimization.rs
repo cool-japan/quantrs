@@ -85,7 +85,7 @@ pub struct ParameterSensitivityAnalysis {
 
 impl DDSequenceOptimizer {
     /// Create new DD sequence optimizer
-    pub fn new(config: DDOptimizationConfig) -> Self {
+    pub const fn new(config: DDOptimizationConfig) -> Self {
         Self {
             config,
             optimization_history: Vec::new(),
@@ -337,29 +337,39 @@ impl DDSequenceOptimizer {
     ) -> DeviceResult<Array1<f64>> {
         #[cfg(feature = "scirs2")]
         {
+            let params_slice = initial_params.as_slice().ok_or_else(|| {
+                crate::DeviceError::ExecutionFailed(
+                    "Failed to get contiguous slice from parameters".into(),
+                )
+            })?;
             let result = minimize(
                 |params: &ArrayView1<f64>| {
                     let params_array = params.to_owned();
                     -self.evaluate_objective(&params_array, base_sequence, executor)
                     // Minimize negative for maximization
                 },
-                initial_params.as_slice().unwrap(),
+                params_slice,
                 scirs2_optimize::unconstrained::Method::NelderMead,
                 None,
             )
-            .map_err(|e| crate::DeviceError::OptimizationError(format!("{:?}", e)))?;
+            .map_err(|e| crate::DeviceError::OptimizationError(format!("{e:?}")))?;
 
             Ok(Array1::from_vec(result.x.to_vec()))
         }
 
         #[cfg(not(feature = "scirs2"))]
         {
+            let params_slice = initial_params.as_slice().ok_or_else(|| {
+                crate::DeviceError::ExecutionFailed(
+                    "Failed to get contiguous slice from parameters".into(),
+                )
+            })?;
             let result = minimize(
                 |params: &Array1<f64>| {
                     -self.evaluate_objective(params, base_sequence, executor)
                     // Minimize negative for maximization
                 },
-                initial_params.as_slice().unwrap(),
+                params_slice,
                 "nelder-mead",
             )
             .map_err(|e| crate::DeviceError::OptimizationError(format!("{:?}", e)))?;
@@ -483,7 +493,7 @@ impl DDSequenceOptimizer {
         let mut sensitivities: Vec<(usize, f64)> = (0..param_count)
             .map(|i| (i, sensitivity_matrix[[i, i]].abs()))
             .collect();
-        sensitivities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        sensitivities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let most_sensitive_parameters: Vec<usize> =
             sensitivities.iter().take(5).map(|(idx, _)| *idx).collect();

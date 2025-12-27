@@ -64,7 +64,7 @@ impl HardwareParallelizationEngine {
             resource_monitor: Arc::new(RwLock::new(ResourceMonitor::new())),
             performance_tracker: Arc::new(RwLock::new(PerformanceTracker::new())),
             load_balancer: Arc::new(RwLock::new(LoadBalancer::new(
-                config.load_balancing.algorithm.clone(),
+                config.load_balancing.algorithm,
             ))),
             circuit_semaphore,
             gate_semaphore,
@@ -169,7 +169,11 @@ impl HardwareParallelizationEngine {
     pub async fn get_performance_metrics(
         &self,
     ) -> DeviceResult<super::monitor::PerformanceMetrics> {
-        let tracker = self.performance_tracker.read().unwrap();
+        let tracker = self.performance_tracker.read().map_err(|_| {
+            crate::DeviceError::LockError(
+                "Failed to acquire read lock on performance tracker".into(),
+            )
+        })?;
         Ok(tracker.performance_metrics.clone())
     }
 
@@ -177,13 +181,20 @@ impl HardwareParallelizationEngine {
     pub async fn get_optimization_suggestions(
         &self,
     ) -> DeviceResult<Vec<super::monitor::OptimizationSuggestion>> {
-        let tracker = self.performance_tracker.read().unwrap();
+        let tracker = self.performance_tracker.read().map_err(|_| {
+            crate::DeviceError::LockError(
+                "Failed to acquire read lock on performance tracker".into(),
+            )
+        })?;
         Ok(tracker.optimization_suggestions.clone())
     }
 
     /// Apply dynamic load balancing
+    #[allow(clippy::await_holding_lock)] // Placeholder implementation - to be refactored
     pub async fn apply_load_balancing(&self) -> DeviceResult<LoadBalancingResult> {
-        let mut balancer = self.load_balancer.write().unwrap();
+        let mut balancer = self.load_balancer.write().map_err(|_| {
+            crate::DeviceError::LockError("Failed to acquire write lock on load balancer".into())
+        })?;
         balancer.rebalance_loads().await
     }
 
@@ -199,7 +210,7 @@ impl HardwareParallelizationEngine {
         Ok(())
     }
 
-    fn calculate_resource_requirements<const N: usize>(
+    const fn calculate_resource_requirements<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         backend: &HardwareBackend,

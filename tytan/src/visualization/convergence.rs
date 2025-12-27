@@ -143,7 +143,10 @@ impl ConvergencePlot {
             return Err("No convergence data to analyze".into());
         }
 
-        let final_objective = *self.objective_history.last().unwrap();
+        let final_objective = *self
+            .objective_history
+            .last()
+            .expect("objective_history is non-empty (checked above)");
         let best_objective = self
             .objective_history
             .iter()
@@ -451,7 +454,11 @@ impl ConvergencePlot {
         }
 
         let path_length = total_variation;
-        let direct_distance = (objectives.last().unwrap() - objectives[0]).abs();
+        let direct_distance = (objectives
+            .last()
+            .expect("objectives has at least 3 elements (checked above)")
+            - objectives[0])
+            .abs();
 
         if path_length > 0.0 {
             Ok((path_length - direct_distance) / path_length)
@@ -534,7 +541,10 @@ impl ConvergencePlot {
         let rate = self.estimate_convergence_rate(objectives)?;
 
         if rate > 0.0 {
-            let current = best_so_far.last().copied().unwrap();
+            let current = best_so_far
+                .last()
+                .copied()
+                .expect("best_so_far has at least 20 elements (checked above)");
             let initial = best_so_far[0];
 
             // Estimate asymptotic value

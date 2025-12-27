@@ -21,6 +21,12 @@ pub struct OptimizationStrategy {
     pub effectiveness_score: f64,
 }
 
+impl Default for OptimizationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OptimizationEngine {
     pub fn new() -> Self {
         Self {

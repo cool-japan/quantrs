@@ -38,10 +38,10 @@
 //!         Complex64::new(1.0/2.0_f64.sqrt(), 0.0),
 //!         Complex64::new(-1.0/2.0_f64.sqrt(), 0.0),
 //!     ]
-//! ).unwrap();
+//! ).expect("Hadamard matrix shape is always valid");
 //!
 //! // Compile to Hamiltonian
-//! let hamiltonian = compiler.gate_to_hamiltonian(&h_gate).unwrap();
+//! let hamiltonian = compiler.gate_to_hamiltonian(&h_gate).expect("Hadamard is unitary");
 //! ```
 
 use scirs2_core::ndarray::Array2;
@@ -339,7 +339,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-X matrix shape (2,2) with 4 elements is always valid");
 
         let pauli_y = Array2::from_shape_vec(
             (2, 2),
@@ -350,7 +350,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Y matrix shape (2,2) with 4 elements is always valid");
 
         let pauli_z = Array2::from_shape_vec(
             (2, 2),
@@ -361,7 +361,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Z matrix shape (2,2) with 4 elements is always valid");
 
         // Compute traces
         let trace_x = self.trace_product(u, &pauli_x);
@@ -420,7 +420,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-X matrix shape (2,2) with 4 elements is always valid");
 
         let pauli_y = Array2::from_shape_vec(
             (2, 2),
@@ -431,7 +431,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Y matrix shape (2,2) with 4 elements is always valid");
 
         let pauli_z = Array2::from_shape_vec(
             (2, 2),
@@ -442,7 +442,7 @@ impl CircuitToAnnealingCompiler {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Z matrix shape (2,2) with 4 elements is always valid");
 
         // Compute coefficients using trace formula: a_i = Tr(H * σ_i) / 2
         let a_i = self.trace_product(hamiltonian, &pauli_i) / Complex64::new(2.0, 0.0);
@@ -604,7 +604,7 @@ impl CircuitBuilder {
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("Hadamard matrix shape (2,2) with 4 elements is always valid");
 
         self.gates.push(QuantumGate {
             matrix,
@@ -625,7 +625,7 @@ impl CircuitBuilder {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-X matrix shape (2,2) with 4 elements is always valid");
 
         self.gates.push(QuantumGate {
             matrix,
@@ -646,7 +646,7 @@ impl CircuitBuilder {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Y matrix shape (2,2) with 4 elements is always valid");
 
         self.gates.push(QuantumGate {
             matrix,
@@ -667,7 +667,7 @@ impl CircuitBuilder {
                 Complex64::new(-1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Pauli-Z matrix shape (2,2) with 4 elements is always valid");
 
         self.gates.push(QuantumGate {
             matrix,
@@ -714,7 +714,7 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("test matrix shape (2,2) with 4 elements is always valid");
         assert!(compiler.verify_unitarity(&pauli_x).is_ok());
     }
 
@@ -730,7 +730,7 @@ mod tests {
                 Complex64::new(-1.0 / 2.0_f64.sqrt(), 0.0),
             ],
         )
-        .unwrap();
+        .expect("test Hadamard matrix shape (2,2) with 4 elements is always valid");
         assert!(compiler.verify_unitarity(&h).is_ok());
     }
 
@@ -746,7 +746,7 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("test non-unitary matrix shape (2,2) with 4 elements is always valid");
         assert!(compiler.verify_unitarity(&non_unitary).is_err());
     }
 
@@ -762,11 +762,11 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("test Pauli-X matrix shape (2,2) with 4 elements is always valid");
 
         let result = compiler.gate_to_hamiltonian(&pauli_x);
         assert!(result.is_ok());
-        let terms = result.unwrap();
+        let terms = result.expect("gate_to_hamiltonian should succeed for valid unitary gate");
         assert!(!terms.is_empty());
     }
 
@@ -790,7 +790,7 @@ mod tests {
         let result = compiler.compile_circuit(&gates, num_qubits);
         assert!(result.is_ok());
 
-        let schedule = result.unwrap();
+        let schedule = result.expect("compile_circuit should succeed for simple Hadamard circuit");
         assert_eq!(schedule.times.len(), 1000);
         assert_eq!(schedule.a_coefficients.len(), 1000);
         assert_eq!(schedule.b_coefficients.len(), 1000);
@@ -808,13 +808,22 @@ mod tests {
         let result = compiler.generate_schedule(terms, 1);
         assert!(result.is_ok());
 
-        let schedule = result.unwrap();
+        let schedule =
+            result.expect("generate_schedule should succeed for valid Hamiltonian terms");
         // Check that schedule starts with high A and low B
         assert!(schedule.a_coefficients[0] > 0.9);
         assert!(schedule.b_coefficients[0] < 0.1);
         // Check that schedule ends with low A and high B
-        assert!(schedule.a_coefficients.last().unwrap() < &0.1);
-        assert!(schedule.b_coefficients.last().unwrap() > &0.9);
+        let a_last = schedule
+            .a_coefficients
+            .last()
+            .expect("schedule always has at least one time step");
+        let b_last = schedule
+            .b_coefficients
+            .last()
+            .expect("schedule always has at least one time step");
+        assert!(a_last < &0.1);
+        assert!(b_last > &0.9);
     }
 
     #[test]

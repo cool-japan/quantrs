@@ -8,6 +8,7 @@ use super::types::{CodeFormat, IRGate, IROperationType, QuantumIR, TargetCode};
 use quantrs2_core::error::{QuantRS2Error, QuantRS2Result};
 use std::sync::Arc;
 
+use std::fmt::Write;
 /// Target code generator trait
 pub trait TargetCodeGenerator: Send + Sync {
     fn generate(&self, ir: &QuantumIR) -> QuantRS2Result<TargetCode>;
@@ -37,7 +38,7 @@ impl IBMQuantumGenerator {
         Self { config }
     }
 
-    fn generate_qasm(&self, ir: &QuantumIR) -> QuantRS2Result<String> {
+    fn generate_qasm(ir: &QuantumIR) -> QuantRS2Result<String> {
         let mut qasm = String::new();
 
         // Header
@@ -45,27 +46,28 @@ impl IBMQuantumGenerator {
         qasm.push_str("include \"qelib1.inc\";\n\n");
 
         // Quantum registers
-        qasm.push_str(&format!("qreg q[{}];\n", ir.num_qubits));
+        writeln!(qasm, "qreg q[{}];", ir.num_qubits).expect("Writing to String is infallible");
 
         // Classical registers
         if ir.num_classical_bits > 0 {
-            qasm.push_str(&format!("creg c[{}];\n", ir.num_classical_bits));
+            writeln!(qasm, "creg c[{}];", ir.num_classical_bits)
+                .expect("Writing to String is infallible");
         }
 
         qasm.push('\n');
 
         // Operations
         for op in &ir.operations {
-            let gate_str = self.ir_op_to_qasm(op)?;
-            qasm.push_str(&format!("{gate_str}\n"));
+            let gate_str = Self::ir_op_to_qasm(op)?;
+            writeln!(qasm, "{gate_str}").expect("Writing to String is infallible");
         }
 
         Ok(qasm)
     }
 
-    fn ir_op_to_qasm(&self, op: &super::types::IROperation) -> QuantRS2Result<String> {
+    fn ir_op_to_qasm(op: &super::types::IROperation) -> QuantRS2Result<String> {
         match &op.operation_type {
-            IROperationType::Gate(gate) => self.gate_to_qasm(gate, &op.qubits),
+            IROperationType::Gate(gate) => Self::gate_to_qasm(gate, &op.qubits),
             IROperationType::Measurement(qubits, bits) => {
                 Ok(format!("measure q[{}] -> c[{}];", qubits[0], bits[0]))
             }
@@ -76,7 +78,7 @@ impl IBMQuantumGenerator {
         }
     }
 
-    fn gate_to_qasm(&self, gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
+    fn gate_to_qasm(gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
         match gate {
             IRGate::H => Ok(format!("h q[{}];", qubits[0])),
             IRGate::X => Ok(format!("x q[{}];", qubits[0])),
@@ -98,7 +100,7 @@ impl TargetCodeGenerator for IBMQuantumGenerator {
         let mut code = TargetCode::new(TargetPlatform::IBMQuantum);
 
         // Generate QASM code for IBM Quantum
-        let qasm = self.generate_qasm(ir)?;
+        let qasm = Self::generate_qasm(ir)?;
         code.code = qasm;
         code.format = CodeFormat::QASM;
 
@@ -120,7 +122,7 @@ impl GoogleSycamoreGenerator {
         Self { config }
     }
 
-    fn generate_cirq(&self, ir: &QuantumIR) -> QuantRS2Result<String> {
+    fn generate_cirq(ir: &QuantumIR) -> QuantRS2Result<String> {
         let mut code = String::new();
 
         // Imports
@@ -128,24 +130,22 @@ impl GoogleSycamoreGenerator {
         code.push_str("import numpy as np\n\n");
 
         // Create qubits
-        code.push_str(&format!(
-            "qubits = cirq.LineQubit.range({})\n",
-            ir.num_qubits
-        ));
+        writeln!(code, "qubits = cirq.LineQubit.range({})", ir.num_qubits)
+            .expect("Writing to String is infallible");
         code.push_str("circuit = cirq.Circuit()\n\n");
 
         // Add operations
         for op in &ir.operations {
-            let op_str = self.ir_op_to_cirq(op)?;
-            code.push_str(&format!("circuit.append({op_str})\n"));
+            let op_str = Self::ir_op_to_cirq(op)?;
+            writeln!(code, "circuit.append({op_str})").expect("Writing to String is infallible");
         }
 
         Ok(code)
     }
 
-    fn ir_op_to_cirq(&self, op: &super::types::IROperation) -> QuantRS2Result<String> {
+    fn ir_op_to_cirq(op: &super::types::IROperation) -> QuantRS2Result<String> {
         match &op.operation_type {
-            IROperationType::Gate(gate) => self.gate_to_cirq(gate, &op.qubits),
+            IROperationType::Gate(gate) => Self::gate_to_cirq(gate, &op.qubits),
             IROperationType::Measurement(qubits, _) => Ok(format!(
                 "cirq.measure(qubits[{}], key='m{}')",
                 qubits[0], qubits[0]
@@ -157,7 +157,7 @@ impl GoogleSycamoreGenerator {
         }
     }
 
-    fn gate_to_cirq(&self, gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
+    fn gate_to_cirq(gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
         match gate {
             IRGate::H => Ok(format!("cirq.H(qubits[{}])", qubits[0])),
             IRGate::X => Ok(format!("cirq.X(qubits[{}])", qubits[0])),
@@ -186,7 +186,7 @@ impl TargetCodeGenerator for GoogleSycamoreGenerator {
         let mut code = TargetCode::new(TargetPlatform::GoogleSycamore);
 
         // Generate Cirq code for Google Sycamore
-        let cirq_code = self.generate_cirq(ir)?;
+        let cirq_code = Self::generate_cirq(ir)?;
         code.code = cirq_code;
         code.format = CodeFormat::Cirq;
 
@@ -204,18 +204,20 @@ impl IonQGenerator {
         Self { config }
     }
 
-    fn generate_ionq_json(&self, ir: &QuantumIR) -> QuantRS2Result<String> {
+    fn generate_ionq_json(ir: &QuantumIR) -> QuantRS2Result<String> {
         let mut circuit = serde_json::json!({
             "format": "ionq.circuit.v0",
             "qubits": ir.num_qubits,
             "circuit": []
         });
 
-        let circuit_ops = circuit["circuit"].as_array_mut().unwrap();
+        let circuit_ops = circuit["circuit"].as_array_mut().ok_or_else(|| {
+            QuantRS2Error::RuntimeError("Failed to get circuit array".to_string())
+        })?;
 
         for op in &ir.operations {
             if let IROperationType::Gate(gate) = &op.operation_type {
-                let ionq_op = self.ir_gate_to_ionq(gate, &op.qubits)?;
+                let ionq_op = Self::ir_gate_to_ionq(gate, &op.qubits)?;
                 circuit_ops.push(ionq_op);
             }
         }
@@ -223,11 +225,7 @@ impl IonQGenerator {
         Ok(serde_json::to_string_pretty(&circuit)?)
     }
 
-    fn ir_gate_to_ionq(
-        &self,
-        gate: &IRGate,
-        qubits: &[usize],
-    ) -> QuantRS2Result<serde_json::Value> {
+    fn ir_gate_to_ionq(gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<serde_json::Value> {
         match gate {
             IRGate::H => Ok(serde_json::json!({
                 "gate": "h",
@@ -262,7 +260,7 @@ impl TargetCodeGenerator for IonQGenerator {
         let mut code = TargetCode::new(TargetPlatform::IonQ);
 
         // Generate IonQ JSON format
-        let ionq_json = self.generate_ionq_json(ir)?;
+        let ionq_json = Self::generate_ionq_json(ir)?;
         code.code = ionq_json;
         code.format = CodeFormat::IonQJSON;
 
@@ -280,7 +278,7 @@ impl RigettiGenerator {
         Self { config }
     }
 
-    fn generate_quil(&self, ir: &QuantumIR) -> QuantRS2Result<String> {
+    fn generate_quil(ir: &QuantumIR) -> QuantRS2Result<String> {
         let mut quil = String::new();
 
         // Declare qubits (implicit in Quil)
@@ -288,17 +286,18 @@ impl RigettiGenerator {
         // Generate gates
         for op in &ir.operations {
             if let IROperationType::Gate(gate) = &op.operation_type {
-                let gate_str = self.ir_gate_to_quil(gate, &op.qubits)?;
-                quil.push_str(&format!("{gate_str}\n"));
+                let gate_str = Self::ir_gate_to_quil(gate, &op.qubits)?;
+                writeln!(quil, "{gate_str}").expect("Writing to String is infallible");
             } else if let IROperationType::Measurement(qubits, bits) = &op.operation_type {
-                quil.push_str(&format!("MEASURE {} ro[{}]\n", qubits[0], bits[0]));
+                writeln!(quil, "MEASURE {} ro[{}]", qubits[0], bits[0])
+                    .expect("Writing to String is infallible");
             }
         }
 
         Ok(quil)
     }
 
-    fn ir_gate_to_quil(&self, gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
+    fn ir_gate_to_quil(gate: &IRGate, qubits: &[usize]) -> QuantRS2Result<String> {
         match gate {
             IRGate::H => Ok(format!("H {}", qubits[0])),
             IRGate::X => Ok(format!("X {}", qubits[0])),
@@ -320,7 +319,7 @@ impl TargetCodeGenerator for RigettiGenerator {
         let mut code = TargetCode::new(TargetPlatform::Rigetti);
 
         // Generate Quil code
-        let quil = self.generate_quil(ir)?;
+        let quil = Self::generate_quil(ir)?;
         code.code = quil;
         code.format = CodeFormat::Quil;
 

@@ -4,6 +4,8 @@
 //! quantum computing framework using PyO3, enabling seamless integration
 //! with Python ecosystem tools like NumPy, Jupyter, and scientific computing libraries.
 
+#![allow(clippy::missing_const_for_fn)] // PyO3 methods cannot be const
+
 use crate::{
     cartan::{CartanDecomposer, CartanDecomposition},
     gate::{
@@ -170,7 +172,7 @@ impl PyQuantumGate {
         };
 
         let matrix = matrix_result
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         // Convert Vec<Complex64> to Array2<Complex64>
         let dim = match self.gate_type.as_str() {
@@ -184,7 +186,7 @@ impl PyQuantumGate {
         };
 
         let array = Array2::from_shape_vec((dim, dim), matrix).map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Array reshape error: {}", e))
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Array reshape error: {e}"))
         })?;
 
         let np_array = PyArray2::from_array(py, &array);
@@ -476,7 +478,7 @@ impl PyNumRS2Array {
         // This would implement quantum gate application to NumRS2 arrays
         // For now, just a placeholder that validates the array is quantum state-like
         let size = self.size();
-        if size > 0 && (size & (size - 1)) == 0 {
+        if size > 0 && size.is_power_of_two() {
             // Size is a power of 2, suitable for quantum states
             Ok(())
         } else {
@@ -487,40 +489,40 @@ impl PyNumRS2Array {
     }
 
     /// Element-wise addition with another NumRS2Array
-    fn add(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
+    fn add(&self, other: &Self) -> PyResult<Self> {
         if self.inner.shape() != other.inner.shape() {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Shape mismatch for addition",
             ));
         }
         let result = &self.inner + &other.inner;
-        Ok(PyNumRS2Array { inner: result })
+        Ok(Self { inner: result })
     }
 
     /// Element-wise multiplication with another NumRS2Array
-    fn multiply(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
+    fn multiply(&self, other: &Self) -> PyResult<Self> {
         if self.inner.shape() != other.inner.shape() {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Shape mismatch for multiplication",
             ));
         }
         let result = &self.inner * &other.inner;
-        Ok(PyNumRS2Array { inner: result })
+        Ok(Self { inner: result })
     }
 
     /// Matrix multiplication
-    fn matmul(&self, other: &PyNumRS2Array) -> PyResult<PyNumRS2Array> {
+    fn matmul(&self, other: &Self) -> PyResult<Self> {
         if self.inner.ncols() != other.inner.nrows() {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Incompatible shapes for matrix multiplication",
             ));
         }
         let result = self.inner.dot(&other.inner);
-        Ok(PyNumRS2Array { inner: result })
+        Ok(Self { inner: result })
     }
 
     /// Reshape the array (limited to 2D only for now)
-    fn reshape(&self, new_shape: Vec<usize>) -> PyResult<PyNumRS2Array> {
+    fn reshape(&self, new_shape: Vec<usize>) -> PyResult<Self> {
         if new_shape.len() != 2 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "Currently only 2D reshaping is supported",
@@ -532,17 +534,25 @@ impl PyNumRS2Array {
             ));
         }
         // For simplicity, create a new array with the desired shape
-        let data = self.inner.as_slice().unwrap().to_vec();
+        let data = self
+            .inner
+            .as_slice()
+            .ok_or_else(|| {
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                    "Array is not contiguous and cannot be reshaped",
+                )
+            })?
+            .to_vec();
         let result = Array2::from_shape_vec((new_shape[0], new_shape[1]), data).map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Reshape failed: {}", e))
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Reshape failed: {e}"))
         })?;
-        Ok(PyNumRS2Array { inner: result })
+        Ok(Self { inner: result })
     }
 
     /// Transpose the array
-    fn transpose(&self) -> PyResult<PyNumRS2Array> {
+    fn transpose(&self) -> PyResult<Self> {
         let result = self.inner.t().to_owned();
-        Ok(PyNumRS2Array { inner: result })
+        Ok(Self { inner: result })
     }
 
     /// Get element at specified indices
@@ -588,7 +598,7 @@ impl PyRealtimeMonitor {
     #[new]
     fn new(config: PyMonitoringConfig) -> PyResult<Self> {
         let monitor = RealtimeMonitor::new(config.inner)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
         Ok(Self { inner: monitor })
     }
 
@@ -596,14 +606,14 @@ impl PyRealtimeMonitor {
     fn start_monitoring(&self) -> PyResult<()> {
         self.inner
             .start_monitoring()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))
     }
 
     /// Stop monitoring
     fn stop_monitoring(&self) -> PyResult<()> {
         self.inner
             .stop_monitoring()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))
     }
 
     /// Get current metrics for specified types
@@ -621,7 +631,7 @@ impl PyRealtimeMonitor {
         let measurements = self
             .inner
             .get_current_metrics(converted_types)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         Ok(measurements
             .into_iter()
@@ -643,7 +653,7 @@ impl PyRealtimeMonitor {
         let measurements = self
             .inner
             .get_historical_metrics(metric_type, start_time, end_time)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         Ok(measurements
             .into_iter()
@@ -657,7 +667,7 @@ impl PyRealtimeMonitor {
         let stats = self
             .inner
             .get_aggregated_stats(metric_type)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         Ok(stats.map(|s| PyAggregatedStats { inner: s }))
     }
@@ -667,7 +677,7 @@ impl PyRealtimeMonitor {
         let alerts = self
             .inner
             .get_active_alerts()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         Ok(alerts.into_iter().map(|a| PyAlert { inner: a }).collect())
     }
@@ -677,7 +687,7 @@ impl PyRealtimeMonitor {
         let recommendations = self
             .inner
             .get_optimization_recommendations()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
         Ok(recommendations
             .into_iter()
@@ -686,31 +696,36 @@ impl PyRealtimeMonitor {
     }
 
     /// Get monitoring status
-    fn get_monitoring_status(&self) -> PyMonitoringStatus {
-        PyMonitoringStatus {
-            inner: self.inner.get_monitoring_status(),
-        }
+    fn get_monitoring_status(&self) -> PyResult<PyMonitoringStatus> {
+        Ok(PyMonitoringStatus {
+            inner: self
+                .inner
+                .get_monitoring_status()
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?,
+        })
     }
 
     /// Force immediate data collection
     fn collect_metrics_now(&self) -> PyResult<usize> {
         self.inner
             .collect_metrics_now()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))
     }
 
     /// Update analytics
     fn update_analytics(&self) -> PyResult<()> {
         self.inner
             .update_analytics()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))
     }
 
     fn __repr__(&self) -> String {
-        format!(
-            "RealtimeMonitor(status={:?})",
-            self.inner.get_monitoring_status().overall_status
-        )
+        let status = self
+            .inner
+            .get_monitoring_status()
+            .map(|s| format!("{:?}", s.overall_status))
+            .unwrap_or_else(|_| "unknown".to_string());
+        format!("RealtimeMonitor(status={})", status)
     }
 }
 
@@ -1070,8 +1085,8 @@ fn convert_metric_type_to_string(mt: &MetricType) -> String {
         MetricType::SystemUptime => "system_uptime".to_string(),
         MetricType::QueueDepth => "queue_depth".to_string(),
         MetricType::Throughput => "throughput".to_string(),
-        MetricType::Custom(name) => format!("custom_{}", name),
-        _ => format!("{:?}", mt).to_lowercase(),
+        MetricType::Custom(name) => format!("custom_{name}"),
+        _ => format!("{mt:?}").to_lowercase(),
     }
 }
 
@@ -1083,7 +1098,7 @@ fn convert_metric_value_to_python(value: &MetricValue, py: Python) -> PyObject {
         MetricValue::Boolean(b) => b.to_string(),
         MetricValue::String(s) => s.clone(),
         MetricValue::Duration(d) => d.as_secs_f64().to_string(),
-        MetricValue::Array(arr) => format!("{:?}", arr),
+        MetricValue::Array(arr) => format!("{arr:?}"),
         MetricValue::Complex(c) => format!("({}, {})", c.re, c.im),
     };
     PyString::new(py, &repr).into()
@@ -1097,7 +1112,7 @@ fn decompose_single_qubit(
 ) -> PyResult<PySingleQubitDecomposition> {
     let matrix_array = matrix.as_array();
     let decomp = decompose_single_qubit_zyz(&matrix_array.view())
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
     Ok(PySingleQubitDecomposition { inner: decomp })
 }
@@ -1111,7 +1126,7 @@ fn decompose_two_qubit_cartan(
     let mut decomposer = CartanDecomposer::new();
     let decomp = decomposer
         .decompose(&matrix_array.to_owned())
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))?;
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{e}")))?;
 
     Ok(PyCartanDecomposition { inner: decomp })
 }
@@ -1249,8 +1264,7 @@ fn numrs2_from_vec(data: Vec<(f64, f64)>, shape: Vec<usize>) -> PyResult<PyNumRS
 
     let array = Array2::from_shape_vec((shape[0], shape[1]), complex_data).map_err(|e| {
         PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-            "Failed to create array from vector: {}",
-            e
+            "Failed to create array from vector: {e}"
         ))
     })?;
     Ok(PyNumRS2Array { inner: array })

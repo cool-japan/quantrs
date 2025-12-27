@@ -38,7 +38,7 @@ impl Default for RLEmbeddingConfig {
             dqn_layers: vec![128, 256, 128, 64],
             policy_layers: vec![128, 256, 128, 32],
             learning_rate: 0.0001,
-            buffer_size: 10000,
+            buffer_size: 10_000,
             batch_size: 64,
             exploration_config: ExplorationConfig::default(),
             target_update_frequency: 1000,
@@ -70,7 +70,7 @@ impl Default for ExplorationConfig {
         Self {
             initial_epsilon: 1.0,
             final_epsilon: 0.01,
-            epsilon_decay_steps: 10000,
+            epsilon_decay_steps: 10_000,
             policy_noise: 0.1,
             curiosity_weight: 0.1,
         }
@@ -124,7 +124,7 @@ impl Default for TransferLearningConfig {
         Self {
             enabled: true,
             source_weight_decay: 0.9,
-            adaptation_lr: 0.00001,
+            adaptation_lr: 0.00_001,
             fine_tuning_epochs: 100,
             similarity_threshold: 0.7,
         }
@@ -559,6 +559,7 @@ pub struct RLPerformanceMetrics {
 
 impl RLTrainingStats {
     /// Create new training statistics
+    #[must_use]
     pub fn new() -> Self {
         Self {
             episode_rewards: Vec::new(),
@@ -589,7 +590,8 @@ impl RLTrainingStats {
 
 impl RLPerformanceMetrics {
     /// Create new performance metrics
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             problems_solved: 0,
             average_improvement: 0.0,

@@ -2,7 +2,7 @@
 //!
 //! The stabilizer formalism provides an efficient way to simulate quantum circuits
 //! that consist only of Clifford gates (H, S, CNOT) and Pauli measurements.
-//! This implementation uses the tableau representation and leverages SciRS2
+//! This implementation uses the tableau representation and leverages `SciRS2`
 //! for efficient data structures and operations.
 
 use crate::simulator::{Simulator, SimulatorResult};
@@ -39,6 +39,7 @@ pub struct StabilizerTableau {
 
 impl StabilizerTableau {
     /// Create a new tableau in the |0...0⟩ state
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let mut x_matrix = Array2::from_elem((num_qubits, num_qubits), false);
         let mut z_matrix = Array2::from_elem((num_qubits, num_qubits), false);
@@ -283,6 +284,7 @@ impl StabilizerTableau {
     }
 
     /// Get the current stabilizer generators as strings
+    #[must_use]
     pub fn get_stabilizers(&self) -> Vec<String> {
         let mut stabilizers = Vec::new();
 
@@ -324,6 +326,7 @@ pub struct StabilizerSimulator {
 
 impl StabilizerSimulator {
     /// Create a new stabilizer simulator
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             tableau: StabilizerTableau::new(num_qubits),
@@ -351,11 +354,13 @@ impl StabilizerSimulator {
     }
 
     /// Get the current stabilizers
+    #[must_use]
     pub fn get_stabilizers(&self) -> Vec<String> {
         self.tableau.get_stabilizers()
     }
 
     /// Get measurement record
+    #[must_use]
     pub fn get_measurements(&self) -> &[(usize, bool)] {
         &self.measurement_record
     }
@@ -368,12 +373,14 @@ impl StabilizerSimulator {
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.tableau.num_qubits
     }
 
     /// Get the state vector (for compatibility with other simulators)
     /// Note: This is expensive for stabilizer states and returns a sparse representation
+    #[must_use]
     pub fn get_statevector(&self) -> Vec<Complex64> {
         let n = self.tableau.num_qubits;
         let dim = 1 << n;
@@ -402,6 +409,7 @@ pub enum StabilizerGate {
 }
 
 /// Check if a circuit can be simulated by the stabilizer simulator
+#[must_use]
 pub fn is_clifford_circuit<const N: usize>(circuit: &Circuit<N>) -> bool {
     // Check if all gates in the circuit are Clifford gates
     // Clifford gates: H, S, S†, CNOT, X, Y, Z, CZ
@@ -478,7 +486,7 @@ fn gate_to_stabilizer(gate: &Arc<dyn GateOp + Send + Sync>) -> Option<Stabilizer
     }
 }
 
-/// Implement the Simulator trait for StabilizerSimulator
+/// Implement the Simulator trait for `StabilizerSimulator`
 impl Simulator for StabilizerSimulator {
     fn run<const N: usize>(
         &mut self,
@@ -510,6 +518,7 @@ pub struct CliffordCircuitBuilder {
 
 impl CliffordCircuitBuilder {
     /// Create a new Clifford circuit builder
+    #[must_use]
     pub const fn new(num_qubits: usize) -> Self {
         Self {
             gates: Vec::new(),
@@ -518,36 +527,42 @@ impl CliffordCircuitBuilder {
     }
 
     /// Add a Hadamard gate
+    #[must_use]
     pub fn h(mut self, qubit: usize) -> Self {
         self.gates.push(StabilizerGate::H(qubit));
         self
     }
 
     /// Add an S gate
+    #[must_use]
     pub fn s(mut self, qubit: usize) -> Self {
         self.gates.push(StabilizerGate::S(qubit));
         self
     }
 
     /// Add a Pauli-X gate
+    #[must_use]
     pub fn x(mut self, qubit: usize) -> Self {
         self.gates.push(StabilizerGate::X(qubit));
         self
     }
 
     /// Add a Pauli-Y gate
+    #[must_use]
     pub fn y(mut self, qubit: usize) -> Self {
         self.gates.push(StabilizerGate::Y(qubit));
         self
     }
 
     /// Add a Pauli-Z gate
+    #[must_use]
     pub fn z(mut self, qubit: usize) -> Self {
         self.gates.push(StabilizerGate::Z(qubit));
         self
     }
 
     /// Add a CNOT gate
+    #[must_use]
     pub fn cnot(mut self, control: usize, target: usize) -> Self {
         self.gates.push(StabilizerGate::CNOT(control, target));
         self
@@ -583,7 +598,8 @@ mod tests {
     #[test]
     fn test_hadamard_gate() {
         let mut sim = StabilizerSimulator::new(1);
-        sim.apply_gate(StabilizerGate::H(0)).unwrap();
+        sim.apply_gate(StabilizerGate::H(0))
+            .expect("Hadamard gate application should succeed");
 
         let stabs = sim.get_stabilizers();
         assert_eq!(stabs[0], "+X");
@@ -592,8 +608,10 @@ mod tests {
     #[test]
     fn test_bell_state() {
         let mut sim = StabilizerSimulator::new(2);
-        sim.apply_gate(StabilizerGate::H(0)).unwrap();
-        sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
+        sim.apply_gate(StabilizerGate::H(0))
+            .expect("Hadamard gate application should succeed");
+        sim.apply_gate(StabilizerGate::CNOT(0, 1))
+            .expect("CNOT gate application should succeed");
 
         let stabs = sim.get_stabilizers();
         assert!(stabs.contains(&"+XX".to_string()));
@@ -603,9 +621,12 @@ mod tests {
     #[test]
     fn test_ghz_state() {
         let mut sim = StabilizerSimulator::new(3);
-        sim.apply_gate(StabilizerGate::H(0)).unwrap();
-        sim.apply_gate(StabilizerGate::CNOT(0, 1)).unwrap();
-        sim.apply_gate(StabilizerGate::CNOT(1, 2)).unwrap();
+        sim.apply_gate(StabilizerGate::H(0))
+            .expect("Hadamard gate application should succeed");
+        sim.apply_gate(StabilizerGate::CNOT(0, 1))
+            .expect("CNOT gate application should succeed");
+        sim.apply_gate(StabilizerGate::CNOT(1, 2))
+            .expect("CNOT gate application should succeed");
 
         let stabs = sim.get_stabilizers();
         assert!(stabs.contains(&"+XXX".to_string()));

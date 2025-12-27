@@ -39,7 +39,7 @@ pub struct ExecutionRecord {
 }
 
 /// Task types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaskType {
     /// Circuit-level task
     Circuit,
@@ -95,7 +95,7 @@ pub struct OptimizationSuggestion {
 }
 
 /// Optimization categories
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationCategory {
     /// Resource allocation optimization
     ResourceAllocation,
@@ -133,6 +133,12 @@ pub struct LoadBalancer {
     migration_tracker: MigrationTracker,
 }
 
+impl Default for ResourceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceMonitor {
     pub fn new() -> Self {
         Self {
@@ -147,8 +153,14 @@ impl ResourceMonitor {
     }
 }
 
+impl Default for PerformanceTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             execution_history: VecDeque::new(),
             performance_metrics: PerformanceMetrics {
@@ -185,6 +197,12 @@ impl LoadBalancer {
             estimated_performance_gain: 0.0,
             rebalancing_cost: 0.0,
         })
+    }
+}
+
+impl Default for MigrationTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -19,7 +19,7 @@ pub struct OnlineLearningConfig {
 }
 
 /// Learning rate schedule
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LearningRateSchedule {
     Constant,
     ExponentialDecay,
@@ -43,7 +43,7 @@ pub struct MemoryManagementConfig {
 }
 
 /// Memory eviction strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryEvictionStrategy {
     FIFO,
     LRU,

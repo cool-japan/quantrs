@@ -239,7 +239,7 @@ impl SpatialAnalyzer {
             }
         }
 
-        distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median_distance = if distances.is_empty() {
             1.0
         } else {
@@ -374,7 +374,7 @@ impl SpatialAnalyzer {
         }
 
         // Bin the pairs and compute empirical variogram
-        distance_variance_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        distance_variance_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let num_bins = 10;
         let mut bin_distances = Vec::new();
@@ -454,7 +454,7 @@ impl SpatialAnalyzer {
 
         let mut cluster_statistics = HashMap::new();
         cluster_statistics.insert(0, ClusterStatistics {
-            centroid: qubit_positions.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap(),
+            centroid: qubit_positions.mean_axis(scirs2_core::ndarray::Axis(0)).unwrap_or_else(|| Array1::zeros(qubit_positions.ncols())),
             size: num_qubits,
             within_cluster_variance: 1.0,
             separation_distance: 0.0,

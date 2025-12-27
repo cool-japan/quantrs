@@ -103,7 +103,7 @@ impl CanonicalQAE {
     /// # Arguments
     /// * `num_eval_qubits` - Number of qubits for phase estimation (precision ~ 2^(-n))
     /// * `num_state_qubits` - Number of qubits in the state being estimated
-    pub fn new(num_eval_qubits: usize, num_state_qubits: usize) -> Self {
+    pub const fn new(num_eval_qubits: usize, num_state_qubits: usize) -> Self {
         Self {
             num_eval_qubits,
             grover_operator: GroverOperator::new(num_state_qubits),
@@ -121,7 +121,7 @@ impl CanonicalQAE {
         let mut state = oracle.state_preparation();
 
         // Apply Quantum Phase Estimation on the Grover operator
-        let phase = self.quantum_phase_estimation(&mut state, oracle)?;
+        let phase = self.quantum_phase_estimation(&state, oracle)?;
 
         // Convert phase to amplitude: a = sin²(θ/2) where θ = phase * π
         let theta = phase * PI;
@@ -130,7 +130,7 @@ impl CanonicalQAE {
         // Compute confidence interval based on Heisenberg limit
         let precision = PI / (1 << self.num_eval_qubits) as f64;
         let lower_bound = ((theta - precision) / 2.0).sin().powi(2).max(0.0);
-        let upper_bound = ((theta + precision) / 2.0).sin().powi(2).min(1.0);
+        let upper_bound = f64::midpoint(theta, precision).sin().powi(2).min(1.0);
 
         Ok((amplitude, (lower_bound, upper_bound)))
     }
@@ -138,7 +138,7 @@ impl CanonicalQAE {
     /// Quantum Phase Estimation for the Grover operator
     fn quantum_phase_estimation(
         &self,
-        state: &mut Array1<Complex64>,
+        state: &Array1<Complex64>,
         oracle: &dyn AmplitudeOracle,
     ) -> Result<f64, QuantRS2Error> {
         // Simplified QPE: measure eigenvalue of Grover operator
@@ -172,7 +172,7 @@ impl CanonicalQAE {
         let mut max_amplitude = 0.0;
         let mut max_phase = 0.0;
 
-        for amp in state.iter() {
+        for amp in state {
             let magnitude = amp.norm();
             if magnitude > max_amplitude {
                 max_amplitude = magnitude;
@@ -200,7 +200,7 @@ pub struct MaximumLikelihoodAE {
 
 impl MaximumLikelihoodAE {
     /// Create a new MLAE instance with custom schedule
-    pub fn new(schedule: Vec<usize>, num_qubits: usize) -> Self {
+    pub const fn new(schedule: Vec<usize>, num_qubits: usize) -> Self {
         Self {
             schedule,
             grover_operator: GroverOperator::new(num_qubits),
@@ -314,10 +314,10 @@ impl MaximumLikelihoodAE {
 
         for &(m, p_obs) in observations {
             // Probability of success after m Grover iterations
-            let p_theory = ((2.0 * m as f64 + 1.0) * theta / 2.0).sin().powi(2);
+            let p_theory = (2.0f64.mul_add(m as f64, 1.0) * theta / 2.0).sin().powi(2);
 
             // Binomial log-likelihood (simplified)
-            log_likelihood += p_obs * p_theory.ln() + (1.0 - p_obs) * (1.0 - p_theory).ln();
+            log_likelihood += p_obs.mul_add(p_theory.ln(), (1.0 - p_obs) * (1.0 - p_theory).ln());
         }
 
         log_likelihood
@@ -330,8 +330,8 @@ impl MaximumLikelihoodAE {
 
         for &(m, _) in observations {
             // Derivative of success probability w.r.t. theta
-            let phase = (2.0 * m as f64 + 1.0) * theta / 2.0;
-            let derivative = (2.0 * m as f64 + 1.0) * phase.sin() * phase.cos();
+            let phase = 2.0f64.mul_add(m as f64, 1.0) * theta / 2.0;
+            let derivative = 2.0f64.mul_add(m as f64, 1.0) * phase.sin() * phase.cos();
 
             let p = phase.sin().powi(2);
             fisher_info += derivative.powi(2) / (p * (1.0 - p)).max(1e-10);
@@ -359,7 +359,7 @@ pub struct IterativeQAE {
 
 impl IterativeQAE {
     /// Create a new IQAE instance
-    pub fn new(target_accuracy: f64, confidence_level: f64, num_qubits: usize) -> Self {
+    pub const fn new(target_accuracy: f64, confidence_level: f64, num_qubits: usize) -> Self {
         Self {
             target_accuracy,
             confidence_level,
@@ -390,7 +390,7 @@ impl IterativeQAE {
             iteration += 1;
         }
 
-        let estimated_amplitude = (lower_bound + upper_bound) / 2.0;
+        let estimated_amplitude = f64::midpoint(lower_bound, upper_bound);
 
         Ok(IQAEResult {
             amplitude: estimated_amplitude,
@@ -405,12 +405,11 @@ impl IterativeQAE {
     fn choose_grover_iterations(&self, lower: f64, upper: f64) -> usize {
         let theta_lower = (lower.sqrt()).asin() * 2.0;
         let theta_upper = (upper.sqrt()).asin() * 2.0;
-        let theta_mid = (theta_lower + theta_upper) / 2.0;
+        let theta_mid = f64::midpoint(theta_lower, theta_upper);
 
         // Choose k such that (2k+1)θ ≈ π/2 for maximum discrimination
-        let k = ((PI / 2.0) / theta_mid - 0.5).max(0.0) as usize;
 
-        k
+        ((PI / 2.0) / theta_mid - 0.5).max(0.0) as usize
     }
 
     /// Run measurements adaptively
@@ -571,8 +570,12 @@ impl OptionPricingOracle {
         // Inverse CDF of log-normal distribution (simplified)
         let z = (normalized * 6.0) - 3.0; // Approximate normal quantile
         let s_0 = self.strike_price; // Assume ATM
-        s_0 * ((self.risk_free_rate - 0.5 * self.volatility.powi(2)) * self.time_to_maturity
-            + self.volatility * self.time_to_maturity.sqrt() * z)
+        s_0 * 0.5f64
+            .mul_add(-self.volatility.powi(2), self.risk_free_rate)
+            .mul_add(
+                self.time_to_maturity,
+                self.volatility * self.time_to_maturity.sqrt() * z,
+            )
             .exp()
     }
 }
@@ -641,7 +644,9 @@ mod tests {
         let oracle = TestOracle;
         let mut state = oracle.state_preparation();
 
-        grover.apply(&mut state, &oracle).unwrap();
+        grover
+            .apply(&mut state, &oracle)
+            .expect("Grover operator application should succeed");
 
         // After one Grover iteration, amplitude of |11⟩ should increase
         assert!(state[3].norm() > 0.5);

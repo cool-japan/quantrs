@@ -29,7 +29,7 @@ pub struct HolographicQECConfig {
     pub boundary_qubits: usize,
     /// Number of bulk qubits (typically exponentially larger)
     pub bulk_qubits: usize,
-    /// AdS radius for geometry
+    /// `AdS` radius for geometry
     pub ads_radius: f64,
     /// Central charge of boundary CFT
     pub central_charge: f64,
@@ -140,7 +140,7 @@ pub struct HolographicQECSimulator {
     syndrome_measurements: Vec<f64>,
     /// Quantum gravity simulator for bulk dynamics
     gravity_simulator: Option<QuantumGravitySimulator>,
-    /// SciRS2 backend for computations
+    /// `SciRS2` backend for computations
     backend: Option<SciRS2Backend>,
     /// Simulation statistics
     stats: HolographicQECStats,
@@ -163,6 +163,7 @@ impl HolographicQECSimulator {
     }
 
     /// Create a new holographic quantum error correction simulator
+    #[must_use]
     pub fn new(config: HolographicQECConfig) -> Self {
         Self {
             config,
@@ -312,15 +313,17 @@ impl HolographicQECSimulator {
         }
 
         // Normalize the encoding matrix
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
     /// Calculate Rindler factor for AdS-Rindler encoding
+    #[must_use]
     pub fn calculate_rindler_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
         let rindler_horizon = self.config.ads_radius;
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Rindler transformation factor with phase shift to avoid zeros
         let factor = (rindler_horizon * bulk_position).cosh()
@@ -330,6 +333,7 @@ impl HolographicQECSimulator {
     }
 
     /// Calculate entanglement factor for holographic encoding
+    #[must_use]
     pub fn calculate_entanglement_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
         let mutual_information = self.calculate_mutual_information(bulk_index, boundary_index);
         let entanglement_entropy = self.calculate_entanglement_entropy(bulk_index, boundary_index);
@@ -357,8 +361,9 @@ impl HolographicQECSimulator {
 
     /// Calculate Ryu-Takayanagi surface area
     fn calculate_rt_surface_area(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Minimal surface area calculation
         let radial_distance = (bulk_position - boundary_position).abs();
@@ -403,8 +408,9 @@ impl HolographicQECSimulator {
 
     /// Calculate correlation factor between bulk and boundary
     fn calculate_correlation_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Correlation based on holographic correspondence
         let distance = (bulk_position - boundary_position).abs();
@@ -421,7 +427,7 @@ impl HolographicQECSimulator {
         // Create stabilizer-based holographic encoding
         for i in 0..bulk_dim {
             for j in 0..boundary_dim {
-                let stabilizer_factor = self.calculate_stabilizer_factor(i, j);
+                let stabilizer_factor = Self::calculate_stabilizer_factor(i, j);
                 let holographic_factor = self.calculate_holographic_factor(i, j);
 
                 encoding_matrix[[i, j]] =
@@ -429,14 +435,14 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
     /// Calculate stabilizer factor for encoding
-    fn calculate_stabilizer_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_parity = (bulk_index.count_ones() % 2) as f64;
-        let boundary_parity = (boundary_index.count_ones() % 2) as f64;
+    fn calculate_stabilizer_factor(bulk_index: usize, boundary_index: usize) -> f64 {
+        let bulk_parity = f64::from(bulk_index.count_ones() % 2);
+        let boundary_parity = f64::from(boundary_index.count_ones() % 2);
 
         // Stabilizer correlation
         if bulk_parity == boundary_parity {
@@ -448,8 +454,8 @@ impl HolographicQECSimulator {
 
     /// Calculate holographic factor for encoding
     fn calculate_holographic_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_weight = bulk_index.count_ones() as f64;
-        let boundary_weight = boundary_index.count_ones() as f64;
+        let bulk_weight = f64::from(bulk_index.count_ones());
+        let boundary_weight = f64::from(boundary_index.count_ones());
 
         // Holographic weight correlation
         let weight_correlation = (bulk_weight - boundary_weight).abs();
@@ -473,14 +479,15 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
-    /// Calculate geodesic length in AdS space
+    /// Calculate geodesic length in `AdS` space
     fn calculate_geodesic_length(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // AdS geodesic length calculation
         let radial_bulk = 1.0 / (1.0 - bulk_position);
@@ -499,7 +506,7 @@ impl HolographicQECSimulator {
 
     /// Calculate bulk curvature
     fn calculate_bulk_curvature(&self, bulk_index: usize) -> f64 {
-        let position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
+        let position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
         let ads_curvature = -1.0 / (self.config.ads_radius * self.config.ads_radius);
 
         ads_curvature * (1.0 - position).powi(2)
@@ -507,7 +514,7 @@ impl HolographicQECSimulator {
 
     /// Calculate boundary curvature
     fn calculate_boundary_curvature(&self, boundary_index: usize) -> f64 {
-        let position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let position = (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Boundary is typically flat, but can have induced curvature
         // Ensure positive curvature to avoid division by zero
@@ -532,7 +539,7 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
@@ -542,17 +549,17 @@ impl HolographicQECSimulator {
         bulk_index: usize,
         boundary_index: usize,
     ) -> Complex64 {
-        let bulk_legs = self.get_tensor_legs(bulk_index, true);
-        let boundary_legs = self.get_tensor_legs(boundary_index, false);
+        let bulk_legs = Self::get_tensor_legs(bulk_index, true);
+        let boundary_legs = Self::get_tensor_legs(boundary_index, false);
 
         // Contract tensor legs between bulk and boundary
-        let contraction_value = self.contract_tensor_legs(&bulk_legs, &boundary_legs);
+        let contraction_value = Self::contract_tensor_legs(&bulk_legs, &boundary_legs);
 
         Complex64::new(contraction_value, 0.0)
     }
 
     /// Get tensor legs for given index
-    fn get_tensor_legs(&self, index: usize, is_bulk: bool) -> Vec<f64> {
+    fn get_tensor_legs(index: usize, is_bulk: bool) -> Vec<f64> {
         let mut legs = Vec::new();
         let num_legs = if is_bulk { 4 } else { 2 }; // Bulk tensors have more legs
 
@@ -565,7 +572,7 @@ impl HolographicQECSimulator {
     }
 
     /// Contract tensor legs
-    fn contract_tensor_legs(&self, bulk_legs: &[f64], boundary_legs: &[f64]) -> f64 {
+    fn contract_tensor_legs(bulk_legs: &[f64], boundary_legs: &[f64]) -> f64 {
         let mut contraction = 1.0;
 
         // Contract matching legs
@@ -575,8 +582,8 @@ impl HolographicQECSimulator {
         }
 
         // Add remaining bulk leg contributions
-        for i in min_legs..bulk_legs.len() {
-            contraction *= bulk_legs[i];
+        for leg in &bulk_legs[min_legs..] {
+            contraction *= leg;
         }
 
         contraction / (bulk_legs.len() as f64).sqrt()
@@ -597,7 +604,7 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
@@ -641,7 +648,7 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
@@ -651,28 +658,28 @@ impl HolographicQECSimulator {
         bulk_index: usize,
         boundary_index: usize,
     ) -> Complex64 {
-        let bulk_state = self.index_to_state_vector(bulk_index, self.config.bulk_qubits);
+        let bulk_state = Self::index_to_state_vector(bulk_index, self.config.bulk_qubits);
         let boundary_state =
-            self.index_to_state_vector(boundary_index, self.config.boundary_qubits);
+            Self::index_to_state_vector(boundary_index, self.config.boundary_qubits);
 
         // Perfect tensor conditions
-        let overlap = self.calculate_state_overlap(&bulk_state, &boundary_state);
-        let perfect_factor = self.calculate_perfect_tensor_factor(bulk_index, boundary_index);
+        let overlap = Self::calculate_state_overlap(&bulk_state, &boundary_state);
+        let perfect_factor = Self::calculate_perfect_tensor_factor(bulk_index, boundary_index);
 
         Complex64::new(overlap * perfect_factor, 0.0)
     }
 
     /// Convert index to state vector
-    fn index_to_state_vector(&self, index: usize, num_qubits: usize) -> Vec<f64> {
+    fn index_to_state_vector(index: usize, num_qubits: usize) -> Vec<f64> {
         let mut state = vec![0.0; num_qubits];
-        for i in 0..num_qubits {
-            state[i] = if (index >> i) & 1 == 1 { 1.0 } else { 0.0 };
+        for (i, elem) in state.iter_mut().enumerate() {
+            *elem = if (index >> i) & 1 == 1 { 1.0 } else { 0.0 };
         }
         state
     }
 
     /// Calculate state overlap
-    fn calculate_state_overlap(&self, state1: &[f64], state2: &[f64]) -> f64 {
+    fn calculate_state_overlap(state1: &[f64], state2: &[f64]) -> f64 {
         let min_len = state1.len().min(state2.len());
         let mut overlap = 0.0;
 
@@ -684,9 +691,9 @@ impl HolographicQECSimulator {
     }
 
     /// Calculate perfect tensor factor
-    fn calculate_perfect_tensor_factor(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_weight = bulk_index.count_ones() as f64;
-        let boundary_weight = boundary_index.count_ones() as f64;
+    fn calculate_perfect_tensor_factor(bulk_index: usize, boundary_index: usize) -> f64 {
+        let bulk_weight = f64::from(bulk_index.count_ones());
+        let boundary_weight = f64::from(boundary_index.count_ones());
 
         // Perfect tensor satisfies specific weight conditions
         if (bulk_weight - boundary_weight).abs() <= 1.0 {
@@ -712,7 +719,7 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
@@ -744,7 +751,7 @@ impl HolographicQECSimulator {
             }
         }
 
-        self.normalize_encoding_matrix(encoding_matrix)?;
+        Self::normalize_encoding_matrix(encoding_matrix)?;
         Ok(())
     }
 
@@ -762,7 +769,7 @@ impl HolographicQECSimulator {
 
     /// Calculate bulk field value
     fn calculate_bulk_field_value(&self, bulk_index: usize) -> f64 {
-        let position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
+        let position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
         let radial_coordinate = 1.0 / (1.0 - position);
 
         // Bulk field in AdS space
@@ -771,7 +778,7 @@ impl HolographicQECSimulator {
 
     /// Calculate boundary field value
     fn calculate_boundary_field_value(&self, boundary_index: usize) -> f64 {
-        let position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let position = (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Boundary CFT field
         (2.0 * PI * position).sin() / (1.0 + position).sqrt()
@@ -785,8 +792,9 @@ impl HolographicQECSimulator {
 
     /// Calculate correlation function
     fn calculate_correlation_function(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // Two-point correlation function
         let distance = (bulk_position - boundary_position).abs();
@@ -796,7 +804,7 @@ impl HolographicQECSimulator {
     }
 
     /// Normalize encoding matrix
-    fn normalize_encoding_matrix(&self, encoding_matrix: &mut Array2<Complex64>) -> Result<()> {
+    fn normalize_encoding_matrix(encoding_matrix: &mut Array2<Complex64>) -> Result<()> {
         let (rows, cols) = encoding_matrix.dim();
 
         // Normalize each column
@@ -996,7 +1004,7 @@ impl HolographicQECSimulator {
 
             // Multi-qubit stabilizer
             for j in 0..dim {
-                let stabilizer_value = self.calculate_stabilizer_value(i, j);
+                let stabilizer_value = Self::calculate_stabilizer_value(i, j);
                 stabilizer[[j, j]] = Complex64::new(stabilizer_value, 0.0);
             }
 
@@ -1007,7 +1015,7 @@ impl HolographicQECSimulator {
     }
 
     /// Calculate stabilizer value
-    const fn calculate_stabilizer_value(&self, generator_index: usize, state_index: usize) -> f64 {
+    const fn calculate_stabilizer_value(generator_index: usize, state_index: usize) -> f64 {
         let generator_mask = 1 << generator_index;
         let parity = (state_index & generator_mask).count_ones() % 2;
 
@@ -1161,8 +1169,9 @@ impl HolographicQECSimulator {
 
     /// Calculate HKLL kernel
     fn calculate_hkll_kernel(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let bulk_position = (bulk_index as f64) / (1 << self.config.bulk_qubits) as f64;
-        let boundary_position = (boundary_index as f64) / (1 << self.config.boundary_qubits) as f64;
+        let bulk_position = (bulk_index as f64) / f64::from(1 << self.config.bulk_qubits);
+        let boundary_position =
+            (boundary_index as f64) / f64::from(1 << self.config.boundary_qubits);
 
         // HKLL kernel in AdS space
         let radial_bulk = 1.0 / (1.0 - bulk_position);
@@ -1276,7 +1285,7 @@ impl HolographicQECSimulator {
 
     /// Predict syndrome for given error location
     fn predict_syndrome(&self, bulk_index: usize, boundary_index: usize) -> f64 {
-        let error_weight = (bulk_index.count_ones() + boundary_index.count_ones()) as f64;
+        let error_weight = f64::from(bulk_index.count_ones() + boundary_index.count_ones());
         let geometric_factor = self.calculate_geometric_factor(bulk_index, boundary_index);
 
         error_weight * geometric_factor / self.config.central_charge
@@ -1486,11 +1495,7 @@ impl HolographicQECSimulator {
     }
 
     /// Apply Pauli X correction
-    fn apply_pauli_x_correction(
-        &self,
-        state: &mut Array1<Complex64>,
-        qubit_index: usize,
-    ) -> Result<()> {
+    fn apply_pauli_x_correction(state: &mut Array1<Complex64>, qubit_index: usize) -> Result<()> {
         let dim = state.len();
         let mask = 1 << qubit_index;
 
@@ -1527,11 +1532,7 @@ impl HolographicQECSimulator {
     }
 
     /// Apply Pauli Z correction
-    fn apply_pauli_z_correction(
-        &self,
-        state: &mut Array1<Complex64>,
-        qubit_index: usize,
-    ) -> Result<()> {
+    fn apply_pauli_z_correction(state: &mut Array1<Complex64>, qubit_index: usize) -> Result<()> {
         let dim = state.len();
         let mask = 1 << qubit_index;
 
@@ -1724,6 +1725,7 @@ impl HolographicQECSimulator {
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &HolographicQECStats {
         &self.stats
     }
@@ -1785,6 +1787,7 @@ pub struct HolographicQECUtils;
 
 impl HolographicQECUtils {
     /// Calculate holographic error correction threshold
+    #[must_use]
     pub fn calculate_error_threshold(
         ads_radius: f64,
         central_charge: f64,
@@ -1797,11 +1800,13 @@ impl HolographicQECUtils {
     }
 
     /// Estimate bulk qubits needed for given boundary
+    #[must_use]
     pub fn estimate_bulk_qubits(boundary_qubits: usize, encoding_ratio: f64) -> usize {
         ((boundary_qubits as f64) * encoding_ratio) as usize
     }
 
-    /// Calculate optimal AdS radius for error correction
+    /// Calculate optimal `AdS` radius for error correction
+    #[must_use]
     pub fn calculate_optimal_ads_radius(
         boundary_qubits: usize,
         error_rate: f64,
@@ -1954,7 +1959,7 @@ mod tests {
         let encoding_matrix = simulator.create_holographic_encoding_matrix(boundary_dim, bulk_dim);
 
         assert!(encoding_matrix.is_ok());
-        let matrix = encoding_matrix.unwrap();
+        let matrix = encoding_matrix.expect("encoding matrix creation should succeed");
         assert_eq!(matrix.dim(), (bulk_dim, boundary_dim));
     }
 
@@ -2246,7 +2251,7 @@ mod tests {
         let syndromes = simulator.measure_syndromes();
         assert!(syndromes.is_ok());
 
-        let syndrome_values = syndromes.unwrap();
+        let syndrome_values = syndromes.expect("syndrome measurement should succeed");
         assert_eq!(syndrome_values.len(), simulator.config.boundary_qubits);
 
         for syndrome in syndrome_values {
@@ -2272,7 +2277,7 @@ mod tests {
         let result = simulator.perform_error_correction(&error_locations);
 
         assert!(result.is_ok());
-        let correction_result = result.unwrap();
+        let correction_result = result.expect("error correction should succeed");
         assert!(!correction_result.syndromes.is_empty());
         assert!(correction_result.correction_time.as_nanos() > 0);
     }
@@ -2301,7 +2306,7 @@ mod tests {
         let result = simulator.perform_bulk_reconstruction(&boundary_data);
         assert!(result.is_ok());
 
-        let reconstruction_result = result.unwrap();
+        let reconstruction_result = result.expect("bulk reconstruction should succeed");
         assert_eq!(reconstruction_result.reconstructed_bulk.len(), 1 << 4);
         assert!(reconstruction_result.reconstruction_fidelity >= 0.0);
         assert!(reconstruction_result.reconstruction_fidelity <= 1.0);
@@ -2323,7 +2328,7 @@ mod tests {
         let errors = simulator.decode_hkll_errors(&syndromes);
 
         assert!(errors.is_ok());
-        let error_locations = errors.unwrap();
+        let error_locations = errors.expect("HKLL error decoding should succeed");
         assert!(!error_locations.is_empty());
     }
 
@@ -2342,7 +2347,7 @@ mod tests {
         let errors = simulator.decode_entanglement_wedge_errors(&syndromes);
 
         assert!(errors.is_ok());
-        let error_locations = errors.unwrap();
+        let error_locations = errors.expect("entanglement wedge error decoding should succeed");
         assert!(!error_locations.is_empty());
     }
 
@@ -2379,7 +2384,7 @@ mod tests {
         let benchmark_result = benchmark_holographic_qec(config, num_trials, &error_rates);
         assert!(benchmark_result.is_ok());
 
-        let results = benchmark_result.unwrap();
+        let results = benchmark_result.expect("holographic QEC benchmark should succeed");
         assert_eq!(results.error_rates.len(), 2);
         assert_eq!(results.success_rates.len(), 2);
         assert!(results.total_benchmark_time.as_nanos() > 0);
@@ -2414,7 +2419,8 @@ mod tests {
             let encoding_result = simulator.create_holographic_encoding_matrix(16, 4);
             assert!(encoding_result.is_ok());
 
-            let encoding_matrix = encoding_result.unwrap();
+            let encoding_matrix = encoding_result
+                .expect("encoding matrix creation should succeed for all code types");
             let matrix_norm: f64 = encoding_matrix.iter().map(|x| x.norm_sqr()).sum();
             assert!(matrix_norm > 0.0);
         }
@@ -2449,7 +2455,8 @@ mod tests {
             let errors = simulator.decode_holographic_errors(&syndromes);
             assert!(errors.is_ok());
 
-            let error_locations = errors.unwrap();
+            let error_locations =
+                errors.expect("holographic error decoding should succeed for all methods");
             assert!(!error_locations.is_empty());
         }
     }
@@ -2502,7 +2509,7 @@ mod tests {
         let matrix_result = simulator.create_holographic_encoding_matrix(boundary_dim, bulk_dim);
         assert!(matrix_result.is_ok());
 
-        let matrix = matrix_result.unwrap();
+        let matrix = matrix_result.expect("encoding matrix creation should succeed in debug test");
         println!(
             "Matrix created successfully with dimensions: {:?}",
             matrix.dim()

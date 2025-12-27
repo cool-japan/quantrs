@@ -227,7 +227,9 @@ impl ConstraintPropagator for AllDifferentPropagator {
         for var in &self.variables {
             if let Some(domain) = domains.get(var) {
                 if domain.size() == 1 {
-                    assigned_values.insert(*domain.values.iter().next().unwrap());
+                    if let Some(&value) = domain.values.iter().next() {
+                        assigned_values.insert(value);
+                    }
                 }
             }
         }
@@ -578,7 +580,9 @@ mod tests {
         domains.insert("y".to_string(), Domain::from_values(vec![1, 2, 3]));
         domains.insert("z".to_string(), Domain::from_values(vec![1, 2, 3]));
 
-        let mut changed = propagator.propagate(&mut domains).unwrap();
+        let mut changed = propagator
+            .propagate(&mut domains)
+            .expect("AllDifferent propagation should succeed with valid domains");
         assert!(changed);
 
         // Value 1 should be removed from y and z

@@ -145,6 +145,7 @@ pub struct TPUDeviceInfo {
 
 impl TPUDeviceInfo {
     /// Create device info for specific TPU type
+    #[must_use]
     pub fn for_device_type(device_type: TPUDeviceType) -> Self {
         match device_type {
             TPUDeviceType::TPUv2 => Self {
@@ -283,6 +284,7 @@ pub enum TPUDataType {
 
 impl TPUDataType {
     /// Get size in bytes
+    #[must_use]
     pub const fn size_bytes(&self) -> usize {
         match self {
             Self::Float32 => 4,
@@ -389,6 +391,7 @@ impl TPUStats {
     }
 
     /// Calculate performance metrics
+    #[must_use]
     pub fn get_performance_metrics(&self) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
 
@@ -940,7 +943,7 @@ impl TPUQuantumSimulator {
 
     /// Apply gate using CPU fallback
     fn apply_gate_cpu_fallback(
-        &mut self,
+        &self,
         state: &Array1<Complex64>,
         _gate: &InterfaceGate,
     ) -> Result<Array1<Complex64>> {
@@ -1114,11 +1117,13 @@ impl TPUQuantumSimulator {
     }
 
     /// Get device information
+    #[must_use]
     pub const fn get_device_info(&self) -> &TPUDeviceInfo {
         &self.device_info
     }
 
     /// Get performance statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &TPUStats {
         &self.stats
     }
@@ -1129,11 +1134,13 @@ impl TPUQuantumSimulator {
     }
 
     /// Check TPU availability
+    #[must_use]
     pub fn is_tpu_available(&self) -> bool {
         !self.xla_computations.is_empty()
     }
 
     /// Get memory usage
+    #[must_use]
     pub const fn get_memory_usage(&self) -> (usize, usize) {
         (
             self.memory_manager.used_memory,
@@ -1270,7 +1277,7 @@ mod tests {
     #[test]
     fn test_xla_compilation() {
         let config = TPUConfig::default();
-        let simulator = TPUQuantumSimulator::new(config).unwrap();
+        let simulator = TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         assert!(simulator
             .xla_computations
@@ -1285,7 +1292,8 @@ mod tests {
     #[test]
     fn test_memory_allocation() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         let result = simulator.allocate_batch_memory(4, 1024);
         assert!(result.is_ok());
@@ -1300,16 +1308,17 @@ mod tests {
             num_cores: 1,
             ..Default::default()
         };
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
-        let result = simulator.allocate_batch_memory(1000, 1000000); // Large allocation
+        let result = simulator.allocate_batch_memory(1000, 1_000_000); // Large allocation
         assert!(result.is_err());
     }
 
     #[test]
     fn test_gate_matrix_generation() {
         let config = TPUConfig::default();
-        let simulator = TPUQuantumSimulator::new(config).unwrap();
+        let simulator = TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         let h_matrix = simulator.get_gate_matrix(&InterfaceGateType::H);
         assert_abs_diff_eq!(h_matrix[0].re, 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);
@@ -1322,7 +1331,8 @@ mod tests {
     #[test]
     fn test_single_qubit_gate_application() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         let mut state = Array1::zeros(4);
         state[0] = Complex64::new(1.0, 0.0);
@@ -1330,7 +1340,7 @@ mod tests {
         let gate = InterfaceGate::new(InterfaceGateType::H, vec![0]);
         let result = simulator
             .apply_single_qubit_gate_tpu(&state, &gate)
-            .unwrap();
+            .expect("Failed to apply single qubit gate");
 
         // After Hadamard, |0⟩ becomes (|0⟩ + |1⟩)/√2
         assert_abs_diff_eq!(result[0].norm(), 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);
@@ -1340,14 +1350,17 @@ mod tests {
     #[test]
     fn test_two_qubit_gate_application() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         let mut state = Array1::zeros(4);
         state[0] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
         state[1] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0);
 
         let gate = InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]);
-        let result = simulator.apply_two_qubit_gate_tpu(&state, &gate).unwrap();
+        let result = simulator
+            .apply_two_qubit_gate_tpu(&state, &gate)
+            .expect("Failed to apply two qubit gate");
 
         assert!(result.len() == 4);
     }
@@ -1358,7 +1371,8 @@ mod tests {
             batch_size: 2,
             ..Default::default()
         };
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         // Create test circuits
         let mut circuit1 = InterfaceCircuit::new(2, 0);
@@ -1381,14 +1395,15 @@ mod tests {
         let result = simulator.execute_batch_circuit(&circuits, &initial_states);
         assert!(result.is_ok());
 
-        let final_states = result.unwrap();
+        let final_states = result.expect("Failed to execute batch circuit");
         assert_eq!(final_states.len(), 2);
     }
 
     #[test]
     fn test_expectation_value_computation() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         // Create test states
         let mut state1 = Array1::zeros(4);
@@ -1403,14 +1418,15 @@ mod tests {
         let result = simulator.compute_expectation_values_tpu(&states, &observables);
         assert!(result.is_ok());
 
-        let expectations = result.unwrap();
+        let expectations = result.expect("Failed to compute expectation values");
         assert_eq!(expectations.shape(), &[2, 2]);
     }
 
     #[test]
     fn test_stats_tracking() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         simulator.stats.update_operation(10.0, 1000);
         simulator.stats.update_operation(20.0, 2000);
@@ -1424,11 +1440,12 @@ mod tests {
     #[test]
     fn test_performance_metrics() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         simulator.stats.total_operations = 100;
         simulator.stats.total_execution_time = 1000.0; // 1 second
-        simulator.stats.total_flops = 1000000;
+        simulator.stats.total_flops = 1_000_000;
         simulator.stats.xla_cache_hits = 80;
         simulator.stats.xla_cache_misses = 20;
 
@@ -1445,17 +1462,18 @@ mod tests {
     #[test]
     fn test_garbage_collection() {
         let config = TPUConfig::default();
-        let mut simulator = TPUQuantumSimulator::new(config).unwrap();
+        let mut simulator =
+            TPUQuantumSimulator::new(config).expect("Failed to create TPU simulator");
 
         // Allocate some memory
-        simulator.memory_manager.used_memory = 1000000;
+        simulator.memory_manager.used_memory = 1_000_000;
 
         let result = simulator.garbage_collect();
         assert!(result.is_ok());
 
-        let freed = result.unwrap();
+        let freed = result.expect("Failed garbage collection");
         assert!(freed > 0);
-        assert!(simulator.memory_manager.used_memory < 1000000);
+        assert!(simulator.memory_manager.used_memory < 1_000_000);
     }
 
     #[test]

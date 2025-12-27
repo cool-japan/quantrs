@@ -1,4 +1,4 @@
-//! Fermionic quantum simulation with SciRS2 integration.
+//! Fermionic quantum simulation with `SciRS2` integration.
 //!
 //! This module provides comprehensive support for simulating fermionic systems,
 //! including Jordan-Wigner transformations, fermionic operators, and specialized
@@ -17,13 +17,13 @@ use crate::scirs2_integration::SciRS2Backend;
 pub enum FermionicOperator {
     /// Creation operator c†_i
     Creation(usize),
-    /// Annihilation operator c_i
+    /// Annihilation operator `c_i`
     Annihilation(usize),
-    /// Number operator n_i = c†_i c_i
+    /// Number operator `n_i` = c†_i `c_i`
     Number(usize),
-    /// Hopping term c†_i c_j
+    /// Hopping term c†_i `c_j`
     Hopping { from: usize, to: usize },
-    /// Interaction term c†_i c†_j c_k c_l
+    /// Interaction term c†_i c†_j `c_k` `c_l`
     Interaction { sites: [usize; 4] },
 }
 
@@ -57,7 +57,7 @@ pub struct JordanWignerTransform {
     pauli_cache: HashMap<FermionicOperator, PauliString>,
 }
 
-/// Fermionic simulator with SciRS2 optimization
+/// Fermionic simulator with `SciRS2` optimization
 pub struct FermionicSimulator {
     /// Number of fermionic modes
     num_modes: usize,
@@ -65,7 +65,7 @@ pub struct FermionicSimulator {
     jw_transform: JordanWignerTransform,
     /// Current fermionic state (in qubit representation)
     state: Array1<Complex64>,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Simulation statistics
     stats: FermionicStats,
@@ -88,16 +88,19 @@ pub struct FermionicStats {
 
 impl FermionicOperator {
     /// Check if operator is creation type
+    #[must_use]
     pub const fn is_creation(&self) -> bool {
         matches!(self, Self::Creation(_))
     }
 
     /// Check if operator is annihilation type
+    #[must_use]
     pub const fn is_annihilation(&self) -> bool {
         matches!(self, Self::Annihilation(_))
     }
 
     /// Get site index for single-site operators
+    #[must_use]
     pub const fn site(&self) -> Option<usize> {
         match self {
             Self::Creation(i) | Self::Annihilation(i) | Self::Number(i) => Some(*i),
@@ -106,6 +109,7 @@ impl FermionicOperator {
     }
 
     /// Get canonical ordering for operator comparison
+    #[must_use]
     pub fn ordering_key(&self) -> (usize, usize) {
         match self {
             Self::Creation(i) => (1, *i),
@@ -117,8 +121,8 @@ impl FermionicOperator {
                 sorted_sites.sort_unstable();
                 (
                     4,
-                    sorted_sites[0] * 1000000
-                        + sorted_sites[1] * 10000
+                    sorted_sites[0] * 1_000_000
+                        + sorted_sites[1] * 10_000
                         + sorted_sites[2] * 100
                         + sorted_sites[3],
                 )
@@ -129,6 +133,7 @@ impl FermionicOperator {
 
 impl FermionicString {
     /// Create new fermionic string
+    #[must_use]
     pub const fn new(
         operators: Vec<FermionicOperator>,
         coefficient: Complex64,
@@ -142,6 +147,7 @@ impl FermionicString {
     }
 
     /// Create single fermionic operator
+    #[must_use]
     pub fn single_operator(
         op: FermionicOperator,
         coefficient: Complex64,
@@ -151,11 +157,13 @@ impl FermionicString {
     }
 
     /// Create creation operator c†_i
+    #[must_use]
     pub fn creation(site: usize, coefficient: Complex64, num_modes: usize) -> Self {
         Self::single_operator(FermionicOperator::Creation(site), coefficient, num_modes)
     }
 
-    /// Create annihilation operator c_i
+    /// Create annihilation operator `c_i`
+    #[must_use]
     pub fn annihilation(site: usize, coefficient: Complex64, num_modes: usize) -> Self {
         Self::single_operator(
             FermionicOperator::Annihilation(site),
@@ -164,12 +172,14 @@ impl FermionicString {
         )
     }
 
-    /// Create number operator n_i
+    /// Create number operator `n_i`
+    #[must_use]
     pub fn number(site: usize, coefficient: Complex64, num_modes: usize) -> Self {
         Self::single_operator(FermionicOperator::Number(site), coefficient, num_modes)
     }
 
-    /// Create hopping term t c†_i c_j
+    /// Create hopping term t c†_i `c_j`
+    #[must_use]
     pub fn hopping(from: usize, to: usize, coefficient: Complex64, num_modes: usize) -> Self {
         Self::single_operator(
             FermionicOperator::Hopping { from, to },
@@ -266,6 +276,7 @@ impl FermionicString {
     }
 
     /// Compute Hermitian conjugate
+    #[must_use]
     pub fn hermitian_conjugate(&self) -> Self {
         let mut conjugate_ops = Vec::new();
 
@@ -299,6 +310,7 @@ impl FermionicString {
 
 impl FermionicHamiltonian {
     /// Create new fermionic Hamiltonian
+    #[must_use]
     pub const fn new(num_modes: usize) -> Self {
         Self {
             terms: Vec::new(),
@@ -463,6 +475,7 @@ impl FermionicHamiltonian {
 
 impl JordanWignerTransform {
     /// Create new Jordan-Wigner transformer
+    #[must_use]
     pub fn new(num_modes: usize) -> Self {
         Self {
             num_modes,
@@ -497,9 +510,7 @@ impl JordanWignerTransform {
         let mut paulis = vec![PauliOperator::I; self.num_modes];
 
         // Jordan-Wigner string: Z_0 Z_1 ... Z_{i-1} (X_i - i Y_i)/2
-        for j in 0..site {
-            paulis[j] = PauliOperator::Z;
-        }
+        paulis[..site].fill(PauliOperator::Z);
 
         // For creation: (X - iY)/2, we'll represent this as two terms
         // This is a simplified representation - proper implementation would
@@ -516,7 +527,7 @@ impl JordanWignerTransform {
         PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.5, 0.0))
     }
 
-    /// Transform annihilation operator c_i to Pauli string
+    /// Transform annihilation operator `c_i` to Pauli string
     fn annihilation_to_pauli(&self, site: usize) -> Result<PauliString> {
         if site >= self.num_modes {
             return Err(SimulatorError::IndexOutOfBounds(site));
@@ -525,9 +536,7 @@ impl JordanWignerTransform {
         let mut paulis = vec![PauliOperator::I; self.num_modes];
 
         // Jordan-Wigner string: Z_0 Z_1 ... Z_{i-1} (X_i + i Y_i)/2
-        for j in 0..site {
-            paulis[j] = PauliOperator::Z;
-        }
+        paulis[..site].fill(PauliOperator::Z);
 
         paulis[site] = PauliOperator::X;
 
@@ -541,7 +550,7 @@ impl JordanWignerTransform {
         PauliString::from_ops(self.num_modes, &ops, Complex64::new(0.5, 0.0))
     }
 
-    /// Transform number operator n_i to Pauli string
+    /// Transform number operator `n_i` to Pauli string
     fn number_to_pauli(&self, site: usize) -> Result<PauliString> {
         if site >= self.num_modes {
             return Err(SimulatorError::IndexOutOfBounds(site));
@@ -572,9 +581,7 @@ impl JordanWignerTransform {
         let max_site = from.max(to);
 
         // Jordan-Wigner string between sites
-        for j in min_site..max_site {
-            paulis[j] = PauliOperator::Z;
-        }
+        paulis[min_site..max_site].fill(PauliOperator::Z);
 
         paulis[from] = PauliOperator::X;
         paulis[to] = PauliOperator::X;
@@ -674,7 +681,7 @@ impl FermionicSimulator {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_scirs2_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -732,7 +739,7 @@ impl FermionicSimulator {
     }
 
     /// Apply Pauli string to current state
-    const fn apply_pauli_string(&mut self, pauli_string: &PauliString) -> Result<()> {
+    const fn apply_pauli_string(&self, pauli_string: &PauliString) -> Result<()> {
         // This would need proper Pauli string application
         // For now, placeholder implementation
         Ok(())
@@ -772,7 +779,7 @@ impl FermionicSimulator {
 
     /// Evolve under Pauli Hamiltonian
     const fn evolve_pauli_hamiltonian(
-        &mut self,
+        &self,
         _hamiltonian: &PauliOperatorSum,
         _time: f64,
     ) -> Result<()> {
@@ -782,17 +789,19 @@ impl FermionicSimulator {
     }
 
     /// Get current state vector
+    #[must_use]
     pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
     /// Get number of particles in current state
+    #[must_use]
     pub fn get_particle_number(&self) -> f64 {
         let mut total_number = 0.0;
 
         for (index, amplitude) in self.state.iter().enumerate() {
             let prob = amplitude.norm_sqr();
-            let popcount = index.count_ones() as f64;
+            let popcount = f64::from(index.count_ones());
             total_number += prob * popcount;
         }
 
@@ -800,6 +809,7 @@ impl FermionicSimulator {
     }
 
     /// Get simulation statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &FermionicStats {
         &self.stats
     }
@@ -864,7 +874,8 @@ mod tests {
 
     #[test]
     fn test_hubbard_hamiltonian() {
-        let hamiltonian = FermionicHamiltonian::hubbard_model(2, 1.0, 2.0, 0.5).unwrap();
+        let hamiltonian = FermionicHamiltonian::hubbard_model(2, 1.0, 2.0, 0.5)
+            .expect("Failed to create Hubbard model Hamiltonian");
         assert_eq!(hamiltonian.num_modes, 4); // 2 sites × 2 spins
         assert!(!hamiltonian.terms.is_empty());
     }
@@ -873,7 +884,9 @@ mod tests {
     fn test_jordan_wigner_transform() {
         let mut jw = JordanWignerTransform::new(4);
         let creation_op = FermionicOperator::Creation(1);
-        let pauli_string = jw.transform_operator(&creation_op).unwrap();
+        let pauli_string = jw
+            .transform_operator(&creation_op)
+            .expect("Failed to transform creation operator via Jordan-Wigner");
 
         assert_eq!(pauli_string.num_qubits, 4);
         assert_eq!(pauli_string.operators[0], PauliOperator::Z); // Jordan-Wigner string
@@ -882,12 +895,13 @@ mod tests {
 
     #[test]
     fn test_fermionic_simulator() {
-        let mut simulator = FermionicSimulator::new(4).unwrap();
+        let mut simulator =
+            FermionicSimulator::new(4).expect("Failed to create fermionic simulator");
 
         // Set initial state with one particle
         simulator
             .set_initial_state(&[true, false, false, false])
-            .unwrap();
+            .expect("Failed to set initial fermionic state");
 
         let particle_number = simulator.get_particle_number();
         assert!((particle_number - 1.0).abs() < 1e-10);
@@ -898,7 +912,9 @@ mod tests {
         let string1 = FermionicString::creation(0, Complex64::new(1.0, 0.0), 4);
         let string2 = FermionicString::annihilation(1, Complex64::new(1.0, 0.0), 4);
 
-        let product = string1.multiply(&string2).unwrap();
+        let product = string1
+            .multiply(&string2)
+            .expect("Failed to multiply fermionic strings");
         assert!(!product.operators.is_empty());
     }
 }

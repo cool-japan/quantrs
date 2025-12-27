@@ -46,7 +46,7 @@ pub enum BayesianOptError {
 pub type BayesianOptResult<T> = Result<T, BayesianOptError>;
 
 /// Parameter types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParameterType {
     Continuous,
     Discrete,
@@ -94,7 +94,7 @@ impl Default for ParameterSpace {
 /// Constraint handling methods (re-exported from constraints module)
 pub use super::constraints::ConstraintHandlingMethod;
 
-/// Scalarization methods (re-exported from multi_objective module)
+/// Scalarization methods (re-exported from `multi_objective` module)
 pub use super::multi_objective::ScalarizationMethod;
 
 /// Optimization history
@@ -167,6 +167,7 @@ impl Default for BayesianHyperoptimizer {
 
 impl BayesianHyperoptimizer {
     /// Create new Bayesian hyperoptimizer with configuration
+    #[must_use]
     pub fn new(config: BayesianOptConfig, parameter_space: ParameterSpace) -> Self {
         Self {
             config,
@@ -389,28 +390,29 @@ impl BayesianHyperoptimizer {
 
         // Approximation of normal CDF and PDF
         // Using approximation for erf
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
+        let a1 = 0.254_829_592;
+        let a2 = -0.284_496_736;
+        let a3 = 1.421_413_741;
+        let a4 = -1.453_152_027;
+        let a5 = 1.061_405_429;
+        let p = 0.3_275_911;
         let sign = if z < 0.0 { -1.0 } else { 1.0 };
         let z_abs = z.abs() / std::f64::consts::SQRT_2;
         let t = 1.0 / (1.0 + p * z_abs);
         let erf = sign
-            * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+            * ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+                .mul_add(-(-z_abs * z_abs).exp(), 1.0);
         let phi = 0.5 * (1.0 + erf);
         let pdf = (1.0 / (std::f64::consts::TAU.sqrt())) * (-0.5 * z * z).exp();
 
-        let ei = improvement * phi + std_dev * pdf;
+        let ei = improvement.mul_add(phi, std_dev * pdf);
         Ok(ei.max(0.0))
     }
 
     /// Upper Confidence Bound acquisition function
     fn upper_confidence_bound(&self, mean: f64, std_dev: f64) -> BayesianOptResult<f64> {
         let beta = self.config.acquisition_config.exploration_factor;
-        Ok(-mean + beta * std_dev) // Negative because we're minimizing
+        Ok(beta.mul_add(std_dev, -mean)) // Negative because we're minimizing
     }
 
     /// Probability of Improvement acquisition function
@@ -421,17 +423,18 @@ impl BayesianHyperoptimizer {
 
         let z = (self.current_best_value - mean) / std_dev;
         // Using approximation for erf (same as above)
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
+        let a1 = 0.254_829_592;
+        let a2 = -0.284_496_736;
+        let a3 = 1.421_413_741;
+        let a4 = -1.453_152_027;
+        let a5 = 1.061_405_429;
+        let p = 0.3_275_911;
         let sign = if z < 0.0 { -1.0 } else { 1.0 };
         let z_abs = z.abs() / std::f64::consts::SQRT_2;
         let t = 1.0 / (1.0 + p * z_abs);
         let erf = sign
-            * (1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-z_abs * z_abs).exp());
+            * ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+                .mul_add(-(-z_abs * z_abs).exp(), 1.0);
         let pi = 0.5 * (1.0 + erf);
         Ok(pi)
     }
@@ -447,8 +450,9 @@ impl BayesianHyperoptimizer {
         let recent_best =
             self.history.best_values[self.history.best_values.len() - recent_window..].to_vec();
 
-        let improvement = recent_best.first().unwrap() - recent_best.last().unwrap();
-        let relative_improvement = improvement.abs() / (recent_best.first().unwrap().abs() + 1e-10);
+        let improvement = recent_best.first().unwrap_or(&0.0) - recent_best.last().unwrap_or(&0.0);
+        let relative_improvement =
+            improvement.abs() / (recent_best.first().unwrap_or(&0.0).abs() + 1e-10);
 
         Ok(relative_improvement < 1e-6)
     }
@@ -460,7 +464,7 @@ impl BayesianHyperoptimizer {
         }
 
         let initial = self.history.best_values[0];
-        let final_val = *self.history.best_values.last().unwrap();
+        let final_val = *self.history.best_values.last().unwrap_or(&0.0);
 
         if initial.abs() < 1e-10 {
             return 0.0;
@@ -475,7 +479,7 @@ impl BayesianHyperoptimizer {
             return Vec::new();
         }
 
-        let global_best = *self.history.best_values.last().unwrap();
+        let global_best = *self.history.best_values.last().unwrap_or(&0.0);
         self.history
             .best_values
             .iter()
@@ -488,18 +492,20 @@ impl BayesianHyperoptimizer {
         self.history
             .evaluations
             .iter()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(params, _)| params.clone())
             .ok_or_else(|| BayesianOptError::OptimizationError("No evaluations found".to_string()))
     }
 
     /// Get optimization metrics
-    pub fn get_metrics(&self) -> &BayesianOptMetrics {
+    #[must_use]
+    pub const fn get_metrics(&self) -> &BayesianOptMetrics {
         &self.metrics
     }
 
     /// Get optimization history
-    pub fn get_history(&self) -> &OptimizationHistory {
+    #[must_use]
+    pub const fn get_history(&self) -> &OptimizationHistory {
         &self.history
     }
 }

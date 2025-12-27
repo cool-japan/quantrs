@@ -1628,7 +1628,7 @@ impl SimulatorComparisonFramework {
 
     /// Register a simulator for comparison
     pub fn register_simulator(&self, profile: SimulatorProfile) -> DeviceResult<()> {
-        let mut simulators = self.simulators.write().unwrap();
+        let mut simulators = self.simulators.write().unwrap_or_else(|e| e.into_inner());
         simulators.insert(profile.simulator_id.clone(), profile);
         Ok(())
     }
@@ -1674,7 +1674,7 @@ impl SimulatorComparisonFramework {
 
     /// Get recommendations for specific use case
     pub async fn get_recommendations(&self, context: RecommendationContext) -> DeviceResult<Vec<Recommendation>> {
-        let engine = self.recommendation_engine.read().unwrap();
+        let engine = self.recommendation_engine.read().unwrap_or_else(|e| e.into_inner());
         engine.get_recommendations(&context)
     }
 
@@ -1897,7 +1897,7 @@ mod tests {
     #[test]
     fn test_framework_creation() {
         let framework = create_simulator_comparison_framework();
-        assert!(framework.simulators.read().unwrap().is_empty());
+        assert!(framework.simulators.read().expect("RwLock should not be poisoned").is_empty());
     }
 
     #[test]
@@ -2047,7 +2047,7 @@ mod tests {
 
         let result = framework.register_simulator(simulator);
         assert!(result.is_ok());
-        assert_eq!(framework.simulators.read().unwrap().len(), 1);
+        assert_eq!(framework.simulators.read().expect("RwLock should not be poisoned").len(), 1);
     }
 
     #[test]

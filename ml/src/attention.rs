@@ -546,7 +546,9 @@ impl LayerNorm {
     }
 
     fn forward(&self, input: &Array2<f64>) -> Array2<f64> {
-        let mean = input.mean_axis(Axis(1)).unwrap();
+        let mean = input
+            .mean_axis(Axis(1))
+            .expect("Input array should not be empty for mean computation");
         let variance = input.var_axis(Axis(1), 0.0);
 
         let mut output = input.clone();
@@ -716,7 +718,9 @@ mod tests {
         let proj = QuantumProjection::new(8, 8);
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
 
-        let output = proj.forward(&input).unwrap();
+        let output = proj
+            .forward(&input)
+            .expect("Projection forward should succeed");
         assert_eq!(output.len(), 8);
     }
 
@@ -736,7 +740,9 @@ mod tests {
             }
         }
 
-        let output = attention.forward(&input, &input, &input, None).unwrap();
+        let output = attention
+            .forward(&input, &input, &input, None)
+            .expect("Attention forward should succeed");
 
         assert_eq!(output.shape(), &[batch_size, seq_len * embed_dim]);
     }
@@ -750,7 +756,9 @@ mod tests {
         let embed_dim = 8;
 
         let input = Array2::ones((batch_size, seq_len * embed_dim));
-        let output = block.forward(&input, None).unwrap();
+        let output = block
+            .forward(&input, None)
+            .expect("Transformer block forward should succeed");
 
         assert_eq!(output.shape(), &[batch_size, seq_len * embed_dim]);
     }
@@ -778,7 +786,9 @@ mod tests {
         let embed_dim = 8;
 
         let input = Array2::zeros((batch_size, seq_len * embed_dim));
-        let output = transformer.forward(&input, None).unwrap();
+        let output = transformer
+            .forward(&input, None)
+            .expect("Transformer forward should succeed");
 
         assert_eq!(output.shape(), &[batch_size, seq_len * embed_dim]);
     }

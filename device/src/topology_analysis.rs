@@ -63,7 +63,7 @@ pub struct HardwareMetrics {
 }
 
 /// Qubit allocation strategy
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AllocationStrategy {
     /// Minimize average distance
     MinimizeDistance,
@@ -79,7 +79,7 @@ pub enum AllocationStrategy {
 
 impl TopologyAnalyzer {
     /// Create a new topology analyzer
-    pub fn new(topology: HardwareTopology) -> Self {
+    pub const fn new(topology: HardwareTopology) -> Self {
         Self {
             topology,
             distance_matrix: None,
@@ -241,7 +241,9 @@ impl TopologyAnalyzer {
 
     /// Calculate average shortest path length
     fn calculate_average_path_length(&self) -> f64 {
-        let matrix = self.distance_matrix.as_ref().unwrap();
+        let matrix = self.distance_matrix.as_ref().expect(
+            "distance_matrix must be calculated before calling calculate_average_path_length",
+        );
         let n = self.topology.num_qubits;
         let mut sum = 0.0;
         let mut count = 0;
@@ -301,7 +303,11 @@ impl TopologyAnalyzer {
             // Process nodes in reverse topological order (by distance)
             let mut nodes_by_distance: Vec<_> =
                 (0..n).filter(|&v| distances[v] != f64::INFINITY).collect();
-            nodes_by_distance.sort_by(|&a, &b| distances[b].partial_cmp(&distances[a]).unwrap());
+            nodes_by_distance.sort_by(|&a, &b| {
+                distances[b]
+                    .partial_cmp(&distances[a])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
             for &w in &nodes_by_distance {
                 for &v in &predecessors[w] {
@@ -314,7 +320,9 @@ impl TopologyAnalyzer {
                 }
 
                 if w != s {
-                    *betweenness.get_mut(&(w as u32)).unwrap() += delta[w];
+                    if let Some(value) = betweenness.get_mut(&(w as u32)) {
+                        *value += delta[w];
+                    }
                 }
             }
         }
@@ -370,29 +378,27 @@ impl TopologyAnalyzer {
 
     /// Find most central qubits
     fn find_central_qubits(&self, count: usize) -> Vec<u32> {
-        let mut qubits: Vec<_> = self
-            .betweenness
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|(&q, &b)| (q, b))
-            .collect();
+        let betweenness = match self.betweenness.as_ref() {
+            Some(b) => b,
+            None => return Vec::new(),
+        };
 
-        qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        let mut qubits: Vec<_> = betweenness.iter().map(|(&q, &b)| (q, b)).collect();
+
+        qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         qubits.into_iter().take(count).map(|(q, _)| q).collect()
     }
 
     /// Find peripheral qubits
     fn find_peripheral_qubits(&self, count: usize) -> Vec<u32> {
-        let mut qubits: Vec<_> = self
-            .betweenness
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|(&q, &b)| (q, b))
-            .collect();
+        let betweenness = match self.betweenness.as_ref() {
+            Some(b) => b,
+            None => return Vec::new(),
+        };
 
-        qubits.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        let mut qubits: Vec<_> = betweenness.iter().map(|(&q, &b)| (q, b)).collect();
+
+        qubits.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
         qubits.into_iter().take(count).map(|(q, _)| q).collect()
     }
 
@@ -433,7 +439,10 @@ impl TopologyAnalyzer {
 
     /// Calculate global clustering coefficient
     fn global_clustering_coefficient(&self) -> f64 {
-        let coefficients = self.clustering.as_ref().unwrap();
+        let coefficients = match self.clustering.as_ref() {
+            Some(c) => c,
+            None => return 0.0,
+        };
         if coefficients.is_empty() {
             return 0.0;
         }
@@ -466,7 +475,7 @@ impl TopologyAnalyzer {
         let mut total_gate_error = 0.0;
         let mut gate_count = 0;
 
-        for (_, props) in &self.topology.gate_properties {
+        for props in self.topology.gate_properties.values() {
             total_gate_error += props.error_rate;
             gate_count += 1;
         }
@@ -513,7 +522,7 @@ impl TopologyAnalyzer {
             .iter()
             .map(|(&id, &score)| (id, score))
             .collect();
-        sorted_qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        sorted_qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let premium_count = (sorted_qubits.len() as f64 * 0.2).ceil() as usize;
         let premium_qubits = sorted_qubits
@@ -541,7 +550,10 @@ impl TopologyAnalyzer {
         let readout_score = 1.0 - qubit.readout_error;
 
         // Weighted average
-        0.3 * t1_score + 0.3 * t2_score + 0.2 * gate_score + 0.2 * readout_score
+        0.2_f64.mul_add(
+            readout_score,
+            0.2_f64.mul_add(gate_score, 0.3_f64.mul_add(t1_score, 0.3 * t2_score)),
+        )
     }
 
     /// Find optimal qubit allocation for a given strategy
@@ -582,7 +594,9 @@ impl TopologyAnalyzer {
     /// Allocate qubits to minimize average distance
     fn allocate_minimize_distance(&self, num_qubits: usize) -> DeviceResult<Vec<u32>> {
         // Find connected subgraph with minimum average distance
-        let matrix = self.distance_matrix.as_ref().unwrap();
+        let matrix = self.distance_matrix.as_ref().ok_or_else(|| {
+            crate::DeviceError::DeviceNotInitialized("Distance matrix not calculated".to_string())
+        })?;
         let n = self.topology.num_qubits;
 
         let mut best_allocation = Vec::new();
@@ -655,7 +669,7 @@ impl TopologyAnalyzer {
             .map(|(&id, &score)| (id, score))
             .collect();
 
-        qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        qubits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         Ok(qubits
             .into_iter()
@@ -673,20 +687,19 @@ impl TopologyAnalyzer {
         // Score qubits by quality and centrality
         let mut scores = HashMap::new();
 
+        let betweenness = self.betweenness.as_ref();
         for (&qubit, &quality) in &analysis.hardware_metrics.qubit_scores {
-            let centrality = self
-                .betweenness
-                .as_ref()
-                .unwrap()
-                .get(&qubit)
-                .unwrap_or(&0.0);
+            let centrality = betweenness
+                .and_then(|b| b.get(&qubit))
+                .copied()
+                .unwrap_or(0.0);
             // Balanced scoring
-            let score = 0.6 * quality + 0.4 * centrality;
+            let score = 0.6f64.mul_add(quality, 0.4 * centrality);
             scores.insert(qubit, score);
         }
 
         let mut sorted: Vec<_> = scores.into_iter().collect();
-        sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         Ok(sorted
             .into_iter()
@@ -698,7 +711,9 @@ impl TopologyAnalyzer {
     /// Allocate qubits to minimize crosstalk
     fn allocate_minimize_crosstalk(&self, num_qubits: usize) -> DeviceResult<Vec<u32>> {
         // Select qubits that are well-separated
-        let matrix = self.distance_matrix.as_ref().unwrap();
+        let matrix = self.distance_matrix.as_ref().ok_or_else(|| {
+            crate::DeviceError::DeviceNotInitialized("Distance matrix not calculated".to_string())
+        })?;
         let n = self.topology.num_qubits;
 
         let mut allocation = Vec::new();
@@ -747,7 +762,10 @@ impl TopologyAnalyzer {
         queue.push_back((vec![source], HashSet::new()));
 
         while let Some((path, mut visited)) = queue.pop_front() {
-            let current = *path.last().unwrap();
+            let current = match path.last() {
+                Some(&c) => c,
+                None => continue,
+            };
 
             if current == target {
                 paths.push(path);
@@ -793,8 +811,7 @@ pub fn create_standard_topology(
         "heavy_hex" => create_heavy_hex_topology(size),
         "star" => create_star_topology(size),
         _ => Err(crate::DeviceError::UnsupportedDevice(format!(
-            "Unknown topology type: {}",
-            topology_type
+            "Unknown topology type: {topology_type}"
         ))),
     }
 }
@@ -808,12 +825,12 @@ fn create_linear_topology(size: usize) -> DeviceResult<HardwareTopology> {
         let props = QubitProperties {
             id: i as u32,
             index: i as u32,
-            t1: 50.0 + (i as f64) * 2.0, // Varying T1
-            t2: 30.0 + (i as f64) * 1.5, // Varying T2
+            t1: (i as f64).mul_add(2.0, 50.0), // Varying T1
+            t2: (i as f64).mul_add(1.5, 30.0), // Varying T2
             single_qubit_gate_error: 0.001,
             gate_error_1q: 0.001,
             readout_error: 0.01,
-            frequency: 5.0 + (i as f64) * 0.01,
+            frequency: (i as f64).mul_add(0.01, 5.0),
         };
         topology.add_qubit(props);
     }
@@ -841,12 +858,12 @@ fn create_grid_topology(size: usize) -> DeviceResult<HardwareTopology> {
         let props = QubitProperties {
             id: i as u32,
             index: i as u32,
-            t1: 40.0 + (i as f64) * 1.5,
-            t2: 25.0 + (i as f64) * 1.0,
+            t1: (i as f64).mul_add(1.5, 40.0),
+            t2: (i as f64).mul_add(1.0, 25.0),
             single_qubit_gate_error: 0.001,
             gate_error_1q: 0.001,
             readout_error: 0.01,
-            frequency: 5.0 + (i as f64) * 0.01,
+            frequency: (i as f64).mul_add(0.01, 5.0),
         };
         topology.add_qubit(props);
     }
@@ -894,12 +911,12 @@ fn create_heavy_hex_topology(size: usize) -> DeviceResult<HardwareTopology> {
         let props = QubitProperties {
             id: i as u32,
             index: i as u32,
-            t1: 30.0 + (i as f64) * 3.0,
-            t2: 20.0 + (i as f64) * 2.0,
-            single_qubit_gate_error: 0.001 + (i as f64) * 0.0001,
-            gate_error_1q: 0.001 + (i as f64) * 0.0001,
-            readout_error: 0.01 + (i as f64) * 0.001,
-            frequency: 5.0 + (i as f64) * 0.01,
+            t1: (i as f64).mul_add(3.0, 30.0),
+            t2: (i as f64).mul_add(2.0, 20.0),
+            single_qubit_gate_error: (i as f64).mul_add(0.0001, 0.001),
+            gate_error_1q: (i as f64).mul_add(0.0001, 0.001),
+            readout_error: (i as f64).mul_add(0.001, 0.01),
+            frequency: (i as f64).mul_add(0.01, 5.0),
         };
         topology.add_qubit(props);
     }
@@ -920,7 +937,7 @@ fn create_heavy_hex_topology(size: usize) -> DeviceResult<HardwareTopology> {
         for &j in &connections {
             if i < j && j < size {
                 let props = GateProperties {
-                    error_rate: 0.01 + (i + j) as f64 * 0.0001,
+                    error_rate: ((i + j) as f64).mul_add(0.0001, 0.01),
                     duration: 200.0,
                     gate_type: "CZ".to_string(),
                 };
@@ -947,12 +964,12 @@ fn create_star_topology(size: usize) -> DeviceResult<HardwareTopology> {
         let props = QubitProperties {
             id: i as u32,
             index: i as u32,
-            t1: 50.0 + (i as f64) * 2.0,
-            t2: 30.0 + (i as f64) * 1.5,
+            t1: (i as f64).mul_add(2.0, 50.0),
+            t2: (i as f64).mul_add(1.5, 30.0),
             single_qubit_gate_error: 0.001,
             gate_error_1q: 0.001,
             readout_error: 0.01,
-            frequency: 5.0 + (i as f64) * 0.01,
+            frequency: (i as f64).mul_add(0.01, 5.0),
         };
         topology.add_qubit(props);
     }
@@ -976,9 +993,9 @@ mod tests {
 
     #[test]
     fn test_linear_topology_analysis() {
-        let topology = create_linear_topology(5).unwrap();
+        let topology = create_linear_topology(5).expect("Failed to create linear topology");
         let mut analyzer = TopologyAnalyzer::new(topology);
-        let analysis = analyzer.analyze().unwrap();
+        let analysis = analyzer.analyze().expect("Failed to analyze topology");
 
         assert_eq!(analysis.diameter, 4); // Linear chain of 5 qubits
         assert_eq!(analysis.components, 1); // Fully connected
@@ -987,9 +1004,9 @@ mod tests {
 
     #[test]
     fn test_grid_topology_analysis() {
-        let topology = create_grid_topology(9).unwrap(); // 3x3 grid
+        let topology = create_grid_topology(9).expect("Failed to create grid topology"); // 3x3 grid
         let mut analyzer = TopologyAnalyzer::new(topology);
-        let analysis = analyzer.analyze().unwrap();
+        let analysis = analyzer.analyze().expect("Failed to analyze topology");
 
         assert_eq!(analysis.components, 1);
         assert!(analysis.diameter <= 4); // Maximum distance in 3x3 grid
@@ -999,29 +1016,29 @@ mod tests {
 
     #[test]
     fn test_qubit_allocation() {
-        let topology = create_grid_topology(9).unwrap();
+        let topology = create_grid_topology(9).expect("Failed to create grid topology");
         let mut analyzer = TopologyAnalyzer::new(topology);
 
         // Test different allocation strategies
         let alloc1 = analyzer
             .allocate_qubits(4, AllocationStrategy::MinimizeDistance)
-            .unwrap();
+            .expect("Failed to allocate qubits with MinimizeDistance strategy");
         assert_eq!(alloc1.len(), 4);
 
         let alloc2 = analyzer
             .allocate_qubits(4, AllocationStrategy::MaximizeQuality)
-            .unwrap();
+            .expect("Failed to allocate qubits with MaximizeQuality strategy");
         assert_eq!(alloc2.len(), 4);
 
         let alloc3 = analyzer
             .allocate_qubits(4, AllocationStrategy::CentralFirst)
-            .unwrap();
+            .expect("Failed to allocate qubits with CentralFirst strategy");
         assert_eq!(alloc3.len(), 4);
     }
 
     #[test]
     fn test_swap_paths() {
-        let topology = create_linear_topology(5).unwrap();
+        let topology = create_linear_topology(5).expect("Failed to create linear topology");
         let analyzer = TopologyAnalyzer::new(topology);
 
         let paths = analyzer.recommend_swap_paths(0, 4);

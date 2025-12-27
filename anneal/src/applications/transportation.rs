@@ -13,6 +13,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Vehicle Routing Problem with Time Windows
 #[derive(Debug, Clone)]
 pub struct VehicleRoutingProblem {
@@ -26,7 +27,7 @@ pub struct VehicleRoutingProblem {
     pub customer_demands: Vec<f64>,
     /// Vehicle capacities
     pub vehicle_capacities: Vec<f64>,
-    /// Time windows for each customer [start_time, end_time]
+    /// Time windows for each customer [`start_time`, `end_time`]
     pub time_windows: Vec<(f64, f64)>,
     /// Service times at each location
     pub service_times: Vec<f64>,
@@ -93,6 +94,7 @@ impl VehicleRoutingProblem {
     }
 
     /// Calculate total route distance
+    #[must_use]
     pub fn calculate_route_distance(&self, route: &[usize]) -> f64 {
         if route.len() < 2 {
             return 0.0;
@@ -106,6 +108,7 @@ impl VehicleRoutingProblem {
     }
 
     /// Check if route satisfies capacity constraints
+    #[must_use]
     pub fn check_capacity_constraint(&self, route: &[usize], vehicle_idx: usize) -> bool {
         let total_demand: f64 = route.iter()
             .skip(1) // Skip depot
@@ -117,6 +120,7 @@ impl VehicleRoutingProblem {
     }
 
     /// Check time window feasibility
+    #[must_use]
     pub fn check_time_windows(&self, route: &[usize]) -> bool {
         let mut current_time = 0.0;
 
@@ -218,7 +222,7 @@ impl OptimizationProblem for VehicleRoutingProblem {
                 if i != j {
                     for k in 0..self.num_vehicles {
                         let var_idx = var_index(i, j, k);
-                        let var_name = format!("x_{}_{}_{}", i, j, k);
+                        let var_name = format!("x_{i}_{j}_{k}");
                         string_var_map.insert(var_name, var_idx);
                     }
                 }
@@ -322,7 +326,7 @@ impl OptimizationProblem for VehicleRoutingProblem {
 
                 // Add penalty for constraint violations
                 if !self.check_capacity_constraint(route, vehicle_idx) {
-                    total_cost += 10000.0; // Large penalty
+                    total_cost += 10_000.0; // Large penalty
                 }
 
                 if !self.check_time_windows(route) {
@@ -496,7 +500,7 @@ impl IndustrySolution for VehicleRoutingSolution {
                     .sum();
 
                 let capacity_utilization = total_demand / problem.vehicle_capacities[vehicle_idx];
-                let duration = distance / 50.0 + route.len() as f64 * 5.0; // Travel + service time
+                let duration = (route.len() as f64).mul_add(5.0, distance / 50.0); // Travel + service time
 
                 route_stats.push(RouteStatistics {
                     distance,
@@ -518,7 +522,8 @@ impl IndustrySolution for VehicleRoutingSolution {
             }
         }
 
-        let total_cost = total_distance + (problem.num_vehicles - vehicles_used) as f64 * 100.0; // Penalty for unused vehicles
+        let total_cost =
+            ((problem.num_vehicles - vehicles_used) as f64).mul_add(100.0, total_distance); // Penalty for unused vehicles
 
         // Calculate transportation metrics
         let fleet_utilization = vehicles_used as f64 / problem.num_vehicles as f64;
@@ -560,7 +565,7 @@ impl IndustrySolution for VehicleRoutingSolution {
             cost_per_customer,
         };
 
-        Ok(VehicleRoutingSolution {
+        Ok(Self {
             routes,
             total_distance,
             total_cost,
@@ -638,39 +643,54 @@ impl IndustrySolution for VehicleRoutingSolution {
         output.push_str("# Vehicle Routing Optimization Report\n\n");
 
         output.push_str("## Summary\n");
-        output.push_str(&format!("Total Distance: {:.1} km\n", self.total_distance));
-        output.push_str(&format!("Total Cost: ${:.2}\n", self.total_cost));
-        output.push_str(&format!(
+        writeln!(output, "Total Distance: {:.1} km", self.total_distance)
+            .expect("Writing to String should not fail");
+        writeln!(output, "Total Cost: ${:.2}", self.total_cost)
+            .expect("Writing to String should not fail");
+        write!(
+            output,
             "Fleet Utilization: {:.1}%\n",
             self.metrics.fleet_utilization * 100.0
-        ));
-        output.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            output,
             "Service Level: {:.1}%\n",
             self.metrics.service_level * 100.0
-        ));
+        )
+        .expect("Writing to String should not fail");
 
         output.push_str("\n## Environmental Impact\n");
-        output.push_str(&format!(
+        write!(
+            output,
             "Fuel Consumption: {:.1} L\n",
             self.metrics.fuel_consumption
-        ));
-        output.push_str(&format!(
+        )
+        .expect("Writing to String should not fail");
+        write!(
+            output,
             "CO2 Emissions: {:.1} kg\n",
             self.metrics.co2_emissions
-        ));
+        )
+        .expect("Writing to String should not fail");
 
         output.push_str("\n## Route Details\n");
         for (i, (route, stats)) in self.routes.iter().zip(&self.route_stats).enumerate() {
             if route.len() > 2 {
-                output.push_str(&format!("Vehicle {}: ", i + 1));
-                output.push_str(&format!("Route {:?}, ", route));
-                output.push_str(&format!("Distance: {:.1} km, ", stats.distance));
-                output.push_str(&format!("Duration: {:.1} h, ", stats.duration / 60.0));
-                output.push_str(&format!("Customers: {}, ", stats.num_customers));
-                output.push_str(&format!(
+                write!(output, "Vehicle {}: ", i + 1).expect("Writing to String should not fail");
+                write!(output, "Route {route:?}, ").expect("Writing to String should not fail");
+                write!(output, "Distance: {:.1} km, ", stats.distance)
+                    .expect("Writing to String should not fail");
+                write!(output, "Duration: {:.1} h, ", stats.duration / 60.0)
+                    .expect("Writing to String should not fail");
+                write!(output, "Customers: {}, ", stats.num_customers)
+                    .expect("Writing to String should not fail");
+                write!(
+                    output,
                     "Capacity: {:.1}%\n",
                     stats.capacity_utilization * 100.0
-                ));
+                )
+                .expect("Writing to String should not fail");
             }
         }
 
@@ -713,7 +733,7 @@ pub struct PriorityRoute {
 }
 
 /// Types of priority routes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RouteType {
     /// Emergency services
     Emergency,
@@ -763,6 +783,7 @@ impl TrafficFlowOptimization {
     }
 
     /// Calculate total travel time for given signal timing
+    #[must_use]
     pub fn calculate_total_travel_time(&self, solution: &TrafficFlowSolution) -> f64 {
         let mut total_time = 0.0;
 
@@ -797,7 +818,7 @@ impl TrafficFlowOptimization {
         let delay = (cycle_time * (1.0 - effective_green / cycle_time).powi(2))
             / (2.0 * (1.0 - flow_ratio * effective_green / cycle_time));
 
-        delay.max(0.0).min(1000.0) // Cap at reasonable values
+        delay.clamp(0.0, 1000.0) // Cap at reasonable values
     }
 }
 
@@ -849,7 +870,7 @@ pub struct ThroughputMetrics {
 pub struct EnvironmentalImpact {
     /// CO2 emissions (kg/hour)
     pub co2_emissions: f64,
-    /// NOx emissions (kg/hour)
+    /// `NOx` emissions (kg/hour)
     pub nox_emissions: f64,
     /// Fuel consumption (L/hour)
     pub fuel_consumption: f64,
@@ -864,7 +885,8 @@ pub struct BinaryVehicleRoutingProblem {
 }
 
 impl BinaryVehicleRoutingProblem {
-    pub fn new(inner: VehicleRoutingProblem) -> Self {
+    #[must_use]
+    pub const fn new(inner: VehicleRoutingProblem) -> Self {
         Self { inner }
     }
 }
@@ -947,7 +969,7 @@ pub fn create_benchmark_problems(
         for i in 0..=size {
             for j in 0..=size {
                 if i != j {
-                    large_distance_matrix[i][j] = (i as f64 - j as f64).abs() * 5.0 + 10.0;
+                    large_distance_matrix[i][j] = (i as f64 - j as f64).abs().mul_add(5.0, 10.0);
                 }
             }
         }
@@ -986,7 +1008,7 @@ pub fn solve_vehicle_routing(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 30000;
+        p.num_sweeps = 30_000;
         p.num_repetitions = 50;
         p.initial_temperature = 8.0;
         p.final_temperature = 0.001;
@@ -1019,7 +1041,8 @@ mod tests {
         let demands = vec![5.0, 8.0];
         let capacities = vec![15.0];
 
-        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities).unwrap();
+        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities)
+            .expect("VehicleRoutingProblem creation should succeed");
         assert_eq!(vrp.num_vehicles, 1);
         assert_eq!(vrp.num_customers, 2);
     }
@@ -1034,7 +1057,8 @@ mod tests {
         let demands = vec![5.0, 8.0];
         let capacities = vec![15.0];
 
-        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities).unwrap();
+        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities)
+            .expect("VehicleRoutingProblem creation should succeed");
 
         let route = vec![0, 1, 2, 0]; // Depot -> Customer 1 -> Customer 2 -> Depot
         let distance = vrp.calculate_route_distance(&route);
@@ -1047,7 +1071,8 @@ mod tests {
         let demands = vec![5.0, 8.0];
         let capacities = vec![10.0]; // Small capacity
 
-        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities).unwrap();
+        let vrp = VehicleRoutingProblem::new(1, 2, distance_matrix, demands, capacities)
+            .expect("VehicleRoutingProblem creation should succeed");
 
         let route = vec![0, 1, 2, 0]; // Both customers
         assert!(!vrp.check_capacity_constraint(&route, 0)); // Should exceed capacity
@@ -1065,7 +1090,8 @@ mod tests {
         ];
         let capacities = vec![200.0, 180.0, 150.0];
 
-        let traffic = TrafficFlowOptimization::new(3, 3, flow_matrix, capacities).unwrap();
+        let traffic = TrafficFlowOptimization::new(3, 3, flow_matrix, capacities)
+            .expect("TrafficFlowOptimization creation should succeed");
         assert_eq!(traffic.num_intersections, 3);
         assert_eq!(traffic.num_segments, 3);
     }
@@ -1083,7 +1109,7 @@ mod tests {
             demands.clone(),
             capacities.clone(),
         )
-        .unwrap();
+        .expect("VehicleRoutingProblem creation should succeed");
         assert!(vrp.validate().is_ok());
 
         // Test invalid VRP (zero vehicles)
@@ -1094,10 +1120,12 @@ mod tests {
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(4).unwrap();
+        let problems =
+            create_benchmark_problems(4).expect("Creating benchmark problems should succeed");
         assert_eq!(problems.len(), 1); // Size 4 gets only the small problem
 
-        let larger_problems = create_benchmark_problems(6).unwrap();
+        let larger_problems = create_benchmark_problems(6)
+            .expect("Creating larger benchmark problems should succeed");
         assert_eq!(larger_problems.len(), 2); // Size 6 gets both problems
 
         for problem in &larger_problems {

@@ -399,13 +399,13 @@ mod tests {
     #[test]
     fn test_circuit_to_quil_conversion() {
         let config = RigettiConfig::default();
-        let client = RigettiClient::new(config).unwrap();
+        let client = RigettiClient::new(config).expect("Failed to create Rigetti client");
 
         let mut circuit = Circuit::<2>::new();
         // Note: This is a simplified test - actual circuit building would use proper QuantRS gates
 
         // For now just test the basic structure
-        let quil = client.circuit_to_quil(&circuit).unwrap();
+        let quil = client.circuit_to_quil(&circuit).expect("Failed to convert circuit to Quil");
 
         assert!(quil.contains("DECLARE memory BIT[2]"));
         assert!(quil.contains("MEASURE 0 memory[0]"));

@@ -31,7 +31,7 @@ fn main() {
     for num_qubits in [20, 25, 28, 30, 32] {
         let is_valid = is_valid_qubit_count(num_qubits, available_memory);
         let status = if is_valid { "✓ CAN" } else { "✗ CANNOT" };
-        println!("   {} simulate {} qubits", status, num_qubits);
+        println!("   {status} simulate {num_qubits} qubits");
     }
     println!();
 
@@ -40,7 +40,7 @@ fn main() {
     for mem_gb in [1, 4, 8, 16, 32, 64] {
         let mem_bytes = mem_gb * 1024 * 1024 * 1024;
         let max_qubits = max_qubits_for_memory(mem_bytes);
-        println!("   {} GB → max {} qubits", mem_gb, max_qubits);
+        println!("   {mem_gb} GB → max {max_qubits} qubits");
     }
     println!();
 
@@ -76,7 +76,7 @@ fn main() {
     println!("6. Range Validation:");
     let test_values = [0, 5, 10, 15, 20];
     let (min, max) = (5, 15);
-    println!("   Valid range: [{}, {}]", min, max);
+    println!("   Valid range: [{min}, {max}]");
     for value in test_values {
         let in_range = is_in_range(&value, &min, &max);
         let status = if in_range { "✓" } else { "✗" };
@@ -93,7 +93,7 @@ fn main() {
     println!("7. Binomial Coefficients:");
     println!("   Pascal's Triangle (first 6 rows):");
     for n in 0..6 {
-        print!("   n={}: ", n);
+        print!("   n={n}: ");
         for k in 0..=n {
             print!("{:4} ", binomial(n, k));
         }
@@ -115,9 +115,9 @@ fn main() {
     let gates_per_layer = 5;
 
     println!("   Quantum Circuit:");
-    println!("     - Qubits: {}", num_qubits);
-    println!("     - Depth: {}", circuit_depth);
-    println!("     - Gates per layer: {}", gates_per_layer);
+    println!("     - Qubits: {num_qubits}");
+    println!("     - Depth: {circuit_depth}");
+    println!("     - Gates per layer: {gates_per_layer}");
     println!();
     println!("   Resource Requirements:");
     println!(

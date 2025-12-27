@@ -204,7 +204,7 @@ impl DynamicalDecouplingExecutor {
             &validation_results,
         )?;
 
-        println!("DD sequence generation completed in {:?}", execution_time);
+        println!("DD sequence generation completed in {execution_time:?}");
 
         Ok(DynamicalDecouplingResult {
             optimized_sequence,
@@ -362,7 +362,7 @@ impl DynamicalDecouplingExecutor {
             0.5 // Default score if no valid metrics
         };
 
-        Ok(final_score.max(0.0).min(1.0)) // Clamp to [0, 1]
+        Ok(final_score.clamp(0.0, 1.0)) // Clamp to [0, 1]
     }
 }
 

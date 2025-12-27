@@ -20,7 +20,7 @@ fn create_ring_ising(size: usize) -> IsingModel {
 fn bench_ising_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ising_creation");
 
-    for size in [10, 50, 100, 500].iter() {
+    for size in &[10, 50, 100, 500] {
         group.throughput(Throughput::Elements(*size as u64));
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
@@ -42,7 +42,7 @@ fn bench_ising_creation(c: &mut Criterion) {
 fn bench_ising_energy(c: &mut Criterion) {
     let mut group = c.benchmark_group("ising_energy");
 
-    for size in [50, 100, 200, 500].iter() {
+    for size in &[50, 100, 200, 500] {
         let ising = create_ring_ising(*size);
         let spins: Vec<i8> = (0..*size)
             .map(|i| if i % 2 == 0 { 1 } else { -1 })
@@ -62,7 +62,7 @@ fn bench_ising_energy(c: &mut Criterion) {
 fn bench_scirs2_qubo_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("scirs2_qubo_creation");
 
-    for size in [100, 500, 1000].iter() {
+    for size in &[100, 500, 1000] {
         group.throughput(Throughput::Elements(*size as u64));
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
@@ -77,7 +77,7 @@ fn bench_scirs2_qubo_creation(c: &mut Criterion) {
 fn bench_scirs2_sparse_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("scirs2_sparse_eval");
 
-    for size in [100, 500, 1000].iter() {
+    for size in &[100, 500, 1000] {
         let mut qubo = SciRS2QuboModel::new(*size).unwrap();
 
         // Add sparse structure
@@ -89,7 +89,7 @@ fn bench_scirs2_sparse_eval(c: &mut Criterion) {
             }
         }
 
-        let solution: Vec<i8> = (0..*size).map(|i| if i % 2 == 0 { 1 } else { 0 }).collect();
+        let solution: Vec<i8> = (0..*size).map(|i| i8::from(i % 2 == 0)).collect();
 
         group.throughput(Throughput::Elements(*size as u64));
 
@@ -105,7 +105,7 @@ fn bench_scirs2_sparse_eval(c: &mut Criterion) {
 fn bench_scirs2_stats(c: &mut Criterion) {
     let mut group = c.benchmark_group("scirs2_stats");
 
-    for size in [500, 1000, 2000].iter() {
+    for size in &[500, 1000, 2000] {
         let mut qubo = SciRS2QuboModel::new(*size).unwrap();
 
         // Add moderate structure

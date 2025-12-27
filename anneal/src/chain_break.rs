@@ -113,7 +113,11 @@ impl ChainBreakResolver {
         }
 
         // Sort by energy
-        resolved.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        resolved.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(resolved)
     }
@@ -204,8 +208,7 @@ impl ChainBreakResolver {
             if let Some(chain) = embedding.chains.get(&var) {
                 if chain.is_empty() {
                     return Err(IsingError::InvalidValue(format!(
-                        "Empty chain for variable {}",
-                        var
+                        "Empty chain for variable {var}"
                     )));
                 }
 
@@ -357,7 +360,7 @@ impl ChainBreakResolver {
 /// Represents a logical problem (QUBO or Ising)
 #[derive(Debug, Clone)]
 pub struct LogicalProblem {
-    /// Linear coefficients (h_i in Ising, diagonal in QUBO)
+    /// Linear coefficients (`h_i` in Ising, diagonal in QUBO)
     pub linear: Vec<f64>,
     /// Quadratic coefficients as adjacency list
     pub quadratic: HashMap<(usize, usize), f64>,
@@ -367,6 +370,7 @@ pub struct LogicalProblem {
 
 impl LogicalProblem {
     /// Create a new logical problem
+    #[must_use]
     pub fn new(num_vars: usize) -> Self {
         Self {
             linear: vec![0.0; num_vars],
@@ -376,20 +380,21 @@ impl LogicalProblem {
     }
 
     /// Calculate energy for a given spin configuration
+    #[must_use]
     pub fn calculate_energy(&self, spins: &[i8]) -> f64 {
         let mut energy = self.offset;
 
         // Linear terms
         for (i, &h) in self.linear.iter().enumerate() {
             if i < spins.len() {
-                energy += h * spins[i] as f64;
+                energy += h * f64::from(spins[i]);
             }
         }
 
         // Quadratic terms
         for (&(i, j), &J) in &self.quadratic {
             if i < spins.len() && j < spins.len() {
-                energy += J * spins[i] as f64 * spins[j] as f64;
+                energy += J * f64::from(spins[i]) * f64::from(spins[j]);
             }
         }
 
@@ -410,16 +415,15 @@ impl LogicalProblem {
             for j in i..n {
                 let q_ij = qubo_matrix[i][j];
                 if q_ij.abs() > 1e-10 {
+                    problem.offset += q_ij / 4.0;
                     if i == j {
                         // Diagonal term contributes to linear coefficient
                         problem.linear[i] += q_ij / 2.0;
-                        problem.offset += q_ij / 4.0;
                     } else {
                         // Off-diagonal term
                         problem.quadratic.insert((i, j), q_ij / 4.0);
                         problem.linear[i] += q_ij / 4.0;
                         problem.linear[j] += q_ij / 4.0;
-                        problem.offset += q_ij / 4.0;
                     }
                 }
             }
@@ -451,6 +455,7 @@ impl Default for ChainStrengthOptimizer {
 
 impl ChainStrengthOptimizer {
     /// Find optimal chain strength by analyzing the problem
+    #[must_use]
     pub fn find_optimal_strength(&self, logical_problem: &LogicalProblem) -> f64 {
         // Calculate statistics of the logical problem coefficients
         let mut all_coeffs = Vec::new();
@@ -474,11 +479,14 @@ impl ChainStrengthOptimizer {
         }
 
         // Sort coefficients
-        all_coeffs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        all_coeffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         // Use median as base strength
         let median = if all_coeffs.len() % 2 == 0 {
-            (all_coeffs[all_coeffs.len() / 2 - 1] + all_coeffs[all_coeffs.len() / 2]) / 2.0
+            f64::midpoint(
+                all_coeffs[all_coeffs.len() / 2 - 1],
+                all_coeffs[all_coeffs.len() / 2],
+            )
         } else {
             all_coeffs[all_coeffs.len() / 2]
         };
@@ -489,6 +497,7 @@ impl ChainStrengthOptimizer {
     }
 
     /// Optimize chain strength through multiple runs
+    #[must_use]
     pub fn optimize_strength(
         &self,
         logical_problem: &LogicalProblem,
@@ -501,7 +510,7 @@ impl ChainStrengthOptimizer {
         let step = (self.max_strength - self.min_strength) / (self.num_tries as f64);
 
         for i in 0..self.num_tries {
-            let strength = self.min_strength + i as f64 * step;
+            let strength = (i as f64).mul_add(step, self.min_strength);
 
             // Evaluate this strength
             let score = self.evaluate_strength(strength, logical_problem, test_solutions);
@@ -552,7 +561,7 @@ impl ChainStrengthOptimizer {
         }
 
         if count > 0 {
-            sum / count as f64
+            sum / f64::from(count)
         } else {
             1.0
         }
@@ -624,6 +633,7 @@ impl ChainBreakStats {
     }
 
     /// Get recommendations based on statistics
+    #[must_use]
     pub fn get_recommendations(&self) -> Vec<String> {
         let mut recommendations = Vec::new();
 
@@ -663,8 +673,12 @@ mod tests {
     #[test]
     fn test_majority_vote_resolution() {
         let mut embedding = Embedding::new();
-        embedding.add_chain(0, vec![0, 1, 2]).unwrap();
-        embedding.add_chain(1, vec![3, 4, 5]).unwrap();
+        embedding
+            .add_chain(0, vec![0, 1, 2])
+            .expect("failed to add chain in test");
+        embedding
+            .add_chain(1, vec![3, 4, 5])
+            .expect("failed to add chain in test");
 
         let hw_solution = HardwareSolution {
             spins: vec![1, 1, -1, -1, -1, -1], // First chain: 2 vs 1, second: unanimous
@@ -675,7 +689,7 @@ mod tests {
         let resolver = ChainBreakResolver::default();
         let resolved = resolver
             .resolve_solution(&hw_solution, &embedding, None)
-            .unwrap();
+            .expect("failed to resolve solution in test");
 
         assert_eq!(resolved.logical_spins, vec![1, -1]);
         assert_eq!(resolved.chain_breaks, 1); // First chain is broken
@@ -698,8 +712,12 @@ mod tests {
     #[test]
     fn test_chain_break_stats() {
         let mut embedding = Embedding::new();
-        embedding.add_chain(0, vec![0, 1]).unwrap();
-        embedding.add_chain(1, vec![2, 3]).unwrap();
+        embedding
+            .add_chain(0, vec![0, 1])
+            .expect("failed to add chain in test");
+        embedding
+            .add_chain(1, vec![2, 3])
+            .expect("failed to add chain in test");
 
         let solutions = vec![
             HardwareSolution {
@@ -714,7 +732,8 @@ mod tests {
             },
         ];
 
-        let stats = ChainBreakStats::analyze(&solutions, &embedding).unwrap();
+        let stats = ChainBreakStats::analyze(&solutions, &embedding)
+            .expect("failed to analyze chain break stats in test");
 
         assert_eq!(stats.total_chains, 2);
         assert_eq!(stats.broken_chains, vec![0, 1]);

@@ -427,7 +427,7 @@ pub struct ExperimentalConditions {
 }
 
 /// Alert levels for process monitoring
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertLevel {
     Normal,
     Warning,

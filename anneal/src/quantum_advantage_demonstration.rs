@@ -139,14 +139,14 @@ pub enum QuantumDevice {
     Simulator,
     /// IBM Quantum
     IBMQuantum,
-    /// IonQ
+    /// `IonQ`
     IonQ,
     /// Rigetti
     Rigetti,
 }
 
 /// Quantum advantage metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdvantageMetric {
     /// Time to solution
     TimeToSolution,
@@ -165,7 +165,7 @@ pub enum AdvantageMetric {
 }
 
 /// Problem categories for benchmarking
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemCategory {
     /// General optimization problems
     Optimization,
@@ -248,7 +248,7 @@ pub struct HardnessParameters {
 }
 
 /// Connectivity patterns for problem generation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectivityPattern {
     /// Random connectivity
     Random,
@@ -342,7 +342,7 @@ pub struct GraphProblem {
 }
 
 /// Types of graph problems
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraphProblemType {
     /// Maximum cut
     MaxCut,
@@ -381,7 +381,7 @@ pub struct CSPVariable {
 }
 
 /// CSP variable types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CSPVariableType {
     /// Binary variable
     Binary,
@@ -405,7 +405,7 @@ pub struct CSPConstraint {
 }
 
 /// CSP constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CSPConstraintType {
     /// All different constraint
     AllDifferent,
@@ -496,7 +496,7 @@ pub struct BenchmarkInstanceMetadata {
 }
 
 /// Expected difficulty levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DifficultyLevel {
     /// Easy problems
     Easy,
@@ -684,7 +684,7 @@ pub struct TuningConfig {
 }
 
 /// Tuning methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TuningMethod {
     /// Grid search
     GridSearch,
@@ -741,7 +741,7 @@ pub struct ParameterDefinition {
 }
 
 /// Parameter types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParameterType {
     /// Continuous parameter
     Continuous,
@@ -791,7 +791,7 @@ pub struct ParameterConstraint {
 }
 
 /// Constraint types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Linear constraint
     Linear,
@@ -1059,7 +1059,7 @@ pub struct ScalingFit {
 }
 
 /// Scaling fit types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalingFitType {
     /// Polynomial fit
     Polynomial { degree: usize },
@@ -1113,7 +1113,7 @@ pub struct StatisticalSignificance {
 }
 
 /// Multiple comparison correction methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CorrectionMethod {
     /// Bonferroni correction
     Bonferroni,
@@ -1139,7 +1139,7 @@ pub struct ErrorModel {
 }
 
 /// Error model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorModelType {
     /// Pauli error model
     Pauli,
@@ -1227,7 +1227,7 @@ pub struct PowerAnalysisRequirements {
 }
 
 /// Sample size calculation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SampleSizeMethod {
     /// T-test based
     TTest,
@@ -1251,7 +1251,7 @@ pub struct BootstrapParameters {
 }
 
 /// Bootstrap methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BootstrapMethod {
     /// Percentile bootstrap
     Percentile,
@@ -1316,7 +1316,7 @@ pub trait EffectSizeCalculator: Send + Sync {
 }
 
 /// Effect size interpretation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EffectSizeInterpretation {
     /// Negligible effect
     Negligible,
@@ -1418,7 +1418,7 @@ pub struct AdvantageCertification {
 }
 
 /// Certification levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CertificationLevel {
     /// No advantage demonstrated
     NoAdvantage,
@@ -1433,7 +1433,7 @@ pub enum CertificationLevel {
 }
 
 /// Certification criteria
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CertificationCriterion {
     /// Statistical significance achieved
     StatisticalSignificance,
@@ -1520,7 +1520,7 @@ pub struct QualityCheck {
 }
 
 /// Quality check result
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityCheckResult {
     /// Check passed
     Passed,
@@ -1605,7 +1605,7 @@ pub struct QueryEngine {
 }
 
 /// Query types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueryType {
     /// Filter by criteria
     Filter,
@@ -1651,7 +1651,7 @@ pub struct Index {
 }
 
 /// Index types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexType {
     /// Hash index
     Hash,
@@ -1750,7 +1750,7 @@ pub struct Evidence {
 }
 
 /// Evidence types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvidenceType {
     /// Performance measurements
     PerformanceMeasurements,
@@ -1778,7 +1778,7 @@ pub struct EvidenceQuality {
 }
 
 /// Reliability levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReliabilityLevel {
     /// Very low reliability
     VeryLow,
@@ -1793,7 +1793,7 @@ pub enum ReliabilityLevel {
 }
 
 /// Completeness levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompletenessLevel {
     /// Incomplete
     Incomplete,
@@ -1806,7 +1806,7 @@ pub enum CompletenessLevel {
 }
 
 /// Bias levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BiasLevel {
     /// High bias
     High,
@@ -1860,7 +1860,7 @@ pub struct CertificationStep {
 }
 
 /// Step outcomes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepOutcome {
     /// Step passed
     Passed,
@@ -1874,6 +1874,7 @@ pub enum StepOutcome {
 
 impl QuantumAdvantageDemonstrator {
     /// Create new quantum advantage demonstrator
+    #[must_use]
     pub fn new(config: AdvantageConfig) -> Self {
         Self {
             config,
@@ -1936,10 +1937,7 @@ impl QuantumAdvantageDemonstrator {
         // Step 6: Store results
         self.store_results(&result)?;
 
-        println!(
-            "Quantum advantage demonstration completed in {:?}",
-            duration
-        );
+        println!("Quantum advantage demonstration completed in {duration:?}");
         println!(
             "Certification level: {:?}",
             result.certification.certification_level
@@ -1971,11 +1969,11 @@ impl QuantumAdvantageDemonstrator {
             let ising_problem = IsingModel::new(size);
 
             let problem = ProblemInstance {
-                id: format!("ising_size_{}", size),
+                id: format!("ising_size_{size}"),
                 size,
                 problem: ProblemRepresentation::Ising(ising_problem),
                 properties: InstanceProperties {
-                    connectivity_density: 0.1 + (size as f64).log10() * 0.1,
+                    connectivity_density: (size as f64).log10().mul_add(0.1, 0.1),
                     clustering_coefficient: 0.3,
                     constraint_tightness: 0.5,
                     estimated_hardness: 0.7,
@@ -1998,7 +1996,7 @@ impl QuantumAdvantageDemonstrator {
                     algorithm: "Random Ising Generator".to_string(),
                     parameters: HashMap::new(),
                     timestamp: Instant::now(),
-                    seed: 12345,
+                    seed: 12_345,
                 },
             };
 
@@ -2028,7 +2026,7 @@ impl QuantumAdvantageDemonstrator {
             for problem in problems {
                 // Simulate classical optimization
                 let execution_time = Duration::from_millis(100 + problem.size as u64);
-                let quality = 0.8 + thread_rng().gen::<f64>() * 0.15; // 80-95% quality
+                let quality = thread_rng().gen::<f64>().mul_add(0.15, 0.8); // 80-95% quality
 
                 total_time += execution_time;
                 total_quality += quality;
@@ -2040,7 +2038,7 @@ impl QuantumAdvantageDemonstrator {
             }
 
             let avg_quality = total_quality / problems.len() as f64;
-            let success_rate = successes as f64 / problems.len() as f64;
+            let success_rate = f64::from(successes) / problems.len() as f64;
 
             results.insert(
                 algorithm.clone(),
@@ -2068,7 +2066,7 @@ impl QuantumAdvantageDemonstrator {
         let mut results = HashMap::new();
 
         for device in &self.config.quantum_devices {
-            println!("Running on {:?} device", device);
+            println!("Running on {device:?} device");
 
             let mut total_time = Duration::from_secs(0);
             let mut total_quality = 0.0;
@@ -2078,8 +2076,8 @@ impl QuantumAdvantageDemonstrator {
             for problem in problems {
                 // Simulate quantum optimization with advantage
                 let base_time = Duration::from_millis(10 + problem.size as u64 / 10);
-                let quality = 0.85 + thread_rng().gen::<f64>() * 0.1; // 85-95% quality
-                let advantage_factor = 1.5 + thread_rng().gen::<f64>() * 2.0; // 1.5x-3.5x advantage
+                let quality = thread_rng().gen::<f64>().mul_add(0.1, 0.85); // 85-95% quality
+                let advantage_factor = thread_rng().gen::<f64>().mul_add(2.0, 1.5); // 1.5x-3.5x advantage
 
                 total_time += base_time;
                 total_quality += quality;
@@ -2093,7 +2091,7 @@ impl QuantumAdvantageDemonstrator {
 
             let avg_quality = total_quality / problems.len() as f64;
             let avg_advantage = total_advantage / problems.len() as f64;
-            let success_rate = successes as f64 / problems.len() as f64;
+            let success_rate = f64::from(successes) / problems.len() as f64;
 
             results.insert(
                 device.clone(),
@@ -2263,7 +2261,7 @@ impl BenchmarkSuite {
                 include_real_world_problems: true,
                 size_progression: SizeProgression::Linear { step: 100 },
                 generation_params: GenerationParameters {
-                    random_seed: 12345,
+                    random_seed: 12_345,
                     density_range: (0.1, 0.5),
                     constraint_tightness: (0.3, 0.7),
                     hardness_params: HardnessParameters {
@@ -2376,7 +2374,7 @@ impl ResultsDatabase {
         Self {
             config: DatabaseConfig {
                 enable_caching: true,
-                max_cache_size: 10000,
+                max_cache_size: 10_000,
                 enable_compression: true,
                 backup_frequency: Duration::from_secs(3600),
             },
@@ -2425,7 +2423,8 @@ mod tests {
 
     #[test]
     fn test_advantage_demonstrator_creation() {
-        let demonstrator = create_example_advantage_demonstrator().unwrap();
+        let demonstrator =
+            create_example_advantage_demonstrator().expect("Demonstrator creation should succeed");
         assert_eq!(demonstrator.config.confidence_level, 0.95);
         assert_eq!(demonstrator.config.num_repetitions, 100);
     }

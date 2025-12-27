@@ -881,17 +881,17 @@ impl DistributedExecutor {
                         .backends
                         .iter()
                         .find(|backend| backend.id == *a)
-                        .unwrap();
+                        .expect("Backend ID in suitable_backends must exist in backends list");
                     let backend_b = self
                         .backends
                         .iter()
                         .find(|backend| backend.id == *b)
-                        .unwrap();
+                        .expect("Backend ID in suitable_backends must exist in backends list");
                     backend_a
                         .queue_info
                         .estimated_wait_time
                         .partial_cmp(&backend_b.queue_info.estimated_wait_time)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 suitable_backends.truncate(self.fault_tolerance.redundancy_level.max(1));
             }
@@ -1130,7 +1130,9 @@ mod tests {
             },
         };
 
-        executor.add_backend(backend).unwrap();
+        executor
+            .add_backend(backend)
+            .expect("Failed to add backend to executor");
         assert_eq!(executor.backends.len(), 1);
         assert_eq!(executor.resource_manager.resource_pool.total_qubits, 10);
     }
@@ -1141,11 +1143,13 @@ mod tests {
 
         // Add a backend first
         let backend = create_test_backend();
-        executor.add_backend(backend).unwrap();
+        executor
+            .add_backend(backend)
+            .expect("Failed to add backend to executor");
 
         // Create a test job
         let mut circuit = Circuit::<2>::new();
-        circuit.h(QubitId(0)).unwrap(); // Add a gate so it's not empty
+        circuit.h(QubitId(0)).expect("Failed to add Hadamard gate"); // Add a gate so it's not empty
         let job = DistributedJob {
             id: "test_job".to_string(),
             circuit,
@@ -1162,7 +1166,9 @@ mod tests {
             deadline: None,
         };
 
-        let job_id = executor.submit_job(job).unwrap();
+        let job_id = executor
+            .submit_job(job)
+            .expect("Failed to submit job to executor");
         assert_eq!(job_id, "test_job");
     }
 

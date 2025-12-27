@@ -760,7 +760,11 @@ pub enum QKDProtocol {
 
 impl QuantumKeyDistribution {
     /// Create a new QKD protocol
-    pub fn new(protocol_type: QKDProtocol, key_length: usize, security_parameter: f64) -> Self {
+    pub const fn new(
+        protocol_type: QKDProtocol,
+        key_length: usize,
+        security_parameter: f64,
+    ) -> Self {
         Self {
             protocol_type,
             key_length,
@@ -923,7 +927,7 @@ impl QuantumKeyDistribution {
 
             // Use results for key generation (simplified)
             if alice_basis == bob_basis {
-                shared_key.push(if alice_result { 1 } else { 0 });
+                shared_key.push(u8::from(alice_result));
             }
         }
 
@@ -958,7 +962,7 @@ impl QuantumKeyDistribution {
             // Bob performs measurements
             let measurement_result = self.measure_coherent_state(&coherent_state)?;
 
-            shared_key.push(if measurement_result { 1 } else { 0 });
+            shared_key.push(u8::from(measurement_result));
         }
 
         Ok(QKDResult {
@@ -1088,12 +1092,12 @@ mod tests {
         );
 
         assert!(hash_function.is_ok());
-        let qhf = hash_function.unwrap();
+        let qhf = hash_function.expect("Failed to create quantum hash function");
 
         let input = b"test message";
         let hash_result = qhf.hash(input);
         assert!(hash_result.is_ok());
-        assert_eq!(hash_result.unwrap().len(), 8);
+        assert_eq!(hash_result.expect("Hash computation failed").len(), 8);
     }
 
     #[test]
@@ -1102,14 +1106,14 @@ mod tests {
         let signature_scheme = QuantumDigitalSignature::new(16, 128);
         assert!(signature_scheme.is_ok());
 
-        let qds = signature_scheme.unwrap();
+        let qds = signature_scheme.expect("Failed to create quantum digital signature scheme");
         let message =
             scirs2_core::ndarray::array![Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0)];
 
         let signature = qds.sign(&message);
         assert!(signature.is_ok());
 
-        let verification = qds.verify(&message, &signature.unwrap());
+        let verification = qds.verify(&message, &signature.expect("Signature creation failed"));
         assert!(verification.is_ok());
     }
 
@@ -1135,10 +1139,14 @@ mod tests {
     fn test_bb84_state_preparation() {
         let qkd = QuantumKeyDistribution::new(QKDProtocol::BB84, 1, 1e-6);
 
-        let state_0_z = qkd.prepare_bb84_state(false, false).unwrap();
+        let state_0_z = qkd
+            .prepare_bb84_state(false, false)
+            .expect("Failed to prepare BB84 |0⟩ state");
         assert!((state_0_z[0].norm() - 1.0).abs() < 1e-10);
 
-        let state_plus = qkd.prepare_bb84_state(false, true).unwrap();
+        let state_plus = qkd
+            .prepare_bb84_state(false, true)
+            .expect("Failed to prepare BB84 |+⟩ state");
         assert!((state_plus[0].norm() - 1.0 / 2.0_f64.sqrt()).abs() < 1e-10);
     }
 }

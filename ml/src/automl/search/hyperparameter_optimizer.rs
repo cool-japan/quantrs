@@ -190,8 +190,13 @@ impl QuantumHyperparameterOptimizer {
                 best_score = score;
                 best_pipeline = pipeline.clone();
                 self.best_configuration = Some(config);
-                self.optimization_history.best_trial =
-                    Some(self.optimization_history.trials.last().unwrap().clone());
+                self.optimization_history.best_trial = Some(
+                    self.optimization_history
+                        .trials
+                        .last()
+                        .expect("trials should not be empty")
+                        .clone(),
+                );
             }
 
             self.optimization_history

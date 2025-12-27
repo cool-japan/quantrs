@@ -545,14 +545,19 @@ impl TFQModel {
         match &self.loss_function {
             TFQLossFunction::MeanSquaredError => {
                 let diff = predictions - targets;
-                Ok(diff.mapv(|x| x * x).mean().unwrap())
+                diff.mapv(|x| x * x).mean().ok_or_else(|| {
+                    MLError::InvalidConfiguration("Cannot compute mean of empty array".to_string())
+                })
             }
             TFQLossFunction::BinaryCrossentropy => {
                 let epsilon = 1e-15;
                 let clipped_preds = predictions.mapv(|x| x.max(epsilon).min(1.0 - epsilon));
                 let loss = targets * clipped_preds.mapv(|x| x.ln())
                     + (1.0 - targets) * clipped_preds.mapv(|x| (1.0 - x).ln());
-                Ok(-loss.mean().unwrap())
+                let mean_loss = loss.mean().ok_or_else(|| {
+                    MLError::InvalidConfiguration("Cannot compute mean of empty array".to_string())
+                })?;
+                Ok(-mean_loss)
             }
             _ => Err(MLError::InvalidConfiguration(
                 "Loss function not implemented".to_string(),
@@ -792,10 +797,12 @@ pub mod tfq_utils {
 
         for (circuit_idx, circuit) in circuits.iter().enumerate() {
             let params = parameters.row(circuit_idx % parameters.nrows());
+            let params_slice = params.as_slice().ok_or_else(|| {
+                MLError::InvalidConfiguration("Parameters must be contiguous in memory".to_string())
+            })?;
 
             for (obs_idx, observable) in observables.iter().enumerate() {
-                let expectation =
-                    backend.expectation_value(circuit, params.as_slice().unwrap(), observable)?;
+                let expectation = backend.expectation_value(circuit, params_slice, observable)?;
                 results[[circuit_idx, obs_idx]] = expectation;
             }
         }
@@ -844,9 +851,9 @@ mod tests {
     #[ignore]
     fn test_quantum_circuit_layer() {
         let mut builder = CircuitBuilder::new();
-        builder.ry(0, 0.0).unwrap();
-        builder.ry(1, 0.0).unwrap();
-        builder.cnot(0, 1).unwrap();
+        builder.ry(0, 0.0).expect("RY gate should succeed");
+        builder.ry(1, 0.0).expect("RY gate should succeed");
+        builder.cnot(0, 1).expect("CNOT gate should succeed");
         let circuit = builder.build();
 
         let symbols = vec!["theta1".to_string(), "theta2".to_string()];
@@ -855,8 +862,10 @@ mod tests {
 
         let layer = QuantumCircuitLayer::new(circuit, symbols, observable, backend);
 
-        let inputs = Array2::from_shape_vec((2, 2), vec![0.1, 0.2, 0.3, 0.4]).unwrap();
-        let parameters = Array2::from_shape_vec((2, 2), vec![0.5, 0.6, 0.7, 0.8]).unwrap();
+        let inputs = Array2::from_shape_vec((2, 2), vec![0.1, 0.2, 0.3, 0.4])
+            .expect("Valid shape for inputs");
+        let parameters = Array2::from_shape_vec((2, 2), vec![0.5, 0.6, 0.7, 0.8])
+            .expect("Valid shape for parameters");
 
         let result = layer.forward(&inputs, &parameters);
         assert!(result.is_ok());
@@ -887,18 +896,20 @@ mod tests {
     #[test]
     #[ignore]
     fn test_tfq_utils() {
-        let circuit = tfq_utils::create_data_encoding_circuit(3, DataEncodingType::Angle).unwrap();
+        let circuit = tfq_utils::create_data_encoding_circuit(3, DataEncodingType::Angle)
+            .expect("Data encoding circuit creation should succeed");
         assert_eq!(circuit.num_qubits(), 3);
 
-        let ansatz = tfq_utils::create_hardware_efficient_ansatz(4, 2).unwrap();
+        let ansatz = tfq_utils::create_hardware_efficient_ansatz(4, 2)
+            .expect("Hardware efficient ansatz creation should succeed");
         assert_eq!(ansatz.num_qubits(), 4);
     }
 
     #[test]
     fn test_quantum_dataset() -> Result<()> {
         let circuits = vec![CircuitBuilder::new().build(), CircuitBuilder::new().build()];
-        let parameters =
-            Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
+        let parameters = Array2::from_shape_vec((2, 3), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+            .expect("Valid shape for parameters");
         let labels = Array1::from_vec(vec![0.0, 1.0]);
 
         let dataset = QuantumDataset::new(circuits, parameters, labels, 1);

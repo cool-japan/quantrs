@@ -371,12 +371,15 @@ impl MultiGpuManager {
 
     /// Get performance metrics
     pub fn get_metrics(&self) -> PerformanceMetrics {
-        self.metrics.lock().unwrap().clone()
+        self.metrics
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     /// Reset performance metrics
     pub fn reset_metrics(&self) {
-        *self.metrics.lock().unwrap() = PerformanceMetrics::default();
+        *self.metrics.lock().unwrap_or_else(|e| e.into_inner()) = PerformanceMetrics::default();
     }
 
     /// Check if multi-GPU is actually available
@@ -390,7 +393,12 @@ impl Clone for MultiGpuManager {
         Self {
             devices: self.devices.clone(),
             allocation_strategy: self.allocation_strategy,
-            metrics: Arc::new(Mutex::new(self.metrics.lock().unwrap().clone())),
+            metrics: Arc::new(Mutex::new(
+                self.metrics
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clone(),
+            )),
             gpu_available: self.gpu_available,
         }
     }
@@ -441,7 +449,10 @@ impl PyMultiGpuManager {
     /// Returns:
     ///     int: Number of available GPUs
     fn num_gpus(&self) -> usize {
-        self.manager.lock().unwrap().num_gpus()
+        self.manager
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .num_gpus()
     }
 
     /// Get information about all available GPUs
@@ -450,7 +461,7 @@ impl PyMultiGpuManager {
     ///     list: List of dictionaries containing GPU information
     fn get_devices(&self, py: Python) -> PyResult<PyObject> {
         let devices = {
-            let manager = self.manager.lock().unwrap();
+            let manager = self.manager.lock().unwrap_or_else(|e| e.into_inner());
             manager.get_devices().to_vec()
         };
 
@@ -497,7 +508,10 @@ impl PyMultiGpuManager {
             )),
         };
 
-        self.manager.lock().unwrap().set_strategy(strat);
+        self.manager
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .set_strategy(strat);
         Ok(())
     }
 
@@ -506,7 +520,11 @@ impl PyMultiGpuManager {
     /// Returns:
     ///     str: Current allocation strategy
     fn get_strategy(&self) -> String {
-        let strategy = self.manager.lock().unwrap().get_strategy();
+        let strategy = self
+            .manager
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_strategy();
         match strategy {
             AllocationStrategy::RoundRobin => "round_robin",
             AllocationStrategy::MemoryBased => "memory_based",
@@ -530,7 +548,7 @@ impl PyMultiGpuManager {
     fn select_gpus(&self, n_qubits: usize) -> PyResult<Vec<i32>> {
         self.manager
             .lock()
-            .unwrap()
+            .unwrap_or_else(|e| e.into_inner())
             .select_gpus(n_qubits)
             .map_err(|e| e.into())
     }
@@ -540,7 +558,11 @@ impl PyMultiGpuManager {
     /// Returns:
     ///     dict: Performance metrics
     fn get_metrics(&self, py: Python) -> PyResult<PyObject> {
-        let metrics = self.manager.lock().unwrap().get_metrics();
+        let metrics = self
+            .manager
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_metrics();
         let dict = PyDict::new(py);
 
         dict.set_item("total_time_ms", metrics.total_time_ms)?;
@@ -566,7 +588,10 @@ impl PyMultiGpuManager {
 
     /// Reset performance metrics
     fn reset_metrics(&self) {
-        self.manager.lock().unwrap().reset_metrics();
+        self.manager
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .reset_metrics();
     }
 
     /// Check if multi-GPU support is available
@@ -589,7 +614,7 @@ impl PyMultiGpuManager {
     /// Get a string representation
     fn __repr__(&self) -> String {
         let (num_gpus, strategy, available) = {
-            let manager = self.manager.lock().unwrap();
+            let manager = self.manager.lock().unwrap_or_else(|e| e.into_inner());
             (
                 manager.num_gpus(),
                 manager.get_strategy(),

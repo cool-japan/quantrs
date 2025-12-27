@@ -62,7 +62,7 @@ mod tests {
         let cal_mgr = CalibrationManager::new();
         let device_manager = Arc::new(RwLock::new(
             IntegratedQuantumDeviceManager::new(Default::default(), devices, cal_mgr.clone())
-                .unwrap(),
+                .expect("Failed to create IntegratedQuantumDeviceManager in test"),
         ));
         let calibration_manager = Arc::new(RwLock::new(cal_mgr));
         let router = Arc::new(RwLock::new(AdvancedQubitRouter::new(

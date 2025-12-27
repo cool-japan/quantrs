@@ -5,7 +5,7 @@
 //! strategies, data locality optimizations, and NUMA-aware memory management.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::{HashMap, VecDeque};
@@ -164,7 +164,10 @@ impl MemoryPool {
 
     /// Allocate a memory block from the pool
     pub fn allocate(&self) -> Result<NonNull<u8>> {
-        let mut blocks = self.blocks.lock().unwrap();
+        let mut blocks = self
+            .blocks
+            .lock()
+            .map_err(|e| SimulatorError::MemoryAllocationFailed(format!("Lock poisoned: {e}")))?;
 
         if let Some((ptr, _)) = blocks.pop() {
             Ok(unsafe { NonNull::new_unchecked(ptr) })
@@ -180,7 +183,9 @@ impl MemoryPool {
                 ));
             }
 
-            let mut count = self.allocated_count.lock().unwrap();
+            let mut count = self.allocated_count.lock().map_err(|e| {
+                SimulatorError::MemoryAllocationFailed(format!("Lock poisoned: {e}"))
+            })?;
             *count += 1;
 
             Ok(unsafe { NonNull::new_unchecked(ptr) })
@@ -189,7 +194,10 @@ impl MemoryPool {
 
     /// Return a memory block to the pool
     pub fn deallocate(&self, ptr: NonNull<u8>) -> Result<()> {
-        let mut blocks = self.blocks.lock().unwrap();
+        let mut blocks = self
+            .blocks
+            .lock()
+            .map_err(|e| SimulatorError::MemoryAllocationFailed(format!("Lock poisoned: {e}")))?;
 
         if blocks.len() < self.max_blocks {
             blocks.push((ptr.as_ptr(), self.block_size));
@@ -199,7 +207,9 @@ impl MemoryPool {
                 .map_err(|e| SimulatorError::MemoryAllocationFailed(e.to_string()))?;
             unsafe { System.dealloc(ptr.as_ptr(), layout) };
 
-            let mut count = self.allocated_count.lock().unwrap();
+            let mut count = self.allocated_count.lock().map_err(|e| {
+                SimulatorError::MemoryAllocationFailed(format!("Lock poisoned: {e}"))
+            })?;
             *count -= 1;
         }
 
@@ -310,9 +320,7 @@ impl OptimizedStateVector {
             let start = block_idx * block_size;
             let end = std::cmp::min(start + block_size, size);
 
-            for i in start..end {
-                blocked_data.push(data[i]);
-            }
+            blocked_data.extend_from_slice(&data[start..end]);
         }
 
         Ok(blocked_data)
@@ -649,7 +657,10 @@ impl OptimizedStateVector {
 
     /// Get current bandwidth statistics
     pub fn get_bandwidth_stats(&self) -> Result<BandwidthMonitor> {
-        Ok(self.bandwidth_monitor.read().unwrap().clone())
+        self.bandwidth_monitor
+            .read()
+            .map(|guard| guard.clone())
+            .map_err(|e| SimulatorError::InvalidState(format!("RwLock poisoned: {e}")))
     }
 
     /// Adapt memory layout based on access patterns
@@ -658,8 +669,14 @@ impl OptimizedStateVector {
             return Ok(());
         }
 
-        let access_pattern = self.access_pattern.read().unwrap();
-        let bandwidth_stats = self.bandwidth_monitor.read().unwrap();
+        let access_pattern = self
+            .access_pattern
+            .read()
+            .map_err(|e| SimulatorError::InvalidState(format!("RwLock poisoned: {e}")))?;
+        let bandwidth_stats = self
+            .bandwidth_monitor
+            .read()
+            .map_err(|e| SimulatorError::InvalidState(format!("RwLock poisoned: {e}")))?;
 
         // Analyze access patterns and bandwidth utilization
         let sequential_ratio = access_pattern.sequential_accesses.len() as f64
@@ -685,6 +702,7 @@ impl OptimizedStateVector {
     }
 
     /// Get memory usage statistics
+    #[must_use]
     pub fn get_memory_stats(&self) -> MemoryStats {
         let element_size = std::mem::size_of::<Complex64>();
         MemoryStats {
@@ -698,23 +716,29 @@ impl OptimizedStateVector {
 
     /// Calculate cache efficiency estimate
     fn calculate_cache_efficiency(&self) -> f64 {
-        let access_pattern = self.access_pattern.read().unwrap();
+        let access_pattern = match self.access_pattern.read() {
+            Ok(guard) => guard,
+            Err(_) => return 1.0, // Default to full efficiency if lock is poisoned
+        };
         if access_pattern.total_accesses == 0 {
             return 1.0;
         }
 
         let hit_rate =
             1.0 - (access_pattern.cache_misses as f64 / access_pattern.total_accesses as f64);
-        hit_rate.max(0.0).min(1.0)
+        hit_rate.clamp(0.0, 1.0)
     }
 
     /// Calculate memory utilization
     fn calculate_memory_utilization(&self) -> f64 {
-        let bandwidth_stats = self.bandwidth_monitor.read().unwrap();
-        bandwidth_stats.current_utilization
+        match self.bandwidth_monitor.read() {
+            Ok(guard) => guard.current_utilization,
+            Err(_) => 0.0, // Default to zero utilization if lock is poisoned
+        }
     }
 
     /// Get state vector data (read-only access)
+    #[must_use]
     pub fn data(&self) -> &[Complex64] {
         &self.data
     }
@@ -753,7 +777,7 @@ pub struct MemoryBandwidthOptimizer {
     config: MemoryOptimizationConfig,
     /// Global memory pool
     memory_pool: Arc<MemoryPool>,
-    /// SciRS2 backend integration
+    /// `SciRS2` backend integration
     backend: Option<SciRS2Backend>,
 }
 
@@ -769,7 +793,7 @@ impl MemoryBandwidthOptimizer {
         })
     }
 
-    /// Initialize SciRS2 backend integration
+    /// Initialize `SciRS2` backend integration
     pub fn init_scirs2_backend(&mut self) -> Result<()> {
         // SciRS2Backend::new() returns a SciRS2Backend directly
         let backend = SciRS2Backend::new();
@@ -852,7 +876,8 @@ mod tests {
     #[test]
     fn test_optimized_state_vector_creation() {
         let config = MemoryOptimizationConfig::default();
-        let state_vector = OptimizedStateVector::new(3, config).unwrap();
+        let state_vector = OptimizedStateVector::new(3, config)
+            .expect("OptimizedStateVector creation should succeed");
 
         assert_eq!(state_vector.num_qubits, 3);
         assert_eq!(state_vector.data.len(), 8);
@@ -866,14 +891,16 @@ mod tests {
             ..Default::default()
         };
 
-        let state_vector = OptimizedStateVector::new(4, config).unwrap();
+        let state_vector = OptimizedStateVector::new(4, config)
+            .expect("OptimizedStateVector with CacheAligned layout should be created");
         assert_eq!(state_vector.layout, MemoryLayout::CacheAligned);
     }
 
     #[test]
     fn test_single_qubit_gate_optimization() {
         let config = MemoryOptimizationConfig::default();
-        let mut state_vector = OptimizedStateVector::new(2, config).unwrap();
+        let mut state_vector = OptimizedStateVector::new(2, config)
+            .expect("OptimizedStateVector creation should succeed");
 
         // Pauli-X gate
         let gate_matrix = Array2::from_shape_vec(
@@ -885,11 +912,11 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Gate matrix construction should succeed");
 
         state_vector
             .apply_single_qubit_gate_optimized(0, &gate_matrix)
-            .unwrap();
+            .expect("Single qubit gate application should succeed");
 
         // State should now be |01⟩
         assert!((state_vector.data[1].re - 1.0).abs() < 1e-10);
@@ -899,21 +926,26 @@ mod tests {
     #[test]
     fn test_bandwidth_monitoring() {
         let config = MemoryOptimizationConfig::default();
-        let state_vector = OptimizedStateVector::new(3, config).unwrap();
+        let state_vector = OptimizedStateVector::new(3, config)
+            .expect("OptimizedStateVector creation should succeed");
 
-        let stats = state_vector.get_bandwidth_stats().unwrap();
+        let stats = state_vector
+            .get_bandwidth_stats()
+            .expect("Bandwidth stats retrieval should succeed");
         assert_eq!(stats.bandwidth_samples.len(), 0); // No operations yet
     }
 
     #[test]
     fn test_memory_pool() {
-        let pool = MemoryPool::new(1024, 10).unwrap();
+        let pool = MemoryPool::new(1024, 10).expect("MemoryPool creation should succeed");
 
-        let ptr1 = pool.allocate().unwrap();
-        let ptr2 = pool.allocate().unwrap();
+        let ptr1 = pool.allocate().expect("First allocation should succeed");
+        let ptr2 = pool.allocate().expect("Second allocation should succeed");
 
-        pool.deallocate(ptr1).unwrap();
-        pool.deallocate(ptr2).unwrap();
+        pool.deallocate(ptr1)
+            .expect("First deallocation should succeed");
+        pool.deallocate(ptr2)
+            .expect("Second deallocation should succeed");
     }
 
     #[test]
@@ -924,7 +956,8 @@ mod tests {
             ..Default::default()
         };
 
-        let data = OptimizedStateVector::allocate_cache_aligned(100, &config).unwrap();
+        let data = OptimizedStateVector::allocate_cache_aligned(100, &config)
+            .expect("Cache-aligned allocation should succeed");
 
         // Should be padded to cache line boundary
         let element_size = std::mem::size_of::<Complex64>();
@@ -937,16 +970,19 @@ mod tests {
     #[test]
     fn test_memory_bandwidth_optimizer() {
         let config = MemoryOptimizationConfig::default();
-        let optimizer = MemoryBandwidthOptimizer::new(config).unwrap();
+        let optimizer = MemoryBandwidthOptimizer::new(config)
+            .expect("MemoryBandwidthOptimizer creation should succeed");
 
-        let mut state_vector = optimizer.create_optimized_state_vector(4).unwrap();
+        let mut state_vector = optimizer
+            .create_optimized_state_vector(4)
+            .expect("Optimized state vector creation should succeed");
         let report = optimizer
             .optimize_circuit_memory_access(&mut state_vector, 10)
-            .unwrap();
+            .expect("Circuit memory optimization should succeed");
 
         // Ensure optimization completed successfully
         assert!(report.optimization_time.as_millis() < u128::MAX);
-        assert_eq!(report.estimated_memory_accesses, 10 * 16); // 10 gates × 16 states
+        assert_eq!(report.estimated_memory_accesses, 10 * 16); // 10 gates x 16 states
     }
 
     #[test]
@@ -956,8 +992,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut state_vector = OptimizedStateVector::new(3, config).unwrap();
-        state_vector.adapt_memory_layout().unwrap();
+        let mut state_vector = OptimizedStateVector::new(3, config)
+            .expect("OptimizedStateVector with Adaptive layout should be created");
+        state_vector
+            .adapt_memory_layout()
+            .expect("Memory layout adaptation should succeed");
 
         // Layout may have changed based on (empty) access patterns
         assert!(matches!(
@@ -969,7 +1008,8 @@ mod tests {
     #[test]
     fn test_memory_stats() {
         let config = MemoryOptimizationConfig::default();
-        let state_vector = OptimizedStateVector::new(4, config).unwrap();
+        let state_vector = OptimizedStateVector::new(4, config)
+            .expect("OptimizedStateVector creation should succeed");
 
         let stats = state_vector.get_memory_stats();
         assert_eq!(stats.total_memory, 16 * std::mem::size_of::<Complex64>());
@@ -984,7 +1024,8 @@ mod tests {
             ..Default::default()
         };
 
-        let data = OptimizedStateVector::allocate_blocked(100, &config).unwrap();
+        let data = OptimizedStateVector::allocate_blocked(100, &config)
+            .expect("Blocked layout allocation should succeed");
         assert_eq!(data.len(), 100);
     }
 
@@ -996,7 +1037,8 @@ mod tests {
             ..Default::default()
         };
 
-        let state_vector = OptimizedStateVector::new(5, config).unwrap();
+        let state_vector = OptimizedStateVector::new(5, config)
+            .expect("OptimizedStateVector with prefetching enabled should be created");
 
         // Test that prefetching doesn't crash
         OptimizedStateVector::prefetch_memory(&state_vector.data[0]);

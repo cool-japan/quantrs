@@ -11,7 +11,7 @@ pub struct TimeSeriesAnalyzer {
 
 impl TimeSeriesAnalyzer {
     /// Create new time series analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 
@@ -234,7 +234,7 @@ impl TimeSeriesAnalyzer {
     }
 
     /// Test stationarity
-    fn test_stationarity(&self, values: &[f64]) -> DeviceResult<StationarityTestResults> {
+    const fn test_stationarity(&self, values: &[f64]) -> DeviceResult<StationarityTestResults> {
         // Simplified stationarity tests
         let adf_test = StatisticalTest {
             statistic: -2.5,

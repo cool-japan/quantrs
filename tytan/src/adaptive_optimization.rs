@@ -226,6 +226,7 @@ impl AdaptiveOptimizer {
     }
 
     /// Set learning rate
+    #[must_use]
     pub const fn with_learning_rate(mut self, rate: f64) -> Self {
         self.learning_rate = rate;
         self
@@ -265,9 +266,10 @@ impl AdaptiveOptimizer {
             match sampler.run_qubo(&(qubo.clone(), var_map.clone()), shots) {
                 Ok(results) => {
                     for result in results {
-                        if best_result.is_none()
-                            || result.energy < best_result.as_ref().unwrap().energy
-                        {
+                        let should_update = best_result
+                            .as_ref()
+                            .map_or(true, |best| result.energy < best.energy);
+                        if should_update {
                             improvement_history
                                 .push((start_time.elapsed().as_secs_f64(), result.energy));
                             best_result = Some(result);
@@ -498,16 +500,17 @@ impl AdaptiveOptimizer {
         let recent = &history[history.len() - 10..];
         let best_recent = recent
             .iter()
-            .map(|(_, e)| e)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .map(|(_, e)| *e)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let best_overall = history
             .iter()
-            .map(|(_, e)| e)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .map(|(_, e)| *e)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        (best_recent - best_overall).abs() < 1e-6
+        match (best_recent, best_overall) {
+            (Some(recent), Some(overall)) => (recent - overall).abs() < 1e-6,
+            _ => false,
+        }
     }
 
     /// Adjust parameters based on history
@@ -517,7 +520,11 @@ impl AdaptiveOptimizer {
         }
 
         // Simple gradient-based adjustment
-        let recent_improvement = history.last().unwrap().1 - history[history.len() - 2].1;
+        // Safety: We already checked history.len() >= 2, so last() and indexing are safe
+        let Some(last_entry) = history.last() else {
+            return;
+        };
+        let recent_improvement = last_entry.1 - history[history.len() - 2].1;
 
         if recent_improvement < 0.0 {
             // Good direction, increase learning
@@ -547,7 +554,7 @@ impl AdaptiveOptimizer {
             .performance_history
             .feature_performance
             .entry(record.features.clone())
-            .or_insert(AlgorithmPerformance {
+            .or_insert_with(|| AlgorithmPerformance {
                 success_rate: 0.0,
                 avg_quality: 0.0,
                 avg_time_ms: 0.0,
@@ -583,7 +590,7 @@ impl AdaptiveOptimizer {
             .performance_history
             .best_solutions
             .entry(problem_id.clone())
-            .or_insert(BestSolution {
+            .or_insert_with(|| BestSolution {
                 problem_id,
                 best_energy: f64::INFINITY,
                 algorithm: String::new(),
@@ -798,8 +805,10 @@ impl FeatureExtractor for StructureFeatureExtractor {
         );
 
         // Structure score (combination)
-        let structure_score = features.get("diagonal_dominance").unwrap() * 0.5
-            + features.get("symmetry").unwrap() * 0.5;
+        // These values were just inserted above, so unwrap_or provides a safe default
+        let diagonal_dominance = features.get("diagonal_dominance").copied().unwrap_or(0.0);
+        let symmetry = features.get("symmetry").copied().unwrap_or(0.0);
+        let structure_score = diagonal_dominance * 0.5 + symmetry * 0.5;
         features.insert("structure_score".to_string(), structure_score);
 
         features
@@ -862,7 +871,7 @@ mod tests {
 
         let mut result = optimizer
             .optimize(&qubo, &var_map, Duration::from_secs(1))
-            .unwrap();
+            .expect("Optimization should succeed for valid QUBO");
 
         assert!(!result.best_solution.is_empty());
         assert!(result.best_energy < 0.0);

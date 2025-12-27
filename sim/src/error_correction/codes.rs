@@ -402,8 +402,8 @@ impl ErrorCorrection for ShorCode {
             .expect("Failed to apply CNOT for Block 3 bit-flip encoding in ShorCode");
 
         // At this point, we have encoded our logical |0⟩ as:
-        // (|000000000⟩ + |111111111⟩)/√2 and
-        // logical |1⟩ as: (|000000000⟩ - |111111111⟩)/√2
+        // (|000_000_000⟩ + |111_111_111⟩)/√2 and
+        // logical |1⟩ as: (|000_000_000⟩ - |111_111_111⟩)/√2
 
         // Apply Hadamards again to transform into the final Shor code state
         // For the standard Shor code representation, we would apply Hadamards again

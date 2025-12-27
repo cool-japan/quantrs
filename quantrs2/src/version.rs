@@ -408,7 +408,7 @@ mod tests {
         // Print any issues for debugging
         if let Err(ref issues) = result {
             for issue in issues {
-                eprintln!("Compatibility issue: {}", issue);
+                eprintln!("Compatibility issue: {issue}");
             }
         }
 
@@ -430,20 +430,20 @@ mod tests {
     fn test_rust_version_check() {
         // This should not panic - we're building with a compatible Rust version
         let result = check_rust_version();
-        assert!(result.is_ok(), "Rust version check failed: {:?}", result);
+        assert!(result.is_ok(), "Rust version check failed: {result:?}");
     }
 
     #[test]
     fn test_display_implementations() {
         let info = VersionInfo::current();
-        let display_str = format!("{}", info);
+        let display_str = format!("{info}");
         assert!(!display_str.is_empty());
 
         let issue = CompatibilityIssue::RustVersionTooOld {
             current: "1.60.0".to_string(),
             required: "1.70.0".to_string(),
         };
-        let issue_str = format!("{}", issue);
+        let issue_str = format!("{issue}");
         assert!(issue_str.contains("1.60.0"));
         assert!(issue_str.contains("1.70.0"));
     }

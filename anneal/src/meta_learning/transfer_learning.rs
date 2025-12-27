@@ -92,7 +92,7 @@ pub struct DomainSimilarityAnalyzer {
 }
 
 /// Similarity metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityMetric {
     /// Feature similarity
     FeatureSimilarity,
@@ -107,7 +107,7 @@ pub enum SimilarityMetric {
 }
 
 /// Similarity measurement methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityMethod {
     /// Cosine similarity
     Cosine,
@@ -122,7 +122,7 @@ pub enum SimilarityMethod {
 }
 
 /// Transfer strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferStrategy {
     /// Feature transfer
     FeatureTransfer,
@@ -139,7 +139,7 @@ pub enum TransferStrategy {
 }
 
 /// Adaptation mechanisms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationMechanism {
     /// Fine-tuning
     FineTuning,
@@ -154,6 +154,7 @@ pub enum AdaptationMechanism {
 }
 
 impl TransferLearner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             source_domains: Vec::new(),
@@ -173,6 +174,7 @@ impl TransferLearner {
     }
 
     /// Find most similar source domain
+    #[must_use]
     pub fn find_similar_domain(
         &self,
         target_characteristics: &DomainCharacteristics,
@@ -224,8 +226,7 @@ impl TransferLearner {
             .find(|d| d.id == source_domain_id)
             .ok_or_else(|| {
                 crate::applications::ApplicationError::InvalidConfiguration(format!(
-                    "Source domain {} not found",
-                    source_domain_id
+                    "Source domain {source_domain_id} not found"
                 ))
             })?;
 
@@ -257,6 +258,7 @@ impl TransferLearner {
     }
 
     /// Get transfer statistics
+    #[must_use]
     pub fn get_transfer_statistics(&self) -> TransferStatistics {
         let mut total_transfers = 0;
         let mut successful_transfers = 0;
@@ -439,7 +441,7 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let transfer_result = result.unwrap();
+        let transfer_result = result.expect("Transfer knowledge should succeed");
         assert!(transfer_result.performance_improvement > 0.0);
     }
 

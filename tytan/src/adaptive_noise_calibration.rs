@@ -16,24 +16,28 @@
 //!
 //! ```rust
 //! use quantrs2_tytan::adaptive_noise_calibration::{
-//!     NoiseCalibrationManager, CalibrationConfig, NoiseModel
+//!     NoiseCalibrationManager, CalibrationConfig, NoiseModel, CalibrationResult
 //! };
 //!
-//! // Create calibration manager
-//! let config = CalibrationConfig::default();
-//! let mut manager = NoiseCalibrationManager::new(config);
+//! fn example() -> CalibrationResult<()> {
+//!     // Create calibration manager
+//!     let config = CalibrationConfig::default();
+//!     let mut manager = NoiseCalibrationManager::new(config);
 //!
-//! // Characterize noise from device (build up history first)
-//! for _ in 0..20 {
-//!     manager.characterize_noise().unwrap();
+//!     // Characterize noise from device (build up history first)
+//!     for _ in 0..20 {
+//!         manager.characterize_noise()?;
+//!     }
+//!
+//!     // Now predict future noise patterns with sufficient history
+//!     let prediction = manager.predict_noise(10)?;
+//!
+//!     // Select optimal error mitigation strategy
+//!     if let Some(noise_model) = manager.current_model() {
+//!         let strategy = manager.select_mitigation_strategy(noise_model)?;
+//!     }
+//!     Ok(())
 //! }
-//!
-//! // Now predict future noise patterns with sufficient history
-//! let prediction = manager.predict_noise(10).unwrap();
-//!
-//! // Select optimal error mitigation strategy
-//! let noise_model = manager.current_model().unwrap();
-//! let strategy = manager.select_mitigation_strategy(&noise_model).unwrap();
 //! ```
 
 use scirs2_core::ndarray::{Array1, Array2};
@@ -115,30 +119,35 @@ impl Default for CalibrationConfig {
 
 impl CalibrationConfig {
     /// Set the number of characterization samples
+    #[must_use]
     pub const fn with_characterization_samples(mut self, samples: usize) -> Self {
         self.characterization_samples = samples;
         self
     }
 
     /// Set the refresh interval
+    #[must_use]
     pub const fn with_refresh_interval(mut self, interval: f64) -> Self {
         self.refresh_interval = interval;
         self
     }
 
     /// Set the ML model depth
+    #[must_use]
     pub const fn with_ml_model_depth(mut self, depth: usize) -> Self {
         self.ml_model_depth = depth;
         self
     }
 
     /// Set the training epochs
+    #[must_use]
     pub const fn with_training_epochs(mut self, epochs: usize) -> Self {
         self.training_epochs = epochs;
         self
     }
 
     /// Enable or disable adaptive scheduling
+    #[must_use]
     pub const fn with_adaptive_scheduling(mut self, enable: bool) -> Self {
         self.adaptive_scheduling = enable;
         self
@@ -290,8 +299,15 @@ impl NoisePredictor {
         }
 
         // Output layer (linear activation)
-        let w_last = self.weights.last().unwrap();
-        let b_last = self.biases.last().unwrap();
+        // Safety: weights and biases are always populated in constructor with at least one layer
+        let w_last = self
+            .weights
+            .last()
+            .expect("NoisePredictor weights should never be empty");
+        let b_last = self
+            .biases
+            .last()
+            .expect("NoisePredictor biases should never be empty");
         x.dot(w_last) + b_last
     }
 
@@ -589,7 +605,7 @@ mod tests {
         let result = manager.characterize_noise();
         assert!(result.is_ok());
 
-        let model = result.unwrap();
+        let model = result.expect("noise characterization should succeed");
         assert!(model.strength > 0.0);
         assert!(model.strength < 0.1);
         assert_eq!(model.qubit_parameters.len(), 10);
@@ -610,7 +626,9 @@ mod tests {
             qubit_parameters: vec![],
         };
 
-        let strategy = manager.select_mitigation_strategy(&low_noise).unwrap();
+        let strategy = manager
+            .select_mitigation_strategy(&low_noise)
+            .expect("low noise strategy selection should succeed");
         assert_eq!(strategy, MitigationStrategy::None);
 
         // High noise model
@@ -623,7 +641,9 @@ mod tests {
             qubit_parameters: vec![],
         };
 
-        let strategy = manager.select_mitigation_strategy(&high_noise).unwrap();
+        let strategy = manager
+            .select_mitigation_strategy(&high_noise)
+            .expect("high noise strategy selection should succeed");
         assert_eq!(strategy, MitigationStrategy::ZeroNoiseExtrapolation);
     }
 
@@ -643,11 +663,12 @@ mod tests {
 
         let schedule = manager
             .generate_adaptive_schedule(&noise_model, 100.0)
-            .unwrap();
+            .expect("adaptive schedule generation should succeed");
 
         assert_eq!(schedule.len(), 100);
         assert_eq!(schedule[0].1, 0.0); // Start at s=0
-        assert!((schedule.last().unwrap().1 - 1.0).abs() < 1e-6); // End at s=1
+        let last_schedule_value = schedule.last().expect("schedule should not be empty").1;
+        assert!((last_schedule_value - 1.0).abs() < 1e-6); // End at s=1
     }
 
     #[test]
@@ -667,13 +688,15 @@ mod tests {
 
         // Build up history
         for _ in 0..20 {
-            manager.characterize_noise().unwrap();
+            manager
+                .characterize_noise()
+                .expect("noise characterization should succeed");
         }
 
         let prediction = manager.predict_noise(10);
         assert!(prediction.is_ok());
 
-        let pred = prediction.unwrap();
+        let pred = prediction.expect("noise prediction should succeed");
         assert_eq!(pred.predicted_strength.len(), 10);
         assert_eq!(pred.confidence_lower.len(), 10);
         assert_eq!(pred.confidence_upper.len(), 10);
@@ -687,7 +710,9 @@ mod tests {
 
         assert!(manager.needs_recalibration());
 
-        manager.characterize_noise().unwrap();
+        manager
+            .characterize_noise()
+            .expect("noise characterization should succeed");
         assert!(!manager.needs_recalibration());
 
         // Wait for calibration to expire (in practice, would need actual time passage)

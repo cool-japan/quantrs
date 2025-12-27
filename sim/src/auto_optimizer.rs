@@ -1,8 +1,8 @@
-//! AutoOptimizer for Automatic Backend Selection based on Problem Characteristics
+//! `AutoOptimizer` for Automatic Backend Selection based on Problem Characteristics
 //!
 //! This module provides intelligent backend selection for quantum circuit simulation
 //! by analyzing circuit characteristics and automatically choosing the optimal
-//! execution backend using SciRS2 optimization and analysis tools.
+//! execution backend using `SciRS2` optimization and analysis tools.
 
 use crate::{
     automatic_parallelization::{AutoParallelConfig, AutoParallelEngine},
@@ -20,6 +20,7 @@ use quantrs2_core::{
     qubit::QubitId,
     register::Register,
 };
+use std::fmt::Write;
 
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 use crate::gpu::SciRS2GpuStateVectorSimulator;
@@ -30,7 +31,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// Configuration for the AutoOptimizer
+/// Configuration for the `AutoOptimizer`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutoOptimizerConfig {
     /// Enable performance profiling during backend selection
@@ -43,7 +44,7 @@ pub struct AutoOptimizerConfig {
     pub gpu_check_timeout: Duration,
     /// Enable distributed simulation for large circuits
     pub enable_distributed: bool,
-    /// SciRS2 optimization level
+    /// `SciRS2` optimization level
     pub scirs2_optimization_level: OptimizationLevel,
     /// Fallback strategy when optimal backend is unavailable
     pub fallback_strategy: FallbackStrategy,
@@ -92,7 +93,7 @@ pub enum BackendType {
     Auto,
 }
 
-/// Optimization levels for SciRS2 integration
+/// Optimization levels for `SciRS2` integration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationLevel {
     /// No optimization
@@ -101,7 +102,7 @@ pub enum OptimizationLevel {
     Basic,
     /// Advanced optimizations
     Advanced,
-    /// Aggressive optimizations with maximum SciRS2 features
+    /// Aggressive optimizations with maximum `SciRS2` features
     Aggressive,
 }
 
@@ -220,7 +221,7 @@ pub struct PerformanceHistory {
     pub timestamp: Instant,
 }
 
-/// AutoOptimizer for intelligent backend selection
+/// `AutoOptimizer` for intelligent backend selection
 pub struct AutoOptimizer {
     /// Configuration
     config: AutoOptimizerConfig,
@@ -232,23 +233,25 @@ pub struct AutoOptimizer {
     performance_cache: Vec<PerformanceHistory>,
     /// Backend availability cache
     backend_availability: HashMap<BackendType, bool>,
-    /// SciRS2 analysis tools integration
+    /// `SciRS2` analysis tools integration
     scirs2_analyzer: SciRS2CircuitAnalyzer,
 }
 
 /// SciRS2-powered circuit analyzer
 struct SciRS2CircuitAnalyzer {
-    /// Enable advanced SciRS2 features
+    /// Enable advanced `SciRS2` features
     enable_advanced_features: bool,
 }
 
 impl AutoOptimizer {
-    /// Create a new AutoOptimizer with default configuration
+    /// Create a new `AutoOptimizer` with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::with_config(AutoOptimizerConfig::default())
     }
 
-    /// Create a new AutoOptimizer with custom configuration
+    /// Create a new `AutoOptimizer` with custom configuration
+    #[must_use]
     pub fn with_config(config: AutoOptimizerConfig) -> Self {
         let optimization_config = OptimizationConfig {
             enable_gate_fusion: true,
@@ -279,7 +282,7 @@ impl AutoOptimizer {
         }
     }
 
-    /// Analyze circuit characteristics using SciRS2 tools
+    /// Analyze circuit characteristics using `SciRS2` tools
     pub fn analyze_circuit<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -436,7 +439,7 @@ impl AutoOptimizer {
         distribution
     }
 
-    /// Analyze parallelism potential using SciRS2 parallel ops
+    /// Analyze parallelism potential using `SciRS2` parallel ops
     fn analyze_parallelism_potential<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -457,7 +460,7 @@ impl AutoOptimizer {
         state_vector_size + overhead
     }
 
-    /// Calculate circuit complexity score using SciRS2 complexity analysis
+    /// Calculate circuit complexity score using `SciRS2` complexity analysis
     fn calculate_complexity_score<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -508,7 +511,7 @@ impl AutoOptimizer {
         two_qubit_gates as f64 / total_gates as f64
     }
 
-    /// Analyze circuit connectivity using SciRS2 graph analysis
+    /// Analyze circuit connectivity using `SciRS2` graph analysis
     fn analyze_connectivity<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -537,7 +540,7 @@ impl AutoOptimizer {
         // Calculate connectivity properties
         let max_degree = qubit_connections
             .values()
-            .map(|connections| connections.len())
+            .map(std::vec::Vec::len)
             .max()
             .unwrap_or(0);
 
@@ -546,7 +549,7 @@ impl AutoOptimizer {
         } else {
             qubit_connections
                 .values()
-                .map(|connections| connections.len())
+                .map(std::vec::Vec::len)
                 .sum::<usize>() as f64
                 / qubit_connections.len() as f64
         };
@@ -569,7 +572,7 @@ impl AutoOptimizer {
         })
     }
 
-    /// Estimate entanglement depth using SciRS2 analysis
+    /// Estimate entanglement depth using `SciRS2` analysis
     fn estimate_entanglement_depth<const N: usize>(
         &self,
         circuit: &Circuit<N>,
@@ -881,7 +884,7 @@ impl AutoOptimizer {
         }
     }
 
-    /// Convert Register to SimulatorResult
+    /// Convert Register to `SimulatorResult`
     fn register_to_simulator_result<const N: usize>(
         &self,
         register: Register<N>,
@@ -955,6 +958,7 @@ impl AutoOptimizer {
     }
 
     /// Get optimization statistics
+    #[must_use]
     pub fn get_performance_summary(&self) -> String {
         let total_circuits = self.performance_cache.len();
         if total_circuits == 0 {
@@ -977,18 +981,22 @@ impl AutoOptimizer {
                 });
 
         let mut summary = "AutoOptimizer Performance Summary\n".to_string();
-        summary.push_str(&format!("Total circuits processed: {total_circuits}\n"));
-        summary.push_str(&format!("Average execution time: {avg_execution_time}ms\n"));
+        writeln!(summary, "Total circuits processed: {total_circuits}")
+            .expect("Writing to String should never fail");
+        writeln!(summary, "Average execution time: {avg_execution_time}ms")
+            .expect("Writing to String should never fail");
         summary.push_str("Backend usage:\n");
 
         for (backend, count) in backend_usage {
             let percentage = (count as f64 / total_circuits as f64) * 100.0;
-            summary.push_str(&format!(
-                "  {}: {} ({:.1}%)\n",
+            writeln!(
+                summary,
+                "  {}: {} ({:.1}%)",
                 self.backend_type_name(backend),
                 count,
                 percentage
-            ));
+            )
+            .expect("Writing to String should never fail");
         }
 
         summary
@@ -1002,7 +1010,7 @@ impl Default for AutoOptimizer {
 }
 
 impl SciRS2CircuitAnalyzer {
-    /// Analyze circuit using SciRS2 tools (placeholder for future SciRS2 integration)
+    /// Analyze circuit using `SciRS2` tools (placeholder for future `SciRS2` integration)
     const fn analyze_circuit_with_scirs2<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
@@ -1052,7 +1060,9 @@ mod tests {
         let _ = builder.cnot(2, 3);
         let circuit = builder.build();
 
-        let characteristics = optimizer.analyze_circuit(&circuit).unwrap();
+        let characteristics = optimizer
+            .analyze_circuit(&circuit)
+            .expect("Failed to analyze circuit characteristics");
 
         assert_eq!(characteristics.num_qubits, 4);
         assert_eq!(characteristics.num_gates, 4);
@@ -1070,7 +1080,9 @@ mod tests {
         let _ = builder.cnot(0, 1);
         let circuit = builder.build();
 
-        let recommendation = optimizer.recommend_backend(&circuit).unwrap();
+        let recommendation = optimizer
+            .recommend_backend(&circuit)
+            .expect("Failed to get backend recommendation");
 
         assert!(recommendation.confidence > 0.0);
         assert!(!recommendation.reasoning.is_empty());

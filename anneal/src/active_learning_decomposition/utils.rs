@@ -17,16 +17,21 @@ mod tests {
     #[test]
     fn test_problem_analysis() {
         let config = ActiveLearningConfig::default();
-        let mut decomposer = ActiveLearningDecomposer::new(config).unwrap();
+        let mut decomposer = ActiveLearningDecomposer::new(config)
+            .expect("Failed to create ActiveLearningDecomposer");
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, -0.5).unwrap();
+        problem
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0");
+        problem
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling between qubits 0 and 1");
 
         let analysis = decomposer.analyze_problem(&problem);
         assert!(analysis.is_ok());
 
-        let analysis = analysis.unwrap();
+        let analysis = analysis.expect("Failed to analyze problem");
         assert_eq!(analysis.graph_metrics.num_vertices, 4);
         assert_eq!(analysis.problem_features.len(), 20);
     }
@@ -34,14 +39,23 @@ mod tests {
     #[test]
     fn test_feature_extraction() {
         let config = ActiveLearningConfig::default();
-        let decomposer = ActiveLearningDecomposer::new(config).unwrap();
+        let decomposer = ActiveLearningDecomposer::new(config)
+            .expect("Failed to create ActiveLearningDecomposer");
 
         let mut problem = IsingModel::new(3);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, -0.5).unwrap();
-        problem.set_coupling(1, 2, 0.3).unwrap();
+        problem
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0");
+        problem
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling between qubits 0 and 1");
+        problem
+            .set_coupling(1, 2, 0.3)
+            .expect("Failed to set coupling between qubits 1 and 2");
 
-        let features = decomposer.extract_problem_features(&problem).unwrap();
+        let features = decomposer
+            .extract_problem_features(&problem)
+            .expect("Failed to extract problem features");
         assert_eq!(features.len(), 20);
         assert_eq!(features[0], 3.0); // num_qubits
         assert_eq!(features[1], 2.0); // num_couplings
@@ -50,17 +64,24 @@ mod tests {
     #[test]
     fn test_problem_decomposition() {
         let config = ActiveLearningConfig::default();
-        let mut decomposer = ActiveLearningDecomposer::new(config).unwrap();
+        let mut decomposer = ActiveLearningDecomposer::new(config)
+            .expect("Failed to create ActiveLearningDecomposer");
 
         let mut problem = IsingModel::new(6);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, -0.5).unwrap();
-        problem.set_coupling(2, 3, 0.3).unwrap();
+        problem
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0");
+        problem
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling between qubits 0 and 1");
+        problem
+            .set_coupling(2, 3, 0.3)
+            .expect("Failed to set coupling between qubits 2 and 3");
 
         let result = decomposer.decompose_problem(&problem);
         assert!(result.is_ok());
 
-        let decomposition = result.unwrap();
+        let decomposition = result.expect("Failed to decompose problem");
         assert!(!decomposition.subproblems.is_empty());
         assert!(decomposition.quality_score >= 0.0);
         assert!(decomposition.quality_score <= 1.0);
@@ -69,17 +90,24 @@ mod tests {
     #[test]
     fn test_subproblem_creation() {
         let config = ActiveLearningConfig::default();
-        let decomposer = ActiveLearningDecomposer::new(config).unwrap();
+        let decomposer = ActiveLearningDecomposer::new(config)
+            .expect("Failed to create ActiveLearningDecomposer");
 
         let mut problem = IsingModel::new(4);
-        problem.set_bias(0, 1.0).unwrap();
-        problem.set_coupling(0, 1, -0.5).unwrap();
-        problem.set_coupling(1, 2, 0.3).unwrap();
+        problem
+            .set_bias(0, 1.0)
+            .expect("Failed to set bias for qubit 0");
+        problem
+            .set_coupling(0, 1, -0.5)
+            .expect("Failed to set coupling between qubits 0 and 1");
+        problem
+            .set_coupling(1, 2, 0.3)
+            .expect("Failed to set coupling between qubits 1 and 2");
 
         let vertices = vec![0, 1];
         let subproblem = decomposer
             .create_subproblem(&problem, &vertices, 0)
-            .unwrap();
+            .expect("Failed to create subproblem");
 
         assert_eq!(subproblem.id, 0);
         assert_eq!(subproblem.vertices, vec![0, 1]);
@@ -90,7 +118,8 @@ mod tests {
     #[test]
     fn test_decomposition_quality_validation() {
         let config = ActiveLearningConfig::default();
-        let decomposer = ActiveLearningDecomposer::new(config).unwrap();
+        let decomposer = ActiveLearningDecomposer::new(config)
+            .expect("Failed to create ActiveLearningDecomposer");
 
         let problem = IsingModel::new(6);
 
@@ -114,7 +143,7 @@ mod tests {
         let subproblems = vec![subproblem1, subproblem2];
         let quality = decomposer
             .validate_decomposition_quality(&subproblems, &problem)
-            .unwrap();
+            .expect("Failed to validate decomposition quality");
 
         assert!(quality >= 0.0);
         assert!(quality <= 1.0);
@@ -122,7 +151,8 @@ mod tests {
 
     #[test]
     fn test_strategy_selection() {
-        let mut learner = DecompositionStrategyLearner::new().unwrap();
+        let mut learner = DecompositionStrategyLearner::new()
+            .expect("Failed to create DecompositionStrategyLearner");
         let problem = IsingModel::new(10);
         let analysis = ProblemAnalysis {
             graph_metrics: GraphMetrics {
@@ -161,7 +191,9 @@ mod tests {
             problem_features: scirs2_core::ndarray::Array1::ones(20),
         };
 
-        let strategy = learner.recommend_strategy(&problem, &analysis).unwrap();
+        let strategy = learner
+            .recommend_strategy(&problem, &analysis)
+            .expect("Failed to recommend strategy");
         // For a 10-qubit problem, should recommend GraphPartitioning
         assert_eq!(strategy, DecompositionStrategy::GraphPartitioning);
     }

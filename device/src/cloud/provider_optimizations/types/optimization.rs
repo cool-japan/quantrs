@@ -269,8 +269,14 @@ pub struct CacheStatistics {
     pub cache_size: usize,
     pub eviction_count: usize,
 }
+impl Default for CacheStatistics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CacheStatistics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             total_requests: 0,
             cache_hits: 0,
@@ -312,7 +318,7 @@ pub enum ConvergenceRate {
     Sublinear,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OptimizationSettings {
     pub circuit_optimization: CircuitOptimizationSettings,
     pub hardware_optimization: HardwareOptimizationSettings,
@@ -347,6 +353,12 @@ pub struct RecommendationEngine {
     knowledge_base: KnowledgeBase,
     learning_engine: LearningEngine,
 }
+impl Default for RecommendationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RecommendationEngine {
     pub fn new() -> Self {
         Self {

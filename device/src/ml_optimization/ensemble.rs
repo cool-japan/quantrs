@@ -20,7 +20,7 @@ pub struct EnsembleConfig {
 }
 
 /// Ensemble methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnsembleMethod {
     Bagging,
     Boosting,
@@ -31,7 +31,7 @@ pub enum EnsembleMethod {
 }
 
 /// Voting strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VotingStrategy {
     Majority,
     Weighted,
@@ -41,7 +41,7 @@ pub enum VotingStrategy {
 }
 
 /// Diversity measures
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiversityMeasure {
     PairwiseDisagreement,
     EntropyMeasure,

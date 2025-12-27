@@ -309,7 +309,7 @@ mod tests {
     fn test_generate_random_test_data() {
         let data = generate_random_test_data(100, test_seed());
         assert_eq!(data.len(), 100);
-        assert!(data.iter().all(|&x| x >= 0.0 && x <= 1.0));
+        assert!(data.iter().all(|&x| (0.0..=1.0).contains(&x)));
 
         // Test reproducibility
         let data2 = generate_random_test_data(100, test_seed());

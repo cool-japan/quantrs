@@ -21,7 +21,7 @@ pub struct CloudCostMonitoringConfig {
 }
 
 /// Cost tracking granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostTrackingGranularity {
     PerHour,
     PerDay,
@@ -100,7 +100,7 @@ pub struct BudgetLevel {
 }
 
 /// Allocation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationStrategy {
     EqualDistribution,
     WeightedDistribution,
@@ -134,7 +134,7 @@ pub struct AllocationCondition {
 }
 
 /// Condition types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConditionType {
     ResourceType,
     Department,
@@ -145,7 +145,7 @@ pub enum ConditionType {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     Equals,
     NotEquals,
@@ -184,7 +184,7 @@ pub struct ROITrackingConfig {
 }
 
 /// ROI metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ROIMetric {
     CostSavings,
     ProductivityGains,
@@ -208,7 +208,7 @@ pub struct OptimizationRecommendationConfig {
 }
 
 /// Recommendation types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecommendationType {
     RightSizing,
     ReservedInstances,
@@ -234,7 +234,7 @@ pub struct CostAllocationConfig {
 }
 
 /// Cost allocation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostAllocationMethod {
     Direct,
     Proportional,
@@ -292,7 +292,7 @@ pub struct BillingIntegrationConfig {
 }
 
 /// Billing providers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingProvider {
     AWS,
     Azure,
@@ -301,7 +301,7 @@ pub enum BillingProvider {
 }
 
 /// Billing frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingFrequency {
     RealTime,
     Hourly,

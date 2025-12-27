@@ -9,7 +9,11 @@ use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::sparse::{CSRMatrix, SparseMatrixBuilder};
-use quantrs2_core::gate::{multi::*, single::*, GateOp};
+use quantrs2_core::gate::{
+    multi::CNOT,
+    single::{Hadamard, Phase, PhaseDagger, RotationX, RotationY, RotationZ},
+    GateOp,
+};
 use quantrs2_core::qubit::QubitId;
 
 /// Dynamic circuit that doesn't require compile-time qubit count
@@ -35,6 +39,7 @@ impl Clone for DynamicCircuit {
 
 impl DynamicCircuit {
     /// Create a new dynamic circuit
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             gates: Vec::new(),
@@ -55,11 +60,13 @@ impl DynamicCircuit {
     }
 
     /// Get the gates
+    #[must_use]
     pub fn gates(&self) -> &[Box<dyn GateOp>] {
         &self.gates
     }
 
     /// Get gate count
+    #[must_use]
     pub fn gate_count(&self) -> usize {
         self.gates.len()
     }
@@ -107,6 +114,7 @@ pub struct Hamiltonian {
 
 impl Hamiltonian {
     /// Create a new Hamiltonian
+    #[must_use]
     pub const fn new(num_qubits: usize) -> Self {
         Self {
             terms: Vec::new(),
@@ -181,6 +189,7 @@ impl Hamiltonian {
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn get_num_qubits(&self) -> usize {
         self.num_qubits
     }
@@ -396,6 +405,7 @@ pub struct TrotterDecomposer {
 
 impl TrotterDecomposer {
     /// Create a new decomposer
+    #[must_use]
     pub const fn new(method: TrotterMethod, num_steps: usize) -> Self {
         Self { method, num_steps }
     }
@@ -546,6 +556,7 @@ impl TrotterDecomposer {
     }
 
     /// Estimate error bound for the decomposition
+    #[must_use]
     pub fn error_bound(&self, hamiltonian: &Hamiltonian, total_time: f64) -> f64 {
         let dt = total_time / self.num_steps as f64;
         let num_terms = hamiltonian.terms.len();
@@ -578,7 +589,7 @@ impl TrotterDecomposer {
             }
             TrotterMethod::SixthOrder => {
                 // O(dt^7) error
-                coeff_sum.powi(7) * dt.powi(7) * self.num_steps as f64 / 20160.0
+                coeff_sum.powi(7) * dt.powi(7) * self.num_steps as f64 / 20_160.0
             }
             TrotterMethod::Randomized => {
                 // Empirical bound for randomized
@@ -592,7 +603,7 @@ impl TrotterDecomposer {
 pub struct HamiltonianLibrary;
 
 impl HamiltonianLibrary {
-    /// Transverse field Ising model: H = -J∑\<ij\> Z_i Z_j - h∑_i X_i
+    /// Transverse field Ising model: H = -J∑\<ij\> `Z_i` `Z_j` - h∑_i `X_i`
     pub fn transverse_ising_1d(
         num_qubits: usize,
         j: f64,
@@ -619,7 +630,7 @@ impl HamiltonianLibrary {
         Ok(ham)
     }
 
-    /// Heisenberg model: H = J∑\<ij\> (X_i X_j + Y_i Y_j + Δ Z_i Z_j)
+    /// Heisenberg model: H = J∑\<ij\> (`X_i` `X_j` + `Y_i` `Y_j` + Δ `Z_i` `Z_j`)
     pub fn heisenberg_1d(
         num_qubits: usize,
         j: f64,
@@ -643,7 +654,7 @@ impl HamiltonianLibrary {
         Ok(ham)
     }
 
-    /// XY model: H = J∑\<ij\> (X_i X_j + Y_i Y_j)
+    /// XY model: H = J∑\<ij\> (`X_i` `X_j` + `Y_i` `Y_j`)
     pub fn xy_model(num_qubits: usize, j: f64, periodic: bool) -> Result<Hamiltonian> {
         Self::heisenberg_1d(num_qubits, j, 0.0, periodic)
     }
@@ -657,21 +668,24 @@ mod tests {
     fn test_hamiltonian_construction() {
         let mut ham = Hamiltonian::new(3);
 
-        ham.add_single_pauli(0, "X", 0.5).unwrap();
-        ham.add_two_pauli(0, 1, "Z", "Z", -1.0).unwrap();
+        ham.add_single_pauli(0, "X", 0.5)
+            .expect("add_single_pauli should succeed");
+        ham.add_two_pauli(0, 1, "Z", "Z", -1.0)
+            .expect("add_two_pauli should succeed");
         ham.add_pauli_string(
             vec![0, 1, 2],
             vec!["X".to_string(), "Y".to_string(), "Z".to_string()],
             0.25,
         )
-        .unwrap();
+        .expect("add_pauli_string should succeed");
 
         assert_eq!(ham.terms.len(), 3);
     }
 
     #[test]
     fn test_ising_model() {
-        let ham = HamiltonianLibrary::transverse_ising_1d(4, 1.0, 0.5, false).unwrap();
+        let ham = HamiltonianLibrary::transverse_ising_1d(4, 1.0, 0.5, false)
+            .expect("transverse_ising_1d should succeed");
 
         // 3 ZZ terms + 4 X terms
         assert_eq!(ham.terms.len(), 7);
@@ -679,16 +693,19 @@ mod tests {
 
     #[test]
     fn test_trotter_decomposition() {
-        let ham = HamiltonianLibrary::transverse_ising_1d(3, 1.0, 0.5, false).unwrap();
+        let ham = HamiltonianLibrary::transverse_ising_1d(3, 1.0, 0.5, false)
+            .expect("transverse_ising_1d should succeed");
         let decomposer = TrotterDecomposer::new(TrotterMethod::SecondOrder, 10);
 
-        let circuit = decomposer.decompose(&ham, 1.0).unwrap();
+        let circuit = decomposer
+            .decompose(&ham, 1.0)
+            .expect("decompose should succeed");
         assert!(circuit.gate_count() > 0);
     }
 
     #[test]
     fn test_error_bounds() {
-        let ham = HamiltonianLibrary::xy_model(4, 1.0, true).unwrap();
+        let ham = HamiltonianLibrary::xy_model(4, 1.0, true).expect("xy_model should succeed");
         let decomposer = TrotterDecomposer::new(TrotterMethod::FourthOrder, 100);
 
         let error = decomposer.error_bound(&ham, 1.0);
@@ -697,7 +714,8 @@ mod tests {
 
     #[test]
     fn test_heisenberg_model() {
-        let ham = HamiltonianLibrary::heisenberg_1d(3, 1.0, 1.0, false).unwrap();
+        let ham = HamiltonianLibrary::heisenberg_1d(3, 1.0, 1.0, false)
+            .expect("heisenberg_1d should succeed");
 
         // 2 * 3 interactions (XX, YY, ZZ)
         assert_eq!(ham.terms.len(), 6);

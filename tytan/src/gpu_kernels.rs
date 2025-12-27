@@ -511,6 +511,7 @@ impl Default for KernelManager {
 
 impl KernelManager {
     /// Create new kernel manager
+    #[must_use]
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "scirs")]

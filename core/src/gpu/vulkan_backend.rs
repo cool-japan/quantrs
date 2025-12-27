@@ -117,7 +117,7 @@ impl GpuBackend for VulkanBackend {
         false // TODO: Check for Vulkan availability
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Vulkan"
     }
 

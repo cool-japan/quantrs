@@ -668,7 +668,7 @@ impl QuantumAdvantageValidator {
             bootstrap_means.push(Self::mean(&sample));
         }
 
-        bootstrap_means.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        bootstrap_means.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let lower_idx =
             ((1.0 - self.config.confidence_level) / 2.0 * bootstrap_means.len() as f64) as usize;
@@ -902,7 +902,7 @@ mod tests {
         let result = validator.welch_t_test(&sample1, &sample2);
         assert!(result.is_ok());
 
-        let sig = result.unwrap();
+        let sig = result.expect("welch_t_test should succeed");
         assert!(sig.is_significant);
     }
 

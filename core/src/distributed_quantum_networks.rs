@@ -66,11 +66,11 @@ impl QuantumNode {
     }
 
     /// Calculate distance to another node
-    pub fn distance_to(&self, other: &QuantumNode) -> f64 {
+    pub fn distance_to(&self, other: &Self) -> f64 {
         let dx = self.location.x - other.location.x;
         let dy = self.location.y - other.location.y;
         let dz = self.location.z - other.location.z;
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        dz.mul_add(dz, dx.mul_add(dx, dy * dy)).sqrt()
     }
 
     /// Add connection to another node
@@ -82,11 +82,14 @@ impl QuantumNode {
 
     /// Check if node is available for computation
     pub fn is_available(&self) -> bool {
-        matches!(*self.state.read().unwrap(), NodeState::Active)
+        self.state
+            .read()
+            .map(|state| matches!(*state, NodeState::Active))
+            .unwrap_or(false)
     }
 
     /// Estimate communication latency to another node
-    pub fn communication_latency(&self, other: &QuantumNode) -> Duration {
+    pub fn communication_latency(&self, other: &Self) -> Duration {
         let distance = self.distance_to(other);
         let speed_of_light = 299_792_458.0; // m/s
         let latency_seconds = distance / speed_of_light;
@@ -226,15 +229,15 @@ impl QuantumNetwork {
     fn configure_node_connections(&self, node: &mut QuantumNode) {
         match &self.topology {
             NetworkTopology::Star { center_node } => {
-                if node.node_id != *center_node {
-                    node.connect_to(*center_node);
-                } else {
+                if node.node_id == *center_node {
                     // Center node connects to all others
                     for other_id in self.nodes.keys() {
                         if *other_id != node.node_id {
                             node.connect_to(*other_id);
                         }
                     }
+                } else {
+                    node.connect_to(*center_node);
                 }
             }
             NetworkTopology::Mesh => {
@@ -247,7 +250,7 @@ impl QuantumNetwork {
             }
             NetworkTopology::Ring => {
                 // Connect to adjacent nodes in ring
-                let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
+                let node_ids: Vec<Uuid> = self.nodes.keys().copied().collect();
                 if let Some(pos) = node_ids.iter().position(|&id| id == node.node_id) {
                     let prev = if pos == 0 {
                         node_ids.len() - 1
@@ -270,8 +273,8 @@ impl QuantumNetwork {
             }
             NetworkTopology::Grid { width, height } => {
                 // Connect to grid neighbors
-                let _total_nodes = width * height;
-                let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
+                // let _total_nodes = width * height;
+                let node_ids: Vec<Uuid> = self.nodes.keys().copied().collect();
 
                 if let Some(index) = node_ids.iter().position(|&id| id == node.node_id) {
                     let row = index / width;
@@ -298,25 +301,25 @@ impl QuantumNetwork {
             NetworkTopology::Tree {
                 root_node: _,
                 depth: _,
-            } => {
-                // Tree topology implementation
-                // Simplified: connect to parent and children
             }
-            NetworkTopology::Custom {
+            | NetworkTopology::Custom {
                 adjacency_matrix: _,
             } => {
-                // Custom connections based on adjacency matrix
+                // Tree topology and custom connections
+                // Simplified: connect to parent and children / based on adjacency matrix
             }
         }
     }
 
     /// Update routing table for optimal path finding
     fn update_routing_table(&self) {
-        let mut routing_table = self.routing_table.write().unwrap();
+        let Ok(mut routing_table) = self.routing_table.write() else {
+            return; // Cannot update routing table if lock is poisoned
+        };
         routing_table.clear();
 
         // Floyd-Warshall algorithm for shortest paths
-        let node_ids: Vec<Uuid> = self.nodes.keys().cloned().collect();
+        let node_ids: Vec<Uuid> = self.nodes.keys().copied().collect();
         let n = node_ids.len();
 
         // Initialize distance matrix
@@ -362,7 +365,11 @@ impl QuantumNetwork {
                     while current != j {
                         if let Some(next_node) = next_hop[current][j] {
                             path.push(next_node);
-                            current = node_ids.iter().position(|&id| id == next_node).unwrap();
+                            if let Some(pos) = node_ids.iter().position(|&id| id == next_node) {
+                                current = pos;
+                            } else {
+                                break;
+                            }
                         } else {
                             break;
                         }
@@ -468,8 +475,7 @@ impl QuantumNetwork {
                     })
                 } else {
                     Err(QuantRS2Error::NodeNotFound(format!(
-                        "Node {} not found",
-                        node_id
+                        "Node {node_id} not found"
                     )))
                 }
             }
@@ -486,7 +492,7 @@ impl QuantumNetwork {
                     tokio::time::sleep(latency).await;
 
                     let base_fidelity =
-                        (source.capabilities.fidelity + target.capabilities.fidelity) / 2.0;
+                        f64::midpoint(source.capabilities.fidelity, target.capabilities.fidelity);
                     let distance_penalty = 1.0 - (source.distance_to(target) / 1000.0).min(0.1);
                     let protocol_fidelity = match protocol {
                         EntanglementProtocol::DirectEntanglement => 0.95,
@@ -527,8 +533,7 @@ impl QuantumNetwork {
                     })
                 } else {
                     Err(QuantRS2Error::NodeNotFound(format!(
-                        "Node {} not found",
-                        node_id
+                        "Node {node_id} not found"
                     )))
                 }
             }
@@ -676,10 +681,9 @@ impl EntanglementManager {
                 bell_state_type: BellStateType::PhiPlus,
             };
 
-            self.entangled_pairs
-                .lock()
-                .unwrap()
-                .insert((node1, qubit1, node2, qubit2), entanglement_state);
+            if let Ok(mut pairs) = self.entangled_pairs.lock() {
+                pairs.insert((node1, qubit1, node2, qubit2), entanglement_state);
+            }
 
             Ok(EntangledPair {
                 node1,
@@ -706,7 +710,10 @@ impl EntanglementManager {
         network: &QuantumNetwork,
     ) -> Result<EntangledPair, QuantRS2Error> {
         // Find intermediate node for swapping
-        let routing_table = network.routing_table.read().unwrap();
+        let routing_table = network
+            .routing_table
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         if let Some(path) = routing_table.get(&(node1, node2)) {
             if path.len() >= 3 {
                 let intermediate_node = path[1];
@@ -820,8 +827,8 @@ impl EntanglementManager {
         let f2 = fidelity2;
 
         // Bennett et al. purification protocol
-        let numerator = f1 * f2 + (1.0 - f1) * (1.0 - f2) / 3.0;
-        let denominator = f1 * f2 + 2.0 * (1.0 - f1) * (1.0 - f2) / 3.0;
+        let numerator = f1.mul_add(f2, (1.0 - f1) * (1.0 - f2) / 3.0);
+        let denominator = f1.mul_add(f2, 2.0 * (1.0 - f1) * (1.0 - f2) / 3.0);
 
         if denominator > 0.0 {
             numerator / denominator
@@ -870,7 +877,10 @@ impl NetworkScheduler {
         network: &QuantumNetwork,
     ) -> Result<ExecutionPlan, QuantRS2Error> {
         // Acquire scheduling semaphore
-        let _permit = self.resource_semaphore.acquire().await.unwrap();
+        let _permit =
+            self.resource_semaphore.acquire().await.map_err(|e| {
+                QuantRS2Error::RuntimeError(format!("Semaphore acquire failed: {e}"))
+            })?;
 
         // Analyze gate requirements
         let involved_nodes: Vec<Uuid> = gate
@@ -884,8 +894,7 @@ impl NetworkScheduler {
             if let Some(node) = network.get_node(node_id) {
                 if !node.is_available() {
                     return Err(QuantRS2Error::NodeUnavailable(format!(
-                        "Node {} is not available",
-                        node_id
+                        "Node {node_id} is not available"
                     )));
                 }
             }
@@ -981,7 +990,9 @@ impl NetworkScheduler {
             priority: Priority::Medium,
         };
 
-        self.active_schedules.lock().unwrap().push(scheduled_op);
+        if let Ok(mut schedules) = self.active_schedules.lock() {
+            schedules.push(scheduled_op);
+        }
 
         Ok(ExecutionPlan {
             gate_id: gate.gate_id,
@@ -1157,7 +1168,14 @@ mod tests {
     #[tokio::test]
     async fn test_entanglement_manager() {
         let manager = EntanglementManager::new();
-        assert_eq!(manager.entangled_pairs.lock().unwrap().len(), 0);
+        assert_eq!(
+            manager
+                .entangled_pairs
+                .lock()
+                .expect("Failed to lock entangled pairs")
+                .len(),
+            0
+        );
 
         // Test entanglement establishment would require full network setup
         // This is a basic structure test

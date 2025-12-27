@@ -18,7 +18,7 @@ pub struct TransferLearningConfig {
 }
 
 /// Transfer learning methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransferMethod {
     FeatureTransfer,
     ParameterTransfer,
@@ -42,7 +42,7 @@ pub struct DomainAdaptationConfig {
 }
 
 /// Domain adaptation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DomainAdaptationMethod {
     CausalInference,
     DistributionMatching,
@@ -65,7 +65,7 @@ pub struct MetaLearningConfig {
 }
 
 /// Meta-learning algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MetaLearningAlgorithm {
     MAML,
     Reptile,

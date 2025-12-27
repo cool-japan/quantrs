@@ -34,7 +34,7 @@ pub struct DeviceCharacterizationConfig {
 }
 
 /// Levels of device characterization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CharacterizationDepth {
     Basic,
     Standard,
@@ -56,7 +56,7 @@ pub struct CalibrationIntegrationConfig {
 }
 
 /// Sources of calibration data
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationSource {
     DeviceProvider,
     LocalMeasurement,
@@ -66,7 +66,7 @@ pub enum CalibrationSource {
 }
 
 /// Strategies for calibration updates
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationUpdateStrategy {
     Immediate,
     Batch,
@@ -89,7 +89,7 @@ pub struct PerformanceModelingConfig {
 }
 
 /// Approaches to performance modeling
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModelingApproach {
     StatisticalModeling,
     MachineLearningBased,
@@ -110,7 +110,7 @@ pub struct ModelValidationConfig {
 }
 
 /// Model validation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationMethod {
     HoldoutValidation,
     CrossValidation,
@@ -131,7 +131,7 @@ pub struct CrossValidationSetup {
 }
 
 /// Stratification strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StratificationStrategy {
     Random,
     Temporal,
@@ -191,7 +191,7 @@ pub struct DynamicCalibrationConfig {
 }
 
 /// Triggers for calibration updates
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationTrigger {
     TimeInterval,
     PerformanceDrift,
@@ -202,7 +202,7 @@ pub enum CalibrationTrigger {
 }
 
 /// Calibration strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationStrategy {
     FullRecalibration,
     IncrementalUpdate,
@@ -245,7 +245,7 @@ pub struct CalibrationQualityAssurance {
 }
 
 /// Quality metrics for calibration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationQualityMetric {
     Repeatability,
     Accuracy,
@@ -266,7 +266,7 @@ pub struct CalibrationValidationRequirements {
 }
 
 /// Rollback strategies for failed calibration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalibrationRollbackStrategy {
     PreviousCalibration,
     DefaultCalibration,
@@ -301,7 +301,7 @@ pub struct FailureDetectionConfig {
 }
 
 /// Methods for detecting hardware failures
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailureDetectionMethod {
     PerformanceMonitoring,
     ErrorRateTracking,
@@ -334,7 +334,7 @@ pub struct AlertThresholds {
 }
 
 /// Recovery strategies for hardware failures
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     Recalibration,
     ComponentReset,
@@ -345,7 +345,7 @@ pub enum RecoveryStrategy {
 }
 
 /// Escalation procedures for failures
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EscalationProcedures {
     /// Escalation levels
     pub escalation_levels: Vec<EscalationLevel>,
@@ -380,7 +380,7 @@ pub struct NotificationProcedures {
 }
 
 /// Notification delivery channels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationChannel {
     Email,
     SMS,
@@ -417,7 +417,7 @@ pub struct ResourceOptimizationConfig {
 }
 
 /// Resource optimization strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResourceOptimizationStrategy {
     MinimizeLatency,
     MaximizeThroughput,
@@ -438,7 +438,7 @@ pub struct ResourceAllocationConfig {
 }
 
 /// Resource allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AllocationStrategy {
     FirstFit,
     BestFit,
@@ -482,7 +482,7 @@ pub struct ResourceGuarantees {
 }
 
 /// Preemption policies for resource allocation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreemptionPolicy {
     NoPreemption,
     PriorityBased,
@@ -505,7 +505,7 @@ pub struct DynamicReallocationConfig {
 }
 
 /// Triggers for dynamic reallocation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReallocationTrigger {
     LoadImbalance,
     PerformanceDegradation,
@@ -528,7 +528,7 @@ pub struct ReallocationFrequency {
 }
 
 /// Migration strategies for reallocation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MigrationStrategy {
     LiveMigration,
     CheckpointRestart,
@@ -550,7 +550,7 @@ pub struct LoadBalancingConfig {
 }
 
 /// Load balancing algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingAlgorithm {
     RoundRobin,
     WeightedRoundRobin,
@@ -585,7 +585,7 @@ pub struct TrafficDistributionConfig {
 }
 
 /// Traffic distribution strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DistributionStrategy {
     Uniform,
     Weighted,
@@ -595,7 +595,7 @@ pub enum DistributionStrategy {
 }
 
 /// Weight assignment strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WeightAssignmentStrategy {
     Static,
     Dynamic,
@@ -811,16 +811,6 @@ impl Default for AlertThresholds {
             performance_threshold: 0.1, // 10% degradation
             error_rate_threshold: 0.05, // 5% error rate
             anomaly_threshold: 2.0,     // 2 standard deviations
-        }
-    }
-}
-
-impl Default for EscalationProcedures {
-    fn default() -> Self {
-        Self {
-            escalation_levels: vec![],
-            escalation_timeouts: HashMap::new(),
-            notification_procedures: NotificationProcedures::default(),
         }
     }
 }

@@ -68,7 +68,7 @@ pub enum AnsatzType {
 }
 
 /// Types of entangling gates for hardware-efficient ansatz
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntanglingGateType {
     /// CNOT gates in nearest-neighbor topology
     CNot,
@@ -81,7 +81,7 @@ pub enum EntanglingGateType {
 }
 
 /// Types of mixer operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MixerType {
     /// X-rotation mixer (transverse field)
     XRotation,
@@ -123,12 +123,14 @@ pub struct ParameterRef {
 
 impl ParameterRef {
     /// Create a new parameter reference
-    pub fn new(index: usize) -> Self {
+    #[must_use]
+    pub const fn new(index: usize) -> Self {
         Self { index, scale: 1.0 }
     }
 
     /// Create a scaled parameter reference
-    pub fn scaled(index: usize, scale: f64) -> Self {
+    #[must_use]
+    pub const fn scaled(index: usize, scale: f64) -> Self {
         Self { index, scale }
     }
 }
@@ -214,7 +216,7 @@ pub enum ClassicalOptimizer {
         epsilon: f64,
     },
 
-    /// RMSprop optimizer
+    /// `RMSprop` optimizer
     RMSprop {
         learning_rate: f64,
         decay_rate: f64,
@@ -448,7 +450,7 @@ impl VariationalQuantumAnnealer {
     }
 
     /// Extract parameter reference from a gate
-    fn extract_parameter_ref(gate: &QuantumGate) -> Option<&ParameterRef> {
+    const fn extract_parameter_ref(gate: &QuantumGate) -> Option<&ParameterRef> {
         match gate {
             QuantumGate::RX { angle, .. }
             | QuantumGate::RY { angle, .. }
@@ -566,14 +568,13 @@ impl VariationalQuantumAnnealer {
             };
 
             // Update parameters using classical optimizer
-            self.update_parameters(gradients.as_ref().map(|v| v.as_slice()))?;
+            self.update_parameters(gradients.as_ref().map(std::vec::Vec::as_slice))?;
 
             // Logging
             if iteration % self.config.log_frequency == 0 {
                 let grad_norm = gradients
                     .as_ref()
-                    .map(|g| g.iter().map(|&x| x.powi(2)).sum::<f64>().sqrt())
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |g| g.iter().map(|&x| x.powi(2)).sum::<f64>().sqrt());
 
                 println!(
                     "Iteration {}: Energy = {:.6}, Gradient norm = {:.6}, Time = {:.2?}",
@@ -586,7 +587,7 @@ impl VariationalQuantumAnnealer {
 
             // Check convergence
             if self.check_convergence()? {
-                println!("Converged at iteration {}", iteration);
+                println!("Converged at iteration {iteration}");
                 break;
             }
         }
@@ -1047,10 +1048,10 @@ impl VariationalQuantumAnnealer {
 
                     for i in 0..self.parameters.len() {
                         // Update biased first moment estimate
-                        m[i] = beta1 * m[i] + (1.0 - beta1) * grads[i];
+                        m[i] = (1.0 - beta1).mul_add(grads[i], beta1 * m[i]);
 
                         // Update biased second moment estimate
-                        v[i] = beta2 * v[i] + (1.0 - beta2) * grads[i].powi(2);
+                        v[i] = (1.0 - beta2).mul_add(grads[i].powi(2), beta2 * v[i]);
 
                         // Compute bias-corrected estimates
                         let m_hat = m[i] / (1.0 - beta1.powi(*t as i32));
@@ -1094,11 +1095,11 @@ impl VariationalQuantumAnnealer {
             &self.history.energies[self.history.energies.len().saturating_sub(5)..];
         let energy_range = recent_energies
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max)
             - recent_energies
                 .iter()
-                .cloned()
+                .copied()
                 .fold(f64::INFINITY, f64::min);
 
         Ok(energy_range < self.config.convergence_tolerance)
@@ -1106,10 +1107,10 @@ impl VariationalQuantumAnnealer {
 
     /// Calculate optimization statistics
     fn calculate_statistics(&self) -> VqaStatistics {
-        let average_energy = if !self.history.energies.is_empty() {
-            self.history.energies.iter().sum::<f64>() / self.history.energies.len() as f64
-        } else {
+        let average_energy = if self.history.energies.is_empty() {
             0.0
+        } else {
+            self.history.energies.iter().sum::<f64>() / self.history.energies.len() as f64
         };
 
         let energy_variance = if self.history.energies.len() > 1 {
@@ -1145,10 +1146,10 @@ impl VariationalQuantumAnnealer {
 
     /// Calculate parameter statistics
     fn calculate_parameter_statistics(&self) -> ParameterStatistics {
-        let average_magnitude = if !self.parameters.is_empty() {
-            self.parameters.iter().map(|&p| p.abs()).sum::<f64>() / self.parameters.len() as f64
-        } else {
+        let average_magnitude = if self.parameters.is_empty() {
             0.0
+        } else {
+            self.parameters.iter().map(|&p| p.abs()).sum::<f64>() / self.parameters.len() as f64
         };
 
         let parameter_variance = if self.parameters.len() > 1 {
@@ -1183,7 +1184,8 @@ pub struct QuantumCircuit {
 
 impl QuantumCircuit {
     /// Create a new quantum circuit
-    pub fn new(num_qubits: usize) -> Self {
+    #[must_use]
+    pub const fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
             gates: Vec::new(),
@@ -1196,6 +1198,7 @@ impl QuantumCircuit {
     }
 
     /// Get the depth of the circuit
+    #[must_use]
     pub fn depth(&self) -> usize {
         // Simplified depth calculation
         self.gates.len()
@@ -1205,6 +1208,7 @@ impl QuantumCircuit {
 /// Helper functions for creating common VQA configurations
 
 /// Create a QAOA-style VQA configuration
+#[must_use]
 pub fn create_qaoa_vqa_config(layers: usize, max_iterations: usize) -> VqaConfig {
     VqaConfig {
         ansatz: AnsatzType::QaoaInspired {
@@ -1217,6 +1221,7 @@ pub fn create_qaoa_vqa_config(layers: usize, max_iterations: usize) -> VqaConfig
 }
 
 /// Create a hardware-efficient VQA configuration
+#[must_use]
 pub fn create_hardware_efficient_vqa_config(depth: usize, max_iterations: usize) -> VqaConfig {
     VqaConfig {
         ansatz: AnsatzType::HardwareEfficient {
@@ -1229,6 +1234,7 @@ pub fn create_hardware_efficient_vqa_config(depth: usize, max_iterations: usize)
 }
 
 /// Create an adiabatic-inspired VQA configuration
+#[must_use]
 pub fn create_adiabatic_vqa_config(
     time_steps: usize,
     evolution_time: f64,
@@ -1295,7 +1301,8 @@ mod tests {
             mixer_type: MixerType::XRotation,
         };
 
-        let count = VariationalQuantumAnnealer::count_parameters(&ansatz).unwrap();
+        let count = VariationalQuantumAnnealer::count_parameters(&ansatz)
+            .expect("parameter counting should succeed");
         assert_eq!(count, 10); // 2 parameters per layer
     }
 }

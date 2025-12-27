@@ -417,16 +417,16 @@ mod tests {
     fn test_classical_circuit_builder() {
         let circuit = ClassicalCircuitBuilder::<2>::new()
             .classical_register("c", 2)
-            .unwrap()
+            .expect("Failed to add classical register")
             .gate(PauliX { target: QubitId(0) })
-            .unwrap()
+            .expect("Failed to add PauliX gate")
             .measure(QubitId(0), "c", 0)
-            .unwrap()
+            .expect("Failed to add measurement")
             .conditional(
                 ClassicalCondition::register_equals("c", 1),
                 PauliX { target: QubitId(1) },
             )
-            .unwrap()
+            .expect("Failed to add conditional gate")
             .build();
 
         assert_eq!(circuit.classical_registers.len(), 1);
@@ -437,7 +437,9 @@ mod tests {
     fn test_conditional_validation_invalid_register() {
         // Test that using a non-existent register in a condition produces an error
         let mut circuit = ClassicalCircuit::<2>::new();
-        circuit.add_classical_register("measurement", 1).unwrap();
+        circuit
+            .add_classical_register("measurement", 1)
+            .expect("Failed to add classical register");
 
         // Try to add a conditional gate with a condition referencing a non-existent register
         let condition = ClassicalCondition::register_equals("nonexistent", 1);
@@ -457,8 +459,12 @@ mod tests {
     fn test_conditional_validation_valid_register() {
         // Test that using a valid register works correctly
         let mut circuit = ClassicalCircuit::<2>::new();
-        circuit.add_classical_register("measurement", 1).unwrap();
-        circuit.measure(QubitId(0), "measurement", 0).unwrap();
+        circuit
+            .add_classical_register("measurement", 1)
+            .expect("Failed to add classical register");
+        circuit
+            .measure(QubitId(0), "measurement", 0)
+            .expect("Failed to add measurement");
 
         // Add a conditional gate with a valid condition
         let condition = ClassicalCondition::register_equals("measurement", 1);

@@ -62,7 +62,7 @@ pub enum CompilationTarget {
 }
 
 /// AWS Braket provider types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BraketProvider {
     IonQ,
     Rigetti,
@@ -72,7 +72,7 @@ pub enum BraketProvider {
 }
 
 /// Azure Quantum provider types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AzureProvider {
     IonQ,
     Quantinuum,
@@ -82,7 +82,7 @@ pub enum AzureProvider {
 }
 
 /// Google Quantum AI gate sets
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GoogleGateSet {
     Sycamore,
     SqrtISwap,
@@ -90,7 +90,7 @@ pub enum GoogleGateSet {
 }
 
 /// Grid topology for Google devices
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridTopology {
     pub rows: usize,
     pub cols: usize,
@@ -98,7 +98,7 @@ pub struct GridTopology {
 }
 
 /// Connectivity patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectivityPattern {
     NearestNeighbor,
     Square,
@@ -107,7 +107,7 @@ pub enum ConnectivityPattern {
 }
 
 /// Rigetti lattice types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RigettiLattice {
     Aspen,
     Ankaa,
@@ -149,7 +149,7 @@ pub struct HardwareAllocation {
 }
 
 /// Allocation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AllocationStrategy {
     GreedyMapping,
     OptimalMapping,
@@ -343,7 +343,7 @@ pub struct PerformanceAnomaly {
 }
 
 /// Anomaly severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalySeverity {
     Low,
     Medium,

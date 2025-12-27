@@ -56,7 +56,8 @@ pub struct QaoaCircuitBridge {
 
 impl QaoaCircuitBridge {
     /// Create a new QAOA circuit bridge
-    pub fn new(num_qubits: usize) -> Self {
+    #[must_use]
+    pub const fn new(num_qubits: usize) -> Self {
         Self { num_qubits }
     }
 
@@ -302,6 +303,7 @@ impl QaoaCircuitBridge {
     }
 
     /// Extract QAOA parameters from a parameterized circuit
+    #[must_use]
     pub fn extract_qaoa_parameters(&self, circuit: &CircuitBridgeRepresentation) -> Vec<f64> {
         let mut parameters = vec![0.0; circuit.num_parameters];
 
@@ -426,6 +428,7 @@ impl QaoaCircuitBridge {
     }
 
     /// Estimate the depth reduction from circuit optimization
+    #[must_use]
     pub fn estimate_optimization_benefit(
         &self,
         original_circuit: &CircuitBridgeRepresentation,
@@ -470,7 +473,7 @@ pub struct ParameterReference {
 }
 
 /// Type of QAOA parameter
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParameterType {
     /// Gamma parameter (problem evolution)
     Gamma,
@@ -521,7 +524,7 @@ pub struct EnhancedQaoaOptimizer {
 }
 
 /// Optimization levels for circuit optimization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationLevel {
     /// No optimization
     None,
@@ -535,6 +538,7 @@ pub enum OptimizationLevel {
 
 impl EnhancedQaoaOptimizer {
     /// Create a new enhanced QAOA optimizer
+    #[must_use]
     pub fn new(num_qubits: usize, optimization_level: OptimizationLevel) -> Self {
         Self {
             bridge: QaoaCircuitBridge::new(num_qubits),
@@ -564,6 +568,7 @@ impl EnhancedQaoaOptimizer {
     }
 
     /// Estimate the computational cost of a QAOA circuit
+    #[must_use]
     pub fn estimate_circuit_cost(
         &self,
         circuit: &CircuitBridgeRepresentation,
@@ -585,8 +590,8 @@ impl EnhancedQaoaOptimizer {
             single_qubit_gates,
             two_qubit_gates,
             estimated_depth: circuit.gates.len(), // Simplified estimate
-            estimated_execution_time_ms: single_qubit_gates as f64 * 0.001
-                + two_qubit_gates as f64 * 0.1,
+            estimated_execution_time_ms: (single_qubit_gates as f64)
+                .mul_add(0.001, two_qubit_gates as f64 * 0.1),
         }
     }
 }
@@ -604,11 +609,13 @@ pub struct CircuitCostEstimate {
 /// Helper functions for common QAOA-circuit operations
 
 /// Create a QAOA circuit bridge for a specific problem
-pub fn create_qaoa_bridge_for_problem(problem: &IsingModel) -> QaoaCircuitBridge {
+#[must_use]
+pub const fn create_qaoa_bridge_for_problem(problem: &IsingModel) -> QaoaCircuitBridge {
     QaoaCircuitBridge::new(problem.num_qubits)
 }
 
 /// Convert QAOA parameters to a format suitable for circuit optimization
+#[must_use]
 pub fn qaoa_parameters_to_circuit_parameters(
     qaoa_params: &[f64],
     problem: &CircuitProblemRepresentation,
@@ -628,8 +635,7 @@ pub fn validate_circuit_compatibility(circuit: &CircuitBridgeRepresentation) -> 
             }
             _ => {
                 return Err(BridgeError::UnsupportedOperation(format!(
-                    "Gate '{}' at index {} is not supported in the bridge",
-                    gate_name, i
+                    "Gate '{gate_name}' at index {i} is not supported in the bridge"
                 )));
             }
         }
@@ -675,7 +681,7 @@ mod tests {
         };
         let circuit_gates = bridge
             .convert_qaoa_gate_to_circuit_gates(&qaoa_gate)
-            .unwrap();
+            .expect("RX gate conversion should succeed");
 
         assert_eq!(circuit_gates.len(), 1);
         assert_eq!(circuit_gates[0].name(), "RX");
@@ -692,7 +698,7 @@ mod tests {
         };
         let circuit_gates = bridge
             .convert_qaoa_gate_to_circuit_gates(&qaoa_gate)
-            .unwrap();
+            .expect("ZZ gate conversion should succeed");
 
         // ZZ should decompose to CNOT + RZ + CNOT
         assert_eq!(circuit_gates.len(), 3);

@@ -16,6 +16,7 @@ build = "build.rs"
 [lib]
 name = "quantrs2"
 crate-type = ["cdylib"]
+doc = false  # Exclude from rustdoc to avoid collision with main quantrs2 crate
 
 [dependencies]
 quantrs2-core.workspace = true

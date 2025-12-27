@@ -7,18 +7,30 @@ use std::time::Duration;
 use super::config::*;
 use super::types::*;
 
+impl Default for QuantumTopologyManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumTopologyManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn optimize_topology(&self) -> Result<(), String> {
+    pub const fn optimize_topology(&self) -> Result<(), String> {
         Ok(())
     }
 }
 
+impl Default for QuantumRoutingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumRoutingEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -27,8 +39,14 @@ impl QuantumRoutingEngine {
     }
 }
 
+impl Default for NetworkPerformanceAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkPerformanceAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -37,8 +55,14 @@ impl NetworkPerformanceAnalyzer {
     }
 }
 
+impl Default for NetworkOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -47,28 +71,46 @@ impl NetworkOptimizer {
     }
 }
 
+impl Default for NetworkErrorCorrector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkErrorCorrector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn correct_errors(&self) -> Result<(), String> {
+    pub const fn correct_errors(&self) -> Result<(), String> {
         Ok(())
     }
 }
 
+impl Default for NetworkFaultDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkFaultDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn detect_faults(&self) -> Vec<String> {
+    pub const fn detect_faults(&self) -> Vec<String> {
         vec![]
     }
 }
 
+impl Default for QuantumNetworkMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumNetworkMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -77,8 +119,14 @@ impl QuantumNetworkMonitor {
     }
 }
 
+impl Default for NetworkAnalyticsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkAnalyticsEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -87,14 +135,26 @@ impl NetworkAnalyticsEngine {
     }
 }
 
+impl Default for QuantumNetworkState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuantumNetworkState {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 
+impl Default for NetworkSessionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NetworkSessionManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 

@@ -35,15 +35,21 @@ mod tests {
     #[test]
     fn test_profiling_session() {
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit");
 
         let mut profiler = QuantumProfiler::new(circuit);
-        let session_id = profiler.start_profiling().unwrap();
+        let session_id = profiler
+            .start_profiling()
+            .expect("Failed to start profiling session");
 
         // Simulate some profiling
         std::thread::sleep(Duration::from_millis(10));
 
-        let report = profiler.stop_profiling(&session_id).unwrap();
+        let report = profiler
+            .stop_profiling(&session_id)
+            .expect("Failed to stop profiling session");
         assert_eq!(report.session_id, session_id);
     }
 
@@ -52,17 +58,23 @@ mod tests {
         let circuit = Circuit::<1>::new();
         let profiler = QuantumProfiler::new(circuit);
 
-        let metrics = profiler.get_realtime_metrics().unwrap();
+        let metrics = profiler
+            .get_realtime_metrics()
+            .expect("Failed to get realtime metrics");
         assert!(metrics.current_metrics.len() <= 10);
     }
 
     #[test]
     fn test_performance_analysis() {
         let mut circuit = Circuit::<1>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit");
 
         let mut profiler = QuantumProfiler::new(circuit);
-        let _analysis = profiler.analyze_performance().unwrap();
+        let _analysis = profiler
+            .analyze_performance()
+            .expect("Failed to analyze performance");
 
         // Analysis should complete without errors
     }
@@ -72,7 +84,9 @@ mod tests {
         let circuit = Circuit::<1>::new();
         let mut profiler = QuantumProfiler::new(circuit);
 
-        let regressions = profiler.detect_regressions().unwrap();
+        let regressions = profiler
+            .detect_regressions()
+            .expect("Failed to detect regressions");
         // Should return empty list for new profiler
         assert!(regressions.is_empty());
     }

@@ -434,7 +434,7 @@ impl QuantumMemoryController {
         // Apply softmax
         let max_sim = similarities
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let mut weights = Array1::zeros(memory.num_slots);
         let mut sum = 0.0;
@@ -490,7 +490,7 @@ impl QuantumMemoryController {
 
         let max_sim = similarities
             .iter()
-            .cloned()
+            .copied()
             .fold(f64::NEG_INFINITY, f64::max);
         let mut write_weights = Array1::zeros(memory.num_slots);
         let mut sum = 0.0;
@@ -629,7 +629,9 @@ mod tests {
         let memory = QuantumMemory::new(10, 4, MemoryInitStrategy::Zero);
 
         let attention = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-        let read_state = memory.read(&attention).unwrap();
+        let read_state = memory
+            .read(&attention)
+            .expect("Failed to read from quantum memory");
 
         assert_eq!(read_state.len(), 16); // 2^4 states
     }
@@ -648,7 +650,9 @@ mod tests {
         let mut network = QuantumMemoryNetwork::new(10, config);
 
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]);
-        let outputs = network.step(&input).unwrap();
+        let outputs = network
+            .step(&input)
+            .expect("Failed to process step in quantum memory network");
 
         assert_eq!(outputs.len(), 1); // One read head
         assert_eq!(outputs[0].len(), 8); // 2^3 states per slot

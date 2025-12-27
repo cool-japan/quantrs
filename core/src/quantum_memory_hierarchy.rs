@@ -543,14 +543,14 @@ impl QuantumMemoryHierarchy {
         Ok(())
     }
 
-    fn apply_cache_optimizations(
+    const fn apply_cache_optimizations(
         &self,
         _optimization: &CacheOptimization,
     ) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 
-    fn apply_prefetch_optimizations(
+    const fn apply_prefetch_optimizations(
         &self,
         _optimization: &PrefetchOptimization,
     ) -> Result<(), QuantRS2Error> {
@@ -558,23 +558,23 @@ impl QuantumMemoryHierarchy {
     }
 
     // Benchmarking methods
-    fn benchmark_cache_performance(&self) -> f64 {
+    const fn benchmark_cache_performance(&self) -> f64 {
         89.4 // 89.4x better cache performance with quantum-aware caching
     }
 
-    fn benchmark_memory_bandwidth(&self) -> f64 {
+    const fn benchmark_memory_bandwidth(&self) -> f64 {
         67.8 // 67.8x better memory bandwidth utilization
     }
 
-    fn benchmark_coherence_preservation(&self) -> f64 {
+    const fn benchmark_coherence_preservation(&self) -> f64 {
         156.3 // 156.3x better quantum coherence preservation
     }
 
-    fn benchmark_energy_efficiency(&self) -> f64 {
+    const fn benchmark_energy_efficiency(&self) -> f64 {
         73.2 // 73.2x better energy efficiency
     }
 
-    fn benchmark_scalability(&self) -> f64 {
+    const fn benchmark_scalability(&self) -> f64 {
         92.7 // 92.7x better scalability
     }
 }
@@ -596,7 +596,7 @@ impl L1QuantumCache {
         }
     }
 
-    pub fn lookup(
+    pub const fn lookup(
         &self,
         _address: &QuantumAddress,
     ) -> Result<Option<QuantumStateData>, QuantRS2Error> {
@@ -629,7 +629,7 @@ impl L2QuantumCache {
         }
     }
 
-    pub fn lookup(
+    pub const fn lookup(
         &self,
         _address: &QuantumAddress,
     ) -> Result<Option<QuantumStateData>, QuantRS2Error> {
@@ -660,7 +660,7 @@ impl L3QuantumCache {
         }
     }
 
-    pub fn lookup(
+    pub const fn lookup(
         &self,
         _address: &QuantumAddress,
     ) -> Result<Option<QuantumStateData>, QuantRS2Error> {
@@ -704,7 +704,7 @@ impl QuantumMainMemory {
 }
 
 impl QuantumMemoryBank {
-    pub fn new(bank_id: u64) -> Self {
+    pub const fn new(bank_id: u64) -> Self {
         Self {
             bank_id,
             capacity: 64 * 1024 * 1024, // 64MB per bank
@@ -765,7 +765,7 @@ pub struct QuantumMemoryAdvantageReport {
 }
 
 impl QuantumMemoryAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             cache_performance_advantage: 0.0,
             memory_bandwidth_advantage: 0.0,
@@ -864,42 +864,42 @@ pub struct MemoryBandwidthManager;
 
 // Implement required traits and methods
 impl EntanglementStructure {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl QuantumProperties {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl CompressionInfo {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl CacheMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl PrefetchBuffer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl VictimCache {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl SliceOrganization {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl SharedCacheAccess {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -917,7 +917,7 @@ impl QuantumMemoryController {
     }
 }
 impl MemoryScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             scheduling_policy: MemorySchedulingPolicy::QuantumAware,
             request_queue: VecDeque::new(),
@@ -949,7 +949,7 @@ impl QuantumPrefetcher {
         }
     }
 
-    pub fn predict_and_prefetch(
+    pub const fn predict_and_prefetch(
         &self,
         _operation: &QuantumMemoryOperation,
     ) -> Result<(), QuantRS2Error> {
@@ -957,25 +957,25 @@ impl QuantumPrefetcher {
     }
 }
 impl QuantumMemoryOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn analyze_access_patterns(
+    pub const fn analyze_access_patterns(
         &self,
         _workload: &WorkloadCharacteristics,
     ) -> Result<AccessPatternAnalysis, QuantRS2Error> {
         Ok(AccessPatternAnalysis)
     }
 
-    pub fn optimize_cache_configuration(
+    pub const fn optimize_cache_configuration(
         &self,
         _patterns: &AccessPatternAnalysis,
     ) -> Result<CacheOptimization, QuantRS2Error> {
         Ok(CacheOptimization)
     }
 
-    pub fn optimize_prefetching(
+    pub const fn optimize_prefetching(
         &self,
         _patterns: &AccessPatternAnalysis,
     ) -> Result<PrefetchOptimization, QuantRS2Error> {
@@ -995,22 +995,22 @@ impl QuantumPersistentStorage {
     }
 }
 impl MainMemoryController {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl QuantumMemoryECC {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl QuantumRefreshController {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl MemoryBandwidthManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -1072,7 +1072,7 @@ mod tests {
         let result = hierarchy.execute_quantum_memory_operation(operation);
         assert!(result.is_ok());
 
-        let memory_result = result.unwrap();
+        let memory_result = result.expect("Quantum memory operation should succeed");
         assert!(memory_result.quantum_advantage > 1.0);
         assert!(memory_result.coherence_preserved);
     }

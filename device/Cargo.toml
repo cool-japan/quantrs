@@ -57,7 +57,7 @@ x25519-dalek = { version = "2.0.1", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+criterion.workspace = true
 
 [features]
 default = ["scheduling", "scirs2", "security", "neutral_atom"]

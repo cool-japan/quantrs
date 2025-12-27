@@ -613,10 +613,10 @@ mod tests {
         };
 
         let options = CompilerOptions::default();
-        let mut result = compile_to_qubo(&ast, &options);
+        let result = compile_to_qubo(&ast, &options);
 
         assert!(result.is_ok());
-        let mut qubo = result.unwrap();
+        let qubo = result.expect("compilation should succeed for valid binary program");
         assert_eq!(qubo.shape(), &[2, 2]);
         assert_eq!(qubo[[0, 0]], 1.0); // x coefficient
         assert_eq!(qubo[[1, 1]], 1.0); // y coefficient
@@ -649,10 +649,10 @@ mod tests {
         };
 
         let options = CompilerOptions::default();
-        let mut result = compile_to_qubo(&ast, &options);
+        let result = compile_to_qubo(&ast, &options);
 
         assert!(result.is_ok());
-        let mut qubo = result.unwrap();
+        let qubo = result.expect("compilation should succeed for quadratic term");
         assert_eq!(qubo.shape(), &[2, 2]);
         assert_eq!(qubo[[0, 1]], 0.5); // x*y coefficient (split)
         assert_eq!(qubo[[1, 0]], 0.5); // y*x coefficient (split)
@@ -689,10 +689,10 @@ mod tests {
         };
 
         let options = CompilerOptions::default();
-        let mut result = compile_to_qubo(&ast, &options);
+        let result = compile_to_qubo(&ast, &options);
 
         assert!(result.is_ok());
-        let mut qubo = result.unwrap();
+        let qubo = result.expect("compilation should succeed for equality constraint");
         assert_eq!(qubo.shape(), &[2, 2]);
         // For x == y, penalty is (x - y)^2 = x^2 - 2xy + y^2
         assert_eq!(qubo[[0, 0]], 1000.0); // x^2 term with penalty weight

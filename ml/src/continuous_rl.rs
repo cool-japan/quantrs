@@ -611,7 +611,7 @@ mod tests {
 
         assert_eq!(buffer.len(), 100);
 
-        let batch = buffer.sample(10).unwrap();
+        let batch = buffer.sample(10).expect("Buffer sampling should succeed");
         assert_eq!(batch.len(), 10);
     }
 
@@ -622,7 +622,7 @@ mod tests {
         assert_eq!(state.len(), 3);
 
         let action = Array1::from_vec(vec![1.0]);
-        let (next_state, reward, done) = env.step(action).unwrap();
+        let (next_state, reward, done) = env.step(action).expect("Environment step should succeed");
 
         assert_eq!(next_state.len(), 3);
         assert!(reward <= 0.0); // Reward should be negative
@@ -637,10 +637,12 @@ mod tests {
             vec![(-2.0, 2.0)],
             4, // num_qubits
         )
-        .unwrap();
+        .expect("Failed to create quantum actor");
 
         let state = Array1::from_vec(vec![1.0, 0.0, 0.5]);
-        let action = actor.get_action(&state, false).unwrap();
+        let action = actor
+            .get_action(&state, false)
+            .expect("Get action should succeed");
 
         assert_eq!(action.len(), 1);
         assert!(action[0] >= -2.0 && action[0] <= 2.0);
@@ -648,12 +650,14 @@ mod tests {
 
     #[test]
     fn test_quantum_critic() {
-        let critic = QuantumCritic::new(3, 1, 4).unwrap();
+        let critic = QuantumCritic::new(3, 1, 4).expect("Failed to create quantum critic");
 
         let state = Array1::from_vec(vec![1.0, 0.0, 0.5]);
         let action = Array1::from_vec(vec![1.5]);
 
-        let q_value = critic.get_q_value(&state, &action).unwrap();
+        let q_value = critic
+            .get_q_value(&state, &action)
+            .expect("Get Q-value should succeed");
         assert!(q_value.is_finite());
     }
 }

@@ -13,7 +13,7 @@
 //! - Memory-efficient state representation
 //! - Real-time quantum error correction
 //! - Integration with Intel/Xilinx FPGA platforms
-//! - OpenCL and Verilog/SystemVerilog code generation
+//! - `OpenCL` and Verilog/SystemVerilog code generation
 
 use scirs2_core::ndarray::Array1;
 use scirs2_core::Complex64;
@@ -32,11 +32,11 @@ pub enum FPGAPlatform {
     IntelStratix10,
     /// Intel Agilex 7
     IntelAgilex7,
-    /// Xilinx Virtex UltraScale+
+    /// Xilinx Virtex `UltraScale`+
     XilinxVirtexUltraScale,
     /// Xilinx Versal ACAP
     XilinxVersal,
-    /// Xilinx Kintex UltraScale+
+    /// Xilinx Kintex `UltraScale`+
     XilinxKintexUltraScale,
     /// Simulation mode
     Simulation,
@@ -118,7 +118,7 @@ pub struct FPGADeviceInfo {
     pub max_clock_frequency: f64,
     /// Memory interfaces
     pub memory_interfaces: Vec<MemoryInterface>,
-    /// PCIe lanes
+    /// `PCIe` lanes
     pub pcie_lanes: usize,
     /// Power consumption (W)
     pub power_consumption: f64,
@@ -165,14 +165,15 @@ pub enum ArithmeticPrecision {
 
 impl FPGADeviceInfo {
     /// Create device info for specific FPGA platform
+    #[must_use]
     pub fn for_platform(platform: FPGAPlatform) -> Self {
         match platform {
             FPGAPlatform::IntelArria10 => Self {
                 device_id: 1,
                 platform,
-                logic_elements: 1150000,
+                logic_elements: 1_150_000,
                 dsp_blocks: 1688,
-                block_ram_kb: 53000,
+                block_ram_kb: 53_000,
                 max_clock_frequency: 400.0,
                 memory_interfaces: vec![MemoryInterface {
                     interface_type: MemoryInterfaceType::DDR4,
@@ -191,9 +192,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::IntelStratix10 => Self {
                 device_id: 2,
                 platform,
-                logic_elements: 2800000,
+                logic_elements: 2_800_000,
                 dsp_blocks: 5760,
-                block_ram_kb: 229000,
+                block_ram_kb: 229_000,
                 max_clock_frequency: 500.0,
                 memory_interfaces: vec![
                     MemoryInterface {
@@ -221,9 +222,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::IntelAgilex7 => Self {
                 device_id: 3,
                 platform,
-                logic_elements: 2500000,
+                logic_elements: 2_500_000,
                 dsp_blocks: 4608,
-                block_ram_kb: 180000,
+                block_ram_kb: 180_000,
                 max_clock_frequency: 600.0,
                 memory_interfaces: vec![
                     MemoryInterface {
@@ -252,9 +253,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::XilinxVirtexUltraScale => Self {
                 device_id: 4,
                 platform,
-                logic_elements: 1300000,
+                logic_elements: 1_300_000,
                 dsp_blocks: 6840,
-                block_ram_kb: 75900,
+                block_ram_kb: 75_900,
                 max_clock_frequency: 450.0,
                 memory_interfaces: vec![MemoryInterface {
                     interface_type: MemoryInterfaceType::DDR4,
@@ -273,9 +274,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::XilinxVersal => Self {
                 device_id: 5,
                 platform,
-                logic_elements: 1968000,
+                logic_elements: 1_968_000,
                 dsp_blocks: 9024,
-                block_ram_kb: 175000,
+                block_ram_kb: 175_000,
                 max_clock_frequency: 700.0,
                 memory_interfaces: vec![
                     MemoryInterface {
@@ -305,9 +306,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::XilinxKintexUltraScale => Self {
                 device_id: 6,
                 platform,
-                logic_elements: 850000,
+                logic_elements: 850_000,
                 dsp_blocks: 2928,
-                block_ram_kb: 75900,
+                block_ram_kb: 75_900,
                 max_clock_frequency: 500.0,
                 memory_interfaces: vec![MemoryInterface {
                     interface_type: MemoryInterfaceType::DDR4,
@@ -326,9 +327,9 @@ impl FPGADeviceInfo {
             FPGAPlatform::Simulation => Self {
                 device_id: 99,
                 platform,
-                logic_elements: 10000000,
-                dsp_blocks: 10000,
-                block_ram_kb: 1000000,
+                logic_elements: 10_000_000,
+                dsp_blocks: 10_000,
+                block_ram_kb: 1_000_000,
                 max_clock_frequency: 1000.0,
                 memory_interfaces: vec![MemoryInterface {
                     interface_type: MemoryInterfaceType::HBM3,
@@ -603,6 +604,7 @@ impl FPGAStats {
     }
 
     /// Calculate performance metrics
+    #[must_use]
     pub fn get_performance_metrics(&self) -> HashMap<String, f64> {
         let mut metrics = HashMap::new();
 
@@ -823,7 +825,7 @@ impl FPGAQuantumSimulator {
             Bitstream {
                 name: "quantum_basic".to_string(),
                 target_config: "Basic quantum gates".to_string(),
-                size_kb: 50000,
+                size_kb: 50_000,
                 config_time_ms: 200.0,
                 supported_algorithms: vec![
                     "VQE".to_string(),
@@ -839,7 +841,7 @@ impl FPGAQuantumSimulator {
             Bitstream {
                 name: "quantum_advanced".to_string(),
                 target_config: "Advanced quantum algorithms".to_string(),
-                size_kb: 75000,
+                size_kb: 75_000,
                 config_time_ms: 300.0,
                 supported_algorithms: vec![
                     "Shor".to_string(),
@@ -855,7 +857,7 @@ impl FPGAQuantumSimulator {
             Bitstream {
                 name: "quantum_ml".to_string(),
                 target_config: "Quantum machine learning".to_string(),
-                size_kb: 60000,
+                size_kb: 60_000,
                 config_time_ms: 250.0,
                 supported_algorithms: vec![
                     "QML".to_string(),
@@ -933,7 +935,7 @@ impl FPGAQuantumSimulator {
         Ok(())
     }
 
-    /// Generate SystemVerilog code for single qubit gates
+    /// Generate `SystemVerilog` code for single qubit gates
     fn generate_single_qubit_systemverilog(&self) -> String {
         format!(
             r"
@@ -974,7 +976,7 @@ module single_qubit_gate #(
     logic [PIPELINE_DEPTH-1:0] pipeline_valid;
 
     // Gate matrices (pre-computed constants)
-    localparam real SQRT2_INV = 0.7071067811865476;
+    localparam real SQRT2_INV = 0.7_071_067_811_865_476;
 
     // Complex multiplication units
     logic [DATA_WIDTH-1:0] mult_real, mult_imag;
@@ -1057,7 +1059,7 @@ endmodule
         "-- VHDL single qubit gate entity (simplified)\nentity single_qubit_gate is...".to_string()
     }
 
-    /// Generate OpenCL code for single qubit gates
+    /// Generate `OpenCL` code for single qubit gates
     fn generate_single_qubit_opencl(&self) -> String {
         r"
 // OpenCL kernel for single qubit gates
@@ -1308,7 +1310,7 @@ __kernel void single_qubit_gate(
 
     /// Apply single qubit gate using FPGA
     fn apply_single_qubit_gate_fpga(
-        &mut self,
+        &self,
         state: &Array1<Complex64>,
         gate: &InterfaceGate,
         _unit_id: usize,
@@ -1363,7 +1365,7 @@ __kernel void single_qubit_gate(
 
     /// Apply two qubit gate using FPGA
     fn apply_two_qubit_gate_fpga(
-        &mut self,
+        &self,
         state: &Array1<Complex64>,
         gate: &InterfaceGate,
         _unit_id: usize,
@@ -1411,7 +1413,7 @@ __kernel void single_qubit_gate(
 
     /// Apply rotation gate using FPGA
     fn apply_rotation_gate_fpga(
-        &mut self,
+        &self,
         state: &Array1<Complex64>,
         gate: &InterfaceGate,
         unit_id: usize,
@@ -1441,16 +1443,19 @@ __kernel void single_qubit_gate(
     }
 
     /// Get device information
+    #[must_use]
     pub const fn get_device_info(&self) -> &FPGADeviceInfo {
         &self.device_info
     }
 
     /// Get performance statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &FPGAStats {
         &self.stats
     }
 
     /// Get HDL modules
+    #[must_use]
     pub const fn get_hdl_modules(&self) -> &HashMap<String, HDLModule> {
         &self.hdl_modules
     }
@@ -1485,6 +1490,7 @@ __kernel void single_qubit_gate(
     }
 
     /// Check if FPGA is available
+    #[must_use]
     pub fn is_fpga_available(&self) -> bool {
         !self.hdl_modules.is_empty()
     }
@@ -1573,7 +1579,7 @@ pub fn benchmark_fpga_acceleration() -> Result<HashMap<String, f64>> {
     // Add benchmark-specific metrics that are expected by tests
     results.insert("kernel_compilation_time".to_string(), 1500.0); // milliseconds
     results.insert("memory_transfer_bandwidth".to_string(), 250.0); // MB/s
-    results.insert("gate_execution_throughput".to_string(), 1000000.0); // gates/second
+    results.insert("gate_execution_throughput".to_string(), 1_000_000.0); // gates/second
 
     Ok(results)
 }
@@ -1594,7 +1600,7 @@ mod tests {
     fn test_device_info_creation() {
         let device_info = FPGADeviceInfo::for_platform(FPGAPlatform::IntelStratix10);
         assert_eq!(device_info.platform, FPGAPlatform::IntelStratix10);
-        assert_eq!(device_info.logic_elements, 2800000);
+        assert_eq!(device_info.logic_elements, 2_800_000);
         assert_eq!(device_info.dsp_blocks, 5760);
     }
 
@@ -1602,7 +1608,8 @@ mod tests {
     fn test_processing_unit_creation() {
         let config = FPGAConfig::default();
         let device_info = FPGADeviceInfo::for_platform(config.platform);
-        let units = FPGAQuantumSimulator::create_processing_units(&config, &device_info).unwrap();
+        let units = FPGAQuantumSimulator::create_processing_units(&config, &device_info)
+            .expect("should create processing units successfully");
 
         assert_eq!(units.len(), config.num_processing_units);
         assert!(!units[0].supported_gates.is_empty());
@@ -1612,7 +1619,8 @@ mod tests {
     #[test]
     fn test_hdl_generation() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for HDL generation test");
 
         assert!(simulator.hdl_modules.contains_key("single_qubit_gate"));
         assert!(simulator.hdl_modules.contains_key("two_qubit_gate"));
@@ -1625,7 +1633,8 @@ mod tests {
     #[test]
     fn test_circuit_execution() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for circuit execution test");
 
         let mut circuit = InterfaceCircuit::new(2, 0);
         circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -1633,7 +1642,7 @@ mod tests {
         let result = simulator.execute_circuit(&circuit);
         assert!(result.is_ok());
 
-        let state = result.unwrap();
+        let state = result.expect("circuit execution should succeed");
         assert_eq!(state.len(), 4);
         assert!(state[0].norm() > 0.0);
     }
@@ -1641,7 +1650,8 @@ mod tests {
     #[test]
     fn test_gate_application() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for gate application test");
 
         let mut state = Array1::zeros(4);
         state[0] = Complex64::new(1.0, 0.0);
@@ -1650,7 +1660,7 @@ mod tests {
         let result = simulator.apply_single_qubit_gate_fpga(&state, &gate, 0);
         assert!(result.is_ok());
 
-        let new_state = result.unwrap();
+        let new_state = result.expect("gate application should succeed");
         assert_abs_diff_eq!(new_state[0].norm(), 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);
         assert_abs_diff_eq!(new_state[1].norm(), 1.0 / 2.0_f64.sqrt(), epsilon = 1e-10);
     }
@@ -1658,7 +1668,8 @@ mod tests {
     #[test]
     fn test_bitstream_management() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for bitstream management test");
 
         assert!(simulator.bitstream_manager.current_config.is_some());
         assert!(simulator
@@ -1677,7 +1688,8 @@ mod tests {
     #[test]
     fn test_memory_management() {
         let config = FPGAConfig::default();
-        let simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for memory management test");
 
         assert!(simulator
             .memory_manager
@@ -1693,7 +1705,8 @@ mod tests {
     #[test]
     fn test_stats_tracking() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for stats tracking test");
 
         simulator.stats.update_operation(10.0, 1000);
         simulator.stats.update_operation(20.0, 2000);
@@ -1706,11 +1719,12 @@ mod tests {
     #[test]
     fn test_performance_metrics() {
         let config = FPGAConfig::default();
-        let mut simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let mut simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for performance metrics test");
 
         simulator.stats.total_gate_operations = 100;
         simulator.stats.total_execution_time = 1000.0; // 1 second
-        simulator.stats.total_clock_cycles = 300000;
+        simulator.stats.total_clock_cycles = 300_000;
         simulator.stats.fpga_utilization = 75.0;
         simulator.stats.pipeline_efficiency = 0.85;
         simulator.stats.power_consumption = 120.0;
@@ -1728,11 +1742,12 @@ mod tests {
     #[test]
     fn test_hdl_export() {
         let config = FPGAConfig::default();
-        let simulator = FPGAQuantumSimulator::new(config).unwrap();
+        let simulator = FPGAQuantumSimulator::new(config)
+            .expect("should create FPGA simulator for HDL export test");
 
         let hdl_code = simulator.export_hdl("single_qubit_gate");
         assert!(hdl_code.is_ok());
-        assert!(!hdl_code.unwrap().is_empty());
+        assert!(!hdl_code.expect("HDL export should succeed").is_empty());
 
         let invalid_module = simulator.export_hdl("nonexistent_module");
         assert!(invalid_module.is_err());

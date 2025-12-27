@@ -81,7 +81,8 @@ pub struct CalibrationData {
 
 impl FluxBiasOptimizer {
     /// Create a new flux bias optimizer
-    pub fn new(config: FluxBiasConfig) -> Self {
+    #[must_use]
+    pub const fn new(config: FluxBiasConfig) -> Self {
         Self {
             config,
             calibration_data: None,
@@ -120,7 +121,9 @@ impl FluxBiasOptimizer {
         // Apply calibration corrections if available
         if let Some(calibration) = &self.calibration_data {
             self.apply_calibration_corrections(&mut result.flux_biases, calibration);
-            result.calibration_corrections = result.flux_biases.clone();
+            result
+                .calibration_corrections
+                .clone_from(&result.flux_biases);
         }
 
         // Compute initial energy
@@ -165,7 +168,7 @@ impl FluxBiasOptimizer {
                 }
             }
         }
-        hardware_qubits.sort();
+        hardware_qubits.sort_unstable();
         hardware_qubits
     }
 
@@ -238,7 +241,7 @@ impl FluxBiasOptimizer {
 
     /// Optimize using grid search
     fn optimize_grid_search(
-        &mut self,
+        &self,
         model: &IsingModel,
         embedding: &Embedding,
         samples: &[Vec<i8>],
@@ -270,7 +273,7 @@ impl FluxBiasOptimizer {
 
                     if energy < best_energy {
                         best_energy = energy;
-                        best_flux_biases = result.flux_biases.clone();
+                        best_flux_biases.clone_from(&result.flux_biases);
                         improved = true;
                     }
                 }
@@ -314,8 +317,10 @@ impl FluxBiasOptimizer {
                 self.compute_average_energy_with_flux(model, samples, &flux_minus)?;
 
             // Gradient with regularization
-            let gradient = (energy_plus - energy_minus) / (2.0 * epsilon)
-                + self.config.regularization * current_flux;
+            let gradient = self
+                .config
+                .regularization
+                .mul_add(current_flux, (energy_plus - energy_minus) / (2.0 * epsilon));
 
             gradients.insert(*qubit, gradient);
         }
@@ -342,7 +347,7 @@ impl FluxBiasOptimizer {
             return Err(IsingError::InvalidValue("No valid samples".to_string()));
         }
 
-        Ok(total_energy / valid_samples as f64)
+        Ok(total_energy / f64::from(valid_samples))
     }
 
     /// Compute average energy with flux bias adjustments
@@ -361,7 +366,7 @@ impl FluxBiasOptimizer {
                     // Add flux bias contributions
                     for (qubit, &flux_bias) in flux_biases {
                         if *qubit < sample.len() {
-                            energy += flux_bias * sample[*qubit] as f64;
+                            energy += flux_bias * f64::from(sample[*qubit]);
                         }
                     }
                     total_energy += energy;
@@ -375,7 +380,7 @@ impl FluxBiasOptimizer {
             return Err(IsingError::InvalidValue("No valid samples".to_string()));
         }
 
-        Ok(total_energy / valid_samples as f64)
+        Ok(total_energy / f64::from(valid_samples))
     }
 
     /// Compute solution quality metric
@@ -397,7 +402,7 @@ impl FluxBiasOptimizer {
         }
 
         if total_chains > 0 {
-            chain_satisfaction / total_chains as f64
+            chain_satisfaction / f64::from(total_chains)
         } else {
             1.0
         }
@@ -415,6 +420,7 @@ pub struct MLFluxBiasOptimizer {
 
 impl MLFluxBiasOptimizer {
     /// Create a new ML-enhanced flux bias optimizer
+    #[must_use]
     pub fn new(config: FluxBiasConfig) -> Self {
         Self {
             base_optimizer: FluxBiasOptimizer::new(config),
@@ -431,6 +437,7 @@ impl MLFluxBiasOptimizer {
     }
 
     /// Apply learned patterns to new problems
+    #[must_use]
     pub fn apply_learned_patterns(
         &self,
         problem_type: &str,

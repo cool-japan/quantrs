@@ -521,8 +521,9 @@ impl QuantumMLErrorMitigator {
                 self.apply_measurement_mitigation(&circuit_minus, &measurements_minus)?;
 
             // Compute mitigated gradient
-            mitigated_gradients[i] =
-                (mitigated_plus.mean().unwrap() - mitigated_minus.mean().unwrap()) / 2.0;
+            mitigated_gradients[i] = (mitigated_plus.mean().unwrap_or(0.0)
+                - mitigated_minus.mean().unwrap_or(0.0))
+                / 2.0;
         }
 
         Ok(mitigated_gradients)
@@ -597,7 +598,7 @@ impl QuantumMLErrorMitigator {
             let bootstrap_measurements = self.bootstrap_sample(measurements)?;
             let mitigated_bootstrap =
                 self.apply_measurement_mitigation(circuit, &bootstrap_measurements)?;
-            bootstrap_results.push(mitigated_bootstrap.mean().unwrap());
+            bootstrap_results.push(mitigated_bootstrap.mean().unwrap_or(0.0));
         }
 
         // Compute standard deviation as uncertainty

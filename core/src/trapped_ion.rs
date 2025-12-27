@@ -9,7 +9,7 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 
 /// Ion species for trapped ion quantum computing
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IonSpecies {
     /// Beryllium-9 ion
     Be9,
@@ -27,44 +27,42 @@ pub enum IonSpecies {
 
 impl IonSpecies {
     /// Get atomic mass in atomic mass units
-    pub fn atomic_mass(&self) -> f64 {
+    pub const fn atomic_mass(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 9.012,
-            IonSpecies::Ca40 => 39.963,
-            IonSpecies::Ca43 => 42.959,
-            IonSpecies::Yb171 => 170.936,
-            IonSpecies::Ba137 => 136.906,
-            IonSpecies::Sr88 => 87.906,
+            Self::Be9 => 9.012,
+            Self::Ca40 => 39.963,
+            Self::Ca43 => 42.959,
+            Self::Yb171 => 170.936,
+            Self::Ba137 => 136.906,
+            Self::Sr88 => 87.906,
         }
     }
 
     /// Get typical trap frequency in Hz
-    pub fn typical_trap_frequency(&self) -> f64 {
+    pub const fn typical_trap_frequency(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 2.0e6,   // 2 MHz
-            IonSpecies::Ca40 => 1.5e6,  // 1.5 MHz
-            IonSpecies::Ca43 => 1.5e6,  // 1.5 MHz
-            IonSpecies::Yb171 => 1.0e6, // 1 MHz
-            IonSpecies::Ba137 => 0.8e6, // 0.8 MHz
-            IonSpecies::Sr88 => 1.2e6,  // 1.2 MHz
+            Self::Be9 => 2.0e6,               // 2 MHz
+            Self::Ca40 | Self::Ca43 => 1.5e6, // 1.5 MHz (Ca isotopes)
+            Self::Yb171 => 1.0e6,             // 1 MHz
+            Self::Ba137 => 0.8e6,             // 0.8 MHz
+            Self::Sr88 => 1.2e6,              // 1.2 MHz
         }
     }
 
     /// Get qubit transition wavelength in nanometers
-    pub fn qubit_wavelength(&self) -> f64 {
+    pub const fn qubit_wavelength(&self) -> f64 {
         match self {
-            IonSpecies::Be9 => 313.0,   // UV
-            IonSpecies::Ca40 => 729.0,  // Near IR
-            IonSpecies::Ca43 => 729.0,  // Near IR
-            IonSpecies::Yb171 => 435.5, // Blue
-            IonSpecies::Ba137 => 455.4, // Blue
-            IonSpecies::Sr88 => 674.0,  // Red
+            Self::Be9 => 313.0,               // UV
+            Self::Ca40 | Self::Ca43 => 729.0, // Near IR (Ca isotopes)
+            Self::Yb171 => 435.5,             // Blue
+            Self::Ba137 => 455.4,             // Blue
+            Self::Sr88 => 674.0,              // Red
         }
     }
 }
 
 /// Ion electronic levels for qubit encoding
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IonLevel {
     /// Ground state |0⟩
     Ground,
@@ -93,7 +91,7 @@ pub struct MotionalMode {
     pub max_phonons: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MotionalModeType {
     /// Center-of-mass mode
     CenterOfMass,
@@ -189,7 +187,7 @@ impl MotionalMode {
             .map(|x: &Complex64| x.norm_sqr())
             .sum::<f64>()
             .sqrt();
-        for amp in new_state.iter_mut() {
+        for amp in &mut new_state {
             *amp /= norm;
         }
 
@@ -271,7 +269,7 @@ pub struct LaserPulse {
 
 impl LaserPulse {
     /// Create carrier transition pulse
-    pub fn carrier_pulse(
+    pub const fn carrier_pulse(
         rabi_frequency: f64,
         duration: f64,
         phase: f64,
@@ -308,7 +306,7 @@ impl LaserPulse {
     }
 
     /// Create blue sideband pulse (motional heating)
-    pub fn blue_sideband_pulse(
+    pub const fn blue_sideband_pulse(
         rabi_frequency: f64,
         duration: f64,
         phase: f64,
@@ -471,7 +469,7 @@ impl TrappedIonSystem {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-10 {
-                    for amp in new_state.iter_mut() {
+                    for amp in &mut new_state {
                         *amp /= norm;
                     }
                     mode.phonon_state = new_state;
@@ -493,7 +491,7 @@ impl TrappedIonSystem {
                     .sum::<f64>()
                     .sqrt();
                 if norm > 1e-10 {
-                    for amp in new_state.iter_mut() {
+                    for amp in &mut new_state {
                         *amp /= norm;
                     }
                     mode.phonon_state = new_state;
@@ -521,7 +519,7 @@ impl TrappedIonSystem {
             .sum::<f64>()
             .sqrt();
         if norm > 1e-10 {
-            for amp in new_state.iter_mut() {
+            for amp in &mut new_state {
                 *amp /= norm;
             }
             mode.phonon_state = new_state;
@@ -547,7 +545,7 @@ impl TrappedIonSystem {
             .sum::<f64>()
             .sqrt();
         if norm > 1e-10 {
-            for amp in new_state.iter_mut() {
+            for amp in &mut new_state {
                 *amp /= norm;
             }
             mode.phonon_state = new_state;
@@ -721,9 +719,8 @@ impl TrappedIonGates {
         let duration = angle / rabi_freq; // Correct duration calculation
 
         let phase = match axis {
-            "x" => 0.0,
+            "x" | "z" => 0.0, // x rotation or virtual Z rotation
             "y" => std::f64::consts::PI / 2.0,
-            "z" => 0.0, // Virtual Z rotation
             _ => {
                 return Err(QuantRS2Error::InvalidInput(
                     "Invalid rotation axis".to_string(),
@@ -878,7 +875,8 @@ mod tests {
         let species = vec![IonSpecies::Ca40, IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
 
-        let system = TrappedIonSystem::new(species, positions).unwrap();
+        let system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
         assert_eq!(system.num_ions, 2);
         assert_eq!(system.ions.len(), 2);
         assert!(system.motional_modes.len() >= 3);
@@ -888,7 +886,8 @@ mod tests {
     fn test_laser_pulse_application() {
         let species = vec![IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0]];
-        let mut system = TrappedIonSystem::new(species, positions).unwrap();
+        let mut system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         // π pulse (X gate)
         let rabi_freq = 1e6; // 1 MHz Rabi frequency
@@ -899,7 +898,9 @@ mod tests {
             vec![0],                          // Target ion 0
         );
 
-        system.apply_laser_pulse(&pulse).unwrap();
+        system
+            .apply_laser_pulse(&pulse)
+            .expect("Laser pulse should be applied successfully");
 
         // Should be in |1⟩ state now
         let state = system.ions[0].get_state();
@@ -918,7 +919,8 @@ mod tests {
         );
 
         let alpha = Complex64::new(1.0, 0.0);
-        mode.displace(alpha).unwrap();
+        mode.displace(alpha)
+            .expect("Displacement operation should succeed");
 
         let mean_phonons = mode.mean_phonon_number();
         assert!(mean_phonons > 0.5); // Should have gained energy
@@ -928,12 +930,13 @@ mod tests {
     fn test_molmer_sorensen_gate() {
         let species = vec![IonSpecies::Ca40, IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
-        let mut system = TrappedIonSystem::new(species, positions).unwrap();
+        let mut system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         // Apply MS gate
         system
             .molmer_sorensen_gate(0, 1, std::f64::consts::PI / 2.0)
-            .unwrap();
+            .expect("Molmer-Sorensen gate should be applied successfully");
 
         // States should be modified (entangled)
         let state1 = system.ions[0].get_state();
@@ -948,7 +951,8 @@ mod tests {
     fn test_ion_measurement() {
         let species = vec![IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0]];
-        let mut system = TrappedIonSystem::new(species, positions).unwrap();
+        let mut system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         // Put ion in superposition
         system.ions[0]
@@ -956,9 +960,11 @@ mod tests {
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
                 Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             ])
-            .unwrap();
+            .expect("Ion state should be set successfully");
 
-        let result = system.measure_ion(0).unwrap();
+        let result = system
+            .measure_ion(0)
+            .expect("Ion measurement should succeed");
 
         // Result is a boolean, so this test just exercises the measurement
         // The actual value depends on the quantum state
@@ -973,15 +979,18 @@ mod tests {
     fn test_trapped_ion_gates() {
         let species = vec![IonSpecies::Ca40, IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
-        let mut system = TrappedIonSystem::new(species, positions).unwrap();
+        let mut system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         // Test Pauli-X gate
-        TrappedIonGates::pauli_x(&mut system, 0).unwrap();
+        TrappedIonGates::pauli_x(&mut system, 0)
+            .expect("Pauli-X gate should be applied successfully");
         let state = system.ions[0].get_state();
         assert!(state[1].norm() > 0.9); // Should be in |1⟩
 
         // Test Hadamard gate
-        TrappedIonGates::hadamard(&mut system, 0).unwrap();
+        TrappedIonGates::hadamard(&mut system, 0)
+            .expect("Hadamard gate should be applied successfully");
         let state = system.ions[0].get_state();
         assert!(state[0].norm() > 0.05 && state[0].norm() < 0.95); // Should be in superposition (relaxed)
     }
@@ -990,13 +999,15 @@ mod tests {
     fn test_cnot_gate() {
         let species = vec![IonSpecies::Ca40, IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]];
-        let mut system = TrappedIonSystem::new(species, positions).unwrap();
+        let mut system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         // Set control ion to |1⟩
-        TrappedIonGates::pauli_x(&mut system, 0).unwrap();
+        TrappedIonGates::pauli_x(&mut system, 0)
+            .expect("Pauli-X gate should be applied successfully");
 
         // Apply CNOT
-        TrappedIonGates::cnot(&mut system, 0, 1).unwrap();
+        TrappedIonGates::cnot(&mut system, 0, 1).expect("CNOT gate should be applied successfully");
 
         // Target ion should now be in |1⟩ (approximately)
         let target_state = system.ions[1].get_state();
@@ -1007,7 +1018,8 @@ mod tests {
     fn test_motional_temperature() {
         let species = vec![IonSpecies::Ca40];
         let positions = vec![[0.0, 0.0, 0.0]];
-        let system = TrappedIonSystem::new(species, positions).unwrap();
+        let system = TrappedIonSystem::new(species, positions)
+            .expect("Trapped ion system should be created successfully");
 
         let temp = system.get_motional_temperature();
         assert!(temp >= 0.0);

@@ -41,6 +41,7 @@ pub struct HardwareOptimizations {
 
 impl ParameterizedQuantumCircuit {
     /// Create a new parameterized quantum circuit
+    #[must_use]
     pub fn new(
         circuit: InterfaceCircuit,
         parameters: Array1<f64>,
@@ -74,6 +75,7 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Get parameter at specific index
+    #[must_use]
     pub fn get_parameter(&self, index: usize) -> Option<f64> {
         self.parameters.get(index).copied()
     }
@@ -88,16 +90,19 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Get the number of parameters
+    #[must_use]
     pub fn num_parameters(&self) -> usize {
         self.parameters.len()
     }
 
     /// Get the number of qubits
+    #[must_use]
     pub const fn num_qubits(&self) -> usize {
         self.circuit.num_qubits
     }
 
     /// Get circuit depth
+    #[must_use]
     pub fn depth(&self) -> usize {
         self.circuit.gates.len()
     }
@@ -109,11 +114,13 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Get parameter mapping for a gate
+    #[must_use]
     pub fn get_parameter_mapping(&self, gate_index: usize) -> Option<&Vec<usize>> {
         self.gate_parameter_map.get(&gate_index)
     }
 
     /// Estimate circuit fidelity based on hardware optimizations
+    #[must_use]
     pub fn estimate_fidelity(&self) -> f64 {
         let mut total_fidelity = 1.0;
 
@@ -131,6 +138,7 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Estimate total execution time
+    #[must_use]
     pub fn estimate_execution_time(&self) -> f64 {
         let mut total_time = 0.0;
 
@@ -148,6 +156,7 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Check if two qubits are connected according to hardware topology
+    #[must_use]
     pub fn are_qubits_connected(&self, qubit1: usize, qubit2: usize) -> bool {
         if qubit1 >= self.num_qubits() || qubit2 >= self.num_qubits() {
             return false;
@@ -156,6 +165,7 @@ impl ParameterizedQuantumCircuit {
     }
 
     /// Get decoherence time for a specific qubit
+    #[must_use]
     pub fn get_decoherence_time(&self, qubit: usize) -> Option<f64> {
         self.hardware_optimizations
             .decoherence_times
@@ -170,7 +180,7 @@ impl ParameterizedQuantumCircuit {
         Ok(new_circuit)
     }
 
-    /// Convert InterfaceGateType to string
+    /// Convert `InterfaceGateType` to string
     fn gate_type_to_string(gate_type: &InterfaceGateType) -> String {
         match gate_type {
             InterfaceGateType::Identity => "I".to_string(),
@@ -209,6 +219,7 @@ impl ParameterizedQuantumCircuit {
 
 impl HardwareOptimizations {
     /// Create optimizations for specific hardware
+    #[must_use]
     pub fn for_hardware(architecture: HardwareArchitecture, num_qubits: usize) -> Self {
         let connectivity_graph = match architecture {
             HardwareArchitecture::Superconducting => {
@@ -352,6 +363,7 @@ impl HardwareOptimizations {
     }
 
     /// Get average gate fidelity
+    #[must_use]
     pub fn average_gate_fidelity(&self) -> f64 {
         let fidelities: Vec<f64> = self.gate_fidelities.values().copied().collect();
         if fidelities.is_empty() {
@@ -362,6 +374,7 @@ impl HardwareOptimizations {
     }
 
     /// Get connectivity degree (number of connections) for a qubit
+    #[must_use]
     pub fn connectivity_degree(&self, qubit: usize) -> usize {
         if qubit >= self.connectivity_graph.nrows() {
             return 0;

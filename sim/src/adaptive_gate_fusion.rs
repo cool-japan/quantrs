@@ -2,7 +2,7 @@
 //!
 //! This module implements intelligent gate fusion algorithms that analyze
 //! quantum circuit structures to automatically identify and fuse adjacent
-//! gates for optimal performance. It leverages SciRS2's optimization
+//! gates for optimal performance. It leverages `SciRS2`'s optimization
 //! capabilities for efficient matrix operations and circuit transformations.
 
 use scirs2_core::ndarray::Array2;
@@ -65,7 +65,7 @@ impl Default for AdaptiveFusionConfig {
             enable_temporal_fusion: true,
             max_analysis_depth: 100,
             enable_ml_predictions: true,
-            fusion_cache_size: 10000,
+            fusion_cache_size: 10_000,
             parallel_analysis: true,
         }
     }
@@ -116,6 +116,7 @@ pub enum GateType {
 
 impl QuantumGate {
     /// Create a new quantum gate
+    #[must_use]
     pub fn new(gate_type: GateType, qubits: Vec<usize>, parameters: Vec<f64>) -> Self {
         let matrix = Self::gate_matrix(&gate_type, &parameters);
         let cost = Self::estimate_cost(&gate_type, qubits.len());
@@ -143,7 +144,7 @@ impl QuantumGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli X matrix shape is always valid"),
             GateType::PauliY => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -153,7 +154,7 @@ impl QuantumGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Y matrix shape is always valid"),
             GateType::PauliZ => Array2::from_shape_vec(
                 (2, 2),
                 vec![
@@ -163,7 +164,7 @@ impl QuantumGate {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Z matrix shape is always valid"),
             GateType::Hadamard => {
                 let inv_sqrt2 = 1.0 / 2.0_f64.sqrt();
                 Array2::from_shape_vec(
@@ -175,7 +176,7 @@ impl QuantumGate {
                         Complex64::new(-inv_sqrt2, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Hadamard matrix shape is always valid")
             }
             GateType::RotationX => {
                 let theta = parameters.first().copied().unwrap_or(0.0);
@@ -190,7 +191,7 @@ impl QuantumGate {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Rotation X matrix shape is always valid")
             }
             GateType::RotationY => {
                 let theta = parameters.first().copied().unwrap_or(0.0);
@@ -205,7 +206,7 @@ impl QuantumGate {
                         Complex64::new(cos_half, 0.0),
                     ],
                 )
-                .unwrap()
+                .expect("Rotation Y matrix shape is always valid")
             }
             GateType::RotationZ => {
                 let theta = parameters.first().copied().unwrap_or(0.0);
@@ -220,7 +221,7 @@ impl QuantumGate {
                         exp_pos,
                     ],
                 )
-                .unwrap()
+                .expect("Rotation Z matrix shape is always valid")
             }
             GateType::CNOT => Array2::from_shape_vec(
                 (4, 4),
@@ -243,7 +244,7 @@ impl QuantumGate {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("CNOT matrix shape is always valid"),
             _ => Array2::eye(2), // Default fallback
         }
     }
@@ -264,10 +265,11 @@ impl QuantumGate {
         };
 
         // Cost scales with number of qubits
-        base_cost * (1 << num_qubits) as f64
+        base_cost * f64::from(1 << num_qubits)
     }
 
     /// Check if this gate commutes with another gate
+    #[must_use]
     pub fn commutes_with(&self, other: &Self) -> bool {
         // Check if gates act on disjoint qubits
         let self_qubits: HashSet<_> = self.qubits.iter().collect();
@@ -315,6 +317,7 @@ impl QuantumGate {
     }
 
     /// Check if this gate can be fused with another gate
+    #[must_use]
     pub fn can_fuse_with(&self, other: &Self) -> bool {
         // Gates must act on the same qubits to be fusable
         if self.qubits != other.qubits {
@@ -526,6 +529,7 @@ impl FusedGateBlock {
     }
 
     /// Check if fusion is beneficial
+    #[must_use]
     pub fn is_beneficial(&self) -> bool {
         self.improvement_factor > 1.1 // At least 10% improvement
     }
@@ -569,7 +573,7 @@ pub struct FusionOpportunity {
 pub struct AdaptiveGateFusion {
     /// Configuration
     config: AdaptiveFusionConfig,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Fusion pattern cache with improved key system
     fusion_cache: HashMap<FusionPatternKey, CachedFusionResult>,
@@ -720,7 +724,7 @@ impl AdaptiveGateFusion {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
 
@@ -820,7 +824,7 @@ impl AdaptiveGateFusion {
         opportunities.sort_by(|a, b| {
             b.estimated_benefit
                 .partial_cmp(&a.estimated_benefit)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         self.remove_overlapping_opportunities(opportunities)
     }
@@ -1124,6 +1128,7 @@ impl AdaptiveGateFusion {
     }
 
     /// Get fusion statistics
+    #[must_use]
     pub fn get_fusion_stats(&self) -> FusionStats {
         FusionStats {
             cache_size: self.fusion_cache.len(),
@@ -1256,6 +1261,7 @@ impl Default for MLFusionPredictor {
 
 impl MLFusionPredictor {
     /// Create a new ML predictor
+    #[must_use]
     pub fn new() -> Self {
         let mut feature_weights = HashMap::new();
 
@@ -1273,6 +1279,7 @@ impl MLFusionPredictor {
     }
 
     /// Predict fusion benefit for a gate sequence
+    #[must_use]
     pub fn predict_benefit(&self, gates: &[QuantumGate]) -> f64 {
         let features = self.extract_features(gates);
 
@@ -1363,7 +1370,7 @@ impl MLFusionPredictor {
         }
 
         if adjacent_count > 0 {
-            locality_score / adjacent_count as f64
+            locality_score / f64::from(adjacent_count)
         } else {
             0.0
         }
@@ -1387,7 +1394,7 @@ impl MLFusionPredictor {
         }
 
         if pair_count > 0 {
-            commutation_score / pair_count as f64
+            commutation_score / f64::from(pair_count)
         } else {
             0.0
         }
@@ -1485,6 +1492,7 @@ impl Default for CircuitPatternAnalyzer {
 
 impl CircuitPatternAnalyzer {
     /// Create a new pattern analyzer
+    #[must_use]
     pub fn new() -> Self {
         let mut beneficial_patterns = HashMap::new();
 
@@ -1580,6 +1588,7 @@ pub struct FusionUtils;
 
 impl FusionUtils {
     /// Create common gate sequences for testing
+    #[must_use]
     pub fn create_test_sequence(sequence_type: &str, num_qubits: usize) -> Vec<QuantumGate> {
         match sequence_type {
             "rotation_chain" => (0..num_qubits)
@@ -1648,6 +1657,7 @@ impl FusionUtils {
     }
 
     /// Estimate fusion potential for a circuit
+    #[must_use]
     pub fn estimate_fusion_potential(gates: &[QuantumGate]) -> f64 {
         if gates.len() < 2 {
             return 0.0;
@@ -1663,7 +1673,7 @@ impl FusionUtils {
             }
         }
 
-        potential_fusions as f64 / total_gates as f64
+        f64::from(potential_fusions) / total_gates as f64
     }
 }
 
@@ -1707,7 +1717,8 @@ mod tests {
             QuantumGate::new(GateType::RotationX, vec![0], vec![0.3]),
         ];
 
-        let block = FusedGateBlock::new(gates).unwrap();
+        let block =
+            FusedGateBlock::new(gates).expect("Fused gate block creation should succeed in test");
         assert_eq!(block.qubits, vec![0]);
         assert!(block.improvement_factor > 0.0);
     }
@@ -1725,9 +1736,12 @@ mod tests {
         let gates = FusionUtils::create_test_sequence("rotation_chain", 2);
 
         let config = AdaptiveFusionConfig::default();
-        let mut fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+        let mut fusion_engine =
+            AdaptiveGateFusion::new(config).expect("Fusion engine creation should succeed in test");
 
-        let analysis = fusion_engine.analyze_circuit(&gates).unwrap();
+        let analysis = fusion_engine
+            .analyze_circuit(&gates)
+            .expect("Circuit analysis should succeed in test");
         assert_eq!(analysis.original_gate_count, gates.len());
         assert!(!analysis.fusion_opportunities.is_empty());
     }
@@ -1776,7 +1790,8 @@ mod tests {
         ];
 
         let config = AdaptiveFusionConfig::default();
-        let fusion_engine = AdaptiveGateFusion::new(config).unwrap();
+        let fusion_engine =
+            AdaptiveGateFusion::new(config).expect("Fusion engine creation should succeed in test");
 
         let depth = fusion_engine.calculate_circuit_depth(&gates);
         assert!(depth > 0);

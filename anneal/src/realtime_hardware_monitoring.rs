@@ -155,7 +155,7 @@ pub struct DeviceInfo {
 }
 
 /// Supported quantum operations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QuantumOperation {
     /// Ising annealing
     IsingAnnealing,
@@ -183,7 +183,7 @@ pub struct CoherenceCharacteristics {
 }
 
 /// Sources of decoherence
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecoherenceSource {
     /// Thermal fluctuations
     ThermalNoise,
@@ -198,7 +198,7 @@ pub enum DecoherenceSource {
 }
 
 /// Device status enumeration
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceStatus {
     /// Online and available
     Online,
@@ -255,7 +255,7 @@ pub struct PerformanceTrend {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     /// Improving
     Improving,
@@ -317,7 +317,7 @@ pub struct Alert {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertLevel {
     /// Informational
     Info,
@@ -349,7 +349,7 @@ pub struct AdaptiveAction {
 }
 
 /// Types of adaptive actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptiveActionType {
     /// Adjust chain strength
     ChainStrengthAdjustment,
@@ -559,7 +559,7 @@ pub struct MetricDataPoint {
 }
 
 /// Data quality indicator
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DataQuality {
     /// High quality data
     High,
@@ -628,7 +628,7 @@ pub struct ChangePoint {
 }
 
 /// Types of changes in time series
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeType {
     /// Mean shift
     MeanShift,
@@ -765,7 +765,7 @@ pub enum NoiseModel {
 }
 
 /// Mitigation strategy
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MitigationStrategy {
     /// Zero-noise extrapolation
     ZeroNoiseExtrapolation,
@@ -806,7 +806,7 @@ pub struct AdaptationTrigger {
 }
 
 /// Trigger condition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriggerCondition {
     /// Greater than threshold
     GreaterThan,
@@ -883,7 +883,7 @@ pub struct ActiveAdaptation {
 }
 
 /// Status of adaptation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationStatus {
     /// In progress
     InProgress,
@@ -943,7 +943,7 @@ pub struct SuppressionCondition {
 }
 
 /// Types of suppression
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SuppressionType {
     /// Similar alerts in time window
     SimilarAlerts,
@@ -987,7 +987,7 @@ pub struct EscalationAction {
 }
 
 /// Types of escalation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EscalationType {
     /// Notify additional contacts
     NotifyContacts,
@@ -1065,7 +1065,7 @@ pub struct PredictionModel {
 }
 
 /// Types of prediction models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModelType {
     /// Linear regression
     LinearRegression,
@@ -1095,7 +1095,7 @@ pub struct FeatureExtractor {
 }
 
 /// Types of features for prediction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FeatureType {
     /// Statistical features (mean, std, etc.)
     Statistical,
@@ -1110,7 +1110,7 @@ pub enum FeatureType {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NormalizationMethod {
     /// Z-score normalization
     ZScore,
@@ -1157,7 +1157,7 @@ pub struct FailureEvent {
 }
 
 /// Types of failures
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailureType {
     /// Hardware failure
     Hardware,
@@ -1174,7 +1174,7 @@ pub enum FailureType {
 }
 
 /// Failure severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailureSeverity {
     /// Minor performance degradation
     Minor,
@@ -1269,7 +1269,7 @@ pub struct OptimizationStrategy {
 }
 
 /// Optimization target
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationTarget {
     /// Minimize error rate
     MinimizeErrorRate,
@@ -1286,7 +1286,7 @@ pub enum OptimizationTarget {
 }
 
 /// Optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationMethod {
     /// Gradient descent
     GradientDescent,
@@ -1333,7 +1333,7 @@ pub struct ActiveOptimization {
 }
 
 /// Optimization status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationStatus {
     /// Initialization
     Initializing,
@@ -1372,6 +1372,7 @@ pub struct OptimizationResult {
 
 impl RealTimeHardwareMonitor {
     /// Create new real-time hardware monitor
+    #[must_use]
     pub fn new(config: MonitoringConfig) -> Self {
         Self {
             config,
@@ -1420,7 +1421,7 @@ impl RealTimeHardwareMonitor {
         })?;
 
         devices.insert(device_id.clone(), device);
-        println!("Registered device for monitoring: {}", device_id);
+        println!("Registered device for monitoring: {device_id}");
         Ok(())
     }
 
@@ -1434,7 +1435,7 @@ impl RealTimeHardwareMonitor {
             .get(device_id)
             .map(|device| device.status.clone())
             .ok_or_else(|| {
-                ApplicationError::InvalidConfiguration(format!("Device {} not found", device_id))
+                ApplicationError::InvalidConfiguration(format!("Device {device_id} not found"))
             })
     }
 
@@ -1448,7 +1449,7 @@ impl RealTimeHardwareMonitor {
         })?;
 
         let device = devices.get(device_id).ok_or_else(|| {
-            ApplicationError::InvalidConfiguration(format!("Device {} not found", device_id))
+            ApplicationError::InvalidConfiguration(format!("Device {device_id} not found"))
         })?;
 
         let metrics = device.performance_metrics.read().map_err(|_| {
@@ -1475,7 +1476,7 @@ impl RealTimeHardwareMonitor {
         let adaptation_needed = self.assess_adaptation_need(&metrics)?;
 
         if adaptation_needed {
-            println!("Triggering adaptive compilation for device: {}", device_id);
+            println!("Triggering adaptive compilation for device: {device_id}");
 
             // Generate adaptive compilation parameters
             let parameters = self.generate_adaptive_parameters(&metrics, problem)?;
@@ -1878,7 +1879,7 @@ pub fn create_example_hardware_monitor() -> ApplicationResult<RealTimeHardwareMo
             },
             spectral_noise: SpectralNoiseProfile {
                 power_spectrum: vec![1.0; 100],
-                frequency_bins: (0..100).map(|i| i as f64 * 0.1).collect(),
+                frequency_bins: (0..100).map(|i| f64::from(i) * 0.1).collect(),
                 dominant_frequencies: vec![1.0, 2.5, 5.0],
                 flicker_noise_params: FlickerNoiseParams {
                     amplitude: 0.01,
@@ -1931,9 +1932,13 @@ mod tests {
 
     #[test]
     fn test_device_registration() {
-        let monitor = create_example_hardware_monitor().unwrap();
+        let monitor =
+            create_example_hardware_monitor().expect("should create example hardware monitor");
 
-        let devices = monitor.devices.read().unwrap();
+        let devices = monitor
+            .devices
+            .read()
+            .expect("should acquire read lock on devices");
         assert_eq!(devices.len(), 1);
         assert!(devices.contains_key("dwave_advantage_4_1"));
     }

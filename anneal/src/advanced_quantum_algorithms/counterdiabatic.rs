@@ -48,7 +48,7 @@ impl Default for CounterdiabaticConfig {
 }
 
 /// Counterdiabatic approximation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CounterdiabaticApproximation {
     /// Exact counterdiabatic terms
     Exact,
@@ -63,7 +63,7 @@ pub enum CounterdiabaticApproximation {
 }
 
 /// Gauge choices for counterdiabatic driving
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GaugeChoice {
     /// Symmetric gauge
     Symmetric,
@@ -94,7 +94,7 @@ impl Default for ParameterSchedule {
             function_type: ScheduleFunctionType::Linear,
             parameters: vec![0.0, 1.0],
             total_time: 10.0,
-            time_points: (0..=100).map(|i| i as f64 * 0.1).collect(),
+            time_points: (0..=100).map(|i| f64::from(i) * 0.1).collect(),
         }
     }
 }
@@ -238,6 +238,7 @@ pub struct CounterdiabaticMetrics {
 
 impl CounterdiabaticDrivingOptimizer {
     /// Create new counterdiabatic driving optimizer
+    #[must_use]
     pub fn new(config: CounterdiabaticConfig) -> Self {
         Self {
             config,
@@ -259,7 +260,7 @@ impl CounterdiabaticDrivingOptimizer {
                     let spins: Vec<i32> = annealing_solution
                         .best_spins
                         .iter()
-                        .map(|&s| s as i32)
+                        .map(|&s| i32::from(s))
                         .collect();
                     Ok(Ok(spins))
                 }
@@ -301,15 +302,15 @@ impl CounterdiabaticDrivingOptimizer {
         match self.config.approximation_method {
             CounterdiabaticApproximation::Local => {
                 // Local approximation benefits from locally correlated problems
-                self.generate_locally_structured_problem(&mut ising, &mut rng)?
+                self.generate_locally_structured_problem(&mut ising, &mut rng)?;
             }
             CounterdiabaticApproximation::Exact => {
                 // Exact methods can handle arbitrary structures
-                self.generate_arbitrary_problem(&mut ising, &mut rng)?
+                self.generate_arbitrary_problem(&mut ising, &mut rng)?;
             }
             _ => {
                 // Default structured problem
-                self.generate_default_cd_problem(&mut ising, &mut rng)?
+                self.generate_default_cd_problem(&mut ising, &mut rng)?;
             }
         }
 
@@ -426,17 +427,17 @@ impl CounterdiabaticDrivingOptimizer {
     }
 
     /// Estimate problem size from generic type
-    fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
+    const fn estimate_problem_size<P>(&self, _problem: &P) -> usize {
         // In practice, would extract size from problem structure
         // Use reasonable size for counterdiabatic protocols
         8
     }
 
     /// Generate hash for problem to ensure consistent conversion
-    fn hash_problem<P>(&self, _problem: &P) -> u64 {
+    const fn hash_problem<P>(&self, _problem: &P) -> u64 {
         // In practice, would hash problem structure
         // Use fixed seed for reproducibility
-        67890
+        67_890
     }
 
     /// Optimize using counterdiabatic driving
@@ -510,7 +511,7 @@ impl CounterdiabaticDrivingOptimizer {
             if let Ok(bias) = problem.get_bias(i) {
                 if bias.abs() > 1e-10 {
                     hamiltonian_components.push(HamiltonianComponent {
-                        pauli_string: format!("Z_{}", i),
+                        pauli_string: format!("Z_{i}"),
                         coefficient: bias,
                         qubit_indices: vec![i],
                     });
@@ -524,7 +525,7 @@ impl CounterdiabaticDrivingOptimizer {
                 if let Ok(coupling) = problem.get_coupling(i, j) {
                     if coupling.abs() > 1e-10 {
                         hamiltonian_components.push(HamiltonianComponent {
-                            pauli_string: format!("Z_{}Z_{}", i, j),
+                            pauli_string: format!("Z_{i}Z_{j}"),
                             coefficient: coupling,
                             qubit_indices: vec![i, j],
                         });
@@ -536,7 +537,7 @@ impl CounterdiabaticDrivingOptimizer {
         // Add mixer Hamiltonian (transverse field)
         for i in 0..problem.num_qubits {
             hamiltonian_components.push(HamiltonianComponent {
-                pauli_string: format!("X_{}", i),
+                pauli_string: format!("X_{i}"),
                 coefficient: 1.0, // Will be modulated by schedule
                 qubit_indices: vec![i],
             });
@@ -644,7 +645,7 @@ impl CounterdiabaticDrivingOptimizer {
             .qubit_indices
             .iter()
             .chain(h2.qubit_indices.iter())
-            .cloned()
+            .copied()
             .collect();
 
         Ok(CounterdiabaticTerm {
@@ -750,7 +751,7 @@ impl CounterdiabaticDrivingOptimizer {
         let coefficient_feature = component.coefficient.abs();
 
         // Simple linear model (in practice would use trained neural network)
-        let prediction = 0.5 * locality_feature + 0.3 * coefficient_feature;
+        let prediction = 0.5f64.mul_add(locality_feature, 0.3 * coefficient_feature);
         Ok(prediction)
     }
 
@@ -851,7 +852,7 @@ impl CounterdiabaticDrivingOptimizer {
             .iter()
             .map(|term| term.coefficient.abs())
             .sum::<f64>();
-        let fidelity = (1.0 - total_cd_strength * 0.01).max(0.8); // Simple estimate
+        let fidelity = total_cd_strength.mul_add(-0.01, 1.0).max(0.8); // Simple estimate
         Ok(fidelity)
     }
 
@@ -962,12 +963,15 @@ impl CounterdiabaticDrivingOptimizer {
     }
 
     /// Calculate final fidelity
-    fn calculate_final_fidelity(&self, _result: &AnnealingSolution) -> AdvancedQuantumResult<f64> {
+    const fn calculate_final_fidelity(
+        &self,
+        _result: &AnnealingSolution,
+    ) -> AdvancedQuantumResult<f64> {
         Ok(0.92) // Placeholder
     }
 
     /// Calculate energy preservation
-    fn calculate_energy_preservation(
+    const fn calculate_energy_preservation(
         &self,
         _result: &AnnealingSolution,
         _problem: &IsingModel,
@@ -995,7 +999,10 @@ impl CounterdiabaticDrivingOptimizer {
         protocol: &CounterdiabaticProtocol,
     ) -> AdvancedQuantumResult<f64> {
         Ok(protocol.performance.adiabatic_fidelity
-            / (1.0 + protocol.performance.implementation_complexity * 0.01))
+            / protocol
+                .performance
+                .implementation_complexity
+                .mul_add(0.01, 1.0))
     }
 }
 
@@ -1011,11 +1018,13 @@ impl Default for CounterdiabaticMetrics {
 }
 
 /// Create default counterdiabatic driving optimizer
+#[must_use]
 pub fn create_counterdiabatic_driving_optimizer() -> CounterdiabaticDrivingOptimizer {
     CounterdiabaticDrivingOptimizer::new(CounterdiabaticConfig::default())
 }
 
 /// Create custom counterdiabatic driving optimizer
+#[must_use]
 pub fn create_custom_counterdiabatic_optimizer(
     approximation_method: CounterdiabaticApproximation,
     gauge_choice: GaugeChoice,
@@ -1050,10 +1059,14 @@ mod tests {
     fn test_hamiltonian_generation() {
         let optimizer = create_counterdiabatic_driving_optimizer();
         let mut ising = IsingModel::new(3);
-        ising.set_bias(0, 1.0).unwrap();
-        ising.set_coupling(0, 1, 0.5).unwrap();
+        ising.set_bias(0, 1.0).expect("should set bias for qubit 0");
+        ising
+            .set_coupling(0, 1, 0.5)
+            .expect("should set coupling between qubits 0 and 1");
 
-        let hamiltonian = optimizer.generate_original_hamiltonian(&ising).unwrap();
+        let hamiltonian = optimizer
+            .generate_original_hamiltonian(&ising)
+            .expect("should generate original Hamiltonian");
         assert!(!hamiltonian.is_empty());
 
         // Should have bias terms, coupling terms, and mixer terms
@@ -1078,7 +1091,7 @@ mod tests {
 
         let cd_terms = optimizer
             .compute_counterdiabatic_terms(&hamiltonian)
-            .unwrap();
+            .expect("should compute counterdiabatic terms");
         assert!(!cd_terms.is_empty());
 
         for term in &cd_terms {
@@ -1108,7 +1121,7 @@ mod tests {
 
         let resources = optimizer
             .calculate_resource_requirements(&cd_terms)
-            .unwrap();
+            .expect("should calculate resource requirements");
         assert_eq!(resources.num_control_fields, 2);
         assert_eq!(resources.gate_count, 6); // 1*2 + 2*2
         assert_eq!(resources.max_field_strength, 1.0);

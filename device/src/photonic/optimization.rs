@@ -44,7 +44,7 @@ pub enum PhotonicOptimizationObjective {
     MinimizePhotonLoss,
     /// Multi-objective optimization
     MultiObjective {
-        objectives: Vec<PhotonicOptimizationObjective>,
+        objectives: Vec<Self>,
         weights: Vec<f64>,
     },
 }
@@ -175,7 +175,7 @@ pub struct OptimizationStep {
 }
 
 impl PhotonicOptimizer {
-    pub fn new(config: PhotonicOptimizationConfig) -> Self {
+    pub const fn new(config: PhotonicOptimizationConfig) -> Self {
         Self {
             config,
             history: Vec::new(),
@@ -357,7 +357,7 @@ impl PhotonicOptimizer {
                             objective: obj.clone(),
                             ..self.config.clone()
                         };
-                        let sub_optimizer = PhotonicOptimizer::new(sub_config);
+                        let sub_optimizer = Self::new(sub_config);
                         let sub_value = sub_optimizer.evaluate_objective(circuit)?;
                         total_objective += weight * sub_value;
                     }
@@ -416,8 +416,8 @@ impl PhotonicOptimizer {
             if !candidate.gates.is_empty() {
                 let mutation_strength = 0.1;
                 candidate.total_fidelity *=
-                    1.0 + (thread_rng().gen::<f64>() - 0.5) * mutation_strength;
-                candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
+                    (thread_rng().gen::<f64>() - 0.5).mul_add(mutation_strength, 1.0);
+                candidate.total_fidelity = candidate.total_fidelity.clamp(0.0, 1.0);
             }
 
             // Select better candidate
@@ -439,8 +439,9 @@ impl PhotonicOptimizer {
 
         // Random perturbation
         let perturbation_strength = temperature * 0.01;
-        candidate.total_fidelity *= 1.0 + (thread_rng().gen::<f64>() - 0.5) * perturbation_strength;
-        candidate.total_fidelity = candidate.total_fidelity.max(0.0).min(1.0);
+        candidate.total_fidelity *=
+            (thread_rng().gen::<f64>() - 0.5).mul_add(perturbation_strength, 1.0);
+        candidate.total_fidelity = candidate.total_fidelity.clamp(0.0, 1.0);
 
         // Accept or reject based on temperature
         let current_obj = self.evaluate_objective(circuit)?;
@@ -473,7 +474,7 @@ impl PhotonicOptimizer {
             // Update particle position (simplified)
             let velocity = 0.1 * (thread_rng().gen::<f64>() - 0.5);
             particle.total_fidelity += velocity;
-            particle.total_fidelity = particle.total_fidelity.max(0.0).min(1.0);
+            particle.total_fidelity = particle.total_fidelity.clamp(0.0, 1.0);
 
             if self.evaluate_objective(&particle)? > self.evaluate_objective(&best_circuit)? {
                 best_circuit = particle;
@@ -499,8 +500,8 @@ impl PhotonicOptimizer {
             let beta = thread_rng().gen::<f64>() * std::f64::consts::PI;
 
             // Update fidelity based on variational parameters
-            optimized.total_fidelity *= 1.0 + 0.01 * (gamma + beta).cos();
-            optimized.total_fidelity = optimized.total_fidelity.max(0.0).min(1.0);
+            optimized.total_fidelity *= 0.01f64.mul_add((gamma + beta).cos(), 1.0);
+            optimized.total_fidelity = optimized.total_fidelity.clamp(0.0, 1.0);
         }
 
         Ok(optimized)
@@ -625,7 +626,9 @@ mod tests {
         let optimizer = PhotonicOptimizer::new(config);
         let circuit = create_test_circuit();
 
-        let objective = optimizer.evaluate_objective(&circuit).unwrap();
+        let objective = optimizer
+            .evaluate_objective(&circuit)
+            .expect("Objective evaluation should succeed");
         assert_eq!(objective, 0.95); // Should equal circuit fidelity
     }
 

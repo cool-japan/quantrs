@@ -9,7 +9,15 @@ use std::time::{Duration, Instant};
 use super::algorithms::{ClusteringAlgorithm, DistanceMetric, LinkageType};
 use super::config::{ClusteringConfig, FeatureExtractionMethod};
 use super::error::{ClusteringError, ClusteringResult};
-use super::types::*;
+use super::types::{
+    AnalysisStatistics, ClusterQualityMetrics, ClusterStatistics, ClusteringPerformanceMetrics,
+    ClusteringResults, ConnectivityAnalysis, ConvergenceAnalysis, CorrelationAnalysis,
+    DifficultyLevel, DistributionAnalysis, DistributionType, EfficiencyMetrics, EnergyBasin,
+    EnergyStatistics, FunnelAnalysis, LandscapeAnalysis, MultiModalityAnalysis,
+    OptimizationRecommendation, OverallClusteringQuality, PlateauAnalysis, PriorityLevel,
+    RecommendationType, RuggednessMetrics, ScalabilityMetrics, SolutionCluster, SolutionMetadata,
+    SolutionPoint, StatisticalSummary,
+};
 use crate::simulator::AnnealingSolution;
 
 /// Solution clustering analyzer
@@ -24,6 +32,7 @@ pub struct SolutionClusteringAnalyzer {
 
 impl SolutionClusteringAnalyzer {
     /// Create a new solution clustering analyzer
+    #[must_use]
     pub fn new(config: ClusteringConfig) -> Self {
         Self {
             config,
@@ -137,13 +146,13 @@ impl SolutionClusteringAnalyzer {
         match &self.config.feature_extraction {
             FeatureExtractionMethod::Raw => {
                 for point in &mut solution_points {
-                    point.features = Some(point.solution.iter().map(|&x| x as f64).collect());
+                    point.features = Some(point.solution.iter().map(|&x| f64::from(x)).collect());
                 }
             }
             FeatureExtractionMethod::EnergyBased => {
                 for point in &mut solution_points {
                     let mut features = vec![point.energy];
-                    features.extend(point.solution.iter().map(|&x| x as f64));
+                    features.extend(point.solution.iter().map(|&x| f64::from(x)));
                     point.features = Some(features);
                 }
             }
@@ -163,7 +172,7 @@ impl SolutionClusteringAnalyzer {
             _ => {
                 // Default to raw features
                 for point in &mut solution_points {
-                    point.features = Some(point.solution.iter().map(|&x| x as f64).collect());
+                    point.features = Some(point.solution.iter().map(|&x| f64::from(x)).collect());
                 }
             }
         }
@@ -172,6 +181,7 @@ impl SolutionClusteringAnalyzer {
     }
 
     /// Extract structural features from a solution
+    #[must_use]
     pub fn extract_structural_features(&self, solution: &[i8]) -> Vec<f64> {
         let mut features = Vec::new();
 
@@ -201,8 +211,8 @@ impl SolutionClusteringAnalyzer {
             }
         }
 
-        features.push(max_consecutive_ones as f64);
-        features.push(max_consecutive_neg_ones as f64);
+        features.push(f64::from(max_consecutive_ones));
+        features.push(f64::from(max_consecutive_neg_ones));
 
         // Transition count
         let transitions = solution
@@ -232,7 +242,7 @@ impl SolutionClusteringAnalyzer {
         let mut data = vec![vec![0.0; d]; n];
         for (i, point) in solution_points.iter().enumerate() {
             for (j, &spin) in point.solution.iter().enumerate() {
-                data[i][j] = spin as f64;
+                data[i][j] = f64::from(spin);
             }
         }
 
@@ -301,8 +311,12 @@ impl SolutionClusteringAnalyzer {
         let n = solution_points.len();
         let features = solution_points
             .iter()
-            .map(|p| p.features.as_ref().unwrap())
-            .collect::<Vec<_>>();
+            .map(|p| {
+                p.features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError("Solution point missing features".to_string())
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let d = features[0].len();
 
         // Initialize centroids randomly
@@ -562,11 +576,18 @@ impl SolutionClusteringAnalyzer {
         eps: f64,
     ) -> ClusteringResult<Vec<usize>> {
         let mut neighbors = Vec::new();
-        let point_features = solution_points[point_idx].features.as_ref().unwrap();
+        let point_features = solution_points[point_idx]
+            .features
+            .as_ref()
+            .ok_or_else(|| {
+                ClusteringError::DataError("Solution point missing features".to_string())
+            })?;
 
         for (i, other_point) in solution_points.iter().enumerate() {
             if i != point_idx {
-                let other_features = other_point.features.as_ref().unwrap();
+                let other_features = other_point.features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError("Solution point missing features".to_string())
+                })?;
                 let distance = self.calculate_distance(point_features, other_features)?;
                 if distance <= eps {
                     neighbors.push(i);
@@ -588,8 +609,12 @@ impl SolutionClusteringAnalyzer {
 
         for &i in cluster1 {
             for &j in cluster2 {
-                let features1 = solution_points[i].features.as_ref().unwrap();
-                let features2 = solution_points[j].features.as_ref().unwrap();
+                let features1 = solution_points[i].features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError("Solution point missing features".to_string())
+                })?;
+                let features2 = solution_points[j].features.as_ref().ok_or_else(|| {
+                    ClusteringError::DataError("Solution point missing features".to_string())
+                })?;
                 let distance = self.calculate_distance(features1, features2)?;
                 min_distance = min_distance.min(distance);
             }
@@ -670,11 +695,18 @@ impl SolutionClusteringAnalyzer {
             return Vec::new();
         }
 
-        let features_dim = cluster_solutions[0].features.as_ref().unwrap().len();
+        let features_dim = cluster_solutions[0]
+            .features
+            .as_ref()
+            .expect("solution point should have features for centroid calculation")
+            .len();
         let mut centroid = vec![0.0; features_dim];
 
         for solution in cluster_solutions {
-            let features = solution.features.as_ref().unwrap();
+            let features = solution
+                .features
+                .as_ref()
+                .expect("solution point should have features for centroid calculation");
             for (i, &value) in features.iter().enumerate() {
                 centroid[i] += value;
             }
@@ -738,7 +770,7 @@ impl SolutionClusteringAnalyzer {
         }
 
         let intra_cluster_distance = if distance_count > 0 {
-            total_distance / distance_count as f64
+            total_distance / f64::from(distance_count)
         } else {
             0.0
         };
@@ -808,6 +840,7 @@ impl SolutionClusteringAnalyzer {
     }
 
     /// Calculate energy statistics
+    #[must_use]
     pub fn calculate_energy_statistics(
         &self,
         solution_points: &[SolutionPoint],
@@ -828,7 +861,7 @@ impl SolutionClusteringAnalyzer {
         }
 
         let mut sorted_energies = energies.clone();
-        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mean = energies.iter().sum::<f64>() / energies.len() as f64;
         let variance =
@@ -867,7 +900,7 @@ impl SolutionClusteringAnalyzer {
             0.0
         };
 
-        let mut sorted_energies = energies.clone();
+        let mut sorted_energies = energies;
         sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         sorted_energies.dedup_by(|a, b| (*a - *b).abs() < 1e-10);
         let num_distinct_energies = sorted_energies.len();
@@ -915,7 +948,10 @@ impl SolutionClusteringAnalyzer {
     }
 
     /// Analyze connectivity of the solution landscape
-    fn analyze_connectivity(&self, solution_points: &[SolutionPoint]) -> ConnectivityAnalysis {
+    const fn analyze_connectivity(
+        &self,
+        solution_points: &[SolutionPoint],
+    ) -> ConnectivityAnalysis {
         // Simplified connectivity analysis
         ConnectivityAnalysis {
             num_components: 1, // Simplified
@@ -1068,7 +1104,7 @@ impl SolutionClusteringAnalyzer {
             }
         }
 
-        Ok(total_separation / count as f64)
+        Ok(total_separation / f64::from(count))
     }
 
     /// Calculate cluster cohesion
@@ -1106,7 +1142,7 @@ impl SolutionClusteringAnalyzer {
             let mut optimal = 1;
 
             for i in 1..inertias.len() - 1 {
-                let diff = inertias[i - 1] - 2.0 * inertias[i] + inertias[i + 1];
+                let diff = 2.0f64.mul_add(-inertias[i], inertias[i - 1]) + inertias[i + 1];
                 if diff > max_diff {
                     max_diff = diff;
                     optimal = i + 1;

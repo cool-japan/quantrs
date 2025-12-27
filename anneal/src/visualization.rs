@@ -72,35 +72,40 @@ pub struct LandscapeAnalyzer {
 
 impl LandscapeAnalyzer {
     /// Create a new landscape analyzer
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             reference_config: None,
             energy_cutoff: None,
-            max_samples: 10000,
+            max_samples: 10_000,
             seed: None,
         }
     }
 
     /// Set reference configuration for distance calculations
+    #[must_use]
     pub fn with_reference(mut self, config: Vec<i8>) -> Self {
         self.reference_config = Some(config);
         self
     }
 
     /// Set energy cutoff for sampling
-    pub fn with_energy_cutoff(mut self, cutoff: f64) -> Self {
+    #[must_use]
+    pub const fn with_energy_cutoff(mut self, cutoff: f64) -> Self {
         self.energy_cutoff = Some(cutoff);
         self
     }
 
     /// Set maximum number of samples
-    pub fn with_max_samples(mut self, max_samples: usize) -> Self {
+    #[must_use]
+    pub const fn with_max_samples(mut self, max_samples: usize) -> Self {
         self.max_samples = max_samples;
         self
     }
 
     /// Set random seed
-    pub fn with_seed(mut self, seed: u64) -> Self {
+    #[must_use]
+    pub const fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
@@ -336,13 +341,9 @@ pub fn calculate_landscape_stats(points: &[LandscapePoint]) -> LandscapeStats {
 
     // Find energy gap
     let mut unique_energies: Vec<f64> = energy_counts.keys().map(|&OrderedFloat(e)| e).collect();
-    unique_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    unique_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-    let energy_gap = if unique_energies.len() > 1 {
-        Some(unique_energies[1] - unique_energies[0])
-    } else {
-        None
-    };
+    let energy_gap = (unique_energies.len() > 1).then(|| unique_energies[1] - unique_energies[0]);
 
     LandscapeStats {
         num_configurations: points.len(),
@@ -376,13 +377,13 @@ pub fn plot_energy_landscape<P: AsRef<Path>>(
             point.energy,
             point
                 .hamming_distance
-                .map_or("".to_string(), |d| d.to_string()),
-            point.basin_id.map_or("".to_string(), |b| b.to_string())
+                .map_or(String::new(), |d| d.to_string()),
+            point.basin_id.map_or(String::new(), |b| b.to_string())
         )?;
     }
 
     // Write metadata as comments
-    writeln!(file, "# Title: {}", title)?;
+    writeln!(file, "# Title: {title}")?;
     writeln!(file, "# Number of points: {}", points.len())?;
 
     if !points.is_empty() {
@@ -431,9 +432,9 @@ pub fn plot_energy_histogram<P: AsRef<Path>>(
     writeln!(file, "bin_center,count,frequency")?;
 
     for (i, &count) in bins.iter().enumerate() {
-        let bin_center = min_energy + (i as f64 + 0.5) * bin_width;
-        let frequency = count as f64 / energies.len() as f64;
-        writeln!(file, "{:.6},{},{:.6}", bin_center, count, frequency)?;
+        let bin_center = (i as f64 + 0.5).mul_add(bin_width, min_energy);
+        let frequency = f64::from(count) / energies.len() as f64;
+        writeln!(file, "{bin_center:.6},{count},{frequency:.6}")?;
     }
 
     Ok(())
@@ -485,7 +486,8 @@ pub struct BasinAnalyzer {
 
 impl BasinAnalyzer {
     /// Create a new basin analyzer
-    pub fn new(energy_tolerance: f64, hamming_threshold: usize) -> Self {
+    #[must_use]
+    pub const fn new(energy_tolerance: f64, hamming_threshold: usize) -> Self {
         Self {
             energy_tolerance,
             hamming_threshold,
@@ -545,13 +547,21 @@ mod tests {
     #[test]
     fn test_landscape_analyzer() {
         let mut model = IsingModel::new(4);
-        model.set_coupling(0, 1, -1.0).unwrap();
-        model.set_coupling(1, 2, -1.0).unwrap();
-        model.set_coupling(2, 3, -1.0).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("set_coupling(0,1) should succeed");
+        model
+            .set_coupling(1, 2, -1.0)
+            .expect("set_coupling(1,2) should succeed");
+        model
+            .set_coupling(2, 3, -1.0)
+            .expect("set_coupling(2,3) should succeed");
 
         let analyzer = LandscapeAnalyzer::new().with_max_samples(100).with_seed(42);
 
-        let points = analyzer.sample_landscape(&model).unwrap();
+        let points = analyzer
+            .sample_landscape(&model)
+            .expect("sample_landscape should succeed");
         assert!(!points.is_empty());
         assert!(points.len() <= 100);
     }
@@ -621,7 +631,9 @@ mod tests {
         ];
 
         let analyzer = BasinAnalyzer::new(0.2, 1);
-        let num_basins = analyzer.identify_basins(&mut points).unwrap();
+        let num_basins = analyzer
+            .identify_basins(&mut points)
+            .expect("identify_basins should succeed");
 
         assert_eq!(num_basins, 2);
         assert_eq!(points[0].basin_id, points[1].basin_id);

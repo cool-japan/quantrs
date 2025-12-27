@@ -15,7 +15,7 @@ pub struct BandwidthAllocationConfig {
 impl Default for BandwidthAllocationConfig {
     fn default() -> Self {
         Self {
-            total_bandwidth: 1000000.0, // 1 Mbps
+            total_bandwidth: 1_000_000.0, // 1 Mbps
             priority_based_allocation: true,
             dynamic_allocation: true,
             oversubscription_ratio: 1.5,

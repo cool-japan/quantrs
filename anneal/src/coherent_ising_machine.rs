@@ -78,11 +78,13 @@ pub struct Complex {
 
 impl Complex {
     /// Create a new complex number
-    pub fn new(re: f64, im: f64) -> Self {
+    #[must_use]
+    pub const fn new(re: f64, im: f64) -> Self {
         Self { re, im }
     }
 
     /// Create from polar coordinates
+    #[must_use]
     pub fn from_polar(magnitude: f64, phase: f64) -> Self {
         Self {
             re: magnitude * phase.cos(),
@@ -91,21 +93,25 @@ impl Complex {
     }
 
     /// Get magnitude squared
+    #[must_use]
     pub fn magnitude_squared(&self) -> f64 {
-        self.re * self.re + self.im * self.im
+        self.re.mul_add(self.re, self.im * self.im)
     }
 
     /// Get magnitude
+    #[must_use]
     pub fn magnitude(&self) -> f64 {
         self.magnitude_squared().sqrt()
     }
 
     /// Get phase angle
+    #[must_use]
     pub fn phase(&self) -> f64 {
         self.im.atan2(self.re)
     }
 
     /// Complex conjugate
+    #[must_use]
     pub fn conjugate(&self) -> Self {
         Self {
             re: self.re,
@@ -141,8 +147,8 @@ impl std::ops::Mul for Complex {
 
     fn mul(self, other: Self) -> Self {
         Self {
-            re: self.re * other.re - self.im * other.im,
-            im: self.re * other.im + self.im * other.re,
+            re: self.re.mul_add(other.re, -(self.im * other.im)),
+            im: self.re.mul_add(other.im, self.im * other.re),
         }
     }
 }
@@ -264,7 +270,7 @@ pub enum PumpSchedule {
 impl std::fmt::Debug for PumpSchedule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PumpSchedule::Linear {
+            Self::Linear {
                 initial_power,
                 final_power,
             } => f
@@ -272,7 +278,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("initial_power", initial_power)
                 .field("final_power", final_power)
                 .finish(),
-            PumpSchedule::Exponential {
+            Self::Exponential {
                 initial_power,
                 final_power,
                 time_constant,
@@ -282,7 +288,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("final_power", final_power)
                 .field("time_constant", time_constant)
                 .finish(),
-            PumpSchedule::Sigmoid {
+            Self::Sigmoid {
                 initial_power,
                 final_power,
                 steepness,
@@ -294,7 +300,7 @@ impl std::fmt::Debug for PumpSchedule {
                 .field("steepness", steepness)
                 .field("midpoint", midpoint)
                 .finish(),
-            PumpSchedule::Custom { .. } => f
+            Self::Custom { .. } => f
                 .debug_struct("Custom")
                 .field("power_function", &"<function>")
                 .finish(),
@@ -305,36 +311,36 @@ impl std::fmt::Debug for PumpSchedule {
 impl Clone for PumpSchedule {
     fn clone(&self) -> Self {
         match self {
-            PumpSchedule::Linear {
+            Self::Linear {
                 initial_power,
                 final_power,
-            } => PumpSchedule::Linear {
+            } => Self::Linear {
                 initial_power: *initial_power,
                 final_power: *final_power,
             },
-            PumpSchedule::Exponential {
+            Self::Exponential {
                 initial_power,
                 final_power,
                 time_constant,
-            } => PumpSchedule::Exponential {
+            } => Self::Exponential {
                 initial_power: *initial_power,
                 final_power: *final_power,
                 time_constant: *time_constant,
             },
-            PumpSchedule::Sigmoid {
+            Self::Sigmoid {
                 initial_power,
                 final_power,
                 steepness,
                 midpoint,
-            } => PumpSchedule::Sigmoid {
+            } => Self::Sigmoid {
                 initial_power: *initial_power,
                 final_power: *final_power,
                 steepness: *steepness,
                 midpoint: *midpoint,
             },
-            PumpSchedule::Custom { .. } => {
+            Self::Custom { .. } => {
                 // Cannot clone function pointers, use default linear schedule
-                PumpSchedule::Linear {
+                Self::Linear {
                     initial_power: 0.0,
                     final_power: 1.0,
                 }
@@ -689,8 +695,7 @@ impl CoherentIsingMachine {
 
                     if i != j {
                         let edge = if i < j { (i, j) } else { (j, i) };
-                        if !added_edges.contains(&edge) {
-                            added_edges.insert(edge);
+                        if added_edges.insert(edge) {
                             let strength = self.rng.gen_range(0.05..0.25);
                             self.add_bidirectional_coupling(edge.0, edge.1, strength);
                         }
@@ -805,7 +810,7 @@ impl CoherentIsingMachine {
                 converged = true;
                 convergence_time = self.current_time;
                 if self.config.detailed_logging {
-                    println!("Converged at time {:.3}", convergence_time);
+                    println!("Converged at time {convergence_time:.3}");
                 }
             }
 
@@ -843,8 +848,8 @@ impl CoherentIsingMachine {
             performance_metrics,
         };
 
-        println!("CIM simulation completed in {:.2?}", total_simulation_time);
-        println!("Best energy: {:.6}, Converged: {}", best_energy, converged);
+        println!("CIM simulation completed in {total_simulation_time:.2?}");
+        println!("Best energy: {best_energy:.6}, Converged: {converged}");
 
         Ok(results)
     }
@@ -970,8 +975,10 @@ impl CoherentIsingMachine {
             let new_phase = current_phase + phase_noise;
 
             // Amplitude noise
-            let amplitude_noise =
-                1.0 + self.rng.gen_range(-1.0..1.0) * noise_config.amplitude_noise;
+            let amplitude_noise = self
+                .rng
+                .gen_range(-1.0_f64..1.0)
+                .mul_add(noise_config.amplitude_noise, 1.0);
             let current_magnitude = osc.amplitude.magnitude();
             let new_magnitude = current_magnitude * amplitude_noise;
 
@@ -980,7 +987,8 @@ impl CoherentIsingMachine {
                 + Complex::new(quantum_noise_re, quantum_noise_im);
 
             // Decoherence (amplitude damping)
-            osc.amplitude = osc.amplitude * (1.0 - noise_config.decoherence_rate * self.config.dt);
+            osc.amplitude =
+                osc.amplitude * noise_config.decoherence_rate.mul_add(-self.config.dt, 1.0);
         }
     }
 
@@ -1018,15 +1026,15 @@ impl CoherentIsingMachine {
 
         // Bias terms
         for i in 0..solution.len() {
-            energy += problem.get_bias(i).unwrap_or(0.0) * solution[i] as f64;
+            energy += problem.get_bias(i).unwrap_or(0.0) * f64::from(solution[i]);
         }
 
         // Coupling terms
         for i in 0..solution.len() {
             for j in (i + 1)..solution.len() {
                 energy += problem.get_coupling(i, j).unwrap_or(0.0)
-                    * solution[i] as f64
-                    * solution[j] as f64;
+                    * f64::from(solution[i])
+                    * f64::from(solution[j]);
             }
         }
 
@@ -1154,6 +1162,7 @@ impl CoherentIsingMachine {
 /// Helper functions for creating CIM configurations
 
 /// Create a standard CIM configuration for small problems
+#[must_use]
 pub fn create_standard_cim_config(num_oscillators: usize, simulation_time: f64) -> CimConfig {
     CimConfig {
         num_oscillators,
@@ -1169,6 +1178,7 @@ pub fn create_standard_cim_config(num_oscillators: usize, simulation_time: f64) 
 }
 
 /// Create a CIM configuration with low noise for testing
+#[must_use]
 pub fn create_low_noise_cim_config(num_oscillators: usize) -> CimConfig {
     let mut config = create_standard_cim_config(num_oscillators, 5.0);
     config.noise_config = NoiseConfig {
@@ -1182,6 +1192,7 @@ pub fn create_low_noise_cim_config(num_oscillators: usize) -> CimConfig {
 }
 
 /// Create a CIM configuration with realistic noise
+#[must_use]
 pub fn create_realistic_cim_config(num_oscillators: usize) -> CimConfig {
     let mut config = create_standard_cim_config(num_oscillators, 10.0);
     config.noise_config = NoiseConfig {

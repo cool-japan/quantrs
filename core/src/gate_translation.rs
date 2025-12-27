@@ -90,7 +90,7 @@ pub enum GateType {
     YY(String),
     ZZ(String), // Parameterized two-qubit gates
     // Controlled gates
-    Controlled(Box<GateType>),
+    Controlled(Box<Self>),
     // Custom gates
     Custom(String),
     // Platform-specific gates
@@ -521,7 +521,7 @@ impl GateTranslator {
 
         // Generate cache key
         let cache_key =
-            self.generate_cache_key(circuit, &source_gate_set, &target_gate_set, strategy);
+            Self::generate_cache_key(circuit, &source_gate_set, &target_gate_set, strategy);
 
         // Check cache first
         if let Some(cached_result) = self.check_translation_cache(&cache_key)? {
@@ -536,13 +536,13 @@ impl GateTranslator {
 
         // Perform translation
         let translated_circuit =
-            self.perform_translation(circuit, &source_gate_set, &target_gate_set, strategy)?;
+            Self::perform_translation(circuit, &source_gate_set, &target_gate_set, strategy)?;
 
         // Verify translation
         self.verify_translation(circuit, &translated_circuit)?;
 
         // Optimize translated circuit
-        let optimized_circuit = self.optimize_translated_circuit(translated_circuit, strategy)?;
+        let optimized_circuit = Self::optimize_translated_circuit(translated_circuit, strategy)?;
 
         // Cache result
         self.cache_translation(
@@ -561,7 +561,7 @@ impl GateTranslator {
 
     /// Get available gate sets
     pub fn get_available_gate_sets(&self) -> Vec<UniversalGateSet> {
-        let gate_sets = self.gate_sets.read().unwrap();
+        let gate_sets = self.gate_sets.read().expect("Gate sets lock poisoned");
         gate_sets.keys().cloned().collect()
     }
 
@@ -571,21 +571,24 @@ impl GateTranslator {
         gate_set: UniversalGateSet,
         spec: GateSetSpecification,
     ) -> QuantRS2Result<()> {
-        let mut gate_sets = self.gate_sets.write().unwrap();
+        let mut gate_sets = self.gate_sets.write().expect("Gate sets lock poisoned");
         gate_sets.insert(gate_set, spec);
         Ok(())
     }
 
     /// Add custom translation rule
     pub fn add_translation_rule(&self, _rule: TranslationRule) -> QuantRS2Result<()> {
-        let _rules = self.translation_rules.write().unwrap();
+        let _rules = self
+            .translation_rules
+            .write()
+            .expect("Translation rules lock poisoned");
         // Implementation would add rule to appropriate categories
         Ok(())
     }
 
     /// Initialize built-in gate sets
     fn initialize_builtin_gate_sets(&self) -> QuantRS2Result<()> {
-        let mut gate_sets = self.gate_sets.write().unwrap();
+        let mut gate_sets = self.gate_sets.write().expect("Gate sets lock poisoned");
 
         // Clifford+T gate set
         gate_sets.insert(UniversalGateSet::CliffordT, create_clifford_t_gate_set());
@@ -610,18 +613,21 @@ impl GateTranslator {
 
     /// Initialize built-in translation rules
     fn initialize_builtin_translation_rules(&self) -> QuantRS2Result<()> {
-        let mut rules = self.translation_rules.write().unwrap();
+        let mut rules = self
+            .translation_rules
+            .write()
+            .expect("Translation rules lock poisoned");
 
         // Add basic translation rules
-        self.add_pauli_translation_rules(&mut rules);
-        self.add_rotation_translation_rules(&mut rules);
-        self.add_two_qubit_translation_rules(&mut rules);
-        self.add_controlled_gate_translation_rules(&mut rules);
+        Self::add_pauli_translation_rules(&mut rules);
+        Self::add_rotation_translation_rules(&mut rules);
+        Self::add_two_qubit_translation_rules(&mut rules);
+        Self::add_controlled_gate_translation_rules(&mut rules);
 
         Ok(())
     }
 
-    fn add_pauli_translation_rules(&self, rules: &mut TranslationRuleDatabase) {
+    fn add_pauli_translation_rules(rules: &mut TranslationRuleDatabase) {
         // X gate translations
         let x_to_rx_rule = TranslationRule {
             source_pattern: GatePattern {
@@ -661,15 +667,15 @@ impl GateTranslator {
             .push(x_to_rx_rule);
     }
 
-    fn add_rotation_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
+    const fn add_rotation_translation_rules(_rules: &mut TranslationRuleDatabase) {
         // Rotation decomposition rules would be added here
     }
 
-    fn add_two_qubit_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
+    const fn add_two_qubit_translation_rules(_rules: &mut TranslationRuleDatabase) {
         // Two-qubit gate translation rules would be added here
     }
 
-    fn add_controlled_gate_translation_rules(&self, _rules: &mut TranslationRuleDatabase) {
+    const fn add_controlled_gate_translation_rules(_rules: &mut TranslationRuleDatabase) {
         // Controlled gate translation rules would be added here
     }
 
@@ -678,19 +684,17 @@ impl GateTranslator {
         source: &UniversalGateSet,
         target: &UniversalGateSet,
     ) -> QuantRS2Result<()> {
-        let gate_sets = self.gate_sets.read().unwrap();
+        let gate_sets = self.gate_sets.read().expect("Gate sets lock poisoned");
 
         if !gate_sets.contains_key(&source) {
             return Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Source gate set {:?} not supported",
-                source
+                "Source gate set {source:?} not supported"
             )));
         }
 
         if !gate_sets.contains_key(&target) {
             return Err(QuantRS2Error::UnsupportedOperation(format!(
-                "Target gate set {:?} not supported",
-                target
+                "Target gate set {target:?} not supported"
             )));
         }
 
@@ -698,7 +702,6 @@ impl GateTranslator {
     }
 
     fn perform_translation(
-        &self,
         circuit: &[Box<dyn GateOp>],
         source_gate_set: &UniversalGateSet,
         target_gate_set: &UniversalGateSet,
@@ -711,7 +714,7 @@ impl GateTranslator {
         // Simple gate-by-gate translation (real implementation would be more sophisticated)
         for (_i, gate) in circuit.iter().enumerate() {
             let translated_gate =
-                self.translate_single_gate(gate, &source_gate_set, &target_gate_set)?;
+                Self::translate_single_gate(gate, &source_gate_set, &target_gate_set)?;
             translated_gates.push(translated_gate);
         }
 
@@ -737,7 +740,6 @@ impl GateTranslator {
     }
 
     fn translate_single_gate(
-        &self,
         gate: &Box<dyn GateOp>,
         _source_gate_set: &UniversalGateSet,
         _target_gate_set: &UniversalGateSet,
@@ -783,7 +785,10 @@ impl GateTranslator {
         original: &[Box<dyn GateOp>],
         translated: &TranslatedCircuit,
     ) -> QuantRS2Result<()> {
-        let _verification_engine = self.verification_engine.read().unwrap();
+        let _verification_engine = self
+            .verification_engine
+            .read()
+            .expect("Verification engine lock poisoned");
 
         // Simplified verification - real implementation would be more thorough
         if translated.gates.len() < original.len() {
@@ -796,22 +801,20 @@ impl GateTranslator {
     }
 
     fn optimize_translated_circuit(
-        &self,
         circuit: TranslatedCircuit,
         strategy: TranslationStrategy,
     ) -> QuantRS2Result<TranslatedCircuit> {
         // Apply strategy-specific optimizations
         match strategy {
-            TranslationStrategy::MinimizeGates => self.optimize_for_gate_count(circuit),
-            TranslationStrategy::MinimizeDepth => self.optimize_for_depth(circuit),
-            TranslationStrategy::MaximizeFidelity => self.optimize_for_fidelity(circuit),
-            TranslationStrategy::Balanced => self.optimize_balanced(circuit),
+            TranslationStrategy::MinimizeGates => Self::optimize_for_gate_count(circuit),
+            TranslationStrategy::MinimizeDepth => Self::optimize_for_depth(circuit),
+            TranslationStrategy::MaximizeFidelity => Self::optimize_for_fidelity(circuit),
+            TranslationStrategy::Balanced => Self::optimize_balanced(circuit),
             _ => Ok(circuit),
         }
     }
 
     fn optimize_for_gate_count(
-        &self,
         mut circuit: TranslatedCircuit,
     ) -> QuantRS2Result<TranslatedCircuit> {
         // Gate count optimization (cancellation, fusion, etc.)
@@ -831,27 +834,25 @@ impl GateTranslator {
         Ok(circuit)
     }
 
-    fn optimize_for_depth(&self, circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
+    const fn optimize_for_depth(circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
         // Depth optimization (parallelization, commutation)
         Ok(circuit)
     }
 
-    fn optimize_for_fidelity(
-        &self,
+    const fn optimize_for_fidelity(
         circuit: TranslatedCircuit,
     ) -> QuantRS2Result<TranslatedCircuit> {
         // Fidelity optimization (prefer higher fidelity gates)
         Ok(circuit)
     }
 
-    fn optimize_balanced(&self, circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
+    const fn optimize_balanced(circuit: TranslatedCircuit) -> QuantRS2Result<TranslatedCircuit> {
         // Balanced optimization considering all factors
         Ok(circuit)
     }
 
     // Cache management methods
     fn generate_cache_key(
-        &self,
         circuit: &[Box<dyn GateOp>],
         source: &UniversalGateSet,
         target: &UniversalGateSet,
@@ -862,7 +863,10 @@ impl GateTranslator {
     }
 
     fn check_translation_cache(&self, key: &str) -> QuantRS2Result<Option<TranslatedCircuit>> {
-        let cache = self.translation_cache.read().unwrap();
+        let cache = self
+            .translation_cache
+            .read()
+            .expect("Translation cache lock poisoned");
         Ok(cache
             .cache_entries
             .get(key)
@@ -876,7 +880,10 @@ impl GateTranslator {
         _source: &UniversalGateSet,
         _target: &UniversalGateSet,
     ) -> QuantRS2Result<()> {
-        let mut cache = self.translation_cache.write().unwrap();
+        let mut cache = self
+            .translation_cache
+            .write()
+            .expect("Translation cache lock poisoned");
 
         let entry = TranslationCacheEntry {
             source_fingerprint: key.to_string(),
@@ -913,7 +920,10 @@ impl GateTranslator {
     }
 
     fn record_cache_hit(&self) {
-        let mut cache = self.translation_cache.write().unwrap();
+        let mut cache = self
+            .translation_cache
+            .write()
+            .expect("Translation cache lock poisoned");
         cache.cache_stats.cache_hits += 1;
         cache.cache_stats.total_requests += 1;
         cache.cache_stats.hit_rate =
@@ -921,7 +931,10 @@ impl GateTranslator {
     }
 
     fn record_cache_miss(&self) {
-        let mut cache = self.translation_cache.write().unwrap();
+        let mut cache = self
+            .translation_cache
+            .write()
+            .expect("Translation cache lock poisoned");
         cache.cache_stats.cache_misses += 1;
         cache.cache_stats.total_requests += 1;
         cache.cache_stats.hit_rate =
@@ -934,7 +947,10 @@ impl GateTranslator {
         target: &UniversalGateSet,
         duration: Duration,
     ) {
-        let mut monitor = self.performance_monitor.write().unwrap();
+        let mut monitor = self
+            .performance_monitor
+            .write()
+            .expect("Performance monitor lock poisoned");
         monitor
             .translation_times
             .entry((source.clone(), target.clone()))
@@ -944,8 +960,14 @@ impl GateTranslator {
 
     /// Get translation performance statistics
     pub fn get_performance_stats(&self) -> TranslationPerformanceStats {
-        let monitor = self.performance_monitor.read().unwrap();
-        let cache = self.translation_cache.read().unwrap();
+        let monitor = self
+            .performance_monitor
+            .read()
+            .expect("Performance monitor lock poisoned");
+        let cache = self
+            .translation_cache
+            .read()
+            .expect("Translation cache lock poisoned");
 
         TranslationPerformanceStats {
             cache_stats: cache.cache_stats.clone(),
@@ -1151,7 +1173,7 @@ impl VerificationStrategy for MatrixVerificationStrategy {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Matrix Verification"
     }
 
@@ -1181,7 +1203,7 @@ impl VerificationStrategy for StatisticalVerificationStrategy {
         })
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Statistical Verification"
     }
 
@@ -1194,14 +1216,14 @@ impl VerificationStrategy for StatisticalVerificationStrategy {
 impl fmt::Display for UniversalGateSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UniversalGateSet::CliffordT => write!(f, "Clifford+T"),
-            UniversalGateSet::ContinuousRotation => write!(f, "Continuous Rotation"),
-            UniversalGateSet::IBM => write!(f, "IBM"),
-            UniversalGateSet::Google => write!(f, "Google"),
-            UniversalGateSet::IonQ => write!(f, "IonQ"),
-            UniversalGateSet::Rigetti => write!(f, "Rigetti"),
-            UniversalGateSet::Xanadu => write!(f, "Xanadu"),
-            UniversalGateSet::Custom(name) => write!(f, "Custom({})", name),
+            Self::CliffordT => write!(f, "Clifford+T"),
+            Self::ContinuousRotation => write!(f, "Continuous Rotation"),
+            Self::IBM => write!(f, "IBM"),
+            Self::Google => write!(f, "Google"),
+            Self::IonQ => write!(f, "IonQ"),
+            Self::Rigetti => write!(f, "Rigetti"),
+            Self::Xanadu => write!(f, "Xanadu"),
+            Self::Custom(name) => write!(f, "Custom({name})"),
         }
     }
 }
@@ -1209,19 +1231,19 @@ impl fmt::Display for UniversalGateSet {
 impl fmt::Display for GateType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GateType::X => write!(f, "X"),
-            GateType::Y => write!(f, "Y"),
-            GateType::Z => write!(f, "Z"),
-            GateType::H => write!(f, "H"),
-            GateType::S => write!(f, "S"),
-            GateType::T => write!(f, "T"),
-            GateType::Rx(param) => write!(f, "Rx({})", param),
-            GateType::Ry(param) => write!(f, "Ry({})", param),
-            GateType::Rz(param) => write!(f, "Rz({})", param),
-            GateType::CNOT => write!(f, "CNOT"),
-            GateType::CZ => write!(f, "CZ"),
-            GateType::Custom(name) => write!(f, "Custom({})", name),
-            _ => write!(f, "{:?}", self),
+            Self::X => write!(f, "X"),
+            Self::Y => write!(f, "Y"),
+            Self::Z => write!(f, "Z"),
+            Self::H => write!(f, "H"),
+            Self::S => write!(f, "S"),
+            Self::T => write!(f, "T"),
+            Self::Rx(param) => write!(f, "Rx({param})"),
+            Self::Ry(param) => write!(f, "Ry({param})"),
+            Self::Rz(param) => write!(f, "Rz({param})"),
+            Self::CNOT => write!(f, "CNOT"),
+            Self::CZ => write!(f, "CZ"),
+            Self::Custom(name) => write!(f, "Custom({name})"),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
@@ -1235,7 +1257,7 @@ mod tests {
         let translator = GateTranslator::new();
         assert!(translator.is_ok());
 
-        let translator = translator.unwrap();
+        let translator = translator.expect("GateTranslator::new should succeed");
         let available_gate_sets = translator.get_available_gate_sets();
         assert!(available_gate_sets.contains(&UniversalGateSet::CliffordT));
         assert!(available_gate_sets.contains(&UniversalGateSet::IBM));
@@ -1262,7 +1284,7 @@ mod tests {
 
     #[test]
     fn test_custom_gate_set_registration() {
-        let translator = GateTranslator::new().unwrap();
+        let translator = GateTranslator::new().expect("GateTranslator::new should succeed");
 
         let custom_gate_set = GateSetSpecification {
             gate_set: UniversalGateSet::Custom("TestSet".to_string()),

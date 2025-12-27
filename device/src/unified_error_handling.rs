@@ -138,7 +138,7 @@ impl Display for UnifiedDeviceError {
             f,
             "[{}:{}] {} - {}",
             self.context.provider,
-            self.context.category.to_string(),
+            self.context.category,
             self.context.message,
             self.context.user_message
         )
@@ -298,7 +298,7 @@ impl UnifiedErrorHandler {
     }
 
     /// Get error statistics for monitoring and alerting
-    pub fn get_error_statistics(&self) -> &HashMap<ErrorCategory, u64> {
+    pub const fn get_error_statistics(&self) -> &HashMap<ErrorCategory, u64> {
         &self.error_stats
     }
 
@@ -316,7 +316,7 @@ impl UnifiedErrorHandler {
     pub fn add_error_mapping(&mut self, provider: &str, error_code: &str, category: ErrorCategory) {
         self.error_mappings
             .entry(provider.to_string())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(error_code.to_string(), category);
     }
 
@@ -517,10 +517,15 @@ impl UnifiedErrorHandler {
             DeviceError::InvalidResponse(_) => ErrorCategory::DataFormat,
             DeviceError::UnknownJobStatus(_) => ErrorCategory::ServerError,
             DeviceError::ResourceExhaustion(_) => ErrorCategory::Hardware,
+            DeviceError::LockError(_) => ErrorCategory::Critical,
         }
     }
 
-    fn determine_severity(&self, category: &ErrorCategory, _error: &DeviceError) -> ErrorSeverity {
+    const fn determine_severity(
+        &self,
+        category: &ErrorCategory,
+        _error: &DeviceError,
+    ) -> ErrorSeverity {
         match category {
             ErrorCategory::Critical => ErrorSeverity::Critical,
             ErrorCategory::Authentication
@@ -580,7 +585,7 @@ impl UnifiedErrorHandler {
         }
     }
 
-    fn is_retryable(&self, category: &ErrorCategory) -> bool {
+    const fn is_retryable(&self, category: &ErrorCategory) -> bool {
         matches!(
             category,
             ErrorCategory::Network
@@ -597,7 +602,7 @@ impl UnifiedErrorHandler {
             DeviceError::APIError(msg) => {
                 // Try to extract error codes from common formats
                 if let Some(start) = msg.find("Error:") {
-                    if let Some(end) = msg[start..].find(" ") {
+                    if let Some(end) = msg[start..].find(' ') {
                         return Some(msg[start + 6..start + end].to_string());
                     }
                 }
@@ -609,7 +614,7 @@ impl UnifiedErrorHandler {
 
     fn extract_error_details(&self, error: &DeviceError) -> HashMap<String, String> {
         let mut details = HashMap::new();
-        details.insert("error_type".to_string(), format!("{:?}", error));
+        details.insert("error_type".to_string(), format!("{error:?}"));
         details.insert("error_message".to_string(), error.to_string());
         details
     }
@@ -703,22 +708,22 @@ impl Default for UnifiedErrorHandler {
 impl Display for ErrorCategory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let display = match self {
-            ErrorCategory::Network => "Network",
-            ErrorCategory::Authentication => "Authentication",
-            ErrorCategory::RateLimit => "RateLimit",
-            ErrorCategory::Validation => "Validation",
-            ErrorCategory::Hardware => "Hardware",
-            ErrorCategory::ServiceUnavailable => "ServiceUnavailable",
-            ErrorCategory::ServerError => "ServerError",
-            ErrorCategory::NotFound => "NotFound",
-            ErrorCategory::Timeout => "Timeout",
-            ErrorCategory::Insufficient => "Insufficient",
-            ErrorCategory::DataFormat => "DataFormat",
-            ErrorCategory::Unsupported => "Unsupported",
-            ErrorCategory::Execution => "Execution",
-            ErrorCategory::Critical => "Critical",
+            Self::Network => "Network",
+            Self::Authentication => "Authentication",
+            Self::RateLimit => "RateLimit",
+            Self::Validation => "Validation",
+            Self::Hardware => "Hardware",
+            Self::ServiceUnavailable => "ServiceUnavailable",
+            Self::ServerError => "ServerError",
+            Self::NotFound => "NotFound",
+            Self::Timeout => "Timeout",
+            Self::Insufficient => "Insufficient",
+            Self::DataFormat => "DataFormat",
+            Self::Unsupported => "Unsupported",
+            Self::Execution => "Execution",
+            Self::Critical => "Critical",
         };
-        write!(f, "{}", display)
+        write!(f, "{display}")
     }
 }
 

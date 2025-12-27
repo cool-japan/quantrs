@@ -25,10 +25,10 @@ pub enum PauliOperator {
 impl fmt::Display for PauliOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PauliOperator::I => write!(f, "I"),
-            PauliOperator::X => write!(f, "X"),
-            PauliOperator::Y => write!(f, "Y"),
-            PauliOperator::Z => write!(f, "Z"),
+            Self::I => write!(f, "I"),
+            Self::X => write!(f, "X"),
+            Self::Y => write!(f, "Y"),
+            Self::Z => write!(f, "Z"),
         }
     }
 }
@@ -58,7 +58,7 @@ impl Hash for PauliString {
 impl PauliString {
     /// Create a new Pauli string
     pub fn new(n_qubits: usize) -> Self {
-        PauliString {
+        Self {
             operators: HashMap::new(),
             n_qubits,
         }
@@ -66,10 +66,11 @@ impl PauliString {
 
     /// Create an identity string
     pub fn identity(n_qubits: usize) -> Self {
-        PauliString::new(n_qubits)
+        Self::new(n_qubits)
     }
 
     /// Add a Pauli operator at a specific qubit
+    #[must_use]
     pub fn with_operator(mut self, qubit: QubitId, op: PauliOperator) -> Self {
         if op != PauliOperator::I {
             self.operators.insert(qubit, op);
@@ -96,12 +97,13 @@ impl PauliString {
     }
 
     /// Multiply two Pauli strings
-    pub fn multiply(&self, other: &PauliString) -> (Complex64, PauliString) {
-        if self.n_qubits != other.n_qubits {
-            panic!("Cannot multiply Pauli strings of different sizes");
-        }
+    pub fn multiply(&self, other: &Self) -> (Complex64, Self) {
+        assert!(
+            self.n_qubits == other.n_qubits,
+            "Cannot multiply Pauli strings of different sizes"
+        );
 
-        let mut result = PauliString::new(self.n_qubits);
+        let mut result = Self::new(self.n_qubits);
         let mut phase = Complex64::new(1.0, 0.0);
 
         // Collect all qubits that have operators in either string
@@ -124,7 +126,7 @@ impl PauliString {
     }
 
     /// Commute two Pauli strings (returns true if they commute)
-    pub fn commutes_with(&self, other: &PauliString) -> bool {
+    pub fn commutes_with(&self, other: &Self) -> bool {
         if self.n_qubits != other.n_qubits {
             return false;
         }
@@ -153,7 +155,7 @@ impl fmt::Display for PauliString {
         let mut terms = Vec::new();
         for qubit in 0..self.n_qubits {
             if let Some(op) = self.operators.get(&QubitId::from(qubit)) {
-                terms.push(format!("{}{}", op, qubit));
+                terms.push(format!("{op}{qubit}"));
             }
         }
 
@@ -176,8 +178,8 @@ pub struct SymbolicHamiltonianTerm {
 
 impl SymbolicHamiltonianTerm {
     /// Create a new term
-    pub fn new(coefficient: Parameter, pauli_string: PauliString) -> Self {
-        SymbolicHamiltonianTerm {
+    pub const fn new(coefficient: Parameter, pauli_string: PauliString) -> Self {
+        Self {
             coefficient,
             pauli_string,
         }
@@ -194,8 +196,9 @@ impl SymbolicHamiltonianTerm {
     }
 
     /// Multiply by a scalar
+    #[must_use]
     pub fn scale(&self, scalar: Parameter) -> Self {
-        SymbolicHamiltonianTerm {
+        Self {
             coefficient: self.coefficient.clone() * scalar,
             pauli_string: self.pauli_string.clone(),
         }
@@ -228,30 +231,31 @@ pub struct SymbolicHamiltonian {
 
 impl SymbolicHamiltonian {
     /// Create a new empty Hamiltonian
-    pub fn new(n_qubits: usize) -> Self {
-        SymbolicHamiltonian {
+    pub const fn new(n_qubits: usize) -> Self {
+        Self {
             terms: Vec::new(),
             n_qubits,
         }
     }
 
     /// Create a zero Hamiltonian
-    pub fn zero(n_qubits: usize) -> Self {
-        SymbolicHamiltonian::new(n_qubits)
+    pub const fn zero(n_qubits: usize) -> Self {
+        Self::new(n_qubits)
     }
 
     /// Create an identity Hamiltonian
     pub fn identity(n_qubits: usize) -> Self {
-        let mut hamiltonian = SymbolicHamiltonian::new(n_qubits);
+        let mut hamiltonian = Self::new(n_qubits);
         hamiltonian.add_term(Parameter::constant(1.0), PauliString::identity(n_qubits));
         hamiltonian
     }
 
     /// Add a term to the Hamiltonian
     pub fn add_term(&mut self, coefficient: Parameter, pauli_string: PauliString) {
-        if pauli_string.n_qubits != self.n_qubits {
-            panic!("Pauli string size mismatch");
-        }
+        assert!(
+            pauli_string.n_qubits == self.n_qubits,
+            "Pauli string size mismatch"
+        );
         self.terms
             .push(SymbolicHamiltonianTerm::new(coefficient, pauli_string));
     }
@@ -299,10 +303,8 @@ impl SymbolicHamiltonian {
     }
 
     /// Add another Hamiltonian to this one
-    pub fn add_hamiltonian(&mut self, other: &SymbolicHamiltonian) {
-        if other.n_qubits != self.n_qubits {
-            panic!("Hamiltonian size mismatch");
-        }
+    pub fn add_hamiltonian(&mut self, other: &Self) {
+        assert!(other.n_qubits == self.n_qubits, "Hamiltonian size mismatch");
 
         for term in &other.terms {
             self.terms.push(term.clone());
@@ -310,8 +312,9 @@ impl SymbolicHamiltonian {
     }
 
     /// Multiply the Hamiltonian by a scalar
+    #[must_use]
     pub fn scale(&self, scalar: Parameter) -> Self {
-        let mut result = SymbolicHamiltonian::new(self.n_qubits);
+        let mut result = Self::new(self.n_qubits);
         for term in &self.terms {
             result.terms.push(term.scale(scalar.clone()));
         }
@@ -346,8 +349,9 @@ impl SymbolicHamiltonian {
     }
 
     /// Compute the commutator [H1, H2] = H1*H2 - H2*H1
-    pub fn commutator(&self, other: &SymbolicHamiltonian) -> SymbolicHamiltonian {
-        let mut result = SymbolicHamiltonian::new(self.n_qubits);
+    #[must_use]
+    pub fn commutator(&self, other: &Self) -> Self {
+        let mut result = Self::new(self.n_qubits);
 
         // H1*H2 terms
         for term1 in &self.terms {
@@ -376,6 +380,7 @@ impl SymbolicHamiltonian {
     }
 
     /// Simplify the Hamiltonian by combining like terms
+    #[must_use]
     pub fn simplify(&self) -> Self {
         let mut grouped_terms: HashMap<PauliString, Vec<Parameter>> = HashMap::new();
 
@@ -387,7 +392,7 @@ impl SymbolicHamiltonian {
                 .push(term.coefficient.clone());
         }
 
-        let mut result = SymbolicHamiltonian::new(self.n_qubits);
+        let mut result = Self::new(self.n_qubits);
 
         // Combine coefficients for each unique Pauli string
         for (pauli_string, coefficients) in grouped_terms {
@@ -431,14 +436,11 @@ impl SymbolicHamiltonian {
 
     /// Compute gradients with respect to parameters
     #[cfg(feature = "symbolic")]
-    pub fn gradients(
-        &self,
-        parameter_names: &[String],
-    ) -> QuantRS2Result<HashMap<String, SymbolicHamiltonian>> {
+    pub fn gradients(&self, parameter_names: &[String]) -> QuantRS2Result<HashMap<String, Self>> {
         let mut gradients = HashMap::new();
 
         for param_name in parameter_names {
-            let mut grad_hamiltonian = SymbolicHamiltonian::new(self.n_qubits);
+            let mut grad_hamiltonian = Self::new(self.n_qubits);
 
             for term in &self.terms {
                 let grad_coeff = term.coefficient.diff(param_name)?;
@@ -581,8 +583,11 @@ pub mod hamiltonians {
 
 // Helper functions
 
-fn multiply_pauli_operators(op1: PauliOperator, op2: PauliOperator) -> (Complex64, PauliOperator) {
-    use PauliOperator::*;
+const fn multiply_pauli_operators(
+    op1: PauliOperator,
+    op2: PauliOperator,
+) -> (Complex64, PauliOperator) {
+    use PauliOperator::{I, X, Y, Z};
     match (op1, op2) {
         (I, op) | (op, I) => (Complex64::new(1.0, 0.0), op),
         (X, X) | (Y, Y) | (Z, Z) => (Complex64::new(1.0, 0.0), I),
@@ -595,8 +600,8 @@ fn multiply_pauli_operators(op1: PauliOperator, op2: PauliOperator) -> (Complex6
     }
 }
 
-fn pauli_operators_commute(op1: PauliOperator, op2: PauliOperator) -> bool {
-    use PauliOperator::*;
+const fn pauli_operators_commute(op1: PauliOperator, op2: PauliOperator) -> bool {
+    use PauliOperator::{I, X, Y, Z};
     match (op1, op2) {
         (I, _) | (_, I) => true,
         (X, X) | (Y, Y) | (Z, Z) => true,
@@ -649,21 +654,19 @@ fn compute_pauli_matrix_element(pauli_string: &PauliString, i: usize, j: usize) 
                 }
             }
             PauliOperator::X => {
-                if bit_i != bit_j {
-                    Complex64::new(1.0, 0.0)
-                } else {
+                if bit_i == bit_j {
                     Complex64::new(0.0, 0.0)
+                } else {
+                    Complex64::new(1.0, 0.0)
                 }
             }
             PauliOperator::Y => {
-                if bit_i != bit_j {
-                    if bit_j == 1 {
-                        Complex64::new(0.0, 1.0)
-                    } else {
-                        Complex64::new(0.0, -1.0)
-                    }
-                } else {
+                if bit_i == bit_j {
                     Complex64::new(0.0, 0.0)
+                } else if bit_j == 1 {
+                    Complex64::new(0.0, 1.0)
+                } else {
+                    Complex64::new(0.0, -1.0)
                 }
             }
             PauliOperator::Z => {
@@ -753,7 +756,9 @@ mod tests {
 
         let scaled = hamiltonian.scale(Parameter::constant(2.0));
         let vars = HashMap::new();
-        let evaluated = scaled.evaluate(&vars).unwrap();
+        let evaluated = scaled
+            .evaluate(&vars)
+            .expect("Hamiltonian evaluation should succeed");
 
         assert_eq!(evaluated[0].0, 2.0);
     }

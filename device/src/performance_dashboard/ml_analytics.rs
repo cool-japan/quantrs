@@ -18,7 +18,7 @@ pub struct MLAnalyticsConfig {
     pub evaluation_config: EvaluationConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PredictionModel {
     LinearRegression,
     PolynomialRegression,
@@ -54,7 +54,7 @@ pub struct EvaluationConfig {
     pub performance_tracking: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FeatureSelectionMethod {
     VarianceThreshold,
     UnivariateSelection,
@@ -63,7 +63,7 @@ pub enum FeatureSelectionMethod {
     MutualInformation,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum FeatureEngineeringRule {
     PolynomialFeatures,
     InteractionTerms,
@@ -73,7 +73,7 @@ pub enum FeatureEngineeringRule {
     Normalization,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DimensionalityReduction {
     PCA,
     ICA,
@@ -82,7 +82,7 @@ pub enum DimensionalityReduction {
     UMAP,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ModelSelectionCriteria {
     RMSE,
     MAE,
@@ -92,7 +92,7 @@ pub enum ModelSelectionCriteria {
     CrossValidationScore,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EvaluationMetric {
     Accuracy,
     Precision,

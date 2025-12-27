@@ -25,7 +25,7 @@ impl Default for ParallelConfig {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadBalancingStrategy {
     /// Round-robin assignment
     RoundRobin,

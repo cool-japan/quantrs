@@ -110,7 +110,7 @@ pub struct QuantumCellularAutomaton {
     evolution_rules: Vec<QCARule>,
     /// Lattice cell mapping
     cell_mapping: CellMapping,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Evolution history
     evolution_history: Vec<QCASnapshot>,
@@ -217,7 +217,7 @@ impl QuantumCellularAutomaton {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -831,7 +831,12 @@ impl QuantumCellularAutomaton {
             self.state = measurement_operator.dot(&self.state);
 
             // Renormalize
-            let norm: f64 = self.state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+            let norm: f64 = self
+                .state
+                .iter()
+                .map(scirs2_core::Complex::norm_sqr)
+                .sum::<f64>()
+                .sqrt();
             if norm > 1e-15 {
                 self.state.mapv_inplace(|x| x / norm);
             }
@@ -1071,16 +1076,19 @@ impl QuantumCellularAutomaton {
     }
 
     /// Get current state
+    #[must_use]
     pub const fn get_state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
     /// Get evolution history
+    #[must_use]
     pub fn get_evolution_history(&self) -> &[QCASnapshot] {
         &self.evolution_history
     }
 
     /// Get statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &QCAStats {
         &self.stats
     }
@@ -1230,7 +1238,7 @@ impl QuantumCellularAutomaton {
                 Complex64::new(0.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("CNOT unitary shape is always valid")
     }
 
     fn create_rotation_unitary(angle: f64) -> Array2<Complex64> {
@@ -1245,7 +1253,7 @@ impl QuantumCellularAutomaton {
                 Complex64::new(cos_half, 0.0),
             ],
         )
-        .unwrap()
+        .expect("Rotation unitary shape is always valid")
     }
 
     fn create_margolus_rotation_unitary() -> Array2<Complex64> {
@@ -1368,6 +1376,7 @@ pub struct QCAUtils;
 
 impl QCAUtils {
     /// Create a predefined QCA configuration
+    #[must_use]
     pub fn create_predefined_config(config_type: &str, size: usize) -> QCAConfig {
         match config_type {
             "game_of_life" => QCAConfig {
@@ -1402,6 +1411,7 @@ impl QCAUtils {
     }
 
     /// Create initial pattern for QCA
+    #[must_use]
     pub fn create_initial_pattern(pattern_type: &str, dimensions: &[usize]) -> Array1<Complex64> {
         let total_cells = dimensions.iter().product::<usize>();
         let state_size = 1 << total_cells;
@@ -1414,7 +1424,11 @@ impl QCAUtils {
                     state[i] = Complex64::new(fastrand::f64() - 0.5, fastrand::f64() - 0.5);
                 }
                 // Normalize
-                let norm: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+                let norm: f64 = state
+                    .iter()
+                    .map(scirs2_core::Complex::norm_sqr)
+                    .sum::<f64>()
+                    .sqrt();
                 state.mapv_inplace(|x| x / norm);
             }
             "glider" if dimensions.len() == 2 => {
@@ -1527,11 +1541,12 @@ mod tests {
             ..Default::default()
         };
 
-        let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+        let mut qca =
+            QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
         let result = qca.evolve(5);
         assert!(result.is_ok());
 
-        let evolution_result = result.unwrap();
+        let evolution_result = result.expect("Evolution should succeed in test");
         assert_eq!(evolution_result.total_steps, 5);
         assert!(evolution_result.total_time_ms > 0.0);
     }
@@ -1545,7 +1560,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+        let mut qca =
+            QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
         let result = qca.evolve(3);
         assert!(result.is_ok());
     }
@@ -1557,12 +1573,16 @@ mod tests {
             ..Default::default()
         };
 
-        let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+        let mut qca =
+            QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
 
         // Measure all cells
         let results = qca.measure_cells(&[0, 1, 2]);
         assert!(results.is_ok());
-        assert_eq!(results.unwrap().len(), 3);
+        assert_eq!(
+            results.expect("Measurement should succeed in test").len(),
+            3
+        );
     }
 
     #[test]
@@ -1582,7 +1602,8 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+            let mut qca =
+                QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
             let result = qca.evolve(2);
             assert!(result.is_ok());
         }
@@ -1600,7 +1621,8 @@ mod tests {
                 ..Default::default()
             };
 
-            let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+            let mut qca =
+                QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
             let result = qca.evolve(2);
             assert!(result.is_ok());
         }
@@ -1639,7 +1661,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut qca = QuantumCellularAutomaton::new(config).unwrap();
+        let mut qca =
+            QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
 
         // Create entangled state
         let state_size = qca.state.len();
@@ -1647,7 +1670,9 @@ mod tests {
         qca.state[0] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0); // |0000⟩
         qca.state[15] = Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0); // |1111⟩
 
-        let entropy = qca.calculate_entanglement_entropy().unwrap();
+        let entropy = qca
+            .calculate_entanglement_entropy()
+            .expect("Entropy calculation should succeed in test");
         assert!(entropy >= 0.0);
     }
 
@@ -1658,8 +1683,11 @@ mod tests {
             ..Default::default()
         };
 
-        let qca = QuantumCellularAutomaton::new(config).unwrap();
-        let observables = qca.calculate_local_observables().unwrap();
+        let qca =
+            QuantumCellularAutomaton::new(config).expect("QCA creation should succeed in test");
+        let observables = qca
+            .calculate_local_observables()
+            .expect("Observable calculation should succeed in test");
 
         // Should have magnetization for each cell
         assert!(observables.contains_key("magnetization_0"));

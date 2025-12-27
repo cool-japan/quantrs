@@ -5,7 +5,9 @@
 //! and other methods to extrapolate quantum results to the zero-noise limit.
 
 use scirs2_core::ndarray::Array2;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator,
+};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 
@@ -119,6 +121,7 @@ pub struct ZeroNoiseExtrapolator {
 
 impl ZeroNoiseExtrapolator {
     /// Create new ZNE extrapolator
+    #[must_use]
     pub const fn new(
         scaling_method: NoiseScalingMethod,
         extrapolation_method: ExtrapolationMethod,
@@ -135,6 +138,7 @@ impl ZeroNoiseExtrapolator {
     }
 
     /// Default configuration for ZNE
+    #[must_use]
     pub fn default_config() -> Self {
         Self::new(
             NoiseScalingMethod::UnitaryFolding,
@@ -274,13 +278,8 @@ impl ZeroNoiseExtrapolator {
         fit_stats.residuals = fit_stats
             .residuals
             .iter()
-            .zip(noise_factors.iter())
-            .map(|(&res, &x)| {
-                a.mul_add(
-                    (b * x).exp(),
-                    -measured_values[noise_factors.iter().position(|&nx| nx == x).unwrap()],
-                )
-            })
+            .zip(noise_factors.iter().enumerate())
+            .map(|(&_res, (idx, &x))| a.mul_add((b * x).exp(), -measured_values[idx]))
             .collect();
 
         Ok((zero_noise_value, error_estimate, fit_stats))
@@ -548,7 +547,7 @@ impl ZeroNoiseExtrapolator {
     /// Calculate confidence in extrapolation
     fn calculate_confidence(&self, fit_stats: &FitStatistics) -> f64 {
         // Confidence based on R-squared and reduced chi-squared
-        let r_sq_factor = fit_stats.r_squared.max(0.0).min(1.0);
+        let r_sq_factor = fit_stats.r_squared.clamp(0.0, 1.0);
         let chi_sq_factor = if fit_stats.chi_squared_reduced > 0.0 {
             1.0 / (1.0 + fit_stats.chi_squared_reduced)
         } else {
@@ -580,6 +579,7 @@ pub enum DistillationProtocol {
 
 impl VirtualDistillation {
     /// Create new virtual distillation instance
+    #[must_use]
     pub const fn new(num_copies: usize, protocol: DistillationProtocol) -> Self {
         Self {
             num_copies,
@@ -638,7 +638,7 @@ impl VirtualDistillation {
     fn optimized_distillation(&self, measurements: &[f64]) -> Result<f64> {
         // Use median for robustness
         let mut sorted = measurements.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median = sorted[sorted.len() / 2];
         Ok(median)
     }
@@ -677,6 +677,7 @@ pub struct SymmetryOperation {
 
 impl SymmetryVerification {
     /// Create new symmetry verification
+    #[must_use]
     pub const fn new(symmetries: Vec<SymmetryOperation>) -> Self {
         Self { symmetries }
     }
@@ -790,7 +791,7 @@ mod tests {
 
         let (zero_noise, _error, _stats) = zne
             .linear_extrapolation(&noise_factors, &measured_values, &uncertainties)
-            .unwrap();
+            .expect("Failed to perform linear extrapolation");
 
         assert!((zero_noise - 1.0).abs() < 0.1);
     }
@@ -800,7 +801,9 @@ mod tests {
         let vd = VirtualDistillation::new(3, DistillationProtocol::Standard);
 
         let measurements = vec![0.8, 0.7, 0.9];
-        let result = vd.standard_distillation(&measurements).unwrap();
+        let result = vd
+            .standard_distillation(&measurements)
+            .expect("Failed to perform standard distillation");
 
         assert!(result > 0.0);
         assert!(result < 1.0);
@@ -824,7 +827,9 @@ mod tests {
             }
         };
 
-        let result = sv.verify_and_correct(executor, "Z0").unwrap();
+        let result = sv
+            .verify_and_correct(executor, "Z0")
+            .expect("Failed to verify and correct");
         assert!((result.corrected_value - 0.8).abs() < 1e-10);
         assert!(result.post_selection_prob > 0.0);
     }
@@ -838,7 +843,7 @@ mod tests {
 
         let (zero_noise, _error, _stats) = zne
             .richardson_extrapolation(&noise_factors, &measured_values)
-            .unwrap();
+            .expect("Failed to perform Richardson extrapolation");
 
         assert!(zero_noise > 0.0);
     }

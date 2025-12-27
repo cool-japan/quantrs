@@ -517,9 +517,9 @@ impl CircuitSynthesizer {
         let template_info = template.get_template_info();
 
         let metadata = TemplateMetadata {
-            name: template_info.name.clone(),
+            name: template_info.name,
             version: "1.0.0".to_string(),
-            description: format!("Custom template for {:?}", algorithm_type),
+            description: format!("Custom template for {algorithm_type:?}"),
             author: "User".to_string(),
             created: Instant::now(),
             complexity: ComplexityCharacteristics {
@@ -678,14 +678,15 @@ impl CircuitSynthesizer {
         let templates = self.algorithm_templates.read().expect(
             "Failed to acquire read lock on algorithm_templates in synthesize_with_template",
         );
-        if let Some(template) = templates.templates.get(&spec.algorithm_type) {
-            template.synthesize(spec)
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(format!(
-                "No template available for algorithm: {:?}",
-                spec.algorithm_type
-            )))
-        }
+        templates.templates.get(&spec.algorithm_type).map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "No template available for algorithm: {:?}",
+                    spec.algorithm_type
+                )))
+            },
+            |template| template.synthesize(spec),
+        )
     }
 
     fn estimate_with_template(
@@ -696,14 +697,15 @@ impl CircuitSynthesizer {
             .algorithm_templates
             .read()
             .expect("Failed to acquire read lock on algorithm_templates in estimate_with_template");
-        if let Some(template) = templates.templates.get(&spec.algorithm_type) {
-            template.estimate_resources(spec)
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(format!(
-                "No template available for algorithm: {:?}",
-                spec.algorithm_type
-            )))
-        }
+        templates.templates.get(&spec.algorithm_type).map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "No template available for algorithm: {:?}",
+                    spec.algorithm_type
+                )))
+            },
+            |template| template.estimate_resources(spec),
+        )
     }
 
     fn validate_with_template(&self, spec: &AlgorithmSpecification) -> QuantRS2Result<()> {
@@ -711,14 +713,15 @@ impl CircuitSynthesizer {
             .algorithm_templates
             .read()
             .expect("Failed to acquire read lock on algorithm_templates in validate_with_template");
-        if let Some(template) = templates.templates.get(&spec.algorithm_type) {
-            template.validate_specification(spec)
-        } else {
-            Err(QuantRS2Error::UnsupportedOperation(format!(
-                "No template available for algorithm: {:?}",
-                spec.algorithm_type
-            )))
-        }
+        templates.templates.get(&spec.algorithm_type).map_or_else(
+            || {
+                Err(QuantRS2Error::UnsupportedOperation(format!(
+                    "No template available for algorithm: {:?}",
+                    spec.algorithm_type
+                )))
+            },
+            |template| template.validate_specification(spec),
+        )
     }
 
     fn optimize_circuit(
@@ -737,7 +740,7 @@ impl CircuitSynthesizer {
                 SynthesisObjective::MaximizeFidelity => self.optimize_for_fidelity(circuit)?,
                 SynthesisObjective::HardwareOptimized => self.optimize_for_hardware(circuit)?,
                 SynthesisObjective::Balanced => self.optimize_balanced(circuit)?,
-                _ => circuit,
+                SynthesisObjective::MinimizeTime => circuit,
             };
         }
 
@@ -782,7 +785,7 @@ impl CircuitSynthesizer {
         Ok(circuit)
     }
 
-    fn optimize_for_qubit_count(
+    const fn optimize_for_qubit_count(
         &self,
         circuit: SynthesizedCircuit,
     ) -> QuantRS2Result<SynthesizedCircuit> {
@@ -790,7 +793,7 @@ impl CircuitSynthesizer {
         Ok(circuit)
     }
 
-    fn optimize_for_fidelity(
+    const fn optimize_for_fidelity(
         &self,
         circuit: SynthesizedCircuit,
     ) -> QuantRS2Result<SynthesizedCircuit> {
@@ -798,7 +801,7 @@ impl CircuitSynthesizer {
         Ok(circuit)
     }
 
-    fn optimize_for_hardware(
+    const fn optimize_for_hardware(
         &self,
         circuit: SynthesizedCircuit,
     ) -> QuantRS2Result<SynthesizedCircuit> {
@@ -806,12 +809,15 @@ impl CircuitSynthesizer {
         Ok(circuit)
     }
 
-    fn optimize_balanced(&self, circuit: SynthesizedCircuit) -> QuantRS2Result<SynthesizedCircuit> {
+    const fn optimize_balanced(
+        &self,
+        circuit: SynthesizedCircuit,
+    ) -> QuantRS2Result<SynthesizedCircuit> {
         // Apply balanced optimization considering all factors
         Ok(circuit)
     }
 
-    fn compile_for_hardware(
+    const fn compile_for_hardware(
         &self,
         circuit: SynthesizedCircuit,
         _compiler: &HardwareCompiler,
@@ -966,7 +972,7 @@ pub struct SynthesisPerformanceStats {
 struct VQETemplate;
 
 impl VQETemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1036,7 +1042,7 @@ impl AlgorithmTemplate for VQETemplate {
         }
 
         let qubit_mapping: HashMap<String, QubitId> = (0..num_qubits)
-            .map(|i| (format!("q{}", i), QubitId::new(i as u32)))
+            .map(|i| (format!("q{i}"), QubitId::new(i as u32)))
             .collect();
 
         let resource_estimates = ResourceEstimates {
@@ -1118,7 +1124,7 @@ impl AlgorithmTemplate for VQETemplate {
 struct QAOATemplate;
 
 impl QAOATemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1212,7 +1218,7 @@ impl QAOATemplate {
         algorithm: QuantumAlgorithmType,
     ) -> QuantRS2Result<SynthesizedCircuit> {
         let qubit_mapping: HashMap<String, QubitId> = (0..num_qubits)
-            .map(|i| (format!("q{}", i), QubitId::new(i as u32)))
+            .map(|i| (format!("q{i}"), QubitId::new(i as u32)))
             .collect();
 
         let resource_estimates = ResourceEstimates {
@@ -1257,7 +1263,7 @@ impl QAOATemplate {
 struct GroverTemplate;
 
 impl GroverTemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1335,7 +1341,7 @@ impl AlgorithmTemplate for GroverTemplate {
 struct QFTTemplate;
 
 impl QFTTemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1389,7 +1395,7 @@ impl AlgorithmTemplate for QFTTemplate {
 struct ShorTemplate;
 
 impl ShorTemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1446,7 +1452,7 @@ impl AlgorithmTemplate for ShorTemplate {
 struct HHLTemplate;
 
 impl HHLTemplate {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1654,7 +1660,7 @@ mod tests {
         let circuit = circuit.expect("Failed to synthesize VQE circuit in test_vqe_synthesis");
         assert_eq!(circuit.metadata.source_algorithm, QuantumAlgorithmType::VQE);
         assert_eq!(circuit.resource_estimates.qubit_count, 4);
-        assert!(circuit.gates.len() > 0);
+        assert!(!circuit.gates.is_empty());
     }
 
     #[test]

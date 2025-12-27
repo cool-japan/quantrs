@@ -158,7 +158,7 @@ impl PassCoordinator {
                         improvement: 0.0,
                         metrics: HashMap::new(),
                         success: false,
-                        error_message: Some(format!("{:?}", error)),
+                        error_message: Some(format!("{error:?}")),
                     });
                 }
             }
@@ -242,10 +242,10 @@ impl CompilerPass {
     /// Get pass name
     pub fn name(&self) -> String {
         match self {
-            CompilerPass::GateSynthesis => "gate_synthesis".to_string(),
-            CompilerPass::ErrorOptimization => "error_optimization".to_string(),
-            CompilerPass::TimingOptimization => "timing_optimization".to_string(),
-            CompilerPass::CrosstalkMitigation => "crosstalk_mitigation".to_string(),
+            Self::GateSynthesis => "gate_synthesis".to_string(),
+            Self::ErrorOptimization => "error_optimization".to_string(),
+            Self::TimingOptimization => "timing_optimization".to_string(),
+            Self::CrosstalkMitigation => "crosstalk_mitigation".to_string(),
         }
     }
 }

@@ -139,7 +139,7 @@ impl SolutionDebugger {
             .iter()
             .map(|(var, contrib)| (var.clone(), contrib.abs()))
             .collect();
-        critical_vars.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        critical_vars.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         critical_vars.truncate(10);
 
         // Find critical interactions
@@ -148,7 +148,8 @@ impl SolutionDebugger {
             .iter()
             .map(|(vars, contrib)| (vars.clone(), contrib.abs()))
             .collect();
-        critical_interactions.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        critical_interactions
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         critical_interactions.truncate(10);
 
         analysis::EnergyAnalysis {
@@ -174,27 +175,17 @@ impl SolutionDebugger {
         &self,
         solution: &types::Solution,
     ) -> Vec<visualization::Visualization> {
-        let mut visualizations = Vec::new();
-
-        // Solution matrix visualization
-        visualizations.push(
+        vec![
+            // Solution matrix visualization
             self.visualizer
                 .visualize_solution_matrix(solution, &self.problem_info),
-        );
-
-        // Energy landscape visualization
-        visualizations.push(
+            // Energy landscape visualization
             self.visualizer
                 .visualize_energy_landscape(solution, &self.problem_info),
-        );
-
-        // Constraint graph visualization
-        visualizations.push(
+            // Constraint graph visualization
             self.visualizer
                 .visualize_constraint_graph(solution, &self.problem_info),
-        );
-
-        visualizations
+        ]
     }
 
     /// Identify issues
@@ -270,15 +261,20 @@ impl SolutionDebugger {
 
     /// Generate summary
     fn generate_summary(&self, report: &reporting::DebugReport) -> reporting::DebugSummary {
-        let mut summary = reporting::DebugSummary::default();
-
-        summary.total_issues = report.issues.len();
-        summary.critical_issues = report
+        let total_issues = report.issues.len();
+        let critical_issues = report
             .issues
             .iter()
             .filter(|i| matches!(i.severity, reporting::IssueSeverity::Critical))
             .count();
-        summary.suggestions_count = report.suggestions.len();
+        let suggestions_count = report.suggestions.len();
+
+        let mut summary = reporting::DebugSummary {
+            total_issues,
+            critical_issues,
+            suggestions_count,
+            ..Default::default()
+        };
 
         if let Some(ref constraint_analysis) = report.constraint_analysis {
             summary.constraint_satisfaction_rate = constraint_analysis.satisfaction_rate;
@@ -322,7 +318,7 @@ impl SolutionDebugger {
             .local_minima
             .iter()
             .map(|m| m.energy)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(current_energy);
 
         if best_nearby < current_energy {

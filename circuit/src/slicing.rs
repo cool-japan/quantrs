@@ -557,17 +557,23 @@ impl CircuitSlicer {
             let level_size = queue.len();
 
             for _ in 0..level_size {
-                let slice_id = queue.pop_front().unwrap();
+                let slice_id = queue
+                    .pop_front()
+                    .expect("queue is not empty (checked in while condition)");
                 current_level.push(slice_id);
 
                 // Update dependents
                 if let Some(slice) = slices.iter().find(|s| s.id == slice_id) {
                     for &dep_id in &slice.dependents {
-                        *in_degree.get_mut(&dep_id).unwrap() -= 1;
+                        if let Some(degree) = in_degree.get_mut(&dep_id) {
+                            *degree -= 1;
 
-                        if in_degree[&dep_id] == 0 {
-                            queue.push_back(dep_id);
-                            depths.insert(dep_id, depths[&slice_id] + 1);
+                            if *degree == 0 {
+                                queue.push_back(dep_id);
+                                if let Some(&current_depth) = depths.get(&slice_id) {
+                                    depths.insert(dep_id, current_depth + 1);
+                                }
+                            }
                         }
                     }
                 }
@@ -637,22 +643,30 @@ mod tests {
         let mut circuit = Circuit::<4>::new();
 
         // Create a circuit that uses all 4 qubits
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(2) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(3) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("failed to add H gate to qubit 0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("failed to add H gate to qubit 1");
+        circuit
+            .add_gate(Hadamard { target: QubitId(2) })
+            .expect("failed to add H gate to qubit 2");
+        circuit
+            .add_gate(Hadamard { target: QubitId(3) })
+            .expect("failed to add H gate to qubit 3");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("failed to add CNOT gate on qubits 0,1");
         circuit
             .add_gate(CNOT {
                 control: QubitId(2),
                 target: QubitId(3),
             })
-            .unwrap();
+            .expect("failed to add CNOT gate on qubits 2,3");
 
         let slicer = CircuitSlicer::new();
         let result = slicer.slice_circuit(&circuit, SlicingStrategy::MaxQubits(2));
@@ -676,7 +690,7 @@ mod tests {
                 .add_gate(Hadamard {
                     target: QubitId((i % 3) as u32),
                 })
-                .unwrap();
+                .expect("failed to add Hadamard gate in loop");
         }
 
         let slicer = CircuitSlicer::new();
@@ -696,15 +710,21 @@ mod tests {
         let mut circuit = Circuit::<2>::new();
 
         // Create dependent gates
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("failed to add H gate to qubit 0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("failed to add H gate to qubit 1");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
-        circuit.add_gate(PauliX { target: QubitId(0) }).unwrap();
+            .expect("failed to add CNOT gate on qubits 0,1");
+        circuit
+            .add_gate(PauliX { target: QubitId(0) })
+            .expect("failed to add X gate to qubit 0");
 
         let slicer = CircuitSlicer::new();
         let result = slicer.slice_circuit(&circuit, SlicingStrategy::MaxGates(2));
@@ -725,10 +745,18 @@ mod tests {
         let mut circuit = Circuit::<4>::new();
 
         // Create gates that can be parallel
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(1) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(2) }).unwrap();
-        circuit.add_gate(Hadamard { target: QubitId(3) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("failed to add H gate to qubit 0");
+        circuit
+            .add_gate(Hadamard { target: QubitId(1) })
+            .expect("failed to add H gate to qubit 1");
+        circuit
+            .add_gate(Hadamard { target: QubitId(2) })
+            .expect("failed to add H gate to qubit 2");
+        circuit
+            .add_gate(Hadamard { target: QubitId(3) })
+            .expect("failed to add H gate to qubit 3");
 
         let slicer = CircuitSlicer::new();
         let result = slicer.slice_circuit(&circuit, SlicingStrategy::MaxQubits(1));

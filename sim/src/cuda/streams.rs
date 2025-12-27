@@ -68,7 +68,9 @@ impl CudaStream {
     }
 
     pub fn synchronize(&self) -> Result<()> {
-        let handle = self.handle.lock().unwrap();
+        let handle = self.handle.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidOperation(format!("Lock poisoned: {e}"))
+        })?;
         if let Some(cuda_handle) = *handle {
             // In real implementation: cudaStreamSynchronize(cuda_handle)
             Self::cuda_stream_synchronize(cuda_handle)?;
@@ -77,7 +79,9 @@ impl CudaStream {
     }
 
     pub fn query(&self) -> Result<bool> {
-        let handle = self.handle.lock().unwrap();
+        let handle = self.handle.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidOperation(format!("Lock poisoned: {e}"))
+        })?;
         if let Some(cuda_handle) = *handle {
             // In real implementation: cudaStreamQuery(cuda_handle)
             Self::cuda_stream_query(cuda_handle)
@@ -87,7 +91,9 @@ impl CudaStream {
     }
 
     pub fn record_event(&self, event: &mut CudaEvent) -> Result<()> {
-        let handle = self.handle.lock().unwrap();
+        let handle = self.handle.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidOperation(format!("Lock poisoned: {e}"))
+        })?;
         if let Some(cuda_handle) = *handle {
             // In real implementation: cudaEventRecord(event, cuda_handle)
             Self::cuda_event_record(*event, cuda_handle)?;
@@ -96,7 +102,9 @@ impl CudaStream {
     }
 
     pub fn wait_event(&self, event: CudaEvent) -> Result<()> {
-        let handle = self.handle.lock().unwrap();
+        let handle = self.handle.lock().map_err(|e| {
+            crate::error::SimulatorError::InvalidOperation(format!("Lock poisoned: {e}"))
+        })?;
         if let Some(cuda_handle) = *handle {
             // In real implementation: cudaStreamWaitEvent(cuda_handle, event, 0)
             Self::cuda_stream_wait_event(cuda_handle, event)?;
@@ -159,7 +167,7 @@ impl CudaStream {
     }
 
     pub fn get_handle_value(&self) -> Option<CudaStreamHandle> {
-        let handle = self.handle.lock().unwrap();
+        let handle = self.handle.lock().ok()?;
         *handle
     }
 }
@@ -167,10 +175,12 @@ impl CudaStream {
 #[cfg(feature = "advanced_math")]
 impl Drop for CudaStream {
     fn drop(&mut self) {
-        let handle = self.handle.lock().unwrap();
-        if let Some(cuda_handle) = *handle {
-            let _ = Self::cuda_stream_destroy(cuda_handle);
+        if let Ok(handle) = self.handle.lock() {
+            if let Some(cuda_handle) = *handle {
+                let _ = Self::cuda_stream_destroy(cuda_handle);
+            }
         }
+        // If lock is poisoned, we silently skip cleanup to avoid panic in Drop
     }
 }
 

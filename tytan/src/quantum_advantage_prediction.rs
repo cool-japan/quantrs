@@ -20,28 +20,31 @@
 //! };
 //! use scirs2_core::ndarray::Array2;
 //!
-//! // Create predictor
-//! let config = PredictorConfig::default();
-//! let mut predictor = AdvantagePredictor::new(config);
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Create predictor
+//!     let config = PredictorConfig::default();
+//!     let mut predictor = AdvantagePredictor::new(config);
 //!
-//! // Define a QUBO problem
-//! let qubo = Array2::from_shape_vec(
-//!     (4, 4),
-//!     vec![
-//!         -1.0, 2.0, 0.0, 1.0,
-//!         2.0, -2.0, 1.0, 0.0,
-//!         0.0, 1.0, -1.0, 3.0,
-//!         1.0, 0.0, 3.0, -2.0,
-//!     ]
-//! ).unwrap();
+//!     // Define a QUBO problem
+//!     let qubo = Array2::from_shape_vec(
+//!         (4, 4),
+//!         vec![
+//!             -1.0, 2.0, 0.0, 1.0,
+//!             2.0, -2.0, 1.0, 0.0,
+//!             0.0, 1.0, -1.0, 3.0,
+//!             1.0, 0.0, 3.0, -2.0,
+//!         ]
+//!     )?;
 //!
-//! // Extract features and predict advantage
-//! let features = predictor.extract_features(&qubo).unwrap();
-//! let prediction = predictor.predict_advantage(&features).unwrap();
+//!     // Extract features and predict advantage
+//!     let features = predictor.extract_features(&qubo)?;
+//!     let prediction = predictor.predict_advantage(&features)?;
 //!
-//! // Check if quantum approach is advantageous
-//! if prediction.has_quantum_advantage() {
-//!     println!("Quantum advantage detected! Speedup: {:.2}x", prediction.speedup_factor);
+//!     // Check if quantum approach is advantageous
+//!     if prediction.has_quantum_advantage() {
+//!         println!("Quantum advantage detected! Speedup: {:.2}x", prediction.speedup_factor);
+//!     }
+//!     Ok(())
 //! }
 //! ```
 
@@ -349,8 +352,15 @@ impl PredictionModel {
             x.mapv_inplace(|v| v.max(0.0)); // ReLU
         }
 
-        let w_last = self.weights.last().unwrap();
-        let b_last = self.biases.last().unwrap();
+        // Safe: weights and biases are always initialized with at least one layer in constructor
+        let w_last = self
+            .weights
+            .last()
+            .expect("Model weights must have at least one layer");
+        let b_last = self
+            .biases
+            .last()
+            .expect("Model biases must have at least one layer");
         let output = x.dot(w_last) + b_last;
 
         Ok(output)
@@ -402,8 +412,15 @@ impl PredictionModel {
                     x = x.dot(w) + b;
                     x.mapv_inplace(|v| v.max(0.0));
                 }
-                let w_last = self.weights.last().unwrap();
-                let b_last = self.biases.last().unwrap();
+                // Safe: weights and biases are always initialized with at least one layer in constructor
+                let w_last = self
+                    .weights
+                    .last()
+                    .expect("Model weights must have at least one layer");
+                let b_last = self
+                    .biases
+                    .last()
+                    .expect("Model biases must have at least one layer");
                 let prediction = x.dot(w_last) + b_last;
 
                 // Compute loss
@@ -459,8 +476,8 @@ impl AdvantagePredictor {
             HardwareType::CPU,
             HardwareSpec {
                 hardware_type: HardwareType::CPU,
-                num_qubits: 1000000, // Effectively unlimited for classical
-                connectivity: 1000000.0,
+                num_qubits: 1_000_000, // Effectively unlimited for classical
+                connectivity: 1_000_000.0,
                 coherence_time: f64::INFINITY,
                 fidelity: 1.0,
                 readout_error: 0.0,
@@ -902,15 +919,14 @@ mod tests {
                 -1.0, 2.0, 0.0, 1.0, 2.0, -2.0, 1.0, 0.0, 0.0, 1.0, -1.0, 3.0, 1.0, 0.0, 3.0, -2.0,
             ],
         )
-        .unwrap();
+        .expect("4x4 QUBO matrix creation should succeed");
 
         let config = PredictorConfig::default();
         let predictor = AdvantagePredictor::new(config);
 
-        let result = predictor.extract_features(&qubo);
-        assert!(result.is_ok());
-
-        let features = result.unwrap();
+        let features = predictor
+            .extract_features(&qubo)
+            .expect("Feature extraction should succeed for valid QUBO");
         assert_eq!(features.size, 4);
         assert!(features.density > 0.0);
         assert!(features.density <= 1.0);
@@ -938,10 +954,9 @@ mod tests {
             custom_features: vec![],
         };
 
-        let prediction = predictor.predict_advantage(&features);
-        assert!(prediction.is_ok());
-
-        let result = prediction.unwrap();
+        let result = predictor
+            .predict_advantage(&features)
+            .expect("Advantage prediction should succeed for valid features");
         assert!(result.speedup_factor > 0.0);
         assert!(result.confidence > 0.0 && result.confidence <= 1.0);
         assert!(result.hardness_score >= 0.0 && result.hardness_score <= 1.0);
@@ -995,10 +1010,14 @@ mod tests {
                 })
                 .collect(),
         )
-        .unwrap();
+        .expect("10x10 QUBO matrix creation should succeed");
 
-        let features = predictor.extract_features(&qubo).unwrap();
-        let prediction = predictor.predict_advantage(&features).unwrap();
+        let features = predictor
+            .extract_features(&qubo)
+            .expect("Feature extraction should succeed for valid QUBO");
+        let prediction = predictor
+            .predict_advantage(&features)
+            .expect("Advantage prediction should succeed for valid features");
 
         assert!(prediction.speedup_factor > 0.0);
         assert!(prediction.confidence > 0.0);
@@ -1064,7 +1083,9 @@ mod tests {
             custom_features: vec![],
         };
 
-        let pred = predictor.predict_advantage(&small_features).unwrap();
+        let pred = predictor
+            .predict_advantage(&small_features)
+            .expect("Advantage prediction should succeed for valid features");
         // Verify prediction structure
         assert!(matches!(
             pred.recommended_solver,

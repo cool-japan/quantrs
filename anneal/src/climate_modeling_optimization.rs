@@ -127,7 +127,7 @@ impl Default for UncertaintyQuantificationConfig {
     fn default() -> Self {
         Self {
             enable_bayesian_uncertainty: true,
-            monte_carlo_samples: 10000,
+            monte_carlo_samples: 10_000,
             confidence_levels: vec![0.68, 0.95, 0.99],
             enable_correlation_analysis: true,
             sensitivity_analysis_depth: 3,
@@ -190,7 +190,7 @@ pub enum ValidationMetric {
 }
 
 /// Observational data sources
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ObservationalDataSource {
     /// Satellite observations
     Satellite,
@@ -281,7 +281,7 @@ pub struct PhysicsConfig {
 }
 
 /// Radiation schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RadiationScheme {
     /// RRTMG radiation scheme
     RRTMG,
@@ -294,7 +294,7 @@ pub enum RadiationScheme {
 }
 
 /// Convection schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConvectionScheme {
     /// Zhang-McFarlane scheme
     ZhangMcFarlane,
@@ -307,7 +307,7 @@ pub enum ConvectionScheme {
 }
 
 /// Cloud microphysics schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CloudMicrophysics {
     /// Single moment scheme
     SingleMoment,
@@ -320,7 +320,7 @@ pub enum CloudMicrophysics {
 }
 
 /// Turbulence parameterizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TurbulenceParam {
     /// K-profile parameterization
     KProfile,
@@ -333,7 +333,7 @@ pub enum TurbulenceParam {
 }
 
 /// Land surface schemes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LandSurfaceScheme {
     /// Community Land Model
     CLM,
@@ -359,7 +359,7 @@ pub struct CouplingConfig {
 }
 
 /// Coupling methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CouplingMethod {
     /// Explicit coupling
     Explicit,
@@ -387,7 +387,7 @@ pub struct AtmosphericModel {
 }
 
 /// Dynamical core types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DynamicalCore {
     /// Spectral dynamical core
     Spectral,
@@ -539,7 +539,7 @@ pub struct AtmosphericOptimizationConfig {
 }
 
 /// Atmospheric optimization targets
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AtmosphericTarget {
     /// Wind speed accuracy
     WindSpeedAccuracy,
@@ -706,6 +706,7 @@ pub struct OptimizationMetadata {
 
 impl ClimateModelingOptimizer {
     /// Create new climate modeling optimizer
+    #[must_use]
     pub fn new(config: ClimateOptimizationConfig) -> Self {
         Self {
             config,
@@ -776,7 +777,7 @@ impl ClimateModelingOptimizer {
             },
         };
 
-        println!("Global climate optimization completed in {:?}", duration);
+        println!("Global climate optimization completed in {duration:?}");
         Ok(result)
     }
 
@@ -1116,7 +1117,7 @@ impl ClimateModelingOptimizer {
     }
 
     /// Calculate performance metrics
-    fn calculate_performance_metrics(&self) -> ApplicationResult<ClimatePerformanceMetrics> {
+    const fn calculate_performance_metrics(&self) -> ApplicationResult<ClimatePerformanceMetrics> {
         Ok(ClimatePerformanceMetrics {
             temperature_trend_accuracy: 0.93,
             precipitation_accuracy: 0.87,
@@ -1215,7 +1216,7 @@ impl GlobalClimateModel {
 macro_rules! impl_new_for_component {
     ($name:ident) => {
         impl $name {
-            pub fn new() -> Self {
+            pub const fn new() -> Self {
                 Self {}
             }
         }
@@ -1351,7 +1352,7 @@ impl_new_for_component!(LatentHeatOptimizer);
 impl_new_for_component!(SensibleHeatOptimizer);
 
 impl OceanDynamicsOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             config: OceanOptimizationConfig::new(),
             current_optimizer: OceanCurrentOptimizer::new(),
@@ -1363,7 +1364,7 @@ impl OceanDynamicsOptimizer {
 }
 
 impl CarbonCycleOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             config: CarbonOptimizationConfig::new(),
             atmospheric_co2: AtmosphericCO2Optimizer::new(),
@@ -1375,7 +1376,7 @@ impl CarbonCycleOptimizer {
 }
 
 impl EnergyBalanceOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             config: EnergyOptimizationConfig::new(),
             radiation_budget: RadiationBudgetOptimizer::new(),
@@ -1387,7 +1388,7 @@ impl EnergyBalanceOptimizer {
 }
 
 /// Optimization methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationMethod {
     /// Quantum annealing
     QuantumAnnealing,
@@ -1432,7 +1433,8 @@ mod tests {
 
     #[test]
     fn test_climate_optimizer_creation() {
-        let optimizer = create_example_climate_optimizer().unwrap();
+        let optimizer =
+            create_example_climate_optimizer().expect("should create climate optimizer");
         assert_eq!(optimizer.config.spatial_resolution, 100.0);
         assert_eq!(optimizer.config.optimization_horizon, 100.0);
     }
@@ -1447,8 +1449,11 @@ mod tests {
 
     #[test]
     fn test_parameter_space_initialization() {
-        let optimizer = create_example_climate_optimizer().unwrap();
-        let parameter_space = optimizer.initialize_parameter_space().unwrap();
+        let optimizer =
+            create_example_climate_optimizer().expect("should create climate optimizer");
+        let parameter_space = optimizer
+            .initialize_parameter_space()
+            .expect("should initialize parameter space");
 
         assert!(!parameter_space.atmospheric_params.is_empty());
         assert!(!parameter_space.oceanic_params.is_empty());

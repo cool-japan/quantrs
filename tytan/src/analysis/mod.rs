@@ -97,7 +97,7 @@ pub fn cluster_solutions(
     }
 
     // Sort clusters by average energy
-    cluster_results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    cluster_results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(cluster_results)
 }
@@ -145,7 +145,7 @@ pub fn cluster_solutions(
     }
 
     // Sort groups by average energy
-    group_results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    group_results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(group_results)
 }
@@ -191,7 +191,7 @@ pub fn calculate_diversity(results: &[SampleResult]) -> AnalysisResult<HashMap<S
         let avg_distance: f64 = distances.iter().sum::<f64>() / distances.len() as f64;
 
         // Sort for percentiles
-        distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let min_distance = distances.first().copied().unwrap_or(0.0);
         let max_distance = distances.last().copied().unwrap_or(0.0);
@@ -215,11 +215,11 @@ pub fn calculate_diversity(results: &[SampleResult]) -> AnalysisResult<HashMap<S
     if !energies.is_empty() {
         let min_energy = *energies
             .iter()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(&0.0);
         let max_energy = *energies
             .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(&0.0);
         let energy_range = max_energy - min_energy;
 
@@ -267,12 +267,12 @@ pub fn visualize_energy_distribution(
 
     let min_energy = *energies
         .iter()
-        .min_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .ok_or_else(|| AnalysisError::DataProcessingError("No energies found".to_string()))?;
     let max_energy = *energies
         .iter()
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .ok_or_else(|| AnalysisError::DataProcessingError("No energies found".to_string()))?;
 
     // Add some padding
     let energy_range = max_energy - min_energy;
@@ -297,7 +297,7 @@ pub fn visualize_energy_distribution(
 
     // Sort energies for this plot
     let mut sorted_energies = energies;
-    sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted_energies.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     chart
         .draw_series(LineSeries::new(

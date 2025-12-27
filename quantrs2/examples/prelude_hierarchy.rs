@@ -17,7 +17,7 @@ fn main() {
         let q1 = QubitId::new(1);
 
         println!("   Created qubits: {}, {}", q0.id(), q1.id());
-        println!("   QuantRS2 version: {}", VERSION);
+        println!("   QuantRS2 version: {VERSION}");
         println!("   Use case: Minimal quantum type definitions");
     }
     println!();

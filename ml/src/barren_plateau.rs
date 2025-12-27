@@ -350,7 +350,9 @@ mod tests {
             Ok(circuit)
         };
 
-        let analysis = detector.analyze_circuit(circuit_builder, 8, 2).unwrap();
+        let analysis = detector
+            .analyze_circuit(circuit_builder, 8, 2)
+            .expect("analyze_circuit should succeed");
 
         assert_eq!(analysis.layer_variances.len(), 2);
         assert!(!analysis.mitigation_strategies.is_empty());

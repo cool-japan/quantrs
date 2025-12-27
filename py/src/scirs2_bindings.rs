@@ -234,8 +234,12 @@ impl PySciRS2Optimizer {
         let obj_fn = move |x: &Array1<f64>| -> f64 {
             Python::with_gil(|py| {
                 let x_py = x.clone().into_pyarray(py);
-                let result = objective.call1(py, (x_py,)).unwrap();
-                result.extract::<f64>(py).unwrap()
+                let result = objective
+                    .call1(py, (x_py,))
+                    .ok()
+                    .and_then(|r| r.extract::<f64>(py).ok())
+                    .unwrap_or(f64::MAX);
+                result
             })
         };
 
@@ -259,8 +263,12 @@ impl PySciRS2Optimizer {
         let obj_fn = move |x: &Array1<f64>| -> f64 {
             Python::with_gil(|py| {
                 let x_py = x.clone().into_pyarray(py);
-                let result = objective.call1(py, (x_py,)).unwrap();
-                result.extract::<f64>(py).unwrap()
+                let result = objective
+                    .call1(py, (x_py,))
+                    .ok()
+                    .and_then(|r| r.extract::<f64>(py).ok())
+                    .unwrap_or(f64::MAX);
+                result
             })
         };
 
@@ -293,7 +301,7 @@ impl PySciRS2Stats {
 
         // Compute means
         let means: Vec<f64> = (0..n_features)
-            .map(|j| arr.column(j).mean().unwrap())
+            .map(|j| arr.column(j).mean().unwrap_or(0.0))
             .collect();
 
         // Compute correlations
@@ -340,7 +348,7 @@ impl PySciRS2Stats {
 
         // Center the data
         let means: Vec<f64> = (0..n_features)
-            .map(|j| arr.column(j).mean().unwrap())
+            .map(|j| arr.column(j).mean().unwrap_or(0.0))
             .collect();
 
         let mut centered = arr.to_owned();

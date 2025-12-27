@@ -185,9 +185,10 @@ impl SASampler {
             let assignments: HashMap<String, bool> = binary_vars
                 .iter()
                 .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
+                .filter_map(|(idx, &value)| {
+                    idx_to_var
+                        .get(&idx)
+                        .map(|var_name| (var_name.clone(), value))
                 })
                 .collect();
 
@@ -286,17 +287,18 @@ impl SASampler {
                 let shape = tensor.shape();
                 if shape.len() == 2 {
                     // Handle 2D specifically
-                    let tensor2d = tensor
+                    if let Ok(tensor2d) = tensor
                         .to_owned()
                         .into_dimensionality::<scirs2_core::ndarray::Ix2>()
-                        .unwrap();
-                    for i in 0..std::cmp::min(n_vars, tensor2d.dim().0) {
-                        if !state[i] {
-                            continue;
-                        }
-                        for j in 0..std::cmp::min(n_vars, tensor2d.dim().1) {
-                            if state[j] {
-                                energy += tensor2d[[i, j]];
+                    {
+                        for i in 0..std::cmp::min(n_vars, tensor2d.dim().0) {
+                            if !state[i] {
+                                continue;
+                            }
+                            for j in 0..std::cmp::min(n_vars, tensor2d.dim().1) {
+                                if state[j] {
+                                    energy += tensor2d[[i, j]];
+                                }
                             }
                         }
                     }
@@ -453,9 +455,10 @@ impl SASampler {
                 let assignments: HashMap<String, bool> = state
                     .iter()
                     .enumerate()
-                    .map(|(idx, &value)| {
-                        let var_name = idx_to_var.get(&idx).unwrap().clone();
-                        (var_name, value)
+                    .filter_map(|(idx, &value)| {
+                        idx_to_var
+                            .get(&idx)
+                            .map(|var_name| (var_name.clone(), value))
                     })
                     .collect();
 
@@ -468,7 +471,11 @@ impl SASampler {
             .collect();
 
         // Sort by energy (best solutions first)
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Limit to requested number of shots if we have more
         if results.len() > shots {

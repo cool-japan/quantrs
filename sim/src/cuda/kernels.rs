@@ -270,9 +270,9 @@ impl CudaKernel {
 
     fn calculate_max_blocks_per_sm(&self, block_size: usize) -> Result<usize> {
         // Simplified calculation based on register and shared memory usage
-        let max_blocks_by_registers = 65536 / (self.register_count as usize * block_size);
+        let max_blocks_by_registers = 65_536 / (self.register_count as usize * block_size);
         let max_blocks_by_shared_memory = if self.shared_memory_size > 0 {
-            98304 / self.shared_memory_size // 96KB shared memory per SM
+            98_304 / self.shared_memory_size // 96KB shared memory per SM
         } else {
             usize::MAX
         };
@@ -343,7 +343,7 @@ impl CudaQuantumKernels {
 
             // Initialize memory pool
             {
-                let mut pool = self.memory_pool.lock().unwrap();
+                let mut pool = self.memory_pool.lock().unwrap_or_else(|e| e.into_inner());
                 pool.allocate_pool(self.config.memory_pool_size)?;
             }
 

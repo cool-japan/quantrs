@@ -3,7 +3,6 @@
 //! This module provides comprehensive dynamical decoupling (DD) sequence generation,
 //! optimization, and analysis using SciRS2's advanced optimization and statistical capabilities
 //! for robust coherence preservation on quantum hardware.
-
 pub mod adaptive;
 pub mod analysis;
 pub mod config;
@@ -14,30 +13,9 @@ pub mod noise;
 pub mod optimization;
 pub mod performance;
 pub mod sequences;
-pub mod validation;
-
 #[cfg(test)]
 pub mod test_suite;
-
-pub use adaptive::*;
-pub use analysis::*;
-pub use config::*;
-pub use hardware::*;
-pub use noise::*;
-pub use optimization::*;
-pub use performance::*;
-pub use sequences::*;
-
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
-
-use quantrs2_circuit::prelude::*;
-use quantrs2_core::{
-    error::{QuantRS2Error, QuantRS2Result},
-    gate::GateOp,
-    qubit::QubitId,
-};
-
+pub mod validation;
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
@@ -46,7 +24,22 @@ use crate::{
     translation::HardwareBackend,
     CircuitResult, DeviceError, DeviceResult,
 };
-
+pub use adaptive::*;
+pub use analysis::*;
+pub use config::*;
+pub use hardware::*;
+pub use noise::*;
+pub use optimization::*;
+pub use performance::*;
+use quantrs2_circuit::prelude::*;
+use quantrs2_core::{
+    error::{QuantRS2Error, QuantRS2Result},
+    gate::GateOp,
+    qubit::QubitId,
+};
+pub use sequences::*;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 /// Main result type for dynamical decoupling operations
 #[derive(Debug, Clone)]
 pub struct DynamicalDecouplingResult {
@@ -67,7 +60,6 @@ pub struct DynamicalDecouplingResult {
     /// Adaptation statistics
     pub adaptation_stats: Option<AdaptationStatistics>,
 }
-
 /// Comprehensive DD system manager
 pub struct DynamicalDecouplingManager {
     /// System configuration
@@ -87,7 +79,6 @@ pub struct DynamicalDecouplingManager {
     /// Multi-qubit coordinator
     pub multi_qubit_coordinator: Option<MultiQubitDDCoordinator>,
 }
-
 impl DynamicalDecouplingManager {
     /// Create new DD manager
     pub fn new(
@@ -104,7 +95,6 @@ impl DynamicalDecouplingManager {
             topology,
         );
         let sequence_optimizer = DDSequenceOptimizer::new(config.optimization_config.clone());
-
         Self {
             config,
             adaptive_system: None,
@@ -116,7 +106,6 @@ impl DynamicalDecouplingManager {
             multi_qubit_coordinator: None,
         }
     }
-
     /// Initialize adaptive DD system
     pub fn initialize_adaptive_system(
         &mut self,
@@ -126,11 +115,9 @@ impl DynamicalDecouplingManager {
     ) -> DeviceResult<()> {
         let adaptive_system =
             AdaptiveDDSystem::new(adaptive_config, initial_sequence, available_sequences);
-
         self.adaptive_system = Some(adaptive_system);
         Ok(())
     }
-
     /// Initialize multi-qubit coordination
     pub fn initialize_multi_qubit_coordination(
         &mut self,
@@ -142,7 +129,6 @@ impl DynamicalDecouplingManager {
             synchronization,
         ));
     }
-
     /// Generate optimized DD sequence
     pub async fn generate_optimized_sequence(
         &mut self,
@@ -152,11 +138,9 @@ impl DynamicalDecouplingManager {
         executor: &dyn DDCircuitExecutor,
     ) -> DeviceResult<DynamicalDecouplingResult> {
         let start_time = std::time::Instant::now();
-
-        // Check cache first
         let cache_key = format!("{:?}_{}_{}", sequence_type, target_qubits.len(), duration);
         if let Some(cached_sequence) = self.sequence_cache.get_sequence(&cache_key) {
-            println!("Using cached DD sequence: {}", cache_key);
+            println!("Using cached DD sequence: {cache_key}");
             return Ok(DynamicalDecouplingResult {
                 optimized_sequence: cached_sequence,
                 execution_time: start_time.elapsed(),
@@ -168,47 +152,31 @@ impl DynamicalDecouplingManager {
                 adaptation_stats: None,
             });
         }
-
-        // Generate base sequence
         let base_sequence =
             DDSequenceGenerator::generate_base_sequence(sequence_type, target_qubits, duration)?;
-
-        // Optimize sequence
         let optimization_result = self
             .sequence_optimizer
             .optimize_sequence(&base_sequence, executor)
             .await?;
-
         let optimized_sequence = optimization_result.optimized_sequence;
-
-        // Analyze performance
         let performance_analysis = self
             .performance_analyzer
             .analyze_performance(&optimized_sequence, executor)
             .await?;
-
-        // Analyze noise characteristics
         let noise_analysis = self
             .noise_analyzer
             .analyze_noise_characteristics(&optimized_sequence, &performance_analysis)?;
-
-        // Analyze hardware compatibility
         let hardware_analysis = self.hardware_analyzer.analyze_hardware_implementation(
             &format!("device_{}", target_qubits.len()),
             &optimized_sequence,
         )?;
-
-        // Cache the optimized sequence
         self.sequence_cache
             .store_sequence(cache_key, optimized_sequence.clone());
-
-        // Calculate quality score
-        let quality_score = self.calculate_quality_score(
+        let quality_score = Self::calculate_quality_score(
             &performance_analysis,
             &noise_analysis,
             &hardware_analysis,
         );
-
         let result = DynamicalDecouplingResult {
             optimized_sequence,
             execution_time: start_time.elapsed(),
@@ -222,8 +190,6 @@ impl DynamicalDecouplingManager {
                 .as_ref()
                 .map(|sys| sys.get_adaptation_statistics()),
         };
-
-        // Update adaptive system if available
         if let Some(ref mut adaptive_system) = self.adaptive_system {
             if let (Some(ref perf), Some(ref noise)) =
                 (&result.performance_analysis, &result.noise_analysis)
@@ -231,10 +197,8 @@ impl DynamicalDecouplingManager {
                 adaptive_system.update_performance(perf, noise)?;
             }
         }
-
         Ok(result)
     }
-
     /// Generate coordinated multi-qubit sequence
     pub fn generate_multi_qubit_sequence(
         &mut self,
@@ -242,14 +206,11 @@ impl DynamicalDecouplingManager {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         if let Some(ref mut coordinator) = self.multi_qubit_coordinator {
-            // Add sequences for each qubit group
             for (qubits, sequence_type) in qubit_groups {
                 let sequence =
                     DDSequenceGenerator::generate_base_sequence(&sequence_type, &qubits, duration)?;
                 coordinator.add_sequence(qubits, sequence);
             }
-
-            // Generate coordinated sequence
             coordinator.generate_coordinated_sequence()
         } else {
             Err(crate::DeviceError::InvalidInput(
@@ -257,10 +218,8 @@ impl DynamicalDecouplingManager {
             ))
         }
     }
-
     /// Calculate overall quality score
     fn calculate_quality_score(
-        &self,
         performance: &DDPerformanceAnalysis,
         noise: &DDNoiseAnalysis,
         hardware: &DDHardwareAnalysis,
@@ -269,21 +228,15 @@ impl DynamicalDecouplingManager {
             performance.metrics.values().sum::<f64>() / performance.metrics.len() as f64;
         let noise_score = noise.suppression_effectiveness.overall_suppression;
         let hardware_score = hardware.hardware_compatibility.compatibility_score;
-
-        // Weighted average
-        let weights = [0.4, 0.3, 0.3]; // Performance, noise, hardware
+        let weights = [0.4, 0.3, 0.3];
         let scores = [performance_score, noise_score, hardware_score];
-
         let score = weights
             .iter()
             .zip(scores.iter())
             .map(|(w, s)| w * s)
             .sum::<f64>();
-
-        // Clamp to [0, 1] range
-        score.max(0.0).min(1.0)
+        score.clamp(0.0, 1.0)
     }
-
     /// Get system status
     pub fn get_system_status(&self) -> DDSystemStatus {
         DDSystemStatus {
@@ -295,7 +248,6 @@ impl DynamicalDecouplingManager {
         }
     }
 }
-
 /// DD system status
 #[derive(Debug, Clone)]
 pub struct DDSystemStatus {
@@ -310,7 +262,6 @@ pub struct DDSystemStatus {
     /// Optimization success rate
     pub optimization_success_rate: f64,
 }
-
 /// Circuit executor trait for DD operations
 pub trait DDCircuitExecutor: Send + Sync {
     /// Execute a circuit and return results
@@ -318,14 +269,11 @@ pub trait DDCircuitExecutor: Send + Sync {
         &self,
         circuit: &Circuit<16>,
     ) -> Result<CircuitExecutionResults, DeviceError>;
-
     /// Get backend capabilities
     fn get_capabilities(&self) -> BackendCapabilities;
-
     /// Estimate execution time
     fn estimate_execution_time(&self, circuit: &Circuit<16>) -> Duration;
 }
-
 /// Circuit execution results
 #[derive(Debug, Clone)]
 pub struct CircuitExecutionResults {
@@ -340,7 +288,6 @@ pub struct CircuitExecutionResults {
     /// System metadata
     pub metadata: CircuitExecutionMetadata,
 }
-
 /// Circuit execution metadata
 #[derive(Debug, Clone)]
 pub struct CircuitExecutionMetadata {

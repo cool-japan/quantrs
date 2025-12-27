@@ -31,6 +31,7 @@ use crate::quantum_error_correction::{
     NoiseResilientAnnealingProtocol, SyndromeDetector,
 };
 use crate::simulator::{AnnealingParams, QuantumAnnealingSimulator};
+use std::fmt::Write;
 
 /// Amino acid types in the HP model
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -44,8 +45,8 @@ pub enum AminoAcidType {
 impl fmt::Display for AminoAcidType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AminoAcidType::Hydrophobic => write!(f, "H"),
-            AminoAcidType::Polar => write!(f, "P"),
+            Self::Hydrophobic => write!(f, "H"),
+            Self::Polar => write!(f, "P"),
         }
     }
 }
@@ -63,6 +64,7 @@ pub struct ProteinSequence {
 
 impl ProteinSequence {
     /// Create new protein sequence
+    #[must_use]
     pub fn new(sequence: Vec<AminoAcidType>, id: String) -> Self {
         Self {
             sequence,
@@ -81,8 +83,7 @@ impl ProteinSequence {
                 'P' => amino_acids.push(AminoAcidType::Polar),
                 _ => {
                     return Err(ApplicationError::DataValidationError(format!(
-                        "Invalid amino acid character: {}",
-                        ch
+                        "Invalid amino acid character: {ch}"
                     )))
                 }
             }
@@ -92,11 +93,13 @@ impl ProteinSequence {
     }
 
     /// Get sequence length
+    #[must_use]
     pub fn length(&self) -> usize {
         self.sequence.len()
     }
 
     /// Count hydrophobic residues
+    #[must_use]
     pub fn hydrophobic_count(&self) -> usize {
         self.sequence
             .iter()
@@ -105,6 +108,7 @@ impl ProteinSequence {
     }
 
     /// Count polar residues
+    #[must_use]
     pub fn polar_count(&self) -> usize {
         self.sequence
             .iter()
@@ -114,7 +118,7 @@ impl ProteinSequence {
 }
 
 /// Lattice types for protein folding
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LatticeType {
     /// 2D square lattice
     Square2D,
@@ -135,18 +139,21 @@ pub struct LatticePosition {
 }
 
 impl LatticePosition {
-    pub fn new(x: i32, y: i32, z: i32) -> Self {
+    #[must_use]
+    pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
     }
 
+    #[must_use]
     pub fn distance(&self, other: &Self) -> f64 {
-        let dx = (self.x - other.x) as f64;
-        let dy = (self.y - other.y) as f64;
-        let dz = (self.z - other.z) as f64;
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        let dx = f64::from(self.x - other.x);
+        let dy = f64::from(self.y - other.y);
+        let dz = f64::from(self.z - other.z);
+        dz.mul_add(dz, dx.mul_add(dx, dy * dy)).sqrt()
     }
 
-    pub fn manhattan_distance(&self, other: &Self) -> i32 {
+    #[must_use]
+    pub const fn manhattan_distance(&self, other: &Self) -> i32 {
         (self.x - other.x).abs() + (self.y - other.y).abs() + (self.z - other.z).abs()
     }
 }
@@ -164,6 +171,7 @@ pub struct ProteinFolding {
 
 impl ProteinFolding {
     /// Create new protein folding
+    #[must_use]
     pub fn new(sequence: ProteinSequence, lattice_type: LatticeType) -> Self {
         let positions = vec![LatticePosition::new(0, 0, 0); sequence.length()];
         Self {
@@ -191,6 +199,7 @@ impl ProteinFolding {
     }
 
     /// Check if folding is valid (no overlaps, connected chain)
+    #[must_use]
     pub fn is_valid(&self) -> bool {
         // Check for position overlaps
         let mut position_set = std::collections::HashSet::new();
@@ -212,6 +221,7 @@ impl ProteinFolding {
     }
 
     /// Calculate hydrophobic-hydrophobic contacts
+    #[must_use]
     pub fn hydrophobic_contacts(&self) -> i32 {
         let mut contacts = 0;
 
@@ -236,23 +246,24 @@ impl ProteinFolding {
     }
 
     /// Calculate compactness (radius of gyration)
+    #[must_use]
     pub fn radius_of_gyration(&self) -> f64 {
         let n = self.positions.len() as f64;
 
         // Calculate center of mass
-        let cx = self.positions.iter().map(|p| p.x as f64).sum::<f64>() / n;
-        let cy = self.positions.iter().map(|p| p.y as f64).sum::<f64>() / n;
-        let cz = self.positions.iter().map(|p| p.z as f64).sum::<f64>() / n;
+        let cx = self.positions.iter().map(|p| f64::from(p.x)).sum::<f64>() / n;
+        let cy = self.positions.iter().map(|p| f64::from(p.y)).sum::<f64>() / n;
+        let cz = self.positions.iter().map(|p| f64::from(p.z)).sum::<f64>() / n;
 
         // Calculate radius of gyration
         let rg_sq = self
             .positions
             .iter()
             .map(|p| {
-                let dx = p.x as f64 - cx;
-                let dy = p.y as f64 - cy;
-                let dz = p.z as f64 - cz;
-                dx * dx + dy * dy + dz * dz
+                let dx = f64::from(p.x) - cx;
+                let dy = f64::from(p.y) - cy;
+                let dz = f64::from(p.z) - cz;
+                dz.mul_add(dz, dx.mul_add(dx, dy * dy))
             })
             .sum::<f64>()
             / n;
@@ -261,12 +272,13 @@ impl ProteinFolding {
     }
 
     /// Calculate total energy (negative hydrophobic contacts + compactness penalty)
+    #[must_use]
     pub fn total_energy(&self) -> f64 {
-        let hh_contacts = self.hydrophobic_contacts() as f64;
+        let hh_contacts = f64::from(self.hydrophobic_contacts());
         let compactness_penalty = self.radius_of_gyration();
 
         // Energy = negative contacts (favorable) + compactness penalty
-        -hh_contacts + 0.1 * compactness_penalty
+        0.1f64.mul_add(compactness_penalty, -hh_contacts)
     }
 }
 
@@ -302,6 +314,7 @@ pub enum FoldingObjective {
 
 impl ProteinFoldingProblem {
     /// Create new protein folding problem
+    #[must_use]
     pub fn new(sequence: ProteinSequence, lattice_type: LatticeType) -> Self {
         Self {
             sequence,
@@ -321,18 +334,21 @@ impl ProteinFoldingProblem {
     }
 
     /// Enable quantum error correction
+    #[must_use]
     pub fn with_quantum_error_correction(mut self, config: String) -> Self {
         self.qec_framework = Some(config);
         self
     }
 
     /// Enable neural annealing schedules
+    #[must_use]
     pub fn with_neural_annealing(mut self, config: NeuralSchedulerConfig) -> Self {
         self.neural_config = Some(config);
         self
     }
 
     /// Add optimization objective
+    #[must_use]
     pub fn add_objective(mut self, objective: FoldingObjective) -> Self {
         self.objectives.push(objective);
         self
@@ -350,11 +366,11 @@ impl ProteinFoldingProblem {
 
         // Solve using best algorithm for this problem size
         let result = algorithms.solve(&qubo, None).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Advanced algorithm failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Advanced algorithm failed: {e:?}"))
         })?;
 
         let solution = result
-            .map_err(|e| ApplicationError::OptimizationError(format!("Solver error: {}", e)))?;
+            .map_err(|e| ApplicationError::OptimizationError(format!("Solver error: {e}")))?;
 
         // Convert binary solution back to protein folding
         self.solution_from_binary(&solution, &variable_map)
@@ -373,18 +389,17 @@ impl ProteinFoldingProblem {
             let error_config = ErrorMitigationConfig::default();
             let mut error_manager = ErrorMitigationManager::new(error_config).map_err(|e| {
                 ApplicationError::OptimizationError(format!(
-                    "Failed to create error manager: {:?}",
-                    e
+                    "Failed to create error manager: {e:?}"
                 ))
             })?;
 
             // First perform standard annealing
             let params = AnnealingParams::default();
             let annealer = QuantumAnnealingSimulator::new(params.clone()).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Failed to create annealer: {:?}", e))
+                ApplicationError::OptimizationError(format!("Failed to create annealer: {e:?}"))
             })?;
             let annealing_result = annealer.solve(&ising_model.0).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Annealing failed: {:?}", e))
+                ApplicationError::OptimizationError(format!("Annealing failed: {e:?}"))
             })?;
 
             // Convert simulator result to error mitigation format
@@ -393,7 +408,7 @@ impl ProteinFoldingProblem {
                     solution: annealing_result
                         .best_spins
                         .iter()
-                        .map(|&x| x as i32)
+                        .map(|&x| i32::from(x))
                         .collect(),
                     energy: annealing_result.best_energy,
                     num_occurrences: 1,
@@ -406,7 +421,7 @@ impl ProteinFoldingProblem {
             let mitigation_result = error_manager
                 .apply_mitigation(&ising_model.0, error_mitigation_result, &params)
                 .map_err(|e| {
-                    ApplicationError::OptimizationError(format!("Error mitigation failed: {:?}", e))
+                    ApplicationError::OptimizationError(format!("Error mitigation failed: {e:?}"))
                 })?;
 
             let solution = &mitigation_result.mitigated_result.solution;
@@ -431,18 +446,17 @@ impl ProteinFoldingProblem {
             let mut neural_scheduler = NeuralAnnealingScheduler::new(neural_config.clone())
                 .map_err(|e| {
                     ApplicationError::OptimizationError(format!(
-                        "Failed to create neural scheduler: {:?}",
-                        e
+                        "Failed to create neural scheduler: {e:?}"
                     ))
                 })?;
 
             // Optimize using neural-guided schedules
             let result = neural_scheduler.optimize(&qubo).map_err(|e| {
-                ApplicationError::OptimizationError(format!("Neural annealing failed: {:?}", e))
+                ApplicationError::OptimizationError(format!("Neural annealing failed: {e:?}"))
             })?;
 
             let solution = result.map_err(|e| {
-                ApplicationError::OptimizationError(format!("Neural solver error: {}", e))
+                ApplicationError::OptimizationError(format!("Neural solver error: {e}"))
             })?;
 
             self.solution_from_binary(&solution, &variable_map)
@@ -462,7 +476,7 @@ impl ProteinFoldingProblem {
             // params[0] = temperature, params[1] = annealing steps, params[2] = algorithm type
             let temperature = params[0];
             let steps = params[1] as usize;
-            let _algorithm_type = params[2] as usize;
+            // let _algorithm_type = params[2] as usize;
 
             // Simple folding energy approximation for optimization
             let length = self.sequence.length() as f64;
@@ -479,7 +493,7 @@ impl ProteinFoldingProblem {
 
         // Run Bayesian optimization
         let best_params = optimize_annealing_parameters(objective, Some(30)).map_err(|e| {
-            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {:?}", e))
+            ApplicationError::OptimizationError(format!("Bayesian optimization failed: {e:?}"))
         })?;
 
         let mut result = HashMap::new();
@@ -510,12 +524,8 @@ impl ProteinFoldingProblem {
             let move_var_base = (i - 1) * 2; // 2 bits per move for 2D
 
             if move_var_base + 1 < solution.len() {
-                let move_x = if solution[move_var_base] > 0 { 1 } else { 0 };
-                let move_y = if solution[move_var_base + 1] > 0 {
-                    1
-                } else {
-                    0
-                };
+                let move_x = i32::from(solution[move_var_base] > 0);
+                let move_y = i32::from(solution[move_var_base + 1] > 0);
 
                 let prev_pos = folding.positions[i - 1];
                 let new_pos = match (move_x, move_y) {
@@ -566,9 +576,8 @@ impl ProteinFoldingProblem {
                     prev_pos.z + dir.z,
                 );
 
-                if !used_positions.contains(&new_pos) {
+                if used_positions.insert(new_pos) {
                     positions.push(new_pos);
-                    used_positions.insert(new_pos);
                     placed = true;
                     break;
                 }
@@ -638,8 +647,8 @@ impl OptimizationProblem for ProteinFoldingProblem {
 
         // Map variables
         for i in 0..(seq_len - 1) {
-            variable_map.insert(format!("move_{}_x", i), i * 2);
-            variable_map.insert(format!("move_{}_y", i), i * 2 + 1);
+            variable_map.insert(format!("move_{i}_x"), i * 2);
+            variable_map.insert(format!("move_{i}_y"), i * 2 + 1);
         }
 
         // Add objective terms (simplified QUBO formulation)
@@ -713,7 +722,7 @@ impl IndustrySolution for ProteinFolding {
     type Problem = ProteinFoldingProblem;
 
     fn from_binary(problem: &Self::Problem, binary_solution: &[i8]) -> ApplicationResult<Self> {
-        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| x as i32).collect();
+        let solution_i32: Vec<i32> = binary_solution.iter().map(|&x| i32::from(x)).collect();
         let variable_map = HashMap::new(); // Simplified
         problem.solution_from_binary(&solution_i32, &variable_map)
     }
@@ -749,7 +758,7 @@ impl IndustrySolution for ProteinFolding {
         let mut metrics = HashMap::new();
         metrics.insert(
             "hydrophobic_contacts".to_string(),
-            self.hydrophobic_contacts() as f64,
+            f64::from(self.hydrophobic_contacts()),
         );
         metrics.insert("radius_of_gyration".to_string(), self.radius_of_gyration());
         metrics.insert("total_energy".to_string(), self.total_energy());
@@ -763,35 +772,39 @@ impl IndustrySolution for ProteinFolding {
     fn export_format(&self) -> ApplicationResult<String> {
         let mut output = String::new();
 
-        output.push_str(&format!("# Protein Folding Result\n"));
-        output.push_str(&format!("Sequence ID: {}\n", self.sequence.id));
-        output.push_str(&format!(
-            "Sequence: {}\n",
+        let _ = writeln!(output, "# Protein Folding Result");
+        let _ = writeln!(output, "Sequence ID: {}", self.sequence.id);
+        let _ = writeln!(
+            output,
+            "Sequence: {}",
             self.sequence
                 .sequence
                 .iter()
-                .map(|aa| format!("{}", aa))
+                .map(|aa| format!("{aa}"))
                 .collect::<String>()
-        ));
-        output.push_str(&format!("Lattice Type: {:?}\n", self.lattice_type));
-        output.push_str(&format!("Length: {}\n", self.sequence.length()));
-        output.push_str(&format!(
+        );
+        let _ = writeln!(output, "Lattice Type: {:?}", self.lattice_type);
+        let _ = write!(output, "Length: {}\n", self.sequence.length());
+        let _ = write!(
+            output,
             "Hydrophobic Contacts: {}\n",
             self.hydrophobic_contacts()
-        ));
-        output.push_str(&format!(
+        );
+        let _ = write!(
+            output,
             "Radius of Gyration: {:.3}\n",
             self.radius_of_gyration()
-        ));
-        output.push_str(&format!("Total Energy: {:.3}\n", self.total_energy()));
-        output.push_str(&format!("Valid Configuration: {}\n", self.is_valid()));
+        );
+        let _ = write!(output, "Total Energy: {:.3}\n", self.total_energy());
+        let _ = write!(output, "Valid Configuration: {}\n", self.is_valid());
 
         output.push_str("\n# Positions\n");
         for (i, pos) in self.positions.iter().enumerate() {
-            output.push_str(&format!(
+            let _ = write!(
+                output,
                 "{}: {} ({}, {}, {})\n",
                 i, self.sequence.sequence[i], pos.x, pos.y, pos.z
-            ));
+            );
         }
 
         Ok(output)
@@ -829,7 +842,7 @@ pub fn create_benchmark_problems(
     };
 
     for (i, seq_str) in sequences.iter().enumerate() {
-        let sequence = ProteinSequence::from_string(seq_str, format!("benchmark_{}", i))?;
+        let sequence = ProteinSequence::from_string(seq_str, format!("benchmark_{i}"))?;
         let problem = ProteinFoldingProblem::new(sequence, LatticeType::Square2D);
 
         // Note: This is a simplified implementation for the trait object
@@ -849,7 +862,8 @@ mod tests {
 
     #[test]
     fn test_protein_sequence_creation() {
-        let sequence = ProteinSequence::from_string("HPHPPHHPHH", "test".to_string()).unwrap();
+        let sequence = ProteinSequence::from_string("HPHPPHHPHH", "test".to_string())
+            .expect("Failed to create protein sequence from valid string");
         assert_eq!(sequence.length(), 10);
         assert_eq!(sequence.hydrophobic_count(), 6);
         assert_eq!(sequence.polar_count(), 4);
@@ -866,44 +880,46 @@ mod tests {
 
     #[test]
     fn test_protein_folding_validation() {
-        let sequence = ProteinSequence::from_string("HPHH", "test".to_string()).unwrap();
+        let sequence = ProteinSequence::from_string("HPHH", "test".to_string())
+            .expect("Failed to create protein sequence");
         let mut folding = ProteinFolding::new(sequence, LatticeType::Square2D);
 
         // Set valid positions
         folding
             .set_position(0, LatticePosition::new(0, 0, 0))
-            .unwrap();
+            .expect("Failed to set position 0");
         folding
             .set_position(1, LatticePosition::new(1, 0, 0))
-            .unwrap();
+            .expect("Failed to set position 1");
         folding
             .set_position(2, LatticePosition::new(2, 0, 0))
-            .unwrap();
+            .expect("Failed to set position 2");
         folding
             .set_position(3, LatticePosition::new(2, 1, 0))
-            .unwrap();
+            .expect("Failed to set position 3");
 
         assert!(folding.is_valid());
     }
 
     #[test]
     fn test_hydrophobic_contacts() {
-        let sequence = ProteinSequence::from_string("HPHH", "test".to_string()).unwrap();
+        let sequence = ProteinSequence::from_string("HPHH", "test".to_string())
+            .expect("Failed to create protein sequence");
         let mut folding = ProteinFolding::new(sequence, LatticeType::Square2D);
 
         // Create L-shape with HH contact
         folding
             .set_position(0, LatticePosition::new(0, 0, 0))
-            .unwrap(); // H
+            .expect("Failed to set position 0"); // H
         folding
             .set_position(1, LatticePosition::new(1, 0, 0))
-            .unwrap(); // P
+            .expect("Failed to set position 1"); // P
         folding
             .set_position(2, LatticePosition::new(2, 0, 0))
-            .unwrap(); // H
+            .expect("Failed to set position 2"); // H
         folding
             .set_position(3, LatticePosition::new(2, 1, 0))
-            .unwrap(); // H
+            .expect("Failed to set position 3"); // H
 
         // No HH contacts in this configuration
         assert_eq!(folding.hydrophobic_contacts(), 0);
@@ -911,22 +927,22 @@ mod tests {
         // Modify to create HH contact
         folding
             .set_position(3, LatticePosition::new(1, 1, 0))
-            .unwrap(); // H adjacent to P
-                       // Still no HH contact between non-adjacent in sequence
+            .expect("Failed to update position 3"); // H adjacent to P
+                                                    // Still no HH contact between non-adjacent in sequence
 
         // Create folded structure with HH contact
         folding
             .set_position(0, LatticePosition::new(0, 0, 0))
-            .unwrap(); // H
+            .expect("Failed to set folded position 0"); // H
         folding
             .set_position(1, LatticePosition::new(1, 0, 0))
-            .unwrap(); // P
+            .expect("Failed to set folded position 1"); // P
         folding
             .set_position(2, LatticePosition::new(1, 1, 0))
-            .unwrap(); // H
+            .expect("Failed to set folded position 2"); // H
         folding
             .set_position(3, LatticePosition::new(0, 1, 0))
-            .unwrap(); // H
+            .expect("Failed to set folded position 3"); // H
 
         // Now positions 0 and 3 (both H) are adjacent
         assert_eq!(folding.hydrophobic_contacts(), 1);
@@ -934,7 +950,8 @@ mod tests {
 
     #[test]
     fn test_problem_creation() {
-        let sequence = ProteinSequence::from_string("HPHPPHHPHH", "test".to_string()).unwrap();
+        let sequence = ProteinSequence::from_string("HPHPPHHPHH", "test".to_string())
+            .expect("Failed to create protein sequence");
         let problem = ProteinFoldingProblem::new(sequence, LatticeType::Square2D);
 
         assert!(problem.validate().is_ok());
@@ -945,10 +962,13 @@ mod tests {
 
     #[test]
     fn test_qubo_conversion() {
-        let sequence = ProteinSequence::from_string("HPHH", "test".to_string()).unwrap();
+        let sequence = ProteinSequence::from_string("HPHH", "test".to_string())
+            .expect("Failed to create protein sequence");
         let problem = ProteinFoldingProblem::new(sequence, LatticeType::Square2D);
 
-        let (qubo, variable_map) = problem.to_qubo().unwrap();
+        let (qubo, variable_map) = problem
+            .to_qubo()
+            .expect("Failed to convert problem to QUBO");
         assert_eq!(qubo.num_variables, 6); // (4-1) * 2 = 6 variables
         assert!(!variable_map.is_empty());
     }

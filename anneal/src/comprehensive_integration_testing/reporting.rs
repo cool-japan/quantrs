@@ -5,6 +5,7 @@ use std::time::SystemTime;
 
 use super::config::ReportFormat;
 
+use std::fmt::Write;
 /// Test report generator
 pub struct TestReportGenerator {
     /// Report templates
@@ -16,6 +17,7 @@ pub struct TestReportGenerator {
 }
 
 impl TestReportGenerator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             templates: HashMap::new(),
@@ -38,7 +40,7 @@ impl TestReportGenerator {
         let template = self
             .templates
             .get(template_name)
-            .ok_or_else(|| format!("Template '{}' not found", template_name))?;
+            .ok_or_else(|| format!("Template '{template_name}' not found"))?;
 
         // Generate report content based on format
         let content = match template.format {
@@ -54,7 +56,7 @@ impl TestReportGenerator {
                 "report_{}",
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("system time before UNIX_EPOCH")
                     .as_secs()
             ),
             name: template.name.clone(),
@@ -80,10 +82,10 @@ impl TestReportGenerator {
         html.push_str("</title></head><body>");
 
         for section in &template.sections {
-            html.push_str(&format!("<h2>{}</h2>", section.name));
+            write!(html, "<h2>{}</h2>", section.name).expect("failed to write to string");
             match &section.content {
                 SectionContent::Text(text) => {
-                    html.push_str(&format!("<p>{}</p>", text));
+                    write!(html, "<p>{text}</p>").expect("failed to write to string");
                 }
                 SectionContent::Table(_) => {
                     html.push_str("<table><tr><th>Metric</th><th>Value</th></tr>");
@@ -120,17 +122,22 @@ impl TestReportGenerator {
         _data: &ReportData,
     ) -> Result<String, String> {
         let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        xml.push_str(&format!("<report title=\"{}\">\n", template.metadata.title));
-        xml.push_str(&format!(
+        write!(xml, "<report title=\"{}\">\n", template.metadata.title)
+            .expect("failed to write to string");
+        write!(
+            xml,
             "  <description>{}</description>\n",
             template.metadata.description
-        ));
+        )
+        .expect("failed to write to string");
 
         for section in &template.sections {
-            xml.push_str(&format!("  <section name=\"{}\">\n", section.name));
+            write!(xml, "  <section name=\"{}\">\n", section.name)
+                .expect("failed to write to string");
             match &section.content {
                 SectionContent::Text(text) => {
-                    xml.push_str(&format!("    <content>{}</content>\n", text));
+                    writeln!(xml, "    <content>{text}</content>")
+                        .expect("failed to write to string");
                 }
                 SectionContent::Table(_) => {
                     xml.push_str("    <table>\n");
@@ -168,11 +175,13 @@ impl TestReportGenerator {
     }
 
     /// Get a generated report by ID
+    #[must_use]
     pub fn get_report(&self, report_id: &str) -> Option<&GeneratedReport> {
         self.generated_reports.iter().find(|r| r.id == report_id)
     }
 
     /// List all generated reports
+    #[must_use]
     pub fn list_reports(&self) -> Vec<&GeneratedReport> {
         self.generated_reports.iter().collect()
     }
@@ -180,7 +189,7 @@ impl TestReportGenerator {
     /// Export report to file (placeholder)
     pub fn export_report(&self, report_id: &str, _file_path: &str) -> Result<(), String> {
         self.get_report(report_id)
-            .ok_or_else(|| format!("Report {} not found", report_id))?;
+            .ok_or_else(|| format!("Report {report_id} not found"))?;
         Ok(())
     }
 
@@ -190,6 +199,7 @@ impl TestReportGenerator {
     }
 
     /// Get report count
+    #[must_use]
     pub fn report_count(&self) -> usize {
         self.generated_reports.len()
     }
@@ -233,7 +243,7 @@ pub struct ReportSection {
 }
 
 /// Section types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SectionType {
     Summary,
     TestResults,
@@ -270,7 +280,7 @@ pub struct DataQuery {
 }
 
 /// Query types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueryType {
     TestResults,
     PerformanceMetrics,
@@ -290,7 +300,7 @@ pub struct DataTransformation {
 }
 
 /// Transformation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransformationType {
     Aggregate,
     Filter,
@@ -312,7 +322,7 @@ pub struct ChartDefinition {
 }
 
 /// Chart types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChartType {
     Line,
     Bar,
@@ -361,7 +371,7 @@ pub struct TableColumn {
 }
 
 /// Column types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     Text,
     Number,
@@ -394,7 +404,7 @@ pub struct NumberFormat {
 }
 
 /// Text alignment
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextAlignment {
     Left,
     Center,
@@ -413,7 +423,7 @@ pub struct TableFormatting {
 }
 
 /// Border styles
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BorderStyle {
     None,
     Simple,
@@ -438,7 +448,7 @@ pub struct SectionFormatting {
 }
 
 /// Font weights
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FontWeight {
     Normal,
     Bold,

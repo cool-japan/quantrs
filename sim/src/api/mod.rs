@@ -427,7 +427,7 @@ pub mod measurement {
     };
 }
 
-/// SciRS2 integration and enhancements
+/// `SciRS2` integration and enhancements
 pub mod scirs2 {
     pub use crate::scirs2_eigensolvers::{
         benchmark_spectral_analysis, BandStructureResult, EntanglementSpectrumResult,

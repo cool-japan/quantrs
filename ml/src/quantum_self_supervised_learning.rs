@@ -1161,7 +1161,11 @@ impl QuantumSelfSupervisedLearner {
 
             // Update target network (if applicable)
             if self.target_network.is_some() {
-                let target_net_clone = self.target_network.as_ref().unwrap().clone();
+                let target_net_clone = self
+                    .target_network
+                    .as_ref()
+                    .expect("target_network is Some")
+                    .clone();
                 self.update_target_network_internal(&target_net_clone)?;
             }
 
@@ -1868,7 +1872,7 @@ mod tests {
         let sample = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let views = augmenter.generate_augmented_views(&sample, 2);
         assert!(views.is_ok());
-        assert_eq!(views.unwrap().len(), 2);
+        assert_eq!(views.expect("views should be ok").len(), 2);
     }
 
     #[test]

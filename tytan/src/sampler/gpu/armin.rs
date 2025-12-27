@@ -120,7 +120,7 @@ impl ArminSampler {
                 .find(|d| {
                     matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().cpu())
                 })
-                .unwrap_or_else(|| Device::first(platform).unwrap())
+                .map_or_else(|| Device::first(platform), Ok)?
         } else {
             // GPU device
             Device::list_all(platform)
@@ -129,7 +129,7 @@ impl ArminSampler {
                 .find(|d| {
                     matches!(d.info(DeviceInfo::Type).ok(), Some(DeviceInfoResult::Type(dt)) if dt == DeviceType::default().gpu())
                 })
-                .unwrap_or_else(|| Device::first(platform).unwrap())
+                .map_or_else(|| Device::first(platform), Ok)?
         };
 
         if self.verbose {
@@ -365,7 +365,8 @@ impl ArminSampler {
         // Sort solutions by energy
         let mut solution_pairs: Vec<(Vec<bool>, f64)> =
             solutions.into_iter().zip(energies).collect();
-        solution_pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+        solution_pairs
+            .sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         // Return sorted solutions
         Ok(solution_pairs.into_iter().map(|(sol, _)| sol).collect())
@@ -587,9 +588,10 @@ impl Sampler for ArminSampler {
                         let assignments: HashMap<String, bool> = bin_solution
                             .iter()
                             .enumerate()
-                            .map(|(idx, &value)| {
-                                let var_name = idx_to_var.get(&idx).unwrap().clone();
-                                (var_name, value)
+                            .filter_map(|(idx, &value)| {
+                                idx_to_var
+                                    .get(&idx)
+                                    .map(|var_name| (var_name.clone(), value))
                             })
                             .collect();
 
@@ -602,7 +604,11 @@ impl Sampler for ArminSampler {
                     .collect();
 
                 // Sort by energy
-                results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+                results.sort_by(|a, b| {
+                    a.energy
+                        .partial_cmp(&b.energy)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
 
                 // Limit to requested number of shots
                 if results.len() > shots {
@@ -631,13 +637,16 @@ impl Sampler for ArminSampler {
     ) -> SamplerResult<Vec<SampleResult>> {
         // Handle QUBO case directly
         if hobo.0.ndim() == 2 {
-            let mut qubo = (
-                hobo.0
-                    .clone()
-                    .into_dimensionality::<scirs2_core::ndarray::Ix2>()
-                    .unwrap(),
-                hobo.1.clone(),
-            );
+            let matrix = hobo
+                .0
+                .clone()
+                .into_dimensionality::<scirs2_core::ndarray::Ix2>()
+                .map_err(|e| {
+                    SamplerError::InvalidParameter(format!(
+                        "Failed to convert HOBO to QUBO dimensionality: {e}"
+                    ))
+                })?;
+            let qubo = (matrix, hobo.1.clone());
             return self.run_qubo(&qubo, shots);
         }
 
@@ -658,12 +667,17 @@ pub struct ArminSampler {
 #[cfg(not(feature = "gpu"))]
 impl ArminSampler {
     #[must_use]
-    pub fn new(_seed: Option<u64>) -> Self {
+    pub const fn new(_seed: Option<u64>) -> Self {
         Self { _seed }
     }
 
     #[must_use]
-    pub fn with_params(_seed: Option<u64>, _mode: &str, _device: &str, _verbose: bool) -> Self {
+    pub const fn with_params(
+        _seed: Option<u64>,
+        _mode: &str,
+        _device: &str,
+        _verbose: bool,
+    ) -> Self {
         Self { _seed }
     }
 }

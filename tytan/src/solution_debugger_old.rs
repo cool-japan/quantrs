@@ -32,7 +32,8 @@ mod tests {
         reverse_var_map.insert(0, "x0".to_string());
         reverse_var_map.insert(1, "x1".to_string());
 
-        let mut qubo = Array2::from_shape_vec((2, 2), vec![1.0, -2.0, -2.0, 1.0]).unwrap();
+        let qubo = Array2::from_shape_vec((2, 2), vec![1.0, -2.0, -2.0, 1.0])
+            .expect("Test QUBO matrix shape should be valid");
 
         types::ProblemInfo {
             name: "Test Problem".to_string(),

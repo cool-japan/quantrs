@@ -52,38 +52,38 @@ pub enum CloudPlatform {
 
 impl CloudPlatform {
     /// Get platform name
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
-            CloudPlatform::IBM => "IBM Quantum",
-            CloudPlatform::AWS => "AWS Braket",
-            CloudPlatform::Google => "Google Quantum AI",
-            CloudPlatform::Azure => "Azure Quantum",
-            CloudPlatform::Rigetti => "Rigetti QCS",
-            CloudPlatform::IonQ => "IonQ Cloud",
+            Self::IBM => "IBM Quantum",
+            Self::AWS => "AWS Braket",
+            Self::Google => "Google Quantum AI",
+            Self::Azure => "Azure Quantum",
+            Self::Rigetti => "Rigetti QCS",
+            Self::IonQ => "IonQ Cloud",
         }
     }
 
     /// Get default API endpoint
-    pub fn endpoint(&self) -> &'static str {
+    pub const fn endpoint(&self) -> &'static str {
         match self {
-            CloudPlatform::IBM => "https://auth.quantum-computing.ibm.com/api",
-            CloudPlatform::AWS => "https://braket.us-east-1.amazonaws.com",
-            CloudPlatform::Google => "https://quantumengine.googleapis.com",
-            CloudPlatform::Azure => "https://quantum.azure.com",
-            CloudPlatform::Rigetti => "https://api.rigetti.com",
-            CloudPlatform::IonQ => "https://api.ionq.com",
+            Self::IBM => "https://auth.quantum-computing.ibm.com/api",
+            Self::AWS => "https://braket.us-east-1.amazonaws.com",
+            Self::Google => "https://quantumengine.googleapis.com",
+            Self::Azure => "https://quantum.azure.com",
+            Self::Rigetti => "https://api.rigetti.com",
+            Self::IonQ => "https://api.ionq.com",
         }
     }
 
     /// Check if platform supports specific qubit count
-    pub fn supports_qubits(&self, num_qubits: usize) -> bool {
+    pub const fn supports_qubits(&self, num_qubits: usize) -> bool {
         match self {
-            CloudPlatform::IBM => num_qubits <= 127, // IBM Quantum Eagle
-            CloudPlatform::AWS => num_qubits <= 34,  // AWS Braket max
-            CloudPlatform::Google => num_qubits <= 72, // Google Sycamore
-            CloudPlatform::Azure => num_qubits <= 40, // Azure various backends
-            CloudPlatform::Rigetti => num_qubits <= 80, // Rigetti Aspen-M
-            CloudPlatform::IonQ => num_qubits <= 32, // IonQ Aria
+            Self::IBM => num_qubits <= 127,    // IBM Quantum Eagle
+            Self::AWS => num_qubits <= 34,     // AWS Braket max
+            Self::Google => num_qubits <= 72,  // Google Sycamore
+            Self::Azure => num_qubits <= 40,   // Azure various backends
+            Self::Rigetti => num_qubits <= 80, // Rigetti Aspen-M
+            Self::IonQ => num_qubits <= 32,    // IonQ Aria
         }
     }
 }
@@ -175,13 +175,16 @@ impl DeviceInfo {
 
     /// Calculate quality score for ranking devices
     pub fn quality_score(&self) -> f64 {
-        let gate_score = (self.avg_single_qubit_fidelity() + self.avg_two_qubit_fidelity()) / 2.0;
+        let gate_score = f64::midpoint(
+            self.avg_single_qubit_fidelity(),
+            self.avg_two_qubit_fidelity(),
+        );
         let readout_score =
             self.readout_fidelity.iter().sum::<f64>() / self.readout_fidelity.len() as f64;
         let availability_score = if self.is_available { 1.0 } else { 0.5 };
         let queue_score = 1.0 / (1.0 + self.queue_depth as f64 / 10.0);
 
-        gate_score * 0.4 + readout_score * 0.3 + availability_score * 0.2 + queue_score * 0.1
+        gate_score.mul_add(0.4, readout_score * 0.3) + availability_score * 0.2 + queue_score * 0.1
     }
 }
 
@@ -237,7 +240,7 @@ impl QuantumJob {
     }
 
     /// Check if job is finished (completed, failed, or cancelled)
-    pub fn is_finished(&self) -> bool {
+    pub const fn is_finished(&self) -> bool {
         matches!(
             self.status,
             JobStatus::Completed | JobStatus::Failed | JobStatus::Cancelled
@@ -336,7 +339,7 @@ pub struct CloudClient {
 
 impl CloudClient {
     /// Create a new cloud client
-    pub fn new(config: CloudConfig) -> Self {
+    pub const fn new(config: CloudConfig) -> Self {
         Self {
             config,
             devices: Vec::new(),
@@ -526,7 +529,11 @@ impl CloudClient {
                 d.num_qubits >= min_qubits
                     && (!prefer_qpu || matches!(d.device_type, DeviceType::QPU))
             })
-            .max_by(|a, b| a.quality_score().partial_cmp(&b.quality_score()).unwrap())
+            .max_by(|a, b| {
+                a.quality_score()
+                    .partial_cmp(&b.quality_score())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
     }
 
     /// Submit a quantum job
@@ -537,7 +544,7 @@ impl CloudClient {
         shots: Option<usize>,
     ) -> QuantRS2Result<QuantumJob> {
         let device = self.get_device(device_name).ok_or_else(|| {
-            QuantRS2Error::InvalidInput(format!("Device {} not found", device_name))
+            QuantRS2Error::InvalidInput(format!("Device {device_name} not found"))
         })?;
 
         let shots = shots.unwrap_or(self.config.default_shots);
@@ -554,14 +561,12 @@ impl CloudClient {
         let estimated_cost = shots as f64 * device.cost_per_shot;
 
         // Create job (simplified - in production would make API call)
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or(Duration::ZERO)
+            .as_millis();
         Ok(QuantumJob {
-            job_id: format!(
-                "job_{}",
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis()
-            ),
+            job_id: format!("job_{}", timestamp),
             platform: self.config.platform,
             device_name: device_name.to_string(),
             status: JobStatus::Queued,
@@ -575,7 +580,7 @@ impl CloudClient {
     }
 
     /// Check job status
-    pub fn check_job_status(&self, job_id: &str) -> QuantRS2Result<JobStatus> {
+    pub const fn check_job_status(&self, job_id: &str) -> QuantRS2Result<JobStatus> {
         // Simplified: in production would make API call
         Ok(JobStatus::Queued)
     }
@@ -601,13 +606,13 @@ impl CloudClient {
     }
 
     /// Cancel a job
-    pub fn cancel_job(&self, job_id: &str) -> QuantRS2Result<()> {
+    pub const fn cancel_job(&self, job_id: &str) -> QuantRS2Result<()> {
         // Simplified: in production would make API call
         Ok(())
     }
 
     /// List user's jobs
-    pub fn list_jobs(&self, limit: Option<usize>) -> QuantRS2Result<Vec<QuantumJob>> {
+    pub const fn list_jobs(&self, limit: Option<usize>) -> QuantRS2Result<Vec<QuantumJob>> {
         // Simplified: in production would fetch from API
         Ok(Vec::new())
     }
@@ -720,7 +725,9 @@ mod tests {
         assert_eq!(probs.get("00"), Some(&0.5));
         assert_eq!(probs.get("01"), Some(&0.25));
 
-        let most_probable = result.most_probable_outcome().unwrap();
+        let most_probable = result
+            .most_probable_outcome()
+            .expect("should have most probable outcome");
         assert_eq!(most_probable, "00");
     }
 

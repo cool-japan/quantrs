@@ -6,7 +6,7 @@
 //! quantum advantage in machine learning applications with hardware-aware optimization.
 
 use scirs2_core::ndarray::Array1;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::{thread_rng, Rng};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
@@ -276,9 +276,9 @@ pub enum OptimizerType {
     SGD,
     /// Adam optimizer
     Adam,
-    /// AdaGrad optimizer
+    /// `AdaGrad` optimizer
     AdaGrad,
-    /// RMSprop optimizer
+    /// `RMSprop` optimizer
     RMSprop,
     /// Momentum optimizer
     Momentum,
@@ -413,7 +413,7 @@ pub enum QuantumHardwareTarget {
     IBM,
     /// Google Quantum AI devices
     Google,
-    /// IonQ devices
+    /// `IonQ` devices
     IonQ,
     /// Rigetti devices
     Rigetti,
@@ -600,7 +600,7 @@ pub enum ClassicalArchitecture {
     LSTM,
     /// Transformer
     Transformer,
-    /// ResNet
+    /// `ResNet`
     ResNet,
     /// Custom architecture
     Custom,
@@ -1123,7 +1123,7 @@ pub struct QuantumMLFramework {
     layers: Vec<Box<dyn QMLLayer>>,
     /// Current training state
     training_state: QMLTrainingState,
-    /// SciRS2 backend for numerical operations
+    /// `SciRS2` backend for numerical operations
     backend: Option<SciRS2Backend>,
     /// Performance statistics
     stats: QMLStats,
@@ -1251,7 +1251,7 @@ impl QuantumMLFramework {
                 num_batches += 1;
             }
 
-            epoch_loss /= num_batches as f64;
+            epoch_loss /= f64::from(num_batches);
 
             // Validation phase
             let validation_loss = if let Some(val_data) = validation_data {
@@ -1331,11 +1331,11 @@ impl QuantumMLFramework {
             let prediction = self.forward(input)?;
 
             // Compute loss
-            let loss = self.compute_loss(&prediction, target)?;
+            let loss = Self::compute_loss(&prediction, target)?;
             total_loss += loss;
 
             // Compute loss gradient
-            let loss_gradient = self.compute_loss_gradient(&prediction, target)?;
+            let loss_gradient = Self::compute_loss_gradient(&prediction, target)?;
 
             // Backward pass
             let gradients = self.compute_gradients(&loss_gradient)?;
@@ -1368,7 +1368,7 @@ impl QuantumMLFramework {
 
         for (input, target) in data {
             let prediction = self.forward(input)?;
-            let loss = self.compute_loss(&prediction, target)?;
+            let loss = Self::compute_loss(&prediction, target)?;
             total_loss += loss;
         }
 
@@ -1570,7 +1570,7 @@ impl QuantumMLFramework {
         let mut output = Array1::zeros(n_qubits);
 
         for qubit in 0..n_qubits {
-            let expectation = self.measure_pauli_z_expectation(state, qubit)?;
+            let expectation = Self::measure_pauli_z_expectation(state, qubit)?;
             output[qubit] = expectation;
         }
 
@@ -1578,7 +1578,7 @@ impl QuantumMLFramework {
     }
 
     /// Measure Pauli-Z expectation value for a specific qubit
-    fn measure_pauli_z_expectation(&self, state: &Array1<Complex64>, qubit: usize) -> Result<f64> {
+    fn measure_pauli_z_expectation(state: &Array1<Complex64>, qubit: usize) -> Result<f64> {
         let state_size = state.len();
         let mut expectation = 0.0;
 
@@ -1595,7 +1595,7 @@ impl QuantumMLFramework {
     }
 
     /// Compute loss function
-    fn compute_loss(&self, prediction: &Array1<f64>, target: &Array1<f64>) -> Result<f64> {
+    fn compute_loss(prediction: &Array1<f64>, target: &Array1<f64>) -> Result<f64> {
         // Check shape compatibility
         if prediction.shape() != target.shape() {
             return Err(SimulatorError::InvalidInput(format!(
@@ -1613,7 +1613,6 @@ impl QuantumMLFramework {
 
     /// Compute loss gradient
     fn compute_loss_gradient(
-        &self,
         prediction: &Array1<f64>,
         target: &Array1<f64>,
     ) -> Result<Array1<f64>> {
@@ -1809,21 +1808,25 @@ impl QuantumMLFramework {
     }
 
     /// Get training statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &QMLStats {
         &self.stats
     }
 
     /// Get training history
+    #[must_use]
     pub fn get_training_history(&self) -> &[QMLTrainingResult] {
         &self.training_history
     }
 
     /// Get layers reference
+    #[must_use]
     pub fn get_layers(&self) -> &[Box<dyn QMLLayer>] {
         &self.layers
     }
 
     /// Get config reference
+    #[must_use]
     pub const fn get_config(&self) -> &QMLConfig {
         &self.config
     }
@@ -1857,10 +1860,11 @@ impl QuantumMLFramework {
         state: &Array1<Complex64>,
         qubit: usize,
     ) -> Result<f64> {
-        self.measure_pauli_z_expectation(state, qubit)
+        Self::measure_pauli_z_expectation(state, qubit)
     }
 
     /// Get current learning rate (public version)
+    #[must_use]
     pub fn get_current_learning_rate_public(&self, epoch: usize) -> f64 {
         self.get_current_learning_rate(epoch)
     }
@@ -1871,7 +1875,7 @@ impl QuantumMLFramework {
         prediction: &Array1<f64>,
         target: &Array1<f64>,
     ) -> Result<f64> {
-        self.compute_loss(prediction, target)
+        Self::compute_loss(prediction, target)
     }
 
     /// Compute loss gradient (public version)
@@ -1880,7 +1884,7 @@ impl QuantumMLFramework {
         prediction: &Array1<f64>,
         target: &Array1<f64>,
     ) -> Result<Array1<f64>> {
-        self.compute_loss_gradient(prediction, target)
+        Self::compute_loss_gradient(prediction, target)
     }
 }
 
@@ -1983,7 +1987,7 @@ impl ParameterizedQuantumCircuitLayer {
             }
 
             // Entangling gates
-            self.add_entangling_gates(&mut param_idx);
+            self.add_entangling_gates(&param_idx);
         }
 
         Ok(())
@@ -2027,7 +2031,7 @@ impl ParameterizedQuantumCircuitLayer {
     }
 
     /// Add entangling gates based on entanglement pattern
-    fn add_entangling_gates(&mut self, param_idx: &mut usize) {
+    fn add_entangling_gates(&mut self, param_idx: &usize) {
         match self.config.entanglement_pattern {
             EntanglementPattern::Linear => {
                 for i in 0..(self.num_qubits - 1) {
@@ -2121,17 +2125,16 @@ impl ParameterizedQuantumCircuitLayer {
                 } else {
                     0.0
                 };
-                self.apply_single_qubit_gate(state, gate.qubits[0], *rotation_gate, angle)
+                Self::apply_single_qubit_gate(state, gate.qubits[0], *rotation_gate, angle)
             }
             PQCGateType::TwoQubit(two_qubit_gate) => {
-                self.apply_two_qubit_gate(state, gate.qubits[0], gate.qubits[1], *two_qubit_gate)
+                Self::apply_two_qubit_gate(state, gate.qubits[0], gate.qubits[1], *two_qubit_gate)
             }
         }
     }
 
     /// Apply single-qubit rotation gate
     fn apply_single_qubit_gate(
-        &self,
         state: &Array1<Complex64>,
         qubit: usize,
         gate_type: RotationGate,
@@ -2197,7 +2200,6 @@ impl ParameterizedQuantumCircuitLayer {
 
     /// Apply two-qubit gate
     fn apply_two_qubit_gate(
-        &self,
         state: &Array1<Complex64>,
         control: usize,
         target: usize,
@@ -2358,16 +2360,15 @@ impl QuantumConvolutionalLayer {
         let param2 = self.parameters[filter.parameter_indices[1]];
 
         // Apply RY rotations followed by CNOT
-        new_state = self.apply_ry_to_state(&new_state, filter.qubits[0], param1)?;
-        new_state = self.apply_ry_to_state(&new_state, filter.qubits[1], param2)?;
-        new_state = self.apply_cnot_to_state(&new_state, filter.qubits[0], filter.qubits[1])?;
+        new_state = Self::apply_ry_to_state(&new_state, filter.qubits[0], param1)?;
+        new_state = Self::apply_ry_to_state(&new_state, filter.qubits[1], param2)?;
+        new_state = Self::apply_cnot_to_state(&new_state, filter.qubits[0], filter.qubits[1])?;
 
         Ok(new_state)
     }
 
     /// Apply RY rotation to state
     fn apply_ry_to_state(
-        &self,
         state: &Array1<Complex64>,
         qubit: usize,
         angle: f64,
@@ -2395,7 +2396,6 @@ impl QuantumConvolutionalLayer {
 
     /// Apply CNOT to state
     fn apply_cnot_to_state(
-        &self,
         state: &Array1<Complex64>,
         control: usize,
         target: usize,
@@ -2520,12 +2520,11 @@ impl QuantumDenseLayer {
         let angle = self.parameters[connection.parameter_index];
 
         // Apply parameterized two-qubit rotation
-        self.apply_parameterized_two_qubit_gate(state, connection.qubit1, connection.qubit2, angle)
+        Self::apply_parameterized_two_qubit_gate(state, connection.qubit1, connection.qubit2, angle)
     }
 
     /// Apply parameterized two-qubit gate
     fn apply_parameterized_two_qubit_gate(
-        &self,
         state: &Array1<Complex64>,
         qubit1: usize,
         qubit2: usize,
@@ -2629,11 +2628,13 @@ impl QMLLayer for QuantumLSTMLayer {
         // Initialize states if first time
         if self.hidden_state.is_none() {
             let state_size = 1 << self.num_qubits;
-            self.hidden_state = Some(Array1::zeros(state_size));
-            self.cell_state = Some(Array1::zeros(state_size));
+            let mut hidden = Array1::zeros(state_size);
+            let mut cell = Array1::zeros(state_size);
             // Initialize with |0...0⟩ state
-            self.hidden_state.as_mut().unwrap()[0] = Complex64::new(1.0, 0.0);
-            self.cell_state.as_mut().unwrap()[0] = Complex64::new(1.0, 0.0);
+            hidden[0] = Complex64::new(1.0, 0.0);
+            cell[0] = Complex64::new(1.0, 0.0);
+            self.hidden_state = Some(hidden);
+            self.cell_state = Some(cell);
         }
 
         let mut current_state = input.clone();
@@ -2691,7 +2692,7 @@ impl QuantumLSTMLayer {
                 let qubit = i % self.num_qubits;
 
                 // Apply rotation gate
-                new_state = self.apply_rotation(&new_state, qubit, angle)?;
+                new_state = Self::apply_rotation(&new_state, qubit, angle)?;
             }
         }
 
@@ -2700,7 +2701,6 @@ impl QuantumLSTMLayer {
 
     /// Apply rotation gate
     fn apply_rotation(
-        &self,
         state: &Array1<Complex64>,
         qubit: usize,
         angle: f64,
@@ -2727,6 +2727,7 @@ impl QuantumLSTMLayer {
     }
 
     /// Get LSTM gates reference
+    #[must_use]
     pub fn get_lstm_gates(&self) -> &[LSTMGate] {
         &self.lstm_gates
     }
@@ -2846,7 +2847,7 @@ impl QuantumAttentionLayer {
                     let key_qubit = head.key_qubits[i];
 
                     new_state =
-                        self.apply_attention_gate(&new_state, query_qubit, key_qubit, angle)?;
+                        Self::apply_attention_gate(&new_state, query_qubit, key_qubit, angle)?;
                 }
             }
         }
@@ -2856,7 +2857,6 @@ impl QuantumAttentionLayer {
 
     /// Apply attention gate (parameterized two-qubit interaction)
     fn apply_attention_gate(
-        &self,
         state: &Array1<Complex64>,
         query_qubit: usize,
         key_qubit: usize,
@@ -2886,6 +2886,7 @@ impl QuantumAttentionLayer {
     }
 
     /// Get attention structure reference
+    #[must_use]
     pub fn get_attention_structure(&self) -> &[AttentionHead] {
         &self.attention_structure
     }
@@ -2916,6 +2917,7 @@ impl Default for QMLTrainingState {
 
 impl QMLTrainingState {
     /// Create new training state
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             current_epoch: 0,
@@ -3004,6 +3006,7 @@ impl Default for QMLStats {
 
 impl QMLStats {
     /// Create new statistics
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             forward_passes: 0,
@@ -3134,6 +3137,7 @@ pub struct QMLUtils;
 
 impl QMLUtils {
     /// Generate synthetic training data for testing
+    #[must_use]
     pub fn generate_synthetic_data(
         num_samples: usize,
         input_dim: usize,
@@ -3171,6 +3175,7 @@ impl QMLUtils {
     }
 
     /// Split data into training and validation sets
+    #[must_use]
     pub fn train_test_split(
         inputs: Vec<Array1<f64>>,
         outputs: Vec<Array1<f64>>,
@@ -3198,6 +3203,7 @@ impl QMLUtils {
     }
 
     /// Evaluate model accuracy
+    #[must_use]
     pub fn evaluate_accuracy(
         predictions: &[Array1<f64>],
         targets: &[Array1<f64>],
@@ -3214,10 +3220,11 @@ impl QMLUtils {
             }
         }
 
-        correct as f64 / total as f64
+        f64::from(correct) / total as f64
     }
 
     /// Compute quantum circuit complexity metrics
+    #[must_use]
     pub fn compute_circuit_complexity(
         num_qubits: usize,
         depth: usize,

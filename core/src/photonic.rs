@@ -33,7 +33,7 @@ pub enum PhotonicGateType {
 }
 
 /// Photonic qubit encoding
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PhotonicEncoding {
     /// Dual-rail encoding (path encoding)
     DualRail,
@@ -457,7 +457,7 @@ pub struct PhotonicCircuit {
 
 impl PhotonicCircuit {
     /// Create new photonic circuit
-    pub fn new(num_modes: usize, max_photons_per_mode: usize) -> Self {
+    pub const fn new(num_modes: usize, max_photons_per_mode: usize) -> Self {
         Self {
             num_modes,
             gates: Vec::new(),
@@ -580,7 +580,7 @@ impl PhotonicCircuit {
     }
 
     /// Extract photon count for specific mode from state index
-    fn extract_photon_count(&self, state_index: usize, mode: usize) -> usize {
+    const fn extract_photon_count(&self, state_index: usize, mode: usize) -> usize {
         let mode_dim = self.max_photons_per_mode + 1;
         (state_index / mode_dim.pow(mode as u32)) % mode_dim
     }
@@ -671,7 +671,9 @@ mod tests {
         assert_eq!(system.num_modes, 3);
         assert_eq!(system.max_photons_per_mode, 2);
 
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
         assert!(system.state.is_some());
     }
 
@@ -681,10 +683,14 @@ mod tests {
 
         // Put single photon in mode 0
         system.modes[0] = OpticalMode::single_photon(0, 3);
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
 
         // Apply 50-50 beam splitter
-        system.apply_beam_splitter(0, 1, 0.5).unwrap();
+        system
+            .apply_beam_splitter(0, 1, 0.5)
+            .expect("Failed to apply beam splitter");
 
         // Both modes should have some probability of containing the photon
         let prob0 = system.modes[0].photon_probability(1);
@@ -699,11 +705,15 @@ mod tests {
 
         // Start with single photon
         system.modes[0] = OpticalMode::single_photon(0, 3);
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
 
         // Apply phase shift
         let phase = std::f64::consts::PI / 2.0;
-        system.apply_phase_shifter(0, phase).unwrap();
+        system
+            .apply_phase_shifter(0, phase)
+            .expect("Failed to apply phase shifter");
 
         // Photon number should be unchanged
         assert!((system.modes[0].photon_number_expectation() - 1.0).abs() < 1e-10);
@@ -731,13 +741,19 @@ mod tests {
         let bs_gate = PhotonicGate::beam_splitter(0, 1, 0.5);
         let ps_gate = PhotonicGate::phase_shifter(0, std::f64::consts::PI / 4.0);
 
-        circuit.add_gate(bs_gate).unwrap();
-        circuit.add_gate(ps_gate).unwrap();
+        circuit
+            .add_gate(bs_gate)
+            .expect("Failed to add beam splitter gate");
+        circuit
+            .add_gate(ps_gate)
+            .expect("Failed to add phase shifter gate");
 
         assert_eq!(circuit.gates.len(), 2);
 
         let mut system = PhotonicSystem::new(2, 2);
-        circuit.execute(&mut system).unwrap();
+        circuit
+            .execute(&mut system)
+            .expect("Failed to execute circuit");
     }
 
     #[test]
@@ -746,11 +762,15 @@ mod tests {
 
         // Single photon input
         system.modes[0] = OpticalMode::single_photon(0, 2);
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
 
         // Create Mach-Zehnder
         let mz_gate = PhotonicGate::mach_zehnder(0, 1, 0.0, std::f64::consts::PI);
-        mz_gate.apply(&mut system).unwrap();
+        mz_gate
+            .apply(&mut system)
+            .expect("Failed to apply Mach-Zehnder gate");
 
         // Check interference occurred
         let prob0 = system.modes[0].photon_probability(1);
@@ -764,9 +784,13 @@ mod tests {
 
         // Single photon state
         system.modes[0] = OpticalMode::single_photon(0, 3);
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
 
-        let measurement_result = system.measure_photon_number(0).unwrap();
+        let measurement_result = system
+            .measure_photon_number(0)
+            .expect("Failed to measure photon number");
 
         // Should measure 1 photon (deterministic for pure state)
         assert_eq!(measurement_result, 1);
@@ -782,9 +806,13 @@ mod tests {
         // Coherent state
         let alpha = Complex64::new(2.0, 0.0);
         system.modes[0] = OpticalMode::coherent(0, 3, alpha);
-        system.initialize_from_modes().unwrap();
+        system
+            .initialize_from_modes()
+            .expect("Failed to initialize from modes");
 
-        let measurement_result = system.homodyne_measurement(0, 0.0).unwrap();
+        let measurement_result = system
+            .homodyne_measurement(0, 0.0)
+            .expect("Failed homodyne measurement");
 
         // Should get real measurement result
         assert!(measurement_result.is_finite());
@@ -797,17 +825,19 @@ mod tests {
         // Add consecutive phase shifters
         circuit
             .add_gate(PhotonicGate::phase_shifter(0, std::f64::consts::PI / 4.0))
-            .unwrap();
+            .expect("Failed to add first phase shifter");
         circuit
             .add_gate(PhotonicGate::phase_shifter(0, std::f64::consts::PI / 4.0))
-            .unwrap();
+            .expect("Failed to add second phase shifter");
         circuit
             .add_gate(PhotonicGate::phase_shifter(0, std::f64::consts::PI / 2.0))
-            .unwrap();
+            .expect("Failed to add third phase shifter");
 
         assert_eq!(circuit.gates.len(), 3);
 
-        circuit.optimize_linear_optics().unwrap();
+        circuit
+            .optimize_linear_optics()
+            .expect("Failed to optimize linear optics");
 
         // Should be optimized to single phase shifter
         assert_eq!(circuit.gates.len(), 1);
@@ -827,9 +857,11 @@ mod tests {
 
         error_correction
             .encode_logical_qubit(&logical_state, &mut system)
-            .unwrap();
+            .expect("Failed to encode logical qubit");
 
-        let corrections = error_correction.correct_errors(&mut system).unwrap();
+        let corrections = error_correction
+            .correct_errors(&mut system)
+            .expect("Failed to correct errors");
         assert!(corrections.len() <= 3);
     }
 }

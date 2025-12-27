@@ -1,6 +1,6 @@
 //! Type definitions for advanced testing framework
 
-use super::*;
+use super::Duration;
 
 /// Problem specification for test generation
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct ProblemSpecification {
 }
 
 /// Types of problems for testing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProblemType {
     /// Random Ising model
     RandomIsing,
@@ -57,7 +57,7 @@ pub struct ConstraintSpec {
 }
 
 /// Types of constraints
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstraintType {
     /// Equality constraint
     Equality,
@@ -107,7 +107,7 @@ pub struct ValidationCriterion {
 }
 
 /// Types of validation criteria
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CriterionType {
     /// Performance criterion
     Performance,
@@ -217,7 +217,7 @@ pub enum SizeProgression {
 }
 
 /// Platform types for testing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformType {
     /// Classical simulation
     Classical,
@@ -232,7 +232,7 @@ pub enum PlatformType {
 }
 
 /// Platform availability status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformAvailability {
     /// Available for testing
     Available,
@@ -262,7 +262,7 @@ pub enum ResourceType {
 }
 
 /// Types of properties for testing
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropertyType {
     /// Correctness property
     Correctness,
@@ -290,7 +290,7 @@ pub enum PropertyValue {
 }
 
 /// Direction of performance trends
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     /// Improving performance
     Improving,
@@ -303,7 +303,7 @@ pub enum TrendDirection {
 }
 
 /// Types of test errors
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestErrorType {
     /// Assertion failure
     AssertionFailure,
@@ -318,7 +318,7 @@ pub enum TestErrorType {
 }
 
 /// Types of failure patterns
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailurePatternType {
     /// Temporal pattern
     Temporal,
@@ -331,7 +331,7 @@ pub enum FailurePatternType {
 }
 
 /// Types of analytics engines
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalyticsEngineType {
     /// Statistical analysis
     Statistical,
@@ -344,7 +344,7 @@ pub enum AnalyticsEngineType {
 }
 
 /// Regression detection algorithm types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegressionAlgorithmType {
     /// Statistical process control
     StatisticalProcessControl,
@@ -359,7 +359,7 @@ pub enum RegressionAlgorithmType {
 }
 
 /// Statistical model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalModelType {
     /// Linear regression
     LinearRegression,
@@ -374,7 +374,7 @@ pub enum StatisticalModelType {
 }
 
 /// Scalability analysis algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalabilityAlgorithm {
     /// Linear regression analysis
     LinearRegression,
@@ -387,7 +387,7 @@ pub enum ScalabilityAlgorithm {
 }
 
 /// Strategies for test case generation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GenerationStrategy {
     /// Random generation
     Random,
@@ -402,7 +402,7 @@ pub enum GenerationStrategy {
 }
 
 /// Scope of invariant application
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InvariantScope {
     /// Global invariant
     Global,
@@ -415,7 +415,7 @@ pub enum InvariantScope {
 }
 
 /// Types of pattern conditions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionType {
     /// Environment condition
     Environment,
@@ -428,7 +428,7 @@ pub enum ConditionType {
 }
 
 /// Operators for condition evaluation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionOperator {
     /// Equal to
     Equal,
@@ -445,7 +445,7 @@ pub enum ConditionOperator {
 }
 
 /// Stress test criterion types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StressCriterionType {
     /// Throughput maintenance
     ThroughputMaintenance,
@@ -460,7 +460,7 @@ pub enum StressCriterionType {
 }
 
 /// Analytics output formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalyticsOutputFormat {
     /// JSON format
     JSON,
@@ -475,7 +475,7 @@ pub enum AnalyticsOutputFormat {
 }
 
 /// Report formats
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportFormat {
     /// JSON format
     JSON,
@@ -488,7 +488,7 @@ pub enum ReportFormat {
 }
 
 /// Chart types for visualization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChartType {
     /// Line chart
     Line,
@@ -505,7 +505,7 @@ pub enum ChartType {
 }
 
 /// Rendering engine types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RenderingEngineType {
     /// SVG rendering
     SVG,

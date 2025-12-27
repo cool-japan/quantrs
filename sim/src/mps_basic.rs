@@ -35,7 +35,7 @@ impl Default for BasicMPSConfig {
 /// MPS tensor for a single qubit
 #[derive(Debug, Clone)]
 struct MPSTensor {
-    /// The tensor data: left_bond x physical x right_bond
+    /// The tensor data: `left_bond` x physical x `right_bond`
     data: Array3<Complex64>,
 }
 
@@ -82,6 +82,7 @@ pub struct BasicMPS {
 
 impl BasicMPS {
     /// Create a new MPS in the |0...0> state
+    #[must_use]
     pub fn new(num_qubits: usize, config: BasicMPSConfig) -> Self {
         let tensors = (0..num_qubits)
             .map(|i| MPSTensor::zero_state(i, num_qubits))
@@ -234,14 +235,13 @@ impl BasicMPS {
     }
 
     /// Sample a measurement outcome
+    #[must_use]
     pub fn sample(&self) -> Vec<bool> {
         let mut rng = thread_rng();
         let mut result = vec![false; self.num_qubits];
         let mut accumulated = Array2::from_elem((1, 1), Complex64::new(1.0, 0.0));
 
-        for i in 0..self.num_qubits {
-            let tensor = &self.tensors[i];
-
+        for (i, tensor) in self.tensors.iter().enumerate() {
             // Compute probabilities for this qubit
             let matrix0 = tensor.data.slice(s![.., 0, ..]);
             let matrix1 = tensor.data.slice(s![.., 1, ..]);
@@ -250,8 +250,8 @@ impl BasicMPS {
             let branch1: Array2<Complex64> = accumulated.dot(&matrix1);
 
             // Compute norms (simplified - doesn't contract remaining qubits)
-            let norm0_sq: f64 = branch0.iter().map(|x| x.norm_sqr()).sum();
-            let norm1_sq: f64 = branch1.iter().map(|x| x.norm_sqr()).sum();
+            let norm0_sq: f64 = branch0.iter().map(scirs2_core::Complex::norm_sqr).sum();
+            let norm1_sq: f64 = branch1.iter().map(scirs2_core::Complex::norm_sqr).sum();
 
             let total = norm0_sq + norm1_sq;
             let prob0 = norm0_sq / total;
@@ -265,7 +265,7 @@ impl BasicMPS {
             }
 
             // Renormalize
-            let norm_sq: f64 = accumulated.iter().map(|x| x.norm_sqr()).sum();
+            let norm_sq: f64 = accumulated.iter().map(scirs2_core::Complex::norm_sqr).sum();
             if norm_sq > 0.0 {
                 accumulated /= Complex64::new(norm_sq.sqrt(), 0.0);
             }
@@ -282,11 +282,13 @@ pub struct BasicMPSSimulator {
 
 impl BasicMPSSimulator {
     /// Create a new basic MPS simulator
+    #[must_use]
     pub const fn new(config: BasicMPSConfig) -> Self {
         Self { config }
     }
 
     /// Create with default configuration
+    #[must_use]
     pub fn default() -> Self {
         Self::new(BasicMPSConfig::default())
     }
@@ -378,10 +380,14 @@ mod tests {
         let mps = BasicMPS::new(4, BasicMPSConfig::default());
 
         // Check |0000> state
-        let amp = mps.get_amplitude(&[false, false, false, false]).unwrap();
+        let amp = mps
+            .get_amplitude(&[false, false, false, false])
+            .expect("Failed to get amplitude for |0000>");
         assert!((amp.norm() - 1.0).abs() < 1e-10);
 
-        let amp = mps.get_amplitude(&[true, false, false, false]).unwrap();
+        let amp = mps
+            .get_amplitude(&[true, false, false, false])
+            .expect("Failed to get amplitude for |1000>");
         assert!(amp.norm() < 1e-10);
     }
 
@@ -394,10 +400,13 @@ mod tests {
             [Complex64::new(0., 0.), Complex64::new(1., 0.)],
             [Complex64::new(1., 0.), Complex64::new(0., 0.)]
         ];
-        mps.apply_single_qubit_gate(&x_matrix, 0).unwrap();
+        mps.apply_single_qubit_gate(&x_matrix, 0)
+            .expect("Failed to apply X gate");
 
         // Check |100> state
-        let amp = mps.get_amplitude(&[true, false, false]).unwrap();
+        let amp = mps
+            .get_amplitude(&[true, false, false])
+            .expect("Failed to get amplitude for |100>");
         assert!((amp.norm() - 1.0).abs() < 1e-10);
     }
 }

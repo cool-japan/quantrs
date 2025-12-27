@@ -568,7 +568,9 @@ mod tests {
         let hidden = Array1::from_vec(vec![0.05, 0.05, 0.05, 0.05]);
         let cell_state = Array1::from_vec(vec![0.05, 0.05, 0.05, 0.05]);
 
-        let (new_hidden, new_cell) = cell.forward(&input, &hidden, &cell_state).unwrap();
+        let (new_hidden, new_cell) = cell
+            .forward(&input, &hidden, &cell_state)
+            .expect("LSTM cell forward should succeed");
 
         assert_eq!(new_hidden.len(), 4);
         assert_eq!(new_cell.len(), 4);
@@ -584,7 +586,9 @@ mod tests {
             [0.3, 0.4, 0.5, 0.6]
         ];
 
-        let output = lstm.forward(&sequence).unwrap();
+        let output = lstm
+            .forward(&sequence)
+            .expect("LSTM forward should succeed");
         assert_eq!(output.nrows(), 3); // return_sequences=true
         assert_eq!(output.ncols(), 4); // Last hidden dim
     }
@@ -595,7 +599,9 @@ mod tests {
 
         let sequence = array![[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]];
 
-        let output = lstm.bidirectional_forward(&sequence).unwrap();
+        let output = lstm
+            .bidirectional_forward(&sequence)
+            .expect("Bidirectional forward should succeed");
         assert_eq!(output.nrows(), 2);
         assert_eq!(output.ncols(), 8); // Concatenated forward + backward
     }
@@ -607,7 +613,9 @@ mod tests {
         let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let hidden = Array1::zeros(4);
 
-        let new_hidden = gru.forward(&input, &hidden).unwrap();
+        let new_hidden = gru
+            .forward(&input, &hidden)
+            .expect("GRU forward should succeed");
         assert_eq!(new_hidden.len(), 4);
     }
 
@@ -621,7 +629,9 @@ mod tests {
         let key = Array2::zeros((seq_len, embed_dim));
         let value = Array2::ones((seq_len, embed_dim));
 
-        let output = attention.forward(&query, &key, &value).unwrap();
+        let output = attention
+            .forward(&query, &key, &value)
+            .expect("Attention forward should succeed");
         assert_eq!(output.shape(), &[seq_len, embed_dim]);
     }
 }

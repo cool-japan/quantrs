@@ -696,7 +696,7 @@ impl QuantumMetaLearner {
                     layers,
                     base_model.num_qubits,
                     hypernetwork_layers[0],
-                    *hypernetwork_layers.last().unwrap(),
+                    *hypernetwork_layers.last().ok_or_else(|| MLError::InvalidConfiguration("hypernetwork_layers cannot be empty".to_string()))?,
                 )?)
             }
 
@@ -716,7 +716,7 @@ impl QuantumMetaLearner {
                     layers,
                     base_model.num_qubits,
                     controller_layers[0],
-                    *controller_layers.last().unwrap(),
+                    *controller_layers.last().ok_or_else(|| MLError::InvalidConfiguration("controller_layers cannot be empty".to_string()))?,
                 )?)
             }
 
@@ -1169,7 +1169,7 @@ impl QuantumMetaLearner {
             let output = model.forward(&input.to_owned())?;
             let predicted = output.iter()
                 .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(i, _)| i)
                 .unwrap_or(0);
 
@@ -1421,7 +1421,8 @@ mod tests {
             QNNLayerType::MeasurementLayer { measurement_basis: "computational".to_string() },
         ];
 
-        let base_model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let base_model = QuantumNeuralNetwork::new(layers, 4, 4, 2)
+            .expect("Failed to create base model");
 
         let algorithm = QuantumMetaLearningAlgorithm::QuantumMAML {
             inner_learning_rate: 0.01,
@@ -1432,7 +1433,8 @@ mod tests {
 
         let config = create_default_meta_config();
 
-        let meta_learner = QuantumMetaLearner::new(algorithm, base_model, config).unwrap();
+        let meta_learner = QuantumMetaLearner::new(algorithm, base_model, config)
+            .expect("Failed to create meta learner");
 
         assert_eq!(meta_learner.config.meta_epochs, 100);
         assert_eq!(meta_learner.training_history.len(), 0);
@@ -1502,7 +1504,8 @@ mod tests {
             QNNLayerType::VariationalLayer { num_params: 8 },
         ];
 
-        let base_model = QuantumNeuralNetwork::new(layers, 4, 4, 2).unwrap();
+        let base_model = QuantumNeuralNetwork::new(layers, 4, 4, 2)
+            .expect("Failed to create base model");
         let algorithm = QuantumMetaLearningAlgorithm::QuantumMAML {
             inner_learning_rate: 0.01,
             outer_learning_rate: 0.001,
@@ -1510,10 +1513,15 @@ mod tests {
             first_order: false,
         };
         let config = create_default_meta_config();
-        let meta_learner = QuantumMetaLearner::new(algorithm, base_model, config).unwrap();
+        let meta_learner = QuantumMetaLearner::new(algorithm, base_model, config)
+            .expect("Failed to create meta learner");
 
-        let euclidean = meta_learner.compute_quantum_distance(&vec1, &vec2, &QuantumDistanceMetric::QuantumEuclidean).unwrap();
-        let cosine = meta_learner.compute_quantum_distance(&vec1, &vec2, &QuantumDistanceMetric::QuantumCosine).unwrap();
+        let euclidean = meta_learner
+            .compute_quantum_distance(&vec1, &vec2, &QuantumDistanceMetric::QuantumEuclidean)
+            .expect("Euclidean distance computation should succeed");
+        let cosine = meta_learner
+            .compute_quantum_distance(&vec1, &vec2, &QuantumDistanceMetric::QuantumCosine)
+            .expect("Cosine distance computation should succeed");
 
         assert!(euclidean > 0.0);
         assert!(cosine >= 0.0 && cosine <= 2.0);

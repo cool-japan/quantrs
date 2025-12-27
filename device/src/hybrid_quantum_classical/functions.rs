@@ -94,7 +94,7 @@ mod tests {
                 devices,
                 cal_mgr.clone(),
             )
-            .unwrap(),
+            .expect("Failed to create IntegratedQuantumDeviceManager in test"),
         ));
         let calibration_manager = Arc::new(RwLock::new(cal_mgr));
         let parallelization_engine = Arc::new(

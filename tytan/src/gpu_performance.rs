@@ -90,12 +90,13 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
-        metrics
-            .kernel_times
-            .entry(kernel_name.to_string())
-            .or_default()
-            .push(duration);
+        if let Ok(ref mut metrics) = self.metrics.lock() {
+            metrics
+                .kernel_times
+                .entry(kernel_name.to_string())
+                .or_default()
+                .push(duration);
+        }
     }
 
     /// Record memory transfer time
@@ -104,12 +105,13 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
-        metrics
-            .transfer_times
-            .entry(operation.to_string())
-            .or_default()
-            .push(duration);
+        if let Ok(ref mut metrics) = self.metrics.lock() {
+            metrics
+                .transfer_times
+                .entry(operation.to_string())
+                .or_default()
+                .push(duration);
+        }
     }
 
     /// Update device utilization
@@ -118,8 +120,9 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
-        metrics.device_utilization = utilization;
+        if let Ok(ref mut metrics) = self.metrics.lock() {
+            metrics.device_utilization = utilization;
+        }
     }
 
     /// Calculate and update throughput metrics
@@ -128,14 +131,18 @@ impl GpuProfiler {
             return;
         }
 
-        let mut metrics = self.metrics.lock().unwrap();
-        let seconds = duration.as_secs_f64();
-        metrics.compute_throughput = (operations as f64) / seconds / 1e9; // GFLOPS
+        if let Ok(ref mut metrics) = self.metrics.lock() {
+            let seconds = duration.as_secs_f64();
+            metrics.compute_throughput = (operations as f64) / seconds / 1e9; // GFLOPS
+        }
     }
 
     /// Get performance report
     pub fn get_report(&self) -> PerformanceReport {
-        let metrics = self.metrics.lock().unwrap();
+        let metrics = self
+            .metrics
+            .lock()
+            .expect("metrics mutex should not be poisoned");
 
         // Calculate kernel statistics
         let mut kernel_stats = HashMap::new();
@@ -437,8 +444,12 @@ impl KernelFusionOptimizer {
             }
         }
 
-        // Sort by benefit
-        opportunities.sort_by(|a, b| b.benefit_score.partial_cmp(&a.benefit_score).unwrap());
+        // Sort by benefit (use Equal ordering for NaN values)
+        opportunities.sort_by(|a, b| {
+            b.benefit_score
+                .partial_cmp(&a.benefit_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         opportunities
     }
@@ -509,9 +520,9 @@ fn calculate_stats(times: &[Duration]) -> PerformanceStats {
         .iter()
         .map(|&t| {
             let diff = if t > mean {
-                t.checked_sub(mean).unwrap().as_secs_f64()
+                t.checked_sub(mean).unwrap_or(Duration::ZERO).as_secs_f64()
             } else {
-                mean.checked_sub(t).unwrap().as_secs_f64()
+                mean.checked_sub(t).unwrap_or(Duration::ZERO).as_secs_f64()
             };
             diff * diff
         })

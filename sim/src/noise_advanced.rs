@@ -406,7 +406,7 @@ impl NoiseChannel for CrosstalkChannel {
     }
 }
 
-/// Extension to NoiseChannelType to include advanced noise channels
+/// Extension to `NoiseChannelType` to include advanced noise channels
 #[derive(Debug, Clone)]
 pub enum AdvancedNoiseChannelType {
     /// Base noise channel types
@@ -424,6 +424,7 @@ pub enum AdvancedNoiseChannelType {
 
 impl AdvancedNoiseChannelType {
     /// Get the name of the noise channel
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Base(ch) => ch.name(),
@@ -434,6 +435,7 @@ impl AdvancedNoiseChannelType {
     }
 
     /// Get the qubits this channel affects
+    #[must_use]
     pub fn qubits(&self) -> Vec<QubitId> {
         match self {
             Self::Base(ch) => ch.qubits(),
@@ -454,6 +456,7 @@ impl AdvancedNoiseChannelType {
     }
 
     /// Get the probability of the noise occurring
+    #[must_use]
     pub fn probability(&self) -> f64 {
         match self {
             Self::Base(ch) => ch.probability(),
@@ -476,6 +479,7 @@ pub struct AdvancedNoiseModel {
 
 impl AdvancedNoiseModel {
     /// Create a new empty noise model
+    #[must_use]
     pub const fn new(per_gate: bool) -> Self {
         Self {
             channels: Vec::new(),
@@ -526,11 +530,13 @@ impl AdvancedNoiseModel {
     }
 
     /// Get the total number of channels
+    #[must_use]
     pub fn num_channels(&self) -> usize {
         self.channels.len()
     }
 
     /// Convert to basic noise model (for backward compatibility)
+    #[must_use]
     pub fn to_basic_model(&self) -> NoiseModel {
         let mut model = NoiseModel::new(self.per_gate);
 
@@ -557,6 +563,7 @@ pub struct RealisticNoiseModelBuilder {
 
 impl RealisticNoiseModelBuilder {
     /// Create a new noise model builder
+    #[must_use]
     pub const fn new(per_gate: bool) -> Self {
         Self {
             model: AdvancedNoiseModel::new(per_gate),
@@ -564,6 +571,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Add realistic IBM Quantum device noise parameters
+    #[must_use]
     pub fn with_ibm_device_noise(mut self, qubits: &[QubitId], device_name: &str) -> Self {
         match device_name {
             "ibmq_lima" | "ibmq_belem" | "ibmq_quito" => {
@@ -579,7 +587,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.001; // 0.1% error rate
 
                 // Two-qubit gates (CNOT)
-                let _gate_time_2q = 300e-9; // 300 nanoseconds
+                // let _gate_time_2q = 300e-9; // 300 nanoseconds
                 let gate_error_2q = 0.01; // 1% error rate
 
                 // Readout errors
@@ -650,7 +658,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0005; // 0.05% error rate
 
                 // Two-qubit gates (CNOT)
-                let _gate_time_2q = 250e-9; // 250 nanoseconds
+                // let _gate_time_2q = 250e-9; // 250 nanoseconds
                 let gate_error_2q = 0.008; // 0.8% error rate
 
                 // Readout errors
@@ -721,7 +729,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0004; // 0.04% error rate
 
                 // Two-qubit gates (CNOT)
-                let _gate_time_2q = 275e-9; // 275 nanoseconds
+                // let _gate_time_2q = 275e-9; // 275 nanoseconds
                 let gate_error_2q = 0.007; // 0.7% error rate
 
                 // Readout errors
@@ -789,7 +797,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0003; // 0.03% error rate
 
                 // Two-qubit gates (CNOT)
-                let _gate_time_2q = 220e-9; // 220 nanoseconds
+                // let _gate_time_2q = 220e-9; // 220 nanoseconds
                 let gate_error_2q = 0.006; // 0.6% error rate
 
                 // Readout errors
@@ -857,7 +865,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.001; // 0.1% error rate
 
                 // Two-qubit gates (CNOT)
-                let _gate_time_2q = 300e-9; // 300 nanoseconds
+                // let _gate_time_2q = 300e-9; // 300 nanoseconds
                 let gate_error_2q = 0.01; // 1% error rate
 
                 // Readout errors
@@ -918,6 +926,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Add realistic Rigetti device noise parameters
+    #[must_use]
     pub fn with_rigetti_device_noise(mut self, qubits: &[QubitId], device_name: &str) -> Self {
         match device_name {
             "Aspen-M-3" | "Aspen-M-2" => {
@@ -933,7 +942,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.0015; // 0.15% error rate
 
                 // Two-qubit gates (CZ)
-                let _gate_time_2q = 220e-9; // 220 nanoseconds
+                // let _gate_time_2q = 220e-9; // 220 nanoseconds
                 let gate_error_2q = 0.02; // 2% error rate
 
                 // Readout errors
@@ -1001,7 +1010,7 @@ impl RealisticNoiseModelBuilder {
                 let gate_error_1q = 0.002; // 0.2% error rate
 
                 // Two-qubit gates (CZ)
-                let _gate_time_2q = 250e-9; // 250 nanoseconds
+                // let _gate_time_2q = 250e-9; // 250 nanoseconds
                 let gate_error_2q = 0.025; // 2.5% error rate
 
                 // Readout errors
@@ -1062,6 +1071,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Add custom thermal relaxation parameters
+    #[must_use]
     pub fn with_custom_thermal_relaxation(
         mut self,
         qubits: &[QubitId],
@@ -1087,6 +1097,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Add custom two-qubit depolarizing noise
+    #[must_use]
     pub fn with_custom_two_qubit_noise(
         mut self,
         qubit_pairs: &[(QubitId, QubitId)],
@@ -1105,6 +1116,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Add custom crosstalk noise between pairs of qubits
+    #[must_use]
     pub fn with_custom_crosstalk(
         mut self,
         qubit_pairs: &[(QubitId, QubitId)],
@@ -1122,6 +1134,7 @@ impl RealisticNoiseModelBuilder {
     }
 
     /// Build the noise model
+    #[must_use]
     pub fn build(self) -> AdvancedNoiseModel {
         self.model
     }

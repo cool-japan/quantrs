@@ -21,6 +21,9 @@ mod tests {
     use crate::telemetry::{TelemetryCollector, TelemetryConfig, TelemetryMetric};
     use crate::visualization_hooks::{VisualizationConfig, VisualizationManager};
 
+    /// Type alias for test results to reduce boilerplate
+    type TestResult = Result<(), Box<dyn std::error::Error>>;
+
     // Define missing types for tests
     #[derive(Clone)]
     struct SimpleMolecule {
@@ -53,65 +56,61 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_advanced_ml_mitigator_creation() {
+        fn test_advanced_ml_mitigator_creation() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
             let mitigator = AdvancedMLErrorMitigator::new(config);
             assert!(mitigator.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_deep_mitigation_network_creation() {
+        fn test_deep_mitigation_network_creation() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-            let network = mitigator.create_deep_model();
-            assert!(network.is_ok());
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
+            let network = mitigator.create_deep_model()?;
 
-            let network = network.unwrap();
             assert_eq!(network.layers, vec![18, 128, 64, 32, 1]);
             assert_eq!(network.weights.len(), 4);
             assert_eq!(network.biases.len(), 4);
+            Ok(())
         }
 
         #[test]
-        fn test_rl_agent_creation() {
+        fn test_rl_agent_creation() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-            let agent = mitigator.create_rl_agent();
-            assert!(agent.is_ok());
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
+            let agent = mitigator.create_rl_agent()?;
 
-            let agent = agent.unwrap();
             assert_eq!(agent.learning_rate, 0.001);
             assert_eq!(agent.discount_factor, 0.95);
+            Ok(())
         }
 
         #[test]
-        fn test_feature_extraction() {
+        fn test_feature_extraction() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(2, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
 
             let measurements = Array1::from_vec(vec![0.5, 0.5, 0.5]);
-            let features = mitigator.extract_features(&circuit, &measurements);
+            let features = mitigator.extract_features(&circuit, &measurements)?;
 
-            assert!(features.is_ok());
-            let features = features.unwrap();
             assert!(features.len() > 10); // Should have multiple features
+            Ok(())
         }
 
         #[test]
-        fn test_mitigation_strategy_selection() {
+        fn test_mitigation_strategy_selection() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mut mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mut mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             let features = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-            let strategy = mitigator.select_mitigation_strategy(&features);
+            let strategy = mitigator.select_mitigation_strategy(&features)?;
 
-            assert!(strategy.is_ok());
             // Should return a valid mitigation action
-            let strategy = strategy.unwrap();
             assert!(matches!(
                 strategy,
                 MitigationAction::ZeroNoiseExtrapolation
@@ -119,12 +118,13 @@ mod tests {
                     | MitigationAction::MachineLearningPrediction
                     | MitigationAction::EnsembleMitigation
             ));
+            Ok(())
         }
 
         #[test]
-        fn test_activation_functions() {
+        fn test_activation_functions() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             // Test ReLU
             assert_eq!(
@@ -143,13 +143,14 @@ mod tests {
             // Test Tanh
             let tanh_result = mitigator.apply_activation(0.0, ActivationFunction::Tanh);
             assert!(tanh_result.abs() < 1e-10);
+            Ok(())
         }
 
         #[test]
-        fn test_forward_pass() {
+        fn test_forward_pass() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
-            let model = mitigator.create_deep_model().unwrap();
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
+            let model = mitigator.create_deep_model()?;
 
             let input = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
             // Pad input to match network input size (18)
@@ -158,17 +159,15 @@ mod tests {
                 padded_input[i] = input[i];
             }
 
-            let output = mitigator.forward_pass(&model, &padded_input);
-            assert!(output.is_ok());
-
-            let output = output.unwrap();
+            let output = mitigator.forward_pass(&model, &padded_input)?;
             assert_eq!(output.len(), 1); // Single output
+            Ok(())
         }
 
         #[test]
-        fn test_traditional_mitigation_methods() {
+        fn test_traditional_mitigation_methods() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             let measurements = Array1::from_vec(vec![0.48, 0.52, 0.49]);
             let circuit = InterfaceCircuit::new(2, 0);
@@ -188,12 +187,13 @@ mod tests {
                 &circuit,
             );
             assert!(vd_result.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_error_mitigation_pipeline() {
+        fn test_error_mitigation_pipeline() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mut mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mut mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             let measurements = Array1::from_vec(vec![0.48, 0.52, 0.47, 0.53, 0.49]);
             let mut circuit = InterfaceCircuit::new(4, 0);
@@ -201,13 +201,11 @@ mod tests {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.5), vec![2]));
 
-            let result = mitigator.mitigate_errors(&measurements, &circuit);
-            assert!(result.is_ok());
-
-            let result = result.unwrap();
+            let result = mitigator.mitigate_errors(&measurements, &circuit)?;
             assert!(result.confidence >= 0.0 && result.confidence <= 1.0);
             assert!(result.error_reduction >= 0.0 && result.error_reduction <= 1.0);
             assert!(!result.model_used.is_empty());
+            Ok(())
         }
     }
 
@@ -216,136 +214,125 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_fault_tolerant_synthesizer_creation() {
+        fn test_fault_tolerant_synthesizer_creation() -> TestResult {
             let config = FaultTolerantConfig::default();
             let synthesizer = FaultTolerantSynthesizer::new(config);
             assert!(synthesizer.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_surface_code_layout_creation() {
+        fn test_surface_code_layout_creation() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
-            let layout = synthesizer.create_surface_code_layout(3);
-            assert!(layout.is_ok());
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
+            let layout = synthesizer.create_surface_code_layout(3)?;
 
-            let layout = layout.unwrap();
             assert_eq!(layout.data_qubits.nrows(), 5); // 2*3-1
             assert_eq!(layout.data_qubits.ncols(), 5);
+            Ok(())
         }
 
         #[test]
-        fn test_stabilizer_generation() {
+        fn test_stabilizer_generation() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
-            let stabilizers = synthesizer.generate_surface_code_stabilizers(3);
-            assert!(stabilizers.is_ok());
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
+            let stabilizers = synthesizer.generate_surface_code_stabilizers(3)?;
 
-            let stabilizers = stabilizers.unwrap();
             assert!(!stabilizers.is_empty());
 
             // Check stabilizer dimensions
             for stabilizer in &stabilizers {
                 assert_eq!(stabilizer.len(), 2 * 9); // 2 * (distance^2) for X and Z parts
             }
+            Ok(())
         }
 
         #[test]
-        fn test_logical_pauli_synthesis() {
+        fn test_logical_pauli_synthesis() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let logical_x = synthesizer.synthesize_logical_pauli(LogicalGateType::LogicalX, &[0]);
-            assert!(logical_x.is_ok());
+            let logical_x =
+                synthesizer.synthesize_logical_pauli(LogicalGateType::LogicalX, &[0])?;
 
-            let logical_x = logical_x.unwrap();
             assert_eq!(logical_x.gate_type, LogicalGateType::LogicalX);
             assert_eq!(logical_x.logical_qubits, vec![0]);
             assert!(logical_x.resources.physical_qubits > 0);
+            Ok(())
         }
 
         #[test]
-        fn test_logical_hadamard_synthesis() {
+        fn test_logical_hadamard_synthesis() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let logical_h = synthesizer.synthesize_logical_hadamard(&[0]);
-            assert!(logical_h.is_ok());
+            let logical_h = synthesizer.synthesize_logical_hadamard(&[0])?;
 
-            let logical_h = logical_h.unwrap();
             assert_eq!(logical_h.gate_type, LogicalGateType::LogicalH);
             assert!(logical_h.resources.physical_gates > 0);
+            Ok(())
         }
 
         #[test]
-        fn test_logical_cnot_synthesis() {
+        fn test_logical_cnot_synthesis() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let logical_cnot = synthesizer.synthesize_logical_cnot(&[0, 1]);
-            assert!(logical_cnot.is_ok());
+            let logical_cnot = synthesizer.synthesize_logical_cnot(&[0, 1])?;
 
-            let logical_cnot = logical_cnot.unwrap();
             assert_eq!(logical_cnot.gate_type, LogicalGateType::LogicalCNOT);
             assert_eq!(logical_cnot.logical_qubits.len(), 2);
+            Ok(())
         }
 
         #[test]
-        fn test_logical_t_synthesis_with_magic_states() {
+        fn test_logical_t_synthesis_with_magic_states() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let logical_t = synthesizer.synthesize_logical_t_with_magic_states_public(&[0]);
-            assert!(logical_t.is_ok());
+            let logical_t = synthesizer.synthesize_logical_t_with_magic_states_public(&[0])?;
 
-            let logical_t = logical_t.unwrap();
             assert_eq!(logical_t.gate_type, LogicalGateType::LogicalT);
             assert!(logical_t.resources.magic_states > 0);
             assert!(logical_t.resources.measurement_rounds > 0);
+            Ok(())
         }
 
         #[test]
-        fn test_magic_state_distillation_circuits() {
+        fn test_magic_state_distillation_circuits() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let t_circuit = synthesizer.create_t_state_distillation_circuit_public();
-            assert!(t_circuit.is_ok());
-
-            let t_circuit = t_circuit.unwrap();
+            let t_circuit = synthesizer.create_t_state_distillation_circuit_public()?;
             assert_eq!(t_circuit.num_qubits, 15); // 15-to-1 distillation
             assert!(!t_circuit.gates.is_empty());
 
-            let ccz_circuit = synthesizer.create_ccz_state_distillation_circuit_public();
-            assert!(ccz_circuit.is_ok());
-
-            let ccz_circuit = ccz_circuit.unwrap();
+            let ccz_circuit = synthesizer.create_ccz_state_distillation_circuit_public()?;
             assert_eq!(ccz_circuit.num_qubits, 25); // 25-to-1 distillation
+            Ok(())
         }
 
         #[test]
-        fn test_fault_tolerant_circuit_synthesis() {
+        fn test_fault_tolerant_circuit_synthesis() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let mut synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let mut synthesizer = FaultTolerantSynthesizer::new(config)?;
 
             // Create simple logical circuit
             let mut logical_circuit = InterfaceCircuit::new(2, 0);
             logical_circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
             logical_circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
 
-            let result = synthesizer.synthesize_logical_circuit(&logical_circuit);
-            assert!(result.is_ok());
-
-            let result = result.unwrap();
+            let result = synthesizer.synthesize_logical_circuit(&logical_circuit)?;
             assert!(result.fault_tolerant_circuit.gates.len() > logical_circuit.gates.len());
             assert!(result.overhead_factor > 1.0);
             assert!(result.logical_error_rate < 1.0);
+            Ok(())
         }
 
         #[test]
-        fn test_resource_requirements_calculation() {
+        fn test_resource_requirements_calculation() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
             let mut total = ResourceRequirements::default();
             let gate_resources = ResourceRequirements {
@@ -362,39 +349,37 @@ mod tests {
             assert_eq!(total.physical_qubits, 10);
             assert_eq!(total.physical_gates, 5);
             assert_eq!(total.magic_states, 2);
+            Ok(())
         }
 
         #[test]
-        fn test_optimal_distance_calculation() {
+        fn test_optimal_distance_calculation() -> TestResult {
             let config = FaultTolerantConfig {
                 target_logical_error_rate: 1e-10,
                 physical_error_rate: 1e-3,
                 ..FaultTolerantConfig::default()
             };
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
             let circuit = InterfaceCircuit::new(2, 0);
-            let distance = synthesizer.calculate_optimal_distance_public(&circuit);
-            assert!(distance.is_ok());
-            assert!(distance.unwrap() >= 3);
+            let distance = synthesizer.calculate_optimal_distance_public(&circuit)?;
+            assert!(distance >= 3);
+            Ok(())
         }
 
         #[test]
-        fn test_logical_gate_error_rate_calculation() {
+        fn test_logical_gate_error_rate_calculation() -> TestResult {
             let config = FaultTolerantConfig::default();
-            let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let synthesizer = FaultTolerantSynthesizer::new(config)?;
 
-            let x_error =
-                synthesizer.calculate_logical_gate_error_rate_public(LogicalGateType::LogicalX);
-            assert!(x_error.is_ok());
-            let x_error_value = x_error.unwrap();
+            let x_error_value =
+                synthesizer.calculate_logical_gate_error_rate_public(LogicalGateType::LogicalX)?;
             assert!(x_error_value > 0.0);
 
-            let t_error =
-                synthesizer.calculate_logical_gate_error_rate_public(LogicalGateType::LogicalT);
-            assert!(t_error.is_ok());
-            let t_error_value = t_error.unwrap();
+            let t_error_value =
+                synthesizer.calculate_logical_gate_error_rate_public(LogicalGateType::LogicalT)?;
             assert!(t_error_value > x_error_value); // T gate should have higher error
+            Ok(())
         }
     }
 
@@ -403,18 +388,19 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_quantum_chemistry_simulator_creation() {
+        fn test_quantum_chemistry_simulator_creation() -> TestResult {
             let config = ElectronicStructureConfig::default();
             let simulator = QuantumChemistrySimulator::new(config);
             assert!(simulator.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_h2_molecule_creation() {
+        fn test_h2_molecule_creation() -> TestResult {
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
@@ -424,17 +410,18 @@ mod tests {
             assert_eq!(h2.charge, 0);
             assert_eq!(h2.multiplicity, 1);
             assert_eq!(h2.basis_set, "STO-3G");
+            Ok(())
         }
 
         #[test]
-        fn test_molecule_setting() {
+        fn test_molecule_setting() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let mut simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let mut simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
@@ -442,130 +429,130 @@ mod tests {
 
             let result = simulator.set_molecule(h2);
             assert!(result.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_molecular_hamiltonian_construction() {
+        fn test_molecular_hamiltonian_construction() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let mut simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let mut simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
 
-            simulator.set_molecule(h2).unwrap();
+            simulator.set_molecule(h2)?;
             // Test that molecule was set successfully
             let molecule_result = simulator.get_molecule();
             assert!(molecule_result.is_some());
+            Ok(())
         }
 
         #[test]
-        fn test_one_electron_integrals() {
+        fn test_one_electron_integrals() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
 
-            let integrals = simulator.compute_one_electron_integrals_public(&h2, 2);
-            assert!(integrals.is_ok());
+            let integrals = simulator.compute_one_electron_integrals_public(&h2, 2)?;
 
-            let integrals = integrals.unwrap();
             assert_eq!(integrals.shape(), &[2, 2]);
             assert!(integrals[[0, 0]] != 0.0); // Should have diagonal elements
+            Ok(())
         }
 
         #[test]
-        fn test_two_electron_integrals() {
+        fn test_two_electron_integrals() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
 
-            let integrals = simulator.compute_two_electron_integrals_public(&h2, 2);
-            assert!(integrals.is_ok());
+            let integrals = simulator.compute_two_electron_integrals_public(&h2, 2)?;
 
-            let integrals = integrals.unwrap();
             assert_eq!(integrals.shape(), &[2, 2, 2, 2]);
+            Ok(())
         }
 
         #[test]
-        fn test_nuclear_repulsion() {
+        fn test_nuclear_repulsion() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
 
-            let nuclear_repulsion = simulator.compute_nuclear_repulsion_public(&h2);
-            assert!(nuclear_repulsion.is_ok());
+            let nuclear_repulsion = simulator.compute_nuclear_repulsion_public(&h2)?;
 
-            let nuclear_repulsion = nuclear_repulsion.unwrap();
             assert!(nuclear_repulsion > 0.0); // Should be positive for repulsion
+            Ok(())
         }
 
         #[test]
-        fn test_fermionic_hamiltonian_creation() {
+        fn test_fermionic_hamiltonian_creation() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
-            let one_electron =
-                Array2::from_shape_vec((2, 2), vec![-1.0, -0.1, -0.1, -1.0]).unwrap();
+            let one_electron = Array2::from_shape_vec((2, 2), vec![-1.0, -0.1, -0.1, -1.0])
+                .expect("2x2 matrix requires 4 elements");
             let two_electron = Array4::zeros((2, 2, 2, 2));
 
             let fermionic_ham =
-                simulator.create_fermionic_hamiltonian_public(&one_electron, &two_electron, 2);
-            assert!(fermionic_ham.is_ok());
+                simulator.create_fermionic_hamiltonian_public(&one_electron, &two_electron, 2)?;
 
-            let fermionic_ham = fermionic_ham.unwrap();
             assert_eq!(fermionic_ham.num_modes, 4); // 2 orbitals * 2 spins
             assert!(!fermionic_ham.terms.is_empty());
+            Ok(())
         }
 
         #[test]
-        fn test_fermion_mapper() {
+        fn test_fermion_mapper() -> TestResult {
             let mapper = FermionMapper::new(FermionMapping::JordanWigner, 4);
             assert_eq!(*mapper.get_method(), FermionMapping::JordanWigner);
             assert_eq!(mapper.get_num_spin_orbitals(), 4);
+            Ok(())
         }
 
         #[test]
-        fn test_vqe_optimizer() {
+        fn test_vqe_optimizer() -> TestResult {
             let mut optimizer = VQEOptimizer::new(ChemistryOptimizer::GradientDescent);
             optimizer.initialize_parameters_public(10);
             assert_eq!(optimizer.get_parameters().len(), 10);
             assert_eq!(optimizer.get_bounds().len(), 10);
             assert_eq!(*optimizer.get_method(), ChemistryOptimizer::GradientDescent);
+            Ok(())
         }
 
         #[test]
-        fn test_ansatz_parameter_counting() {
+        fn test_ansatz_parameter_counting() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(4, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(0.0), vec![0]));
@@ -574,25 +561,25 @@ mod tests {
 
             let param_count = simulator.get_ansatz_parameter_count_public(&circuit);
             assert_eq!(param_count, 2); // Two parametric gates
+            Ok(())
         }
 
         #[test]
-        fn test_density_matrix_construction() {
+        fn test_density_matrix_construction() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let orbitals = Array2::eye(4);
-            let density = simulator.build_density_matrix_public(&orbitals, 2);
-            assert!(density.is_ok());
+            let density = simulator.build_density_matrix_public(&orbitals, 2)?;
 
-            let density = density.unwrap();
             assert_eq!(density.shape(), &[4, 4]);
+            Ok(())
         }
 
         #[test]
-        fn test_pauli_operators_application() {
+        fn test_pauli_operators_application() -> TestResult {
             let config = ElectronicStructureConfig::default();
-            let simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let simulator = QuantumChemistrySimulator::new(config)?;
 
             let mut state = Array1::from_vec(vec![
                 Complex64::new(1.0, 0.0),
@@ -602,7 +589,7 @@ mod tests {
             ]);
 
             // Test Pauli-X application
-            simulator.apply_pauli_x_public(&mut state, 0).unwrap();
+            simulator.apply_pauli_x_public(&mut state, 0)?;
             assert_eq!(state[0], Complex64::new(0.0, 0.0));
             assert_eq!(state[1], Complex64::new(1.0, 0.0));
 
@@ -614,8 +601,9 @@ mod tests {
                 Complex64::new(0.0, 0.0),
             ]);
 
-            simulator.apply_pauli_z_public(&mut state2, 0).unwrap();
+            simulator.apply_pauli_z_public(&mut state2, 0)?;
             assert_eq!(state2[1], Complex64::new(-1.0, 0.0));
+            Ok(())
         }
     }
 
@@ -624,14 +612,15 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_hardware_aware_optimizer_creation() {
+        fn test_hardware_aware_optimizer_creation() -> TestResult {
             let config = HardwareAwareConfig::default();
             let optimizer = HardwareAwareQMLOptimizer::new(config);
             assert!(optimizer.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_architecture_specific_metrics_initialization() {
+        fn test_architecture_specific_metrics_initialization() -> TestResult {
             // Test IBM metrics
             let ibm_config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
@@ -655,54 +644,53 @@ mod tests {
             };
             let ionq_optimizer = HardwareAwareQMLOptimizer::new(ionq_config);
             assert!(ionq_optimizer.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_circuit_analysis() {
+        fn test_circuit_analysis() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(3, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RY(0.5), vec![2]));
 
-            let analysis = optimizer.analyze_circuit_public(&circuit);
-            assert!(analysis.is_ok());
+            let analysis = optimizer.analyze_circuit_public(&circuit)?;
 
-            let analysis = analysis.unwrap();
             assert_eq!(analysis.two_qubit_gates.len(), 1);
             assert_eq!(analysis.parameter_count, 1);
             assert!(analysis.gate_counts.contains_key("Hadamard"));
             assert!(analysis.gate_counts.contains_key("CNOT"));
+            Ok(())
         }
 
         #[test]
-        fn test_qubit_mapping_optimization() {
+        fn test_qubit_mapping_optimization() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let circuit = InterfaceCircuit::new(4, 0);
-            let analysis = optimizer.analyze_circuit_public(&circuit).unwrap();
-            let mapping = optimizer.optimize_qubit_mapping_public(&circuit, &analysis);
+            let analysis = optimizer.analyze_circuit_public(&circuit)?;
+            let mapping = optimizer.optimize_qubit_mapping_public(&circuit, &analysis)?;
 
-            assert!(mapping.is_ok());
-            let mapping = mapping.unwrap();
             assert_eq!(mapping.len(), 4);
 
             // Check that all logical qubits are mapped
             for i in 0..4 {
                 assert!(mapping.contains_key(&i));
             }
+            Ok(())
         }
 
         #[test]
-        fn test_gate_executability_check() {
+        fn test_gate_executability_check() -> TestResult {
             let config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 ..Default::default()
             };
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             // Test IBM-native gates
             assert!(optimizer.is_gate_directly_executable_public(&InterfaceGateType::CNOT, &[0, 1]));
@@ -713,36 +701,36 @@ mod tests {
                 target_architecture: HardwareArchitecture::GoogleQuantumAI,
                 ..Default::default()
             };
-            let google_optimizer = HardwareAwareQMLOptimizer::new(google_config).unwrap();
+            let google_optimizer = HardwareAwareQMLOptimizer::new(google_config)?;
 
             // Test Google-native gates
             assert!(google_optimizer
                 .is_gate_directly_executable_public(&InterfaceGateType::CZ, &[0, 1]));
             assert!(google_optimizer
                 .is_gate_directly_executable_public(&InterfaceGateType::RZ(0.5), &[0]));
+            Ok(())
         }
 
         #[test]
-        fn test_gate_decomposition() {
+        fn test_gate_decomposition() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             // Test Toffoli decomposition
-            let decomposed =
-                optimizer.decompose_or_route_gate_public(&InterfaceGateType::Toffoli, &[0, 1, 2]);
-            assert!(decomposed.is_ok());
+            let decomposed = optimizer
+                .decompose_or_route_gate_public(&InterfaceGateType::Toffoli, &[0, 1, 2])?;
 
-            let decomposed = decomposed.unwrap();
             assert!(decomposed.len() > 1); // Should decompose into multiple gates
+            Ok(())
         }
 
         #[test]
-        fn test_hardware_specific_optimizations() {
+        fn test_hardware_specific_optimizations() -> TestResult {
             let config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 ..Default::default()
             };
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(2, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.1), vec![0]));
@@ -750,18 +738,17 @@ mod tests {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.3), vec![0]));
 
             let original_gates = circuit.gates.len();
-            optimizer
-                .apply_ibm_optimizations_public(&mut circuit)
-                .unwrap();
+            optimizer.apply_ibm_optimizations_public(&mut circuit)?;
 
             // Should fuse consecutive RZ gates
             assert!(circuit.gates.len() <= original_gates);
+            Ok(())
         }
 
         #[test]
-        fn test_gate_cancellation() {
+        fn test_gate_cancellation() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             // Test that identical Pauli gates cancel
             let gate1 = InterfaceGate::new(InterfaceGateType::PauliX, vec![0]);
@@ -775,33 +762,33 @@ mod tests {
             // Test that gates on different qubits don't cancel
             let gate4 = InterfaceGate::new(InterfaceGateType::PauliX, vec![1]);
             assert!(!optimizer.gates_cancel_public(&gate1, &gate4));
+            Ok(())
         }
 
         #[test]
-        fn test_error_rate_estimation() {
+        fn test_error_rate_estimation() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(2, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::RZ(0.5), vec![0]));
 
-            let error_rate = optimizer.estimate_error_rate_public(&circuit);
-            assert!(error_rate.is_ok());
+            let error_rate = optimizer.estimate_error_rate_public(&circuit)?;
 
-            let error_rate = error_rate.unwrap();
             assert!(error_rate > 0.0);
+            Ok(())
         }
 
         #[test]
-        fn test_circuit_optimization_pipeline() {
+        fn test_circuit_optimization_pipeline() -> TestResult {
             let config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 enable_noise_aware_optimization: true,
                 enable_connectivity_optimization: true,
                 ..Default::default()
             };
-            let mut optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let mut optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(3, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -811,36 +798,34 @@ mod tests {
                 vec![0, 1, 2],
             ));
 
-            let result = optimizer.optimize_qml_circuit(&circuit, None);
-            assert!(result.is_ok());
+            let result = optimizer.optimize_qml_circuit(&circuit, None)?;
 
-            let result = result.unwrap();
             assert!(result.compilation_time_ms > 0);
             assert!(result.expected_error_rate >= 0.0);
             assert!(!result.qubit_mapping.is_empty());
+            Ok(())
         }
 
         #[test]
-        fn test_hardware_efficient_ansatz_generation() {
+        fn test_hardware_efficient_ansatz_generation() -> TestResult {
             let config = HardwareAwareConfig {
                 enable_hardware_efficient_ansatz: true,
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 ..Default::default()
             };
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
-            let ansatz = optimizer.generate_hardware_efficient_ansatz(4, 3, 0.8);
-            assert!(ansatz.is_ok());
+            let ansatz = optimizer.generate_hardware_efficient_ansatz(4, 3, 0.8)?;
 
-            let ansatz = ansatz.unwrap();
             assert_eq!(ansatz.num_qubits, 4);
             assert!(!ansatz.gates.is_empty());
+            Ok(())
         }
 
         #[test]
-        fn test_cross_device_compatibility() {
+        fn test_cross_device_compatibility() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let compatibility = optimizer.get_cross_device_compatibility(
                 HardwareArchitecture::IBMQuantum,
@@ -855,24 +840,26 @@ mod tests {
                 HardwareArchitecture::IBMQuantum,
             );
             assert!(self_compatibility >= compatibility);
+            Ok(())
         }
 
         #[test]
-        fn test_performance_monitoring() {
+        fn test_performance_monitoring() -> TestResult {
             let config = HardwareAwareConfig {
                 enable_performance_monitoring: true,
                 ..Default::default()
             };
-            let mut optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let mut optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
-            optimizer.start_performance_monitoring_public().unwrap();
+            optimizer.start_performance_monitoring_public()?;
             assert!(!optimizer.get_performance_monitor().timestamps.is_empty());
+            Ok(())
         }
 
         #[test]
-        fn test_adaptation_trigger_checking() {
+        fn test_adaptation_trigger_checking() -> TestResult {
             let config = HardwareAwareConfig::default();
-            let optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let _optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let performance = crate::hardware_aware_qml::PerformanceMetrics {
                 avg_execution_time: std::time::Duration::from_secs(15),
@@ -884,16 +871,15 @@ mod tests {
 
             let error_trigger = AdaptationTrigger::ErrorRateThreshold(0.1);
             let should_adapt =
-                HardwareAwareQMLOptimizer::check_adaptation_trigger(&error_trigger, &performance);
-            assert!(should_adapt.is_ok());
-            assert!(should_adapt.unwrap()); // Should trigger adaptation
+                HardwareAwareQMLOptimizer::check_adaptation_trigger(&error_trigger, &performance)?;
+            assert!(should_adapt); // Should trigger adaptation
 
             let time_trigger =
                 AdaptationTrigger::ExecutionTimeThreshold(std::time::Duration::from_secs(10));
             let should_adapt_time =
-                HardwareAwareQMLOptimizer::check_adaptation_trigger(&time_trigger, &performance);
-            assert!(should_adapt_time.is_ok());
-            assert!(should_adapt_time.unwrap()); // Should trigger adaptation
+                HardwareAwareQMLOptimizer::check_adaptation_trigger(&time_trigger, &performance)?;
+            assert!(should_adapt_time); // Should trigger adaptation
+            Ok(())
         }
     }
 
@@ -902,24 +888,24 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_ml_error_mitigation_with_quantum_chemistry() {
+        fn test_ml_error_mitigation_with_quantum_chemistry() -> TestResult {
             // Test integration between ML error mitigation and quantum chemistry
             let ml_config = AdvancedMLMitigationConfig::default();
-            let mut ml_mitigator = AdvancedMLErrorMitigator::new(ml_config).unwrap();
+            let mut ml_mitigator = AdvancedMLErrorMitigator::new(ml_config)?;
 
             let chem_config = ElectronicStructureConfig::default();
-            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config).unwrap();
+            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config)?;
 
             // Set up H2 molecule
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
-            chem_simulator.set_molecule(h2).unwrap();
+            chem_simulator.set_molecule(h2)?;
 
             // Create a simple VQE circuit
             let mut vqe_circuit = InterfaceCircuit::new(4, 0);
@@ -930,24 +916,24 @@ mod tests {
             let noisy_measurements = Array1::from_vec(vec![0.48, 0.52, 0.47, 0.53]);
 
             // Apply ML error mitigation
-            let mitigation_result = ml_mitigator.mitigate_errors(&noisy_measurements, &vqe_circuit);
-            assert!(mitigation_result.is_ok());
+            let mitigation_result =
+                ml_mitigator.mitigate_errors(&noisy_measurements, &vqe_circuit)?;
 
-            let mitigation_result = mitigation_result.unwrap();
             assert!(mitigation_result.confidence > 0.0);
+            Ok(())
         }
 
         #[test]
-        fn test_fault_tolerant_synthesis_with_hardware_aware_qml() {
+        fn test_fault_tolerant_synthesis_with_hardware_aware_qml() -> TestResult {
             // Test integration between fault-tolerant synthesis and hardware-aware QML
             let ft_config = FaultTolerantConfig::default();
-            let mut ft_synthesizer = FaultTolerantSynthesizer::new(ft_config).unwrap();
+            let mut ft_synthesizer = FaultTolerantSynthesizer::new(ft_config)?;
 
             let hw_config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 ..Default::default()
             };
-            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config).unwrap();
+            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config)?;
 
             // Create logical circuit
             let mut logical_circuit = InterfaceCircuit::new(2, 0);
@@ -956,57 +942,52 @@ mod tests {
             logical_circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
 
             // Synthesize fault-tolerant version
-            let ft_result = ft_synthesizer.synthesize_logical_circuit(&logical_circuit);
-            assert!(ft_result.is_ok());
-
-            let ft_result = ft_result.unwrap();
+            let ft_result = ft_synthesizer.synthesize_logical_circuit(&logical_circuit)?;
 
             // Apply hardware-aware optimization to fault-tolerant circuit
             let hw_result =
-                hw_optimizer.optimize_qml_circuit(&ft_result.fault_tolerant_circuit, None);
-            assert!(hw_result.is_ok());
+                hw_optimizer.optimize_qml_circuit(&ft_result.fault_tolerant_circuit, None)?;
 
-            let hw_result = hw_result.unwrap();
             assert!(hw_result.expected_error_rate >= 0.0);
+            Ok(())
         }
 
         #[test]
-        fn test_quantum_chemistry_with_hardware_aware_optimization() {
+        fn test_quantum_chemistry_with_hardware_aware_optimization() -> TestResult {
             // Test integration between quantum chemistry and hardware-aware optimization
             let chem_config = ElectronicStructureConfig::default();
-            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config).unwrap();
+            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config)?;
 
             let hw_config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::GoogleQuantumAI,
                 ..Default::default()
             };
-            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config).unwrap();
+            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config)?;
 
             // Set up molecule
             let lih = Molecule {
                 atomic_numbers: vec![3, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.6])
-                    .unwrap(),
+                    .expect("LiH molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
-            chem_simulator.set_molecule(lih).unwrap();
+            chem_simulator.set_molecule(lih)?;
 
             // Generate hardware-efficient ansatz for chemistry
-            let chemistry_ansatz = hw_optimizer.generate_hardware_efficient_ansatz(6, 4, 0.8);
-            assert!(chemistry_ansatz.is_ok());
+            let chemistry_ansatz = hw_optimizer.generate_hardware_efficient_ansatz(6, 4, 0.8)?;
 
-            let chemistry_ansatz = chemistry_ansatz.unwrap();
             assert_eq!(chemistry_ansatz.num_qubits, 6);
 
             // Optimize for hardware
             let optimized_chemistry = hw_optimizer.optimize_qml_circuit(&chemistry_ansatz, None);
             assert!(optimized_chemistry.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_full_pipeline_integration() {
+        fn test_full_pipeline_integration() -> TestResult {
             // Test full pipeline: Chemistry -> Hardware Optimization -> Fault-Tolerant -> Error Mitigation
 
             // 1. Quantum Chemistry Setup
@@ -1015,17 +996,17 @@ mod tests {
                 enable_second_quantization_optimization: true,
                 ..Default::default()
             };
-            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config).unwrap();
+            let mut chem_simulator = QuantumChemistrySimulator::new(chem_config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
-            chem_simulator.set_molecule(h2).unwrap();
+            chem_simulator.set_molecule(h2)?;
 
             // 2. Hardware-Aware Optimization
             let hw_config = HardwareAwareConfig {
@@ -1034,14 +1015,10 @@ mod tests {
                 enable_hardware_efficient_ansatz: true,
                 ..Default::default()
             };
-            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config).unwrap();
+            let mut hw_optimizer = HardwareAwareQMLOptimizer::new(hw_config)?;
 
-            let vqe_ansatz = hw_optimizer
-                .generate_hardware_efficient_ansatz(4, 2, 0.8)
-                .unwrap();
-            let hw_optimized = hw_optimizer
-                .optimize_qml_circuit(&vqe_ansatz, None)
-                .unwrap();
+            let vqe_ansatz = hw_optimizer.generate_hardware_efficient_ansatz(4, 2, 0.8)?;
+            let hw_optimized = hw_optimizer.optimize_qml_circuit(&vqe_ansatz, None)?;
 
             // 3. Fault-Tolerant Synthesis
             let ft_config = FaultTolerantConfig {
@@ -1049,11 +1026,9 @@ mod tests {
                 enable_magic_state_distillation: true,
                 ..Default::default()
             };
-            let mut ft_synthesizer = FaultTolerantSynthesizer::new(ft_config).unwrap();
+            let mut ft_synthesizer = FaultTolerantSynthesizer::new(ft_config)?;
 
-            let ft_result = ft_synthesizer
-                .synthesize_logical_circuit(&hw_optimized.circuit)
-                .unwrap();
+            let ft_result = ft_synthesizer.synthesize_logical_circuit(&hw_optimized.circuit)?;
 
             // 4. ML Error Mitigation
             let ml_config = AdvancedMLMitigationConfig {
@@ -1061,12 +1036,11 @@ mod tests {
                 enable_online_learning: true,
                 ..Default::default()
             };
-            let mut ml_mitigator = AdvancedMLErrorMitigator::new(ml_config).unwrap();
+            let mut ml_mitigator = AdvancedMLErrorMitigator::new(ml_config)?;
 
             let noisy_measurements = Array1::from_vec(vec![0.45, 0.55, 0.48, 0.52]);
             let mitigation_result = ml_mitigator
-                .mitigate_errors(&noisy_measurements, &ft_result.fault_tolerant_circuit)
-                .unwrap();
+                .mitigate_errors(&noisy_measurements, &ft_result.fault_tolerant_circuit)?;
 
             // Verify pipeline results
             assert!(hw_optimized.expected_error_rate >= 0.0);
@@ -1087,6 +1061,7 @@ mod tests {
                 "  ML mitigation confidence: {:.4}",
                 mitigation_result.confidence
             );
+            Ok(())
         }
     }
 
@@ -1096,9 +1071,9 @@ mod tests {
         use std::time::Instant;
 
         #[test]
-        fn test_ml_error_mitigation_performance() {
+        fn test_ml_error_mitigation_performance() -> TestResult {
             let config = AdvancedMLMitigationConfig::default();
-            let mut mitigator = AdvancedMLErrorMitigator::new(config).unwrap();
+            let mut mitigator = AdvancedMLErrorMitigator::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(6, 0);
             for i in 0..5 {
@@ -1122,15 +1097,16 @@ mod tests {
                 "ML Error Mitigation Performance: {:.2}ms",
                 duration.as_millis()
             );
+            Ok(())
         }
 
         #[test]
-        fn test_fault_tolerant_synthesis_performance() {
+        fn test_fault_tolerant_synthesis_performance() -> TestResult {
             let config = FaultTolerantConfig {
                 code_distance: 3, // Smaller distance for faster testing
                 ..Default::default()
             };
-            let mut synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+            let mut synthesizer = FaultTolerantSynthesizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(3, 0);
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
@@ -1148,25 +1124,26 @@ mod tests {
                 "Fault-Tolerant Synthesis Performance: {:.2}ms",
                 duration.as_millis()
             );
+            Ok(())
         }
 
         #[test]
-        fn test_quantum_chemistry_performance() {
+        fn test_quantum_chemistry_performance() -> TestResult {
             let config = ElectronicStructureConfig {
                 max_scf_iterations: 10, // Limit iterations for faster testing
                 ..Default::default()
             };
-            let mut simulator = QuantumChemistrySimulator::new(config).unwrap();
+            let mut simulator = QuantumChemistrySimulator::new(config)?;
 
             let h2 = Molecule {
                 atomic_numbers: vec![1, 1],
                 positions: Array2::from_shape_vec((2, 3), vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.4])
-                    .unwrap(),
+                    .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "STO-3G".to_string(),
             };
-            simulator.set_molecule(h2).unwrap();
+            simulator.set_molecule(h2)?;
 
             // Test that we can run calculation which includes Hamiltonian construction
             let start_time = Instant::now();
@@ -1179,16 +1156,17 @@ mod tests {
                 "Quantum Chemistry Hamiltonian Construction Performance: {:.2}ms",
                 duration.as_millis()
             );
+            Ok(())
         }
 
         #[test]
-        fn test_hardware_aware_qml_performance() {
+        fn test_hardware_aware_qml_performance() -> TestResult {
             let config = HardwareAwareConfig {
                 target_architecture: HardwareArchitecture::IBMQuantum,
                 max_compilation_time_ms: 5000, // 5 second limit
                 ..Default::default()
             };
-            let mut optimizer = HardwareAwareQMLOptimizer::new(config).unwrap();
+            let mut optimizer = HardwareAwareQMLOptimizer::new(config)?;
 
             let mut circuit = InterfaceCircuit::new(8, 0);
             for i in 0..7 {
@@ -1210,6 +1188,7 @@ mod tests {
                 "Hardware-Aware QML Optimization Performance: {:.2}ms",
                 duration.as_millis()
             );
+            Ok(())
         }
     }
 
@@ -1217,89 +1196,84 @@ mod tests {
     mod telemetry_tests {
         use super::*;
         use crate::telemetry::*;
+        #[allow(unused_imports)]
         use std::time::Duration;
 
         #[test]
-        fn test_telemetry_collector_creation() {
+        fn test_telemetry_collector_creation() -> TestResult {
             let config = TelemetryConfig::default();
             let _collector = TelemetryCollector::new(config);
             // TelemetryCollector creation always succeeds
+            Ok(())
         }
 
         #[test]
-        fn test_telemetry_metric_collection() {
+        fn test_telemetry_metric_collection() -> TestResult {
             let config = TelemetryConfig::default();
             let mut collector = TelemetryCollector::new(config);
 
             // Record some metrics
-            collector
-                .record_metric(TelemetryMetric::Counter {
-                    name: "gate_count".to_string(),
-                    value: 10,
-                    tags: HashMap::new(),
-                    timestamp: 1000.0,
-                })
-                .unwrap();
-            collector
-                .record_metric(TelemetryMetric::Gauge {
-                    name: "execution_time".to_string(),
-                    value: 25.5,
-                    tags: HashMap::new(),
-                    timestamp: 1001.0,
-                })
-                .unwrap();
-            collector
-                .record_metric(TelemetryMetric::Gauge {
-                    name: "memory_usage".to_string(),
-                    value: 1024.0,
-                    tags: HashMap::new(),
-                    timestamp: 1002.0,
-                })
-                .unwrap();
+            collector.record_metric(TelemetryMetric::Counter {
+                name: "gate_count".to_string(),
+                value: 10,
+                tags: HashMap::new(),
+                timestamp: 1000.0,
+            })?;
+            collector.record_metric(TelemetryMetric::Gauge {
+                name: "execution_time".to_string(),
+                value: 25.5,
+                tags: HashMap::new(),
+                timestamp: 1001.0,
+            })?;
+            collector.record_metric(TelemetryMetric::Gauge {
+                name: "memory_usage".to_string(),
+                value: 1024.0,
+                tags: HashMap::new(),
+                timestamp: 1002.0,
+            })?;
 
-            let summary = collector.get_metrics_summary();
-            assert!(summary.is_ok());
+            let summary = collector.get_metrics_summary()?;
 
-            let summary = summary.unwrap();
             assert!(summary.total_metrics >= 3); // We recorded 3 metrics
                                                  // Check that metrics were collected properly
             assert!(summary.total_quantum_metrics < usize::MAX);
             assert!(summary.avg_gate_execution_time >= 0.0);
+            Ok(())
         }
 
         #[test]
-        fn test_alert_generation() {
+        fn test_alert_generation() -> TestResult {
             let mut config = TelemetryConfig::default();
             config.alert_thresholds.max_error_rate = 0.1;
             let mut collector = TelemetryCollector::new(config);
 
             // Record high error rate
-            collector
-                .record_metric(TelemetryMetric::Gauge {
-                    name: "error_rate".to_string(),
-                    value: 0.15,
-                    tags: HashMap::new(),
-                    timestamp: 1003.0,
-                })
-                .unwrap();
+            collector.record_metric(TelemetryMetric::Gauge {
+                name: "error_rate".to_string(),
+                value: 0.15,
+                tags: HashMap::new(),
+                timestamp: 1003.0,
+            })?;
 
             // Check that telemetry collection still works with high error rate
-            let summary = collector.get_metrics_summary().unwrap();
+            let summary = collector.get_metrics_summary()?;
             assert!(summary.total_metrics >= 1);
+            Ok(())
         }
 
         #[test]
-        fn test_performance_snapshot() {
+        fn test_performance_snapshot() -> TestResult {
             let config = TelemetryConfig::default();
             let collector = TelemetryCollector::new(config);
 
-            let summary = collector.get_metrics_summary().unwrap();
+            let summary = collector.get_metrics_summary()?;
             assert_eq!(summary.total_metrics, 0);
             assert_eq!(summary.total_quantum_metrics, 0);
+            Ok(())
         }
 
         #[test]
-        fn test_telemetry_export() {
+        fn test_telemetry_export() -> TestResult {
             let mut config = TelemetryConfig::default();
             config.export_format = TelemetryExportFormat::JSON;
             let collector = TelemetryCollector::new(config);
@@ -1311,23 +1285,22 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            collector.record_metric(test_metric).unwrap();
+            collector.record_metric(test_metric)?;
 
             // Export to temporary directory
             let temp_dir = std::env::temp_dir().join("telemetry_export_test");
-            collector.export_data(temp_dir.to_str().unwrap()).unwrap();
+            collector.export_data(temp_dir.to_str().ok_or("Invalid temp path")?)?;
             assert!(temp_dir.exists());
+            Ok(())
         }
 
         #[test]
-        fn test_benchmark_telemetry() {
-            let result = crate::telemetry::benchmark_telemetry();
-            assert!(result.is_ok());
+        fn test_benchmark_telemetry() -> TestResult {
+            let metrics = crate::telemetry::benchmark_telemetry()?;
 
-            let metrics = result.unwrap();
             assert!(metrics.contains_key("metric_collection_throughput"));
             assert!(metrics.contains_key("alert_processing_time"));
             assert!(metrics.contains_key("export_generation_time"));
@@ -1335,6 +1308,7 @@ mod tests {
             // Performance requirements
             assert!(metrics["metric_collection_throughput"] > 1000.0); // ops/sec
             assert!(metrics["alert_processing_time"] < 10.0); // milliseconds
+            Ok(())
         }
     }
 
@@ -1344,14 +1318,15 @@ mod tests {
         use crate::visualization_hooks::*;
 
         #[test]
-        fn test_visualization_manager_creation() {
+        fn test_visualization_manager_creation() -> TestResult {
             let config = VisualizationConfig::default();
             let _manager = VisualizationManager::new(config);
             // Manager is created successfully - no need to access private fields
+            Ok(())
         }
 
         #[test]
-        fn test_json_visualization_hook() {
+        fn test_json_visualization_hook() -> TestResult {
             let config = VisualizationConfig::default();
             let mut hook = JSONVisualizationHook::new(config);
 
@@ -1361,12 +1336,13 @@ mod tests {
                 timestamp: 0.0,
             };
 
-            assert!(hook.process_data(test_data).is_ok());
+            hook.process_data(test_data)?;
             assert_eq!(hook.framework(), VisualizationFramework::JSON);
+            Ok(())
         }
 
         #[test]
-        fn test_ascii_visualization_hook() {
+        fn test_ascii_visualization_hook() -> TestResult {
             let config = VisualizationConfig {
                 real_time: false,
                 ..Default::default()
@@ -1379,12 +1355,13 @@ mod tests {
                 timestamp: 0.0,
             };
 
-            assert!(hook.process_data(test_data).is_ok());
+            hook.process_data(test_data)?;
             assert_eq!(hook.framework(), VisualizationFramework::ASCII);
+            Ok(())
         }
 
         #[test]
-        fn test_state_visualization() {
+        fn test_state_visualization() -> TestResult {
             let config = VisualizationConfig::default();
             let mut manager = VisualizationManager::new(config);
 
@@ -1395,11 +1372,12 @@ mod tests {
                 Complex64::new(0.5, 0.0),
             ]);
 
-            assert!(manager.visualize_state(&test_state, None).is_ok());
+            manager.visualize_state(&test_state, None)?;
+            Ok(())
         }
 
         #[test]
-        fn test_circuit_visualization() {
+        fn test_circuit_visualization() -> TestResult {
             let config = VisualizationConfig::default();
             let mut manager = VisualizationManager::new(config);
 
@@ -1407,21 +1385,21 @@ mod tests {
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::Hadamard, vec![0]));
             circuit.add_gate(InterfaceGate::new(InterfaceGateType::CNOT, vec![0, 1]));
 
-            assert!(manager.visualize_circuit(&circuit).is_ok());
+            manager.visualize_circuit(&circuit)?;
+            Ok(())
         }
 
         #[test]
-        fn test_visualization_performance() {
-            let result = crate::visualization_hooks::benchmark_visualization();
-            assert!(result.is_ok());
+        fn test_visualization_performance() -> TestResult {
+            let metrics = crate::visualization_hooks::benchmark_visualization()?;
 
-            let metrics = result.unwrap();
             assert!(metrics.contains_key("json_hook_1000_states"));
             assert!(metrics.contains_key("ascii_hook_100_states"));
 
             // Performance requirements
             assert!(metrics["json_hook_1000_states"] < 1000.0); // milliseconds
             assert!(metrics["ascii_hook_100_states"] < 500.0); // milliseconds
+            Ok(())
         }
     }
 
@@ -1431,47 +1409,49 @@ mod tests {
         use crate::fpga_acceleration::*;
 
         #[test]
-        fn test_fpga_accelerator_creation() {
+        fn test_fpga_accelerator_creation() -> TestResult {
             let config = FPGAConfig::default();
             let accelerator = FPGAQuantumSimulator::new(config);
             assert!(accelerator.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_fpga_device_info() {
+        fn test_fpga_device_info() -> TestResult {
             let config = FPGAConfig::default();
-            let accelerator = FPGAQuantumSimulator::new(config).unwrap();
+            let accelerator = FPGAQuantumSimulator::new(config)?;
 
             let device_info = accelerator.get_device_info();
             assert!(device_info.device_id > 0);
             assert!(device_info.block_ram_kb > 0);
+            Ok(())
         }
 
         #[test]
-        fn test_fpga_stats() {
+        fn test_fpga_stats() -> TestResult {
             let config = FPGAConfig::default();
-            let accelerator = FPGAQuantumSimulator::new(config).unwrap();
+            let accelerator = FPGAQuantumSimulator::new(config)?;
 
             let stats = accelerator.get_stats();
             assert_eq!(stats.total_gate_operations, 0);
             assert!(stats.total_execution_time >= 0.0);
+            Ok(())
         }
 
         #[test]
-        fn test_quantum_gate_acceleration() {
+        fn test_quantum_gate_acceleration() -> TestResult {
             let config = FPGAConfig::default();
-            let accelerator = FPGAQuantumSimulator::new(config).unwrap();
+            let accelerator = FPGAQuantumSimulator::new(config)?;
 
             // Test that FPGA acceleration is available for query
             assert!(accelerator.is_fpga_available() || !accelerator.is_fpga_available());
+            Ok(())
         }
 
         #[test]
-        fn test_fpga_performance_benchmark() {
-            let result = crate::fpga_acceleration::benchmark_fpga_acceleration();
-            assert!(result.is_ok());
+        fn test_fpga_performance_benchmark() -> TestResult {
+            let metrics = crate::fpga_acceleration::benchmark_fpga_acceleration()?;
 
-            let metrics = result.unwrap();
             assert!(metrics.contains_key("kernel_compilation_time"));
             assert!(metrics.contains_key("memory_transfer_bandwidth"));
             assert!(metrics.contains_key("gate_execution_throughput"));
@@ -1479,6 +1459,7 @@ mod tests {
             // Performance requirements
             assert!(metrics["kernel_compilation_time"] < 5000.0); // milliseconds
             assert!(metrics["memory_transfer_bandwidth"] > 100.0); // MB/s
+            Ok(())
         }
     }
 
@@ -1488,26 +1469,28 @@ mod tests {
         use crate::quantum_reservoir_computing::*;
 
         #[test]
-        fn test_quantum_reservoir_creation() {
+        fn test_quantum_reservoir_creation() -> TestResult {
             let config = QuantumReservoirConfig::default();
             let reservoir = QuantumReservoirComputer::new(config);
             assert!(reservoir.is_ok());
+            Ok(())
         }
 
         #[test]
-        fn test_reservoir_dynamics() {
+        fn test_reservoir_dynamics() -> TestResult {
             let config = QuantumReservoirConfig::default();
-            let reservoir = QuantumReservoirComputer::new(config).unwrap();
+            let _reservoir = QuantumReservoirComputer::new(config)?;
 
             // Test reservoir creation and basic properties
             // Note: evolve_dynamics method not available in current API
             // This test validates successful reservoir initialization
+            Ok(())
         }
 
         #[test]
-        fn test_reservoir_training() {
+        fn test_reservoir_training() -> TestResult {
             let config = QuantumReservoirConfig::default();
-            let reservoir = QuantumReservoirComputer::new(config).unwrap();
+            let _reservoir = QuantumReservoirComputer::new(config)?;
 
             let training_data = ReservoirTrainingData {
                 inputs: (0..10)
@@ -1529,12 +1512,13 @@ mod tests {
             // Test creation of training data structure
             assert_eq!(training_data.inputs.len(), 10);
             assert_eq!(training_data.targets.len(), 10);
+            Ok(())
         }
 
         #[test]
-        fn test_reservoir_prediction() {
+        fn test_reservoir_prediction() -> TestResult {
             let config = QuantumReservoirConfig::default();
-            let reservoir = QuantumReservoirComputer::new(config).unwrap();
+            let _reservoir = QuantumReservoirComputer::new(config)?;
 
             // Test creation and basic functionality
             let training_data = ReservoirTrainingData {
@@ -1558,16 +1542,15 @@ mod tests {
             assert_eq!(training_data.inputs.len(), 10);
             assert_eq!(training_data.targets.len(), 10);
             assert_eq!(training_data.timestamps.len(), 10);
+            Ok(())
         }
 
         #[test]
         #[ignore]
-        fn test_reservoir_benchmark() {
-            let result =
-                crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing();
-            assert!(result.is_ok());
+        fn test_reservoir_benchmark() -> TestResult {
+            let metrics =
+                crate::quantum_reservoir_computing::benchmark_quantum_reservoir_computing()?;
 
-            let metrics = result.unwrap();
             assert!(metrics.contains_key("reservoir_initialization_time"));
             assert!(metrics.contains_key("dynamics_evolution_throughput"));
             assert!(metrics.contains_key("training_convergence_time"));
@@ -1575,6 +1558,7 @@ mod tests {
             // Performance requirements
             assert!(metrics["reservoir_initialization_time"] < 1000.0); // milliseconds
             assert!(metrics["dynamics_evolution_throughput"] > 100.0); // samples/sec
+            Ok(())
         }
     }
 
@@ -1584,10 +1568,10 @@ mod tests {
         use std::time::Instant;
 
         #[test]
-        fn test_end_to_end_qml_pipeline() {
+        fn test_end_to_end_qml_pipeline() -> TestResult {
             // Create hardware-aware QML optimizer
             let qml_config = HardwareAwareConfig::default();
-            let mut qml_optimizer = HardwareAwareQMLOptimizer::new(qml_config).unwrap();
+            let mut qml_optimizer = HardwareAwareQMLOptimizer::new(qml_config)?;
 
             // Create test circuit
             let mut circuit = InterfaceCircuit::new(4, 0);
@@ -1610,10 +1594,10 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            telemetry.record_metric(circuit_metric).unwrap();
+            telemetry.record_metric(circuit_metric)?;
 
             let success_metric = TelemetryMetric::Gauge {
                 name: "optimization_success".to_string(),
@@ -1621,21 +1605,22 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            telemetry.record_metric(success_metric).unwrap();
+            telemetry.record_metric(success_metric)?;
 
             // Get metrics summary
-            let summary = telemetry.get_metrics_summary().unwrap();
+            let summary = telemetry.get_metrics_summary()?;
             assert_eq!(summary.total_metrics, 2);
+            Ok(())
         }
 
         #[test]
-        fn test_quantum_chemistry_with_visualization() {
+        fn test_quantum_chemistry_with_visualization() -> TestResult {
             // Create quantum chemistry simulator
             let chemistry_config = ElectronicStructureConfig::default();
-            let chemistry_sim = QuantumChemistrySimulator::new(chemistry_config).unwrap();
+            let _chemistry_sim = QuantumChemistrySimulator::new(chemistry_config)?;
 
             // Set up visualization
             let viz_config = VisualizationConfig::default();
@@ -1651,7 +1636,7 @@ mod tests {
                         1.4, 0.0, 0.0, // Second H
                     ],
                 )
-                .unwrap(),
+                .expect("H2 molecule positions: 2 atoms x 3 coords = 6 elements"),
                 charge: 0,
                 multiplicity: 1,
                 basis_set: "sto-3g".to_string(),
@@ -1662,10 +1647,11 @@ mod tests {
             assert_eq!(molecule.positions.shape(), &[2, 3]);
             assert_eq!(molecule.charge, 0);
             assert_eq!(molecule.multiplicity, 1);
+            Ok(())
         }
 
         #[test]
-        fn test_performance_monitoring_integration() {
+        fn test_performance_monitoring_integration() -> TestResult {
             let start_time = Instant::now();
 
             // Run multiple components and monitor performance
@@ -1682,10 +1668,10 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            telemetry.record_metric(reservoir_metric).unwrap();
+            telemetry.record_metric(reservoir_metric)?;
 
             // Test FPGA acceleration
             let fpga_config = FPGAConfig::default();
@@ -1697,10 +1683,10 @@ mod tests {
                     tags: std::collections::HashMap::new(),
                     timestamp: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .expect("SystemTime before UNIX_EPOCH")
                         .as_secs_f64(),
                 };
-                telemetry.record_metric(fpga_metric).unwrap();
+                telemetry.record_metric(fpga_metric)?;
             }
 
             // Test hardware-aware QML
@@ -1713,10 +1699,10 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            telemetry.record_metric(qml_metric).unwrap();
+            telemetry.record_metric(qml_metric)?;
 
             let total_time = start_time.elapsed();
             let duration_metric = TelemetryMetric::Gauge {
@@ -1725,16 +1711,17 @@ mod tests {
                 tags: std::collections::HashMap::new(),
                 timestamp: std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .expect("SystemTime before UNIX_EPOCH")
                     .as_secs_f64(),
             };
-            telemetry.record_metric(duration_metric).unwrap();
+            telemetry.record_metric(duration_metric)?;
 
             // Verify all components initialized successfully
-            let summary = telemetry.get_metrics_summary().unwrap();
+            let summary = telemetry.get_metrics_summary()?;
             assert!(summary.total_metrics > 0);
             // Check that metrics were collected properly
             assert!(summary.total_quantum_metrics < usize::MAX);
+            Ok(())
         }
     }
 }

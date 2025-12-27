@@ -14,6 +14,7 @@ pub struct SparseVector<T> {
 }
 
 impl<T: Clone + Default + PartialEq> SparseVector<T> {
+    #[must_use]
     pub fn new(size: usize) -> Self {
         Self {
             data: HashMap::new(),
@@ -21,6 +22,7 @@ impl<T: Clone + Default + PartialEq> SparseVector<T> {
         }
     }
 
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.data.get(&index)
     }
@@ -43,6 +45,7 @@ impl<T: Clone + Default + PartialEq> SparseVector<T> {
         self.data.remove(&index)
     }
 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -57,6 +60,7 @@ pub struct CooMatrix<T> {
 }
 
 impl<T: Clone + Default + PartialEq> CooMatrix<T> {
+    #[must_use]
     pub fn new(rows: usize, cols: usize) -> Self {
         Self {
             data: HashMap::new(),
@@ -65,6 +69,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
         }
     }
 
+    #[must_use]
     pub fn get(&self, row: usize, col: usize) -> Option<&T> {
         self.data.get(&(row, col))
     }
@@ -83,6 +88,7 @@ impl<T: Clone + Default + PartialEq> CooMatrix<T> {
         self.data.iter().map(|(&(i, j), v)| (i, j, v))
     }
 
+    #[must_use]
     pub fn nnz(&self) -> usize {
         self.data.len()
     }
@@ -118,7 +124,7 @@ pub struct Coupling {
     pub i: usize,
     /// Second qubit index
     pub j: usize,
-    /// Coupling strength (J_ij)
+    /// Coupling strength (`J_ij`)
     pub strength: f64,
 }
 
@@ -131,8 +137,7 @@ impl Coupling {
 
         if !strength.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Coupling strength must be finite, got {}",
-                strength
+                "Coupling strength must be finite, got {strength}"
             )));
         }
 
@@ -149,7 +154,8 @@ impl Coupling {
     }
 
     /// Check if this coupling involves the given qubit
-    pub fn involves(&self, qubit: usize) -> bool {
+    #[must_use]
+    pub const fn involves(&self, qubit: usize) -> bool {
         self.i == qubit || self.j == qubit
     }
 }
@@ -157,26 +163,27 @@ impl Coupling {
 /// Represents an Ising model for quantum annealing
 ///
 /// The Ising model is defined by:
-/// H = Σ h_i σ_i^z + Σ J_ij σ_i^z σ_j^z
+/// H = Σ `h_i` `σ_i^z` + Σ `J_ij` `σ_i^z` `σ_j^z`
 ///
 /// where:
-/// - h_i are the local fields (biases)
-/// - J_ij are the coupling strengths
-/// - σ_i^z are the Pauli Z operators
+/// - `h_i` are the local fields (biases)
+/// - `J_ij` are the coupling strengths
+/// - `σ_i^z` are the Pauli Z operators
 #[derive(Debug, Clone)]
 pub struct IsingModel {
     /// Number of qubits/spins in the model
     pub num_qubits: usize,
 
-    /// Local fields (h_i) for each qubit as sparse vector
+    /// Local fields (`h_i`) for each qubit as sparse vector
     biases: SparseVector<f64>,
 
-    /// Coupling strengths (J_ij) between qubits as COO sparse matrix
+    /// Coupling strengths (`J_ij`) between qubits as COO sparse matrix
     couplings: CooMatrix<f64>,
 }
 
 impl IsingModel {
     /// Create a new empty Ising model with the specified number of qubits
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         Self {
             num_qubits,
@@ -185,7 +192,7 @@ impl IsingModel {
         }
     }
 
-    /// Set the bias (h_i) for a specific qubit
+    /// Set the bias (`h_i`) for a specific qubit
     pub fn set_bias(&mut self, qubit: usize, bias: f64) -> IsingResult<()> {
         if qubit >= self.num_qubits {
             return Err(IsingError::InvalidQubit(qubit));
@@ -193,8 +200,7 @@ impl IsingModel {
 
         if !bias.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Bias must be finite, got {}",
-                bias
+                "Bias must be finite, got {bias}"
             )));
         }
 
@@ -202,7 +208,7 @@ impl IsingModel {
         Ok(())
     }
 
-    /// Get the bias (h_i) for a specific qubit
+    /// Get the bias (`h_i`) for a specific qubit
     pub fn get_bias(&self, qubit: usize) -> IsingResult<f64> {
         if qubit >= self.num_qubits {
             return Err(IsingError::InvalidQubit(qubit));
@@ -211,7 +217,7 @@ impl IsingModel {
         Ok(*self.biases.get(qubit).unwrap_or(&0.0))
     }
 
-    /// Set the coupling strength (J_ij) between two qubits
+    /// Set the coupling strength (`J_ij`) between two qubits
     pub fn set_coupling(&mut self, i: usize, j: usize, strength: f64) -> IsingResult<()> {
         if i >= self.num_qubits || j >= self.num_qubits {
             return Err(IsingError::InvalidQubit(std::cmp::max(i, j)));
@@ -223,8 +229,7 @@ impl IsingModel {
 
         if !strength.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Coupling strength must be finite, got {}",
-                strength
+                "Coupling strength must be finite, got {strength}"
             )));
         }
 
@@ -234,7 +239,7 @@ impl IsingModel {
         Ok(())
     }
 
-    /// Get the coupling strength (J_ij) between two qubits
+    /// Get the coupling strength (`J_ij`) between two qubits
     pub fn get_coupling(&self, i: usize, j: usize) -> IsingResult<f64> {
         if i >= self.num_qubits || j >= self.num_qubits {
             return Err(IsingError::InvalidQubit(std::cmp::max(i, j)));
@@ -250,6 +255,7 @@ impl IsingModel {
     }
 
     /// Get all non-zero biases
+    #[must_use]
     pub fn biases(&self) -> Vec<(usize, f64)> {
         self.biases
             .iter()
@@ -258,6 +264,7 @@ impl IsingModel {
     }
 
     /// Get all non-zero couplings
+    #[must_use]
     pub fn couplings(&self) -> Vec<Coupling> {
         self.couplings
             .iter()
@@ -272,9 +279,9 @@ impl IsingModel {
     /// Calculate the energy of a specific spin configuration
     ///
     /// The energy is calculated as:
-    /// E = Σ h_i s_i + Σ J_ij s_i s_j
+    /// E = Σ `h_i` `s_i` + Σ `J_ij` `s_i` `s_j`
     ///
-    /// where s_i ∈ {-1, +1} are the spin values
+    /// where `s_i` ∈ {-1, +1} are the spin values
     pub fn energy(&self, spins: &[i8]) -> IsingResult<f64> {
         if spins.len() != self.num_qubits {
             return Err(IsingError::InvalidValue(format!(
@@ -288,8 +295,7 @@ impl IsingModel {
         for (i, &spin) in spins.iter().enumerate() {
             if spin != -1 && spin != 1 {
                 return Err(IsingError::InvalidValue(format!(
-                    "Spin values must be -1 or 1, got {} at index {}",
-                    spin, i
+                    "Spin values must be -1 or 1, got {spin} at index {i}"
                 )));
             }
         }
@@ -298,14 +304,14 @@ impl IsingModel {
         let bias_energy: f64 = self
             .biases
             .iter()
-            .map(|(qubit, bias)| *bias * (spins[qubit] as f64))
+            .map(|(qubit, bias)| *bias * f64::from(spins[qubit]))
             .sum();
 
         // Calculate energy from couplings
         let coupling_energy: f64 = self
             .couplings
             .iter()
-            .map(|(i, j, strength)| *strength * (spins[i] as f64) * (spins[j] as f64))
+            .map(|(i, j, strength)| *strength * f64::from(spins[i]) * f64::from(spins[j]))
             .sum();
 
         Ok(bias_energy + coupling_energy)
@@ -314,9 +320,10 @@ impl IsingModel {
     /// Convert the Ising model to QUBO format
     ///
     /// The QUBO form is:
-    /// E = Σ Q_ii x_i + Σ Q_ij x_i x_j
+    /// E = Σ `Q_ii` `x_i` + Σ `Q_ij` `x_i` `x_j`
     ///
-    /// where x_i ∈ {0, 1} are binary variables
+    /// where `x_i` ∈ {0, 1} are binary variables
+    #[must_use]
     pub fn to_qubo(&self) -> QuboModel {
         // Create a new QUBO model with the same number of variables
         let mut qubo = QuboModel::new(self.num_qubits);
@@ -338,7 +345,7 @@ impl IsingModel {
         // Then, convert biases to linear terms and merge with coupling-based adjustments
         for (i, bias) in self.biases.iter() {
             let linear_adj = *linear_terms.get(&i).unwrap_or(&0.0);
-            let linear_term = 2.0 * *bias + linear_adj;
+            let linear_term = 2.0f64.mul_add(*bias, linear_adj);
             let _ = qubo.set_linear(i, linear_term);
         }
 
@@ -362,9 +369,10 @@ impl IsingModel {
     }
 
     /// Create an Ising model from a QUBO model
+    #[must_use]
     pub fn from_qubo(qubo: &QuboModel) -> Self {
         // Create a new Ising model with the same number of variables
-        let mut ising = IsingModel::new(qubo.num_variables);
+        let mut ising = Self::new(qubo.num_variables);
 
         // Convert QUBO linear terms to Ising biases
         for (i, linear) in qubo.linear_terms.iter() {
@@ -386,7 +394,7 @@ impl IsingModel {
     }
 }
 
-/// Default implementation for IsingModel creates an empty model with 0 qubits
+/// Default implementation for `IsingModel` creates an empty model with 0 qubits
 impl Default for IsingModel {
     fn default() -> Self {
         Self::new(0)
@@ -396,18 +404,18 @@ impl Default for IsingModel {
 /// Represents a Quadratic Unconstrained Binary Optimization (QUBO) problem
 ///
 /// The QUBO form is:
-/// E = Σ Q_ii x_i + Σ Q_ij x_i x_j + offset
+/// E = Σ `Q_ii` `x_i` + Σ `Q_ij` `x_i` `x_j` + offset
 ///
-/// where x_i ∈ {0, 1} are binary variables
+/// where `x_i` ∈ {0, 1} are binary variables
 #[derive(Debug, Clone)]
 pub struct QuboModel {
     /// Number of binary variables in the model
     pub num_variables: usize,
 
-    /// Linear terms (Q_ii for each variable) as sparse vector
+    /// Linear terms (`Q_ii` for each variable) as sparse vector
     linear_terms: SparseVector<f64>,
 
-    /// Quadratic terms (Q_ij for each variable pair) as COO sparse matrix
+    /// Quadratic terms (`Q_ij` for each variable pair) as COO sparse matrix
     quadratic_terms: CooMatrix<f64>,
 
     /// Constant offset term
@@ -416,6 +424,7 @@ pub struct QuboModel {
 
 impl QuboModel {
     /// Create a new empty QUBO model with the specified number of variables
+    #[must_use]
     pub fn new(num_variables: usize) -> Self {
         Self {
             num_variables,
@@ -425,7 +434,7 @@ impl QuboModel {
         }
     }
 
-    /// Set the linear coefficient (Q_ii) for a specific variable
+    /// Set the linear coefficient (`Q_ii`) for a specific variable
     pub fn set_linear(&mut self, var: usize, value: f64) -> IsingResult<()> {
         if var >= self.num_variables {
             return Err(IsingError::InvalidQubit(var));
@@ -433,8 +442,7 @@ impl QuboModel {
 
         if !value.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Linear term must be finite, got {}",
-                value
+                "Linear term must be finite, got {value}"
             )));
         }
 
@@ -442,7 +450,7 @@ impl QuboModel {
         Ok(())
     }
 
-    /// Add to the linear coefficient (Q_ii) for a specific variable
+    /// Add to the linear coefficient (`Q_ii`) for a specific variable
     pub fn add_linear(&mut self, var: usize, value: f64) -> IsingResult<()> {
         if var >= self.num_variables {
             return Err(IsingError::InvalidQubit(var));
@@ -450,8 +458,7 @@ impl QuboModel {
 
         if !value.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Linear term must be finite, got {}",
-                value
+                "Linear term must be finite, got {value}"
             )));
         }
 
@@ -460,7 +467,7 @@ impl QuboModel {
         Ok(())
     }
 
-    /// Get the linear coefficient (Q_ii) for a specific variable
+    /// Get the linear coefficient (`Q_ii`) for a specific variable
     pub fn get_linear(&self, var: usize) -> IsingResult<f64> {
         if var >= self.num_variables {
             return Err(IsingError::InvalidQubit(var));
@@ -469,7 +476,7 @@ impl QuboModel {
         Ok(*self.linear_terms.get(var).unwrap_or(&0.0))
     }
 
-    /// Set the quadratic coefficient (Q_ij) for a pair of variables
+    /// Set the quadratic coefficient (`Q_ij`) for a pair of variables
     pub fn set_quadratic(&mut self, var1: usize, var2: usize, value: f64) -> IsingResult<()> {
         if var1 >= self.num_variables || var2 >= self.num_variables {
             return Err(IsingError::InvalidQubit(std::cmp::max(var1, var2)));
@@ -481,8 +488,7 @@ impl QuboModel {
 
         if !value.is_finite() {
             return Err(IsingError::InvalidValue(format!(
-                "Quadratic term must be finite, got {}",
-                value
+                "Quadratic term must be finite, got {value}"
             )));
         }
 
@@ -496,7 +502,7 @@ impl QuboModel {
         Ok(())
     }
 
-    /// Get the quadratic coefficient (Q_ij) for a pair of variables
+    /// Get the quadratic coefficient (`Q_ij`) for a pair of variables
     pub fn get_quadratic(&self, var1: usize, var2: usize) -> IsingResult<f64> {
         if var1 >= self.num_variables || var2 >= self.num_variables {
             return Err(IsingError::InvalidQubit(std::cmp::max(var1, var2)));
@@ -516,6 +522,7 @@ impl QuboModel {
     }
 
     /// Get all non-zero linear terms
+    #[must_use]
     pub fn linear_terms(&self) -> Vec<(usize, f64)> {
         self.linear_terms
             .iter()
@@ -524,6 +531,7 @@ impl QuboModel {
     }
 
     /// Get all non-zero quadratic terms
+    #[must_use]
     pub fn quadratic_terms(&self) -> Vec<(usize, usize, f64)> {
         self.quadratic_terms
             .iter()
@@ -532,6 +540,7 @@ impl QuboModel {
     }
 
     /// Convert to dense QUBO matrix for sampler compatibility
+    #[must_use]
     pub fn to_dense_matrix(&self) -> scirs2_core::ndarray::Array2<f64> {
         let mut matrix =
             scirs2_core::ndarray::Array2::zeros((self.num_variables, self.num_variables));
@@ -551,18 +560,19 @@ impl QuboModel {
     }
 
     /// Create variable name mapping for sampler compatibility
+    #[must_use]
     pub fn variable_map(&self) -> std::collections::HashMap<String, usize> {
         (0..self.num_variables)
-            .map(|i| (format!("x{}", i), i))
+            .map(|i| (format!("x{i}"), i))
             .collect()
     }
 
     /// Calculate the objective value for a specific binary configuration
     ///
     /// The objective value is calculated as:
-    /// f(x) = Σ Q_ii x_i + Σ Q_ij x_i x_j + offset
+    /// f(x) = Σ `Q_ii` `x_i` + Σ `Q_ij` `x_i` `x_j` + offset
     ///
-    /// where x_i ∈ {0, 1} are the binary variables
+    /// where `x_i` ∈ {0, 1} are the binary variables
     pub fn objective(&self, binary_vars: &[bool]) -> IsingResult<f64> {
         if binary_vars.len() != self.num_variables {
             return Err(IsingError::InvalidValue(format!(
@@ -598,9 +608,10 @@ impl QuboModel {
     /// Convert the QUBO model to Ising form
     ///
     /// The Ising form is:
-    /// H = Σ h_i σ_i^z + Σ J_ij σ_i^z σ_j^z + c
+    /// H = Σ `h_i` `σ_i^z` + Σ `J_ij` `σ_i^z` `σ_j^z` + c
     ///
-    /// where σ_i^z ∈ {-1, +1} are the spin variables
+    /// where `σ_i^z` ∈ {-1, +1} are the spin variables
+    #[must_use]
     pub fn to_ising(&self) -> (IsingModel, f64) {
         // Create a new Ising model with the same number of variables
         let mut ising = IsingModel::new(self.num_variables);
@@ -649,12 +660,13 @@ impl QuboModel {
     }
 
     /// Convert to QUBO model (returns self since this is already a QUBO model)
-    pub fn to_qubo_model(&self) -> QuboModel {
+    #[must_use]
+    pub fn to_qubo_model(&self) -> Self {
         self.clone()
     }
 }
 
-/// Default implementation for QuboModel creates an empty model with 0 variables
+/// Default implementation for `QuboModel` creates an empty model with 0 variables
 impl Default for QuboModel {
     fn default() -> Self {
         Self::new(0)

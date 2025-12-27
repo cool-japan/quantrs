@@ -836,7 +836,7 @@ impl QuantumRecommender {
                 similar_users.push((other_user, similarity));
             }
         }
-        similar_users.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        similar_users.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         similar_users.truncate(n);
         Ok(similar_users)
     }
@@ -860,7 +860,7 @@ impl QuantumRecommender {
                 }
             }
         }
-        similar_items.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        similar_items.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         similar_items.truncate(n);
         Ok(similar_items)
     }
@@ -945,7 +945,11 @@ impl QuantumRecommender {
                 rec.score *= boost_factor;
             }
         }
-        recommendations.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+        recommendations.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Ok(recommendations)
     }
     /// Check if item is new
@@ -1391,35 +1395,46 @@ mod tests {
     #[test]
     fn test_recommender_creation() {
         let config = QuantumRecommenderConfig::default();
-        let recommender = QuantumRecommender::new(config).unwrap();
+        let recommender =
+            QuantumRecommender::new(config).expect("Failed to create quantum recommender");
         assert!(recommender.user_profiles.is_empty());
     }
     #[test]
     fn test_add_interaction() {
         let config = QuantumRecommenderConfig::default();
-        let mut recommender = QuantumRecommender::new(config).unwrap();
-        recommender.add_interaction(1, 10, 4.5, None).unwrap();
+        let mut recommender =
+            QuantumRecommender::new(config).expect("Failed to create quantum recommender");
+        recommender
+            .add_interaction(1, 10, 4.5, None)
+            .expect("Failed to add interaction");
         assert_eq!(recommender.user_profiles.len(), 1);
     }
     #[test]
     fn test_recommendations() {
         let config = QuantumRecommenderConfig::default();
-        let mut recommender = QuantumRecommender::new(config).unwrap();
-        recommender.add_interaction(1, 10, 4.5, None).unwrap();
-        recommender.add_interaction(1, 20, 3.5, None).unwrap();
+        let mut recommender =
+            QuantumRecommender::new(config).expect("Failed to create quantum recommender");
+        recommender
+            .add_interaction(1, 10, 4.5, None)
+            .expect("Failed to add first interaction");
+        recommender
+            .add_interaction(1, 20, 3.5, None)
+            .expect("Failed to add second interaction");
         let options = RecommendationOptions::default();
-        let recommendations = recommender.recommend(1, 5, options).unwrap();
+        let recommendations = recommender
+            .recommend(1, 5, options)
+            .expect("Failed to get recommendations");
         assert_eq!(recommendations.len(), 5);
         assert!(recommendations[0].score >= recommendations[1].score);
     }
     #[test]
     fn test_similarity_measures() {
-        let processor = QuantumProcessor::new(8).unwrap();
+        let processor = QuantumProcessor::new(8).expect("Failed to create quantum processor");
         let vec1 = Array1::from_vec(vec![1.0, 0.0, 0.0, 0.0]);
         let vec2 = Array1::from_vec(vec![0.0, 1.0, 0.0, 0.0]);
         let cosine_sim = processor
             .compute_similarity(&vec1, &vec2, &SimilarityMeasure::Cosine)
-            .unwrap();
+            .expect("Failed to compute cosine similarity");
         assert!(cosine_sim.abs() < 1e-10);
     }
 }

@@ -13,6 +13,7 @@ use crate::qubo::{QuboBuilder, QuboFormulation};
 use crate::simulator::{AnnealingParams, ClassicalAnnealingSimulator};
 use std::collections::HashMap;
 
+use std::fmt::Write;
 /// Network Topology Optimization Problem
 #[derive(Debug, Clone)]
 pub struct NetworkTopologyOptimization {
@@ -90,6 +91,7 @@ impl NetworkTopologyOptimization {
     }
 
     /// Calculate network connectivity
+    #[must_use]
     pub fn calculate_connectivity(&self, topology: &NetworkTopology) -> f64 {
         let mut connectivity_matrix = vec![vec![false; self.num_nodes]; self.num_nodes];
 
@@ -124,10 +126,11 @@ impl NetworkTopologyOptimization {
             }
         }
 
-        connected_pairs as f64 / total_pairs as f64
+        f64::from(connected_pairs) / total_pairs as f64
     }
 
     /// Calculate network latency
+    #[must_use]
     pub fn calculate_network_latency(&self, topology: &NetworkTopology) -> f64 {
         // Simplified latency calculation based on path lengths
         let mut distance_matrix = vec![vec![f64::INFINITY; self.num_nodes]; self.num_nodes];
@@ -171,13 +174,14 @@ impl NetworkTopologyOptimization {
         }
 
         if connected_pairs > 0 {
-            total_latency / connected_pairs as f64
+            total_latency / f64::from(connected_pairs)
         } else {
             f64::INFINITY
         }
     }
 
     /// Calculate total network cost
+    #[must_use]
     pub fn calculate_total_cost(&self, topology: &NetworkTopology) -> f64 {
         topology
             .active_connections
@@ -264,7 +268,7 @@ impl OptimizationProblem for NetworkTopologyOptimization {
 
         // Create string variable mapping
         for i in 0..num_connections {
-            string_var_map.insert(format!("x_{}", i), i);
+            string_var_map.insert(format!("x_{i}"), i);
         }
 
         // Binary variables: x[i] = 1 if connection i is active
@@ -407,7 +411,7 @@ impl IndustrySolution for NetworkTopology {
             active_connections[i] = binary_solution[i] == 1;
         }
 
-        let total_cost = problem.calculate_total_cost(&NetworkTopology {
+        let total_cost = problem.calculate_total_cost(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -422,7 +426,7 @@ impl IndustrySolution for NetworkTopology {
             },
         });
 
-        let connectivity = problem.calculate_connectivity(&NetworkTopology {
+        let connectivity = problem.calculate_connectivity(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -437,7 +441,7 @@ impl IndustrySolution for NetworkTopology {
             },
         });
 
-        let average_latency = problem.calculate_network_latency(&NetworkTopology {
+        let average_latency = problem.calculate_network_latency(&Self {
             active_connections: active_connections.clone(),
             total_cost: 0.0,
             connectivity: 0.0,
@@ -463,7 +467,7 @@ impl IndustrySolution for NetworkTopology {
             coverage_area: num_active as f64 * 100.0, // 100 km² per connection
         };
 
-        Ok(NetworkTopology {
+        Ok(Self {
             active_connections,
             total_cost,
             connectivity,
@@ -534,46 +538,52 @@ impl IndustrySolution for NetworkTopology {
         output.push_str("# Network Topology Optimization Report\n\n");
 
         output.push_str("## Network Summary\n");
-        output.push_str(&format!("Total Cost: ${:.2}\n", self.total_cost));
-        output.push_str(&format!(
-            "Connectivity: {:.1}%\n",
-            self.connectivity * 100.0
-        ));
-        output.push_str(&format!(
-            "Average Latency: {:.1} ms\n",
-            self.average_latency
-        ));
+        writeln!(output, "Total Cost: ${:.2}", self.total_cost)
+            .expect("writing to String is infallible");
+        writeln!(output, "Connectivity: {:.1}%", self.connectivity * 100.0)
+            .expect("writing to String is infallible");
+        writeln!(output, "Average Latency: {:.1} ms", self.average_latency)
+            .expect("writing to String is infallible");
 
         output.push_str("\n## Performance Metrics\n");
-        output.push_str(&format!(
+        write!(
+            output,
             "Throughput: {:.1} Gbps\n",
             self.performance_metrics.throughput
-        ));
-        output.push_str(&format!(
+        )
+        .expect("writing to String is infallible");
+        write!(
+            output,
             "Packet Loss Rate: {:.3}%\n",
             self.performance_metrics.packet_loss_rate * 100.0
-        ));
-        output.push_str(&format!(
+        )
+        .expect("writing to String is infallible");
+        write!(
+            output,
             "Jitter: {:.1} ms\n",
             self.performance_metrics.jitter
-        ));
-        output.push_str(&format!(
+        )
+        .expect("writing to String is infallible");
+        write!(
+            output,
             "Availability: {:.3}%\n",
             self.performance_metrics.availability * 100.0
-        ));
-        output.push_str(&format!(
-            "MTBF: {:.1} hours\n",
-            self.performance_metrics.mtbf
-        ));
-        output.push_str(&format!(
+        )
+        .expect("writing to String is infallible");
+        writeln!(output, "MTBF: {:.1} hours", self.performance_metrics.mtbf)
+            .expect("writing to String is infallible");
+        write!(
+            output,
             "Coverage Area: {:.1} km²\n",
             self.performance_metrics.coverage_area
-        ));
+        )
+        .expect("writing to String is infallible");
 
         output.push_str("\n## Active Connections\n");
         for (i, &active) in self.active_connections.iter().enumerate() {
             if active {
-                output.push_str(&format!("Connection {}: Active\n", i + 1));
+                writeln!(output, "Connection {}: Active", i + 1)
+                    .expect("writing to String is infallible");
             }
         }
 
@@ -626,6 +636,7 @@ impl SpectrumAllocation {
     }
 
     /// Calculate interference for a given allocation
+    #[must_use]
     pub fn calculate_interference(&self, allocation: &SpectrumSolution) -> f64 {
         let mut total_interference = 0.0;
 
@@ -666,7 +677,8 @@ pub struct BinaryNetworkTopologyOptimization {
 }
 
 impl BinaryNetworkTopologyOptimization {
-    pub fn new(inner: NetworkTopologyOptimization) -> Self {
+    #[must_use]
+    pub const fn new(inner: NetworkTopologyOptimization) -> Self {
         Self { inner }
     }
 }
@@ -748,7 +760,7 @@ pub fn create_benchmark_problems(
         for i in 0..size {
             for j in (i + 1)..size {
                 large_connections.push((i, j));
-                large_costs.push(5.0 + (i + j) as f64 * 1.5);
+                large_costs.push(((i + j) as f64).mul_add(1.5, 5.0));
             }
         }
 
@@ -780,7 +792,7 @@ pub fn solve_network_topology(
     // Set up annealing parameters
     let annealing_params = params.unwrap_or_else(|| {
         let mut p = AnnealingParams::default();
-        p.num_sweeps = 25000;
+        p.num_sweeps = 25_000;
         p.num_repetitions = 40;
         p.initial_temperature = 5.0;
         p.final_temperature = 0.001;
@@ -813,7 +825,8 @@ mod tests {
             vec![3.0, 4.0, 0.0],
         ];
 
-        let network = NetworkTopologyOptimization::new(3, connections, costs, demands).unwrap();
+        let network = NetworkTopologyOptimization::new(3, connections, costs, demands)
+            .expect("failed to create network topology in test");
         assert_eq!(network.num_nodes, 3);
         assert_eq!(network.potential_connections.len(), 3);
     }
@@ -828,7 +841,8 @@ mod tests {
             vec![0.0, 1.0, 0.0],
         ];
 
-        let network = NetworkTopologyOptimization::new(3, connections, costs, demands).unwrap();
+        let network = NetworkTopologyOptimization::new(3, connections, costs, demands)
+            .expect("failed to create network topology in test");
 
         let topology = NetworkTopology {
             active_connections: vec![true, true],
@@ -855,7 +869,8 @@ mod tests {
         let costs = vec![10.0, 15.0];
         let demands = vec![vec![0.0; 3]; 3];
 
-        let network = NetworkTopologyOptimization::new(3, connections, costs, demands).unwrap();
+        let network = NetworkTopologyOptimization::new(3, connections, costs, demands)
+            .expect("failed to create network topology in test");
 
         let topology = NetworkTopology {
             active_connections: vec![true, false],
@@ -885,7 +900,8 @@ mod tests {
         ];
         let demands = vec![vec![1.0, 2.0, 3.0], vec![2.0, 1.0, 2.0]];
 
-        let spectrum = SpectrumAllocation::new(3, 2, interference_matrix, demands).unwrap();
+        let spectrum = SpectrumAllocation::new(3, 2, interference_matrix, demands)
+            .expect("failed to create spectrum allocation in test");
         assert_eq!(spectrum.num_bands, 3);
         assert_eq!(spectrum.num_regions, 2);
     }
@@ -896,8 +912,8 @@ mod tests {
         let costs = vec![10.0, 15.0];
         let demands = vec![vec![0.0; 3]; 3];
 
-        let network =
-            NetworkTopologyOptimization::new(3, connections, costs, demands.clone()).unwrap();
+        let network = NetworkTopologyOptimization::new(3, connections, costs, demands.clone())
+            .expect("failed to create network topology in test");
         assert!(network.validate().is_ok());
 
         // Test invalid network (node index out of bounds)
@@ -906,12 +922,16 @@ mod tests {
         let invalid_network =
             NetworkTopologyOptimization::new(3, invalid_connections, invalid_costs, demands);
         assert!(invalid_network.is_ok()); // Created successfully
-        assert!(invalid_network.unwrap().validate().is_err()); // But validation fails
+        assert!(invalid_network
+            .expect("failed to create invalid network in test")
+            .validate()
+            .is_err()); // But validation fails
     }
 
     #[test]
     fn test_benchmark_problems() {
-        let problems = create_benchmark_problems(6).unwrap();
+        let problems =
+            create_benchmark_problems(6).expect("failed to create benchmark problems in test");
         assert_eq!(problems.len(), 2);
 
         for problem in &problems {

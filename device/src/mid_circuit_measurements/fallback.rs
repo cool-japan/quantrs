@@ -74,14 +74,14 @@ pub struct LinearRegression {
 }
 
 impl LinearRegression {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             coefficients: Vec::new(),
             intercept: 0.0,
         }
     }
 
-    pub fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<(), String> {
+    pub const fn fit(&mut self, _x: &Array2<f64>, _y: &Array1<f64>) -> Result<(), String> {
         Ok(())
     }
 

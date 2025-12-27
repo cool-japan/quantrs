@@ -353,7 +353,11 @@ impl ModelZoo {
             self.cache.insert(name.to_string(), model);
         }
 
-        Ok(self.cache.get(name).unwrap().as_ref())
+        Ok(self
+            .cache
+            .get(name)
+            .expect("Model was just inserted into cache")
+            .as_ref())
     }
 
     /// Create a model instance
@@ -421,7 +425,9 @@ impl ModelZoo {
 
         // Sort by accuracy (if available)
         recommendations.sort_by(|a, b| match (a.accuracy, b.accuracy) {
-            (Some(acc_a), Some(acc_b)) => acc_b.partial_cmp(&acc_a).unwrap(),
+            (Some(acc_a), Some(acc_b)) => acc_b
+                .partial_cmp(&acc_a)
+                .unwrap_or(std::cmp::Ordering::Equal),
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
             (None, None) => std::cmp::Ordering::Equal,
@@ -1016,7 +1022,9 @@ pub mod utils {
     pub fn compare_models(model1: &ModelMetadata, model2: &ModelMetadata) -> std::cmp::Ordering {
         // Compare by accuracy first (if available), then by parameter count
         match (model1.accuracy, model2.accuracy) {
-            (Some(acc1), Some(acc2)) => acc2.partial_cmp(&acc1).unwrap(),
+            (Some(acc1), Some(acc2)) => {
+                acc2.partial_cmp(&acc1).unwrap_or(std::cmp::Ordering::Equal)
+            }
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
             (None, None) => model1.num_parameters.cmp(&model2.num_parameters),
@@ -1057,8 +1065,12 @@ pub mod utils {
 
         // Qubit requirements
         let min_qubits: Vec<_> = models.iter().map(|m| m.requirements.min_qubits).collect();
-        let avg_qubits = min_qubits.iter().sum::<usize>() as f64 / min_qubits.len() as f64;
-        let max_qubits = *min_qubits.iter().max().unwrap();
+        let avg_qubits = if min_qubits.is_empty() {
+            0.0
+        } else {
+            min_qubits.iter().sum::<usize>() as f64 / min_qubits.len() as f64
+        };
+        let max_qubits = min_qubits.iter().max().copied().unwrap_or(0);
 
         report.push_str(&format!("\nQubit Requirements:\n"));
         report.push_str(&format!("  Average: {:.1}\n", avg_qubits));
@@ -1123,7 +1135,7 @@ mod tests {
         let metadata = zoo.get_metadata("mnist_qnn");
         assert!(metadata.is_some());
 
-        let meta = metadata.unwrap();
+        let meta = metadata.expect("mnist_qnn metadata should exist");
         assert_eq!(meta.name, "MNIST Quantum Neural Network");
         assert_eq!(meta.num_qubits, 8);
     }
@@ -1131,7 +1143,9 @@ mod tests {
     #[test]
     fn test_device_compatibility() {
         let zoo = ModelZoo::new();
-        let metadata = zoo.get_metadata("mnist_qnn").unwrap();
+        let metadata = zoo
+            .get_metadata("mnist_qnn")
+            .expect("mnist_qnn metadata should exist");
 
         // Compatible device
         assert!(utils::check_device_compatibility(
@@ -1149,7 +1163,7 @@ mod tests {
         let mnist_model = MNISTQuantumNN::new();
         assert!(mnist_model.is_ok());
 
-        let model = mnist_model.unwrap();
+        let model = mnist_model.expect("MNISTQuantumNN creation should succeed");
         assert_eq!(model.name(), "MNIST Quantum Neural Network");
         assert_eq!(model.metadata().num_qubits, 8);
     }

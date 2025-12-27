@@ -1,8 +1,8 @@
-//! Enhanced Complex Number SIMD Operations using SciRS2
+//! Enhanced Complex Number SIMD Operations using `SciRS2`
 //!
 //! This module provides advanced SIMD implementations specifically optimized
 //! for complex number arithmetic in quantum state vector operations.
-//! It leverages SciRS2's SimdUnifiedOps for maximum performance.
+//! It leverages `SciRS2`'s `SimdUnifiedOps` for maximum performance.
 
 use quantrs2_core::platform::PlatformCapabilities;
 use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
@@ -12,7 +12,7 @@ use scirs2_core::Complex64;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
 
-/// Complex SIMD vector operations using native SciRS2 primitives
+/// Complex SIMD vector operations using native `SciRS2` primitives
 #[derive(Debug, Clone)]
 pub struct ComplexSimdVector {
     /// Real components (SIMD-aligned)
@@ -27,6 +27,7 @@ pub struct ComplexSimdVector {
 
 impl ComplexSimdVector {
     /// Create a new SIMD-aligned complex vector
+    #[must_use]
     pub fn new(length: usize) -> Self {
         let simd_width = Self::detect_simd_width();
         let aligned_length = Self::align_length(length, simd_width);
@@ -40,6 +41,7 @@ impl ComplexSimdVector {
     }
 
     /// Create from slice of Complex64
+    #[must_use]
     pub fn from_slice(data: &[Complex64]) -> Self {
         let mut vec = Self::new(data.len());
         for (i, &complex) in data.iter().enumerate() {
@@ -50,13 +52,15 @@ impl ComplexSimdVector {
     }
 
     /// Convert back to Complex64 slice
+    #[must_use]
     pub fn to_complex_vec(&self) -> Vec<Complex64> {
         (0..self.length)
             .map(|i| Complex64::new(self.real[i], self.imag[i]))
             .collect()
     }
 
-    /// Detect optimal SIMD width for current hardware using PlatformCapabilities
+    /// Detect optimal SIMD width for current hardware using `PlatformCapabilities`
+    #[must_use]
     pub fn detect_simd_width() -> usize {
         PlatformCapabilities::detect().optimal_simd_width_f64()
     }
@@ -67,27 +71,31 @@ impl ComplexSimdVector {
     }
 
     /// Get real part as array view
+    #[must_use]
     pub fn real_view(&self) -> ArrayView1<'_, f64> {
         ArrayView1::from(&self.real[..self.length])
     }
 
     /// Get imaginary part as array view
+    #[must_use]
     pub fn imag_view(&self) -> ArrayView1<'_, f64> {
         ArrayView1::from(&self.imag[..self.length])
     }
 
     /// Get length
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.length
     }
 
     /// Check if empty
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.length == 0
     }
 }
 
-/// High-performance complex arithmetic operations using SciRS2 SIMD
+/// High-performance complex arithmetic operations using `SciRS2` SIMD
 pub struct ComplexSimdOps;
 
 impl ComplexSimdOps {
@@ -219,6 +227,7 @@ impl ComplexSimdOps {
     }
 
     /// Complex magnitude squared: |a|^2, vectorized
+    #[must_use]
     pub fn complex_norm_squared_simd(a: &ComplexSimdVector) -> Vec<f64> {
         let a_real = a.real_view();
         let a_imag = a.imag_view();
@@ -358,12 +367,13 @@ pub fn apply_cnot_complex_simd(
 }
 
 /// Performance benchmarking for complex SIMD operations
+#[must_use]
 pub fn benchmark_complex_simd_operations() -> std::collections::HashMap<String, f64> {
     use std::time::Instant;
     let mut results = std::collections::HashMap::new();
 
     // Test vector sizes
-    let sizes = vec![1024, 4096, 16384, 65536];
+    let sizes = vec![1024, 4096, 16_384, 65_536];
 
     for &size in &sizes {
         let a = ComplexSimdVector::from_slice(&vec![Complex64::new(1.0, 0.5); size]);

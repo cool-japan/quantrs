@@ -119,17 +119,21 @@ fn test_bell_state_tensor_network() {
     let mut circuit = Circuit::<2>::new();
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("H gate should be applied successfully")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap();
+        .expect("CNOT gate should be applied successfully");
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("StateVector simulation should succeed");
 
     // Run with tensor network simulator
     let tensor_sim = TensorNetworkSimulator::new();
-    let tensor_result = tensor_sim.run(&circuit).unwrap();
+    let tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("TensorNetwork simulation should succeed");
 
     // Expected amplitudes for the Bell state
     let expected_amplitudes = vec![
@@ -152,19 +156,23 @@ fn test_ghz_state_tensor_network() {
     let mut circuit = Circuit::<3>::new();
     circuit
         .h(QubitId::new(0))
-        .unwrap()
+        .expect("H gate should be applied")
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap()
+        .expect("CNOT 0->1 should be applied")
         .cnot(QubitId::new(1), QubitId::new(2))
-        .unwrap();
+        .expect("CNOT 1->2 should be applied");
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("StateVector simulation should succeed");
 
     // Run with tensor network simulator
     let tensor_sim = TensorNetworkSimulator::new();
-    let tensor_result = tensor_sim.run(&circuit).unwrap();
+    let tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("TensorNetwork simulation should succeed");
 
     // Expected amplitudes for the GHZ state
     let mut expected_amplitudes = [Complex64::new(0.0, 0.0); 8];
@@ -185,11 +193,15 @@ fn test_qft_tensor_network() {
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("StateVector simulation should succeed for QFT");
 
     // Run with tensor network simulator using QFT optimization
     let tensor_sim = TensorNetworkSimulator::qft();
-    let tensor_result = tensor_sim.run(&circuit).unwrap();
+    let tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("TensorNetwork QFT simulation should succeed");
 
     // Check that both simulators produce equivalent results
     assert_state_vector_close(
@@ -208,11 +220,15 @@ fn test_qaoa_tensor_network() {
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("StateVector simulation should succeed for QAOA");
 
     // Run with tensor network simulator using QAOA optimization
     let tensor_sim = TensorNetworkSimulator::qaoa();
-    let tensor_result = tensor_sim.run(&circuit).unwrap();
+    let tensor_result = tensor_sim
+        .run(&circuit)
+        .expect("TensorNetwork QAOA simulation should succeed");
 
     // Check that both simulators produce equivalent results
     assert_state_vector_close(
@@ -235,24 +251,40 @@ fn test_auto_detect_circuit_type() {
     // Create a generic circuit
     let mut generic_circuit = Circuit::<3>::new();
     for i in 0..3 {
-        generic_circuit.h(QubitId::new(i)).unwrap();
+        generic_circuit
+            .h(QubitId::new(i))
+            .expect("H gate should be applied");
     }
     generic_circuit
         .cnot(QubitId::new(0), QubitId::new(1))
-        .unwrap();
-    generic_circuit.x(QubitId::new(2)).unwrap();
+        .expect("CNOT should be applied");
+    generic_circuit
+        .x(QubitId::new(2))
+        .expect("X gate should be applied");
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let _standard_qft = standard_sim.run(&qft_circuit).unwrap();
-    let _standard_qaoa = standard_sim.run(&qaoa_circuit).unwrap();
-    let _standard_generic = standard_sim.run(&generic_circuit).unwrap();
+    let _standard_qft = standard_sim
+        .run(&qft_circuit)
+        .expect("QFT simulation should succeed");
+    let _standard_qaoa = standard_sim
+        .run(&qaoa_circuit)
+        .expect("QAOA simulation should succeed");
+    let _standard_generic = standard_sim
+        .run(&generic_circuit)
+        .expect("Generic simulation should succeed");
 
     // Run with auto-detecting tensor network simulator
     let auto_tensor_sim = TensorNetworkSimulator::new();
-    let auto_tensor_qft = auto_tensor_sim.run(&qft_circuit).unwrap();
-    let auto_tensor_qaoa = auto_tensor_sim.run(&qaoa_circuit).unwrap();
-    let auto_tensor_generic = auto_tensor_sim.run(&generic_circuit).unwrap();
+    let auto_tensor_qft = auto_tensor_sim
+        .run(&qft_circuit)
+        .expect("Auto QFT simulation should succeed");
+    let auto_tensor_qaoa = auto_tensor_sim
+        .run(&qaoa_circuit)
+        .expect("Auto QAOA simulation should succeed");
+    let auto_tensor_generic = auto_tensor_sim
+        .run(&generic_circuit)
+        .expect("Auto generic simulation should succeed");
 
     // Check that QFT result is a valid quantum state (normalized)
     let qft_norm: f64 = auto_tensor_qft
@@ -299,33 +331,51 @@ fn test_contraction_strategies() {
     let mut circuit = Circuit::<5>::new();
     // Apply H to all qubits
     for i in 0..5 {
-        circuit.h(QubitId::new(i)).unwrap();
+        circuit
+            .h(QubitId::new(i))
+            .expect("H gate should be applied");
     }
     // Apply some entangling gates
-    circuit.cnot(QubitId::new(0), QubitId::new(1)).unwrap();
-    circuit.cnot(QubitId::new(1), QubitId::new(2)).unwrap();
-    circuit.cnot(QubitId::new(2), QubitId::new(3)).unwrap();
-    circuit.cnot(QubitId::new(3), QubitId::new(4)).unwrap();
+    circuit
+        .cnot(QubitId::new(0), QubitId::new(1))
+        .expect("CNOT 0->1 should be applied");
+    circuit
+        .cnot(QubitId::new(1), QubitId::new(2))
+        .expect("CNOT 1->2 should be applied");
+    circuit
+        .cnot(QubitId::new(2), QubitId::new(3))
+        .expect("CNOT 2->3 should be applied");
+    circuit
+        .cnot(QubitId::new(3), QubitId::new(4))
+        .expect("CNOT 3->4 should be applied");
     // Apply some rotations
     for i in 0..5 {
         circuit
             .rz(QubitId::new(i), std::f64::consts::PI / (i as f64 + 1.0))
-            .unwrap();
+            .expect("RZ gate should be applied");
     }
 
     // Run with standard simulator for reference
     let standard_sim = StateVectorSimulator::new();
-    let standard_result = standard_sim.run(&circuit).unwrap();
+    let standard_result = standard_sim
+        .run(&circuit)
+        .expect("Standard simulation should succeed");
 
     // Run with different contraction strategies
     let greedy_sim = TensorNetworkSimulator::new();
-    let greedy_result = greedy_sim.run(&circuit).unwrap();
+    let greedy_result = greedy_sim
+        .run(&circuit)
+        .expect("Greedy simulation should succeed");
 
     let qft_sim = TensorNetworkSimulator::qft();
-    let qft_result = qft_sim.run(&circuit).unwrap();
+    let qft_result = qft_sim
+        .run(&circuit)
+        .expect("QFT strategy simulation should succeed");
 
     let qaoa_sim = TensorNetworkSimulator::qaoa();
-    let qaoa_result = qaoa_sim.run(&circuit).unwrap();
+    let qaoa_result = qaoa_sim
+        .run(&circuit)
+        .expect("QAOA strategy simulation should succeed");
 
     // All strategies should produce the same result
     assert_state_vector_close(
@@ -361,15 +411,23 @@ fn test_contraction_performance() {
 
     // Standard statevector simulator (reference)
     let standard_sim = StateVectorSimulator::new();
-    let standard_qft = standard_sim.run(&qft_circuit).unwrap();
-    let standard_qaoa = standard_sim.run(&qaoa_circuit).unwrap();
+    let standard_qft = standard_sim
+        .run(&qft_circuit)
+        .expect("Standard QFT should succeed");
+    let standard_qaoa = standard_sim
+        .run(&qaoa_circuit)
+        .expect("Standard QAOA should succeed");
 
     // Using specific optimized simulators
     let qft_sim = TensorNetworkSimulator::qft();
-    let qft_result = qft_sim.run(&qft_circuit).unwrap();
+    let qft_result = qft_sim
+        .run(&qft_circuit)
+        .expect("Optimized QFT should succeed");
 
     let qaoa_sim = TensorNetworkSimulator::qaoa();
-    let qaoa_result = qaoa_sim.run(&qaoa_circuit).unwrap();
+    let qaoa_result = qaoa_sim
+        .run(&qaoa_circuit)
+        .expect("Optimized QAOA should succeed");
 
     // Verify results match the standard simulator
     assert_state_vector_close(&standard_qft.amplitudes(), &qft_result.amplitudes(), 1e-10);
@@ -391,7 +449,9 @@ fn create_qft_circuit<const N: usize>() -> Circuit<N> {
 
     // Apply Hadamard gates
     for i in 0..N {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .expect("H gate in QFT should be applied");
     }
 
     // Apply controlled phase rotations (characteristic of QFT)
@@ -400,7 +460,7 @@ fn create_qft_circuit<const N: usize>() -> Circuit<N> {
             let _angle = std::f64::consts::PI / 2.0_f64.powi((j - i) as i32);
             circuit
                 .cz(QubitId::new(i as u32), QubitId::new(j as u32))
-                .unwrap();
+                .expect("CZ gate in QFT should be applied");
         }
     }
 
@@ -408,7 +468,7 @@ fn create_qft_circuit<const N: usize>() -> Circuit<N> {
     for i in 0..(N / 2) {
         circuit
             .swap(QubitId::new(i as u32), QubitId::new((N - 1 - i) as u32))
-            .unwrap();
+            .expect("SWAP gate in QFT should be applied");
     }
 
     circuit
@@ -421,7 +481,9 @@ fn create_qaoa_circuit<const N: usize>() -> Circuit<N> {
 
     // Initial state: apply H to all qubits (superposition)
     for i in 0..N {
-        circuit.h(QubitId::new(i as u32)).unwrap();
+        circuit
+            .h(QubitId::new(i as u32))
+            .expect("H gate in QAOA should be applied");
     }
 
     // Problem Hamiltonian part
@@ -429,16 +491,20 @@ fn create_qaoa_circuit<const N: usize>() -> Circuit<N> {
         // ZZ interaction terms
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
-        circuit.rz(QubitId::new((i + 1) as u32), 0.1).unwrap();
+            .expect("CNOT in QAOA problem Hamiltonian should be applied");
+        circuit
+            .rz(QubitId::new((i + 1) as u32), 0.1)
+            .expect("RZ in QAOA problem Hamiltonian should be applied");
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
+            .expect("CNOT in QAOA problem Hamiltonian should be applied");
     }
 
     // Mixer Hamiltonian part
     for i in 0..N {
-        circuit.rx(QubitId::new(i as u32), 0.2).unwrap();
+        circuit
+            .rx(QubitId::new(i as u32), 0.2)
+            .expect("RX in QAOA mixer should be applied");
     }
 
     // One more layer (typical QAOA has alternating layers)
@@ -446,16 +512,20 @@ fn create_qaoa_circuit<const N: usize>() -> Circuit<N> {
     for i in 0..(N - 1) {
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
-        circuit.rz(QubitId::new((i + 1) as u32), 0.3).unwrap();
+            .expect("CNOT in QAOA layer 2 should be applied");
+        circuit
+            .rz(QubitId::new((i + 1) as u32), 0.3)
+            .expect("RZ in QAOA layer 2 should be applied");
         circuit
             .cnot(QubitId::new(i as u32), QubitId::new((i + 1) as u32))
-            .unwrap();
+            .expect("CNOT in QAOA layer 2 should be applied");
     }
 
     // Mixer Hamiltonian part
     for i in 0..N {
-        circuit.rx(QubitId::new(i as u32), 0.4).unwrap();
+        circuit
+            .rx(QubitId::new(i as u32), 0.4)
+            .expect("RX in QAOA layer 2 mixer should be applied");
     }
 
     circuit

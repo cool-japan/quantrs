@@ -63,7 +63,7 @@ pub struct HistoricalData {
 }
 
 /// Statistical analysis results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StatisticalAnalysisResults {
     /// Descriptive statistics
     pub descriptive_stats: DescriptiveStatistics,
@@ -106,7 +106,7 @@ pub struct AnomalyDetectionResults {
 }
 
 /// Performance predictions
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PerformancePredictions {
     /// Short-term predictions (next hour)
     pub short_term: PredictionResults,
@@ -223,7 +223,7 @@ pub struct TimeSeriesMetadata {
 }
 
 /// Performance evolution tracking
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PerformanceEvolution {
     pub performance_trends: HashMap<String, PerformanceTrend>,
     pub improvement_metrics: ImprovementMetrics,
@@ -276,7 +276,7 @@ pub struct DegradationAlert {
 }
 
 /// Comparative analysis
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ComparativeAnalysis {
     pub device_comparisons: Vec<DeviceComparison>,
     pub benchmark_comparisons: Vec<BenchmarkComparison>,
@@ -312,7 +312,7 @@ pub struct HistoricalComparison {
 }
 
 /// Benchmark results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BenchmarkResults {
     pub standard_benchmarks: HashMap<String, BenchmarkResult>,
     pub custom_benchmarks: HashMap<String, BenchmarkResult>,
@@ -330,7 +330,7 @@ pub struct BenchmarkResult {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -358,7 +358,7 @@ pub struct CollectionTask {
 }
 
 /// Collection types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CollectionType {
     DeviceMetrics,
     CircuitMetrics,
@@ -420,7 +420,7 @@ pub struct QualityRule {
 }
 
 /// Quality rule types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityRuleType {
     Completeness,
     Accuracy,
@@ -449,7 +449,7 @@ pub struct QualityIssue {
 }
 
 /// Quality issue severity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QualityIssueSeverity {
     Low,
     Medium,
@@ -459,12 +459,19 @@ pub enum QualityIssueSeverity {
 
 // Implementation for key data structures
 
+impl Default for RealtimeMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RealtimeMetrics {
     pub fn new() -> Self {
         Self {
+            // SAFETY: SystemTime::now() is always after UNIX_EPOCH
             timestamp: SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or(Duration::ZERO)
                 .as_secs(),
             device_metrics: DeviceMetrics::default(),
             circuit_metrics: CircuitMetrics::default(),
@@ -475,10 +482,17 @@ impl RealtimeMetrics {
     }
 
     pub fn update_timestamp(&mut self) {
+        // SAFETY: SystemTime::now() is always after UNIX_EPOCH
         self.timestamp = SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or(Duration::ZERO)
             .as_secs();
+    }
+}
+
+impl Default for HistoricalData {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -573,8 +587,14 @@ impl DataCollector {
     }
 }
 
+impl Default for DataPipeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataPipeline {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             processing_stages: Vec::new(),
             output_channels: Vec::new(),
@@ -592,8 +612,14 @@ impl DataPipeline {
     }
 }
 
+impl Default for DataQualityMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataQualityMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             quality_rules: Vec::new(),
             quality_history: Vec::new(),
@@ -680,14 +706,14 @@ impl Default for ThroughputMetrics {
 }
 
 // Missing type definitions
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DescriptiveStatistics {
     pub metrics_stats: HashMap<String, f64>,
     pub summary_statistics: SummaryStatistics,
     pub distribution_summaries: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DistributionAnalysis {
     pub distribution_fits: HashMap<String, String>,
     pub goodness_of_fit: HashMap<String, f64>,
@@ -701,35 +727,35 @@ pub struct CorrelationAnalysis {
     pub causal_relationships: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HypothesisTestResults {
     pub test_results: HashMap<String, f64>,
     pub significance_levels: HashMap<String, f64>,
     pub effect_sizes: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConfidenceIntervals {
     pub intervals: HashMap<String, (f64, f64)>,
     pub confidence_levels: HashMap<String, f64>,
     pub interval_interpretations: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SeasonalPatterns {
     pub seasonal_components: HashMap<String, Vec<f64>>,
     pub seasonal_strength: HashMap<String, f64>,
     pub seasonal_periods: HashMap<String, usize>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChangePointDetection {
     pub change_points: Vec<u64>,
     pub change_magnitudes: Vec<f64>,
     pub change_types: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ForecastingResults {
     pub forecasts: HashMap<String, Vec<f64>>,
     pub forecast_intervals: HashMap<String, Vec<(f64, f64)>>,
@@ -745,7 +771,7 @@ pub struct Anomaly {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HistoricalAnomaly {
     pub anomaly: Anomaly,
     pub resolution_time: Option<u64>,
@@ -753,42 +779,42 @@ pub struct HistoricalAnomaly {
     pub lessons_learned: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AnomalyPatterns {
     pub recurring_anomalies: Vec<String>,
     pub anomaly_frequencies: HashMap<String, f64>,
     pub anomaly_correlations: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RootCauseAnalysis {
     pub potential_causes: Vec<String>,
     pub cause_probabilities: HashMap<String, f64>,
     pub investigation_steps: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BenchmarkTrends {
     pub trend_directions: HashMap<String, String>,
     pub improvement_rates: HashMap<String, f64>,
     pub benchmark_stability: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PredictionAccuracy {
     pub accuracy_metrics: HashMap<String, f64>,
     pub model_comparison: ModelComparison,
     pub prediction_reliability: PredictionReliability,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelPerformance {
     pub model_scores: HashMap<String, f64>,
     pub feature_importance: HashMap<String, f64>,
     pub model_diagnostics: ModelDiagnostics,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ActiveAlert {
     pub alert_id: String,
     pub metric_name: String,
@@ -797,7 +823,7 @@ pub struct ActiveAlert {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResolvedAlert {
     pub alert_id: String,
     pub resolution_time: u64,
@@ -805,14 +831,14 @@ pub struct ResolvedAlert {
     pub notes: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlertStatistics {
     pub total_alerts: usize,
     pub alerts_by_severity: HashMap<String, usize>,
     pub resolution_times: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlertTrends {
     pub frequency_trends: HashMap<String, f64>,
     pub severity_trends: HashMap<String, f64>,
@@ -826,7 +852,7 @@ pub struct HealthTrends {
     pub trend_confidence: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PerformanceIndicators {
     pub key_indicators: HashMap<String, f64>,
     pub indicator_status: HashMap<String, String>,
@@ -841,124 +867,12 @@ pub struct CapacityUtilization {
 }
 
 // Placeholder implementations for complex types
-impl Default for PerformanceEvolution {
-    fn default() -> Self {
-        Self {
-            performance_trends: HashMap::new(),
-            improvement_metrics: ImprovementMetrics::default(),
-            degradation_indicators: DegradationIndicators::default(),
-        }
-    }
-}
-impl Default for ComparativeAnalysis {
-    fn default() -> Self {
-        Self {
-            device_comparisons: Vec::new(),
-            benchmark_comparisons: Vec::new(),
-            historical_comparisons: Vec::new(),
-        }
-    }
-}
-impl Default for BenchmarkResults {
-    fn default() -> Self {
-        Self {
-            standard_benchmarks: HashMap::new(),
-            custom_benchmarks: HashMap::new(),
-            benchmark_trends: BenchmarkTrends::default(),
-        }
-    }
-}
-impl Default for DescriptiveStatistics {
-    fn default() -> Self {
-        Self {
-            metrics_stats: HashMap::new(),
-            summary_statistics: SummaryStatistics::default(),
-            distribution_summaries: HashMap::new(),
-        }
-    }
-}
-impl Default for DistributionAnalysis {
-    fn default() -> Self {
-        Self {
-            distribution_fits: HashMap::new(),
-            goodness_of_fit: HashMap::new(),
-            distribution_parameters: HashMap::new(),
-        }
-    }
-}
 impl Default for CorrelationAnalysis {
     fn default() -> Self {
         Self {
             correlationmatrix: Array2::zeros((0, 0)),
             correlation_significance: HashMap::new(),
             causal_relationships: Vec::new(),
-        }
-    }
-}
-impl Default for HypothesisTestResults {
-    fn default() -> Self {
-        Self {
-            test_results: HashMap::new(),
-            significance_levels: HashMap::new(),
-            effect_sizes: HashMap::new(),
-        }
-    }
-}
-impl Default for ConfidenceIntervals {
-    fn default() -> Self {
-        Self {
-            intervals: HashMap::new(),
-            confidence_levels: HashMap::new(),
-            interval_interpretations: HashMap::new(),
-        }
-    }
-}
-impl Default for StatisticalAnalysisResults {
-    fn default() -> Self {
-        Self {
-            descriptive_stats: DescriptiveStatistics::default(),
-            distribution_analysis: DistributionAnalysis::default(),
-            correlation_analysis: CorrelationAnalysis::default(),
-            hypothesis_tests: HypothesisTestResults::default(),
-            confidence_intervals: ConfidenceIntervals::default(),
-        }
-    }
-}
-impl Default for PredictionResults {
-    fn default() -> Self {
-        Self {
-            predictions: HashMap::new(),
-            confidence_intervals: HashMap::new(),
-            model_info: ModelInfo::default(),
-        }
-    }
-}
-impl Default for PredictionAccuracy {
-    fn default() -> Self {
-        Self {
-            accuracy_metrics: HashMap::new(),
-            model_comparison: ModelComparison::default(),
-            prediction_reliability: PredictionReliability::default(),
-        }
-    }
-}
-impl Default for ModelPerformance {
-    fn default() -> Self {
-        Self {
-            model_scores: HashMap::new(),
-            feature_importance: HashMap::new(),
-            model_diagnostics: ModelDiagnostics::default(),
-        }
-    }
-}
-impl Default for PerformancePredictions {
-    fn default() -> Self {
-        Self {
-            short_term: PredictionResults::default(),
-            medium_term: PredictionResults::default(),
-            long_term: PredictionResults::default(),
-            accuracy_metrics: PredictionAccuracy::default(),
-            model_performance: ModelPerformance::default(),
         }
     }
 }
@@ -980,44 +894,8 @@ impl Default for DegradationIndicators {
         }
     }
 }
-impl Default for BenchmarkTrends {
-    fn default() -> Self {
-        Self {
-            trend_directions: HashMap::new(),
-            improvement_rates: HashMap::new(),
-            benchmark_stability: HashMap::new(),
-        }
-    }
-}
 
 // Default implementations for newly defined types
-impl Default for SeasonalPatterns {
-    fn default() -> Self {
-        Self {
-            seasonal_components: HashMap::new(),
-            seasonal_strength: HashMap::new(),
-            seasonal_periods: HashMap::new(),
-        }
-    }
-}
-impl Default for ChangePointDetection {
-    fn default() -> Self {
-        Self {
-            change_points: Vec::new(),
-            change_magnitudes: Vec::new(),
-            change_types: Vec::new(),
-        }
-    }
-}
-impl Default for ForecastingResults {
-    fn default() -> Self {
-        Self {
-            forecasts: HashMap::new(),
-            forecast_intervals: HashMap::new(),
-            forecast_accuracy: HashMap::new(),
-        }
-    }
-}
 impl Default for Anomaly {
     fn default() -> Self {
         Self {
@@ -1029,88 +907,12 @@ impl Default for Anomaly {
         }
     }
 }
-impl Default for HistoricalAnomaly {
-    fn default() -> Self {
-        Self {
-            anomaly: Anomaly::default(),
-            resolution_time: None,
-            impact_assessment: String::new(),
-            lessons_learned: String::new(),
-        }
-    }
-}
-impl Default for AnomalyPatterns {
-    fn default() -> Self {
-        Self {
-            recurring_anomalies: Vec::new(),
-            anomaly_frequencies: HashMap::new(),
-            anomaly_correlations: HashMap::new(),
-        }
-    }
-}
-impl Default for RootCauseAnalysis {
-    fn default() -> Self {
-        Self {
-            potential_causes: Vec::new(),
-            cause_probabilities: HashMap::new(),
-            investigation_steps: Vec::new(),
-        }
-    }
-}
-impl Default for ActiveAlert {
-    fn default() -> Self {
-        Self {
-            alert_id: String::new(),
-            metric_name: String::new(),
-            severity: String::new(),
-            timestamp: 0,
-            description: String::new(),
-        }
-    }
-}
-impl Default for ResolvedAlert {
-    fn default() -> Self {
-        Self {
-            alert_id: String::new(),
-            resolution_time: 0,
-            resolution_method: String::new(),
-            notes: String::new(),
-        }
-    }
-}
-impl Default for AlertStatistics {
-    fn default() -> Self {
-        Self {
-            total_alerts: 0,
-            alerts_by_severity: HashMap::new(),
-            resolution_times: HashMap::new(),
-        }
-    }
-}
-impl Default for AlertTrends {
-    fn default() -> Self {
-        Self {
-            frequency_trends: HashMap::new(),
-            severity_trends: HashMap::new(),
-            resolution_trends: HashMap::new(),
-        }
-    }
-}
 impl Default for HealthTrends {
     fn default() -> Self {
         Self {
             overall_trend: String::new(),
             component_trends: HashMap::new(),
             trend_confidence: 0.0,
-        }
-    }
-}
-impl Default for PerformanceIndicators {
-    fn default() -> Self {
-        Self {
-            key_indicators: HashMap::new(),
-            indicator_status: HashMap::new(),
-            thresholds: HashMap::new(),
         }
     }
 }
@@ -1152,7 +954,7 @@ pub struct ModelDiagnostics {
     pub residual_analysis: HashMap<String, f64>,
     pub validation_metrics: HashMap<String, f64>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PredictionResults {
     pub predictions: HashMap<String, f64>,
     pub confidence_intervals: HashMap<String, (f64, f64)>,

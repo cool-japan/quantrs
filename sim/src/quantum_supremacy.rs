@@ -5,7 +5,7 @@
 //! distribution analysis, and linear cross-entropy benchmarking (Linear XEB).
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
@@ -93,7 +93,7 @@ pub struct QuantumSupremacyVerifier {
     num_qubits: usize,
     /// Random number generator
     rng: ChaCha8Rng,
-    /// SciRS2 backend for optimization
+    /// `SciRS2` backend for optimization
     backend: Option<SciRS2Backend>,
     /// Verification parameters
     params: VerificationParams,
@@ -158,13 +158,14 @@ impl QuantumSupremacyVerifier {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_scirs2_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
     }
 
     /// Set random seed for reproducibility
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.rng = ChaCha8Rng::seed_from_u64(seed);
         self
@@ -370,7 +371,7 @@ impl QuantumSupremacyVerifier {
 
     /// Generate custom gate set layer
     const fn generate_custom_layer(
-        &mut self,
+        &self,
         _layer_idx: usize,
         _gates: &[String],
     ) -> Result<CircuitLayer> {
@@ -379,7 +380,7 @@ impl QuantumSupremacyVerifier {
     }
 
     /// Generate measurement pattern
-    fn generate_measurement_pattern(&mut self) -> Vec<usize> {
+    fn generate_measurement_pattern(&self) -> Vec<usize> {
         // For now, measure all qubits in computational basis
         (0..self.num_qubits).collect()
     }
@@ -524,7 +525,7 @@ impl QuantumSupremacyVerifier {
             all_probs.iter().map(|p| (p - mean).powi(2)).sum::<f64>() / all_probs.len() as f64;
 
         // Expected values for Porter-Thomas distribution
-        let expected_mean = 1.0 / (1 << self.num_qubits) as f64;
+        let expected_mean = 1.0 / f64::from(1 << self.num_qubits);
         let expected_variance = expected_mean.powi(2);
 
         // Chi-squared test
@@ -545,7 +546,7 @@ impl QuantumSupremacyVerifier {
             let x = (i as f64 + 0.5) / bins as f64 * max_prob;
             // Porter-Thomas: p(P) = N * exp(-N*P) where N = 2^n
             let n = 1 << self.num_qubits;
-            expected[i] = total_samples * (n as f64) * (-n as f64 * x).exp() / bins as f64;
+            expected[i] = total_samples * f64::from(n) * (f64::from(-n) * x).exp() / bins as f64;
         }
 
         // Chi-squared statistic
@@ -555,7 +556,7 @@ impl QuantumSupremacyVerifier {
         for i in 0..bins {
             if expected[i] > 5.0 {
                 // Only use bins with sufficient expected count
-                chi_squared += (observed[i] as f64 - expected[i]).powi(2) / expected[i];
+                chi_squared += (f64::from(observed[i]) - expected[i]).powi(2) / expected[i];
                 degrees_freedom += 1;
             }
         }
@@ -602,8 +603,11 @@ impl QuantumSupremacyVerifier {
         samples: &[Vec<u8>],
     ) -> Result<f64> {
         // Find median probability
-        let mut probs: Vec<f64> = amplitudes.iter().map(|amp| amp.norm_sqr()).collect();
-        probs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut probs: Vec<f64> = amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .collect();
+        probs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let median_prob = probs[probs.len() / 2];
 
         // Count heavy outputs (above median)
@@ -619,7 +623,7 @@ impl QuantumSupremacyVerifier {
             }
         }
 
-        Ok(heavy_count as f64 / samples.len() as f64)
+        Ok(f64::from(heavy_count) / samples.len() as f64)
     }
 
     /// Compute cross-entropy difference
@@ -657,7 +661,7 @@ impl QuantumSupremacyVerifier {
 
         // Compute empirical entropy
         for count in sample_counts.values() {
-            let prob = *count as f64 / samples.len() as f64;
+            let prob = f64::from(*count) / samples.len() as f64;
             if prob > 0.0 {
                 quantum_entropy -= prob * prob.ln();
             }
@@ -715,7 +719,7 @@ impl QuantumSupremacyVerifier {
         // Simplified implementation
         let n = data.len() as f64;
         let mut sorted_data = data.to_vec();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut max_diff: f64 = 0.0;
 
@@ -820,7 +824,8 @@ mod tests {
 
     #[test]
     fn test_linear_xeb_calculation() {
-        let mut verifier = QuantumSupremacyVerifier::new(3, VerificationParams::default()).unwrap();
+        let mut verifier = QuantumSupremacyVerifier::new(3, VerificationParams::default())
+            .expect("Failed to create verifier");
 
         // Create dummy data
         let amplitudes = Array1::from_vec(vec![
@@ -838,13 +843,14 @@ mod tests {
 
         let xeb = verifier
             .compute_circuit_linear_xeb(&amplitudes, &samples)
-            .unwrap();
+            .expect("Failed to compute linear XEB");
         assert!(xeb >= 0.0);
     }
 
     #[test]
     fn test_bitstring_conversion() {
-        let verifier = QuantumSupremacyVerifier::new(3, VerificationParams::default()).unwrap();
+        let verifier = QuantumSupremacyVerifier::new(3, VerificationParams::default())
+            .expect("Failed to create verifier");
 
         assert_eq!(verifier.bitstring_to_index(&[0, 0, 0]), 0);
         assert_eq!(verifier.bitstring_to_index(&[0, 0, 1]), 1);
@@ -853,7 +859,8 @@ mod tests {
 
     #[test]
     fn test_porter_thomas_analysis() {
-        let verifier = QuantumSupremacyVerifier::new(2, VerificationParams::default()).unwrap();
+        let verifier = QuantumSupremacyVerifier::new(2, VerificationParams::default())
+            .expect("Failed to create verifier");
 
         // Create uniform random amplitudes
         let amplitudes = vec![Array1::from_vec(vec![
@@ -863,7 +870,9 @@ mod tests {
             Complex64::new(0.5, 0.0),
         ])];
 
-        let result = verifier.analyze_porter_thomas(&amplitudes).unwrap();
+        let result = verifier
+            .analyze_porter_thomas(&amplitudes)
+            .expect("Failed to analyze Porter-Thomas distribution");
         assert!(result.chi_squared >= 0.0);
         assert!(result.p_value >= 0.0 && result.p_value <= 1.0);
     }

@@ -101,7 +101,9 @@ impl QuantumMLIntegrationHub {
     }
     /// Register a QML model
     pub fn register_model(&self, model: QMLModel) -> DeviceResult<()> {
-        let mut registry = self.model_registry.write().unwrap();
+        let mut registry = self.model_registry.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on model_registry: {e}"))
+        })?;
         registry.insert(model.model_id.clone(), model);
         Ok(())
     }
@@ -115,7 +117,9 @@ impl QuantumMLIntegrationHub {
         let training_config = config
             .unwrap_or_else(|| self.config.training_config.clone());
         let model = {
-            let registry = self.model_registry.read().unwrap();
+            let registry = self.model_registry.read().map_err(|e| {
+                DeviceError::LockError(format!("Failed to acquire read lock on model_registry: {e}"))
+            })?;
             registry
                 .get(model_id)
                 .ok_or_else(|| DeviceError::InvalidInput(
@@ -131,7 +135,9 @@ impl QuantumMLIntegrationHub {
             priority: TrainingPriority::Normal,
             resource_requirements: QMLResourceRequirements::default(),
         };
-        let mut orchestrator = self.training_orchestrator.write().unwrap();
+        let mut orchestrator = self.training_orchestrator.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on training_orchestrator: {e}"))
+        })?;
         orchestrator.submit_training_request(training_request).await
     }
     /// Execute QML model inference
@@ -141,7 +147,9 @@ impl QuantumMLIntegrationHub {
         input_data: QMLDataBatch,
     ) -> DeviceResult<QMLInferenceResult> {
         let model = {
-            let registry = self.model_registry.read().unwrap();
+            let registry = self.model_registry.read().map_err(|e| {
+                DeviceError::LockError(format!("Failed to acquire read lock on model_registry: {e}"))
+            })?;
             registry
                 .get(model_id)
                 .ok_or_else(|| DeviceError::InvalidInput(
@@ -149,12 +157,17 @@ impl QuantumMLIntegrationHub {
                 ))?
                 .clone()
         };
-        let mut executor = self.qnn_executor.write().unwrap();
+        let mut executor = self.qnn_executor.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on qnn_executor: {e}"))
+        })?;
         executor.execute_inference(&model, &input_data).await
     }
     /// Get ML analytics
-    pub fn get_analytics(&self) -> MLPerformanceAnalytics {
-        (*self.ml_analytics.read().unwrap()).clone()
+    pub fn get_analytics(&self) -> DeviceResult<MLPerformanceAnalytics> {
+        let analytics = self.ml_analytics.read().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire read lock on ml_analytics: {e}"))
+        })?;
+        Ok((*analytics).clone())
     }
     /// Register framework bridge
     pub fn register_framework_bridge(
@@ -162,7 +175,9 @@ impl QuantumMLIntegrationHub {
         framework: MLFramework,
         bridge: FrameworkBridge,
     ) -> DeviceResult<()> {
-        let mut bridges = self.framework_bridges.write().unwrap();
+        let mut bridges = self.framework_bridges.write().map_err(|e| {
+            DeviceError::LockError(format!("Failed to acquire write lock on framework_bridges: {e}"))
+        })?;
         bridges.insert(framework, bridge);
         Ok(())
     }

@@ -283,7 +283,7 @@ impl SolovayKitaev {
 
         // Compute Frobenius norm manually for complex matrices
         let mut error_norm = 0.0;
-        for val in error.iter() {
+        for val in &error {
             error_norm += val.norm_sqr();
         }
         let error_norm = error_norm.sqrt();
@@ -312,7 +312,7 @@ impl SolovayKitaev {
 
                 // Compute Frobenius norm manually
                 let mut distance = 0.0;
-                for val in diff.iter() {
+                for val in &diff {
                     distance += val.norm_sqr();
                 }
                 let distance = distance.sqrt();
@@ -464,12 +464,11 @@ pub fn optimize_sequence(sequence: GateSequence) -> GateSequence {
             // Check for cancellations
             if gate1.qubits() == gate2.qubits() {
                 let combined = match (gate1.name(), gate2.name()) {
-                    ("S", "S") => Some("Z"),
-                    ("S†", "S†") => Some("Z"),
-                    ("S", "S†") | ("S†", "S") => None, // Identity
-                    ("T", "T†") | ("T†", "T") => None, // Identity
-                    ("H", "H") => None,                // Identity
-                    _ => Some(""),                     // No combination
+                    ("S", "S") | ("S†", "S†") => Some("Z"),
+                    ("S", "S†") | ("S†", "S") | ("T", "T†") | ("T†", "T") | ("H", "H") => {
+                        None
+                    } // Identity
+                    _ => Some(""), // No combination
                 };
 
                 match combined {

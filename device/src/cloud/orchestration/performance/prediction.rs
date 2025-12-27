@@ -17,7 +17,7 @@ pub struct PerformancePredictionConfig {
 }
 
 /// Performance prediction algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformancePredictionAlgorithm {
     LinearRegression,
     ARIMA,

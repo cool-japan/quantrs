@@ -1052,7 +1052,7 @@ mod tests {
         let result = bridge.execute_distributed_circuit(&partitions, &requirements).await;
         assert!(result.is_ok());
 
-        let execution_result = result.unwrap();
+        let execution_result = result.expect("Distributed circuit execution should succeed");
         assert_eq!(execution_result.partitions_executed, 1);
     }
 
@@ -1064,7 +1064,7 @@ mod tests {
         let result = bridge.analyze_global_coverage_with_protocols(timestamp).await;
 
         assert!(result.is_ok());
-        let analysis = result.unwrap();
+        let analysis = result.expect("Global coverage analysis should succeed");
         assert_eq!(analysis.integration_timestamp, timestamp);
     }
 
@@ -1075,7 +1075,7 @@ mod tests {
         let result = bridge.monitor_integrated_system().await;
         assert!(result.is_ok());
 
-        let monitoring_result = result.unwrap();
+        let monitoring_result = result.expect("Integrated monitoring should succeed");
         assert_eq!(monitoring_result.constellation_health.operational_satellites, 648);
     }
 
@@ -1086,7 +1086,7 @@ mod tests {
         let result = bridge.optimize_for_quantum_advantage().await;
         assert!(result.is_ok());
 
-        let optimization_result = result.unwrap();
+        let optimization_result = result.expect("Quantum advantage optimization should succeed");
         assert!(optimization_result.predicted_improvement > 1.0);
     }
 }

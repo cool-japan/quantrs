@@ -140,7 +140,7 @@ impl Default for NoiseSpectrum {
 }
 
 /// Types of noise affecting the system
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoiseType {
     /// 1/f noise
     OneOverF,
@@ -172,7 +172,7 @@ pub struct ProtocolAdaptationStrategy {
 }
 
 /// Adaptation algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationAlgorithm {
     /// Gradient-based adaptation
     Gradient,
@@ -200,7 +200,7 @@ pub enum AdaptationTrigger {
 }
 
 /// Rollback strategies when adaptation fails
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RollbackStrategy {
     /// Revert to previous successful parameters
     RevertToPrevious,
@@ -241,7 +241,7 @@ pub struct ErrorEvent {
 }
 
 /// Types of error events
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorEventType {
     /// Single-qubit error
     SingleQubitError,
@@ -299,7 +299,7 @@ pub struct ErrorPredictionModel {
 }
 
 /// Types of prediction models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionModelType {
     /// Linear regression
     LinearRegression,
@@ -355,7 +355,7 @@ pub struct AnnealingProtocol {
 }
 
 /// Types of annealing protocols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProtocolType {
     /// Standard linear annealing
     StandardLinear,
@@ -422,7 +422,7 @@ pub struct ProcessingRequirements {
 }
 
 /// Protocol selection strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProtocolSelectionStrategy {
     /// Choose based on current noise level
     NoiseAdaptive,
@@ -592,7 +592,7 @@ impl NoiseResilientAnnealingProtocol {
         // Run annealing with adaptive protocol
         let mut annealing_result = None;
 
-        for attempt in 0..self.config.max_adaptation_steps + 1 {
+        for attempt in 0..=self.config.max_adaptation_steps {
             // Run annealing attempt
             let attempt_result = self.run_annealing_attempt(problem, &current_params, &protocol)?;
 
@@ -966,14 +966,15 @@ impl NoiseResilientAnnealingProtocol {
 
         // Add bias terms
         for i in 0..state.len() {
-            energy += problem.get_bias(i).unwrap_or(0.0) * state[i] as f64;
+            energy += problem.get_bias(i).unwrap_or(0.0) * f64::from(state[i]);
         }
 
         // Add coupling terms
         for i in 0..state.len() {
             for j in (i + 1)..state.len() {
-                energy +=
-                    problem.get_coupling(i, j).unwrap_or(0.0) * state[i] as f64 * state[j] as f64;
+                energy += problem.get_coupling(i, j).unwrap_or(0.0)
+                    * f64::from(state[i])
+                    * f64::from(state[j]);
             }
         }
 
@@ -1052,7 +1053,7 @@ impl NoiseResilientAnnealingProtocol {
 
     /// Adapt parameters based on current conditions
     fn adapt_parameters(
-        &mut self,
+        &self,
         params: &mut AnnealingParams,
         protocol: &AnnealingProtocol,
         error_rate: f64,
@@ -1092,7 +1093,7 @@ impl NoiseResilientAnnealingProtocol {
     ) -> bool {
         if error_rate > self.config.error_threshold {
             // Increase annealing time to reduce errors
-            let time_factor = 1.0 + 0.5 * attempt as f64;
+            let time_factor = 0.5f64.mul_add(attempt as f64, 1.0);
             let time_factor = time_factor.min(self.config.max_annealing_time_factor);
 
             // Modify parameters (simplified)
@@ -1113,8 +1114,8 @@ impl NoiseResilientAnnealingProtocol {
         let error_gradient = error_rate - self.config.error_threshold;
 
         if error_gradient > 0.0 {
-            params.initial_temperature *= 1.0 - learning_rate * error_gradient;
-            params.final_temperature *= 1.0 - learning_rate * error_gradient;
+            params.initial_temperature *= learning_rate.mul_add(-error_gradient, 1.0);
+            params.final_temperature *= learning_rate.mul_add(-error_gradient, 1.0);
             true
         } else {
             false
@@ -1193,7 +1194,7 @@ impl NoiseResilientAnnealingProtocol {
                 .iter()
                 .filter(|event| event.success)
                 .count();
-            let suppression_factor = 1.0 + (successful_adaptations as f64 * 0.5);
+            let suppression_factor = (successful_adaptations as f64).mul_add(0.5, 1.0);
             Ok(suppression_factor)
         }
     }
@@ -1207,7 +1208,7 @@ impl NoiseResilientAnnealingProtocol {
             Ok(1.0)
         } else {
             // Stability inversely related to number of adaptations
-            let stability = 1.0 / (1.0 + adaptation_history.len() as f64 * 0.1);
+            let stability = 1.0 / (adaptation_history.len() as f64).mul_add(0.1, 1.0);
             Ok(stability)
         }
     }
@@ -1304,15 +1305,15 @@ impl NoiseResilientAnnealingProtocol {
     }
 
     /// Helper functions for protocol selection
-    fn estimate_current_system_error_rate(&self) -> f64 {
+    const fn estimate_current_system_error_rate(&self) -> f64 {
         self.error_tracker.current_stats.error_rate
     }
 
     fn estimate_average_coherence_time(&self) -> f64 {
-        if !self.noise_model.t1_coherence_time.is_empty() {
-            self.noise_model.t1_coherence_time.mean().unwrap_or(100.0)
-        } else {
+        if self.noise_model.t1_coherence_time.is_empty() {
             100.0 // Default
+        } else {
+            self.noise_model.t1_coherence_time.mean().unwrap_or(100.0)
         }
     }
 
@@ -1346,13 +1347,13 @@ impl NoiseResilientAnnealingProtocol {
         let actual_edges = 10; // Would count actual couplings in real implementation
 
         if total_possible_edges > 0 {
-            actual_edges as f64 / total_possible_edges as f64
+            f64::from(actual_edges) / total_possible_edges as f64
         } else {
             0.0
         }
     }
 
-    fn calculate_problem_frustration(&self, problem: &IsingModel) -> f64 {
+    const fn calculate_problem_frustration(&self, problem: &IsingModel) -> f64 {
         // Simplified frustration calculation
         0.5 // Would implement proper frustration calculation
     }
@@ -1360,6 +1361,7 @@ impl NoiseResilientAnnealingProtocol {
 
 impl ErrorTracker {
     /// Create new error tracker
+    #[must_use]
     pub fn new() -> Self {
         Self {
             error_history: Vec::new(),
@@ -1372,6 +1374,7 @@ impl ErrorTracker {
 
 impl ErrorStatistics {
     /// Create new error statistics
+    #[must_use]
     pub fn new() -> Self {
         Self {
             total_errors: 0,
@@ -1385,7 +1388,8 @@ impl ErrorStatistics {
 
 impl ErrorPredictionModel {
     /// Create new prediction model
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_type: PredictionModelType::LinearRegression,
             parameters: Vec::new(),
@@ -1397,6 +1401,7 @@ impl ErrorPredictionModel {
 
 impl ErrorCorrelationAnalysis {
     /// Create new correlation analysis
+    #[must_use]
     pub fn new() -> Self {
         Self {
             temporal_correlations: Array2::zeros((0, 0)),
@@ -1453,6 +1458,7 @@ impl ProtocolSelector {
 
 impl AnnealingSchedule {
     /// Create linear annealing schedule
+    #[must_use]
     pub fn linear_schedule(total_time: f64) -> Self {
         let num_points = 100;
         let time_points = Array1::linspace(0.0, total_time, num_points);
@@ -1468,12 +1474,14 @@ impl AnnealingSchedule {
     }
 
     /// Create pause-and-quench schedule
+    #[must_use]
     pub fn pause_quench_schedule(total_time: f64) -> Self {
         // Simplified pause-quench schedule
         Self::linear_schedule(total_time)
     }
 
     /// Create reverse annealing schedule
+    #[must_use]
     pub fn reverse_schedule(total_time: f64) -> Self {
         // Simplified reverse schedule
         Self::linear_schedule(total_time)
@@ -1482,6 +1490,7 @@ impl AnnealingSchedule {
 
 impl NoiseConditions {
     /// Standard noise conditions
+    #[must_use]
     pub fn standard() -> Self {
         Self {
             preferred_error_rate_range: (0.0, 0.01),
@@ -1492,6 +1501,7 @@ impl NoiseConditions {
     }
 
     /// High noise conditions
+    #[must_use]
     pub fn high_noise() -> Self {
         Self {
             preferred_error_rate_range: (0.01, 0.1),
@@ -1502,6 +1512,7 @@ impl NoiseConditions {
     }
 
     /// Medium noise conditions
+    #[must_use]
     pub fn medium_noise() -> Self {
         Self {
             preferred_error_rate_range: (0.005, 0.05),
@@ -1514,7 +1525,8 @@ impl NoiseConditions {
 
 impl ResourceRequirements {
     /// Minimal resource requirements
-    pub fn minimal() -> Self {
+    #[must_use]
+    pub const fn minimal() -> Self {
         Self {
             additional_qubits: 0,
             time_overhead_factor: 1.0,
@@ -1528,7 +1540,8 @@ impl ResourceRequirements {
     }
 
     /// Moderate resource requirements
-    pub fn moderate() -> Self {
+    #[must_use]
+    pub const fn moderate() -> Self {
         Self {
             additional_qubits: 2,
             time_overhead_factor: 1.5,
@@ -1542,7 +1555,8 @@ impl ResourceRequirements {
     }
 
     /// High resource requirements
-    pub fn high() -> Self {
+    #[must_use]
+    pub const fn high() -> Self {
         Self {
             additional_qubits: 5,
             time_overhead_factor: 2.0,
@@ -1558,6 +1572,7 @@ impl ResourceRequirements {
 
 impl PerformanceMonitor {
     /// Create new performance monitor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_metrics: PerformanceMetrics::default(),
@@ -1638,7 +1653,7 @@ mod tests {
 
     #[test]
     fn test_protocol_selector() {
-        let selector = ProtocolSelector::new().unwrap();
+        let selector = ProtocolSelector::new().expect("ProtocolSelector creation should succeed");
         assert!(!selector.available_protocols.is_empty());
         assert_eq!(selector.available_protocols.len(), 3);
     }

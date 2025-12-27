@@ -63,6 +63,7 @@ impl QuantumPrecision {
     }
 
     /// Get memory usage factor relative to double precision
+    #[must_use]
     pub const fn memory_factor(&self) -> f64 {
         match self {
             Self::Half => 0.25,
@@ -73,6 +74,7 @@ impl QuantumPrecision {
     }
 
     /// Get computational cost factor relative to double precision
+    #[must_use]
     pub const fn computation_factor(&self) -> f64 {
         match self {
             Self::Half => 0.5,
@@ -83,6 +85,7 @@ impl QuantumPrecision {
     }
 
     /// Get typical numerical error for this precision
+    #[must_use]
     pub const fn typical_error(&self) -> f64 {
         match self {
             Self::Half => 1e-3,
@@ -93,11 +96,13 @@ impl QuantumPrecision {
     }
 
     /// Check if this precision is sufficient for the given error tolerance
+    #[must_use]
     pub fn is_sufficient_for_tolerance(&self, tolerance: f64) -> bool {
         self.typical_error() <= tolerance * 10.0 // Safety factor of 10
     }
 
     /// Get the next higher precision level
+    #[must_use]
     pub const fn higher_precision(&self) -> Option<Self> {
         match self {
             Self::Half => Some(Self::Single),
@@ -108,6 +113,7 @@ impl QuantumPrecision {
     }
 
     /// Get the next lower precision level
+    #[must_use]
     pub const fn lower_precision(&self) -> Option<Self> {
         match self {
             Self::Half => None,
@@ -159,6 +165,7 @@ impl Default for MixedPrecisionConfig {
 
 impl MixedPrecisionConfig {
     /// Create configuration optimized for accuracy
+    #[must_use]
     pub const fn for_accuracy() -> Self {
         Self {
             state_vector_precision: QuantumPrecision::Double,
@@ -174,6 +181,7 @@ impl MixedPrecisionConfig {
     }
 
     /// Create configuration optimized for performance
+    #[must_use]
     pub const fn for_performance() -> Self {
         Self {
             state_vector_precision: QuantumPrecision::Half,
@@ -189,6 +197,7 @@ impl MixedPrecisionConfig {
     }
 
     /// Create configuration balanced between accuracy and performance
+    #[must_use]
     pub fn balanced() -> Self {
         Self::default()
     }
@@ -236,15 +245,17 @@ impl MixedPrecisionConfig {
     }
 
     /// Estimate memory usage for a given number of qubits
+    #[must_use]
     pub fn estimate_memory_usage(&self, num_qubits: usize) -> usize {
         let state_vector_size = 1 << num_qubits;
         let base_memory = state_vector_size * 16; // Complex64 size
 
         let factor = self.state_vector_precision.memory_factor();
-        (base_memory as f64 * factor) as usize
+        (f64::from(base_memory) * factor) as usize
     }
 
     /// Check if the configuration is suitable for the available memory
+    #[must_use]
     pub fn fits_in_memory(&self, num_qubits: usize, available_memory: usize) -> bool {
         self.estimate_memory_usage(num_qubits) <= available_memory
     }

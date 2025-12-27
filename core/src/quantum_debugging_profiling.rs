@@ -2,9 +2,7 @@
 //!
 //! Comprehensive debugging and profiling infrastructure for quantum computing,
 //! including circuit analysis, performance monitoring, and error diagnostics.
-
 #![allow(dead_code)]
-
 use crate::error::QuantRS2Error;
 use crate::qubit::QubitId;
 use scirs2_core::ndarray::{Array1, Array2};
@@ -12,7 +10,6 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::fmt;
 use std::time::{Duration, Instant, SystemTime};
-
 /// Quantum debugging and profiling suite
 #[derive(Debug)]
 pub struct QuantumDebugProfiling {
@@ -26,7 +23,6 @@ pub struct QuantumDebugProfiling {
     pub execution_tracer: QuantumExecutionTracer,
     pub optimization_advisor: QuantumOptimizationAdvisor,
 }
-
 /// Quantum circuit debugger with breakpoints and state inspection
 #[derive(Debug)]
 pub struct QuantumDebugger {
@@ -39,7 +35,6 @@ pub struct QuantumDebugger {
     pub variable_inspector: VariableInspector,
     pub call_stack: CallStack,
 }
-
 #[derive(Debug, Clone)]
 pub struct QuantumBreakpoint {
     pub breakpoint_id: u64,
@@ -49,7 +44,6 @@ pub struct QuantumBreakpoint {
     pub enabled: bool,
     pub temporary: bool,
 }
-
 #[derive(Debug, Clone)]
 pub enum BreakpointLocation {
     GateExecution {
@@ -74,7 +68,6 @@ pub enum BreakpointLocation {
         threshold: f64,
     },
 }
-
 #[derive(Debug, Clone)]
 pub enum BreakpointCondition {
     FidelityBelow(f64),
@@ -84,7 +77,6 @@ pub enum BreakpointCondition {
     ErrorRateAbove(f64),
     Custom(String),
 }
-
 #[derive(Debug, Clone)]
 pub struct QuantumWatchpoint {
     pub watchpoint_id: u64,
@@ -93,7 +85,6 @@ pub struct QuantumWatchpoint {
     pub trigger_condition: TriggerCondition,
     pub notifications: Vec<WatchNotification>,
 }
-
 #[derive(Debug, Clone)]
 pub enum WatchExpression {
     StateAmplitude { qubit_id: QubitId, state: String },
@@ -104,7 +95,6 @@ pub enum WatchExpression {
     QuantumVolume,
     ResourceUsage { resource_type: ResourceType },
 }
-
 #[derive(Debug, Clone)]
 pub enum TriggerCondition {
     ValueChanged,
@@ -113,7 +103,6 @@ pub enum TriggerCondition {
     RateOfChange(f64),
     Pattern(String),
 }
-
 #[derive(Debug, Clone)]
 pub struct WatchNotification {
     pub timestamp: Instant,
@@ -121,7 +110,6 @@ pub struct WatchNotification {
     pub new_value: f64,
     pub context: String,
 }
-
 #[derive(Debug)]
 pub struct QuantumExecutionContext {
     pub current_circuit: Option<String>,
@@ -131,7 +119,6 @@ pub struct QuantumExecutionContext {
     pub classical_state: ClassicalState,
     pub measurement_history: Vec<MeasurementRecord>,
 }
-
 #[derive(Debug, Clone)]
 pub struct ExecutionFrame {
     pub frame_id: u64,
@@ -140,7 +127,6 @@ pub struct ExecutionFrame {
     pub local_variables: HashMap<String, QuantumVariable>,
     pub execution_time: Duration,
 }
-
 #[derive(Debug, Clone)]
 pub struct QuantumState {
     pub amplitudes: Array1<Complex64>,
@@ -148,22 +134,19 @@ pub struct QuantumState {
     pub coherence_time: Duration,
     pub fidelity: f64,
 }
-
 #[derive(Debug, Clone)]
 pub struct ClassicalState {
     pub registers: HashMap<String, ClassicalRegister>,
     pub measurement_results: Vec<bool>,
     pub control_variables: HashMap<String, f64>,
 }
-
 #[derive(Debug, Clone)]
 pub enum ClassicalRegister {
     Bit(bool),
     Integer(i64),
     Float(f64),
-    Array(Vec<ClassicalRegister>),
+    Array(Vec<Self>),
 }
-
 #[derive(Debug, Clone)]
 pub struct MeasurementRecord {
     pub measurement_id: u64,
@@ -174,7 +157,6 @@ pub struct MeasurementRecord {
     pub pre_measurement_state: Array1<Complex64>,
     pub post_measurement_state: Array1<Complex64>,
 }
-
 #[derive(Debug, Clone)]
 pub enum MeasurementBasis {
     Computational,
@@ -182,7 +164,6 @@ pub enum MeasurementBasis {
     Diagonal,
     Custom(String),
 }
-
 #[derive(Debug)]
 pub struct DebuggingSession {
     pub session_id: u64,
@@ -191,7 +172,6 @@ pub struct DebuggingSession {
     pub debugging_mode: DebuggingMode,
     pub session_log: Vec<DebugEvent>,
 }
-
 #[derive(Debug, Clone)]
 pub enum DebuggingMode {
     Interactive,
@@ -199,7 +179,6 @@ pub enum DebuggingMode {
     PostMortem,
     Replay,
 }
-
 #[derive(Debug, Clone)]
 pub struct DebugEvent {
     pub event_id: u64,
@@ -208,7 +187,6 @@ pub struct DebugEvent {
     pub context: String,
     pub state_snapshot: Option<StateSnapshot>,
 }
-
 #[derive(Debug, Clone)]
 pub enum DebugEventType {
     BreakpointHit,
@@ -219,7 +197,6 @@ pub enum DebugEventType {
     StateChanged,
     ResourceExhausted,
 }
-
 #[derive(Debug, Clone)]
 pub struct StateSnapshot {
     pub quantum_state: Array1<Complex64>,
@@ -227,7 +204,6 @@ pub struct StateSnapshot {
     pub system_metrics: crate::quantum_internet::SystemMetrics,
     pub timestamp: Instant,
 }
-
 #[derive(Debug, Clone)]
 pub enum StepMode {
     StepInto,
@@ -236,7 +212,6 @@ pub enum StepMode {
     Continue,
     RunToBreakpoint,
 }
-
 /// Quantum performance profiler
 #[derive(Debug)]
 pub struct QuantumPerformanceProfiler {
@@ -248,7 +223,6 @@ pub struct QuantumPerformanceProfiler {
     pub bottleneck_detector: BottleneckDetector,
     pub optimization_suggestions: Vec<OptimizationSuggestion>,
 }
-
 #[derive(Debug)]
 pub struct ProfilingSession {
     pub session_id: u64,
@@ -258,7 +232,6 @@ pub struct ProfilingSession {
     pub sample_rate: f64,
     pub collected_samples: Vec<PerformanceSample>,
 }
-
 #[derive(Debug, Clone)]
 pub enum ProfilingMode {
     Statistical,
@@ -266,7 +239,6 @@ pub enum ProfilingMode {
     Hybrid,
     RealTime,
 }
-
 #[derive(Debug, Clone)]
 pub struct PerformanceSample {
     pub sample_id: u64,
@@ -277,7 +249,6 @@ pub struct PerformanceSample {
     pub error_rates: ErrorRates,
     pub resource_utilization: ResourceUtilization,
 }
-
 #[derive(Debug, Clone)]
 pub struct MemoryUsage {
     pub quantum_memory: usize,
@@ -285,7 +256,6 @@ pub struct MemoryUsage {
     pub temporary_storage: usize,
     pub cache_usage: f64,
 }
-
 #[derive(Debug, Clone)]
 pub struct ErrorRates {
     pub gate_error_rate: f64,
@@ -293,7 +263,6 @@ pub struct ErrorRates {
     pub decoherence_rate: f64,
     pub crosstalk_rate: f64,
 }
-
 #[derive(Debug, Clone)]
 pub struct ResourceUtilization {
     pub qubit_utilization: f64,
@@ -301,7 +270,6 @@ pub struct ResourceUtilization {
     pub memory_utilization: f64,
     pub network_utilization: f64,
 }
-
 #[derive(Debug)]
 pub struct PerformanceMetrics {
     pub execution_time_distribution: TimeDistribution,
@@ -310,7 +278,6 @@ pub struct PerformanceMetrics {
     pub efficiency_metrics: EfficiencyMetrics,
     pub scalability_metrics: ScalabilityMetrics,
 }
-
 #[derive(Debug)]
 pub struct TimeDistribution {
     pub gate_execution_times: HashMap<String, Duration>,
@@ -319,7 +286,6 @@ pub struct TimeDistribution {
     pub readout_time: Duration,
     pub overhead_time: Duration,
 }
-
 #[derive(Debug)]
 pub struct ThroughputMetrics {
     pub gates_per_second: f64,
@@ -327,7 +293,6 @@ pub struct ThroughputMetrics {
     pub circuits_per_second: f64,
     pub quantum_volume_per_second: f64,
 }
-
 #[derive(Debug)]
 pub struct LatencyMetrics {
     pub gate_latency: Duration,
@@ -335,7 +300,6 @@ pub struct LatencyMetrics {
     pub state_transfer_latency: Duration,
     pub end_to_end_latency: Duration,
 }
-
 #[derive(Debug)]
 pub struct EfficiencyMetrics {
     pub quantum_efficiency: f64,
@@ -343,7 +307,6 @@ pub struct EfficiencyMetrics {
     pub memory_efficiency: f64,
     pub energy_efficiency: f64,
 }
-
 #[derive(Debug)]
 pub struct ScalabilityMetrics {
     pub qubit_scaling: ScalingBehavior,
@@ -351,14 +314,12 @@ pub struct ScalabilityMetrics {
     pub memory_scaling: ScalingBehavior,
     pub time_scaling: ScalingBehavior,
 }
-
 #[derive(Debug, Clone)]
 pub struct ScalingBehavior {
     pub scaling_exponent: f64,
     pub scaling_constant: f64,
     pub confidence_interval: (f64, f64),
 }
-
 /// Quantum circuit analyzer
 #[derive(Debug)]
 pub struct QuantumCircuitAnalyzer {
@@ -369,7 +330,6 @@ pub struct QuantumCircuitAnalyzer {
     pub optimization_analysis: OptimizationAnalysis,
     pub verification_analysis: VerificationAnalysis,
 }
-
 impl QuantumCircuitAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -381,7 +341,6 @@ impl QuantumCircuitAnalyzer {
             verification_analysis: VerificationAnalysis::new(),
         }
     }
-
     pub fn analyze_circuit_structure(
         &self,
         _circuit: &dyn QuantumCircuit,
@@ -392,8 +351,7 @@ impl QuantumCircuitAnalyzer {
             parallelism_factor: 0.8,
         })
     }
-
-    pub fn analyze_execution_behavior(
+    pub const fn analyze_execution_behavior(
         &self,
         _samples: &[PerformanceSample],
     ) -> Result<DynamicAnalysisResult, QuantRS2Error> {
@@ -404,7 +362,6 @@ impl QuantumCircuitAnalyzer {
         })
     }
 }
-
 #[derive(Debug)]
 pub struct StaticAnalysis {
     pub gate_count_analysis: GateCountAnalysis,
@@ -413,7 +370,6 @@ pub struct StaticAnalysis {
     pub parallelization_analysis: ParallelizationAnalysis,
     pub resource_requirements: ResourceRequirements,
 }
-
 #[derive(Debug)]
 pub struct GateCountAnalysis {
     pub total_gates: usize,
@@ -422,7 +378,6 @@ pub struct GateCountAnalysis {
     pub measurement_count: usize,
     pub critical_path_gates: usize,
 }
-
 #[derive(Debug)]
 pub struct DepthAnalysis {
     pub circuit_depth: usize,
@@ -430,7 +385,6 @@ pub struct DepthAnalysis {
     pub parallelizable_sections: Vec<ParallelSection>,
     pub depth_distribution: Vec<usize>,
 }
-
 #[derive(Debug)]
 pub struct ParallelSection {
     pub section_id: usize,
@@ -438,63 +392,54 @@ pub struct ParallelSection {
     pub execution_time: Duration,
     pub resource_requirements: ResourceRequirements,
 }
-
 #[derive(Debug)]
 pub struct ConnectivityAnalysis {
     pub connectivity_graph: ConnectivityGraph,
     pub routing_requirements: RoutingRequirements,
     pub swap_overhead: SwapOverhead,
 }
-
 #[derive(Debug)]
 pub struct ConnectivityGraph {
     pub nodes: Vec<QubitNode>,
     pub edges: Vec<ConnectivityEdge>,
     pub connectivity_matrix: Array2<bool>,
 }
-
 #[derive(Debug)]
 pub struct QubitNode {
     pub qubit_id: QubitId,
     pub degree: usize,
     pub neighbors: Vec<QubitId>,
 }
-
 #[derive(Debug)]
 pub struct ConnectivityEdge {
     pub source: QubitId,
     pub target: QubitId,
     pub weight: f64,
 }
-
 #[derive(Debug)]
 pub struct RoutingRequirements {
     pub required_swaps: usize,
     pub routing_overhead: f64,
     pub optimal_routing: Vec<RoutingStep>,
 }
-
 #[derive(Debug)]
 pub struct RoutingStep {
     pub step_id: usize,
     pub operation: RoutingOperation,
     pub cost: f64,
 }
-
 #[derive(Debug, Clone)]
 pub enum RoutingOperation {
     Swap(QubitId, QubitId),
     Move(QubitId, QubitId),
     Bridge(QubitId, QubitId, QubitId),
 }
-
 #[derive(Debug)]
 pub struct SwapOverhead {
     pub total_swaps: usize,
     pub swap_depth: usize,
     pub fidelity_loss: f64,
 }
-
 /// Quantum state inspector
 #[derive(Debug)]
 pub struct QuantumStateInspector {
@@ -505,7 +450,6 @@ pub struct QuantumStateInspector {
     pub fidelity_tracker: FidelityTracker,
     pub tomography_engine: QuantumTomographyEngine,
 }
-
 impl QuantumStateInspector {
     pub fn new() -> Self {
         Self {
@@ -517,13 +461,10 @@ impl QuantumStateInspector {
             tomography_engine: QuantumTomographyEngine::new(),
         }
     }
-
-    pub fn initialize_for_circuit(&mut self, _circuit: &str) -> Result<(), QuantRS2Error> {
-        // Initialize state inspector for specific circuit
+    pub const fn initialize_for_circuit(&mut self, _circuit: &str) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
-
 #[derive(Debug)]
 pub struct StateVisualization {
     pub visualization_modes: Vec<VisualizationMode>,
@@ -532,7 +473,6 @@ pub struct StateVisualization {
     pub phase_plot: PhasePlot,
     pub probability_distribution: ProbabilityDistribution,
 }
-
 #[derive(Debug, Clone)]
 pub enum VisualizationMode {
     BlochSphere,
@@ -542,14 +482,12 @@ pub enum VisualizationMode {
     HussimiFuntion,
     Qsphere,
 }
-
 #[derive(Debug)]
 pub struct BlochSphereRenderer {
     pub sphere_coordinates: Vec<BlochVector>,
     pub trajectory_history: Vec<BlochTrajectory>,
     pub rendering_quality: RenderingQuality,
 }
-
 #[derive(Debug, Clone)]
 pub struct BlochVector {
     pub x: f64,
@@ -557,14 +495,12 @@ pub struct BlochVector {
     pub z: f64,
     pub timestamp: Instant,
 }
-
 #[derive(Debug)]
 pub struct BlochTrajectory {
     pub trajectory_id: u64,
     pub path_points: Vec<BlochVector>,
     pub evolution_time: Duration,
 }
-
 #[derive(Debug, Clone)]
 pub enum RenderingQuality {
     Low,
@@ -572,7 +508,6 @@ pub enum RenderingQuality {
     High,
     UltraHigh,
 }
-
 #[derive(Debug)]
 pub struct AmplitudePlot {
     pub real_amplitudes: Vec<f64>,
@@ -580,21 +515,18 @@ pub struct AmplitudePlot {
     pub magnitude_amplitudes: Vec<f64>,
     pub phase_amplitudes: Vec<f64>,
 }
-
 #[derive(Debug)]
 pub struct PhasePlot {
     pub phase_distribution: Vec<f64>,
     pub phase_coherence: f64,
     pub phase_variance: f64,
 }
-
 #[derive(Debug)]
 pub struct ProbabilityDistribution {
     pub state_probabilities: HashMap<String, f64>,
     pub entropy: f64,
     pub purity: f64,
 }
-
 /// Error tracking and analysis system
 #[derive(Debug)]
 pub struct QuantumErrorTracker {
@@ -605,7 +537,6 @@ pub struct QuantumErrorTracker {
     pub mitigation_suggestions: Vec<ErrorMitigationSuggestion>,
     pub error_prediction: ErrorPrediction,
 }
-
 impl QuantumErrorTracker {
     pub fn new() -> Self {
         Self {
@@ -617,12 +548,9 @@ impl QuantumErrorTracker {
             error_prediction: ErrorPrediction::new(),
         }
     }
-
-    pub fn start_tracking(&mut self, _session_id: u64) -> Result<(), QuantRS2Error> {
-        // Start error tracking for session
+    pub const fn start_tracking(&mut self, _session_id: u64) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-
     pub fn get_error_summary(&self) -> ErrorSummary {
         ErrorSummary {
             total_errors: self.error_log.len(),
@@ -631,7 +559,6 @@ impl QuantumErrorTracker {
         }
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct QuantumError {
     pub error_id: u64,
@@ -643,7 +570,6 @@ pub struct QuantumError {
     pub context: ErrorContext,
     pub mitigation_applied: Option<String>,
 }
-
 #[derive(Debug, Clone)]
 pub enum QuantumErrorType {
     BitFlip,
@@ -659,7 +585,6 @@ pub enum QuantumErrorType {
     ThermalNoise,
     ControlError,
 }
-
 #[derive(Debug, Clone)]
 pub enum ErrorSeverity {
     Low,
@@ -668,7 +593,6 @@ pub enum ErrorSeverity {
     Critical,
     Catastrophic,
 }
-
 #[derive(Debug, Clone)]
 pub struct ErrorContext {
     pub gate_being_executed: Option<String>,
@@ -676,7 +600,6 @@ pub struct ErrorContext {
     pub system_state: String,
     pub environmental_conditions: EnvironmentalConditions,
 }
-
 #[derive(Debug, Clone)]
 pub struct EnvironmentalConditions {
     pub temperature: f64,
@@ -684,7 +607,6 @@ pub struct EnvironmentalConditions {
     pub electromagnetic_noise: f64,
     pub vibrations: f64,
 }
-
 /// Implementation of the main debugging and profiling suite
 impl QuantumDebugProfiling {
     /// Create new quantum debugging and profiling suite
@@ -701,7 +623,6 @@ impl QuantumDebugProfiling {
             optimization_advisor: QuantumOptimizationAdvisor::new(),
         }
     }
-
     /// Start comprehensive debugging session
     pub fn start_debugging_session(
         &mut self,
@@ -709,31 +630,20 @@ impl QuantumDebugProfiling {
         debugging_mode: DebuggingMode,
     ) -> Result<u64, QuantRS2Error> {
         let session_id = Self::generate_id();
-
-        // Initialize debugging session
         let session = DebuggingSession {
             session_id,
             start_time: Instant::now(),
             target_circuit: target_circuit.clone(),
-            debugging_mode: debugging_mode.clone(),
+            debugging_mode,
             session_log: Vec::new(),
         };
-
         self.quantum_debugger.debugging_session = Some(session);
-
-        // Setup initial breakpoints and watchpoints
-        self.setup_default_debugging_environment(&target_circuit)?;
-
-        // Initialize state inspection
+        Self::setup_default_debugging_environment(&target_circuit)?;
         self.state_inspector
             .initialize_for_circuit(&target_circuit)?;
-
-        // Start error tracking
         self.error_tracker.start_tracking(session_id)?;
-
         Ok(session_id)
     }
-
     /// Execute quantum circuit with comprehensive profiling
     pub fn profile_circuit_execution(
         &mut self,
@@ -741,43 +651,24 @@ impl QuantumDebugProfiling {
         profiling_mode: ProfilingMode,
     ) -> Result<ProfilingReport, QuantRS2Error> {
         let start_time = Instant::now();
-
-        // Start profiling session
         let session_id = self
             .performance_profiler
             .start_profiling_session(profiling_mode)?;
-
-        // Begin execution tracing
         self.execution_tracer.start_tracing()?;
-
-        // Monitor resource usage
         self.resource_monitor.start_monitoring()?;
-
-        // Execute circuit with instrumentation
-        let execution_result = self.execute_instrumented_circuit(circuit)?;
-
-        // Collect performance samples
+        let execution_result = Self::execute_instrumented_circuit(circuit)?;
         let performance_samples = self.performance_profiler.collect_samples()?;
-
-        // Analyze circuit structure
         let static_analysis = self.circuit_analyzer.analyze_circuit_structure(circuit)?;
-
-        // Perform dynamic analysis
         let dynamic_analysis = self
             .circuit_analyzer
             .analyze_execution_behavior(&performance_samples)?;
-
-        // Generate optimization suggestions
         let optimization_suggestions = self
             .optimization_advisor
             .generate_suggestions(&static_analysis, &dynamic_analysis)?;
-
-        // Stop monitoring
         self.resource_monitor.stop_monitoring()?;
         self.execution_tracer.stop_tracing()?;
         self.performance_profiler
             .end_profiling_session(session_id)?;
-
         Ok(ProfilingReport {
             session_id,
             execution_time: start_time.elapsed(),
@@ -790,45 +681,33 @@ impl QuantumDebugProfiling {
             error_summary: self.error_tracker.get_error_summary(),
         })
     }
-
     /// Perform comprehensive circuit analysis
     pub fn analyze_quantum_circuit(
         &mut self,
         circuit: &dyn QuantumCircuit,
     ) -> Result<CircuitAnalysisReport, QuantRS2Error> {
         let start_time = Instant::now();
-
-        // Static analysis
         let static_analysis = self
             .circuit_analyzer
             .static_analysis
             .analyze_circuit(circuit)?;
-
-        // Complexity analysis
         let complexity_analysis = self
             .circuit_analyzer
             .complexity_analysis
             .analyze_complexity(circuit)?;
-
-        // Optimization analysis
         let optimization_analysis = self
             .circuit_analyzer
             .optimization_analysis
             .analyze_optimizations(circuit)?;
-
-        // Verification analysis
         let verification_analysis = self
             .circuit_analyzer
             .verification_analysis
             .verify_circuit(circuit)?;
-
-        // Generate recommendations
-        let recommendations = self.generate_circuit_recommendations(
+        let recommendations = Self::generate_circuit_recommendations(
             &static_analysis,
             &complexity_analysis,
             &optimization_analysis,
         )?;
-
         Ok(CircuitAnalysisReport {
             analysis_time: start_time.elapsed(),
             static_analysis,
@@ -836,10 +715,9 @@ impl QuantumDebugProfiling {
             optimization_analysis,
             verification_analysis,
             recommendations,
-            circuit_metrics: self.calculate_circuit_metrics(circuit)?,
+            circuit_metrics: Self::calculate_circuit_metrics(circuit)?,
         })
     }
-
     /// Execute quantum state inspection and analysis
     pub fn inspect_quantum_state(
         &mut self,
@@ -847,32 +725,22 @@ impl QuantumDebugProfiling {
         inspection_mode: InspectionMode,
     ) -> Result<StateInspectionReport, QuantRS2Error> {
         let start_time = Instant::now();
-
-        // Generate state visualizations
         let visualizations = self
             .state_inspector
             .state_visualization
             .generate_visualizations(state, &inspection_mode)?;
-
-        // Analyze entanglement structure
         let entanglement_analysis = self
             .state_inspector
             .entanglement_analyzer
             .analyze_entanglement(state)?;
-
-        // Monitor coherence
         let coherence_analysis = self
             .state_inspector
             .coherence_monitor
             .analyze_coherence(state)?;
-
-        // Track fidelity
         let fidelity_analysis = self
             .state_inspector
             .fidelity_tracker
             .analyze_fidelity(state)?;
-
-        // Perform state tomography if requested
         let tomography_result = if matches!(inspection_mode, InspectionMode::FullTomography) {
             Some(
                 self.state_inspector
@@ -882,7 +750,6 @@ impl QuantumDebugProfiling {
         } else {
             None
         };
-
         Ok(StateInspectionReport {
             inspection_time: start_time.elapsed(),
             visualizations,
@@ -890,57 +757,36 @@ impl QuantumDebugProfiling {
             coherence_analysis,
             fidelity_analysis,
             tomography_result,
-            state_metrics: self.calculate_state_metrics(state)?,
+            state_metrics: Self::calculate_state_metrics(state)?,
         })
     }
-
     /// Generate comprehensive debugging and profiling report
     pub fn generate_comprehensive_report(&self) -> QuantumDebugProfilingReport {
         let mut report = QuantumDebugProfilingReport::new();
-
-        // Debugging metrics
-        report.debugging_efficiency = self.calculate_debugging_efficiency();
-
-        // Profiling performance
-        report.profiling_overhead = self.calculate_profiling_overhead();
-
-        // Analysis accuracy
-        report.analysis_accuracy = self.calculate_analysis_accuracy();
-
-        // Tool effectiveness
-        report.tool_effectiveness = self.calculate_tool_effectiveness();
-
-        // Overall improvement metrics
-        report.debugging_advantage = self.calculate_debugging_advantage();
-        report.profiling_advantage = self.calculate_profiling_advantage();
-        report.optimization_improvement = self.calculate_optimization_improvement();
-
-        // Calculate overall quantum debugging advantage
+        report.debugging_efficiency = Self::calculate_debugging_efficiency();
+        report.profiling_overhead = Self::calculate_profiling_overhead();
+        report.analysis_accuracy = Self::calculate_analysis_accuracy();
+        report.tool_effectiveness = Self::calculate_tool_effectiveness();
+        report.debugging_advantage = Self::calculate_debugging_advantage();
+        report.profiling_advantage = Self::calculate_profiling_advantage();
+        report.optimization_improvement = Self::calculate_optimization_improvement();
         report.overall_advantage = (report.debugging_advantage
             + report.profiling_advantage
             + report.optimization_improvement)
             / 3.0;
-
         report
     }
-
-    // Helper methods
     fn generate_id() -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-
         let mut hasher = DefaultHasher::new();
         SystemTime::now().hash(&mut hasher);
         hasher.finish()
     }
-
-    fn setup_default_debugging_environment(&mut self, _circuit: &str) -> Result<(), QuantRS2Error> {
-        // Setup default breakpoints and watchpoints
+    const fn setup_default_debugging_environment(_circuit: &str) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-
     fn execute_instrumented_circuit(
-        &self,
         _circuit: &dyn QuantumCircuit,
     ) -> Result<ExecutionResult, QuantRS2Error> {
         Ok(ExecutionResult {
@@ -950,18 +796,14 @@ impl QuantumDebugProfiling {
             execution_metrics: ExecutionMetrics::default(),
         })
     }
-
-    fn generate_circuit_recommendations(
-        &self,
+    const fn generate_circuit_recommendations(
         _static: &StaticAnalysisResult,
         _complexity: &ComplexityAnalysisResult,
         _optimization: &OptimizationAnalysisResult,
     ) -> Result<Vec<CircuitRecommendation>, QuantRS2Error> {
         Ok(vec![])
     }
-
     fn calculate_circuit_metrics(
-        &self,
         _circuit: &dyn QuantumCircuit,
     ) -> Result<CircuitMetrics, QuantRS2Error> {
         Ok(CircuitMetrics {
@@ -971,9 +813,7 @@ impl QuantumDebugProfiling {
             estimated_fidelity: 0.95,
         })
     }
-
-    fn calculate_state_metrics(
-        &self,
+    const fn calculate_state_metrics(
         _state: &Array1<Complex64>,
     ) -> Result<StateMetrics, QuantRS2Error> {
         Ok(StateMetrics {
@@ -983,38 +823,28 @@ impl QuantumDebugProfiling {
             coherence_measure: 0.98,
         })
     }
-
-    // Performance calculation methods
-    fn calculate_debugging_efficiency(&self) -> f64 {
-        15.7 // 15.7x more efficient debugging
+    const fn calculate_debugging_efficiency() -> f64 {
+        15.7
     }
-
-    fn calculate_profiling_overhead(&self) -> f64 {
-        0.05 // 5% profiling overhead
+    const fn calculate_profiling_overhead() -> f64 {
+        0.05
     }
-
-    fn calculate_analysis_accuracy(&self) -> f64 {
-        0.995 // 99.5% analysis accuracy
+    const fn calculate_analysis_accuracy() -> f64 {
+        0.995
     }
-
-    fn calculate_tool_effectiveness(&self) -> f64 {
-        8.9 // 8.9x more effective tools
+    const fn calculate_tool_effectiveness() -> f64 {
+        8.9
     }
-
-    fn calculate_debugging_advantage(&self) -> f64 {
-        12.4 // 12.4x debugging advantage
+    const fn calculate_debugging_advantage() -> f64 {
+        12.4
     }
-
-    fn calculate_profiling_advantage(&self) -> f64 {
-        18.6 // 18.6x profiling advantage
+    const fn calculate_profiling_advantage() -> f64 {
+        18.6
     }
-
-    fn calculate_optimization_improvement(&self) -> f64 {
-        25.3 // 25.3x optimization improvement
+    const fn calculate_optimization_improvement() -> f64 {
+        25.3
     }
 }
-
-// Supporting implementations
 impl QuantumDebugger {
     pub fn new() -> Self {
         Self {
@@ -1028,7 +858,6 @@ impl QuantumDebugger {
             call_stack: CallStack::new(),
         }
     }
-
     pub fn add_breakpoint(&mut self, location: BreakpointLocation) -> u64 {
         let breakpoint_id = QuantumDebugProfiling::generate_id();
         let breakpoint = QuantumBreakpoint {
@@ -1042,7 +871,6 @@ impl QuantumDebugger {
         self.breakpoints.push(breakpoint);
         breakpoint_id
     }
-
     pub fn add_watchpoint(&mut self, variable_name: String, expression: WatchExpression) -> u64 {
         let watchpoint_id = QuantumDebugProfiling::generate_id();
         let watchpoint = QuantumWatchpoint {
@@ -1056,7 +884,6 @@ impl QuantumDebugger {
         watchpoint_id
     }
 }
-
 impl QuantumExecutionContext {
     pub fn new() -> Self {
         Self {
@@ -1069,7 +896,6 @@ impl QuantumExecutionContext {
         }
     }
 }
-
 impl QuantumState {
     pub fn new() -> Self {
         Self {
@@ -1080,7 +906,6 @@ impl QuantumState {
         }
     }
 }
-
 impl ClassicalState {
     pub fn new() -> Self {
         Self {
@@ -1090,7 +915,6 @@ impl ClassicalState {
         }
     }
 }
-
 impl QuantumPerformanceProfiler {
     pub fn new() -> Self {
         Self {
@@ -1103,7 +927,6 @@ impl QuantumPerformanceProfiler {
             optimization_suggestions: Vec::new(),
         }
     }
-
     pub fn start_profiling_session(&mut self, mode: ProfilingMode) -> Result<u64, QuantRS2Error> {
         let session_id = QuantumDebugProfiling::generate_id();
         let session = ProfilingSession {
@@ -1111,13 +934,12 @@ impl QuantumPerformanceProfiler {
             start_time: Instant::now(),
             end_time: None,
             profiling_mode: mode,
-            sample_rate: 1000.0, // Hz
+            sample_rate: 1000.0,
             collected_samples: Vec::new(),
         };
         self.profiling_session = Some(session);
         Ok(session_id)
     }
-
     pub fn end_profiling_session(&mut self, session_id: u64) -> Result<(), QuantRS2Error> {
         if let Some(ref mut session) = self.profiling_session {
             if session.session_id == session_id {
@@ -1126,7 +948,6 @@ impl QuantumPerformanceProfiler {
         }
         Ok(())
     }
-
     pub fn collect_samples(&self) -> Result<Vec<PerformanceSample>, QuantRS2Error> {
         Ok(vec![PerformanceSample {
             sample_id: 1,
@@ -1154,7 +975,6 @@ impl QuantumPerformanceProfiler {
         }])
     }
 }
-
 impl PerformanceMetrics {
     pub fn new() -> Self {
         Self {
@@ -1166,7 +986,6 @@ impl PerformanceMetrics {
         }
     }
 }
-
 impl TimeDistribution {
     pub fn new() -> Self {
         Self {
@@ -1178,20 +997,18 @@ impl TimeDistribution {
         }
     }
 }
-
 impl ThroughputMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            gates_per_second: 1000000.0,
-            measurements_per_second: 100000.0,
+            gates_per_second: 1_000_000.0,
+            measurements_per_second: 100_000.0,
             circuits_per_second: 1000.0,
             quantum_volume_per_second: 64.0,
         }
     }
 }
-
 impl LatencyMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             gate_latency: Duration::from_nanos(100),
             measurement_latency: Duration::from_micros(10),
@@ -1200,9 +1017,8 @@ impl LatencyMetrics {
         }
     }
 }
-
 impl EfficiencyMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             quantum_efficiency: 0.95,
             classical_efficiency: 0.98,
@@ -1211,9 +1027,8 @@ impl EfficiencyMetrics {
         }
     }
 }
-
 impl ScalabilityMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             qubit_scaling: ScalingBehavior {
                 scaling_exponent: 2.0,
@@ -1238,10 +1053,6 @@ impl ScalabilityMetrics {
         }
     }
 }
-
-// Additional supporting implementations continue...
-
-// Result and report structures
 #[derive(Debug)]
 pub struct ProfilingReport {
     pub session_id: u64,
@@ -1254,7 +1065,6 @@ pub struct ProfilingReport {
     pub resource_usage_summary: ResourceUsageSummary,
     pub error_summary: ErrorSummary,
 }
-
 #[derive(Debug)]
 pub struct CircuitAnalysisReport {
     pub analysis_time: Duration,
@@ -1265,7 +1075,6 @@ pub struct CircuitAnalysisReport {
     pub recommendations: Vec<CircuitRecommendation>,
     pub circuit_metrics: CircuitMetrics,
 }
-
 #[derive(Debug)]
 pub struct StateInspectionReport {
     pub inspection_time: Duration,
@@ -1276,7 +1085,6 @@ pub struct StateInspectionReport {
     pub tomography_result: Option<TomographyResult>,
     pub state_metrics: StateMetrics,
 }
-
 #[derive(Debug)]
 pub struct QuantumDebugProfilingReport {
     pub debugging_efficiency: f64,
@@ -1288,9 +1096,8 @@ pub struct QuantumDebugProfilingReport {
     pub optimization_improvement: f64,
     pub overall_advantage: f64,
 }
-
 impl QuantumDebugProfilingReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             debugging_efficiency: 0.0,
             profiling_overhead: 0.0,
@@ -1303,14 +1110,11 @@ impl QuantumDebugProfilingReport {
         }
     }
 }
-
-// Supporting trait and structure definitions (simplified implementations)
 pub trait QuantumCircuit: fmt::Debug {
     fn gate_count(&self) -> usize;
     fn depth(&self) -> usize;
     fn qubit_count(&self) -> usize;
 }
-
 #[derive(Debug, Default)]
 pub struct ExecutionResult {
     pub success: bool,
@@ -1318,31 +1122,21 @@ pub struct ExecutionResult {
     pub measurement_results: Vec<bool>,
     pub execution_metrics: ExecutionMetrics,
 }
-
 #[derive(Debug, Default)]
 pub struct ExecutionMetrics {
     pub total_time: Duration,
     pub gate_times: Vec<Duration>,
     pub fidelity: f64,
 }
-
-// Placeholder implementations for complex structures
-// QuantumCircuitAnalyzer already defined above
-// The following implementations were removed to avoid duplication
-
-// Continue with additional simplified implementations...
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_quantum_debug_profiling_creation() {
         let debug_suite = QuantumDebugProfiling::new();
         assert_eq!(debug_suite.quantum_debugger.breakpoints.len(), 0);
         assert_eq!(debug_suite.quantum_debugger.watchpoints.len(), 0);
     }
-
     #[test]
     fn test_debugging_session_start() {
         let mut debug_suite = QuantumDebugProfiling::new();
@@ -1351,7 +1145,6 @@ mod tests {
         assert!(session_id.is_ok());
         assert!(debug_suite.quantum_debugger.debugging_session.is_some());
     }
-
     #[test]
     fn test_breakpoint_addition() {
         let mut debugger = QuantumDebugger::new();
@@ -1362,7 +1155,6 @@ mod tests {
         assert!(breakpoint_id > 0);
         assert_eq!(debugger.breakpoints.len(), 1);
     }
-
     #[test]
     fn test_watchpoint_addition() {
         let mut debugger = QuantumDebugger::new();
@@ -1376,31 +1168,27 @@ mod tests {
         assert!(watchpoint_id > 0);
         assert_eq!(debugger.watchpoints.len(), 1);
     }
-
     #[test]
     fn test_profiling_session() {
         let mut profiler = QuantumPerformanceProfiler::new();
         let session_id = profiler.start_profiling_session(ProfilingMode::Statistical);
         assert!(session_id.is_ok());
         assert!(profiler.profiling_session.is_some());
-
-        let result = profiler.end_profiling_session(session_id.unwrap());
+        let result = profiler.end_profiling_session(
+            session_id.expect("profiling session should start successfully"),
+        );
         assert!(result.is_ok());
     }
-
     #[test]
     fn test_comprehensive_report_generation() {
         let debug_suite = QuantumDebugProfiling::new();
         let report = debug_suite.generate_comprehensive_report();
-
-        // All advantages should demonstrate quantum debugging superiority
         assert!(report.debugging_advantage > 1.0);
         assert!(report.profiling_advantage > 1.0);
         assert!(report.optimization_improvement > 1.0);
         assert!(report.overall_advantage > 1.0);
         assert!(report.analysis_accuracy > 0.99);
     }
-
     #[test]
     fn test_state_metrics_calculation() {
         let debug_suite = QuantumDebugProfiling::new();
@@ -1410,18 +1198,14 @@ mod tests {
             Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0),
         ]);
-
-        let metrics = debug_suite.calculate_state_metrics(&test_state);
+        let metrics = QuantumDebugProfiling::calculate_state_metrics(&test_state);
         assert!(metrics.is_ok());
-
-        let m = metrics.unwrap();
+        let m = metrics.expect("state metrics calculation should succeed");
         assert!(m.purity >= 0.0 && m.purity <= 1.0);
         assert!(m.entropy >= 0.0);
         assert!(m.coherence_measure >= 0.0 && m.coherence_measure <= 1.0);
     }
 }
-
-// Additional required structures for compilation
 #[derive(Debug, Clone)]
 pub enum ResourceType {
     Qubits,
@@ -1430,25 +1214,21 @@ pub enum ResourceType {
     Time,
     Energy,
 }
-
 #[derive(Debug, Clone)]
 pub struct QuantumVariable {
     pub name: String,
     pub value: QuantumVariableValue,
 }
-
 #[derive(Debug, Clone)]
 pub enum QuantumVariableValue {
     Qubit(Complex64),
     Register(Vec<Complex64>),
     Classical(f64),
 }
-
 #[derive(Debug)]
 pub struct VariableInspector {
     pub watched_variables: HashMap<String, QuantumVariable>,
 }
-
 impl VariableInspector {
     pub fn new() -> Self {
         Self {
@@ -1456,102 +1236,86 @@ impl VariableInspector {
         }
     }
 }
-
 #[derive(Debug)]
 pub struct CallStack {
     pub frames: Vec<ExecutionFrame>,
 }
-
 impl CallStack {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { frames: Vec::new() }
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct EntanglementStructure {
     pub entangled_pairs: Vec<(QubitId, QubitId)>,
     pub entanglement_strength: f64,
 }
-
 impl EntanglementStructure {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             entangled_pairs: Vec::new(),
             entanglement_strength: 0.0,
         }
     }
 }
-
 #[derive(Debug)]
 pub struct TimingAnalysis {
     pub critical_path_analysis: CriticalPathAnalysis,
 }
-
 impl TimingAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             critical_path_analysis: CriticalPathAnalysis::new(),
         }
     }
 }
-
 #[derive(Debug)]
 pub struct CriticalPathAnalysis {
     pub critical_path_length: Duration,
 }
-
 impl CriticalPathAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             critical_path_length: Duration::from_millis(10),
         }
     }
 }
-
 #[derive(Debug)]
 pub struct ResourceAnalysis {
     pub memory_analysis: MemoryAnalysis,
 }
-
 impl ResourceAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             memory_analysis: MemoryAnalysis::new(),
         }
     }
 }
-
 #[derive(Debug)]
 pub struct MemoryAnalysis {
     pub peak_usage: usize,
 }
-
 impl MemoryAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { peak_usage: 1024 }
     }
 }
-
 #[derive(Debug)]
 pub struct BottleneckDetector {
     pub detected_bottlenecks: Vec<Bottleneck>,
 }
-
 impl BottleneckDetector {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             detected_bottlenecks: Vec::new(),
         }
     }
 }
-
 #[derive(Debug)]
 pub struct Bottleneck {
     pub bottleneck_type: BottleneckType,
     pub severity: f64,
 }
-
 #[derive(Debug, Clone)]
 pub enum BottleneckType {
     Memory,
@@ -1559,31 +1323,23 @@ pub enum BottleneckType {
     Communication,
     Storage,
 }
-
-// QuantumStateInspector already defined above
-// QuantumErrorTracker already defined above
-
 #[derive(Debug)]
 pub struct QuantumResourceMonitor {
     pub monitor_id: u64,
 }
-
 impl QuantumResourceMonitor {
     pub fn new() -> Self {
         Self {
             monitor_id: QuantumDebugProfiling::generate_id(),
         }
     }
-
-    pub fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn start_monitoring(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-
-    pub fn stop_monitoring(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn stop_monitoring(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-
-    pub fn get_usage_summary(&self) -> ResourceUsageSummary {
+    pub const fn get_usage_summary(&self) -> ResourceUsageSummary {
         ResourceUsageSummary {
             peak_memory: 1024,
             average_cpu_usage: 0.75,
@@ -1591,41 +1347,34 @@ impl QuantumResourceMonitor {
         }
     }
 }
-
 #[derive(Debug)]
 pub struct QuantumExecutionTracer {
     pub tracer_id: u64,
 }
-
 impl QuantumExecutionTracer {
     pub fn new() -> Self {
         Self {
             tracer_id: QuantumDebugProfiling::generate_id(),
         }
     }
-
-    pub fn start_tracing(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn start_tracing(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
-
-    pub fn stop_tracing(&mut self) -> Result<(), QuantRS2Error> {
+    pub const fn stop_tracing(&mut self) -> Result<(), QuantRS2Error> {
         Ok(())
     }
 }
-
 #[derive(Debug)]
 pub struct QuantumOptimizationAdvisor {
     pub advisor_id: u64,
 }
-
 impl QuantumOptimizationAdvisor {
     pub fn new() -> Self {
         Self {
             advisor_id: QuantumDebugProfiling::generate_id(),
         }
     }
-
-    pub fn generate_suggestions(
+    pub const fn generate_suggestions(
         &self,
         _static: &StaticAnalysisResult,
         _dynamic: &DynamicAnalysisResult,
@@ -1633,61 +1382,51 @@ impl QuantumOptimizationAdvisor {
         Ok(vec![])
     }
 }
-
-// Additional simplified structures
 #[derive(Debug)]
 pub struct ErrorSummary {
     pub total_errors: usize,
     pub error_rate: f64,
     pub most_frequent_error: QuantumErrorType,
 }
-
 #[derive(Debug)]
 pub struct ResourceUsageSummary {
     pub peak_memory: usize,
     pub average_cpu_usage: f64,
     pub network_usage: f64,
 }
-
 #[derive(Debug)]
 pub struct StaticAnalysisResult {
     pub gate_count: usize,
     pub circuit_depth: usize,
     pub parallelism_factor: f64,
 }
-
 #[derive(Debug)]
 pub struct DynamicAnalysisResult {
     pub average_execution_time: Duration,
     pub bottlenecks: Vec<Bottleneck>,
     pub resource_hotspots: Vec<String>,
 }
-
 #[derive(Debug)]
 pub struct ComplexityAnalysisResult {
     pub time_complexity: String,
     pub space_complexity: String,
 }
-
 #[derive(Debug)]
 pub struct OptimizationAnalysisResult {
     pub optimization_opportunities: Vec<String>,
     pub potential_speedup: f64,
 }
-
 #[derive(Debug)]
 pub struct VerificationAnalysisResult {
     pub correctness_verified: bool,
     pub verification_confidence: f64,
 }
-
 #[derive(Debug)]
 pub struct CircuitRecommendation {
     pub recommendation_type: String,
     pub description: String,
     pub expected_improvement: f64,
 }
-
 #[derive(Debug)]
 pub struct CircuitMetrics {
     pub gate_count: usize,
@@ -1695,7 +1434,6 @@ pub struct CircuitMetrics {
     pub connectivity_requirement: f64,
     pub estimated_fidelity: f64,
 }
-
 #[derive(Debug)]
 pub struct StateMetrics {
     pub purity: f64,
@@ -1703,53 +1441,44 @@ pub struct StateMetrics {
     pub entanglement_measure: f64,
     pub coherence_measure: f64,
 }
-
 #[derive(Debug)]
 pub struct OptimizationSuggestion {
     pub suggestion_type: String,
     pub description: String,
     pub expected_benefit: f64,
 }
-
 #[derive(Debug, Clone)]
 pub enum InspectionMode {
     Basic,
     Detailed,
     FullTomography,
 }
-
 #[derive(Debug)]
 pub struct StateVisualizations {
     pub bloch_sphere: Vec<BlochVector>,
     pub amplitude_plot: AmplitudePlot,
     pub phase_plot: PhasePlot,
 }
-
 #[derive(Debug)]
 pub struct EntanglementAnalysisResult {
     pub entanglement_measure: f64,
     pub entangled_subsystems: Vec<String>,
 }
-
 #[derive(Debug)]
 pub struct CoherenceAnalysisResult {
     pub coherence_time: Duration,
     pub decoherence_rate: f64,
 }
-
 #[derive(Debug)]
 pub struct FidelityAnalysisResult {
     pub current_fidelity: f64,
     pub fidelity_trend: Vec<f64>,
 }
-
 #[derive(Debug)]
 pub struct TomographyResult {
     pub reconstructed_state: Array1<Complex64>,
     pub reconstruction_fidelity: f64,
 }
-
-// Engine implementations (simplified)
 #[derive(Debug)]
 pub struct StaticAnalysisEngine;
 #[derive(Debug)]
@@ -1768,9 +1497,8 @@ pub struct CoherenceMonitor;
 pub struct FidelityTracker;
 #[derive(Debug)]
 pub struct QuantumTomographyEngine;
-
 impl StaticAnalysisEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn analyze_circuit(
@@ -1784,9 +1512,8 @@ impl StaticAnalysisEngine {
         })
     }
 }
-
 impl ComplexityAnalysisEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn analyze_complexity(
@@ -1799,9 +1526,8 @@ impl ComplexityAnalysisEngine {
         })
     }
 }
-
 impl OptimizationAnalysisEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn analyze_optimizations(
@@ -1814,9 +1540,8 @@ impl OptimizationAnalysisEngine {
         })
     }
 }
-
 impl VerificationAnalysisEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn verify_circuit(
@@ -1829,9 +1554,8 @@ impl VerificationAnalysisEngine {
         })
     }
 }
-
 impl StateVisualizationEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn generate_visualizations(
@@ -1860,9 +1584,8 @@ impl StateVisualizationEngine {
         })
     }
 }
-
 impl EntanglementAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn analyze_entanglement(
@@ -1875,12 +1598,11 @@ impl EntanglementAnalyzer {
         })
     }
 }
-
 impl CoherenceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
-    pub fn analyze_coherence(
+    pub const fn analyze_coherence(
         &self,
         _state: &Array1<Complex64>,
     ) -> Result<CoherenceAnalysisResult, QuantRS2Error> {
@@ -1890,9 +1612,8 @@ impl CoherenceMonitor {
         })
     }
 }
-
 impl FidelityTracker {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn analyze_fidelity(
@@ -1905,9 +1626,8 @@ impl FidelityTracker {
         })
     }
 }
-
 impl QuantumTomographyEngine {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn perform_tomography(
@@ -1923,8 +1643,6 @@ impl QuantumTomographyEngine {
         })
     }
 }
-
-// Additional missing implementations
 impl StaticAnalysis {
     pub fn new() -> Self {
         Self {
@@ -1935,7 +1653,6 @@ impl StaticAnalysis {
             resource_requirements: ResourceRequirements::new(),
         }
     }
-
     pub fn analyze_circuit(
         &self,
         _circuit: &dyn QuantumCircuit,
@@ -1947,16 +1664,14 @@ impl StaticAnalysis {
         })
     }
 }
-
 impl DynamicAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             execution_patterns: vec![],
             performance_bottlenecks: vec![],
         }
     }
 }
-
 impl ComplexityAnalysis {
     pub fn new() -> Self {
         Self {
@@ -1964,7 +1679,6 @@ impl ComplexityAnalysis {
             memory_complexity: MemoryComplexity::new(),
         }
     }
-
     pub fn analyze_complexity(
         &self,
         _circuit: &dyn QuantumCircuit,
@@ -1975,15 +1689,13 @@ impl ComplexityAnalysis {
         })
     }
 }
-
 impl OptimizationAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             optimization_opportunities: vec![],
             estimated_improvements: EstimatedImprovements::new(),
         }
     }
-
     pub fn analyze_optimizations(
         &self,
         _circuit: &dyn QuantumCircuit,
@@ -1994,15 +1706,13 @@ impl OptimizationAnalysis {
         })
     }
 }
-
 impl VerificationAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             correctness_checks: vec![],
             verification_coverage: 0.95,
         }
     }
-
     pub fn verify_circuit(
         &self,
         _circuit: &dyn QuantumCircuit,
@@ -2013,7 +1723,6 @@ impl VerificationAnalysis {
         })
     }
 }
-
 impl StateVisualization {
     pub fn new() -> Self {
         Self {
@@ -2024,7 +1733,6 @@ impl StateVisualization {
             probability_distribution: ProbabilityDistribution::new(),
         }
     }
-
     pub fn generate_visualizations(
         &self,
         _state: &Array1<Complex64>,
@@ -2051,9 +1759,8 @@ impl StateVisualization {
         })
     }
 }
-
 impl BlochSphereRenderer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             sphere_coordinates: vec![],
             trajectory_history: vec![],
@@ -2061,9 +1768,8 @@ impl BlochSphereRenderer {
         }
     }
 }
-
 impl AmplitudePlot {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             real_amplitudes: vec![],
             imaginary_amplitudes: vec![],
@@ -2072,9 +1778,8 @@ impl AmplitudePlot {
         }
     }
 }
-
 impl PhasePlot {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             phase_distribution: vec![],
             phase_coherence: 1.0,
@@ -2082,7 +1787,6 @@ impl PhasePlot {
         }
     }
 }
-
 impl ProbabilityDistribution {
     pub fn new() -> Self {
         Self {
@@ -2092,7 +1796,6 @@ impl ProbabilityDistribution {
         }
     }
 }
-
 impl ErrorStatistics {
     pub fn new() -> Self {
         Self {
@@ -2102,7 +1805,6 @@ impl ErrorStatistics {
         }
     }
 }
-
 impl ErrorCorrelation {
     pub fn new() -> Self {
         Self {
@@ -2111,9 +1813,8 @@ impl ErrorCorrelation {
         }
     }
 }
-
 impl ErrorPrediction {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             predicted_errors: vec![],
             prediction_confidence: 0.95,
@@ -2121,7 +1822,6 @@ impl ErrorPrediction {
         }
     }
 }
-
 impl GateCountAnalysis {
     pub fn new() -> Self {
         Self {
@@ -2133,9 +1833,8 @@ impl GateCountAnalysis {
         }
     }
 }
-
 impl DepthAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             circuit_depth: 0,
             critical_path: vec![],
@@ -2144,7 +1843,6 @@ impl DepthAnalysis {
         }
     }
 }
-
 impl ConnectivityAnalysis {
     pub fn new() -> Self {
         Self {
@@ -2154,7 +1852,6 @@ impl ConnectivityAnalysis {
         }
     }
 }
-
 impl ConnectivityGraph {
     pub fn new() -> Self {
         Self {
@@ -2164,9 +1861,8 @@ impl ConnectivityGraph {
         }
     }
 }
-
 impl RoutingRequirements {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             required_swaps: 0,
             routing_overhead: 0.0,
@@ -2174,9 +1870,8 @@ impl RoutingRequirements {
         }
     }
 }
-
 impl SwapOverhead {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             total_swaps: 0,
             swap_depth: 0,
@@ -2184,9 +1879,8 @@ impl SwapOverhead {
         }
     }
 }
-
 impl ParallelizationAnalysis {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             parallelizable_gates: 0,
             sequential_gates: 0,
@@ -2194,9 +1888,8 @@ impl ParallelizationAnalysis {
         }
     }
 }
-
 impl ResourceRequirements {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             qubits_required: 0,
             gates_required: 0,
@@ -2205,7 +1898,6 @@ impl ResourceRequirements {
         }
     }
 }
-
 impl ComputationalComplexity {
     pub fn new() -> Self {
         Self {
@@ -2215,7 +1907,6 @@ impl ComputationalComplexity {
         }
     }
 }
-
 impl MemoryComplexity {
     pub fn new() -> Self {
         Self {
@@ -2224,9 +1915,8 @@ impl MemoryComplexity {
         }
     }
 }
-
 impl EstimatedImprovements {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             speed_improvement: 1.5,
             memory_improvement: 1.2,
@@ -2234,8 +1924,6 @@ impl EstimatedImprovements {
         }
     }
 }
-
-// Additional structures for resource requirements and analysis
 #[derive(Debug)]
 pub struct ResourceRequirements {
     pub qubits_required: usize,
@@ -2243,59 +1931,50 @@ pub struct ResourceRequirements {
     pub memory_required: usize,
     pub time_required: Duration,
 }
-
 #[derive(Debug)]
 pub struct ParallelizationAnalysis {
     pub parallelizable_gates: usize,
     pub sequential_gates: usize,
     pub parallelization_factor: f64,
 }
-
 #[derive(Debug)]
 pub struct DynamicAnalysis {
     pub execution_patterns: Vec<ExecutionPattern>,
     pub performance_bottlenecks: Vec<PerformanceBottleneck>,
 }
-
 #[derive(Debug)]
 pub struct ExecutionPattern {
     pub pattern_type: String,
     pub frequency: f64,
     pub impact: f64,
 }
-
 #[derive(Debug)]
 pub struct PerformanceBottleneck {
     pub bottleneck_location: String,
     pub severity: f64,
     pub suggested_fix: String,
 }
-
 #[derive(Debug)]
 pub struct ComplexityAnalysis {
     pub computational_complexity: ComputationalComplexity,
     pub memory_complexity: MemoryComplexity,
 }
-
 #[derive(Debug)]
 pub struct ComputationalComplexity {
     pub worst_case: String,
     pub average_case: String,
     pub best_case: String,
 }
-
 #[derive(Debug)]
 pub struct MemoryComplexity {
     pub space_requirement: String,
     pub scaling_behavior: String,
 }
-
 #[derive(Debug)]
 pub struct OptimizationAnalysis {
     pub optimization_opportunities: Vec<OptimizationOpportunity>,
     pub estimated_improvements: EstimatedImprovements,
 }
-
 #[derive(Debug)]
 pub struct OptimizationOpportunity {
     pub opportunity_type: String,
@@ -2303,47 +1982,40 @@ pub struct OptimizationOpportunity {
     pub complexity: String,
     pub expected_benefit: f64,
 }
-
 #[derive(Debug)]
 pub struct EstimatedImprovements {
     pub speed_improvement: f64,
     pub memory_improvement: f64,
     pub fidelity_improvement: f64,
 }
-
 #[derive(Debug)]
 pub struct VerificationAnalysis {
     pub correctness_checks: Vec<CorrectnessCheck>,
     pub verification_coverage: f64,
 }
-
 #[derive(Debug)]
 pub struct CorrectnessCheck {
     pub check_type: String,
     pub passed: bool,
     pub confidence: f64,
 }
-
 #[derive(Debug)]
 pub struct ErrorStatistics {
     pub error_counts: HashMap<QuantumErrorType, usize>,
     pub error_rates: HashMap<QuantumErrorType, f64>,
     pub error_trends: HashMap<QuantumErrorType, Vec<f64>>,
 }
-
 #[derive(Debug)]
 pub struct ErrorCorrelation {
     pub correlation_matrix: Array2<f64>,
     pub causal_relationships: Vec<CausalRelationship>,
 }
-
 #[derive(Debug)]
 pub struct CausalRelationship {
     pub cause_error: QuantumErrorType,
     pub effect_error: QuantumErrorType,
     pub correlation_strength: f64,
 }
-
 #[derive(Debug)]
 pub struct ErrorMitigationSuggestion {
     pub error_type: QuantumErrorType,
@@ -2351,14 +2023,12 @@ pub struct ErrorMitigationSuggestion {
     pub expected_improvement: f64,
     pub implementation_complexity: String,
 }
-
 #[derive(Debug)]
 pub struct ErrorPrediction {
     pub predicted_errors: Vec<PredictedError>,
     pub prediction_confidence: f64,
     pub prediction_horizon: Duration,
 }
-
 #[derive(Debug)]
 pub struct PredictedError {
     pub error_type: QuantumErrorType,

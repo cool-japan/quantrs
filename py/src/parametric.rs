@@ -56,7 +56,7 @@ impl PyParametricCircuit {
     pub fn get_parameters(&self, py: Python) -> PyObject {
         let dict = PyDict::new(py);
         for (name, value) in &self.parameters {
-            dict.set_item(name, value).unwrap();
+            let _ = dict.set_item(name, value);
         }
         dict.into()
     }

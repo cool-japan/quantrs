@@ -46,6 +46,12 @@ pub struct KnowledgeBase {
     performance_models: HashMap<String, PerformanceModel>,
     case_studies: Vec<CaseStudy>,
 }
+impl Default for KnowledgeBase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KnowledgeBase {
     pub fn new() -> Self {
         Self {
@@ -132,6 +138,12 @@ pub struct LearningEngine {
     model_updater: ModelUpdater,
     continuous_learning: bool,
 }
+impl Default for LearningEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LearningEngine {
     pub fn new() -> Self {
         Self {
@@ -171,6 +183,12 @@ pub struct PatternAnalyzer {
     feature_extractors: Vec<Box<dyn FeatureExtractor + Send + Sync>>,
     clustering_engines: Vec<Box<dyn ClusteringEngine + Send + Sync>>,
 }
+impl Default for PatternAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -195,6 +213,12 @@ pub struct ComparisonData {
     temporal_trends: HashMap<CloudProvider, TemporalTrend>,
     cost_performance_analysis: CostPerformanceAnalysis,
 }
+impl Default for ComparisonData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComparisonData {
     pub fn new() -> Self {
         Self {
@@ -266,6 +290,12 @@ pub struct SimilarityEngine {
     nearest_neighbor_engines: Vec<Box<dyn NearestNeighborEngine + Send + Sync>>,
     similarity_cache: HashMap<String, SimilarityResult>,
 }
+impl Default for SimilarityEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimilarityEngine {
     pub fn new() -> Self {
         Self {

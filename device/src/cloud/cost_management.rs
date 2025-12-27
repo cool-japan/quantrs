@@ -26,7 +26,7 @@ pub struct CostManagementConfig {
 }
 
 /// Cost optimization strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostOptimizationStrategy {
     SpotInstanceOptimization,
     ReservedInstanceOptimization,
@@ -69,7 +69,7 @@ pub struct PricingStructure {
 }
 
 /// Billing models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingModel {
     PayPerUse,
     Subscription,
@@ -106,7 +106,7 @@ pub struct VolumeDiscount {
 }
 
 /// Discount types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscountType {
     Percentage,
     FixedAmount,
@@ -115,7 +115,7 @@ pub enum DiscountType {
 }
 
 /// Time-based pricing configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TimeBasedPricingConfig {
     /// Peak hours pricing
     pub peak_hours: PeakHoursPricing,
@@ -181,7 +181,7 @@ pub struct ContractTerms {
 }
 
 /// Commitment levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommitmentLevel {
     NoCommitment,
     MonthlyCommitment,
@@ -211,7 +211,7 @@ pub enum FeeStructure {
 }
 
 /// Fee calculation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeeCalculationMethod {
     RemainingMonths,
     UnusedCommitment,
@@ -220,7 +220,7 @@ pub enum FeeCalculationMethod {
 }
 
 /// Waiver conditions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WaiverCondition {
     ServiceFailure,
     ForCause,
@@ -242,7 +242,7 @@ pub struct ServiceLevelAgreements {
 }
 
 /// Support SLA
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SupportSLA {
     /// Response time by severity
     pub response_times: HashMap<String, Duration>,
@@ -253,7 +253,7 @@ pub struct SupportSLA {
 }
 
 /// Escalation procedures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EscalationProcedures {
     /// Escalation levels
     pub levels: Vec<EscalationLevel>,
@@ -275,7 +275,7 @@ pub struct EscalationLevel {
 }
 
 /// Escalation triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationTrigger {
     TimeElapsed,
     NoResponse,
@@ -284,7 +284,7 @@ pub enum EscalationTrigger {
 }
 
 /// SLA penalties
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SLAPenalties {
     /// Penalty structure
     pub structure: PenaltyStructure,
@@ -295,7 +295,7 @@ pub struct SLAPenalties {
 }
 
 /// Penalty structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PenaltyStructure {
     /// Uptime penalties
     pub uptime_penalties: Vec<UptimePenalty>,
@@ -324,7 +324,7 @@ pub struct PerformancePenalty {
 }
 
 /// Credit structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CreditStructure {
     /// Service credits
     pub service_credits: Vec<ServiceCredit>,
@@ -344,7 +344,7 @@ pub struct ServiceCredit {
 }
 
 /// Credit types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CreditType {
     Percentage,
     FixedAmount,
@@ -363,7 +363,7 @@ pub struct CreditApplication {
 }
 
 /// Credit application methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CreditApplicationMethod {
     Automatic,
     Manual,
@@ -395,7 +395,7 @@ pub struct DynamicPricingConfig {
 }
 
 /// Pricing algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PricingAlgorithm {
     SupplyDemand,
     Competition,
@@ -442,7 +442,7 @@ pub struct CostPredictionConfig {
 }
 
 /// Cost prediction models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostPredictionModel {
     LinearRegression,
     ARIMA,
@@ -475,7 +475,7 @@ pub struct ForecastHorizon {
 }
 
 /// Scenario analysis configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScenarioAnalysisConfig {
     /// Enable scenario analysis
     pub enabled: bool,
@@ -512,7 +512,7 @@ pub struct AccuracyMonitoringConfig {
 }
 
 /// Accuracy metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AccuracyMetric {
     MAPE, // Mean Absolute Percentage Error
     RMSE, // Root Mean Square Error
@@ -533,7 +533,7 @@ pub struct AccuracyAlert {
 }
 
 /// Alert actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertAction {
     Notify,
     RetainModel,
@@ -553,7 +553,7 @@ pub struct ModelRetrainingConfig {
 }
 
 /// Retraining triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RetrainingTrigger {
     AccuracyDrop,
     DataDrift,
@@ -634,7 +634,7 @@ pub struct TrendAnalysisConfig {
 }
 
 /// Trend detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrendDetectionMethod {
     MovingAverage,
     LinearRegression,
@@ -654,7 +654,7 @@ pub struct BudgetEnforcementConfig {
 }
 
 /// Enforcement policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnforcementPolicy {
     SoftLimit,
     HardLimit,
@@ -663,7 +663,7 @@ pub enum EnforcementPolicy {
 }
 
 /// Enforcement actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnforcementAction {
     Alert,
     Throttle,
@@ -673,7 +673,7 @@ pub enum EnforcementAction {
 }
 
 /// Override permissions
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OverridePermissions {
     /// Authorized users
     pub authorized_users: Vec<String>,
@@ -768,7 +768,7 @@ pub struct AlertCondition {
 }
 
 /// Cost metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CostMetric {
     TotalCost,
     HourlyCost,
@@ -781,7 +781,7 @@ pub enum CostMetric {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     GreaterThan,
     LessThan,
@@ -792,7 +792,7 @@ pub enum ComparisonOperator {
 }
 
 /// Alert severity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertSeverity {
     Low,
     Medium,
@@ -825,7 +825,7 @@ pub struct EscalationStep {
 }
 
 /// Escalation actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationAction {
     Notify,
     AutoRemediate,
@@ -869,7 +869,7 @@ pub struct FinancialReportingConfig {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {
     CostSummary,
     DetailedUsage,
@@ -880,7 +880,7 @@ pub enum ReportType {
 }
 
 /// Report frequency
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportFrequency {
     Daily,
     Weekly,
@@ -901,7 +901,7 @@ pub struct ReportDeliveryConfig {
 }
 
 /// Delivery methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeliveryMethod {
     Email,
     Dashboard,
@@ -911,7 +911,7 @@ pub enum DeliveryMethod {
 }
 
 /// Report formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportFormat {
     PDF,
     CSV,
@@ -932,7 +932,7 @@ pub struct CostAllocationConfig {
 }
 
 /// Allocation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationMethod {
     DirectAllocation,
     ProportionalAllocation,
@@ -957,7 +957,7 @@ pub struct AllocationRule {
 }
 
 /// Allocation source
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationSource {
     SharedResources,
     Infrastructure,
@@ -967,7 +967,7 @@ pub enum AllocationSource {
 }
 
 /// Allocation target
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllocationTarget {
     Department,
     Project,
@@ -990,7 +990,7 @@ pub struct ChargebackConfig {
 }
 
 /// Chargeback models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChargebackModel {
     FullChargeback,
     Showback,
@@ -999,7 +999,7 @@ pub enum ChargebackModel {
 }
 
 /// Billing cycle
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillingCycle {
     Monthly,
     Quarterly,
@@ -1061,17 +1061,6 @@ impl Default for PricingStructure {
             rate_components: vec![],
             volume_discounts: vec![],
             time_based: TimeBasedPricingConfig::default(),
-        }
-    }
-}
-
-impl Default for TimeBasedPricingConfig {
-    fn default() -> Self {
-        Self {
-            peak_hours: PeakHoursPricing::default(),
-            off_peak_hours: OffPeakHoursPricing::default(),
-            weekend_pricing: WeekendPricing::default(),
-            holiday_pricing: HolidayPricing::default(),
         }
     }
 }
@@ -1152,54 +1141,6 @@ impl Default for ServiceLevelAgreements {
     }
 }
 
-impl Default for SupportSLA {
-    fn default() -> Self {
-        Self {
-            response_times: HashMap::new(),
-            resolution_times: HashMap::new(),
-            escalation: EscalationProcedures::default(),
-        }
-    }
-}
-
-impl Default for EscalationProcedures {
-    fn default() -> Self {
-        Self {
-            levels: vec![],
-            automatic: false,
-            triggers: vec![],
-        }
-    }
-}
-
-impl Default for SLAPenalties {
-    fn default() -> Self {
-        Self {
-            structure: PenaltyStructure::default(),
-            credits: CreditStructure::default(),
-            max_penalties: MaxPenalties::default(),
-        }
-    }
-}
-
-impl Default for PenaltyStructure {
-    fn default() -> Self {
-        Self {
-            uptime_penalties: vec![],
-            performance_penalties: vec![],
-        }
-    }
-}
-
-impl Default for CreditStructure {
-    fn default() -> Self {
-        Self {
-            service_credits: vec![],
-            application: CreditApplication::default(),
-        }
-    }
-}
-
 impl Default for CreditApplication {
     fn default() -> Self {
         Self {
@@ -1270,16 +1211,6 @@ impl Default for ForecastingConfig {
             horizons: vec![],
             confidence_intervals: vec![0.95],
             scenario_analysis: ScenarioAnalysisConfig::default(),
-        }
-    }
-}
-
-impl Default for ScenarioAnalysisConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            scenarios: vec![],
-            probability_weights: HashMap::new(),
         }
     }
 }
@@ -1376,16 +1307,6 @@ impl Default for BudgetEnforcementConfig {
             policy: EnforcementPolicy::SoftLimit,
             actions: vec![EnforcementAction::Alert],
             override_permissions: OverridePermissions::default(),
-        }
-    }
-}
-
-impl Default for OverridePermissions {
-    fn default() -> Self {
-        Self {
-            authorized_users: vec![],
-            approval_workflow: ApprovalWorkflow::default(),
-            override_limits: OverrideLimits::default(),
         }
     }
 }

@@ -20,6 +20,7 @@ pub struct TestExecutionEngine {
 }
 
 impl TestExecutionEngine {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             execution_queue: VecDeque::new(),
@@ -42,7 +43,7 @@ impl TestExecutionEngine {
         request: TestExecutionRequest,
     ) -> Result<TestExecutionResult, String> {
         let execution_id = request.id.clone();
-        let test_case_id = request.test_case.id.clone();
+        let test_case_id = request.test_case.id;
         let start_time = SystemTime::now();
 
         // Create test result with default values
@@ -91,6 +92,7 @@ impl TestExecutionEngine {
     }
 
     /// Get execution status
+    #[must_use]
     pub fn get_execution_status(&self, execution_id: &str) -> Option<&ActiveTestExecution> {
         self.active_executions.get(execution_id)
     }
@@ -100,21 +102,24 @@ impl TestExecutionEngine {
         if self.active_executions.remove(execution_id).is_some() {
             Ok(())
         } else {
-            Err(format!("Execution {} not found", execution_id))
+            Err(format!("Execution {execution_id} not found"))
         }
     }
 
     /// Get execution history
-    pub fn get_execution_history(&self) -> &VecDeque<TestExecutionResult> {
+    #[must_use]
+    pub const fn get_execution_history(&self) -> &VecDeque<TestExecutionResult> {
         &self.execution_history
     }
 
     /// Get current queue size
+    #[must_use]
     pub fn queue_size(&self) -> usize {
         self.execution_queue.len()
     }
 
     /// Get active execution count
+    #[must_use]
     pub fn active_execution_count(&self) -> usize {
         self.active_executions.len()
     }
@@ -151,7 +156,8 @@ impl TestExecutionEngine {
     }
 
     /// Check if resources are available for new test
-    pub fn has_available_resources(&self, allocation: &ResourceAllocation) -> bool {
+    #[must_use]
+    pub const fn has_available_resources(&self, allocation: &ResourceAllocation) -> bool {
         let limits = &self.resource_monitor.limits;
         let current = &self.resource_monitor.current_usage;
 
@@ -220,7 +226,7 @@ pub struct ExecutionProgress {
 }
 
 /// Test execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TestStatus {
     Queued,
     Running,
@@ -250,7 +256,7 @@ pub struct TestExecutionResult {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStatus {
     Success,
     Failure(String),
@@ -286,6 +292,7 @@ pub struct ResourceMonitor {
 }
 
 impl ResourceMonitor {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             current_usage: ResourceUsage::default(),

@@ -167,7 +167,7 @@ impl SciRS2ProcessTomographer {
 
         // AGF = (d * process_fidelity + 1) / (d + 1) where d is the dimension
         let process_fidelity = self.calculate_process_fidelity(process_matrix)?;
-        let agf = (dim as f64 * process_fidelity + 1.0) / (dim as f64 + 1.0);
+        let agf = (dim as f64).mul_add(process_fidelity, 1.0) / (dim as f64 + 1.0);
 
         Ok(agf)
     }

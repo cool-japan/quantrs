@@ -44,7 +44,7 @@ pub struct MultiProviderConfig {
 }
 
 /// Provider configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProviderConfig {
     pub api_endpoint: String,
     pub credentials: HashMap<String, String>,
@@ -95,7 +95,7 @@ pub struct ErrorMetrics {
 }
 
 /// Special capabilities
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SpecialCapability {
     MiddleCircuitMeasurement,
     DynamicCircuits,
@@ -188,7 +188,7 @@ pub enum SelectionCriterion {
 }
 
 /// Aggregation methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AggregationMethod {
     WeightedSum,
     WeightedProduct,
@@ -198,7 +198,7 @@ pub enum AggregationMethod {
 }
 
 /// Normalization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NormalizationMethod {
     MinMax,
     ZScore,
@@ -221,7 +221,7 @@ pub struct FailoverConfig {
 }
 
 /// Failover strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FailoverStrategy {
     Immediate,
     Graceful,
@@ -241,7 +241,7 @@ pub struct FailureDetectionConfig {
 }
 
 /// Failure detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FailureDetectionMethod {
     HealthEndpoint,
     ResponseTime,
@@ -261,7 +261,7 @@ pub struct FailoverRecoveryConfig {
 }
 
 /// Recovery strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RecoveryStrategy {
     Automatic,
     Manual,
@@ -296,7 +296,7 @@ pub struct CrossProviderSyncConfig {
 }
 
 /// Synchronization scope
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SyncScope {
     JobStatus,
     ResourceUsage,
@@ -305,7 +305,7 @@ pub enum SyncScope {
 }
 
 /// Conflict resolution strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConflictResolution {
     LastWriteWins,
     FirstWriteWins,
@@ -325,7 +325,7 @@ pub struct ConsistencyConfig {
 }
 
 /// Consistency levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConsistencyLevel {
     Strong,
     Eventual,
@@ -380,7 +380,7 @@ pub struct HealthAlertingConfig {
 }
 
 /// Notification channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Email,
     SMS,
@@ -390,7 +390,7 @@ pub enum NotificationChannel {
 }
 
 /// Escalation configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EscalationConfig {
     /// Escalation levels
     pub levels: Vec<EscalationLevel>,
@@ -410,7 +410,7 @@ pub struct EscalationLevel {
 }
 
 /// Escalation actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationAction {
     Notify,
     Failover,
@@ -427,19 +427,6 @@ impl Default for MultiProviderConfig {
             failover_config: FailoverConfig::default(),
             sync_config: CrossProviderSyncConfig::default(),
             health_monitoring: ProviderHealthConfig::default(),
-        }
-    }
-}
-
-impl Default for ProviderConfig {
-    fn default() -> Self {
-        Self {
-            api_endpoint: String::new(),
-            credentials: HashMap::new(),
-            resource_limits: HashMap::new(),
-            features: ProviderFeatures::default(),
-            connection: ConnectionSettings::default(),
-            rate_limits: RateLimits::default(),
         }
     }
 }
@@ -610,15 +597,6 @@ impl Default for HealthAlertingConfig {
             thresholds: HashMap::new(),
             channels: vec![NotificationChannel::Dashboard],
             escalation: EscalationConfig::default(),
-        }
-    }
-}
-
-impl Default for EscalationConfig {
-    fn default() -> Self {
-        Self {
-            levels: vec![],
-            timeouts: HashMap::new(),
         }
     }
 }

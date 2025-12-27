@@ -1,20 +1,22 @@
 //! SIMD-accelerated operations for quantum state vector simulation
 //!
 //! This module provides SIMD-optimized implementations of quantum gate operations
-//! for improved performance on modern CPUs using SciRS2 SIMD operations.
+//! for improved performance on modern CPUs using `SciRS2` SIMD operations.
 
 use crate::scirs2_complex_simd::{
     apply_cnot_complex_simd, apply_hadamard_gate_complex_simd,
     apply_single_qubit_gate_complex_simd, ComplexSimdOps, ComplexSimdVector,
 };
 use scirs2_core::ndarray::{Array1, ArrayView1, ArrayViewMut1};
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{
+    IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use scirs2_core::simd_ops::SimdUnifiedOps;
 use scirs2_core::Complex64;
 
 /// Simplified SIMD-like structure for complex operations
-/// NOTE: This is being deprecated in favor of SciRS2 SIMD operations.
-/// New code should use scirs2_core::simd_ops::SimdUnifiedOps directly.
+/// NOTE: This is being deprecated in favor of `SciRS2` SIMD operations.
+/// New code should use `scirs2_core::simd_ops::SimdUnifiedOps` directly.
 #[derive(Clone, Copy, Debug)]
 #[deprecated(note = "Use scirs2_core::simd_ops::SimdUnifiedOps instead")]
 pub struct ComplexVec4 {
@@ -23,7 +25,8 @@ pub struct ComplexVec4 {
 }
 
 impl ComplexVec4 {
-    /// Create a new ComplexVec4 from four Complex64 values
+    /// Create a new `ComplexVec4` from four Complex64 values
+    #[must_use]
     pub fn new(values: [Complex64; 4]) -> Self {
         let mut re = [0.0; 4];
         let mut im = [0.0; 4];
@@ -36,7 +39,8 @@ impl ComplexVec4 {
         Self { re, im }
     }
 
-    /// Create a new ComplexVec4 where all elements have the same value
+    /// Create a new `ComplexVec4` where all elements have the same value
+    #[must_use]
     pub const fn splat(value: Complex64) -> Self {
         Self {
             re: [value.re, value.re, value.re, value.re],
@@ -45,12 +49,14 @@ impl ComplexVec4 {
     }
 
     /// Get the element at the specified index
+    #[must_use]
     pub fn get(&self, idx: usize) -> Complex64 {
         assert!(idx < 4, "Index out of bounds");
         Complex64::new(self.re[idx], self.im[idx])
     }
 
-    /// Multiply by another ComplexVec4
+    /// Multiply by another `ComplexVec4`
+    #[must_use]
     pub fn mul(&self, other: &Self) -> Self {
         let mut result = Self {
             re: [0.0; 4],
@@ -65,7 +71,8 @@ impl ComplexVec4 {
         result
     }
 
-    /// Add another ComplexVec4
+    /// Add another `ComplexVec4`
+    #[must_use]
     pub fn add(&self, other: &Self) -> Self {
         let mut result = Self {
             re: [0.0; 4],
@@ -80,7 +87,8 @@ impl ComplexVec4 {
         result
     }
 
-    /// Subtract another ComplexVec4
+    /// Subtract another `ComplexVec4`
+    #[must_use]
     pub fn sub(&self, other: &Self) -> Self {
         let mut result = Self {
             re: [0.0; 4],
@@ -96,6 +104,7 @@ impl ComplexVec4 {
     }
 
     /// Negate all elements
+    #[must_use]
     pub fn neg(&self) -> Self {
         let mut result = Self {
             re: [0.0; 4],
@@ -115,10 +124,10 @@ impl ComplexVec4 {
 // NEW SCIRS2-BASED SIMD IMPLEMENTATIONS
 // ============================================================================
 
-/// Apply a single-qubit gate using SciRS2 SIMD operations
+/// Apply a single-qubit gate using `SciRS2` SIMD operations
 ///
-/// This function uses the SciRS2 SimdUnifiedOps trait for better performance
-/// and compliance with the SciRS2 integration policy.
+/// This function uses the `SciRS2` `SimdUnifiedOps` trait for better performance
+/// and compliance with the `SciRS2` integration policy.
 pub fn apply_single_qubit_gate_simd_v2(
     matrix: &[Complex64; 4],
     in_amps0: &[Complex64],
@@ -192,7 +201,7 @@ pub fn apply_single_qubit_gate_simd_v2(
     }
 }
 
-/// Apply Hadamard gate using SciRS2 SIMD operations
+/// Apply Hadamard gate using `SciRS2` SIMD operations
 pub fn apply_h_gate_simd_v2(
     in_amps0: &[Complex64],
     in_amps1: &[Complex64],
@@ -572,7 +581,7 @@ pub fn apply_rx_gate_simd(
 
 /// SIMD-optimized wrapper function for applying gates
 ///
-/// This function uses enhanced SciRS2 complex SIMD implementations for optimal performance.
+/// This function uses enhanced `SciRS2` complex SIMD implementations for optimal performance.
 pub fn apply_single_qubit_gate_optimized(
     matrix: &[Complex64; 4],
     in_amps0: &[Complex64],
@@ -792,6 +801,7 @@ pub struct GateFusion {
 
 impl GateFusion {
     /// Create a new gate fusion starting with an identity gate
+    #[must_use]
     pub const fn new(target: usize) -> Self {
         Self {
             fused_matrix: [
@@ -822,6 +832,7 @@ impl GateFusion {
     }
 
     /// Check if this fusion can be applied using a specialized SIMD kernel
+    #[must_use]
     pub fn can_use_specialized_kernel(&self) -> bool {
         use std::f64::consts::FRAC_1_SQRT_2;
 
@@ -926,7 +937,7 @@ pub fn apply_cnot_vectorized(
     state.copy_from_slice(&new_state);
 }
 
-/// Scalar implementation of apply_single_qubit_gate for fallback
+/// Scalar implementation of `apply_single_qubit_gate` for fallback
 ///
 /// # Arguments
 ///

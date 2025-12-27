@@ -20,8 +20,7 @@ mod workflow_validation {
         let version_check = version::check_compatibility();
         assert!(
             version_check.is_ok(),
-            "Version compatibility check failed: {:?}",
-            version_check
+            "Version compatibility check failed: {version_check:?}"
         );
 
         // Step 2: Run diagnostics
@@ -44,7 +43,7 @@ mod workflow_validation {
         assert!(has_cpu_cores, "No CPU cores detected");
 
         println!("✅ System readiness workflow: PASSED");
-        println!("   - Memory: {} MB", memory_mb);
+        println!("   - Memory: {memory_mb} MB");
         println!("   - CPU cores: {}", report.capabilities.cpu_cores);
     }
 
@@ -82,9 +81,9 @@ mod workflow_validation {
         );
 
         println!("✅ Configuration workflow: PASSED");
-        println!("   - Threads: {}", default_threads);
-        println!("   - Memory limit: {} GB", default_memory_gb);
-        println!("   - Max qubits: {}", max_qubits);
+        println!("   - Threads: {default_threads}");
+        println!("   - Memory limit: {default_memory_gb} GB");
+        println!("   - Max qubits: {max_qubits}");
     }
 }
 
@@ -114,8 +113,7 @@ mod memory_planning_workflow {
         );
         assert!(
             max_qubits <= 40,
-            "Max qubits seems unrealistic: {}",
-            max_qubits
+            "Max qubits seems unrealistic: {max_qubits}"
         );
 
         // Step 4: Plan for different qubit counts
@@ -135,12 +133,9 @@ mod memory_planning_workflow {
         );
 
         println!("✅ Memory estimation workflow: PASSED");
-        println!("   - Available memory: {} MB", available_memory_mb);
-        println!("   - Max qubits: {}", max_qubits);
-        println!(
-            "   - Feasible simulations: {:?} qubits",
-            feasible_simulations
-        );
+        println!("   - Available memory: {available_memory_mb} MB");
+        println!("   - Max qubits: {max_qubits}");
+        println!("   - Feasible simulations: {feasible_simulations:?} qubits");
     }
 
     /// Test capacity planning for large-scale simulation
@@ -162,20 +157,14 @@ mod memory_planning_workflow {
 
         if is_feasible {
             println!("✅ Capacity planning: FEASIBLE");
-            println!(
-                "   - Target: {} qubits, {} shots",
-                target_qubits, target_shots
-            );
-            println!("   - Required: {} MB", memory_needed_mb);
-            println!("   - Available: {} MB", available_mb);
+            println!("   - Target: {target_qubits} qubits, {target_shots} shots");
+            println!("   - Required: {memory_needed_mb} MB");
+            println!("   - Available: {available_mb} MB");
         } else {
             println!("⚠️  Capacity planning: NOT FEASIBLE");
-            println!(
-                "   - Target: {} qubits, {} shots",
-                target_qubits, target_shots
-            );
-            println!("   - Required: {} MB", memory_needed_mb);
-            println!("   - Available: {} MB", available_mb);
+            println!("   - Target: {target_qubits} qubits, {target_shots} shots");
+            println!("   - Required: {memory_needed_mb} MB");
+            println!("   - Available: {available_mb} MB");
             println!("   - Recommendation: Use tensor network or reduce qubit count");
         }
 
@@ -224,9 +213,9 @@ mod error_handling_workflow {
                 _ => {}
             }
 
-            println!("✅ Error handled: {:?}", category);
-            println!("   - Recoverable: {}", is_recoverable);
-            println!("   - Message: {}", user_msg);
+            println!("✅ Error handled: {category:?}");
+            println!("   - Recoverable: {is_recoverable}");
+            println!("   - Message: {user_msg}");
         }
     }
 
@@ -245,14 +234,14 @@ mod error_handling_workflow {
 
         // Verify error handling works with context
         // The actual context format may vary by error type implementation
-        let error_display = format!("{}", error_with_full_context);
+        let error_display = format!("{error_with_full_context}");
         assert!(
             !error_display.is_empty(),
             "Error should have a display representation"
         );
 
         println!("✅ Error context workflow: PASSED");
-        println!("   - Error with context: {}", error_with_full_context);
+        println!("   - Error with context: {error_with_full_context}");
     }
 }
 
@@ -292,8 +281,8 @@ mod version_compatibility_workflow {
         );
 
         println!("✅ Version info workflow: PASSED");
-        println!("   - QuantRS2: {}", quantrs2_version);
-        println!("   - SciRS2: {}", scirs2_version);
+        println!("   - QuantRS2: {quantrs2_version}");
+        println!("   - SciRS2: {scirs2_version}");
     }
 
     /// Test compatibility validation workflow
@@ -311,7 +300,7 @@ mod version_compatibility_workflow {
             Err(issues) => {
                 println!("⚠️  Compatibility validation: ISSUES FOUND");
                 for issue in issues {
-                    println!("   - {}", issue);
+                    println!("   - {issue}");
                 }
                 // Don't fail the test - compatibility issues may be warnings
             }
@@ -358,8 +347,8 @@ mod utility_functions_workflow {
 
         println!("✅ Quantum math workflow: PASSED");
         println!("   - Original: {:?}", vec![0.3, 0.5, 0.1]);
-        println!("   - Normalized: {:?}", probabilities);
-        println!("   - Entropy: {:.6}", entropy);
+        println!("   - Normalized: {probabilities:?}");
+        println!("   - Entropy: {entropy:.6}");
     }
 
     /// Test Hilbert space utilities workflow
@@ -370,12 +359,11 @@ mod utility_functions_workflow {
 
         for qubits in test_cases {
             let dim = utils::hilbert_dim(qubits);
-            let expected = 2_usize.pow(qubits as u32);
+            let expected = 2_usize.pow(qubits);
 
             assert_eq!(
                 dim, expected,
-                "Hilbert dimension incorrect for {} qubits",
-                qubits
+                "Hilbert dimension incorrect for {qubits} qubits"
             );
 
             // Step 2: Reverse calculation
@@ -407,9 +395,7 @@ mod utility_functions_workflow {
             let formatted = utils::format_memory(bytes);
             assert!(
                 formatted.contains(expected_prefix.split_whitespace().next().unwrap()),
-                "Memory formatting incorrect: expected {}, got {}",
-                expected_prefix,
-                formatted
+                "Memory formatting incorrect: expected {expected_prefix}, got {formatted}"
             );
         }
 
@@ -457,7 +443,7 @@ mod complete_application_workflow {
             Err(issues) => {
                 println!("   ⚠️  Compatibility issues:");
                 for issue in issues {
-                    println!("      - {}", issue);
+                    println!("      - {issue}");
                 }
             }
         }
@@ -491,7 +477,7 @@ mod complete_application_workflow {
         if !report.errors().is_empty() {
             println!("   ⚠️  Errors found:");
             for error in report.errors() {
-                println!("      - {}", error);
+                println!("      - {error}");
             }
         }
 
@@ -506,14 +492,13 @@ mod complete_application_workflow {
         println!("   Threads:      {}", config_data.num_threads.unwrap_or(4));
         let mem_limit_gb = config_data
             .memory_limit_bytes
-            .map(|b| b / (1024 * 1024 * 1024))
-            .unwrap_or(8);
-        println!("   Memory limit: {} GB", mem_limit_gb);
+            .map_or(8, |b| b / (1024 * 1024 * 1024));
+        println!("   Memory limit: {mem_limit_gb} GB");
 
         // Step 5: Plan simulation capacity
         println!("\n📊 Planning simulation capacity...");
         let max_qubits = utils::max_qubits_for_memory(8 * 1024 * 1024 * 1024);
-        println!("   Max qubits:   {}", max_qubits);
+        println!("   Max qubits:   {max_qubits}");
 
         let test_qubit_counts = vec![5, 10, 15, 20];
         for &qubits in &test_qubit_counts {
@@ -593,7 +578,7 @@ fn test_all_workflows_integration() {
     // This test verifies that all workflow tests can be discovered and run
     let workflow_count = 12; // Total number of workflow tests above
 
-    println!("✅ {} end-to-end workflow tests defined", workflow_count);
+    println!("✅ {workflow_count} end-to-end workflow tests defined");
     println!("✅ All workflows use quantrs2 facade consistently");
     println!("✅ Tests cover: initialization, configuration, error handling, capacity planning");
     println!("\nRun individual workflow tests with:");

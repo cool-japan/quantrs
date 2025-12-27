@@ -1367,7 +1367,7 @@ mod tests {
         let hadamard_matrix = hadamard();
         let circuit: Circuit<1> = synthesizer
             .synthesize(&hadamard_matrix, QubitId(0))
-            .unwrap();
+            .expect("Failed to synthesize Hadamard circuit");
 
         // Should produce a circuit that approximates Hadamard
         assert!(circuit.num_gates() > 0);
@@ -1379,7 +1379,9 @@ mod tests {
         let synthesizer = SingleQubitSynthesizer::new(config);
 
         let identity = Array2::<C64>::eye(2);
-        let (alpha, beta, gamma, delta) = synthesizer.zyz_decomposition(&identity).unwrap();
+        let (alpha, beta, gamma, delta) = synthesizer
+            .zyz_decomposition(&identity)
+            .expect("ZYZ decomposition should succeed for identity matrix");
 
         // Identity should have minimal rotation angles
         assert!(gamma.abs() < 1e-10);
@@ -1393,7 +1395,7 @@ mod tests {
         let cnot_matrix = cnot();
         let circuit: Circuit<2> = synthesizer
             .synthesize(&cnot_matrix, QubitId(0), QubitId(1))
-            .unwrap();
+            .expect("Failed to synthesize CNOT circuit");
 
         assert!(circuit.num_gates() > 0);
     }
@@ -1401,7 +1403,9 @@ mod tests {
     #[test]
     fn test_qft_synthesis() {
         let synthesizer = UnitarySynthesizer::default_config();
-        let circuit: Circuit<3> = synthesizer.synthesize_qft(3).unwrap();
+        let circuit: Circuit<3> = synthesizer
+            .synthesize_qft(3)
+            .expect("Failed to synthesize QFT circuit");
 
         // QFT on 3 qubits should have multiple gates
         assert!(circuit.num_gates() > 5);
@@ -1412,7 +1416,7 @@ mod tests {
         let synthesizer = UnitarySynthesizer::default_config();
         let circuit: Circuit<3> = synthesizer
             .synthesize_toffoli(QubitId(0), QubitId(1), QubitId(2))
-            .unwrap();
+            .expect("Failed to synthesize Toffoli circuit");
 
         // Toffoli decomposition should have multiple gates
         assert!(circuit.num_gates() > 10);

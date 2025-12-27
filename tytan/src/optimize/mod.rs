@@ -40,9 +40,10 @@ pub fn optimize_qubo(
             let assignments: HashMap<String, bool> = solution
                 .iter()
                 .enumerate()
-                .map(|(idx, &value)| {
-                    let var_name = idx_to_var.get(&idx).unwrap().clone();
-                    (var_name, value)
+                .filter_map(|(idx, &value)| {
+                    idx_to_var
+                        .get(&idx)
+                        .map(|var_name| (var_name.clone(), value))
                 })
                 .collect();
 
@@ -55,7 +56,11 @@ pub fn optimize_qubo(
         .collect();
 
     // Sort by energy and return best solutions
-    results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+    results.sort_by(|a, b| {
+        a.energy
+            .partial_cmp(&b.energy)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(10); // Return top 10 solutions
 
     results
@@ -79,13 +84,12 @@ pub fn optimize_qubo(
         .collect();
 
     // Create initial solution (either provided or random)
-    let mut solution: Vec<bool> = match initial_guess {
-        Some(guess) => guess,
-        None => {
-            use scirs2_core::random::prelude::*;
-            let mut rng = thread_rng();
-            (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
-        }
+    let mut solution: Vec<bool> = if let Some(guess) = initial_guess {
+        guess
+    } else {
+        use scirs2_core::random::prelude::*;
+        let mut rng = thread_rng();
+        (0..n_vars).map(|_| rng.gen_bool(0.5)).collect()
     };
 
     // Calculate initial energy
@@ -114,11 +118,11 @@ pub fn optimize_qubo(
             rng.gen::<f64>() < p
         };
 
-        if !accept {
+        if accept {
+            energy = new_energy;
+        } else {
             // Undo the flip if not accepted
             solution[flip_idx] = !solution[flip_idx];
-        } else {
-            energy = new_energy;
         }
 
         // Cool down
@@ -129,9 +133,10 @@ pub fn optimize_qubo(
     let assignments: HashMap<String, bool> = solution
         .iter()
         .enumerate()
-        .map(|(idx, &value)| {
-            let var_name = idx_to_var.get(&idx).unwrap().clone();
-            (var_name, value)
+        .filter_map(|(idx, &value)| {
+            idx_to_var
+                .get(&idx)
+                .map(|var_name| (var_name.clone(), value))
         })
         .collect();
 

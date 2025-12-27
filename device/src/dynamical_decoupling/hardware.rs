@@ -77,7 +77,7 @@ pub struct HardwareLimitation {
 }
 
 /// Types of hardware limitations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LimitationType {
     /// Gate set limitations
     GateSet,
@@ -94,7 +94,7 @@ pub enum LimitationType {
 }
 
 /// Severity of limitations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LimitationSeverity {
     Low,
     Medium,
@@ -118,7 +118,7 @@ pub struct AdaptationRequirement {
 }
 
 /// Types of adaptations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationType {
     /// Gate decomposition
     GateDecomposition,
@@ -133,7 +133,7 @@ pub enum AdaptationType {
 }
 
 /// Adaptation priority
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationPriority {
     Low,
     Medium,
@@ -142,7 +142,7 @@ pub enum AdaptationPriority {
 }
 
 /// Adaptation complexity
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationComplexity {
     Simple,
     Moderate,
@@ -330,7 +330,7 @@ pub struct TimingOptimization {
 }
 
 /// Types of timing optimizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TimingOptimizationType {
     /// Parallel execution
     Parallelization,
@@ -343,7 +343,7 @@ pub enum TimingOptimizationType {
 }
 
 /// Risk level for optimizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationRisk {
     Low,
     Medium,
@@ -373,7 +373,7 @@ pub enum SynchronizationRequirements {
 }
 
 /// Synchronization point
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncPoint {
     /// Point location in sequence
     pub location: usize,
@@ -386,7 +386,7 @@ pub struct SyncPoint {
 }
 
 /// Types of synchronization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncType {
     HardSync,
     SoftSync,
@@ -395,7 +395,7 @@ pub enum SyncType {
 }
 
 /// Synchronization criticality
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncCriticality {
     Low,
     Medium,
@@ -523,7 +523,7 @@ pub struct ConnectivityOptimization {
 }
 
 /// Types of connectivity optimizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectivityOptimizationType {
     /// Add direct connections
     AddDirectConnections,
@@ -536,7 +536,7 @@ pub enum ConnectivityOptimizationType {
 }
 
 /// Optimization feasibility
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OptimizationFeasibility {
     HighlyFeasible,
     Feasible,
@@ -644,7 +644,7 @@ pub struct Recommendation {
 }
 
 /// Implementation effort levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplementationEffort {
     Minimal,
     Low,
@@ -731,7 +731,7 @@ pub struct DDHardwareAnalyzer {
 
 impl DDHardwareAnalyzer {
     /// Create new hardware analyzer
-    pub fn new(
+    pub const fn new(
         config: DDHardwareConfig,
         calibration_manager: Option<CalibrationManager>,
         topology: Option<HardwareTopology>,
@@ -749,7 +749,7 @@ impl DDHardwareAnalyzer {
         device_id: &str,
         sequence: &DDSequence,
     ) -> DeviceResult<DDHardwareAnalysis> {
-        println!("Starting DD hardware analysis for device: {}", device_id);
+        println!("Starting DD hardware analysis for device: {device_id}");
 
         let hardware_compatibility = self.assess_hardware_compatibility(sequence)?;
         let resource_utilization = self.analyze_resource_utilization(sequence)?;

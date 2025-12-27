@@ -31,6 +31,7 @@ pub struct QaoaAnnealBridge {
 
 impl QaoaAnnealBridge {
     /// Create a new QAOA-annealing bridge
+    #[must_use]
     pub fn new(config: BridgeConfig) -> Self {
         Self {
             config,
@@ -111,7 +112,7 @@ impl QaoaAnnealBridge {
                 .iter()
                 .skip(layer * solution.len() / num_layers)
                 .take(solution.len() / num_layers)
-                .map(|&x| x as f64)
+                .map(|&x| f64::from(x))
                 .sum();
             let beta = (beta_sum / (solution.len() / num_layers) as f64) * PI / 2.0;
             beta_params.push(beta);
@@ -122,7 +123,7 @@ impl QaoaAnnealBridge {
                 .rev()
                 .skip(layer * solution.len() / num_layers)
                 .take(solution.len() / num_layers)
-                .map(|&x| x as f64)
+                .map(|&x| f64::from(x))
                 .sum();
             let gamma = (gamma_sum / (solution.len() / num_layers) as f64) * PI;
             gamma_params.push(gamma);
@@ -220,7 +221,7 @@ impl QaoaAnnealBridge {
         ))
     }
 
-    fn select_optimization_strategy(
+    const fn select_optimization_strategy(
         &self,
         analysis: &crate::scirs2_integration::GraphAnalysisResult,
     ) -> ApplicationResult<OptimizationStrategy> {
@@ -405,7 +406,7 @@ pub struct ProblemMetadata {
 }
 
 /// Optimization strategy selection
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OptimizationStrategy {
     /// Use only quantum annealing
     AnnealingOnly,
@@ -461,6 +462,7 @@ pub struct PerformanceMetrics {
 
 impl PerformanceMetrics {
     /// Get average optimization time
+    #[must_use]
     pub fn average_time(&self) -> std::time::Duration {
         if self.total_optimizations > 0 {
             self.total_time / self.total_optimizations as u32
@@ -470,6 +472,7 @@ impl PerformanceMetrics {
     }
 
     /// Get most used strategy
+    #[must_use]
     pub fn most_used_strategy(&self) -> Option<OptimizationStrategy> {
         self.strategy_counts
             .iter()
@@ -479,6 +482,7 @@ impl PerformanceMetrics {
 }
 
 /// Example usage and testing functions
+#[must_use]
 pub fn create_example_max_cut_problem(num_vertices: usize) -> UnifiedProblem {
     let mut clauses = Vec::new();
 
@@ -501,7 +505,7 @@ pub fn create_example_max_cut_problem(num_vertices: usize) -> UnifiedProblem {
     UnifiedProblem {
         formulation: ProblemFormulation::Qaoa(qaoa_problem),
         metadata: ProblemMetadata {
-            name: format!("Max-Cut Ring Graph ({})", num_vertices),
+            name: format!("Max-Cut Ring Graph ({num_vertices})"),
             description: "Maximum cut problem on a ring graph".to_string(),
             tags: vec!["max-cut".to_string(), "graph".to_string()],
             difficulty: "medium".to_string(),
@@ -542,7 +546,7 @@ mod tests {
             let result = bridge.qaoa_to_qubo(&qaoa);
             assert!(result.is_ok());
 
-            let qubo = result.unwrap();
+            let qubo = result.expect("QUBO conversion should succeed");
             assert_eq!(qubo.num_variables, 3);
             assert_eq!(qubo.quadratic_matrix.nnz() / 2, 3); // 3 edges in ring
         }
@@ -556,7 +560,7 @@ mod tests {
         let result = bridge.hybrid_optimize(&problem);
         assert!(result.is_ok());
 
-        let opt_result = result.unwrap();
+        let opt_result = result.expect("hybrid optimization should succeed");
         assert_eq!(opt_result.best_solution.len(), 6);
         // Use microseconds for fast operations (millis may be 0 for very fast tests)
         assert!(opt_result.execution_time.as_micros() > 0);

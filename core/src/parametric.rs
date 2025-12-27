@@ -25,60 +25,60 @@ pub enum Parameter {
 
 impl Parameter {
     /// Create a new constant parameter
-    pub fn constant(value: f64) -> Self {
-        Parameter::Constant(value)
+    pub const fn constant(value: f64) -> Self {
+        Self::Constant(value)
     }
 
     /// Create a new complex constant parameter
-    pub fn complex_constant(value: Complex64) -> Self {
-        Parameter::ComplexConstant(value)
+    pub const fn complex_constant(value: Complex64) -> Self {
+        Self::ComplexConstant(value)
     }
 
     /// Create a new symbolic parameter (legacy)
     pub fn symbol(name: &str) -> Self {
-        Parameter::Symbol(SymbolicParameter::new(name))
+        Self::Symbol(SymbolicParameter::new(name))
     }
 
     /// Create a new symbolic parameter with a value (legacy)
     pub fn symbol_with_value(name: &str, value: f64) -> Self {
-        Parameter::Symbol(SymbolicParameter::with_value(name, value))
+        Self::Symbol(SymbolicParameter::with_value(name, value))
     }
 
     /// Create a symbolic expression parameter
-    pub fn symbolic(expr: SymbolicExpression) -> Self {
-        Parameter::Symbolic(expr)
+    pub const fn symbolic(expr: SymbolicExpression) -> Self {
+        Self::Symbolic(expr)
     }
 
     /// Create a symbolic variable
     pub fn variable(name: &str) -> Self {
-        Parameter::Symbolic(SymbolicExpression::variable(name))
+        Self::Symbolic(SymbolicExpression::variable(name))
     }
 
     /// Parse a parameter from a string expression
     pub fn parse(expr: &str) -> QuantRS2Result<Self> {
         // Try to parse as a number first
         if let Ok(value) = expr.parse::<f64>() {
-            return Ok(Parameter::Constant(value));
+            return Ok(Self::Constant(value));
         }
 
         // Otherwise parse as symbolic expression
         let symbolic_expr = SymbolicExpression::parse(expr)?;
-        Ok(Parameter::Symbolic(symbolic_expr))
+        Ok(Self::Symbolic(symbolic_expr))
     }
 
     /// Get the value of the parameter, if available
     pub fn value(&self) -> Option<f64> {
         match self {
-            Parameter::Constant(val) => Some(*val),
-            Parameter::ComplexConstant(val) => {
+            Self::Constant(val) => Some(*val),
+            Self::ComplexConstant(val) => {
                 if val.im.abs() < 1e-12 {
                     Some(val.re)
                 } else {
                     None // Cannot convert complex to real
                 }
             }
-            Parameter::Symbol(sym) => sym.value,
-            Parameter::Symbolic(expr) => {
+            Self::Symbol(sym) => sym.value,
+            Self::Symbolic(expr) => {
                 // Try to evaluate with empty variables
                 expr.evaluate(&HashMap::new()).ok()
             }
@@ -88,10 +88,10 @@ impl Parameter {
     /// Get the complex value of the parameter, if available
     pub fn complex_value(&self) -> Option<Complex64> {
         match self {
-            Parameter::Constant(val) => Some(Complex64::new(*val, 0.0)),
-            Parameter::ComplexConstant(val) => Some(*val),
-            Parameter::Symbol(sym) => sym.value.map(|v| Complex64::new(v, 0.0)),
-            Parameter::Symbolic(expr) => {
+            Self::Constant(val) => Some(Complex64::new(*val, 0.0)),
+            Self::ComplexConstant(val) => Some(*val),
+            Self::Symbol(sym) => sym.value.map(|v| Complex64::new(v, 0.0)),
+            Self::Symbolic(expr) => {
                 // Try to evaluate with empty variables
                 expr.evaluate_complex(&HashMap::new()).ok()
             }
@@ -99,19 +99,19 @@ impl Parameter {
     }
 
     /// Check if the parameter has a concrete value
-    pub fn has_value(&self) -> bool {
+    pub const fn has_value(&self) -> bool {
         match self {
-            Parameter::Constant(_) | Parameter::ComplexConstant(_) => true,
-            Parameter::Symbol(sym) => sym.value.is_some(),
-            Parameter::Symbolic(expr) => expr.is_constant(),
+            Self::Constant(_) | Self::ComplexConstant(_) => true,
+            Self::Symbol(sym) => sym.value.is_some(),
+            Self::Symbolic(expr) => expr.is_constant(),
         }
     }
 
     /// Evaluate the parameter with given variable values
     pub fn evaluate(&self, variables: &HashMap<String, f64>) -> QuantRS2Result<f64> {
         match self {
-            Parameter::Constant(val) => Ok(*val),
-            Parameter::ComplexConstant(val) => {
+            Self::Constant(val) => Ok(*val),
+            Self::ComplexConstant(val) => {
                 if val.im.abs() < 1e-12 {
                     Ok(val.re)
                 } else {
@@ -120,19 +120,18 @@ impl Parameter {
                     ))
                 }
             }
-            Parameter::Symbol(sym) => {
-                if let Some(value) = sym.value {
-                    Ok(value)
-                } else {
+            Self::Symbol(sym) => sym.value.map_or_else(
+                || {
                     variables.get(&sym.name).copied().ok_or_else(|| {
                         crate::error::QuantRS2Error::InvalidInput(format!(
                             "Variable '{}' not found",
                             sym.name
                         ))
                     })
-                }
-            }
-            Parameter::Symbolic(expr) => expr.evaluate(variables),
+                },
+                Ok,
+            ),
+            Self::Symbolic(expr) => expr.evaluate(variables),
         }
     }
 
@@ -142,51 +141,46 @@ impl Parameter {
         variables: &HashMap<String, Complex64>,
     ) -> QuantRS2Result<Complex64> {
         match self {
-            Parameter::Constant(val) => Ok(Complex64::new(*val, 0.0)),
-            Parameter::ComplexConstant(val) => Ok(*val),
-            Parameter::Symbol(sym) => {
-                if let Some(value) = sym.value {
-                    Ok(Complex64::new(value, 0.0))
-                } else {
+            Self::Constant(val) => Ok(Complex64::new(*val, 0.0)),
+            Self::ComplexConstant(val) => Ok(*val),
+            Self::Symbol(sym) => sym.value.map_or_else(
+                || {
                     variables.get(&sym.name).copied().ok_or_else(|| {
                         crate::error::QuantRS2Error::InvalidInput(format!(
                             "Variable '{}' not found",
                             sym.name
                         ))
                     })
-                }
-            }
-            Parameter::Symbolic(expr) => expr.evaluate_complex(variables),
+                },
+                |value| Ok(Complex64::new(value, 0.0)),
+            ),
+            Self::Symbolic(expr) => expr.evaluate_complex(variables),
         }
     }
 
     /// Get all variable names in the parameter
     pub fn variables(&self) -> Vec<String> {
         match self {
-            Parameter::Constant(_) | Parameter::ComplexConstant(_) => Vec::new(),
-            Parameter::Symbol(sym) => {
+            Self::Constant(_) | Self::ComplexConstant(_) => Vec::new(),
+            Self::Symbol(sym) => {
                 if sym.value.is_some() {
                     Vec::new()
                 } else {
                     vec![sym.name.clone()]
                 }
             }
-            Parameter::Symbolic(expr) => expr.variables(),
+            Self::Symbolic(expr) => expr.variables(),
         }
     }
 
     /// Substitute variables with expressions
-    pub fn substitute(&self, substitutions: &HashMap<String, Parameter>) -> QuantRS2Result<Self> {
+    pub fn substitute(&self, substitutions: &HashMap<String, Self>) -> QuantRS2Result<Self> {
         match self {
-            Parameter::Constant(_) | Parameter::ComplexConstant(_) => Ok(self.clone()),
-            Parameter::Symbol(sym) => {
-                if let Some(replacement) = substitutions.get(&sym.name) {
-                    Ok(replacement.clone())
-                } else {
-                    Ok(self.clone())
-                }
-            }
-            Parameter::Symbolic(expr) => {
+            Self::Constant(_) | Self::ComplexConstant(_) => Ok(self.clone()),
+            Self::Symbol(sym) => Ok(substitutions
+                .get(&sym.name)
+                .map_or_else(|| self.clone(), |r| r.clone())),
+            Self::Symbolic(expr) => {
                 // Convert Parameter substitutions to SymbolicExpression substitutions
                 let symbolic_subs: HashMap<String, SymbolicExpression> = substitutions
                     .iter()
@@ -194,7 +188,7 @@ impl Parameter {
                     .collect();
 
                 let new_expr = expr.substitute(&symbolic_subs)?;
-                Ok(Parameter::Symbolic(new_expr))
+                Ok(Self::Symbolic(new_expr))
             }
         }
     }
@@ -202,16 +196,13 @@ impl Parameter {
     /// Convert parameter to SymbolicExpression
     pub fn to_symbolic_expression(&self) -> SymbolicExpression {
         match self {
-            Parameter::Constant(val) => SymbolicExpression::constant(*val),
-            Parameter::ComplexConstant(val) => SymbolicExpression::complex_constant(*val),
-            Parameter::Symbol(sym) => {
-                if let Some(value) = sym.value {
-                    SymbolicExpression::constant(value)
-                } else {
-                    SymbolicExpression::variable(&sym.name)
-                }
-            }
-            Parameter::Symbolic(expr) => expr.clone(),
+            Self::Constant(val) => SymbolicExpression::constant(*val),
+            Self::ComplexConstant(val) => SymbolicExpression::complex_constant(*val),
+            Self::Symbol(sym) => sym.value.map_or_else(
+                || SymbolicExpression::variable(&sym.name),
+                SymbolicExpression::constant,
+            ),
+            Self::Symbolic(expr) => expr.clone(),
         }
     }
 
@@ -222,7 +213,7 @@ impl Parameter {
 
         let expr = self.to_symbolic_expression();
         let diff_expr = calculus::diff(&expr, var)?;
-        Ok(Parameter::Symbolic(diff_expr))
+        Ok(Self::Symbolic(diff_expr))
     }
 
     /// Integrate the parameter with respect to a variable
@@ -232,35 +223,35 @@ impl Parameter {
 
         let expr = self.to_symbolic_expression();
         let int_expr = calculus::integrate(&expr, var)?;
-        Ok(Parameter::Symbolic(int_expr))
+        Ok(Self::Symbolic(int_expr))
     }
 }
 
 impl From<f64> for Parameter {
     fn from(value: f64) -> Self {
-        Parameter::Constant(value)
+        Self::Constant(value)
     }
 }
 
 impl From<Complex64> for Parameter {
     fn from(value: Complex64) -> Self {
         if value.im == 0.0 {
-            Parameter::Constant(value.re)
+            Self::Constant(value.re)
         } else {
-            Parameter::ComplexConstant(value)
+            Self::ComplexConstant(value)
         }
     }
 }
 
 impl From<SymbolicExpression> for Parameter {
     fn from(expr: SymbolicExpression) -> Self {
-        Parameter::Symbolic(expr)
+        Self::Symbolic(expr)
     }
 }
 
 impl From<&str> for Parameter {
     fn from(name: &str) -> Self {
-        Parameter::variable(name)
+        Self::variable(name)
     }
 }
 
@@ -269,21 +260,19 @@ impl Add for Parameter {
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a + b),
-            (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(a + b)
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a + b),
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a + b),
+            (Self::Constant(a), Self::ComplexConstant(b)) => {
+                Self::ComplexConstant(Complex64::new(a, 0.0) + b)
             }
-            (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(Complex64::new(a, 0.0) + b)
-            }
-            (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
-                Parameter::ComplexConstant(a + Complex64::new(b, 0.0))
+            (Self::ComplexConstant(a), Self::Constant(b)) => {
+                Self::ComplexConstant(a + Complex64::new(b, 0.0))
             }
             (a, b) => {
                 // Convert to symbolic expressions and add
                 let a_expr = a.to_symbolic_expression();
                 let b_expr = b.to_symbolic_expression();
-                Parameter::Symbolic(a_expr + b_expr)
+                Self::Symbolic(a_expr + b_expr)
             }
         }
     }
@@ -294,21 +283,19 @@ impl Sub for Parameter {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a - b),
-            (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(a - b)
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a - b),
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a - b),
+            (Self::Constant(a), Self::ComplexConstant(b)) => {
+                Self::ComplexConstant(Complex64::new(a, 0.0) - b)
             }
-            (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(Complex64::new(a, 0.0) - b)
-            }
-            (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
-                Parameter::ComplexConstant(a - Complex64::new(b, 0.0))
+            (Self::ComplexConstant(a), Self::Constant(b)) => {
+                Self::ComplexConstant(a - Complex64::new(b, 0.0))
             }
             (a, b) => {
                 // Convert to symbolic expressions and subtract
                 let a_expr = a.to_symbolic_expression();
                 let b_expr = b.to_symbolic_expression();
-                Parameter::Symbolic(a_expr - b_expr)
+                Self::Symbolic(a_expr - b_expr)
             }
         }
     }
@@ -319,21 +306,19 @@ impl Mul for Parameter {
 
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a * b),
-            (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(a * b)
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a * b),
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a * b),
+            (Self::Constant(a), Self::ComplexConstant(b)) => {
+                Self::ComplexConstant(Complex64::new(a, 0.0) * b)
             }
-            (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(Complex64::new(a, 0.0) * b)
-            }
-            (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
-                Parameter::ComplexConstant(a * Complex64::new(b, 0.0))
+            (Self::ComplexConstant(a), Self::Constant(b)) => {
+                Self::ComplexConstant(a * Complex64::new(b, 0.0))
             }
             (a, b) => {
                 // Convert to symbolic expressions and multiply
                 let a_expr = a.to_symbolic_expression();
                 let b_expr = b.to_symbolic_expression();
-                Parameter::Symbolic(a_expr * b_expr)
+                Self::Symbolic(a_expr * b_expr)
             }
         }
     }
@@ -344,21 +329,19 @@ impl Div for Parameter {
 
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Parameter::Constant(a), Parameter::Constant(b)) => Parameter::Constant(a / b),
-            (Parameter::ComplexConstant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(a / b)
+            (Self::Constant(a), Self::Constant(b)) => Self::Constant(a / b),
+            (Self::ComplexConstant(a), Self::ComplexConstant(b)) => Self::ComplexConstant(a / b),
+            (Self::Constant(a), Self::ComplexConstant(b)) => {
+                Self::ComplexConstant(Complex64::new(a, 0.0) / b)
             }
-            (Parameter::Constant(a), Parameter::ComplexConstant(b)) => {
-                Parameter::ComplexConstant(Complex64::new(a, 0.0) / b)
-            }
-            (Parameter::ComplexConstant(a), Parameter::Constant(b)) => {
-                Parameter::ComplexConstant(a / Complex64::new(b, 0.0))
+            (Self::ComplexConstant(a), Self::Constant(b)) => {
+                Self::ComplexConstant(a / Complex64::new(b, 0.0))
             }
             (a, b) => {
                 // Convert to symbolic expressions and divide
                 let a_expr = a.to_symbolic_expression();
                 let b_expr = b.to_symbolic_expression();
-                Parameter::Symbolic(a_expr / b_expr)
+                Self::Symbolic(a_expr / b_expr)
             }
         }
     }
@@ -377,7 +360,7 @@ pub struct SymbolicParameter {
 impl SymbolicParameter {
     /// Create a new symbolic parameter without a value
     pub fn new(name: &str) -> Self {
-        SymbolicParameter {
+        Self {
             name: name.to_string(),
             value: None,
         }
@@ -385,19 +368,19 @@ impl SymbolicParameter {
 
     /// Create a new symbolic parameter with a value
     pub fn with_value(name: &str, value: f64) -> Self {
-        SymbolicParameter {
+        Self {
             name: name.to_string(),
             value: Some(value),
         }
     }
 
     /// Set the value of the parameter
-    pub fn set_value(&mut self, value: f64) {
+    pub const fn set_value(&mut self, value: f64) {
         self.value = Some(value);
     }
 
     /// Clear the value of the parameter
-    pub fn clear_value(&mut self) {
+    pub const fn clear_value(&mut self) {
         self.value = None;
     }
 }
@@ -442,8 +425,8 @@ pub struct ParametricRotationX {
 
 impl ParametricRotationX {
     /// Create a new X-rotation gate with a constant angle
-    pub fn new(target: QubitId, theta: f64) -> Self {
-        ParametricRotationX {
+    pub const fn new(target: QubitId, theta: f64) -> Self {
+        Self {
             target,
             theta: Parameter::constant(theta),
         }
@@ -451,7 +434,7 @@ impl ParametricRotationX {
 
     /// Create a new X-rotation gate with a symbolic angle
     pub fn new_symbolic(target: QubitId, name: &str) -> Self {
-        ParametricRotationX {
+        Self {
             target,
             theta: Parameter::symbol(name),
         }
@@ -472,20 +455,23 @@ impl GateOp for ParametricRotationX {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        if let Some(theta) = self.theta.value() {
-            let cos = (theta / 2.0).cos();
-            let sin = (theta / 2.0).sin();
-            Ok(vec![
-                Complex64::new(cos, 0.0),
-                Complex64::new(0.0, -sin),
-                Complex64::new(0.0, -sin),
-                Complex64::new(cos, 0.0),
-            ])
-        } else {
-            Err(crate::error::QuantRS2Error::UnsupportedOperation(
-                "Cannot generate matrix for RX gate with unbound symbolic parameter".into(),
-            ))
-        }
+        self.theta.value().map_or_else(
+            || {
+                Err(crate::error::QuantRS2Error::UnsupportedOperation(
+                    "Cannot generate matrix for RX gate with unbound symbolic parameter".into(),
+                ))
+            },
+            |theta| {
+                let cos = (theta / 2.0).cos();
+                let sin = (theta / 2.0).sin();
+                Ok(vec![
+                    Complex64::new(cos, 0.0),
+                    Complex64::new(0.0, -sin),
+                    Complex64::new(0.0, -sin),
+                    Complex64::new(cos, 0.0),
+                ])
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -516,7 +502,7 @@ impl ParametricGate for ParametricRotationX {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricRotationX {
+        Ok(Box::new(Self {
             target: self.target,
             theta: params[0].clone(),
         }))
@@ -529,13 +515,12 @@ impl ParametricGate for ParametricRotationX {
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         if index != 0 {
             return Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "RotationX has only 1 parameter, got index {}",
-                index
+                "RotationX has only 1 parameter, got index {index}"
             )));
         }
-        Ok(Box::new(ParametricRotationX {
+        Ok(Box::new(Self {
             target: self.target,
-            theta: param.clone(),
+            theta: param,
         }))
     }
 
@@ -544,7 +529,7 @@ impl ParametricGate for ParametricRotationX {
             Parameter::Symbol(ref sym) => {
                 for (name, value) in values {
                     if sym.name == *name {
-                        return Ok(Box::new(ParametricRotationX {
+                        return Ok(Box::new(Self {
                             target: self.target,
                             theta: Parameter::Symbol(SymbolicParameter::with_value(
                                 &sym.name, *value,
@@ -576,8 +561,8 @@ pub struct ParametricRotationY {
 
 impl ParametricRotationY {
     /// Create a new Y-rotation gate with a constant angle
-    pub fn new(target: QubitId, theta: f64) -> Self {
-        ParametricRotationY {
+    pub const fn new(target: QubitId, theta: f64) -> Self {
+        Self {
             target,
             theta: Parameter::constant(theta),
         }
@@ -585,7 +570,7 @@ impl ParametricRotationY {
 
     /// Create a new Y-rotation gate with a symbolic angle
     pub fn new_symbolic(target: QubitId, name: &str) -> Self {
-        ParametricRotationY {
+        Self {
             target,
             theta: Parameter::symbol(name),
         }
@@ -606,20 +591,23 @@ impl GateOp for ParametricRotationY {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        if let Some(theta) = self.theta.value() {
-            let cos = (theta / 2.0).cos();
-            let sin = (theta / 2.0).sin();
-            Ok(vec![
-                Complex64::new(cos, 0.0),
-                Complex64::new(-sin, 0.0),
-                Complex64::new(sin, 0.0),
-                Complex64::new(cos, 0.0),
-            ])
-        } else {
-            Err(crate::error::QuantRS2Error::UnsupportedOperation(
-                "Cannot generate matrix for RY gate with unbound symbolic parameter".into(),
-            ))
-        }
+        self.theta.value().map_or_else(
+            || {
+                Err(crate::error::QuantRS2Error::UnsupportedOperation(
+                    "Cannot generate matrix for RY gate with unbound symbolic parameter".into(),
+                ))
+            },
+            |theta| {
+                let cos = (theta / 2.0).cos();
+                let sin = (theta / 2.0).sin();
+                Ok(vec![
+                    Complex64::new(cos, 0.0),
+                    Complex64::new(-sin, 0.0),
+                    Complex64::new(sin, 0.0),
+                    Complex64::new(cos, 0.0),
+                ])
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -650,7 +638,7 @@ impl ParametricGate for ParametricRotationY {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricRotationY {
+        Ok(Box::new(Self {
             target: self.target,
             theta: params[0].clone(),
         }))
@@ -663,13 +651,12 @@ impl ParametricGate for ParametricRotationY {
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         if index != 0 {
             return Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "RotationY has only 1 parameter, got index {}",
-                index
+                "RotationY has only 1 parameter, got index {index}"
             )));
         }
-        Ok(Box::new(ParametricRotationY {
+        Ok(Box::new(Self {
             target: self.target,
-            theta: param.clone(),
+            theta: param,
         }))
     }
 
@@ -678,7 +665,7 @@ impl ParametricGate for ParametricRotationY {
             Parameter::Symbol(ref sym) => {
                 for (name, value) in values {
                     if sym.name == *name {
-                        return Ok(Box::new(ParametricRotationY {
+                        return Ok(Box::new(Self {
                             target: self.target,
                             theta: Parameter::Symbol(SymbolicParameter::with_value(
                                 &sym.name, *value,
@@ -710,8 +697,8 @@ pub struct ParametricRotationZ {
 
 impl ParametricRotationZ {
     /// Create a new Z-rotation gate with a constant angle
-    pub fn new(target: QubitId, theta: f64) -> Self {
-        ParametricRotationZ {
+    pub const fn new(target: QubitId, theta: f64) -> Self {
+        Self {
             target,
             theta: Parameter::constant(theta),
         }
@@ -719,7 +706,7 @@ impl ParametricRotationZ {
 
     /// Create a new Z-rotation gate with a symbolic angle
     pub fn new_symbolic(target: QubitId, name: &str) -> Self {
-        ParametricRotationZ {
+        Self {
             target,
             theta: Parameter::symbol(name),
         }
@@ -740,20 +727,23 @@ impl GateOp for ParametricRotationZ {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        if let Some(theta) = self.theta.value() {
-            let phase = Complex64::new(0.0, -theta / 2.0).exp();
-            let phase_conj = Complex64::new(0.0, theta / 2.0).exp();
-            Ok(vec![
-                phase_conj,
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
-                phase,
-            ])
-        } else {
-            Err(crate::error::QuantRS2Error::UnsupportedOperation(
-                "Cannot generate matrix for RZ gate with unbound symbolic parameter".into(),
-            ))
-        }
+        self.theta.value().map_or_else(
+            || {
+                Err(crate::error::QuantRS2Error::UnsupportedOperation(
+                    "Cannot generate matrix for RZ gate with unbound symbolic parameter".into(),
+                ))
+            },
+            |theta| {
+                let phase = Complex64::new(0.0, -theta / 2.0).exp();
+                let phase_conj = Complex64::new(0.0, theta / 2.0).exp();
+                Ok(vec![
+                    phase_conj,
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    phase,
+                ])
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -784,7 +774,7 @@ impl ParametricGate for ParametricRotationZ {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricRotationZ {
+        Ok(Box::new(Self {
             target: self.target,
             theta: params[0].clone(),
         }))
@@ -797,13 +787,12 @@ impl ParametricGate for ParametricRotationZ {
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         if index != 0 {
             return Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "RotationZ has only 1 parameter, got index {}",
-                index
+                "RotationZ has only 1 parameter, got index {index}"
             )));
         }
-        Ok(Box::new(ParametricRotationZ {
+        Ok(Box::new(Self {
             target: self.target,
-            theta: param.clone(),
+            theta: param,
         }))
     }
 
@@ -812,7 +801,7 @@ impl ParametricGate for ParametricRotationZ {
             Parameter::Symbol(ref sym) => {
                 for (name, value) in values {
                     if sym.name == *name {
-                        return Ok(Box::new(ParametricRotationZ {
+                        return Ok(Box::new(Self {
                             target: self.target,
                             theta: Parameter::Symbol(SymbolicParameter::with_value(
                                 &sym.name, *value,
@@ -850,8 +839,8 @@ pub struct ParametricU {
 
 impl ParametricU {
     /// Create a new U-gate with constant angles
-    pub fn new(target: QubitId, theta: f64, phi: f64, lambda: f64) -> Self {
-        ParametricU {
+    pub const fn new(target: QubitId, theta: f64, phi: f64, lambda: f64) -> Self {
+        Self {
             target,
             theta: Parameter::constant(theta),
             phi: Parameter::constant(phi),
@@ -866,7 +855,7 @@ impl ParametricU {
         phi_name: &str,
         lambda_name: &str,
     ) -> Self {
-        ParametricU {
+        Self {
             target,
             theta: Parameter::symbol(theta_name),
             phi: Parameter::symbol(phi_name),
@@ -950,7 +939,7 @@ impl ParametricGate for ParametricU {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricU {
+        Ok(Box::new(Self {
             target: self.target,
             theta: params[0].clone(),
             phi: params[1].clone(),
@@ -964,27 +953,26 @@ impl ParametricGate for ParametricU {
         param: Parameter,
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         match index {
-            0 => Ok(Box::new(ParametricU {
+            0 => Ok(Box::new(Self {
                 target: self.target,
-                theta: param.clone(),
+                theta: param,
                 phi: self.phi.clone(),
                 lambda: self.lambda.clone(),
             })),
-            1 => Ok(Box::new(ParametricU {
+            1 => Ok(Box::new(Self {
                 target: self.target,
                 theta: self.theta.clone(),
-                phi: param.clone(),
+                phi: param,
                 lambda: self.lambda.clone(),
             })),
-            2 => Ok(Box::new(ParametricU {
+            2 => Ok(Box::new(Self {
                 target: self.target,
                 theta: self.theta.clone(),
                 phi: self.phi.clone(),
-                lambda: param.clone(),
+                lambda: param,
             })),
             _ => Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "U gate has only 3 parameters, got index {}",
-                index
+                "U gate has only 3 parameters, got index {index}"
             ))),
         }
     }
@@ -1048,8 +1036,8 @@ pub struct ParametricCRX {
 
 impl ParametricCRX {
     /// Create a new CRX gate with a constant angle
-    pub fn new(control: QubitId, target: QubitId, theta: f64) -> Self {
-        ParametricCRX {
+    pub const fn new(control: QubitId, target: QubitId, theta: f64) -> Self {
+        Self {
             control,
             target,
             theta: Parameter::constant(theta),
@@ -1058,7 +1046,7 @@ impl ParametricCRX {
 
     /// Create a new CRX gate with a symbolic angle
     pub fn new_symbolic(control: QubitId, target: QubitId, name: &str) -> Self {
-        ParametricCRX {
+        Self {
             control,
             target,
             theta: Parameter::symbol(name),
@@ -1080,33 +1068,36 @@ impl GateOp for ParametricCRX {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        if let Some(theta) = self.theta.value() {
-            let cos = (theta / 2.0).cos();
-            let sin = (theta / 2.0).sin();
+        self.theta.value().map_or_else(
+            || {
+                Err(crate::error::QuantRS2Error::UnsupportedOperation(
+                    "Cannot generate matrix for CRX gate with unbound symbolic parameter".into(),
+                ))
+            },
+            |theta| {
+                let cos = (theta / 2.0).cos();
+                let sin = (theta / 2.0).sin();
 
-            Ok(vec![
-                Complex64::new(1.0, 0.0),  // (0,0)
-                Complex64::new(0.0, 0.0),  // (0,1)
-                Complex64::new(0.0, 0.0),  // (0,2)
-                Complex64::new(0.0, 0.0),  // (0,3)
-                Complex64::new(0.0, 0.0),  // (1,0)
-                Complex64::new(1.0, 0.0),  // (1,1)
-                Complex64::new(0.0, 0.0),  // (1,2)
-                Complex64::new(0.0, 0.0),  // (1,3)
-                Complex64::new(0.0, 0.0),  // (2,0)
-                Complex64::new(0.0, 0.0),  // (2,1)
-                Complex64::new(cos, 0.0),  // (2,2)
-                Complex64::new(0.0, -sin), // (2,3)
-                Complex64::new(0.0, 0.0),  // (3,0)
-                Complex64::new(0.0, 0.0),  // (3,1)
-                Complex64::new(0.0, -sin), // (3,2)
-                Complex64::new(cos, 0.0),  // (3,3)
-            ])
-        } else {
-            Err(crate::error::QuantRS2Error::UnsupportedOperation(
-                "Cannot generate matrix for CRX gate with unbound symbolic parameter".into(),
-            ))
-        }
+                Ok(vec![
+                    Complex64::new(1.0, 0.0),  // (0,0)
+                    Complex64::new(0.0, 0.0),  // (0,1)
+                    Complex64::new(0.0, 0.0),  // (0,2)
+                    Complex64::new(0.0, 0.0),  // (0,3)
+                    Complex64::new(0.0, 0.0),  // (1,0)
+                    Complex64::new(1.0, 0.0),  // (1,1)
+                    Complex64::new(0.0, 0.0),  // (1,2)
+                    Complex64::new(0.0, 0.0),  // (1,3)
+                    Complex64::new(0.0, 0.0),  // (2,0)
+                    Complex64::new(0.0, 0.0),  // (2,1)
+                    Complex64::new(cos, 0.0),  // (2,2)
+                    Complex64::new(0.0, -sin), // (2,3)
+                    Complex64::new(0.0, 0.0),  // (3,0)
+                    Complex64::new(0.0, 0.0),  // (3,1)
+                    Complex64::new(0.0, -sin), // (3,2)
+                    Complex64::new(cos, 0.0),  // (3,3)
+                ])
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -1137,7 +1128,7 @@ impl ParametricGate for ParametricCRX {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricCRX {
+        Ok(Box::new(Self {
             control: self.control,
             target: self.target,
             theta: params[0].clone(),
@@ -1151,14 +1142,13 @@ impl ParametricGate for ParametricCRX {
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         if index != 0 {
             return Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "CRX has only 1 parameter, got index {}",
-                index
+                "CRX has only 1 parameter, got index {index}"
             )));
         }
-        Ok(Box::new(ParametricCRX {
+        Ok(Box::new(Self {
             control: self.control,
             target: self.target,
-            theta: param.clone(),
+            theta: param,
         }))
     }
 
@@ -1167,7 +1157,7 @@ impl ParametricGate for ParametricCRX {
             Parameter::Symbol(ref sym) => {
                 for (name, value) in values {
                     if sym.name == *name {
-                        return Ok(Box::new(ParametricCRX {
+                        return Ok(Box::new(Self {
                             control: self.control,
                             target: self.target,
                             theta: Parameter::Symbol(SymbolicParameter::with_value(
@@ -1200,8 +1190,8 @@ pub struct ParametricPhaseShift {
 
 impl ParametricPhaseShift {
     /// Create a new phase shift gate with a constant phase
-    pub fn new(target: QubitId, phi: f64) -> Self {
-        ParametricPhaseShift {
+    pub const fn new(target: QubitId, phi: f64) -> Self {
+        Self {
             target,
             phi: Parameter::constant(phi),
         }
@@ -1209,7 +1199,7 @@ impl ParametricPhaseShift {
 
     /// Create a new phase shift gate with a symbolic phase
     pub fn new_symbolic(target: QubitId, name: &str) -> Self {
-        ParametricPhaseShift {
+        Self {
             target,
             phi: Parameter::symbol(name),
         }
@@ -1230,20 +1220,23 @@ impl GateOp for ParametricPhaseShift {
     }
 
     fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
-        if let Some(phi) = self.phi.value() {
-            let phase = Complex64::new(phi.cos(), phi.sin());
-            Ok(vec![
-                Complex64::new(1.0, 0.0),
-                Complex64::new(0.0, 0.0),
-                Complex64::new(0.0, 0.0),
-                phase,
-            ])
-        } else {
-            Err(crate::error::QuantRS2Error::UnsupportedOperation(
-                "Cannot generate matrix for phase shift gate with unbound symbolic parameter"
-                    .into(),
-            ))
-        }
+        self.phi.value().map_or_else(
+            || {
+                Err(crate::error::QuantRS2Error::UnsupportedOperation(
+                    "Cannot generate matrix for phase shift gate with unbound symbolic parameter"
+                        .into(),
+                ))
+            },
+            |phi| {
+                let phase = Complex64::new(phi.cos(), phi.sin());
+                Ok(vec![
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    phase,
+                ])
+            },
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -1274,7 +1267,7 @@ impl ParametricGate for ParametricPhaseShift {
                 params.len()
             )));
         }
-        Ok(Box::new(ParametricPhaseShift {
+        Ok(Box::new(Self {
             target: self.target,
             phi: params[0].clone(),
         }))
@@ -1287,13 +1280,12 @@ impl ParametricGate for ParametricPhaseShift {
     ) -> QuantRS2Result<Box<dyn ParametricGate>> {
         if index != 0 {
             return Err(crate::error::QuantRS2Error::InvalidInput(format!(
-                "Phase shift gate has only 1 parameter, got index {}",
-                index
+                "Phase shift gate has only 1 parameter, got index {index}"
             )));
         }
-        Ok(Box::new(ParametricPhaseShift {
+        Ok(Box::new(Self {
             target: self.target,
-            phi: param.clone(),
+            phi: param,
         }))
     }
 
@@ -1302,7 +1294,7 @@ impl ParametricGate for ParametricPhaseShift {
             Parameter::Symbol(ref sym) => {
                 for (name, value) in values {
                     if sym.name == *name {
-                        return Ok(Box::new(ParametricPhaseShift {
+                        return Ok(Box::new(Self {
                             target: self.target,
                             phi: Parameter::Symbol(SymbolicParameter::with_value(
                                 &sym.name, *value,

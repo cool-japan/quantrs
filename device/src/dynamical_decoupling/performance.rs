@@ -248,7 +248,7 @@ pub struct DDPerformanceAnalyzer {
 
 impl DDPerformanceAnalyzer {
     /// Create new performance analyzer
-    pub fn new(config: DDPerformanceConfig) -> Self {
+    pub const fn new(config: DDPerformanceConfig) -> Self {
         Self {
             config,
             historical_data: Vec::new(),
@@ -286,10 +286,10 @@ impl DDPerformanceAnalyzer {
         let statistical_analysis = self.perform_statistical_analysis(&metrics, sequence)?;
 
         // Comparative analysis (if historical data exists)
-        let comparative_analysis = if !self.historical_data.is_empty() {
-            Some(self.perform_comparative_analysis(&metrics)?)
-        } else {
+        let comparative_analysis = if self.historical_data.is_empty() {
             None
+        } else {
+            Some(self.perform_comparative_analysis(&metrics)?)
         };
 
         // Analyze performance trends
@@ -376,9 +376,7 @@ impl DDPerformanceAnalyzer {
         let order_factor = 0.001 * (sequence.properties.sequence_order as f64);
         let overhead_penalty = -0.0001 * (sequence.properties.pulse_count as f64);
 
-        Ok((base_fidelity + order_factor + overhead_penalty)
-            .max(0.0)
-            .min(1.0))
+        Ok((base_fidelity + order_factor + overhead_penalty).clamp(0.0, 1.0))
     }
 
     /// Calculate robustness score
@@ -570,7 +568,7 @@ impl DDPerformanceAnalyzer {
 
         // Populate with basic statistics from the metrics
         for (metric, &value) in metrics {
-            let metric_name = format!("{:?}", metric);
+            let metric_name = format!("{metric:?}");
             means.insert(metric_name.clone(), value);
             standard_deviations.insert(metric_name.clone(), value * 0.1); // 10% std dev
             medians.insert(metric_name.clone(), value);
@@ -654,11 +652,11 @@ impl DDPerformanceAnalyzer {
 
             // Calculate median and percentiles (simplified)
             let mut sorted = values.to_vec();
-            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
             let len = sorted.len();
 
             let median = if len % 2 == 0 {
-                (sorted[len / 2 - 1] + sorted[len / 2]) / 2.0
+                f64::midpoint(sorted[len / 2 - 1], sorted[len / 2])
             } else {
                 sorted[len / 2]
             };

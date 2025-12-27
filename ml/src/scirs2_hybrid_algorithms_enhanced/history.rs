@@ -49,8 +49,9 @@ impl OptimizationHistory {
             return Ok(0.0);
         }
 
-        let first_cost = self.iterations.first().unwrap().cost;
-        let last_cost = self.iterations.last().unwrap().cost;
+        // Safe: we checked iterations.len() >= 2 above
+        let first_cost = self.iterations.first().expect("guaranteed by len check").cost;
+        let last_cost = self.iterations.last().expect("guaranteed by len check").cost;
         let iterations = self.iterations.len() as f64;
 
         Ok((first_cost - last_cost).abs() / iterations)
@@ -77,9 +78,7 @@ pub struct TrainingHistory {
 
 impl TrainingHistory {
     pub fn new() -> Self {
-        Self {
-            epochs: Vec::new(),
-        }
+        Self { epochs: Vec::new() }
     }
 
     pub fn record_epoch(&mut self, epoch: usize, loss: f64, val_accuracy: f64) {

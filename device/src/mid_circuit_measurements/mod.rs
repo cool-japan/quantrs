@@ -334,7 +334,7 @@ pub struct SystemStatus {
 }
 
 /// System health status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemHealth {
     Healthy,
     Warning,

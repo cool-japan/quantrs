@@ -1136,7 +1136,7 @@ impl AdvancedSatelliteConstellation {
         // Select satellite with highest link quality
         visible_satellites
             .iter()
-            .max_by(|a, b| a.link_quality.partial_cmp(&b.link_quality).unwrap())
+            .max_by(|a, b| a.link_quality.partial_cmp(&b.link_quality).unwrap_or(std::cmp::Ordering::Equal))
             .ok_or_else(|| QuantumInternetEnhancementError::CoverageOptimizationFailed(
                 "No visible satellites found".to_string()
             ))

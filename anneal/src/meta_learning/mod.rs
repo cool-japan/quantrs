@@ -205,7 +205,7 @@ pub struct MetaLearner {
 }
 
 /// Meta-learning algorithms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetaLearningAlgorithm {
     /// Model-Agnostic Meta-Learning
     MAML,
@@ -250,7 +250,7 @@ pub struct PerformanceEvaluator {
 }
 
 /// Evaluation metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationMetric {
     /// Mean squared error
     MeanSquaredError,
@@ -271,7 +271,7 @@ pub enum EvaluationMetric {
 }
 
 /// Cross-validation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CrossValidationStrategy {
     /// K-fold cross-validation
     KFold(usize),
@@ -286,7 +286,7 @@ pub enum CrossValidationStrategy {
 }
 
 /// Statistical tests
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatisticalTest {
     /// t-test
     TTest,
@@ -364,6 +364,7 @@ pub struct MetaLearningStatistics {
 
 impl MetaLearningOptimizer {
     /// Create new meta-learning optimizer
+    #[must_use]
     pub fn new(config: MetaLearningConfig) -> Self {
         Self {
             config: config.clone(),
@@ -379,7 +380,7 @@ impl MetaLearningOptimizer {
                 config.portfolio_config.clone(),
             ))),
             multi_objective_optimizer: Arc::new(Mutex::new(MultiObjectiveOptimizer::new(
-                config.multi_objective_config.clone(),
+                config.multi_objective_config,
             ))),
             transfer_learner: Arc::new(Mutex::new(TransferLearner::new())),
         }
@@ -431,7 +432,7 @@ impl MetaLearningOptimizer {
 
         let total_time = start_time.elapsed();
 
-        println!("Meta-learning optimization completed in {:?}", total_time);
+        println!("Meta-learning optimization completed in {total_time:?}");
 
         Ok(MetaOptimizationResult {
             problem_features,
@@ -660,7 +661,7 @@ impl ExperienceDatabase {
         self.update_statistics();
 
         // Limit buffer size
-        if self.experiences.len() > 10000 {
+        if self.experiences.len() > 10_000 {
             if let Some(removed) = self.experiences.pop_front() {
                 self.remove_from_index(&removed);
             }
@@ -757,7 +758,7 @@ impl ExperienceDatabase {
         let size_similarity = 1.0 - size_diff;
         let density_similarity = 1.0 - density_diff;
 
-        (size_similarity + density_similarity) / 2.0
+        f64::midpoint(size_similarity, density_similarity)
     }
 }
 
@@ -779,7 +780,7 @@ impl MetaLearner {
     }
 
     fn recommend_strategy(
-        &mut self,
+        &self,
         features: &ProblemFeatures,
         experiences: &[OptimizationExperience],
     ) -> ApplicationResult<RecommendedStrategy> {
@@ -798,7 +799,11 @@ impl MetaLearner {
         let mut hyperparameters = HashMap::new();
 
         // Set hyperparameters based on experiences
-        if !experiences.is_empty() {
+        if experiences.is_empty() {
+            // Default hyperparameters
+            hyperparameters.insert("initial_temperature".to_string(), 10.0);
+            hyperparameters.insert("final_temperature".to_string(), 0.1);
+        } else {
             let avg_initial_temp = experiences
                 .iter()
                 .filter_map(|exp| exp.configuration.hyperparameters.get("initial_temperature"))
@@ -812,15 +817,11 @@ impl MetaLearner {
                 .sum::<f64>()
                 / experiences.len() as f64;
             hyperparameters.insert("final_temperature".to_string(), avg_final_temp.max(0.01));
-        } else {
-            // Default hyperparameters
-            hyperparameters.insert("initial_temperature".to_string(), 10.0);
-            hyperparameters.insert("final_temperature".to_string(), 0.1);
         }
 
         hyperparameters.insert(
             "num_sweeps".to_string(),
-            (features.size as f64 * 10.0).min(10000.0),
+            (features.size as f64 * 10.0).min(10_000.0),
         );
 
         let configuration = OptimizationConfiguration {
@@ -849,8 +850,8 @@ impl MetaLearner {
         })
     }
 
-    fn update_with_experience(
-        &mut self,
+    const fn update_with_experience(
+        &self,
         _features: &ProblemFeatures,
         _result: &OptimizationResults,
     ) {
@@ -879,7 +880,7 @@ mod tests {
 
         assert!(optimizer.config.enable_transfer_learning);
         assert!(optimizer.config.enable_few_shot_learning);
-        assert_eq!(optimizer.config.experience_buffer_size, 10000);
+        assert_eq!(optimizer.config.experience_buffer_size, 10_000);
     }
 
     #[test]
@@ -959,7 +960,7 @@ mod tests {
         let experiences = vec![];
         let recommendation = meta_learner
             .recommend_strategy(&features, &experiences)
-            .unwrap();
+            .expect("Strategy recommendation should succeed");
 
         assert!(recommendation.confidence > 0.0);
         assert!(recommendation.confidence <= 1.0);

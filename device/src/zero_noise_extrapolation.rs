@@ -11,7 +11,7 @@ use scirs2_core::random::thread_rng;
 use std::collections::HashMap;
 
 /// Noise scaling methods for ZNE
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoiseScalingMethod {
     /// Fold gates globally (unitary folding)
     GlobalFolding,
@@ -24,7 +24,7 @@ pub enum NoiseScalingMethod {
 }
 
 /// Extrapolation methods
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtrapolationMethod {
     /// Linear extrapolation
     Linear,
@@ -92,7 +92,7 @@ pub struct ZNEExecutor<E> {
 
 impl<E> ZNEExecutor<E> {
     /// Create a new ZNE executor
-    pub fn new(executor: E, config: ZNEConfig) -> Self {
+    pub const fn new(executor: E, config: ZNEConfig) -> Self {
         Self { executor, config }
     }
 
@@ -262,8 +262,8 @@ impl ExtrapolationFitter {
         let sum_xx: f64 = x.iter().map(|xi| xi * xi).sum();
         let sum_xy: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum();
 
-        let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-        let intercept = (sum_y - slope * sum_x) / n;
+        let slope = n.mul_add(sum_xy, -(sum_x * sum_y)) / n.mul_add(sum_xx, -(sum_x * sum_x));
+        let intercept = slope.mul_add(-sum_x, sum_y) / n;
 
         // Calculate R²
         let y_mean = sum_y / n;
@@ -281,7 +281,7 @@ impl ExtrapolationFitter {
             raw_data: x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect(),
             fit_params: vec![intercept, slope],
             r_squared,
-            extrapolation_fn: format!("y = {:.6} + {:.6}x", intercept, slope),
+            extrapolation_fn: format!("y = {intercept:.6} + {slope:.6}x"),
         })
     }
 
@@ -317,14 +317,21 @@ impl ExtrapolationFitter {
             let sum_x2y: f64 = x.iter().zip(y.iter()).map(|(xi, yi)| xi * xi * yi).sum();
 
             // Normal equations (simplified)
-            let det = n as f64 * (sum_x2 * sum_x4 - sum_x3 * sum_x3)
-                - sum_x * (sum_x * sum_x4 - sum_x2 * sum_x3)
-                + sum_x2 * (sum_x * sum_x3 - sum_x2 * sum_x2);
+            let det = sum_x2.mul_add(
+                sum_x.mul_add(sum_x3, -(sum_x2 * sum_x2)),
+                (n as f64).mul_add(
+                    sum_x2.mul_add(sum_x4, -(sum_x3 * sum_x3)),
+                    -(sum_x * sum_x.mul_add(sum_x4, -(sum_x2 * sum_x3))),
+                ),
+            );
 
-            let a = (sum_y * (sum_x2 * sum_x4 - sum_x3 * sum_x3)
-                - sum_xy * (sum_x * sum_x4 - sum_x2 * sum_x3)
-                + sum_x2y * (sum_x * sum_x3 - sum_x2 * sum_x2))
-                / det;
+            let a = sum_x2y.mul_add(
+                sum_x.mul_add(sum_x3, -(sum_x2 * sum_x2)),
+                sum_y.mul_add(
+                    sum_x2.mul_add(sum_x4, -(sum_x3 * sum_x3)),
+                    -(sum_xy * sum_x.mul_add(sum_x4, -(sum_x2 * sum_x3))),
+                ),
+            ) / det;
 
             return Ok(ZNEResult {
                 mitigated_value: a,
@@ -332,7 +339,7 @@ impl ExtrapolationFitter {
                 raw_data: x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect(),
                 fit_params: vec![a],
                 r_squared: 0.9, // Simplified
-                extrapolation_fn: format!("y = {:.6} + bx + cx²", a),
+                extrapolation_fn: format!("y = {a:.6} + bx + cx²"),
             });
         }
 
@@ -368,7 +375,7 @@ impl ExtrapolationFitter {
             raw_data: x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect(),
             fit_params: vec![a, b],
             r_squared: linear_result.r_squared,
-            extrapolation_fn: format!("y = {:.6} * exp({:.6}x)", a, b),
+            extrapolation_fn: format!("y = {a:.6} * exp({b:.6}x)"),
         })
     }
 
@@ -383,7 +390,7 @@ impl ExtrapolationFitter {
         // Sort by scale factor
         let mut paired: Vec<(f64, f64)> =
             x.iter().zip(y.iter()).map(|(&xi, &yi)| (xi, yi)).collect();
-        paired.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        paired.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         // Apply Richardson extrapolation formula
         let mut richardson_table: Vec<Vec<f64>> = vec![vec![]; paired.len()];
@@ -399,7 +406,8 @@ impl ExtrapolationFitter {
                 let x_i = paired[i].0;
                 let x_ij = paired[i + j].0;
                 let factor = x_ij / x_i;
-                let value = (factor * richardson_table[i + 1][j - 1] - richardson_table[i][j - 1])
+                let value = factor
+                    .mul_add(richardson_table[i + 1][j - 1], -richardson_table[i][j - 1])
                     / (factor - 1.0);
                 richardson_table[i].push(value);
             }
@@ -438,7 +446,7 @@ impl ExtrapolationFitter {
             }
         }
 
-        best_result.ok_or(DeviceError::APIError("Adaptive fitting failed".to_string()))
+        best_result.ok_or_else(|| DeviceError::APIError("Adaptive fitting failed".to_string()))
     }
 
     /// Bootstrap error estimation
@@ -566,22 +574,24 @@ mod tests {
             .add_gate(quantrs2_core::gate::single::Hadamard {
                 target: quantrs2_core::qubit::QubitId(0),
             })
-            .unwrap();
+            .expect("Adding Hadamard gate should succeed");
         circuit
             .add_gate(quantrs2_core::gate::multi::CNOT {
                 control: quantrs2_core::qubit::QubitId(0),
                 target: quantrs2_core::qubit::QubitId(1),
             })
-            .unwrap();
+            .expect("Adding CNOT gate should succeed");
 
         // Test global folding
-        let folded = CircuitFolder::fold_global(&circuit, 3.0).unwrap();
+        let folded = CircuitFolder::fold_global(&circuit, 3.0)
+            .expect("Global circuit folding should succeed");
         // With scale factor 3.0 and 2 original gates, should have folded gates
         // Circuit::clone() might work now, so check actual gate count
         assert_eq!(folded.num_gates(), 2); // Expected folded circuit gate count
 
         // Test local folding
-        let local_folded = CircuitFolder::fold_local(&circuit, 2.0, None).unwrap();
+        let local_folded = CircuitFolder::fold_local(&circuit, 2.0, None)
+            .expect("Local circuit folding should succeed");
         // For now, just check it doesn't panic
         assert_eq!(local_folded.num_gates(), 2); // Expected folded circuit gate count
 
@@ -595,7 +605,7 @@ mod tests {
         let x = vec![1.0, 2.0, 3.0, 4.0];
         let y = vec![1.0, 1.5, 2.0, 2.5];
 
-        let result = ExtrapolationFitter::linear_fit(&x, &y).unwrap();
+        let result = ExtrapolationFitter::linear_fit(&x, &y).expect("Linear fit should succeed");
         assert!((result.mitigated_value - 0.5).abs() < 0.01); // y-intercept should be 0.5
         assert!(result.r_squared > 0.99); // Perfect linear fit
     }
@@ -605,7 +615,8 @@ mod tests {
         let x = vec![1.0, 1.5, 2.0, 3.0];
         let y = vec![1.0, 1.25, 1.5, 2.0];
 
-        let result = ExtrapolationFitter::richardson_extrapolation(&x, &y).unwrap();
+        let result = ExtrapolationFitter::richardson_extrapolation(&x, &y)
+            .expect("Richardson extrapolation should succeed");
         // Richardson extrapolation may not always produce a value below y[0]
         // depending on the data pattern. Let's just check it's finite
         assert!(result.mitigated_value.is_finite());

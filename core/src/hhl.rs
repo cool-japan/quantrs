@@ -25,7 +25,7 @@ pub struct HHLParams {
 
 impl HHLParams {
     /// Create default HHL parameters
-    pub fn new(n_qubits: usize) -> Self {
+    pub const fn new(n_qubits: usize) -> Self {
         Self {
             n_qubits,
             clock_qubits: n_qubits + 2, // Good default precision
@@ -83,7 +83,7 @@ impl HHLAlgorithm {
     }
 
     /// Get the total number of qubits required
-    pub fn total_qubits(&self) -> usize {
+    pub const fn total_qubits(&self) -> usize {
         self.params.n_qubits + self.params.clock_qubits + 1 // +1 for ancilla
     }
 
@@ -200,7 +200,7 @@ impl HHLAlgorithm {
         // Normalize the post-selected state
         if success_probability > 1e-10 {
             let norm = success_probability.sqrt();
-            for amp in new_state.iter_mut() {
+            for amp in &mut new_state {
                 *amp /= norm;
             }
         }
@@ -234,7 +234,7 @@ impl HHLAlgorithm {
         let norm: f64 = solution.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
 
         if norm > 1e-10 {
-            for amp in solution.iter_mut() {
+            for amp in &mut solution {
                 *amp /= norm;
             }
         }
@@ -300,7 +300,7 @@ pub fn hhl_example() -> Result<(), String> {
             Complex64::new(3.0, 0.0),
         ],
     )
-    .unwrap();
+    .expect("Failed to create 2x2 Hermitian matrix for HHL example");
 
     // Vector b
     let vector_b = Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
@@ -313,14 +313,14 @@ pub fn hhl_example() -> Result<(), String> {
     let (solution, success_prob) = hhl.run()?;
 
     println!("HHL Algorithm Results:");
-    println!("Matrix A:\n{:?}", matrix);
-    println!("Vector b: {:?}", vector_b);
-    println!("Quantum solution |x⟩: {:?}", solution);
-    println!("Success probability: {:.4}", success_prob);
+    println!("Matrix A:\n{matrix:?}");
+    println!("Vector b: {vector_b:?}");
+    println!("Quantum solution |x⟩: {solution:?}");
+    println!("Success probability: {success_prob:.4}");
 
     // Verify: A|x⟩ should be proportional to |b⟩
     let ax = matrix.dot(&solution);
-    println!("Verification A|x⟩: {:?}", ax);
+    println!("Verification A|x⟩: {ax:?}");
 
     Ok(())
 }
@@ -341,7 +341,7 @@ mod tests {
                 Complex64::new(2.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create Hermitian test matrix");
         assert!(is_hermitian(&h, 1e-10));
 
         // Non-Hermitian matrix
@@ -354,7 +354,7 @@ mod tests {
                 Complex64::new(4.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create non-Hermitian test matrix");
         assert!(!is_hermitian(&nh, 1e-10));
     }
 

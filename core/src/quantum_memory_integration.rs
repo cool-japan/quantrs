@@ -110,8 +110,7 @@ impl QuantumMemory {
         let encoded_state = self.error_correction.encode_state(&state)?;
 
         // Update cache
-        {
-            let mut cache = self.cache.write().unwrap();
+        if let Ok(mut cache) = self.cache.write() {
             cache.insert(state.state_id, encoded_state.clone());
         }
 
@@ -135,8 +134,7 @@ impl QuantumMemory {
         self.access_controller.check_read_permission(state_id)?;
 
         // Check cache first
-        {
-            let mut cache = self.cache.write().unwrap();
+        if let Ok(mut cache) = self.cache.write() {
             if let Some(cached_state) = cache.get(&state_id) {
                 // Update access statistics
                 self.update_access_stats(state_id).await;
@@ -152,8 +150,7 @@ impl QuantumMemory {
                     // Decode and cache
                     let decoded_state = self.error_correction.decode_state(&encoded_state)?;
 
-                    {
-                        let mut cache = self.cache.write().unwrap();
+                    if let Ok(mut cache) = self.cache.write() {
                         cache.insert(state_id, encoded_state);
                     }
 
@@ -163,8 +160,7 @@ impl QuantumMemory {
                 // State has decoherent, remove it
                 layer.delete_state(state_id)?;
                 return Err(QuantRS2Error::QuantumDecoherence(format!(
-                    "State {} has decoherent",
-                    state_id
+                    "State {state_id} has decoherent"
                 )));
             }
         }
@@ -178,8 +174,7 @@ impl QuantumMemory {
         self.access_controller.check_delete_permission(state_id)?;
 
         // Remove from cache
-        {
-            let mut cache = self.cache.write().unwrap();
+        if let Ok(mut cache) = self.cache.write() {
             cache.remove(&state_id);
         }
 
@@ -211,16 +206,12 @@ impl QuantumMemory {
                 (
                     &AccessPattern::Frequent,
                     StorageLayerType::UltraFast | StorageLayerType::Fast,
-                ) => {
-                    return Ok(layer.clone());
-                }
-                (
+                )
+                | (
                     &AccessPattern::Moderate,
                     StorageLayerType::Fast | StorageLayerType::Persistent,
-                ) => {
-                    return Ok(layer.clone());
-                }
-                (
+                )
+                | (
                     &AccessPattern::Rare,
                     StorageLayerType::Persistent | StorageLayerType::Archive,
                 ) => {
@@ -319,8 +310,7 @@ impl QuantumMemory {
         }
 
         // Compact cache
-        {
-            let mut cache = self.cache.write().unwrap();
+        if let Ok(mut cache) = self.cache.write() {
             cache.compact();
         }
 
@@ -361,7 +351,7 @@ impl QuantumCache {
 
         // Evict if necessary (LRU)
         while self.cache.len() > self.max_size {
-            if let Some(oldest) = self.access_order.first().cloned() {
+            if let Some(oldest) = self.access_order.first().copied() {
                 self.remove(&oldest);
             }
         }
@@ -614,38 +604,41 @@ impl CoherenceManager {
             predicted_fidelity: 1.0,
         };
 
-        self.coherence_tracking
-            .lock()
-            .unwrap()
-            .insert(state_id, info);
+        if let Ok(mut tracking) = self.coherence_tracking.lock() {
+            tracking.insert(state_id, info);
+        }
     }
 
     /// Stop tracking coherence for a quantum state
     pub fn stop_tracking(&self, state_id: Uuid) {
-        self.coherence_tracking.lock().unwrap().remove(&state_id);
+        if let Ok(mut tracking) = self.coherence_tracking.lock() {
+            tracking.remove(&state_id);
+        }
     }
 
     /// Check if a quantum state is still coherent
     pub fn is_coherent(&self, state_id: Uuid) -> bool {
-        if let Some(info) = self.coherence_tracking.lock().unwrap().get(&state_id) {
-            let elapsed = info.creation_time.elapsed();
-            elapsed < info.coherence_time
-        } else {
-            false // Not tracked = assume decoherent
+        if let Ok(tracking) = self.coherence_tracking.lock() {
+            if let Some(info) = tracking.get(&state_id) {
+                let elapsed = info.creation_time.elapsed();
+                return elapsed < info.coherence_time;
+            }
         }
+        false // Not tracked or lock failed = assume decoherent
     }
 
     /// Get predicted fidelity for a quantum state
     pub fn get_predicted_fidelity(&self, state_id: Uuid) -> f64 {
-        if let Some(info) = self.coherence_tracking.lock().unwrap().get(&state_id) {
-            let elapsed = info.creation_time.elapsed();
-            let decay_factor = elapsed.as_secs_f64() / info.coherence_time.as_secs_f64();
+        if let Ok(tracking) = self.coherence_tracking.lock() {
+            if let Some(info) = tracking.get(&state_id) {
+                let elapsed = info.creation_time.elapsed();
+                let decay_factor = elapsed.as_secs_f64() / info.coherence_time.as_secs_f64();
 
-            // Exponential decay model
-            (1.0 - decay_factor).max(0.0)
-        } else {
-            0.0
+                // Exponential decay model
+                return (1.0 - decay_factor).max(0.0);
+            }
         }
+        0.0
     }
 }
 
@@ -691,7 +684,10 @@ impl MemoryAccessController {
 
     /// Check read permission for a state
     pub fn check_read_permission(&self, state_id: Uuid) -> Result<(), QuantRS2Error> {
-        let permissions = self.permissions.read().unwrap();
+        let permissions = self
+            .permissions
+            .read()
+            .map_err(|_| QuantRS2Error::LockPoisoned("permissions lock poisoned".to_string()))?;
         if let Some(perms) = permissions.get(&state_id) {
             if perms.read {
                 self.log_access(state_id, AccessOperation::Read, true);
@@ -710,7 +706,10 @@ impl MemoryAccessController {
 
     /// Check write permission for a state
     pub fn check_write_permission(&self, state: &QuantumState) -> Result<(), QuantRS2Error> {
-        let permissions = self.permissions.read().unwrap();
+        let permissions = self
+            .permissions
+            .read()
+            .map_err(|_| QuantRS2Error::LockPoisoned("permissions lock poisoned".to_string()))?;
         if let Some(perms) = permissions.get(&state.state_id) {
             if perms.write {
                 self.log_access(state.state_id, AccessOperation::Write, true);
@@ -729,7 +728,10 @@ impl MemoryAccessController {
 
     /// Check delete permission for a state
     pub fn check_delete_permission(&self, state_id: Uuid) -> Result<(), QuantRS2Error> {
-        let permissions = self.permissions.read().unwrap();
+        let permissions = self
+            .permissions
+            .read()
+            .map_err(|_| QuantRS2Error::LockPoisoned("permissions lock poisoned".to_string()))?;
         if let Some(perms) = permissions.get(&state_id) {
             if perms.delete {
                 self.log_access(state_id, AccessOperation::Delete, true);
@@ -756,7 +758,9 @@ impl MemoryAccessController {
             success,
         };
 
-        self.access_log.lock().unwrap().push(entry);
+        if let Ok(mut log) = self.access_log.lock() {
+            log.push(entry);
+        }
     }
 }
 
@@ -784,7 +788,10 @@ impl InMemoryStorage {
 
 impl QuantumStorageLayer for InMemoryStorage {
     fn store_state(&self, state_id: Uuid, state: &QuantumState) -> Result<(), QuantRS2Error> {
-        let mut states = self.states.write().unwrap();
+        let mut states = self
+            .states
+            .write()
+            .map_err(|_| QuantRS2Error::LockPoisoned("states lock poisoned".to_string()))?;
         if states.len() >= self.info.capacity {
             return Err(QuantRS2Error::StorageCapacityExceeded(
                 "Memory storage full".to_string(),
@@ -795,19 +802,28 @@ impl QuantumStorageLayer for InMemoryStorage {
     }
 
     fn retrieve_state(&self, state_id: Uuid) -> Result<Option<QuantumState>, QuantRS2Error> {
-        let states = self.states.read().unwrap();
+        let states = self
+            .states
+            .read()
+            .map_err(|_| QuantRS2Error::LockPoisoned("states lock poisoned".to_string()))?;
         Ok(states.get(&state_id).cloned())
     }
 
     fn delete_state(&self, state_id: Uuid) -> Result<(), QuantRS2Error> {
-        let mut states = self.states.write().unwrap();
+        let mut states = self
+            .states
+            .write()
+            .map_err(|_| QuantRS2Error::LockPoisoned("states lock poisoned".to_string()))?;
         states.remove(&state_id);
         Ok(())
     }
 
     fn list_states(&self) -> Result<Vec<Uuid>, QuantRS2Error> {
-        let states = self.states.read().unwrap();
-        Ok(states.keys().cloned().collect())
+        let states = self
+            .states
+            .read()
+            .map_err(|_| QuantRS2Error::LockPoisoned("states lock poisoned".to_string()))?;
+        Ok(states.keys().copied().collect())
     }
 
     fn get_storage_info(&self) -> StorageLayerInfo {
@@ -864,11 +880,15 @@ mod tests {
         };
 
         let state_id = state.state_id;
-        storage.store_state(state_id, &state).unwrap();
+        storage
+            .store_state(state_id, &state)
+            .expect("failed to store state");
 
-        let retrieved = storage.retrieve_state(state_id).unwrap();
+        let retrieved = storage
+            .retrieve_state(state_id)
+            .expect("failed to retrieve state");
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().state_id, state_id);
+        assert_eq!(retrieved.expect("state should be Some").state_id, state_id);
     }
 
     #[tokio::test]

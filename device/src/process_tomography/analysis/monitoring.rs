@@ -10,7 +10,7 @@ use crate::DeviceResult;
 
 impl ProcessAnomalyDetector {
     /// Create new anomaly detector
-    pub fn new(threshold: f64, algorithm: AnomalyDetectionAlgorithm) -> Self {
+    pub const fn new(threshold: f64, algorithm: AnomalyDetectionAlgorithm) -> Self {
         Self {
             historical_data: Vec::new(),
             threshold,
@@ -194,7 +194,7 @@ impl ProcessAnomalyDetector {
             })
             .collect();
 
-        distances.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        distances.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         // Calculate local reachability density
         let k_distance = distances[k.min(distances.len()) - 1];
@@ -221,7 +221,7 @@ impl ProcessAnomalyDetector {
 
 impl ProcessDriftDetector {
     /// Create new drift detector
-    pub fn new(
+    pub const fn new(
         reference_metrics: ProcessMetrics,
         sensitivity: f64,
         method: DriftDetectionMethod,
@@ -354,8 +354,8 @@ impl ProcessDriftDetector {
             return histogram;
         }
 
-        let min_val = data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_val = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min_val = data.iter().copied().fold(f64::INFINITY, f64::min);
+        let max_val = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
         if (max_val - min_val).abs() < 1e-12 {
             histogram[0] = 1.0;

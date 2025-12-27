@@ -70,7 +70,6 @@ impl GateFusion {
         if let Some(gate_name) = identify_gate(&combined.view(), self.tolerance) {
             // Convert identified gate name to actual gate
             let identified_gate = match gate_name.as_str() {
-                "I" => None, // Identity - remove
                 "X" => Some(Box::new(PauliX {
                     target: target_qubit,
                 }) as Box<dyn GateOp>),
@@ -95,7 +94,7 @@ impl GateFusion {
                 "T†" => Some(Box::new(TDagger {
                     target: target_qubit,
                 }) as Box<dyn GateOp>),
-                _ => None,
+                "I" | _ => None, // Identity or unknown
             };
 
             if let Some(gate) = identified_gate {
@@ -108,7 +107,7 @@ impl GateFusion {
         if synthesized.len() < gates.len() {
             // Only use synthesis if it reduces gate count
             if synthesized.len() == 1 {
-                Ok(Some(synthesized.into_iter().next().unwrap()))
+                Ok(synthesized.into_iter().next())
             } else {
                 Ok(None)
             }
@@ -331,7 +330,7 @@ impl OptimizationPass for GateFusion {
         Ok(optimized)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Gate Fusion"
     }
 }
@@ -343,7 +342,7 @@ pub struct CliffordFusion {
 }
 
 impl CliffordFusion {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { tolerance: 1e-10 }
     }
 
@@ -361,26 +360,21 @@ impl CliffordFusion {
         let qubit = gate1.qubits()[0];
 
         match (gate1.name(), gate2.name()) {
-            // Hadamard is self-inverse
-            ("H", "H") => Ok(None), // Identity - will be removed
+            // Self-inverse gates (H, X, Y, Z, S†S, SS†)
+            ("H", "H") | ("X", "X") | ("Y", "Y") | ("Z", "Z") | ("S", "S†") | ("S†", "S") => {
+                Ok(None) // Identity - will be removed
+            }
 
-            // S gate combinations
-            ("S", "S") => Ok(Some(Box::new(PauliZ { target: qubit }))),
-            ("S†", "S†") => Ok(Some(Box::new(PauliZ { target: qubit }))),
-            ("S", "S†") | ("S†", "S") => Ok(None), // Identity
+            // S gate combinations & Pauli combinations resulting in Z
+            ("S", "S") | ("S†", "S†") | ("X", "Y") | ("Y" | "H", "X") => {
+                Ok(Some(Box::new(PauliZ { target: qubit }))) // SS/S†S†/XY/YX/HX → Z
+            }
 
             // Pauli combinations
-            ("X", "X") | ("Y", "Y") | ("Z", "Z") => Ok(None), // Identity
-            ("X", "Y") => Ok(Some(Box::new(PauliZ { target: qubit }))), // XY = iZ
-            ("Y", "X") => Ok(Some(Box::new(PauliZ { target: qubit }))), // YX = -iZ
-            ("X", "Z") => Ok(Some(Box::new(PauliY { target: qubit }))), // XZ = -iY
-            ("Z", "X") => Ok(Some(Box::new(PauliY { target: qubit }))), // ZX = iY
-            ("Y", "Z") => Ok(Some(Box::new(PauliX { target: qubit }))), // YZ = iX
-            ("Z", "Y") => Ok(Some(Box::new(PauliX { target: qubit }))), // ZY = -iX
-
-            // H and Pauli combinations
-            ("H", "X") => Ok(Some(Box::new(PauliZ { target: qubit }))), // HX = ZH
-            ("H", "Z") => Ok(Some(Box::new(PauliX { target: qubit }))), // HZ = XH
+            ("X", "Z") | ("Z", "X") => Ok(Some(Box::new(PauliY { target: qubit }))), // XZ = -iY, ZX = iY
+            ("Y" | "H", "Z") | ("Z", "Y") => {
+                Ok(Some(Box::new(PauliX { target: qubit }))) // YZ/ZY/HZ → X
+            }
 
             _ => Ok(None),
         }
@@ -426,7 +420,7 @@ impl OptimizationPass for CliffordFusion {
         Ok(optimized)
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Clifford Fusion"
     }
 }
@@ -457,10 +451,16 @@ mod tests {
             }),
         ];
 
-        let result = fusion.fuse_rotation_gates(&gates).unwrap();
+        let result = fusion
+            .fuse_rotation_gates(&gates)
+            .expect("Failed to fuse rotation gates");
         assert!(result.is_some());
 
-        if let Some(rz) = result.unwrap().as_any().downcast_ref::<RotationZ>() {
+        if let Some(rz) = result
+            .expect("Expected a fused gate")
+            .as_any()
+            .downcast_ref::<RotationZ>()
+        {
             assert!((rz.theta - 1.0).abs() < 1e-10);
         } else {
             panic!("Expected RotationZ gate");
@@ -484,9 +484,11 @@ mod tests {
             }),
         ];
 
-        let result = fusion.fuse_cnot_gates(&gates).unwrap();
+        let result = fusion
+            .fuse_cnot_gates(&gates)
+            .expect("Failed to fuse CNOT gates");
         assert!(result.is_some());
-        assert_eq!(result.unwrap().len(), 0); // Should cancel
+        assert_eq!(result.expect("Expected fused gate list").len(), 0); // Should cancel
     }
 
     #[test]
@@ -506,9 +508,11 @@ mod tests {
             }),
         ];
 
-        let result = fusion.fuse_cnot_gates(&gates).unwrap();
+        let result = fusion
+            .fuse_cnot_gates(&gates)
+            .expect("Failed to fuse CNOT gates");
         assert!(result.is_some());
-        let fused = result.unwrap();
+        let fused = result.expect("Expected fused gate list");
         assert_eq!(fused.len(), 1);
         assert_eq!(fused[0].name(), "SWAP");
     }
@@ -525,7 +529,9 @@ mod tests {
             Box::new(Phase { target: qubit }),
         ];
 
-        let result = fusion.optimize(gates).unwrap();
+        let result = fusion
+            .optimize(gates)
+            .expect("Failed to optimize Clifford gates");
         // H*H cancels, S*S = Z
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name(), "Z");
@@ -562,7 +568,9 @@ mod tests {
             }),
         ];
 
-        let result = chain.optimize(gates).unwrap();
+        let result = chain
+            .optimize(gates)
+            .expect("Failed to optimize gate chain");
 
         // After CliffordFusion: CNOT, CNOT, RZ, RZ (H*H canceled)
         // After GateFusion: RZ (CNOT*CNOT canceled, RZ+RZ fused)

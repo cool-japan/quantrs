@@ -270,7 +270,7 @@ impl DDSequenceGenerator {
 
     /// Generate XY-4 sequence
     fn generate_xy4_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let base_sequence = vec![PI, PI / 2.0, PI, 3.0 * PI / 2.0]; // X, Y, X, -Y rotations
+        let base_sequence = [PI, PI / 2.0, PI, 3.0 * PI / 2.0]; // X, Y, X, -Y rotations
         let n_repetitions = 4;
         let pulse_spacing = duration / (base_sequence.len() * n_repetitions) as f64;
 
@@ -344,7 +344,7 @@ impl DDSequenceGenerator {
 
     /// Generate XY-8 sequence
     fn generate_xy8_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let base_sequence = vec![
+        let base_sequence = [
             PI,
             PI / 2.0,
             PI,
@@ -454,7 +454,7 @@ impl DDSequenceGenerator {
         // UDD pulse timings: τₖ = T * sin²(πk/(2n+2))
         for k in 1..=n_pulses {
             let timing = duration
-                * (PI * k as f64 / (2.0 * n_pulses as f64 + 2.0))
+                * (PI * k as f64 / 2.0f64.mul_add(n_pulses as f64, 2.0))
                     .sin()
                     .powi(2);
             pulse_timings.push(timing);
@@ -622,20 +622,19 @@ impl DDSequenceGenerator {
 
     /// Generate other sequence types (placeholders)
     fn generate_qdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base =
-            DDSequenceGenerator::generate_udd_sequence_with_pulses(target_qubits, duration, 8)?;
+        let mut base = Self::generate_udd_sequence_with_pulses(target_qubits, duration, 8)?;
         base.sequence_type = DDSequenceType::QDD;
         Ok(base)
     }
 
     fn generate_cdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = DDSequenceGenerator::generate_xy8_sequence(target_qubits, duration)?;
+        let mut base = Self::generate_xy8_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::CDD;
         Ok(base)
     }
 
     fn generate_rdd_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = DDSequenceGenerator::generate_xy4_sequence(target_qubits, duration)?;
+        let mut base = Self::generate_xy4_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::RDD;
         base.properties
             .noise_suppression
@@ -644,7 +643,7 @@ impl DDSequenceGenerator {
     }
 
     fn generate_cp_sequence(target_qubits: &[QubitId], duration: f64) -> DeviceResult<DDSequence> {
-        let mut base = DDSequenceGenerator::generate_cpmg_sequence(target_qubits, duration)?;
+        let mut base = Self::generate_cpmg_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::CarrPurcell;
         base.properties.symmetry.phase_symmetry = false;
         Ok(base)
@@ -655,7 +654,7 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         // Start with XY8 as base for SciRS2 optimization
-        let mut base = DDSequenceGenerator::generate_xy8_sequence(target_qubits, duration)?;
+        let mut base = Self::generate_xy8_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::SciRS2Optimized;
         base.properties.sequence_order = 5; // Higher order expected from optimization
         Ok(base)
@@ -667,7 +666,7 @@ impl DDSequenceGenerator {
         duration: f64,
     ) -> DeviceResult<DDSequence> {
         // Placeholder for custom sequences - use CPMG as default
-        let mut base = DDSequenceGenerator::generate_cpmg_sequence(target_qubits, duration)?;
+        let mut base = Self::generate_cpmg_sequence(target_qubits, duration)?;
         base.sequence_type = DDSequenceType::Custom(name.to_string());
         Ok(base)
     }
@@ -679,6 +678,12 @@ pub struct SequenceCache {
     pub cached_sequences: HashMap<String, DDSequence>,
     pub cache_hits: usize,
     pub cache_misses: usize,
+}
+
+impl Default for SequenceCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SequenceCache {
@@ -716,7 +721,7 @@ impl SequenceCache {
 }
 
 /// Composition strategies for combining DD sequences
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompositionStrategy {
     /// Sequential execution of sequences
     Sequential,
@@ -737,7 +742,7 @@ pub struct MultiQubitDDCoordinator {
 }
 
 /// Cross-talk mitigation strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CrosstalkMitigationStrategy {
     /// No mitigation
     None,

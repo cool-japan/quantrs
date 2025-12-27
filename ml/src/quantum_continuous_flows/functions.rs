@@ -28,11 +28,11 @@ mod tests {
             num_flow_layers: 2,
             ..Default::default()
         };
-        let flow = QuantumContinuousFlow::new(config).unwrap();
+        let flow = QuantumContinuousFlow::new(config).expect("Flow creation should succeed");
         let x = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
         let result = flow.forward(&x);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("Forward pass should succeed");
         assert_eq!(output.latent_sample.len(), 4);
         assert!(output.quantum_enhancement.quantum_advantage_ratio >= 1.0);
     }
@@ -44,11 +44,11 @@ mod tests {
             num_qubits: 4,
             ..Default::default()
         };
-        let flow = QuantumContinuousFlow::new(config).unwrap();
+        let flow = QuantumContinuousFlow::new(config).expect("Flow creation should succeed");
         let z = Array1::from_vec(vec![0.5, -0.3, 0.8, -0.1]);
         let result = flow.inverse(&z);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("Inverse pass should succeed");
         assert_eq!(output.data_sample.len(), 4);
     }
     #[test]
@@ -59,10 +59,10 @@ mod tests {
             num_qubits: 3,
             ..Default::default()
         };
-        let flow = QuantumContinuousFlow::new(config).unwrap();
+        let flow = QuantumContinuousFlow::new(config).expect("Flow creation should succeed");
         let result = flow.sample(5);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("Sampling should succeed");
         assert_eq!(output.samples.shape(), &[5, 2]);
         assert_eq!(output.quantum_metrics.len(), 5);
     }
@@ -98,10 +98,15 @@ mod tests {
             latent_dim: 3,
             ..Default::default()
         };
-        let flow = QuantumContinuousFlow::new(config).unwrap();
+        let flow = QuantumContinuousFlow::new(config).expect("Flow creation should succeed");
         let sample = flow.sample_base_distribution();
         assert!(sample.is_ok());
-        assert_eq!(sample.unwrap().len(), 3);
+        assert_eq!(
+            sample
+                .expect("Base distribution sample should succeed")
+                .len(),
+            3
+        );
     }
     #[test]
     #[ignore]
@@ -114,10 +119,12 @@ mod tests {
             invertibility_tolerance: 1e-8,
             ..Default::default()
         };
-        let flow = QuantumContinuousFlow::new(config).unwrap();
+        let flow = QuantumContinuousFlow::new(config).expect("Flow creation should succeed");
         let x = Array1::from_vec(vec![0.1, 0.2, 0.3, 0.4]);
-        let forward_output = flow.forward(&x).unwrap();
-        let inverse_output = flow.inverse(&forward_output.latent_sample).unwrap();
+        let forward_output = flow.forward(&x).expect("Forward pass should succeed");
+        let inverse_output = flow
+            .inverse(&forward_output.latent_sample)
+            .expect("Inverse pass should succeed");
         let error = (&x - &inverse_output.data_sample)
             .mapv(|x: f64| x.abs())
             .sum();

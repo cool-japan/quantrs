@@ -183,7 +183,11 @@ impl Sampler for FujitsuDigitalAnnealerSampler {
             .collect();
 
         // Sort by energy
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Limit to requested shots
         results.truncate(shots);

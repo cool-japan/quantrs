@@ -139,8 +139,8 @@ impl SciRS2ProcessTomographer {
 
         // Create histogram for discrete entropy calculation
         let num_bins = (data.len() as f64).sqrt() as usize + 1;
-        let min_val = data.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_val = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let min_val = data.iter().copied().fold(f64::INFINITY, f64::min);
+        let max_val = data.iter().copied().fold(f64::NEG_INFINITY, f64::max);
 
         if (max_val - min_val).abs() < 1e-12 {
             return 0.0;

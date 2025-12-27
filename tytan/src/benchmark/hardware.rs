@@ -101,7 +101,7 @@ impl CpuBackend {
         Self {
             capabilities: BackendCapabilities {
                 max_qubits: 10000,
-                max_couplers: 50000000,
+                max_couplers: 50_000_000,
                 annealing_schedules: vec!["linear".to_string(), "quadratic".to_string()],
                 precision_modes: vec![PrecisionMode::Single, PrecisionMode::Double],
                 gpu_enabled: false,

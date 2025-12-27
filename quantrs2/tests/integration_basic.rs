@@ -137,7 +137,7 @@ fn test_compatibility_check() {
             // (might be expected in some CI environments)
             eprintln!("Compatibility issues (may be expected):");
             for issue in &issues {
-                eprintln!("  - {}", issue);
+                eprintln!("  - {issue}");
             }
         }
     }
@@ -175,11 +175,11 @@ fn test_backend_parsing() {
 #[test]
 fn test_error_display() {
     let err = QuantRS2Error::InvalidQubitId(42);
-    let msg = format!("{}", err);
+    let msg = format!("{err}");
     assert!(msg.contains("42"));
 
     let err = QuantRS2Error::UnsupportedOperation("test operation".into());
-    let msg = format!("{}", err);
+    let msg = format!("{err}");
     assert!(msg.contains("test operation"));
 }
 

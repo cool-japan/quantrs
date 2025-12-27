@@ -1,14 +1,14 @@
-//! Complete SciRS2 Integration for QuantRS2
+//! Complete `SciRS2` Integration for `QuantRS2`
 //!
-//! This module provides a fully migrated integration layer with SciRS2,
-//! utilizing scirs2_core::simd_ops for all linear algebra operations
+//! This module provides a fully migrated integration layer with `SciRS2`,
+//! utilizing `scirs2_core::simd_ops` for all linear algebra operations
 //! to achieve optimal performance for quantum simulation.
 //!
 //! ## Key Features
 //! - Full migration to `scirs2_core::simd_ops::SimdUnifiedOps`
 //! - Complex number SIMD operations with optimal vectorization
-//! - High-performance matrix operations using SciRS2 primitives
-//! - Memory-optimized data structures with SciRS2 allocators
+//! - High-performance matrix operations using `SciRS2` primitives
+//! - Memory-optimized data structures with `SciRS2` allocators
 //! - GPU-ready abstractions for heterogeneous computing
 
 #[cfg(feature = "advanced_math")]
@@ -24,13 +24,15 @@ use std::sync::{Arc, Mutex};
 
 // Core SciRS2 integration imports
 use quantrs2_core::prelude::QuantRS2Error as SciRS2Error;
-use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
+use scirs2_core::parallel_ops::{
+    current_num_threads, IndexedParallelIterator, ParallelIterator, ThreadPool, ThreadPoolBuilder,
+}; // SciRS2 POLICY compliant
 use scirs2_core::simd_ops::SimdUnifiedOps;
 
 use crate::error::{Result, SimulatorError};
 use scirs2_core::random::prelude::*;
 
-/// High-performance matrix optimized for SciRS2 SIMD operations
+/// High-performance matrix optimized for `SciRS2` SIMD operations
 #[derive(Debug, Clone)]
 pub struct SciRS2Matrix {
     data: Array2<Complex64>,
@@ -48,6 +50,7 @@ impl SciRS2Matrix {
     }
 
     /// Create matrix from existing array data
+    #[must_use]
     pub const fn from_array2(array: Array2<Complex64>) -> Self {
         Self {
             data: array,
@@ -56,21 +59,25 @@ impl SciRS2Matrix {
     }
 
     /// Get matrix dimensions
+    #[must_use]
     pub fn shape(&self) -> (usize, usize) {
         self.data.dim()
     }
 
     /// Get number of rows
+    #[must_use]
     pub fn rows(&self) -> usize {
         self.data.nrows()
     }
 
     /// Get number of columns
+    #[must_use]
     pub fn cols(&self) -> usize {
         self.data.ncols()
     }
 
     /// Get immutable view of the data
+    #[must_use]
     pub fn data_view(&self) -> ArrayView2<'_, Complex64> {
         self.data.view()
     }
@@ -81,7 +88,7 @@ impl SciRS2Matrix {
     }
 }
 
-/// High-performance vector optimized for SciRS2 SIMD operations
+/// High-performance vector optimized for `SciRS2` SIMD operations
 #[derive(Debug, Clone)]
 pub struct SciRS2Vector {
     data: Array1<Complex64>,
@@ -99,6 +106,7 @@ impl SciRS2Vector {
     }
 
     /// Create vector from existing array data
+    #[must_use]
     pub const fn from_array1(array: Array1<Complex64>) -> Self {
         Self {
             data: array,
@@ -107,16 +115,19 @@ impl SciRS2Vector {
     }
 
     /// Get vector length
+    #[must_use]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     /// Check if vector is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
     /// Get immutable view of the data
+    #[must_use]
     pub fn data_view(&self) -> ArrayView1<'_, Complex64> {
         self.data.view()
     }
@@ -132,7 +143,7 @@ impl SciRS2Vector {
     }
 }
 
-/// Configuration for SciRS2 SIMD operations
+/// Configuration for `SciRS2` SIMD operations
 #[derive(Debug, Clone)]
 pub struct SciRS2SimdConfig {
     /// Force specific SIMD instruction set
@@ -156,7 +167,7 @@ impl Default for SciRS2SimdConfig {
     }
 }
 
-/// SciRS2 SIMD context for vectorized quantum operations
+/// `SciRS2` SIMD context for vectorized quantum operations
 #[derive(Debug, Clone)]
 pub struct SciRS2SimdContext {
     /// Number of SIMD lanes available
@@ -171,6 +182,7 @@ pub struct SciRS2SimdContext {
 
 impl SciRS2SimdContext {
     /// Detect SIMD capabilities from the current hardware
+    #[must_use]
     pub fn detect_capabilities() -> Self {
         #[cfg(target_arch = "x86_64")]
         {
@@ -245,7 +257,7 @@ impl Default for SciRS2SimdContext {
     }
 }
 
-/// SciRS2 memory allocator optimized for SIMD operations
+/// `SciRS2` memory allocator optimized for SIMD operations
 #[derive(Debug)]
 pub struct SciRS2MemoryAllocator {
     /// Total allocated memory in bytes
@@ -272,12 +284,13 @@ impl Default for SciRS2MemoryAllocator {
 
 impl SciRS2MemoryAllocator {
     /// Create a new memory allocator
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-/// Vectorized FFT engine using SciRS2 SIMD operations
+/// Vectorized FFT engine using `SciRS2` SIMD operations
 #[derive(Debug)]
 pub struct SciRS2VectorizedFFT {
     /// Cached FFT plans for different sizes
@@ -392,7 +405,7 @@ impl SciRS2VectorizedFFT {
     }
 }
 
-/// Parallel execution context for SciRS2 operations
+/// Parallel execution context for `SciRS2` operations
 #[derive(Debug)]
 pub struct SciRS2ParallelContext {
     /// Number of worker threads
@@ -409,7 +422,11 @@ impl Default for SciRS2ParallelContext {
         let thread_pool = ThreadPoolBuilder::new() // SciRS2 POLICY compliant
             .num_threads(num_threads)
             .build()
-            .unwrap_or_else(|_| ThreadPoolBuilder::new().build().unwrap());
+            .unwrap_or_else(|_| {
+                ThreadPoolBuilder::new()
+                    .build()
+                    .expect("fallback thread pool creation should succeed")
+            });
 
         Self {
             num_threads,
@@ -419,7 +436,7 @@ impl Default for SciRS2ParallelContext {
     }
 }
 
-/// Comprehensive performance statistics for the SciRS2 backend
+/// Comprehensive performance statistics for the `SciRS2` backend
 #[derive(Debug, Default, Clone)]
 pub struct BackendStats {
     /// Number of SIMD vector operations performed
@@ -428,11 +445,11 @@ pub struct BackendStats {
     pub simd_matrix_ops: usize,
     /// Number of complex number SIMD operations
     pub complex_simd_ops: usize,
-    /// Total time spent in SciRS2 SIMD operations (nanoseconds)
+    /// Total time spent in `SciRS2` SIMD operations (nanoseconds)
     pub simd_time_ns: u64,
-    /// Total time spent in SciRS2 parallel operations (nanoseconds)
+    /// Total time spent in `SciRS2` parallel operations (nanoseconds)
     pub parallel_time_ns: u64,
-    /// Memory usage from SciRS2 allocators (bytes)
+    /// Memory usage from `SciRS2` allocators (bytes)
     pub memory_usage_bytes: usize,
     /// Peak SIMD throughput (operations per second)
     pub peak_simd_throughput: f64,
@@ -446,26 +463,26 @@ pub struct BackendStats {
     pub matrix_ops: usize,
     /// Time spent in LAPACK operations (milliseconds)
     pub lapack_time_ms: f64,
-    /// Cache hit rate for SciRS2 operations
+    /// Cache hit rate for `SciRS2` operations
     pub cache_hit_rate: f64,
 }
 
 /// Advanced SciRS2-powered quantum simulation backend
 #[derive(Debug)]
 pub struct SciRS2Backend {
-    /// Whether SciRS2 SIMD operations are available
+    /// Whether `SciRS2` SIMD operations are available
     pub available: bool,
 
     /// Performance statistics tracking
     pub stats: Arc<Mutex<BackendStats>>,
 
-    /// SciRS2 SIMD context for vectorized operations
+    /// `SciRS2` SIMD context for vectorized operations
     pub simd_context: SciRS2SimdContext,
 
     /// Memory allocator optimized for SIMD operations
     pub memory_allocator: SciRS2MemoryAllocator,
 
-    /// Vectorized FFT engine using SciRS2 primitives
+    /// Vectorized FFT engine using `SciRS2` primitives
     pub fft_engine: SciRS2VectorizedFFT,
 
     /// Parallel execution context
@@ -473,7 +490,8 @@ pub struct SciRS2Backend {
 }
 
 impl SciRS2Backend {
-    /// Create a new SciRS2 backend with full SIMD integration
+    /// Create a new `SciRS2` backend with full SIMD integration
+    #[must_use]
     pub fn new() -> Self {
         let simd_context = SciRS2SimdContext::detect_capabilities();
         let memory_allocator = SciRS2MemoryAllocator::default();
@@ -498,26 +516,34 @@ impl SciRS2Backend {
     }
 
     /// Check if the backend is available and functional
+    #[must_use]
     pub const fn is_available(&self) -> bool {
         self.available && self.simd_context.supports_complex_simd
     }
 
     /// Get SIMD capabilities information
+    #[must_use]
     pub const fn get_simd_info(&self) -> &SciRS2SimdContext {
         &self.simd_context
     }
 
     /// Get performance statistics
+    #[must_use]
     pub fn get_stats(&self) -> BackendStats {
-        self.stats.lock().unwrap().clone()
+        self.stats
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default()
     }
 
     /// Reset performance statistics
     pub fn reset_stats(&self) {
-        *self.stats.lock().unwrap() = BackendStats::default();
+        if let Ok(mut guard) = self.stats.lock() {
+            *guard = BackendStats::default();
+        }
     }
 
-    /// Matrix multiplication using SciRS2 SIMD operations
+    /// Matrix multiplication using `SciRS2` SIMD operations
     pub fn matrix_multiply(&self, a: &SciRS2Matrix, b: &SciRS2Matrix) -> Result<SciRS2Matrix> {
         let start_time = std::time::Instant::now();
 
@@ -539,8 +565,7 @@ impl SciRS2Backend {
         self.simd_gemm_complex(&a.data_view(), &b.data_view(), &mut result.data_view_mut())?;
 
         // Update statistics
-        {
-            let mut stats = self.stats.lock().unwrap();
+        if let Ok(mut stats) = self.stats.lock() {
             stats.simd_matrix_ops += 1;
             stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
         }
@@ -548,7 +573,7 @@ impl SciRS2Backend {
         Ok(result)
     }
 
-    /// Matrix-vector multiplication using SciRS2 SIMD operations
+    /// Matrix-vector multiplication using `SciRS2` SIMD operations
     pub fn matrix_vector_multiply(
         &self,
         a: &SciRS2Matrix,
@@ -572,8 +597,7 @@ impl SciRS2Backend {
         self.simd_gemv_complex(&a.data_view(), &x.data_view(), &mut result.data_view_mut())?;
 
         // Update statistics
-        {
-            let mut stats = self.stats.lock().unwrap();
+        if let Ok(mut stats) = self.stats.lock() {
             stats.simd_vector_ops += 1;
             stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
         }
@@ -727,9 +751,10 @@ impl SciRS2Backend {
 
         let result = LAPACK::svd(matrix)?;
 
-        let mut stats = self.stats.lock().unwrap();
-        stats.simd_matrix_ops += 1;
-        stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
+        if let Ok(mut stats) = self.stats.lock() {
+            stats.simd_matrix_ops += 1;
+            stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
+        }
 
         Ok(result)
     }
@@ -741,9 +766,10 @@ impl SciRS2Backend {
 
         let result = LAPACK::eig(matrix)?;
 
-        let mut stats = self.stats.lock().unwrap();
-        stats.simd_matrix_ops += 1;
-        stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
+        if let Ok(mut stats) = self.stats.lock() {
+            stats.simd_matrix_ops += 1;
+            stats.simd_time_ns += start_time.elapsed().as_nanos() as u64;
+        }
 
         Ok(result)
     }
@@ -793,6 +819,7 @@ impl Default for MemoryPool {
 
 #[cfg(not(feature = "advanced_math"))]
 impl MemoryPool {
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -856,6 +883,7 @@ impl Default for FftEngine {
 
 #[cfg(not(feature = "advanced_math"))]
 impl FftEngine {
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -2131,7 +2159,7 @@ pub struct QRResult {
     pub r: Matrix,
 }
 
-/// Performance benchmarking for SciRS2 integration
+/// Performance benchmarking for `SciRS2` integration
 pub fn benchmark_scirs2_integration() -> Result<HashMap<String, f64>> {
     let mut results = HashMap::new();
 

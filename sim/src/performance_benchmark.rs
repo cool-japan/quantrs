@@ -4,7 +4,7 @@
 //! the performance of various quantum simulation components, including optimizations,
 //! memory efficiency, and scalability analysis.
 
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -174,6 +174,7 @@ impl Default for BenchmarkConfig {
 
 impl QuantumBenchmarkSuite {
     /// Create a new benchmark suite
+    #[must_use]
     pub fn new(config: BenchmarkConfig) -> Self {
         Self {
             config,
@@ -273,7 +274,12 @@ impl QuantumBenchmarkSuite {
                     "  ✓ {} on {} qubits: {:.2}ms",
                     gate_name,
                     qubits,
-                    self.results.last().unwrap().timing.average_ns as f64 / 1_000_000.0
+                    self.results
+                        .last()
+                        .expect("results should not be empty after push")
+                        .timing
+                        .average_ns as f64
+                        / 1_000_000.0
                 );
             }
         }
@@ -297,7 +303,12 @@ impl QuantumBenchmarkSuite {
             println!(
                 "  ✓ Random circuit {} qubits: {:.2}ms",
                 qubits,
-                self.results.last().unwrap().timing.average_ns as f64 / 1_000_000.0
+                self.results
+                    .last()
+                    .expect("results should not be empty after push")
+                    .timing
+                    .average_ns as f64
+                    / 1_000_000.0
             );
         }
 
@@ -325,7 +336,12 @@ impl QuantumBenchmarkSuite {
                     "  ✓ {} config {} qubits: {:.1}MB peak",
                     config_name,
                     qubits,
-                    self.results.last().unwrap().memory.peak_memory_bytes as f64 / 1_048_576.0
+                    self.results
+                        .last()
+                        .expect("results should not be empty after push")
+                        .memory
+                        .peak_memory_bytes as f64
+                        / 1_048_576.0
                 );
             }
         }
@@ -375,7 +391,12 @@ impl QuantumBenchmarkSuite {
                     "  ✓ {} optimization {} qubits: {:.2}ms",
                     opt_name,
                     qubits,
-                    self.results.last().unwrap().timing.average_ns as f64 / 1_000_000.0
+                    self.results
+                        .last()
+                        .expect("results should not be empty after push")
+                        .timing
+                        .average_ns as f64
+                        / 1_000_000.0
                 );
             }
         }
@@ -385,7 +406,7 @@ impl QuantumBenchmarkSuite {
     }
 
     /// Benchmark scalability analysis
-    fn benchmark_scalability(&mut self) -> QuantRS2Result<()> {
+    fn benchmark_scalability(&self) -> QuantRS2Result<()> {
         println!("📈 Analyzing Scalability");
         println!("-----------------------");
 
@@ -440,11 +461,11 @@ impl QuantumBenchmarkSuite {
     }
 
     /// Benchmark SIMD performance
-    fn benchmark_simd_performance(&mut self) -> QuantRS2Result<()> {
+    fn benchmark_simd_performance(&self) -> QuantRS2Result<()> {
         println!("🏎️ Benchmarking SIMD Performance");
         println!("--------------------------------");
 
-        let test_sizes = vec![1024, 4096, 16384, 65536];
+        let test_sizes = vec![1024, 4096, 16_384, 65_536];
 
         for size in test_sizes {
             // Prepare test data
@@ -504,7 +525,7 @@ impl QuantumBenchmarkSuite {
     }
 
     /// Benchmark circuit optimization
-    fn benchmark_circuit_optimization(&mut self) -> QuantRS2Result<()> {
+    fn benchmark_circuit_optimization(&self) -> QuantRS2Result<()> {
         println!("🔧 Benchmarking Circuit Optimization");
         println!("-----------------------------------");
 
@@ -732,12 +753,12 @@ impl QuantumBenchmarkSuite {
 
     /// Calculate timing statistics from measurements
     fn calculate_timing_stats(&self, times: &[Duration]) -> TimingStats {
-        let mut times_ns: Vec<u128> = times.iter().map(|t| t.as_nanos()).collect();
+        let mut times_ns: Vec<u128> = times.iter().map(std::time::Duration::as_nanos).collect();
         times_ns.sort_unstable();
 
         let average_ns = times_ns.iter().sum::<u128>() / times_ns.len() as u128;
-        let min_ns = *times_ns.first().unwrap();
-        let max_ns = *times_ns.last().unwrap();
+        let min_ns = times_ns.first().copied().unwrap_or(0);
+        let max_ns = times_ns.last().copied().unwrap_or(0);
 
         // Calculate standard deviation
         let variance = times_ns
@@ -1073,11 +1094,13 @@ impl QuantumBenchmarkSuite {
     }
 
     /// Get benchmark results
+    #[must_use]
     pub fn get_results(&self) -> &[BenchmarkResult] {
         &self.results
     }
 
     /// Get benchmark configuration
+    #[must_use]
     pub const fn get_config(&self) -> &BenchmarkConfig {
         &self.config
     }

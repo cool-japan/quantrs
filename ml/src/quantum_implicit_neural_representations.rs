@@ -1194,7 +1194,10 @@ impl QuantumImplicitNeuralRepresentation {
     ) -> Result<AdaptationOutput> {
         if self.meta_learner.is_some() {
             // Extract meta_learner temporarily to avoid double borrow
-            let mut meta_learner = self.meta_learner.take().unwrap();
+            let mut meta_learner = self
+                .meta_learner
+                .take()
+                .expect("meta_learner should exist after is_some() check");
             let result = meta_learner.fast_adaptation(self, coordinates, values, adaptation_steps);
             self.meta_learner = Some(meta_learner);
             result
@@ -1821,11 +1824,12 @@ mod tests {
         };
 
         let coordinates =
-            Array2::from_shape_vec((4, 2), vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]).unwrap();
+            Array2::from_shape_vec((4, 2), vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+                .expect("Failed to create coordinates array");
         let result = encoder.encode(&coordinates);
         assert!(result.is_ok());
 
-        let encoded = result.unwrap();
+        let encoded = result.expect("Encoding should succeed");
         assert_eq!(encoded.nrows(), 4);
         assert_eq!(encoded.ncols(), 40); // 2 * 10 * 2
     }
@@ -1837,18 +1841,19 @@ mod tests {
             output_dim: 3,
             ..Default::default()
         };
-        let inr = QuantumImplicitNeuralRepresentation::new(config).unwrap();
+        let inr = QuantumImplicitNeuralRepresentation::new(config)
+            .expect("Failed to create QuantumImplicitNeuralRepresentation");
 
         let coordinates = Array2::from_shape_vec(
             (5, 2),
             vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         )
-        .unwrap();
+        .expect("Failed to create coordinates array");
 
         let result = inr.query(&coordinates);
         assert!(result.is_ok());
 
-        let output = result.unwrap();
+        let output = result.expect("Query should succeed");
         assert_eq!(output.values.nrows(), 5);
     }
 
@@ -1915,7 +1920,7 @@ mod tests {
             },
             SignalType::SignedDistanceField {
                 bounds: Array2::from_shape_vec((3, 2), vec![-1.0, 1.0, -1.0, 1.0, -1.0, 1.0])
-                    .unwrap(),
+                    .expect("Failed to create bounds array"),
             },
         ];
 

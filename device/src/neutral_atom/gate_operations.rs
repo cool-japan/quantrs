@@ -229,30 +229,35 @@ impl NeutralAtomGateBuilder {
     }
 
     /// Set the gate type
-    pub fn gate_type(mut self, gate_type: NeutralAtomGateType) -> Self {
+    #[must_use]
+    pub const fn gate_type(mut self, gate_type: NeutralAtomGateType) -> Self {
         self.gate_type = Some(gate_type);
         self
     }
 
     /// Add target atoms
+    #[must_use]
     pub fn target_atoms(mut self, atoms: &[usize]) -> Self {
         self.target_atoms.extend_from_slice(atoms);
         self
     }
 
     /// Set gate duration
-    pub fn duration(mut self, duration: Duration) -> Self {
+    #[must_use]
+    pub const fn duration(mut self, duration: Duration) -> Self {
         self.duration = Some(duration);
         self
     }
 
     /// Add a parameter
+    #[must_use]
     pub fn parameter(mut self, key: &str, value: f64) -> Self {
         self.parameters.insert(key.to_string(), value);
         self
     }
 
     /// Add metadata
+    #[must_use]
     pub fn metadata(mut self, key: &str, value: &str) -> Self {
         self.metadata.insert(key.to_string(), value.to_string());
         self
@@ -385,8 +390,7 @@ fn validate_tweezer_movement_params(params: &NeutralAtomGateParams) -> DeviceRes
     for param in &required_params {
         if !params.parameters.contains_key(*param) {
             return Err(DeviceError::InvalidInput(format!(
-                "Tweezer movement must specify {}",
-                param
+                "Tweezer movement must specify {param}"
             )));
         }
     }
@@ -405,7 +409,7 @@ pub fn create_single_qubit_rotation(
         RotationAxis::X => "x".to_string(),
         RotationAxis::Y => "y".to_string(),
         RotationAxis::Z => "z".to_string(),
-        RotationAxis::Arbitrary { x, y, z } => format!("arbitrary_{}_{}_{}", x, y, z),
+        RotationAxis::Arbitrary { x, y, z } => format!("arbitrary_{x}_{y}_{z}"),
     };
 
     NeutralAtomGateBuilder::new()
@@ -462,7 +466,7 @@ mod tests {
             .duration(Duration::from_micros(100))
             .parameter("angle", std::f64::consts::PI)
             .build()
-            .unwrap();
+            .expect("Failed to build single-qubit rotation gate");
 
         assert_eq!(gate.gate_type, NeutralAtomGateType::SingleQubitRotation);
         assert_eq!(gate.target_atoms, vec![0]);
@@ -491,7 +495,7 @@ mod tests {
             RotationAxis::X,
             Duration::from_micros(100),
         )
-        .unwrap();
+        .expect("Failed to create single-qubit rotation gate");
 
         assert_eq!(gate.gate_type, NeutralAtomGateType::SingleQubitRotation);
         assert_eq!(gate.target_atoms, vec![0]);

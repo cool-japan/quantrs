@@ -93,6 +93,7 @@ pub struct PerformancePredictor {
 
 impl PerformancePredictor {
     /// Create a new predictor
+    #[must_use]
     pub fn new(num_features: usize) -> Self {
         Self {
             feature_weights: Array1::zeros(num_features),
@@ -102,6 +103,7 @@ impl PerformancePredictor {
     }
 
     /// Predict performance for given features and strategy
+    #[must_use]
     pub fn predict(
         &self,
         features: &ProblemFeatures,
@@ -153,7 +155,7 @@ impl PerformancePredictor {
             OptimizationStrategy::PopulationAnnealing => {
                 features.num_variables as f64 * features.density
             }
-            OptimizationStrategy::CoherentIsingMachine => (features.num_variables as f64).powf(2.0),
+            OptimizationStrategy::CoherentIsingMachine => (features.num_variables as f64).powi(2),
             OptimizationStrategy::QuantumWalk => {
                 features.num_variables as f64 * features.average_degree
             }
@@ -189,7 +191,7 @@ impl PerformancePredictor {
         *current_adj += learning_rate * error * 0.1;
 
         // Update confidence based on error
-        self.confidence = 0.9 * self.confidence + 0.1 * (1.0 - error.abs());
+        self.confidence = 0.9f64.mul_add(self.confidence, 0.1 * (1.0 - error.abs()));
     }
 }
 
@@ -215,6 +217,7 @@ pub struct TransferLearningEngine {
 
 impl TransferLearningEngine {
     /// Create new transfer learning engine
+    #[must_use]
     pub fn new() -> Self {
         Self {
             source_records: Vec::new(),
@@ -230,6 +233,7 @@ impl TransferLearningEngine {
     }
 
     /// Compute similarity between two problems
+    #[must_use]
     pub fn compute_similarity(
         &self,
         features1: &ProblemFeatures,
@@ -280,7 +284,7 @@ impl TransferLearningEngine {
             .collect();
 
         // Sort by score descending
-        recommendations.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        recommendations.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         recommendations
     }
@@ -307,6 +311,7 @@ pub struct AdaptiveStrategySelector {
 
 impl AdaptiveStrategySelector {
     /// Create new adaptive selector
+    #[must_use]
     pub fn new(seed: u64) -> Self {
         Self {
             predictor: PerformancePredictor::new(8),
@@ -326,7 +331,7 @@ impl AdaptiveStrategySelector {
         if self.rng.gen::<f64>() < self.exploration_rate {
             return *available_strategies
                 .get(self.rng.gen_range(0..available_strategies.len()))
-                .unwrap();
+                .expect("random index should be within bounds");
         }
 
         // Exploitation: use learned knowledge
@@ -336,7 +341,7 @@ impl AdaptiveStrategySelector {
         for &strategy in available_strategies {
             let prediction = self.predictor.predict(features, strategy);
             let transfer_bonus = self.get_transfer_bonus(features, strategy);
-            let total_score = prediction.quality_score + 0.3 * transfer_bonus;
+            let total_score = 0.3f64.mul_add(transfer_bonus, prediction.quality_score);
 
             if total_score > best_score {
                 best_score = total_score;
@@ -358,8 +363,7 @@ impl AdaptiveStrategySelector {
         recommendations
             .iter()
             .find(|(s, _)| *s == strategy)
-            .map(|(_, score)| *score)
-            .unwrap_or(0.0)
+            .map_or(0.0, |(_, score)| *score)
     }
 
     /// Update selector with new observation
@@ -372,6 +376,7 @@ impl AdaptiveStrategySelector {
     }
 
     /// Get performance prediction for strategy
+    #[must_use]
     pub fn predict_performance(
         &self,
         features: &ProblemFeatures,
@@ -397,6 +402,7 @@ pub struct MetaLearningOptimizer {
 
 impl MetaLearningOptimizer {
     /// Create new meta-learning optimizer
+    #[must_use]
     pub fn new(max_history: usize, seed: u64) -> Self {
         Self {
             history: VecDeque::new(),
@@ -424,10 +430,10 @@ impl MetaLearningOptimizer {
 
         let density = couplings.len() as f64 / (num_variables * (num_variables - 1) / 2) as f64;
 
-        let coupling_mean = if !coupling_values.is_empty() {
-            coupling_values.iter().sum::<f64>() / coupling_values.len() as f64
-        } else {
+        let coupling_mean = if coupling_values.is_empty() {
             0.0
+        } else {
+            coupling_values.iter().sum::<f64>() / coupling_values.len() as f64
         };
 
         let coupling_std = if coupling_values.len() > 1 {
@@ -441,15 +447,15 @@ impl MetaLearningOptimizer {
             0.0
         };
 
-        let coupling_max = coupling_values.iter().cloned().fold(0.0, f64::max);
+        let coupling_max = coupling_values.iter().copied().fold(0.0, f64::max);
 
         // Bias statistics using public API
         let biases = model.biases();
         let bias_values: Vec<f64> = biases.iter().map(|(_, b)| *b).collect();
-        let bias_mean = if !bias_values.is_empty() {
-            bias_values.iter().sum::<f64>() / bias_values.len() as f64
-        } else {
+        let bias_mean = if bias_values.is_empty() {
             0.0
+        } else {
+            bias_values.iter().sum::<f64>() / bias_values.len() as f64
         };
 
         let bias_std = if bias_values.len() > 1 {
@@ -464,13 +470,13 @@ impl MetaLearningOptimizer {
         };
 
         // Graph properties
-        let average_degree = if !degrees.is_empty() {
-            degrees.iter().sum::<usize>() as f64 / degrees.len() as f64
-        } else {
+        let average_degree = if degrees.is_empty() {
             0.0
+        } else {
+            degrees.iter().sum::<usize>() as f64 / degrees.len() as f64
         };
 
-        let max_degree = degrees.iter().cloned().max().unwrap_or(0);
+        let max_degree = degrees.iter().copied().max().unwrap_or(0);
 
         // Simple clustering coefficient estimate
         let clustering_coefficient = self.estimate_clustering(model);
@@ -495,7 +501,7 @@ impl MetaLearningOptimizer {
             clustering_coefficient,
             estimated_barriers,
             frustration_index,
-            symmetry_score: symmetry_score.max(0.0).min(1.0),
+            symmetry_score: symmetry_score.clamp(0.0, 1.0),
         }
     }
 
@@ -538,7 +544,7 @@ impl MetaLearningOptimizer {
         }
 
         if triples > 0 {
-            triangles as f64 / triples as f64
+            f64::from(triangles) / f64::from(triples)
         } else {
             0.0
         }
@@ -559,7 +565,7 @@ impl MetaLearningOptimizer {
         }
 
         if total > 0 {
-            frustrated as f64 / total as f64
+            f64::from(frustrated) / total as f64
         } else {
             0.0
         }
@@ -583,9 +589,9 @@ impl MetaLearningOptimizer {
         self.total_optimizations += 1;
 
         // Update running average
-        self.average_success_rate = (self.average_success_rate
-            * (self.total_optimizations - 1) as f64
-            + record.success_rate)
+        self.average_success_rate = self
+            .average_success_rate
+            .mul_add((self.total_optimizations - 1) as f64, record.success_rate)
             / self.total_optimizations as f64;
 
         // Update selector
@@ -627,12 +633,17 @@ impl MetaLearningOptimizer {
             .collect();
 
         // Sort by quality score
-        recommendations.sort_by(|a, b| b.1.quality_score.partial_cmp(&a.1.quality_score).unwrap());
+        recommendations.sort_by(|a, b| {
+            b.1.quality_score
+                .partial_cmp(&a.1.quality_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         recommendations.into_iter().take(top_k).collect()
     }
 
     /// Get optimization statistics
+    #[must_use]
     pub fn get_statistics(&self) -> MetaLearningStatistics {
         MetaLearningStatistics {
             total_optimizations: self.total_optimizations,
@@ -667,9 +678,9 @@ mod tests {
     fn test_feature_extraction() {
         let optimizer = MetaLearningOptimizer::new(100, 42);
         let mut model = IsingModel::new(5);
-        model.set_coupling(0, 1, -1.0).unwrap();
-        model.set_coupling(1, 2, -1.0).unwrap();
-        model.set_bias(0, 0.5).unwrap();
+        model.set_coupling(0, 1, -1.0).expect("should set coupling");
+        model.set_coupling(1, 2, -1.0).expect("should set coupling");
+        model.set_bias(0, 0.5).expect("should set bias");
 
         let features = optimizer.extract_features(&model);
         assert_eq!(features.num_variables, 5);
@@ -680,7 +691,7 @@ mod tests {
     fn test_strategy_selection() {
         let mut optimizer = MetaLearningOptimizer::new(100, 42);
         let mut model = IsingModel::new(10);
-        model.set_coupling(0, 1, -1.0).unwrap();
+        model.set_coupling(0, 1, -1.0).expect("should set coupling");
 
         let strategy = optimizer.select_strategy(&model);
         assert!(matches!(
@@ -784,8 +795,8 @@ mod tests {
     fn test_recommend_strategies() {
         let mut optimizer = MetaLearningOptimizer::new(100, 42);
         let mut model = IsingModel::new(15);
-        model.set_coupling(0, 1, -1.0).unwrap();
-        model.set_coupling(1, 2, 1.0).unwrap();
+        model.set_coupling(0, 1, -1.0).expect("should set coupling");
+        model.set_coupling(1, 2, 1.0).expect("should set coupling");
 
         let recommendations = optimizer.recommend_strategies(&model, 3);
         assert_eq!(recommendations.len(), 3);

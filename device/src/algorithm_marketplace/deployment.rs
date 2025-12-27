@@ -32,7 +32,7 @@ pub struct DeploymentRequest {
 }
 
 /// Deployment environments
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeploymentEnvironment {
     Development,
     Staging,
@@ -74,7 +74,7 @@ pub struct DeploymentInstance {
 }
 
 /// Instance status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstanceStatus {
     Pending,
     Starting,
@@ -109,7 +109,7 @@ pub struct QuantumResourceAllocation {
 }
 
 /// Priority levels for quantum resource access
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Priority {
     Low,
     Normal,
@@ -140,7 +140,7 @@ pub struct HealthCheck {
 }
 
 /// Health check types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthCheckType {
     HTTP,
     TCP,
@@ -201,7 +201,7 @@ pub struct QuantumMetrics {
 }
 
 /// Health status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HealthStatus {
     Healthy,
     Degraded,
@@ -223,7 +223,7 @@ pub struct DeploymentTemplate {
 }
 
 /// Template types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TemplateType {
     Microservice,
     Serverless,
@@ -289,7 +289,7 @@ pub struct ScalingMetric {
 }
 
 /// Scaling metric types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScalingMetricType {
     CPUUtilization,
     MemoryUtilization,
@@ -302,7 +302,7 @@ pub enum ScalingMetricType {
 }
 
 /// Comparison operators for scaling
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     GreaterThan,
     GreaterThanOrEqual,
@@ -322,7 +322,7 @@ pub struct ScalingPolicy {
 }
 
 /// Scaling types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScalingType {
     StepScaling,
     TargetTracking,
@@ -331,7 +331,7 @@ pub enum ScalingType {
 }
 
 /// Adjustment types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AdjustmentType {
     ChangeInCapacity,
     ExactCapacity,
@@ -351,7 +351,7 @@ pub struct MonitoringConfiguration {
 }
 
 /// Log levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogLevel {
     Debug,
     Info,
@@ -372,7 +372,7 @@ pub struct AlertRule {
 }
 
 /// Alert conditions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertCondition {
     Above,
     Below,
@@ -390,7 +390,7 @@ pub struct AlertAction {
 }
 
 /// Alert action types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertActionType {
     Email,
     SMS,
@@ -420,7 +420,7 @@ pub struct DashboardWidget {
 }
 
 /// Widget types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WidgetType {
     LineChart,
     BarChart,
@@ -506,7 +506,7 @@ pub struct PortRange {
 }
 
 /// Network protocols
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetworkProtocol {
     TCP,
     UDP,
@@ -524,7 +524,7 @@ pub struct SecretManagement {
 }
 
 /// Secret providers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecretProvider {
     Kubernetes,
     HashiCorpVault,
@@ -545,7 +545,7 @@ pub struct NetworkConfiguration {
 }
 
 /// Service types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ServiceType {
     ClusterIP,
     NodePort,
@@ -563,7 +563,7 @@ pub struct LoadBalancerConfiguration {
 }
 
 /// Load balancing algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingAlgorithm {
     RoundRobin,
     LeastConnections,
@@ -573,7 +573,7 @@ pub enum LoadBalancingAlgorithm {
 }
 
 /// Session affinity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionAffinity {
     None,
     ClientIP,
@@ -609,7 +609,7 @@ pub struct PathRule {
 }
 
 /// Path types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PathType {
     Exact,
     Prefix,
@@ -626,7 +626,7 @@ pub struct DNSConfiguration {
 }
 
 /// DNS policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DNSPolicy {
     ClusterFirst,
     ClusterFirstWithHostNet,
@@ -654,7 +654,7 @@ pub struct PersistentVolumeConfig {
 }
 
 /// Access modes for persistent volumes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AccessMode {
     ReadWriteOnce,
     ReadOnlyMany,
@@ -662,7 +662,7 @@ pub enum AccessMode {
 }
 
 /// Storage types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageType {
     SSD,
     HDD,
@@ -690,7 +690,7 @@ pub struct RetentionPolicy {
 }
 
 /// Backup location
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BackupLocation {
     Local,
     S3,
@@ -720,7 +720,7 @@ pub struct ScalingEvent {
 }
 
 /// Scaling actions
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalingAction {
     ScaleUp,
     ScaleDown,
@@ -782,7 +782,7 @@ pub struct Alert {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -799,7 +799,7 @@ pub struct NotificationChannel {
 }
 
 /// Notification channel types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationChannelType {
     Email,
     Slack,
@@ -907,7 +907,7 @@ pub struct ContainerOrchestrator {
 }
 
 /// Orchestrator types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OrchestratorType {
     Kubernetes,
     DockerSwarm,
@@ -936,7 +936,7 @@ pub struct ClusterNode {
 }
 
 /// Node types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeType {
     Master,
     Worker,
@@ -953,7 +953,7 @@ pub struct NodeTaint {
 }
 
 /// Taint effects
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TaintEffect {
     NoSchedule,
     PreferNoSchedule,
@@ -987,7 +987,7 @@ pub struct StorageClass {
 }
 
 /// Reclaim policies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReclaimPolicy {
     Retain,
     Delete,
@@ -1012,7 +1012,7 @@ pub struct NodeHealth {
 }
 
 /// Node status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeStatus {
     Ready,
     NotReady,
@@ -1053,7 +1053,7 @@ pub struct ServiceEndpoint {
 }
 
 /// Service health status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServiceHealthStatus {
     Healthy,
     Degraded,
@@ -1071,7 +1071,7 @@ pub struct Endpoint {
 }
 
 /// Endpoint health
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EndpointHealth {
     Healthy,
     Unhealthy,
@@ -1086,7 +1086,7 @@ pub struct ServiceRegistry {
 }
 
 /// Registry types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegistryType {
     Consul,
     Etcd,
@@ -1131,7 +1131,10 @@ impl AlgorithmDeploymentManager {
         self.validate_deployment_request(&request)?;
 
         // Allocate resources
-        let resource_allocator = self.resource_allocator.read().unwrap();
+        let resource_allocator = self
+            .resource_allocator
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         let allocations = resource_allocator.allocate_resources(&request.resource_requirements)?;
 
         // Create deployment instances
@@ -1222,7 +1225,7 @@ impl DeploymentMonitoringSystem {
 }
 
 impl AlertManager {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             active_alerts: vec![],
             alert_rules: vec![],

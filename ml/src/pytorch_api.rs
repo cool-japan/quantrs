@@ -473,7 +473,9 @@ impl QuantumLoss for QuantumMSELoss {
     fn forward(&self, predictions: &SciRS2Array, targets: &SciRS2Array) -> Result<SciRS2Array> {
         let diff = predictions.data.clone() - &targets.data;
         let squared_diff = &diff * &diff;
-        let mse = squared_diff.mean().unwrap();
+        let mse = squared_diff.mean().ok_or_else(|| {
+            MLError::InvalidConfiguration("Cannot compute mean of empty array".to_string())
+        })?;
 
         let loss_data = ArrayD::from_elem(IxDyn(&[]), mse);
         Ok(SciRS2Array::new(loss_data, predictions.requires_grad))
@@ -843,21 +845,25 @@ mod tests {
 
     #[test]
     fn test_quantum_linear() {
-        let mut linear = QuantumLinear::new(4, 2).unwrap();
+        let mut linear = QuantumLinear::new(4, 2).expect("QuantumLinear creation should succeed");
         assert_eq!(linear.in_features, 4);
         assert_eq!(linear.out_features, 2);
         assert_eq!(linear.parameters().len(), 1); // weights only
 
-        let linear_with_bias = linear.with_bias().unwrap();
+        let linear_with_bias = linear.with_bias().expect("Adding bias should succeed");
         // Would have 2 parameters: weights and bias
     }
 
     #[test]
     fn test_quantum_sequential() {
         let model = QuantumSequential::new()
-            .add(Box::new(QuantumLinear::new(4, 8).unwrap()))
+            .add(Box::new(
+                QuantumLinear::new(4, 8).expect("QuantumLinear creation should succeed"),
+            ))
             .add(Box::new(QuantumActivation::relu()))
-            .add(Box::new(QuantumLinear::new(8, 2).unwrap()));
+            .add(Box::new(
+                QuantumLinear::new(8, 2).expect("QuantumLinear creation should succeed"),
+            ));
 
         assert_eq!(model.len(), 3);
         assert!(!model.is_empty());
@@ -866,10 +872,11 @@ mod tests {
     #[test]
     fn test_quantum_activation() {
         let mut relu = QuantumActivation::relu();
-        let input_data = ArrayD::from_shape_vec(IxDyn(&[2]), vec![-1.0, 1.0]).unwrap();
+        let input_data = ArrayD::from_shape_vec(IxDyn(&[2]), vec![-1.0, 1.0])
+            .expect("Valid shape for input data");
         let input = SciRS2Array::new(input_data, false);
 
-        let output = relu.forward(&input).unwrap();
+        let output = relu.forward(&input).expect("Forward pass should succeed");
         assert_eq!(output.data[[0]], 0.0); // ReLU(-1) = 0
         assert_eq!(output.data[[1]], 1.0); // ReLU(1) = 1
     }
@@ -879,19 +886,24 @@ mod tests {
     fn test_quantum_loss() {
         let mse_loss = QuantumMSELoss;
 
-        let pred_data = ArrayD::from_shape_vec(IxDyn(&[2]), vec![1.0, 2.0]).unwrap();
-        let target_data = ArrayD::from_shape_vec(IxDyn(&[2]), vec![1.5, 1.8]).unwrap();
+        let pred_data = ArrayD::from_shape_vec(IxDyn(&[2]), vec![1.0, 2.0])
+            .expect("Valid shape for predictions");
+        let target_data =
+            ArrayD::from_shape_vec(IxDyn(&[2]), vec![1.5, 1.8]).expect("Valid shape for targets");
 
         let predictions = SciRS2Array::new(pred_data, false);
         let targets = SciRS2Array::new(target_data, false);
 
-        let loss = mse_loss.forward(&predictions, &targets).unwrap();
+        let loss = mse_loss
+            .forward(&predictions, &targets)
+            .expect("Loss computation should succeed");
         assert!(loss.data[[0]] > 0.0); // Should have positive loss
     }
 
     #[test]
     fn test_parameter() {
-        let data = ArrayD::from_shape_vec(IxDyn(&[2, 3]), vec![1.0; 6]).unwrap();
+        let data = ArrayD::from_shape_vec(IxDyn(&[2, 3]), vec![1.0; 6])
+            .expect("Valid shape for parameter data");
         let param = Parameter::new(SciRS2Array::new(data, true), "test_param");
 
         assert_eq!(param.name, "test_param");

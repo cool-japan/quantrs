@@ -117,7 +117,10 @@ impl UnifiedQuantumBenchmarkSystem {
         platform: QuantumPlatform,
         device: Box<dyn QuantumDevice + Send + Sync>,
     ) -> DeviceResult<()> {
-        let mut clients = self.platform_clients.write().unwrap();
+        let mut clients = self
+            .platform_clients
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         clients.insert(platform, device);
         Ok(())
     }
@@ -128,7 +131,11 @@ impl UnifiedQuantumBenchmarkSystem {
         let start_time = SystemTime::now();
 
         // Notify benchmark start
-        let config = self.config.read().unwrap().clone();
+        let config = self
+            .config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let _ = self.event_publisher.send(BenchmarkEvent::BenchmarkStarted {
             execution_id: execution_id.clone(),
             platforms: config.target_platforms.clone(),
@@ -152,7 +159,7 @@ impl UnifiedQuantumBenchmarkSystem {
                     platform_results.insert(platform.clone(), result);
                 }
                 Err(e) => {
-                    eprintln!("Platform benchmark failed for {:?}: {}", platform, e);
+                    eprintln!("Platform benchmark failed for {platform:?}: {e}");
                     // Continue with other platforms
                 }
             }
@@ -249,7 +256,11 @@ impl UnifiedQuantumBenchmarkSystem {
         platform: &QuantumPlatform,
         execution_id: &str,
     ) -> DeviceResult<PlatformBenchmarkResult> {
-        let config = self.config.read().unwrap().clone();
+        let config = self
+            .config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
 
         // Get device information
         let device_info = self.get_device_info(platform).await?;
@@ -344,7 +355,7 @@ impl UnifiedQuantumBenchmarkSystem {
         };
 
         Ok(DeviceInfo {
-            device_id: format!("{:?}", platform),
+            device_id: format!("{platform:?}"),
             provider,
             technology,
             specifications: DeviceSpecifications {
@@ -530,7 +541,10 @@ impl UnifiedQuantumBenchmarkSystem {
     }
 
     async fn store_historical_result(&self, result: &UnifiedBenchmarkResult) {
-        let mut historical_data = self.historical_data.write().unwrap();
+        let mut historical_data = self
+            .historical_data
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         historical_data.push_back(result.clone());
 
         // Keep only the last 10000 results

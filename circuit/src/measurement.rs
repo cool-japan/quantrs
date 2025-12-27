@@ -247,23 +247,12 @@ impl<const N: usize> MeasurementCircuit<N> {
 
         for op in &self.operations {
             match op {
-                CircuitOp::Gate(gate) => {
-                    // Convert Box<dyn GateOp> to concrete gate type
-                    // For now, just skip as we can't easily convert
-                    // circuit.add_gate(gate.clone())?;
-                }
-                CircuitOp::Measure(_) => {
-                    // Skip measurements in standard circuit
-                }
-                CircuitOp::FeedForward(ff) => {
-                    // Add only the gate, not the condition
-                    // circuit.add_gate(ff.gate.clone())?;
-                }
-                CircuitOp::Barrier(_) => {
-                    // Skip barriers in standard circuit
-                }
-                CircuitOp::Reset(_) => {
-                    // Skip resets in standard circuit
+                CircuitOp::Gate(_)
+                | CircuitOp::Measure(_)
+                | CircuitOp::FeedForward(_)
+                | CircuitOp::Barrier(_)
+                | CircuitOp::Reset(_) => {
+                    // Skip: gates can't be easily converted, measurements/barriers/resets not in standard circuit
                 }
             }
         }
@@ -415,10 +404,12 @@ mod tests {
         // Add Hadamard gate
         circuit
             .add_gate(Box::new(Hadamard { target: QubitId(0) }))
-            .unwrap();
+            .expect("Failed to add Hadamard gate");
 
         // Measure qubit 0
-        let bit0 = circuit.measure(QubitId(0)).unwrap();
+        let bit0 = circuit
+            .measure(QubitId(0))
+            .expect("Failed to measure qubit 0");
         assert_eq!(bit0, 0);
 
         // Add conditional X gate
@@ -428,7 +419,7 @@ mod tests {
         );
         circuit
             .add_conditional(condition, Box::new(PauliX { target: QubitId(1) }))
-            .unwrap();
+            .expect("Failed to add conditional X gate");
 
         assert_eq!(circuit.num_operations(), 3);
         assert_eq!(circuit.num_measurements(), 1);
@@ -441,16 +432,18 @@ mod tests {
         // Bell state preparation with measurement
         circuit
             .add_gate(Box::new(Hadamard { target: QubitId(0) }))
-            .unwrap();
+            .expect("Failed to add Hadamard gate");
         circuit
             .add_gate(Box::new(quantrs2_core::gate::multi::CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             }))
-            .unwrap();
+            .expect("Failed to add CNOT gate");
 
         // Measure first qubit
-        let bit = circuit.measure(QubitId(0)).unwrap();
+        let bit = circuit
+            .measure(QubitId(0))
+            .expect("Failed to measure qubit 0");
 
         // Apply X to second qubit if first measured as 1
         let condition = ClassicalCondition::equals(
@@ -459,7 +452,7 @@ mod tests {
         );
         circuit
             .add_conditional(condition, Box::new(PauliX { target: QubitId(1) }))
-            .unwrap();
+            .expect("Failed to add conditional X gate");
 
         // Analyze dependencies
         let deps = circuit.analyze_dependencies();
@@ -471,9 +464,9 @@ mod tests {
     fn test_builder_pattern() {
         let (builder, bit) = MeasurementCircuitBuilder::<2>::new()
             .gate(Box::new(Hadamard { target: QubitId(0) }))
-            .unwrap()
+            .expect("Failed to add gate")
             .measure(QubitId(0))
-            .unwrap();
+            .expect("Failed to measure qubit");
 
         let circuit = builder
             .when(
@@ -483,7 +476,7 @@ mod tests {
                 ),
                 Box::new(PauliX { target: QubitId(1) }),
             )
-            .unwrap()
+            .expect("Failed to add conditional gate")
             .build();
 
         assert_eq!(circuit.num_operations(), 3);

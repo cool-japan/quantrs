@@ -30,7 +30,7 @@ impl MeasurementBasis {
     /// Get the measurement operator for this basis
     pub fn operator(&self) -> Array2<Complex64> {
         match self {
-            MeasurementBasis::Computational => {
+            Self::Computational => {
                 // |0⟩⟨0|
                 Array2::from_shape_vec(
                     (2, 2),
@@ -45,7 +45,7 @@ impl MeasurementBasis {
                     "Failed to create computational basis operator in MeasurementBasis::operator",
                 )
             }
-            MeasurementBasis::X => {
+            Self::X => {
                 // |+⟩⟨+|
                 Array2::from_shape_vec(
                     (2, 2),
@@ -58,7 +58,7 @@ impl MeasurementBasis {
                 )
                 .expect("Failed to create X basis operator in MeasurementBasis::operator")
             }
-            MeasurementBasis::Y => {
+            Self::Y => {
                 // |i⟩⟨i| where |i⟩ = (|0⟩ + i|1⟩)/√2
                 Array2::from_shape_vec(
                     (2, 2),
@@ -71,7 +71,7 @@ impl MeasurementBasis {
                 )
                 .expect("Failed to create Y basis operator in MeasurementBasis::operator")
             }
-            MeasurementBasis::XY(theta) => {
+            Self::XY(theta) => {
                 // |θ⟩⟨θ| where |θ⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
@@ -86,7 +86,7 @@ impl MeasurementBasis {
                 )
                 .expect("Failed to create XY basis operator in MeasurementBasis::operator")
             }
-            MeasurementBasis::XZ(theta) => {
+            Self::XZ(theta) => {
                 // Rotation in XZ plane
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
@@ -101,7 +101,7 @@ impl MeasurementBasis {
                 )
                 .expect("Failed to create XZ basis operator in MeasurementBasis::operator")
             }
-            MeasurementBasis::YZ(theta) => {
+            Self::YZ(theta) => {
                 // Rotation in YZ plane
                 let c = (theta / 2.0).cos();
                 let s = (theta / 2.0).sin();
@@ -535,7 +535,7 @@ impl ClusterState {
         x_corrections: &HashMap<usize, Vec<(usize, bool)>>,
         z_corrections: &HashMap<usize, Vec<(usize, bool)>>,
     ) -> QuantRS2Result<()> {
-        let _n = self.graph.num_vertices;
+        // let _n = self.graph.num_vertices;
 
         // Apply X corrections
         for (target, sources) in x_corrections {

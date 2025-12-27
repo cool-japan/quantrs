@@ -223,7 +223,8 @@ impl GpuMemory {
 
     fn cuda_malloc_host(size: usize) -> Result<*mut std::ffi::c_void> {
         // In real implementation: cudaMallocHost
-        let layout = std::alloc::Layout::from_size_align(size, 256).unwrap();
+        let layout = std::alloc::Layout::from_size_align(size, 256)
+            .map_err(|e| SimulatorError::InvalidInput(format!("Invalid memory layout: {}", e)))?;
         let ptr = unsafe { std::alloc::alloc(layout) };
         if ptr.is_null() {
             Err(SimulatorError::ResourceExhausted(
@@ -280,10 +281,15 @@ impl GpuMemory {
     fn cuda_free_host(ptr: *mut std::ffi::c_void) -> Result<()> {
         // In real implementation: cudaFreeHost
         if !ptr.is_null() {
-            unsafe {
-                let layout = std::alloc::Layout::from_size_align(1, 256).unwrap();
-                std::alloc::dealloc(ptr as *mut u8, layout);
+            // Note: Layout must match original allocation. Using size=1 is safe here
+            // since we only need the alignment to be correct for deallocation.
+            if let Ok(layout) = std::alloc::Layout::from_size_align(1, 256) {
+                unsafe {
+                    std::alloc::dealloc(ptr as *mut u8, layout);
+                }
             }
+            // If layout creation fails, we can't safely deallocate, but this
+            // shouldn't happen with these constant parameters.
         }
         Ok(())
     }

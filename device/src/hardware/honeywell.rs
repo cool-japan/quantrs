@@ -455,12 +455,12 @@ mod tests {
     #[test]
     fn test_circuit_to_qasm_conversion() {
         let config = HoneywellConfig::default();
-        let client = HoneywellClient::new(config).unwrap();
+        let client = HoneywellClient::new(config).expect("Failed to create Honeywell client");
 
         let circuit = Circuit::<2>::new();
         // Note: This is a simplified test - actual circuit building would use proper QuantRS gates
 
-        let qasm = client.circuit_to_qasm(&circuit).unwrap();
+        let qasm = client.circuit_to_qasm(&circuit).expect("Failed to convert circuit to QASM");
 
         assert!(qasm.contains("OPENQASM 2.0"));
         assert!(qasm.contains("qreg q[2]"));

@@ -17,7 +17,7 @@ pub struct ThroughputOptimizationConfig {
 }
 
 /// Throughput optimization techniques
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThroughputOptimizationTechnique {
     ParallelProcessing,
     LoadBalancing,
@@ -39,7 +39,7 @@ pub struct ParallelizationConfig {
 }
 
 /// Work distribution strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkDistributionStrategy {
     RoundRobin,
     LeastLoaded,

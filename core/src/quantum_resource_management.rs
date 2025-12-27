@@ -424,23 +424,23 @@ impl QuantumResourceManager {
     }
 
     // Benchmarking methods
-    fn benchmark_scheduling_efficiency(&self) -> f64 {
+    const fn benchmark_scheduling_efficiency(&self) -> f64 {
         47.3 // 47.3x more efficient quantum process scheduling
     }
 
-    fn benchmark_resource_utilization(&self) -> f64 {
+    const fn benchmark_resource_utilization(&self) -> f64 {
         38.7 // 38.7x better resource utilization
     }
 
-    fn benchmark_coherence_preservation(&self) -> f64 {
+    const fn benchmark_coherence_preservation(&self) -> f64 {
         29.4 // 29.4x better coherence preservation
     }
 
-    fn benchmark_fault_tolerance(&self) -> f64 {
+    const fn benchmark_fault_tolerance(&self) -> f64 {
         52.8 // 52.8x better fault tolerance
     }
 
-    fn benchmark_scalability(&self) -> f64 {
+    const fn benchmark_scalability(&self) -> f64 {
         67.2 // 67.2x better scalability
     }
 }
@@ -536,7 +536,7 @@ impl QuantumResourcePool {
 }
 
 impl QubitResource {
-    pub fn new(qubit_id: QubitId) -> Self {
+    pub const fn new(qubit_id: QubitId) -> Self {
         Self {
             qubit_id,
             qubit_type: QubitType::Superconducting,
@@ -585,7 +585,7 @@ impl QuantumWorkloadOptimizer {
         }
     }
 
-    pub fn analyze_workload(
+    pub const fn analyze_workload(
         &self,
         processes: &[QuantumProcess],
     ) -> Result<WorkloadAnalysis, QuantRS2Error> {
@@ -632,7 +632,7 @@ pub struct QuantumResourceAdvantageReport {
 }
 
 impl QuantumResourceAdvantageReport {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             scheduling_efficiency: 0.0,
             resource_utilization_efficiency: 0.0,
@@ -726,77 +726,77 @@ pub struct SecurityContext;
 
 // Implementation of placeholder structures
 impl ResourceAwareScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl CoherenceAwareScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl PriorityQuantumScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl RealTimeQuantumScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl DistributedQuantumScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl SchedulerMetrics {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl AllocationHistory {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl ResourcePredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl ResourceContentionResolver {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl QuantumMemoryPool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl ClassicalComputePool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl NetworkResourcePool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl SpecializedResourcePool {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl MaintenanceSchedule {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl CoherenceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             real_time_monitoring: true,
             coherence_measurements: VecDeque::new(),
@@ -806,51 +806,51 @@ impl CoherenceMonitor {
     }
 }
 impl DecoherencePredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl CoherenceOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl AdaptiveCoherenceScheduler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl DecoherenceTracking {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl FidelityMonitoring {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl WorkloadAnalyzer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl ResourceUsagePredictor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl PerformanceOptimizer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl ResourcePerformanceMonitor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
-    pub fn monitor_execution(
+    pub const fn monitor_execution(
         &self,
         _schedule: &OptimizedSchedule,
     ) -> Result<ExecutionMetrics, QuantRS2Error> {
@@ -863,12 +863,12 @@ impl ResourcePerformanceMonitor {
     }
 }
 impl QuantumResourceSecurity {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
 impl QuantumLoadBalancer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 
@@ -886,7 +886,7 @@ impl QuantumLoadBalancer {
     }
 }
 impl QuantumFaultHandler {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -986,7 +986,7 @@ mod tests {
         let result = manager.execute_advanced_scheduling(processes, OptimizationLevel::Advanced);
         assert!(result.is_ok());
 
-        let scheduling_result = result.unwrap();
+        let scheduling_result = result.expect("Advanced scheduling should succeed");
         assert_eq!(scheduling_result.total_processes, 1);
         assert!(scheduling_result.resource_efficiency > 0.9);
         assert!(scheduling_result.quantum_advantage > 1.0);

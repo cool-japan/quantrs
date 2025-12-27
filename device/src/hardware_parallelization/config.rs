@@ -131,7 +131,7 @@ pub struct MemoryLimits {
 }
 
 /// Memory allocation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryAllocationStrategy {
     /// Static allocation upfront
     Static,
@@ -157,7 +157,7 @@ pub struct QpuAllocationConfig {
 }
 
 /// QPU sharing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QpuSharingStrategy {
     /// Time slicing
     TimeSlicing,
@@ -187,7 +187,7 @@ pub struct QueueManagementConfig {
 }
 
 /// Queue scheduling algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum QueueSchedulingAlgorithm {
     /// First-come, first-served
     FCFS,
@@ -230,7 +230,7 @@ pub struct FairnessConfig {
 }
 
 /// Fairness algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FairnessAlgorithm {
     /// Proportional fair sharing
     ProportionalFair,
@@ -271,7 +271,7 @@ pub struct NetworkAllocationConfig {
 }
 
 /// Network QoS classes
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NetworkQoSClass {
     /// Best effort
     BestEffort,
@@ -297,7 +297,7 @@ pub struct CompressionConfig {
 }
 
 /// Compression algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompressionAlgorithm {
     /// Gzip compression
     Gzip,
@@ -323,7 +323,7 @@ pub struct ParallelSchedulingConfig {
 }
 
 /// Parallel scheduling algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ParallelSchedulingAlgorithm {
     /// Work stealing
     WorkStealing,
@@ -355,7 +355,7 @@ pub struct WorkStealingConfig {
 }
 
 /// Work stealing strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkStealingStrategy {
     /// Random stealing
     Random,
@@ -396,7 +396,7 @@ pub struct ThreadPoolConfig {
 }
 
 /// Thread priority levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThreadPriority {
     /// Low priority
     Low,
@@ -420,7 +420,7 @@ pub struct ThreadAffinityConfig {
 }
 
 /// Core assignment strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CoreAssignmentStrategy {
     /// Automatic assignment
     Automatic,
@@ -433,7 +433,7 @@ pub enum CoreAssignmentStrategy {
 }
 
 /// NUMA preferences
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NumaPreference {
     /// No preference
     None,
@@ -461,7 +461,7 @@ pub struct HardwareAwarenessConfig {
 }
 
 /// Topology awareness levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TopologyAwarenessLevel {
     /// Basic awareness (qubit count only)
     Basic,
@@ -502,7 +502,7 @@ pub struct ErrorRateConfig {
 }
 
 /// Error mitigation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorMitigationStrategy {
     /// No mitigation
     None,
@@ -517,7 +517,7 @@ pub enum ErrorMitigationStrategy {
 }
 
 /// Error prediction models
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ErrorPredictionModel {
     /// Static error model
     Static,
@@ -543,7 +543,7 @@ pub struct ConnectivityConfig {
 }
 
 /// SWAP insertion strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SwapInsertionStrategy {
     /// Minimal SWAP insertion
     Minimal,
@@ -556,7 +556,7 @@ pub enum SwapInsertionStrategy {
 }
 
 /// Routing preferences
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RoutingPreference {
     /// Shortest path
     ShortestPath,
@@ -582,7 +582,7 @@ pub struct ConnectivityOptimizationConfig {
 }
 
 /// Optimization levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationLevel {
     /// No optimization
     None,
@@ -614,7 +614,7 @@ pub struct ResourceTrackingConfig {
 }
 
 /// Tracking granularity levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrackingGranularity {
     /// Coarse-grained (per circuit)
     Coarse,
@@ -642,7 +642,7 @@ pub struct PerformanceOptimizationConfig {
 }
 
 /// Optimization objectives
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     /// Minimize execution time
     MinimizeTime,
@@ -685,11 +685,11 @@ pub struct CacheSizeLimits {
     /// Maximum disk usage (MB)
     pub max_disk_mb: f64,
     /// Per-user cache limits
-    pub per_user_limits: Option<Box<CacheSizeLimits>>,
+    pub per_user_limits: Option<Box<Self>>,
 }
 
 /// Cache eviction policies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheEvictionPolicy {
     /// Least recently used
     LRU,
@@ -706,7 +706,7 @@ pub enum CacheEvictionPolicy {
 }
 
 /// Cache warming strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CacheWarmingStrategy {
     /// Preload common circuits
     PreloadCommon,
@@ -732,7 +732,7 @@ pub struct PrefetchingConfig {
 }
 
 /// Prefetching strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrefetchingStrategy {
     /// Sequential prefetching
     Sequential,
@@ -771,7 +771,7 @@ pub struct BatchSizeLimits {
 }
 
 /// Batching strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BatchingStrategy {
     /// Fixed size batching
     FixedSize,
@@ -814,7 +814,7 @@ pub struct AdaptiveMLConfig {
 }
 
 /// ML model types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MLModelType {
     /// Linear regression
     LinearRegression,
@@ -842,7 +842,7 @@ pub struct FeatureEngineeringConfig {
 }
 
 /// Circuit features
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitFeature {
     /// Number of qubits
     QubitCount,
@@ -859,7 +859,7 @@ pub enum CircuitFeature {
 }
 
 /// Hardware features
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HardwareFeature {
     /// Available qubits
     AvailableQubits,
@@ -876,7 +876,7 @@ pub enum HardwareFeature {
 }
 
 /// Performance features
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceFeature {
     /// Execution time
     ExecutionTime,
@@ -893,7 +893,7 @@ pub enum PerformanceFeature {
 }
 
 /// Feature normalization methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FeatureNormalization {
     /// No normalization
     None,
@@ -921,7 +921,7 @@ pub struct LoadBalancingConfig {
 }
 
 /// Load balancing algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadBalancingAlgorithm {
     /// Round-robin
     RoundRobin,
@@ -951,7 +951,7 @@ pub struct LoadMonitoringConfig {
 }
 
 /// Load metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadMetric {
     /// CPU utilization
     CpuUtilization,
@@ -1004,7 +1004,7 @@ pub struct RebalancingTriggers {
 }
 
 /// Rebalancing events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RebalancingEvent {
     /// Node failure
     NodeFailure,
@@ -1034,7 +1034,7 @@ pub struct MigrationPolicies {
 }
 
 /// Circuit migration strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitMigrationStrategy {
     /// No migration
     None,
@@ -1047,7 +1047,7 @@ pub enum CircuitMigrationStrategy {
 }
 
 /// Data migration strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataMigrationStrategy {
     /// No data migration
     None,
@@ -1075,7 +1075,7 @@ pub struct ResourceMonitoringConfig {
 }
 
 /// Monitoring granularity
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringGranularity {
     /// System-level monitoring
     System,
@@ -1103,7 +1103,7 @@ pub struct MetricsCollectionConfig {
 }
 
 /// Monitoring metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MonitoringMetric {
     /// Resource utilization
     ResourceUtilization,
@@ -1135,7 +1135,7 @@ pub struct RetentionPolicy {
 }
 
 /// Archive policy
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArchivePolicy {
     /// No archiving
     None,
@@ -1161,7 +1161,7 @@ pub struct StorageConfig {
 }
 
 /// Storage backends
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StorageBackend {
     /// Local filesystem
     LocalFilesystem,
@@ -1187,7 +1187,7 @@ pub struct EncryptionConfig {
 }
 
 /// Encryption algorithms
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EncryptionAlgorithm {
     /// AES-256
     AES256,
@@ -1209,7 +1209,7 @@ pub struct KeyManagementConfig {
 }
 
 /// Key derivation functions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyDerivationFunction {
     /// PBKDF2
     PBKDF2,
@@ -1220,7 +1220,7 @@ pub enum KeyDerivationFunction {
 }
 
 /// Key storage backends
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KeyStorageBackend {
     /// Local keystore
     Local,
@@ -1244,7 +1244,7 @@ pub struct ReplicationConfig {
 }
 
 /// Replication strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReplicationStrategy {
     /// Synchronous replication
     Synchronous,
@@ -1257,7 +1257,7 @@ pub enum ReplicationStrategy {
 }
 
 /// Consistency levels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConsistencyLevel {
     /// Strong consistency
     Strong,
@@ -1388,7 +1388,7 @@ pub struct AlertAggregationConfig {
 }
 
 /// Alert aggregation strategies
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertAggregationStrategy {
     /// Count-based aggregation
     Count,
@@ -1416,7 +1416,7 @@ pub struct ReportingConfig {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {
     /// Performance report
     Performance,
@@ -1433,7 +1433,7 @@ pub enum ReportType {
 }
 
 /// Report formats
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportFormat {
     /// PDF format
     PDF,

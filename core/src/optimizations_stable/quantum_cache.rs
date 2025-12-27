@@ -98,7 +98,7 @@ impl StableQuantumCache {
         };
 
         {
-            let mut entries = self.entries.write().unwrap();
+            let mut entries = self.entries.write().expect("Cache entries lock poisoned");
             entries.insert(key, entry);
 
             // Perform maintenance if needed
@@ -108,7 +108,7 @@ impl StableQuantumCache {
         }
 
         // Update statistics
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().expect("Cache stats lock poisoned");
         stats.total_size += 1;
     }
 
@@ -118,12 +118,12 @@ impl StableQuantumCache {
 
         // Check if entry exists and is not expired
         let result = {
-            let mut entries = self.entries.write().unwrap();
+            let mut entries = self.entries.write().expect("Cache entries lock poisoned");
             if let Some(entry) = entries.get_mut(key) {
                 // Check if entry is expired
                 if now.duration_since(entry.created_at) > self.max_age {
                     entries.remove(key);
-                    let mut stats = self.stats.write().unwrap();
+                    let mut stats = self.stats.write().expect("Cache stats lock poisoned");
                     stats.misses += 1;
                     stats.evictions += 1;
                     return None;
@@ -133,12 +133,12 @@ impl StableQuantumCache {
                 entry.access_count += 1;
                 entry.last_accessed = now;
 
-                let mut stats = self.stats.write().unwrap();
+                let mut stats = self.stats.write().expect("Cache stats lock poisoned");
                 stats.hits += 1;
 
                 Some(entry.result.clone())
             } else {
-                let mut stats = self.stats.write().unwrap();
+                let mut stats = self.stats.write().expect("Cache stats lock poisoned");
                 stats.misses += 1;
                 None
             }
@@ -149,16 +149,16 @@ impl StableQuantumCache {
 
     /// Check if a key exists in the cache
     pub fn contains(&self, key: &CacheKey) -> bool {
-        let entries = self.entries.read().unwrap();
+        let entries = self.entries.read().expect("Cache entries lock poisoned");
         entries.contains_key(key)
     }
 
     /// Clear all cache entries
     pub fn clear(&self) {
-        let mut entries = self.entries.write().unwrap();
+        let mut entries = self.entries.write().expect("Cache entries lock poisoned");
         entries.clear();
 
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().expect("Cache stats lock poisoned");
         *stats = CacheStatistics::default();
     }
 
@@ -178,7 +178,7 @@ impl StableQuantumCache {
         // Remove the oldest entry
         if let Some(key) = oldest_key {
             entries.remove(&key);
-            let mut stats = self.stats.write().unwrap();
+            let mut stats = self.stats.write().expect("Cache stats lock poisoned");
             stats.evictions += 1;
         }
     }
@@ -186,7 +186,7 @@ impl StableQuantumCache {
     /// Remove expired entries
     pub fn cleanup_expired(&self) {
         let now = Instant::now();
-        let mut entries = self.entries.write().unwrap();
+        let mut entries = self.entries.write().expect("Cache entries lock poisoned");
         let mut expired_keys = Vec::new();
 
         for (key, entry) in entries.iter() {
@@ -200,14 +200,18 @@ impl StableQuantumCache {
             entries.remove(&key);
         }
 
-        let mut stats = self.stats.write().unwrap();
+        let mut stats = self.stats.write().expect("Cache stats lock poisoned");
         stats.evictions += expired_count as u64;
     }
 
     /// Get cache statistics
     pub fn get_statistics(&self) -> CacheStatistics {
-        let entries = self.entries.read().unwrap();
-        let mut stats = self.stats.read().unwrap().clone();
+        let entries = self.entries.read().expect("Cache entries lock poisoned");
+        let mut stats = self
+            .stats
+            .read()
+            .expect("Cache stats lock poisoned")
+            .clone();
 
         // Update computed statistics
         stats.total_size = entries.len();
@@ -216,8 +220,9 @@ impl StableQuantumCache {
             let total_accesses: u64 = entries.values().map(|e| e.access_count).sum();
             stats.average_access_count = total_accesses as f64 / entries.len() as f64;
 
-            let oldest_entry = entries.values().min_by_key(|e| e.created_at).unwrap();
-            stats.oldest_entry_age = Instant::now().duration_since(oldest_entry.created_at);
+            if let Some(oldest_entry) = entries.values().min_by_key(|e| e.created_at) {
+                stats.oldest_entry_age = Instant::now().duration_since(oldest_entry.created_at);
+            }
         }
 
         stats
@@ -225,7 +230,7 @@ impl StableQuantumCache {
 
     /// Get cache hit ratio
     pub fn hit_ratio(&self) -> f64 {
-        let stats = self.stats.read().unwrap();
+        let stats = self.stats.read().expect("Cache stats lock poisoned");
         if stats.hits + stats.misses == 0 {
             0.0
         } else {
@@ -235,7 +240,7 @@ impl StableQuantumCache {
 
     /// Get memory usage estimate in bytes
     pub fn estimated_memory_usage(&self) -> usize {
-        let entries = self.entries.read().unwrap();
+        let entries = self.entries.read().expect("Cache entries lock poisoned");
         let mut total_size = 0;
 
         for (key, entry) in entries.iter() {
@@ -306,7 +311,9 @@ mod tests {
 
         // Test insertion and retrieval
         cache.insert(key.clone(), result.clone());
-        let retrieved = cache.get(&key).unwrap();
+        let retrieved = cache
+            .get(&key)
+            .expect("Cache should contain the inserted key");
 
         match (&result, &retrieved) {
             (CachedResult::Scalar(a), CachedResult::Scalar(b)) => {

@@ -16,6 +16,7 @@ pub struct TestRegistry {
 }
 
 impl TestRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             test_cases: HashMap::new(),
@@ -51,7 +52,7 @@ impl TestRegistry {
     pub fn unregister_test_case(&mut self, test_case_id: &str) -> Result<(), String> {
         self.test_cases
             .remove(test_case_id)
-            .ok_or_else(|| format!("Test case {} not found", test_case_id))?;
+            .ok_or_else(|| format!("Test case {test_case_id} not found"))?;
 
         // Remove from dependencies
         self.dependencies.remove(test_case_id);
@@ -60,16 +61,19 @@ impl TestRegistry {
     }
 
     /// Get a test case by ID
+    #[must_use]
     pub fn get_test_case(&self, test_case_id: &str) -> Option<&IntegrationTestCase> {
         self.test_cases.get(test_case_id)
     }
 
     /// Get a test suite by ID
+    #[must_use]
     pub fn get_test_suite(&self, test_suite_id: &str) -> Option<&TestSuite> {
         self.test_suites.get(test_suite_id)
     }
 
     /// Get all test cases in a category
+    #[must_use]
     pub fn get_test_cases_by_category(&self, category: &TestCategory) -> Vec<&IntegrationTestCase> {
         if let Some(ids) = self.categories.get(category) {
             ids.iter()
@@ -89,29 +93,34 @@ impl TestRegistry {
     }
 
     /// Get dependencies for a test case
+    #[must_use]
     pub fn get_dependencies(&self, test_case_id: &str) -> Vec<&str> {
         self.dependencies
             .get(test_case_id)
-            .map(|deps| deps.iter().map(|s| s.as_str()).collect())
+            .map(|deps| deps.iter().map(std::string::String::as_str).collect())
             .unwrap_or_default()
     }
 
     /// List all test cases
+    #[must_use]
     pub fn list_test_cases(&self) -> Vec<&IntegrationTestCase> {
         self.test_cases.values().collect()
     }
 
     /// List all test suites
+    #[must_use]
     pub fn list_test_suites(&self) -> Vec<&TestSuite> {
         self.test_suites.values().collect()
     }
 
     /// Get test case count
+    #[must_use]
     pub fn test_case_count(&self) -> usize {
         self.test_cases.len()
     }
 
     /// Get test suite count
+    #[must_use]
     pub fn test_suite_count(&self) -> usize {
         self.test_suites.len()
     }
@@ -125,6 +134,7 @@ impl TestRegistry {
     }
 
     /// Find test cases by name pattern
+    #[must_use]
     pub fn find_test_cases(&self, pattern: &str) -> Vec<&IntegrationTestCase> {
         self.test_cases
             .values()
@@ -201,7 +211,7 @@ pub enum TestCategory {
 }
 
 /// Test priorities
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub enum TestPriority {
     Low = 1,
     Normal = 2,
@@ -236,9 +246,9 @@ pub enum ParameterType {
     /// String parameter
     String,
     /// Array parameter
-    Array(Box<ParameterType>),
+    Array(Box<Self>),
     /// Object parameter
-    Object(HashMap<String, ParameterType>),
+    Object(HashMap<String, Self>),
 }
 
 /// Parameter values
@@ -253,9 +263,9 @@ pub enum ParameterValue {
     /// String value
     String(String),
     /// Array value
-    Array(Vec<ParameterValue>),
+    Array(Vec<Self>),
     /// Object value
-    Object(HashMap<String, ParameterValue>),
+    Object(HashMap<String, Self>),
 }
 
 /// Parameter validation rules
@@ -287,7 +297,7 @@ pub struct ExpectedResults {
 }
 
 /// Expected test outcomes
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExpectedOutcome {
     /// Test should pass
     Pass,
@@ -311,7 +321,7 @@ pub struct ResultValidation {
 }
 
 /// Validation methods for results
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationMethod {
     /// Exact match
     Exact,
@@ -354,7 +364,7 @@ pub struct ExpectedSideEffect {
 }
 
 /// Types of side effects
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SideEffectType {
     /// State change
     StateChange,
@@ -380,7 +390,7 @@ pub struct AcceptanceCriteria {
 }
 
 /// Impact levels for side effects
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub enum ImpactLevel {
     None = 0,
     Minimal = 1,
@@ -410,7 +420,7 @@ pub struct TestStep {
 }
 
 /// Test step types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StepType {
     /// Setup step
     Setup,
@@ -451,7 +461,7 @@ pub struct TestSuiteConfig {
 }
 
 /// Test execution order
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionOrder {
     /// Sequential execution
     Sequential,
@@ -490,7 +500,7 @@ pub struct ThreadPoolConfig {
 }
 
 /// Failure handling strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FailureHandling {
     /// Stop on first failure
     StopOnFirstFailure,

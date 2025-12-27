@@ -14,6 +14,7 @@ use quantrs2_core::gpu::{
 use quantrs2_core::prelude::QubitId;
 use scirs2_core::gpu::{GpuBackend, GpuBuffer, GpuContext};
 use scirs2_core::Complex64;
+use std::fmt::Write;
 use std::sync::Arc;
 
 use crate::error::{Result, SimulatorError};
@@ -304,14 +305,15 @@ pub async fn benchmark_gpu_performance() -> QuantRS2Result<String> {
         match simulator.run(&circuit) {
             Ok(_result) => {
                 let duration = start.elapsed();
-                report.push_str(&format!(
+                let _ = write!(
+                    report,
                     "{} qubits: {:.2}ms\n",
                     n_qubits,
                     duration.as_secs_f64() * 1000.0
-                ));
+                );
             }
             Err(e) => {
-                report.push_str(&format!("{} qubits: FAILED - {}\n", n_qubits, e));
+                let _ = writeln!(report, "{} qubits: FAILED - {}", n_qubits, e);
             }
         }
     }

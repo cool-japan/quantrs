@@ -4,6 +4,7 @@ use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Helper function for complex phase calculation
+#[must_use]
 pub fn complex_phase(phase: f64) -> Complex {
     Complex {
         re: phase.cos(),
@@ -19,20 +20,24 @@ pub struct Complex {
 }
 
 impl Complex {
-    pub fn new(re: f64, im: f64) -> Self {
+    #[must_use]
+    pub const fn new(re: f64, im: f64) -> Self {
         Self { re, im }
     }
 
+    #[must_use]
     pub fn abs(&self) -> f64 {
-        (self.re * self.re + self.im * self.im).sqrt()
+        self.re.hypot(self.im)
     }
 
+    #[must_use]
     pub fn norm_squared(&self) -> f64 {
-        self.re * self.re + self.im * self.im
+        self.re.mul_add(self.re, self.im * self.im)
     }
 }
 
 /// Validate parameter ranges for quantum algorithms
+#[must_use]
 pub fn validate_parameters(params: &[f64]) -> bool {
     params.iter().all(|&p| p >= 0.0 && p <= 2.0 * PI)
 }
@@ -40,18 +45,20 @@ pub fn validate_parameters(params: &[f64]) -> bool {
 /// Normalize parameter values to valid range
 pub fn normalize_parameters(params: &mut [f64]) {
     for param in params.iter_mut() {
-        *param = param.max(0.0).min(2.0 * PI);
+        *param = param.clamp(0.0, 2.0 * PI);
     }
 }
 
 /// Estimate problem complexity based on size and structure
+#[must_use]
 pub fn estimate_problem_complexity(num_variables: usize, density: f64) -> f64 {
     let size_factor = (num_variables as f64).log2();
-    let density_factor = density.max(0.1).min(1.0);
+    let density_factor = density.clamp(0.1, 1.0);
     size_factor * density_factor
 }
 
 /// Calculate relative improvement between values
+#[must_use]
 pub fn calculate_relative_improvement(old_value: f64, new_value: f64) -> f64 {
     if old_value.abs() < 1e-8 {
         if new_value.abs() < 1e-8 {
@@ -65,21 +72,25 @@ pub fn calculate_relative_improvement(old_value: f64, new_value: f64) -> f64 {
 }
 
 /// Linear interpolation between two values
+#[must_use]
 pub fn linear_interpolate(start: f64, end: f64, fraction: f64) -> f64 {
-    start + fraction * (end - start)
+    fraction.mul_add(end - start, start)
 }
 
 /// Compute running average with decay factor
+#[must_use]
 pub fn running_average(current_avg: f64, new_value: f64, decay_factor: f64) -> f64 {
-    decay_factor * current_avg + (1.0 - decay_factor) * new_value
+    decay_factor.mul_add(current_avg, (1.0 - decay_factor) * new_value)
 }
 
 /// Check if a value has converged within tolerance
+#[must_use]
 pub fn has_converged(current: f64, previous: f64, tolerance: f64) -> bool {
     (current - previous).abs() < tolerance
 }
 
 /// Compute exponential moving average
+#[must_use]
 pub fn exponential_moving_average(values: &[f64], alpha: f64) -> Vec<f64> {
     if values.is_empty() {
         return Vec::new();
@@ -89,7 +100,7 @@ pub fn exponential_moving_average(values: &[f64], alpha: f64) -> Vec<f64> {
     ema.push(values[0]);
 
     for i in 1..values.len() {
-        let new_ema = alpha * values[i] + (1.0 - alpha) * ema[i - 1];
+        let new_ema = alpha.mul_add(values[i], (1.0 - alpha) * ema[i - 1]);
         ema.push(new_ema);
     }
 
@@ -97,6 +108,7 @@ pub fn exponential_moving_average(values: &[f64], alpha: f64) -> Vec<f64> {
 }
 
 /// Generate Fibonacci sequence for adaptive depth selection
+#[must_use]
 pub fn fibonacci_sequence(n: usize) -> Vec<usize> {
     if n == 0 {
         return Vec::new();
@@ -114,11 +126,13 @@ pub fn fibonacci_sequence(n: usize) -> Vec<usize> {
 }
 
 /// Calculate golden ratio increment
+#[must_use]
 pub fn golden_ratio_increment(current: usize) -> usize {
     ((current as f64) * 1.618) as usize
 }
 
 /// Compute autocorrelation at lag
+#[must_use]
 pub fn autocorrelation(data: &[f64], lag: usize) -> f64 {
     if data.len() <= lag {
         return 0.0;
@@ -154,6 +168,7 @@ pub struct WindowStats {
 }
 
 impl WindowStats {
+    #[must_use]
     pub fn new(data: &[f64]) -> Self {
         if data.is_empty() {
             return Self {
@@ -187,7 +202,8 @@ pub struct PerformanceTracker {
 }
 
 impl PerformanceTracker {
-    pub fn new(max_size: usize) -> Self {
+    #[must_use]
+    pub const fn new(max_size: usize) -> Self {
         Self {
             values: Vec::new(),
             max_size,
@@ -201,6 +217,7 @@ impl PerformanceTracker {
         }
     }
 
+    #[must_use]
     pub fn recent_improvement(&self, window_size: usize) -> f64 {
         if self.values.len() < window_size {
             return 0.0;
@@ -219,11 +236,13 @@ impl PerformanceTracker {
         calculate_relative_improvement(initial, final_val)
     }
 
+    #[must_use]
     pub fn is_stagnating(&self, threshold: f64, window_size: usize) -> bool {
         let improvement = self.recent_improvement(window_size);
         improvement.abs() < threshold
     }
 
+    #[must_use]
     pub fn get_trend(&self, window_size: usize) -> f64 {
         if self.values.len() < window_size {
             return 0.0;
@@ -245,11 +264,11 @@ impl PerformanceTracker {
             .map(|i| (i as f64).powi(2))
             .sum::<f64>();
 
-        let denominator = n * sum_x2 - sum_x.powi(2);
+        let denominator = sum_x.mul_add(-sum_x, n * sum_x2);
         if denominator.abs() < 1e-8 {
             0.0
         } else {
-            (n * sum_xy - sum_x * sum_y) / denominator
+            n.mul_add(sum_xy, -(sum_x * sum_y)) / denominator
         }
     }
 }

@@ -153,6 +153,7 @@ pub struct QuantumState {
 
 impl QuantumState {
     /// Create a new quantum state
+    #[must_use]
     pub fn new(num_qubits: usize) -> Self {
         let num_states = 2_usize.pow(num_qubits as u32);
         let mut amplitudes = vec![Complex64::new(0.0, 0.0); num_states];
@@ -167,6 +168,7 @@ impl QuantumState {
     }
 
     /// Create uniform superposition state
+    #[must_use]
     pub fn uniform_superposition(num_qubits: usize) -> Self {
         let num_states = 2_usize.pow(num_qubits as u32);
         let amplitude = Complex64::new(1.0 / (num_states as f64).sqrt(), 0.0);
@@ -180,7 +182,11 @@ impl QuantumState {
 
     /// Normalize the quantum state
     pub fn normalize(&mut self) {
-        let norm_squared: f64 = self.amplitudes.iter().map(|amp| amp.norm_sqr()).sum();
+        let norm_squared: f64 = self
+            .amplitudes
+            .iter()
+            .map(scirs2_core::Complex::norm_sqr)
+            .sum();
 
         if norm_squared > 0.0 {
             let norm = norm_squared.sqrt();
@@ -191,6 +197,7 @@ impl QuantumState {
     }
 
     /// Get probability of measuring state i
+    #[must_use]
     pub fn probability(&self, state_index: usize) -> f64 {
         if state_index < self.amplitudes.len() {
             self.amplitudes[state_index].norm_sqr()
@@ -200,6 +207,7 @@ impl QuantumState {
     }
 
     /// Convert state index to bit string
+    #[must_use]
     pub fn state_to_bits(&self, state_index: usize) -> Vec<i8> {
         let mut bits = vec![0; self.num_qubits];
         let mut index = state_index;
@@ -213,6 +221,7 @@ impl QuantumState {
     }
 
     /// Convert bit string to state index
+    #[must_use]
     pub fn bits_to_state(&self, bits: &[i8]) -> usize {
         let mut index = 0;
         for (i, &bit) in bits.iter().enumerate() {
@@ -235,6 +244,7 @@ pub struct QuantumWalkOptimizer {
 
 impl QuantumWalkOptimizer {
     /// Create a new quantum walk optimizer
+    #[must_use]
     pub fn new(config: QuantumWalkConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
@@ -348,7 +358,7 @@ impl QuantumWalkOptimizer {
 
     /// Discrete-time quantum walk evolution
     fn discrete_time_evolution(
-        &mut self,
+        &self,
         model: &IsingModel,
         state: &mut QuantumState,
         coin_operator: &CoinOperator,
@@ -454,13 +464,14 @@ impl QuantumWalkOptimizer {
             let bits = self.index_to_bits(state_idx, model.num_qubits);
 
             // Add bias terms
-            for (qubit, bias) in model.biases().iter() {
-                energy += bias * bits[*qubit] as f64;
+            for (qubit, bias) in &model.biases() {
+                energy += bias * f64::from(bits[*qubit]);
             }
 
             // Add coupling terms
             for coupling in model.couplings() {
-                energy += coupling.strength * bits[coupling.i] as f64 * bits[coupling.j] as f64;
+                energy +=
+                    coupling.strength * f64::from(bits[coupling.i]) * f64::from(bits[coupling.j]);
             }
 
             hamiltonian[state_idx][state_idx] = Complex64::new(energy, 0.0);
@@ -594,7 +605,7 @@ impl QuantumWalkOptimizer {
     }
 
     /// Apply shift operator based on problem graph
-    fn apply_shift_operator(
+    const fn apply_shift_operator(
         &self,
         _state: &mut QuantumState,
         _model: &IsingModel,
@@ -782,7 +793,9 @@ mod tests {
     #[test]
     fn test_simple_optimization() {
         let mut model = IsingModel::new(2);
-        model.set_coupling(0, 1, -1.0).unwrap();
+        model
+            .set_coupling(0, 1, -1.0)
+            .expect("Failed to set coupling");
 
         let config = QuantumWalkConfig {
             algorithm: QuantumWalkAlgorithm::ContinuousTime {
@@ -795,7 +808,9 @@ mod tests {
         };
 
         let mut optimizer = QuantumWalkOptimizer::new(config);
-        let result = optimizer.solve(&model).unwrap();
+        let result = optimizer
+            .solve(&model)
+            .expect("Optimization should succeed");
 
         assert_eq!(result.best_spins.len(), 2);
         assert!(result.best_energy <= 0.0); // Should find a good solution

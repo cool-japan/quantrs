@@ -101,7 +101,7 @@ impl AdvancedCrosstalkMitigationSystem {
 
         // Step 2: Extract features for ML analysis
         let features = {
-            let mut extractor = self.feature_extractor.lock().unwrap();
+            let mut extractor = self.feature_extractor.lock().unwrap_or_else(|e| e.into_inner());
             extractor.extract_features(&base_characterization)?
         };
 
@@ -110,13 +110,13 @@ impl AdvancedCrosstalkMitigationSystem {
 
         // Step 4: Generate predictions
         let prediction_results = {
-            let mut predictor = self.predictor.lock().unwrap();
+            let mut predictor = self.predictor.lock().unwrap_or_else(|e| e.into_inner());
             predictor.generate_predictions(&base_characterization)?
         };
 
         // Step 5: Advanced signal processing
         let signal_processing = {
-            let mut processor = self.signal_processor.lock().unwrap();
+            let mut processor = self.signal_processor.lock().unwrap_or_else(|e| e.into_inner());
             processor.process_signals(&base_characterization)?
         };
 
@@ -285,12 +285,12 @@ impl AdvancedCrosstalkMitigationSystem {
 
     /// Get ML model information
     pub fn get_ml_models(&self) -> HashMap<String, TrainedModel> {
-        self.ml_models.read().unwrap().clone()
+        self.ml_models.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Retrain ML models with new data
     pub async fn retrain_models(&self, training_data: &Array2<f64>) -> DeviceResult<()> {
-        let mut models = self.ml_models.write().unwrap();
+        let mut models = self.ml_models.write().unwrap_or_else(|e| e.into_inner());
 
         for model_type in &self.config.ml_config.model_types {
             let trained_model = self.train_model(model_type, training_data).await?;

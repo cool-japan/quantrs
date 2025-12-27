@@ -171,10 +171,11 @@ impl AdaptiveOptimizer {
             self.performance_history.push(metrics.clone());
 
             // Update best solution
-            if let Some(sample) = samples
-                .iter()
-                .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
-            {
+            if let Some(sample) = samples.iter().min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }) {
                 if sample.energy < best_energy {
                     best_energy = sample.energy;
                     best_solution = Some(AdaptiveSampleResult {
@@ -406,8 +407,11 @@ impl AdaptiveOptimizer {
         }
 
         // Sort by fitness
-        self.population
-            .sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+        self.population.sort_by(|a, b| {
+            b.fitness
+                .partial_cmp(&a.fitness)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Exploit: copy parameters from best individuals
         if let Some(best) = self.population.first() {
@@ -465,7 +469,7 @@ impl AdaptiveOptimizer {
                     a_metrics
                         .best_energy
                         .partial_cmp(&b_metrics.best_energy)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 }) {
                     if let Some(best_value) = best_state.parameters.get(param_name) {
                         *param_value += self.config.learning_rate * (best_value - *param_value);

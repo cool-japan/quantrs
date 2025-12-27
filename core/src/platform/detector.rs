@@ -96,7 +96,7 @@ fn detect_simd_capabilities() -> SimdCapabilities {
 }
 
 /// Detect cache information
-fn detect_cache_info() -> CacheInfo {
+const fn detect_cache_info() -> CacheInfo {
     // Basic implementation - can be enhanced with platform-specific detection
     CacheInfo {
         l1_data: Some(32 * 1024),        // 32KB default
@@ -131,7 +131,7 @@ fn detect_cpu_model() -> String {
 }
 
 /// Detect GPU capabilities
-fn detect_gpu_capabilities() -> GpuCapabilities {
+const fn detect_gpu_capabilities() -> GpuCapabilities {
     // Check for GPU availability
     let devices = Vec::new();
 
@@ -188,7 +188,7 @@ fn detect_platform_type() -> PlatformType {
 }
 
 /// Detect operating system
-fn detect_operating_system() -> OperatingSystem {
+const fn detect_operating_system() -> OperatingSystem {
     #[cfg(target_os = "linux")]
     {
         OperatingSystem::Linux
@@ -222,7 +222,7 @@ fn detect_operating_system() -> OperatingSystem {
 }
 
 /// Detect architecture
-fn detect_architecture() -> Architecture {
+const fn detect_architecture() -> Architecture {
     #[cfg(target_arch = "x86_64")]
     {
         Architecture::X86_64

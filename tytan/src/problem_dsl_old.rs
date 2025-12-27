@@ -30,14 +30,15 @@ mod tests {
         let tokens = dsl.tokenize(source);
 
         assert!(tokens.is_ok());
-        let tokens = tokens.unwrap();
+        let tokens = tokens.expect("Tokenization should succeed for valid source");
         assert_eq!(tokens.len(), 5); // var, x, binary, ;, EOF
     }
 
     #[test]
     fn test_parser() {
         let mut dsl = ProblemDSL::new();
-        let source = examples::get_example("simple_binary").unwrap();
+        let source = examples::get_example("simple_binary")
+            .expect("simple_binary example should exist");
         let ast = dsl.parse(source);
 
         assert!(ast.is_ok());

@@ -17,7 +17,7 @@ use scirs2_core::Complex64;
 use std::f64::consts::PI;
 
 /// Types of optimization problems for adiabatic quantum computing
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProblemType {
     /// Quadratic Unconstrained Binary Optimization
     QUBO,
@@ -55,11 +55,11 @@ impl AnnealingSchedule {
     pub fn evaluate(&self, t: f64, total_time: f64) -> f64 {
         let s = t / total_time;
         match self {
-            AnnealingSchedule::Linear => s,
-            AnnealingSchedule::Exponential { rate } => 1.0 - (-rate * s).exp(),
-            AnnealingSchedule::Polynomial { power } => s.powf(*power),
-            AnnealingSchedule::Trigonometric => (PI * s / 2.0).sin().powi(2),
-            AnnealingSchedule::Custom(func) => func(t, total_time),
+            Self::Linear => s,
+            Self::Exponential { rate } => 1.0 - (-rate * s).exp(),
+            Self::Polynomial { power } => s.powf(*power),
+            Self::Trigonometric => (PI * s / 2.0).sin().powi(2),
+            Self::Custom(func) => func(t, total_time),
         }
     }
 
@@ -104,6 +104,7 @@ impl QUBOProblem {
     }
 
     /// Add linear terms to the QUBO problem
+    #[must_use]
     pub fn with_linear_terms(mut self, linear: Array1<f64>) -> QuantRS2Result<Self> {
         if linear.len() != self.num_vars {
             return Err(QuantRS2Error::InvalidInput(
@@ -115,7 +116,8 @@ impl QUBOProblem {
     }
 
     /// Add constant offset
-    pub fn with_offset(mut self, offset: f64) -> Self {
+    #[must_use]
+    pub const fn with_offset(mut self, offset: f64) -> Self {
         self.offset = offset;
         self
     }
@@ -264,10 +266,11 @@ impl IsingProblem {
     }
 
     /// Convert spin configuration to computational basis state
-    fn spins_to_state(&self, spins: &[i8]) -> usize {
-        spins.iter().enumerate().fold(0, |acc, (i, &spin)| {
-            acc | (if spin == 1 { 1 } else { 0 }) << i
-        })
+    fn spins_to_state(spins: &[i8]) -> usize {
+        spins
+            .iter()
+            .enumerate()
+            .fold(0, |acc, (i, &spin)| acc | usize::from(spin == 1) << i)
     }
 }
 
@@ -364,7 +367,7 @@ impl AdiabaticQuantumComputer {
         // Apply time evolution: |ψ(t+dt)⟩ = exp(-iH(t)dt)|ψ(t)⟩
         // Using first-order approximation: exp(-iHdt) ≈ I - iHdt
         let dt = self.time_step.min(self.total_time - self.current_time);
-        let evolution_operator = self.compute_evolution_operator(&hamiltonian, dt)?;
+        let evolution_operator = Self::compute_evolution_operator(&hamiltonian, dt)?;
 
         self.state = evolution_operator.dot(&self.state);
         self.current_time += dt;
@@ -380,7 +383,6 @@ impl AdiabaticQuantumComputer {
 
     /// Compute evolution operator exp(-iHdt) using matrix exponentiation
     fn compute_evolution_operator(
-        &self,
         hamiltonian: &Array2<Complex64>,
         dt: f64,
     ) -> QuantRS2Result<Array2<Complex64>> {
@@ -444,7 +446,7 @@ impl AdiabaticQuantumComputer {
 
         // For small systems, compute eigenvalues directly
         if self.num_qubits <= 8 {
-            let eigenvalues = self.compute_eigenvalues(&hamiltonian)?;
+            let eigenvalues = Self::compute_eigenvalues(&hamiltonian)?;
             let ground_energy = eigenvalues[0];
             let first_excited = eigenvalues[1];
             Ok(first_excited - ground_energy)
@@ -455,7 +457,7 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Compute eigenvalues (simplified implementation)
-    fn compute_eigenvalues(&self, hamiltonian: &Array2<Complex64>) -> QuantRS2Result<Vec<f64>> {
+    fn compute_eigenvalues(hamiltonian: &Array2<Complex64>) -> QuantRS2Result<Vec<f64>> {
         // This is a placeholder - in practice you'd use a proper eigenvalue solver
         let dim = hamiltonian.nrows();
         let mut eigenvalues: Vec<f64> = (0..dim).map(|i| hamiltonian[[i, i]].re).collect();
@@ -493,7 +495,7 @@ impl AdiabaticQuantumComputer {
     }
 
     /// Get current state vector
-    pub fn state(&self) -> &Array1<Complex64> {
+    pub const fn state(&self) -> &Array1<Complex64> {
         &self.state
     }
 
@@ -629,7 +631,7 @@ impl QuantumAnnealer {
     }
 
     /// Get best solution found
-    pub fn best_solution(&self) -> Option<&(Vec<i8>, f64)> {
+    pub const fn best_solution(&self) -> Option<&(Vec<i8>, f64)> {
         self.best_solution.as_ref()
     }
 
@@ -645,8 +647,7 @@ impl QuantumAnnealer {
     pub fn success_probability(&self) -> f64 {
         self.history
             .last()
-            .map(|snapshot| snapshot.ground_state_probability)
-            .unwrap_or(0.0)
+            .map_or(0.0, |snapshot| snapshot.ground_state_probability)
     }
 }
 

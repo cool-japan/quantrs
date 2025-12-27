@@ -1454,7 +1454,8 @@ mod tests {
     #[test]
     fn test_surface_code_layout_creation() {
         let config = FaultTolerantConfig::default();
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
         let layout = synthesizer.create_surface_code_layout(3);
         assert!(layout.is_ok());
     }
@@ -1462,7 +1463,8 @@ mod tests {
     #[test]
     fn test_logical_pauli_synthesis() {
         let config = FaultTolerantConfig::default();
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
         let result = synthesizer.synthesize_logical_pauli(LogicalGateType::LogicalX, &[0]);
         assert!(result.is_ok());
     }
@@ -1470,7 +1472,8 @@ mod tests {
     #[test]
     fn test_logical_hadamard_synthesis() {
         let config = FaultTolerantConfig::default();
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
         let result = synthesizer.synthesize_logical_hadamard(&[0]);
         assert!(result.is_ok());
     }
@@ -1478,7 +1481,8 @@ mod tests {
     #[test]
     fn test_logical_cnot_synthesis() {
         let config = FaultTolerantConfig::default();
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
         let result = synthesizer.synthesize_logical_cnot(&[0, 1]);
         assert!(result.is_ok());
     }
@@ -1486,7 +1490,8 @@ mod tests {
     #[test]
     fn test_resource_requirements_update() {
         let config = FaultTolerantConfig::default();
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
 
         let mut total = ResourceRequirements::default();
         let gate_resources = ResourceRequirements {
@@ -1512,12 +1517,13 @@ mod tests {
             physical_error_rate: 1e-3,
             ..FaultTolerantConfig::default()
         };
-        let synthesizer = FaultTolerantSynthesizer::new(config).unwrap();
+        let synthesizer =
+            FaultTolerantSynthesizer::new(config).expect("Failed to create synthesizer");
 
         let circuit = InterfaceCircuit::new(2, 0);
         let distance = synthesizer.calculate_optimal_distance(&circuit);
         assert!(distance.is_ok());
-        let distance_value = distance.unwrap();
+        let distance_value = distance.expect("Failed to calculate optimal distance");
         assert!(distance_value >= 3);
     }
 }

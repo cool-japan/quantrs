@@ -33,6 +33,7 @@ pub struct BenchmarkResult {
 
 impl BenchmarkResult {
     /// Create a new benchmark result
+    #[must_use]
     pub fn new(
         simulator_name: &str,
         num_qubits: usize,
@@ -52,6 +53,7 @@ impl BenchmarkResult {
     }
 
     /// Format the result as a string
+    #[must_use]
     pub fn format(&self) -> String {
         let duration_ms = self.duration.as_millis();
         let rate = if duration_ms > 0 {
@@ -108,6 +110,7 @@ where
 }
 
 /// Compare different simulator implementations on the same circuit
+#[must_use]
 pub fn compare_simulators<const N: usize>(circuit: &Circuit<N>) -> Vec<BenchmarkResult> {
     let mut results = Vec::new();
 
@@ -160,6 +163,7 @@ pub fn compare_simulators<const N: usize>(circuit: &Circuit<N>) -> Vec<Benchmark
 }
 
 /// Generate a random quantum circuit for benchmarking
+#[must_use]
 pub fn generate_benchmark_circuit<const N: usize>(
     num_gates: usize,
     two_qubit_ratio: f64,

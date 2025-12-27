@@ -33,7 +33,7 @@ pub enum QuantumPlatform {
 }
 
 /// Performance baseline metrics
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BaselineMetric {
     Fidelity,
     ExecutionTime,

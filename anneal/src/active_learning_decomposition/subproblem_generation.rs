@@ -2,7 +2,10 @@
 
 use std::collections::HashMap;
 
-use super::*;
+use super::{
+    GenerationStrategyType, OverlapResolutionMethod, OverlapStrategy, SizeBalancingStrategy,
+    SizeConstraints, ValidationCriterionType,
+};
 
 /// Subproblem generator
 #[derive(Debug, Clone)]
@@ -66,7 +69,8 @@ pub struct OverlapManager {
 }
 
 impl OverlapManager {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             overlap_strategy: OverlapStrategy::NoOverlap,
             overlap_size: 0,
@@ -87,6 +91,7 @@ pub struct SizeController {
 }
 
 impl SizeController {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             size_constraints: SizeConstraints::default(),
@@ -108,6 +113,7 @@ pub struct QualityValidator {
 }
 
 impl QualityValidator {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             validation_criteria: vec![

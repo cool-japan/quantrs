@@ -151,7 +151,7 @@ pub struct TrendAnalysis {
 }
 
 /// Trend direction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
@@ -546,7 +546,7 @@ impl DDStatisticalAnalyzer {
 
     /// Calculate basic statistics
     fn calculate_basic_statistics(data: &Array2<f64>) -> DeviceResult<BasicStatistics> {
-        let flat_data = data.iter().cloned().collect::<Vec<f64>>();
+        let flat_data = data.iter().copied().collect::<Vec<f64>>();
         let n = flat_data.len() as f64;
 
         let mean = flat_data.iter().sum::<f64>() / n;
@@ -568,11 +568,14 @@ impl DDStatisticalAnalyzer {
             - 3.0;
 
         // Calculate median and IQR
-        let mut sorted_data = flat_data.clone();
-        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut sorted_data = flat_data;
+        sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let median = if sorted_data.len() % 2 == 0 {
-            (sorted_data[sorted_data.len() / 2 - 1] + sorted_data[sorted_data.len() / 2]) / 2.0
+            f64::midpoint(
+                sorted_data[sorted_data.len() / 2 - 1],
+                sorted_data[sorted_data.len() / 2],
+            )
         } else {
             sorted_data[sorted_data.len() / 2]
         };

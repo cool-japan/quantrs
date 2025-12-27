@@ -110,14 +110,14 @@ impl TimeStatistics {
         let view = array.view();
 
         let mean_val = mean(&view)
-            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute mean: {:?}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute mean: {e:?}")))?;
         let median_val = median(&view)
-            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute median: {:?}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute median: {e:?}")))?;
         let std_val = std(&view, 0, None)
-            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute std: {:?}", e)))?;
+            .map_err(|e| DeviceError::InvalidInput(format!("Failed to compute std: {e:?}")))?;
 
         let mut sorted = timings.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         let min_val = sorted[0];
         let max_val = sorted[sorted.len() - 1];
@@ -244,7 +244,7 @@ pub struct QECBenchmarkSuite {
 
 impl QECBenchmarkSuite {
     /// Create a new QEC benchmark suite
-    pub fn new(config: QECBenchmarkConfig) -> Self {
+    pub const fn new(config: QECBenchmarkConfig) -> Self {
         Self { config }
     }
 
@@ -377,8 +377,8 @@ impl QECBenchmarkSuite {
         for &error_rate in &self.config.error_rates {
             // Simulate logical error rate (typically scales as O(p^(d+1)/2) for surface codes)
             let d = code.distance() as f64;
-            let logical_rate = error_rate.powf((d + 1.0) / 2.0);
-            logical_error_rates.insert(format!("p={:.4}", error_rate), logical_rate);
+            let logical_rate = error_rate.powf(f64::midpoint(d, 1.0));
+            logical_error_rates.insert(format!("p={error_rate:.4}"), logical_rate);
         }
 
         let num_data = code.num_data_qubits();
@@ -498,18 +498,20 @@ impl QECBenchmarkSuite {
         let mut rankings = HashMap::new();
 
         // Find best code by throughput
-        if let Some(best) = code_performances
-            .iter()
-            .max_by(|a, b| a.throughput.partial_cmp(&b.throughput).unwrap())
-        {
+        if let Some(best) = code_performances.iter().max_by(|a, b| {
+            a.throughput
+                .partial_cmp(&b.throughput)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             best_by_metric.insert("throughput".to_string(), best.code_name.clone());
         }
 
         // Find best code by memory efficiency
-        if let Some(best) = code_performances
-            .iter()
-            .min_by(|a, b| a.memory_overhead.partial_cmp(&b.memory_overhead).unwrap())
-        {
+        if let Some(best) = code_performances.iter().min_by(|a, b| {
+            a.memory_overhead
+                .partial_cmp(&b.memory_overhead)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             best_by_metric.insert("memory_efficiency".to_string(), best.code_name.clone());
         }
 
@@ -518,7 +520,7 @@ impl QECBenchmarkSuite {
             .iter()
             .map(|c| (c.code_name.clone(), c.encoding_time.mean))
             .collect();
-        ranked_codes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        ranked_codes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
         rankings.insert(
             "encoding_speed".to_string(),
             ranked_codes.iter().map(|(name, _)| name.clone()).collect(),
@@ -549,48 +551,50 @@ impl QECBenchmarkSuite {
 
     /// Generate detailed performance report
     pub fn generate_report(&self, results: &QECBenchmarkResults) -> String {
+        use std::fmt::Write;
         let mut report = String::new();
         report.push_str("=== QEC Performance Benchmark Report ===\n\n");
 
-        report.push_str(&format!(
-            "Benchmark Duration: {:.2}s\n",
+        let _ = writeln!(
+            report,
+            "Benchmark Duration: {:.2}s",
             results.total_duration.as_secs_f64()
-        ));
-        report.push_str(&format!("Iterations: {}\n", self.config.iterations));
-        report.push_str(&format!(
-            "Shots per Measurement: {}\n\n",
+        );
+        let _ = writeln!(report, "Iterations: {}", self.config.iterations);
+        let _ = writeln!(
+            report,
+            "Shots per Measurement: {}\n",
             self.config.shots_per_measurement
-        ));
+        );
 
         report.push_str("## QEC Code Performances\n\n");
         for perf in &results.code_performances {
-            report.push_str(&format!("### {}\n", perf.code_name));
-            report.push_str(&format!("  - Data Qubits: {}\n", perf.num_data_qubits));
-            report.push_str(&format!(
-                "  - Ancilla Qubits: {}\n",
-                perf.num_ancilla_qubits
-            ));
-            report.push_str(&format!("  - Code Distance: {}\n", perf.code_distance));
-            report.push_str(&format!(
-                "  - Encoding Time: {:.2} µs ± {:.2} µs\n",
+            let _ = writeln!(report, "### {}", perf.code_name);
+            let _ = writeln!(report, "  - Data Qubits: {}", perf.num_data_qubits);
+            let _ = writeln!(report, "  - Ancilla Qubits: {}", perf.num_ancilla_qubits);
+            let _ = writeln!(report, "  - Code Distance: {}", perf.code_distance);
+            let _ = writeln!(
+                report,
+                "  - Encoding Time: {:.2} µs ± {:.2} µs",
                 perf.encoding_time.mean / 1000.0,
                 perf.encoding_time.std_dev / 1000.0
-            ));
-            report.push_str(&format!("  - Throughput: {:.2} ops/sec\n", perf.throughput));
-            report.push_str(&format!(
-                "  - Memory Overhead: {:.2}x\n\n",
+            );
+            let _ = writeln!(report, "  - Throughput: {:.2} ops/sec", perf.throughput);
+            let _ = writeln!(
+                report,
+                "  - Memory Overhead: {:.2}x\n",
                 perf.memory_overhead
-            ));
+            );
         }
 
         report.push_str("## Best Performers\n\n");
         for (metric, code) in &results.comparative_analysis.best_by_metric {
-            report.push_str(&format!("  - {}: {}\n", metric, code));
+            let _ = writeln!(report, "  - {metric}: {code}");
         }
 
         report.push_str("\n## Recommendations\n\n");
         for rec in &results.comparative_analysis.recommendations {
-            report.push_str(&format!("  - {}\n", rec));
+            let _ = writeln!(report, "  - {rec}");
         }
 
         report
@@ -604,7 +608,8 @@ mod tests {
     #[test]
     fn test_time_statistics() {
         let timings = vec![100.0, 150.0, 200.0, 250.0, 300.0];
-        let stats = TimeStatistics::from_timings(&timings).unwrap();
+        let stats =
+            TimeStatistics::from_timings(&timings).expect("Failed to compute time statistics");
 
         assert!(stats.mean > 0.0);
         assert!(stats.median > 0.0);
@@ -623,8 +628,7 @@ mod tests {
     #[test]
     fn test_benchmark_suite_creation() {
         let config = QECBenchmarkConfig::default();
-        let suite = QECBenchmarkSuite::new(config);
+        let _suite = QECBenchmarkSuite::new(config);
         // Just verify it can be created
-        assert!(true);
     }
 }

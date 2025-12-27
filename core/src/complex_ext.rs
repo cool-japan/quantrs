@@ -30,7 +30,7 @@ impl QuantumComplexExt for Complex64 {
         if mag > 0.0 {
             self / mag
         } else {
-            Complex64::new(0.0, 0.0)
+            Self::new(0.0, 0.0)
         }
     }
 
@@ -48,12 +48,12 @@ pub mod quantum_states {
     use super::*;
 
     /// Create a complex number representing the |0⟩ state amplitude
-    pub fn zero_state() -> Complex64 {
+    pub const fn zero_state() -> Complex64 {
         Complex64::new(1.0, 0.0)
     }
 
     /// Create a complex number representing the |1⟩ state amplitude
-    pub fn one_state() -> Complex64 {
+    pub const fn one_state() -> Complex64 {
         Complex64::new(0.0, 0.0)
     }
 

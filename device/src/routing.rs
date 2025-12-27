@@ -60,7 +60,7 @@ pub struct QubitRouter {
 
 impl QubitRouter {
     /// Create a new qubit router
-    pub fn new(topology: HardwareTopology, strategy: RoutingStrategy) -> Self {
+    pub const fn new(topology: HardwareTopology, strategy: RoutingStrategy) -> Self {
         Self {
             topology,
             strategy,
@@ -295,7 +295,7 @@ impl QubitRouter {
         use fastrand::Rng;
         let mut rng = Rng::with_seed(self.seed);
 
-        let mut best_mapping = initial_mapping.clone();
+        let mut best_mapping = initial_mapping;
         let mut best_cost = self.evaluate_mapping(&best_mapping, &interactions)?;
 
         let mut current_mapping = best_mapping.clone();
@@ -336,7 +336,7 @@ impl QubitRouter {
                 current_cost = neighbor_cost;
 
                 if current_cost < best_cost {
-                    best_mapping = current_mapping.clone();
+                    best_mapping.clone_from(&current_mapping);
                     best_cost = current_cost;
                 }
             }
@@ -369,10 +369,9 @@ impl QubitRouter {
         );
 
         match result {
-            Some((_, path)) => Ok(path.into_iter().map(|n| n.index() as usize).collect()),
+            Some((_, path)) => Ok(path.into_iter().map(|n| n.index()).collect()),
             None => Err(DeviceError::RoutingError(format!(
-                "No path found between qubits {} and {}",
-                start, end
+                "No path found between qubits {start} and {end}"
             ))),
         }
     }
@@ -412,8 +411,8 @@ impl QubitRouter {
         // Try all possible swaps
         for edge in self.topology.connectivity.edge_indices() {
             if let Some((n0, n1)) = self.topology.connectivity.edge_endpoints(edge) {
-                let phys_q0 = n0.index() as usize;
-                let phys_q1 = n1.index() as usize;
+                let phys_q0 = n0.index();
+                let phys_q1 = n1.index();
 
                 // Simulate this swap
                 let mut test_mapping = mapping.clone();
@@ -496,7 +495,7 @@ pub struct LayoutSynthesis {
 
 impl LayoutSynthesis {
     /// Create a new layout synthesizer
-    pub fn new(topology: HardwareTopology) -> Self {
+    pub const fn new(topology: HardwareTopology) -> Self {
         Self { topology }
     }
 
@@ -591,11 +590,17 @@ mod tests {
 
         // Create a circuit that requires routing
         let mut circuit = Circuit::<5>::new();
-        circuit.h(QubitId::new(0)).unwrap();
-        circuit.cnot(QubitId::new(0), QubitId::new(4)).unwrap(); // This requires routing
-        circuit.cnot(QubitId::new(1), QubitId::new(3)).unwrap(); // This also requires routing
+        circuit.h(QubitId::new(0)).expect("Failed to add H gate");
+        circuit
+            .cnot(QubitId::new(0), QubitId::new(4))
+            .expect("Failed to add CNOT gate"); // This requires routing
+        circuit
+            .cnot(QubitId::new(1), QubitId::new(3))
+            .expect("Failed to add CNOT gate"); // This also requires routing
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Failed to route circuit");
 
         // Check that we have a valid result
         // The initial mapping might be optimal, so swaps might not be needed
@@ -614,11 +619,17 @@ mod tests {
 
         // Create a circuit with non-local interactions
         let mut circuit = Circuit::<9>::new();
-        circuit.h(QubitId::new(0)).unwrap();
-        circuit.cnot(QubitId::new(0), QubitId::new(8)).unwrap(); // Corner to corner
-        circuit.cnot(QubitId::new(4), QubitId::new(2)).unwrap(); // Center to edge
+        circuit.h(QubitId::new(0)).expect("Failed to add H gate");
+        circuit
+            .cnot(QubitId::new(0), QubitId::new(8))
+            .expect("Failed to add CNOT gate"); // Corner to corner
+        circuit
+            .cnot(QubitId::new(4), QubitId::new(2))
+            .expect("Failed to add CNOT gate"); // Center to edge
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Failed to route circuit");
 
         // Should require swaps for non-adjacent qubits
         assert!(result.swap_gates.len() > 0);
@@ -632,12 +643,20 @@ mod tests {
 
         let mut circuit = Circuit::<10>::new();
         // Create a random circuit
-        circuit.h(QubitId::new(0)).unwrap();
-        circuit.cnot(QubitId::new(0), QubitId::new(5)).unwrap();
-        circuit.cnot(QubitId::new(2), QubitId::new(7)).unwrap();
-        circuit.cnot(QubitId::new(3), QubitId::new(9)).unwrap();
+        circuit.h(QubitId::new(0)).expect("Failed to add H gate");
+        circuit
+            .cnot(QubitId::new(0), QubitId::new(5))
+            .expect("Failed to add CNOT gate");
+        circuit
+            .cnot(QubitId::new(2), QubitId::new(7))
+            .expect("Failed to add CNOT gate");
+        circuit
+            .cnot(QubitId::new(3), QubitId::new(9))
+            .expect("Failed to add CNOT gate");
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Failed to route circuit");
 
         // Should successfully route
         assert!(result.initial_mapping.len() <= 27);
@@ -662,10 +681,12 @@ mod tests {
         // Create a challenging circuit
         let mut circuit = Circuit::<16>::new();
         for i in 0..8 {
-            circuit.h(QubitId::new(i as u32)).unwrap();
+            circuit
+                .h(QubitId::new(i as u32))
+                .expect("Failed to add H gate in loop");
             circuit
                 .cnot(QubitId::new(i as u32), QubitId::new((i + 8) as u32))
-                .unwrap();
+                .expect("Failed to add CNOT gate in loop");
         }
 
         // Test all strategies
@@ -679,7 +700,9 @@ mod tests {
         let mut results = Vec::new();
         for strategy in strategies {
             let router = QubitRouter::new(topology.clone(), strategy);
-            let result = router.route_circuit(&circuit).unwrap();
+            let result = router
+                .route_circuit(&circuit)
+                .expect("Failed to route with strategy");
             results.push((strategy, result.cost));
         }
 
@@ -694,10 +717,16 @@ mod tests {
 
         // Circuit with already connected qubits
         let mut circuit = Circuit::<3>::new();
-        circuit.cnot(QubitId::new(0), QubitId::new(1)).unwrap(); // Adjacent
-        circuit.cnot(QubitId::new(1), QubitId::new(2)).unwrap(); // Adjacent
+        circuit
+            .cnot(QubitId::new(0), QubitId::new(1))
+            .expect("Failed to add CNOT gate"); // Adjacent
+        circuit
+            .cnot(QubitId::new(1), QubitId::new(2))
+            .expect("Failed to add CNOT gate"); // Adjacent
 
-        let result = router.route_circuit(&circuit).unwrap();
+        let result = router
+            .route_circuit(&circuit)
+            .expect("Failed to route circuit");
 
         // Should require no swaps
         assert_eq!(result.swap_gates.len(), 0);
@@ -721,7 +750,9 @@ mod tests {
         graph.add_edge(n2, n3, 1.0);
         graph.add_edge(n3, n0, 1.0); // Square
 
-        let layout = synthesizer.synthesize_layout(&graph).unwrap();
+        let layout = synthesizer
+            .synthesize_layout(&graph)
+            .expect("Failed to synthesize layout");
 
         // Should map all 4 qubits
         assert_eq!(layout.len(), 4);
@@ -737,11 +768,15 @@ mod tests {
         let router = QubitRouter::new(topology, RoutingStrategy::NearestNeighbor);
 
         // Test path from 0 to 4
-        let path = router.find_shortest_path(0, 4).unwrap();
+        let path = router
+            .find_shortest_path(0, 4)
+            .expect("Failed to find path 0->4");
         assert_eq!(path, vec![0, 1, 2, 3, 4]);
 
         // Test path from 2 to 0
-        let path = router.find_shortest_path(2, 0).unwrap();
+        let path = router
+            .find_shortest_path(2, 0)
+            .expect("Failed to find path 2->0");
         assert_eq!(path, vec![2, 1, 0]);
     }
 
@@ -751,13 +786,21 @@ mod tests {
         let router = QubitRouter::new(topology, RoutingStrategy::NearestNeighbor);
 
         // Adjacent qubits in grid should be connected
-        assert!(router.are_connected(0, 1).unwrap()); // Horizontal
-        assert!(router.are_connected(0, 3).unwrap()); // Vertical
+        assert!(router
+            .are_connected(0, 1)
+            .expect("Connectivity check failed")); // Horizontal
+        assert!(router
+            .are_connected(0, 3)
+            .expect("Connectivity check failed")); // Vertical
 
         // Diagonal qubits should not be connected
-        assert!(!router.are_connected(0, 4).unwrap());
+        assert!(!router
+            .are_connected(0, 4)
+            .expect("Connectivity check failed"));
 
         // Far qubits should not be connected
-        assert!(!router.are_connected(0, 8).unwrap());
+        assert!(!router
+            .are_connected(0, 8)
+            .expect("Connectivity check failed"));
     }
 }

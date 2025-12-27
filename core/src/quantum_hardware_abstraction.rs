@@ -121,9 +121,8 @@ impl QuantumHardwareAbstraction {
 
     /// Register a hardware backend
     pub fn register_backend(&mut self, backend: Arc<dyn QuantumHardwareBackend>) {
-        self.hardware_backends.push(backend);
-        self.resource_manager
-            .register_hardware(self.hardware_backends.last().unwrap().clone());
+        self.hardware_backends.push(backend.clone());
+        self.resource_manager.register_hardware(backend);
     }
 
     /// Execute operation with optimal backend selection
@@ -449,8 +448,8 @@ impl QuantumHardwareAbstraction {
             ));
         }
 
-        if results.len() == 1 {
-            return Ok(results.into_iter().next().unwrap());
+        if let [single_result] = results.as_slice() {
+            return Ok(single_result.clone());
         }
 
         // Merge multiple results
@@ -577,7 +576,10 @@ impl AdaptiveMiddleware {
         // Check cache first
         let cache_key = format!("{}_{}", operation.name(), backend.backend_name());
         {
-            let cache = self.transformation_cache.read().unwrap();
+            let cache = self
+                .transformation_cache
+                .read()
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
             if let Some(cached) = cache.get(&cache_key) {
                 return Ok(cached.optimized_operation.clone());
             }
@@ -593,8 +595,7 @@ impl AdaptiveMiddleware {
         }
 
         // Cache result
-        {
-            let mut cache = self.transformation_cache.write().unwrap();
+        if let Ok(mut cache) = self.transformation_cache.write() {
             cache.insert(
                 cache_key,
                 TransformationResult {
@@ -654,7 +655,9 @@ impl HardwareResourceManager {
     }
 
     pub async fn get_availability_score(&self, backend: &Arc<dyn QuantumHardwareBackend>) -> f64 {
-        let usage = self.resource_usage.read().unwrap();
+        let Ok(usage) = self.resource_usage.read() else {
+            return 0.5; // Default score if lock is poisoned
+        };
         if let Some(resource_usage) = usage.get(backend.backend_name()) {
             1.0 - resource_usage.utilization_ratio
         } else {
@@ -682,7 +685,10 @@ impl CalibrationEngine {
         &self,
         backend: &Arc<dyn QuantumHardwareBackend>,
     ) -> Result<CalibrationData, QuantRS2Error> {
-        let calibration_data = self.calibration_data.read().unwrap();
+        let calibration_data = self
+            .calibration_data
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
         calibration_data
             .get(backend.backend_name())
             .cloned()
@@ -1044,7 +1050,14 @@ mod tests {
     #[test]
     fn test_calibration_engine_creation() {
         let engine = CalibrationEngine::new();
-        assert_eq!(engine.calibration_data.read().unwrap().len(), 0);
+        assert_eq!(
+            engine
+                .calibration_data
+                .read()
+                .expect("Failed to read calibration data")
+                .len(),
+            0
+        );
     }
 
     #[test]

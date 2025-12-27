@@ -974,19 +974,19 @@ impl CostBasedOptimization {
             }
             CostTarget::TotalError => {
                 // Try to replace high-error gates with lower-error equivalents
-                self.reduce_error_gates(&mut candidate)?;
+                self.reduce_error_gates(&candidate)?;
             }
             CostTarget::ExecutionTime => {
                 // Try to replace slow gates with faster equivalents
-                self.optimize_for_speed(&mut candidate)?;
+                self.optimize_for_speed(&candidate)?;
             }
             CostTarget::Balanced => {
                 // Apply a mix of strategies
                 match iteration % 4 {
                     0 => self.cancel_inverse_gates(&mut candidate),
                     1 => self.parallelize_gates(&mut candidate),
-                    2 => self.reduce_error_gates(&mut candidate)?,
-                    3 => self.optimize_for_speed(&mut candidate)?,
+                    2 => self.reduce_error_gates(&candidate)?,
+                    3 => self.optimize_for_speed(&candidate)?,
                     _ => unreachable!(),
                 }
             }
@@ -1086,7 +1086,7 @@ impl CostBasedOptimization {
         // to minimize depth while preserving correctness
     }
 
-    fn reduce_error_gates(&self, gates: &mut Vec<Box<dyn GateOp>>) -> QuantRS2Result<()> {
+    fn reduce_error_gates(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<()> {
         // Replace high-error gates with lower-error alternatives where possible
         for i in 0..gates.len() {
             if gates[i].name() == "Toffoli" {
@@ -1099,7 +1099,7 @@ impl CostBasedOptimization {
         Ok(())
     }
 
-    fn optimize_for_speed(&self, gates: &mut Vec<Box<dyn GateOp>>) -> QuantRS2Result<()> {
+    fn optimize_for_speed(&self, gates: &[Box<dyn GateOp>]) -> QuantRS2Result<()> {
         // Replace slow gates with faster alternatives where possible
         for i in 0..gates.len() {
             if gates[i].name() == "Toffoli" {
@@ -1506,7 +1506,7 @@ impl TemplateMatching {
             let gate = &gates[start + i];
 
             // Check if the gate name matches
-            if !self.gate_matches_pattern(gate.as_ref(), pattern_gate, &mut qubit_mapping) {
+            if !self.gate_matches_pattern(gate.as_ref(), pattern_gate, &qubit_mapping) {
                 is_match = false;
                 break;
             }
@@ -1555,7 +1555,7 @@ impl TemplateMatching {
         &self,
         gate: &dyn GateOp,
         pattern: &str,
-        qubit_mapping: &mut HashMap<String, Vec<QubitId>>,
+        qubit_mapping: &HashMap<String, Vec<QubitId>>,
     ) -> bool {
         // For now, use simple name matching
         // Later we can add more sophisticated pattern matching

@@ -129,6 +129,7 @@ pub struct OptimizationResult {
 
 impl CircuitOptimizer {
     /// Create a new circuit optimizer with default configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: OptimizationConfig::default(),
@@ -137,6 +138,7 @@ impl CircuitOptimizer {
     }
 
     /// Create a circuit optimizer with custom configuration
+    #[must_use]
     pub fn with_config(config: OptimizationConfig) -> Self {
         Self {
             config,
@@ -163,7 +165,7 @@ impl CircuitOptimizer {
 
             // Pass 1: Redundant gate elimination
             if self.config.enable_redundant_elimination {
-                let result = self.eliminate_redundant_gates(&mut optimized_circuit)?;
+                let result = self.eliminate_redundant_gates(&optimized_circuit)?;
                 if result.success {
                     pass_improved = true;
                     self.statistics.redundant_gates_eliminated += result.gates_eliminated;
@@ -172,7 +174,7 @@ impl CircuitOptimizer {
 
             // Pass 2: Single-qubit gate fusion
             if self.config.enable_single_qubit_optimization {
-                let result = self.fuse_single_qubit_gates(&mut optimized_circuit)?;
+                let result = self.fuse_single_qubit_gates(&optimized_circuit)?;
                 if result.success {
                     pass_improved = true;
                     self.statistics.gates_fused += result.gates_modified;
@@ -181,7 +183,7 @@ impl CircuitOptimizer {
 
             // Pass 3: Gate commutation and reordering
             if self.config.enable_commutation_reordering {
-                let result = self.reorder_commuting_gates(&mut optimized_circuit)?;
+                let result = self.reorder_commuting_gates(&optimized_circuit)?;
                 if result.success {
                     pass_improved = true;
                     self.statistics.gates_reordered += result.gates_modified;
@@ -190,7 +192,7 @@ impl CircuitOptimizer {
 
             // Pass 4: Two-qubit gate optimization
             if self.config.enable_two_qubit_optimization {
-                let result = self.optimize_two_qubit_gates(&mut optimized_circuit)?;
+                let result = self.optimize_two_qubit_gates(&optimized_circuit)?;
                 if result.success {
                     pass_improved = true;
                 }
@@ -198,7 +200,7 @@ impl CircuitOptimizer {
 
             // Pass 5: Circuit depth reduction
             if self.config.enable_depth_reduction {
-                let result = self.reduce_circuit_depth(&mut optimized_circuit)?;
+                let result = self.reduce_circuit_depth(&optimized_circuit)?;
                 if result.success {
                     pass_improved = true;
                 }
@@ -221,6 +223,7 @@ impl CircuitOptimizer {
     }
 
     /// Get optimization statistics
+    #[must_use]
     pub const fn get_statistics(&self) -> &OptimizationStatistics {
         &self.statistics
     }
@@ -308,7 +311,7 @@ impl CircuitOptimizer {
     /// Eliminate redundant gates (e.g., X X = I, H H = I)
     fn eliminate_redundant_gates<const N: usize>(
         &self,
-        circuit: &mut Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<OptimizationResult> {
         // Analyze gate patterns to identify canceling pairs
         let gates = circuit.gates();
@@ -350,7 +353,7 @@ impl CircuitOptimizer {
     /// Fuse adjacent single-qubit gates on the same qubit
     fn fuse_single_qubit_gates<const N: usize>(
         &self,
-        circuit: &mut Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<OptimizationResult> {
         // Find sequences of single-qubit gates on the same qubit
         let fusion_candidates = self.find_single_qubit_fusion_candidates(circuit)?;
@@ -435,7 +438,7 @@ impl CircuitOptimizer {
     /// Reorder commuting gates for better parallelization
     fn reorder_commuting_gates<const N: usize>(
         &self,
-        circuit: &mut Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<OptimizationResult> {
         // Analyze which gates commute and can be reordered for better parallelization
         let gates = circuit.gates();
@@ -485,7 +488,7 @@ impl CircuitOptimizer {
     /// Optimize two-qubit gate sequences
     fn optimize_two_qubit_gates<const N: usize>(
         &self,
-        circuit: &mut Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<OptimizationResult> {
         // Look for patterns like CNOT chains that can be optimized
         let gates = circuit.gates();
@@ -552,7 +555,7 @@ impl CircuitOptimizer {
     /// Reduce circuit depth by exploiting parallelization opportunities
     fn reduce_circuit_depth<const N: usize>(
         &self,
-        circuit: &mut Circuit<N>,
+        circuit: &Circuit<N>,
     ) -> QuantRS2Result<OptimizationResult> {
         // Analyze critical path and look for gates that can be moved to earlier layers
         let original_depth = self.calculate_circuit_depth(circuit);
@@ -578,6 +581,7 @@ impl Default for CircuitOptimizer {
 
 impl OptimizationStatistics {
     /// Calculate the gate count reduction percentage
+    #[must_use]
     pub fn gate_count_reduction(&self) -> f64 {
         if self.original_gate_count == 0 {
             0.0
@@ -589,6 +593,7 @@ impl OptimizationStatistics {
     }
 
     /// Calculate the depth reduction percentage
+    #[must_use]
     pub fn depth_reduction(&self) -> f64 {
         if self.original_depth == 0 {
             0.0
@@ -599,6 +604,7 @@ impl OptimizationStatistics {
     }
 
     /// Generate optimization summary report
+    #[must_use]
     pub fn generate_report(&self) -> String {
         format!(
             r"

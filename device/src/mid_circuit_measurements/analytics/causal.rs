@@ -13,7 +13,7 @@ pub struct CausalAnalyzer {
 
 impl CausalAnalyzer {
     /// Create new causal analyzer
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             confidence_level: 0.95,
             min_observations: 30,
@@ -21,7 +21,7 @@ impl CausalAnalyzer {
     }
 
     /// Create causal analyzer with custom parameters
-    pub fn with_parameters(confidence_level: f64, min_observations: usize) -> Self {
+    pub const fn with_parameters(confidence_level: f64, min_observations: usize) -> Self {
         Self {
             confidence_level,
             min_observations,
@@ -334,7 +334,7 @@ impl CausalAnalyzer {
         let mut adjacency_matrix = Array2::zeros((n_vars, n_vars));
 
         // Test for edges using conditional independence
-        let data = vec![latencies, confidences, timestamps];
+        let data = [latencies, confidences, timestamps];
 
         for i in 0..n_vars {
             for j in (i + 1)..n_vars {
@@ -509,8 +509,8 @@ impl CausalAnalyzer {
         let rxz = self.calculate_correlation(x, z);
         let ryz = self.calculate_correlation(y, z);
 
-        let numerator = rxy - rxz * ryz;
-        let denominator = ((1.0 - rxz.powi(2)) * (1.0 - ryz.powi(2))).sqrt();
+        let numerator = rxz.mul_add(-ryz, rxy);
+        let denominator = (rxz.mul_add(-rxz, 1.0) * ryz.mul_add(-ryz, 1.0)).sqrt();
 
         if denominator > 1e-10 {
             Ok(numerator / denominator)
@@ -549,11 +549,11 @@ impl CausalAnalyzer {
     /// Calculate median
     fn median(&self, values: &[f64]) -> f64 {
         let mut sorted = values.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         if sorted.len() % 2 == 0 {
             let mid = sorted.len() / 2;
-            (sorted[mid - 1] + sorted[mid]) / 2.0
+            f64::midpoint(sorted[mid - 1], sorted[mid])
         } else {
             sorted[sorted.len() / 2]
         }
@@ -591,17 +591,6 @@ impl Default for CausalAnalyzer {
     }
 }
 
-impl Default for CausalAnalysisResults {
-    fn default() -> Self {
-        Self {
-            causal_graph: CausalGraph::default(),
-            causal_effects: vec![],
-            confounding_analysis: ConfoundingAnalysis::default(),
-            causal_strength: HashMap::new(),
-        }
-    }
-}
-
 impl Default for CausalGraph {
     fn default() -> Self {
         Self {
@@ -609,17 +598,6 @@ impl Default for CausalGraph {
             node_names: vec![],
             edge_weights: HashMap::new(),
             graph_confidence: 0.0,
-        }
-    }
-}
-
-impl Default for ConfoundingAnalysis {
-    fn default() -> Self {
-        Self {
-            confounders: vec![],
-            confounder_strength: HashMap::new(),
-            backdoor_satisfied: false,
-            frontdoor_satisfied: false,
         }
     }
 }

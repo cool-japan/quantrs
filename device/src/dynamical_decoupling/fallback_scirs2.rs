@@ -170,7 +170,7 @@ pub fn spearmanr(x: &ArrayView1<f64>, y: &ArrayView1<f64>) -> Result<f64, String
 fn rank_array(data: &ArrayView1<f64>) -> Array1<f64> {
     let mut indexed_data: Vec<(usize, f64)> =
         data.iter().enumerate().map(|(i, &x)| (i, x)).collect();
-    indexed_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+    indexed_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut ranks = Array1::zeros(data.len());
     for (rank, &(index, _)) in indexed_data.iter().enumerate() {
@@ -205,12 +205,12 @@ pub fn ks_2samp(x: &ArrayView1<f64>, y: &ArrayView1<f64>) -> Result<(f64, f64), 
 
     let mut x_sorted = x.to_vec();
     let mut y_sorted = y.to_vec();
-    x_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    y_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    x_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    y_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut all_values = x_sorted.clone();
     all_values.extend_from_slice(&y_sorted);
-    all_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    all_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     all_values.dedup();
 
     let mut max_diff = 0.0f64;
@@ -258,7 +258,7 @@ pub fn shapiro_wilk(data: &ArrayView1<f64>) -> Result<(f64, f64), String> {
 
     // Simple heuristic for W statistic
     let w_statistic = 1.0 - (skewness.abs() + kurtosis.abs()) / 10.0;
-    let w_statistic = w_statistic.max(0.0).min(1.0);
+    let w_statistic = w_statistic.clamp(0.0, 1.0);
 
     // Simple p-value based on W statistic
     let p_value = if w_statistic > 0.95 {
@@ -277,12 +277,12 @@ pub fn percentile(data: &ArrayView1<f64>, percentile: f64) -> Result<f64, String
         return Err("Cannot compute percentile of empty array".to_string());
     }
 
-    if percentile < 0.0 || percentile > 100.0 {
+    if !(0.0..=100.0).contains(&percentile) {
         return Err("Percentile must be between 0 and 100".to_string());
     }
 
     let mut sorted_data = data.to_vec();
-    sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted_data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     let index = (percentile / 100.0) * (sorted_data.len() - 1) as f64;
     let lower_index = index.floor() as usize;
@@ -292,7 +292,7 @@ pub fn percentile(data: &ArrayView1<f64>, percentile: f64) -> Result<f64, String
         Ok(sorted_data[lower_index])
     } else {
         let weight = index - lower_index as f64;
-        Ok(sorted_data[lower_index] * (1.0 - weight) + sorted_data[upper_index] * weight)
+        Ok(sorted_data[lower_index].mul_add(1.0 - weight, sorted_data[upper_index] * weight))
     }
 }
 
@@ -330,18 +330,19 @@ fn normal_cdf(x: f64) -> f64 {
 // Simplified error function approximation
 fn erf(x: f64) -> f64 {
     // Abramowitz and Stegun approximation
-    let a1 = 0.254829592;
-    let a2 = -0.284496736;
-    let a3 = 1.421413741;
-    let a4 = -1.453152027;
-    let a5 = 1.061405429;
-    let p = 0.3275911;
+    let a1 = 0.254_829_592;
+    let a2 = -0.284_496_736;
+    let a3 = 1.421_413_741;
+    let a4 = -1.453_152_027;
+    let a5 = 1.061_405_429;
+    let p = 0.327_591_1;
 
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let x = x.abs();
 
     let t = 1.0 / (1.0 + p * x);
-    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+    let y = ((a5 * t + a4).mul_add(t, a3).mul_add(t, a2).mul_add(t, a1) * t)
+        .mul_add(-(-x * x).exp(), 1.0);
 
     sign * y
 }
@@ -354,14 +355,14 @@ mod tests {
     #[test]
     fn test_mean() {
         let data = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        let result = mean(&data.view()).unwrap();
+        let result = mean(&data.view()).expect("Mean calculation should succeed");
         assert!((result - 3.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_std() {
         let data = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        let result = std(&data.view(), 1, None).unwrap();
+        let result = std(&data.view(), 1, None).expect("Std calculation should succeed");
         // Standard deviation of [1,2,3,4,5] with ddof=1 is sqrt(2.5) ≈ 1.58
         assert!((result - 1.5811388300841898).abs() < 1e-10);
     }
@@ -370,7 +371,7 @@ mod tests {
     fn test_pearsonr() {
         let x = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
         let y = Array1::from_vec(vec![2.0, 4.0, 6.0, 8.0, 10.0]);
-        let result = pearsonr(&x.view(), &y.view()).unwrap();
+        let result = pearsonr(&x.view(), &y.view()).expect("Pearson correlation should succeed");
         // Perfect correlation should be 1.0
         assert!((result - 1.0).abs() < 1e-10);
     }
@@ -380,7 +381,8 @@ mod tests {
         let initial = Array1::from_vec(vec![0.0]);
         let objective = |x: &Array1<f64>| (x[0] - 2.0).powi(2);
 
-        let result = minimize(objective, &initial, "nelder-mead").unwrap();
+        let result =
+            minimize(objective, &initial, "nelder-mead").expect("Minimization should succeed");
 
         // Should find minimum near x = 2.0
         assert!((result.x[0] - 2.0).abs() < 0.5);

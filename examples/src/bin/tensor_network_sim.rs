@@ -153,21 +153,21 @@ fn compare_simulators<const N: usize>(circuit: &Circuit<N>, name: &str) {
     // Run with state vector simulator
     let start = Instant::now();
     let sv_result = sv_sim
-        .run(&circuit)
+        .run(circuit)
         .expect("Failed to run circuit with state vector simulator");
     let sv_time = start.elapsed();
 
     // Run with basic tensor network simulator
     let start = Instant::now();
     let tn_result = tn_sim
-        .run(&circuit)
+        .run(circuit)
         .expect("Failed to run circuit with basic tensor network simulator");
     let tn_time = start.elapsed();
 
     // Run with optimized tensor network simulator
     let start = Instant::now();
     let opt_tn_result = opt_tn_sim
-        .run(&circuit)
+        .run(circuit)
         .expect("Failed to run circuit with optimized tensor network simulator");
     let opt_tn_time = start.elapsed();
 

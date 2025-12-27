@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn test_context_encoding() {
         let config = QuantumInContextLearningConfig::default();
-        let encoder = QuantumContextEncoder::new(&config).unwrap();
+        let encoder = QuantumContextEncoder::new(&config).expect("should create context encoder");
         let example = ContextExample {
             input: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             output: Array1::from_vec(vec![0.8]),
@@ -54,11 +54,12 @@ mod tests {
     #[test]
     fn test_zero_shot_learning() {
         let config = QuantumInContextLearningConfig::default();
-        let learner = QuantumInContextLearner::new(config.clone()).unwrap();
+        let learner =
+            QuantumInContextLearner::new(config.clone()).expect("Failed to create learner");
         let query = Array1::from_vec(vec![0.5, -0.3, 0.8]);
         let result = learner.zero_shot_learning(&query);
         assert!(result.is_ok());
-        let prediction = result.unwrap();
+        let prediction = result.expect("Failed to perform zero-shot learning");
         assert_eq!(prediction.len(), config.model_dim);
     }
     #[test]
@@ -68,7 +69,7 @@ mod tests {
             max_context_examples: 5,
             ..Default::default()
         };
-        let mut learner = QuantumInContextLearner::new(config).unwrap();
+        let mut learner = QuantumInContextLearner::new(config).expect("Failed to create learner");
         let examples = vec![ContextExample {
             input: Array1::from_vec(vec![0.1, 0.2, 0.3]),
             output: Array1::from_vec(vec![0.8]),
@@ -102,7 +103,7 @@ mod tests {
     #[test]
     fn test_quantum_memory_operations() {
         let config = QuantumInContextLearningConfig::default();
-        let mut memory = QuantumEpisodicMemory::new(&config).unwrap();
+        let mut memory = QuantumEpisodicMemory::new(&config).expect("Failed to create memory");
         let test_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -122,7 +123,7 @@ mod tests {
         assert!(result.is_ok());
         let retrieved = memory.retrieve_similar_contexts(&test_state, 1);
         assert!(retrieved.is_ok());
-        assert_eq!(retrieved.unwrap().len(), 1);
+        assert_eq!(retrieved.expect("Failed to retrieve contexts").len(), 1);
     }
     #[test]
     fn test_adaptation_strategies() {
@@ -138,7 +139,7 @@ mod tests {
     #[test]
     fn test_prototype_bank_operations() {
         let config = QuantumInContextLearningConfig::default();
-        let mut bank = PrototypeBank::new(&config).unwrap();
+        let mut bank = PrototypeBank::new(&config).expect("Failed to create prototype bank");
         let test_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -159,7 +160,7 @@ mod tests {
         assert_eq!(bank.get_prototype_count(), 1);
         let found = bank.find_nearest_prototypes(&test_state, 1);
         assert!(found.is_ok());
-        assert_eq!(found.unwrap().len(), 1);
+        assert_eq!(found.expect("Failed to find nearest prototypes").len(), 1);
     }
     #[test]
     fn test_quantum_attention_mechanism() {
@@ -167,7 +168,8 @@ mod tests {
             num_attention_heads: 2,
             ..Default::default()
         };
-        let attention = QuantumContextAttention::new(&config).unwrap();
+        let attention =
+            QuantumContextAttention::new(&config).expect("Failed to create attention mechanism");
         let query_state = QuantumContextState {
             quantum_amplitudes: Array1::zeros(256).mapv(|_: f64| Complex64::new(1.0, 0.0)),
             classical_features: Array1::from_vec(vec![0.1, 0.2, 0.3]),
@@ -186,6 +188,9 @@ mod tests {
         let contexts = vec![query_state.clone(), query_state.clone()];
         let weights = attention.compute_attention_weights(&query_state, &contexts);
         assert!(weights.is_ok());
-        assert_eq!(weights.unwrap().len(), 2);
+        assert_eq!(
+            weights.expect("Failed to compute attention weights").len(),
+            2
+        );
     }
 }

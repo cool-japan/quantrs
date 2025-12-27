@@ -109,7 +109,7 @@ pub struct NeutralAtomCircuitResult {
 }
 
 /// Neutral atom measurement data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NeutralAtomMeasurementData {
     /// Atom positions in the array
     pub atom_positions: Vec<(f64, f64, f64)>,
@@ -142,19 +142,6 @@ pub struct NeutralAtomExecutionMetadata {
     pub temperature: Option<f64>,
     /// Laser power used
     pub laser_power: Option<f64>,
-}
-
-impl Default for NeutralAtomMeasurementData {
-    fn default() -> Self {
-        Self {
-            atom_positions: Vec::new(),
-            atom_states: Vec::new(),
-            rydberg_patterns: Vec::new(),
-            correlations: HashMap::new(),
-            fidelities: HashMap::new(),
-            loading_success: Vec::new(),
-        }
-    }
 }
 
 impl Default for NeutralAtomExecutionMetadata {
@@ -253,7 +240,7 @@ pub trait NeutralAtomQuantumDevice: QuantumDevice + CircuitExecutor {
 }
 
 /// Create a neutral atom quantum device
-pub fn create_neutral_atom_device(
+pub const fn create_neutral_atom_device(
     client: NeutralAtomClient,
     device_id: String,
     config: NeutralAtomDeviceConfig,
@@ -284,7 +271,7 @@ pub fn validate_neutral_atom_config(config: &NeutralAtomDeviceConfig) -> DeviceR
     }
 
     if let Some(fidelity) = config.gate_fidelity {
-        if fidelity < 0.0 || fidelity > 1.0 {
+        if !(0.0..=1.0).contains(&fidelity) {
             return Err(DeviceError::InvalidInput(
                 "Gate fidelity must be between 0 and 1".to_string(),
             ));
@@ -292,7 +279,7 @@ pub fn validate_neutral_atom_config(config: &NeutralAtomDeviceConfig) -> DeviceR
     }
 
     if let Some(efficiency) = config.loading_efficiency {
-        if efficiency < 0.0 || efficiency > 1.0 {
+        if !(0.0..=1.0).contains(&efficiency) {
             return Err(DeviceError::InvalidInput(
                 "Loading efficiency must be between 0 and 1".to_string(),
             ));

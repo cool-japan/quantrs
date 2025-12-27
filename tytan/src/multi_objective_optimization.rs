@@ -335,7 +335,7 @@ impl MultiObjectiveOptimizer {
             indices.sort_by(|&a, &b| {
                 self.population[a].objective_values[obj_idx]
                     .partial_cmp(&self.population[b].objective_values[obj_idx])
-                    .unwrap()
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             // Boundary solutions get infinite distance
@@ -472,7 +472,7 @@ impl MultiObjectiveOptimizer {
                 std::cmp::Ordering::Equal => b
                     .crowding_distance
                     .partial_cmp(&a.crowding_distance)
-                    .unwrap(),
+                    .unwrap_or(std::cmp::Ordering::Equal),
                 other => other,
             });
 
@@ -571,7 +571,7 @@ impl OptimizationStatistics {
         sorted_solutions.sort_by(|a, b| {
             a.objective_values[0]
                 .partial_cmp(&b.objective_values[0])
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let mut hypervolume = 0.0;

@@ -8,11 +8,11 @@ use super::quantum_types::*;
 use super::results::*;
 use super::support::*;
 
-use quantrs2_core::QuantRS2Result;
 use quantrs2_circuit::builder::Circuit;
-use scirs2_core::random::prelude::*;
+use quantrs2_core::QuantRS2Result;
 use scirs2_core::memory::BufferPool;
 use scirs2_core::ndarray::{Array1, Array2};
+use scirs2_core::random::prelude::*;
 use std::sync::{Arc, Mutex};
 
 /// Enhanced hybrid algorithm executor
@@ -30,7 +30,9 @@ pub struct EnhancedHybridExecutor {
 impl EnhancedHybridExecutor {
     /// Create a new enhanced hybrid executor
     pub fn new(config: EnhancedHybridConfig) -> Self {
-        let optimizer = Arc::new(Mutex::new(HybridOptimizer::new(config.base_config.optimizer_type)));
+        let optimizer = Arc::new(Mutex::new(HybridOptimizer::new(
+            config.base_config.optimizer_type,
+        )));
         let ml_optimizer = if config.enable_ml_optimization {
             Some(Arc::new(MLHybridOptimizer::new()))
         } else {
@@ -68,9 +70,8 @@ impl EnhancedHybridExecutor {
         let start_time = std::time::Instant::now();
 
         // Initialize parameters
-        let mut params = initial_params.unwrap_or_else(|| {
-            self.initialize_parameters(ansatz.num_parameters())
-        });
+        let mut params =
+            initial_params.unwrap_or_else(|| self.initialize_parameters(ansatz.num_parameters()));
 
         // Initialize tracking
         let mut history = OptimizationHistory::new();
@@ -107,7 +108,13 @@ impl EnhancedHybridExecutor {
             };
 
             // Update parameters
-            params = self.optimizer.lock().unwrap().update_parameters(&params, &enhanced_gradient)?;
+            params = self
+                .optimizer
+                .lock()
+                .map_err(|e| {
+                    quantrs2_core::QuantRS2Error::Other(format!("Optimizer lock failed: {}", e))
+                })?
+                .update_parameters(&params, &enhanced_gradient)?;
 
             // Adaptive learning rate
             if self.config.enable_adaptive_learning {
@@ -159,9 +166,8 @@ impl EnhancedHybridExecutor {
         let mut ansatz = self.create_qaoa_ansatz(problem, num_layers)?;
 
         // Initialize parameters (beta and gamma for each layer)
-        let mut params = initial_params.unwrap_or_else(|| {
-            self.initialize_qaoa_parameters(num_layers)
-        });
+        let mut params =
+            initial_params.unwrap_or_else(|| self.initialize_qaoa_parameters(num_layers));
 
         // Optimization loop
         let mut history = OptimizationHistory::new();
@@ -192,7 +198,13 @@ impl EnhancedHybridExecutor {
             let gradient = self.calculate_qaoa_gradient(problem, &ansatz, &params)?;
 
             // Update parameters
-            params = self.optimizer.lock().unwrap().update_parameters(&params, &gradient)?;
+            params = self
+                .optimizer
+                .lock()
+                .map_err(|e| {
+                    quantrs2_core::QuantRS2Error::Other(format!("Optimizer lock failed: {}", e))
+                })?
+                .update_parameters(&params, &gradient)?;
 
             // Adaptive layer adjustment
             if self.config.enable_adaptive_learning && iteration % 50 == 0 {
@@ -205,10 +217,8 @@ impl EnhancedHybridExecutor {
         }
 
         // Analyze solution quality
-        let solution_analysis = self.analyze_qaoa_solution(
-            problem,
-            &best_solution.clone().unwrap_or_default(),
-        )?;
+        let solution_analysis =
+            self.analyze_qaoa_solution(problem, &best_solution.clone().unwrap_or_default())?;
 
         // Generate visualizations
         let visualizations = if self.config.enable_visual_analytics {
@@ -242,9 +252,8 @@ impl EnhancedHybridExecutor {
         let start_time = std::time::Instant::now();
 
         // Initialize parameters
-        let mut params = initial_params.unwrap_or_else(|| {
-            self.initialize_parameters(circuit_template.num_parameters())
-        });
+        let mut params = initial_params
+            .unwrap_or_else(|| self.initialize_parameters(circuit_template.num_parameters()));
 
         // Split data
         let (train_set, val_set) = self.split_data(training_data)?;
@@ -268,15 +277,17 @@ impl EnhancedHybridExecutor {
                 total_loss += loss;
 
                 // Calculate gradient
-                let gradient = self.calculate_vqc_gradient(
-                    circuit_template,
-                    &params,
-                    &batch,
-                    &predictions,
-                )?;
+                let gradient =
+                    self.calculate_vqc_gradient(circuit_template, &params, &batch, &predictions)?;
 
                 // Update parameters
-                params = self.optimizer.lock().unwrap().update_parameters(&params, &gradient)?;
+                params = self
+                    .optimizer
+                    .lock()
+                    .map_err(|e| {
+                        quantrs2_core::QuantRS2Error::Other(format!("Optimizer lock failed: {}", e))
+                    })?
+                    .update_parameters(&params, &gradient)?;
             }
 
             // Validation
@@ -298,7 +309,8 @@ impl EnhancedHybridExecutor {
         }
 
         // Final evaluation on test set
-        let test_metrics = self.evaluate_vqc_metrics(circuit_template, &best_params, training_data)?;
+        let test_metrics =
+            self.evaluate_vqc_metrics(circuit_template, &best_params, training_data)?;
 
         // Generate visualizations
         let visualizations = if self.config.enable_visual_analytics {
@@ -334,9 +346,8 @@ impl EnhancedHybridExecutor {
         let start_time = std::time::Instant::now();
 
         // Initialize parameters
-        let mut params = initial_params.unwrap_or_else(|| {
-            self.initialize_parameters(ansatz.num_parameters())
-        });
+        let mut params =
+            initial_params.unwrap_or_else(|| self.initialize_parameters(ansatz.num_parameters()));
 
         // Optimization loop
         let mut history = OptimizationHistory::new();
@@ -376,11 +387,25 @@ impl EnhancedHybridExecutor {
             let gradient = self.calculate_numerical_gradient(&cost_function, &params)?;
 
             // Update parameters
-            params = self.optimizer.lock().unwrap().update_parameters(&params, &gradient)?;
+            params = self
+                .optimizer
+                .lock()
+                .map_err(|e| {
+                    quantrs2_core::QuantRS2Error::Other(format!("Optimizer lock failed: {}", e))
+                })?
+                .update_parameters(&params, &gradient)?;
 
             // Benchmarking
             if self.config.enable_benchmarking && iteration % 100 == 0 {
-                self.benchmarker.lock().unwrap().record_iteration(&history, iteration)?;
+                self.benchmarker
+                    .lock()
+                    .map_err(|e| {
+                        quantrs2_core::QuantRS2Error::Other(format!(
+                            "Benchmarker lock failed: {}",
+                            e
+                        ))
+                    })?
+                    .record_iteration(&history, iteration)?;
             }
         }
 
@@ -399,9 +424,20 @@ impl EnhancedHybridExecutor {
             optimization_history: history,
             landscape_analysis,
             execution_time,
-            convergence_achieved: history.is_converged(self.config.base_config.convergence_threshold),
+            convergence_achieved: history
+                .is_converged(self.config.base_config.convergence_threshold),
             benchmark_results: if self.config.enable_benchmarking {
-                Some(self.benchmarker.lock().unwrap().generate_report()?)
+                Some(
+                    self.benchmarker
+                        .lock()
+                        .map_err(|e| {
+                            quantrs2_core::QuantRS2Error::Other(format!(
+                                "Benchmarker lock failed: {}",
+                                e
+                            ))
+                        })?
+                        .generate_report()?,
+                )
             } else {
                 None
             },
@@ -456,13 +492,11 @@ impl EnhancedHybridExecutor {
         match self.config.base_config.gradient_method {
             GradientMethod::ParameterShift => {
                 self.parameter_shift_gradient(hamiltonian, ansatz, params)
-            },
+            }
             GradientMethod::FiniteDifference => {
                 self.finite_difference_gradient(hamiltonian, ansatz, params)
-            },
-            _ => {
-                Ok(Array1::zeros(params.len()))
             }
+            _ => Ok(Array1::zeros(params.len())),
         }
     }
 
@@ -483,7 +517,8 @@ impl EnhancedHybridExecutor {
             params_minus[i] -= shift;
 
             let energy_plus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_plus)?;
-            let energy_minus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
+            let energy_minus =
+                self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
 
             gradient[i] = (energy_plus - energy_minus) / 2.0;
         }
@@ -508,7 +543,8 @@ impl EnhancedHybridExecutor {
             params_minus[i] -= epsilon;
 
             let energy_plus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_plus)?;
-            let energy_minus = self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
+            let energy_minus =
+                self.evaluate_expectation_value(hamiltonian, ansatz, &params_minus)?;
 
             gradient[i] = (energy_plus - energy_minus) / (2.0 * epsilon);
         }
@@ -549,7 +585,8 @@ impl EnhancedHybridExecutor {
         }
 
         let window_size = 10.min(history.iterations.len());
-        let recent_costs: Vec<f64> = history.iterations
+        let recent_costs: Vec<f64> = history
+            .iterations
             .iter()
             .rev()
             .take(window_size)
@@ -557,9 +594,11 @@ impl EnhancedHybridExecutor {
             .collect();
 
         let mean = recent_costs.iter().sum::<f64>() / recent_costs.len() as f64;
-        let variance = recent_costs.iter()
+        let variance = recent_costs
+            .iter()
             .map(|&x| (x - mean).powi(2))
-            .sum::<f64>() / recent_costs.len() as f64;
+            .sum::<f64>()
+            / recent_costs.len() as f64;
 
         Ok(variance < self.config.base_config.convergence_threshold.powi(2))
     }
@@ -576,9 +615,8 @@ impl EnhancedHybridExecutor {
             }
 
             // Clamp learning rate
-            self.config.base_config.learning_rate = self.config.base_config.learning_rate
-                .max(1e-6)
-                .min(1.0);
+            self.config.base_config.learning_rate =
+                self.config.base_config.learning_rate.max(1e-6).min(1.0);
         }
 
         Ok(())
@@ -736,10 +774,7 @@ impl EnhancedHybridExecutor {
 
     fn split_data(&self, data: &TrainingData) -> QuantRS2Result<(TrainingData, TrainingData)> {
         let split_idx = (data.len() as f64 * 0.8) as usize;
-        Ok((
-            data.slice(0, split_idx),
-            data.slice(split_idx, data.len()),
-        ))
+        Ok((data.slice(0, split_idx), data.slice(split_idx, data.len())))
     }
 
     fn create_batches(
@@ -769,7 +804,9 @@ impl EnhancedHybridExecutor {
         for (i, sample) in batch.samples.iter().enumerate() {
             let circuit = template.encode_and_build(sample, params)?;
             let measurement = self.measure_circuit(&circuit, 1000)?;
-            predictions.row_mut(i).assign(&measurement.to_probabilities());
+            predictions
+                .row_mut(i)
+                .assign(&measurement.to_probabilities());
         }
 
         Ok(predictions)
@@ -851,20 +888,17 @@ impl EnhancedHybridExecutor {
         params: &Array1<f64>,
         data: &TrainingData,
     ) -> QuantRS2Result<f64> {
-        let predictions = self.vqc_forward_pass(
-            template,
-            params,
-            &data.to_batch(),
-        )?;
+        let predictions = self.vqc_forward_pass(template, params, &data.to_batch())?;
 
         let mut correct = 0;
         for (i, &label) in data.labels.iter().enumerate() {
-            let pred_label = predictions.row(i)
+            let pred_label = predictions
+                .row(i)
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(idx, _)| idx)
-                .unwrap();
+                .unwrap_or(0);
 
             if pred_label == label {
                 correct += 1;
@@ -880,14 +914,18 @@ impl EnhancedHybridExecutor {
         }
 
         // Check if validation accuracy hasn't improved in last 5 epochs
-        let recent_accuracies: Vec<f64> = history.epochs
+        let recent_accuracies: Vec<f64> = history
+            .epochs
             .iter()
             .rev()
             .take(5)
             .map(|e| e.val_accuracy)
             .collect();
 
-        let max_recent = recent_accuracies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_recent = recent_accuracies
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let older_max = history.epochs[..history.epochs.len() - 5]
             .iter()
             .map(|e| e.val_accuracy)
@@ -927,12 +965,13 @@ impl EnhancedHybridExecutor {
         let mut matrix = Array2::zeros((num_classes, num_classes));
 
         for (i, &true_label) in labels.iter().enumerate() {
-            let pred_label = predictions.row(i)
+            let pred_label = predictions
+                .row(i)
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(idx, _)| idx)
-                .unwrap();
+                .unwrap_or(0);
 
             matrix[(true_label, pred_label)] += 1;
         }
@@ -1037,7 +1076,8 @@ impl EnhancedHybridExecutor {
         // Analyze landscape properties
         let costs: Vec<f64> = landscape_points.iter().map(|(_, c)| *c).collect();
         let mean_cost = costs.iter().sum::<f64>() / costs.len() as f64;
-        let variance = costs.iter().map(|c| (c - mean_cost).powi(2)).sum::<f64>() / costs.len() as f64;
+        let variance =
+            costs.iter().map(|c| (c - mean_cost).powi(2)).sum::<f64>() / costs.len() as f64;
 
         Ok(LandscapeAnalysis {
             local_minima: self.find_local_minima(&landscape_points)?,
@@ -1084,10 +1124,7 @@ impl EnhancedHybridExecutor {
         Ok(true)
     }
 
-    fn estimate_gradient_variance(
-        &self,
-        _points: &[(Array1<f64>, f64)],
-    ) -> QuantRS2Result<f64> {
+    fn estimate_gradient_variance(&self, _points: &[(Array1<f64>, f64)]) -> QuantRS2Result<f64> {
         // Estimate gradient variance from sampled points
         Ok(0.01) // Placeholder
     }

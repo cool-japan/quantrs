@@ -379,10 +379,8 @@ impl CalibrationNoiseModel {
                 if prob > params.assignment_matrix[0][0] {
                     return 1;
                 }
-            } else {
-                if prob > params.assignment_matrix[1][1] {
-                    return 0;
-                }
+            } else if prob > params.assignment_matrix[1][1] {
+                return 0;
             }
         }
 
@@ -552,7 +550,7 @@ pub struct NoiseModelBuilder {
 
 impl NoiseModelBuilder {
     /// Create builder from calibration
-    pub fn from_calibration(calibration: DeviceCalibration) -> Self {
+    pub const fn from_calibration(calibration: DeviceCalibration) -> Self {
         Self {
             calibration,
             coherent_factor: 1.0,
@@ -563,25 +561,29 @@ impl NoiseModelBuilder {
     }
 
     /// Scale coherent errors
-    pub fn coherent_factor(mut self, factor: f64) -> Self {
+    #[must_use]
+    pub const fn coherent_factor(mut self, factor: f64) -> Self {
         self.coherent_factor = factor;
         self
     }
 
     /// Scale thermal noise
-    pub fn thermal_factor(mut self, factor: f64) -> Self {
+    #[must_use]
+    pub const fn thermal_factor(mut self, factor: f64) -> Self {
         self.thermal_factor = factor;
         self
     }
 
     /// Scale crosstalk
-    pub fn crosstalk_factor(mut self, factor: f64) -> Self {
+    #[must_use]
+    pub const fn crosstalk_factor(mut self, factor: f64) -> Self {
         self.crosstalk_factor = factor;
         self
     }
 
     /// Scale readout errors
-    pub fn readout_factor(mut self, factor: f64) -> Self {
+    #[must_use]
+    pub const fn readout_factor(mut self, factor: f64) -> Self {
         self.readout_factor = factor;
         self
     }
@@ -599,7 +601,7 @@ impl NoiseModelBuilder {
             noise.thermal_population *= self.thermal_factor;
         }
 
-        for row in model.crosstalk.crosstalk_matrix.iter_mut() {
+        for row in &mut model.crosstalk.crosstalk_matrix {
             for val in row.iter_mut() {
                 *val *= self.crosstalk_factor;
             }
@@ -645,7 +647,10 @@ mod tests {
             .build();
 
         // Check that factors were applied
-        let x_noise = noise_model.gate_noise.get("X").unwrap();
+        let x_noise = noise_model
+            .gate_noise
+            .get("X")
+            .expect("X gate noise should exist");
         assert!(x_noise.coherent_error < 0.001); // Should be reduced by factor
     }
 }

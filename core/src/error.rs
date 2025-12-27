@@ -125,6 +125,9 @@ pub enum QuantRS2Error {
 
     #[error("Division by zero")]
     DivisionByZero,
+
+    #[error("Lock poisoned: {0}")]
+    LockPoisoned(String),
 }
 
 /// Result type for quantum operations
@@ -132,37 +135,37 @@ pub type QuantRS2Result<T> = Result<T, QuantRS2Error>;
 
 impl From<scirs2_core::ndarray::ShapeError> for QuantRS2Error {
     fn from(err: scirs2_core::ndarray::ShapeError) -> Self {
-        QuantRS2Error::InvalidInput(format!("Shape error: {}", err))
+        Self::InvalidInput(format!("Shape error: {err}"))
     }
 }
 
 #[cfg(feature = "mps")]
 impl From<scirs2_linalg::error::LinalgError> for QuantRS2Error {
     fn from(err: scirs2_linalg::error::LinalgError) -> Self {
-        QuantRS2Error::LinalgError(format!("Linear algebra error: {}", err))
+        Self::LinalgError(format!("Linear algebra error: {err}"))
     }
 }
 
 impl From<std::io::Error> for QuantRS2Error {
     fn from(err: std::io::Error) -> Self {
-        QuantRS2Error::RuntimeError(format!("I/O error: {}", err))
+        Self::RuntimeError(format!("I/O error: {err}"))
     }
 }
 
 impl From<bincode::error::EncodeError> for QuantRS2Error {
     fn from(err: bincode::error::EncodeError) -> Self {
-        QuantRS2Error::RuntimeError(format!("Serialization encode error: {:?}", err))
+        Self::RuntimeError(format!("Serialization encode error: {err:?}"))
     }
 }
 
 impl From<bincode::error::DecodeError> for QuantRS2Error {
     fn from(err: bincode::error::DecodeError) -> Self {
-        QuantRS2Error::RuntimeError(format!("Serialization decode error: {:?}", err))
+        Self::RuntimeError(format!("Serialization decode error: {err:?}"))
     }
 }
 
 impl From<serde_json::Error> for QuantRS2Error {
     fn from(err: serde_json::Error) -> Self {
-        QuantRS2Error::RuntimeError(format!("JSON error: {}", err))
+        Self::RuntimeError(format!("JSON error: {err}"))
     }
 }

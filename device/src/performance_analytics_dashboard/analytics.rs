@@ -96,7 +96,7 @@ pub struct AnomalyDetectionModel {
 }
 
 /// Anomaly detection model types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyModelType {
     StatisticalOutlier,
     IsolationForest,
@@ -131,7 +131,7 @@ pub struct HistoricalAnomaly {
 }
 
 /// Anomaly types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AnomalyType {
     Outlier,
     Drift,
@@ -143,7 +143,7 @@ pub enum AnomalyType {
 }
 
 /// Anomaly severity levels
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AnomalySeverity {
     Low,
     Medium,
@@ -270,7 +270,7 @@ pub struct ModelPerformanceRecord {
 }
 
 /// Anomaly patterns
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AnomalyPatterns {
     pub recurring_patterns: Vec<RecurringPattern>,
     pub correlation_patterns: Vec<CorrelationPattern>,
@@ -352,7 +352,7 @@ pub struct CorrelationAnalysisResult {
 }
 
 /// Seasonal patterns
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SeasonalPatterns {
     pub daily_patterns: HashMap<String, Vec<f64>>,
     pub weekly_patterns: HashMap<String, Vec<f64>>,
@@ -361,7 +361,7 @@ pub struct SeasonalPatterns {
 }
 
 /// Change point detection
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChangePointDetection {
     pub change_points: Vec<ChangePoint>,
     pub change_point_probabilities: Vec<f64>,
@@ -389,7 +389,7 @@ pub struct StructuralBreak {
 }
 
 /// Forecasting results
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ForecastingResults {
     pub forecasts: HashMap<String, Forecast>,
     pub forecast_accuracy: HashMap<String, ForecastAccuracy>,
@@ -430,8 +430,8 @@ impl StatisticalAnalyzer {
     ) -> DeviceResult<StatisticalAnalysisResults> {
         // Check cache first
         if let Some(cached) = self.get_cached_analysis("descriptive_stats") {
-            if self.is_cache_valid(&cached) {
-                return Ok(self.build_results_from_cache(&cached));
+            if self.is_cache_valid(cached) {
+                return Ok(self.build_results_from_cache(cached));
             }
         }
 
@@ -667,7 +667,7 @@ impl AnomalyDetector {
                     metric_name,
                     SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_default()
                         .as_secs()
                 ),
                 timestamp: SystemTime::now(),
@@ -746,46 +746,6 @@ impl PerformancePredictor {
 }
 
 // Default implementations
-impl Default for SeasonalPatterns {
-    fn default() -> Self {
-        Self {
-            daily_patterns: HashMap::new(),
-            weekly_patterns: HashMap::new(),
-            monthly_patterns: HashMap::new(),
-            seasonal_strength: HashMap::new(),
-        }
-    }
-}
-
-impl Default for ChangePointDetection {
-    fn default() -> Self {
-        Self {
-            change_points: Vec::new(),
-            change_point_probabilities: Vec::new(),
-            structural_breaks: Vec::new(),
-        }
-    }
-}
-
-impl Default for ForecastingResults {
-    fn default() -> Self {
-        Self {
-            forecasts: HashMap::new(),
-            forecast_accuracy: HashMap::new(),
-            uncertainty_bounds: HashMap::new(),
-        }
-    }
-}
-
-impl Default for AnomalyPatterns {
-    fn default() -> Self {
-        Self {
-            recurring_patterns: Vec::new(),
-            correlation_patterns: Vec::new(),
-            temporal_patterns: Vec::new(),
-        }
-    }
-}
 
 impl Default for RootCauseAnalysis {
     fn default() -> Self {

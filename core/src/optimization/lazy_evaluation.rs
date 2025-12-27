@@ -189,7 +189,10 @@ impl LazyOptimizationPipeline {
     /// Add a gate to the lazy evaluation pipeline
     pub fn add_gate(&self, gate: Box<dyn GateOp>) -> QuantRS2Result<usize> {
         let gate_id = {
-            let mut next_id = self.next_gate_id.write().unwrap();
+            let mut next_id = self
+                .next_gate_id
+                .write()
+                .map_err(|_| QuantRS2Error::RuntimeError("Gate ID lock poisoned".to_string()))?;
             let id = *next_id;
             *next_id += 1;
             id
@@ -214,13 +217,17 @@ impl LazyOptimizationPipeline {
 
         // Update dependency graph
         {
-            let mut graph = self.dependency_graph.write().unwrap();
+            let mut graph = self.dependency_graph.write().map_err(|_| {
+                QuantRS2Error::RuntimeError("Dependency graph lock poisoned".to_string())
+            })?;
             graph.add_gate(gate_id, dependencies);
         }
 
         // Add to buffer
         {
-            let mut buffer = self.gate_buffer.write().unwrap();
+            let mut buffer = self.gate_buffer.write().map_err(|_| {
+                QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string())
+            })?;
             buffer.insert(gate_id, context);
         }
 
@@ -239,9 +246,11 @@ impl LazyOptimizationPipeline {
 
         // Get the gate context
         let context = {
-            let buffer = self.gate_buffer.read().unwrap();
+            let buffer = self.gate_buffer.read().map_err(|_| {
+                QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string())
+            })?;
             buffer.get(&gate_id).cloned().ok_or_else(|| {
-                QuantRS2Error::InvalidInput(format!("Gate {} not found in buffer", gate_id))
+                QuantRS2Error::InvalidInput(format!("Gate {gate_id} not found in buffer"))
             })?
         };
 
@@ -256,7 +265,9 @@ impl LazyOptimizationPipeline {
 
         // Mark as evaluated
         {
-            let mut buffer = self.gate_buffer.write().unwrap();
+            let mut buffer = self.gate_buffer.write().map_err(|_| {
+                QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string())
+            })?;
             if let Some(ctx) = buffer.get_mut(&gate_id) {
                 ctx.is_evaluated = true;
                 ctx.cached_result = Some(result.clone());
@@ -270,7 +281,9 @@ impl LazyOptimizationPipeline {
     pub fn evaluate_all(&self) -> QuantRS2Result<Vec<OptimizationResult>> {
         // Get topological ordering of gates
         let ordered_gates = {
-            let graph = self.dependency_graph.read().unwrap();
+            let graph = self.dependency_graph.read().map_err(|_| {
+                QuantRS2Error::RuntimeError("Dependency graph lock poisoned".to_string())
+            })?;
             graph.topological_sort()
         };
 
@@ -283,8 +296,9 @@ impl LazyOptimizationPipeline {
 
         // Clear the buffer
         {
-            let mut buffer = self.gate_buffer.write().unwrap();
-            buffer.clear();
+            if let Ok(mut buffer) = self.gate_buffer.write() {
+                buffer.clear();
+            }
         }
 
         Ok(results)
@@ -292,20 +306,37 @@ impl LazyOptimizationPipeline {
 
     /// Get optimization statistics
     pub fn get_statistics(&self) -> LazyEvaluationStats {
-        let buffer = self.gate_buffer.read().unwrap();
-        let cache = self.optimization_cache.read().unwrap();
+        let buffer = self.gate_buffer.read().ok();
+        let cache = self.optimization_cache.read().ok();
 
-        let total_gates = buffer.len();
-        let evaluated_gates = buffer.values().filter(|ctx| ctx.is_evaluated).count();
+        let (total_gates, evaluated_gates) = buffer
+            .as_ref()
+            .map(|b| {
+                let total = b.len();
+                let evaluated = b.values().filter(|ctx| ctx.is_evaluated).count();
+                (total, evaluated)
+            })
+            .unwrap_or((0, 0));
         let pending_gates = total_gates - evaluated_gates;
+
+        let (cache_hits, cache_size, avg_time) = cache
+            .as_ref()
+            .map(|c| {
+                (
+                    c.get_hit_count(),
+                    c.entries.len(),
+                    c.get_average_optimization_time(),
+                )
+            })
+            .unwrap_or((0, 0, Duration::ZERO));
 
         LazyEvaluationStats {
             total_gates,
             evaluated_gates,
             pending_gates,
-            cache_hits: cache.get_hit_count(),
-            cache_size: cache.entries.len(),
-            average_optimization_time: cache.get_average_optimization_time(),
+            cache_hits,
+            cache_size,
+            average_optimization_time: avg_time,
         }
     }
 
@@ -314,7 +345,10 @@ impl LazyOptimizationPipeline {
         let gate_qubits: HashSet<QubitId> = gate.qubits().into_iter().collect();
         let mut dependencies = HashSet::new();
 
-        let buffer = self.gate_buffer.read().unwrap();
+        let buffer = self
+            .gate_buffer
+            .read()
+            .map_err(|_| QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string()))?;
         for (gate_id, context) in buffer.iter() {
             let context_qubits: HashSet<QubitId> = context.gate.qubits().into_iter().collect();
 
@@ -350,7 +384,10 @@ impl LazyOptimizationPipeline {
 
     /// Check if forced evaluation is needed
     fn check_forced_evaluation(&self) -> QuantRS2Result<()> {
-        let buffer = self.gate_buffer.read().unwrap();
+        let buffer = self
+            .gate_buffer
+            .read()
+            .map_err(|_| QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string()))?;
 
         // Check buffer size
         if buffer.len() >= self.config.max_buffer_size {
@@ -373,7 +410,9 @@ impl LazyOptimizationPipeline {
     /// Force evaluation of the oldest gate
     fn force_oldest_evaluation(&self) -> QuantRS2Result<()> {
         let oldest_gate_id = {
-            let buffer = self.gate_buffer.read().unwrap();
+            let buffer = self.gate_buffer.read().map_err(|_| {
+                QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string())
+            })?;
             buffer
                 .values()
                 .filter(|ctx| !ctx.is_evaluated)
@@ -400,10 +439,10 @@ impl LazyOptimizationPipeline {
 
     /// Check if a gate has been evaluated
     fn is_gate_evaluated(&self, gate_id: usize) -> bool {
-        let buffer = self.gate_buffer.read().unwrap();
-        buffer
-            .get(&gate_id)
-            .map(|ctx| ctx.is_evaluated)
+        self.gate_buffer
+            .read()
+            .ok()
+            .and_then(|buffer| buffer.get(&gate_id).map(|ctx| ctx.is_evaluated))
             .unwrap_or(false)
     }
 
@@ -462,16 +501,22 @@ impl LazyOptimizationPipeline {
 
     /// Get cached optimization result
     fn get_cached_result(&self, gate_id: usize) -> QuantRS2Result<Option<OptimizationResult>> {
-        let buffer = self.gate_buffer.read().unwrap();
+        let buffer = self
+            .gate_buffer
+            .read()
+            .map_err(|_| QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string()))?;
         if let Some(context) = buffer.get(&gate_id) {
             if let Some(ref result) = context.cached_result {
                 return Ok(Some(result.clone()));
             }
         }
+        drop(buffer);
 
         // Check optimization cache
         let gate_hash = self.compute_gate_hash(gate_id)?;
-        let mut cache = self.optimization_cache.write().unwrap();
+        let mut cache = self.optimization_cache.write().map_err(|_| {
+            QuantRS2Error::RuntimeError("Optimization cache lock poisoned".to_string())
+        })?;
         if let Some(cached) = cache.get_mut(gate_hash) {
             return Ok(Some(cached.result.clone()));
         }
@@ -486,7 +531,9 @@ impl LazyOptimizationPipeline {
         result: &OptimizationResult,
     ) -> QuantRS2Result<()> {
         let gate_hash = self.compute_gate_hash(gate_id)?;
-        let mut cache = self.optimization_cache.write().unwrap();
+        let mut cache = self.optimization_cache.write().map_err(|_| {
+            QuantRS2Error::RuntimeError("Optimization cache lock poisoned".to_string())
+        })?;
 
         let cached = CachedOptimization {
             result: result.clone(),
@@ -503,10 +550,13 @@ impl LazyOptimizationPipeline {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let buffer = self.gate_buffer.read().unwrap();
+        let buffer = self
+            .gate_buffer
+            .read()
+            .map_err(|_| QuantRS2Error::RuntimeError("Gate buffer lock poisoned".to_string()))?;
         let context = buffer
             .get(&gate_id)
-            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Gate {} not found", gate_id)))?;
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Gate {gate_id} not found")))?;
 
         let mut hasher = DefaultHasher::new();
         context.gate.name().hash(&mut hasher);
@@ -537,30 +587,34 @@ impl LazyOptimizationPipeline {
             loop {
                 // Check shutdown signal
                 {
-                    let shutdown = shutdown_signal.read().unwrap();
-                    if *shutdown {
-                        break;
+                    match shutdown_signal.read() {
+                        Ok(shutdown) if *shutdown => break,
+                        Err(_) => break, // Lock poisoned, exit gracefully
+                        _ => {}
                     }
                 }
 
                 // Look for high-priority gates to optimize speculatively
                 if config.enable_speculative_optimization {
                     let high_priority_gates = {
-                        let buffer = gate_buffer.read().unwrap();
-                        buffer
-                            .values()
-                            .filter(|ctx| !ctx.is_evaluated && ctx.priority > 5.0)
-                            .map(|ctx| ctx.gate_id)
-                            .collect::<Vec<_>>()
+                        match gate_buffer.read() {
+                            Ok(buffer) => buffer
+                                .values()
+                                .filter(|ctx| !ctx.is_evaluated && ctx.priority > 5.0)
+                                .map(|ctx| ctx.gate_id)
+                                .collect::<Vec<_>>(),
+                            Err(_) => continue, // Lock poisoned, skip iteration
+                        }
                     };
 
                     for gate_id in high_priority_gates {
                         // This would require access to the pipeline's optimization methods
                         // For now, just mark as processed
-                        let mut buffer = gate_buffer.write().unwrap();
-                        if let Some(ctx) = buffer.get_mut(&gate_id) {
-                            // Placeholder: would perform actual optimization here
-                            ctx.priority += 0.1; // Slight priority boost
+                        if let Ok(mut buffer) = gate_buffer.write() {
+                            if let Some(ctx) = buffer.get_mut(&gate_id) {
+                                // Placeholder: would perform actual optimization here
+                                ctx.priority += 0.1; // Slight priority boost
+                            }
                         }
                     }
                 }
@@ -575,8 +629,9 @@ impl Drop for LazyOptimizationPipeline {
     fn drop(&mut self) {
         // Signal shutdown to worker threads
         {
-            let mut shutdown = self.shutdown_signal.write().unwrap();
-            *shutdown = true;
+            if let Ok(mut shutdown) = self.shutdown_signal.write() {
+                *shutdown = true;
+            }
         }
 
         // Wait for all worker threads to finish
@@ -727,7 +782,8 @@ mod tests {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
 
-        let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
+        let pipeline =
+            LazyOptimizationPipeline::new(config, chain).expect("Failed to create pipeline");
         let stats = pipeline.get_statistics();
 
         assert_eq!(stats.total_gates, 0);
@@ -739,12 +795,13 @@ mod tests {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
 
-        let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
+        let pipeline =
+            LazyOptimizationPipeline::new(config, chain).expect("Failed to create pipeline");
 
         let h_gate = Box::new(Hadamard {
             target: crate::qubit::QubitId(0),
         });
-        let gate_id = pipeline.add_gate(h_gate).unwrap();
+        let gate_id = pipeline.add_gate(h_gate).expect("Failed to add gate");
 
         assert_eq!(gate_id, 0);
 
@@ -759,14 +816,17 @@ mod tests {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
 
-        let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
+        let pipeline =
+            LazyOptimizationPipeline::new(config, chain).expect("Failed to create pipeline");
 
         let h_gate = Box::new(Hadamard {
             target: crate::qubit::QubitId(0),
         });
-        let gate_id = pipeline.add_gate(h_gate).unwrap();
+        let gate_id = pipeline.add_gate(h_gate).expect("Failed to add gate");
 
-        let result = pipeline.evaluate_gate(gate_id).unwrap();
+        let result = pipeline
+            .evaluate_gate(gate_id)
+            .expect("Failed to evaluate gate");
         assert!(result.optimization_time > Duration::ZERO);
 
         let stats = pipeline.get_statistics();
@@ -779,7 +839,8 @@ mod tests {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
 
-        let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
+        let pipeline =
+            LazyOptimizationPipeline::new(config, chain).expect("Failed to create pipeline");
 
         // Add gates that share qubits
         let h_gate = Box::new(Hadamard {
@@ -792,14 +853,22 @@ mod tests {
             target: crate::qubit::QubitId(1),
         });
 
-        let _h_id = pipeline.add_gate(h_gate).unwrap();
-        let _x_id = pipeline.add_gate(x_gate).unwrap();
-        let _z_id = pipeline.add_gate(z_gate).unwrap();
+        let _h_id = pipeline
+            .add_gate(h_gate)
+            .expect("Failed to add Hadamard gate");
+        let _x_id = pipeline
+            .add_gate(x_gate)
+            .expect("Failed to add PauliX gate");
+        let _z_id = pipeline
+            .add_gate(z_gate)
+            .expect("Failed to add PauliZ gate");
 
         // X gate should depend on H gate (same qubit)
         // Z gate should be independent (different qubit)
 
-        let results = pipeline.evaluate_all().unwrap();
+        let results = pipeline
+            .evaluate_all()
+            .expect("Failed to evaluate all gates");
         // Results may be filtered or combined during optimization
         assert!(results.len() <= 3);
     }
@@ -810,18 +879,23 @@ mod tests {
         let config = LazyEvaluationConfig::default();
         let chain = OptimizationChain::new();
 
-        let pipeline = LazyOptimizationPipeline::new(config, chain).unwrap();
+        let pipeline =
+            LazyOptimizationPipeline::new(config, chain).expect("Failed to create pipeline");
 
         let h_gate = Box::new(Hadamard {
             target: crate::qubit::QubitId(0),
         });
-        let gate_id = pipeline.add_gate(h_gate).unwrap();
+        let gate_id = pipeline.add_gate(h_gate).expect("Failed to add gate");
 
         // First evaluation
-        let result1 = pipeline.evaluate_gate(gate_id).unwrap();
+        let result1 = pipeline
+            .evaluate_gate(gate_id)
+            .expect("Failed to evaluate gate first time");
 
         // Second evaluation should use cache
-        let result2 = pipeline.evaluate_gate(gate_id).unwrap();
+        let result2 = pipeline
+            .evaluate_gate(gate_id)
+            .expect("Failed to evaluate gate second time");
 
         // Results should be identical
         assert_eq!(result1.stats.gates_before, result2.stats.gates_before);

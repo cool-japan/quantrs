@@ -4,7 +4,9 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 use super::config::*;
-use super::feature_extraction::*;
+use super::feature_extraction::{
+    AlgorithmType, DistributionStats, OptimizationExperience, ProblemDomain, ProblemFeatures,
+};
 
 /// Transfer learning system
 pub struct TransferLearner {
@@ -21,6 +23,7 @@ pub struct TransferLearner {
 }
 
 impl TransferLearner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             source_domains: Vec::new(),
@@ -125,7 +128,7 @@ impl TransferLearner {
         }
 
         // Sort by similarity (descending)
-        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         Ok(similarities)
     }
@@ -322,7 +325,7 @@ impl TransferLearner {
             }
             "cooling_rate" => {
                 // Adapt cooling rate based on problem density
-                let density_factor = 1.0 + target_features.density * 0.2;
+                let density_factor = target_features.density.mul_add(0.2, 1.0);
                 value * density_factor
             }
             "num_sweeps" | "max_iterations" => {
@@ -345,7 +348,7 @@ impl TransferLearner {
                 / exp_features.size.max(target_features.size) as f64;
         let density_similarity = 1.0 - (exp_features.density - target_features.density).abs();
 
-        (size_similarity + density_similarity) / 2.0
+        f64::midpoint(size_similarity, density_similarity)
     }
 
     pub fn adapt_model(
@@ -360,7 +363,7 @@ impl TransferLearner {
         match model.model_type {
             ModelType::ParameterBased => {
                 // Fine-tune parameters for target domain
-                for (param_name, param_value) in model.parameters.iter_mut() {
+                for (param_name, param_value) in &mut model.parameters {
                     *param_value = self.adapt_parameter(
                         param_name,
                         *param_value,
@@ -387,6 +390,7 @@ impl TransferLearner {
         Ok(())
     }
 
+    #[must_use]
     pub fn evaluate_transfer_success(&self) -> f64 {
         if self.transfer_history.is_empty() {
             return 0.0;
@@ -452,7 +456,7 @@ pub struct TransferableModel {
 }
 
 /// Types of transferable models
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModelType {
     /// Instance-based transfer
     InstanceBased,
@@ -510,6 +514,7 @@ pub struct DomainSimilarityAnalyzer {
 }
 
 impl DomainSimilarityAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             metrics: vec![
@@ -583,7 +588,7 @@ impl DomainSimilarityAnalyzer {
         self.similarity_cache.insert(cache_key, overall_similarity);
 
         // Limit cache size
-        if self.similarity_cache.len() > 10000 {
+        if self.similarity_cache.len() > 10_000 {
             self.similarity_cache.clear();
         }
 
@@ -592,7 +597,7 @@ impl DomainSimilarityAnalyzer {
 }
 
 /// Similarity metrics
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityMetric {
     /// Feature-based similarity
     FeatureSimilarity,
@@ -607,7 +612,7 @@ pub enum SimilarityMetric {
 }
 
 /// Similarity measurement methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimilarityMethod {
     /// Euclidean distance
     EuclideanDistance,
@@ -622,7 +627,7 @@ pub enum SimilarityMethod {
 }
 
 /// Transfer strategies
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferStrategy {
     /// Instance transfer
     InstanceTransfer,
@@ -637,7 +642,7 @@ pub enum TransferStrategy {
 }
 
 /// Adaptation mechanisms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdaptationMechanism {
     /// Fine-tuning
     FineTuning,
@@ -654,6 +659,9 @@ pub enum AdaptationMechanism {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::meta_learning_optimization::feature_extraction::{
+        GraphFeatures, SpectralFeatures, StatisticalFeatures,
+    };
 
     #[test]
     fn test_transfer_learner_creation() {
@@ -693,7 +701,7 @@ mod tests {
         );
         assert!(similarity.is_ok());
 
-        let sim_value = similarity.unwrap();
+        let sim_value = similarity.expect("calculate_similarity should succeed");
         assert!(sim_value >= 0.0 && sim_value <= 1.0);
     }
 

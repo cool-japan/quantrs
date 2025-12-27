@@ -110,7 +110,7 @@ pub struct PerformanceAnalyzer {
 
 impl PerformanceAnalyzer {
     /// Create new performance analyzer
-    pub fn new(config: AnalysisConfig) -> Self {
+    pub const fn new(config: AnalysisConfig) -> Self {
         Self { config }
     }
 
@@ -179,7 +179,7 @@ impl PerformanceAnalyzer {
         };
 
         let stability = if result.history.len() > 10 {
-            let last_10: Vec<f64> = result.history.iter().rev().take(10).cloned().collect();
+            let last_10: Vec<f64> = result.history.iter().rev().take(10).copied().collect();
             let mean = last_10.iter().sum::<f64>() / last_10.len() as f64;
             let variance =
                 last_10.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / last_10.len() as f64;
@@ -196,7 +196,7 @@ impl PerformanceAnalyzer {
     }
 
     /// Analyze parameter landscape
-    fn analyze_landscape(&self, _result: &VQAResult) -> DeviceResult<LandscapeAnalysis> {
+    const fn analyze_landscape(&self, _result: &VQAResult) -> DeviceResult<LandscapeAnalysis> {
         // Simplified landscape analysis
         Ok(LandscapeAnalysis {
             local_minima: vec![],

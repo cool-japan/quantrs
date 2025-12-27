@@ -359,8 +359,8 @@ impl SciRS2ProcessTomographer {
                         let element_value = process_matrix[[i, j, k, l]].norm();
                         let uncertainty = element_value * 0.1; // 10% uncertainty
                         confidence_intervals[[i, j, k, l]] = (
-                            element_value - 1.96 * uncertainty,
-                            element_value + 1.96 * uncertainty,
+                            1.96f64.mul_add(-uncertainty, element_value),
+                            1.96f64.mul_add(uncertainty, element_value),
                         );
                         bootstrap_uncertainty[[i, j, k, l]] = uncertainty;
                     }

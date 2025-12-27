@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn test_analyzer_creation() {
         let analyzer = create_comprehensive_analyzer();
-        assert_eq!(analyzer.config.real_time_monitoring, true);
+        assert!(analyzer.config.real_time_monitoring);
         assert_eq!(analyzer.config.monitoring_frequency, 1.0);
     }
 
@@ -66,7 +66,7 @@ mod tests {
         let analyzer = create_lightweight_analyzer();
         assert_eq!(analyzer.config.collection_level, MetricsLevel::Basic);
         assert_eq!(analyzer.config.analysis_depth, AnalysisDepth::Surface);
-        assert_eq!(analyzer.config.comparative_analysis, false);
+        assert!(!analyzer.config.comparative_analysis);
     }
 
     #[test]
@@ -104,52 +104,58 @@ mod tests {
     }
 
     #[test]
-    fn test_monitor_functionality() {
+    fn test_monitor_functionality() -> Result<(), Box<dyn std::error::Error>> {
         let mut monitor = CpuMonitor::new();
-        assert_eq!(monitor.is_active(), false);
+        assert!(!monitor.is_active());
 
-        monitor.start_monitoring().unwrap();
-        assert_eq!(monitor.is_active(), true);
+        monitor.start_monitoring()?;
+        assert!(monitor.is_active());
 
-        let mut metrics = monitor.get_current_metrics().unwrap();
+        let metrics = monitor.get_current_metrics()?;
         assert!(metrics.contains_key("cpu_utilization"));
 
-        monitor.stop_monitoring().unwrap();
-        assert_eq!(monitor.is_active(), false);
+        monitor.stop_monitoring()?;
+        assert!(!monitor.is_active());
+
+        Ok(())
     }
 
     #[test]
-    fn test_benchmark_execution() {
+    fn test_benchmark_execution() -> Result<(), Box<dyn std::error::Error>> {
         let benchmark = QuboEvaluationBenchmark::new();
-        let mut config = create_test_benchmark_config();
+        let config = create_test_benchmark_config();
 
-        let mut result = benchmark.run_benchmark(&config).unwrap();
+        let result = benchmark.run_benchmark(&config)?;
         assert_eq!(result.execution_times.len(), 5);
         assert_eq!(result.memory_usage.len(), 5);
         assert_eq!(result.solution_quality.len(), 5);
+
+        Ok(())
     }
 
     #[test]
-    fn test_prediction_model() {
+    fn test_prediction_model() -> Result<(), Box<dyn std::error::Error>> {
         let mut model = LinearRegressionModel::new();
 
         let characteristics = create_test_problem_characteristics();
 
-        let mut predictions = model.predict_performance(&characteristics).unwrap();
+        let predictions = model.predict_performance(&characteristics)?;
         assert!(predictions.contains_key("execution_time"));
         assert!(predictions.contains_key("memory_usage"));
         assert!(predictions.contains_key("solution_quality"));
 
         // Test training
         let training_data = create_mock_training_data();
-        model.train(&training_data).unwrap();
+        model.train(&training_data)?;
         assert!(model.get_accuracy() > 0.0);
+
+        Ok(())
     }
 
     #[test]
     fn test_config_creation() {
         let mut config = create_default_analysis_config();
-        assert_eq!(config.real_time_monitoring, true);
+        assert!(config.real_time_monitoring);
         assert_eq!(config.monitoring_frequency, 1.0);
         assert_eq!(config.collection_level, MetricsLevel::Detailed);
 

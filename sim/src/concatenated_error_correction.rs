@@ -13,7 +13,7 @@
 //! - Support for heterogeneous inner and outer codes
 
 use scirs2_core::ndarray::Array1;
-use scirs2_core::parallel_ops::*;
+use scirs2_core::parallel_ops::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -519,6 +519,7 @@ impl ConcatenatedErrorCorrection {
     }
 
     /// Get current statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &ConcatenationStats {
         &self.stats
     }
@@ -543,6 +544,7 @@ impl Default for BitFlipCode {
 }
 
 impl BitFlipCode {
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -561,6 +563,7 @@ impl Default for ConcatenatedBitFlipCode {
 }
 
 impl ConcatenatedBitFlipCode {
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner_code: BitFlipCode::new(),
@@ -617,9 +620,9 @@ impl ErrorCorrectionCode for ConcatenatedBitFlipCode {
             let min_dist_idx = distances
                 .iter()
                 .enumerate()
-                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-                .unwrap()
-                .0;
+                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
 
             match min_dist_idx {
                 0 => {
@@ -811,7 +814,9 @@ mod tests {
         let logical_state =
             Array1::from_vec(vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)]);
 
-        let encoded = code.encode(&logical_state).unwrap();
+        let encoded = code
+            .encode(&logical_state)
+            .expect("Encoding should succeed in test");
         assert_eq!(encoded.len(), 6); // 2 logical -> 6 physical
 
         // Check triplication
@@ -822,17 +827,22 @@ mod tests {
 
     #[test]
     fn test_concatenated_encoding_decoding() {
-        let mut concatenated = create_standard_concatenated_code(1).unwrap();
+        let mut concatenated = create_standard_concatenated_code(1)
+            .expect("Concatenated code creation should succeed in test");
 
         let logical_state = Array1::from_vec(vec![
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
             Complex64::new(1.0 / 2.0_f64.sqrt(), 0.0),
         ]);
 
-        let encoded = concatenated.encode_concatenated(&logical_state).unwrap();
+        let encoded = concatenated
+            .encode_concatenated(&logical_state)
+            .expect("Encoding should succeed in test");
         assert!(encoded.len() >= logical_state.len());
 
-        let result = concatenated.decode_hierarchical(&encoded).unwrap();
+        let result = concatenated
+            .decode_hierarchical(&encoded)
+            .expect("Decoding should succeed in test");
         assert!(!result.level_results.is_empty());
         assert!(result.success_probability >= 0.0);
     }
@@ -840,7 +850,9 @@ mod tests {
     #[test]
     fn test_syndrome_circuit_creation() {
         let code = ConcatenatedBitFlipCode::new();
-        let circuit = code.syndrome_circuit(6).unwrap();
+        let circuit = code
+            .syndrome_circuit(6)
+            .expect("Syndrome circuit creation should succeed in test");
 
         assert_eq!(circuit.num_qubits, 8); // 6 data + 2 syndrome qubits
         assert!(!circuit.gates.is_empty());
@@ -848,25 +860,33 @@ mod tests {
 
     #[test]
     fn test_decoding_methods() {
-        let mut concatenated = create_standard_concatenated_code(1).unwrap();
+        let mut concatenated = create_standard_concatenated_code(1)
+            .expect("Concatenated code creation should succeed in test");
 
         let logical_state = Array1::from_vec(vec![Complex64::new(1.0, 0.0)]);
-        let encoded = concatenated.encode_concatenated(&logical_state).unwrap();
+        let encoded = concatenated
+            .encode_concatenated(&logical_state)
+            .expect("Encoding should succeed in test");
 
         // Test sequential decoding
         concatenated.config.decoding_method = HierarchicalDecodingMethod::Sequential;
-        let seq_result = concatenated.decode_hierarchical(&encoded).unwrap();
+        let seq_result = concatenated
+            .decode_hierarchical(&encoded)
+            .expect("Sequential decoding should succeed in test");
         assert!(!seq_result.level_results.is_empty());
 
         // Test adaptive decoding
         concatenated.config.decoding_method = HierarchicalDecodingMethod::Adaptive;
-        let adapt_result = concatenated.decode_hierarchical(&encoded).unwrap();
+        let adapt_result = concatenated
+            .decode_hierarchical(&encoded)
+            .expect("Adaptive decoding should succeed in test");
         assert!(!adapt_result.level_results.is_empty());
     }
 
     #[test]
     fn test_error_rate_calculation() {
-        let concatenated = create_standard_concatenated_code(1).unwrap();
+        let concatenated = create_standard_concatenated_code(1)
+            .expect("Concatenated code creation should succeed in test");
 
         let level_results = vec![LevelDecodingResult {
             level: 0,

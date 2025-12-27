@@ -23,7 +23,7 @@ impl Pauli {
     /// Get matrix representation
     pub fn matrix(&self) -> Array2<Complex64> {
         match self {
-            Pauli::I => Array2::from_shape_vec(
+            Self::I => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -32,8 +32,8 @@ impl Pauli {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
-            Pauli::X => Array2::from_shape_vec(
+            .expect("Pauli I matrix: 2x2 shape with 4 elements is always valid"),
+            Self::X => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -42,8 +42,8 @@ impl Pauli {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            Pauli::Y => Array2::from_shape_vec(
+            .expect("Pauli X matrix: 2x2 shape with 4 elements is always valid"),
+            Self::Y => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(0.0, 0.0),
@@ -52,8 +52,8 @@ impl Pauli {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
-            Pauli::Z => Array2::from_shape_vec(
+            .expect("Pauli Y matrix: 2x2 shape with 4 elements is always valid"),
+            Self::Z => Array2::from_shape_vec(
                 (2, 2),
                 vec![
                     Complex64::new(1.0, 0.0),
@@ -62,13 +62,13 @@ impl Pauli {
                     Complex64::new(-1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli Z matrix: 2x2 shape with 4 elements is always valid"),
         }
     }
 
     /// Multiply two Pauli operators
-    pub fn multiply(&self, other: &Pauli) -> (Complex64, Pauli) {
-        use Pauli::*;
+    pub const fn multiply(&self, other: &Self) -> (Complex64, Self) {
+        use Pauli::{I, X, Y, Z};
         match (self, other) {
             (I, p) | (p, I) => (Complex64::new(1.0, 0.0), *p),
             (X, X) | (Y, Y) | (Z, Z) => (Complex64::new(1.0, 0.0), I),
@@ -93,7 +93,7 @@ pub struct PauliString {
 
 impl PauliString {
     /// Create a new Pauli string
-    pub fn new(paulis: Vec<Pauli>) -> Self {
+    pub const fn new(paulis: Vec<Pauli>) -> Self {
         Self {
             phase: Complex64::new(1.0, 0.0),
             paulis,
@@ -111,7 +111,7 @@ impl PauliString {
     }
 
     /// Multiply two Pauli strings
-    pub fn multiply(&self, other: &PauliString) -> QuantRS2Result<PauliString> {
+    pub fn multiply(&self, other: &Self) -> QuantRS2Result<Self> {
         if self.paulis.len() != other.paulis.len() {
             return Err(QuantRS2Error::InvalidInput(
                 "Pauli strings must have same length".to_string(),
@@ -127,11 +127,11 @@ impl PauliString {
             paulis.push(result);
         }
 
-        Ok(PauliString { phase, paulis })
+        Ok(Self { phase, paulis })
     }
 
     /// Check if two Pauli strings commute
-    pub fn commutes_with(&self, other: &PauliString) -> QuantRS2Result<bool> {
+    pub fn commutes_with(&self, other: &Self) -> QuantRS2Result<bool> {
         if self.paulis.len() != other.paulis.len() {
             return Err(QuantRS2Error::InvalidInput(
                 "Pauli strings must have same length".to_string(),
@@ -161,9 +161,9 @@ impl fmt::Display for PauliString {
             "-i".to_string()
         };
 
-        write!(f, "{}", phase_str)?;
+        write!(f, "{phase_str}")?;
         for p in &self.paulis {
-            write!(f, "{:?}", p)?;
+            write!(f, "{p:?}")?;
         }
         Ok(())
     }
@@ -244,7 +244,8 @@ impl StabilizerCode {
         let logical_x = vec![PauliString::new(vec![Pauli::X, Pauli::X, Pauli::X])];
         let logical_z = vec![PauliString::new(vec![Pauli::Z, Pauli::I, Pauli::I])];
 
-        Self::new(3, 1, 1, stabilizers, logical_x, logical_z).unwrap()
+        Self::new(3, 1, 1, stabilizers, logical_x, logical_z)
+            .expect("3-qubit repetition code: verified standard code parameters are always valid")
     }
 
     /// Create the 5-qubit perfect code
@@ -271,7 +272,8 @@ impl StabilizerCode {
             Pauli::Z,
         ])];
 
-        Self::new(5, 1, 3, stabilizers, logical_x, logical_z).unwrap()
+        Self::new(5, 1, 3, stabilizers, logical_x, logical_z)
+            .expect("5-qubit perfect code: verified standard code parameters are always valid")
     }
 
     /// Create the 7-qubit Steane code
@@ -352,7 +354,8 @@ impl StabilizerCode {
             Pauli::Z,
         ])];
 
-        Self::new(7, 1, 3, stabilizers, logical_x, logical_z).unwrap()
+        Self::new(7, 1, 3, stabilizers, logical_x, logical_z)
+            .expect("7-qubit Steane code: verified standard code parameters are always valid")
     }
 
     /// Get syndrome for a given error
@@ -448,7 +451,7 @@ impl SurfaceCode {
     }
 
     /// Convert to stabilizer code representation
-    pub fn to_stabilizer_code(&self) -> StabilizerCode {
+    pub fn to_stabilizer_code(&self) -> QuantRS2Result<StabilizerCode> {
         let n = self.qubit_map.len();
         let mut stabilizers = Vec::new();
 
@@ -491,7 +494,7 @@ impl SurfaceCode {
         let logical_x = vec![PauliString::new(logical_x_paulis)];
         let logical_z = vec![PauliString::new(logical_z_paulis)];
 
-        StabilizerCode::new(n, 1, self.distance(), stabilizers, logical_x, logical_z).unwrap()
+        StabilizerCode::new(n, 1, self.distance(), stabilizers, logical_x, logical_z)
     }
 }
 
@@ -633,7 +636,7 @@ pub struct MWPMDecoder {
 
 impl MWPMDecoder {
     /// Create MWPM decoder for surface code
-    pub fn new(surface_code: SurfaceCode) -> Self {
+    pub const fn new(surface_code: SurfaceCode) -> Self {
         Self { surface_code }
     }
 
@@ -659,11 +662,11 @@ impl MWPMDecoder {
         let z_corrections = self.minimum_weight_matching(&x_defects, Pauli::Z)?;
 
         for (qubit, pauli) in z_corrections {
-            if error_paulis[qubit] != Pauli::I {
+            if error_paulis[qubit] == Pauli::I {
+                error_paulis[qubit] = pauli;
+            } else {
                 // Combine X and Z to get Y
                 error_paulis[qubit] = Pauli::Y;
-            } else {
-                error_paulis[qubit] = pauli;
             }
         }
 
@@ -732,7 +735,7 @@ impl MWPMDecoder {
     }
 
     /// Manhattan distance between defects
-    fn defect_distance(&self, defect1: usize, defect2: usize) -> usize {
+    const fn defect_distance(&self, defect1: usize, defect2: usize) -> usize {
         // This is simplified - would need proper defect coordinates
         (defect1 as isize - defect2 as isize).unsigned_abs()
     }
@@ -815,7 +818,7 @@ impl ColorCode {
     }
 
     /// Convert to stabilizer code
-    pub fn to_stabilizer_code(&self) -> StabilizerCode {
+    pub fn to_stabilizer_code(&self) -> QuantRS2Result<StabilizerCode> {
         let mut x_stabilizers = Vec::new();
         let mut z_stabilizers = Vec::new();
 
@@ -850,7 +853,6 @@ impl ColorCode {
             logical_x,
             logical_z,
         )
-        .unwrap()
     }
 }
 
@@ -865,7 +867,7 @@ pub struct ConcatenatedCode {
 
 impl ConcatenatedCode {
     /// Create a new concatenated code
-    pub fn new(inner_code: StabilizerCode, outer_code: StabilizerCode) -> Self {
+    pub const fn new(inner_code: StabilizerCode, outer_code: StabilizerCode) -> Self {
         Self {
             inner_code,
             outer_code,
@@ -873,17 +875,17 @@ impl ConcatenatedCode {
     }
 
     /// Get total number of physical qubits
-    pub fn total_qubits(&self) -> usize {
+    pub const fn total_qubits(&self) -> usize {
         self.inner_code.n * self.outer_code.n
     }
 
     /// Get number of logical qubits
-    pub fn logical_qubits(&self) -> usize {
+    pub const fn logical_qubits(&self) -> usize {
         self.inner_code.k * self.outer_code.k
     }
 
     /// Get effective distance
-    pub fn distance(&self) -> usize {
+    pub const fn distance(&self) -> usize {
         self.inner_code.d * self.outer_code.d
     }
 
@@ -1024,7 +1026,7 @@ impl HypergraphProductCode {
     }
 
     /// Convert to stabilizer code representation
-    pub fn to_stabilizer_code(&self) -> StabilizerCode {
+    pub fn to_stabilizer_code(&self) -> QuantRS2Result<StabilizerCode> {
         let mut stabilizers = self.x_stabilizers.clone();
         stabilizers.extend(self.z_stabilizers.clone());
 
@@ -1040,7 +1042,6 @@ impl HypergraphProductCode {
             logical_x,
             logical_z,
         )
-        .unwrap()
     }
 }
 
@@ -1109,7 +1110,7 @@ impl QuantumLDPCCode {
     }
 
     /// Convert to stabilizer code representation
-    pub fn to_stabilizer_code(&self) -> StabilizerCode {
+    pub fn to_stabilizer_code(&self) -> QuantRS2Result<StabilizerCode> {
         let mut stabilizers = self.x_stabilizers.clone();
         stabilizers.extend(self.z_stabilizers.clone());
 
@@ -1131,7 +1132,6 @@ impl QuantumLDPCCode {
             logical_x,
             logical_z,
         )
-        .unwrap()
     }
 }
 
@@ -1172,7 +1172,7 @@ impl ToricCode {
     }
 
     /// Get number of logical qubits
-    pub fn logical_qubits(&self) -> usize {
+    pub const fn logical_qubits(&self) -> usize {
         2 // Two logical qubits for torus topology
     }
 
@@ -1182,7 +1182,7 @@ impl ToricCode {
     }
 
     /// Convert to stabilizer code representation
-    pub fn to_stabilizer_code(&self) -> StabilizerCode {
+    pub fn to_stabilizer_code(&self) -> QuantRS2Result<StabilizerCode> {
         let n = self.qubit_map.len();
         let mut stabilizers = Vec::new();
 
@@ -1261,7 +1261,7 @@ impl ToricCode {
         let logical_x = vec![PauliString::new(logical_x1), PauliString::new(logical_x2)];
         let logical_z = vec![PauliString::new(logical_z1), PauliString::new(logical_z2)];
 
-        StabilizerCode::new(n, 2, self.distance(), stabilizers, logical_x, logical_z).unwrap()
+        StabilizerCode::new(n, 2, self.distance(), stabilizers, logical_x, logical_z)
     }
 }
 
@@ -1601,7 +1601,7 @@ pub mod real_time {
 
                             // Add to buffer
                             {
-                                let mut buf = buffer.lock().unwrap();
+                                let mut buf = buffer.lock().expect("Syndrome buffer lock poisoned");
                                 if buf.len() >= config.buffer_size {
                                     buf.pop_front(); // Remove oldest if buffer full
                                 }
@@ -1620,12 +1620,12 @@ pub mod real_time {
                                                 error_corrected = true;
                                             }
                                             Err(e) => {
-                                                eprintln!("Failed to apply correction: {}", e);
+                                                eprintln!("Failed to apply correction: {e}");
                                             }
                                         }
                                     }
                                     Err(e) => {
-                                        eprintln!("Decoding failed: {}", e);
+                                        eprintln!("Decoding failed: {e}");
                                     }
                                 }
                             }
@@ -1633,7 +1633,8 @@ pub mod real_time {
                             // Record performance metrics
                             let cycle_time = cycle_start.elapsed();
                             {
-                                let mut mon = monitor.write().unwrap();
+                                let mut mon =
+                                    monitor.write().expect("Performance monitor lock poisoned");
                                 mon.record_cycle(cycle_time, error_corrected);
                             }
 
@@ -1646,7 +1647,7 @@ pub mod real_time {
                             sequence_number += 1;
                         }
                         Err(e) => {
-                            eprintln!("Failed to measure syndromes: {}", e);
+                            eprintln!("Failed to measure syndromes: {e}");
                             thread::sleep(Duration::from_micros(10));
                         }
                     }
@@ -1661,12 +1662,16 @@ pub mod real_time {
 
         /// Get current performance statistics
         pub fn get_performance_stats(&self) -> PerformanceMonitor {
-            (*self.performance_monitor.read().unwrap()).clone()
+            (*self
+                .performance_monitor
+                .read()
+                .expect("Performance monitor lock poisoned"))
+            .clone()
         }
 
         /// Get syndrome buffer status
         pub fn get_buffer_status(&self) -> (usize, usize) {
-            let buffer = self.buffer.lock().unwrap();
+            let buffer = self.buffer.lock().expect("Syndrome buffer lock poisoned");
             (buffer.len(), self.config.buffer_size)
         }
     }
@@ -1697,7 +1702,10 @@ pub mod real_time {
             &mut self,
             new_characteristics: HardwareErrorCharacteristics,
         ) {
-            *self.error_characteristics.write().unwrap() = new_characteristics;
+            *self
+                .error_characteristics
+                .write()
+                .expect("Error characteristics lock poisoned") = new_characteristics;
         }
 
         /// Adapt thresholds based on observed error patterns
@@ -1776,7 +1784,7 @@ pub mod real_time {
                         match decoder.decode(&syndrome) {
                             Ok(correction) => results.push(correction),
                             Err(_) => {
-                                results.push(PauliString::new(vec![Pauli::I; syndrome.len()]))
+                                results.push(PauliString::new(vec![Pauli::I; syndrome.len()]));
                             }
                         }
                     }
@@ -1816,7 +1824,7 @@ pub mod real_time {
     }
 
     impl MockQuantumHardware {
-        pub fn new(error_rate: f64, latency: Duration, syndrome_length: usize) -> Self {
+        pub const fn new(error_rate: f64, latency: Duration, syndrome_length: usize) -> Self {
             Self {
                 error_rate,
                 latency,
@@ -1867,7 +1875,7 @@ pub mod real_time {
                 decoding_time: Duration::from_micros(10),
                 correction_application_time: self.latency / 2,
                 total_cycle_time: self.latency + Duration::from_micros(10) + self.latency / 2,
-                throughput_hz: 1.0 / (self.latency.as_secs_f64() * 1.5 + 10e-6),
+                throughput_hz: 1.0 / self.latency.as_secs_f64().mul_add(1.5, 10e-6),
             })
         }
     }
@@ -2427,8 +2435,7 @@ pub mod logical_gates {
                     }
                     _ => {
                         return Err(QuantRS2Error::UnsupportedOperation(format!(
-                            "Unsupported logical gate: {}",
-                            gate_name
+                            "Unsupported logical gate: {gate_name}"
                         )));
                     }
                 }
@@ -2450,7 +2457,7 @@ pub mod logical_gates {
         }
 
         /// Apply a specific optimization pass
-        fn apply_optimization_pass(
+        const fn apply_optimization_pass(
             &self,
             circuit: Vec<LogicalGateOp>,
             pass: &OptimizationPass,
@@ -2468,7 +2475,7 @@ pub mod logical_gates {
         }
 
         /// Optimize Pauli gate sequences
-        fn optimize_pauli_gates(
+        const fn optimize_pauli_gates(
             &self,
             circuit: Vec<LogicalGateOp>,
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
@@ -2477,7 +2484,7 @@ pub mod logical_gates {
         }
 
         /// Optimize error correction rounds
-        fn optimize_error_correction(
+        const fn optimize_error_correction(
             &self,
             circuit: Vec<LogicalGateOp>,
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
@@ -2486,7 +2493,7 @@ pub mod logical_gates {
         }
 
         /// Optimize parallelization of commuting operations
-        fn optimize_parallelization(
+        const fn optimize_parallelization(
             &self,
             circuit: Vec<LogicalGateOp>,
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
@@ -2495,7 +2502,7 @@ pub mod logical_gates {
         }
 
         /// Optimize magic state usage
-        fn optimize_magic_states(
+        const fn optimize_magic_states(
             &self,
             circuit: Vec<LogicalGateOp>,
         ) -> QuantRS2Result<Vec<LogicalGateOp>> {
@@ -2765,7 +2772,7 @@ pub mod adaptive_threshold {
     }
 
     impl PerformanceTracker {
-        pub fn new() -> Self {
+        pub const fn new() -> Self {
             Self {
                 successful_corrections: 0,
                 failed_corrections: 0,
@@ -2930,8 +2937,10 @@ pub mod adaptive_threshold {
             let prior = base_threshold;
             let likelihood_weight = 1.0 / (1.0 + prior_strength);
 
-            prior * (1.0 - likelihood_weight)
-                + (base_threshold + historical_adjustment + env_adjustment) * likelihood_weight
+            prior.mul_add(
+                1.0 - likelihood_weight,
+                (base_threshold + historical_adjustment + env_adjustment) * likelihood_weight,
+            )
         }
 
         /// Machine learning based threshold estimation
@@ -2974,7 +2983,7 @@ pub mod adaptive_threshold {
             let prediction_error = self.calculate_prediction_error();
             let kalman_gain = process_noise / (process_noise + measurement_noise);
 
-            base_threshold + kalman_gain * prediction_error
+            kalman_gain.mul_add(prediction_error, base_threshold)
         }
 
         /// Exponential moving average threshold estimation
@@ -2989,7 +2998,7 @@ pub mod adaptive_threshold {
 
             if let Some(_last_obs) = self.error_history.back() {
                 let last_threshold = syndrome_weight; // Simplified
-                alpha * current_threshold + (1.0 - alpha) * last_threshold
+                alpha.mul_add(current_threshold, (1.0 - alpha) * last_threshold)
             } else {
                 current_threshold
             }
@@ -3012,18 +3021,28 @@ pub mod adaptive_threshold {
         fn calculate_environmental_factor(&self, environment: &EnvironmentalConditions) -> f64 {
             let sensitivity = &self.noise_model.environment_sensitivity;
 
-            1.0 + sensitivity.temperature_coeff * (environment.temperature - 300.0)
-                + sensitivity.magnetic_field_coeff * environment.magnetic_field
-                + sensitivity.vibration_coeff * environment.vibration_level
-                + sensitivity.emi_coeff * environment.emi_level
-                + sensitivity.drift_coeff * environment.uptime
+            sensitivity.drift_coeff.mul_add(
+                environment.uptime,
+                sensitivity.emi_coeff.mul_add(
+                    environment.emi_level,
+                    sensitivity.vibration_coeff.mul_add(
+                        environment.vibration_level,
+                        sensitivity.magnetic_field_coeff.mul_add(
+                            environment.magnetic_field,
+                            sensitivity
+                                .temperature_coeff
+                                .mul_add(environment.temperature - 300.0, 1.0),
+                        ),
+                    ),
+                ),
+            )
         }
 
         fn calculate_temporal_factor(&self, horizon: Duration) -> f64 {
             let temporal_corr = self.noise_model.temporal_correlation;
             let time_factor = horizon.as_secs_f64() / 3600.0; // Hours
 
-            1.0 + temporal_corr * time_factor
+            temporal_corr.mul_add(time_factor, 1.0)
         }
 
         fn calculate_base_threshold(&self, syndrome_weight: f64) -> f64 {
@@ -3184,8 +3203,9 @@ pub mod adaptive_threshold {
                 / observations.len() as f64;
 
             // Higher success rate increases confidence, but not linearly
-            let stability = 1.0 - (success_rate - 0.5).abs() * 2.0;
-            self.noise_model.confidence = self.noise_model.confidence * 0.95 + stability * 0.05;
+            let stability = (success_rate - 0.5).abs().mul_add(-2.0, 1.0);
+            self.noise_model.confidence =
+                self.noise_model.confidence.mul_add(0.95, stability * 0.05);
         }
 
         fn assess_recommendation_quality(&self) -> f64 {
@@ -3220,11 +3240,15 @@ mod tests {
     fn test_pauli_string_commutation() {
         let ps1 = PauliString::new(vec![Pauli::X, Pauli::I]);
         let ps2 = PauliString::new(vec![Pauli::Z, Pauli::I]);
-        assert!(!ps1.commutes_with(&ps2).unwrap());
+        assert!(!ps1
+            .commutes_with(&ps2)
+            .expect("Commutation check should succeed"));
 
         let ps3 = PauliString::new(vec![Pauli::X, Pauli::I]);
         let ps4 = PauliString::new(vec![Pauli::I, Pauli::Z]);
-        assert!(ps3.commutes_with(&ps4).unwrap());
+        assert!(ps3
+            .commutes_with(&ps4)
+            .expect("Commutation check should succeed"));
     }
 
     #[test]
@@ -3236,7 +3260,9 @@ mod tests {
 
         // Test syndrome for X error on first qubit
         let error = PauliString::new(vec![Pauli::X, Pauli::I, Pauli::I]);
-        let syndrome = code.syndrome(&error).unwrap();
+        let syndrome = code
+            .syndrome(&error)
+            .expect("Syndrome extraction should succeed");
         // X error anti-commutes with Z stabilizer on first two qubits
         assert_eq!(syndrome, vec![true, false]);
     }
@@ -3253,7 +3279,7 @@ mod tests {
             for j in i + 1..code.stabilizers.len() {
                 assert!(code.stabilizers[i]
                     .commutes_with(&code.stabilizers[j])
-                    .unwrap());
+                    .expect("Stabilizer commutation check should succeed"));
             }
         }
     }
@@ -3263,7 +3289,9 @@ mod tests {
         let surface = SurfaceCode::new(3, 3);
         assert_eq!(surface.distance(), 3);
 
-        let code = surface.to_stabilizer_code();
+        let code = surface
+            .to_stabilizer_code()
+            .expect("Surface code conversion should succeed");
         assert_eq!(code.n, 9);
         // For a 3x3 lattice, we have 2 X stabilizers and 2 Z stabilizers
         assert_eq!(code.stabilizers.len(), 4);
@@ -3272,16 +3300,20 @@ mod tests {
     #[test]
     fn test_lookup_decoder() {
         let code = StabilizerCode::repetition_code();
-        let decoder = LookupDecoder::new(&code).unwrap();
+        let decoder = LookupDecoder::new(&code).expect("Lookup decoder creation should succeed");
 
         // Test decoding trivial syndrome (no error)
         let trivial_syndrome = vec![false, false];
-        let decoded = decoder.decode(&trivial_syndrome).unwrap();
+        let decoded = decoder
+            .decode(&trivial_syndrome)
+            .expect("Decoding trivial syndrome should succeed");
         assert_eq!(decoded.weight(), 0); // Should be identity
 
         // Test single bit flip error
         let error = PauliString::new(vec![Pauli::X, Pauli::I, Pauli::I]);
-        let syndrome = code.syndrome(&error).unwrap();
+        let syndrome = code
+            .syndrome(&error)
+            .expect("Syndrome extraction should succeed");
 
         // The decoder should be able to decode this syndrome
         if let Ok(decoded_error) = decoder.decode(&syndrome) {
@@ -3302,7 +3334,9 @@ mod tests {
 
         // Test encoding and decoding
         let logical_state = vec![Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)];
-        let encoded = concat_code.encode(&logical_state).unwrap();
+        let encoded = concat_code
+            .encode(&logical_state)
+            .expect("Encoding should succeed");
         assert_eq!(encoded.len(), 512); // 2^9
 
         // Test error correction capability
@@ -3317,7 +3351,9 @@ mod tests {
             Pauli::I,
             Pauli::I,
         ]);
-        let corrected = concat_code.correct_error(&encoded, &error).unwrap();
+        let corrected = concat_code
+            .correct_error(&encoded, &error)
+            .expect("Error correction should succeed");
 
         // Verify the state is corrected (simplified check)
         assert_eq!(corrected.len(), 512);
@@ -3326,8 +3362,10 @@ mod tests {
     #[test]
     fn test_hypergraph_product_codes() {
         // Create small classical codes for testing
-        let h1 = Array2::from_shape_vec((2, 3), vec![1, 1, 0, 0, 1, 1]).unwrap();
-        let h2 = Array2::from_shape_vec((2, 3), vec![1, 0, 1, 1, 1, 0]).unwrap();
+        let h1 = Array2::from_shape_vec((2, 3), vec![1, 1, 0, 0, 1, 1])
+            .expect("Array creation for h1 should succeed");
+        let h2 = Array2::from_shape_vec((2, 3), vec![1, 0, 1, 1, 1, 0])
+            .expect("Array creation for h2 should succeed");
 
         let hpc = HypergraphProductCode::new(h1, h2);
 
@@ -3335,7 +3373,9 @@ mod tests {
         assert_eq!(hpc.n, 12); // n1*m2 + m1*n2 = 3*2 + 2*3 = 12
         assert_eq!(hpc.k, 1); // k = n1*k2 + k1*n2 - k1*k2 = 3*1 + 1*3 - 1*1 = 5 for this example, but simplified
 
-        let stab_code = hpc.to_stabilizer_code();
+        let stab_code = hpc
+            .to_stabilizer_code()
+            .expect("Hypergraph product code conversion should succeed");
         assert!(!stab_code.stabilizers.is_empty());
     }
 
@@ -3345,7 +3385,9 @@ mod tests {
         assert_eq!(qldpc.n, 24); // 2 * 3 * 4
         assert_eq!(qldpc.k, 2);
 
-        let stab_code = qldpc.to_stabilizer_code();
+        let stab_code = qldpc
+            .to_stabilizer_code()
+            .expect("Quantum LDPC code conversion should succeed");
         assert!(!stab_code.stabilizers.is_empty());
 
         // Test that stabilizers have bounded weight
@@ -3360,7 +3402,9 @@ mod tests {
         assert_eq!(toric.logical_qubits(), 2);
         assert_eq!(toric.distance(), 2);
 
-        let stab_code = toric.to_stabilizer_code();
+        let stab_code = toric
+            .to_stabilizer_code()
+            .expect("Toric code conversion should succeed");
         assert_eq!(stab_code.n, 8); // 2 * 2 * 2
         assert_eq!(stab_code.k, 2);
 
@@ -3369,7 +3413,7 @@ mod tests {
             for j in i + 1..stab_code.stabilizers.len() {
                 assert!(stab_code.stabilizers[i]
                     .commutes_with(&stab_code.stabilizers[j])
-                    .unwrap());
+                    .expect("Stabilizer commutation check should succeed"));
             }
         }
     }
@@ -3377,7 +3421,11 @@ mod tests {
     #[test]
     fn test_ml_decoder() {
         let surface = SurfaceCode::new(3, 3);
-        let decoder = MLDecoder::new(surface.to_stabilizer_code());
+        let decoder = MLDecoder::new(
+            surface
+                .to_stabilizer_code()
+                .expect("Surface code conversion should succeed"),
+        );
 
         // Test decoding with simple syndrome
         let syndrome = vec![true, false, true, false];
@@ -3395,15 +3443,21 @@ mod tests {
         let hardware = MockQuantumHardware::new(0.01, Duration::from_micros(10), 4);
 
         // Test syndrome measurement
-        let syndrome = hardware.measure_syndromes().unwrap();
+        let syndrome = hardware
+            .measure_syndromes()
+            .expect("Syndrome measurement should succeed");
         assert_eq!(syndrome.len(), 4);
 
         // Test error characteristics
-        let characteristics = hardware.get_error_characteristics().unwrap();
+        let characteristics = hardware
+            .get_error_characteristics()
+            .expect("Getting error characteristics should succeed");
         assert_eq!(characteristics.single_qubit_error_rates.len(), 4);
 
         // Test latency stats
-        let stats = hardware.get_latency_stats().unwrap();
+        let stats = hardware
+            .get_latency_stats()
+            .expect("Getting latency stats should succeed");
         assert!(stats.throughput_hz > 0.0);
 
         assert!(hardware.is_ready());
@@ -3434,7 +3488,8 @@ mod tests {
         use std::sync::Arc;
 
         let code = StabilizerCode::repetition_code();
-        let base_decoder = Arc::new(LookupDecoder::new(&code).unwrap());
+        let base_decoder =
+            Arc::new(LookupDecoder::new(&code).expect("Lookup decoder creation should succeed"));
         let characteristics = HardwareErrorCharacteristics {
             single_qubit_error_rates: vec![0.01; 3],
             two_qubit_error_rates: vec![0.1; 1],
@@ -3467,7 +3522,8 @@ mod tests {
         use std::sync::Arc;
 
         let code = StabilizerCode::repetition_code();
-        let base_decoder = Arc::new(LookupDecoder::new(&code).unwrap());
+        let base_decoder =
+            Arc::new(LookupDecoder::new(&code).expect("Lookup decoder creation should succeed"));
         let parallel_decoder = ParallelSyndromeDecoder::new(base_decoder, 2);
 
         // Test single syndrome decoding (use no-error syndrome)
@@ -3485,7 +3541,7 @@ mod tests {
 
         let results = parallel_decoder.decode_batch(&syndromes);
         assert!(results.is_ok());
-        let corrections = results.unwrap();
+        let corrections = results.expect("Batch decoding should succeed");
         assert_eq!(corrections.len(), 4);
     }
 
@@ -3496,7 +3552,8 @@ mod tests {
         use std::time::Duration;
 
         let code = StabilizerCode::repetition_code();
-        let decoder = Arc::new(LookupDecoder::new(&code).unwrap());
+        let decoder =
+            Arc::new(LookupDecoder::new(&code).expect("Lookup decoder creation should succeed"));
         let hardware = Arc::new(MockQuantumHardware::new(0.01, Duration::from_micros(1), 3));
         let config = RealTimeConfig {
             max_latency: Duration::from_millis(1),
@@ -3531,7 +3588,7 @@ mod tests {
         let logical_x = synthesizer.synthesize_logical_x(&code, 0);
         assert!(logical_x.is_ok());
 
-        let x_gate = logical_x.unwrap();
+        let x_gate = logical_x.expect("Logical X synthesis should succeed");
         assert_eq!(x_gate.logical_qubits, vec![0]);
         assert_eq!(x_gate.physical_operations.len(), 1);
         assert!(!x_gate.error_propagation.single_qubit_propagation.is_empty());
@@ -3540,7 +3597,7 @@ mod tests {
         let logical_z = synthesizer.synthesize_logical_z(&code, 0);
         assert!(logical_z.is_ok());
 
-        let z_gate = logical_z.unwrap();
+        let z_gate = logical_z.expect("Logical Z synthesis should succeed");
         assert_eq!(z_gate.logical_qubits, vec![0]);
         assert_eq!(z_gate.physical_operations.len(), 1);
 
@@ -3548,7 +3605,7 @@ mod tests {
         let logical_h = synthesizer.synthesize_logical_h(&code, 0);
         assert!(logical_h.is_ok());
 
-        let h_gate = logical_h.unwrap();
+        let h_gate = logical_h.expect("Logical H synthesis should succeed");
         assert_eq!(h_gate.logical_qubits, vec![0]);
         assert_eq!(h_gate.physical_operations.len(), 1);
         assert_eq!(h_gate.physical_operations[0].error_correction_rounds, 2);
@@ -3571,7 +3628,7 @@ mod tests {
         let circuit = synthesizer.synthesize_circuit(&code, &gate_sequence);
         assert!(circuit.is_ok());
 
-        let logical_circuit = circuit.unwrap();
+        let logical_circuit = circuit.expect("Circuit synthesis should succeed");
         assert_eq!(logical_circuit.len(), 3);
 
         // Test resource estimation
@@ -3602,7 +3659,7 @@ mod tests {
         let logical_t = synthesizer.synthesize_logical_t(&code, 0);
         assert!(logical_t.is_ok());
 
-        let t_gate = logical_t.unwrap();
+        let t_gate = logical_t.expect("Logical T synthesis should succeed");
         assert_eq!(t_gate.logical_qubits, vec![0]);
         assert_eq!(t_gate.physical_operations.len(), 2); // Magic state prep + injection
 
@@ -3617,7 +3674,9 @@ mod tests {
         let code = StabilizerCode::repetition_code();
         let synthesizer = LogicalGateSynthesizer::new(0.01);
 
-        let logical_x = synthesizer.synthesize_logical_x(&code, 0).unwrap();
+        let logical_x = synthesizer
+            .synthesize_logical_x(&code, 0)
+            .expect("Logical X synthesis should succeed");
 
         // Check error propagation analysis
         let analysis = &logical_x.error_propagation;
@@ -3664,7 +3723,7 @@ mod tests {
         let circuit = synthesizer.synthesize_circuit(&code, &gate_sequence);
         assert!(circuit.is_ok());
 
-        let logical_circuit = circuit.unwrap();
+        let logical_circuit = circuit.expect("Circuit synthesis should succeed");
         assert_eq!(logical_circuit.len(), 4);
 
         // Check that all gates target the correct logical qubit

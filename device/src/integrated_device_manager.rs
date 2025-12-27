@@ -240,7 +240,7 @@ pub struct PerformanceTargets {
     pub min_utilization: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AllocationStrategy {
     RoundRobin,
     LoadBased,
@@ -257,7 +257,7 @@ pub struct LoadBalancingConfig {
     pub load_threshold: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BalancingAlgorithm {
     WeightedRoundRobin,
     LeastConnections,
@@ -281,7 +281,7 @@ pub struct CostOptimizationConfig {
     pub budget_constraints: BudgetConstraints,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CostOptimizationStrategy {
     MinimizeCost,
     MaximizeValueForMoney,
@@ -296,7 +296,7 @@ pub struct BudgetConstraints {
     pub per_job_limit: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalyticsDepth {
     Basic,
     Intermediate,
@@ -312,7 +312,7 @@ pub struct AnomalyDetectionConfig {
     pub response_actions: Vec<AnomalyResponse>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyDetectionAlgorithm {
     StatisticalOutlier,
     MachineLearning,
@@ -320,7 +320,7 @@ pub enum AnomalyDetectionAlgorithm {
     TrendAnalysis,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyResponse {
     Alert,
     AutoCorrect,
@@ -336,7 +336,7 @@ pub struct WorkflowOptimizationConfig {
     pub dependency_resolution: DependencyResolution,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowObjective {
     MinimizeTime,
     MinimizeCost,
@@ -345,7 +345,7 @@ pub enum WorkflowObjective {
     MinimizeResourceUsage,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParallelizationStrategy {
     Aggressive,
     Conservative,
@@ -353,7 +353,7 @@ pub enum ParallelizationStrategy {
     DependencyAware,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DependencyResolution {
     Strict,
     Optimistic,
@@ -385,7 +385,7 @@ pub struct RetryStrategy {
     pub retry_conditions: Vec<RetryCondition>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackoffStrategy {
     Linear,
     Exponential,
@@ -393,7 +393,7 @@ pub enum BackoffStrategy {
     Adaptive,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RetryCondition {
     TransientError,
     ResourceUnavailable,
@@ -408,7 +408,7 @@ pub struct ErrorEscalationConfig {
     pub notification_config: NotificationConfig,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EscalationAction {
     Notify,
     Fallback,
@@ -424,7 +424,7 @@ pub struct NotificationConfig {
     pub webhook_notifications: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     Restart,
     Fallback,
@@ -440,7 +440,7 @@ pub struct ErrorPredictionConfig {
     pub confidence_threshold: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PredictionAlgorithm {
     StatisticalModel,
     MachineLearning,
@@ -466,7 +466,7 @@ pub struct WorkflowStep {
     pub retry_config: Option<RetryStrategy>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowStepType {
     ProcessTomography,
     VQAOptimization,
@@ -591,7 +591,7 @@ impl Default for IntegratedDeviceConfig {
                     .collect(),
                 },
                 error_handling: ErrorHandlingConfig {
-                    retry_strategies: [(
+                    retry_strategies: HashMap::from([(
                         "default".to_string(),
                         RetryStrategy {
                             max_retries: 3,
@@ -602,10 +602,7 @@ impl Default for IntegratedDeviceConfig {
                                 RetryCondition::NetworkError,
                             ],
                         },
-                    )]
-                    .iter()
-                    .cloned()
-                    .collect(),
+                    )]),
                     error_escalation: ErrorEscalationConfig {
                         escalation_thresholds: [
                             ("error_rate".to_string(), 5),
@@ -635,7 +632,7 @@ impl Default for IntegratedDeviceConfig {
                             PredictionAlgorithm::StatisticalModel,
                             PredictionAlgorithm::MachineLearning,
                         ],
-                        prediction_horizon: Duration::from_secs(1 * 3600),
+                        prediction_horizon: Duration::from_secs(3600),
                         confidence_threshold: 0.8,
                     },
                 },
@@ -667,7 +664,7 @@ pub struct IntegratedExecutionResult {
 }
 
 /// Execution status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutionStatus {
     Pending,
     Running,
@@ -767,7 +764,7 @@ pub struct TrendAnalysis {
     pub trend_confidence: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrendDirection {
     Improving,
     Stable,
@@ -816,7 +813,7 @@ pub struct ConsistencyMetrics {
     pub overall_consistency: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationCategory {
     Performance,
     Cost,
@@ -825,7 +822,7 @@ pub enum RecommendationCategory {
     Efficiency,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecommendationPriority {
     Critical,
     High,
@@ -833,7 +830,7 @@ pub enum RecommendationPriority {
     Low,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImplementationEffort {
     Minimal,
     Low,
@@ -851,7 +848,7 @@ pub struct DeviceInfo {
     pub current_status: DeviceStatus,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeviceStatus {
     Online,
     Offline,
@@ -925,7 +922,7 @@ pub struct WorkflowDefinition {
     pub deadline: Option<Instant>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WorkflowType {
     ProcessCharacterization,
     VQAOptimization,
@@ -982,7 +979,7 @@ pub struct PerformanceBaseline {
     pub last_updated: Instant,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnomalyType {
     PerformanceDegradation,
     ResourceSpike,
@@ -992,7 +989,7 @@ pub enum AnomalyType {
     DeviceFailure,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportType {
     Performance,
     Resource,
@@ -1143,7 +1140,7 @@ impl IntegratedQuantumDeviceManager {
             // Initialize analytics and monitoring
             performance_analytics: Arc::new(Mutex::new(PerformanceAnalyticsEngine::new())),
             resource_monitor: Arc::new(Mutex::new(ResourceMonitor::new(
-                config.resource_config.utilization_targets.clone(),
+                config.resource_config.utilization_targets,
             ))),
             anomaly_detector: Arc::new(Mutex::new(AnomalyDetector::new())),
 
@@ -1181,7 +1178,9 @@ impl IntegratedQuantumDeviceManager {
         };
 
         {
-            let mut active_executions = self.active_executions.lock().unwrap();
+            let mut active_executions = self.active_executions.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock active_executions".to_string())
+            })?;
             active_executions.insert(execution_id.clone(), active_execution);
         }
 
@@ -1251,7 +1250,9 @@ impl IntegratedQuantumDeviceManager {
 
         // Store execution history
         {
-            let mut history = self.execution_history.lock().unwrap();
+            let mut history = self.execution_history.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock execution_history".to_string())
+            })?;
             history.push_back(result.clone());
 
             // Limit history size
@@ -1262,7 +1263,9 @@ impl IntegratedQuantumDeviceManager {
 
         // Clean up active execution
         {
-            let mut active_executions = self.active_executions.lock().unwrap();
+            let mut active_executions = self.active_executions.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock active_executions".to_string())
+            })?;
             active_executions.remove(&execution_id);
         }
 
@@ -1293,14 +1296,17 @@ impl IntegratedQuantumDeviceManager {
         // Implement intelligent resource allocation based on workflow requirements
         // This would analyze current system load, device availability, cost constraints, etc.
 
-        let devices = self.devices.read().unwrap();
+        let devices = self
+            .devices
+            .read()
+            .map_err(|_| DeviceError::LockError("Failed to read devices".to_string()))?;
         let available_devices: Vec<String> = devices.keys().cloned().collect();
 
         Ok(ResourceAllocation {
             allocated_devices: available_devices.into_iter().take(1).collect(), // Simplified
             memory_allocation: 1024 * 1024 * 1024,                              // 1GB
             cpu_allocation: 0.8,
-            priority_level: workflow.priority.clone(),
+            priority_level: workflow.priority,
             cost_budget: Some(100.0),
         })
     }
@@ -1316,7 +1322,9 @@ impl IntegratedQuantumDeviceManager {
         // Step 1: Process Tomography
         let step_start = Instant::now();
         let tomography_result = {
-            let tomographer = self.process_tomographer.lock().unwrap();
+            let _tomographer = self.process_tomographer.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock process_tomographer".to_string())
+            })?;
             // Would implement actual process tomography execution
             "Process tomography completed successfully".to_string()
         };
@@ -1328,13 +1336,10 @@ impl IntegratedQuantumDeviceManager {
                 status: ExecutionStatus::Completed,
                 start_time: step_start,
                 end_time: Some(Instant::now()),
-                result_data: [("result".to_string(), tomography_result)]
-                    .iter()
-                    .cloned()
-                    .collect(),
+                result_data: HashMap::from([("result".to_string(), tomography_result)]),
                 error_message: None,
                 performance_metrics: StepPerformanceMetrics {
-                    execution_time: Instant::now() - step_start,
+                    execution_time: step_start.elapsed(),
                     memory_peak: 512 * 1024,
                     cpu_usage: 0.7,
                     success_rate: 1.0,
@@ -1346,7 +1351,10 @@ impl IntegratedQuantumDeviceManager {
         // Step 2: Noise Modeling
         let step_start = Instant::now();
         let noise_result = {
-            let noise_modeler = self.noise_modeler.lock().unwrap();
+            let _noise_modeler = self
+                .noise_modeler
+                .lock()
+                .map_err(|_| DeviceError::LockError("Failed to lock noise_modeler".to_string()))?;
             "Noise modeling completed successfully".to_string()
         };
 
@@ -1363,7 +1371,7 @@ impl IntegratedQuantumDeviceManager {
                     .collect(),
                 error_message: None,
                 performance_metrics: StepPerformanceMetrics {
-                    execution_time: Instant::now() - step_start,
+                    execution_time: step_start.elapsed(),
                     memory_peak: 256 * 1024,
                     cpu_usage: 0.5,
                     success_rate: 1.0,
@@ -1375,7 +1383,9 @@ impl IntegratedQuantumDeviceManager {
         // Step 3: Crosstalk Analysis
         let step_start = Instant::now();
         let crosstalk_result = {
-            let crosstalk_analyzer = self.crosstalk_analyzer.lock().unwrap();
+            let _crosstalk_analyzer = self.crosstalk_analyzer.lock().map_err(|_| {
+                DeviceError::LockError("Failed to lock crosstalk_analyzer".to_string())
+            })?;
             "Crosstalk analysis completed successfully".to_string()
         };
 
@@ -1392,7 +1402,7 @@ impl IntegratedQuantumDeviceManager {
                     .collect(),
                 error_message: None,
                 performance_metrics: StepPerformanceMetrics {
-                    execution_time: Instant::now() - step_start,
+                    execution_time: step_start.elapsed(),
                     memory_peak: 128 * 1024,
                     cpu_usage: 0.3,
                     success_rate: 1.0,
@@ -1404,7 +1414,10 @@ impl IntegratedQuantumDeviceManager {
         // Step 4: Quantum Error Correction Analysis
         let step_start = Instant::now();
         let qec_result = {
-            let qec_system = self.qec_system.lock().unwrap();
+            let _qec_system = self
+                .qec_system
+                .lock()
+                .map_err(|_| DeviceError::LockError("Failed to lock qec_system".to_string()))?;
             "Quantum error correction analysis completed successfully".to_string()
         };
 
@@ -1421,7 +1434,7 @@ impl IntegratedQuantumDeviceManager {
                     .collect(),
                 error_message: None,
                 performance_metrics: StepPerformanceMetrics {
-                    execution_time: Instant::now() - step_start,
+                    execution_time: step_start.elapsed(),
                     memory_peak: 384 * 1024,
                     cpu_usage: 0.6,
                     success_rate: 1.0,
@@ -1490,7 +1503,9 @@ impl IntegratedQuantumDeviceManager {
         step_results: &HashMap<String, StepResult>,
     ) -> DeviceResult<PerformanceAnalytics> {
         // Comprehensive performance analysis using SciRS2
-        let mut performance_analytics = self.performance_analytics.lock().unwrap();
+        let mut _performance_analytics = self.performance_analytics.lock().map_err(|_| {
+            DeviceError::LockError("Failed to lock performance_analytics".to_string())
+        })?;
 
         // Calculate overall metrics
         let total_execution_time = step_results
@@ -1624,8 +1639,11 @@ impl IntegratedQuantumDeviceManager {
     }
 
     async fn get_primary_device_info(&self) -> DeviceResult<DeviceInfo> {
-        let devices = self.devices.read().unwrap();
-        if let Some((device_id, device)) = devices.iter().next() {
+        let devices = self
+            .devices
+            .read()
+            .map_err(|_| DeviceError::LockError("Failed to read devices".to_string()))?;
+        if let Some((device_id, _device)) = devices.iter().next() {
             Ok(DeviceInfo {
                 device_id: device_id.clone(),
                 device_type: "Quantum Processor".to_string(),
@@ -1644,7 +1662,9 @@ impl IntegratedQuantumDeviceManager {
         &self,
         result: &IntegratedExecutionResult,
     ) -> DeviceResult<()> {
-        let mut analytics = self.performance_analytics.lock().unwrap();
+        let mut analytics = self.performance_analytics.lock().map_err(|_| {
+            DeviceError::LockError("Failed to lock performance_analytics".to_string())
+        })?;
 
         // Update performance data
         let data_point = PerformanceDataPoint {
@@ -1667,7 +1687,10 @@ impl IntegratedQuantumDeviceManager {
     }
 
     async fn consider_optimization_trigger(&self) -> DeviceResult<()> {
-        let optimization_state = self.optimization_state.lock().unwrap();
+        let optimization_state = self
+            .optimization_state
+            .lock()
+            .map_err(|_| DeviceError::LockError("Failed to lock optimization_state".to_string()))?;
         let last_optimization = optimization_state.last_optimization;
         let interval = Duration::from_secs(self.config.optimization_config.optimization_interval);
 

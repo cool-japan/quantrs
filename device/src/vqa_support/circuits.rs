@@ -83,7 +83,7 @@ pub struct ParametricGate {
 }
 
 /// Gate types for VQA circuits
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GateType {
     /// Rotation X gate
     RX,
@@ -144,9 +144,7 @@ impl ParametricCircuit {
                     gate_type: GateType::RY,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())]
-                        .into_iter()
-                        .collect(),
+                    metadata: std::iter::once(("layer".to_string(), layer.to_string())).collect(),
                 });
                 param_count += 1;
 
@@ -155,9 +153,7 @@ impl ParametricCircuit {
                     gate_type: GateType::RZ,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())]
-                        .into_iter()
-                        .collect(),
+                    metadata: std::iter::once(("layer".to_string(), layer.to_string())).collect(),
                 });
                 param_count += 1;
             }
@@ -170,9 +166,7 @@ impl ParametricCircuit {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, target],
                     parameter_indices: vec![], // Non-parametric
-                    metadata: [("layer".to_string(), layer.to_string())]
-                        .into_iter()
-                        .collect(),
+                    metadata: std::iter::once(("layer".to_string(), layer.to_string())).collect(),
                 });
 
                 connectivity.push((qubit, target));
@@ -200,9 +194,7 @@ impl ParametricCircuit {
                 gate_type: GateType::H,
                 qubits: vec![qubit],
                 parameter_indices: vec![],
-                metadata: [("layer".to_string(), "initial".to_string())]
-                    .into_iter()
-                    .collect(),
+                metadata: std::iter::once(("layer".to_string(), "initial".to_string())).collect(),
             });
         }
 
@@ -294,9 +286,7 @@ impl ParametricCircuit {
                     gate_type: GateType::RY,
                     qubits: vec![qubit],
                     parameter_indices: vec![param_count],
-                    metadata: [("layer".to_string(), layer.to_string())]
-                        .into_iter()
-                        .collect(),
+                    metadata: std::iter::once(("layer".to_string(), layer.to_string())).collect(),
                 });
                 param_count += 1;
             }
@@ -307,9 +297,7 @@ impl ParametricCircuit {
                     gate_type: GateType::CNOT,
                     qubits: vec![qubit, qubit + 1],
                     parameter_indices: vec![],
-                    metadata: [("layer".to_string(), layer.to_string())]
-                        .into_iter()
-                        .collect(),
+                    metadata: std::iter::once(("layer".to_string(), layer.to_string())).collect(),
                 });
                 connectivity.push((qubit, qubit + 1));
             }
@@ -321,9 +309,7 @@ impl ParametricCircuit {
                 gate_type: GateType::RY,
                 qubits: vec![qubit],
                 parameter_indices: vec![param_count],
-                metadata: [("layer".to_string(), "final".to_string())]
-                    .into_iter()
-                    .collect(),
+                metadata: std::iter::once(("layer".to_string(), "final".to_string())).collect(),
             });
             param_count += 1;
         }
@@ -338,7 +324,7 @@ impl ParametricCircuit {
     }
 
     /// Generate custom ansatz
-    fn generate_custom(
+    const fn generate_custom(
         _config: &ParametricCircuitConfig,
         _name: &str,
     ) -> (usize, CircuitStructure) {
@@ -370,7 +356,7 @@ impl ParametricCircuit {
     }
 
     /// Get circuit depth estimate
-    pub fn circuit_depth(&self) -> usize {
+    pub const fn circuit_depth(&self) -> usize {
         self.structure.estimated_depth
     }
 
@@ -412,8 +398,7 @@ impl ParametricCircuit {
         {
             if param < min || param > max {
                 return Err(crate::DeviceError::InvalidInput(format!(
-                    "Parameter {} ({}) out of bounds [{}, {}]",
-                    i, param, min, max
+                    "Parameter {i} ({param}) out of bounds [{min}, {max}]"
                 )));
             }
         }

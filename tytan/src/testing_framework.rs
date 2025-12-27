@@ -771,16 +771,20 @@ impl TestingFramework {
 
                     match Self::run_single_test_static(test_case, &sampler_clone) {
                         Ok(result) => {
-                            results_clone.lock().unwrap().push(result);
+                            if let Ok(mut guard) = results_clone.lock() {
+                                guard.push(result);
+                            }
                         }
                         Err(e) => {
-                            failures_clone.lock().unwrap().push(TestFailure {
-                                test_id: test_case.id.clone(),
-                                failure_type: FailureType::SamplerError,
-                                message: e,
-                                stack_trace: None,
-                                context: HashMap::new(),
-                            });
+                            if let Ok(mut guard) = failures_clone.lock() {
+                                guard.push(TestFailure {
+                                    test_id: test_case.id.clone(),
+                                    failure_type: FailureType::SamplerError,
+                                    message: e,
+                                    stack_trace: None,
+                                    context: HashMap::new(),
+                                });
+                            }
                         }
                     }
                 }
@@ -795,8 +799,14 @@ impl TestingFramework {
         }
 
         // Collect results
-        self.results.test_results = results.lock().unwrap().clone();
-        self.results.failures = failures.lock().unwrap().clone();
+        self.results.test_results = results
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default();
+        self.results.failures = failures
+            .lock()
+            .map(|guard| guard.clone())
+            .unwrap_or_default();
 
         self.results.performance.runtime_stats.total_time = total_start.elapsed();
         self.results.summary.passed = self.results.test_results.len();
@@ -826,7 +836,11 @@ impl TestingFramework {
         // Get best solution
         let best_sample = sample_result
             .iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or("No samples returned")?;
 
         let solution = best_sample.assignments.clone();
@@ -1280,7 +1294,11 @@ impl TestingFramework {
         // Get best solution
         let best_sample = sample_result
             .iter()
-            .min_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap())
+            .min_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .ok_or("No samples returned")?;
 
         // Use the assignments directly (already decoded)
@@ -1374,12 +1392,12 @@ impl TestingFramework {
 
         self.results.summary.quality_metrics.best_quality = *qualities
             .iter()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(&0.0);
 
         self.results.summary.quality_metrics.worst_quality = *qualities
             .iter()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap_or(&0.0);
 
         // Standard deviation
@@ -1479,6 +1497,11 @@ impl TestingFramework {
     fn generate_json_report(&self) -> Result<String, String> {
         use std::fmt::Write;
 
+        // Helper to convert fmt::Error to String
+        fn write_err(e: std::fmt::Error) -> String {
+            format!("JSON write error: {e}")
+        }
+
         let mut json = String::new();
 
         // Build JSON manually (avoiding serde dependency issues)
@@ -1491,37 +1514,37 @@ impl TestingFramework {
             "    \"total_tests\": {},",
             self.results.summary.total_tests
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"passed\": {},",
             self.results.summary.passed
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"failed\": {},",
             self.results.summary.failed
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"skipped\": {},",
             self.results.summary.skipped
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"success_rate\": {},",
             self.results.summary.success_rate
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"avg_runtime_ms\": {}",
             self.results.summary.avg_runtime.as_millis()
         )
-        .unwrap();
+        .map_err(write_err)?;
         json.push_str("  },\n");
 
         // Quality metrics
@@ -1531,25 +1554,25 @@ impl TestingFramework {
             "    \"avg_quality\": {},",
             self.results.summary.quality_metrics.avg_quality
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"best_quality\": {},",
             self.results.summary.quality_metrics.best_quality
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"worst_quality\": {},",
             self.results.summary.quality_metrics.worst_quality
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"std_dev\": {},",
             self.results.summary.quality_metrics.std_dev
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"constraint_satisfaction_rate\": {}",
@@ -1558,7 +1581,7 @@ impl TestingFramework {
                 .quality_metrics
                 .constraint_satisfaction_rate
         )
-        .unwrap();
+        .map_err(write_err)?;
         json.push_str("  },\n");
 
         // Performance data
@@ -1572,7 +1595,7 @@ impl TestingFramework {
                 .total_time
                 .as_millis()
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"solving_time_ms\": {},",
@@ -1582,7 +1605,7 @@ impl TestingFramework {
                 .solving_time
                 .as_millis()
         )
-        .unwrap();
+        .map_err(write_err)?;
         writeln!(
             &mut json,
             "    \"validation_time_ms\": {}",
@@ -1592,39 +1615,39 @@ impl TestingFramework {
                 .validation_time
                 .as_millis()
         )
-        .unwrap();
+        .map_err(write_err)?;
         json.push_str("  },\n");
 
         // Test results
         json.push_str("  \"test_results\": [\n");
         for (i, result) in self.results.test_results.iter().enumerate() {
             json.push_str("    {\n");
-            writeln!(&mut json, "      \"test_id\": \"{}\",", result.test_id).unwrap();
-            writeln!(&mut json, "      \"sampler\": \"{}\",", result.sampler).unwrap();
+            writeln!(&mut json, "      \"test_id\": \"{}\",", result.test_id).map_err(write_err)?;
+            writeln!(&mut json, "      \"sampler\": \"{}\",", result.sampler).map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"objective_value\": {},",
                 result.objective_value
             )
-            .unwrap();
+            .map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"constraints_satisfied\": {},",
                 result.constraints_satisfied
             )
-            .unwrap();
+            .map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"runtime_ms\": {},",
                 result.runtime.as_millis()
             )
-            .unwrap();
+            .map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"is_valid\": {}",
                 result.validation.is_valid
             )
-            .unwrap();
+            .map_err(write_err)?;
             json.push_str("    }");
             if i < self.results.test_results.len() - 1 {
                 json.push(',');
@@ -1637,19 +1660,20 @@ impl TestingFramework {
         json.push_str("  \"failures\": [\n");
         for (i, failure) in self.results.failures.iter().enumerate() {
             json.push_str("    {\n");
-            writeln!(&mut json, "      \"test_id\": \"{}\",", failure.test_id).unwrap();
+            writeln!(&mut json, "      \"test_id\": \"{}\",", failure.test_id)
+                .map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"failure_type\": \"{:?}\",",
                 failure.failure_type
             )
-            .unwrap();
+            .map_err(write_err)?;
             writeln!(
                 &mut json,
                 "      \"message\": \"{}\"",
                 failure.message.replace('"', "\\\"")
             )
-            .unwrap();
+            .map_err(write_err)?;
             json.push_str("    }");
             if i < self.results.failures.len() - 1 {
                 json.push(',');

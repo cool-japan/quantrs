@@ -123,7 +123,7 @@ impl QuantumIsolationForest {
     /// Compute threshold based on contamination level
     fn compute_threshold(&self, scores: &Array1<f64>) -> Result<f64> {
         let mut sorted_scores: Vec<f64> = scores.iter().cloned().collect();
-        sorted_scores.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        sorted_scores.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
         let contamination_index = (sorted_scores.len() as f64 * self.config.contamination) as usize;
         let threshold = if contamination_index < sorted_scores.len() {

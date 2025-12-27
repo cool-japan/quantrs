@@ -76,7 +76,7 @@ pub struct AzureCircuitConfig {
 }
 
 /// Status of a job in Azure Quantum
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "azure", derive(Deserialize))]
 pub enum AzureJobStatus {
     #[cfg_attr(feature = "azure", serde(rename = "Waiting"))]

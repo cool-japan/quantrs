@@ -510,7 +510,8 @@ impl StabilityAnalyzer {
         // Simplified implementation
 
         let region = StabilityRegion {
-            bounds: scirs2_core::ndarray::Array2::from_shape_vec((2, 2), vec![0.0, 1.0, 0.0, 1.0]).unwrap(),
+            bounds: scirs2_core::ndarray::Array2::from_shape_vec((2, 2), vec![0.0, 1.0, 0.0, 1.0])
+                .expect("Failed to create 2x2 stability region bounds array"),
             stability_measure: 0.9,
             region_type: "nominal".to_string(),
         };

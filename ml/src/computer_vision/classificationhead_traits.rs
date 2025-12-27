@@ -22,9 +22,15 @@ impl TaskHead for ClassificationHead {
         let (batch_size, _, _, _) = features.dim();
         let pooled = features
             .mean_axis(Axis(2))
-            .unwrap()
+            .ok_or_else(|| {
+                MLError::ComputationError("Failed to compute mean over axis 2".to_string())
+            })?
             .mean_axis(Axis(2))
-            .unwrap();
+            .ok_or_else(|| {
+                MLError::ComputationError(
+                    "Failed to compute mean over axis 2 (second pass)".to_string(),
+                )
+            })?;
         let mut logits = Array2::zeros((batch_size, self.num_classes));
         let mut probabilities = Array2::zeros((batch_size, self.num_classes));
         for i in 0..batch_size {

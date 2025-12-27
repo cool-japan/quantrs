@@ -82,7 +82,7 @@ impl PerformanceTracker {
         let workload_id = record.workload_id.clone();
         self.performance_history
             .entry(workload_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(record);
         Ok(())
     }
@@ -236,6 +236,12 @@ pub struct RealTimeMetrics {
     pub current_pricing: HashMap<String, f64>,
     pub last_updated: SystemTime,
 }
+impl Default for RealTimeMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RealTimeMetrics {
     pub fn new() -> Self {
         Self {
@@ -322,6 +328,12 @@ pub struct VersionManager {
     current_versions: HashMap<String, String>,
     version_metadata: HashMap<String, VersionMetadata>,
 }
+impl Default for VersionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VersionManager {
     pub fn new() -> Self {
         Self {
@@ -423,6 +435,12 @@ pub struct BenchmarkDatabase {
     performance_baselines: HashMap<String, PerformanceBaseline>,
     comparison_data: ComparisonData,
 }
+impl Default for BenchmarkDatabase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BenchmarkDatabase {
     pub fn new() -> Self {
         Self {
@@ -498,6 +516,12 @@ pub struct ModelUpdater {
     version_manager: VersionManager,
     rollback_manager: RollbackManager,
 }
+impl Default for ModelUpdater {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelUpdater {
     pub fn new() -> Self {
         Self {
@@ -575,6 +599,12 @@ pub struct FeedbackProcessor {
     feedback_aggregators: Vec<Box<dyn FeedbackAggregator + Send + Sync>>,
     feedback_analyzers: Vec<Box<dyn FeedbackAnalyzer + Send + Sync>>,
 }
+impl Default for FeedbackProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeedbackProcessor {
     pub fn new() -> Self {
         Self {
@@ -591,8 +621,14 @@ pub struct RollbackManager {
     rollback_triggers: Vec<RollbackTrigger>,
     rollback_history: Vec<RollbackEvent>,
 }
+impl Default for RollbackManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RollbackManager {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             rollback_policies: Vec::new(),
             rollback_triggers: Vec::new(),

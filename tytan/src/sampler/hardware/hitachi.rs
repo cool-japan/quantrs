@@ -64,7 +64,7 @@ impl Default for HitachiConfig {
             endpoint: "https://annealing.hitachi.com/api/v1".to_string(),
             auth_token: String::new(),
             annealing_params: AnnealingParameters {
-                num_steps: 100000,
+                num_steps: 100_000,
                 initial_config: InitialConfig::Random,
                 magnetic_field: 0.0,
                 temperature_coefficient: 1.0,
@@ -275,7 +275,11 @@ impl Sampler for HitachiCMOSSampler {
         }
 
         // Sort by energy and limit to requested shots
-        all_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        all_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         all_results.truncate(shots);
 
         Ok(all_results)
@@ -299,7 +303,7 @@ mod tests {
     #[test]
     fn test_hitachi_config() {
         let mut config = HitachiConfig::default();
-        assert_eq!(config.annealing_params.num_steps, 100000);
+        assert_eq!(config.annealing_params.num_steps, 100_000);
 
         match config.hardware_version {
             HardwareVersion::Gen4 { king_graph_size } => {
@@ -312,10 +316,14 @@ mod tests {
     #[test]
     fn test_embedding_cache() {
         let sampler = HitachiCMOSSampler::new(HitachiConfig::default());
-        let mut qubo = Array2::eye(4);
+        let qubo = Array2::eye(4);
 
-        let embedding1 = sampler.find_embedding(&qubo).unwrap();
-        let embedding2 = sampler.find_embedding(&qubo).unwrap();
+        let embedding1 = sampler
+            .find_embedding(&qubo)
+            .expect("Failed to find embedding for first call");
+        let embedding2 = sampler
+            .find_embedding(&qubo)
+            .expect("Failed to find embedding for second call");
 
         // Should use cached embedding
         assert_eq!(embedding1.quality_score, embedding2.quality_score);

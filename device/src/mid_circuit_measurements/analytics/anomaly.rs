@@ -13,7 +13,7 @@ pub struct AnomalyDetector {
 
 impl AnomalyDetector {
     /// Create new anomaly detector
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             threshold: 2.0, // Standard deviations
             window_size: 50,
@@ -21,7 +21,7 @@ impl AnomalyDetector {
     }
 
     /// Create anomaly detector with custom parameters
-    pub fn with_parameters(threshold: f64, window_size: usize) -> Self {
+    pub const fn with_parameters(threshold: f64, window_size: usize) -> Self {
         Self {
             threshold,
             window_size,
@@ -190,8 +190,7 @@ impl AnomalyDetector {
                 anomalies.push(PatternAnomaly {
                     pattern_type: PatternType::CorrelationAnomaly,
                     description: format!(
-                        "Unexpected correlation between latency and confidence: {:.3}",
-                        correlation
+                        "Unexpected correlation between latency and confidence: {correlation:.3}"
                     ),
                     severity: if correlation > 0.3 {
                         AnomalySeverity::High
@@ -312,7 +311,7 @@ impl AnomalyDetector {
             };
 
             // Combine scores (higher is more anomalous)
-            scores[i] = (latency_zscore.abs() + confidence_zscore.abs()) / 2.0;
+            scores[i] = f64::midpoint(latency_zscore.abs(), confidence_zscore.abs());
         }
 
         Ok(scores)

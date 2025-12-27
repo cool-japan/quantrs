@@ -107,6 +107,7 @@ pub struct Subproblem {
 }
 
 impl Subproblem {
+    #[must_use]
     pub fn from_full_problem(problem: &IsingModel) -> Self {
         Self {
             id: 0,
@@ -143,6 +144,7 @@ pub struct SubproblemMetadata {
 }
 
 impl SubproblemMetadata {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             creation_time: Instant::now(),
@@ -182,7 +184,8 @@ pub struct DecompositionMetadata {
 }
 
 impl DecompositionMetadata {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             decomposition_time: Duration::from_secs(0),
             strategy_selection_time: Duration::from_secs(0),

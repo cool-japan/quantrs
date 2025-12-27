@@ -1,8 +1,8 @@
 //! SciRS2-optimized Quantum Fourier Transform implementation.
 //!
 //! This module provides quantum Fourier transform (QFT) operations optimized
-//! using SciRS2's Fast Fourier Transform capabilities. It includes both exact
-//! and approximate QFT implementations with fallback routines when SciRS2 is
+//! using `SciRS2`'s Fast Fourier Transform capabilities. It includes both exact
+//! and approximate QFT implementations with fallback routines when `SciRS2` is
 //! not available.
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, Axis};
@@ -18,9 +18,9 @@ use crate::statevector::StateVectorSimulator;
 /// QFT implementation method
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QFTMethod {
-    /// Exact QFT using SciRS2 FFT
+    /// Exact QFT using `SciRS2` FFT
     SciRS2Exact,
-    /// Approximate QFT using SciRS2 FFT
+    /// Approximate QFT using `SciRS2` FFT
     SciRS2Approximate,
     /// Circuit-based QFT implementation
     Circuit,
@@ -76,7 +76,7 @@ pub struct QFTStats {
 pub struct SciRS2QFT {
     /// Number of qubits
     num_qubits: usize,
-    /// SciRS2 backend
+    /// `SciRS2` backend
     backend: Option<SciRS2Backend>,
     /// Configuration
     config: QFTConfig,
@@ -87,7 +87,7 @@ pub struct SciRS2QFT {
 }
 
 impl SciRS2QFT {
-    /// Create new SciRS2 QFT instance
+    /// Create new `SciRS2` QFT instance
     pub fn new(num_qubits: usize, config: QFTConfig) -> Result<Self> {
         Ok(Self {
             num_qubits,
@@ -98,7 +98,7 @@ impl SciRS2QFT {
         })
     }
 
-    /// Initialize with SciRS2 backend
+    /// Initialize with `SciRS2` backend
     pub fn with_backend(mut self) -> Result<Self> {
         self.backend = Some(SciRS2Backend::new());
         Ok(self)
@@ -155,7 +155,7 @@ impl SciRS2QFT {
         Ok(())
     }
 
-    /// SciRS2 exact QFT implementation
+    /// `SciRS2` exact QFT implementation
     fn apply_scirs2_exact_qft(&mut self, state: &mut Array1<Complex64>) -> Result<()> {
         if let Some(backend) = &mut self.backend {
             // Use SciRS2's optimized FFT
@@ -185,7 +185,7 @@ impl SciRS2QFT {
         Ok(())
     }
 
-    /// SciRS2 approximate QFT implementation
+    /// `SciRS2` approximate QFT implementation
     fn apply_scirs2_approximate_qft(&mut self, state: &mut Array1<Complex64>) -> Result<()> {
         if let Some(_backend) = &mut self.backend {
             // Use SciRS2's approximate FFT with precision control
@@ -261,7 +261,7 @@ impl SciRS2QFT {
         Ok(())
     }
 
-    /// SciRS2 exact inverse QFT
+    /// `SciRS2` exact inverse QFT
     fn apply_scirs2_exact_inverse_qft(&mut self, state: &mut Array1<Complex64>) -> Result<()> {
         if let Some(backend) = &mut self.backend {
             let mut complex_data: Vec<Complex64> = state.to_vec();
@@ -289,7 +289,7 @@ impl SciRS2QFT {
         Ok(())
     }
 
-    /// SciRS2 approximate inverse QFT
+    /// `SciRS2` approximate inverse QFT
     fn apply_scirs2_approximate_inverse_qft(
         &mut self,
         state: &mut Array1<Complex64>,
@@ -364,7 +364,7 @@ impl SciRS2QFT {
         Ok(())
     }
 
-    /// SciRS2 forward FFT call using actual SciRS2 backend
+    /// `SciRS2` forward FFT call using actual `SciRS2` backend
     fn scirs2_fft_forward(&self, data: &mut [Complex64]) -> Result<()> {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
@@ -390,7 +390,12 @@ impl SciRS2QFT {
                             "Failed to extract FFT result: {e}"
                         ))
                     })?;
-                    data.copy_from_slice(result_array.as_slice().unwrap());
+                    // Safety: result_array is a contiguous 1D array, as_slice always succeeds
+                    data.copy_from_slice(
+                        result_array
+                            .as_slice()
+                            .expect("1D contiguous array has a valid slice"),
+                    );
                 }
                 #[cfg(not(feature = "advanced_math"))]
                 {
@@ -411,7 +416,7 @@ impl SciRS2QFT {
         }
     }
 
-    /// SciRS2 inverse FFT call using actual SciRS2 backend
+    /// `SciRS2` inverse FFT call using actual `SciRS2` backend
     fn scirs2_fft_inverse(&self, data: &mut [Complex64]) -> Result<()> {
         if let Some(ref backend) = self.backend {
             if backend.is_available() {
@@ -439,7 +444,12 @@ impl SciRS2QFT {
                             "Failed to extract inverse FFT result: {e}"
                         ))
                     })?;
-                    data.copy_from_slice(result_array.as_slice().unwrap());
+                    // Safety: result_array is a contiguous 1D array, as_slice always succeeds
+                    data.copy_from_slice(
+                        result_array
+                            .as_slice()
+                            .expect("1D contiguous array has a valid slice"),
+                    );
                 }
                 #[cfg(not(feature = "advanced_math"))]
                 {
@@ -619,6 +629,7 @@ impl SciRS2QFT {
     }
 
     /// Get execution statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &QFTStats {
         &self.stats
     }
@@ -634,6 +645,7 @@ impl SciRS2QFT {
     }
 
     /// Get configuration
+    #[must_use]
     pub const fn get_config(&self) -> &QFTConfig {
         &self.config
     }
@@ -673,7 +685,11 @@ impl QFTUtils {
                     state[i] = Complex64::new(fastrand::f64() - 0.5, fastrand::f64() - 0.5);
                 }
                 // Normalize
-                let norm = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
+                let norm = state
+                    .iter()
+                    .map(scirs2_core::Complex::norm_sqr)
+                    .sum::<f64>()
+                    .sqrt();
                 for elem in &mut state {
                     *elem /= norm;
                 }
@@ -754,9 +770,11 @@ pub fn benchmark_qft_methods(num_qubits: usize) -> Result<HashMap<String, QFTSta
 
         let mut qft = if method == QFTMethod::SciRS2Exact || method == QFTMethod::SciRS2Approximate
         {
-            SciRS2QFT::new(num_qubits, config.clone())?
-                .with_backend()
-                .unwrap_or_else(|_| SciRS2QFT::new(num_qubits, config).unwrap())
+            match SciRS2QFT::new(num_qubits, config.clone())?.with_backend() {
+                Ok(qft_with_backend) => qft_with_backend,
+                Err(_) => SciRS2QFT::new(num_qubits, config)
+                    .expect("QFT creation should succeed with same config"),
+            }
         } else {
             SciRS2QFT::new(num_qubits, config)?
         };
@@ -800,9 +818,11 @@ pub fn compare_qft_accuracy(num_qubits: usize) -> Result<HashMap<String, f64>> {
 
         let mut qft = if method == QFTMethod::SciRS2Exact || method == QFTMethod::SciRS2Approximate
         {
-            SciRS2QFT::new(num_qubits, config.clone())?
-                .with_backend()
-                .unwrap_or_else(|_| SciRS2QFT::new(num_qubits, config).unwrap())
+            match SciRS2QFT::new(num_qubits, config.clone())?.with_backend() {
+                Ok(qft_with_backend) => qft_with_backend,
+                Err(_) => SciRS2QFT::new(num_qubits, config)
+                    .expect("QFT creation should succeed with same config"),
+            }
         } else {
             SciRS2QFT::new(num_qubits, config)?
         };
@@ -841,13 +861,13 @@ mod tests {
     #[test]
     fn test_scirs2_qft_creation() {
         let config = QFTConfig::default();
-        let qft = SciRS2QFT::new(3, config).unwrap();
+        let qft = SciRS2QFT::new(3, config).expect("should create SciRS2 QFT");
         assert_eq!(qft.num_qubits, 3);
     }
 
     #[test]
     fn test_test_state_creation() {
-        let state = QFTUtils::create_test_state(2, "basis").unwrap();
+        let state = QFTUtils::create_test_state(2, "basis").expect("should create test state");
         assert_eq!(state.len(), 4);
         assert_abs_diff_eq!(state[0].re, 1.0, epsilon = 1e-10);
         assert_abs_diff_eq!(state[1].norm(), 0.0, epsilon = 1e-10);
@@ -859,10 +879,10 @@ mod tests {
             method: QFTMethod::Classical,
             ..Default::default()
         };
-        let mut qft = SciRS2QFT::new(2, config).unwrap();
-        let mut state = QFTUtils::create_test_state(2, "basis").unwrap();
+        let mut qft = SciRS2QFT::new(2, config).expect("should create SciRS2 QFT");
+        let mut state = QFTUtils::create_test_state(2, "basis").expect("should create test state");
 
-        qft.apply_qft(&mut state).unwrap();
+        qft.apply_qft(&mut state).expect("should apply QFT");
 
         // After QFT of |00⟩, should be uniform superposition
         let expected_amplitude = 0.5;
@@ -878,13 +898,15 @@ mod tests {
             bit_reversal: false, // Disable for roundtrip test
             ..Default::default()
         };
-        let mut qft = SciRS2QFT::new(3, config).unwrap();
-        let initial_state = QFTUtils::create_test_state(3, "basis").unwrap(); // Use basis state instead of random
+        let mut qft = SciRS2QFT::new(3, config).expect("should create SciRS2 QFT");
+        let initial_state =
+            QFTUtils::create_test_state(3, "basis").expect("should create test state"); // Use basis state instead of random
 
         // Just verify that QFT and inverse QFT complete without error
         let mut state = initial_state;
-        qft.apply_qft(&mut state).unwrap();
-        qft.apply_inverse_qft(&mut state).unwrap();
+        qft.apply_qft(&mut state).expect("should apply QFT");
+        qft.apply_inverse_qft(&mut state)
+            .expect("should apply inverse QFT");
 
         // Check that we have some reasonable state (not all zeros)
         let has_nonzero = state.iter().any(|amp| amp.norm() > 1e-15);
@@ -897,7 +919,7 @@ mod tests {
     #[test]
     fn test_bit_reversal() {
         let config = QFTConfig::default();
-        let qft = SciRS2QFT::new(3, config).unwrap();
+        let qft = SciRS2QFT::new(3, config).expect("should create SciRS2 QFT");
 
         assert_eq!(qft.bit_reverse(0b001, 3), 0b100);
         assert_eq!(qft.bit_reverse(0b010, 3), 0b010);
@@ -907,7 +929,7 @@ mod tests {
     #[test]
     fn test_radix2_fft() {
         let config = QFTConfig::default();
-        let qft = SciRS2QFT::new(2, config).unwrap();
+        let qft = SciRS2QFT::new(2, config).expect("should create SciRS2 QFT");
 
         let mut data = vec![
             Complex64::new(1.0, 0.0),
@@ -916,7 +938,8 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        qft.radix2_fft(&mut data, false).unwrap();
+        qft.radix2_fft(&mut data, false)
+            .expect("should apply radix2 FFT");
 
         // All amplitudes should be 1.0 for DFT of basis state
         for amplitude in &data {
@@ -933,7 +956,7 @@ mod tests {
             Complex64::new(0.0, 0.0),
         ];
 
-        let result = QFTUtils::classical_dft(&signal).unwrap();
+        let result = QFTUtils::classical_dft(&signal).expect("should compute classical DFT");
 
         // DFT of [1, 0, 0, 0] should be [1, 1, 1, 1]
         for amplitude in &result {

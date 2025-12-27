@@ -24,7 +24,8 @@ mod tests {
     fn test_quantum_noise_schedule() {
         let config = QuantumAdvancedDiffusionConfig::default();
         let (betas, alphas, alphas_cumprod) =
-            QuantumAdvancedDiffusionModel::compute_quantum_schedule(&config).unwrap();
+            QuantumAdvancedDiffusionModel::compute_quantum_schedule(&config)
+                .expect("Failed to compute quantum schedule");
         assert_eq!(betas.len(), config.num_timesteps);
         assert_eq!(alphas.len(), config.num_timesteps);
         assert_eq!(alphas_cumprod.len(), config.num_timesteps);
@@ -40,11 +41,12 @@ mod tests {
             num_timesteps: 100,
             ..Default::default()
         };
-        let model = QuantumAdvancedDiffusionModel::new(config).unwrap();
+        let model =
+            QuantumAdvancedDiffusionModel::new(config).expect("Failed to create diffusion model");
         let x0 = Array1::from_vec(vec![0.5, -0.3, 0.8, -0.1]);
         let result = model.quantum_forward_diffusion(&x0, 50);
         assert!(result.is_ok());
-        let (xt, quantum_noise, quantum_state) = result.unwrap();
+        let (xt, quantum_noise, quantum_state) = result.expect("Forward diffusion should succeed");
         assert_eq!(xt.len(), 4);
         assert_eq!(quantum_noise.len(), 4);
         assert!(quantum_state.entanglement_measure >= 0.0);
@@ -59,7 +61,7 @@ mod tests {
         };
         let network = QuantumDenoisingNetwork::new(&config);
         assert!(network.is_ok());
-        let network = network.unwrap();
+        let network = network.expect("Failed to create denoising network");
         assert!(!network.quantum_layers.is_empty());
         assert!(!network.classical_layers.is_empty());
     }
@@ -71,10 +73,11 @@ mod tests {
             num_timesteps: 10,
             ..Default::default()
         };
-        let model = QuantumAdvancedDiffusionModel::new(config).unwrap();
+        let model =
+            QuantumAdvancedDiffusionModel::new(config).expect("Failed to create diffusion model");
         let result = model.quantum_generate(3, None, None);
         assert!(result.is_ok());
-        let output = result.unwrap();
+        let output = result.expect("Quantum generation should succeed");
         assert_eq!(output.samples.shape(), &[3, 2]);
         assert_eq!(output.generation_metrics.len(), 3);
     }
@@ -90,7 +93,7 @@ mod tests {
         };
         let result = QuantumAdvancedDiffusionModel::compute_quantum_schedule(&config);
         assert!(result.is_ok());
-        let (betas, _, _) = result.unwrap();
+        let (betas, _, _) = result.expect("Multi-scale noise schedule should compute");
         assert!(betas.iter().all(|&beta| beta >= 0.0 && beta <= 1.0));
     }
     #[test]

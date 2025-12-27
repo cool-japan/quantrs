@@ -1,6 +1,9 @@
 //! Performance regression detection system
 
-use super::*;
+use super::{
+    AlertThresholds, ApplicationError, ApplicationResult, Duration, HashMap, Instant,
+    RegressionAlgorithmType, StatisticalModelType, TrendDirection, VecDeque,
+};
 
 /// Performance regression detector
 #[derive(Debug)]
@@ -107,6 +110,7 @@ pub struct StatisticalModel {
 }
 
 impl RegressionDetector {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             performance_history: HashMap::new(),
@@ -176,8 +180,7 @@ impl RegressionDetector {
     ) -> ApplicationResult<Vec<RegressionDetectionResult>> {
         let history = self.performance_history.get(test_id).ok_or_else(|| {
             ApplicationError::ConfigurationError(format!(
-                "No performance history found for test: {}",
-                test_id
+                "No performance history found for test: {test_id}"
             ))
         })?;
 
@@ -292,14 +295,14 @@ impl RegressionDetector {
             p_value: if regression_detected { 0.01 } else { 0.9 },
             change_point: violations.first().copied(),
             trend_direction,
-            magnitude: if !violations.is_empty() {
+            magnitude: if violations.is_empty() {
+                0.0
+            } else {
                 let worst_violation = recent_values
                     .iter()
                     .map(|&v| (v - mean).abs() / std_dev)
                     .fold(0.0, f64::max);
                 worst_violation
-            } else {
-                0.0
             },
             details: format!("SPC analysis: {} violations detected", violations.len()),
         })
@@ -363,8 +366,7 @@ impl RegressionDetector {
             p_value: if regression_detected { 0.05 } else { 0.8 },
             change_point: best_change_point,
             trend_direction: if regression_detected {
-                if best_change_point.is_some() {
-                    let cp = best_change_point.unwrap();
+                if let Some(cp) = best_change_point {
                     let before_mean = values[..cp].iter().sum::<f64>() / cp as f64;
                     let after_mean = values[cp..].iter().sum::<f64>() / (values.len() - cp) as f64;
                     if after_mean < before_mean {
@@ -379,7 +381,7 @@ impl RegressionDetector {
                 TrendDirection::Stable
             },
             magnitude: best_score,
-            details: format!("Change point detection: score = {:.4}", best_score),
+            details: format!("Change point detection: score = {best_score:.4}"),
         })
     }
 
@@ -416,7 +418,7 @@ impl RegressionDetector {
             .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
 
-        let slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum.powi(2));
+        let slope = n.mul_add(xy_sum, -(x_sum * y_sum)) / x_sum.mul_add(-x_sum, n * x2_sum);
         let slope_abs = slope.abs();
 
         let regression_detected = slope_abs > *trend_threshold;
@@ -441,11 +443,12 @@ impl RegressionDetector {
             change_point: None,
             trend_direction,
             magnitude: slope_abs,
-            details: format!("Time series analysis: slope = {:.6}", slope),
+            details: format!("Time series analysis: slope = {slope:.6}"),
         })
     }
 
     /// Get performance summary for test
+    #[must_use]
     pub fn get_performance_summary(&self, test_id: &str) -> Option<PerformanceSummary> {
         let history = self.performance_history.get(test_id)?;
 
@@ -460,7 +463,7 @@ impl RegressionDetector {
         let std_dev = variance.sqrt();
 
         let mut sorted_values = values.clone();
-        sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         Some(PerformanceSummary {
             test_id: test_id.to_string(),
@@ -470,9 +473,10 @@ impl RegressionDetector {
             min: sorted_values[0],
             max: sorted_values[sorted_values.len() - 1],
             median: if sorted_values.len() % 2 == 0 {
-                (sorted_values[sorted_values.len() / 2 - 1]
-                    + sorted_values[sorted_values.len() / 2])
-                    / 2.0
+                f64::midpoint(
+                    sorted_values[sorted_values.len() / 2 - 1],
+                    sorted_values[sorted_values.len() / 2],
+                )
             } else {
                 sorted_values[sorted_values.len() / 2]
             },

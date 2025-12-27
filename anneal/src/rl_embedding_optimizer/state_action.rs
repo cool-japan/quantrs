@@ -6,7 +6,12 @@ use scirs2_core::random::{Rng, SeedableRng};
 use std::collections::HashMap;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
-use super::types::*;
+use super::types::{
+    CalibrationQuality, ConnectivityFeatures, ContinuousEmbeddingAction, CurrentEmbeddingState,
+    DiscreteEmbeddingAction, EmbeddingAction, EmbeddingEfficiencyMetrics, EmbeddingState,
+    HardwareConstraints, HardwareFeatures, HardwarePerformanceChars, NoiseProfile,
+    ProblemGraphFeatures, ResourceUtilization, SpectralFeatures, TimingConstraints,
+};
 use crate::embedding::{Embedding, HardwareTopology};
 use crate::hardware_compilation::HardwareType;
 use crate::ising::IsingModel;
@@ -449,7 +454,7 @@ impl StateActionProcessor {
             DiscreteEmbeddingAction::OptimizeOrdering { chain } => {
                 // Simple optimization: sort physical qubits in chain
                 if let Some(ch) = embedding.chains.get_mut(chain) {
-                    ch.sort();
+                    ch.sort_unstable();
                 }
             }
             DiscreteEmbeddingAction::NoOp => {
@@ -482,6 +487,7 @@ impl StateActionProcessor {
     }
 
     /// Calculate the number of qubits from hardware topology
+    #[must_use]
     pub fn get_num_qubits(hardware: &HardwareTopology) -> usize {
         match hardware {
             HardwareTopology::Chimera(m, n, t) => m * n * 2 * t,
@@ -492,6 +498,7 @@ impl StateActionProcessor {
     }
 
     /// Generate couplings from hardware topology
+    #[must_use]
     pub fn get_couplings(hardware: &HardwareTopology) -> Vec<(usize, usize)> {
         let num_qubits = Self::get_num_qubits(hardware);
         let mut couplings = Vec::new();

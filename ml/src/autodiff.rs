@@ -619,11 +619,13 @@ mod tests {
         autodiff.set_graph(graph);
 
         // Forward pass
-        let result = autodiff.forward().unwrap();
+        let result = autodiff.forward().expect("forward pass should succeed");
         assert_eq!(result, 6.0);
 
         // Backward pass
-        autodiff.backward(1.0).unwrap();
+        autodiff
+            .backward(1.0)
+            .expect("backward pass should succeed");
         let gradients = autodiff.gradients();
 
         assert_eq!(gradients["x"], 3.0); // dz/dx = y
@@ -673,7 +675,9 @@ mod tests {
         let qad = QuantumAutoDiff::new(executor);
         let params = vec![PI / 4.0, PI / 3.0];
 
-        let gradients = qad.parameter_shift_gradients(&params, PI / 2.0).unwrap();
+        let gradients = qad
+            .parameter_shift_gradients(&params, PI / 2.0)
+            .expect("parameter shift gradients should succeed");
         assert_eq!(gradients.len(), 2);
     }
 }

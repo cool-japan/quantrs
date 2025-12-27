@@ -1,7 +1,7 @@
 //! Utility functions for solution clustering
 
 use super::error::{ClusteringError, ClusteringResult};
-use super::types::*;
+use super::types::{SolutionCluster, SolutionPoint};
 use crate::simulator::AnnealingSolution;
 
 /// Analyze solution diversity
@@ -21,7 +21,7 @@ pub fn analyze_solution_diversity(solutions: &[AnnealingSolution]) -> Clustering
         }
     }
 
-    Ok(total_distance / count as f64)
+    Ok(total_distance / f64::from(count))
 }
 
 /// Calculate Hamming distance between two spin configurations
@@ -34,6 +34,7 @@ fn hamming_distance(spins1: &[i8], spins2: &[i8]) -> usize {
 }
 
 /// Find the most representative solution in a cluster
+#[must_use]
 pub fn find_representative_solution(cluster: &SolutionCluster) -> Option<&SolutionPoint> {
     if cluster.solutions.is_empty() {
         return None;
@@ -57,7 +58,7 @@ pub fn find_representative_solution(cluster: &SolutionCluster) -> Option<&Soluti
             }
 
             let avg_distance = if count > 0 {
-                total_distance / count as f64
+                total_distance / f64::from(count)
             } else {
                 f64::INFINITY
             };

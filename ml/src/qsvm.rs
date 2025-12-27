@@ -590,13 +590,13 @@ mod tests {
         let mut qsvm = QSVM::new(params);
 
         // Train
-        qsvm.fit(&x, &y).unwrap();
+        qsvm.fit(&x, &y).expect("fit should succeed");
 
         // Check that we have support vectors
         assert!(qsvm.n_support_vectors() > 0);
 
         // Predict on training data
-        let predictions = qsvm.predict(&x).unwrap();
+        let predictions = qsvm.predict(&x).expect("predict should succeed");
 
         // Should classify training data correctly
         for i in 0..y.len() {

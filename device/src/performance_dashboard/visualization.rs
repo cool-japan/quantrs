@@ -18,7 +18,7 @@ pub struct VisualizationConfig {
     pub interactive_config: InteractiveConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ChartType {
     TimeSeries,
     Histogram,
@@ -72,7 +72,7 @@ pub struct PanelConfig {
     pub size: (usize, usize),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ColorScheme {
     Default,
     Light,

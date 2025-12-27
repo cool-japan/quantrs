@@ -699,7 +699,7 @@ mod tests {
         let mut result = integrator.integrate_solutions(&solutions, &global_var_map);
         assert!(result.is_ok());
 
-        let integrated = result.unwrap();
+        let integrated = result.expect("Solution integration should succeed");
         assert_eq!(integrated.assignment.len(), 2);
         assert!(integrated.assignment.contains_key("x0"));
         assert!(integrated.assignment.contains_key("x1"));
@@ -788,7 +788,7 @@ mod tests {
         );
         assert!(report.is_ok());
 
-        let validation_report = report.unwrap();
+        let validation_report = report.expect("Decomposition validation should succeed");
         assert_eq!(validation_report.coverage_percentage, 100.0);
     }
 }

@@ -1,7 +1,14 @@
 //! Test result analytics and reporting
 
-use super::*;
+use super::{
+    AnalyticsEngineType, AnalyticsOutputFormat, ApplicationResult, ChartType, ConditionOperator,
+    ConditionType, Duration, FailurePatternType, HashMap, Instant, PlatformTestResult,
+    PropertyTestResult, PropertyValue, RegressionTestResult, RenderingEngineType, ReportFormat,
+    RetentionPolicy, ScenarioTestResult, StressTestResult, TestErrorType, TestExecutionResult,
+    TestSuiteResults, TrendDirection, VecDeque,
+};
 
+use std::fmt::Write;
 /// Test result analytics
 #[derive(Debug)]
 pub struct TestAnalytics {
@@ -167,7 +174,7 @@ pub struct ReportGenerator {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReportType {
     /// Performance summary
     PerformanceSummary,
@@ -230,7 +237,7 @@ pub struct RenderingEngine {
 }
 
 /// Interactive features for visualizations
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InteractiveFeature {
     /// Zoom functionality
     Zoom,
@@ -247,6 +254,7 @@ pub enum InteractiveFeature {
 }
 
 impl TestAnalytics {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             result_database: TestResultDatabase {
@@ -655,7 +663,7 @@ impl TestAnalytics {
 
         self.result_database.statistics.total_executions = total_executions;
         self.result_database.statistics.success_rate = if total_executions > 0 {
-            successful_executions as f64 / total_executions as f64
+            f64::from(successful_executions) / total_executions as f64
         } else {
             0.0
         };
@@ -726,7 +734,7 @@ impl TestAnalytics {
             .sum::<f64>();
         let x2_sum = (0..values.len()).map(|i| (i as f64).powi(2)).sum::<f64>();
 
-        let slope = (n * xy_sum - x_sum * y_sum) / (n * x2_sum - x_sum.powi(2));
+        let slope = n.mul_add(xy_sum, -(x_sum * y_sum)) / x_sum.mul_add(-x_sum, n * x2_sum);
 
         let trend_direction = if slope > 0.01 {
             TrendDirection::Improving
@@ -750,7 +758,9 @@ impl TestAnalytics {
         // Update frequency for existing patterns
         for pattern in self.result_database.failure_patterns.values_mut() {
             // Calculate recent frequency (last 30 days)
-            let cutoff = Instant::now() - Duration::from_secs(30 * 24 * 3600);
+            let cutoff = Instant::now()
+                .checked_sub(Duration::from_secs(30 * 24 * 3600))
+                .unwrap_or_else(Instant::now);
             let recent_failures = pattern
                 .failures
                 .iter()
@@ -798,12 +808,10 @@ impl TestAnalytics {
         report.push_str("# Performance Summary Report\n\n");
 
         // Overall statistics
-        report.push_str(&format!(
-            "## Overall Statistics\n- Total Executions: {}\n- Success Rate: {:.2}%\n- Average Execution Time: {:?}\n\n",
+        let _ = writeln!(report, "## Overall Statistics\n- Total Executions: {}\n- Success Rate: {:.2}%\n- Average Execution Time: {:?}\n",
             self.result_database.statistics.total_executions,
             self.result_database.statistics.success_rate * 100.0,
-            self.result_database.statistics.avg_execution_time
-        ));
+            self.result_database.statistics.avg_execution_time);
 
         // Performance by test type
         report.push_str("## Performance by Test Type\n");
@@ -815,12 +823,13 @@ impl TestAnalytics {
                     .sum::<f64>()
                     / records.len() as f64;
 
-                report.push_str(&format!(
+                let _ = write!(
+                    report,
                     "- {}: {:.3} average quality ({} executions)\n",
                     test_id,
                     avg_quality,
                     records.len()
-                ));
+                );
             }
         }
 
@@ -830,10 +839,11 @@ impl TestAnalytics {
         if !self.result_database.performance_trends.is_empty() {
             report.push_str("## Performance Trends\n");
             for (test_id, trend) in &self.result_database.performance_trends {
-                report.push_str(&format!(
+                let _ = write!(
+                    report,
                     "- {}: {:?} trend (magnitude: {:.4})\n",
                     test_id, trend.trend_direction, trend.trend_magnitude
-                ));
+                );
             }
         }
 
@@ -852,13 +862,14 @@ impl TestAnalytics {
 
         report.push_str("## Detected Failure Patterns\n");
         for pattern in self.result_database.failure_patterns.values() {
-            report.push_str(&format!(
+            let _ = write!(
+                report,
                 "### Pattern: {}\n- Type: {:?}\n- Frequency: {:.1}\n- Failures: {}\n\n",
                 pattern.id,
                 pattern.pattern_type,
                 pattern.frequency,
                 pattern.failures.len()
-            ));
+            );
         }
 
         Ok(report)
@@ -875,21 +886,20 @@ impl TestAnalytics {
         }
 
         for (test_id, trend) in &self.result_database.performance_trends {
-            report.push_str(&format!(
-                "## {}\n- Metric: {}\n- Direction: {:?}\n- Magnitude: {:.4}\n- Confidence: {:.2}\n- Data Points: {}\n\n",
+            let _ = write!(report, "## {}\n- Metric: {}\n- Direction: {:?}\n- Magnitude: {:.4}\n- Confidence: {:.2}\n- Data Points: {}\n\n",
                 test_id,
                 trend.metric,
                 trend.trend_direction,
                 trend.trend_magnitude,
                 trend.confidence,
-                trend.data_points.len()
-            ));
+                trend.data_points.len());
         }
 
         Ok(report)
     }
 
     /// Get analytics summary
+    #[must_use]
     pub fn get_analytics_summary(&self) -> AnalyticsSummary {
         AnalyticsSummary {
             total_tests: self.result_database.statistics.total_executions,

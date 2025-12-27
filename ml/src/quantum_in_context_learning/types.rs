@@ -108,7 +108,7 @@ impl QuantumEpisodicMemory {
             let similarity = self.compute_similarity(query, &entry.context_state)?;
             similarities.push((similarity, entry.context_state.clone()));
         }
-        similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         Ok(similarities
             .into_iter()
             .take(k)
@@ -282,7 +282,7 @@ impl QuantumContextCompressor {
         indexed_contexts.sort_by(|a, b| {
             b.1.entanglement_measure
                 .partial_cmp(&a.1.entanglement_measure)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         Ok(indexed_contexts
             .into_iter()
@@ -1590,7 +1590,7 @@ impl PrototypeBank {
             let similarity = self.compute_prototype_similarity(query, &prototype.quantum_state)?;
             similarities.push((similarity, prototype));
         }
-        similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        similarities.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         Ok(similarities
             .into_iter()
             .take(k)
@@ -1697,7 +1697,7 @@ impl PrototypeBank {
                     a.performance_statistics
                         .average_performance
                         .partial_cmp(&b.performance_statistics.average_performance)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .map(|(idx, _)| idx)
             {

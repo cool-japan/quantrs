@@ -1712,97 +1712,91 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_visual_problem_builder() {
-        let mut config = BuilderConfig::default();
+    fn test_visual_problem_builder() -> Result<(), String> {
+        let config = BuilderConfig::default();
         let mut builder = VisualProblemBuilder::new(config);
 
         // Create new problem
-        builder.new_problem("Test Problem").unwrap();
+        builder.new_problem("Test Problem")?;
 
         // Add variables
-        let var1_id = builder
-            .add_variable(
-                "x1",
-                VariableType::Binary,
-                Position {
-                    x: 100.0,
-                    y: 100.0,
-                    z: None,
-                },
-            )
-            .unwrap();
+        let var1_id = builder.add_variable(
+            "x1",
+            VariableType::Binary,
+            Position {
+                x: 100.0,
+                y: 100.0,
+                z: None,
+            },
+        )?;
 
-        let var2_id = builder
-            .add_variable(
-                "x2",
-                VariableType::Binary,
-                Position {
-                    x: 200.0,
-                    y: 100.0,
-                    z: None,
-                },
-            )
-            .unwrap();
+        let var2_id = builder.add_variable(
+            "x2",
+            VariableType::Binary,
+            Position {
+                x: 200.0,
+                y: 100.0,
+                z: None,
+            },
+        )?;
 
         assert_eq!(builder.problem.variables.len(), 2);
 
         // Add constraint
-        let constraint_id = builder
-            .add_constraint(
-                "Sum constraint",
-                ConstraintType::Linear {
-                    coefficients: vec![1.0, 1.0],
-                    operator: ComparisonOperator::LessEqual,
-                    rhs: 1.0,
-                },
-                vec![var1_id.clone(), var2_id.clone()],
-            )
-            .unwrap();
+        let _constraint_id = builder.add_constraint(
+            "Sum constraint",
+            ConstraintType::Linear {
+                coefficients: vec![1.0, 1.0],
+                operator: ComparisonOperator::LessEqual,
+                rhs: 1.0,
+            },
+            vec![var1_id.clone(), var2_id.clone()],
+        )?;
 
         assert_eq!(builder.problem.constraints.len(), 1);
 
         // Set objective
         let mut coefficients = HashMap::new();
-        coefficients.insert(var1_id.clone(), 1.0);
-        coefficients.insert(var2_id.clone(), 2.0);
+        coefficients.insert(var1_id, 1.0);
+        coefficients.insert(var2_id, 2.0);
 
-        builder
-            .set_objective(
-                "Linear objective",
-                ObjectiveExpression::Linear {
-                    coefficients,
-                    constant: 0.0,
-                },
-                OptimizationDirection::Maximize,
-            )
-            .unwrap();
+        builder.set_objective(
+            "Linear objective",
+            ObjectiveExpression::Linear {
+                coefficients,
+                constant: 0.0,
+            },
+            OptimizationDirection::Maximize,
+        )?;
 
         assert!(builder.problem.objective.is_some());
 
         // Test undo/redo
-        builder.undo().unwrap();
+        builder.undo()?;
         assert!(builder.problem.objective.is_none());
 
-        builder.redo().unwrap();
+        builder.redo()?;
         assert!(builder.problem.objective.is_some());
 
         // Test code generation
-        let python_code = builder.generate_code(ExportFormat::Python).unwrap();
+        let python_code = builder.generate_code(ExportFormat::Python)?;
         assert!(python_code.contains("symbols"));
         assert!(python_code.contains("SASampler"));
 
         // Test JSON export
-        let mut json = builder.save_problem().unwrap();
+        let json = builder.save_problem()?;
         assert!(json.contains("Test Problem"));
+
+        Ok(())
     }
 
     #[test]
-    fn test_validation() {
+    fn test_validation() -> Result<(), String> {
         let mut validator = ProblemValidator::new();
         let mut problem = VisualProblem::new();
 
         // Empty problem should have errors
-        let errors = validator.validate(&problem).unwrap();
+        let errors = validator.validate(&problem)?;
         assert!(!errors.is_empty());
 
         // Add variables
@@ -1833,9 +1827,11 @@ mod tests {
         });
 
         // Problem with variables but no objective should have warnings
-        let errors = validator.validate(&problem).unwrap();
+        let errors = validator.validate(&problem)?;
         assert!(errors
             .iter()
             .any(|e| matches!(e.severity, ValidationSeverity::Warning)));
+
+        Ok(())
     }
 }

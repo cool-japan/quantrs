@@ -29,7 +29,10 @@ mod tests {
         }
 
         fn get_execution_count(&self) -> usize {
-            *self.execution_count.lock().unwrap()
+            *self
+                .execution_count
+                .lock()
+                .expect("MockCircuitExecutor mutex should not be poisoned")
         }
     }
 
@@ -39,7 +42,10 @@ mod tests {
             _circuit: &Circuit<16>,
         ) -> Result<crate::dynamical_decoupling::CircuitExecutionResults, crate::DeviceError>
         {
-            *self.execution_count.lock().unwrap() += 1;
+            *self
+                .execution_count
+                .lock()
+                .expect("MockCircuitExecutor mutex should not be poisoned") += 1;
 
             let mut measurements = HashMap::new();
             measurements.insert("qubit_0".to_string(), vec![0, 1, 0, 1]);
@@ -83,7 +89,7 @@ mod tests {
             &target_qubits,
             100e-6,
         )
-        .unwrap()
+        .expect("Test sequence generation with valid parameters should succeed")
     }
 
     #[test]
@@ -99,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sequence_generation() {
+    fn test_sequence_generation() -> Result<(), crate::DeviceError> {
         let target_qubits = vec![QubitId(0)];
 
         // Test Hahn Echo
@@ -107,8 +113,7 @@ mod tests {
             &DDSequenceType::HahnEcho,
             &target_qubits,
             50e-6,
-        )
-        .unwrap();
+        )?;
         assert_eq!(hahn_echo.sequence_type, DDSequenceType::HahnEcho);
         assert_eq!(hahn_echo.pulse_timings.len(), 1);
         assert_eq!(hahn_echo.properties.pulse_count, 1);
@@ -118,8 +123,7 @@ mod tests {
             &DDSequenceType::CPMG { n_pulses: 4 },
             &target_qubits,
             100e-6,
-        )
-        .unwrap();
+        )?;
         assert!(matches!(cpmg.sequence_type, DDSequenceType::CPMG { .. }));
         assert!(cpmg.properties.pulse_count > 1);
 
@@ -128,8 +132,7 @@ mod tests {
             &DDSequenceType::XY4,
             &target_qubits,
             100e-6,
-        )
-        .unwrap();
+        )?;
         assert_eq!(xy4.sequence_type, DDSequenceType::XY4);
         assert_eq!(xy4.properties.sequence_order, 2);
 
@@ -138,43 +141,43 @@ mod tests {
             &DDSequenceType::UDD { n_pulses: 3 },
             &target_qubits,
             100e-6,
-        )
-        .unwrap();
+        )?;
         assert_eq!(udd.sequence_type, DDSequenceType::UDD { n_pulses: 3 });
         assert!(udd.properties.sequence_order > 1);
+
+        Ok(())
     }
 
     #[test]
-    fn test_composite_sequence_generation() {
+    fn test_composite_sequence_generation() -> Result<(), crate::DeviceError> {
         let target_qubits = vec![QubitId(0)];
 
         let base1 = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::HahnEcho,
             &target_qubits,
             50e-6,
-        )
-        .unwrap();
+        )?;
 
         let base2 = DDSequenceGenerator::generate_base_sequence(
             &DDSequenceType::XY4,
             &target_qubits,
             50e-6,
-        )
-        .unwrap();
+        )?;
 
         let composite = DDSequenceGenerator::generate_composite_sequence(
             &[base1, base2],
             CompositionStrategy::Sequential,
-        )
-        .unwrap();
+        )?;
 
         assert_eq!(composite.sequence_type, DDSequenceType::Composite);
         assert!(composite.duration > 50e-6); // Should be sum of components
         assert!(composite.properties.resource_requirements.gate_count > 1);
+
+        Ok(())
     }
 
     #[test]
-    fn test_multi_qubit_coordination() {
+    fn test_multi_qubit_coordination() -> Result<(), crate::DeviceError> {
         let crosstalk_mitigation = CrosstalkMitigationStrategy::TimeShifted;
         let synchronization = SynchronizationRequirements::Custom {
             global_sync_required: true,
@@ -191,35 +194,32 @@ mod tests {
             &DDSequenceType::CPMG { n_pulses: 16 },
             &group1,
             100e-6,
-        )
-        .unwrap();
+        )?;
         coordinator.add_sequence(group1, sequence1);
 
         let group2 = vec![QubitId(2), QubitId(3)];
         let sequence2 =
-            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::XY4, &group2, 100e-6)
-                .unwrap();
+            DDSequenceGenerator::generate_base_sequence(&DDSequenceType::XY4, &group2, 100e-6)?;
         coordinator.add_sequence(group2, sequence2);
 
         // Generate coordinated sequence
-        let coordinated = coordinator.generate_coordinated_sequence().unwrap();
+        let coordinated = coordinator.generate_coordinated_sequence()?;
         assert_eq!(
             coordinated.sequence_type,
             DDSequenceType::MultiQubitCoordinated
         );
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_performance_analysis() {
+    async fn test_performance_analysis() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDPerformanceConfig::default();
         let mut analyzer = DDPerformanceAnalyzer::new(config);
         let executor = MockCircuitExecutor::new();
         let sequence = create_test_sequence();
 
-        let analysis = analyzer
-            .analyze_performance(&sequence, &executor)
-            .await
-            .unwrap();
+        let analysis = analyzer.analyze_performance(&sequence, &executor).await?;
 
         assert!(!analysis.metrics.is_empty());
         assert!(analysis.metrics.contains_key(
@@ -238,10 +238,12 @@ mod tests {
 
         // Check if executor was called
         assert_eq!(executor.get_execution_count(), 0); // Mock doesn't actually execute in this test
+
+        Ok(())
     }
 
     #[test]
-    fn test_noise_analysis() {
+    fn test_noise_analysis() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDNoiseConfig::default();
         let analyzer = DDNoiseAnalyzer::new(config);
         let sequence = create_test_sequence();
@@ -249,23 +251,23 @@ mod tests {
         // Create mock performance analysis
         let performance_analysis = create_mock_performance_analysis();
 
-        let noise_analysis = analyzer
-            .analyze_noise_characteristics(&sequence, &performance_analysis)
-            .unwrap();
+        let noise_analysis =
+            analyzer.analyze_noise_characteristics(&sequence, &performance_analysis)?;
 
         assert!(!noise_analysis.noise_characterization.noise_types.is_empty());
         assert!(noise_analysis.suppression_effectiveness.overall_suppression >= 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn test_hardware_analysis() {
+    fn test_hardware_analysis() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDHardwareConfig::default();
         let analyzer = DDHardwareAnalyzer::new(config, None, None);
         let sequence = create_test_sequence();
 
-        let hardware_analysis = analyzer
-            .analyze_hardware_implementation("test_device", &sequence)
-            .unwrap();
+        let hardware_analysis =
+            analyzer.analyze_hardware_implementation("test_device", &sequence)?;
 
         assert!(hardware_analysis.hardware_compatibility.compatibility_score >= 0.0);
         assert!(hardware_analysis.hardware_compatibility.compatibility_score <= 1.0);
@@ -276,27 +278,28 @@ mod tests {
                 .resource_efficiency
                 >= 0.0
         );
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_sequence_optimization() {
+    async fn test_sequence_optimization() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDOptimizationConfig::default();
         let mut optimizer = DDSequenceOptimizer::new(config);
         let executor = MockCircuitExecutor::new();
         let sequence = create_test_sequence();
 
-        let optimization_result = optimizer
-            .optimize_sequence(&sequence, &executor)
-            .await
-            .unwrap();
+        let optimization_result = optimizer.optimize_sequence(&sequence, &executor).await?;
 
         assert!(optimization_result.optimization_metrics.success);
         assert!(optimization_result.optimization_metrics.improvement_factor >= 0.0);
         assert!(optimization_result.parameter_sensitivity.robustness_score >= 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn test_adaptive_dd_system() {
+    fn test_adaptive_dd_system() -> Result<(), crate::DeviceError> {
         let adaptive_config = AdaptiveDDConfig::default();
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![
@@ -310,7 +313,7 @@ mod tests {
             AdaptiveDDSystem::new(adaptive_config, initial_sequence, available_sequences);
 
         let executor = MockCircuitExecutor::new();
-        adaptive_system.start(&executor).unwrap();
+        adaptive_system.start(&executor)?;
 
         let initial_state = adaptive_system.get_current_state();
         assert!(matches!(
@@ -322,10 +325,12 @@ mod tests {
         let stats = adaptive_system.get_adaptation_statistics();
         assert_eq!(stats.total_adaptations, 0);
         assert_eq!(stats.success_rate, 0.0);
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_dd_manager_integration() {
+    async fn test_dd_manager_integration() -> Result<(), crate::DeviceError> {
         let config = create_test_config();
         let mut manager =
             DynamicalDecouplingManager::new(config, "test_device".to_string(), None, None);
@@ -335,9 +340,11 @@ mod tests {
         let initial_sequence = create_test_sequence();
         let available_sequences = vec![DDSequenceType::CPMG { n_pulses: 16 }, DDSequenceType::XY4];
 
-        manager
-            .initialize_adaptive_system(adaptive_config, initial_sequence, available_sequences)
-            .unwrap();
+        manager.initialize_adaptive_system(
+            adaptive_config,
+            initial_sequence,
+            available_sequences,
+        )?;
 
         // Initialize multi-qubit coordination
         manager.initialize_multi_qubit_coordination(
@@ -360,8 +367,7 @@ mod tests {
 
         let result = manager
             .generate_optimized_sequence(&DDSequenceType::XY4, &target_qubits, 100e-6, &executor)
-            .await
-            .unwrap();
+            .await?;
 
         assert!(result.success);
         assert!(result.quality_score >= 0.0);
@@ -369,6 +375,8 @@ mod tests {
         assert!(result.performance_analysis.is_some());
         assert!(result.noise_analysis.is_some());
         assert!(result.hardware_analysis.is_some());
+
+        Ok(())
     }
 
     #[test]
@@ -383,7 +391,9 @@ mod tests {
         cache.store_sequence("test_key".to_string(), sequence.clone());
 
         // Test cache hit
-        let retrieved = cache.get_sequence("test_key").unwrap();
+        let retrieved = cache
+            .get_sequence("test_key")
+            .expect("Sequence should be in cache after store_sequence");
         assert_eq!(retrieved.sequence_type, sequence.sequence_type);
 
         // Check statistics
@@ -449,7 +459,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_performance_metrics_calculation() {
+    async fn test_performance_metrics_calculation() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDPerformanceConfig::default();
         let analyzer = DDPerformanceAnalyzer::new(config);
         let sequence = create_test_sequence();
@@ -457,21 +467,20 @@ mod tests {
         // Test individual metric calculations
         let coherence_time = analyzer
             .measure_coherence_time(&sequence, &MockCircuitExecutor::new())
-            .await
-            .unwrap();
+            .await?;
         assert!(coherence_time > 0.0);
 
         let fidelity = analyzer
             .measure_process_fidelity(&sequence, &MockCircuitExecutor::new())
-            .await
-            .unwrap();
+            .await?;
         assert!(fidelity >= 0.0 && fidelity <= 1.0);
 
         let robustness = analyzer
             .calculate_robustness_score(&sequence, &MockCircuitExecutor::new())
-            .await
-            .unwrap();
+            .await?;
         assert!(robustness >= 0.0 && robustness <= 1.0);
+
+        Ok(())
     }
 
     // Helper function to create mock performance analysis
@@ -547,7 +556,7 @@ mod benchmarks {
     use std::time::Instant;
 
     #[test]
-    fn benchmark_sequence_generation() {
+    fn benchmark_sequence_generation() -> Result<(), crate::DeviceError> {
         let target_qubits = vec![quantrs2_core::qubit::QubitId(0)];
         let iterations = 1000;
 
@@ -558,8 +567,7 @@ mod benchmarks {
                     &DDSequenceType::CPMG { n_pulses: 1 },
                     &target_qubits,
                     100e-6,
-                )
-                .unwrap();
+                )?;
         }
         let duration = start.elapsed();
 
@@ -568,10 +576,12 @@ mod benchmarks {
 
         // Performance assertion: should generate sequences quickly
         assert!(duration.as_millis() < 1000); // Less than 1 second for 1000 sequences
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn benchmark_optimization() {
+    async fn benchmark_optimization() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDOptimizationConfig::default();
         let mut optimizer = crate::dynamical_decoupling::DDSequenceOptimizer::new(config);
         let executor = tests::MockCircuitExecutor::new();
@@ -581,24 +591,22 @@ mod benchmarks {
             &DDSequenceType::CPMG { n_pulses: 1 },
             &target_qubits,
             100e-6,
-        )
-        .unwrap();
+        )?;
 
         let start = Instant::now();
-        let _result = optimizer
-            .optimize_sequence(&sequence, &executor)
-            .await
-            .unwrap();
+        let _result = optimizer.optimize_sequence(&sequence, &executor).await?;
         let duration = start.elapsed();
 
         println!("Optimization completed in {:?}", duration);
 
         // Performance assertion: optimization should complete in reasonable time
         assert!(duration.as_secs() < 10); // Less than 10 seconds
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn benchmark_performance_analysis() {
+    async fn benchmark_performance_analysis() -> Result<(), crate::DeviceError> {
         let config = crate::dynamical_decoupling::config::DDPerformanceConfig::default();
         let mut analyzer = crate::dynamical_decoupling::DDPerformanceAnalyzer::new(config);
         let executor = tests::MockCircuitExecutor::new();
@@ -608,19 +616,17 @@ mod benchmarks {
             &DDSequenceType::XY4,
             &target_qubits,
             100e-6,
-        )
-        .unwrap();
+        )?;
 
         let start = Instant::now();
-        let _analysis = analyzer
-            .analyze_performance(&sequence, &executor)
-            .await
-            .unwrap();
+        let _analysis = analyzer.analyze_performance(&sequence, &executor).await?;
         let duration = start.elapsed();
 
         println!("Performance analysis completed in {:?}", duration);
 
         // Performance assertion: analysis should complete quickly
         assert!(duration.as_millis() < 5000); // Less than 5 seconds
+
+        Ok(())
     }
 }

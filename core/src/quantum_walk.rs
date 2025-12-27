@@ -17,7 +17,7 @@ use scirs2_core::Complex64;
 use std::collections::{HashMap, VecDeque};
 
 /// Types of graphs for quantum walks
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GraphType {
     /// Line graph (path graph)
     Line,
@@ -55,7 +55,7 @@ pub struct SearchOracle {
 
 impl SearchOracle {
     /// Create a new search oracle with marked vertices
-    pub fn new(marked: Vec<usize>) -> Self {
+    pub const fn new(marked: Vec<usize>) -> Self {
         Self { marked }
     }
 
@@ -500,7 +500,7 @@ impl DiscreteQuantumWalk {
     }
 
     /// Get the index in the state vector for (vertex, coin) pair
-    fn state_index(&self, vertex: usize, coin: usize) -> usize {
+    const fn state_index(&self, vertex: usize, coin: usize) -> usize {
         vertex * self.coin_dimension + coin
     }
 
@@ -689,7 +689,7 @@ impl ContinuousQuantumWalk {
             let norm: f64 = new_state.iter().map(|c| c.norm_sqr()).sum::<f64>().sqrt();
 
             if norm > 0.0 {
-                for amp in new_state.iter_mut() {
+                for amp in &mut new_state {
                     *amp /= norm;
                 }
             }
@@ -822,7 +822,7 @@ impl SzegedyQuantumWalk {
         let uniform_amp = total_amp / self.num_edges as f64;
 
         // Apply reflection: 2|uniform><uniform| - I
-        for (_, amplitude) in self.state.iter_mut() {
+        for amplitude in self.state.values_mut() {
             *amplitude = 2.0 * uniform_amp - *amplitude;
         }
     }
@@ -906,8 +906,7 @@ impl MultiWalkerQuantumWalk {
         for &pos in positions {
             if pos >= self.single_walker_dim {
                 return Err(QuantRS2Error::InvalidInput(format!(
-                    "Position {} out of bounds",
-                    pos
+                    "Position {pos} out of bounds"
                 )));
             }
         }
@@ -1181,7 +1180,7 @@ impl DecoherentQuantumWalk {
     }
 
     /// Set decoherence rate
-    pub fn set_decoherence_rate(&mut self, rate: f64) {
+    pub const fn set_decoherence_rate(&mut self, rate: f64) {
         self.decoherence_rate = rate.clamp(0.0, 1.0);
     }
 }
@@ -1277,11 +1276,11 @@ pub fn quantum_walk_line_example() {
         }
         let probs = walk.position_probabilities();
 
-        println!("\nAfter {} steps:", steps);
+        println!("\nAfter {steps} steps:");
         print!("Probabilities: ");
         for (v, p) in probs.iter().enumerate() {
             if *p > 0.01 {
-                print!("v{}: {:.3} ", v, p);
+                print!("v{v}: {p:.3} ");
             }
         }
         println!();
@@ -1298,15 +1297,12 @@ pub fn quantum_walk_search_example() {
 
     let mut search = QuantumWalkSearch::new(graph, oracle);
 
-    println!("Marked vertices: {:?}", marked);
+    println!("Marked vertices: {marked:?}");
 
     // Run search
     let (found, prob, steps) = search.run(50);
 
-    println!(
-        "\nFound vertex {} with probability {:.3} after {} steps",
-        found, prob, steps
-    );
+    println!("\nFound vertex {found} with probability {prob:.3} after {steps} steps");
 }
 
 #[cfg(test)]

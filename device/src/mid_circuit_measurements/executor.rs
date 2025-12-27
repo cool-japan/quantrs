@@ -119,7 +119,8 @@ impl MidCircuitExecutor {
         };
 
         self.capabilities = Some(capabilities);
-        Ok(self.capabilities.as_ref().unwrap())
+        // Safe to expect: we just set capabilities to Some above
+        Ok(self.capabilities.as_ref().expect("capabilities just set"))
     }
 
     /// Validate a measurement circuit against device capabilities
@@ -154,8 +155,7 @@ impl MidCircuitExecutor {
         if let Some(max_measurements) = capabilities.max_measurements {
             if measurement_count > max_measurements {
                 validation_result.errors.push(format!(
-                    "Circuit requires {} measurements but device supports maximum {}",
-                    measurement_count, max_measurements
+                    "Circuit requires {measurement_count} measurements but device supports maximum {max_measurements}"
                 ));
                 validation_result.is_valid = false;
             }
@@ -478,16 +478,15 @@ impl MidCircuitExecutor {
                 })
             }
             (ClassicalValue::Register(reg_name), ClassicalValue::Integer(expected)) => {
-                if let Some(register) = classical_registers.get(reg_name) {
+                Ok(classical_registers.get(reg_name).map_or(false, |register| {
                     // Compare first few bits with expected value
-                    let actual_value = register.iter()
+                    let actual_value = register
+                        .iter()
                         .take(8) // Take first 8 bits
                         .enumerate()
                         .fold(0u8, |acc, (i, &bit)| acc | (bit << i));
-                    Ok(actual_value == *expected as u8)
-                } else {
-                    Ok(false)
-                }
+                    actual_value == *expected as u8
+                }))
             }
             // Add other condition types as needed
             _ => Ok(false),
@@ -495,7 +494,7 @@ impl MidCircuitExecutor {
     }
 
     /// Calculate measurement confidence based on calibration
-    fn calculate_measurement_confidence(&self, qubit: QubitId) -> DeviceResult<f64> {
+    const fn calculate_measurement_confidence(&self, qubit: QubitId) -> DeviceResult<f64> {
         // Use calibration data to estimate measurement fidelity
         // This is a simplified implementation
         Ok(0.99) // 99% confidence default
@@ -637,7 +636,7 @@ impl MidCircuitExecutor {
     }
 
     // Helper methods for validation
-    fn validate_classical_registers<const N: usize>(
+    const fn validate_classical_registers<const N: usize>(
         &self,
         circuit: &MeasurementCircuit<N>,
         capabilities: &MidCircuitCapabilities,
@@ -647,7 +646,7 @@ impl MidCircuitExecutor {
         Ok(())
     }
 
-    fn validate_timing_constraints<const N: usize>(
+    const fn validate_timing_constraints<const N: usize>(
         &self,
         circuit: &MeasurementCircuit<N>,
         capabilities: &MidCircuitCapabilities,
@@ -657,7 +656,7 @@ impl MidCircuitExecutor {
         Ok(())
     }
 
-    fn validate_feedforward_operations<const N: usize>(
+    const fn validate_feedforward_operations<const N: usize>(
         &self,
         circuit: &MeasurementCircuit<N>,
         capabilities: &MidCircuitCapabilities,
@@ -667,7 +666,7 @@ impl MidCircuitExecutor {
         Ok(())
     }
 
-    fn check_measurement_conflicts<const N: usize>(
+    const fn check_measurement_conflicts<const N: usize>(
         &self,
         circuit: &MeasurementCircuit<N>,
         validation_result: &mut ValidationResult,
@@ -717,30 +716,6 @@ pub struct BackendCapabilities {
 }
 
 // Default implementations for result types
-impl Default for AdvancedAnalyticsResults {
-    fn default() -> Self {
-        Self {
-            statistical_analysis: StatisticalAnalysisResults::default(),
-            correlation_analysis: CorrelationAnalysisResults::default(),
-            time_series_analysis: None,
-            anomaly_detection: None,
-            distribution_analysis: DistributionAnalysisResults::default(),
-            causal_analysis: None,
-        }
-    }
-}
-
-impl Default for StatisticalAnalysisResults {
-    fn default() -> Self {
-        Self {
-            descriptive_stats: DescriptiveStatistics::default(),
-            hypothesis_tests: HypothesisTestResults::default(),
-            confidence_intervals: ConfidenceIntervals::default(),
-            effect_sizes: EffectSizeAnalysis::default(),
-        }
-    }
-}
-
 impl Default for DescriptiveStatistics {
     fn default() -> Self {
         Self {
@@ -776,17 +751,6 @@ impl Default for ErrorRateDistribution {
     }
 }
 
-impl Default for HypothesisTestResults {
-    fn default() -> Self {
-        Self {
-            independence_tests: HashMap::new(),
-            stationarity_tests: HashMap::new(),
-            normality_tests: HashMap::new(),
-            comparison_tests: HashMap::new(),
-        }
-    }
-}
-
 impl Default for ConfidenceIntervals {
     fn default() -> Self {
         Self {
@@ -794,17 +758,6 @@ impl Default for ConfidenceIntervals {
             mean_intervals: HashMap::new(),
             bootstrap_intervals: HashMap::new(),
             prediction_intervals: HashMap::new(),
-        }
-    }
-}
-
-impl Default for EffectSizeAnalysis {
-    fn default() -> Self {
-        Self {
-            cohens_d: HashMap::new(),
-            correlations: HashMap::new(),
-            r_squared: HashMap::new(),
-            practical_significance: HashMap::new(),
         }
     }
 }
@@ -830,28 +783,6 @@ impl Default for CorrelationNetworkAnalysis {
             communities: vec![],
             network_density: 0.0,
             clustering_coefficient: 0.0,
-        }
-    }
-}
-
-impl Default for NodeCentralityMeasures {
-    fn default() -> Self {
-        Self {
-            betweenness: vec![],
-            closeness: vec![],
-            eigenvector: vec![],
-            degree: vec![],
-        }
-    }
-}
-
-impl Default for DistributionAnalysisResults {
-    fn default() -> Self {
-        Self {
-            best_fit_distributions: HashMap::new(),
-            distribution_comparisons: vec![],
-            mixture_models: None,
-            normality_assessment: NormalityAssessment::default(),
         }
     }
 }

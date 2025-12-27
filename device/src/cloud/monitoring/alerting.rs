@@ -53,7 +53,7 @@ pub struct AlertCondition {
 }
 
 /// Comparison operators
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComparisonOperator {
     GreaterThan,
     GreaterThanOrEqual,
@@ -76,7 +76,7 @@ pub enum AggregationFunction {
 }
 
 /// Alert severity levels
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Serialize, Deserialize)]
 pub enum AlertSeverity {
     Critical,
     High,
@@ -108,7 +108,7 @@ pub struct SuppressionCondition {
 }
 
 /// Match types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MatchType {
     Exact,
     Pattern,
@@ -117,7 +117,7 @@ pub enum MatchType {
 }
 
 /// Notification channels
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NotificationChannel {
     Email,
     SMS,
@@ -164,7 +164,7 @@ pub struct NotificationTarget {
 }
 
 /// Target types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TargetType {
     User,
     Group,
@@ -182,7 +182,7 @@ pub struct StepCondition {
 }
 
 /// Step condition types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StepConditionType {
     AlertSeverity,
     AlertSource,
@@ -214,7 +214,7 @@ pub struct RepeatCondition {
 }
 
 /// Repeat condition types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RepeatConditionType {
     NoAcknowledgment,
     NoResolution,
@@ -223,7 +223,7 @@ pub enum RepeatConditionType {
 }
 
 /// Alert management configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlertManagementConfig {
     /// Auto-resolution
     pub auto_resolution: AutoResolutionConfig,
@@ -256,7 +256,7 @@ pub struct ResolutionCondition {
 }
 
 /// Resolution condition types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResolutionConditionType {
     MetricBelowThreshold,
     NoNewViolations,
@@ -287,7 +287,7 @@ pub struct GroupingCriterion {
 }
 
 /// Grouping methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GroupingMethod {
     Exact,
     Similar,
@@ -320,7 +320,7 @@ pub struct CorrelationRule {
 }
 
 /// Correlation rule types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CorrelationRuleType {
     Sequence,
     Temporal,
@@ -339,7 +339,7 @@ pub struct CorrelationAction {
 }
 
 /// Correlation action types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CorrelationActionType {
     CreateIncident,
     UpdateSeverity,
@@ -373,7 +373,7 @@ pub struct ArchiveConfig {
 }
 
 /// Archive storage types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArchiveStorageType {
     Local,
     S3,
@@ -393,7 +393,7 @@ pub struct HistoryAnalyticsConfig {
 }
 
 /// Analytics types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AnalyticsType {
     AlertTrends,
     MeanTimeToResolution,
@@ -410,17 +410,6 @@ impl Default for CloudAlertingConfig {
             notification_channels: vec![NotificationChannel::Email],
             escalation_policies: vec![],
             management: AlertManagementConfig::default(),
-        }
-    }
-}
-
-impl Default for AlertManagementConfig {
-    fn default() -> Self {
-        Self {
-            auto_resolution: AutoResolutionConfig::default(),
-            grouping: AlertGroupingConfig::default(),
-            correlation: AlertCorrelationConfig::default(),
-            history: AlertHistoryConfig::default(),
         }
     }
 }

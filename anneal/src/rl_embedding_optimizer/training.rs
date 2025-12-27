@@ -6,9 +6,12 @@ use scirs2_core::random::{Rng, SeedableRng};
 use std::time::Instant;
 
 use super::error::{RLEmbeddingError, RLEmbeddingResult};
-use super::networks::*;
+use super::networks::{EmbeddingDQN, EmbeddingPolicyNetwork};
 use super::state_action::StateActionProcessor;
-use super::types::*;
+use super::types::{
+    EmbeddingAction, EmbeddingExperience, EmbeddingState, ExplorationConfig, RLEmbeddingConfig,
+    RLTrainingStats,
+};
 
 /// RL training manager
 pub struct TrainingManager;
@@ -49,8 +52,8 @@ impl TrainingManager {
             let max_next_q = next_q_values
                 .iter()
                 .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-            let target_q = experience.reward
-                + discount_factor * max_next_q * if experience.done { 0.0 } else { 1.0 };
+            let target_q = (discount_factor * max_next_q)
+                .mul_add(if experience.done { 0.0 } else { 1.0 }, experience.reward);
 
             // For simplicity, assume action maps to index 0
             let prediction_error = target_q - current_q_values.get(0).unwrap_or(&0.0);
@@ -101,6 +104,7 @@ impl TrainingManager {
     }
 
     /// Get current exploration epsilon
+    #[must_use]
     pub fn get_current_epsilon(
         training_stats: &RLTrainingStats,
         exploration_config: &ExplorationConfig,
@@ -112,8 +116,10 @@ impl TrainingManager {
             exploration_config.final_epsilon
         } else {
             let decay_ratio = steps_done as f64 / epsilon_decay_steps as f64;
-            exploration_config.initial_epsilon * (1.0 - decay_ratio)
-                + exploration_config.final_epsilon * decay_ratio
+            exploration_config.initial_epsilon.mul_add(
+                1.0 - decay_ratio,
+                exploration_config.final_epsilon * decay_ratio,
+            )
         }
     }
 
@@ -152,9 +158,8 @@ impl TrainingManager {
             let best_action_idx = q_values
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .map(|(idx, _)| idx)
-                .unwrap_or(0);
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map_or(0, |(idx, _)| idx);
 
             Ok(EmbeddingAction::Discrete(
                 StateActionProcessor::action_index_to_action(best_action_idx, state)?,
@@ -171,7 +176,7 @@ impl TrainingManager {
         config: &RLEmbeddingConfig,
         num_epochs: usize,
     ) -> RLEmbeddingResult<()> {
-        println!("Training RL embedding optimizer for {} epochs", num_epochs);
+        println!("Training RL embedding optimizer for {num_epochs} epochs");
 
         for epoch in 0..num_epochs {
             if experience_buffer.len() < config.batch_size {
@@ -207,8 +212,7 @@ impl TrainingManager {
 
             if epoch % 100 == 0 {
                 println!(
-                    "Epoch {}: DQN Loss = {:.6}, Policy Loss = {:.6}, Time = {:?}",
-                    epoch, dqn_loss, policy_loss, epoch_time
+                    "Epoch {epoch}: DQN Loss = {dqn_loss:.6}, Policy Loss = {policy_loss:.6}, Time = {epoch_time:?}"
                 );
             }
         }

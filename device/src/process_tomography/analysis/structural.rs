@@ -355,10 +355,8 @@ impl SciRS2ProcessTomographer {
                         let row = i * dim + j;
                         let col = k * dim + l;
 
-                        if row < coherence_dim && col < coherence_dim {
-                            if i != k || j != l {
-                                coherence_matrix[[row, col]] = process_matrix[[i, j, k, l]].norm();
-                            }
+                        if row < coherence_dim && col < coherence_dim && (i != k || j != l) {
+                            coherence_matrix[[row, col]] = process_matrix[[i, j, k, l]].norm();
                         }
                     }
                 }

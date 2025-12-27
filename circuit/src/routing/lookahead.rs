@@ -159,7 +159,8 @@ impl LookaheadRouter {
         // Use a greedy approach to map high-interaction qubits to well-connected physical qubits
         let mut used_physical = HashSet::new();
         let mut logical_priorities = self.calculate_logical_priorities(&interaction_graph);
-        logical_priorities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        logical_priorities
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         for (logical, _priority) in logical_priorities {
             let best_physical = self.find_best_physical_qubit(
@@ -178,9 +179,8 @@ impl LookaheadRouter {
         for &logical in &logical_qubits {
             if !mapping.contains_key(&logical) {
                 for physical in 0..self.coupling_map.num_qubits() {
-                    if !used_physical.contains(&physical) {
+                    if used_physical.insert(physical) {
                         mapping.insert(logical, physical);
-                        used_physical.insert(physical);
                         break;
                     }
                 }
@@ -575,13 +575,15 @@ mod tests {
         let router = LookaheadRouter::new(coupling_map, config);
 
         let mut circuit = Circuit::<4>::new();
-        circuit.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("add H gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(3),
             })
-            .unwrap();
+            .expect("add CNOT gate to circuit");
 
         let result = router.route(&circuit);
         assert!(result.is_ok());
@@ -599,13 +601,13 @@ mod tests {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add first CNOT gate to circuit");
         circuit
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("add second CNOT gate to circuit");
 
         let dag = circuit_to_dag(&circuit);
         let graph = router.build_interaction_graph(&dag);

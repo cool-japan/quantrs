@@ -193,9 +193,11 @@ impl<'a> Lexer<'a> {
             } else if ch == 'e' || ch == 'E' {
                 result.push(ch);
                 self.advance();
-                if self.current == Some('+') || self.current == Some('-') {
-                    result.push(self.current.unwrap());
-                    self.advance();
+                if let Some(sign_ch) = self.current {
+                    if sign_ch == '+' || sign_ch == '-' {
+                        result.push(sign_ch);
+                        self.advance();
+                    }
                 }
             } else {
                 break;
@@ -1567,7 +1569,7 @@ measure q -> c;
         let result = parse_qasm3(input);
         assert!(result.is_ok());
 
-        let program = result.unwrap();
+        let program = result.expect("parse_qasm3 should succeed for valid input");
         assert_eq!(program.version, "3.0");
         assert_eq!(program.includes, vec!["stdgates.inc"]);
         assert_eq!(program.declarations.len(), 2);

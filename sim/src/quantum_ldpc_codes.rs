@@ -32,7 +32,7 @@ pub enum LDPCConstructionMethod {
     ProgressiveEdgeGrowth,
     /// Gallager construction
     Gallager,
-    /// MacKay construction
+    /// `MacKay` construction
     MacKay,
     /// Quantum-specific constructions
     QuantumBicycle,
@@ -146,6 +146,7 @@ pub struct CheckNode {
 
 impl VariableNode {
     /// Create new variable node
+    #[must_use]
     pub fn new(id: usize) -> Self {
         Self {
             id,
@@ -162,6 +163,7 @@ impl VariableNode {
     }
 
     /// Compute outgoing message to specific check node
+    #[must_use]
     pub fn compute_outgoing_message(&self, check_id: usize) -> f64 {
         let message_sum: f64 = self
             .incoming_messages
@@ -175,6 +177,7 @@ impl VariableNode {
 
 impl CheckNode {
     /// Create new check node
+    #[must_use]
     pub fn new(id: usize) -> Self {
         Self {
             id,
@@ -185,6 +188,7 @@ impl CheckNode {
     }
 
     /// Compute outgoing message to specific variable node using sum-product
+    #[must_use]
     pub fn compute_outgoing_message_sum_product(&self, var_id: usize) -> f64 {
         let product: f64 = self
             .incoming_messages
@@ -197,6 +201,7 @@ impl CheckNode {
     }
 
     /// Compute outgoing message using min-sum algorithm
+    #[must_use]
     pub fn compute_outgoing_message_min_sum(&self, var_id: usize) -> f64 {
         let other_messages: Vec<f64> = self
             .incoming_messages
@@ -217,7 +222,7 @@ impl CheckNode {
         let min_magnitude = other_messages
             .iter()
             .map(|&msg| msg.abs())
-            .fold(f64::INFINITY, |a, b| a.min(b));
+            .fold(f64::INFINITY, f64::min);
 
         sign_product * min_magnitude
     }
@@ -553,7 +558,7 @@ impl QuantumLDPCCode {
         Self::construct_random_regular(config)
     }
 
-    /// Construct MacKay LDPC code
+    /// Construct `MacKay` LDPC code
     fn construct_mackay(config: &LDPCConfig) -> Result<TannerGraph> {
         // For simplicity, use PEG construction
         // Real MacKay construction would use specific algorithms
@@ -965,7 +970,7 @@ impl QuantumLDPCCode {
                 }
             }
 
-            let success_rate = successes as f64 / num_trials as f64;
+            let success_rate = f64::from(successes) / num_trials as f64;
 
             if success_rate > 0.5 {
                 threshold = f64::midpoint(threshold, max_noise);
@@ -981,6 +986,7 @@ impl QuantumLDPCCode {
     }
 
     /// Get current statistics
+    #[must_use]
     pub const fn get_stats(&self) -> &LDPCStats {
         &self.stats
     }
@@ -991,11 +997,13 @@ impl QuantumLDPCCode {
     }
 
     /// Get code parameters
+    #[must_use]
     pub const fn get_parameters(&self) -> (usize, usize, usize) {
         (self.config.n, self.config.k, self.config.m)
     }
 
     /// Get Tanner graph
+    #[must_use]
     pub const fn get_tanner_graph(&self) -> &TannerGraph {
         &self.tanner_graph
     }
@@ -1099,7 +1107,7 @@ mod tests {
         let tanner_graph = QuantumLDPCCode::construct_random_regular(&config);
         assert!(tanner_graph.is_ok());
 
-        let graph = tanner_graph.unwrap();
+        let graph = tanner_graph.expect("tanner_graph construction should succeed");
         assert_eq!(graph.variable_nodes.len(), 10);
         assert_eq!(graph.check_nodes.len(), 5);
     }
@@ -1142,7 +1150,8 @@ mod tests {
             ..Default::default()
         };
 
-        let mut ldpc_code = QuantumLDPCCode::new(config).unwrap();
+        let mut ldpc_code =
+            QuantumLDPCCode::new(config).expect("LDPC code creation should succeed");
 
         let llrs = vec![1.0, -1.0, 1.0, 1.0, -1.0, 1.0];
         let syndrome = vec![false, true, false];
@@ -1150,7 +1159,7 @@ mod tests {
         let result = ldpc_code.decode_belief_propagation(&llrs, &syndrome);
         assert!(result.is_ok());
 
-        let bp_result = result.unwrap();
+        let bp_result = result.expect("decode_belief_propagation should succeed");
         assert_eq!(bp_result.decoded_bits.len(), 6);
         assert!(bp_result.iterations <= 10);
     }
@@ -1164,7 +1173,7 @@ mod tests {
             ..Default::default()
         };
 
-        let ldpc_code = QuantumLDPCCode::new(config).unwrap();
+        let ldpc_code = QuantumLDPCCode::new(config).expect("LDPC code creation should succeed");
 
         let codeword = vec![false, true, false, true];
         let syndrome = ldpc_code.calculate_syndrome(&codeword);
@@ -1181,11 +1190,11 @@ mod tests {
             ..Default::default()
         };
 
-        let ldpc_code = QuantumLDPCCode::new(config).unwrap();
+        let ldpc_code = QuantumLDPCCode::new(config).expect("LDPC code creation should succeed");
         let circuit = ldpc_code.syndrome_circuit();
 
         assert!(circuit.is_ok());
-        let syndrome_circuit = circuit.unwrap();
+        let syndrome_circuit = circuit.expect("syndrome_circuit should succeed");
         assert_eq!(syndrome_circuit.num_qubits, 9); // 6 data + 3 syndrome
     }
 
@@ -1234,7 +1243,8 @@ mod tests {
             let mut config = base_config.clone();
             config.bp_algorithm = algorithm;
 
-            let mut ldpc_code = QuantumLDPCCode::new(config).unwrap();
+            let mut ldpc_code =
+                QuantumLDPCCode::new(config).expect("LDPC code creation should succeed");
 
             let llrs = vec![1.0, -1.0, 1.0, 1.0, -1.0, 1.0];
             let syndrome = vec![false, true, false];

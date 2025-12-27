@@ -1,8 +1,8 @@
 //! Data and training types for hybrid algorithms
 
-use quantrs2_core::QuantRS2Result;
 use quantrs2_circuit::builder::Circuit;
-use scirs2_core::ndarray::{Array1, Array2, s};
+use quantrs2_core::QuantRS2Result;
+use scirs2_core::ndarray::{s, Array1, Array2};
 use std::collections::HashMap;
 
 /// Training data
@@ -26,9 +26,13 @@ impl TrainingData {
 
     pub fn to_batch(&self) -> DataBatch {
         DataBatch {
-            samples: self.samples.outer_iter().map(|row| DataSample {
-                features: row.to_owned(),
-            }).collect(),
+            samples: self
+                .samples
+                .outer_iter()
+                .map(|row| DataSample {
+                    features: row.to_owned(),
+                })
+                .collect(),
             labels: self.labels.clone(),
         }
     }

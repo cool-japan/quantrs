@@ -462,7 +462,11 @@ impl Sampler for PhotonicIsingMachineSampler {
             .collect();
 
         // Sort by energy
-        results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(results)
     }
@@ -516,8 +520,9 @@ mod tests {
         let sampler = PhotonicIsingMachineSampler::new(PhotonicConfig::default());
 
         // Force calibration by setting last calibration to past
-        sampler.calibration.borrow_mut().last_calibration =
-            std::time::Instant::now() - std::time::Duration::from_secs(120);
+        sampler.calibration.borrow_mut().last_calibration = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(120))
+            .expect("Failed to subtract duration from current time");
 
         // Should trigger calibration
         assert!(sampler.calibrate_if_needed().is_ok());

@@ -188,14 +188,14 @@ impl EquivalenceChecker {
     /// Create a new equivalence checker with custom `SciRS2` configuration
     #[must_use]
     pub fn with_scirs2_config(config: AnalyzerConfig) -> Self {
-        let mut options = EquivalenceOptions::default();
-        options.scirs2_config = Some(config.clone());
-        options.enable_graph_comparison = true;
-
-        let scirs2_analyzer = Some(SciRS2CircuitAnalyzer::with_config(config));
+        let scirs2_analyzer = Some(SciRS2CircuitAnalyzer::with_config(config.clone()));
 
         Self {
-            options,
+            options: EquivalenceOptions {
+                scirs2_config: Some(config),
+                enable_graph_comparison: true,
+                ..Default::default()
+            },
             scirs2_analyzer,
             numerical_cache: HashMap::new(),
         }
@@ -1047,7 +1047,7 @@ impl EquivalenceChecker {
 
     /// Perform comprehensive numerical analysis using `SciRS2` capabilities
     fn perform_scirs2_numerical_analysis(
-        &mut self,
+        &self,
         unitary1: &Array2<Complex64>,
         unitary2: &Array2<Complex64>,
     ) -> QuantRS2Result<NumericalAnalysis> {
@@ -1463,7 +1463,7 @@ impl EquivalenceChecker {
         // Approximate p-value (very simplified)
         let p_value = 2.0 * (1.0 - (t_stat.abs() / (1.0 + t_stat.abs())));
 
-        Ok(p_value.max(0.0).min(1.0))
+        Ok(p_value.clamp(0.0, 1.0))
     }
 }
 
@@ -1504,10 +1504,12 @@ pub fn circuits_scirs2_numerical_equivalent<const N: usize>(
     circuit1: &Circuit<N>,
     circuit2: &Circuit<N>,
 ) -> QuantRS2Result<EquivalenceResult> {
-    let mut options = EquivalenceOptions::default();
-    options.enable_adaptive_tolerance = true;
-    options.enable_statistical_analysis = true;
-    options.enable_stability_analysis = true;
+    let options = EquivalenceOptions {
+        enable_adaptive_tolerance: true,
+        enable_statistical_analysis: true,
+        enable_stability_analysis: true,
+        ..Default::default()
+    };
 
     let mut checker = EquivalenceChecker::new(options);
     checker.check_scirs2_numerical_equivalence(circuit1, circuit2)
@@ -1522,70 +1524,84 @@ mod tests {
     #[test]
     fn test_structural_equivalence() {
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
         circuit1
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
-        circuit2.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit2
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit2");
         circuit2
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(result.equivalent);
     }
 
     #[test]
     fn test_structural_non_equivalence() {
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
         circuit1
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
-        circuit2.add_gate(PauliX { target: QubitId(0) }).unwrap();
+        circuit2
+            .add_gate(PauliX { target: QubitId(0) })
+            .expect("Failed to add PauliX gate to circuit2");
         circuit2
             .add_gate(CNOT {
                 control: QubitId(0),
                 target: QubitId(1),
             })
-            .unwrap();
+            .expect("Failed to add CNOT gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(!result.equivalent);
     }
 
     #[test]
     fn test_different_gate_count() {
         let mut circuit1 = Circuit::<2>::new();
-        circuit1.add_gate(Hadamard { target: QubitId(0) }).unwrap();
+        circuit1
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
-        circuit2.add_gate(Hadamard { target: QubitId(0) }).unwrap();
-        circuit2.add_gate(PauliZ { target: QubitId(0) }).unwrap();
+        circuit2
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("Failed to add Hadamard gate to circuit2");
+        circuit2
+            .add_gate(PauliZ { target: QubitId(0) })
+            .expect("Failed to add PauliZ gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(!result.equivalent);
         assert!(result.details.contains("Different number of gates"));
     }
@@ -1599,7 +1615,7 @@ mod tests {
                 target: QubitId(0),
                 theta: std::f64::consts::PI / 4.0,
             })
-            .unwrap();
+            .expect("Failed to add RotationX gate to circuit1");
 
         let mut circuit2 = Circuit::<1>::new();
         circuit2
@@ -1607,12 +1623,12 @@ mod tests {
                 target: QubitId(0),
                 theta: std::f64::consts::PI / 4.0,
             })
-            .unwrap();
+            .expect("Failed to add RotationX gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(result.equivalent);
     }
 
@@ -1625,7 +1641,7 @@ mod tests {
                 target: QubitId(0),
                 theta: std::f64::consts::PI / 4.0,
             })
-            .unwrap();
+            .expect("Failed to add RotationX gate to circuit1");
 
         let mut circuit2 = Circuit::<1>::new();
         circuit2
@@ -1633,12 +1649,12 @@ mod tests {
                 target: QubitId(0),
                 theta: std::f64::consts::PI / 2.0,
             })
-            .unwrap();
+            .expect("Failed to add RotationX gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(!result.equivalent);
     }
 
@@ -1651,7 +1667,7 @@ mod tests {
                 target: QubitId(0),
                 theta: 1.0,
             })
-            .unwrap();
+            .expect("Failed to add RotationY gate to circuit1");
 
         let mut circuit2 = Circuit::<1>::new();
         circuit2
@@ -1659,12 +1675,12 @@ mod tests {
                 target: QubitId(0),
                 theta: 1.0 + 1e-12, // Within default tolerance
             })
-            .unwrap();
+            .expect("Failed to add RotationY gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(result.equivalent);
     }
 
@@ -1678,7 +1694,7 @@ mod tests {
                 target: QubitId(1),
                 theta: std::f64::consts::PI,
             })
-            .unwrap();
+            .expect("Failed to add CRZ gate to circuit1");
 
         let mut circuit2 = Circuit::<2>::new();
         circuit2
@@ -1687,12 +1703,12 @@ mod tests {
                 target: QubitId(1),
                 theta: std::f64::consts::PI,
             })
-            .unwrap();
+            .expect("Failed to add CRZ gate to circuit2");
 
         let checker = EquivalenceChecker::default();
         let result = checker
             .check_structural_equivalence(&circuit1, &circuit2)
-            .unwrap();
+            .expect("Structural equivalence check failed");
         assert!(result.equivalent);
     }
 }

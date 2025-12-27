@@ -44,7 +44,7 @@ pub enum DecompositionTree {
     Node {
         qubits: Vec<QubitId>,
         method: DecompositionMethod,
-        children: Vec<DecompositionTree>,
+        children: Vec<Self>,
     },
 }
 
@@ -227,7 +227,7 @@ impl MultiQubitKAKDecomposer {
                     DecompositionMethod::BlockDiagonal { block_size } => {
                         self.decompose_block_diagonal(unitary, qubit_ids, block_size, depth)
                     }
-                    _ => unreachable!("Invalid method for n > 2"),
+                    DecompositionMethod::Cartan => unreachable!("Invalid method for n > 2"),
                 }
             }
         }
@@ -265,7 +265,7 @@ impl MultiQubitKAKDecomposer {
         depth: usize,
     ) -> QuantRS2Result<(DecompositionTree, Vec<Box<dyn GateOp>>)> {
         let n = qubit_ids.len();
-        let _size = 1 << n;
+        // let _size = 1 << n;
         let pivot_size = 1 << pivot;
 
         // Split unitary into blocks based on pivot
@@ -405,7 +405,7 @@ impl MultiQubitKAKDecomposer {
         let u1 = identity.clone();
         let v1 = identity.clone();
         let u2 = identity.clone();
-        let v2 = identity.clone();
+        let v2 = identity;
 
         // Sigma would contain the CS angles
         let mut sigma = Array2::zeros((size * 2, size * 2));
@@ -452,7 +452,9 @@ impl MultiQubitKAKDecomposer {
                 } else {
                     // Multi-controlled phase - decompose further
                     // For now, use simple decomposition
-                    let target = qubit_ids[control_pattern.pop().unwrap()];
+                    // Note: control_pattern.len() >= 2 at this point, so pop is safe
+                    let target_idx = control_pattern.pop().unwrap_or(0);
+                    let target = qubit_ids[target_idx];
                     for &control_idx in &control_pattern {
                         gates.push(Box::new(CNOT {
                             control: qubit_ids[control_idx],
@@ -553,22 +555,21 @@ impl MultiQubitKAKDecomposer {
     /// Count CNOTs for different gate types
     fn count_cnots(&self, gate_name: &str) -> usize {
         match gate_name {
-            "CNOT" => 1,
-            "CZ" => 1,   // CZ = H·CNOT·H
-            "SWAP" => 3, // SWAP uses 3 CNOTs
+            "CNOT" | "CZ" => 1, // CZ = H·CNOT·H
+            "SWAP" => 3,        // SWAP uses 3 CNOTs
             _ => 0,
         }
     }
 
     /// Check cache for existing decomposition
-    fn check_cache(&self, _unitary: &Array2<Complex<f64>>) -> Option<&MultiQubitKAK> {
+    const fn check_cache(&self, _unitary: &Array2<Complex<f64>>) -> Option<&MultiQubitKAK> {
         // Simple hash based on first few elements
         // Real implementation would use better hashing
         None
     }
 
     /// Cache decomposition result
-    fn cache_result(&self, _unitary: &Array2<Complex<f64>>, _result: &MultiQubitKAK) {
+    const fn cache_result(&self, _unitary: &Array2<Complex<f64>>, _result: &MultiQubitKAK) {
         // Cache implementation
     }
 }
@@ -692,11 +693,13 @@ mod tests {
                 Complex::new(-1.0, 0.0),
             ],
         )
-        .unwrap()
+        .expect("Failed to create Hadamard matrix")
             / Complex::new(2.0_f64.sqrt(), 0.0);
 
         let qubit_ids = vec![QubitId(0)];
-        let decomp = decomposer.decompose(&h, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&h, &qubit_ids)
+            .expect("Single-qubit KAK decomposition failed");
 
         assert!(decomp.single_qubit_count <= 3);
         assert_eq!(decomp.cnot_count, 0);
@@ -737,10 +740,12 @@ mod tests {
                 Complex::new(0.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Failed to create CNOT matrix");
 
         let qubit_ids = vec![QubitId(0), QubitId(1)];
-        let decomp = decomposer.decompose(&cnot, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&cnot, &qubit_ids)
+            .expect("Two-qubit KAK decomposition failed");
 
         assert!(decomp.cnot_count <= 1);
 
@@ -763,7 +768,9 @@ mod tests {
         let identity_complex = identity.mapv(|x| Complex::new(x, 0.0));
 
         let qubit_ids = vec![QubitId(0), QubitId(1), QubitId(2)];
-        let decomp = decomposer.decompose(&identity_complex, &qubit_ids).unwrap();
+        let decomp = decomposer
+            .decompose(&identity_complex, &qubit_ids)
+            .expect("Three-qubit KAK decomposition failed");
 
         // Identity should result in empty circuit
         assert_eq!(decomp.gates.len(), 0);

@@ -389,8 +389,8 @@ impl HyperparameterOptimizer {
         let (best_idx, &best_score) = y_data
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .ok_or_else(|| "No optimization trials completed".to_string())?;
 
         let best_params = self.array_to_params(&x_data[best_idx])?;
 
@@ -683,7 +683,11 @@ impl EnsembleSampler {
             })
             .collect();
 
-        final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        final_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(final_results)
     }
@@ -769,7 +773,11 @@ impl EnsembleSampler {
 
             // Merge results
             current_best.extend(refined);
-            current_best.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+            current_best.sort_by(|a, b| {
+                a.energy
+                    .partial_cmp(&b.energy)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             current_best.truncate(shots);
         }
 
@@ -832,7 +840,11 @@ impl EnsembleSampler {
             })
             .collect();
 
-        final_results.sort_by(|a, b| a.energy.partial_cmp(&b.energy).unwrap());
+        final_results.sort_by(|a, b| {
+            a.energy
+                .partial_cmp(&b.energy)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(final_results)
     }
@@ -911,7 +923,10 @@ impl<S: Sampler> AdaptiveSampler<S> {
 
     /// Adapt parameters based on performance
     fn adapt_parameters(&self) -> HashMap<String, f64> {
-        let history = self.history.lock().unwrap();
+        let history = self
+            .history
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         match &self.strategy {
             AdaptationStrategy::TemperatureAdaptive {
@@ -961,7 +976,10 @@ impl<S: Sampler> Sampler for AdaptiveSampler<S> {
 
         // Update history
         if let Some(best) = results.first() {
-            let mut history = self.history.lock().unwrap();
+            let mut history = self
+                .history
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
 
             let improvement = if let Some(&last) = history.energies.last() {
                 (last - best.energy) / last.abs().max(1.0)

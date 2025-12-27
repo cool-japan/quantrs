@@ -30,6 +30,7 @@ pub struct ComprehensiveIntegrationTesting {
 
 impl ComprehensiveIntegrationTesting {
     /// Create a new comprehensive integration testing framework
+    #[must_use]
     pub fn new(config: IntegrationTestConfig) -> Self {
         Self {
             config: config.clone(),
@@ -41,14 +42,17 @@ impl ComprehensiveIntegrationTesting {
             performance_monitor: Arc::new(Mutex::new(TestPerformanceMonitor::new())),
             report_generator: Arc::new(Mutex::new(TestReportGenerator::new())),
             environment_manager: Arc::new(Mutex::new(TestEnvironmentManager::new(
-                config.environment_config.clone(),
+                config.environment_config,
             ))),
         }
     }
 
     /// Register a test case
     pub fn register_test_case(&self, test_case: IntegrationTestCase) -> Result<(), String> {
-        let mut registry = self.test_registry.write().unwrap();
+        let mut registry = self
+            .test_registry
+            .write()
+            .map_err(|e| format!("failed to acquire write lock on test registry: {}", e))?;
         registry.register_test_case(test_case)
     }
 
@@ -56,12 +60,18 @@ impl ComprehensiveIntegrationTesting {
     pub async fn execute_all_tests(
         &self,
     ) -> Result<Vec<super::results::IntegrationTestResult>, String> {
-        let registry = self.test_registry.read().unwrap();
+        let registry = self
+            .test_registry
+            .read()
+            .map_err(|e| format!("failed to acquire read lock on test registry: {}", e))?;
         let test_cases: Vec<_> = registry.test_cases.values().cloned().collect();
         drop(registry);
 
         let mut results = Vec::new();
-        let mut engine = self.execution_engine.lock().unwrap();
+        let mut engine = self
+            .execution_engine
+            .lock()
+            .map_err(|e| format!("failed to acquire lock on execution engine: {}", e))?;
 
         for test_case in test_cases {
             let request = super::execution::TestExecutionRequest {
@@ -87,7 +97,7 @@ impl ComprehensiveIntegrationTesting {
                     results.push(exec_result.result);
                 }
                 Err(e) => {
-                    return Err(format!("Failed to execute test: {}", e));
+                    return Err(format!("Failed to execute test: {e}"));
                 }
             }
         }
@@ -100,22 +110,31 @@ impl ComprehensiveIntegrationTesting {
         &self,
         suite_name: &str,
     ) -> Result<super::results::IntegrationTestResult, String> {
-        let registry = self.test_registry.read().unwrap();
+        let registry = self
+            .test_registry
+            .read()
+            .map_err(|e| format!("failed to acquire read lock on test registry: {}", e))?;
         let suite = registry
             .test_suites
             .get(suite_name)
-            .ok_or_else(|| format!("Test suite '{}' not found", suite_name))?
+            .ok_or_else(|| format!("Test suite '{suite_name}' not found"))?
             .clone();
         drop(registry);
 
         // Execute all test cases in the suite
-        let mut engine = self.execution_engine.lock().unwrap();
-        let registry = self.test_registry.read().unwrap();
+        let mut engine = self
+            .execution_engine
+            .lock()
+            .map_err(|e| format!("failed to acquire lock on execution engine: {}", e))?;
+        let registry = self
+            .test_registry
+            .read()
+            .map_err(|e| format!("failed to acquire read lock on test registry: {}", e))?;
 
         for test_case_id in &suite.test_cases {
             if let Some(test_case) = registry.test_cases.get(test_case_id) {
                 let request = super::execution::TestExecutionRequest {
-                    id: format!("exec_{}_{}", suite_name, test_case_id),
+                    id: format!("exec_{suite_name}_{test_case_id}"),
                     test_case: test_case.clone(),
                     priority: super::scenarios::TestPriority::Normal,
                     requested_time: std::time::SystemTime::now(),
@@ -166,7 +185,10 @@ impl ComprehensiveIntegrationTesting {
 
     /// Generate comprehensive test report
     pub fn generate_report(&self) -> Result<String, String> {
-        let storage = self.result_storage.lock().unwrap();
+        let storage = self
+            .result_storage
+            .lock()
+            .map_err(|e| format!("failed to acquire lock on result storage: {}", e))?;
         let stats = storage.get_statistics();
 
         let report = format!(
@@ -195,6 +217,7 @@ pub struct TestEnvironmentManager {
 }
 
 impl TestEnvironmentManager {
+    #[must_use]
     pub fn new(config: super::config::TestEnvironmentConfig) -> Self {
         Self {
             config,
@@ -205,7 +228,7 @@ impl TestEnvironmentManager {
     /// Create a new test environment
     pub fn create_environment(&mut self, id: String) -> Result<(), String> {
         if self.active_environments.contains_key(&id) {
-            return Err(format!("Environment {} already exists", id));
+            return Err(format!("Environment {id} already exists"));
         }
 
         let environment = TestEnvironment {
@@ -219,6 +242,7 @@ impl TestEnvironmentManager {
     }
 
     /// Get an environment by ID
+    #[must_use]
     pub fn get_environment(&self, id: &str) -> Option<&TestEnvironment> {
         self.active_environments.get(id)
     }
@@ -227,11 +251,12 @@ impl TestEnvironmentManager {
     pub fn destroy_environment(&mut self, id: &str) -> Result<(), String> {
         self.active_environments
             .remove(id)
-            .ok_or_else(|| format!("Environment {} not found", id))?;
+            .ok_or_else(|| format!("Environment {id} not found"))?;
         Ok(())
     }
 
     /// List all active environments
+    #[must_use]
     pub fn list_environments(&self) -> Vec<&TestEnvironment> {
         self.active_environments.values().collect()
     }
@@ -245,12 +270,13 @@ impl TestEnvironmentManager {
         let env = self
             .active_environments
             .get_mut(id)
-            .ok_or_else(|| format!("Environment {} not found", id))?;
+            .ok_or_else(|| format!("Environment {id} not found"))?;
         env.status = status;
         Ok(())
     }
 
     /// Get count of active environments
+    #[must_use]
     pub fn active_count(&self) -> usize {
         self.active_environments.len()
     }
@@ -273,7 +299,7 @@ pub struct TestEnvironment {
 }
 
 /// Environment status
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnvironmentStatus {
     Initializing,
     Ready,

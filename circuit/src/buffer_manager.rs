@@ -184,56 +184,78 @@ impl BufferManager {
     /// Allocate an f64 buffer through the global pool
     #[must_use]
     pub fn alloc_f64_buffer(size: usize) -> Vec<f64> {
-        Self::instance().lock().unwrap().get_f64_buffer(size)
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get_f64_buffer(size)
     }
 
     /// Return an f64 buffer to the global pool
     pub fn free_f64_buffer(buffer: Vec<f64>) {
-        Self::instance().lock().unwrap().return_f64_buffer(buffer);
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .return_f64_buffer(buffer);
     }
 
     /// Allocate a complex buffer through the global pool
     #[must_use]
     pub fn alloc_complex_buffer(size: usize) -> Vec<Complex64> {
-        Self::instance().lock().unwrap().get_complex_buffer(size)
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get_complex_buffer(size)
     }
 
     /// Return a complex buffer to the global pool
     pub fn free_complex_buffer(buffer: Vec<Complex64>) {
         Self::instance()
             .lock()
-            .unwrap()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
             .return_complex_buffer(buffer);
     }
 
     /// Allocate a parameter buffer for gate operations
     #[must_use]
     pub fn alloc_parameter_buffer(size: usize) -> Vec<f64> {
-        Self::instance().lock().unwrap().get_parameter_buffer(size)
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get_parameter_buffer(size)
     }
 
     /// Return a parameter buffer to the pool
     pub fn free_parameter_buffer(buffer: Vec<f64>) {
         Self::instance()
             .lock()
-            .unwrap()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
             .return_parameter_buffer(buffer);
     }
 
     /// Get memory usage statistics
     #[must_use]
     pub fn get_memory_stats() -> MemoryStats {
-        Self::instance().lock().unwrap().get_stats().clone()
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get_stats()
+            .clone()
     }
 
     /// Trigger garbage collection to reduce fragmentation
     pub fn collect_garbage() {
-        Self::instance().lock().unwrap().collect_garbage();
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .collect_garbage();
     }
 
     /// Reset memory usage statistics
     pub fn reset_stats() {
-        Self::instance().lock().unwrap().reset_stats();
+        Self::instance()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .reset_stats();
     }
 }
 
@@ -253,19 +275,25 @@ impl ManagedF64Buffer {
 
     /// Get mutable access to the buffer
     pub const fn as_mut(&mut self) -> &mut Vec<f64> {
-        self.buffer.as_mut().unwrap()
+        self.buffer
+            .as_mut()
+            .expect("buffer was already taken or not initialized")
     }
 
     /// Get immutable access to the buffer
     #[must_use]
     pub const fn as_ref(&self) -> &Vec<f64> {
-        self.buffer.as_ref().unwrap()
+        self.buffer
+            .as_ref()
+            .expect("buffer was already taken or not initialized")
     }
 
     /// Take ownership of the buffer (preventing automatic return)
     #[must_use]
     pub fn take(mut self) -> Vec<f64> {
-        self.buffer.take().unwrap()
+        self.buffer
+            .take()
+            .expect("buffer was already taken or not initialized")
     }
 }
 
@@ -291,17 +319,23 @@ impl ManagedComplexBuffer {
     }
 
     pub const fn as_mut(&mut self) -> &mut Vec<Complex64> {
-        self.buffer.as_mut().unwrap()
+        self.buffer
+            .as_mut()
+            .expect("buffer was already taken or not initialized")
     }
 
     #[must_use]
     pub const fn as_ref(&self) -> &Vec<Complex64> {
-        self.buffer.as_ref().unwrap()
+        self.buffer
+            .as_ref()
+            .expect("buffer was already taken or not initialized")
     }
 
     #[must_use]
     pub fn take(mut self) -> Vec<Complex64> {
-        self.buffer.take().unwrap()
+        self.buffer
+            .take()
+            .expect("buffer was already taken or not initialized")
     }
 }
 

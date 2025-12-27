@@ -196,7 +196,7 @@ pub struct ImpactAnalysis {
     pub hardware_compatibility: Vec<(HardwareArchitecture, Compatibility)>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PerformanceImpact {
     Negligible,
     Low,
@@ -332,7 +332,7 @@ impl fmt::Display for LintFindingType {
             Self::NumericalInstability => write!(f, "Numerical Instability"),
             Self::PrecisionLoss => write!(f, "Precision Loss"),
             Self::PhaseAccumulation => write!(f, "Phase Accumulation"),
-            Self::CustomRule(name) => write!(f, "Custom Rule: {}", name),
+            Self::CustomRule(name) => write!(f, "Custom Rule: {name}"),
         }
     }
 }
@@ -581,7 +581,10 @@ impl EnhancedQuantumLinter {
 
         // Update statistics
         {
-            let mut stats = self.statistics.lock().unwrap();
+            let mut stats = self
+                .statistics
+                .lock()
+                .map_err(|e| QuantRS2Error::LockPoisoned(format!("Statistics lock: {e}")))?;
             stats.total_circuits_analyzed += 1;
         }
 
@@ -735,7 +738,7 @@ impl EnhancedQuantumLinter {
                     layer: None,
                     subcircuit: None,
                 },
-                message: format!("Circuit depth {} exceeds recommended threshold", depth),
+                message: format!("Circuit depth {depth} exceeds recommended threshold"),
                 explanation: "Deep circuits are more susceptible to decoherence".to_string(),
                 impact: ImpactAnalysis {
                     performance_impact: PerformanceImpact::High,
@@ -858,7 +861,7 @@ impl EnhancedQuantumLinter {
         for (algo_name, signature) in &self.pattern_database.algorithm_signatures {
             if let Some(match_location) = Self::find_algorithm_signature(circuit, signature) {
                 findings.push(EnhancedLintFinding {
-                    finding_type: LintFindingType::CustomRule(format!("Algorithm: {}", algo_name)),
+                    finding_type: LintFindingType::CustomRule(format!("Algorithm: {algo_name}")),
                     severity: LintSeverity::Info,
                     location: CircuitLocation {
                         gate_indices: match_location,
@@ -923,7 +926,7 @@ impl EnhancedQuantumLinter {
                     layer: None,
                     subcircuit: None,
                 },
-                message: format!("High T-gate count: {}", t_count),
+                message: format!("High T-gate count: {t_count}"),
                 explanation: "T-gates are expensive in fault-tolerant quantum computing"
                     .to_string(),
                 impact: ImpactAnalysis {
@@ -1272,7 +1275,7 @@ impl EnhancedQuantumLinter {
 
     /// Helper methods
     fn are_inverse_gates(gate1: &QuantumGate, gate2: &QuantumGate) -> bool {
-        use GateType::*;
+        use GateType::{H, S, T, X, Y, Z};
 
         if gate1.target_qubits() != gate2.target_qubits() {
             return false;
@@ -1391,7 +1394,7 @@ impl EnhancedQuantumLinter {
     }
 
     fn get_supported_gates(architecture: &HardwareArchitecture) -> HashSet<GateType> {
-        use GateType::*;
+        use GateType::{Rx, Ry, Rz, CNOT, CZ, H, S, T, X, Y, Z};
 
         match architecture {
             HardwareArchitecture::IBMQ => vec![
@@ -1443,7 +1446,7 @@ impl EnhancedQuantumLinter {
     }
 
     fn is_gate_supported(gate_type: &GateType, supported: &HashSet<GateType>) -> bool {
-        use GateType::*;
+        use GateType::{Rx, Ry, Rz};
 
         match gate_type {
             Rx(_) => supported.contains(&Rx("0.0".to_string())),
@@ -1473,7 +1476,7 @@ impl EnhancedQuantumLinter {
                 layer: None,
                 subcircuit: None,
             },
-            message: format!("Pattern '{}' detected", pattern_id),
+            message: format!("Pattern '{pattern_id}' detected"),
             explanation: "This pattern can be optimized".to_string(),
             impact: ImpactAnalysis {
                 performance_impact: PerformanceImpact::Low,
@@ -1494,19 +1497,26 @@ impl EnhancedQuantumLinter {
     }
 
     fn compute_cache_key(&self, circuit: &[QuantumGate]) -> String {
-        format!("{:?}", circuit)
+        format!("{circuit:?}")
     }
 
     fn check_cache(&self, key: &str) -> Option<Vec<EnhancedLintFinding>> {
-        self.cache.lock().unwrap().findings.get(key).cloned()
+        self.cache
+            .lock()
+            .ok()
+            .and_then(|guard| guard.findings.get(key).cloned())
     }
 
     fn update_cache(&self, key: String, findings: Vec<EnhancedLintFinding>) {
-        self.cache.lock().unwrap().findings.insert(key, findings);
+        if let Ok(mut guard) = self.cache.lock() {
+            guard.findings.insert(key, findings);
+        }
     }
 
     fn update_statistics(&self, findings: &[EnhancedLintFinding]) {
-        let mut stats = self.statistics.lock().unwrap();
+        let Ok(mut stats) = self.statistics.lock() else {
+            return;
+        };
 
         stats.total_findings += findings.len();
 
@@ -1527,7 +1537,11 @@ impl EnhancedQuantumLinter {
         findings: Vec<EnhancedLintFinding>,
         analysis_time: std::time::Duration,
     ) -> EnhancedLintingReport {
-        let stats = self.statistics.lock().unwrap();
+        let stats = self
+            .statistics
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_default();
 
         let summary = LintingSummary {
             total_findings: findings.len(),
@@ -1598,7 +1612,7 @@ impl EnhancedQuantumLinter {
             })
             .count();
 
-        100.0 - (performance_findings as f64 * 5.0)
+        (performance_findings as f64).mul_add(-5.0, 100.0)
     }
 
     fn calculate_hardware_score(findings: &[EnhancedLintFinding]) -> f64 {
@@ -1614,7 +1628,7 @@ impl EnhancedQuantumLinter {
             })
             .count();
 
-        100.0 - (hardware_findings as f64 * 10.0)
+        (hardware_findings as f64).mul_add(-10.0, 100.0)
     }
 
     fn calculate_maintainability_score(findings: &[EnhancedLintFinding]) -> f64 {
@@ -1628,7 +1642,7 @@ impl EnhancedQuantumLinter {
             })
             .count();
 
-        100.0 - (maintainability_findings as f64 * 8.0)
+        (maintainability_findings as f64).mul_add(-8.0, 100.0)
     }
 
     fn generate_recommendations(&self, findings: &[EnhancedLintFinding]) -> Vec<String> {
@@ -1641,8 +1655,7 @@ impl EnhancedQuantumLinter {
 
         if critical_count > 0 {
             recommendations.push(format!(
-                "Address {} critical issues before deployment",
-                critical_count
+                "Address {critical_count} critical issues before deployment"
             ));
         }
 
@@ -1721,7 +1734,9 @@ mod tests {
             QuantumGate::new(GateType::X, vec![0], None), // X^2 = I
         ];
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(report
             .findings
             .iter()
@@ -1736,7 +1751,9 @@ mod tests {
             QuantumGate::new(GateType::H, vec![0], None), // Double Hadamard
         ];
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(!report.findings.is_empty());
     }
 
@@ -1753,7 +1770,9 @@ mod tests {
             gates.push(QuantumGate::new(GateType::T, vec![i % 5], None));
         }
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(report.findings.iter().any(|f|
             matches!(f.finding_type, LintFindingType::CustomRule(ref s) if s.contains("T-count"))
         ));
@@ -1777,7 +1796,9 @@ mod tests {
             ),
         ];
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(report
             .findings
             .iter()
@@ -1818,7 +1839,9 @@ mod tests {
             QuantumGate::new(GateType::X, vec![0], None),
         ];
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(report.findings.iter().any(|f|
             matches!(f.finding_type, LintFindingType::CustomRule(ref s) if s.contains("No X after Z"))
         ));
@@ -1832,7 +1855,9 @@ mod tests {
             QuantumGate::new(GateType::CNOT, vec![0, 1], None),
         ];
 
-        let report = linter.lint_circuit(&gates, None).unwrap();
+        let report = linter
+            .lint_circuit(&gates, None)
+            .expect("Failed to lint circuit");
         assert!(report.metrics.circuit_quality_score > 0.0);
         assert!(report.metrics.performance_score > 0.0);
         assert!(report.metrics.hardware_readiness_score > 0.0);

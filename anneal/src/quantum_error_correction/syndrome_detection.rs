@@ -73,7 +73,7 @@ pub struct NoiseModel {
 }
 
 /// Decoding algorithms for error correction
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodingAlgorithm {
     /// Minimum weight perfect matching
     MinimumWeight,
@@ -114,7 +114,7 @@ pub struct PauliCorrection {
 }
 
 /// Pauli operation types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PauliType {
     I, // Identity
     X, // Pauli-X
@@ -239,7 +239,7 @@ impl SyndromeDetector {
         let confidence = self.calculate_detection_confidence(&syndrome, &error_locations)?;
 
         // Update statistics
-        self.update_detection_stats(&syndrome, &correction, start_time.elapsed());
+        self.update_detection_stats(&syndrome, correction.as_ref(), start_time.elapsed());
 
         let metadata = SyndromeMetadata {
             detection_time: start_time.elapsed(),
@@ -306,8 +306,7 @@ impl SyndromeDetector {
             ErrorCorrectionCode::SteaneCode => Self::generate_steane_code_stabilizers(parameters),
             ErrorCorrectionCode::ShorCode => Self::generate_shor_code_stabilizers(parameters),
             _ => Err(QuantumErrorCorrectionError::CodeError(format!(
-                "Stabilizer generation not implemented for code: {:?}",
-                code
+                "Stabilizer generation not implemented for code: {code:?}"
             ))),
         }
     }
@@ -455,7 +454,7 @@ impl SyndromeDetector {
     ) -> QECResult<Array2<u8>> {
         // For most stabilizer codes, parity check matrix is derived from stabilizers
         let stabilizers = Self::generate_stabilizers(code, parameters)?;
-        Ok(stabilizers.clone()) // Simplified - in practice would extract proper parity check
+        Ok(stabilizers) // Simplified - in practice would extract proper parity check
     }
 
     /// Build correction lookup table
@@ -566,7 +565,7 @@ impl SyndromeDetector {
             // In a real implementation, this would measure the stabilizer
             // For simulation, we'll generate syndrome based on noise model
             let error_prob = self.config.noise_model.measurement_error_rate;
-            syndrome[i] = if rng.gen::<f64>() < error_prob { 1 } else { 0 };
+            syndrome[i] = u8::from(rng.gen::<f64>() < error_prob);
         }
 
         Ok(syndrome)
@@ -627,14 +626,14 @@ impl SyndromeDetector {
 
     /// Estimate noise level from syndrome
     fn estimate_noise_level(&self, syndrome: &[u8]) -> f64 {
-        let syndrome_weight = syndrome.iter().map(|&b| b as f64).sum::<f64>();
+        let syndrome_weight = syndrome.iter().map(|&b| f64::from(b)).sum::<f64>();
         syndrome_weight / syndrome.len() as f64
     }
 
     /// Apply Pauli correction to state
     fn apply_pauli_correction(
         &self,
-        state: &mut QuantumState,
+        state: &QuantumState,
         correction: &PauliCorrection,
     ) -> QECResult<()> {
         // This would apply the actual Pauli operation in a real implementation
@@ -650,7 +649,7 @@ impl SyndromeDetector {
     fn update_detection_stats(
         &mut self,
         syndrome: &[u8],
-        correction: &Option<CorrectionOperation>,
+        correction: Option<&CorrectionOperation>,
         detection_time: Duration,
     ) {
         self.detection_stats.total_measurements += 1;
@@ -669,8 +668,8 @@ impl SyndromeDetector {
         let record = SyndromeRecord {
             timestamp: Instant::now(),
             syndrome: syndrome.to_vec(),
-            error_locations: correction.as_ref().map(|c| self.extract_error_locations(c)),
-            correction_applied: correction.clone(),
+            error_locations: correction.map(|c| self.extract_error_locations(c)),
+            correction_applied: correction.cloned(),
             confidence: 0.8, // Would be calculated properly
         };
 
@@ -719,7 +718,8 @@ impl SyndromeDetector {
 
 impl CorrectionOperation {
     /// Create identity correction (no operation)
-    pub fn identity() -> Self {
+    #[must_use]
+    pub const fn identity() -> Self {
         Self {
             pauli_corrections: Vec::new(),
             confidence: 1.0,
@@ -736,7 +736,8 @@ impl CorrectionOperation {
 
 impl DetectionStatistics {
     /// Create new detection statistics
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             total_measurements: 0,
             errors_detected: 0,
@@ -749,6 +750,7 @@ impl DetectionStatistics {
     }
 
     /// Get error detection rate
+    #[must_use]
     pub fn error_detection_rate(&self) -> f64 {
         if self.total_measurements == 0 {
             0.0
@@ -758,6 +760,7 @@ impl DetectionStatistics {
     }
 
     /// Get correction success rate
+    #[must_use]
     pub fn correction_success_rate(&self) -> f64 {
         let total_corrections = self.successful_corrections + self.failed_corrections;
         if total_corrections == 0 {
@@ -826,8 +829,8 @@ mod tests {
             threshold_probability: 0.1,
         };
 
-        let stabilizers =
-            SyndromeDetector::generate_repetition_code_stabilizers(&parameters).unwrap();
+        let stabilizers = SyndromeDetector::generate_repetition_code_stabilizers(&parameters)
+            .expect("should generate repetition code stabilizers");
         assert_eq!(stabilizers.nrows(), 2); // n-1 stabilizers
         assert_eq!(stabilizers.ncols(), 6); // 2n columns (X and Z parts)
     }
@@ -855,7 +858,8 @@ mod tests {
 
         let syndrome = vec![1, 0];
         let correction =
-            SyndromeDetector::compute_minimum_weight_correction(&syndrome, &parameters).unwrap();
+            SyndromeDetector::compute_minimum_weight_correction(&syndrome, &parameters)
+                .expect("should compute minimum weight correction");
         assert_eq!(correction.pauli_corrections.len(), 1);
         assert_eq!(correction.pauli_corrections[0].qubit, 0);
     }
@@ -872,6 +876,7 @@ mod tests {
         };
         let config = SyndromeDetectorConfig::default();
 
-        SyndromeDetector::new(code, parameters, config).unwrap()
+        SyndromeDetector::new(code, parameters, config)
+            .expect("should create syndrome detector for testing")
     }
 }

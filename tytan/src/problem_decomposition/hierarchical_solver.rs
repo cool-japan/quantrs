@@ -528,17 +528,17 @@ mod tests {
                 1.0, 0.5, 0.1, 0.0, 0.5, 1.0, 0.0, 0.1, 0.1, 0.0, 1.0, 0.5, 0.0, 0.1, 0.5, 1.0,
             ],
         )
-        .unwrap();
+        .expect("QUBO matrix construction should succeed");
 
         let mut var_map = HashMap::new();
         for i in 0..4 {
-            var_map.insert(format!("x{}", i), i);
+            var_map.insert(format!("x{i}"), i);
         }
 
         let hierarchy = solver.build_hierarchy(&qubo, &var_map);
         assert!(hierarchy.is_ok());
 
-        let h = hierarchy.unwrap();
+        let h = hierarchy.expect("Hierarchy building should succeed");
         assert!(!h.levels.is_empty());
         assert_eq!(h.levels[0].size, 4); // Finest level should have 4 variables
     }

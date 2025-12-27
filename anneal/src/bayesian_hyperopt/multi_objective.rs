@@ -28,7 +28,7 @@ impl Default for MultiObjectiveConfig {
 }
 
 /// Scalarization methods for multi-objective optimization
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScalarizationMethod {
     /// Weighted sum approach
     WeightedSum,
@@ -43,7 +43,7 @@ pub enum ScalarizationMethod {
 }
 
 /// Pareto front approximation methods
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParetoApproximationMethod {
     /// Non-dominated sorting
     NonDominatedSorting,

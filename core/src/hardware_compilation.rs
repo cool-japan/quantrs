@@ -741,8 +741,7 @@ impl HardwareCompiler {
 
             if let Some(neighbors) = self.config.topology.connectivity.get(&current) {
                 for &neighbor in neighbors {
-                    if !visited.contains(&neighbor) {
-                        visited.insert(neighbor);
+                    if visited.insert(neighbor) {
                         parent.insert(neighbor, current);
                         queue.push_back(neighbor);
                     }
@@ -751,14 +750,16 @@ impl HardwareCompiler {
         }
 
         Err(QuantRS2Error::InvalidParameter(format!(
-            "No path found between qubits {:?} and {:?}",
-            start, end
+            "No path found between qubits {start:?} and {end:?}"
         )))
     }
 
     /// Optimize compiled gates for the target platform
     fn optimize_for_platform(&self, gates: &[CompiledGate]) -> QuantRS2Result<Vec<CompiledGate>> {
-        let engine = self.optimization_engine.read().unwrap();
+        let engine = self
+            .optimization_engine
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Lock poisoned: {e}")))?;
 
         if let Some(optimizer) = engine.optimizers.get(&self.config.platform) {
             let optimized = optimizer.optimize_sequence(gates, &self.config)?;
@@ -856,13 +857,11 @@ impl HardwareCompiler {
             .unwrap_or(Duration::from_nanos(100)) // Default 100ns
     }
 
-    fn get_native_two_qubit_gate(&self) -> NativeGateType {
+    const fn get_native_two_qubit_gate(&self) -> NativeGateType {
         match self.config.platform {
-            HardwarePlatform::Superconducting => NativeGateType::CNOT,
             HardwarePlatform::TrappedIon => NativeGateType::MS,
-            HardwarePlatform::Photonic => NativeGateType::CZ,
-            HardwarePlatform::NeutralAtom => NativeGateType::CZ,
-            _ => NativeGateType::CNOT,
+            HardwarePlatform::Photonic | HardwarePlatform::NeutralAtom => NativeGateType::CZ,
+            HardwarePlatform::Superconducting | _ => NativeGateType::CNOT,
         }
     }
 
@@ -872,7 +871,7 @@ impl HardwareCompiler {
     }
 
     /// Utility methods for other decompositions and optimizations
-    fn find_native_single_qubit_gate(
+    const fn find_native_single_qubit_gate(
         &self,
         _matrix: &DenseMatrix,
     ) -> QuantRS2Result<Option<CompiledGate>> {
@@ -881,7 +880,7 @@ impl HardwareCompiler {
         Ok(None)
     }
 
-    fn find_native_two_qubit_gate(
+    const fn find_native_two_qubit_gate(
         &self,
         _matrix: &DenseMatrix,
         _qubit1: QubitId,
@@ -976,12 +975,15 @@ impl HardwareCompiler {
         Ok(vec![])
     }
 
-    fn decompose_to_ms_gates(&self, _matrix: &DenseMatrix) -> QuantRS2Result<Vec<CompiledGate>> {
+    const fn decompose_to_ms_gates(
+        &self,
+        _matrix: &DenseMatrix,
+    ) -> QuantRS2Result<Vec<CompiledGate>> {
         // Decompose to Mølmer-Sørensen gates
         Ok(vec![])
     }
 
-    fn generate_pulse_sequence(
+    const fn generate_pulse_sequence(
         &self,
         gate_type: NativeGateType,
         parameters: &[f64],
@@ -1000,7 +1002,7 @@ impl HardwareCompiler {
         }
     }
 
-    fn generate_superconducting_pulses(
+    const fn generate_superconducting_pulses(
         &self,
         _gate_type: NativeGateType,
         _parameters: &[f64],
@@ -1009,7 +1011,7 @@ impl HardwareCompiler {
         Ok(None)
     }
 
-    fn generate_trapped_ion_pulses(
+    const fn generate_trapped_ion_pulses(
         &self,
         _gate_type: NativeGateType,
         _parameters: &[f64],
@@ -1020,12 +1022,18 @@ impl HardwareCompiler {
 
     // Cache management methods
     fn check_cache(&self, key: &str) -> QuantRS2Result<Option<Vec<CompiledGate>>> {
-        let cache = self.decomposition_cache.read().unwrap();
+        let cache = self
+            .decomposition_cache
+            .read()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Cache lock poisoned: {e}")))?;
         Ok(cache.single_qubit_cache.get(key).cloned())
     }
 
     fn cache_result(&self, key: &str, gates: &[CompiledGate]) -> QuantRS2Result<()> {
-        let mut cache = self.decomposition_cache.write().unwrap();
+        let mut cache = self
+            .decomposition_cache
+            .write()
+            .map_err(|e| QuantRS2Error::RuntimeError(format!("Cache lock poisoned: {e}")))?;
         cache
             .single_qubit_cache
             .insert(key.to_string(), gates.to_vec());
@@ -1034,30 +1042,45 @@ impl HardwareCompiler {
     }
 
     fn record_cache_hit(&self) {
-        let mut cache = self.decomposition_cache.write().unwrap();
-        cache.cache_stats.cache_hits += 1;
-        cache.cache_stats.hit_rate =
-            cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        if let Ok(mut cache) = self.decomposition_cache.write() {
+            cache.cache_stats.cache_hits += 1;
+            cache.cache_stats.hit_rate =
+                cache.cache_stats.cache_hits as f64 / cache.cache_stats.total_requests as f64;
+        }
     }
 
     fn record_cache_miss(&self) {
-        let mut cache = self.decomposition_cache.write().unwrap();
-        cache.cache_stats.cache_misses += 1;
+        if let Ok(mut cache) = self.decomposition_cache.write() {
+            cache.cache_stats.cache_misses += 1;
+        }
     }
 
     fn record_compilation_time(&self, duration: Duration) {
-        let mut monitor = self.performance_monitor.write().unwrap();
-        monitor.compilation_times.push(duration);
+        if let Ok(mut monitor) = self.performance_monitor.write() {
+            monitor.compilation_times.push(duration);
+        }
     }
 
     /// Get compilation performance statistics
     pub fn get_performance_stats(&self) -> CompilationPerformanceStats {
-        let monitor = self.performance_monitor.read().unwrap();
-        let cache = self.decomposition_cache.read().unwrap();
+        let monitor = self
+            .performance_monitor
+            .read()
+            .expect("performance monitor lock poisoned");
+        let cache = self
+            .decomposition_cache
+            .read()
+            .expect("cache lock poisoned");
+
+        let avg_time = if monitor.compilation_times.is_empty() {
+            Duration::ZERO
+        } else {
+            monitor.compilation_times.iter().sum::<Duration>()
+                / monitor.compilation_times.len() as u32
+        };
 
         CompilationPerformanceStats {
-            average_compilation_time: monitor.compilation_times.iter().sum::<Duration>()
-                / monitor.compilation_times.len() as u32,
+            average_compilation_time: avg_time,
             cache_statistics: cache.cache_stats.clone(),
             total_compilations: monitor.compilation_times.len(),
         }
@@ -1115,7 +1138,7 @@ impl HardwareOptimizationEngine {
 }
 
 impl CompilationPerformanceMonitor {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             compilation_times: Vec::new(),
             gate_count_reductions: Vec::new(),
@@ -1130,7 +1153,7 @@ impl CompilationPerformanceMonitor {
 struct SuperconductingOptimizer;
 
 impl SuperconductingOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1189,28 +1212,10 @@ impl SuperconductingOptimizer {
         let mut current_qubit = None;
 
         for gate in gates {
-            match gate.gate_type {
-                NativeGateType::VirtualZ => {
-                    if Some(gate.qubits[0]) == current_qubit {
-                        current_z_angle += gate.parameters[0];
-                    } else {
-                        if let Some(qubit) = current_qubit {
-                            if current_z_angle.abs() > 1e-10 {
-                                optimized.push(CompiledGate {
-                                    gate_type: NativeGateType::VirtualZ,
-                                    qubits: vec![qubit],
-                                    parameters: vec![current_z_angle],
-                                    fidelity: 1.0,
-                                    duration: Duration::from_nanos(0),
-                                    pulse_sequence: None,
-                                });
-                            }
-                        }
-                        current_qubit = Some(gate.qubits[0]);
-                        current_z_angle = gate.parameters[0];
-                    }
-                }
-                _ => {
+            if gate.gate_type == NativeGateType::VirtualZ {
+                if Some(gate.qubits[0]) == current_qubit {
+                    current_z_angle += gate.parameters[0];
+                } else {
                     if let Some(qubit) = current_qubit {
                         if current_z_angle.abs() > 1e-10 {
                             optimized.push(CompiledGate {
@@ -1222,11 +1227,26 @@ impl SuperconductingOptimizer {
                                 pulse_sequence: None,
                             });
                         }
-                        current_qubit = None;
-                        current_z_angle = 0.0;
                     }
-                    optimized.push(gate.clone());
+                    current_qubit = Some(gate.qubits[0]);
+                    current_z_angle = gate.parameters[0];
                 }
+            } else {
+                if let Some(qubit) = current_qubit {
+                    if current_z_angle.abs() > 1e-10 {
+                        optimized.push(CompiledGate {
+                            gate_type: NativeGateType::VirtualZ,
+                            qubits: vec![qubit],
+                            parameters: vec![current_z_angle],
+                            fidelity: 1.0,
+                            duration: Duration::from_nanos(0),
+                            pulse_sequence: None,
+                        });
+                    }
+                    current_qubit = None;
+                    current_z_angle = 0.0;
+                }
+                optimized.push(gate.clone());
             }
         }
 
@@ -1272,7 +1292,7 @@ impl SuperconductingOptimizer {
 struct TrappedIonOptimizer;
 
 impl TrappedIonOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1336,7 +1356,7 @@ impl PlatformOptimizer for TrappedIonOptimizer {
 struct PhotonicOptimizer;
 
 impl PhotonicOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1395,7 +1415,7 @@ impl PlatformOptimizer for PhotonicOptimizer {
 struct NeutralAtomOptimizer;
 
 impl NeutralAtomOptimizer {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self
     }
 }
@@ -1591,7 +1611,7 @@ mod tests {
         let compiler = HardwareCompiler::for_superconducting(topology);
         assert!(compiler.is_ok());
 
-        let compiler = compiler.unwrap();
+        let compiler = compiler.expect("superconducting compiler creation failed");
         assert_eq!(compiler.config.platform, HardwarePlatform::Superconducting);
         assert!(compiler
             .config
@@ -1606,7 +1626,7 @@ mod tests {
         let compiler = HardwareCompiler::for_trapped_ion(topology);
         assert!(compiler.is_ok());
 
-        let compiler = compiler.unwrap();
+        let compiler = compiler.expect("trapped ion compiler creation failed");
         assert_eq!(compiler.config.platform, HardwarePlatform::TrappedIon);
         assert!(compiler
             .config
@@ -1618,40 +1638,42 @@ mod tests {
     #[test]
     fn test_connectivity_check() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Adjacent qubits should be connected
         assert!(compiler
             .check_connectivity(QubitId::new(0), QubitId::new(1))
-            .unwrap());
+            .expect("connectivity check failed"));
         assert!(compiler
             .check_connectivity(QubitId::new(1), QubitId::new(2))
-            .unwrap());
+            .expect("connectivity check failed"));
 
         // Non-adjacent qubits should not be connected
         assert!(!compiler
             .check_connectivity(QubitId::new(0), QubitId::new(2))
-            .unwrap());
+            .expect("connectivity check failed"));
         assert!(!compiler
             .check_connectivity(QubitId::new(0), QubitId::new(3))
-            .unwrap());
+            .expect("connectivity check failed"));
     }
 
     #[test]
     fn test_shortest_path_finding() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Path between adjacent qubits
         let path = compiler
             .find_shortest_path(QubitId::new(0), QubitId::new(1))
-            .unwrap();
+            .expect("path finding failed");
         assert_eq!(path, vec![QubitId::new(0), QubitId::new(1)]);
 
         // Path between distant qubits
         let path = compiler
             .find_shortest_path(QubitId::new(0), QubitId::new(3))
-            .unwrap();
+            .expect("path finding failed");
         assert_eq!(
             path,
             vec![
@@ -1694,7 +1716,9 @@ mod tests {
             },
         ];
 
-        let optimized = optimizer.fuse_virtual_z_gates(&gates).unwrap();
+        let optimized = optimizer
+            .fuse_virtual_z_gates(&gates)
+            .expect("virtual z gate fusion failed");
         assert_eq!(optimized.len(), 2); // Virtual Z gates should be fused
         assert_eq!(optimized[0].gate_type, NativeGateType::VirtualZ);
         assert!((optimized[0].parameters[0] - 0.8).abs() < 1e-10); // 0.5 + 0.3 = 0.8
@@ -1703,7 +1727,8 @@ mod tests {
     #[test]
     fn test_gate_fidelity_calculation() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Virtual Z gates should have perfect fidelity
         assert_eq!(compiler.get_gate_fidelity(NativeGateType::VirtualZ), 1.0);
@@ -1730,7 +1755,8 @@ mod tests {
     #[test]
     fn test_compilation_performance_tracking() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Simulate some compilation times
         compiler.record_compilation_time(Duration::from_millis(10));
@@ -1746,7 +1772,8 @@ mod tests {
     #[test]
     fn test_cache_functionality() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         let test_gates = vec![CompiledGate {
             gate_type: NativeGateType::Rx,
@@ -1759,13 +1786,15 @@ mod tests {
 
         // Cache a result
         let cache_key = "test_gate_0";
-        compiler.cache_result(cache_key, &test_gates).unwrap();
+        compiler
+            .cache_result(cache_key, &test_gates)
+            .expect("cache result failed");
 
         // Retrieve from cache
-        let cached_result = compiler.check_cache(cache_key).unwrap();
+        let cached_result = compiler.check_cache(cache_key).expect("check cache failed");
         assert!(cached_result.is_some());
 
-        let cached_gates = cached_result.unwrap();
+        let cached_gates = cached_result.expect("cached result should be Some");
         assert_eq!(cached_gates.len(), 1);
         assert_eq!(cached_gates[0].gate_type, NativeGateType::Rx);
     }
@@ -1773,7 +1802,8 @@ mod tests {
     #[test]
     fn test_z_rotation_detection() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Create a Z rotation matrix
         let angle = std::f64::consts::PI / 4.0;
@@ -1781,25 +1811,32 @@ mod tests {
         z_matrix[(0, 0)] = Complex64::from_polar(1.0, -angle / 2.0);
         z_matrix[(1, 1)] = Complex64::from_polar(1.0, angle / 2.0);
 
-        let dense_z_matrix = DenseMatrix::new(z_matrix).unwrap();
-        assert!(compiler.is_z_rotation(&dense_z_matrix).unwrap());
+        let dense_z_matrix = DenseMatrix::new(z_matrix).expect("matrix creation failed");
+        assert!(compiler
+            .is_z_rotation(&dense_z_matrix)
+            .expect("z rotation check failed"));
 
-        let extracted_angle = compiler.extract_z_rotation_angle(&dense_z_matrix).unwrap();
+        let extracted_angle = compiler
+            .extract_z_rotation_angle(&dense_z_matrix)
+            .expect("angle extraction failed");
         assert!((extracted_angle - angle).abs() < 1e-10);
     }
 
     #[test]
     fn test_euler_angle_extraction() {
         let topology = create_test_topology();
-        let compiler = HardwareCompiler::for_superconducting(topology).unwrap();
+        let compiler =
+            HardwareCompiler::for_superconducting(topology).expect("compiler creation failed");
 
         // Create identity matrix
         let mut identity = Array2::zeros((2, 2));
         identity[(0, 0)] = Complex64::new(1.0, 0.0);
         identity[(1, 1)] = Complex64::new(1.0, 0.0);
 
-        let dense_identity = DenseMatrix::new(identity).unwrap();
-        let (theta, _phi, _lambda) = compiler.extract_euler_angles(&dense_identity).unwrap();
+        let dense_identity = DenseMatrix::new(identity).expect("matrix creation failed");
+        let (theta, _phi, _lambda) = compiler
+            .extract_euler_angles(&dense_identity)
+            .expect("euler angle extraction failed");
 
         // For identity matrix, theta should be close to 0
         assert!(theta.abs() < 1e-10);

@@ -43,7 +43,7 @@ pub struct QuantumPCA {
 
 impl QuantumPCA {
     /// Create new qPCA instance with data matrix
-    pub fn new(data: Array2<f64>, params: QPCAParams) -> Self {
+    pub const fn new(data: Array2<f64>, params: QPCAParams) -> Self {
         Self {
             params,
             data_matrix: data,
@@ -99,7 +99,7 @@ impl QuantumPCA {
         state: &Array1<Complex64>,
     ) -> Result<f64, QuantRS2Error> {
         let precision = self.params.precision_qubits;
-        let _n = 1 << precision;
+        // let _n = 1 << precision;
 
         // Simulate quantum phase estimation
         // In a real quantum computer, this would use controlled-U operations
@@ -146,7 +146,9 @@ impl QuantumPCA {
             self.compute_density_matrix()?;
         }
 
-        let density = self.density_matrix.as_ref().unwrap();
+        let density = self.density_matrix.as_ref().ok_or_else(|| {
+            QuantRS2Error::UnsupportedOperation("Density matrix not computed".to_string())
+        })?;
         let dim = density.nrows();
 
         // Use quantum phase estimation to find eigenvalues
@@ -166,7 +168,7 @@ impl QuantumPCA {
             eigenvalues[b]
                 .abs()
                 .partial_cmp(&eigenvalues[a].abs())
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Extract filtered eigenvalues and eigenvectors
@@ -308,12 +310,12 @@ impl QuantumPCA {
     }
 
     /// Get eigenvalues
-    pub fn eigenvalues(&self) -> Option<&Array1<f64>> {
+    pub const fn eigenvalues(&self) -> Option<&Array1<f64>> {
         self.eigenvalues.as_ref()
     }
 
     /// Get eigenvectors
-    pub fn eigenvectors(&self) -> Option<&Array2<Complex64>> {
+    pub const fn eigenvectors(&self) -> Option<&Array2<Complex64>> {
         self.eigenvectors.as_ref()
     }
 }
@@ -326,7 +328,7 @@ pub struct DensityMatrixPCA {
 
 impl DensityMatrixPCA {
     /// Create new density matrix PCA
-    pub fn new(params: QPCAParams) -> Self {
+    pub const fn new(params: QPCAParams) -> Self {
         Self {
             params,
             trace_threshold: 0.95, // Capture 95% of trace
@@ -386,19 +388,22 @@ mod tests {
                 1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0, 4.0, 8.0, 12.0, 5.0, 10.0, 15.0,
             ],
         )
-        .unwrap();
+        .expect("Failed to create test data array");
 
         let params = QPCAParams::default();
         let mut qpca = QuantumPCA::new(data.clone(), params);
 
         // Compute density matrix
-        let density = qpca.compute_density_matrix().unwrap();
+        let density = qpca
+            .compute_density_matrix()
+            .expect("Failed to compute density matrix");
         assert_eq!(density.shape(), &[3, 3]);
 
         // Extract components
-        qpca.extract_components().unwrap();
+        qpca.extract_components()
+            .expect("Failed to extract components");
 
-        let eigenvalues = qpca.eigenvalues().unwrap();
+        let eigenvalues = qpca.eigenvalues().expect("No eigenvalues computed");
         assert!(!eigenvalues.is_empty());
 
         // Check that eigenvalues are sorted in descending order
@@ -421,7 +426,7 @@ mod tests {
         let params = QPCAParams::default();
         let pca = DensityMatrixPCA::new(params);
 
-        let (transformed, variance) = pca.fit_transform(&data).unwrap();
+        let (transformed, variance) = pca.fit_transform(&data).expect("Failed to fit transform");
 
         // Should retain at least one component
         assert!(transformed.ncols() >= 1);

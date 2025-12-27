@@ -45,7 +45,7 @@ pub trait GateOp: Debug + Send + Sync {
 
 /// Implement Clone for `Box<dyn GateOp>`
 impl Clone for Box<dyn GateOp> {
-    fn clone(&self) -> Box<dyn GateOp> {
+    fn clone(&self) -> Self {
         self.clone_gate()
     }
 }

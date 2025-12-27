@@ -146,8 +146,15 @@ impl PerformanceReport {
             return Err("No benchmark results to analyze".into());
         }
 
-        let start_time = results.first().unwrap().timestamp;
-        let end_time = results.last().unwrap().timestamp;
+        // Safe to use expect() here since we verified results.is_empty() == false above
+        let start_time = results
+            .first()
+            .expect("results guaranteed non-empty after is_empty check")
+            .timestamp;
+        let end_time = results
+            .last()
+            .expect("results guaranteed non-empty after is_empty check")
+            .timestamp;
         let total_duration = end_time
             .duration_since(start_time)
             .unwrap_or(std::time::Duration::ZERO);
@@ -226,13 +233,13 @@ impl PerformanceReport {
 
         let most_efficient_backend = backend_efficiency
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(k, _)| k.clone())
             .unwrap_or_default();
 
         let most_efficient_sampler = sampler_efficiency
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(k, _)| k.clone())
             .unwrap_or_default();
 
@@ -298,7 +305,7 @@ impl PerformanceReport {
                     let avg_perf = perfs.iter().sum::<f64>() / perfs.len() as f64;
                     (*size, avg_perf)
                 })
-                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map_or(0, |(size, _)| size);
 
             // Calculate efficiency by size
@@ -455,7 +462,7 @@ impl PerformanceReport {
         }
 
         let mut optimal_sizes: Vec<(usize, f64)> = size_efficiencies.into_iter().collect();
-        optimal_sizes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        optimal_sizes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         let optimal_problem_sizes: Vec<usize> = optimal_sizes
             .into_iter()
             .take(3)
@@ -567,7 +574,8 @@ impl PerformanceReport {
 
         // Efficiency ranking
         let mut efficiency_ranking: Vec<(String, f64)> = efficiency_scores.into_iter().collect();
-        efficiency_ranking.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        efficiency_ranking
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Calculate Pareto frontier
         let mut pareto_points: Vec<ParetoPoint> = Vec::new();

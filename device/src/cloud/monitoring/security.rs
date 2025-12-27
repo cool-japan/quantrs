@@ -19,7 +19,7 @@ pub struct CloudSecurityMonitoringConfig {
 }
 
 /// Security events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityEvent {
     UnauthorizedAccess,
     SuspiciousActivity,
@@ -46,7 +46,7 @@ pub struct ThreatDetectionConfig {
 }
 
 /// Threat detection methods
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThreatDetectionMethod {
     SignatureBased,
     BehaviorBased,
@@ -70,7 +70,7 @@ pub struct ThreatResponsePolicy {
 }
 
 /// Threat types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThreatType {
     Malware,
     Phishing,
@@ -82,7 +82,7 @@ pub enum ThreatType {
 }
 
 /// Threat response actions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThreatResponseAction {
     Alert,
     Block,
@@ -103,7 +103,7 @@ pub struct ThreatEscalationRules {
 }
 
 /// Escalation triggers
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EscalationTrigger {
     ThreatSeverity,
     ResponseTimeout,
@@ -138,7 +138,7 @@ pub struct ThreatIntelligenceConfig {
 }
 
 /// Intelligence sources
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IntelligenceSource {
     Commercial,
     OpenSource,
@@ -171,7 +171,7 @@ pub struct FeedAuthConfig {
 }
 
 /// Authentication types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuthType {
     ApiKey,
     OAuth,
@@ -181,7 +181,7 @@ pub enum AuthType {
 }
 
 /// Incident response configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct IncidentResponseConfig {
     /// Enable automated response
     pub automated: bool,
@@ -214,7 +214,7 @@ pub struct ResponseStep {
 }
 
 /// Response action types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ResponseActionType {
     Notify,
     Execute,
@@ -260,7 +260,7 @@ pub struct EscalationContact {
 }
 
 /// Compliance monitoring configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ComplianceMonitoringConfig {
     /// Enable compliance monitoring
     pub enabled: bool,
@@ -273,7 +273,7 @@ pub struct ComplianceMonitoringConfig {
 }
 
 /// Compliance frameworks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ComplianceFramework {
     SOC2,
     ISO27001,
@@ -296,7 +296,7 @@ pub struct AuditConfig {
 }
 
 /// Audit events
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AuditEvent {
     UserLogin,
     UserLogout,
@@ -319,7 +319,7 @@ pub struct ComplianceReportingConfig {
 }
 
 /// Report types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {
     ComplianceStatus,
     VulnerabilityAssessment,
@@ -366,33 +366,12 @@ impl Default for ThreatIntelligenceConfig {
     }
 }
 
-impl Default for IncidentResponseConfig {
-    fn default() -> Self {
-        Self {
-            automated: false,
-            playbooks: vec![],
-            communication: CommunicationPlan::default(),
-        }
-    }
-}
-
 impl Default for CommunicationPlan {
     fn default() -> Self {
         Self {
             channels: vec!["email".to_string()],
             stakeholders: vec![],
             escalation_matrix: vec![],
-        }
-    }
-}
-
-impl Default for ComplianceMonitoringConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            frameworks: vec![],
-            audit: AuditConfig::default(),
-            reporting: ComplianceReportingConfig::default(),
         }
     }
 }

@@ -35,7 +35,9 @@ fn test_solution_conversion() {
         },
     ];
 
-    let solution_points = analyzer.convert_solutions(&solutions).unwrap();
+    let solution_points = analyzer
+        .convert_solutions(&solutions)
+        .expect("Failed to convert solutions");
     assert_eq!(solution_points.len(), 2);
     assert_eq!(solution_points[0].solution, vec![1, -1, 1, -1]);
     assert_eq!(solution_points[1].energy, -1.5);
@@ -78,8 +80,10 @@ fn test_distance_calculations() {
     let features1 = vec![1.0, 2.0, 3.0];
     let features2 = vec![4.0, 5.0, 6.0];
 
-    let euclidean_dist = analyzer.calculate_distance(&features1, &features2).unwrap();
-    assert!((euclidean_dist - 5.196152422706632).abs() < 1e-10);
+    let euclidean_dist = analyzer
+        .calculate_distance(&features1, &features2)
+        .expect("Failed to calculate distance");
+    assert!((euclidean_dist - 5.196_152_422_706_632).abs() < 1e-10);
 }
 
 #[test]
@@ -139,7 +143,9 @@ fn test_kmeans_clustering() {
         },
     ];
 
-    let clusters = analyzer.kmeans_clustering(&solution_points, 2, 10).unwrap();
+    let clusters = analyzer
+        .kmeans_clustering(&solution_points, 2, 10)
+        .expect("K-means clustering failed");
     assert!(clusters.len() <= 2);
 
     for cluster in &clusters {
@@ -234,7 +240,8 @@ fn test_solution_diversity() {
         },
     ];
 
-    let diversity = analyze_solution_diversity(&solutions).unwrap();
+    let diversity =
+        analyze_solution_diversity(&solutions).expect("Failed to analyze solution diversity");
     assert!(diversity > 0.0);
     assert!(diversity <= 4.0); // Maximum Hamming distance for 4-bit strings
 }

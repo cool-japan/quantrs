@@ -64,7 +64,7 @@ impl DenseMatrix {
     }
 
     /// Get a reference to the underlying array
-    pub fn as_array(&self) -> &Array2<Complex64> {
+    pub const fn as_array(&self) -> &Array2<Complex64> {
         &self.data
     }
 
@@ -110,8 +110,7 @@ impl QuantumMatrix for DenseMatrix {
             }
         }
 
-        CsrMatrix::new(data, rows, cols, (n, n))
-            .map_err(|e| QuantRS2Error::InvalidInput(e.to_string()))
+        CsrMatrix::new(data, rows, cols, (n, n)).map_err(|e| QuantRS2Error::InvalidInput(e))
     }
 
     fn is_unitary(&self, tolerance: f64) -> QuantRS2Result<bool> {
@@ -207,7 +206,7 @@ impl SparseMatrix {
         dim: usize,
     ) -> QuantRS2Result<Self> {
         let csr = CsrMatrix::new(data, rows, cols, (dim, dim))
-            .map_err(|e| QuantRS2Error::InvalidInput(e.to_string()))?;
+            .map_err(|e| QuantRS2Error::InvalidInput(e))?;
         Self::new(csr)
     }
 }
@@ -377,9 +376,9 @@ mod tests {
                 Complex64::new(1.0, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Matrix data creation should succeed");
 
-        let matrix = DenseMatrix::new(data).unwrap();
+        let matrix = DenseMatrix::new(data).expect("DenseMatrix creation should succeed");
         assert_eq!(matrix.dim(), 2);
     }
 
@@ -396,10 +395,12 @@ mod tests {
                 Complex64::new(-sqrt2, 0.0),
             ],
         )
-        .unwrap();
+        .expect("Hadamard matrix data creation should succeed");
 
-        let matrix = DenseMatrix::new(data).unwrap();
-        assert!(matrix.is_unitary(1e-10).unwrap());
+        let matrix = DenseMatrix::new(data).expect("DenseMatrix creation should succeed");
+        assert!(matrix
+            .is_unitary(1e-10)
+            .expect("Unitary check should succeed"));
     }
 
     #[test]
@@ -415,9 +416,9 @@ mod tests {
                     Complex64::new(1.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Identity matrix data creation should succeed"),
         )
-        .unwrap();
+        .expect("Identity DenseMatrix creation should succeed");
 
         let x = DenseMatrix::new(
             Array2::from_shape_vec(
@@ -429,11 +430,13 @@ mod tests {
                     Complex64::new(0.0, 0.0),
                 ],
             )
-            .unwrap(),
+            .expect("Pauli-X matrix data creation should succeed"),
         )
-        .unwrap();
+        .expect("Pauli-X DenseMatrix creation should succeed");
 
-        let result = id.tensor_product(&x).unwrap();
+        let result = id
+            .tensor_product(&x)
+            .expect("Tensor product should succeed");
         assert_eq!(result.shape(), &[4, 4]);
 
         // Check specific values

@@ -151,28 +151,28 @@ pub enum Alternative {
     Greater,
 }
 
-pub fn ttest_1samp(data: &[f64], _popmean: f64) -> TTestResult {
+pub const fn ttest_1samp(data: &[f64], _popmean: f64) -> TTestResult {
     TTestResult {
         statistic: 0.0,
         pvalue: 0.5,
     }
 }
 
-pub fn ttest_ind(data1: &[f64], data2: &[f64]) -> TTestResult {
+pub const fn ttest_ind(data1: &[f64], data2: &[f64]) -> TTestResult {
     TTestResult {
         statistic: 0.0,
         pvalue: 0.5,
     }
 }
 
-pub fn ks_2samp(data1: &[f64], data2: &[f64]) -> TTestResult {
+pub const fn ks_2samp(data1: &[f64], data2: &[f64]) -> TTestResult {
     TTestResult {
         statistic: 0.0,
         pvalue: 0.5,
     }
 }
 
-pub fn shapiro_wilk(data: &[f64]) -> TTestResult {
+pub const fn shapiro_wilk(data: &[f64]) -> TTestResult {
     TTestResult {
         statistic: 0.0,
         pvalue: 0.5,
@@ -189,7 +189,7 @@ pub mod distributions {
     }
 
     impl Normal {
-        pub fn new(mean: f64, std: f64) -> Self {
+        pub const fn new(mean: f64, std: f64) -> Self {
             Self { mean, std }
         }
 
@@ -204,23 +204,23 @@ pub mod distributions {
         }
     }
 
-    pub fn norm(mean: f64, std: f64) -> Normal {
+    pub const fn norm(mean: f64, std: f64) -> Normal {
         Normal::new(mean, std)
     }
 
-    pub fn gamma(_shape: f64, _scale: f64) -> Normal {
+    pub const fn gamma(_shape: f64, _scale: f64) -> Normal {
         Normal::new(1.0, 1.0) // Fallback to normal
     }
 
-    pub fn chi2(_df: f64) -> Normal {
+    pub const fn chi2(_df: f64) -> Normal {
         Normal::new(1.0, 1.0) // Fallback to normal
     }
 
-    pub fn beta(_a: f64, _b: f64) -> Normal {
+    pub const fn beta(_a: f64, _b: f64) -> Normal {
         Normal::new(0.5, 0.1) // Fallback to normal
     }
 
-    pub fn uniform(_low: f64, _high: f64) -> Normal {
+    pub const fn uniform(_low: f64, _high: f64) -> Normal {
         Normal::new(0.0, 1.0) // Fallback to standard normal
     }
 }
@@ -232,8 +232,14 @@ pub struct Graph<N, E> {
     edges: Vec<(usize, usize, E)>,
 }
 
+impl<N, E> Default for Graph<N, E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<N, E> Graph<N, E> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             nodes: Vec::new(),
             edges: Vec::new(),
@@ -262,7 +268,11 @@ impl<N, E> Graph<N, E> {
     }
 }
 
-pub fn shortest_path<N, E>(_graph: &Graph<N, E>, _start: usize, _end: usize) -> Option<Vec<usize>> {
+pub const fn shortest_path<N, E>(
+    _graph: &Graph<N, E>,
+    _start: usize,
+    _end: usize,
+) -> Option<Vec<usize>> {
     None // Fallback - no path found
 }
 
@@ -277,11 +287,11 @@ pub fn closeness_centrality<N, E>(_graph: &Graph<N, E>, _normalized: bool) -> Ha
     HashMap::new() // Fallback - empty centrality
 }
 
-pub fn minimum_spanning_tree<N, E>(_graph: &Graph<N, E>) -> Vec<(usize, usize)> {
+pub const fn minimum_spanning_tree<N, E>(_graph: &Graph<N, E>) -> Vec<(usize, usize)> {
     Vec::new() // Fallback - empty MST
 }
 
-pub fn strongly_connected_components<N, E>(_graph: &Graph<N, E>) -> Vec<Vec<usize>> {
+pub const fn strongly_connected_components<N, E>(_graph: &Graph<N, E>) -> Vec<Vec<usize>> {
     Vec::new() // Fallback - no components
 }
 
@@ -301,7 +311,7 @@ pub struct KMeans {
 }
 
 impl KMeans {
-    pub fn new(n_clusters: usize) -> Self {
+    pub const fn new(n_clusters: usize) -> Self {
         Self { n_clusters }
     }
 
@@ -340,8 +350,14 @@ impl KMeans {
 #[derive(Debug, Clone)]
 pub struct DBSCAN;
 
+impl Default for DBSCAN {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DBSCAN {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
     pub fn fit_predict(&mut self, _data: &Array2<f64>) -> Result<Array1<i32>, String> {
@@ -353,11 +369,17 @@ impl DBSCAN {
 #[derive(Debug, Clone)]
 pub struct IsolationForest;
 
+impl Default for IsolationForest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IsolationForest {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
-    pub fn fit(&mut self, _data: &Array2<f64>) -> Result<(), String> {
+    pub const fn fit(&mut self, _data: &Array2<f64>) -> Result<(), String> {
         Ok(())
     }
     pub fn predict(&self, _data: &Array2<f64>) -> Result<Array1<i32>, String> {
