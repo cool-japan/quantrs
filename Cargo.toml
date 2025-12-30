@@ -141,26 +141,36 @@ approx = "0.5"                   # Test-only usage, acceptable
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-# Using scirs2 0.1.0-rc.4 from crates.io (scirs2-linalg is rc.6)
-scirs2-core = { version = "0.1.0-rc.4", default-features = false }
+# Using scirs2 0.1.0 from local path (testing serialization fix)
+scirs2-core = { path = "../scirs/scirs2-core", default-features = false, features = [
+    "serialization",  # Complex<T> serde support
+    "linalg",         # ndarray-linalg integration (solve, svd, eigh)
+    "simd",           # SIMD acceleration
+    "parallel",       # Parallel operations
+    "cache",          # Caching support
+    "profiling",      # Performance profiling
+    "memory_management",  # Memory management
+    "random",         # Random number generation
+    "array",          # Array operations
+] }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.1.0-rc.4", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.0-rc.6", default-features = false }
-scirs2-optimize = { version = "0.1.0-rc.4", default-features = false }
-scirs2-special = { version = "0.1.0-rc.4", default-features = false }
-scirs2-sparse = { version = "0.1.0-rc.4", default-features = false }
-scirs2-fft = { version = "0.1.0-rc.4", default-features = false }
+scirs2-autograd = { version = "0.1.1", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.1.1", default-features = false }
+scirs2-optimize = { version = "0.1.1", default-features = false }
+scirs2-special = { version = "0.1.1", default-features = false }
+scirs2-sparse = { version = "0.1.1", default-features = false }
+scirs2-fft = { version = "0.1.1", default-features = false }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.1.0-rc.4", default-features = false }
-scirs2-metrics = { version = "0.1.0-rc.4", default-features = false }
-scirs2-stats = { version = "0.1.0-rc.4", default-features = false }
-scirs2-cluster = { version = "0.1.0-rc.4", default-features = false }
-scirs2-graph = { version = "0.1.0-rc.4", default-features = false }
+scirs2-neural = { version = "0.1.1", default-features = false }
+scirs2-metrics = { version = "0.1.1", default-features = false }
+scirs2-stats = { version = "0.1.1", default-features = false }
+scirs2-cluster = { version = "0.1.1", default-features = false }
+scirs2-graph = { version = "0.1.1", default-features = false }
 
 # OptiRS integration for advanced optimization (VQE, QAOA) 
-optirs-core = { version = "0.1.0-rc.2", default-features = false }
+optirs-core = { version = "0.1.0", default-features = false }
 
 # Performance and parallel computing
 # rayon = "1.10.0"               # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
@@ -183,7 +193,7 @@ thiserror = "2.0.17"
 # Serialization and data formats
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bincode = "2.0.1"
+oxicode = { version = "0.1.1", features = ["std", "derive", "serde"] }
 zstd = "0.13"
 flate2 = "1.1"
 md5 = "0.8"
@@ -201,7 +211,7 @@ async-trait = "0.1"
 
 # Python bindings and FFI
 pyo3 = { version = "0.27.2", features = ["extension-module"] }
-scirs2-numpy = "0.1.0-rc.4"  # SciRS2-compatible numpy bindings with ndarray 0.17 support
+scirs2-numpy = "0.1.1"  # SciRS2-compatible numpy bindings with ndarray 0.17 support
 
 # Utility libraries
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
@@ -247,7 +257,7 @@ criterion = { version = "0.8", features = ["html_reports", "async_tokio"] }
 tempfile = "3.24"
 
 # NumRS2 ecosystem dependencies
-numrs2 = "0.1.0-rc.3"
+numrs2 = "0.1.1"
 pandrs = "0.1.0-rc.1"  # Latest available on crates.io
 
 [profile.release]

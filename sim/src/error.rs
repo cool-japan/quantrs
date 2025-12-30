@@ -119,3 +119,9 @@ impl From<scirs2_core::ndarray::ShapeError> for SimulatorError {
         Self::DimensionMismatch(err.to_string())
     }
 }
+
+impl From<scirs2_core::linalg::LapackError> for SimulatorError {
+    fn from(err: scirs2_core::linalg::LapackError) -> Self {
+        Self::LinalgError(format!("LAPACK error: {err}"))
+    }
+}

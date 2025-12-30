@@ -745,7 +745,7 @@ impl EnhancedQASMCompiler {
     }
 
     fn export_binary(ast: &AST) -> QuantRS2Result<Vec<u8>> {
-        let bytes = bincode::serde::encode_to_vec(ast, bincode::config::standard())?;
+        let bytes = oxicode::serde::encode_to_vec(ast, oxicode::config::standard())?;
         Ok(bytes)
     }
 

@@ -876,7 +876,7 @@ impl QuantumChemistrySimulator {
                 for _ in 0..10 {
                     // 10 iterations for better convergence
                     let new_v = fock.dot(&v);
-                    let norm = new_v.norm_l2();
+                    let norm = new_v.norm_l2().unwrap_or(0.0);
                     if norm > 1e-10 {
                         v = new_v / norm;
                         eigenvalues[i] = v.dot(&fock.dot(&v));

@@ -1292,13 +1292,9 @@ impl LAPACK {
         // Extract U, S, Vt from the SVD result
         let pool = MemoryPool::new();
 
-        let u_data = svd_result.0.ok_or_else(|| {
-            SimulatorError::ComputationError("SVD U matrix not computed".to_string())
-        })?;
+        let u_data = svd_result.0;
         let s_data = svd_result.1;
-        let vt_data = svd_result.2.ok_or_else(|| {
-            SimulatorError::ComputationError("SVD Vt matrix not computed".to_string())
-        })?;
+        let vt_data = svd_result.2;
 
         let u = Matrix::from_array2(&u_data.view(), &pool)?;
         // Convert real singular values to complex for consistency
@@ -1313,13 +1309,13 @@ impl LAPACK {
         // Eigenvalue decomposition using SciRS2
         use scirs2_core::ndarray::ndarray_linalg::Eig; // SciRS2 POLICY compliant
 
-        let eig_result = matrix.data.eig().map_err(|_| {
+        let (eigenvalues_array, eigenvectors_array) = matrix.data.eig().map_err(|_| {
             SimulatorError::ComputationError("Eigenvalue decomposition failed".to_string())
         })?;
 
         let pool = MemoryPool::new();
-        let values = Vector::from_array1(&eig_result.0.view(), &pool)?;
-        let vectors = Matrix::from_array2(&eig_result.1.view(), &pool)?;
+        let values = Vector::from_array1(&eigenvalues_array.view(), &pool)?;
+        let vectors = Matrix::from_array2(&eigenvectors_array.view(), &pool)?;
 
         Ok(EigResult { values, vectors })
     }
@@ -1725,7 +1721,7 @@ impl SparseSolvers {
             ax = ax_vec.to_array1()?;
 
             let mut r = &b_array - &ax;
-            let beta = r.norm_l2();
+            let beta = r.norm_l2()?;
 
             if beta < tolerance {
                 break;
@@ -1752,7 +1748,7 @@ impl SparseSolvers {
                     av = av - h[[i, j]] * &v[i];
                 }
 
-                h[[j + 1, j]] = Complex64::new(av.norm_l2(), 0.0);
+                h[[j + 1, j]] = Complex64::new(av.norm_l2()?, 0.0);
 
                 if h[[j + 1, j]].norm() < tolerance {
                     break;
@@ -1838,7 +1834,7 @@ impl SparseSolvers {
             alpha = rho_new / r0.dot(&v);
             let s = &r - alpha * &v;
 
-            if s.norm_l2() < tolerance {
+            if s.norm_l2()? < tolerance {
                 x = x + alpha * &p;
                 break;
             }
@@ -1853,7 +1849,7 @@ impl SparseSolvers {
             x = x + alpha * &p + omega * &s;
             r = s - omega * &t;
 
-            if r.norm_l2() < tolerance {
+            if r.norm_l2()? < tolerance {
                 break;
             }
 
@@ -1892,7 +1888,8 @@ impl AdvancedEigensolvers {
                 })
                 .collect(),
         );
-        q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
+        let q_norm = q.norm_l2()?;
+        q = q.mapv(|x| x / Complex64::new(q_norm, 0.0));
 
         let mut q_vectors = Vec::new();
         q_vectors.push(q.clone());
@@ -1919,7 +1916,7 @@ impl AdvancedEigensolvers {
                 av = av - Complex64::new(beta[j - 1], 0.0) * &q_prev;
             }
 
-            let beta_j = av.norm_l2();
+            let beta_j = av.norm_l2()?;
 
             if beta_j.abs() < tolerance {
                 break;
@@ -1992,7 +1989,8 @@ impl AdvancedEigensolvers {
                 })
                 .collect(),
         );
-        q = q.mapv(|x| x / Complex64::new(q.norm_l2(), 0.0));
+        let q_norm = q.norm_l2()?;
+        q = q.mapv(|x| x / Complex64::new(q_norm, 0.0));
 
         let mut q_vectors = Vec::new();
         q_vectors.push(q.clone());
@@ -2012,7 +2010,7 @@ impl AdvancedEigensolvers {
                 v = v - h[[i, j]] * &q_vectors[i];
             }
 
-            h[[j + 1, j]] = Complex64::new(v.norm_l2(), 0.0);
+            h[[j + 1, j]] = Complex64::new(v.norm_l2()?, 0.0);
 
             if h[[j + 1, j]].norm() < tolerance {
                 break;
@@ -2098,7 +2096,7 @@ impl AdvancedLinearAlgebra {
             term = term.dot(&scaled_matrix) / Complex64::new(k as f64, 0.0);
             result += &term;
 
-            if term.norm_l2() < 1e-12 {
+            if term.norm_l2().unwrap_or(f64::INFINITY) < 1e-12 {
                 break;
             }
         }

@@ -389,7 +389,7 @@ impl AdvancedEquivalenceChecker {
 
         let diff = &matrix1 - &matrix2;
         // Use Norm trait via scirs2_core::ndarray (SciRS2 POLICY)
-        let frobenius_norm = diff.norm_l2();
+        let frobenius_norm = diff.norm_l2()?;
         let matrix_size = (1 << num_qubits) as f64;
 
         // Adaptive tolerance based on matrix size

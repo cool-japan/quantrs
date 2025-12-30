@@ -528,8 +528,8 @@ impl SparseQuantumStateCompressor {
 
     /// No compression (identity)
     fn compress_none(&self, state: &SparseQuantumState) -> Result<CompressedState, CompressionError> {
-        let serialized = bincode::serialize(state)
-            .map_err(|e| CompressionError::SerializationError(e.to_string()))?;
+        let serialized = oxicode::serde::encode_to_vec(state, oxicode::config::standard())
+            .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
         let metadata = CompressionMetadata {
             id: Uuid::new_v4(),
@@ -552,8 +552,8 @@ impl SparseQuantumStateCompressor {
 
     /// LZ4 compression
     fn compress_lz4(&self, state: &SparseQuantumState) -> Result<CompressedState, CompressionError> {
-        let serialized = bincode::serialize(state)
-            .map_err(|e| CompressionError::SerializationError(e.to_string()))?;
+        let serialized = oxicode::serde::encode_to_vec(state, oxicode::config::standard())
+            .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
         let mut encoder = EncoderBuilder::new()
             .level(self.config.compression_level)
@@ -587,8 +587,8 @@ impl SparseQuantumStateCompressor {
 
     /// Zlib compression
     fn compress_zlib(&self, state: &SparseQuantumState) -> Result<CompressedState, CompressionError> {
-        let serialized = bincode::serialize(state)
-            .map_err(|e| CompressionError::SerializationError(e.to_string()))?;
+        let serialized = oxicode::serde::encode_to_vec(state, oxicode::config::standard())
+            .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
         let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(self.config.compression_level));
         encoder.write_all(&serialized)
@@ -620,8 +620,8 @@ impl SparseQuantumStateCompressor {
     fn compress_amplitude_clustering(&mut self, state: &SparseQuantumState) -> Result<CompressedState, CompressionError> {
         let clustering_result = self.amplitude_clusterer.compress(state);
 
-        let compressed_data = bincode::serialize(&clustering_result)
-            .map_err(|e| CompressionError::SerializationError(e.to_string()))?;
+        let compressed_data = oxicode::serde::encode_to_vec(&clustering_result, oxicode::config::standard())
+            .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
         let original_size = state.amplitudes.len() * std::mem::size_of::<Complex64>();
 
@@ -678,8 +678,9 @@ impl SparseQuantumStateCompressor {
 
     /// Decompression implementations (simplified for brevity)
     fn decompress_none(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
-        bincode::deserialize(&compressed.data)
-            .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))
+        oxicode::serde::decode_from_slice(&compressed.data, oxicode::config::standard())
+            .map(|(v, _)| v)
+            .map_err(|e| CompressionError::DecompressionFailed(format!("{e:?}")))
     }
 
     fn decompress_lz4(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
@@ -690,8 +691,9 @@ impl SparseQuantumStateCompressor {
         decoder.read_to_end(&mut decompressed)
             .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
 
-        bincode::deserialize(&decompressed)
-            .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))
+        oxicode::serde::decode_from_slice(&decompressed, oxicode::config::standard())
+            .map(|(v, _)| v)
+            .map_err(|e| CompressionError::DecompressionFailed(format!("{e:?}")))
     }
 
     fn decompress_zlib(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
@@ -700,14 +702,16 @@ impl SparseQuantumStateCompressor {
         decoder.read_to_end(&mut decompressed)
             .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
 
-        bincode::deserialize(&decompressed)
-            .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))
+        oxicode::serde::decode_from_slice(&decompressed, oxicode::config::standard())
+            .map(|(v, _)| v)
+            .map_err(|e| CompressionError::DecompressionFailed(format!("{e:?}")))
     }
 
     fn decompress_amplitude_clustering(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
         let clustering_result: QuantumAmplitudeClusteringResult =
-            bincode::deserialize(&compressed.data)
-                .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
+            oxicode::serde::decode_from_slice(&compressed.data, oxicode::config::standard())
+                .map(|(v, _)| v)
+                .map_err(|e| CompressionError::DecompressionFailed(format!("{e:?}")))?;
 
         Ok(self.amplitude_clusterer.decompress(&compressed.indices, &clustering_result))
     }

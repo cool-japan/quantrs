@@ -159,8 +159,11 @@ impl SASampler {
             }
 
             // Configure annealing parameters
-            let mut params = self.params.clone();
-            params.num_repetitions = shots;
+            // Note: We respect the user's configured num_repetitions instead of
+            // overriding it with shots. The shots parameter in QUBO solving
+            // represents the number of independent samples desired, but for now
+            // we return the best solution found in the configured repetitions.
+            let params = self.params.clone();
 
             // Create annealing simulator
             let simulator = ClassicalAnnealingSimulator::new(params)?;

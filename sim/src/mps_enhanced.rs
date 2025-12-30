@@ -1036,12 +1036,6 @@ impl EnhancedMPS {
         let (u, s, vt) = matrix
             .svd(true, true)
             .map_err(|_| QuantRS2Error::ComputationError("SVD decomposition failed".to_string()))?;
-        let u = u.ok_or_else(|| {
-            QuantRS2Error::ComputationError("SVD failed to compute U matrix".to_string())
-        })?;
-        let vt = vt.ok_or_else(|| {
-            QuantRS2Error::ComputationError("SVD failed to compute Vt matrix".to_string())
-        })?;
         Ok((u, s, vt))
     }
 }
