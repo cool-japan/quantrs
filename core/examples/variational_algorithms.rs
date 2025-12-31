@@ -15,36 +15,35 @@ use quantrs2_core::{
 };
 use scirs2_core::Complex64;
 
-fn main() -> QuantRS2Result<()> {
+fn main() {
     println!("=================================================================");
     println!("   QuantRS2-Core: Variational Quantum Algorithms");
     println!("=================================================================\n");
 
     // Demonstrate VQE basics
-    demonstrate_vqe_basics()?;
+    demonstrate_vqe_basics();
     println!();
 
     // Demonstrate QAOA basics
-    demonstrate_qaoa_basics()?;
+    demonstrate_qaoa_basics();
     println!();
 
     // Demonstrate variational circuit construction
-    demonstrate_variational_circuit()?;
+    demonstrate_variational_circuit();
     println!();
 
     // Demonstrate parameter optimization
-    demonstrate_parameter_optimization()?;
+    demonstrate_parameter_optimization();
     println!();
 
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
 
-    Ok(())
 }
 
 /// Demonstrate Variational Quantum Eigensolver (VQE) basics
-fn demonstrate_vqe_basics() -> QuantRS2Result<()> {
+fn demonstrate_vqe_basics() {
     println!("VARIATIONAL QUANTUM EIGENSOLVER (VQE)");
     println!("-----------------------------------------------------------------");
 
@@ -88,11 +87,10 @@ fn demonstrate_vqe_basics() -> QuantRS2Result<()> {
     println!("  ✓ VQE basics demonstrated");
     println!("  ✓ Used for: Molecular simulation, materials science");
 
-    Ok(())
 }
 
 /// Demonstrate Quantum Approximate Optimization Algorithm (QAOA) basics
-fn demonstrate_qaoa_basics() -> QuantRS2Result<()> {
+fn demonstrate_qaoa_basics() {
     println!("QUANTUM APPROXIMATE OPTIMIZATION ALGORITHM (QAOA)");
     println!("-----------------------------------------------------------------");
 
@@ -144,11 +142,10 @@ fn demonstrate_qaoa_basics() -> QuantRS2Result<()> {
     println!("  ✓ QAOA basics demonstrated");
     println!("  ✓ Used for: Logistics, scheduling, portfolio optimization");
 
-    Ok(())
 }
 
 /// Demonstrate variational circuit construction
-fn demonstrate_variational_circuit() -> QuantRS2Result<()> {
+fn demonstrate_variational_circuit() {
     println!("VARIATIONAL CIRCUIT CONSTRUCTION");
     println!("-----------------------------------------------------------------");
 
@@ -205,11 +202,10 @@ fn demonstrate_variational_circuit() -> QuantRS2Result<()> {
 
     println!("  ✓ Variational circuit demonstrated");
 
-    Ok(())
 }
 
 /// Demonstrate parameter optimization strategies
-fn demonstrate_parameter_optimization() -> QuantRS2Result<()> {
+fn demonstrate_parameter_optimization() {
     println!("PARAMETER OPTIMIZATION STRATEGIES");
     println!("-----------------------------------------------------------------");
 
@@ -275,7 +271,6 @@ fn demonstrate_parameter_optimization() -> QuantRS2Result<()> {
 
     println!("  ✓ Parameter optimization demonstrated");
 
-    Ok(())
 }
 
 #[cfg(test)]
@@ -284,26 +279,26 @@ mod tests {
 
     #[test]
     fn test_example_runs() {
-        assert!(main().is_ok());
+        main();
     }
 
     #[test]
     fn test_vqe_demonstration() {
-        assert!(demonstrate_vqe_basics().is_ok());
+        demonstrate_vqe_basics();
     }
 
     #[test]
     fn test_qaoa_demonstration() {
-        assert!(demonstrate_qaoa_basics().is_ok());
+        demonstrate_qaoa_basics();
     }
 
     #[test]
     fn test_circuit_demonstration() {
-        assert!(demonstrate_variational_circuit().is_ok());
+        demonstrate_variational_circuit();
     }
 
     #[test]
     fn test_optimization_demonstration() {
-        assert!(demonstrate_parameter_optimization().is_ok());
+        demonstrate_parameter_optimization();
     }
 }

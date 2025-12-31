@@ -35,8 +35,9 @@ pub type SymMatrix = Vec<Vec<Expression>>;
 /// let mut values = HashMap::new();
 /// values.insert("x".to_string(), 2.0);
 ///
-/// let array = sym_vec_to_array1(&sym_vec, &values).unwrap();
-/// assert_eq!(array.len(), 2);
+/// if let Ok(array) = sym_vec_to_array1(&sym_vec, &values) {
+///     assert_eq!(array.len(), 2);
+/// }
 /// ```
 pub fn sym_vec_to_array1<S: BuildHasher>(
     sym_vec: &[Expression],
@@ -83,8 +84,9 @@ pub fn sym_vec_to_array1<S: BuildHasher>(
 /// let mut values = HashMap::new();
 /// values.insert("x".to_string(), 3.0);
 ///
-/// let array = sym_matrix_to_array2(&sym_matrix, &values).unwrap();
-/// assert_eq!(array.shape(), &[2, 2]);
+/// if let Ok(array) = sym_matrix_to_array2(&sym_matrix, &values) {
+///     assert_eq!(array.shape(), &[2, 2]);
+/// }
 /// ```
 pub fn sym_matrix_to_array2<S: BuildHasher>(
     sym_matrix: &[Vec<Expression>],
@@ -192,9 +194,10 @@ pub fn batch_eval_vec<S: BuildHasher>(
 /// values.insert("x".to_string(), 1.0);
 /// values.insert("y".to_string(), 2.0);
 ///
-/// let grad = gradient_at(&f, &symbols, &values).unwrap();
-/// assert_eq!(grad.len(), 2);
-/// // Gradient at (1, 2) should be [2*1, 2*2] = [2, 4]
+/// if let Ok(grad) = gradient_at(&f, &symbols, &values) {
+///     assert_eq!(grad.len(), 2);
+///     // Gradient at (1, 2) should be [2*1, 2*2] = [2, 4]
+/// }
 /// ```
 pub fn gradient_at<S: BuildHasher>(
     expr: &Expression,

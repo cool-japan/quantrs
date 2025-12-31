@@ -123,6 +123,5 @@ mod tests {
                 scheduler,
             );
         }
-        assert!(true);
     }
 }

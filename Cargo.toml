@@ -141,8 +141,8 @@ approx = "0.5"                   # Test-only usage, acceptable
 
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-# Using scirs2 0.1.0 from local path (testing serialization fix)
-scirs2-core = { path = "../scirs/scirs2-core", default-features = false, features = [
+# Using scirs2 0.1.1+ from crates.io
+scirs2-core = { version = "0.1.1", default-features = false, features = [
     "serialization",  # Complex<T> serde support
     "linalg",         # ndarray-linalg integration (solve, svd, eigh)
     "simd",           # SIMD acceleration
@@ -258,7 +258,7 @@ tempfile = "3.24"
 
 # NumRS2 ecosystem dependencies
 numrs2 = "0.1.1"
-pandrs = "0.1.0-rc.1"  # Latest available on crates.io
+pandrs = "0.1.0"  # Latest available on crates.io
 
 [profile.release]
 lto = "thin"

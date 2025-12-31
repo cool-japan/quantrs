@@ -27,8 +27,9 @@ QuantRS2 v0.1.0-rc.1 marks the transition from beta to release candidate status,
 - **Production Ready**: All 4,120 tests passing
 
 ### 📦 Dependency Updates
-- **SciRS2 v0.1.0-rc.4**: Core scientific computing foundation
-- **SciRS2 Linalg v0.1.0-rc.6**: Enhanced linear algebra operations
+- **SciRS2 v0.1.1**: Core scientific computing foundation (stable release)
+- **NumRS2 v0.1.1**: Numerical computing library (stable release)
+- **OptiRS v0.1.0**: Advanced optimization algorithms (stable release)
 
 ### ✅ Quality Metrics
 - **Clippy Warnings**: 0 (down from 7,575)
@@ -38,7 +39,7 @@ QuantRS2 v0.1.0-rc.1 marks the transition from beta to release candidate status,
 ### ⚠️ From Beta.1 - Production Ready Framework
 
 ### ✅ Complete SciRS2 Integration
-- **🔧 Full SciRS2 v0.1.0-beta.2 Integration**: Deep integration with Scientific Rust for optimal performance
+- **🔧 Full SciRS2 v0.1.1 Stable Integration**: Deep integration with Scientific Rust for optimal performance
 - **⚡ SIMD Operations**: All operations use `scirs2_core::simd_ops` with hardware-aware optimization
 - **🔄 Parallel Computing**: Automatic parallelization via `scirs2_core::parallel_ops`
 - **🎯 Platform Detection**: Smart capability detection using `PlatformCapabilities`
@@ -61,7 +62,7 @@ QuantRS2 v0.1.0-rc.1 marks the transition from beta to release candidate status,
 - **📊 Performance Analytics**: Real-time optimization recommendations
 
 ### 🔧 External Dependencies
-**Note**: QuantRS2 rc.1 integrates with SciRS2 v0.1.0-rc.4 for enhanced scientific computing capabilities. All core functionality is fully operational with optimal performance and comprehensive feature set.
+**Note**: QuantRS2 rc.1 integrates with SciRS2 v0.1.1 stable release for enhanced scientific computing capabilities. All core functionality is fully operational with optimal performance and comprehensive feature set.
 
 ### 🏆 Production Readiness
 ✅ **Ready for Production Use**:

@@ -11,6 +11,7 @@ categories = ["science", "simulation", "hardware-support"]
 description = "Quantum device connectors for the QuantRS2 framework"
 
 [dependencies]
+scirs2-fft = { workspace = true }
 quantrs2-core.workspace = true
 quantrs2-circuit.workspace = true
 # num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)

@@ -405,11 +405,11 @@ let normal = RandNormal::new(0.0, 1.0).unwrap();
 
 ## Version Compatibility
 
-QuantRS2 v0.1.0-beta.3 requires:
+QuantRS2 v0.1.0-rc.2 requires:
 
-- **SciRS2**: v0.1.0-rc.2+
-- **NumRS2**: v0.1.0-beta.3+
-- **OptiRS**: v0.1.0-beta.2+
+- **SciRS2**: v0.1.1 (stable)
+- **NumRS2**: v0.1.1 (stable)
+- **OptiRS**: v0.1.0 (stable)
 
 Version compatibility is automatically checked via:
 

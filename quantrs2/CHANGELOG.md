@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-rc.2] - 2025-12-31
+
+### Changed
+- **Stable Dependencies**: Upgraded to stable releases
+  - **SciRS2**: v0.1.1 (stable)
+  - **NumRS2**: v0.1.1 (stable)
+  - **OptiRS**: v0.1.0 (stable)
+- Enhanced stability and performance with stable dependency versions
+- Updated all documentation to reflect stable releases
+
+### Compatibility
+- **Rust Version**: 1.86.0+
+- **SciRS2**: v0.1.1 (stable)
+- **OptiRS**: v0.1.0 (stable)
+- **NumRS2**: v0.1.1 (stable)
+
 ## [0.1.0-beta.3] - 2025-12-04
 
 ### Added
@@ -103,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved SciRS2 integration patterns across all modules
 - Enhanced compilation time optimization through feature gates
 - Refined error handling with better context preservation
-- Updated workspace dependencies to SciRS2 v0.1.0-rc.2
+- Updated workspace dependencies to SciRS2 stable releases
 
 ### Fixed
 - Test compatibility issues with Simulator trait imports
@@ -119,9 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Compatibility
 - **Rust Version**: 1.86.0+
-- **SciRS2**: v0.1.0-rc.2
-- **OptiRS**: v0.1.0-beta.2
-- **NumRS2**: v0.1.0-beta.3
+- **SciRS2**: v0.1.1 (stable)
+- **OptiRS**: v0.1.0 (stable)
+- **NumRS2**: v0.1.1 (stable)
 
 ### Developer Experience
 - **Feature Selection**: Granular control via Cargo features
@@ -219,6 +235,7 @@ Licensed under either of
 
 at your option.
 
-[Unreleased]: https://github.com/cool-japan/quantrs/compare/v0.1.0-beta.3...HEAD
+[Unreleased]: https://github.com/cool-japan/quantrs/compare/v0.1.0-rc.2...HEAD
+[0.1.0-rc.2]: https://github.com/cool-japan/quantrs/compare/v0.1.0-beta.3...v0.1.0-rc.2
 [0.1.0-beta.3]: https://github.com/cool-japan/quantrs/compare/v0.1.0-beta.2...v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.0-beta.2

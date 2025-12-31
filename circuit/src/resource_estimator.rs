@@ -1525,9 +1525,11 @@ mod tests {
 
     #[test]
     fn test_custom_configuration() {
-        let mut config = ResourceEstimatorConfig::default();
-        config.analysis_depth = AnalysisDepth::Comprehensive;
-        config.enable_scalability_analysis = true;
+        let config = ResourceEstimatorConfig {
+            analysis_depth: AnalysisDepth::Comprehensive,
+            enable_scalability_analysis: true,
+            ..Default::default()
+        };
 
         let mut circuit = Circuit::<3>::new();
         circuit

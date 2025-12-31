@@ -606,7 +606,7 @@ mod tests {
             .expect("Failed to measure topological qubit");
 
         // Result should be boolean
-        assert!(result == true || result == false);
+        // result is bool, always true or false
     }
 
     #[tokio::test]

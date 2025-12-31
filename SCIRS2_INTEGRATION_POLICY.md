@@ -414,37 +414,37 @@ use scirs2_core::ndarray::Array1;               // Unified array access
 
 ## Current Workspace Integration
 
-### SciRS2 Dependencies (v0.1.0-rc.4)
+### SciRS2 Dependencies (v0.1.1)
 ```toml
 [workspace.dependencies]
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-scirs2 = { version = "0.1.0-rc.4", features = ["standard", "linalg", "complex"], default-features = false }
-scirs2-core = { version = "0.1.0-rc.4", default-features = false }
+scirs2 = { version = "0.1.1", features = ["standard", "linalg", "complex"], default-features = false }
+scirs2-core = { version = "0.1.1", default-features = false }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.1.0-rc.4", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.0-rc.4", default-features = false }
-scirs2-optimize = { version = "0.1.0-rc.4", default-features = false }
-scirs2-special = { version = "0.1.0-rc.4", default-features = false }
-scirs2-sparse = { version = "0.1.0-rc.4", default-features = false }
-scirs2-fft = { version = "0.1.0-rc.4", default-features = false }
+scirs2-autograd = { version = "0.1.1", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.1.1", default-features = false }
+scirs2-optimize = { version = "0.1.1", default-features = false }
+scirs2-special = { version = "0.1.1", default-features = false }
+scirs2-sparse = { version = "0.1.1", default-features = false }
+scirs2-fft = { version = "0.1.1", default-features = false }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.1.0-rc.4", default-features = false }
-scirs2-signal = { version = "0.1.0-rc.4", default-features = false }
-scirs2-metrics = { version = "0.1.0-rc.4", default-features = false }
-scirs2-stats = { version = "0.1.0-rc.4", default-features = false }
-scirs2-cluster = { version = "0.1.0-rc.4", default-features = false }
-scirs2-graph = { version = "0.1.0-rc.4", default-features = false }
-scirs2-spatial = { version = "0.1.0-rc.4", default-features = false }
+scirs2-neural = { version = "0.1.1", default-features = false }
+scirs2-signal = { version = "0.1.1", default-features = false }
+scirs2-metrics = { version = "0.1.1", default-features = false }
+scirs2-stats = { version = "0.1.1", default-features = false }
+scirs2-cluster = { version = "0.1.1", default-features = false }
+scirs2-graph = { version = "0.1.1", default-features = false }
+scirs2-spatial = { version = "0.1.1", default-features = false }
 
 # DOMAIN-SPECIFIC (Optional)
-scirs2-series = { version = "0.1.0-rc.4", default-features = false }
-scirs2-datasets = { version = "0.1.0-rc.4", default-features = false }
+scirs2-series = { version = "0.1.1", default-features = false }
+scirs2-datasets = { version = "0.1.1", default-features = false }
 
 # Python bindings support (REQUIRED for quantrs2-py)
-scirs2-numpy = { version = "0.1.0-rc.4" }  # SciRS2-compatible numpy bindings with ndarray 0.17+ support
+scirs2-numpy = { version = "0.1.1" }  # SciRS2-compatible numpy bindings with ndarray 0.17+ support
 
 # OptiRS integration for advanced optimization (VQE, QAOA)
 optirs = { path = "../optirs/optirs", default-features = false }
@@ -620,9 +620,10 @@ This policy ensures QuantRS2 properly leverages SciRS2's scientific computing fo
 ---
 
 **Document Version**: 2.0 - SciRS2 Dependency Abstraction Policy Enforcement
-**Last Updated**: 2025-10-04
+**Last Updated**: 2025-12-31
 **Based on**: Official SciRS2 Policy v3.0.0 (~/work/scirs/SCIRS2_POLICY.md)
-**SciRS2 Version**: v0.1.0-rc.4 (Release Candidate with unified patterns)
-**NumRS2 Version**: v0.1.0-rc.3
+**SciRS2 Version**: v0.1.1 (Stable Release)
+**NumRS2 Version**: v0.1.1 (Stable Release)
+**OptiRS Version**: v0.1.0 (Stable Release)
 **Next Review**: Q2 2026
 **Owner**: QuantRS2 Architecture Team

@@ -1381,7 +1381,6 @@ mod tests {
         let scheduler = AdvancedQuantumScheduler::new(params);
         // Test that scheduler is created successfully
         // Test that scheduler is created successfully
-        assert!(true); // Placeholder for scheduler validation
     }
 
     #[tokio::test]

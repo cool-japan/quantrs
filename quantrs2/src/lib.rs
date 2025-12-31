@@ -935,7 +935,7 @@ at your option.
 - 🔧 **Developer Experience**: Hierarchical prelude system, improved error handling
 - 📝 **Documentation**: Enhanced examples and inline documentation
 - 🛠️ **Code Quality**: All clippy warnings fixed, formatted with `cargo fmt`
-- ✅ **SciRS2 Integration**: Upgraded to SciRS2 v0.1.0-rc.2 with unified patterns
+- ✅ **SciRS2 v0.1.1 Stable Release with unified patterns
 
 ### Previous Updates (v0.1.0-beta.2)
 

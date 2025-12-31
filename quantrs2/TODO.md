@@ -2,7 +2,7 @@
 
 This document outlines the development tasks specific to the `quantrs2` facade crate - the unified entry point for the entire QuantRS2 framework.
 
-## Current Status (v0.1.0-beta.3)
+## Current Status (v0.1.0-rc.2)
 
 The `quantrs2` facade crate provides:
 - ✅ Feature-based subcrate re-exports
@@ -306,13 +306,13 @@ The `quantrs2` facade crate provides:
 ### Compatibility
 
 - Rust version: 1.86.0+
-- SciRS2 version: 0.1.0-rc.2
-- OptiRS version: 0.1.0-beta.2
-- NumRS2 version: 0.1.0-beta.3
+- SciRS2 version: 0.1.1 (stable)
+- OptiRS version: 0.1.0 (stable)
+- NumRS2 version: 0.1.1 (stable)
 
 ## Priority Order
 
-1. **HIGH PRIORITY** (Beta.3 blockers) ✅ **ALL COMPLETE**
+1. **HIGH PRIORITY** (RC.2 blockers) ✅ **ALL COMPLETE**
    - ✅ Add comprehensive prelude module
    - ✅ Enhanced feature documentation
    - ✅ Cross-subcrate integration tests
@@ -323,7 +323,7 @@ The `quantrs2` facade crate provides:
    - ✅ CHANGELOG.md creation (2025-12-04)
    - ✅ Pre-release quality checks (2025-12-04)
 
-2. **MEDIUM PRIORITY** (Beta.3 goals) ✅ **ALL COMPLETE**
+2. **MEDIUM PRIORITY** (RC.2 goals) ✅ **ALL COMPLETE**
    - ✅ Unified error handling
    - ✅ Version compatibility module
    - ✅ Documentation improvements
@@ -340,9 +340,9 @@ The `quantrs2` facade crate provides:
 
 ## Progress Tracking
 
-Last Updated: 2025-12-04
-Current Version: 0.1.0-beta.3
-Next Milestone: 0.1.0-beta.3 release
+Last Updated: 2025-12-31
+Current Version: 0.1.0-rc.2
+Next Milestone: 0.1.0 stable release
 Status: **RELEASE READY** ✅
 
 ### Completed in 2025-12-04 Session (Phase 4 - FINAL)
@@ -362,7 +362,7 @@ Status: **RELEASE READY** ✅
 
 - ✅ **Comprehensive Documentation**
   - Created CHANGELOG.md (240+ lines)
-    - Detailed v0.1.0-beta.3 release notes
+    - Detailed v0.1.0-rc.2 release notes
     - Migration guide from alpha and individual crates
     - Feature-by-feature documentation
     - Compatibility information

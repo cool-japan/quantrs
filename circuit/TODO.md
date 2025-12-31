@@ -2,19 +2,19 @@
 
 This document outlines the development plans and future tasks for the QuantRS2-Circuit module.
 
-## Version 0.1.0-beta.3 Status 🎉 ENHANCED RELEASE - IN PROGRESS
+## Version 0.1.0-rc.2 Status 🎉 RELEASE CANDIDATE - STABLE
 
 **✅ Circuit Module - Quality Enhancement Release**
 
-The circuit module has successfully achieved all development milestones for the v0.1.0-beta.3 release with enhanced code quality and comprehensive testing.
+The circuit module has successfully achieved all development milestones for the v0.1.0-rc.2 release with enhanced code quality, comprehensive testing, and stable SciRS2 v0.1.1 integration.
 
-### Beta.3 Release Highlights ✅
+### RC.2 Release Highlights ✅
 - ✅ **Feature Enhancement** (November 2025): Added 17 convenience methods for batch operations and state preparation
 - ✅ **Code Quality Improvements** (November 2025): Removed blanket warning suppressions from lib.rs
 - ✅ **Incremental Code Quality Enhancements** (November 2025): Applied automatic clippy fixes and manual improvements
 - ✅ **TODO Implementation Session #1** (December 2025): Implemented missing noise optimization and validation features
 - ✅ **TODO Implementation Session #2** (December 2025): Added parametric gate equivalence and fixed similarity calculations
-- ✅ **Refined SciRS2 Integration**: Full integration with v0.1.0-rc.2 with unified patterns
+- ✅ **Refined SciRS2 Integration**: Full integration with SciRS2 v0.1.1 stable release with unified patterns
 - ✅ **Advanced Circuit Optimization**: Graph algorithms via `scirs2_core::graph_algorithms`
 - ✅ **Parallel Circuit Transformations**: Using `scirs2_core::parallel_ops` for high-performance processing
 - ✅ **Hardware-Aware Optimization**: Comprehensive platform detection and optimization
@@ -975,17 +975,24 @@ The QuantRS2-Circuit module is now **production-ready** with:
 - Robust error handling and validation
 - Extensive test coverage and documentation
 
-**Status**: ✅ **READY FOR v0.1.0-beta.3 RELEASE**
+**Status**: ✅ **READY FOR v0.1.0-rc.2 RELEASE**
 
 ---
 
 ## Version History
 
+### v0.1.0-rc.2 (December 2025)
+- Upgraded to stable dependency versions: SciRS2 v0.1.1, NumRS2 v0.1.1, OptiRS v0.1.0
+- Enhanced code quality with comprehensive clippy warning fixes
+- Improved test coverage (278+ library tests)
+- Refined function signatures and type clarity
+- Stable SciRS2 integration with unified patterns
+
 ### v0.1.0-beta.3 (January 2025)
 - Enhanced code quality with clippy warning fixes
 - Improved test coverage (257 total tests)
 - Refined function signatures and type clarity
-- Updated SciRS2 integration to v0.1.0-rc.2
+- Updated SciRS2 integration to release candidate versions
 
 ### v0.1.0-beta.2 (December 2024)
 - Refined SciRS2 integration with unified patterns

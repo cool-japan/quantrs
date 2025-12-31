@@ -14,7 +14,9 @@ QuantRS2 v0.1.0-rc.1 marks the transition from beta to release candidate status,
 ### Changed
 
 - **Version**: Promoted from beta.3 to rc.1 (Release Candidate)
-- **SciRS2 Integration**: Updated to scirs2-core v0.1.0-rc.4, scirs2-linalg v0.1.0-rc.6
+- **SciRS2 Integration**: Updated to scirs2-core v0.1.1 stable release
+- **NumRS2 Integration**: Updated to numrs2 v0.1.1 stable release
+- **OptiRS Integration**: Updated to optirs v0.1.0 stable release
 
 ### Fixed
 
@@ -51,7 +53,7 @@ Crate-level lint configurations added to:
 
 ### 🔧 Quality & Documentation Release
 
-QuantRS2 v0.1.0-beta.3 focuses on documentation quality, test reliability, and SciRS2 v0.1.0-rc.4 integration for improved stability and developer experience.
+QuantRS2 v0.1.0-beta.3 focuses on documentation quality, test reliability, and SciRS2 stable release integration for improved stability and developer experience.
 
 ### Added
 
@@ -63,9 +65,11 @@ QuantRS2 v0.1.0-beta.3 focuses on documentation quality, test reliability, and S
 
 ### Updated
 
-- **Dependency Upgrades**: Updated to latest release candidate versions
-  - SciRS2 v0.1.0-rc.4 for enhanced stability
-  - All SciRS2 ecosystem crates synchronized to rc.4
+- **Dependency Upgrades**: Updated to latest stable versions
+  - SciRS2 v0.1.1 for enhanced stability
+  - NumRS2 v0.1.1 for improved numerical operations
+  - OptiRS v0.1.0 for advanced optimization algorithms
+  - All SciRS2 ecosystem crates synchronized
   - Improved SciRS2 integration patterns
 
 ### Fixed

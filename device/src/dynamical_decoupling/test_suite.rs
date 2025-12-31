@@ -473,12 +473,12 @@ mod tests {
         let fidelity = analyzer
             .measure_process_fidelity(&sequence, &MockCircuitExecutor::new())
             .await?;
-        assert!(fidelity >= 0.0 && fidelity <= 1.0);
+        assert!((0.0..=1.0).contains(&fidelity));
 
         let robustness = analyzer
             .calculate_robustness_score(&sequence, &MockCircuitExecutor::new())
             .await?;
-        assert!(robustness >= 0.0 && robustness <= 1.0);
+        assert!((0.0..=1.0).contains(&robustness));
 
         Ok(())
     }

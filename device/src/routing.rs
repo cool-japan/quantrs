@@ -632,7 +632,7 @@ mod tests {
             .expect("Failed to route circuit");
 
         // Should require swaps for non-adjacent qubits
-        assert!(result.swap_gates.len() > 0);
+        assert!(!result.swap_gates.is_empty());
     }
 
     #[test]

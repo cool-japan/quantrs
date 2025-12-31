@@ -88,7 +88,7 @@
 //! - ✅ Re-enabled enhanced SciRS2 modules with full API compliance
 //! - ✅ `scirs2_hardware_benchmarks_enhanced`: ML-driven performance prediction and analysis
 //! - ✅ `scirs2_noise_characterization_enhanced`: Advanced noise modeling with SciRS2 stats
-//! - ✅ Enhanced transpilation using SciRS2 v0.1.0-rc.2's graph algorithms
+//! - ✅ Enhanced transpilation using SciRS2 v0.1.1 Stable Release's graph algorithms
 //! - ✅ Stable APIs for IBM Quantum, Azure Quantum, and AWS Braket
 //! - ✅ All 406 tests passing with zero compilation warnings
 //! - ✅ Full SciRS2 Policy compliance for scientific computing operations
@@ -118,12 +118,15 @@ pub mod continuous_variable;
 pub mod scirs2_calibration_enhanced;
 // pub mod cost_optimization;
 pub mod compiler_passes;
+pub mod cross_compiler_scirs2_ir;
 pub mod cross_platform_benchmarking;
 pub mod crosstalk;
 pub mod distributed;
 pub mod dynamical_decoupling;
+pub mod hardware_benchmarks_scirs2;
 pub mod hardware_parallelization;
 pub mod hybrid_quantum_classical;
+pub mod hybrid_scirs2_algorithms;
 pub mod ibm;
 pub mod ibm_device;
 pub mod integrated_device_manager;
@@ -135,6 +138,7 @@ pub mod ml_optimization;
 pub mod neutral_atom;
 pub mod noise_model;
 pub mod noise_modeling_scirs2;
+pub mod noise_scirs2_characterization;
 pub mod optimization;
 pub mod optimization_old;
 pub mod parametric;
@@ -144,6 +148,8 @@ pub mod photonic;
 pub mod process_tomography;
 pub mod provider_capability_discovery;
 pub mod pulse;
+pub mod pulse_scirs2_signal;
+pub mod qasm_scirs2_compiler;
 pub mod qec;
 pub mod quantum_ml;
 pub mod quantum_ml_integration;
@@ -151,7 +157,7 @@ pub mod quantum_network;
 pub mod quantum_system_security;
 pub mod routing;
 pub mod routing_advanced;
-// Beta.3: Enhanced modules successfully re-enabled with full SciRS2 v0.1.0-rc.2 compliance
+// Beta.3: Enhanced modules successfully re-enabled with full SciRS2 v0.1.1 Stable Release compliance
 pub mod scirs2_hardware_benchmarks_enhanced;
 pub mod scirs2_noise_characterization_enhanced;
 pub mod security;
@@ -161,6 +167,7 @@ pub mod topology;
 pub mod topology_analysis;
 pub mod translation;
 pub mod transpiler;
+pub mod transpiler_scirs2_graph;
 pub mod unified_benchmarking;
 pub mod unified_error_handling;
 pub mod vqa_support;
@@ -232,6 +239,9 @@ pub enum DeviceError {
     #[error("Not implemented: {0}")]
     NotImplemented(String),
 
+    #[error("Transpiler error: {0}")]
+    TranspilerError(String),
+
     #[error("Invalid mapping: {0}")]
     InvalidMapping(String),
 
@@ -278,6 +288,13 @@ impl From<String> for DeviceError {
 impl From<crate::ml_optimization::OptimizeError> for DeviceError {
     fn from(err: crate::ml_optimization::OptimizeError) -> Self {
         Self::OptimizationError(err.to_string())
+    }
+}
+
+/// Convert StatsError to DeviceError
+impl From<scirs2_stats::StatsError> for DeviceError {
+    fn from(err: scirs2_stats::StatsError) -> Self {
+        Self::InvalidInput(format!("Statistical analysis error: {}", err))
     }
 }
 

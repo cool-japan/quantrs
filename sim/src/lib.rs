@@ -88,7 +88,7 @@
 //!
 //! ## Recent Updates (v0.1.0-rc.1)
 //!
-//! - Refined `SciRS2` v0.1.0-rc.1 integration for enhanced performance
+//! - Refined `SciRS2 v0.1.1 Stable Release integration for enhanced performance
 //! - All simulators use `scirs2_core::parallel_ops` for automatic parallelization
 //! - SIMD-accelerated quantum operations via `SciRS2` abstractions
 //! - Advanced linear algebra leveraging `SciRS2`'s optimized BLAS/LAPACK bindings

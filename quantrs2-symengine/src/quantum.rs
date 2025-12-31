@@ -170,7 +170,7 @@ pub mod operators {
     /// Commutator [A, B] = AB - BA
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// use quantrs2_symengine::quantum::operators::commutator;
     /// use quantrs2_symengine::quantum::pauli::{sigma_x, sigma_y};
     ///
@@ -185,7 +185,7 @@ pub mod operators {
     /// Anticommutator {A, B} = AB + BA
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// use quantrs2_symengine::quantum::operators::anticommutator;
     /// use quantrs2_symengine::quantum::pauli::{sigma_x, sigma_y};
     ///

@@ -33,7 +33,7 @@
 //!
 //! ## Recent Updates (v0.1.0-rc.1)
 //!
-//! - Enhanced performance using `SciRS2` v0.1.0-rc.1's parallel algorithms
+//! - Enhanced performance using `SciRS2 v0.1.1 Stable Release's parallel algorithms
 //! - Improved minor graph embedding with refined `SciRS2` graph algorithms
 //! - Memory-efficient sparse matrix operations via `SciRS2`
 //! - Stable APIs for D-Wave, AWS Braket, and Fujitsu integrations

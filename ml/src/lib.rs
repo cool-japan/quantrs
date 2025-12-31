@@ -33,7 +33,7 @@
 //!
 //! ## Recent Updates (v0.1.0-rc.1)
 //!
-//! - Refined SciRS2 v0.1.0-rc.1 integration with unified patterns
+//! - Refined SciRS2 v0.1.1 Stable Release integration with unified patterns
 //! - Automatic differentiation leveraging SciRS2's linear algebra operations
 //! - Parallel training with `scirs2_core::parallel_ops`
 //! - SIMD-accelerated quantum kernel computations

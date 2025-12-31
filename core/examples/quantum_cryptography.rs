@@ -12,47 +12,44 @@
 //! Run with: cargo run --example quantum_cryptography
 
 use quantrs2_core::{
-    error::QuantRS2Result,
     gate::{multi, single, GateOp},
     qubit::QubitId,
 };
 use scirs2_core::random::{thread_rng, RandBeta};
 use scirs2_core::Complex64;
 
-fn main() -> QuantRS2Result<()> {
+fn main() {
     println!("=================================================================");
     println!("   QuantRS2-Core: Quantum Cryptography & Key Distribution");
     println!("=================================================================\n");
 
     // Demonstrate BB84 protocol
-    demonstrate_bb84_protocol()?;
+    demonstrate_bb84_protocol();
     println!();
 
     // Demonstrate E91 protocol
-    demonstrate_e91_protocol()?;
+    demonstrate_e91_protocol();
     println!();
 
     // Demonstrate quantum digital signatures
-    demonstrate_quantum_digital_signatures()?;
+    demonstrate_quantum_digital_signatures();
     println!();
 
     // Demonstrate post-quantum cryptography
-    demonstrate_post_quantum_crypto()?;
+    demonstrate_post_quantum_crypto();
     println!();
 
     // Demonstrate security analysis
-    demonstrate_security_analysis()?;
+    demonstrate_security_analysis();
     println!();
 
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
-    Ok(())
 }
 
 /// Demonstrate BB84 Quantum Key Distribution Protocol
-fn demonstrate_bb84_protocol() -> QuantRS2Result<()> {
+fn demonstrate_bb84_protocol() {
     println!("BB84 QUANTUM KEY DISTRIBUTION PROTOCOL");
     println!("-----------------------------------------------------------------");
 
@@ -198,12 +195,10 @@ fn demonstrate_bb84_protocol() -> QuantRS2Result<()> {
 
     println!("  ✓ BB84 protocol demonstrated");
     println!("  ✓ First QKD protocol, deployed in commercial systems");
-
-    Ok(())
 }
 
 /// Demonstrate E91 Entanglement-Based QKD Protocol
-fn demonstrate_e91_protocol() -> QuantRS2Result<()> {
+fn demonstrate_e91_protocol() {
     println!("E91 ENTANGLEMENT-BASED QKD PROTOCOL");
     println!("-----------------------------------------------------------------");
 
@@ -340,12 +335,10 @@ fn demonstrate_e91_protocol() -> QuantRS2Result<()> {
 
     println!("  ✓ E91 protocol demonstrated");
     println!("  ✓ First entanglement-based QKD, enables device-independent security");
-
-    Ok(())
 }
 
 /// Demonstrate Quantum Digital Signatures
-fn demonstrate_quantum_digital_signatures() -> QuantRS2Result<()> {
+fn demonstrate_quantum_digital_signatures() {
     println!("QUANTUM DIGITAL SIGNATURES");
     println!("-----------------------------------------------------------------");
 
@@ -483,12 +476,10 @@ fn demonstrate_quantum_digital_signatures() -> QuantRS2Result<()> {
 
     println!("  ✓ Quantum digital signatures demonstrated");
     println!("  ✓ Information-theoretically secure authentication");
-
-    Ok(())
 }
 
 /// Demonstrate Post-Quantum Cryptographic Primitives
-fn demonstrate_post_quantum_crypto() -> QuantRS2Result<()> {
+fn demonstrate_post_quantum_crypto() {
     println!("POST-QUANTUM CRYPTOGRAPHIC PRIMITIVES");
     println!("-----------------------------------------------------------------");
 
@@ -667,12 +658,10 @@ fn demonstrate_post_quantum_crypto() -> QuantRS2Result<()> {
 
     println!("  ✓ Post-quantum cryptographic primitives demonstrated");
     println!("  ✓ Essential for protecting against future quantum computers");
-
-    Ok(())
 }
 
 /// Demonstrate Security Analysis and Threat Models
-fn demonstrate_security_analysis() -> QuantRS2Result<()> {
+fn demonstrate_security_analysis() {
     println!("SECURITY ANALYSIS & THREAT MODELS");
     println!("-----------------------------------------------------------------");
 
@@ -853,8 +842,6 @@ fn demonstrate_security_analysis() -> QuantRS2Result<()> {
 
     println!("  ✓ Security analysis demonstrated");
     println!("  ✓ Comprehensive threat model and countermeasures");
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -863,31 +850,31 @@ mod tests {
 
     #[test]
     fn test_example_runs() {
-        assert!(main().is_ok());
+        main();
     }
 
     #[test]
     fn test_bb84_protocol() {
-        assert!(demonstrate_bb84_protocol().is_ok());
+        demonstrate_bb84_protocol();
     }
 
     #[test]
     fn test_e91_protocol() {
-        assert!(demonstrate_e91_protocol().is_ok());
+        demonstrate_e91_protocol();
     }
 
     #[test]
     fn test_quantum_signatures() {
-        assert!(demonstrate_quantum_digital_signatures().is_ok());
+        demonstrate_quantum_digital_signatures();
     }
 
     #[test]
     fn test_post_quantum_crypto() {
-        assert!(demonstrate_post_quantum_crypto().is_ok());
+        demonstrate_post_quantum_crypto();
     }
 
     #[test]
     fn test_security_analysis() {
-        assert!(demonstrate_security_analysis().is_ok());
+        demonstrate_security_analysis();
     }
 }

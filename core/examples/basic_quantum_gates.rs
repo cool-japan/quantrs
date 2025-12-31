@@ -22,11 +22,11 @@ fn main() -> QuantRS2Result<()> {
     println!();
 
     // Demonstrate two-qubit gates
-    demonstrate_two_qubit_gates()?;
+    demonstrate_two_qubit_gates();
     println!();
 
     // Demonstrate rotation gates
-    demonstrate_rotation_gates()?;
+    demonstrate_rotation_gates();
     println!();
 
     // Demonstrate gate properties
@@ -88,7 +88,7 @@ fn demonstrate_single_qubit_gates() -> QuantRS2Result<()> {
 }
 
 /// Demonstrate two-qubit gates
-fn demonstrate_two_qubit_gates() -> QuantRS2Result<()> {
+fn demonstrate_two_qubit_gates() {
     println!("TWO-QUBIT GATES");
     println!("-----------------------------------------------------------------");
 
@@ -138,12 +138,10 @@ fn demonstrate_two_qubit_gates() -> QuantRS2Result<()> {
     println!("  Universal for classical computation");
 
     println!("\n  ✓ Two-qubit gates demonstrated");
-
-    Ok(())
 }
 
 /// Demonstrate rotation gates
-fn demonstrate_rotation_gates() -> QuantRS2Result<()> {
+fn demonstrate_rotation_gates() {
     println!("ROTATION GATES");
     println!("-----------------------------------------------------------------");
 
@@ -192,8 +190,6 @@ fn demonstrate_rotation_gates() -> QuantRS2Result<()> {
     println!("  Applies RX rotation conditionally");
 
     println!("\n  ✓ Rotation gates demonstrated");
-
-    Ok(())
 }
 
 /// Demonstrate gate properties and matrix representations

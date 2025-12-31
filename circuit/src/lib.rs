@@ -92,7 +92,7 @@
 //! ## Recent Updates (v0.1.0-rc.1)
 //!
 //! - Enhanced code quality with clippy warning fixes
-//! - Refined `SciRS2` v0.1.0-rc.2 integration with unified patterns
+//! - **SciRS2 v0.1.1 Stable Release Integration** with unified patterns
 //! - Enhanced graph-based circuit optimization algorithms (60+ strategies)
 //! - Improved hardware-aware compilation with `SciRS2` graph algorithms
 //! - Comprehensive policy documentation for quantum circuit development

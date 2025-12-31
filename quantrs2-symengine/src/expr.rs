@@ -561,7 +561,7 @@ impl Expression {
     /// use quantrs2_symengine::Expression;
     ///
     /// let x = Expression::symbol("x");
-    /// let expr = &x * &x + x.clone();  // x^2 + x
+    /// let expr = x.clone() * x.clone() + x.clone();  // x^2 + x
     /// let result = expr.substitute(&x, &Expression::from(2));  // 2^2 + 2 = 6
     /// ```
     #[must_use]
@@ -588,7 +588,7 @@ impl Expression {
     /// use quantrs2_symengine::Expression;
     ///
     /// let x = Expression::symbol("x");
-    /// let expr = &x * &x + x.clone();  // x^2 + x
+    /// let expr = x.clone() * x.clone() + x.clone();  // x^2 + x
     /// let result = expr.substitute_value(&x, 2.0);  // 2^2 + 2 = 6
     /// ```
     #[must_use]
@@ -606,7 +606,7 @@ impl Expression {
     /// use quantrs2_symengine::Expression;
     ///
     /// let x = Expression::symbol("x");
-    /// let expr = &x * &x;  // x^2
+    /// let expr = x.clone() * x.clone();  // x^2
     /// let derivative = expr.diff(&x);  // 2*x
     /// ```
     #[must_use]

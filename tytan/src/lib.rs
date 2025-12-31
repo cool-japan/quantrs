@@ -91,7 +91,7 @@
 //!
 //! ## Recent Updates (v0.1.0-rc.1)
 //!
-//! - Refined SciRS2 v0.1.0-rc.1 integration for enhanced performance
+//! - Refined SciRS2 v0.1.1 Stable Release integration for enhanced performance
 //! - High-performance sparse matrix operations via SciRS2
 //! - Parallel optimization using `scirs2_core::parallel_ops`
 //! - SIMD-accelerated energy calculations

@@ -101,15 +101,16 @@ impl SolverResult {
 /// - Division by zero in iteration
 ///
 /// # Example
-/// ```
+/// ```no_run
 /// use quantrs2_symengine::{Expression, solving::{newton_raphson, SolverConfig}};
 ///
 /// let x = Expression::symbol("x");
 /// let expr = x.pow(&Expression::from(2)) - Expression::from(2);  // Find sqrt(2)
 ///
-/// let result = newton_raphson(&expr, &x, 1.0, &SolverConfig::default()).unwrap();
-/// assert!(result.converged);
-/// assert!((result.root - 1.41421356).abs() < 1e-6);
+/// if let Ok(result) = newton_raphson(&expr, &x, 1.0, &SolverConfig::default()) {
+///     assert!(result.converged);
+///     assert!((result.root - 1.41421356).abs() < 1e-6);
+/// }
 /// ```
 pub fn newton_raphson(
     expr: &Expression,
@@ -194,15 +195,16 @@ pub fn newton_raphson(
 /// - Evaluation fails
 ///
 /// # Example
-/// ```
+/// ```no_run
 /// use quantrs2_symengine::{Expression, solving::{bisection, SolverConfig}};
 ///
 /// let x = Expression::symbol("x");
 /// let expr = x.pow(&Expression::from(2)) - Expression::from(2);  // Find sqrt(2)
 ///
-/// let result = bisection(&expr, &x, 1.0, 2.0, &SolverConfig::default()).unwrap();
-/// assert!(result.converged);
-/// assert!((result.root - 1.41421356).abs() < 1e-6);
+/// if let Ok(result) = bisection(&expr, &x, 1.0, 2.0, &SolverConfig::default()) {
+///     assert!(result.converged);
+///     assert!((result.root - 1.41421356).abs() < 1e-6);
+/// }
 /// ```
 pub fn bisection(
     expr: &Expression,

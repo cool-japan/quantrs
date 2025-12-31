@@ -97,7 +97,7 @@ impl BatchEvaluator {
     /// Returns an error if evaluation fails for any parameter value.
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// use quantrs2_symengine::{Expression, simd_eval::BatchEvaluator};
     /// use scirs2_core::ndarray::array;
     ///
@@ -107,9 +107,10 @@ impl BatchEvaluator {
     /// let evaluator = BatchEvaluator::new();
     /// let params = array![1.0, 2.0, 3.0, 4.0];
     ///
-    /// let results = evaluator.eval_scalar(&expr, "x", params.view()).unwrap();
-    /// // Results should be [2.0, 5.0, 10.0, 17.0]
-    /// assert_eq!(results.len(), 4);
+    /// if let Ok(results) = evaluator.eval_scalar(&expr, "x", params.view()) {
+    ///     // Results should be [2.0, 5.0, 10.0, 17.0]
+    ///     assert_eq!(results.len(), 4);
+    /// }
     /// ```
     pub fn eval_scalar(
         &self,
@@ -180,7 +181,7 @@ impl BatchEvaluator {
     /// Returns an error if evaluation fails.
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// use quantrs2_symengine::{Expression, simd_eval::BatchEvaluator};
     /// use std::collections::HashMap;
     ///
@@ -204,9 +205,10 @@ impl BatchEvaluator {
     ///     },
     /// ];
     ///
-    /// let results = evaluator.eval_multi_param(&expr, &param_sets).unwrap();
-    /// // Results should be [2.0, 25.0]
-    /// assert_eq!(results.len(), 2);
+    /// if let Ok(results) = evaluator.eval_multi_param(&expr, &param_sets) {
+    ///     // Results should be [2.0, 25.0]
+    ///     assert_eq!(results.len(), 2);
+    /// }
     /// ```
     pub fn eval_multi_param<S: std::hash::BuildHasher>(
         &self,

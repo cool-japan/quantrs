@@ -592,7 +592,7 @@ mod tests {
             Err(e) => {
                 println!("Synthesis failed with error: {}", e);
                 // For now, just test that the API works, not that it converges
-                assert!(true); // Allow test to pass even if optimization fails
+                // Test passes even if optimization fails
             }
         }
     }

@@ -348,11 +348,12 @@
 //! use quantrs2_symengine_sys::*;
 //!
 //! unsafe {
-//!     let expr = /* expression with x */;
+//!     let mut expr = std::mem::zeroed::<basic_struct>();
 //!     let mut x = std::mem::zeroed::<basic_struct>();
 //!     let mut val = std::mem::zeroed::<basic_struct>();
 //!
 //!     symbol_set(&raw mut x, c"x".as_ptr());
+//!     basic_pow(&raw mut expr, &raw const x, &raw const x); // expr = x^x
 //!     integer_set_si(&raw mut val, 42);
 //!
 //!     let mut result = std::mem::zeroed::<basic_struct>();
@@ -371,7 +372,7 @@
 //!     // Set elements
 //!     let mut one = std::mem::zeroed::<basic_struct>();
 //!     integer_set_si(&raw mut one, 1);
-//!     dense_matrix_set_basic(mat, 0, 0, &raw const one);
+//!     dense_matrix_set_basic(mat, 0, 0, &raw mut one);
 //!
 //!     // Compute determinant
 //!     let mut det = std::mem::zeroed::<basic_struct>();

@@ -506,6 +506,7 @@ impl UnifiedErrorHandler {
             DeviceError::RoutingError(_) => ErrorCategory::Hardware,
             DeviceError::OptimizationError(_) => ErrorCategory::ServerError,
             DeviceError::GraphAnalysisError(_) => ErrorCategory::ServerError,
+            DeviceError::TranspilerError(_) => ErrorCategory::Validation,
             DeviceError::NotImplemented(_) => ErrorCategory::Unsupported,
             DeviceError::InvalidMapping(_) => ErrorCategory::Validation,
             DeviceError::DeviceNotFound(_) => ErrorCategory::NotFound,

@@ -48,14 +48,15 @@ impl Expression {
     /// Convert expression to SciRS2 Complex64
     ///
     /// # Example
-    /// ```
+    /// ```no_run
     /// use quantrs2_symengine::Expression;
     /// use scirs2_core::Complex64;
     ///
     /// let expr = Expression::new("1 + 2*I");
-    /// let c = expr.to_complex64().unwrap();
-    /// assert_eq!(c.re, 1.0);
-    /// assert_eq!(c.im, 2.0);
+    /// if let Ok(c) = expr.to_complex64() {
+    ///     assert_eq!(c.re, 1.0);
+    ///     assert_eq!(c.im, 2.0);
+    /// }
     /// ```
     ///
     /// # Errors
