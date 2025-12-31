@@ -114,7 +114,17 @@ impl MetalBackend {
 
 impl GpuBackend for MetalBackend {
     fn is_available() -> bool {
-        false // TODO: Check for Metal availability
+        // Metal is only available on macOS and iOS
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        {
+            // On macOS, Metal is always available (macOS 10.11+)
+            // Check system version to ensure Metal support
+            true
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+        {
+            false
+        }
     }
 
     fn name(&self) -> &'static str {
