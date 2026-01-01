@@ -177,13 +177,14 @@ impl RedundantGateElimination {
         // Find consecutive gates that cancel
         let mut i = 0;
         while i < opt_gates.len() - 1 {
-            if !to_remove.contains(&i) && !to_remove.contains(&(i + 1)) {
-                if Self::gates_cancel(&opt_gates[i], &opt_gates[i + 1]) {
-                    to_remove.insert(i);
-                    to_remove.insert(i + 1);
-                    i += 2; // Skip both gates
-                    continue;
-                }
+            if !to_remove.contains(&i)
+                && !to_remove.contains(&(i + 1))
+                && Self::gates_cancel(&opt_gates[i], &opt_gates[i + 1])
+            {
+                to_remove.insert(i);
+                to_remove.insert(i + 1);
+                i += 2; // Skip both gates
+                continue;
             }
             i += 1;
         }
