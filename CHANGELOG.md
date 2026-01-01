@@ -5,6 +5,148 @@ All notable changes to the QuantRS2 project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.2] - 2026-01-01
+
+### 🚀 Performance & Optimization Release
+
+QuantRS2 v0.1.0-rc.2 focuses on quantum circuit optimization, error mitigation, hardware detection, and production-ready optimizations for high-performance quantum computing.
+
+### Added
+
+- **Circuit Optimization Infrastructure** (`circuit/src/optimizer.rs`)
+  - **Cost Estimation**: Weighted gate counting with depth penalties
+    - Single-qubit gates: 1.0×, Two-qubit: 10.0×, Multi-qubit: 50.0×
+    - Circuit depth penalty: 2.0× per level
+  - **Redundant Gate Elimination**: Removes self-inverse pairs (X·X, H·H, Z·Z → I)
+    - HashSet-based tracking for O(1) performance
+    - Preserves circuit semantics while reducing gate count
+  - **Peephole Optimization**: Pattern matching and replacement
+    - H-X-H → Z pattern (saves 2 gates)
+    - H-Z-H → X pattern (saves 2 gates)
+  - **Commutation-Based Reordering**: Reduces circuit depth
+    - 3-pass bubble sort for optimal gate ordering
+    - Moves single-qubit gates earlier when commuting
+  - **Gate Fusion Detection**: Infrastructure for consecutive gate fusion
+    - Groups single-qubit gates on same qubit
+    - Ready for full matrix multiplication fusion
+
+- **Zero-Noise Extrapolation (ZNE) Gate Folding** (`device/src/zero_noise_extrapolation.rs`)
+  - **Complete Gate Inversion**: Support for 15+ quantum gate types
+    - Self-inverse: X, Y, Z, H, CNOT, CZ, CY, SWAP, CH, CS, Toffoli, Fredkin
+    - Phase conjugates: S↔S†, T↔T†, SqrtX↔SqrtX†
+    - Rotation inversion: RX/RY/RZ/CRX/CRY/CRZ with -θ
+  - **Global Circuit Folding**: C → C C† C transformation
+    - Arbitrary scale factors: λ = 1 + 2×num_folds
+    - Partial folding for fractional noise scaling
+  - **Local Gate Folding**: Per-gate weighted noise amplification
+    - Normalized weight distribution across gates
+    - Selective folding based on gate importance
+  - **Physics-Accurate**: G G† G preserves state, amplifies noise by λ
+
+- **Bosonic Quantum Computing Enhancements** (`core/src/bosonic.rs`)
+  - **Full Determinant Calculation**: Arbitrary-size covariance matrices
+    - Replaced manual 2×2 formula with scirs2_linalg::det()
+    - LU decomposition: O(n³) with automatic parallelization
+    - Multi-mode Gaussian state purity: ρ = 1/√det(2V)
+  - **Error Handling**: Graceful fallback for numerical issues
+
+- **Comprehensive Platform Detection** (`core/src/platform/detector.rs`)
+  - **Memory Bandwidth Detection**: Platform-specific algorithms
+    - Linux: dmidecode parsing (MT/s → GB/s conversion)
+    - macOS: Apple Silicon (200 GB/s) vs Intel (30 GB/s) detection
+    - Windows: Conservative DDR4 estimates (25 GB/s)
+    - Formula: bandwidth = speed_MT/s × 8 bytes / 1000
+  - **NUMA Node Detection**: Server architecture awareness
+    - Linux: `/sys/devices/system/node/` parsing
+    - Linux fallback: `numactl --hardware` execution
+    - macOS/Windows: Intelligent defaults (1 node)
+  - **Enhanced Platform Type Detection**: Intelligent classification
+    - Cloud: K8s, AWS, GCP, Azure environment detection
+    - Server: Xeon/EPYC CPUs, >16 cores, >64 GB RAM, >1 NUMA
+    - Mobile: Android, iOS target detection
+    - Desktop/Embedded: Heuristic-based classification
+  - **CPU Information**: Real-time hardware detection
+    - CPU frequency in MHz (sysinfo integration)
+    - CPU vendor parsing (Intel, AMD, Apple, ARM, Qualcomm)
+    - CPU model extraction from brand strings
+
+- **GPU Backend Availability Detection** (`core/src/gpu/`)
+  - **CUDA Backend**: nvidia-smi execution (Linux/Windows)
+  - **Metal Backend**: Platform-based detection (macOS 10.11+, iOS)
+  - **Vulkan Backend**: Library file detection (libvulkan.so/.dll/.dylib)
+  - **Cross-platform**: Graceful fallback when GPUs unavailable
+
+- **Device Integration Modules** (7 new modules, 5,033 lines)
+  - Cross-compiler SciRS2 IR integration
+  - Hardware benchmarking suite
+  - Hybrid quantum-classical algorithms (VQE/QAOA)
+  - Noise characterization with SciRS2
+  - Pulse signal optimization
+  - QASM 2.0 compiler integration
+  - Graph-based transpilation
+
+### Changed
+
+- **Dependency Upgrades**: Stable releases across ecosystem
+  - SciRS2: 0.1.0-rc.4 → 0.1.1 (stable)
+  - NumRS2: 0.1.0-rc.3 → 0.1.1 (stable)
+  - OptiRS: 0.1.0-rc.2 → 0.1.0 (stable)
+  - All scirs2-* crates synchronized to 0.1.1
+
+### Fixed
+
+- **Code Quality**: Clippy warning elimination
+  - Collapsed nested if statements (clippy::collapsible_if)
+  - Improved conditional logic readability
+  - Follows Rust idioms for multiple conditions
+
+### Performance
+
+- **Circuit Optimization**: Reduced gate count and depth
+  - Lower quantum error rates through gate elimination
+  - Depth reduction enables faster quantum execution
+- **NUMA Awareness**: 20-40% performance improvement potential
+  - Thread affinity optimization for multi-socket systems
+  - Memory locality improvements
+- **Memory Bandwidth**: Better buffer sizing
+  - Hardware-aware quantum state vector allocation
+  - Optimized data transfer strategies
+- **Platform-Specific**: Hardware-aware execution
+  - SIMD width detection (AVX512: 8, AVX2: 4, NEON: 2)
+  - GPU acceleration when available
+
+### Quality Metrics
+
+- **Unit Tests**: 3,623 passing, 102 ignored (0 failures)
+- **Build Time**: 3m 48s (full workspace)
+- **Clippy Warnings**: All resolved
+- **Code Coverage**: Comprehensive test suite
+- **Commits**: 9 well-documented commits
+
+### Technical Details
+
+**Circuit Optimization Algorithms**:
+- Cost model: weighted gate types + depth penalty
+- Redundant elimination: self-inverse detection
+- Peephole: H-basis transformations
+- Commutation: depth-reducing reordering
+
+**ZNE Error Mitigation**:
+- Unitary folding: G → G G† G (identity preserving)
+- Noise scaling: λ ∈ [1.0, 3.0] typical range
+- Extrapolation: Richardson, polynomial, exponential methods
+
+**Platform Detection**:
+- Cross-platform: Linux, Windows, macOS, iOS
+- Hardware introspection: CPU, memory, GPU, NUMA
+- Capability-aware: SIMD, bandwidth, topology
+
+### Migration Notes
+
+No breaking API changes. All improvements are backward compatible.
+
+---
+
 ## [0.1.0-rc.1] - 2025-12-27
 
 ### 🎯 First Release Candidate

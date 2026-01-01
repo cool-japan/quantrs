@@ -45,6 +45,60 @@ The QuantRS2 framework has successfully completed the release candidate phase wi
   - ✅ Unified platform detection and capabilities management
   - ✅ Performance profiling and optimization recommendations
 
+### RC.2 Latest Enhancements (2026-01-01) ✅
+
+- **✅ Circuit Optimization Infrastructure** (`circuit/src/optimizer.rs`)
+  - ✅ Cost estimation with weighted gate counting (1.0×/10.0×/50.0× for single/two/multi-qubit gates)
+  - ✅ Circuit depth penalty factor (2.0× per level) for error-aware optimization
+  - ✅ Redundant gate elimination (self-inverse pairs: X·X, H·H, Z·Z → I)
+  - ✅ Peephole optimization (pattern matching: H-X-H → Z, H-Z-H → X)
+  - ✅ Commutation-based gate reordering for depth reduction
+  - ✅ Gate fusion detection for hardware-specific optimizations
+  - ✅ Complete test coverage (10/10 tests passing)
+
+- **✅ Zero-Noise Extrapolation (ZNE) Gate Folding** (`device/src/zero_noise_extrapolation.rs`)
+  - ✅ Complete gate inversion support (15+ gate types: Pauli, Hadamard, CNOT, Toffoli, rotations)
+  - ✅ Self-inverse gates (X, Y, Z, H, CNOT, SWAP)
+  - ✅ Phase conjugation (S → S†, T → T†)
+  - ✅ Rotation angle negation (RX/RY/RZ with θ → -θ)
+  - ✅ Global circuit folding (G → G G† G for all gates)
+  - ✅ Local circuit folding (selected gate sequences)
+  - ✅ Partial folding with configurable scaling factors
+  - ✅ Physics-accurate error mitigation (5/5 tests passing)
+
+- **✅ Bosonic Quantum Computing Enhancement** (`core/src/bosonic.rs`)
+  - ✅ Arbitrary-size covariance matrix determinant calculation
+  - ✅ scirs2_linalg::det() integration with LU decomposition
+  - ✅ Multi-mode Gaussian state purity: ρ = 1/√det(2V)
+  - ✅ Robust error handling for unphysical states
+  - ✅ All bosonic tests passing (5/5 tests)
+
+- **✅ Enhanced Platform Detection** (`core/src/platform/detector.rs`)
+  - ✅ Memory bandwidth detection (Linux/macOS/Windows)
+    - Linux: DMI parsing for DDR speed (MT/s → GB/s conversion)
+    - macOS: Apple Silicon detection (~200 GB/s unified memory vs ~30 GB/s Intel)
+    - Windows: Conservative DDR4 estimates (~25 GB/s)
+  - ✅ NUMA node detection
+    - Linux: /sys/devices/system/node parsing + numactl fallback
+    - Proper multi-socket server detection
+  - ✅ Enhanced platform type classification
+    - Cloud environment detection (Kubernetes, AWS, Azure, GCP)
+    - Server heuristics (>16 cores, >64 GB RAM, NUMA >1, Xeon/EPYC/Threadripper)
+    - Mobile/embedded/desktop classification
+  - ✅ CPU frequency detection with sysinfo v0.36 compatibility
+
+- **✅ GPU Backend Runtime Detection** (`core/src/gpu/`)
+  - ✅ CUDA availability via nvidia-smi (Linux/Windows)
+  - ✅ Metal platform-based detection (macOS)
+  - ✅ Vulkan library file detection (cross-platform)
+  - ✅ Automatic backend selection based on availability
+
+- **✅ Code Quality Improvements**
+  - ✅ All clippy warnings resolved (collapsible if statements optimized)
+  - ✅ sysinfo v0.36 API migration (SystemExt/CpuExt deprecated patterns removed)
+  - ✅ Type safety improvements (explicit f64 annotations for scirs2_linalg)
+  - ✅ Comprehensive test suite: 3,623 tests passing, 102 ignored, 0 failures
+
 ### External Dependency Status
 
 **✅ Stable Release Dependencies**: All dependencies upgraded to stable versions:

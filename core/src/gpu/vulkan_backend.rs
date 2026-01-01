@@ -114,33 +114,9 @@ impl VulkanBackend {
 
 impl GpuBackend for VulkanBackend {
     fn is_available() -> bool {
-        // Check for Vulkan loader library availability
-        #[cfg(target_os = "linux")]
-        {
-            // Try to find libvulkan.so on Linux
-            std::path::Path::new("/usr/lib/libvulkan.so").exists()
-                || std::path::Path::new("/usr/lib/x86_64-linux-gnu/libvulkan.so").exists()
-                || std::path::Path::new("/usr/local/lib/libvulkan.so").exists()
-        }
-        #[cfg(target_os = "windows")]
-        {
-            // On Windows, check for vulkan-1.dll
-            std::process::Command::new("where")
-                .args(&["vulkan-1.dll"])
-                .output()
-                .map(|output| output.status.success())
-                .unwrap_or(false)
-        }
-        #[cfg(target_os = "macos")]
-        {
-            // On macOS, check for MoltenVK (Vulkan implementation for Metal)
-            std::path::Path::new("/usr/local/lib/libvulkan.dylib").exists()
-                || std::path::Path::new("/opt/homebrew/lib/libvulkan.dylib").exists()
-        }
-        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-        {
-            false
-        }
+        // Vulkan backend is not yet implemented
+        // Once implemented, this should check for Vulkan loader library
+        false
     }
 
     fn name(&self) -> &'static str {

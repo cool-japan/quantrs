@@ -114,25 +114,9 @@ impl CudaBackend {
 
 impl GpuBackend for CudaBackend {
     fn is_available() -> bool {
-        // Check for CUDA availability via nvidia-smi or CUDA library presence
-        #[cfg(target_os = "linux")]
-        {
-            std::process::Command::new("nvidia-smi")
-                .output()
-                .map(|output| output.status.success())
-                .unwrap_or(false)
-        }
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("nvidia-smi.exe")
-                .output()
-                .map(|output| output.status.success())
-                .unwrap_or(false)
-        }
-        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-        {
-            false
-        }
+        // CUDA backend is not yet implemented
+        // Once implemented, this should check for nvidia-smi or CUDA library
+        false
     }
 
     fn name(&self) -> &'static str {
