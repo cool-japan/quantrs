@@ -660,30 +660,31 @@ impl GaussianState {
     /// Calculate the purity Tr(ρ²)
     pub fn purity(&self) -> f64 {
         // For Gaussian states: purity = 1/√det(2V)
-        // Calculate determinant of 2*covariance matrix using LU decomposition
+        // Calculate determinant of 2*covariance matrix
         let two_v = &self.covariance * 2.0;
 
-        // Calculate determinant as product of diagonal elements from LU decomposition
-        // For small matrices, we can use a simple formula
         let n = two_v.nrows();
 
         if n == 0 {
             return 1.0;
         }
 
-        // For now, use a simplified approach for 2x2 matrices (single mode)
-        if n == 2 {
-            // det([[a,b],[c,d]]) = ad - bc
-            let det = two_v[[0, 0]] * two_v[[1, 1]] - two_v[[0, 1]] * two_v[[1, 0]];
-            if det > 0.0 {
-                1.0 / det.sqrt()
-            } else {
-                0.0
+        // Use scirs2_linalg determinant for all matrix sizes
+        match scirs2_linalg::det::<f64>(&two_v.view(), None) {
+            Ok(det) => {
+                if det > 0.0 {
+                    1.0 / det.sqrt()
+                } else {
+                    // Determinant should always be positive for covariance matrices
+                    // If not, this indicates an unphysical state
+                    0.0
+                }
             }
-        } else {
-            // For larger matrices, estimate purity as 1.0 (pure state approximation)
-            // TODO: Implement full determinant calculation for arbitrary size matrices
-            1.0
+            Err(_) => {
+                // If determinant calculation fails, fall back to approximation
+                // This should rarely happen for well-formed covariance matrices
+                1.0
+            }
         }
     }
 }
