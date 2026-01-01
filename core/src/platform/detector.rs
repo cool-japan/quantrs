@@ -29,10 +29,21 @@ fn detect_cpu_capabilities() -> CpuCapabilities {
         logical_cores,
         simd: detect_simd_capabilities(),
         cache: detect_cache_info(),
-        base_clock_mhz: None, // TODO: Implement CPU clock detection
+        base_clock_mhz: detect_cpu_frequency(),
         vendor: detect_cpu_vendor(),
         model_name: detect_cpu_model(),
     }
+}
+
+/// Detect CPU frequency in MHz
+fn detect_cpu_frequency() -> Option<f32> {
+    use sysinfo::System;
+
+    let mut sys = System::new();
+    sys.refresh_cpu_all();
+
+    // Get frequency from first CPU (all cores typically have same base frequency)
+    sys.cpus().first().map(|cpu| cpu.frequency() as f32)
 }
 
 /// Detect SIMD capabilities
@@ -109,25 +120,44 @@ const fn detect_cache_info() -> CacheInfo {
 
 /// Detect CPU vendor
 fn detect_cpu_vendor() -> String {
-    #[cfg(target_arch = "x86_64")]
-    {
-        // TODO: Use CPUID to get actual vendor
-        "Unknown".to_string()
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        "ARM".to_string()
-    }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
+    use sysinfo::System;
+
+    let mut sys = System::new();
+    sys.refresh_cpu_all();
+
+    // Extract vendor from CPU brand string
+    if let Some(cpu) = sys.cpus().first() {
+        let brand = cpu.brand();
+        if brand.contains("Intel") {
+            return "Intel".to_string();
+        } else if brand.contains("AMD") {
+            return "AMD".to_string();
+        } else if brand.contains("Apple") {
+            return "Apple".to_string();
+        } else if brand.contains("ARM") {
+            return "ARM".to_string();
+        } else if brand.contains("Qualcomm") {
+            return "Qualcomm".to_string();
+        }
+        // Return brand if no known vendor found
+        brand.to_string()
+    } else {
         "Unknown".to_string()
     }
 }
 
 /// Detect CPU model
 fn detect_cpu_model() -> String {
-    // TODO: Implement actual CPU model detection
-    "Unknown".to_string()
+    use sysinfo::System;
+
+    let mut sys = System::new();
+    sys.refresh_cpu_all();
+
+    // Get CPU brand/model name
+    sys.cpus()
+        .first()
+        .map(|cpu| cpu.brand().to_string())
+        .unwrap_or_else(|| "Unknown".to_string())
 }
 
 /// Detect GPU capabilities
