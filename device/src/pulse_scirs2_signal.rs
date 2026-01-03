@@ -12,7 +12,10 @@ use crate::{
     pulse::{ChannelType, PulseCalibration, PulseInstruction, PulseSchedule, PulseShape},
     DeviceError, DeviceResult,
 };
-use scirs2_core::{Complex64, ndarray::{Array1, Array2}};
+use scirs2_core::{
+    ndarray::{Array1, Array2},
+    Complex64,
+};
 use scirs2_fft::{fft, ifft};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -41,7 +44,7 @@ impl Default for SignalProcessingConfig {
         Self {
             enable_fft_optimization: true,
             enable_filtering: true,
-            sample_rate: 1e9, // 1 GHz default
+            sample_rate: 1e9,     // 1 GHz default
             filter_cutoff: 100e6, // 100 MHz
             filter_order: 4,
             window_function: WindowType::Hamming,
@@ -203,8 +206,7 @@ impl SciRS2PulseController {
 
                 for i in 0..n_samples {
                     let t = i as f64 / sample_rate;
-                    let gaussian =
-                        (-(t - t_center).powi(2) / (2.0 * sigma.powi(2))).exp();
+                    let gaussian = (-(t - t_center).powi(2) / (2.0 * sigma.powi(2))).exp();
                     samples.push(*amplitude * gaussian);
                 }
 
@@ -224,8 +226,7 @@ impl SciRS2PulseController {
                     let t = i as f64 / sample_rate;
                     let t_shifted = t - t_center;
                     let gaussian = (-(t_shifted).powi(2) / (2.0 * sigma.powi(2))).exp();
-                    let derivative =
-                        -t_shifted / sigma.powi(2) * gaussian;
+                    let derivative = -t_shifted / sigma.powi(2) * gaussian;
                     let drag = gaussian + Complex64::i() * beta * derivative;
                     samples.push(*amplitude * drag);
                 }
@@ -333,16 +334,11 @@ impl SciRS2PulseController {
         let fft_result = self.compute_fft(&samples)?;
 
         // Compute power spectral density
-        let psd: Vec<f64> = fft_result
-            .iter()
-            .map(|c| c.norm_sqr())
-            .collect();
+        let psd: Vec<f64> = fft_result.iter().map(|c| c.norm_sqr()).collect();
 
         // Frequency bins
         let df = sample_rate / self.config.fft_size as f64;
-        let frequencies: Vec<f64> = (0..psd.len())
-            .map(|i| i as f64 * df)
-            .collect();
+        let frequencies: Vec<f64> = (0..psd.len()).map(|i| i as f64 * df).collect();
 
         // Find peaks (local maxima)
         let mut peaks = Vec::new();
@@ -357,7 +353,8 @@ impl SciRS2PulseController {
 
         // If no peaks found, add the maximum value as a peak
         if peaks.is_empty() {
-            if let Some(max_idx) = psd.iter()
+            if let Some(max_idx) = psd
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(idx, _)| idx)
@@ -391,7 +388,8 @@ impl SciRS2PulseController {
         let spectrum = self.analyze_spectrum(pulse, sample_rate)?;
 
         // Signal power
-        let signal_power: f64 = samples.iter().map(|s| s.norm_sqr()).sum::<f64>() / samples.len() as f64;
+        let signal_power: f64 =
+            samples.iter().map(|s| s.norm_sqr()).sum::<f64>() / samples.len() as f64;
         let peak_power = samples.iter().map(|s| s.norm_sqr()).fold(0.0f64, f64::max);
 
         // Estimate SNR (simplified)
@@ -451,10 +449,7 @@ impl SciRS2PulseController {
     }
 
     /// Optimize pulse schedule using signal processing
-    pub fn optimize_schedule(
-        &self,
-        schedule: &PulseSchedule,
-    ) -> DeviceResult<PulseSchedule> {
+    pub fn optimize_schedule(&self, schedule: &PulseSchedule) -> DeviceResult<PulseSchedule> {
         let mut optimized = schedule.clone();
 
         if self.config.enable_fft_optimization {
@@ -487,7 +482,10 @@ impl SciRS2PulseController {
         report.push_str(&format!("  SNR: {:.2} dB\n", metrics.snr));
         report.push_str(&format!("  Peak Power: {:.4}\n", metrics.peak_power));
         report.push_str(&format!("  Average Power: {:.4}\n", metrics.average_power));
-        report.push_str(&format!("  Bandwidth: {:.2} MHz\n", metrics.bandwidth / 1e6));
+        report.push_str(&format!(
+            "  Bandwidth: {:.2} MHz\n",
+            metrics.bandwidth / 1e6
+        ));
         report.push_str(&format!(
             "  Center Frequency: {:.2} MHz\n",
             metrics.center_frequency / 1e6

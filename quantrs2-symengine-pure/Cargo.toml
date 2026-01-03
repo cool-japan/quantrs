@@ -1,0 +1,57 @@
+[package]
+name = "quantrs2-symengine-pure"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Pure Rust symbolic mathematics for quantum computing - a replacement for C++-based symengine"
+keywords = ["quantum", "symbolic", "algebra", "differentiation", "pure-rust"]
+categories = ["science", "mathematics", "simulation"]
+
+[dependencies]
+# E-graph optimization (MIT) - handles simplification/rewriting
+egg = { workspace = true }
+
+# Number types for symbolic computation
+ordered-float = { workspace = true }
+
+# Arbitrary precision (MIT)
+num-bigint = { workspace = true }
+num-rational = { workspace = true }
+
+# SciRS2 integration (MANDATORY - SciRS2 POLICY)
+scirs2-core = { workspace = true }
+scirs2-linalg = { workspace = true }
+scirs2-autograd = { workspace = true }
+
+# Performance (Pure Rust)
+dashmap = { workspace = true }
+smallvec = { workspace = true }
+rustc-hash = { workspace = true }
+
+# Serialization (COOLJAPAN Policy: oxicode not bincode)
+oxicode = { workspace = true }
+serde = { workspace = true, optional = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+criterion = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+default = ["simd", "parallel"]
+simd = ["scirs2-core/simd"]
+parallel = ["scirs2-core/parallel"]
+serde = ["dep:serde", "egg/serde-1"]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "symbolic_ops"
+harness = false

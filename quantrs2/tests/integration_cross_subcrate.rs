@@ -574,7 +574,7 @@ mod benchmarking_integration {
         });
 
         assert_eq!(result, 50_005_000); // Sum of 1 to 10,000
-        // In release mode, this might still be very fast, so be lenient
+                                        // In release mode, this might still be very fast, so be lenient
         assert!(duration >= Duration::ZERO);
     }
 

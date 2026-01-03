@@ -8,10 +8,10 @@
 //! - Gate commutation and reordering
 //! - Critical path analysis
 
+use crate::{DeviceError, DeviceResult};
 use quantrs2_circuit::prelude::Circuit;
 use quantrs2_core::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
-use crate::{DeviceError, DeviceResult};
 
 // Graph structure for gate dependencies
 #[derive(Debug, Clone)]
@@ -35,7 +35,10 @@ impl<T: Clone + PartialEq> DirectedGraph<T> {
     }
 
     pub fn add_edge(&mut self, from_idx: usize, to_idx: usize) {
-        self.edges.entry(from_idx).or_insert_with(Vec::new).push(to_idx);
+        self.edges
+            .entry(from_idx)
+            .or_insert_with(Vec::new)
+            .push(to_idx);
     }
 
     pub fn nodes(&self) -> &[T] {
@@ -208,7 +211,9 @@ impl SciRS2GraphTranspiler {
             if qubits.len() == 2 {
                 let (q0, q1) = (qubits[0], qubits[1]);
                 if q0 != q1 {
-                    if let (Some(&idx0), Some(&idx1)) = (qubit_node_indices.get(&q0), qubit_node_indices.get(&q1)) {
+                    if let (Some(&idx0), Some(&idx1)) =
+                        (qubit_node_indices.get(&q0), qubit_node_indices.get(&q1))
+                    {
                         qubit_graph.add_edge(idx0, idx1);
                         qubit_graph.add_edge(idx1, idx0); // Bidirectional
                     }
@@ -371,7 +376,10 @@ impl SciRS2GraphTranspiler {
 
         let mut report = String::from("=== SciRS2 Graph Transpiler Analysis ===\n\n");
         report.push_str(&format!("Circuit Depth: {}\n", topology.circuit_depth));
-        report.push_str(&format!("Critical Path Length: {}\n", topology.critical_path_length));
+        report.push_str(&format!(
+            "Critical Path Length: {}\n",
+            topology.critical_path_length
+        ));
         report.push_str(&format!("Number of Gates: {}\n", circuit.gates().len()));
         report.push_str(&format!("Number of Qubits: {}\n", N));
 
@@ -415,7 +423,8 @@ mod tests {
         let config = SciRS2TranspilerConfig::default();
         let transpiler = SciRS2GraphTranspiler::new(config);
 
-        let graph = transpiler.build_dependency_graph(&circuit)
+        let graph = transpiler
+            .build_dependency_graph(&circuit)
             .expect("Failed to build dependency graph");
 
         assert_eq!(graph.num_nodes(), 3); // H, CNOT, H
@@ -432,7 +441,8 @@ mod tests {
         let config = SciRS2TranspilerConfig::default();
         let transpiler = SciRS2GraphTranspiler::new(config);
 
-        let topology = transpiler.analyze_topology(&circuit)
+        let topology = transpiler
+            .analyze_topology(&circuit)
             .expect("Failed to analyze topology");
 
         assert!(topology.circuit_depth > 0);
@@ -450,7 +460,8 @@ mod tests {
         let config = SciRS2TranspilerConfig::default();
         let transpiler = SciRS2GraphTranspiler::new(config);
 
-        let commuting = transpiler.find_commuting_gates(&circuit)
+        let commuting = transpiler
+            .find_commuting_gates(&circuit)
             .expect("Failed to find commuting gates");
 
         assert!(!commuting.is_empty());
@@ -466,7 +477,8 @@ mod tests {
         let config = SciRS2TranspilerConfig::default();
         let transpiler = SciRS2GraphTranspiler::new(config);
 
-        let report = transpiler.generate_optimization_report(&circuit)
+        let report = transpiler
+            .generate_optimization_report(&circuit)
             .expect("Failed to generate report");
 
         assert!(report.contains("Circuit Depth"));
@@ -509,7 +521,8 @@ mod tests {
         };
         let transpiler = SciRS2GraphTranspiler::new(config);
 
-        let mapping = transpiler.optimize_qubit_routing(&circuit, &hardware)
+        let mapping = transpiler
+            .optimize_qubit_routing(&circuit, &hardware)
             .expect("Failed to optimize routing");
 
         assert_eq!(mapping.len(), 3);

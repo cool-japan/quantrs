@@ -452,14 +452,12 @@ impl PeepholeOptimizer {
                     // Apply replacement
                     match replacement_name.as_str() {
                         "X" => {
-                            let _ = new_circuit.add_gate(quantrs2_core::gate::single::PauliX {
-                                target: *qubit,
-                            });
+                            let _ = new_circuit
+                                .add_gate(quantrs2_core::gate::single::PauliX { target: *qubit });
                         }
                         "Z" => {
-                            let _ = new_circuit.add_gate(quantrs2_core::gate::single::PauliZ {
-                                target: *qubit,
-                            });
+                            let _ = new_circuit
+                                .add_gate(quantrs2_core::gate::single::PauliZ { target: *qubit });
                         }
                         _ => {}
                     }
@@ -688,11 +686,12 @@ impl<const N: usize> CircuitOptimizer<N> {
 
         // Weight factors for different gate types
         let single_qubit_cost = 1.0;
-        let two_qubit_cost = 10.0;  // Two-qubit gates are much more expensive
+        let two_qubit_cost = 10.0; // Two-qubit gates are much more expensive
         let multi_qubit_cost = 50.0; // Multi-qubit gates are very expensive
 
         // Calculate gate cost
-        let single_qubit_gates = stats.total_gates - stats.two_qubit_gates - stats.multi_qubit_gates;
+        let single_qubit_gates =
+            stats.total_gates - stats.two_qubit_gates - stats.multi_qubit_gates;
         let gate_cost = single_qubit_gates as f64 * single_qubit_cost
             + stats.two_qubit_gates as f64 * two_qubit_cost
             + stats.multi_qubit_gates as f64 * multi_qubit_cost;

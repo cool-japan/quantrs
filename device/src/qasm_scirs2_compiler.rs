@@ -70,10 +70,7 @@ pub enum QuantumGate {
         gate_type: ParametricGateType,
     },
     /// Measurement
-    Measure {
-        qubit: usize,
-        classical_bit: usize,
-    },
+    Measure { qubit: usize, classical_bit: usize },
 }
 
 /// Parametric gate types
@@ -272,7 +269,8 @@ impl QasmCompiler {
         // Validate qubit indices before calculating metrics
         for gate in &gates {
             match gate {
-                QuantumGate::SingleQubit { target, .. } | QuantumGate::Parametric { target, .. } => {
+                QuantumGate::SingleQubit { target, .. }
+                | QuantumGate::Parametric { target, .. } => {
                     if *target >= num_qubits {
                         return Err(DeviceError::InvalidInput(format!(
                             "Qubit index {} out of range (max {})",
@@ -280,7 +278,9 @@ impl QasmCompiler {
                         )));
                     }
                 }
-                QuantumGate::TwoQubit { control, target, .. } => {
+                QuantumGate::TwoQubit {
+                    control, target, ..
+                } => {
                     if *control >= num_qubits || *target >= num_qubits {
                         return Err(DeviceError::InvalidInput(format!(
                             "Qubit indices ({}, {}) out of range (max {})",
@@ -385,10 +385,9 @@ impl QasmCompiler {
                         gate_name
                     )));
                 }
-                let def = self
-                    .gate_definitions
-                    .get(&gate_name)
-                    .ok_or_else(|| DeviceError::InvalidInput(format!("Unknown gate: {}", gate_name)))?;
+                let def = self.gate_definitions.get(&gate_name).ok_or_else(|| {
+                    DeviceError::InvalidInput(format!("Unknown gate: {}", gate_name))
+                })?;
                 Ok(QuantumGate::SingleQubit {
                     target: qubit_args[0],
                     unitary: (def.unitary_generator)(&[]),
@@ -455,10 +454,13 @@ impl QasmCompiler {
 
         for gate in gates {
             match gate {
-                QuantumGate::SingleQubit { target, .. } | QuantumGate::Parametric { target, .. } => {
+                QuantumGate::SingleQubit { target, .. }
+                | QuantumGate::Parametric { target, .. } => {
                     qubit_depths[*target] += 1;
                 }
-                QuantumGate::TwoQubit { control, target, .. } => {
+                QuantumGate::TwoQubit {
+                    control, target, ..
+                } => {
                     let max_depth = qubit_depths[*control].max(qubit_depths[*target]);
                     qubit_depths[*control] = max_depth + 1;
                     qubit_depths[*target] = max_depth + 1;
@@ -529,14 +531,16 @@ impl QasmCompiler {
         match (gate1, gate2) {
             (
                 QuantumGate::SingleQubit {
-                    target: t1, name: n1, ..
+                    target: t1,
+                    name: n1,
+                    ..
                 },
                 QuantumGate::SingleQubit {
-                    target: t2, name: n2, ..
+                    target: t2,
+                    name: n2,
+                    ..
                 },
-            ) => {
-                t1 == t2 && n1 == n2 && (n1 == "x" || n1 == "y" || n1 == "z" || n1 == "h")
-            }
+            ) => t1 == t2 && n1 == n2 && (n1 == "x" || n1 == "y" || n1 == "z" || n1 == "h"),
             _ => false,
         }
     }
@@ -552,7 +556,8 @@ impl QasmCompiler {
         // Check all qubit indices are valid
         for gate in &circuit.gates {
             match gate {
-                QuantumGate::SingleQubit { target, .. } | QuantumGate::Parametric { target, .. } => {
+                QuantumGate::SingleQubit { target, .. }
+                | QuantumGate::Parametric { target, .. } => {
                     if *target >= circuit.num_qubits {
                         return Err(DeviceError::InvalidInput(format!(
                             "Qubit index {} out of range (max {})",
@@ -560,7 +565,9 @@ impl QasmCompiler {
                         )));
                     }
                 }
-                QuantumGate::TwoQubit { control, target, .. } => {
+                QuantumGate::TwoQubit {
+                    control, target, ..
+                } => {
                     if *control >= circuit.num_qubits || *target >= circuit.num_qubits {
                         return Err(DeviceError::InvalidInput(format!(
                             "Qubit indices ({}, {}) out of range (max {})",
@@ -573,7 +580,10 @@ impl QasmCompiler {
                         ));
                     }
                 }
-                QuantumGate::Measure { qubit, classical_bit } => {
+                QuantumGate::Measure {
+                    qubit,
+                    classical_bit,
+                } => {
                     if *qubit >= circuit.num_qubits {
                         return Err(DeviceError::InvalidInput(format!(
                             "Qubit index {} out of range",

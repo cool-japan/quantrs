@@ -39,7 +39,6 @@ fn main() {
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
 }
 
 /// Demonstrate quantum feature maps for encoding classical data
@@ -110,7 +109,6 @@ fn demonstrate_feature_maps() {
     println!();
 
     println!("  ✓ Quantum feature maps demonstrated");
-
 }
 
 /// Demonstrate quantum kernel methods
@@ -174,7 +172,6 @@ fn demonstrate_quantum_kernels() {
     println!();
 
     println!("  ✓ Quantum kernel methods demonstrated");
-
 }
 
 /// Demonstrate quantum neural networks (QNNs)
@@ -268,7 +265,6 @@ fn demonstrate_quantum_neural_networks() {
     println!();
 
     println!("  ✓ Quantum neural networks demonstrated");
-
 }
 
 /// Demonstrate quantum-classical hybrid learning
@@ -386,7 +382,6 @@ fn demonstrate_hybrid_learning() {
     println!();
 
     println!("  ✓ Hybrid quantum-classical learning demonstrated");
-
 }
 
 #[cfg(test)]

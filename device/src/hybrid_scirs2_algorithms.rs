@@ -6,9 +6,9 @@
 
 use crate::{DeviceError, DeviceResult};
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
+use scirs2_core::random::prelude::*;
 use scirs2_core::Complex64;
 use scirs2_optimize::unconstrained::{minimize, Method, Options};
-use scirs2_core::random::prelude::*;
 
 /// Hybrid algorithm configuration using SciRS2 optimization
 #[derive(Debug, Clone)]
@@ -115,13 +115,8 @@ impl HybridAlgorithmExecutor {
 
         let x0_slice: Vec<f64> = initial_params.to_vec();
 
-        let result = minimize(
-            objective,
-            &x0_slice,
-            method,
-            Some(options),
-        )
-        .map_err(|e| DeviceError::OptimizationError(format!("Optimization failed: {}", e)))?;
+        let result = minimize(objective, &x0_slice, method, Some(options))
+            .map_err(|e| DeviceError::OptimizationError(format!("Optimization failed: {}", e)))?;
 
         Ok(HybridOptimizationResult {
             optimal_parameters: result.x,
@@ -132,11 +127,13 @@ impl HybridAlgorithmExecutor {
     }
 
     /// Generate initial parameters using SciRS2 random number generation
-    pub fn generate_initial_parameters(&mut self, dimension: usize, range: (f64, f64)) -> Array1<f64> {
+    pub fn generate_initial_parameters(
+        &mut self,
+        dimension: usize,
+        range: (f64, f64),
+    ) -> Array1<f64> {
         let (low, high) = range;
-        Array1::from_shape_fn(dimension, |_| {
-            low + (high - low) * self.rng.gen::<f64>()
-        })
+        Array1::from_shape_fn(dimension, |_| low + (high - low) * self.rng.gen::<f64>())
     }
 }
 
@@ -202,19 +199,15 @@ impl QAOAWithSciRS2 {
     ///
     /// # Arguments
     /// * `cost_function` - Function that computes cost given parameters (2*p parameters: gamma and beta)
-    pub fn run<F>(
-        &mut self,
-        cost_function: F,
-    ) -> DeviceResult<HybridOptimizationResult>
+    pub fn run<F>(&mut self, cost_function: F) -> DeviceResult<HybridOptimizationResult>
     where
         F: FnMut(&ArrayView1<f64>) -> f64 + Clone,
     {
         // QAOA has 2*p parameters (p gamma parameters, p beta parameters)
         let num_params = 2 * self.num_layers;
-        let initial_params = self.executor.generate_initial_parameters(
-            num_params,
-            (0.0, 2.0 * std::f64::consts::PI),
-        );
+        let initial_params = self
+            .executor
+            .generate_initial_parameters(num_params, (0.0, 2.0 * std::f64::consts::PI));
 
         self.executor.optimize(cost_function, &initial_params)
     }
@@ -344,9 +337,8 @@ mod tests {
         let mut vqe = VQEWithSciRS2::new(config, 2);
 
         // Simple energy function: E(theta) = (theta[0] - 1)^2 + (theta[1] - 2)^2
-        let energy = |params: &ArrayView1<f64>| {
-            (params[0] - 1.0).powi(2) + (params[1] - 2.0).powi(2)
-        };
+        let energy =
+            |params: &ArrayView1<f64>| (params[0] - 1.0).powi(2) + (params[1] - 2.0).powi(2);
 
         let result = vqe.run(energy, None);
         assert!(result.is_ok());

@@ -23,7 +23,6 @@ fn main() {
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
 }
 
 /// Demonstrate error correction code structures

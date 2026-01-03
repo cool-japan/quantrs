@@ -385,8 +385,7 @@ mod tests {
     #[test]
     fn test_array_operations() {
         let val = 1.0 / f64::sqrt(2.0); // Exact 1/√2
-        let state: Array1<Complex64> =
-            array![Complex64::new(val, 0.0), Complex64::new(val, 0.0)];
+        let state: Array1<Complex64> = array![Complex64::new(val, 0.0), Complex64::new(val, 0.0)];
         let norm: f64 = state.iter().map(|c| (c * c.conj()).re).sum();
         assert!((norm - 1.0).abs() < 1e-6);
     }

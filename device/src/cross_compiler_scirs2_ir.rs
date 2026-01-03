@@ -94,14 +94,9 @@ pub enum IRInstruction {
         parameters: Vec<f64>,
     },
     /// Measurement
-    Measure {
-        qubit: usize,
-        classical_bit: usize,
-    },
+    Measure { qubit: usize, classical_bit: usize },
     /// Barrier (prevents optimization across it)
-    Barrier {
-        qubits: Vec<usize>,
-    },
+    Barrier { qubits: Vec<usize> },
     /// Custom gate
     Custom {
         name: String,
@@ -277,7 +272,9 @@ impl CrossCompiler {
                 IRInstruction::SingleQubitGate { target, .. } => {
                     qubit_depths[*target] += 1;
                 }
-                IRInstruction::TwoQubitGate { control, target, .. } => {
+                IRInstruction::TwoQubitGate {
+                    control, target, ..
+                } => {
                     let max_depth = qubit_depths[*control].max(qubit_depths[*target]);
                     qubit_depths[*control] = max_depth + 1;
                     qubit_depths[*target] = max_depth + 1;
@@ -412,11 +409,7 @@ impl CrossCompiler {
                     decomposed.push(IRInstruction::SingleQubitGate {
                         gate_type: SingleQubitGateType::U3,
                         target,
-                        parameters: vec![
-                            std::f64::consts::PI / 2.0,
-                            0.0,
-                            std::f64::consts::PI,
-                        ],
+                        parameters: vec![std::f64::consts::PI / 2.0, 0.0, std::f64::consts::PI],
                     });
                 }
                 IRInstruction::TwoQubitGate {
@@ -463,12 +456,12 @@ impl CrossCompiler {
     /// Generate backend-specific code
     fn generate_backend_code(&self, ir: &QuantumIR) -> DeviceResult<String> {
         match self.config.target {
-            TargetBackend::IBMQuantum | TargetBackend::GenericQASM => {
-                self.generate_qasm_code(ir)
-            }
+            TargetBackend::IBMQuantum | TargetBackend::GenericQASM => self.generate_qasm_code(ir),
             TargetBackend::AWSBraket => self.generate_braket_code(ir),
             TargetBackend::AzureQuantum => self.generate_azure_code(ir),
-            TargetBackend::Custom => Ok("// Custom backend code generation not implemented\n".to_string()),
+            TargetBackend::Custom => {
+                Ok("// Custom backend code generation not implemented\n".to_string())
+            }
         }
     }
 
@@ -531,7 +524,10 @@ impl CrossCompiler {
                     code.push_str(&gate_str);
                     code.push('\n');
                 }
-                IRInstruction::Measure { qubit, classical_bit } => {
+                IRInstruction::Measure {
+                    qubit,
+                    classical_bit,
+                } => {
                     code.push_str(&format!("measure q[{}] -> c[{}];\n", qubit, classical_bit));
                 }
                 IRInstruction::Barrier { qubits } => {
@@ -546,7 +542,11 @@ impl CrossCompiler {
                         code.push_str(&format!("barrier {};\n", qubit_list));
                     }
                 }
-                IRInstruction::Custom { name, qubits, parameters } => {
+                IRInstruction::Custom {
+                    name,
+                    qubits,
+                    parameters,
+                } => {
                     let qubit_list = qubits
                         .iter()
                         .map(|q| format!("q[{}]", q))
@@ -582,11 +582,7 @@ impl CrossCompiler {
     }
 
     /// Create IR from gate sequence
-    pub fn create_ir_from_gates(
-        &self,
-        num_qubits: usize,
-        gates: Vec<IRInstruction>,
-    ) -> QuantumIR {
+    pub fn create_ir_from_gates(&self, num_qubits: usize, gates: Vec<IRInstruction>) -> QuantumIR {
         QuantumIR {
             num_qubits,
             instructions: gates,
@@ -831,9 +827,7 @@ mod tests {
                 target: 0,
                 parameters: vec![],
             },
-            IRInstruction::Barrier {
-                qubits: vec![0, 1],
-            },
+            IRInstruction::Barrier { qubits: vec![0, 1] },
             IRInstruction::TwoQubitGate {
                 gate_type: TwoQubitGateType::CNOT,
                 control: 0,

@@ -39,7 +39,6 @@ fn main() {
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
 }
 
 /// Demonstrate Variational Quantum Eigensolver (VQE) basics
@@ -86,7 +85,6 @@ fn demonstrate_vqe_basics() {
 
     println!("  ✓ VQE basics demonstrated");
     println!("  ✓ Used for: Molecular simulation, materials science");
-
 }
 
 /// Demonstrate Quantum Approximate Optimization Algorithm (QAOA) basics
@@ -141,7 +139,6 @@ fn demonstrate_qaoa_basics() {
 
     println!("  ✓ QAOA basics demonstrated");
     println!("  ✓ Used for: Logistics, scheduling, portfolio optimization");
-
 }
 
 /// Demonstrate variational circuit construction
@@ -201,7 +198,6 @@ fn demonstrate_variational_circuit() {
     println!();
 
     println!("  ✓ Variational circuit demonstrated");
-
 }
 
 /// Demonstrate parameter optimization strategies
@@ -270,7 +266,6 @@ fn demonstrate_parameter_optimization() {
     println!();
 
     println!("  ✓ Parameter optimization demonstrated");
-
 }
 
 #[cfg(test)]

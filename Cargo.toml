@@ -12,6 +12,7 @@ members = [
     "examples",
     "quantrs2-symengine-sys",
     "quantrs2-symengine",
+    "quantrs2-symengine-pure",
     "quantrs2",
 ]
 # Exclude Python bindings from default builds (use maturin for py crate)
@@ -26,6 +27,7 @@ default-members = [
     "examples",
     "quantrs2-symengine-sys",
     "quantrs2-symengine",
+    "quantrs2-symengine-pure",
     "quantrs2",
 ]
 exclude = [
@@ -121,6 +123,13 @@ quantrs2-tytan = { path = "tytan", version = "0.1.0-rc.1" }
 # Symbolic computation (local workspace versions)
 quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-rc.1" }
 quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-rc.1" }
+quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.0-rc.1" }
+
+# Pure Rust symbolic math dependencies (MIT licensed)
+egg = "0.11"
+num-bigint = "0.4"
+num-rational = "0.4"
+ordered-float = "5.0"
 
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)

@@ -9,8 +9,8 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView2};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::{Distribution, RandNormal};
 use scirs2_core::Complex64;
@@ -776,10 +776,14 @@ impl EnhancedCalibrationSystem {
             // Define residual function
             let residual = |params: &[f64], _: &[f64]| -> Array1<f64> {
                 let (a, b, c, d) = (params[0], params[1], params[2], params[3]);
-                let residuals: Vec<f64> = amp_data.iter().zip(&pop_data).map(|(amp, pop)| {
-                    let predicted = a * (b * amp + c).sin() + d;
-                    predicted - pop
-                }).collect();
+                let residuals: Vec<f64> = amp_data
+                    .iter()
+                    .zip(&pop_data)
+                    .map(|(amp, pop)| {
+                        let predicted = a * (b * amp + c).sin() + d;
+                        predicted - pop
+                    })
+                    .collect();
                 Array1::from(residuals)
             };
 
@@ -793,7 +797,8 @@ impl EnhancedCalibrationSystem {
                 None::<fn(&[f64], &[f64]) -> Array2<f64>>, // No analytical Jacobian
                 &empty_data,
                 Some(options),
-            ).map_err(|e| QuantRS2Error::InvalidInput(format!("Rabi fitting failed: {}", e)))?;
+            )
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Rabi fitting failed: {}", e)))?;
 
             let fitted = result.x;
 
@@ -811,7 +816,8 @@ impl EnhancedCalibrationSystem {
             let populations = &data.populations;
 
             // Find amplitude corresponding to maximum population
-            let max_idx = populations.iter()
+            let max_idx = populations
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(idx, _)| idx)
@@ -839,12 +845,19 @@ impl EnhancedCalibrationSystem {
 
             // Define residual function
             let residual = |params: &[f64], _: &[f64]| -> Array1<f64> {
-                let (a, t2, freq, phase, offset) = (params[0], params[1], params[2], params[3], params[4]);
-                let residuals: Vec<f64> = time_data.iter().zip(&pop_data).map(|(t, pop)| {
-                    let predicted = a * (-t / t2).exp() *
-                                  (2.0 * std::f64::consts::PI * freq * t + phase).cos() + offset;
-                    predicted - pop
-                }).collect();
+                let (a, t2, freq, phase, offset) =
+                    (params[0], params[1], params[2], params[3], params[4]);
+                let residuals: Vec<f64> = time_data
+                    .iter()
+                    .zip(&pop_data)
+                    .map(|(t, pop)| {
+                        let predicted = a
+                            * (-t / t2).exp()
+                            * (2.0 * std::f64::consts::PI * freq * t + phase).cos()
+                            + offset;
+                        predicted - pop
+                    })
+                    .collect();
                 Array1::from(residuals)
             };
 
@@ -858,7 +871,8 @@ impl EnhancedCalibrationSystem {
                 None::<fn(&[f64], &[f64]) -> Array2<f64>>, // No analytical Jacobian
                 &empty_data,
                 Some(options),
-            ).map_err(|e| QuantRS2Error::InvalidInput(format!("Ramsey fitting failed: {}", e)))?;
+            )
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Ramsey fitting failed: {}", e)))?;
 
             let fitted = result.x;
 

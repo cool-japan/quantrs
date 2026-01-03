@@ -62,8 +62,7 @@ mod tests {
         }
 
         #[cfg(not(feature = "metal"))]
-        {
-        }
+        {}
     }
 
     #[cfg(all(target_os = "macos", feature = "metal"))]

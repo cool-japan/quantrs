@@ -5,8 +5,8 @@
 
 use crate::{DeviceError, DeviceResult};
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_stats::{mean, std, median};
 use scirs2_core::random::prelude::*;
+use scirs2_stats::{mean, median, std};
 
 /// Hardware benchmark configuration
 #[derive(Debug, Clone)]
@@ -256,10 +256,7 @@ impl HardwareBenchmarker {
     }
 
     /// Analyze coherence times
-    fn analyze_coherence(
-        &self,
-        coherence_data: &CoherenceData,
-    ) -> DeviceResult<CoherenceAnalysis> {
+    fn analyze_coherence(&self, coherence_data: &CoherenceData) -> DeviceResult<CoherenceAnalysis> {
         let avg_t1 = mean(&coherence_data.t1_times.view())?;
         let avg_t2 = mean(&coherence_data.t2_times.view())?;
 
@@ -335,10 +332,8 @@ impl HardwareBenchmarker {
 
         // Coherence times contribute 30% to score (normalized to 100 μs)
         if let Some(coh) = coherence {
-            let coherence_score = ((coh.avg_t1 / 100.0).min(1.0)
-                + (coh.avg_t2 / 100.0).min(1.0))
-                / 2.0
-                * 100.0;
+            let coherence_score =
+                ((coh.avg_t1 / 100.0).min(1.0) + (coh.avg_t2 / 100.0).min(1.0)) / 2.0 * 100.0;
             score += coherence_score * 0.3;
             weight_sum += 0.3;
         }
@@ -358,10 +353,7 @@ impl HardwareBenchmarker {
     }
 
     /// Generate synthetic benchmark data for testing
-    pub fn generate_synthetic_data(
-        &mut self,
-        num_qubits: usize,
-    ) -> BenchmarkMeasurementData {
+    pub fn generate_synthetic_data(&mut self, num_qubits: usize) -> BenchmarkMeasurementData {
         // Generate gate execution times (50-200 nanoseconds with noise)
         let gate_times = Array1::from_shape_fn(self.config.num_iterations, |_| {
             let base_time = 100.0;
@@ -370,9 +362,8 @@ impl HardwareBenchmarker {
         });
 
         // Generate single-qubit gate fidelities (99.5% - 99.99%)
-        let single_qubit_fidelities = Array1::from_shape_fn(num_qubits, |_| {
-            0.995 + self.rng.gen::<f64>() * 0.0049
-        });
+        let single_qubit_fidelities =
+            Array1::from_shape_fn(num_qubits, |_| 0.995 + self.rng.gen::<f64>() * 0.0049);
 
         // Generate two-qubit gate fidelities (98% - 99.5%)
         let two_qubit_fidelities = Array1::from_shape_fn(num_qubits.saturating_sub(1), |_| {
@@ -380,9 +371,7 @@ impl HardwareBenchmarker {
         });
 
         // Generate T1 times (30-100 microseconds)
-        let t1_times = Array1::from_shape_fn(num_qubits, |_| {
-            30.0 + self.rng.gen::<f64>() * 70.0
-        });
+        let t1_times = Array1::from_shape_fn(num_qubits, |_| 30.0 + self.rng.gen::<f64>() * 70.0);
 
         // Generate T2 times (20-80 microseconds, always <= T1)
         let t2_times = Array1::from_shape_fn(num_qubits, |i| {
@@ -391,9 +380,8 @@ impl HardwareBenchmarker {
         });
 
         // Generate readout fidelities (95% - 99%)
-        let readout_fidelities = Array1::from_shape_fn(num_qubits, |_| {
-            0.95 + self.rng.gen::<f64>() * 0.04
-        });
+        let readout_fidelities =
+            Array1::from_shape_fn(num_qubits, |_| 0.95 + self.rng.gen::<f64>() * 0.04);
 
         // Generate assignment error matrix (simplified 2x2 for binary readout)
         let mut assignment_errors = Array2::zeros((2, 2));

@@ -274,10 +274,7 @@ fn detect_numa_nodes() -> usize {
             let node_count = entries
                 .filter_map(|e| e.ok())
                 .filter(|e| {
-                    e.file_name()
-                        .to_string_lossy()
-                        .starts_with("node")
-                        && e.file_name() != "node"
+                    e.file_name().to_string_lossy().starts_with("node") && e.file_name() != "node"
                 })
                 .count();
 
@@ -383,8 +380,7 @@ fn detect_platform_type() -> PlatformType {
 
     if is_server {
         PlatformType::Server
-    } else if cfg!(any(target_arch = "arm", target_arch = "aarch64"))
-        && !cfg!(target_os = "macos")
+    } else if cfg!(any(target_arch = "arm", target_arch = "aarch64")) && !cfg!(target_os = "macos")
     {
         // ARM but not macOS might be embedded
         PlatformType::Embedded

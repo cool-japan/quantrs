@@ -6,10 +6,10 @@
 
 use crate::{DeviceError, DeviceResult};
 use scirs2_core::ndarray::{Array1, Array2};
-use scirs2_core::Complex64;
-use scirs2_stats::{mean, std};  // Descriptive statistics at root level
-use scirs2_stats::distributions;  // For creating distributions
 use scirs2_core::random::prelude::*;
+use scirs2_core::Complex64;
+use scirs2_stats::distributions; // For creating distributions
+use scirs2_stats::{mean, std}; // Descriptive statistics at root level
 
 /// Noise characterization configuration
 #[derive(Debug, Clone)]
@@ -172,33 +172,22 @@ impl NoiseCharacterizer {
         }
 
         // Compute error rates
-        let errors: Array1<f64> = (measurement_data - expected_data)
-            .mapv(|x| if x.abs() > 0.5 { 1.0 } else { 0.0 });
+        let errors: Array1<f64> =
+            (measurement_data - expected_data).mapv(|x| if x.abs() > 0.5 { 1.0 } else { 0.0 });
 
         let mean_error = mean(&errors.view())?;
         let std_error = std(&errors.view(), 1, None)?; // Sample std dev (ddof=1)
 
         // Estimate noise parameters based on model type
-        let noise_params = self.estimate_noise_parameters(
-            measurement_data,
-            expected_data,
-            &errors,
-            noise_model,
-        )?;
+        let noise_params =
+            self.estimate_noise_parameters(measurement_data, expected_data, &errors, noise_model)?;
 
         // Compute confidence intervals using SciRS2 statistics
-        let confidence_intervals = self.compute_confidence_intervals(
-            &errors,
-            &noise_params,
-        )?;
+        let confidence_intervals = self.compute_confidence_intervals(&errors, &noise_params)?;
 
         // Assess goodness-of-fit
-        let fit_quality = self.assess_fit_quality(
-            measurement_data,
-            expected_data,
-            &noise_params,
-            noise_model,
-        )?;
+        let fit_quality =
+            self.assess_fit_quality(measurement_data, expected_data, &noise_params, noise_model)?;
 
         // Perform correlation analysis if advanced analysis is enabled
         let correlations = if self.config.advanced_analysis {
@@ -258,8 +247,10 @@ impl NoiseCharacterizer {
             }
             NoiseModelType::ReadoutError => {
                 // Assignment error probabilities
-                let p_0_given_1 = self.estimate_readout_error(measurement_data, expected_data, 0)?;
-                let p_1_given_0 = self.estimate_readout_error(measurement_data, expected_data, 1)?;
+                let p_0_given_1 =
+                    self.estimate_readout_error(measurement_data, expected_data, 0)?;
+                let p_1_given_0 =
+                    self.estimate_readout_error(measurement_data, expected_data, 1)?;
                 (None, None, vec![p_0_given_1, p_1_given_0])
             }
             NoiseModelType::Crosstalk => {
@@ -298,13 +289,13 @@ impl NoiseCharacterizer {
         let mean_t = mean(&times.view())?;
         let mean_log_p = mean(&log_probs.view())?;
 
-        let numerator: f64 = times.iter().zip(log_probs.iter())
+        let numerator: f64 = times
+            .iter()
+            .zip(log_probs.iter())
             .map(|(&t, &lp)| (t - mean_t) * (lp - mean_log_p))
             .sum();
 
-        let denominator: f64 = times.iter()
-            .map(|&t| (t - mean_t).powi(2))
-            .sum();
+        let denominator: f64 = times.iter().map(|&t| (t - mean_t).powi(2)).sum();
 
         if denominator.abs() < 1e-10 {
             return Ok(30.0);
@@ -333,7 +324,8 @@ impl NoiseCharacterizer {
         state: usize,
     ) -> DeviceResult<f64> {
         let expected_state = state as f64;
-        let count_expected: usize = expected_data.iter()
+        let count_expected: usize = expected_data
+            .iter()
             .filter(|&&e| (e - expected_state).abs() < 0.5)
             .count();
 
@@ -341,10 +333,10 @@ impl NoiseCharacterizer {
             return Ok(0.01); // Default 1% error
         }
 
-        let count_errors: usize = expected_data.iter().zip(measurement_data.iter())
-            .filter(|(&e, &m)| {
-                (e - expected_state).abs() < 0.5 && (m - expected_state).abs() > 0.5
-            })
+        let count_errors: usize = expected_data
+            .iter()
+            .zip(measurement_data.iter())
+            .filter(|(&e, &m)| (e - expected_state).abs() < 0.5 && (m - expected_state).abs() > 0.5)
             .count();
 
         Ok((count_errors as f64 / count_expected as f64).clamp(0.0, 0.5))
@@ -402,13 +394,12 @@ impl NoiseCharacterizer {
 
         // R-squared calculation
         let mean_measured = mean(&measurement_data.view())?;
-        let ss_tot: f64 = measurement_data.iter()
+        let ss_tot: f64 = measurement_data
+            .iter()
             .map(|&y| (y - mean_measured).powi(2))
             .sum();
 
-        let ss_res: f64 = residuals.iter()
-            .map(|&r| r.powi(2))
-            .sum();
+        let ss_res: f64 = residuals.iter().map(|&r| r.powi(2)).sum();
 
         let r_squared = if ss_tot > 1e-10 {
             1.0 - (ss_res / ss_tot)
@@ -536,14 +527,17 @@ impl NoiseCharacterizer {
                 // Exponential decay with Gaussian noise
                 Array1::from_shape_fn(num_samples, |i| {
                     let decay = (-(i as f64) / 50.0).exp();
-                    let gaussian_noise = self.rng.gen::<f64>() * noise_strength - noise_strength / 2.0;
+                    let gaussian_noise =
+                        self.rng.gen::<f64>() * noise_strength - noise_strength / 2.0;
                     (decay + gaussian_noise).clamp(0.0, 1.0)
                 })
             }
             _ => {
                 // Gaussian noise
                 Array1::from_shape_fn(num_samples, |_| {
-                    (self.rng.gen::<f64>() * noise_strength).abs().clamp(0.0, 1.0)
+                    (self.rng.gen::<f64>() * noise_strength)
+                        .abs()
+                        .clamp(0.0, 1.0)
                 })
             }
         }
@@ -579,11 +573,8 @@ mod tests {
             measurement[i * 10] = 1.0; // 10% errors
         }
 
-        let result = characterizer.characterize_noise(
-            &measurement,
-            &expected,
-            NoiseModelType::Depolarizing,
-        );
+        let result =
+            characterizer.characterize_noise(&measurement, &expected, NoiseModelType::Depolarizing);
 
         assert!(result.is_ok());
         let result = result.expect("Characterization failed");
@@ -634,11 +625,8 @@ mod tests {
             measurement[i * 20] = 1.0; // Readout error
         }
 
-        let result = characterizer.characterize_noise(
-            &measurement,
-            &expected,
-            NoiseModelType::ReadoutError,
-        );
+        let result =
+            characterizer.characterize_noise(&measurement, &expected, NoiseModelType::ReadoutError);
 
         assert!(result.is_ok());
         let result = result.expect("Characterization failed");
@@ -656,11 +644,8 @@ mod tests {
         let expected = Array1::zeros(1000);
         let measurement = Array1::from_shape_fn(1000, |i| if i % 10 == 0 { 1.0 } else { 0.0 });
 
-        let result = characterizer.characterize_noise(
-            &measurement,
-            &expected,
-            NoiseModelType::Depolarizing,
-        );
+        let result =
+            characterizer.characterize_noise(&measurement, &expected, NoiseModelType::Depolarizing);
 
         assert!(result.is_ok());
         let result = result.expect("Characterization failed");
@@ -668,8 +653,10 @@ mod tests {
         assert_eq!(result.confidence_intervals.confidence_level, 0.95);
         assert!(result.confidence_intervals.error_rate_lower >= 0.0);
         assert!(result.confidence_intervals.error_rate_upper <= 1.0);
-        assert!(result.confidence_intervals.error_rate_lower <
-                result.confidence_intervals.error_rate_upper);
+        assert!(
+            result.confidence_intervals.error_rate_lower
+                < result.confidence_intervals.error_rate_upper
+        );
     }
 
     #[test]
@@ -680,11 +667,8 @@ mod tests {
         let expected = Array1::zeros(500);
         let measurement = expected.clone();
 
-        let result = characterizer.characterize_noise(
-            &measurement,
-            &expected,
-            NoiseModelType::Depolarizing,
-        );
+        let result =
+            characterizer.characterize_noise(&measurement, &expected, NoiseModelType::Depolarizing);
 
         assert!(result.is_ok());
         let result = result.expect("Characterization failed");
@@ -699,11 +683,7 @@ mod tests {
         let config = NoiseCharacterizationConfig::default();
         let mut characterizer = NoiseCharacterizer::new(config);
 
-        let samples = characterizer.generate_noise_samples(
-            NoiseModelType::Depolarizing,
-            1000,
-            0.1,
-        );
+        let samples = characterizer.generate_noise_samples(NoiseModelType::Depolarizing, 1000, 0.1);
 
         assert_eq!(samples.len(), 1000);
 
@@ -724,11 +704,8 @@ mod tests {
         let expected = Array1::zeros(50);
         let measurement = expected.clone();
 
-        let result = characterizer.characterize_noise(
-            &measurement,
-            &expected,
-            NoiseModelType::Depolarizing,
-        );
+        let result =
+            characterizer.characterize_noise(&measurement, &expected, NoiseModelType::Depolarizing);
 
         assert!(result.is_err());
     }
