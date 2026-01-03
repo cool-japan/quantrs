@@ -295,6 +295,102 @@ impl Expression {
         }
     }
 
+    /// Check if this expression is an addition operation
+    #[must_use]
+    pub fn is_add(&self) -> bool {
+        matches!(self.root(), ExprLang::Add(_))
+    }
+
+    /// Check if this expression is a multiplication operation
+    #[must_use]
+    pub fn is_mul(&self) -> bool {
+        matches!(self.root(), ExprLang::Mul(_))
+    }
+
+    /// Check if this expression is a power operation
+    #[must_use]
+    pub fn is_pow(&self) -> bool {
+        matches!(self.root(), ExprLang::Pow(_))
+    }
+
+    /// Check if this expression is a negation operation
+    #[must_use]
+    pub fn is_neg(&self) -> bool {
+        matches!(self.root(), ExprLang::Neg(_))
+    }
+
+    /// Get the inner expression if this is a negation
+    #[must_use]
+    pub fn as_neg(&self) -> Option<Self> {
+        if let ExprLang::Neg([inner_id]) = self.root() {
+            Some(self.extract_subexpr(*inner_id))
+        } else {
+            None
+        }
+    }
+
+    /// Get the operands if this is an addition operation
+    #[must_use]
+    pub fn as_add(&self) -> Option<Vec<Self>> {
+        if let ExprLang::Add([lhs_id, rhs_id]) = self.root() {
+            Some(vec![
+                self.extract_subexpr(*lhs_id),
+                self.extract_subexpr(*rhs_id),
+            ])
+        } else {
+            None
+        }
+    }
+
+    /// Get the operands if this is a multiplication operation
+    #[must_use]
+    pub fn as_mul(&self) -> Option<Vec<Self>> {
+        if let ExprLang::Mul([lhs_id, rhs_id]) = self.root() {
+            Some(vec![
+                self.extract_subexpr(*lhs_id),
+                self.extract_subexpr(*rhs_id),
+            ])
+        } else {
+            None
+        }
+    }
+
+    /// Get the base and exponent if this is a power operation
+    #[must_use]
+    pub fn as_pow(&self) -> Option<(Self, Self)> {
+        if let ExprLang::Pow([base_id, exp_id]) = self.root() {
+            Some((
+                self.extract_subexpr(*base_id),
+                self.extract_subexpr(*exp_id),
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Extract a subexpression by its ID
+    fn extract_subexpr(&self, id: Id) -> Self {
+        let target_idx = usize::from(id);
+        let mut new_expr = RecExpr::default();
+
+        // Build a mapping from old IDs to new IDs
+        let mut id_map = std::collections::HashMap::new();
+
+        // Traverse the expression up to and including the target node
+        for (idx, node) in self.expr.as_ref().iter().enumerate() {
+            if idx > target_idx {
+                break;
+            }
+            let new_node = node
+                .clone()
+                .map_children(|old_id| *id_map.get(&old_id).unwrap_or(&old_id));
+            let new_id = new_expr.add(new_node);
+            id_map.insert(Id::from(idx), new_id);
+        }
+
+        Self { expr: new_expr }
+    }
+
     // =========================================================================
     // Basic Operations
     // =========================================================================

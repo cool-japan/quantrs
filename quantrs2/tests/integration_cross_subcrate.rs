@@ -145,9 +145,9 @@ mod full_stack_integration {
         circuit.h(0).unwrap();
         circuit.cnot(0, 1).unwrap();
 
-        // Simulation
+        // Simulation - use the Simulator<N> trait directly
         let simulator = StateVectorSimulator::new();
-        let result = Simulator::run(&simulator, &circuit);
+        let result = simulator.run(&circuit);
 
         assert!(result.is_ok(), "Full stack integration should work");
     }
@@ -162,9 +162,9 @@ mod full_stack_integration {
         circuit.cnot(0, 1).unwrap();
         circuit.cnot(1, 2).unwrap();
 
-        // Simulate
+        // Simulate - use the Simulator<N> trait directly
         let simulator = StateVectorSimulator::new();
-        let result = Simulator::run(&simulator, &circuit);
+        let result = simulator.run(&circuit);
 
         assert!(result.is_ok(), "Full workflow should succeed");
     }
@@ -236,6 +236,8 @@ mod prelude_hierarchy {
     #[test]
     fn test_full_includes_all() {
         use quantrs2::prelude::full::*;
+        // Disambiguate VERSION - use essentials
+        use quantrs2::prelude::essentials::VERSION;
 
         // Full prelude should include essentials at minimum
         let _q = QubitId::new(0);

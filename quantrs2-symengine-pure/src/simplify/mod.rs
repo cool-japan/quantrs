@@ -11,18 +11,167 @@ use crate::expr::{ExprLang, Expression};
 
 /// Expand an expression (distribute products over sums)
 pub fn expand(expr: &Expression) -> Expression {
-    let expand_rules = get_expansion_rules();
+    // First, manually expand any power-2 expressions
+    let expanded_pow = expand_powers(expr);
 
-    let runner = Runner::default()
-        .with_expr(expr.as_rec_expr())
-        .with_iter_limit(10)
-        .run(&expand_rules);
+    // Then fully distribute all multiplications over additions
+    distribute_fully(&expanded_pow)
+}
 
-    let root = runner.roots[0];
-    let extractor = egg::Extractor::new(&runner.egraph, ExpandedSize);
-    let (_, best) = extractor.find_best(root);
+/// Fully distribute multiplications over additions
+/// This implements FOIL-like expansion for all product-of-sums
+fn distribute_fully(expr: &Expression) -> Expression {
+    // Recursively process the expression
+    if expr.is_mul() {
+        // SAFETY: is_mul() check guarantees as_mul() will succeed
+        let operands = expr.as_mul().expect("is_mul() was true");
+        let left = distribute_fully(&operands[0]);
+        let right = distribute_fully(&operands[1]);
 
-    Expression::from_rec_expr(best)
+        // Distribute multiplication over additions
+        distribute_product(&left, &right)
+    } else if expr.is_add() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        let operands = expr.as_add().expect("is_add() was true");
+        let left = distribute_fully(&operands[0]);
+        let right = distribute_fully(&operands[1]);
+        left + right
+    } else if expr.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = expr.as_neg().expect("is_neg() was true");
+        -distribute_fully(&inner)
+    } else if expr.is_pow() {
+        // SAFETY: is_pow() check guarantees as_pow() will succeed
+        let (base, exp) = expr.as_pow().expect("is_pow() was true");
+        let expanded_base = distribute_fully(&base);
+        expanded_base.pow(&exp)
+    } else {
+        // Symbols, numbers, etc. - return as-is
+        expr.clone()
+    }
+}
+
+/// Distribute a product: (a + b) * (c + d) = a*c + a*d + b*c + b*d
+fn distribute_product(left: &Expression, right: &Expression) -> Expression {
+    // Get all addends from left
+    let left_terms = collect_addends(left);
+    // Get all addends from right
+    let right_terms = collect_addends(right);
+
+    // Multiply each pair
+    let mut result_terms: Vec<Expression> = Vec::new();
+    for l in &left_terms {
+        for r in &right_terms {
+            let product = multiply_terms(l, r);
+            result_terms.push(product);
+        }
+    }
+
+    // Build sum
+    if result_terms.is_empty() {
+        Expression::zero()
+    } else {
+        let mut result = result_terms.remove(0);
+        for term in result_terms {
+            result = result + term;
+        }
+        result
+    }
+}
+
+/// Collect all addends from an expression (handles nested additions)
+fn collect_addends(expr: &Expression) -> Vec<Expression> {
+    if expr.is_add() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        let operands = expr.as_add().expect("is_add() was true");
+        let mut terms = collect_addends(&operands[0]);
+        terms.extend(collect_addends(&operands[1]));
+        terms
+    } else {
+        vec![expr.clone()]
+    }
+}
+
+/// Multiply two terms, handling negations
+fn multiply_terms(a: &Expression, b: &Expression) -> Expression {
+    // Handle negations to keep things clean
+    let (a_neg, a_inner) = unwrap_neg(a);
+    let (b_neg, b_inner) = unwrap_neg(b);
+
+    let product = a_inner * b_inner;
+
+    // XOR the negations
+    if a_neg ^ b_neg {
+        -product
+    } else {
+        product
+    }
+}
+
+/// Unwrap negation: returns (is_negated, inner_expression)
+fn unwrap_neg(expr: &Expression) -> (bool, Expression) {
+    if expr.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = expr.as_neg().expect("is_neg() was true");
+        let (inner_neg, inner_expr) = unwrap_neg(&inner);
+        // Double negation cancels out
+        (!inner_neg, inner_expr)
+    } else {
+        (false, expr.clone())
+    }
+}
+
+/// Recursively expand power expressions with exponent 2
+fn expand_powers(expr: &Expression) -> Expression {
+    // Check if this is a power expression
+    if expr.is_pow() {
+        // SAFETY: is_pow() check guarantees as_pow() will succeed
+        let (base, exp) = expr.as_pow().expect("is_pow() was true");
+
+        // First recursively expand powers in the base
+        let expanded_base = expand_powers(&base);
+
+        // Check if exponent is 2
+        if exp.is_number() {
+            if let Some(exp_val) = exp.to_f64() {
+                if (exp_val - 2.0).abs() < 1e-10 {
+                    // a^2 => a * a
+                    return expanded_base.clone() * expanded_base;
+                }
+            }
+        }
+
+        // For other exponents, return base^exp with expanded base
+        return expanded_base.pow(&exp);
+    }
+
+    // Check if this is an addition - recursively expand
+    if expr.is_add() {
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        let operands = expr.as_add().expect("is_add() was true");
+        let left = expand_powers(&operands[0]);
+        let right = expand_powers(&operands[1]);
+        return left + right;
+    }
+
+    // Check if this is a multiplication - recursively expand
+    if expr.is_mul() {
+        // SAFETY: is_mul() check guarantees as_mul() will succeed
+        let operands = expr.as_mul().expect("is_mul() was true");
+        let left = expand_powers(&operands[0]);
+        let right = expand_powers(&operands[1]);
+        return left * right;
+    }
+
+    // Check if this is a negation - recursively expand
+    if expr.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = expr.as_neg().expect("is_neg() was true");
+        return -expand_powers(&inner);
+    }
+
+    // For all other expressions (symbols, numbers), return as-is
+    expr.clone()
 }
 
 /// Simplify an expression using e-graph equality saturation
@@ -136,6 +285,8 @@ impl CostFunction<ExprLang> for AstSize {
 }
 
 /// Cost function that prefers expanded (distributed) forms
+/// Note: Currently unused as expand() uses direct distribute_fully() instead.
+#[allow(dead_code)]
 struct ExpandedSize;
 
 impl CostFunction<ExprLang> for ExpandedSize {
@@ -157,14 +308,37 @@ impl CostFunction<ExprLang> for ExpandedSize {
     }
 }
 
-/// Get expansion (distribution) rewrite rules
-fn get_expansion_rules() -> Vec<Rewrite<ExprLang, ()>> {
+/// Get distribution rewrite rules (for expanding products over sums)
+/// Note: Currently unused as expand() uses direct distribute_fully() instead,
+/// but kept for potential future e-graph based expansion use cases.
+#[allow(dead_code)]
+fn get_distribution_rules() -> Vec<Rewrite<ExprLang, ()>> {
     vec![
         // Distributivity (left and right)
         rewrite!("distrib-left"; "(* ?a (+ ?b ?c))" => "(+ (* ?a ?b) (* ?a ?c))"),
         rewrite!("distrib-right"; "(* (+ ?a ?b) ?c)" => "(+ (* ?a ?c) (* ?b ?c))"),
-        // Expand powers (limited)
-        rewrite!("pow-2"; "(^ ?a 2)" => "(* ?a ?a)"),
+        // Note: pow-2 rule doesn't work due to Num(Symbol) not matching literal "2"
+        // Power expansion is now handled by expand_powers() function
+        // Negation handling for expansion
+        // (neg a) * b = neg(a * b)
+        rewrite!("neg-mul-left"; "(* (neg ?a) ?b)" => "(neg (* ?a ?b))"),
+        // a * (neg b) = neg(a * b)
+        rewrite!("neg-mul-right"; "(* ?a (neg ?b))" => "(neg (* ?a ?b))"),
+        // (neg a) * (neg b) = a * b (double negation in multiplication)
+        rewrite!("neg-neg-mul"; "(* (neg ?a) (neg ?b))" => "(* ?a ?b)"),
+        // Distribute negation over addition
+        rewrite!("neg-add"; "(neg (+ ?a ?b))" => "(+ (neg ?a) (neg ?b))"),
+        // Double negation elimination
+        rewrite!("neg-neg"; "(neg (neg ?a))" => "?a"),
+        // Multiplication associativity (helps with nested distributions)
+        rewrite!("mul-assoc"; "(* ?a (* ?b ?c))" => "(* (* ?a ?b) ?c)"),
+        rewrite!("mul-assoc-rev"; "(* (* ?a ?b) ?c)" => "(* ?a (* ?b ?c))"),
+        // Addition associativity (helps flatten sums)
+        rewrite!("add-assoc"; "(+ ?a (+ ?b ?c))" => "(+ (+ ?a ?b) ?c)"),
+        rewrite!("add-assoc-rev"; "(+ (+ ?a ?b) ?c)" => "(+ ?a (+ ?b ?c))"),
+        // Commutativity (needed for proper expansion)
+        rewrite!("mul-comm"; "(* ?a ?b)" => "(* ?b ?a)"),
+        rewrite!("add-comm"; "(+ ?a ?b)" => "(+ ?b ?a)"),
         // Basic simplifications needed during expansion
         rewrite!("add-zero"; "(+ ?a 0)" => "?a"),
         rewrite!("zero-add"; "(+ 0 ?a)" => "?a"),
@@ -172,6 +346,8 @@ fn get_expansion_rules() -> Vec<Rewrite<ExprLang, ()>> {
         rewrite!("one-mul"; "(* 1 ?a)" => "?a"),
         rewrite!("mul-zero"; "(* ?a 0)" => "0"),
         rewrite!("zero-mul"; "(* 0 ?a)" => "0"),
+        // Handle negation with constants
+        rewrite!("neg-zero"; "(neg 0)" => "0"),
     ]
 }
 
@@ -569,5 +745,99 @@ mod tests {
 
         assert!((orig_val - coll_val).abs() < 1e-10);
         assert!((coll_val - 10.0).abs() < 1e-10); // 5 + 5 = 10
+    }
+
+    #[test]
+    fn test_expand_simple_pow2() {
+        // Test simple a^2 = a*a
+        let a = Expression::symbol("a");
+        let two = Expression::from(2);
+
+        let expr = a.clone().pow(&two);
+        let expanded = expand(&expr);
+
+        // Should expand to a*a
+        let mut values = std::collections::HashMap::new();
+        values.insert("a".to_string(), 3.0);
+        let exp_val = expanded.eval(&values).expect("eval");
+        assert!((exp_val - 9.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_expand_binomial_squared() {
+        // Test (a+b)^2 = a^2 + 2ab + b^2
+        let a = Expression::symbol("a");
+        let b = Expression::symbol("b");
+        let two = Expression::from(2);
+
+        let expr = (a.clone() + b.clone()).pow(&two);
+        let expanded = expand(&expr);
+
+        // Verify by evaluation at multiple points
+        for (a_val, b_val) in [(2.0, 3.0), (1.0, 1.0), (0.0, 5.0)] {
+            let mut values = std::collections::HashMap::new();
+            values.insert("a".to_string(), a_val);
+            values.insert("b".to_string(), b_val);
+
+            let orig_val = expr.eval(&values).expect("eval original");
+            let exp_val = expanded.eval(&values).expect("eval expanded");
+
+            // (a+b)^2 should equal expanded form
+            assert!(
+                (orig_val - exp_val).abs() < 1e-10,
+                "Mismatch at a={a_val}, b={b_val}: orig={orig_val}, expanded={exp_val}"
+            );
+            // Expected: (a+b)^2
+            let expected = (a_val + b_val).powi(2);
+            assert!(
+                (exp_val - expected).abs() < 1e-10,
+                "Unexpected value at a={a_val}, b={b_val}: got {exp_val}, expected {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_expand_polynomial_constraint() {
+        // Test (x+y+z-1)^2 expansion
+        // This is used in QUBO constraint expressions
+        let x = Expression::symbol("x");
+        let y = Expression::symbol("y");
+        let z = Expression::symbol("z");
+        let one = Expression::from(1);
+        let two = Expression::from(2);
+
+        let expr = (x.clone() + y.clone() + z.clone() - one).pow(&two);
+        let expanded = expand(&expr);
+
+        // Verify by evaluation at multiple test points
+        for (x_val, y_val, z_val) in [
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (1.0, 1.0, 0.0),
+            (0.0, 1.0, 1.0),
+            (1.0, 1.0, 1.0),
+            (0.5, 0.5, 0.0),
+        ] {
+            let mut values = std::collections::HashMap::new();
+            values.insert("x".to_string(), x_val);
+            values.insert("y".to_string(), y_val);
+            values.insert("z".to_string(), z_val);
+
+            let orig_val = expr.eval(&values).expect("eval original");
+            let exp_val = expanded.eval(&values).expect("eval expanded");
+
+            // Both should give same result
+            assert!(
+                (orig_val - exp_val).abs() < 1e-10,
+                "Mismatch at x={x_val}, y={y_val}, z={z_val}: orig={orig_val}, expanded={exp_val}"
+            );
+
+            // Expected: (x+y+z-1)^2
+            let expected = (x_val + y_val + z_val - 1.0).powi(2);
+            assert!(
+                (exp_val - expected).abs() < 1e-10,
+                "Unexpected value at x={x_val}, y={y_val}, z={z_val}: got {exp_val}, expected {expected}"
+            );
+        }
     }
 }

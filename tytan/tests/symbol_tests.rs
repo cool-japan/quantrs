@@ -94,9 +94,9 @@ fn test_symbols_nbit() {
     assert!(expr_str.contains("x3"));
 
     // Check bounds - should include coefficients for binary weighting
-    // (exact comparison is tricky due to floating point and string formatting)
-    assert!(expr_str.contains("8.0*x0"));
-    assert!(expr_str.contains("4.0*x1"));
-    assert!(expr_str.contains("2.0*x2"));
-    assert!(expr_str.contains("1.0*x3"));
+    // Pure Rust symengine uses S-expression format: (* 8 x0) instead of 8.0*x0
+    assert!(expr_str.contains("(* 8 x0)"));
+    assert!(expr_str.contains("(* 4 x1)"));
+    assert!(expr_str.contains("(* 2 x2)"));
+    assert!(expr_str.contains("(* 1 x3)"));
 }

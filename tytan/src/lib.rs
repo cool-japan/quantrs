@@ -109,13 +109,13 @@
 //! use quantrs2_tytan::auto_array::AutoArray;
 //!
 //! // Define variables
-//! let mut x = symbols("x");
-//! let mut y = symbols("y");
+//! let x = symbols("x");
+//! let y = symbols("y");
 //! let z = symbols("z");
 //!
 //! // Define expression (3 variables, want exactly 2 to be 1)
-//! let two = 2.into();
-//! let h = (x + y + z - 2).pow(&two);
+//! let two: quantrs2_symengine_pure::Expression = 2.into();
+//! let h = (x + y + z - two.clone()).pow(&two);
 //!
 //! // Compile to QUBO
 //! let (qubo, offset) = Compile::new(h).get_qubo().expect("Failed to compile QUBO");

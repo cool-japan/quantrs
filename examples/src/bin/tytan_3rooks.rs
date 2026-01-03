@@ -18,15 +18,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Constraint 1: Each row must have exactly one rook
     let mut h: Expression = 0.into();
+    let one: Expression = 1.into();
     let two: Expression = 2.into();
     for i in 0..3 {
-        let row_sum = q[[i, 0]].clone() + q[[i, 1]].clone() + q[[i, 2]].clone() - 1;
+        let row_sum = q[[i, 0]].clone() + q[[i, 1]].clone() + q[[i, 2]].clone() - one.clone();
         h = h + row_sum.pow(&two);
     }
 
     // Constraint 2: Each column must have exactly one rook
     for j in 0..3 {
-        let col_sum = q[[0, j]].clone() + q[[1, j]].clone() + q[[2, j]].clone() - 1;
+        let col_sum = q[[0, j]].clone() + q[[1, j]].clone() + q[[2, j]].clone() - one.clone();
         h = h + col_sum.pow(&two);
     }
 

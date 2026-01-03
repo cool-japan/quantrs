@@ -1488,18 +1488,12 @@ impl JITCompiler {
                 }
                 MatrixOpType::KroneckerProduct => {
                     // Apply Kronecker product operation
-                    if operation.targets.len() == 2 && operation.matrix.is_some() {
-                        let control = operation.targets[0];
-                        let target = operation.targets[1];
-                        Self::apply_two_qubit_matrix(
-                            operation
-                                .matrix
-                                .as_ref()
-                                .expect("matrix should exist after is_some check"),
-                            control,
-                            target,
-                            state,
-                        )?;
+                    if operation.targets.len() == 2 {
+                        if let Some(matrix) = operation.matrix.as_ref() {
+                            let control = operation.targets[0];
+                            let target = operation.targets[1];
+                            Self::apply_two_qubit_matrix(matrix, control, target, state)?;
+                        }
                     }
                 }
                 _ => {

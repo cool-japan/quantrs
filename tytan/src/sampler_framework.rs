@@ -222,8 +222,6 @@ impl HyperparameterOptimizer {
                 *population_size,
                 *mutation_rate,
             ),
-            #[cfg(not(feature = "scirs"))]
-            _ => Err("Optimization method not available (requires 'scirs' feature)".to_string()),
         }
     }
 

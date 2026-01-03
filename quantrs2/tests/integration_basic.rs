@@ -113,6 +113,8 @@ fn test_prelude_essentials() {
 fn test_prelude_full() {
     // Test that full prelude provides all available types
     use quantrs2::prelude::full::*;
+    // Disambiguate VERSION - use essentials
+    use quantrs2::prelude::essentials::VERSION;
 
     // At minimum, essentials should be available
     let q0 = QubitId::new(0);
