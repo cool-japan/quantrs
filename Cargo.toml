@@ -10,8 +10,6 @@ members = [
     "tytan",
     "py",
     "examples",
-    "quantrs2-symengine-sys",
-    "quantrs2-symengine",
     "quantrs2-symengine-pure",
     "quantrs2",
 ]
@@ -25,13 +23,13 @@ default-members = [
     "ml",
     "tytan",
     "examples",
-    "quantrs2-symengine-sys",
-    "quantrs2-symengine",
     "quantrs2-symengine-pure",
     "quantrs2",
 ]
 exclude = [
     "symengine-fork",
+    "quantrs2-symengine-sys",
+    "quantrs2-symengine",
 ]
 
 # Exclude the Python bindings when publishing to crates.io
@@ -120,9 +118,8 @@ quantrs2-device = { path = "device", version = "0.1.0-rc.1" }
 quantrs2-ml = { path = "ml", version = "0.1.0-rc.1" }
 quantrs2-tytan = { path = "tytan", version = "0.1.0-rc.1" }
 
-# Symbolic computation (local workspace versions)
-quantrs2-symengine = { path = "quantrs2-symengine", version = "0.1.0-rc.1" }
-quantrs2-symengine-sys = { path = "quantrs2-symengine-sys", version = "0.1.0-rc.1" }
+# Symbolic computation - Pure Rust only (SciRS2 POLICY: No C/C++ dependencies)
+# quantrs2-symengine and quantrs2-symengine-sys removed - use pure Rust implementation
 quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.0-rc.1" }
 
 # Pure Rust symbolic math dependencies (MIT licensed)
