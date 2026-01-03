@@ -6,7 +6,7 @@
 
 // We don't use these imports directly in the non-dwave version
 #[cfg(feature = "dwave")]
-use quantrs2_symengine::Expression as SymEngineExpression;
+use quantrs2_symengine_pure::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
 use regex::Regex;
 #[cfg(feature = "dwave")]

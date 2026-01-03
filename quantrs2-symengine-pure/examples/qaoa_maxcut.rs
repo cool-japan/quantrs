@@ -25,7 +25,7 @@ fn main() -> SymEngineResult<()> {
     //   0 --- 1
     //   |  X  |
     //   3 --- 2
-    let edges = vec![
+    let edges = [
         Edge(0, 1),
         Edge(1, 2),
         Edge(2, 3),
@@ -83,7 +83,7 @@ fn main() -> SymEngineResult<()> {
     let cos_gamma = trig::cos(&gamma);
 
     // Simplified energy expression for p=1 QAOA
-    let energy_contribution = half.clone() * sin_4beta.clone() * sin_gamma.clone();
+    let energy_contribution = half * sin_4beta.clone() * sin_gamma;
 
     println!("Approximate Energy (p=1 QAOA):");
     println!("  E(γ,β) ≈ (n_edges/2) · sin(4β) · sin(γ)");
@@ -118,8 +118,7 @@ fn main() -> SymEngineResult<()> {
 
         if iteration % 10 == 0 || iteration == n_iterations - 1 {
             println!(
-                "Iter {iteration:2}: γ = {:.4}, β = {:.4}, E = {:.6}",
-                gamma_val, beta_val, current_energy
+                "Iter {iteration:2}: γ = {gamma_val:.4}, β = {beta_val:.4}, E = {current_energy:.6}"
             );
         }
 
@@ -144,7 +143,7 @@ fn main() -> SymEngineResult<()> {
     // Demonstrate symbolic simplification
     println!("=== Symbolic Simplification ===\n");
 
-    let complex_expr = sin_4beta.clone() + Expression::zero();
+    let complex_expr = sin_4beta + Expression::zero();
     let simplified = simplify::simplify(&complex_expr);
     println!("sin(4β) + 0 simplifies to: {simplified}");
 

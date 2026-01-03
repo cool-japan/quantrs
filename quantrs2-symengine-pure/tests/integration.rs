@@ -45,7 +45,7 @@ fn test_vqe_workflow() -> SymEngineResult<()> {
     let grad_val = gradient.eval(&values)?;
 
     // Verify values (at pi/4: cos(pi/4) + 0.5*sin(pi/2) = sqrt(2)/2 + 0.5)
-    assert!((energy_val - (pi_4.cos() + 0.5 * (2.0 * pi_4).sin())).abs() < 1e-10);
+    assert!((energy_val - 0.5f64.mul_add((2.0 * pi_4).sin(), pi_4.cos())).abs() < 1e-10);
 
     // Gradient: -sin(theta) + cos(2*theta)
     assert!((grad_val - (-pi_4.sin() + (2.0 * pi_4).cos())).abs() < 1e-10);
@@ -53,7 +53,7 @@ fn test_vqe_workflow() -> SymEngineResult<()> {
     // Verify parameter-shift rule gives same result
     let psr = ParameterShiftRule::new();
     let psr_grad = psr.compute_gradient(
-        |params| params[0].cos() + 0.5 * (2.0 * params[0]).sin(),
+        |params| 0.5f64.mul_add((2.0 * params[0]).sin(), params[0].cos()),
         &[pi_4],
     );
 
@@ -73,7 +73,7 @@ fn test_vqe_multi_parameter() -> SymEngineResult<()> {
         trig::sin(&theta) * trig::cos(&phi) + Expression::float(0.5)? * theta.clone() * phi.clone();
 
     // Compute gradient vector
-    let vars = vec![theta.clone(), phi.clone()];
+    let vars = vec![theta, phi];
     let gradient = energy.gradient(&vars);
 
     assert_eq!(gradient.len(), 2);
@@ -87,8 +87,8 @@ fn test_vqe_multi_parameter() -> SymEngineResult<()> {
     let grad_phi = gradient[1].eval(&values)?;
 
     // Verify numerically
-    let expected_grad_theta = 0.5_f64.cos() * 0.3_f64.cos() + 0.5 * 0.3;
-    let expected_grad_phi = -0.5_f64.sin() * 0.3_f64.sin() + 0.5 * 0.5;
+    let expected_grad_theta = 0.5_f64.cos().mul_add(0.3_f64.cos(), 0.5 * 0.3);
+    let expected_grad_phi = (-0.5_f64.sin()).mul_add(0.3_f64.sin(), 0.5 * 0.5);
 
     assert!((grad_theta - expected_grad_theta).abs() < 1e-10);
     assert!((grad_phi - expected_grad_phi).abs() < 1e-10);
@@ -272,11 +272,7 @@ fn test_matrix_serialization_roundtrip() -> SymEngineResult<()> {
     let x = Expression::symbol("x");
     let y = Expression::symbol("y");
 
-    let mut elements = Vec::new();
-    elements.push(x.clone());
-    elements.push(y.clone());
-    elements.push(Expression::zero());
-    elements.push(Expression::one());
+    let elements = vec![x, y, Expression::zero(), Expression::one()];
 
     let matrix = SymbolicMatrix::from_flat(elements, 2, 2)?;
 
@@ -385,7 +381,7 @@ fn test_parser_differentiation() -> SymEngineResult<()> {
     values.insert("x".to_string(), 3.0);
 
     let result = dx.eval(&values)?;
-    let expected = 2.0 * 3.0 + 2.0; // 2x + 2 at x=3
+    let expected = 2.0f64.mul_add(3.0, 2.0); // 2x + 2 at x=3
 
     assert!((result - expected).abs() < 1e-10);
 
@@ -442,7 +438,7 @@ fn test_pattern_capture() {
     assert!(captures.is_some());
 
     let cap = captures.unwrap();
-    assert!(cap.get("a").is_some());
+    assert!(cap.contains_key("a"));
 }
 
 // =========================================================================
@@ -458,7 +454,7 @@ fn test_symbolic_workflow() -> SymEngineResult<()> {
     // 2. Compute gradients
     let x = Expression::symbol("x");
     let y = Expression::symbol("y");
-    let grad = expr.gradient(&[x.clone(), y.clone()]);
+    let grad = expr.gradient(&[x, y.clone()]);
 
     // 3. Evaluate gradient at a specific point
     let mut values = HashMap::new();
@@ -533,7 +529,7 @@ fn test_hessian_computation() -> SymEngineResult<()> {
     // f(x,y) = x^2*y + x*y^2
     let f = x.clone() * x.clone() * y.clone() + x.clone() * y.clone() * y.clone();
 
-    let vars = vec![x.clone(), y.clone()];
+    let vars = vec![x, y];
     let hessian = f.hessian(&vars);
 
     // Hessian should be 2x2 (Vec<Vec<Expression>>)

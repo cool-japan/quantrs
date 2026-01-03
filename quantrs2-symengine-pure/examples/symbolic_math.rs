@@ -117,6 +117,7 @@ fn main() -> SymEngineResult<()> {
     println!("--- Gradients and Hessians ---\n");
 
     // f(x,y) = x^2 + xy + y^2
+    #[allow(clippy::suspicious_operation_groupings)]
     let f = x.clone() * x.clone() + x.clone() * y.clone() + y.clone() * y.clone();
     println!("f(x,y) = x² + xy + y²");
 
@@ -182,8 +183,8 @@ fn main() -> SymEngineResult<()> {
 
     // Multiple substitution
     let mut subs = HashMap::new();
-    subs.insert(x.clone(), Expression::int(2));
-    subs.insert(y.clone(), Expression::int(3));
+    subs.insert(x, Expression::int(2));
+    subs.insert(y, Expression::int(3));
 
     let multi_sub = expr.substitute_many(&subs);
     println!("Substitute x=2, y=3: {multi_sub}");

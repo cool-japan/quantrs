@@ -5,7 +5,7 @@
 //! advanced mathematical analysis for quantum circuits and algorithms.
 
 #[cfg(feature = "symbolic")]
-pub use quantrs2_symengine::{Expression as SymEngine, SymEngineError, SymEngineResult};
+pub use quantrs2_symengine_pure::{Expression as SymEngine, SymEngineError, SymEngineResult};
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::num_traits::{One, Zero}; // SciRS2 POLICY compliant
@@ -565,7 +565,7 @@ impl One for SymbolicExpression {
 #[cfg(feature = "symbolic")]
 pub mod calculus {
     use super::*;
-    use quantrs2_symengine::ops::calculus;
+    use quantrs2_symengine_pure::ops::calculus;
 
     /// Differentiate an expression with respect to a variable
     pub fn diff(expr: &SymbolicExpression, var: &str) -> QuantRS2Result<SymbolicExpression> {
@@ -690,18 +690,18 @@ pub mod matrix {
             {
                 let half_theta = theta / SymbolicExpression::constant(2.0);
                 let cos_expr = SymbolicExpression::SymEngine(
-                    quantrs2_symengine::ops::trig::cos(&match &half_theta {
+                    quantrs2_symengine_pure::ops::trig::cos(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
                     })
-                    .unwrap_or_else(|_| quantrs2_symengine::Expression::from(1.0)),
+                    .unwrap_or_else(|_| quantrs2_symengine_pure::Expression::from(1.0)),
                 );
                 let sin_expr = SymbolicExpression::SymEngine(
-                    quantrs2_symengine::ops::trig::sin(&match &half_theta {
+                    quantrs2_symengine_pure::ops::trig::sin(&match &half_theta {
                         SymbolicExpression::SymEngine(expr) => expr.clone(),
                         _ => return matrix,
                     })
-                    .unwrap_or_else(|_| quantrs2_symengine::Expression::from(0.0)),
+                    .unwrap_or_else(|_| quantrs2_symengine_pure::Expression::from(0.0)),
                 );
 
                 matrix.elements[0][0] = cos_expr.clone();

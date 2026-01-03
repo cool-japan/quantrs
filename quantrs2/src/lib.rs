@@ -1318,7 +1318,7 @@ pub use quantrs2_tytan as tytan;
 /// - [`circuit`] - Use symbolic parameters in circuits
 /// - [`ml`] - Symbolic gradients for VQE/QAOA
 #[cfg(feature = "symengine")]
-pub use quantrs2_symengine as symengine;
+pub use quantrs2_symengine_pure as symengine;
 
 /// Hierarchical prelude modules for convenient imports.
 ///

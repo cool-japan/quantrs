@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "dwave")]
-use quantrs2_symengine::Expression as SymEngineExpression;
+use quantrs2_symengine_pure::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
 use scirs2_core::ndarray::Array;
 use std::fmt::Write;

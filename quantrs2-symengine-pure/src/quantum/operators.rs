@@ -512,8 +512,8 @@ mod tests {
         let ket0_str = ket0.to_string();
         let ket5_str = ket5.to_string();
 
-        assert!(ket0_str.contains("ket") || ket0_str.contains("0"));
-        assert!(ket5_str.contains("ket") || ket5_str.contains("5"));
+        assert!(ket0_str.contains("ket") || ket0_str.contains('0'));
+        assert!(ket5_str.contains("ket") || ket5_str.contains('5'));
     }
 
     #[test]

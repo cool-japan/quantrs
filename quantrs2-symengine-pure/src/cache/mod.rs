@@ -612,7 +612,11 @@ impl Default for SimplificationCache {
 /// with slightly different parameter sets (e.g., parameter sweeps).
 pub struct BatchEvalCache {
     /// Expression hash -> (params_hash -> result)
-    cache: DashMap<u64, DashMap<u64, f64, std::hash::BuildHasherDefault<FxHasher>>, std::hash::BuildHasherDefault<FxHasher>>,
+    cache: DashMap<
+        u64,
+        DashMap<u64, f64, std::hash::BuildHasherDefault<FxHasher>>,
+        std::hash::BuildHasherDefault<FxHasher>,
+    >,
     max_expressions: usize,
     max_params_per_expr: usize,
 }
@@ -752,16 +756,13 @@ impl CachedEvaluator {
     }
 
     /// Evaluate an expression with caching
-    pub fn eval(
-        &self,
-        expr: &Expression,
-        values: &HashMap<String, f64>,
-    ) -> SymEngineResult<f64> {
+    pub fn eval(&self, expr: &Expression, values: &HashMap<String, f64>) -> SymEngineResult<f64> {
         let expr_hash = compute_hash(expr);
         let params_hash = hash_params(values);
 
         // Use get_or_try_compute to properly track hits/misses
-        self.eval_cache.get_or_try_compute(expr_hash, params_hash, || expr.eval(values))
+        self.eval_cache
+            .get_or_try_compute(expr_hash, params_hash, || expr.eval(values))
     }
 
     /// Evaluate an expression as complex with caching
@@ -773,14 +774,14 @@ impl CachedEvaluator {
         let expr_hash = compute_hash(expr);
         let params_hash = hash_params(values);
 
-        self.complex_cache.get_or_try_compute(expr_hash, params_hash, || {
-            expr.eval_complex(values)
-        })
+        self.complex_cache
+            .get_or_try_compute(expr_hash, params_hash, || expr.eval_complex(values))
     }
 
     /// Simplify an expression with caching
     pub fn simplify(&self, expr: &Expression) -> Expression {
-        self.simplification_cache.get_or_simplify(expr, || expr.simplify())
+        self.simplification_cache
+            .get_or_simplify(expr, || expr.simplify())
     }
 
     /// Clear all caches

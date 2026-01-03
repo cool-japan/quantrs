@@ -661,7 +661,7 @@ mod tests {
 
         let result = expr.eval(&values).expect("should eval");
         // sin(cos(0)) = sin(1) ≈ 0.8414
-        assert!((result - 0.8414709848).abs() < 1e-6);
+        assert!((result - 0.841_470_984_8).abs() < 1e-6);
     }
 
     #[test]

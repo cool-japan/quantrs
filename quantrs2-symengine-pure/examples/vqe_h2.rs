@@ -52,7 +52,7 @@ fn main() -> SymEngineResult<()> {
     let cos_theta = trig::cos(&theta);
     let sin_theta = trig::sin(&theta);
 
-    let energy = g0.clone() + g1.clone() * cos_theta.clone() + g2.clone() * sin_theta.clone();
+    let energy = g0 + g1 * cos_theta + g2 * sin_theta;
 
     println!("Energy expectation value:");
     println!("  E(θ) = ⟨ψ(θ)|H|ψ(θ)⟩");
@@ -81,8 +81,7 @@ fn main() -> SymEngineResult<()> {
 
         if iteration % 5 == 0 || iteration == n_iterations - 1 {
             println!(
-                "Iter {iteration:2}: θ = {:.4}, E(θ) = {:.6}, dE/dθ = {:.6}",
-                param_value, current_energy, grad
+                "Iter {iteration:2}: θ = {param_value:.4}, E(θ) = {current_energy:.6}, dE/dθ = {grad:.6}"
             );
         }
 
@@ -99,10 +98,10 @@ fn main() -> SymEngineResult<()> {
     println!("Minimum E  = {final_energy:.6}");
 
     // Theoretical minimum: E_min = g0 - sqrt(g1^2 + g2^2)
-    let g1_val = -1.0523f64;
-    let g1_coeff = 0.3943f64;
-    let g2_coeff = 0.1809f64;
-    let theoretical_min = g1_val - (g1_coeff * g1_coeff + g2_coeff * g2_coeff).sqrt();
+    let g1_val = -1.0523_f64;
+    let g1_coeff = 0.3943_f64;
+    let g2_coeff = 0.1809_f64;
+    let theoretical_min = g1_val - g1_coeff.hypot(g2_coeff);
     println!("Theoretical minimum = {theoretical_min:.6}");
     println!("Error = {:.2e}", (final_energy - theoretical_min).abs());
 
@@ -110,7 +109,12 @@ fn main() -> SymEngineResult<()> {
 
     // Verify gradient using parameter-shift rule
     let psr = ParameterShiftRule::new();
-    let energy_fn = |params: &[f64]| -1.0523 + 0.3943 * params[0].cos() + 0.1809 * params[0].sin();
+    let energy_fn = |params: &[f64]| {
+        0.3943_f64.mul_add(
+            params[0].cos(),
+            0.1809_f64.mul_add(params[0].sin(), -1.0523),
+        )
+    };
 
     let psr_grad = psr.compute_gradient(energy_fn, &[param_value]);
     let symbolic_grad = gradient.eval(&final_values)?;
