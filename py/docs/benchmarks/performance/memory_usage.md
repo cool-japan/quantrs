@@ -26,7 +26,7 @@ Measurements: Peak RSS, heap growth, GC cycles
 ```
 
 ### Framework Versions
-- QuantRS2: 0.1.0-alpha.5
+- QuantRS2: 0.1.0-rc.2
 - Qiskit: 0.45.1 + Qiskit Aer 0.13.1
 - Cirq: 1.3.0
 - PennyLane: 0.33.1

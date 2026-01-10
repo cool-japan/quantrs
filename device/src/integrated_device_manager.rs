@@ -112,7 +112,7 @@ use crate::{
     crosstalk::{CrosstalkAnalyzer, CrosstalkCharacterization, CrosstalkConfig},
     dynamical_decoupling::{DynamicalDecouplingConfig, DynamicalDecouplingResult},
     job_scheduling::{JobConfig, JobPriority, QuantumJob, QuantumJobScheduler},
-    // mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper}, // Temporarily disabled
+    mapping_scirs2::{SciRS2MappingConfig, SciRS2QubitMapper},
     noise_model::CalibrationNoiseModel,
     noise_modeling_scirs2::SciRS2NoiseModeler,
     process_tomography::{
@@ -121,11 +121,7 @@ use crate::{
     qec::QECConfig,
     translation::HardwareBackend,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor,
-    CircuitResult,
-    DeviceError,
-    DeviceResult,
-    QuantumDevice,
+    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
 };
 
 /// Configuration for the Integrated Quantum Device Manager
@@ -867,7 +863,7 @@ pub struct IntegratedQuantumDeviceManager {
     process_tomographer: Arc<Mutex<SciRS2ProcessTomographer>>,
     vqa_executor: Arc<Mutex<VQAExecutor>>,
     dd_config: Arc<Mutex<DynamicalDecouplingConfig>>,
-    // qubit_mapper: Arc<Mutex<SciRS2QubitMapper>>, // Temporarily disabled
+    qubit_mapper: Arc<Mutex<SciRS2QubitMapper>>,
     benchmark_suite: Arc<Mutex<HardwareBenchmarkSuite>>,
     crosstalk_analyzer: Arc<Mutex<CrosstalkAnalyzer>>,
     job_scheduler: Arc<Mutex<QuantumJobScheduler>>,
@@ -1109,11 +1105,11 @@ impl IntegratedQuantumDeviceManager {
                 None,
             ))),
             dd_config: Arc::new(Mutex::new(DynamicalDecouplingConfig::default())),
-            // qubit_mapper: Arc::new(Mutex::new(SciRS2QubitMapper::new(
-            //     SciRS2MappingConfig::default(),
-            //     HardwareTopology::default(),
-            //     None,
-            // ))), // Temporarily disabled
+            qubit_mapper: Arc::new(Mutex::new(SciRS2QubitMapper::new(
+                SciRS2MappingConfig::default(),
+                HardwareTopology::default(),
+                None,
+            ))),
             benchmark_suite: Arc::new(Mutex::new(HardwareBenchmarkSuite::new(
                 CalibrationManager::new(),
                 BenchmarkConfig::default(),

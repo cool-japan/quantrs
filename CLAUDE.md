@@ -20,10 +20,10 @@ The project uses a modular workspace structure with specialized crates:
 - **quantrs2-py**: Python bindings with PyO3
 
 Key dependencies:
-- scirs2 (v0.1.0-rc.4): Scientific computing primitives with quantum support
-- scirs2-optimize (v0.1.0-rc.4): Optimization for VQE, QAOA
-- optirs (v0.1.0-rc.2): Advanced ML optimization algorithms
-- numrs2 (v0.1.0-rc.3): Numerical computing library
+- scirs2 (v0.1.1): Scientific computing primitives with quantum support
+- scirs2-optimize (v0.1.1): Optimization for VQE, QAOA
+- optirs (v0.1.0): Advanced ML optimization algorithms
+- numrs2 (v0.1.1): Numerical computing library
 
 ## Common Development Commands
 
@@ -265,11 +265,13 @@ use scirs2_core::memory_efficient::AdaptiveChunking;
 - Use `scirs2_metrics` for fidelity calculations
 - Use `scirs2_core::random` for noise modeling
 
-### Current SciRS2 Version
+### Current Dependency Versions
 
-**QuantRS2 uses SciRS2 v0.1.0-rc.4** (Release Candidate)
-- NumRS2: v0.1.0-rc.3
-- All dependencies MUST be compatible with this version
+**QuantRS2 uses the following stable releases:**
+- **SciRS2**: v0.1.1
+- **NumRS2**: v0.1.1
+- **OptiRS**: v0.1.0
+- All QuantRS2 modules MUST be compatible with these versions
 
 ### Migration Checklist - Ensure Full SciRS2 Usage
 

@@ -187,8 +187,10 @@ fn test_sampler_one_hot_constraint() {
     let z = symbols("z");
 
     // Constraint: 10 * (x + y + z - 1)^2 with higher penalty weight
-    let expr = quantrs2_symengine::Expression::from(10)
-        * (x.clone() + y.clone() + z.clone() - 1).pow(&quantrs2_symengine::Expression::from(2));
+    let one = quantrs2_symengine_pure::Expression::from(1);
+    let two = quantrs2_symengine_pure::Expression::from(2);
+    let expr = quantrs2_symengine_pure::Expression::from(10)
+        * (x.clone() + y.clone() + z.clone() - one).pow(&two);
 
     println!("DEBUG: Original expression = {}", expr);
     let expanded = expr.expand();

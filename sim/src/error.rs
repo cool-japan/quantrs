@@ -10,6 +10,14 @@ pub enum SimulatorError {
     #[error("Invalid number of qubits: {0}")]
     InvalidQubits(usize),
 
+    /// Invalid qubit index
+    #[error("Invalid qubit count: {0}")]
+    InvalidQubitCount(String),
+
+    /// Qubit index out of range
+    #[error("Qubit index {index} out of range for {num_qubits} qubits")]
+    InvalidQubitIndex { index: usize, num_qubits: usize },
+
     /// Invalid gate specification
     #[error("Invalid gate: {0}")]
     InvalidGate(String),
@@ -109,6 +117,10 @@ pub enum SimulatorError {
     /// Backend error
     #[error("Backend error: {0}")]
     BackendError(String),
+
+    /// Invalid observable
+    #[error("Invalid observable: {0}")]
+    InvalidObservable(String),
 }
 
 /// Result type for simulator operations
@@ -117,5 +129,11 @@ pub type Result<T> = std::result::Result<T, SimulatorError>;
 impl From<scirs2_core::ndarray::ShapeError> for SimulatorError {
     fn from(err: scirs2_core::ndarray::ShapeError) -> Self {
         Self::DimensionMismatch(err.to_string())
+    }
+}
+
+impl From<scirs2_core::linalg::LapackError> for SimulatorError {
+    fn from(err: scirs2_core::linalg::LapackError) -> Self {
+        Self::LinalgError(format!("LAPACK error: {err}"))
     }
 }

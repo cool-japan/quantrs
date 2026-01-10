@@ -23,8 +23,8 @@ thiserror.workspace = true
 # num-integer.workspace = true  # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 # num.workspace = true  # REMOVED: Use scirs2_core::Complex64 (SciRS2 POLICY)
 chrono.workspace = true
-quantrs2-symengine = { workspace = true, optional = true }
-quantrs2-symengine-sys = { workspace = true, optional = true }
+# Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)
+quantrs2-symengine-pure = { workspace = true, optional = true }
 # num-traits.workspace = true  # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 regex = { workspace = true, optional = true }
 serde.workspace = true
@@ -51,8 +51,8 @@ default = []  # parallel feature removed per SciRS2 POLICY - use scirs2-core par
 # NOTE: parallel feature references in code use scirs2_core::parallel_ops directly
 parallel = []  # Feature flag for backward compatibility - actual parallelism uses scirs2-core
 gpu = ["dep:ocl"]
-# The dwave feature is optional and requires symengine to be installed
-dwave = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys", "dep:regex"]
+# The dwave feature is optional and uses pure Rust symbolic computation
+dwave = ["dep:quantrs2-symengine-pure", "dep:regex"]
 scirs = ["dep:scirs2-linalg", "dep:scirs2-cluster"]
 advanced_optimization = ["scirs"]
 clustering = ["dep:scirs2-cluster"]

@@ -483,7 +483,7 @@ mod tests {
         let model = CrosstalkModel::uniform(4, 0.05);
 
         // Check single-qubit crosstalk
-        assert!(model.single_qubit_crosstalk.get(&(0, 1)).is_some());
+        assert!(model.single_qubit_crosstalk.contains_key(&(0, 1)));
 
         // Check two-qubit crosstalk
         assert!(!model.crosstalk_coefficients.is_empty());

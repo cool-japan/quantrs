@@ -15,36 +15,34 @@ use quantrs2_core::{
 };
 use scirs2_core::Complex64;
 
-fn main() -> QuantRS2Result<()> {
+fn main() {
     println!("=================================================================");
     println!("   QuantRS2-Core: Quantum Machine Learning");
     println!("=================================================================\n");
 
     // Demonstrate quantum feature maps
-    demonstrate_feature_maps()?;
+    demonstrate_feature_maps();
     println!();
 
     // Demonstrate quantum kernels
-    demonstrate_quantum_kernels()?;
+    demonstrate_quantum_kernels();
     println!();
 
     // Demonstrate quantum neural networks
-    demonstrate_quantum_neural_networks()?;
+    demonstrate_quantum_neural_networks();
     println!();
 
     // Demonstrate quantum-classical hybrid learning
-    demonstrate_hybrid_learning()?;
+    demonstrate_hybrid_learning();
     println!();
 
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
-    Ok(())
 }
 
 /// Demonstrate quantum feature maps for encoding classical data
-fn demonstrate_feature_maps() -> QuantRS2Result<()> {
+fn demonstrate_feature_maps() {
     println!("QUANTUM FEATURE MAPS");
     println!("-----------------------------------------------------------------");
 
@@ -111,12 +109,10 @@ fn demonstrate_feature_maps() -> QuantRS2Result<()> {
     println!();
 
     println!("  ✓ Quantum feature maps demonstrated");
-
-    Ok(())
 }
 
 /// Demonstrate quantum kernel methods
-fn demonstrate_quantum_kernels() -> QuantRS2Result<()> {
+fn demonstrate_quantum_kernels() {
     println!("QUANTUM KERNEL METHODS");
     println!("-----------------------------------------------------------------");
 
@@ -176,12 +172,10 @@ fn demonstrate_quantum_kernels() -> QuantRS2Result<()> {
     println!();
 
     println!("  ✓ Quantum kernel methods demonstrated");
-
-    Ok(())
 }
 
 /// Demonstrate quantum neural networks (QNNs)
-fn demonstrate_quantum_neural_networks() -> QuantRS2Result<()> {
+fn demonstrate_quantum_neural_networks() {
     println!("QUANTUM NEURAL NETWORKS (QNNs)");
     println!("-----------------------------------------------------------------");
 
@@ -271,12 +265,10 @@ fn demonstrate_quantum_neural_networks() -> QuantRS2Result<()> {
     println!();
 
     println!("  ✓ Quantum neural networks demonstrated");
-
-    Ok(())
 }
 
 /// Demonstrate quantum-classical hybrid learning
-fn demonstrate_hybrid_learning() -> QuantRS2Result<()> {
+fn demonstrate_hybrid_learning() {
     println!("QUANTUM-CLASSICAL HYBRID LEARNING");
     println!("-----------------------------------------------------------------");
 
@@ -390,8 +382,6 @@ fn demonstrate_hybrid_learning() -> QuantRS2Result<()> {
     println!();
 
     println!("  ✓ Hybrid quantum-classical learning demonstrated");
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -400,26 +390,26 @@ mod tests {
 
     #[test]
     fn test_example_runs() {
-        assert!(main().is_ok());
+        main();
     }
 
     #[test]
     fn test_feature_maps() {
-        assert!(demonstrate_feature_maps().is_ok());
+        demonstrate_feature_maps();
     }
 
     #[test]
     fn test_quantum_kernels() {
-        assert!(demonstrate_quantum_kernels().is_ok());
+        demonstrate_quantum_kernels();
     }
 
     #[test]
     fn test_quantum_neural_networks() {
-        assert!(demonstrate_quantum_neural_networks().is_ok());
+        demonstrate_quantum_neural_networks();
     }
 
     #[test]
     fn test_hybrid_learning() {
-        assert!(demonstrate_hybrid_learning().is_ok());
+        demonstrate_hybrid_learning();
     }
 }

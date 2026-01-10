@@ -34,7 +34,7 @@ This checklist tracks the integration of SciRS2 core features into QuantRS2 base
 
 ## 2. SIMD Operations (`scirs2_core::simd_ops`)
 
-### Status: ✅ Completed (v0.1.0-beta.1)
+### Status: ✅ Completed (v0.1.0-rc.2)
 
 ### Completed Actions:
 - [x] Replaced all custom SIMD with `scirs2_core::simd_ops::SimdUnifiedOps`
@@ -51,12 +51,12 @@ This checklist tracks the integration of SciRS2 core features into QuantRS2 base
 
 ## 3. GPU Operations (`scirs2_core::gpu`)
 
-### Status: 🚧 In Progress (Metal backend ready for v0.1.0-alpha.6)
+### Status: 🚧 In Progress (Metal backend ready for v0.1.0-rc.2)
 
 ### Current Issues:
 - Direct WGPU usage in `/sim/src/gpu.rs`
 - Custom GPU implementations scattered across modules
-- Waiting for SciRS2 v0.1.0-alpha.6 for Metal support
+- Waiting for SciRS2 v0.1.0-rc.2 for Metal support
 
 ### Completed Actions:
 - [x] Created SciRS2 GPU adapter layer (`/core/src/gpu/scirs2_adapter.rs`)
@@ -79,7 +79,7 @@ This checklist tracks the integration of SciRS2 core features into QuantRS2 base
 
 ## 4. Platform Detection (`PlatformCapabilities`)
 
-### Status: ✅ Completed (v0.1.0-beta.1)
+### Status: ✅ Completed (v0.1.0-rc.2)
 
 ### Completed Actions:
 - [x] Replaced all custom CPU feature detection

@@ -95,7 +95,7 @@ impl GpuMemory {
     }
 
     pub fn allocate_and_copy(&mut self, data: &[Complex64]) -> Result<GpuMemory> {
-        let size = data.len() * std::mem::size_of::<Complex64>();
+        let size = std::mem::size_of_val(data);
         let mut gpu_memory = GpuMemory::new_with_type(self.memory_type);
 
         gpu_memory.allocate_pool(size)?;
@@ -105,7 +105,7 @@ impl GpuMemory {
     }
 
     pub fn copy_from_host(&mut self, data: &[Complex64]) -> Result<()> {
-        let size = data.len() * std::mem::size_of::<Complex64>();
+        let size = std::mem::size_of_val(data);
 
         match self.memory_type {
             GpuMemoryType::Device => {
@@ -161,7 +161,7 @@ impl GpuMemory {
     }
 
     pub fn copy_to_host(&self, data: &mut [Complex64]) -> Result<()> {
-        let size = data.len() * std::mem::size_of::<Complex64>();
+        let size = std::mem::size_of_val(data);
 
         match self.memory_type {
             GpuMemoryType::Device => {

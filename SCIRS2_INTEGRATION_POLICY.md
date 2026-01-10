@@ -171,7 +171,7 @@ scirs2-core = { workspace = true, features = ["array", "random"] }
 ### Array Import Patterns - **CRITICAL GUIDANCE**
 
 ```rust
-// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-beta.4+)
+// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-rc.2+)
 use scirs2_core::ndarray::*;  // Complete unified access
 // Or selective:
 use scirs2_core::ndarray::{Array1, Array2, array, s, Axis};
@@ -205,7 +205,7 @@ use ndarray::{Array, array};  // FORBIDDEN - Policy violation
 
 ```rust
 // ✅ CORRECT: Complex numbers for quantum amplitudes (direct from scirs2-core root)
-use scirs2_core::{Complex64, Complex32};  // Import from root (v0.1.0-beta.4+)
+use scirs2_core::{Complex64, Complex32};  // Import from root (v0.1.0-rc.2+)
 use scirs2_core::complex::ComplexFloat;   // Traits
 
 // ✅ CORRECT: Quantum state representation
@@ -219,7 +219,7 @@ use num_complex::Complex64;  // FORBIDDEN - Violates SciRS2 policy
 ### Random Number Generation - **QUANTUM MEASUREMENT**
 
 ```rust
-// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-beta.4+)
+// ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERN - v0.1.0-rc.2+)
 use scirs2_core::random::prelude::*;  // Common distributions & RNG
 // Or selective:
 use scirs2_core::random::{thread_rng, Normal as RandNormal, RandBeta, StudentT};
@@ -345,7 +345,7 @@ use scirs2_core::ndarray::Array1;               // Unified array access
 
 ## 📋 STANDARD RESOLUTION WORKFLOW
 
-### Proven 5-Step Migration Process (SciRS2 v0.1.0-beta.4+ Compliance)
+### Proven 5-Step Migration Process (SciRS2 v0.1.0-rc.2+ Compliance)
 
 1. **Cargo.toml Cleanup**
    ```toml
@@ -369,7 +369,7 @@ use scirs2_core::ndarray::Array1;               // Unified array access
    use ndarray::{Array, Array1, Array2, array, s};
    use num_complex::Complex64;
 
-   // ✅ NEW PATTERN (SciRS2 v0.1.0-beta.4+ compliant - UNIFIED APPROACH)
+   // ✅ NEW PATTERN (SciRS2 v0.1.0-rc.2+ compliant - UNIFIED APPROACH)
    use scirs2_core::random::prelude::*;                  // Unified random
    use scirs2_core::ndarray::{Array, Array1, Array2, array, s};  // Unified arrays
    use scirs2_core::{Complex64, Complex32};              // Complex from root
@@ -414,37 +414,37 @@ use scirs2_core::ndarray::Array1;               // Unified array access
 
 ## Current Workspace Integration
 
-### SciRS2 Dependencies (v0.1.0-rc.4)
+### SciRS2 Dependencies (v0.1.1)
 ```toml
 [workspace.dependencies]
 # Essential SciRS2 dependencies for QuantRS2 - COMPREHENSIVE INTEGRATION
 # Status: Production Ready with SciRS2 foundation
-scirs2 = { version = "0.1.0-rc.4", features = ["standard", "linalg", "complex"], default-features = false }
-scirs2-core = { version = "0.1.0-rc.4", default-features = false }
+scirs2 = { version = "0.1.1", features = ["standard", "linalg", "complex"], default-features = false }
+scirs2-core = { version = "0.1.1", default-features = false }
 
 # HIGHLY LIKELY REQUIRED SciRS2 crates
-scirs2-autograd = { version = "0.1.0-rc.4", default-features = false }  # Primary source for ndarray types
-scirs2-linalg = { version = "0.1.0-rc.4", default-features = false }
-scirs2-optimize = { version = "0.1.0-rc.4", default-features = false }
-scirs2-special = { version = "0.1.0-rc.4", default-features = false }
-scirs2-sparse = { version = "0.1.0-rc.4", default-features = false }
-scirs2-fft = { version = "0.1.0-rc.4", default-features = false }
+scirs2-autograd = { version = "0.1.1", default-features = false }  # Primary source for ndarray types
+scirs2-linalg = { version = "0.1.1", default-features = false }
+scirs2-optimize = { version = "0.1.1", default-features = false }
+scirs2-special = { version = "0.1.1", default-features = false }
+scirs2-sparse = { version = "0.1.1", default-features = false }
+scirs2-fft = { version = "0.1.1", default-features = false }
 
 # CONDITIONALLY REQUIRED SciRS2 crates
-scirs2-neural = { version = "0.1.0-rc.4", default-features = false }
-scirs2-signal = { version = "0.1.0-rc.4", default-features = false }
-scirs2-metrics = { version = "0.1.0-rc.4", default-features = false }
-scirs2-stats = { version = "0.1.0-rc.4", default-features = false }
-scirs2-cluster = { version = "0.1.0-rc.4", default-features = false }
-scirs2-graph = { version = "0.1.0-rc.4", default-features = false }
-scirs2-spatial = { version = "0.1.0-rc.4", default-features = false }
+scirs2-neural = { version = "0.1.1", default-features = false }
+scirs2-signal = { version = "0.1.1", default-features = false }
+scirs2-metrics = { version = "0.1.1", default-features = false }
+scirs2-stats = { version = "0.1.1", default-features = false }
+scirs2-cluster = { version = "0.1.1", default-features = false }
+scirs2-graph = { version = "0.1.1", default-features = false }
+scirs2-spatial = { version = "0.1.1", default-features = false }
 
 # DOMAIN-SPECIFIC (Optional)
-scirs2-series = { version = "0.1.0-rc.4", default-features = false }
-scirs2-datasets = { version = "0.1.0-rc.4", default-features = false }
+scirs2-series = { version = "0.1.1", default-features = false }
+scirs2-datasets = { version = "0.1.1", default-features = false }
 
 # Python bindings support (REQUIRED for quantrs2-py)
-scirs2-numpy = { version = "0.1.0-rc.4" }  # SciRS2-compatible numpy bindings with ndarray 0.17+ support
+scirs2-numpy = { version = "0.1.1" }  # SciRS2-compatible numpy bindings with ndarray 0.17+ support
 
 # OptiRS integration for advanced optimization (VQE, QAOA)
 optirs = { path = "../optirs/optirs", default-features = false }
@@ -541,7 +541,7 @@ use scirs2_core::ndarray_ext::{ArrayView};      // Deprecated
 use scirs2_core::complex::{Complex64};  // Should use root import
 ```
 
-### ✅ Correct Patterns (SciRS2 v0.1.0-beta.4+ Unified Approach)
+### ✅ Correct Patterns (SciRS2 v0.1.0-rc.2+ Unified Approach)
 ```rust
 // ✅ CORRECT - Unified SciRS2 usage (PROVEN PATTERNS)
 use scirs2_core::ndarray::*;  // Complete unified access
@@ -586,7 +586,7 @@ let rng: ThreadRng = thread_rng();  // Or seeded_rng(42) when needed
 ## Future Considerations
 
 ### SciRS2 Version Management
-- Track SciRS2 release cycle (currently on 0.1.0-beta.3)
+- Track SciRS2 release cycle (currently on 0.1.0-rc.2)
 - Test QuantRS2 against SciRS2 beta releases
 - Coordinate breaking change migrations
 
@@ -620,9 +620,10 @@ This policy ensures QuantRS2 properly leverages SciRS2's scientific computing fo
 ---
 
 **Document Version**: 2.0 - SciRS2 Dependency Abstraction Policy Enforcement
-**Last Updated**: 2025-10-04
+**Last Updated**: 2025-12-31
 **Based on**: Official SciRS2 Policy v3.0.0 (~/work/scirs/SCIRS2_POLICY.md)
-**SciRS2 Version**: v0.1.0-rc.4 (Release Candidate with unified patterns)
-**NumRS2 Version**: v0.1.0-rc.3
+**SciRS2 Version**: v0.1.1 (Stable Release)
+**NumRS2 Version**: v0.1.1 (Stable Release)
+**OptiRS Version**: v0.1.0 (Stable Release)
 **Next Review**: Q2 2026
 **Owner**: QuantRS2 Architecture Team

@@ -91,7 +91,6 @@ fn retry_on_network_error() -> QuantRS2Result<()> {
             }
             Err(e) if e.is_recoverable() => {
                 println!("   Attempt {attempt}: Recoverable error, retrying...");
-                continue;
             }
             Err(e) => {
                 println!("   Attempt {attempt}: Non-recoverable error");

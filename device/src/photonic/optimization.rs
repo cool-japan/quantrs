@@ -634,8 +634,10 @@ mod tests {
 
     #[test]
     fn test_constraint_validation() {
-        let mut constraints = PhotonicConstraints::default();
-        constraints.min_fidelity = Some(0.99);
+        let constraints = PhotonicConstraints {
+            min_fidelity: Some(0.99),
+            ..Default::default()
+        };
 
         let config = PhotonicOptimizationConfig {
             objective: PhotonicOptimizationObjective::MaximizeFidelity,

@@ -114,7 +114,9 @@ impl VulkanBackend {
 
 impl GpuBackend for VulkanBackend {
     fn is_available() -> bool {
-        false // TODO: Check for Vulkan availability
+        // Vulkan backend is not yet implemented
+        // Once implemented, this should check for Vulkan loader library
+        false
     }
 
     fn name(&self) -> &'static str {

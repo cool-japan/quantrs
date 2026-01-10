@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     demonstrate_simd_operations()?;
 
     // 5. Practical Quantum Example
-    demonstrate_quantum_computation()?;
+    demonstrate_quantum_computation();
 
     println!("\n✅ All SciRS2 integration examples completed successfully!");
     println!("   For more information, see:");
@@ -272,7 +272,7 @@ fn demonstrate_simd_operations() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Demonstrates a complete quantum computation workflow using SciRS2
-fn demonstrate_quantum_computation() -> Result<(), Box<dyn std::error::Error>> {
+fn demonstrate_quantum_computation() {
     println!("═══════════════════════════════════════════════════════════");
     println!("5️⃣  Practical Quantum Computation Example");
     println!("═══════════════════════════════════════════════════════════\n");
@@ -350,7 +350,6 @@ fn demonstrate_quantum_computation() -> Result<(), Box<dyn std::error::Error>> {
     println!("   (1.0 = perfect match)");
 
     println!();
-    Ok(())
 }
 
 /// Helper function to print quantum state
@@ -384,8 +383,8 @@ mod tests {
 
     #[test]
     fn test_array_operations() {
-        let state: Array1<Complex64> =
-            array![Complex64::new(0.707, 0.0), Complex64::new(0.707, 0.0)];
+        let val = 1.0 / f64::sqrt(2.0); // Exact 1/√2
+        let state: Array1<Complex64> = array![Complex64::new(val, 0.0), Complex64::new(val, 0.0)];
         let norm: f64 = state.iter().map(|c| (c * c.conj()).re).sum();
         assert!((norm - 1.0).abs() < 1e-6);
     }

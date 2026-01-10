@@ -2,7 +2,7 @@
 
 ## Overview
 
-The QuantRS2-Core module includes a forward-compatible Metal GPU backend implementation designed to integrate seamlessly with the expected SciRS2 GPU abstractions in v0.1.0-alpha.6. This implementation provides GPU acceleration for quantum simulations on macOS systems with Apple Silicon (M1/M2/M3) processors.
+The QuantRS2-Core module includes a forward-compatible Metal GPU backend implementation designed to integrate seamlessly with the expected SciRS2 GPU abstractions in v0.1.0-rc.2. This implementation provides GPU acceleration for quantum simulations on macOS systems with Apple Silicon (M1/M2/M3) processors.
 
 ## Architecture
 
@@ -120,7 +120,7 @@ state.apply_single_qubit_gate(&hadamard, QubitId(0))?;
 
 ### Current Status
 
-The implementation is designed to be forward-compatible with the expected SciRS2 v0.1.0-alpha.6 Metal API. Once SciRS2 provides native Metal support, the placeholder types will be replaced with actual SciRS2 types.
+The implementation is designed to be forward-compatible with the expected SciRS2 v0.1.0-rc.2 Metal API. Once SciRS2 provides native Metal support, the placeholder types will be replaced with actual SciRS2 types.
 
 ### Migration Path
 
@@ -131,7 +131,7 @@ The implementation is designed to be forward-compatible with the expected SciRS2
 
 ### Letter to SciRS2 Team
 
-A comprehensive letter has been sent to the SciRS2 team requesting Metal GPU support in v0.1.0-alpha.6. The letter includes:
+A comprehensive letter has been sent to the SciRS2 team requesting Metal GPU support in v0.1.0-rc.2. The letter includes:
 - Performance benchmarks on Apple Silicon
 - Proposed API design
 - Implementation timeline

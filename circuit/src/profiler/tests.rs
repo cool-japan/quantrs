@@ -20,9 +20,11 @@ mod tests {
     #[test]
     fn test_profiler_configuration() {
         let circuit = Circuit::<1>::new();
-        let mut config = ProfilerConfig::default();
-        config.precision_level = PrecisionLevel::Ultra;
-        config.enable_scirs2_analysis = true;
+        let config = ProfilerConfig {
+            precision_level: PrecisionLevel::Ultra,
+            enable_scirs2_analysis: true,
+            ..Default::default()
+        };
 
         let profiler = QuantumProfiler::with_config(circuit, config);
 

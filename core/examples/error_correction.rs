@@ -9,7 +9,7 @@ use quantrs2_core::{
     error_correction::{ColorCode, Pauli, PauliString, SurfaceCode, ToricCode},
 };
 
-fn main() -> QuantRS2Result<()> {
+fn main() {
     println!("=================================================================");
     println!("   QuantRS2-Core: Quantum Error Correction");
     println!("=================================================================\n");
@@ -23,8 +23,6 @@ fn main() -> QuantRS2Result<()> {
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
-    Ok(())
 }
 
 /// Demonstrate error correction code structures
@@ -124,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_example_runs() {
-        assert!(main().is_ok());
+        main();
     }
 
     #[test]

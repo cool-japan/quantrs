@@ -180,11 +180,110 @@ impl PyQuantumCircuit {
         self.inner.tdg(q)
     }
 
+    /// Add √X gate (SX gate - IBM native)
+    fn sx(&mut self, qubit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q = self.parse_qubit(qubit)?;
+        self.inner.sx(q)
+    }
+
+    /// Add √X† gate (SXdg gate)
+    fn sxdg(&mut self, qubit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q = self.parse_qubit(qubit)?;
+        self.inner.sxdg(q)
+    }
+
+    /// Add U gate (general single-qubit rotation)
+    fn u(&mut self, theta: f64, phi: f64, lam: f64, qubit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q = self.parse_qubit(qubit)?;
+        self.inner.u(q, theta, phi, lam)
+    }
+
+    /// Add P gate (phase gate with parameter)
+    fn p(&mut self, lam: f64, qubit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q = self.parse_qubit(qubit)?;
+        self.inner.p(q, lam)
+    }
+
+    /// Add Identity gate
+    fn id(&mut self, qubit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q = self.parse_qubit(qubit)?;
+        self.inner.id(q)
+    }
+
     /// Add SWAP gate
     fn swap(&mut self, qubit1: &Bound<'_, PyAny>, qubit2: &Bound<'_, PyAny>) -> PyResult<()> {
         let q1 = self.parse_qubit(qubit1)?;
         let q2 = self.parse_qubit(qubit2)?;
         self.inner.swap(q1, q2)
+    }
+
+    /// Add iSWAP gate
+    fn iswap(&mut self, qubit1: &Bound<'_, PyAny>, qubit2: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q1 = self.parse_qubit(qubit1)?;
+        let q2 = self.parse_qubit(qubit2)?;
+        self.inner.iswap(q1, q2)
+    }
+
+    /// Add ECR gate (IBM native echoed cross-resonance)
+    fn ecr(&mut self, control: &Bound<'_, PyAny>, target: &Bound<'_, PyAny>) -> PyResult<()> {
+        let c = self.parse_qubit(control)?;
+        let t = self.parse_qubit(target)?;
+        self.inner.ecr(c, t)
+    }
+
+    /// Add RXX gate (two-qubit XX rotation)
+    fn rxx(
+        &mut self,
+        theta: f64,
+        qubit1: &Bound<'_, PyAny>,
+        qubit2: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let q1 = self.parse_qubit(qubit1)?;
+        let q2 = self.parse_qubit(qubit2)?;
+        self.inner.rxx(q1, q2, theta)
+    }
+
+    /// Add RYY gate (two-qubit YY rotation)
+    fn ryy(
+        &mut self,
+        theta: f64,
+        qubit1: &Bound<'_, PyAny>,
+        qubit2: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let q1 = self.parse_qubit(qubit1)?;
+        let q2 = self.parse_qubit(qubit2)?;
+        self.inner.ryy(q1, q2, theta)
+    }
+
+    /// Add RZZ gate (two-qubit ZZ rotation)
+    fn rzz(
+        &mut self,
+        theta: f64,
+        qubit1: &Bound<'_, PyAny>,
+        qubit2: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let q1 = self.parse_qubit(qubit1)?;
+        let q2 = self.parse_qubit(qubit2)?;
+        self.inner.rzz(q1, q2, theta)
+    }
+
+    /// Add RZX gate (two-qubit ZX rotation / cross-resonance)
+    fn rzx(
+        &mut self,
+        theta: f64,
+        control: &Bound<'_, PyAny>,
+        target: &Bound<'_, PyAny>,
+    ) -> PyResult<()> {
+        let c = self.parse_qubit(control)?;
+        let t = self.parse_qubit(target)?;
+        self.inner.rzx(c, t, theta)
+    }
+
+    /// Add DCX gate (double CNOT)
+    fn dcx(&mut self, qubit1: &Bound<'_, PyAny>, qubit2: &Bound<'_, PyAny>) -> PyResult<()> {
+        let q1 = self.parse_qubit(qubit1)?;
+        let q2 = self.parse_qubit(qubit2)?;
+        self.inner.dcx(q1, q2)
     }
 
     /// Add Toffoli (CCX) gate
@@ -552,6 +651,78 @@ impl PyCirqGates {
         PyGateOperation {
             gate_type: "RZ".to_string(),
             qubits: vec![qubit],
+            params: Some(vec![rads]),
+        }
+    }
+
+    #[staticmethod]
+    fn S(qubit: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "S".to_string(),
+            qubits: vec![qubit],
+            params: None,
+        }
+    }
+
+    #[staticmethod]
+    fn T(qubit: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "T".to_string(),
+            qubits: vec![qubit],
+            params: None,
+        }
+    }
+
+    #[staticmethod]
+    fn SWAP(qubit1: usize, qubit2: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "SWAP".to_string(),
+            qubits: vec![qubit1, qubit2],
+            params: None,
+        }
+    }
+
+    #[staticmethod]
+    fn ISWAP(qubit1: usize, qubit2: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "ISWAP".to_string(),
+            qubits: vec![qubit1, qubit2],
+            params: None,
+        }
+    }
+
+    #[staticmethod]
+    fn CZ(control: usize, target: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "CZ".to_string(),
+            qubits: vec![control, target],
+            params: None,
+        }
+    }
+
+    #[staticmethod]
+    fn rxx(rads: f64, qubit1: usize, qubit2: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "RXX".to_string(),
+            qubits: vec![qubit1, qubit2],
+            params: Some(vec![rads]),
+        }
+    }
+
+    #[staticmethod]
+    fn ryy(rads: f64, qubit1: usize, qubit2: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "RYY".to_string(),
+            qubits: vec![qubit1, qubit2],
+            params: Some(vec![rads]),
+        }
+    }
+
+    #[staticmethod]
+    fn rzz(rads: f64, qubit1: usize, qubit2: usize) -> PyGateOperation {
+        PyGateOperation {
+            gate_type: "RZZ".to_string(),
+            qubits: vec![qubit1, qubit2],
             params: Some(vec![rads]),
         }
     }

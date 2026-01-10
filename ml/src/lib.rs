@@ -31,9 +31,9 @@
 //! - **Quantum Reservoir Computing**: Leverages quantum dynamics for temporal data processing with quantum advantages
 //! - **Quantum Graph Attention Networks**: Combines graph neural networks with quantum attention mechanisms for complex graph analysis
 //!
-//! ## Recent Updates (v0.1.0-rc.1)
+//! ## Recent Updates (v0.1.0-rc.2)
 //!
-//! - Refined SciRS2 v0.1.0-rc.1 integration with unified patterns
+//! - Refined SciRS2 v0.1.1 Stable Release integration with unified patterns
 //! - Automatic differentiation leveraging SciRS2's linear algebra operations
 //! - Parallel training with `scirs2_core::parallel_ops`
 //! - SIMD-accelerated quantum kernel computations
@@ -115,6 +115,7 @@ pub mod simulator_backends;
 pub mod sklearn_compatibility;
 pub mod tensorflow_compatibility;
 pub mod time_series;
+pub mod torchquantum;
 pub mod transfer;
 pub mod tutorials;
 
@@ -339,6 +340,17 @@ pub mod prelude {
         UserBackground,
     };
     pub use crate::variational::{VariationalAlgorithm, VariationalCircuit};
+
+    // TorchQuantum compatibility
+    pub use crate::torchquantum::prelude::{
+        expval_joint_analytical, expval_joint_sampling, gen_bitstrings, measure as tq_measure,
+        CType as TQCType, FType as TQFType, NParamsEnum, TQAmplitudeEncoder, TQBarrenLayer,
+        TQDevice, TQEncoder, TQFarhiLayer, TQGeneralEncoder, TQHadamard, TQLayerConfig,
+        TQMaxwellLayer, TQMeasureAll, TQModule, TQModuleList, TQOp1QAllLayer, TQOp2QAllLayer,
+        TQOperator, TQParameter, TQPauliX, TQPauliY, TQPauliZ, TQPhaseEncoder, TQRXYZCXLayer, TQRx,
+        TQRy, TQRz, TQSethLayer, TQStateEncoder, TQStrongEntanglingLayer, WiresEnum, TQCNOT, TQCRX,
+        TQCRY, TQCRZ, TQCZ, TQRXX, TQRYY, TQRZX, TQRZZ, TQS, TQSWAP, TQSX, TQT,
+    };
 
     // New cutting-edge quantum ML algorithms
     pub use crate::quantum_graph_attention::{

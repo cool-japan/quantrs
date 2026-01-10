@@ -389,7 +389,7 @@ impl QMLModel {
             ModelExportFormat::JSON => serde_json::to_vec(self)
                 .map_err(|e| DeviceError::InvalidInput(format!("JSON export error: {e}"))),
             ModelExportFormat::Binary => {
-                bincode::serde::encode_to_vec(self, bincode::config::standard())
+                oxicode::serde::encode_to_vec(self, oxicode::config::standard())
                     .map_err(|e| DeviceError::InvalidInput(format!("Binary export error: {e:?}")))
             }
             ModelExportFormat::ONNX => {
@@ -406,7 +406,7 @@ impl QMLModel {
             ModelExportFormat::JSON => serde_json::from_slice(&data)
                 .map_err(|e| DeviceError::InvalidInput(format!("JSON import error: {e}"))),
             ModelExportFormat::Binary => {
-                bincode::serde::decode_from_slice(&data, bincode::config::standard())
+                oxicode::serde::decode_from_slice(&data, oxicode::config::standard())
                     .map(|(v, _consumed)| v)
                     .map_err(|e| DeviceError::InvalidInput(format!("Binary import error: {e:?}")))
             }

@@ -474,7 +474,7 @@ START: What do you need to do?
 ```toml
 # Minimal for quick iteration
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["circuit"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["circuit"] }
 ```
 
 **When to use:**
@@ -494,7 +494,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["circuit"] }
 ```toml
 # Simulation for testing
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["sim"] }
 ```
 
 **When to use:**
@@ -515,7 +515,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["sim"] }
 ```toml
 # Full ML stack
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["ml"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["ml"] }
 ```
 
 **When to use:**
@@ -536,7 +536,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["ml"] }
 ```toml
 # High-level annealing
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["tytan"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["tytan"] }
 ```
 
 **When to use:**
@@ -557,7 +557,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["tytan"] }
 ```toml
 # Real quantum devices
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["device", "sim"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["device", "sim"] }
 ```
 
 **When to use:**
@@ -579,7 +579,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["device", "sim"] }
 ```toml
 # Everything
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["full"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["full"] }
 ```
 
 **When to use:**
@@ -614,7 +614,7 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["full"] }
 ```toml
 # Fastest compilation for testing
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", default-features = false }
+quantrs2 = { version = "0.1.0-rc.2", default-features = false }
 ```
 
 **Compilation time**: ~3s
@@ -625,7 +625,7 @@ quantrs2 = { version = "0.1.0-beta.3", default-features = false }
 ```toml
 # Only what you need
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "symengine"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["circuit", "symengine"] }
 ```
 
 **Use case**: Parametric circuit optimization with symbolic derivatives
@@ -635,10 +635,10 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "symengine"] }
 ```toml
 # Example of conditional features (not yet implemented)
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["sim", "ml"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["sim", "ml"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["device"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["device"] }
 ```
 
 ### Feature Flag Best Practices
@@ -818,7 +818,7 @@ Enable only the features you need in `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.1.0-rc.2", features = ["circuit", "sim"] }
 ```
 
 ## Troubleshooting
@@ -844,6 +844,6 @@ quantrs2 = { version = "0.1.0-beta.3", features = ["circuit", "sim"] }
 - Check CLAUDE.md for development guidelines
 - See SCIRS2_INTEGRATION_POLICY.md for SciRS2 usage patterns
 
-## Version: 0.1.0-beta.3
+## Version: 0.1.0-rc.2
 
 Last updated: 2025-11-18

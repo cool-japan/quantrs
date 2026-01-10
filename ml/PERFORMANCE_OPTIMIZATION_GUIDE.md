@@ -1,7 +1,7 @@
 # Performance Optimization Guide for Large-Scale Quantum ML
 
 **QuantRS2-ML Performance Engineering**
-Version 0.1.0-beta.3
+Version 0.1.0-rc.2
 Last Updated: 2025-12-05
 
 ---
@@ -799,5 +799,5 @@ For questions or advanced optimization techniques, consult:
 ---
 
 **Last Updated**: 2025-12-05
-**QuantRS2 Version**: 0.1.0-beta.3
-**SciRS2 Version**: 0.1.0-rc.1
+**QuantRS2 Version**: 0.1.0-rc.2
+**SciRS2 Version**: 0.1.0-rc.2

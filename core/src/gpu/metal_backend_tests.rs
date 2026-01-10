@@ -34,7 +34,6 @@ mod tests {
         #[cfg(not(feature = "metal"))]
         {
             // Without metal feature, we can't test the function
-            assert!(true, "Metal feature not enabled");
         }
     }
 
@@ -63,9 +62,7 @@ mod tests {
         }
 
         #[cfg(not(feature = "metal"))]
-        {
-            assert!(true, "Metal feature not enabled");
-        }
+        {}
     }
 
     #[cfg(all(target_os = "macos", feature = "metal"))]
@@ -182,7 +179,6 @@ mod tests {
         #[cfg(not(feature = "metal"))]
         {
             // When metal feature is not enabled, just pass the test
-            assert!(true, "Metal feature not enabled - test passes");
         }
     }
 

@@ -11,9 +11,11 @@
 //! - **GPU Support**: CUDA, OpenCL, and Metal (macOS) backends with forward-compatible SciRS2 integration
 //! - **Adaptive Algorithms**: Runtime selection of optimal implementations based on hardware capabilities
 //!
-//! ## Recent Updates (v0.1.0-rc.1)
+//! ## Recent Updates (v0.1.0-rc.2)
 //!
-//! - Refined SciRS2 v0.1.0-rc.4 integration with unified import patterns
+//! - **SciRS2 v0.1.1 Stable Release Integration**: Updated from RC to stable versions
+//! - **NumRS2 v0.1.1 Integration**: Numerical computing library at stable release
+//! - **OptiRS v0.1.0 Integration**: Advanced optimization algorithms at stable release
 //! - Comprehensive policy documentation (SCIRS2_INTEGRATION_POLICY.md)
 //! - Enhanced random number generation with `UnifiedNormal`, `UnifiedBeta`
 //! - Consistent SciRS2 usage: `scirs2_core::ndarray::*`, `scirs2_core::random::prelude::*`

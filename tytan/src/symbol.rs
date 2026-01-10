@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "dwave")]
-use quantrs2_symengine::Expression as SymEngineExpression;
+use quantrs2_symengine_pure::Expression as SymEngineExpression;
 #[cfg(feature = "dwave")]
 use scirs2_core::ndarray::Array;
 use std::fmt::Write;
@@ -109,7 +109,7 @@ where
 
     // Create the array
     let shape_dim = scirs2_core::ndarray::IxDyn(&shape);
-    let mut array = Array::from_elem(shape_dim, SymEngineExpression::from_i64(0));
+    let mut array = Array::from_elem(shape_dim, SymEngineExpression::int(0));
 
     // Fill the array with symbols
     let mut indices = vec![0; dim];
@@ -138,8 +138,8 @@ fn fill_symbol_array(
         }
 
         // Create the symbol and store it in the array
-        let sym = SymEngineExpression::symbol(symbol_name);
-        let mut idx = scirs2_core::ndarray::IxDyn(indices);
+        let sym = SymEngineExpression::symbol(&symbol_name);
+        let idx = scirs2_core::ndarray::IxDyn(indices);
         array[idx] = sym;
 
         Ok(())
@@ -272,7 +272,7 @@ pub fn symbols_nbit(
     }
 
     // Create bit variables
-    let mut result = SymEngineExpression::from_i64(0);
+    let mut result = SymEngineExpression::int(0);
     let range = (stop - start) as f64;
 
     for n in 0..num {
@@ -280,16 +280,16 @@ pub fn symbols_nbit(
         let bit_name = format_txt.replacen("{}", &n.to_string(), 1);
 
         // Create the symbolic weight * bit
-        let bit = SymEngineExpression::symbol(bit_name);
+        let bit = SymEngineExpression::symbol(&bit_name);
         let weight = range * 2.0_f64.powi((num as i32) - 1 - (n as i32)) / 2.0_f64.powi(num as i32);
 
         // Add to the result
-        result = result + (SymEngineExpression::from_f64(weight) * bit);
+        result = result + (SymEngineExpression::from(weight) * bit);
     }
 
     // Add the start offset
     if start > 0 {
-        result = result + SymEngineExpression::from_i64(start as i64);
+        result = result + SymEngineExpression::int(start as i64);
     }
 
     Ok(result)

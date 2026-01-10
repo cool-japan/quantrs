@@ -104,13 +104,18 @@ async fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> 
     );
 
     // Create optimization-focused config
-    let mut config = CompilerConfig::default();
-    config.objectives = vec![
-        OptimizationObjective::MinimizeGateCount,
-        OptimizationObjective::MinimizeDepth,
-        OptimizationObjective::MaximizeFidelity,
-    ];
-    config.scirs2_config.enable_advanced_optimization = true;
+    let config = CompilerConfig {
+        objectives: vec![
+            OptimizationObjective::MinimizeGateCount,
+            OptimizationObjective::MinimizeDepth,
+            OptimizationObjective::MaximizeFidelity,
+        ],
+        scirs2_config: SciRS2Config {
+            enable_advanced_optimization: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
     let result = compile_for_platform(circuit, config).await?;
 
@@ -155,14 +160,16 @@ async fn demo_scirs2_integration() -> Result<(), Box<dyn std::error::Error>> {
     let _ = circuit.cnot(QubitId(0), QubitId(5));
 
     // Enable comprehensive SciRS2 features
-    let mut config = CompilerConfig::default();
-    config.scirs2_config = SciRS2Config {
-        enable_graph_optimization: true,
-        enable_statistical_analysis: true,
-        enable_advanced_optimization: true,
-        enable_linalg_optimization: true,
-        optimization_method: SciRS2OptimizationMethod::GeneticAlgorithm,
-        significance_threshold: 0.01,
+    let config = CompilerConfig {
+        scirs2_config: SciRS2Config {
+            enable_graph_optimization: true,
+            enable_statistical_analysis: true,
+            enable_advanced_optimization: true,
+            enable_linalg_optimization: true,
+            optimization_method: SciRS2OptimizationMethod::GeneticAlgorithm,
+            significance_threshold: 0.01,
+        },
+        ..Default::default()
     };
 
     let result = compile_for_platform(circuit, config).await?;
@@ -215,9 +222,11 @@ async fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Enable performance monitoring
-    let mut config = CompilerConfig::default();
-    config.performance_monitoring = true;
-    config.analysis_depth = AnalysisDepth::Comprehensive;
+    let config = CompilerConfig {
+        performance_monitoring: true,
+        analysis_depth: AnalysisDepth::Comprehensive,
+        ..Default::default()
+    };
 
     let result = compile_for_platform(circuit, config).await?;
 
@@ -268,12 +277,14 @@ async fn demo_adaptive_compilation() -> Result<(), Box<dyn std::error::Error>> {
         println!("🔄 Adaptive compilation for {} circuit...", names[i]);
 
         // Use adaptive configuration
-        let mut config = CompilerConfig::default();
-        config.analysis_depth = match i {
-            0 => AnalysisDepth::Basic,
-            1 => AnalysisDepth::Intermediate,
-            2 => AnalysisDepth::Comprehensive,
-            _ => AnalysisDepth::Advanced,
+        let config = CompilerConfig {
+            analysis_depth: match i {
+                0 => AnalysisDepth::Basic,
+                1 => AnalysisDepth::Intermediate,
+                2 => AnalysisDepth::Comprehensive,
+                _ => AnalysisDepth::Advanced,
+            },
+            ..Default::default()
         };
 
         let result = compile_for_platform(circuit, config).await?;
@@ -295,49 +306,52 @@ async fn demo_adaptive_compilation() -> Result<(), Box<dyn std::error::Error>> {
 // Helper functions for creating different platform configurations
 
 fn create_ibm_config() -> CompilerConfig {
-    let mut config = CompilerConfig::default();
-    config.target = CompilationTarget::IBMQuantum {
-        backend_name: "ibmq_qasm_simulator".to_string(),
-        coupling_map: vec![(0, 1), (1, 2), (2, 3), (1, 4)],
-        native_gates: ["rz", "sx", "cx"]
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect(),
-        basis_gates: vec!["rz".to_string(), "sx".to_string(), "cx".to_string()],
-        max_shots: 8192,
-        simulator: true,
-    };
-    config
+    CompilerConfig {
+        target: CompilationTarget::IBMQuantum {
+            backend_name: "ibmq_qasm_simulator".to_string(),
+            coupling_map: vec![(0, 1), (1, 2), (2, 3), (1, 4)],
+            native_gates: ["rz", "sx", "cx"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+            basis_gates: vec!["rz".to_string(), "sx".to_string(), "cx".to_string()],
+            max_shots: 8192,
+            simulator: true,
+        },
+        ..Default::default()
+    }
 }
 
 fn create_aws_config() -> CompilerConfig {
-    let mut config = CompilerConfig::default();
-    config.target = CompilationTarget::AWSBraket {
-        device_arn: "arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string(),
-        provider: BraketProvider::IonQ,
-        supported_gates: ["x", "y", "z", "h", "cnot", "swap"]
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect(),
-        max_shots: 1000,
-        cost_per_shot: 0.00075,
-    };
-    config
+    CompilerConfig {
+        target: CompilationTarget::AWSBraket {
+            device_arn: "arn:aws:braket:::device/quantum-simulator/amazon/sv1".to_string(),
+            provider: BraketProvider::IonQ,
+            supported_gates: ["x", "y", "z", "h", "cnot", "swap"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+            max_shots: 1000,
+            cost_per_shot: 0.00075,
+        },
+        ..Default::default()
+    }
 }
 
 fn create_azure_config() -> CompilerConfig {
-    let mut config = CompilerConfig::default();
-    config.target = CompilationTarget::AzureQuantum {
-        workspace: "quantum-workspace-1".to_string(),
-        target: "ionq.simulator".to_string(),
-        provider: AzureProvider::IonQ,
-        supported_operations: ["x", "y", "z", "h", "cnot", "swap"]
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect(),
-        resource_estimation: true,
-    };
-    config
+    CompilerConfig {
+        target: CompilationTarget::AzureQuantum {
+            workspace: "quantum-workspace-1".to_string(),
+            target: "ionq.simulator".to_string(),
+            provider: AzureProvider::IonQ,
+            supported_operations: ["x", "y", "z", "h", "cnot", "swap"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+            resource_estimation: true,
+        },
+        ..Default::default()
+    }
 }
 
 // Helper function for compilation

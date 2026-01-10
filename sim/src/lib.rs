@@ -86,9 +86,9 @@
 //! versions leveraging SIMD, memory-efficient algorithms, and parallel processing
 //! to enable simulation of larger qubit counts (30+).
 //!
-//! ## Recent Updates (v0.1.0-rc.1)
+//! ## Recent Updates (v0.1.0-rc.2)
 //!
-//! - Refined `SciRS2` v0.1.0-rc.1 integration for enhanced performance
+//! - Refined `SciRS2 v0.1.1 Stable Release integration for enhanced performance
 //! - All simulators use `scirs2_core::parallel_ops` for automatic parallelization
 //! - SIMD-accelerated quantum operations via `SciRS2` abstractions
 //! - Advanced linear algebra leveraging `SciRS2`'s optimized BLAS/LAPACK bindings
@@ -108,6 +108,7 @@ pub mod concatenated_error_correction;
 pub mod cuda;
 #[cfg(all(feature = "gpu", not(target_os = "macos")))]
 pub mod cuda_kernels;
+pub mod cuquantum;
 pub mod debugger;
 pub mod decision_diagram;
 pub mod device_noise_models;
@@ -119,11 +120,13 @@ pub mod dynamic;
 pub mod enhanced_statevector;
 pub mod enhanced_tensor_networks;
 pub mod error;
+pub mod error_mitigation;
 pub mod fault_tolerant_synthesis;
 pub mod fermionic_simulation;
 pub mod fpga_acceleration;
 pub mod fusion;
 pub mod gpu_kernel_optimization;
+pub mod gpu_observables;
 pub mod hardware_aware_qml;
 pub mod holographic_quantum_error_correction;
 pub mod jit_compilation;
@@ -163,6 +166,7 @@ pub mod quantum_chemistry_dmrg;
 pub mod quantum_cloud_integration;
 pub mod quantum_field_theory;
 pub mod quantum_gravity_simulation;
+pub mod quantum_info;
 pub mod quantum_inspired_classical;
 pub mod quantum_ldpc_codes;
 pub mod quantum_machine_learning_layers;
@@ -184,6 +188,10 @@ pub mod specialized_gates;
 pub mod specialized_simulator;
 pub mod stabilizer;
 pub mod statevector;
+pub mod stim_dem;
+pub mod stim_executor;
+pub mod stim_parser;
+pub mod stim_sampler;
 pub mod telemetry;
 pub mod tensor;
 pub mod topological_quantum_simulation;
@@ -194,11 +202,12 @@ pub mod visualization_hooks;
 #[cfg(feature = "advanced_math")]
 pub mod tensor_network;
 pub mod utils;
-// Beta.3: Optimization modules refactored into specialized implementations:
+// Optimization modules refactored into specialized implementations:
 // optimized_chunked, optimized_simd, optimized_simple, optimized_simulator, etc.
 pub mod auto_optimizer;
 pub mod benchmark;
 pub mod circuit_optimization;
+pub mod circuit_optimizer;
 pub mod clifford_sparse;
 pub mod performance_prediction;
 
@@ -217,6 +226,7 @@ pub mod optimized_simulator;
 pub mod optimized_simulator_chunked;
 pub mod optimized_simulator_simple;
 pub mod performance_benchmark;
+pub mod qulacs_backend;
 #[cfg(test)]
 pub mod tests;
 #[cfg(test)]
@@ -237,6 +247,9 @@ pub mod noise;
 
 /// Advanced noise models for realistic device simulation
 pub mod noise_advanced;
+
+/// Comprehensive noise models with Kraus operators
+pub mod noise_models;
 
 /// Quantum error correction codes and utilities
 pub mod error_correction;
@@ -299,6 +312,11 @@ pub mod prelude {
         optimize_circuit, optimize_circuit_with_config, CircuitOptimizer, OptimizationConfig,
         OptimizationResult, OptimizationStatistics,
     };
+    pub use crate::circuit_optimizer::{
+        Circuit as OptimizerCircuit, CircuitOptimizer as PassBasedOptimizer, Gate as OptimizerGate,
+        GateType as OptimizerGateType, OptimizationPass,
+        OptimizationStats as PassOptimizationStats,
+    };
     pub use crate::clifford_sparse::{CliffordGate, SparseCliffordSimulator};
     pub use crate::compilation_optimization::{
         CompilationAnalysis, CompilationOptimizer, CompilationOptimizerConfig,
@@ -346,6 +364,10 @@ pub mod prelude {
     pub use crate::error::{Result, SimulatorError};
     #[allow(unused_imports)]
     pub use crate::error_correction::*;
+    pub use crate::error_mitigation::{
+        ExtrapolationMethod as ZNEExtrapolationMethod, MeasurementErrorMitigation, SymmetryType,
+        SymmetryVerification as ErrorMitigationSymmetryVerification, ZeroNoiseExtrapolation,
+    };
     pub use crate::fermionic_simulation::{
         benchmark_fermionic_simulation, FermionicHamiltonian, FermionicOperator,
         FermionicSimulator, FermionicStats, FermionicString, JordanWignerTransform,
@@ -353,6 +375,9 @@ pub mod prelude {
     pub use crate::fusion::{
         benchmark_fusion_strategies, FusedGate, FusionStats, FusionStrategy, GateFusion, GateGroup,
         OptimizedCircuit, OptimizedGate,
+    };
+    pub use crate::gpu_observables::{
+        ObservableCalculator, ObservableConfig, PauliHamiltonian, PauliObservable, PauliOp,
     };
     pub use crate::holographic_quantum_error_correction::{
         benchmark_holographic_qec, BulkReconstructionMethod, BulkReconstructionResult,
@@ -396,6 +421,10 @@ pub mod prelude {
         benchmark_noise_extrapolation, DistillationProtocol, ExtrapolationMethod, FitStatistics,
         NoiseScalingMethod, SymmetryOperation, SymmetryVerification, SymmetryVerificationResult,
         VirtualDistillation, VirtualDistillationResult, ZNEResult, ZeroNoiseExtrapolator,
+    };
+    pub use crate::noise_models::{
+        AmplitudeDampingNoise, BitFlipNoise, DepolarizingNoise, NoiseChannel as KrausNoiseChannel,
+        NoiseModel as KrausNoiseModel, PhaseDampingNoise, PhaseFlipNoise, ThermalRelaxationNoise,
     };
     pub use crate::open_quantum_systems::{
         quantum_fidelity, CompositeNoiseModel, EvolutionResult, IntegrationMethod, LindladOperator,
@@ -584,6 +613,9 @@ pub mod prelude {
         benchmark_quantum_volume, calculate_quantum_volume_with_params, QVCircuit, QVGate,
         QVParams, QVStats, QuantumVolumeCalculator, QuantumVolumeResult,
     };
+    pub use crate::qulacs_backend::{
+        gates as qulacs_gates, QubitIndex, QulacsStateVector, StateIndex,
+    };
     pub use crate::scirs2_complex_simd::{
         apply_cnot_complex_simd, apply_hadamard_gate_complex_simd,
         apply_single_qubit_gate_complex_simd, benchmark_complex_simd_operations, ComplexSimdOps,
@@ -630,6 +662,14 @@ pub mod prelude {
     };
     pub use crate::stabilizer::{is_clifford_circuit, StabilizerGate, StabilizerSimulator};
     pub use crate::statevector::StateVectorSimulator;
+    pub use crate::stim_dem::{DEMError, DetectorErrorModel};
+    pub use crate::stim_executor::{
+        DetectorRecord, ExecutionResult, ObservableRecord, StimExecutor,
+    };
+    pub use crate::stim_sampler::{
+        compile_sampler, compile_sampler_with_dem, CompiledStimCircuit, DetectorSampler,
+        SampleStatistics as StimSampleStatistics,
+    };
     pub use crate::telemetry::{
         benchmark_telemetry, Alert, AlertLevel, AlertThresholds, DiskIOStats, MetricsSummary,
         NetworkIOStats, PerformanceSnapshot, QuantumMetrics, TelemetryCollector, TelemetryConfig,
@@ -705,6 +745,6 @@ pub mod gpu_linalg_metal;
 #[cfg(feature = "advanced_math")]
 pub use crate::tensor_network::*;
 
-// Beta.3: Old monolithic optimization modules have been refactored into specialized implementations
+// Old monolithic optimization modules have been refactored into specialized implementations
 // (optimized_chunked, optimized_simd, optimized_simple, optimized_simulator, etc.)
 // These comments preserved for reference - the functionality is available through the new modules

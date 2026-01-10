@@ -12,43 +12,41 @@
 //!
 //! Run with: cargo run --example topological_quantum_computing
 
-use quantrs2_core::{error::QuantRS2Result, gate::GateOp, qubit::QubitId};
+use quantrs2_core::{gate::GateOp, qubit::QubitId};
 use scirs2_core::Complex64;
 
-fn main() -> QuantRS2Result<()> {
+fn main() {
     println!("=================================================================");
     println!("   QuantRS2-Core: Topological Quantum Computing");
     println!("=================================================================\n");
 
     // Demonstrate anyonic systems
-    demonstrate_anyonic_systems()?;
+    demonstrate_anyonic_systems();
     println!();
 
     // Demonstrate braiding operations
-    demonstrate_braiding_operations()?;
+    demonstrate_braiding_operations();
     println!();
 
     // Demonstrate topological error correction
-    demonstrate_topological_error_correction()?;
+    demonstrate_topological_error_correction();
     println!();
 
     // Demonstrate surface codes
-    demonstrate_surface_codes()?;
+    demonstrate_surface_codes();
     println!();
 
     // Demonstrate Majorana fermions
-    demonstrate_majorana_fermions()?;
+    demonstrate_majorana_fermions();
     println!();
 
     println!("=================================================================");
     println!("   Example Complete!");
     println!("=================================================================");
-
-    Ok(())
 }
 
 /// Demonstrate anyonic systems and their exotic statistics
-fn demonstrate_anyonic_systems() -> QuantRS2Result<()> {
+fn demonstrate_anyonic_systems() {
     println!("ANYONIC SYSTEMS & EXOTIC STATISTICS");
     println!("-----------------------------------------------------------------");
 
@@ -195,12 +193,10 @@ fn demonstrate_anyonic_systems() -> QuantRS2Result<()> {
 
     println!("  ✓ Anyonic systems demonstrated");
     println!("  ✓ Foundation for topologically protected quantum computation");
-
-    Ok(())
 }
 
 /// Demonstrate braiding operations and their computational power
-fn demonstrate_braiding_operations() -> QuantRS2Result<()> {
+fn demonstrate_braiding_operations() {
     println!("BRAIDING OPERATIONS & QUANTUM GATES");
     println!("-----------------------------------------------------------------");
 
@@ -371,12 +367,10 @@ fn demonstrate_braiding_operations() -> QuantRS2Result<()> {
 
     println!("  ✓ Braiding operations demonstrated");
     println!("  ✓ Topologically protected quantum gates");
-
-    Ok(())
 }
 
 /// Demonstrate topological error correction concepts
-fn demonstrate_topological_error_correction() -> QuantRS2Result<()> {
+fn demonstrate_topological_error_correction() {
     println!("TOPOLOGICAL ERROR CORRECTION");
     println!("-----------------------------------------------------------------");
 
@@ -514,12 +508,10 @@ fn demonstrate_topological_error_correction() -> QuantRS2Result<()> {
 
     println!("  ✓ Topological error correction demonstrated");
     println!("  ✓ Toric code provides robust quantum memory");
-
-    Ok(())
 }
 
 /// Demonstrate surface codes - the most practical topological code
-fn demonstrate_surface_codes() -> QuantRS2Result<()> {
+fn demonstrate_surface_codes() {
     println!("SURFACE CODES: PRACTICAL TOPOLOGICAL QEC");
     println!("-----------------------------------------------------------------");
 
@@ -677,12 +669,10 @@ fn demonstrate_surface_codes() -> QuantRS2Result<()> {
 
     println!("  ✓ Surface codes demonstrated");
     println!("  ✓ Most practical path to fault-tolerant quantum computing");
-
-    Ok(())
 }
 
 /// Demonstrate Majorana fermions and topological qubits
-fn demonstrate_majorana_fermions() -> QuantRS2Result<()> {
+fn demonstrate_majorana_fermions() {
     println!("MAJORANA FERMIONS & TOPOLOGICAL QUBITS");
     println!("-----------------------------------------------------------------");
 
@@ -874,8 +864,6 @@ fn demonstrate_majorana_fermions() -> QuantRS2Result<()> {
 
     println!("  ✓ Majorana fermions & topological qubits demonstrated");
     println!("  ✓ Promising long-term approach to quantum computing");
-
-    Ok(())
 }
 
 #[cfg(test)]

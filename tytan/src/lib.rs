@@ -89,9 +89,9 @@
 //! - **Multiple Samplers**: Choose from various solvers
 //! - **Auto Result Processing**: Automatically convert solutions to multi-dimensional arrays
 //!
-//! ## Recent Updates (v0.1.0-rc.1)
+//! ## Recent Updates (v0.1.0-rc.2)
 //!
-//! - Refined SciRS2 v0.1.0-rc.1 integration for enhanced performance
+//! - Refined SciRS2 v0.1.1 Stable Release integration for enhanced performance
 //! - High-performance sparse matrix operations via SciRS2
 //! - Parallel optimization using `scirs2_core::parallel_ops`
 //! - SIMD-accelerated energy calculations
@@ -109,13 +109,13 @@
 //! use quantrs2_tytan::auto_array::AutoArray;
 //!
 //! // Define variables
-//! let mut x = symbols("x");
-//! let mut y = symbols("y");
+//! let x = symbols("x");
+//! let y = symbols("y");
 //! let z = symbols("z");
 //!
 //! // Define expression (3 variables, want exactly 2 to be 1)
-//! let two = 2.into();
-//! let h = (x + y + z - 2).pow(&two);
+//! let two: quantrs2_symengine_pure::Expression = 2.into();
+//! let h = (x + y + z - two.clone()).pow(&two);
 //!
 //! // Compile to QUBO
 //! let (qubo, offset) = Compile::new(h).get_qubo().expect("Failed to compile QUBO");

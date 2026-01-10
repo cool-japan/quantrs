@@ -5,7 +5,7 @@
 
 use quantrs2_device::prelude::*;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     println!("=== QuantRS2 Enhanced Benchmarking and Noise Characterization Demo ===\n");
 
     // ========================================================================
@@ -285,6 +285,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nFor more information, see:");
     println!("  - Enhanced Benchmarking: src/scirs2_hardware_benchmarks_enhanced.rs");
     println!("  - Noise Characterization: src/scirs2_noise_characterization_enhanced.rs");
-
-    Ok(())
 }

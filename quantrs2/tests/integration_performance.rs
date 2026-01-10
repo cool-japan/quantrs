@@ -326,9 +326,15 @@ mod deprecation_overhead {
         }
         let elapsed = start.elapsed();
 
-        // Deprecation checks should be very fast (uses HashMap lookup)
+        // Deprecation checks should be fast (uses HashMap lookup)
+        // Allow more time in debug mode where optimizations are disabled
+        let threshold = if cfg!(debug_assertions) {
+            Duration::from_millis(500)
+        } else {
+            Duration::from_millis(100)
+        };
         assert!(
-            elapsed < Duration::from_millis(100),
+            elapsed < threshold,
             "Deprecation check too slow: {elapsed:?}"
         );
     }

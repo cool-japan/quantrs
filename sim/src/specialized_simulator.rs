@@ -73,6 +73,8 @@ pub struct SpecializedStateVectorSimulator {
     stats: SpecializationStats,
     /// Cache for specialized gate conversions (simplified to avoid Clone issues)
     conversion_cache: Option<Arc<dashmap::DashMap<String, bool>>>,
+    /// Reusable buffer for parallel gate application (avoids allocation per gate)
+    work_buffer: Vec<Complex64>,
 }
 
 impl SpecializedStateVectorSimulator {
@@ -96,6 +98,7 @@ impl SpecializedStateVectorSimulator {
             base_simulator,
             stats: SpecializationStats::default(),
             conversion_cache,
+            work_buffer: Vec::new(),
         }
     }
 
@@ -253,9 +256,9 @@ impl SpecializedStateVectorSimulator {
         }
     }
 
-    /// Apply single-qubit gate (generic fallback)
+    /// Apply single-qubit gate (generic fallback) - optimized with reusable buffer
     fn apply_single_qubit_generic(
-        &self,
+        &mut self,
         state: &mut [Complex64],
         matrix: &[Complex64],
         target: QubitId,
@@ -264,7 +267,14 @@ impl SpecializedStateVectorSimulator {
         let target_idx = target.id() as usize;
 
         if self.config.parallel && n_qubits >= self.config.parallel_threshold {
-            let state_copy = state.to_vec();
+            // Reuse work_buffer to avoid allocation per gate
+            if self.work_buffer.len() < state.len() {
+                self.work_buffer
+                    .resize(state.len(), Complex64::new(0.0, 0.0));
+            }
+            self.work_buffer[..state.len()].copy_from_slice(state);
+            let state_copy = &self.work_buffer[..state.len()];
+
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
                 let bit_val = (idx >> target_idx) & 1;
                 let paired_idx = idx ^ (1 << target_idx);
@@ -276,6 +286,7 @@ impl SpecializedStateVectorSimulator {
                     + matrix[2 * bit_val + 1] * state_copy[idx1];
             });
         } else {
+            // Sequential in-place update (already optimal - no allocation)
             for i in 0..(1 << n_qubits) {
                 if (i >> target_idx) & 1 == 0 {
                     let j = i | (1 << target_idx);
@@ -290,9 +301,9 @@ impl SpecializedStateVectorSimulator {
         Ok(())
     }
 
-    /// Apply two-qubit gate (generic fallback)
+    /// Apply two-qubit gate (generic fallback) - optimized with reusable buffer
     fn apply_two_qubit_generic(
-        &self,
+        &mut self,
         state: &mut [Complex64],
         matrix: &[Complex64],
         control: QubitId,
@@ -308,8 +319,16 @@ impl SpecializedStateVectorSimulator {
             ));
         }
 
+        // Ensure work_buffer is large enough (reused across calls)
+        if self.work_buffer.len() < state.len() {
+            self.work_buffer
+                .resize(state.len(), Complex64::new(0.0, 0.0));
+        }
+
         if self.config.parallel && n_qubits >= self.config.parallel_threshold {
-            let state_copy = state.to_vec();
+            // Copy state to work buffer for reading
+            self.work_buffer[..state.len()].copy_from_slice(state);
+            let state_copy = &self.work_buffer[..state.len()];
 
             state.par_iter_mut().enumerate().for_each(|(idx, amp)| {
                 let ctrl_bit = (idx >> control_idx) & 1;
@@ -327,8 +346,7 @@ impl SpecializedStateVectorSimulator {
                     + matrix[4 * basis_idx + 3] * state_copy[idx11];
             });
         } else {
-            let mut new_state = vec![Complex64::new(0.0, 0.0); state.len()];
-
+            // Use work_buffer as temporary storage to avoid separate allocation
             for i in 0..state.len() {
                 let ctrl_bit = (i >> control_idx) & 1;
                 let tgt_bit = (i >> target_idx) & 1;
@@ -339,24 +357,24 @@ impl SpecializedStateVectorSimulator {
                 let i10 = i00 | (1 << control_idx);
                 let i11 = i10 | (1 << target_idx);
 
-                new_state[i] = matrix[4 * basis_idx] * state[i00]
+                self.work_buffer[i] = matrix[4 * basis_idx] * state[i00]
                     + matrix[4 * basis_idx + 1] * state[i01]
                     + matrix[4 * basis_idx + 2] * state[i10]
                     + matrix[4 * basis_idx + 3] * state[i11];
             }
 
-            state.copy_from_slice(&new_state);
+            state.copy_from_slice(&self.work_buffer[..state.len()]);
         }
 
         Ok(())
     }
 
-    /// Apply multi-qubit gate (generic fallback)
+    /// Apply multi-qubit gate (generic fallback) - optimized with reusable buffer
     fn apply_multi_qubit_generic(
-        &self,
+        &mut self,
         state: &mut [Complex64],
         gate: &dyn GateOp,
-        n_qubits: usize,
+        _n_qubits: usize,
     ) -> QuantRS2Result<()> {
         // For now, convert to matrix and apply
         // This is a placeholder for more sophisticated multi-qubit handling
@@ -371,9 +389,13 @@ impl SpecializedStateVectorSimulator {
             )));
         }
 
-        // Apply gate by iterating over all basis states
-        let mut new_state = state.to_vec();
+        // Ensure work_buffer is large enough (reused across calls)
+        if self.work_buffer.len() < state.len() {
+            self.work_buffer
+                .resize(state.len(), Complex64::new(0.0, 0.0));
+        }
 
+        // Apply gate by iterating over all basis states
         for idx in 0..state.len() {
             let mut basis_idx = 0;
             for (i, &qubit) in qubits.iter().enumerate() {
@@ -394,10 +416,10 @@ impl SpecializedStateVectorSimulator {
                 new_amp += matrix[basis_idx * gate_dim + j] * state[target_idx];
             }
 
-            new_state[idx] = new_amp;
+            self.work_buffer[idx] = new_amp;
         }
 
-        state.copy_from_slice(&new_state);
+        state.copy_from_slice(&self.work_buffer[..state.len()]);
         Ok(())
     }
 }

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
     fs::{self, File},
-    io::{BufReader, BufWriter},
+    io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
     sync::{Arc, OnceLock, RwLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -395,9 +395,10 @@ impl CompilationCache {
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
 
-        // bincode v2: use serde helper API with an explicit config
-        let compiled: CompiledGate =
-            bincode::serde::decode_from_reader(reader, bincode::config::standard())?;
+        // oxicode: use serde helper API with an explicit config
+        // oxicode v0.1.1+ returns (T, usize) where usize is bytes read
+        let (compiled, _bytes_read): (CompiledGate, usize) =
+            oxicode::serde::decode_from_std_read(reader, oxicode::config::standard())?;
 
         Ok(Some(compiled))
     }
@@ -413,7 +414,8 @@ impl CompilationCache {
 
         let file = File::create(&file_path)?;
         let mut writer = BufWriter::new(file);
-        bincode::serde::encode_into_std_write(compiled, &mut writer, bincode::config::standard())?;
+        let bytes = oxicode::serde::encode_to_vec(compiled, oxicode::config::standard())?;
+        writer.write_all(&bytes)?;
 
         Ok(())
     }
@@ -469,7 +471,8 @@ impl CompilationCache {
 
         let file = File::create(file_path)?;
         let mut writer = BufWriter::new(file);
-        bincode::serde::encode_into_std_write(compiled, &mut writer, bincode::config::standard())?;
+        let bytes = oxicode::serde::encode_to_vec(compiled, oxicode::config::standard())?;
+        writer.write_all(&bytes)?;
 
         Ok(())
     }

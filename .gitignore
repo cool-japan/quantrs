@@ -61,6 +61,7 @@ Thumbs.db
 **/.claude/settings.local.json
 # Claude
 **/.claude/settings.json
+**/CLAUDE.md
 
 .venv/
 **/venv/

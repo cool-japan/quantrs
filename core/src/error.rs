@@ -128,6 +128,9 @@ pub enum QuantRS2Error {
 
     #[error("Lock poisoned: {0}")]
     LockPoisoned(String),
+
+    #[error("Index {index} out of bounds for length {len}")]
+    IndexOutOfBounds { index: usize, len: usize },
 }
 
 /// Result type for quantum operations
@@ -152,20 +155,20 @@ impl From<std::io::Error> for QuantRS2Error {
     }
 }
 
-impl From<bincode::error::EncodeError> for QuantRS2Error {
-    fn from(err: bincode::error::EncodeError) -> Self {
-        Self::RuntimeError(format!("Serialization encode error: {err:?}"))
-    }
-}
-
-impl From<bincode::error::DecodeError> for QuantRS2Error {
-    fn from(err: bincode::error::DecodeError) -> Self {
-        Self::RuntimeError(format!("Serialization decode error: {err:?}"))
+impl From<oxicode::Error> for QuantRS2Error {
+    fn from(err: oxicode::Error) -> Self {
+        Self::RuntimeError(format!("Serialization error: {err:?}"))
     }
 }
 
 impl From<serde_json::Error> for QuantRS2Error {
     fn from(err: serde_json::Error) -> Self {
         Self::RuntimeError(format!("JSON error: {err}"))
+    }
+}
+
+impl From<scirs2_core::linalg::LapackError> for QuantRS2Error {
+    fn from(err: scirs2_core::linalg::LapackError) -> Self {
+        Self::LinalgError(format!("LAPACK error: {err}"))
     }
 }

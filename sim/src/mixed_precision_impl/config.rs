@@ -40,8 +40,12 @@ impl MixedPrecisionContext {
 /// Precision levels for quantum computations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QuantumPrecision {
-    /// Half precision (16-bit floats)
+    /// Half precision (16-bit floats, FP16)
     Half,
+    /// BFloat16 precision (16-bit with larger range)
+    BFloat16,
+    /// TensorFloat-32 (NVIDIA TF32 for Tensor Cores)
+    TF32,
     /// Single precision (32-bit floats)
     Single,
     /// Double precision (64-bit floats)
@@ -55,8 +59,8 @@ impl QuantumPrecision {
     #[cfg(feature = "advanced_math")]
     pub const fn to_scirs2_precision(&self) -> PrecisionLevel {
         match self {
-            Self::Half => PrecisionLevel::F16,
-            Self::Single => PrecisionLevel::F32,
+            Self::Half | Self::BFloat16 => PrecisionLevel::F16,
+            Self::TF32 | Self::Single => PrecisionLevel::F32,
             Self::Double => PrecisionLevel::F64,
             Self::Adaptive => PrecisionLevel::Adaptive,
         }
@@ -67,6 +71,8 @@ impl QuantumPrecision {
     pub const fn memory_factor(&self) -> f64 {
         match self {
             Self::Half => 0.25,
+            Self::BFloat16 => 0.25,
+            Self::TF32 => 0.5, // Same storage as FP32, but faster compute
             Self::Single => 0.5,
             Self::Double => 1.0,
             Self::Adaptive => 0.75, // Average case
@@ -74,13 +80,16 @@ impl QuantumPrecision {
     }
 
     /// Get computational cost factor relative to double precision
+    /// Lower is better - represents performance relative to FP64
     #[must_use]
     pub const fn computation_factor(&self) -> f64 {
         match self {
-            Self::Half => 0.5,
+            Self::Half => 0.25,     // ~4x faster on Tensor Cores
+            Self::BFloat16 => 0.25, // ~4x faster on Tensor Cores
+            Self::TF32 => 0.35,     // ~2.8x faster on Tensor Cores
             Self::Single => 0.7,
             Self::Double => 1.0,
-            Self::Adaptive => 0.8, // Average case
+            Self::Adaptive => 0.6, // Average case
         }
     }
 
@@ -88,10 +97,63 @@ impl QuantumPrecision {
     #[must_use]
     pub const fn typical_error(&self) -> f64 {
         match self {
-            Self::Half => 1e-3,
-            Self::Single => 1e-6,
-            Self::Double => 1e-15,
+            Self::Half => 1e-3,     // 10-bit mantissa
+            Self::BFloat16 => 1e-2, // 7-bit mantissa, but same range as FP32
+            Self::TF32 => 1e-4,     // 10-bit mantissa with FP32 range
+            Self::Single => 1e-6,   // 23-bit mantissa
+            Self::Double => 1e-15,  // 52-bit mantissa
             Self::Adaptive => 1e-6, // Conservative estimate
+        }
+    }
+
+    /// Check if this precision requires Tensor Cores
+    #[must_use]
+    pub const fn requires_tensor_cores(&self) -> bool {
+        matches!(self, Self::TF32 | Self::BFloat16)
+    }
+
+    /// Check if this precision is a reduced-precision format
+    #[must_use]
+    pub const fn is_reduced_precision(&self) -> bool {
+        matches!(self, Self::Half | Self::BFloat16 | Self::TF32)
+    }
+
+    /// Get the bit width of this precision format
+    #[must_use]
+    pub const fn bit_width(&self) -> usize {
+        match self {
+            Self::Half => 16,
+            Self::BFloat16 => 16,
+            Self::TF32 => 19, // Stored as 32-bit, but 19 effective bits
+            Self::Single => 32,
+            Self::Double => 64,
+            Self::Adaptive => 32, // Default to single
+        }
+    }
+
+    /// Get mantissa bits for this precision
+    #[must_use]
+    pub const fn mantissa_bits(&self) -> usize {
+        match self {
+            Self::Half => 10,
+            Self::BFloat16 => 7,
+            Self::TF32 => 10,
+            Self::Single => 23,
+            Self::Double => 52,
+            Self::Adaptive => 23,
+        }
+    }
+
+    /// Get exponent bits for this precision
+    #[must_use]
+    pub const fn exponent_bits(&self) -> usize {
+        match self {
+            Self::Half => 5,
+            Self::BFloat16 => 8,
+            Self::TF32 => 8,
+            Self::Single => 8,
+            Self::Double => 11,
+            Self::Adaptive => 8,
         }
     }
 
@@ -105,7 +167,9 @@ impl QuantumPrecision {
     #[must_use]
     pub const fn higher_precision(&self) -> Option<Self> {
         match self {
-            Self::Half => Some(Self::Single),
+            Self::Half => Some(Self::BFloat16),
+            Self::BFloat16 => Some(Self::TF32),
+            Self::TF32 => Some(Self::Single),
             Self::Single => Some(Self::Double),
             Self::Double => None,
             Self::Adaptive => Some(Self::Double),
@@ -117,9 +181,33 @@ impl QuantumPrecision {
     pub const fn lower_precision(&self) -> Option<Self> {
         match self {
             Self::Half => None,
-            Self::Single => Some(Self::Half),
+            Self::BFloat16 => Some(Self::Half),
+            Self::TF32 => Some(Self::BFloat16),
+            Self::Single => Some(Self::TF32),
             Self::Double => Some(Self::Single),
             Self::Adaptive => Some(Self::Single),
+        }
+    }
+
+    /// Select best precision for given accuracy and Tensor Core availability
+    #[must_use]
+    pub fn select_for_accuracy_and_tensor_cores(tolerance: f64, has_tensor_cores: bool) -> Self {
+        if tolerance >= 1e-2 {
+            if has_tensor_cores {
+                Self::BFloat16
+            } else {
+                Self::Half
+            }
+        } else if tolerance >= 1e-4 {
+            if has_tensor_cores {
+                Self::TF32
+            } else {
+                Self::Single
+            }
+        } else if tolerance >= 1e-6 {
+            Self::Single
+        } else {
+            Self::Double
         }
     }
 }

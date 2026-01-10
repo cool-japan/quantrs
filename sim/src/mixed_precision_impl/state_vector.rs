@@ -14,6 +14,10 @@ use crate::error::{Result, SimulatorError};
 pub enum MixedPrecisionStateVector {
     /// Half precision state vector (using Complex32 as approximation)
     Half(Array1<Complex32>),
+    /// BFloat16 precision state vector (using Complex32 as storage)
+    BFloat16(Array1<Complex32>),
+    /// TF32 precision state vector (stored as Complex32)
+    TF32(Array1<Complex32>),
     /// Single precision state vector
     Single(Array1<Complex32>),
     /// Double precision state vector
@@ -32,6 +36,8 @@ impl MixedPrecisionStateVector {
     pub fn new(size: usize, precision: QuantumPrecision) -> Self {
         match precision {
             QuantumPrecision::Half => Self::Half(Array1::zeros(size)),
+            QuantumPrecision::BFloat16 => Self::BFloat16(Array1::zeros(size)),
+            QuantumPrecision::TF32 => Self::TF32(Array1::zeros(size)),
             QuantumPrecision::Single => Self::Single(Array1::zeros(size)),
             QuantumPrecision::Double => Self::Double(Array1::zeros(size)),
             QuantumPrecision::Adaptive => {
@@ -54,8 +60,10 @@ impl MixedPrecisionStateVector {
 
         // Set |0...0> state
         match &mut state {
-            Self::Half(ref mut arr) => arr[0] = Complex32::new(1.0, 0.0),
-            Self::Single(ref mut arr) => arr[0] = Complex32::new(1.0, 0.0),
+            Self::Half(ref mut arr)
+            | Self::BFloat16(ref mut arr)
+            | Self::TF32(ref mut arr)
+            | Self::Single(ref mut arr) => arr[0] = Complex32::new(1.0, 0.0),
             Self::Double(ref mut arr) => arr[0] = Complex64::new(1.0, 0.0),
             Self::Adaptive {
                 ref mut primary, ..
@@ -71,8 +79,9 @@ impl MixedPrecisionStateVector {
     #[must_use]
     pub fn len(&self) -> usize {
         match self {
-            Self::Half(arr) => arr.len(),
-            Self::Single(arr) => arr.len(),
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
+                arr.len()
+            }
             Self::Double(arr) => arr.len(),
             Self::Adaptive { primary, .. } => primary.len(),
         }
@@ -89,6 +98,8 @@ impl MixedPrecisionStateVector {
     pub const fn precision(&self) -> QuantumPrecision {
         match self {
             Self::Half(_) => QuantumPrecision::Half,
+            Self::BFloat16(_) => QuantumPrecision::BFloat16,
+            Self::TF32(_) => QuantumPrecision::TF32,
             Self::Single(_) => QuantumPrecision::Single,
             Self::Double(_) => QuantumPrecision::Double,
             Self::Adaptive { .. } => QuantumPrecision::Adaptive,
@@ -151,13 +162,7 @@ impl MixedPrecisionStateVector {
         }
 
         match self {
-            Self::Half(arr) => {
-                let norm_f32 = norm as f32;
-                for val in arr.iter_mut() {
-                    *val /= norm_f32;
-                }
-            }
-            Self::Single(arr) => {
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
                 let norm_f32 = norm as f32;
                 for val in arr.iter_mut() {
                     *val /= norm_f32;
@@ -182,12 +187,7 @@ impl MixedPrecisionStateVector {
     #[must_use]
     pub fn norm(&self) -> f64 {
         match self {
-            Self::Half(arr) => arr
-                .iter()
-                .map(|x| f64::from(x.norm_sqr()))
-                .sum::<f64>()
-                .sqrt(),
-            Self::Single(arr) => arr
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => arr
                 .iter()
                 .map(|x| f64::from(x.norm_sqr()))
                 .sum::<f64>()
@@ -212,8 +212,9 @@ impl MixedPrecisionStateVector {
         }
 
         let prob = match self {
-            Self::Half(arr) => f64::from(arr[index].norm_sqr()),
-            Self::Single(arr) => f64::from(arr[index].norm_sqr()),
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
+                f64::from(arr[index].norm_sqr())
+            }
             Self::Double(arr) => arr[index].norm_sqr(),
             Self::Adaptive { primary, .. } => primary.probability(index)?,
         };
@@ -232,11 +233,7 @@ impl MixedPrecisionStateVector {
         }
 
         let amplitude = match self {
-            Self::Half(arr) => {
-                let val = arr[index];
-                Complex64::new(f64::from(val.re), f64::from(val.im))
-            }
-            Self::Single(arr) => {
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
                 let val = arr[index];
                 Complex64::new(f64::from(val.re), f64::from(val.im))
             }
@@ -258,10 +255,7 @@ impl MixedPrecisionStateVector {
         }
 
         match self {
-            Self::Half(arr) => {
-                arr[index] = Complex32::new(amplitude.re as f32, amplitude.im as f32);
-            }
-            Self::Single(arr) => {
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
                 arr[index] = Complex32::new(amplitude.re as f32, amplitude.im as f32);
             }
             Self::Double(arr) => {
@@ -305,8 +299,9 @@ impl MixedPrecisionStateVector {
     #[must_use]
     pub fn memory_usage(&self) -> usize {
         match self {
-            Self::Half(arr) => arr.len() * std::mem::size_of::<Complex32>(),
-            Self::Single(arr) => arr.len() * std::mem::size_of::<Complex32>(),
+            Self::Half(arr) | Self::BFloat16(arr) | Self::TF32(arr) | Self::Single(arr) => {
+                arr.len() * std::mem::size_of::<Complex32>()
+            }
             Self::Double(arr) => arr.len() * std::mem::size_of::<Complex64>(),
             Self::Adaptive {
                 primary, secondary, ..
@@ -338,6 +333,8 @@ impl Clone for MixedPrecisionStateVector {
     fn clone(&self) -> Self {
         match self {
             Self::Half(arr) => Self::Half(arr.clone()),
+            Self::BFloat16(arr) => Self::BFloat16(arr.clone()),
+            Self::TF32(arr) => Self::TF32(arr.clone()),
             Self::Single(arr) => Self::Single(arr.clone()),
             Self::Double(arr) => Self::Double(arr.clone()),
             Self::Adaptive {
@@ -357,6 +354,8 @@ impl std::fmt::Debug for MixedPrecisionStateVector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Half(arr) => write!(f, "Half({} elements)", arr.len()),
+            Self::BFloat16(arr) => write!(f, "BFloat16({} elements)", arr.len()),
+            Self::TF32(arr) => write!(f, "TF32({} elements)", arr.len()),
             Self::Single(arr) => write!(f, "Single({} elements)", arr.len()),
             Self::Double(arr) => write!(f, "Double({} elements)", arr.len()),
             Self::Adaptive {

@@ -1504,15 +1504,25 @@ mod tests {
     #[test]
     fn test_optimization_suggestions() {
         let mut circuit = Circuit::<5>::new();
-        // Create a circuit with many gates to trigger optimization suggestions
-        for _ in 0..200 {
+        // Create a circuit with just enough gates to trigger optimization suggestions (>100)
+        // Use 105 gates instead of 200 to avoid slow graph analysis with O(n^2) complexity
+        for _ in 0..105 {
             circuit
                 .add_gate(Hadamard { target: QubitId(0) })
                 .expect("Failed to add Hadamard gate");
         }
 
-        let estimate =
-            estimate_circuit_resources(&circuit).expect("Failed to estimate circuit resources");
+        // Use lightweight config without expensive graph analysis
+        let config = ResourceEstimatorConfig {
+            enable_graph_analysis: false, // Skip O(n^2) graph analysis
+            enable_hardware_analysis: false,
+            enable_scalability_analysis: false,
+            include_optimizations: true, // This is what we're testing
+            ..Default::default()
+        };
+
+        let estimate = estimate_circuit_resources_with_config(&circuit, config)
+            .expect("Failed to estimate circuit resources");
 
         assert!(!estimate.optimization_suggestions.is_empty());
 
@@ -1525,9 +1535,11 @@ mod tests {
 
     #[test]
     fn test_custom_configuration() {
-        let mut config = ResourceEstimatorConfig::default();
-        config.analysis_depth = AnalysisDepth::Comprehensive;
-        config.enable_scalability_analysis = true;
+        let config = ResourceEstimatorConfig {
+            analysis_depth: AnalysisDepth::Comprehensive,
+            enable_scalability_analysis: true,
+            ..Default::default()
+        };
 
         let mut circuit = Circuit::<3>::new();
         circuit

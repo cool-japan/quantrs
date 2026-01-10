@@ -21,7 +21,8 @@ quantrs2-anneal = { workspace = true, optional = true }
 quantrs2-device = { workspace = true, optional = true }
 quantrs2-ml = { workspace = true, optional = true }
 quantrs2-tytan = { workspace = true, optional = true }
-quantrs2-symengine = { workspace = true, optional = true }
+# Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)
+quantrs2-symengine-pure = { workspace = true, optional = true }
 
 # Facade crate dependencies
 num_cpus = { workspace = true }
@@ -36,7 +37,7 @@ anneal = ["dep:quantrs2-anneal", "circuit"]
 device = ["dep:quantrs2-device", "circuit"]
 ml = ["dep:quantrs2-ml", "sim", "anneal"]
 tytan = ["dep:quantrs2-tytan", "anneal"]
-symengine = ["dep:quantrs2-symengine"]
+symengine = ["dep:quantrs2-symengine-pure"]
 
 # Enable everything at once
 full = [

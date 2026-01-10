@@ -341,13 +341,13 @@ pub async fn benchmark_gpu_linalg() -> Result<String, QuantRS2Error> {
 
         writeln!(report, "  CPU time: {:?}", cpu_time).expect("Failed to write to string buffer");
         writeln!(report, "  GPU time: {:?}", gpu_time).expect("Failed to write to string buffer");
-        write!(
+        writeln!(
             report,
-            "  Speedup: {:.2}x\n",
+            "  Speedup: {:.2}x",
             cpu_time.as_secs_f64() / gpu_time.as_secs_f64()
         )
         .expect("Failed to write to string buffer");
-        report.push_str("\n");
+        report.push('\n');
     }
 
     // Add performance metrics if available

@@ -186,39 +186,314 @@ impl CircuitFolder {
             .map(|w| 1.0 + extra_noise * w)
             .collect();
 
-        // TODO: Implement gate folding once circuit API supports boxed gate addition
-        // For now, return a clone of the original circuit
-        Ok(circuit.clone())
+        // Build new circuit with selective folding
+        let gates = circuit.gates();
+        let mut folded_circuit = Circuit::<N>::new();
+
+        for (idx, gate) in gates.iter().enumerate() {
+            let fold_factor = fold_amounts[idx];
+
+            if (fold_factor - 1.0).abs() < f64::EPSILON {
+                // No folding for this gate
+                folded_circuit
+                    .add_gate_arc(gate.clone())
+                    .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+            } else {
+                // Apply folding based on fold_factor
+                let num_folds = ((fold_factor - 1.0) / 2.0).floor() as usize;
+                let partial = (fold_factor - 1.0) % 2.0;
+
+                // Add original gate
+                folded_circuit
+                    .add_gate_arc(gate.clone())
+                    .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+
+                // Full folds: G† G
+                let inverse = Self::create_inverse_gate(gate.as_ref())?;
+                for _ in 0..num_folds {
+                    folded_circuit.add_gate_arc(inverse.clone()).map_err(|e| {
+                        DeviceError::APIError(format!("Failed to add inverse gate: {e:?}"))
+                    })?;
+                    folded_circuit
+                        .add_gate_arc(gate.clone())
+                        .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+                }
+
+                // Partial fold if needed
+                if partial > 0.5 {
+                    // Add G† G for partial fold
+                    folded_circuit.add_gate_arc(inverse).map_err(|e| {
+                        DeviceError::APIError(format!("Failed to add inverse gate: {e:?}"))
+                    })?;
+                    folded_circuit
+                        .add_gate_arc(gate.clone())
+                        .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+                }
+            }
+        }
+
+        Ok(folded_circuit)
     }
 
     /// Apply full fold G -> G G† G
     fn apply_full_fold<const N: usize>(circuit: &Circuit<N>) -> DeviceResult<Circuit<N>> {
-        // TODO: Implement once circuit API supports boxed gate addition
-        Ok(circuit.clone())
+        let gates = circuit.gates();
+        let mut folded_circuit = Circuit::<N>::with_capacity(gates.len() * 3);
+
+        // For each gate in original circuit: add G, G†, G
+        for gate in gates {
+            // Add original gate G
+            folded_circuit
+                .add_gate_arc(gate.clone())
+                .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+
+            // Add inverse gate G†
+            let inverse = Self::create_inverse_gate(gate.as_ref())?;
+            folded_circuit
+                .add_gate_arc(inverse)
+                .map_err(|e| DeviceError::APIError(format!("Failed to add inverse gate: {e:?}")))?;
+
+            // Add original gate G again
+            folded_circuit
+                .add_gate_arc(gate.clone())
+                .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+        }
+
+        Ok(folded_circuit)
     }
 
-    /// Apply partial fold
+    /// Apply partial fold (fold a fraction of gates)
     fn apply_partial_fold<const N: usize>(
         circuit: &Circuit<N>,
         fraction: f64,
     ) -> DeviceResult<Circuit<N>> {
-        // TODO: Implement partial folding once circuit API supports dynamic gate manipulation
-        // For now, return a clone of the original circuit
-        // The issue is that Circuit::add_gate expects concrete types, not Box<dyn GateOp>
-        Ok(circuit.clone())
+        let gates = circuit.gates();
+        let num_gates_to_fold = (gates.len() as f64 * fraction / 2.0).ceil() as usize;
+
+        let mut folded_circuit = Circuit::<N>::with_capacity(gates.len() + num_gates_to_fold * 2);
+
+        // Fold the first num_gates_to_fold gates
+        for (idx, gate) in gates.iter().enumerate() {
+            if idx < num_gates_to_fold {
+                // Apply G G† G for this gate
+                folded_circuit
+                    .add_gate_arc(gate.clone())
+                    .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+
+                let inverse = Self::create_inverse_gate(gate.as_ref())?;
+                folded_circuit.add_gate_arc(inverse).map_err(|e| {
+                    DeviceError::APIError(format!("Failed to add inverse gate: {e:?}"))
+                })?;
+
+                folded_circuit
+                    .add_gate_arc(gate.clone())
+                    .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+            } else {
+                // Just add the original gate
+                folded_circuit
+                    .add_gate_arc(gate.clone())
+                    .map_err(|e| DeviceError::APIError(format!("Failed to add gate: {e:?}")))?;
+            }
+        }
+
+        Ok(folded_circuit)
     }
 
-    /// Get inverse of a gate
-    fn invert_gate(gate: &Box<dyn GateOp>) -> DeviceResult<Box<dyn GateOp>> {
-        // TODO: Implement proper gate inversion once circuit API supports boxed gates
-        // This would need to create concrete gate types based on the gate name
+    /// Create inverse of a gate
+    fn create_inverse_gate(
+        gate: &dyn GateOp,
+    ) -> DeviceResult<std::sync::Arc<dyn GateOp + Send + Sync>> {
+        use quantrs2_core::gate::{multi::*, single::*};
+        use std::sync::Arc;
+
+        // Self-inverse gates
         match gate.name() {
-            "X" | "Y" | "Z" | "H" | "CNOT" | "CZ" | "SWAP" => Ok(gate.clone()), // Self-inverse
-            "S" => Ok(gate.clone()), // Would need to create S†
-            "T" => Ok(gate.clone()), // Would need to create T†
-            "RX" | "RY" | "RZ" => Ok(gate.clone()), // Would need to negate angle
+            "X" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(PauliX { target }))
+            }
+            "Y" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(PauliY { target }))
+            }
+            "Z" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(PauliZ { target }))
+            }
+            "H" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(Hadamard { target }))
+            }
+            "CNOT" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(CNOT {
+                    control: qubits[0],
+                    target: qubits[1],
+                }))
+            }
+            "CZ" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(CZ {
+                    control: qubits[0],
+                    target: qubits[1],
+                }))
+            }
+            "CY" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(CY {
+                    control: qubits[0],
+                    target: qubits[1],
+                }))
+            }
+            "SWAP" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(SWAP {
+                    qubit1: qubits[0],
+                    qubit2: qubits[1],
+                }))
+            }
+            "Fredkin" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(Fredkin {
+                    control: qubits[0],
+                    target1: qubits[1],
+                    target2: qubits[2],
+                }))
+            }
+            "Toffoli" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(Toffoli {
+                    control1: qubits[0],
+                    control2: qubits[1],
+                    target: qubits[2],
+                }))
+            }
+
+            // Phase gates - need conjugate
+            "S" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(PhaseDagger { target }))
+            }
+            "Sdg" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(Phase { target }))
+            }
+            "T" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(TDagger { target }))
+            }
+            "Tdg" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(T { target }))
+            }
+            "SqrtX" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(SqrtXDagger { target }))
+            }
+            "SqrtXDagger" => {
+                let target = gate.qubits()[0];
+                Ok(Arc::new(SqrtX { target }))
+            }
+
+            // Rotation gates - negate angle
+            "RX" => {
+                if let Some(rx) = gate.as_any().downcast_ref::<RotationX>() {
+                    Ok(Arc::new(RotationX {
+                        target: rx.target,
+                        theta: -rx.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast RX gate".to_string(),
+                    ))
+                }
+            }
+            "RY" => {
+                if let Some(ry) = gate.as_any().downcast_ref::<RotationY>() {
+                    Ok(Arc::new(RotationY {
+                        target: ry.target,
+                        theta: -ry.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast RY gate".to_string(),
+                    ))
+                }
+            }
+            "RZ" => {
+                if let Some(rz) = gate.as_any().downcast_ref::<RotationZ>() {
+                    Ok(Arc::new(RotationZ {
+                        target: rz.target,
+                        theta: -rz.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast RZ gate".to_string(),
+                    ))
+                }
+            }
+
+            // Controlled rotation gates
+            "CRX" => {
+                if let Some(crx) = gate.as_any().downcast_ref::<CRX>() {
+                    Ok(Arc::new(CRX {
+                        control: crx.control,
+                        target: crx.target,
+                        theta: -crx.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast CRX gate".to_string(),
+                    ))
+                }
+            }
+            "CRY" => {
+                if let Some(cry) = gate.as_any().downcast_ref::<CRY>() {
+                    Ok(Arc::new(CRY {
+                        control: cry.control,
+                        target: cry.target,
+                        theta: -cry.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast CRY gate".to_string(),
+                    ))
+                }
+            }
+            "CRZ" => {
+                if let Some(crz) = gate.as_any().downcast_ref::<CRZ>() {
+                    Ok(Arc::new(CRZ {
+                        control: crz.control,
+                        target: crz.target,
+                        theta: -crz.theta,
+                    }))
+                } else {
+                    Err(DeviceError::APIError(
+                        "Failed to downcast CRZ gate".to_string(),
+                    ))
+                }
+            }
+
+            // CH gate is self-inverse
+            "CH" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(CH {
+                    control: qubits[0],
+                    target: qubits[1],
+                }))
+            }
+
+            // CS gate
+            "CS" => {
+                let qubits = gate.qubits();
+                Ok(Arc::new(CS {
+                    control: qubits[0],
+                    target: qubits[1],
+                }))
+            }
+
             _ => Err(DeviceError::APIError(format!(
-                "Cannot invert gate: {}",
+                "Cannot create inverse for unsupported gate: {}",
                 gate.name()
             ))),
         }
@@ -585,15 +860,23 @@ mod tests {
         // Test global folding
         let folded = CircuitFolder::fold_global(&circuit, 3.0)
             .expect("Global circuit folding should succeed");
-        // With scale factor 3.0 and 2 original gates, should have folded gates
-        // Circuit::clone() might work now, so check actual gate count
-        assert_eq!(folded.num_gates(), 2); // Expected folded circuit gate count
+        // With scale factor 3.0:
+        // num_folds = (3.0 - 1.0) / 2.0 = 1 full fold
+        // Full fold: C → C C† C (triples the circuit)
+        // Original: 2 gates → After 1 full fold: 2 * 3 = 6 gates
+        assert_eq!(folded.num_gates(), 6);
 
         // Test local folding
         let local_folded = CircuitFolder::fold_local(&circuit, 2.0, None)
             .expect("Local circuit folding should succeed");
-        // For now, just check it doesn't panic
-        assert_eq!(local_folded.num_gates(), 2); // Expected folded circuit gate count
+        // With scale factor 2.0 and uniform weights [1.0, 1.0]:
+        // normalized_weights = [0.5, 0.5]
+        // extra_noise = 2.0 - 1.0 = 1.0
+        // Each gate gets: fold_factor = 1 + 1.0 * 0.5 = 1.5
+        // fold_factor 1.5: num_folds = floor((1.5 - 1.0) / 2.0) = 0, partial = 0.5
+        // Since partial is not > 0.5, each gate stays as G
+        // Original: 2 gates → After local folding: 2 gates (no folding)
+        assert_eq!(local_folded.num_gates(), 2);
 
         // Test scale factor validation
         assert!(CircuitFolder::fold_global(&circuit, 0.5).is_err());

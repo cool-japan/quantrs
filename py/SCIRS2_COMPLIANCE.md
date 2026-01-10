@@ -1,7 +1,7 @@
 # SCIRS2 Policy Compliance Report
 
 **Package**: quantrs2-py
-**Version**: 0.1.0-beta.3
+**Version**: 0.1.0-rc.2
 **Date**: 2025-11-18
 **Status**: ✅ **FULLY COMPLIANT**
 

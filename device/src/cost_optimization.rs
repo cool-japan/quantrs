@@ -4,7 +4,7 @@
 //! quantum computing providers, including cost estimation, budget management,
 //! provider comparison, and automated cost optimization strategies.
 
-use std::collections::{HashMap, HashSet, VecDeque, BTreeMap};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -17,19 +17,19 @@ use quantrs2_core::{
 
 // SciRS2 integration for advanced cost analytics
 #[cfg(feature = "scirs2")]
-use scirs2_optimize::{minimize, differential_evolution, OptimizeResult};
+use scirs2_graph::{dijkstra_path, minimum_spanning_tree, Graph};
 #[cfg(feature = "scirs2")]
-use scirs2_stats::{mean, std, pearsonr, spearmanr, corrcoef};
+use scirs2_optimize::{differential_evolution, minimize, OptimizeResult};
 #[cfg(feature = "scirs2")]
-use scirs2_graph::{Graph, dijkstra_path, minimum_spanning_tree};
+use scirs2_stats::{corrcoef, mean, pearsonr, spearmanr, std};
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AsyncMutex, RwLock as AsyncRwLock};
 
 use crate::{
-    backend_traits::{BackendCapabilities, query_backend_capabilities},
-    job_scheduling::{QuantumJobScheduler, JobPriority, SchedulingStrategy},
+    backend_traits::{query_backend_capabilities, BackendCapabilities},
+    job_scheduling::{JobPriority, QuantumJobScheduler, SchedulingStrategy},
     translation::HardwareBackend,
     DeviceError, DeviceResult,
 };
@@ -451,7 +451,7 @@ pub struct MultiObjectiveConfig {
 }
 
 /// Optimization objectives
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OptimizationObjective {
     MinimizeCost,
     MinimizeTime,
@@ -762,8 +762,14 @@ impl Default for CostOptimizationConfig {
                 feature_engineering: FeatureEngineeringConfig {
                     time_features: vec![TimeFeature::HourOfDay, TimeFeature::DayOfWeek],
                     circuit_features: vec![CircuitFeature::QubitCount, CircuitFeature::GateCount],
-                    provider_features: vec![ProviderFeature::QueueLength, ProviderFeature::SystemLoad],
-                    usage_features: vec![UsageFeature::HistoricalCosts, UsageFeature::UsagePatterns],
+                    provider_features: vec![
+                        ProviderFeature::QueueLength,
+                        ProviderFeature::SystemLoad,
+                    ],
+                    usage_features: vec![
+                        UsageFeature::HistoricalCosts,
+                        UsageFeature::UsagePatterns,
+                    ],
                     feature_selection: FeatureSelectionMethod::Correlation(0.1),
                 },
                 training_frequency: Duration::from_secs(24 * 3600),
@@ -790,10 +796,15 @@ impl Default for CostOptimizationConfig {
                         },
                         diversity_preservation: true,
                     },
-                    selection_strategy: SolutionSelectionStrategy::Weighted([
-                        (OptimizationObjective::MinimizeCost, 0.6),
-                        (OptimizationObjective::MaximizeQuality, 0.4),
-                    ].iter().cloned().collect()),
+                    selection_strategy: SolutionSelectionStrategy::Weighted(
+                        [
+                            (OptimizationObjective::MinimizeCost, 0.6),
+                            (OptimizationObjective::MaximizeQuality, 0.4),
+                        ]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                    ),
                 },
             },
             monitoring_config: CostMonitoringConfig {
@@ -824,18 +835,16 @@ impl Default for CostOptimizationConfig {
             },
             alert_config: CostAlertConfig {
                 enabled: true,
-                alert_rules: vec![
-                    CostAlertRule {
-                        name: "Budget threshold".to_string(),
-                        condition: AlertCondition::BudgetThreshold {
-                            threshold: 80.0,
-                            percentage: true,
-                        },
-                        severity: AlertSeverity::Warning,
-                        frequency: NotificationFrequency::Immediate,
-                        enabled: true,
+                alert_rules: vec![CostAlertRule {
+                    name: "Budget threshold".to_string(),
+                    condition: AlertCondition::BudgetThreshold {
+                        threshold: 80.0,
+                        percentage: true,
                     },
-                ],
+                    severity: AlertSeverity::Warning,
+                    frequency: NotificationFrequency::Immediate,
+                    enabled: true,
+                }],
                 notification_channels: vec![],
                 aggregation_config: AlertAggregationConfig {
                     enabled: true,
@@ -1162,7 +1171,11 @@ pub trait PredictiveModel {
     fn predict(&self, features: &HashMap<String, f64>) -> DeviceResult<PredictionResult>;
     fn train(&mut self, training_data: &TrainingData) -> DeviceResult<TrainingResult>;
     fn get_feature_importance(&self) -> DeviceResult<HashMap<String, f64>>;
-    fn cross_validate(&self, data: &TrainingData, folds: usize) -> DeviceResult<CrossValidationResult>;
+    fn cross_validate(
+        &self,
+        data: &TrainingData,
+        folds: usize,
+    ) -> DeviceResult<CrossValidationResult>;
 }
 
 /// Prediction result
@@ -1249,11 +1262,31 @@ enum FeatureDataType {
 }
 
 /// Derived feature definition
-#[derive(Debug, Clone)]
 struct DerivedFeature {
     name: String,
     computation: Box<dyn Fn(&HashMap<String, f64>) -> f64 + Send + Sync>,
     dependencies: Vec<String>,
+}
+
+impl std::fmt::Debug for DerivedFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DerivedFeature")
+            .field("name", &self.name)
+            .field("computation", &"<function>")
+            .field("dependencies", &self.dependencies)
+            .finish()
+    }
+}
+
+impl Clone for DerivedFeature {
+    fn clone(&self) -> Self {
+        // Note: computation cannot be cloned, create a placeholder
+        Self {
+            name: self.name.clone(),
+            computation: Box::new(|_| 0.0),
+            dependencies: self.dependencies.clone(),
+        }
+    }
 }
 
 /// Model performance tracking
@@ -1268,10 +1301,10 @@ struct ModelPerformance {
 /// Accuracy metrics for models
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct AccuracyMetrics {
-    mae: f64, // Mean Absolute Error
-    mse: f64, // Mean Squared Error
-    rmse: f64, // Root Mean Squared Error
-    mape: f64, // Mean Absolute Percentage Error
+    mae: f64,      // Mean Absolute Error
+    mse: f64,      // Mean Squared Error
+    rmse: f64,     // Root Mean Squared Error
+    mape: f64,     // Mean Absolute Percentage Error
     r2_score: f64, // R-squared
 }
 
@@ -1337,12 +1370,33 @@ pub struct OptimizationProblem {
 }
 
 /// Objective function
-#[derive(Debug, Clone)]
 pub struct ObjectiveFunction {
     pub name: String,
     pub function: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
     pub optimization_direction: OptimizationDirection,
     pub weight: f64,
+}
+
+impl std::fmt::Debug for ObjectiveFunction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ObjectiveFunction")
+            .field("name", &self.name)
+            .field("function", &"<function>")
+            .field("optimization_direction", &self.optimization_direction)
+            .field("weight", &self.weight)
+            .finish()
+    }
+}
+
+impl Clone for ObjectiveFunction {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            function: Box::new(|_| 0.0),
+            optimization_direction: self.optimization_direction.clone(),
+            weight: self.weight,
+        }
+    }
 }
 
 /// Optimization directions
@@ -1353,12 +1407,33 @@ pub enum OptimizationDirection {
 }
 
 /// Constraint definition
-#[derive(Debug, Clone)]
 pub struct Constraint {
     pub name: String,
     pub constraint_function: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
     pub constraint_type: ConstraintType,
     pub bound: f64,
+}
+
+impl std::fmt::Debug for Constraint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Constraint")
+            .field("name", &self.name)
+            .field("constraint_function", &"<function>")
+            .field("constraint_type", &self.constraint_type)
+            .field("bound", &self.bound)
+            .finish()
+    }
+}
+
+impl Clone for Constraint {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            constraint_function: Box::new(|_| 0.0),
+            constraint_type: self.constraint_type.clone(),
+            bound: self.bound,
+        }
+    }
 }
 
 /// Constraint types
@@ -1674,9 +1749,15 @@ impl CostOptimizationEngine {
             config: config.clone(),
             cost_estimator: Arc::new(RwLock::new(CostEstimator::new(&config.estimation_config))),
             budget_manager: Arc::new(RwLock::new(BudgetManager::new(&config.budget_config))),
-            provider_comparator: Arc::new(RwLock::new(ProviderComparator::new(&config.provider_comparison))),
-            predictive_modeler: Arc::new(RwLock::new(PredictiveModeler::new(&config.predictive_modeling))),
-            resource_optimizer: Arc::new(RwLock::new(ResourceOptimizer::new(&config.resource_optimization))),
+            provider_comparator: Arc::new(RwLock::new(ProviderComparator::new(
+                &config.provider_comparison,
+            ))),
+            predictive_modeler: Arc::new(RwLock::new(PredictiveModeler::new(
+                &config.predictive_modeling,
+            ))),
+            resource_optimizer: Arc::new(RwLock::new(ResourceOptimizer::new(
+                &config.resource_optimization,
+            ))),
             cost_monitor: Arc::new(RwLock::new(CostMonitor::new(&config.monitoring_config))),
             alert_manager: Arc::new(RwLock::new(AlertManager::new(&config.alert_config))),
             optimization_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -1691,7 +1772,9 @@ impl CostOptimizationEngine {
         shots: usize,
     ) -> DeviceResult<CostEstimate> {
         let mut estimator = self.cost_estimator.write().map_err(|e| {
-            DeviceError::LockError(format!("Failed to acquire write lock on cost_estimator: {e}"))
+            DeviceError::LockError(format!(
+                "Failed to acquire write lock on cost_estimator: {e}"
+            ))
         })?;
         estimator.estimate_cost(circuit, provider, shots).await
     }
@@ -1704,9 +1787,13 @@ impl CostOptimizationEngine {
         shots: usize,
     ) -> DeviceResult<ProviderComparisonResult> {
         let mut comparator = self.provider_comparator.write().map_err(|e| {
-            DeviceError::LockError(format!("Failed to acquire write lock on provider_comparator: {e}"))
+            DeviceError::LockError(format!(
+                "Failed to acquire write lock on provider_comparator: {e}"
+            ))
         })?;
-        comparator.compare_providers(circuit, providers, shots).await
+        comparator
+            .compare_providers(circuit, providers, shots)
+            .await
     }
 
     /// Optimize resource allocation for cost
@@ -1715,7 +1802,9 @@ impl CostOptimizationEngine {
         requirements: &ResourceRequirements,
     ) -> DeviceResult<OptimizationResult> {
         let mut optimizer = self.resource_optimizer.write().map_err(|e| {
-            DeviceError::LockError(format!("Failed to acquire write lock on resource_optimizer: {e}"))
+            DeviceError::LockError(format!(
+                "Failed to acquire write lock on resource_optimizer: {e}"
+            ))
         })?;
         optimizer.optimize_allocation(requirements).await
     }
@@ -1723,7 +1812,9 @@ impl CostOptimizationEngine {
     /// Get current budget status
     pub async fn get_budget_status(&self) -> DeviceResult<BudgetStatus> {
         let budget_manager = self.budget_manager.read().map_err(|e| {
-            DeviceError::LockError(format!("Failed to acquire read lock on budget_manager: {e}"))
+            DeviceError::LockError(format!(
+                "Failed to acquire read lock on budget_manager: {e}"
+            ))
         })?;
         Ok(budget_manager.get_current_status())
     }
@@ -1735,7 +1826,9 @@ impl CostOptimizationEngine {
         features: HashMap<String, f64>,
     ) -> DeviceResult<PredictionResult> {
         let mut modeler = self.predictive_modeler.write().map_err(|e| {
-            DeviceError::LockError(format!("Failed to acquire write lock on predictive_modeler: {e}"))
+            DeviceError::LockError(format!(
+                "Failed to acquire write lock on predictive_modeler: {e}"
+            ))
         })?;
         modeler.predict_costs(prediction_horizon, features).await
     }
@@ -1750,11 +1843,9 @@ impl CostOptimizationEngine {
         let cost_trends = self.analyze_cost_trends().await?;
 
         // Generate recommendations based on analysis
-        let recommendations = self.generate_recommendations(
-            &budget_status,
-            &cost_trends,
-            &context,
-        ).await?;
+        let recommendations = self
+            .generate_recommendations(&budget_status, &cost_trends, &context)
+            .await?;
 
         Ok(recommendations)
     }
@@ -1994,10 +2085,11 @@ pub struct CostTrends {
 }
 
 /// Trend directions
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub enum TrendDirection {
     Increasing,
     Decreasing,
+    #[default]
     Stable,
     Volatile,
 }
@@ -2166,19 +2258,22 @@ impl ProviderComparator {
         let mut detailed_metrics = HashMap::new();
 
         for provider in &providers {
-            provider_scores.insert(provider.clone(), 0.8);
-            detailed_metrics.insert(provider.clone(), ProviderMetrics {
-                cost_metrics: HashMap::new(),
-                performance_metrics: HashMap::new(),
-                reliability_metrics: HashMap::new(),
-                overall_score: 0.8,
-            });
+            provider_scores.insert(*provider, 0.8);
+            detailed_metrics.insert(
+                *provider,
+                ProviderMetrics {
+                    cost_metrics: HashMap::new(),
+                    performance_metrics: HashMap::new(),
+                    reliability_metrics: HashMap::new(),
+                    overall_score: 0.8,
+                },
+            );
         }
 
         Ok(ProviderComparisonResult {
             provider_scores,
             detailed_metrics,
-            recommended_provider: providers[0].clone(),
+            recommended_provider: providers[0],
             timestamp: SystemTime::now(),
         })
     }
@@ -2311,7 +2406,10 @@ mod tests {
         let config = CostOptimizationConfig::default();
         assert_eq!(config.budget_config.total_budget, 10000.0);
         assert!(config.estimation_config.enable_ml_estimation);
-        assert_eq!(config.optimization_strategy, CostOptimizationStrategy::MaximizeCostPerformance);
+        assert_eq!(
+            config.optimization_strategy,
+            CostOptimizationStrategy::MaximizeCostPerformance
+        );
     }
 
     #[test]

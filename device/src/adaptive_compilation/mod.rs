@@ -112,16 +112,12 @@ use crate::{
     calibration::{CalibrationManager, DeviceCalibration},
     dynamical_decoupling::DynamicalDecouplingConfig,
     integrated_device_manager::{IntegratedQuantumDeviceManager, WorkflowDefinition, WorkflowType},
-    // mapping_scirc2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper}, // Temporarily disabled
+    mapping_scirs2::{SciRS2MappingConfig, SciRS2MappingResult, SciRS2QubitMapper},
     noise_model::CalibrationNoiseModel,
     process_tomography::{SciRS2ProcessTomographer, SciRS2ProcessTomographyConfig},
     topology::HardwareTopology,
     vqa_support::{VQAConfig, VQAExecutor, VQAResult},
-    CircuitExecutor,
-    CircuitResult,
-    DeviceError,
-    DeviceResult,
-    QuantumDevice,
+    CircuitExecutor, CircuitResult, DeviceError, DeviceResult, QuantumDevice,
 };
 
 // Module declarations

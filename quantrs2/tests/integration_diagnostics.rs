@@ -48,12 +48,12 @@ fn test_compatibility_issue_display() {
     let issue = CompatibilityIssue::DependencyVersionMismatch {
         dependency: "scirs2".to_string(),
         expected: "0.1.0-rc.2".to_string(),
-        detected: Some("0.1.0-rc.1".to_string()),
+        detected: Some("0.1.0-rc.2".to_string()),
     };
     let display_str = format!("{issue}");
     assert!(display_str.contains("scirs2"));
     assert!(display_str.contains("0.1.0-rc.2"));
-    assert!(display_str.contains("0.1.0-rc.1"));
+    assert!(display_str.contains("0.1.0-rc.2"));
 }
 
 #[test]

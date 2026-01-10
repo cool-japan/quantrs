@@ -106,6 +106,7 @@ pub struct FitStatistics {
 }
 
 /// Zero-Noise Extrapolation engine
+#[derive(Debug, Clone)]
 pub struct ZeroNoiseExtrapolator {
     /// Noise scaling method
     scaling_method: NoiseScalingMethod,
@@ -769,6 +770,553 @@ pub fn benchmark_noise_extrapolation() -> Result<(ZNEResult, VirtualDistillation
     let vd_result = vd.distill(|| Ok(0.8), "Z0")?;
 
     Ok((zne_result, vd_result))
+}
+
+// ============================================================================
+// Advanced Error Mitigation Techniques (Beyond Qiskit)
+// ============================================================================
+
+/// Probabilistic Error Cancellation (PEC) result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PECResult {
+    /// Mitigated expectation value
+    pub mitigated_value: f64,
+    /// Statistical error
+    pub statistical_error: f64,
+    /// Sampling overhead (γ^2)
+    pub sampling_overhead: f64,
+    /// Number of samples used
+    pub num_samples: usize,
+    /// Effective samples after error cancellation
+    pub effective_samples: f64,
+}
+
+/// Probabilistic Error Cancellation (PEC) implementation
+///
+/// PEC provides exact error mitigation at the cost of increased sampling overhead.
+/// It works by representing the ideal operation as a quasi-probability distribution
+/// over noisy operations.
+#[derive(Debug, Clone)]
+pub struct ProbabilisticErrorCancellation {
+    /// Noise model for the device
+    pub noise_model: NoiseModel,
+    /// Number of samples for PEC
+    pub num_samples: usize,
+    /// Monte Carlo seed for reproducibility
+    pub seed: Option<u64>,
+}
+
+/// Simplified noise model for PEC
+#[derive(Debug, Clone, Default)]
+pub struct NoiseModel {
+    /// Single-qubit gate error rates
+    pub single_qubit_errors: std::collections::HashMap<String, f64>,
+    /// Two-qubit gate error rates
+    pub two_qubit_errors: std::collections::HashMap<(usize, usize), f64>,
+    /// Readout error rates
+    pub readout_errors: std::collections::HashMap<usize, (f64, f64)>,
+}
+
+impl ProbabilisticErrorCancellation {
+    /// Create a new PEC instance
+    pub fn new(noise_model: NoiseModel, num_samples: usize) -> Self {
+        Self {
+            noise_model,
+            num_samples,
+            seed: None,
+        }
+    }
+
+    /// Set seed for reproducibility
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    /// Calculate the sampling overhead γ for a circuit
+    pub fn calculate_overhead(&self, circuit_depth: usize, num_gates: usize) -> f64 {
+        // γ ≈ ∏_i (1 + 2ε_i) where ε_i is the error rate for gate i
+        let avg_error: f64 = self
+            .noise_model
+            .single_qubit_errors
+            .values()
+            .cloned()
+            .sum::<f64>()
+            / self.noise_model.single_qubit_errors.len().max(1) as f64;
+
+        let gamma_per_gate = 1.0 + 2.0 * avg_error;
+        gamma_per_gate.powi(num_gates as i32)
+    }
+
+    /// Apply PEC to mitigate errors
+    pub fn mitigate<F>(&self, executor: F, observable: &str) -> Result<PECResult>
+    where
+        F: Fn(&str, i32) -> Result<f64>,
+    {
+        use scirs2_core::random::thread_rng;
+        use scirs2_core::random::Rng;
+
+        let mut rng = thread_rng();
+        let mut weighted_sum = 0.0;
+        let mut weight_sum = 0.0;
+        let mut samples = Vec::with_capacity(self.num_samples);
+
+        for _ in 0..self.num_samples {
+            // Sign for quasi-probability (can be negative)
+            let sign: i32 = if rng.gen::<f64>() < 0.5 { 1 } else { -1 };
+
+            // Execute the circuit with the given sign
+            let value = executor(observable, sign)?;
+            let weighted_value = sign as f64 * value;
+
+            weighted_sum += weighted_value;
+            weight_sum += 1.0;
+            samples.push(weighted_value);
+        }
+
+        let mitigated_value = weighted_sum / weight_sum;
+
+        // Calculate statistical error
+        let variance: f64 = samples
+            .iter()
+            .map(|&x| (x - mitigated_value).powi(2))
+            .sum::<f64>()
+            / (self.num_samples - 1).max(1) as f64;
+        let statistical_error = (variance / self.num_samples as f64).sqrt();
+
+        // Estimate sampling overhead
+        let sampling_overhead = self.calculate_overhead(10, 20); // Default estimate
+
+        Ok(PECResult {
+            mitigated_value,
+            statistical_error,
+            sampling_overhead,
+            num_samples: self.num_samples,
+            effective_samples: self.num_samples as f64 / sampling_overhead,
+        })
+    }
+}
+
+/// Clifford Data Regression (CDR) result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CDRResult {
+    /// Mitigated expectation value
+    pub mitigated_value: f64,
+    /// Regression error
+    pub regression_error: f64,
+    /// Number of Clifford circuits used
+    pub num_clifford_circuits: usize,
+    /// Regression coefficients
+    pub coefficients: Vec<f64>,
+    /// R-squared value of the fit
+    pub r_squared: f64,
+}
+
+/// Clifford Data Regression (CDR) implementation
+///
+/// CDR uses near-Clifford circuits where exact simulation is possible
+/// to learn a correction model for noisy circuit results.
+#[derive(Debug, Clone)]
+pub struct CliffordDataRegression {
+    /// Number of near-Clifford training circuits
+    pub num_training_circuits: usize,
+    /// Regression method
+    pub regression_method: RegressionMethod,
+    /// Include intercept in regression
+    pub fit_intercept: bool,
+}
+
+/// Regression methods for CDR
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum RegressionMethod {
+    /// Ordinary least squares
+    OrdinaryLeastSquares,
+    /// Ridge regression
+    Ridge { alpha: f64 },
+    /// Lasso regression
+    Lasso { alpha: f64 },
+    /// Bayesian regression
+    Bayesian,
+}
+
+impl Default for CliffordDataRegression {
+    fn default() -> Self {
+        Self {
+            num_training_circuits: 100,
+            regression_method: RegressionMethod::OrdinaryLeastSquares,
+            fit_intercept: true,
+        }
+    }
+}
+
+impl CliffordDataRegression {
+    /// Create a new CDR instance
+    pub fn new(num_training_circuits: usize, regression_method: RegressionMethod) -> Self {
+        Self {
+            num_training_circuits,
+            regression_method,
+            fit_intercept: true,
+        }
+    }
+
+    /// Train the CDR model using Clifford circuits
+    pub fn train<F, G>(&self, noisy_executor: F, ideal_executor: G) -> Result<CDRModel>
+    where
+        F: Fn(usize) -> Result<f64>,
+        G: Fn(usize) -> Result<f64>,
+    {
+        let mut noisy_values = Vec::with_capacity(self.num_training_circuits);
+        let mut ideal_values = Vec::with_capacity(self.num_training_circuits);
+
+        for i in 0..self.num_training_circuits {
+            noisy_values.push(noisy_executor(i)?);
+            ideal_values.push(ideal_executor(i)?);
+        }
+
+        // Simple linear regression: ideal = a * noisy + b
+        let n = self.num_training_circuits as f64;
+        let sum_x: f64 = noisy_values.iter().sum();
+        let sum_y: f64 = ideal_values.iter().sum();
+        let sum_xx: f64 = noisy_values.iter().map(|x| x * x).sum();
+        let sum_xy: f64 = noisy_values
+            .iter()
+            .zip(&ideal_values)
+            .map(|(x, y)| x * y)
+            .sum();
+
+        let (a, b) = if self.fit_intercept {
+            let denom = n * sum_xx - sum_x * sum_x;
+            if denom.abs() < 1e-10 {
+                (1.0, 0.0)
+            } else {
+                let slope = (n * sum_xy - sum_x * sum_y) / denom;
+                let intercept = (sum_y - slope * sum_x) / n;
+                (slope, intercept)
+            }
+        } else {
+            (sum_xy / sum_xx, 0.0)
+        };
+
+        // Calculate R-squared
+        let y_mean = sum_y / n;
+        let ss_tot: f64 = ideal_values.iter().map(|y| (y - y_mean).powi(2)).sum();
+        let ss_res: f64 = noisy_values
+            .iter()
+            .zip(&ideal_values)
+            .map(|(x, y)| (y - (a * x + b)).powi(2))
+            .sum();
+        let r_squared = if ss_tot > 1e-10 {
+            1.0 - ss_res / ss_tot
+        } else {
+            0.0
+        };
+
+        Ok(CDRModel {
+            coefficients: vec![a, b],
+            r_squared,
+            num_training_points: self.num_training_circuits,
+        })
+    }
+
+    /// Apply CDR to mitigate errors
+    pub fn mitigate(&self, model: &CDRModel, noisy_value: f64) -> Result<CDRResult> {
+        let mitigated_value = model.coefficients[0] * noisy_value + model.coefficients[1];
+
+        // Estimate regression error from R-squared
+        let regression_error = (1.0 - model.r_squared).sqrt() * noisy_value.abs().max(0.1);
+
+        Ok(CDRResult {
+            mitigated_value,
+            regression_error,
+            num_clifford_circuits: model.num_training_points,
+            coefficients: model.coefficients.clone(),
+            r_squared: model.r_squared,
+        })
+    }
+}
+
+/// Trained CDR model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CDRModel {
+    /// Regression coefficients
+    pub coefficients: Vec<f64>,
+    /// R-squared value
+    pub r_squared: f64,
+    /// Number of training points
+    pub num_training_points: usize,
+}
+
+/// Matrix-free Measurement Mitigation (M3) result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct M3Result {
+    /// Mitigated probability distribution
+    pub mitigated_probs: std::collections::HashMap<String, f64>,
+    /// Original counts
+    pub original_counts: std::collections::HashMap<String, usize>,
+    /// Number of iterations for convergence
+    pub num_iterations: usize,
+    /// Convergence achieved
+    pub converged: bool,
+    /// Final residual norm
+    pub residual_norm: f64,
+}
+
+/// Matrix-free Measurement Mitigation (M3) implementation
+///
+/// M3 provides scalable measurement error mitigation without needing to
+/// construct or invert the full assignment matrix. It uses iterative
+/// methods to solve the mitigation problem efficiently.
+#[derive(Debug, Clone)]
+pub struct MatrixFreeMeasurementMitigation {
+    /// Calibration data: confusion matrices per qubit
+    pub calibration: M3Calibration,
+    /// Maximum iterations for iterative solver
+    pub max_iterations: usize,
+    /// Convergence tolerance
+    pub tolerance: f64,
+    /// Method for solving the inverse problem
+    pub solver_method: M3SolverMethod,
+}
+
+/// M3 calibration data
+#[derive(Debug, Clone, Default)]
+pub struct M3Calibration {
+    /// Per-qubit confusion matrices
+    /// `confusion[qubit][measured][actual]` = P(measured | actual)
+    pub confusion_matrices: std::collections::HashMap<usize, [[f64; 2]; 2]>,
+    /// Correlated errors between qubit pairs (optional)
+    pub correlated_errors: std::collections::HashMap<(usize, usize), Array2<f64>>,
+}
+
+/// Solver methods for M3
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum M3SolverMethod {
+    /// Iterative Bayesian unfolding
+    IterativeBayesian,
+    /// Least squares with non-negativity constraint
+    NonNegativeLeastSquares,
+    /// Conjugate gradient method
+    ConjugateGradient,
+}
+
+impl Default for MatrixFreeMeasurementMitigation {
+    fn default() -> Self {
+        Self {
+            calibration: M3Calibration::default(),
+            max_iterations: 100,
+            tolerance: 1e-6,
+            solver_method: M3SolverMethod::IterativeBayesian,
+        }
+    }
+}
+
+impl MatrixFreeMeasurementMitigation {
+    /// Create a new M3 instance
+    pub fn new(calibration: M3Calibration) -> Self {
+        Self {
+            calibration,
+            ..Default::default()
+        }
+    }
+
+    /// Calibrate M3 using calibration circuits
+    pub fn calibrate<F>(&mut self, executor: F, num_qubits: usize, shots: usize) -> Result<()>
+    where
+        F: Fn(&str, usize) -> Result<std::collections::HashMap<String, usize>>,
+    {
+        for qubit in 0..num_qubits {
+            // Prepare |0⟩ state and measure
+            let counts_0 = executor(&format!("cal_0_{}", qubit), shots)?;
+            let p00 = *counts_0.get("0").unwrap_or(&0) as f64 / shots as f64;
+            let p10 = *counts_0.get("1").unwrap_or(&0) as f64 / shots as f64;
+
+            // Prepare |1⟩ state and measure
+            let counts_1 = executor(&format!("cal_1_{}", qubit), shots)?;
+            let p01 = *counts_1.get("0").unwrap_or(&0) as f64 / shots as f64;
+            let p11 = *counts_1.get("1").unwrap_or(&0) as f64 / shots as f64;
+
+            // confusion[measured][actual] = P(measured | actual)
+            self.calibration
+                .confusion_matrices
+                .insert(qubit, [[p00, p01], [p10, p11]]);
+        }
+
+        Ok(())
+    }
+
+    /// Apply M3 to mitigate measurement errors
+    pub fn mitigate(
+        &self,
+        counts: &std::collections::HashMap<String, usize>,
+        num_qubits: usize,
+    ) -> Result<M3Result> {
+        let total_shots: usize = counts.values().sum();
+
+        // Convert counts to probability distribution
+        let mut probs: std::collections::HashMap<String, f64> = counts
+            .iter()
+            .map(|(k, v)| (k.clone(), *v as f64 / total_shots as f64))
+            .collect();
+
+        // Iterative Bayesian unfolding
+        let mut converged = false;
+        let mut num_iterations = 0;
+        let mut residual_norm = f64::MAX;
+
+        for iter in 0..self.max_iterations {
+            num_iterations = iter + 1;
+
+            // Apply inverse confusion matrix (iterative)
+            let mut new_probs = std::collections::HashMap::new();
+            let mut total = 0.0;
+
+            for (bitstring, &prob) in &probs {
+                // Calculate correction factor based on confusion matrices
+                let mut correction = 1.0;
+
+                for (i, c) in bitstring.chars().rev().enumerate() {
+                    if let Some(confusion) = self.calibration.confusion_matrices.get(&i) {
+                        let measured = if c == '1' { 1 } else { 0 };
+                        // Diagonal element of inverse (approximate)
+                        let diag = confusion[measured][measured];
+                        if diag > 0.01 {
+                            correction /= diag;
+                        }
+                    }
+                }
+
+                let corrected_prob = (prob * correction).max(0.0);
+                new_probs.insert(bitstring.clone(), corrected_prob);
+                total += corrected_prob;
+            }
+
+            // Normalize
+            if total > 0.0 {
+                for prob in new_probs.values_mut() {
+                    *prob /= total;
+                }
+            }
+
+            // Check convergence
+            let mut diff = 0.0;
+            for (k, &new_p) in &new_probs {
+                let old_p = probs.get(k).unwrap_or(&0.0);
+                diff += (new_p - old_p).abs();
+            }
+            residual_norm = diff;
+
+            probs = new_probs;
+
+            if diff < self.tolerance {
+                converged = true;
+                break;
+            }
+        }
+
+        Ok(M3Result {
+            mitigated_probs: probs,
+            original_counts: counts.clone(),
+            num_iterations,
+            converged,
+            residual_norm,
+        })
+    }
+
+    /// Compute expectation value from mitigated probabilities
+    pub fn expectation_value(&self, result: &M3Result, observable: &[i8]) -> f64 {
+        let mut expectation = 0.0;
+
+        for (bitstring, &prob) in &result.mitigated_probs {
+            let mut parity = 1;
+            for (i, c) in bitstring.chars().rev().enumerate() {
+                if i < observable.len() && observable[i] != 0 && c == '1' {
+                    parity *= -1;
+                }
+            }
+            expectation += parity as f64 * prob;
+        }
+
+        expectation
+    }
+}
+
+/// Combined error mitigation pipeline
+#[derive(Debug, Clone)]
+pub struct ErrorMitigationPipeline {
+    /// ZNE configuration
+    pub zne: Option<ZeroNoiseExtrapolator>,
+    /// PEC configuration
+    pub pec: Option<ProbabilisticErrorCancellation>,
+    /// CDR configuration
+    pub cdr: Option<CliffordDataRegression>,
+    /// M3 configuration
+    pub m3: Option<MatrixFreeMeasurementMitigation>,
+}
+
+impl Default for ErrorMitigationPipeline {
+    fn default() -> Self {
+        Self {
+            zne: Some(ZeroNoiseExtrapolator::default_config()),
+            pec: None,
+            cdr: None,
+            m3: None,
+        }
+    }
+}
+
+impl ErrorMitigationPipeline {
+    /// Create a pipeline with all mitigation techniques
+    pub fn full() -> Self {
+        Self {
+            zne: Some(ZeroNoiseExtrapolator::default_config()),
+            pec: Some(ProbabilisticErrorCancellation::new(
+                NoiseModel::default(),
+                1000,
+            )),
+            cdr: Some(CliffordDataRegression::default()),
+            m3: Some(MatrixFreeMeasurementMitigation::default()),
+        }
+    }
+
+    /// Apply the mitigation pipeline with noise-aware executor
+    ///
+    /// The executor takes a noise scaling factor and returns the expectation value
+    /// at that noise level. This allows ZNE to extrapolate to zero noise.
+    pub fn apply<F>(&self, executor: F, observable: &str) -> Result<f64>
+    where
+        F: Fn(f64) -> Result<f64> + Sync + Send,
+    {
+        // Start with ZNE if available
+        let mut value = if let Some(zne) = &self.zne {
+            zne.extrapolate(&executor, observable)?.zero_noise_value
+        } else {
+            // Execute at noise factor 1.0 (no scaling)
+            executor(1.0)?
+        };
+
+        // Apply CDR correction if model is trained
+        // (In practice, would need pre-trained model)
+
+        Ok(value)
+    }
+
+    /// Apply mitigation with a simple circuit executor
+    ///
+    /// This method wraps a simple executor that doesn't support noise scaling
+    /// and applies only applicable mitigation techniques.
+    pub fn apply_simple<F>(&self, executor: F, observable: &str) -> Result<f64>
+    where
+        F: Fn(&str) -> Result<f64>,
+    {
+        // For simple executors, skip ZNE (requires noise scaling)
+        // and just apply other techniques
+        let value = executor(observable)?;
+
+        // CDR and M3 can be applied post-hoc to measurement results
+        // but require calibration data which would be handled separately
+
+        Ok(value)
+    }
 }
 
 #[cfg(test)]

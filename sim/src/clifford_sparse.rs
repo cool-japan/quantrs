@@ -6,7 +6,7 @@
 
 // POLICY EXCEPTION: Uses nalgebra_sparse (not scirs2_sparse)
 //
-// REASON: scirs2_sparse v0.1.0-rc.1 requires Float trait bounds (f32/f64),
+// REASON: scirs2_sparse v0.1.0-rc.2 requires Float trait bounds (f32/f64),
 //         but this module uses u8 for binary Pauli operator representations.
 //
 // TECHNICAL JUSTIFICATION:

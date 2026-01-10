@@ -147,10 +147,7 @@ impl CudaProfiler {
     }
 
     pub fn record_timing(&mut self, operation: String, time_ms: f64) {
-        self.timing_data
-            .entry(operation)
-            .or_insert_with(Vec::new)
-            .push(time_ms);
+        self.timing_data.entry(operation).or_default().push(time_ms);
     }
 
     pub fn record_memory_usage(&mut self, operation: String, bytes: usize) {

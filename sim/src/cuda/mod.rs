@@ -5,13 +5,21 @@
 //! device context management.
 
 pub mod context;
+pub mod graph;
 pub mod kernels;
 pub mod memory;
 pub mod streams;
+pub mod tensor_core;
 
 // Re-export commonly used types and structs
 #[cfg(feature = "advanced_math")]
 pub use context::{CudaContext, CudaDeviceProperties, CudaProfiler};
+pub use graph::{
+    CudaGraph, CudaGraphBuilder, CudaGraphExec, GraphCaptureMode, GraphExecUpdateResult,
+    GraphInstantiationFlags, GraphNode, GraphNodeType, GraphStats, GraphUpdateResult,
+    HostNodeParams, KernelNodeParams, MemCopyKind, MemCopyNodeParams, MemSetNodeParams,
+    QuantumGraphScheduler,
+};
 #[cfg(feature = "advanced_math")]
 pub use kernels::CudaKernel;
 pub use kernels::{
@@ -23,6 +31,10 @@ pub use memory::{GpuMemory, GpuMemoryBlock, GpuMemoryPool};
 #[cfg(feature = "advanced_math")]
 pub use streams::CudaStream;
 pub use streams::{StreamFlags, StreamPriority};
+pub use tensor_core::{
+    fp16_utils, AccumulatorPrecision, TensorCoreConfig, TensorCoreGeneration, TensorCoreKernels,
+    TensorCoreOps,
+};
 
 use crate::error::Result;
 
@@ -141,5 +153,87 @@ mod tests {
         assert_eq!(config.device_id, 0);
         assert_eq!(config.num_streams, 4);
         assert_eq!(config.block_size, 256);
+    }
+
+    #[test]
+    fn test_cuda_graph_creation() {
+        let mut graph = CudaGraph::new();
+        assert!(graph.is_empty());
+
+        let params = KernelNodeParams::default();
+        let node_id = graph.add_kernel_node(params, &[]).expect("add kernel");
+        assert_eq!(node_id, 0);
+        assert_eq!(graph.node_count(), 1);
+    }
+
+    #[test]
+    fn test_cuda_graph_execution() {
+        let mut graph = CudaGraph::new();
+
+        // Add some nodes
+        let n1 = graph
+            .add_kernel_node(KernelNodeParams::default(), &[])
+            .expect("add");
+        let n2 = graph
+            .add_kernel_node(KernelNodeParams::default(), &[n1])
+            .expect("add");
+        let _n3 = graph
+            .add_memcpy_node(
+                MemCopyNodeParams {
+                    src: 0,
+                    dst: 1,
+                    size: 1024,
+                    kind: MemCopyKind::DeviceToDevice,
+                },
+                &[n2],
+            )
+            .expect("add memcpy");
+
+        graph.finalize().expect("finalize");
+
+        let stats = graph.get_stats();
+        assert_eq!(stats.node_count, 3);
+        assert_eq!(stats.kernel_count, 2);
+        assert_eq!(stats.mem_op_count, 1);
+
+        let exec = graph.instantiate().expect("instantiate");
+        assert_eq!(exec.execution_count(), 0);
+    }
+
+    #[test]
+    fn test_quantum_graph_scheduler() {
+        let mut scheduler = QuantumGraphScheduler::new(10);
+
+        let _exec = scheduler
+            .get_or_create("bell_circuit", || {
+                let mut graph = CudaGraph::new();
+                // Hadamard
+                graph.add_kernel_node(
+                    KernelNodeParams {
+                        function: 1, // hadamard
+                        grid_dim: (1, 1, 1),
+                        block_dim: (256, 1, 1),
+                        ..Default::default()
+                    },
+                    &[],
+                )?;
+                // CNOT
+                graph.add_kernel_node(
+                    KernelNodeParams {
+                        function: 2, // cnot
+                        grid_dim: (1, 1, 1),
+                        block_dim: (256, 1, 1),
+                        ..Default::default()
+                    },
+                    &[0],
+                )?;
+                graph.finalize()?;
+                Ok(graph)
+            })
+            .expect("create graph");
+
+        let (hits, misses) = scheduler.cache_stats();
+        assert_eq!(misses, 1);
+        assert_eq!(hits, 0);
     }
 }

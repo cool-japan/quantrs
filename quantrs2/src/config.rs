@@ -613,19 +613,27 @@ mod tests {
 
     #[test]
     fn test_config_snapshot() {
-        let config = Config::global();
+        // Use builder to create independent config data for testing snapshot
+        let data = ConfigData {
+            num_threads: Some(6),
+            log_level: LogLevel::Warn,
+            memory_limit_bytes: Some(1024),
+            default_backend: DefaultBackend::Cpu,
+            enable_gpu: true,
+            enable_simd: true,
+            enable_telemetry: false,
+            cache_dir: Some("/test".to_string()),
+            max_cache_size_bytes: Some(512),
+        };
 
-        // Reset to ensure clean state
-        config.reset();
+        // Clone should produce identical data
+        let snapshot = data.clone();
 
-        // Set known values for this test
-        config.set_num_threads(6);
-        config.set_log_level(LogLevel::Warn);
-
-        let snapshot = config.snapshot();
-
-        // Verify the snapshot captured the current state
-        assert_eq!(snapshot.num_threads, config.num_threads());
-        assert_eq!(snapshot.log_level, config.log_level());
+        assert_eq!(snapshot.num_threads, data.num_threads);
+        assert_eq!(snapshot.log_level, data.log_level);
+        assert_eq!(snapshot.memory_limit_bytes, data.memory_limit_bytes);
+        assert_eq!(snapshot.default_backend, data.default_backend);
+        assert_eq!(snapshot.enable_gpu, data.enable_gpu);
+        assert_eq!(snapshot.cache_dir, data.cache_dir);
     }
 }

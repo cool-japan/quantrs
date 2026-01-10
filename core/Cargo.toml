@@ -32,15 +32,14 @@ serde.workspace = true
 tokio.workspace = true
 uuid.workspace = true
 zstd.workspace = true
-bincode.workspace = true
+oxicode.workspace = true
 serde_json.workspace = true
 num_cpus.workspace = true
 flate2.workspace = true
 sysinfo.workspace = true
 regex.workspace = true
-# Symbolic computation with SymEngine
-quantrs2-symengine = { workspace = true, optional = true }
-quantrs2-symengine-sys = { workspace = true, optional = true }
+# Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)
+quantrs2-symengine-pure = { workspace = true, optional = true }
 # num-traits.workspace = true           # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
 scirs2-numpy = { workspace = true, optional = true }
@@ -56,7 +55,7 @@ metal = []
 vulkan = []
 mps = []
 compression = []
-symbolic = ["dep:quantrs2-symengine", "dep:quantrs2-symengine-sys"]  # Enable symbolic computation with SymEngine
+symbolic = ["dep:quantrs2-symengine-pure"]  # Enable symbolic computation (Pure Rust)
 python = ["dep:pyo3", "dep:scirs2-numpy"]  # Enable Python bindings with PyO3 and scirs2-numpy
 
 [dev-dependencies]

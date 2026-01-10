@@ -14,10 +14,45 @@ use quantrs2_core::{
     decomposition::{utils as decomp_utils, CompositeGate},
     error::QuantRS2Result,
     gate::{
-        multi::{Fredkin, Toffoli, CH, CNOT, CRX, CRY, CRZ, CS, CY, CZ, SWAP},
+        multi::{
+            Fredkin,
+            ISwap,
+            Toffoli,
+            CH,
+            CNOT,
+            CRX,
+            CRY,
+            CRZ,
+            CS,
+            CY,
+            CZ,
+            // Qiskit-compatible gates
+            DCX,
+            ECR,
+            RXX,
+            RYY,
+            RZX,
+            RZZ,
+            SWAP,
+        },
         single::{
-            Hadamard, PauliX, PauliY, PauliZ, Phase, PhaseDagger, RotationX, RotationY, RotationZ,
-            SqrtX, SqrtXDagger, TDagger, T,
+            Hadamard,
+            // Qiskit-compatible gates
+            Identity,
+            PGate,
+            PauliX,
+            PauliY,
+            PauliZ,
+            Phase,
+            PhaseDagger,
+            RotationX,
+            RotationY,
+            RotationZ,
+            SqrtX,
+            SqrtXDagger,
+            TDagger,
+            UGate,
+            T,
         },
         GateOp,
     },
@@ -813,6 +848,168 @@ impl<const N: usize> Circuit<N> {
             target1: target1.into(),
             target2: target2.into(),
         })
+    }
+
+    // ============ Qiskit-Compatible Gates ============
+
+    /// Apply a U gate (general single-qubit rotation)
+    ///
+    /// U(θ, φ, λ) = [[cos(θ/2), -e^(iλ)·sin(θ/2)],
+    ///              [e^(iφ)·sin(θ/2), e^(i(φ+λ))·cos(θ/2)]]
+    pub fn u(
+        &mut self,
+        target: impl Into<QubitId>,
+        theta: f64,
+        phi: f64,
+        lambda: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(UGate {
+            target: target.into(),
+            theta,
+            phi,
+            lambda,
+        })
+    }
+
+    /// Apply a P gate (phase gate with parameter)
+    ///
+    /// P(λ) = [[1, 0], [0, e^(iλ)]]
+    pub fn p(&mut self, target: impl Into<QubitId>, lambda: f64) -> QuantRS2Result<&mut Self> {
+        self.add_gate(PGate {
+            target: target.into(),
+            lambda,
+        })
+    }
+
+    /// Apply an Identity gate
+    pub fn id(&mut self, target: impl Into<QubitId>) -> QuantRS2Result<&mut Self> {
+        self.add_gate(Identity {
+            target: target.into(),
+        })
+    }
+
+    /// Apply an iSWAP gate
+    ///
+    /// iSWAP swaps two qubits and phases |01⟩ and |10⟩ by i
+    pub fn iswap(
+        &mut self,
+        qubit1: impl Into<QubitId>,
+        qubit2: impl Into<QubitId>,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(ISwap {
+            qubit1: qubit1.into(),
+            qubit2: qubit2.into(),
+        })
+    }
+
+    /// Apply an ECR gate (IBM native echoed cross-resonance gate)
+    pub fn ecr(
+        &mut self,
+        control: impl Into<QubitId>,
+        target: impl Into<QubitId>,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(ECR {
+            control: control.into(),
+            target: target.into(),
+        })
+    }
+
+    /// Apply an RXX gate (two-qubit XX rotation)
+    ///
+    /// RXX(θ) = exp(-i * θ/2 * X⊗X)
+    pub fn rxx(
+        &mut self,
+        qubit1: impl Into<QubitId>,
+        qubit2: impl Into<QubitId>,
+        theta: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(RXX {
+            qubit1: qubit1.into(),
+            qubit2: qubit2.into(),
+            theta,
+        })
+    }
+
+    /// Apply an RYY gate (two-qubit YY rotation)
+    ///
+    /// RYY(θ) = exp(-i * θ/2 * Y⊗Y)
+    pub fn ryy(
+        &mut self,
+        qubit1: impl Into<QubitId>,
+        qubit2: impl Into<QubitId>,
+        theta: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(RYY {
+            qubit1: qubit1.into(),
+            qubit2: qubit2.into(),
+            theta,
+        })
+    }
+
+    /// Apply an RZZ gate (two-qubit ZZ rotation)
+    ///
+    /// RZZ(θ) = exp(-i * θ/2 * Z⊗Z)
+    pub fn rzz(
+        &mut self,
+        qubit1: impl Into<QubitId>,
+        qubit2: impl Into<QubitId>,
+        theta: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(RZZ {
+            qubit1: qubit1.into(),
+            qubit2: qubit2.into(),
+            theta,
+        })
+    }
+
+    /// Apply an RZX gate (two-qubit ZX rotation / cross-resonance)
+    ///
+    /// RZX(θ) = exp(-i * θ/2 * Z⊗X)
+    pub fn rzx(
+        &mut self,
+        control: impl Into<QubitId>,
+        target: impl Into<QubitId>,
+        theta: f64,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(RZX {
+            control: control.into(),
+            target: target.into(),
+            theta,
+        })
+    }
+
+    /// Apply a DCX gate (double CNOT gate)
+    ///
+    /// DCX = CNOT(0,1) @ CNOT(1,0)
+    pub fn dcx(
+        &mut self,
+        qubit1: impl Into<QubitId>,
+        qubit2: impl Into<QubitId>,
+    ) -> QuantRS2Result<&mut Self> {
+        self.add_gate(DCX {
+            qubit1: qubit1.into(),
+            qubit2: qubit2.into(),
+        })
+    }
+
+    /// Apply a CCX gate (alias for Toffoli)
+    pub fn ccx(
+        &mut self,
+        control1: impl Into<QubitId>,
+        control2: impl Into<QubitId>,
+        target: impl Into<QubitId>,
+    ) -> QuantRS2Result<&mut Self> {
+        self.toffoli(control1, control2, target)
+    }
+
+    /// Apply a Fredkin gate (alias for cswap)
+    pub fn fredkin(
+        &mut self,
+        control: impl Into<QubitId>,
+        target1: impl Into<QubitId>,
+        target2: impl Into<QubitId>,
+    ) -> QuantRS2Result<&mut Self> {
+        self.cswap(control, target1, target2)
     }
 
     /// Measure a qubit (currently adds a placeholder measure gate)

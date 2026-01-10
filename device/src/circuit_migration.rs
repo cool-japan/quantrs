@@ -67,13 +67,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     calibration::{CalibrationManager, DeviceCalibration},
-    // mapping_scirc2::{SciRS2QubitMapper, SciRS2MappingConfig, SciRS2MappingResult}, // Beta.3: Using simple mapping fallback
-    // Future: Full SciRS2 mapping module (post-beta.3)
+    mapping_scirs2::{SciRS2MappingConfig, SciRS2QubitMapper},
     optimization::{CalibrationOptimizer, OptimizationConfig},
     topology::HardwareTopology,
     translation::{GateTranslator, HardwareBackend},
-    DeviceError,
-    DeviceResult,
+    DeviceError, DeviceResult,
 };
 
 /// Cross-platform circuit migration configuration
@@ -598,7 +596,7 @@ impl Default for MigrationConfig {
 /// Main circuit migration engine
 pub struct CircuitMigrationEngine {
     calibration_manager: CalibrationManager,
-    // mapper: SciRS2QubitMapper, // Temporarily disabled
+    mapper: SciRS2QubitMapper,
     optimizer: CalibrationOptimizer,
     translator: GateTranslator,
     migration_cache: RwLock<HashMap<String, CachedMigration>>,
@@ -637,13 +635,13 @@ impl CircuitMigrationEngine {
     /// Create a new circuit migration engine
     pub fn new(
         calibration_manager: CalibrationManager,
-        // mapper: SciRS2QubitMapper, // Temporarily disabled
+        mapper: SciRS2QubitMapper,
         optimizer: CalibrationOptimizer,
         translator: GateTranslator,
     ) -> Self {
         Self {
             calibration_manager,
-            // mapper, // Temporarily disabled
+            mapper,
             optimizer,
             translator,
             migration_cache: RwLock::new(HashMap::new()),

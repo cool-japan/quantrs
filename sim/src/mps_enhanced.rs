@@ -265,15 +265,8 @@ impl EnhancedMPS {
                 *elem = sum;
             });
         let matrix = theta_prime.into_shape((left_dim * 2, 2 * right_dim))?;
-        eprintln!(
-            "DEBUG apply_and_decompose: matrix shape = {:?}",
-            matrix.shape()
-        );
-        eprintln!("DEBUG apply_and_decompose: matrix = {matrix:?}");
         let (u, s, vt) = self.truncated_svd(&matrix)?;
-        eprintln!("DEBUG apply_and_decompose: singular values before truncation = {s:?}");
         let new_bond = s.len();
-        eprintln!("DEBUG apply_and_decompose: new_bond = {new_bond}");
         self.tensors[left_qubit] = MPSTensor::new(u.into_shape((left_dim, 2, new_bond))?);
         let mut sv = Array2::<Complex64>::zeros((new_bond, vt.shape()[1]));
         sv.indexed_iter_mut()
@@ -338,38 +331,17 @@ impl EnhancedMPS {
         if target >= self.num_qubits {
             return Err(QuantRS2Error::InvalidQubitId(target as u32));
         }
-        eprintln!(
-            "DEBUG move_orthogonality_center: target={}, current={}",
-            target, self.orthogonality_center
-        );
-        eprintln!(
-            "DEBUG move_orthogonality_center: tensor shapes before = {:?}",
-            self.tensors
-                .iter()
-                .map(|t| t.data.shape())
-                .collect::<Vec<_>>()
-        );
         if self.orthogonality_center < 0 {
             if self.num_qubits == 2 && target == 0 {
-                eprintln!("DEBUG: Special 2-qubit case, skipping right canonicalization");
             } else {
                 for i in (target + 1..self.num_qubits).rev() {
-                    eprintln!("DEBUG: Right canonicalizing site {i}");
                     self.right_canonicalize_site(i)?;
                 }
             }
             for i in 0..target {
-                eprintln!("DEBUG: Left canonicalizing site {i}");
                 self.left_canonicalize_site(i)?;
             }
             self.orthogonality_center = target as i32;
-            eprintln!(
-                "DEBUG move_orthogonality_center: tensor shapes after = {:?}",
-                self.tensors
-                    .iter()
-                    .map(|t| t.data.shape())
-                    .collect::<Vec<_>>()
-            );
             return Ok(());
         }
         let current = self.orthogonality_center as usize;
@@ -379,15 +351,7 @@ impl EnhancedMPS {
             }
         } else if current > target {
             for i in (target + 1..=current).rev() {
-                eprintln!("DEBUG: Moving center left from site {i}");
                 self.move_center_left(i)?;
-                eprintln!(
-                    "DEBUG: After move, tensor shapes = {:?}",
-                    self.tensors
-                        .iter()
-                        .map(|t| t.data.shape())
-                        .collect::<Vec<_>>()
-                );
             }
         }
         self.orthogonality_center = target as i32;
@@ -465,11 +429,6 @@ impl EnhancedMPS {
             .qr()
             .map_err(|e| QuantRS2Error::LinalgError(format!("QR decomposition failed: {e}")))?;
         let new_bond = q.shape()[1];
-        eprintln!(
-            "DEBUG right_canonicalize: Q shape = {:?}, R shape = {:?}",
-            q.shape(),
-            r.shape()
-        );
         let mut q_tensor = Array3::<Complex64>::zeros((tensor.left_dim, 2, new_bond));
         for l in 0..tensor.left_dim {
             for p in 0..2 {
@@ -504,7 +463,6 @@ impl EnhancedMPS {
                 )));
             }
         } else if site > 0 && tensor.right_dim == 1 {
-            eprintln!("DEBUG: Skipping R absorption for rightmost tensor");
         }
         Ok(())
     }
@@ -825,18 +783,15 @@ impl EnhancedMPS {
                     psi[i] += val;
                 }
             }
-            eprintln!("DEBUG: Full state vector: {psi:?}");
             let mut rho = Array2::<Complex64>::zeros((2, 2));
             rho[[0, 0]] = psi[0] * psi[0].conj() + psi[2] * psi[2].conj();
             rho[[0, 1]] = psi[0] * psi[1].conj() + psi[2] * psi[3].conj();
             rho[[1, 0]] = psi[1] * psi[0].conj() + psi[3] * psi[2].conj();
             rho[[1, 1]] = psi[1] * psi[1].conj() + psi[3] * psi[3].conj();
-            eprintln!("DEBUG: Reduced density matrix: {rho:?}");
             use scirs2_core::ndarray::ndarray_linalg::{Eigh, UPLO};
             let (eigenvalues, _) = rho.eigh(UPLO::Lower).map_err(|e| {
                 QuantRS2Error::LinalgError(format!("Eigenvalue decomposition failed: {e}"))
             })?;
-            eprintln!("DEBUG: Eigenvalues of reduced density matrix: {eigenvalues:?}");
             let mut entropy = 0.0;
             for &lambda in &eigenvalues {
                 if lambda > 1e-12 {
@@ -1036,12 +991,6 @@ impl EnhancedMPS {
         let (u, s, vt) = matrix
             .svd(true, true)
             .map_err(|_| QuantRS2Error::ComputationError("SVD decomposition failed".to_string()))?;
-        let u = u.ok_or_else(|| {
-            QuantRS2Error::ComputationError("SVD failed to compute U matrix".to_string())
-        })?;
-        let vt = vt.ok_or_else(|| {
-            QuantRS2Error::ComputationError("SVD failed to compute Vt matrix".to_string())
-        })?;
         Ok((u, s, vt))
     }
 }

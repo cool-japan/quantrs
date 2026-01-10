@@ -534,7 +534,7 @@ impl DistributedGpuStateVector {
 
         match partition_scheme {
             PartitionScheme::Block => {
-                let partition_size = (state_size + num_devices - 1) / num_devices;
+                let partition_size = state_size.div_ceil(num_devices);
 
                 for (i, context) in gpu_contexts.iter().enumerate() {
                     let start_index = i * partition_size;
@@ -673,7 +673,7 @@ impl DistributedGpuStateVector {
         let hilbert_indices = Self::generate_hilbert_indices(curve_order, state_size);
 
         // Partition the Hilbert curve into roughly equal segments
-        let partition_size = (hilbert_indices.len() + num_devices - 1) / num_devices;
+        let partition_size = hilbert_indices.len().div_ceil(num_devices);
 
         for (device_idx, context) in gpu_contexts.iter().enumerate() {
             let start_idx = device_idx * partition_size;
@@ -1097,7 +1097,7 @@ impl DistributedGpuStateVector {
             }
 
             step *= 2;
-            active_partitions = (active_partitions + 1) / 2;
+            active_partitions = active_partitions.div_ceil(2);
         }
 
         // Broadcast final result back to all partitions
@@ -1310,7 +1310,7 @@ impl DistributedGpuUtils {
         memory_per_gpu: usize,
     ) -> usize {
         let total_memory_needed = Self::estimate_memory_requirements(num_qubits, 1);
-        let min_gpus_needed = (total_memory_needed + memory_per_gpu - 1) / memory_per_gpu;
+        let min_gpus_needed = total_memory_needed.div_ceil(memory_per_gpu);
 
         min_gpus_needed.clamp(1, available_gpus)
     }

@@ -75,6 +75,5 @@ mod tests {
             HardwareParallelizationEngine::new(config, device_manager, calibration_manager, router);
 
         // Should create without error
-        assert!(true);
     }
 }

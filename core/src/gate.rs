@@ -508,6 +508,130 @@ pub mod single {
 
         impl_clone_gate!();
     }
+
+    /// U gate - General single-qubit rotation (Qiskit compatible)
+    ///
+    /// U(θ, φ, λ) = [[cos(θ/2), -e^(iλ)·sin(θ/2)],
+    ///              [e^(iφ)·sin(θ/2), e^(i(φ+λ))·cos(θ/2)]]
+    #[derive(Debug, Clone, Copy)]
+    pub struct UGate {
+        /// Target qubit
+        pub target: QubitId,
+        /// Rotation angle theta
+        pub theta: f64,
+        /// Phase angle phi
+        pub phi: f64,
+        /// Phase angle lambda
+        pub lambda: f64,
+    }
+
+    impl GateOp for UGate {
+        fn name(&self) -> &'static str {
+            "U"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.target]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let exp_i_lambda = Complex64::new(0.0, self.lambda).exp();
+            let exp_i_phi = Complex64::new(0.0, self.phi).exp();
+            let exp_i_phi_lambda = Complex64::new(0.0, self.phi + self.lambda).exp();
+
+            Ok(vec![
+                Complex64::new(cos, 0.0),
+                -exp_i_lambda * sin,
+                exp_i_phi * sin,
+                exp_i_phi_lambda * cos,
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// P gate - Phase gate with parameter (equivalent to RZ up to global phase)
+    ///
+    /// P(λ) = [[1, 0], [0, e^(iλ)]]
+    #[derive(Debug, Clone, Copy)]
+    pub struct PGate {
+        /// Target qubit
+        pub target: QubitId,
+        /// Phase angle lambda
+        pub lambda: f64,
+    }
+
+    impl GateOp for PGate {
+        fn name(&self) -> &'static str {
+            "P"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.target]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let exp_i_lambda = Complex64::new(0.0, self.lambda).exp();
+            Ok(vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                exp_i_lambda,
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// Identity gate
+    #[derive(Debug, Clone, Copy)]
+    pub struct Identity {
+        /// Target qubit
+        pub target: QubitId,
+    }
+
+    impl GateOp for Identity {
+        fn name(&self) -> &'static str {
+            "I"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.target]
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            Ok(vec![
+                Complex64::new(1.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(0.0, 0.0),
+                Complex64::new(1.0, 0.0),
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
 }
 
 /// Multi-qubit gate operations
@@ -1073,6 +1197,656 @@ pub mod multi {
                 Complex64::new(0.0, 0.0), // (3,1)
                 Complex64::new(0.0, 0.0), // (3,2)
                 phase,                    // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// iSWAP gate - swaps two qubits and phases |01⟩ and |10⟩ by i
+    ///
+    /// iSWAP = [[1, 0, 0, 0],
+    ///          [0, 0, i, 0],
+    ///          [0, i, 0, 0],
+    ///          [0, 0, 0, 1]]
+    #[derive(Debug, Clone, Copy)]
+    pub struct ISwap {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+    }
+
+    impl GateOp for ISwap {
+        fn name(&self) -> &'static str {
+            "iSWAP"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            Ok(vec![
+                Complex64::new(1.0, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(0.0, 0.0), // (1,1)
+                Complex64::new(0.0, 1.0), // (1,2) = i
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(0.0, 1.0), // (2,1) = i
+                Complex64::new(0.0, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                Complex64::new(1.0, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// ECR gate - Echoed Cross-Resonance gate (IBM native two-qubit gate)
+    ///
+    /// ECR = (1/√2) * [[0, 1, 0, i],
+    ///                  [1, 0, -i, 0],
+    ///                  [0, i, 0, 1],
+    ///                  [-i, 0, 1, 0]]
+    #[derive(Debug, Clone, Copy)]
+    pub struct ECR {
+        /// Control qubit
+        pub control: QubitId,
+        /// Target qubit
+        pub target: QubitId,
+    }
+
+    impl GateOp for ECR {
+        fn name(&self) -> &'static str {
+            "ECR"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.control, self.target]
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let sqrt2_inv = 1.0 / 2.0_f64.sqrt();
+            Ok(vec![
+                Complex64::new(0.0, 0.0),        // (0,0)
+                Complex64::new(sqrt2_inv, 0.0),  // (0,1)
+                Complex64::new(0.0, 0.0),        // (0,2)
+                Complex64::new(0.0, sqrt2_inv),  // (0,3) = i/√2
+                Complex64::new(sqrt2_inv, 0.0),  // (1,0)
+                Complex64::new(0.0, 0.0),        // (1,1)
+                Complex64::new(0.0, -sqrt2_inv), // (1,2) = -i/√2
+                Complex64::new(0.0, 0.0),        // (1,3)
+                Complex64::new(0.0, 0.0),        // (2,0)
+                Complex64::new(0.0, sqrt2_inv),  // (2,1) = i/√2
+                Complex64::new(0.0, 0.0),        // (2,2)
+                Complex64::new(sqrt2_inv, 0.0),  // (2,3)
+                Complex64::new(0.0, -sqrt2_inv), // (3,0) = -i/√2
+                Complex64::new(0.0, 0.0),        // (3,1)
+                Complex64::new(sqrt2_inv, 0.0),  // (3,2)
+                Complex64::new(0.0, 0.0),        // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// RXX gate - Two-qubit XX rotation
+    ///
+    /// RXX(θ) = exp(-i * θ/2 * X⊗X)
+    #[derive(Debug, Clone, Copy)]
+    pub struct RXX {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+        /// Rotation angle
+        pub theta: f64,
+    }
+
+    impl GateOp for RXX {
+        fn name(&self) -> &'static str {
+            "RXX"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let mi_sin = Complex64::new(0.0, -sin);
+
+            Ok(vec![
+                Complex64::new(cos, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                mi_sin,                   // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(cos, 0.0), // (1,1)
+                mi_sin,                   // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                mi_sin,                   // (2,1)
+                Complex64::new(cos, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                mi_sin,                   // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                Complex64::new(cos, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// RYY gate - Two-qubit YY rotation
+    ///
+    /// RYY(θ) = exp(-i * θ/2 * Y⊗Y)
+    #[derive(Debug, Clone, Copy)]
+    pub struct RYY {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+        /// Rotation angle
+        pub theta: f64,
+    }
+
+    impl GateOp for RYY {
+        fn name(&self) -> &'static str {
+            "RYY"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let i_sin = Complex64::new(0.0, sin);
+            let mi_sin = Complex64::new(0.0, -sin);
+
+            Ok(vec![
+                Complex64::new(cos, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                i_sin,                    // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(cos, 0.0), // (1,1)
+                mi_sin,                   // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                mi_sin,                   // (2,1)
+                Complex64::new(cos, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                i_sin,                    // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                Complex64::new(cos, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// RZZ gate - Two-qubit ZZ rotation
+    ///
+    /// RZZ(θ) = exp(-i * θ/2 * Z⊗Z)
+    #[derive(Debug, Clone, Copy)]
+    pub struct RZZ {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+        /// Rotation angle
+        pub theta: f64,
+    }
+
+    impl GateOp for RZZ {
+        fn name(&self) -> &'static str {
+            "RZZ"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let phase_neg = Complex64::new(0.0, -self.theta / 2.0).exp();
+            let phase_pos = Complex64::new(0.0, self.theta / 2.0).exp();
+
+            Ok(vec![
+                phase_neg,                // (0,0) = e^(-iθ/2)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                phase_pos,                // (1,1) = e^(iθ/2)
+                Complex64::new(0.0, 0.0), // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(0.0, 0.0), // (2,1)
+                phase_pos,                // (2,2) = e^(iθ/2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                phase_neg,                // (3,3) = e^(-iθ/2)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// RZX gate - Two-qubit ZX rotation (Cross-resonance gate)
+    ///
+    /// RZX(θ) = exp(-i * θ/2 * Z⊗X)
+    #[derive(Debug, Clone, Copy)]
+    pub struct RZX {
+        /// Control qubit (Z)
+        pub control: QubitId,
+        /// Target qubit (X)
+        pub target: QubitId,
+        /// Rotation angle
+        pub theta: f64,
+    }
+
+    impl GateOp for RZX {
+        fn name(&self) -> &'static str {
+            "RZX"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.control, self.target]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let mi_sin = Complex64::new(0.0, -sin);
+            let i_sin = Complex64::new(0.0, sin);
+
+            Ok(vec![
+                Complex64::new(cos, 0.0), // (0,0)
+                mi_sin,                   // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                mi_sin,                   // (1,0)
+                Complex64::new(cos, 0.0), // (1,1)
+                Complex64::new(0.0, 0.0), // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(0.0, 0.0), // (2,1)
+                Complex64::new(cos, 0.0), // (2,2)
+                i_sin,                    // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                i_sin,                    // (3,2)
+                Complex64::new(cos, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// DCX gate - Double CNOT gate
+    ///
+    /// DCX = CNOT(0,1) @ CNOT(1,0)
+    #[derive(Debug, Clone, Copy)]
+    pub struct DCX {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+    }
+
+    impl GateOp for DCX {
+        fn name(&self) -> &'static str {
+            "DCX"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            // DCX = [[1, 0, 0, 0],
+            //        [0, 0, 0, 1],
+            //        [0, 1, 0, 0],
+            //        [0, 0, 1, 0]]
+            Ok(vec![
+                Complex64::new(1.0, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(0.0, 0.0), // (1,1)
+                Complex64::new(0.0, 0.0), // (1,2)
+                Complex64::new(1.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(1.0, 0.0), // (2,1)
+                Complex64::new(0.0, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(1.0, 0.0), // (3,2)
+                Complex64::new(0.0, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// XXPlusYY gate - Two-qubit XX+YY interaction (XY gate)
+    ///
+    /// Induces a coherent rotation between |01⟩ and |10⟩
+    #[derive(Debug, Clone, Copy)]
+    pub struct XXPlusYY {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+        /// Rotation angle theta
+        pub theta: f64,
+        /// Phase angle beta
+        pub beta: f64,
+    }
+
+    impl GateOp for XXPlusYY {
+        fn name(&self) -> &'static str {
+            "XXPlusYY"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let exp_neg_i_beta = Complex64::new(0.0, -self.beta).exp();
+            let exp_i_beta = Complex64::new(0.0, self.beta).exp();
+            let mi_sin_neg = Complex64::new(0.0, -sin) * exp_neg_i_beta;
+            let mi_sin_pos = Complex64::new(0.0, -sin) * exp_i_beta;
+
+            Ok(vec![
+                Complex64::new(1.0, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(cos, 0.0), // (1,1)
+                mi_sin_neg,               // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                mi_sin_pos,               // (2,1)
+                Complex64::new(cos, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                Complex64::new(1.0, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// XXMinusYY gate - Two-qubit XX-YY interaction
+    ///
+    /// Induces a coherent rotation between |00⟩ and |11⟩
+    #[derive(Debug, Clone, Copy)]
+    pub struct XXMinusYY {
+        /// First qubit
+        pub qubit1: QubitId,
+        /// Second qubit
+        pub qubit2: QubitId,
+        /// Rotation angle theta
+        pub theta: f64,
+        /// Phase angle beta
+        pub beta: f64,
+    }
+
+    impl GateOp for XXMinusYY {
+        fn name(&self) -> &'static str {
+            "XXMinusYY"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.qubit1, self.qubit2]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let exp_neg_i_beta = Complex64::new(0.0, -self.beta).exp();
+            let exp_i_beta = Complex64::new(0.0, self.beta).exp();
+            let mi_sin_neg = Complex64::new(0.0, -sin) * exp_neg_i_beta;
+            let mi_sin_pos = Complex64::new(0.0, -sin) * exp_i_beta;
+
+            Ok(vec![
+                Complex64::new(cos, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                mi_sin_pos,               // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(1.0, 0.0), // (1,1)
+                Complex64::new(0.0, 0.0), // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(0.0, 0.0), // (2,1)
+                Complex64::new(1.0, 0.0), // (2,2)
+                Complex64::new(0.0, 0.0), // (2,3)
+                mi_sin_neg,               // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                Complex64::new(0.0, 0.0), // (3,2)
+                Complex64::new(cos, 0.0), // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// CSX gate - Controlled-√X gate
+    #[derive(Debug, Clone, Copy)]
+    pub struct CSX {
+        /// Control qubit
+        pub control: QubitId,
+        /// Target qubit
+        pub target: QubitId,
+    }
+
+    impl GateOp for CSX {
+        fn name(&self) -> &'static str {
+            "CSX"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.control, self.target]
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let half_plus_i_half = Complex64::new(0.5, 0.5);
+            let half_minus_i_half = Complex64::new(0.5, -0.5);
+
+            Ok(vec![
+                Complex64::new(1.0, 0.0), // (0,0)
+                Complex64::new(0.0, 0.0), // (0,1)
+                Complex64::new(0.0, 0.0), // (0,2)
+                Complex64::new(0.0, 0.0), // (0,3)
+                Complex64::new(0.0, 0.0), // (1,0)
+                Complex64::new(1.0, 0.0), // (1,1)
+                Complex64::new(0.0, 0.0), // (1,2)
+                Complex64::new(0.0, 0.0), // (1,3)
+                Complex64::new(0.0, 0.0), // (2,0)
+                Complex64::new(0.0, 0.0), // (2,1)
+                half_plus_i_half,         // (2,2)
+                half_minus_i_half,        // (2,3)
+                Complex64::new(0.0, 0.0), // (3,0)
+                Complex64::new(0.0, 0.0), // (3,1)
+                half_minus_i_half,        // (3,2)
+                half_plus_i_half,         // (3,3)
+            ])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+}
+
+/// Global phase and other zero-qubit gates
+pub mod global {
+    use super::*;
+    use std::any::Any;
+
+    /// Global Phase gate - applies a global phase to the quantum state
+    ///
+    /// GlobalPhase(θ) = e^(iθ) * I
+    #[derive(Debug, Clone, Copy)]
+    pub struct GlobalPhase {
+        /// Phase angle
+        pub phase: f64,
+    }
+
+    impl GateOp for GlobalPhase {
+        fn name(&self) -> &'static str {
+            "GlobalPhase"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![] // Global phase doesn't act on specific qubits
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let phase = Complex64::new(0.0, self.phase).exp();
+            Ok(vec![phase])
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        impl_clone_gate!();
+    }
+
+    /// R gate - Rotation around axis in X-Y plane
+    ///
+    /// R(θ, φ) = exp(-i * θ/2 * (cos(φ)X + sin(φ)Y))
+    #[derive(Debug, Clone, Copy)]
+    pub struct RGate {
+        /// Target qubit
+        pub target: QubitId,
+        /// Rotation angle theta
+        pub theta: f64,
+        /// Axis angle phi
+        pub phi: f64,
+    }
+
+    impl GateOp for RGate {
+        fn name(&self) -> &'static str {
+            "R"
+        }
+
+        fn qubits(&self) -> Vec<QubitId> {
+            vec![self.target]
+        }
+
+        fn is_parameterized(&self) -> bool {
+            true
+        }
+
+        fn matrix(&self) -> QuantRS2Result<Vec<Complex64>> {
+            let cos = (self.theta / 2.0).cos();
+            let sin = (self.theta / 2.0).sin();
+            let exp_neg_i_phi = Complex64::new(0.0, -self.phi).exp();
+            let exp_i_phi = Complex64::new(0.0, self.phi).exp();
+
+            Ok(vec![
+                Complex64::new(cos, 0.0),
+                Complex64::new(0.0, -sin) * exp_neg_i_phi,
+                Complex64::new(0.0, -sin) * exp_i_phi,
+                Complex64::new(cos, 0.0),
             ])
         }
 

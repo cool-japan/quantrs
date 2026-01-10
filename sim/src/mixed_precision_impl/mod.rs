@@ -45,6 +45,8 @@ pub const fn is_available() -> bool {
 pub fn get_supported_precisions() -> Vec<QuantumPrecision> {
     vec![
         QuantumPrecision::Half,
+        QuantumPrecision::BFloat16,
+        QuantumPrecision::TF32,
         QuantumPrecision::Single,
         QuantumPrecision::Double,
         QuantumPrecision::Adaptive,
@@ -113,8 +115,10 @@ mod tests {
     #[test]
     fn test_supported_precisions() {
         let precisions = get_supported_precisions();
-        assert_eq!(precisions.len(), 4);
+        assert_eq!(precisions.len(), 6);
         assert!(precisions.contains(&QuantumPrecision::Half));
+        assert!(precisions.contains(&QuantumPrecision::BFloat16));
+        assert!(precisions.contains(&QuantumPrecision::TF32));
         assert!(precisions.contains(&QuantumPrecision::Single));
         assert!(precisions.contains(&QuantumPrecision::Double));
         assert!(precisions.contains(&QuantumPrecision::Adaptive));
@@ -175,8 +179,17 @@ mod tests {
 
     #[test]
     fn test_precision_transitions() {
+        // Test higher precision chain
         assert_eq!(
             QuantumPrecision::Half.higher_precision(),
+            Some(QuantumPrecision::BFloat16)
+        );
+        assert_eq!(
+            QuantumPrecision::BFloat16.higher_precision(),
+            Some(QuantumPrecision::TF32)
+        );
+        assert_eq!(
+            QuantumPrecision::TF32.higher_precision(),
             Some(QuantumPrecision::Single)
         );
         assert_eq!(
@@ -185,15 +198,41 @@ mod tests {
         );
         assert_eq!(QuantumPrecision::Double.higher_precision(), None);
 
+        // Test lower precision chain
         assert_eq!(
             QuantumPrecision::Double.lower_precision(),
             Some(QuantumPrecision::Single)
         );
         assert_eq!(
             QuantumPrecision::Single.lower_precision(),
+            Some(QuantumPrecision::TF32)
+        );
+        assert_eq!(
+            QuantumPrecision::TF32.lower_precision(),
+            Some(QuantumPrecision::BFloat16)
+        );
+        assert_eq!(
+            QuantumPrecision::BFloat16.lower_precision(),
             Some(QuantumPrecision::Half)
         );
         assert_eq!(QuantumPrecision::Half.lower_precision(), None);
+    }
+
+    #[test]
+    fn test_tensor_core_precisions() {
+        // TF32 and BFloat16 require Tensor Cores
+        assert!(QuantumPrecision::TF32.requires_tensor_cores());
+        assert!(QuantumPrecision::BFloat16.requires_tensor_cores());
+        assert!(!QuantumPrecision::Half.requires_tensor_cores());
+        assert!(!QuantumPrecision::Single.requires_tensor_cores());
+        assert!(!QuantumPrecision::Double.requires_tensor_cores());
+
+        // Test reduced precision check
+        assert!(QuantumPrecision::TF32.is_reduced_precision());
+        assert!(QuantumPrecision::BFloat16.is_reduced_precision());
+        assert!(QuantumPrecision::Half.is_reduced_precision());
+        assert!(!QuantumPrecision::Single.is_reduced_precision());
+        assert!(!QuantumPrecision::Double.is_reduced_precision());
     }
 
     #[test]

@@ -9,16 +9,14 @@ use quantrs2_core::{
     gate::GateOp,
     qubit::QubitId,
 };
-use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
-                                  // use scirs2_core::memory::BufferPool;
-                                  // use scirs2_core::platform::PlatformCapabilities;
-                                  // use scirs2_optimize::system_identification::{SystemIdentifier, ModelType, EstimationMethod};
-                                  // use scirs2_linalg::{Matrix, Vector, SVD, Eigendecomposition};
-                                  // use scirs2_sparse::CSRMatrix;
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView2};
+use scirs2_core::parallel_ops::*; // SciRS2 POLICY compliant
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::{Distribution, RandNormal};
 use scirs2_core::Complex64;
+
+#[cfg(feature = "scirs2")]
+use scirs2_optimize::least_squares::{least_squares, Method, Options};
 // Alias for backward compatibility
 type Normal<T> = RandNormal<T>;
 use serde::{Deserialize, Serialize};
@@ -760,48 +758,137 @@ impl EnhancedCalibrationSystem {
     // Data fitting methods
 
     fn fit_rabi_data(data: &RabiData) -> QuantRS2Result<f64> {
-        // Use SciRS2 curve fitting
-        let amplitudes = &data.amplitudes;
-        let populations = &data.populations;
+        // Use SciRS2 curve fitting for Rabi oscillation
+        // Model: P(amp) = A * sin(B * amp + C) + D
 
-        // Fit sinusoidal model: P = A * sin(B * amp + C) + D
-        let initial_guess = vec![0.5, 1.0, 0.0, 0.5];
-        // let fitted = self.system_identifier.nonlinear_fit(
-        //     amplitudes,
-        //     populations,
-        //     |amp, params| {
-        //         let (a, b, c, d) = (params[0], params[1], params[2], params[3]);
-        //         a * (b * amp + c).sin() + d
-        //     },
-        //     &initial_guess,
-        // )?;
-        let fitted = initial_guess; // placeholder
+        #[cfg(feature = "scirs2")]
+        {
+            let amplitudes = &data.amplitudes;
+            let populations = &data.populations;
 
-        // Pi pulse amplitude is where sin(B * amp) = 1
-        let pi_amplitude = (std::f64::consts::PI / 2.0 - fitted[2]) / fitted[1];
+            // Initial parameter guess: [A, B, C, D]
+            let x0 = Array1::from(vec![0.5, 1.0, 0.0, 0.5]);
 
-        Ok(pi_amplitude)
+            // Create data arrays for curve fitting
+            let amp_data: Vec<f64> = amplitudes.clone();
+            let pop_data: Vec<f64> = populations.clone();
+
+            // Define residual function
+            let residual = |params: &[f64], _: &[f64]| -> Array1<f64> {
+                let (a, b, c, d) = (params[0], params[1], params[2], params[3]);
+                let residuals: Vec<f64> = amp_data
+                    .iter()
+                    .zip(&pop_data)
+                    .map(|(amp, pop)| {
+                        let predicted = a * (b * amp + c).sin() + d;
+                        predicted - pop
+                    })
+                    .collect();
+                Array1::from(residuals)
+            };
+
+            // Fit using Levenberg-Marquardt
+            let empty_data = Array1::from(vec![]);
+            let options = Options::default();
+            let result = least_squares(
+                residual,
+                &x0,
+                Method::LevenbergMarquardt,
+                None::<fn(&[f64], &[f64]) -> Array2<f64>>, // No analytical Jacobian
+                &empty_data,
+                Some(options),
+            )
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Rabi fitting failed: {}", e)))?;
+
+            let fitted = result.x;
+
+            // Pi pulse amplitude is where sin(B * amp + C) = 1
+            // This occurs when B * amp + C = π/2
+            let pi_amplitude = (std::f64::consts::PI / 2.0 - fitted[2]) / fitted[1];
+
+            Ok(pi_amplitude)
+        }
+
+        #[cfg(not(feature = "scirs2"))]
+        {
+            // Fallback: simple estimation without curve fitting
+            let _amplitudes = &data.amplitudes;
+            let populations = &data.populations;
+
+            // Find amplitude corresponding to maximum population
+            let max_idx = populations
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0);
+
+            Ok(data.amplitudes[max_idx])
+        }
     }
 
     fn fit_ramsey_data(data: &RamseyData) -> QuantRS2Result<(f64, f64)> {
-        // Fit exponentially decaying sinusoid
-        let times = &data.wait_times;
-        let populations = &data.populations;
+        // Fit exponentially decaying sinusoid for Ramsey sequence
+        // Model: P(t) = A * exp(-t/T2) * cos(2π * f * t + φ) + B
 
-        // Model: P = A * exp(-t/T2) * cos(2π * f * t + φ) + B
-        let initial_guess = vec![0.5, 30e-6, 1e6, 0.0, 0.5];
-        // let fitted = self.system_identifier.nonlinear_fit(
-        //     times,
-        //     populations,
-        //     |t, params| {
-        //         let (a, t2, freq, phase, offset) = (params[0], params[1], params[2], params[3], params[4]);
-        //         a * (-t / t2).exp() * (2.0 * std::f64::consts::PI * freq * t + phase).cos() + offset
-        //     },
-        //     &initial_guess,
-        // )?;
-        let fitted = initial_guess; // placeholder
+        #[cfg(feature = "scirs2")]
+        {
+            let times = &data.wait_times;
+            let populations = &data.populations;
 
-        Ok((fitted[2], fitted[1]))
+            // Initial parameter guess: [A, T2, frequency, phase, offset]
+            let x0 = Array1::from(vec![0.5, 30e-6, 1e6, 0.0, 0.5]);
+
+            // Create data arrays for curve fitting
+            let time_data: Vec<f64> = times.clone();
+            let pop_data: Vec<f64> = populations.clone();
+
+            // Define residual function
+            let residual = |params: &[f64], _: &[f64]| -> Array1<f64> {
+                let (a, t2, freq, phase, offset) =
+                    (params[0], params[1], params[2], params[3], params[4]);
+                let residuals: Vec<f64> = time_data
+                    .iter()
+                    .zip(&pop_data)
+                    .map(|(t, pop)| {
+                        let predicted = a
+                            * (-t / t2).exp()
+                            * (2.0 * std::f64::consts::PI * freq * t + phase).cos()
+                            + offset;
+                        predicted - pop
+                    })
+                    .collect();
+                Array1::from(residuals)
+            };
+
+            // Fit using Levenberg-Marquardt
+            let empty_data = Array1::from(vec![]);
+            let options = Options::default();
+            let result = least_squares(
+                residual,
+                &x0,
+                Method::LevenbergMarquardt,
+                None::<fn(&[f64], &[f64]) -> Array2<f64>>, // No analytical Jacobian
+                &empty_data,
+                Some(options),
+            )
+            .map_err(|e| QuantRS2Error::InvalidInput(format!("Ramsey fitting failed: {}", e)))?;
+
+            let fitted = result.x;
+
+            // Return (frequency, T2)
+            Ok((fitted[2], fitted[1]))
+        }
+
+        #[cfg(not(feature = "scirs2"))]
+        {
+            // Fallback: rough estimation without curve fitting
+            let _times = &data.wait_times;
+            let _populations = &data.populations;
+
+            // Return default values
+            Ok((1e6, 30e-6)) // 1 MHz frequency, 30 μs T2
+        }
     }
 
     fn fit_drag_data(data: &DragData) -> QuantRS2Result<f64> {

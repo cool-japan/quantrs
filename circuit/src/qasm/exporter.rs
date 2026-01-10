@@ -135,18 +135,26 @@ impl QasmExporter {
                 | "Z"
                 | "H"
                 | "S"
+                | "S†"
                 | "Sdg"
                 | "T"
+                | "T†"
                 | "Tdg"
+                | "√X"
+                | "√X†"
+                | "SX"
+                | "SXdg"
                 | "RX"
                 | "RY"
                 | "RZ"
+                | "P"
                 | "Phase"
                 | "U"
                 | "U1"
                 | "U2"
                 | "U3"
                 | "CX"
+                | "CNOT"
                 | "CY"
                 | "CZ"
                 | "CH"
@@ -156,9 +164,16 @@ impl QasmExporter {
                 | "CPhase"
                 | "SWAP"
                 | "iSWAP"
+                | "ECR"
+                | "DCX"
+                | "RXX"
+                | "RYY"
+                | "RZZ"
+                | "RZX"
                 | "CU"
                 | "CCX"
                 | "Toffoli"
+                | "Fredkin"
                 | "measure"
                 | "reset"
                 | "barrier"
@@ -192,14 +207,16 @@ impl QasmExporter {
             "Y" => "y".to_string(),
             "Z" => "z".to_string(),
             "H" => "h".to_string(),
-            "S" => "s".to_string(),
+            "S" | "S†" => "s".to_string(),
             "Sdg" => "sdg".to_string(),
             "T" => "t".to_string(),
-            "Tdg" => "tdg".to_string(),
+            "T†" | "Tdg" => "tdg".to_string(),
+            "√X" | "SX" => "sx".to_string(),
+            "√X†" | "SXdg" => "sxdg".to_string(),
             "RX" => "rx".to_string(),
             "RY" => "ry".to_string(),
             "RZ" => "rz".to_string(),
-            "Phase" => "p".to_string(),
+            "P" | "Phase" => "p".to_string(),
             "U" => "u".to_string(),
             "CX" | "CNOT" => "cx".to_string(),
             "CY" => "cy".to_string(),
@@ -211,7 +228,14 @@ impl QasmExporter {
             "CPhase" => "cp".to_string(),
             "SWAP" => "swap".to_string(),
             "iSWAP" => "iswap".to_string(),
+            "ECR" => "ecr".to_string(),
+            "DCX" => "dcx".to_string(),
+            "RXX" => "rxx".to_string(),
+            "RYY" => "ryy".to_string(),
+            "RZZ" => "rzz".to_string(),
+            "RZX" => "rzx".to_string(),
             "CCX" | "Toffoli" => "ccx".to_string(),
+            "Fredkin" => "cswap".to_string(),
             _ => name.to_lowercase(),
         }
     }
@@ -221,10 +245,11 @@ impl QasmExporter {
         // This is a simplified version - would need gate trait extension
         let name = gate.name();
         match name {
-            "RX" | "RY" | "RZ" | "Phase" | "U1" => 1,
+            "RX" | "RY" | "RZ" | "P" | "Phase" | "U1" => 1,
             "U2" => 2,
             "U" | "U3" => 3,
             "CRX" | "CRY" | "CRZ" | "CPhase" => 1,
+            "RXX" | "RYY" | "RZZ" | "RZX" => 1,
             _ => 0,
         }
     }

@@ -305,9 +305,9 @@ pub async fn benchmark_gpu_performance() -> QuantRS2Result<String> {
         match simulator.run(&circuit) {
             Ok(_result) => {
                 let duration = start.elapsed();
-                let _ = write!(
+                let _ = writeln!(
                     report,
-                    "{} qubits: {:.2}ms\n",
+                    "{} qubits: {:.2}ms",
                     n_qubits,
                     duration.as_secs_f64() * 1000.0
                 );

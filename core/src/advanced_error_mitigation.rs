@@ -229,7 +229,7 @@ impl CliffordDataRegression {
         let fty = features.t().dot(&targets);
 
         // Use SciRS2 linear algebra for solving
-        match ftf.solve_into(fty) {
+        match ftf.solve_into(&fty) {
             Ok(coeffs) => {
                 self.coefficients = Some(coeffs);
                 Ok(())
@@ -430,7 +430,7 @@ impl QuantumSubspaceExpansion {
         let state_overlap_real: Array1<f64> = state_overlap.map(|c| c.re);
 
         // Solve S * c = b for expansion coefficients
-        match overlap_real.solve_into(state_overlap_real) {
+        match overlap_real.solve_into(&state_overlap_real) {
             Ok(coeffs) => Ok(coeffs),
             Err(_) => Err(QuantRS2Error::LinalgError(
                 "Failed to compute subspace coefficients".to_string(),

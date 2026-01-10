@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use crate::scirs_stub;
 
 #[cfg(feature = "dwave")]
-use quantrs2_symengine::Expression as SymEngineExpression;
+use quantrs2_symengine_pure::Expression as SymEngineExpression;
 
 #[cfg(feature = "dwave")]
 type Expr = SymEngineExpression;
@@ -24,12 +24,12 @@ use quantrs2_anneal::QuboError;
 /// Unified expression interface for examples
 #[cfg(feature = "dwave")]
 pub mod expr {
-    use quantrs2_symengine::Expression as SymEngineExpression;
+    use quantrs2_symengine_pure::Expression as SymEngineExpression;
 
     pub type Expr = SymEngineExpression;
 
     pub fn constant(value: f64) -> Expr {
-        SymEngineExpression::from_f64(value)
+        SymEngineExpression::from(value)
     }
 
     pub fn var(name: &str) -> Expr {
@@ -751,7 +751,7 @@ impl Compile {
         f64,
     )> {
         // Expand the expression to simplify
-        let mut expr = self.expr.expand();
+        let expr = self.expr.expand();
 
         // Check the degree of each term
         let max_degree = calc_highest_degree(&expr)?;
@@ -759,11 +759,8 @@ impl Compile {
             return Err(CompileError::DegreeTooHigh(max_degree, 2));
         }
 
-        // Replace all second-degree terms (x^2) with x, since x^2 = x for binary variables
-        let mut expr = replace_squared_terms(&expr)?;
-
-        // Expand again to collect like terms
-        let mut expr = expr.expand();
+        // Replace all second-degree terms (x^2 and x*x) with x, since x^2 = x for binary variables
+        let expr = replace_squared_terms(&expr)?;
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
@@ -846,6 +843,13 @@ fn calc_highest_degree(expr: &Expr) -> CompileResult<usize> {
     // If it's a number constant, degree is 0
     if expr.is_number() {
         return Ok(0);
+    }
+
+    // If it's a negation, recursively calculate the degree of the inner expression
+    if expr.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = expr.as_neg().expect("is_neg() was true");
+        return calc_highest_degree(&inner);
     }
 
     // If it's a power operation (like x^2)
@@ -982,6 +986,14 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
         return Ok(expr.clone());
     }
 
+    // If it's a negation, recursively process the inner expression
+    if expr.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = expr.as_neg().expect("is_neg() was true");
+        let new_inner = replace_squared_terms(&inner)?;
+        return Ok(-new_inner);
+    }
+
     // If it's a power operation (like x^2)
     if expr.is_pow() {
         // SAFETY: is_pow() check guarantees as_pow() will succeed
@@ -1017,8 +1029,23 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
             new_terms.push(replace_squared_terms(&factor)?);
         }
 
-        // Combine the terms back into a product
-        let mut result = Expr::from(1);
+        // Check for x*x pattern (same symbol multiplied by itself)
+        // For binary variables, x*x = x
+        if new_terms.len() == 2 {
+            if let (Some(name1), Some(name2)) = (new_terms[0].as_symbol(), new_terms[1].as_symbol())
+            {
+                if name1 == name2 {
+                    // x*x = x for binary variables
+                    return Ok(new_terms.remove(0));
+                }
+            }
+        }
+
+        // Combine the terms back into a product (without identity element)
+        if new_terms.is_empty() {
+            return Ok(Expr::from(1));
+        }
+        let mut result = new_terms.remove(0);
         for term in new_terms {
             result = result * term;
         }
@@ -1033,8 +1060,11 @@ fn replace_squared_terms(expr: &Expr) -> CompileResult<Expr> {
             new_terms.push(replace_squared_terms(&term)?);
         }
 
-        // Combine the terms back into a sum
-        let mut result = Expr::from(0);
+        // Combine the terms back into a sum (without identity element)
+        if new_terms.is_empty() {
+            return Ok(Expr::from(0));
+        }
+        let mut result = new_terms.remove(0);
         for term in new_terms {
             result = result + term;
         }
@@ -1170,7 +1200,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
 
     // If it's a number constant, it's an offset
     if term.is_number() {
-        let mut value = match term.to_f64() {
+        let value = match term.to_f64() {
             Some(n) => n,
             None => {
                 return Err(CompileError::InvalidExpression(
@@ -1181,11 +1211,39 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
         return Ok((coeffs, value));
     }
 
+    // If it's an addition, recursively extract from both sides
+    if term.is_add() {
+        let mut offset = 0.0;
+        // SAFETY: is_add() check guarantees as_add() will succeed
+        for sub_term in term.as_add().expect("is_add() was true") {
+            let (sub_coeffs, sub_offset) = extract_term_coefficients(&sub_term)?;
+            for (vars, coeff) in sub_coeffs {
+                *coeffs.entry(vars).or_insert(0.0) += coeff;
+            }
+            offset += sub_offset;
+        }
+        return Ok((coeffs, offset));
+    }
+
+    // If it's a negation, recursively extract and negate
+    if term.is_neg() {
+        // SAFETY: is_neg() check guarantees as_neg() will succeed
+        let inner = term.as_neg().expect("is_neg() was true");
+        let (inner_coeffs, inner_offset) = extract_term_coefficients(&inner)?;
+
+        // Negate all coefficients
+        for (vars, coeff) in inner_coeffs {
+            coeffs.insert(vars, -coeff);
+        }
+
+        return Ok((coeffs, -inner_offset));
+    }
+
     // If it's a symbol, it's a linear term with coefficient 1
     if term.is_symbol() {
         // SAFETY: is_symbol() check guarantees as_symbol() will succeed
         let var_name = term.as_symbol().expect("is_symbol() was true");
-        let vars = vec![var_name];
+        let vars = vec![var_name.to_string()];
         coeffs.insert(vars, 1.0);
         return Ok((coeffs, 0.0));
     }
@@ -1212,7 +1270,7 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
                 // Symbol is a variable
                 // SAFETY: is_symbol() check guarantees as_symbol() will succeed
                 let var_name = factor.as_symbol().expect("is_symbol() was true");
-                vars.push(var_name);
+                vars.push(var_name.to_string());
             } else {
                 // More complex factors not supported in this example
                 return Err(CompileError::InvalidExpression(format!(

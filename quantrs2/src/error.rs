@@ -174,7 +174,8 @@ impl QuantRS2ErrorExt for QuantRS2Error {
             | Self::NoStorageAvailable(_)
             | Self::StorageCapacityExceeded(_)
             | Self::AccessDenied(_)
-            | Self::LockPoisoned(_) => ErrorCategory::Runtime,
+            | Self::LockPoisoned(_)
+            | Self::IndexOutOfBounds { .. } => ErrorCategory::Runtime,
         }
     }
 
@@ -360,6 +361,9 @@ pub fn with_context(error: QuantRS2Error, context: &str) -> QuantRS2Error {
         QuantRS2Error::QKDFailure(msg) => QuantRS2Error::QKDFailure(format!("{context}: {msg}")),
         QuantRS2Error::LockPoisoned(msg) => {
             QuantRS2Error::LockPoisoned(format!("{context}: {msg}"))
+        }
+        QuantRS2Error::IndexOutOfBounds { index, len } => {
+            QuantRS2Error::IndexOutOfBounds { index, len } // Can't add context to this variant
         }
     }
 }

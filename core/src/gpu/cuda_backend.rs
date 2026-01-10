@@ -114,7 +114,9 @@ impl CudaBackend {
 
 impl GpuBackend for CudaBackend {
     fn is_available() -> bool {
-        false // TODO: Check for CUDA availability
+        // CUDA backend is not yet implemented
+        // Once implemented, this should check for nvidia-smi or CUDA library
+        false
     }
 
     fn name(&self) -> &'static str {

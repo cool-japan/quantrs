@@ -1185,7 +1185,7 @@ fn real_time_calibration() -> Result<()> {
 ### Example Migration
 
 ```rust
-// Before (0.1.0-beta.1)
+// Before (0.1.0-rc.2)
 use quantrs2_core::prelude::*;
 use quantrs2_sim::prelude::*;
 

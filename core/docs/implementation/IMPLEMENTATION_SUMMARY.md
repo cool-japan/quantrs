@@ -127,13 +127,13 @@ use quantrs2_core::prelude::*;
 
 ## Testing Status
 - Basic unit tests included for each module
-- Compilation verified with latest SciRS2 (v0.1.0-alpha.5)
+- Compilation verified with latest SciRS2 (v0.1.0-rc.2)
 - Integration tests pending
 
 ## Dependencies Added
 ```toml
 scirs2-linalg = { workspace = true }
-scirs2-sparse = { version = "0.1.0-alpha.5" }
+scirs2-sparse = { version = "0.1.0-rc.2" }
 smallvec = "1.13"
 rustc-hash = "2.1"
 ```

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the documentation updates made for QuantRS2-Core v0.1.0-beta.1, reflecting the completion of major integration tasks and new features.
+This document summarizes the documentation updates made for QuantRS2-Core v0.1.0-rc.2, reflecting the completion of major integration tasks and new features.
 
 ## Updated Files
 
@@ -15,13 +15,13 @@ This document summarizes the documentation updates made for QuantRS2-Core v0.1.0
 ### 2. TODO.md
 - Marked SIMD migration as completed
 - Marked PlatformCapabilities implementation as completed
-- Marked GPU migration as completed (Metal ready for SciRS2 v0.1.0-alpha.6)
+- Marked GPU migration as completed (Metal ready for SciRS2 v0.1.0-rc.2)
 - Updated SciRS2 integration checklist
 
 ### 3. src/lib.rs
 - Enhanced crate-level documentation
 - Added key features section
-- Listed recent updates for v0.1.0-beta.1
+- Listed recent updates for v0.1.0-rc.2
 - Improved module organization
 
 ## New Documentation Created
@@ -123,7 +123,7 @@ Key sections:
 
 ## Conclusion
 
-The documentation has been comprehensively updated to reflect the significant improvements in QuantRS2-Core v0.1.0-beta.1. The new documentation provides developers with:
+The documentation has been comprehensively updated to reflect the significant improvements in QuantRS2-Core v0.1.0-rc.2. The new documentation provides developers with:
 
 - Clear understanding of new features
 - Practical usage examples

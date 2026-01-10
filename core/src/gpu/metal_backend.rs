@@ -114,7 +114,9 @@ impl MetalBackend {
 
 impl GpuBackend for MetalBackend {
     fn is_available() -> bool {
-        false // TODO: Check for Metal availability
+        // Metal backend is not yet implemented
+        // Once implemented, this should return true on macOS/iOS
+        false
     }
 
     fn name(&self) -> &'static str {

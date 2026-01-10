@@ -39,7 +39,7 @@ futures = { workspace = true, optional = true }
 # wide.workspace = true  # REMOVED: Unused dependency (SciRS2 POLICY CLEANUP)
 fastrand.workspace = true
 # POLICY EXCEPTION: nalgebra-sparse for integer sparse matrices
-# REASON: scirs2-sparse v0.1.0-rc.1 requires Float trait; clifford_sparse.rs uses u8
+# REASON: scirs2-sparse v0.1.0-rc.2 requires Float trait; clifford_sparse.rs uses u8
 # MIGRATION: Will migrate when scirs2-sparse adds integer type support
 # See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md
 nalgebra-sparse.workspace = true  # POLICY EXCEPTION (see above)
@@ -65,6 +65,7 @@ memmap2.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
+criterion.workspace = true
 
 [features]
 default = ["optimize"]
@@ -76,6 +77,7 @@ advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgeb
 mps = [] # Enable MPS simulator
 mpi = [] # Enable MPI support for distributed quantum simulation
 python = ["dep:pyo3"]  # Enable Python interop features
+cuquantum = ["gpu"] # Enable NVIDIA cuQuantum SDK (cuStateVec + cuTensorNet)
 
 [[bin]]
 name = "test_stabilizer"
@@ -84,6 +86,14 @@ path = "src/bin/test_stabilizer.rs"
 [[bin]]
 name = "debug_holographic_matrix"
 path = "debug_holographic_matrix.rs"
+
+[[bench]]
+name = "qulacs_backend_bench"
+harness = false
+
+[[bench]]
+name = "stabilizer_bench"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = false

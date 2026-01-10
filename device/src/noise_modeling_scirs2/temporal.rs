@@ -760,7 +760,7 @@ mod tests {
             .expect("AR model fitting should succeed");
 
         assert!(ar_model.order > 0);
-        assert!(ar_model.coefficients.len() > 0);
+        assert!(!ar_model.coefficients.is_empty());
         assert!(ar_model.noise_variance > 0.0);
         assert!(ar_model.aic.is_finite());
         assert!(ar_model.bic.is_finite());

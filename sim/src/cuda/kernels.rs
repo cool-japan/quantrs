@@ -187,7 +187,7 @@ impl CudaKernel {
         if let Some(_function_handle) = self.function_handle {
             // Calculate theoretical occupancy
             let max_blocks_per_sm = self.calculate_max_blocks_per_sm(block_size)?;
-            let active_warps = (block_size + 31) / 32; // Round up to warp size
+            let active_warps = block_size.div_ceil(32); // Round up to warp size
             let max_warps_per_sm = 64; // Typical for modern GPUs
 
             let occupancy = (max_blocks_per_sm * active_warps) as f64 / max_warps_per_sm as f64;
@@ -402,7 +402,7 @@ impl CudaQuantumKernels {
 
             // Calculate grid and block sizes
             let block_size = self.config.block_size;
-            let grid_size = (state.len() + block_size - 1) / block_size;
+            let grid_size = state.len().div_ceil(block_size);
 
             // Launch kernel
             kernel.launch(grid_size, block_size, &params, stream)?;

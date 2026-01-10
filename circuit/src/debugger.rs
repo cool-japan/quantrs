@@ -1806,8 +1806,10 @@ mod tests {
     #[test]
     fn test_visualization_configuration() {
         let circuit = Circuit::<2>::new();
-        let mut config = DebuggerConfig::default();
-        config.enable_auto_visualization = true;
+        let config = DebuggerConfig {
+            enable_auto_visualization: true,
+            ..Default::default()
+        };
 
         let debugger = QuantumDebugger::with_config(circuit, config);
 
@@ -1831,8 +1833,10 @@ mod tests {
             })
             .expect("add_gate CNOT should succeed");
 
-        let mut config = DebuggerConfig::default();
-        config.enable_profiling = true;
+        let config = DebuggerConfig {
+            enable_profiling: true,
+            ..Default::default()
+        };
 
         let mut debugger = QuantumDebugger::with_config(circuit, config);
         let _summary = debugger.run().expect("debugger run should succeed");
@@ -1847,8 +1851,10 @@ mod tests {
     #[test]
     fn test_error_detection() {
         let circuit = Circuit::<1>::new();
-        let mut config = DebuggerConfig::default();
-        config.enable_error_detection = true;
+        let config = DebuggerConfig {
+            enable_error_detection: true,
+            ..Default::default()
+        };
 
         let debugger = QuantumDebugger::with_config(circuit, config);
 

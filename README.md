@@ -15,62 +15,7 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.0-rc.1 🎉
-
-## 🚀 What's New in RC.1 - First Release Candidate
-
-QuantRS2 v0.1.0-rc.1 marks the transition from beta to release candidate status, featuring comprehensive code quality improvements.
-
-### 🎯 Release Candidate Quality
-- **Zero Clippy Warnings**: Eliminated all 7,575 clippy warnings (100% reduction)
-- **Clean Codebase**: Comprehensive lint configuration for scientific computing
-- **Production Ready**: All 4,120 tests passing
-
-### 📦 Dependency Updates
-- **SciRS2 v0.1.0-rc.4**: Core scientific computing foundation
-- **SciRS2 Linalg v0.1.0-rc.6**: Enhanced linear algebra operations
-
-### ✅ Quality Metrics
-- **Clippy Warnings**: 0 (down from 7,575)
-- **Unit Tests**: 4,120 passing (100%)
-- **Build Status**: Clean compilation across all crates
-
-### ⚠️ From Beta.1 - Production Ready Framework
-
-### ✅ Complete SciRS2 Integration
-- **🔧 Full SciRS2 v0.1.0-beta.2 Integration**: Deep integration with Scientific Rust for optimal performance
-- **⚡ SIMD Operations**: All operations use `scirs2_core::simd_ops` with hardware-aware optimization
-- **🔄 Parallel Computing**: Automatic parallelization via `scirs2_core::parallel_ops`
-- **🎯 Platform Detection**: Smart capability detection using `PlatformCapabilities`
-- **💾 Memory Management**: Advanced memory-efficient algorithms for 30+ qubit simulations
-- **🎮 GPU Acceleration**: Full GPU support through `scirs2_core::gpu` (sim crate)
-
-### 🛠️ Developer Experience Suite (NEW!)
-- **✅ Circuit Equivalence Checker**: Verify circuit correctness with SciRS2 numerical tolerance
-- **📊 Resource Estimator**: Analyze complexity and performance using SciRS2 analysis
-- **🐛 Quantum Debugger**: Step-by-step circuit execution with SciRS2 visualization
-- **📈 Performance Profiler**: Comprehensive execution analysis with SciRS2 metrics
-- **🔍 Circuit Verifier**: Formal verification using SciRS2 mathematical methods
-- **🔧 Quantum Linter**: Code quality analysis with SciRS2 pattern matching
-- **✨ Quantum Formatter**: Consistent code style with SciRS2 code analysis
-
-### 🤖 Intelligent System Features (NEW!)
-- **🧠 AutoOptimizer**: Automatic backend selection based on problem characteristics
-- **🏗️ Complex SIMD Support**: Advanced vectorized quantum operations
-- **🌐 Unified Platform Detection**: Consistent hardware capability management
-- **📊 Performance Analytics**: Real-time optimization recommendations
-
-### 🔧 External Dependencies
-**Note**: QuantRS2 rc.1 integrates with SciRS2 v0.1.0-rc.4 for enhanced scientific computing capabilities. All core functionality is fully operational with optimal performance and comprehensive feature set.
-
-### 🏆 Production Readiness
-✅ **Ready for Production Use**:
-- Comprehensive quantum computing framework (30+ qubit simulation)
-- Hardware integration (IBM, D-Wave, AWS Braket)
-- Complete Python bindings with PyO3
-- Extensive algorithm library with 50+ implementations
-- Advanced error correction and noise modeling
-- Robust testing and documentation
+**Current Version**: v0.1.0-rc.2
 
 ## Features
 
@@ -109,9 +54,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-beta.3"
-quantrs2-circuit = "0.1.0-beta.3"
-quantrs2-sim = "0.1.0-beta.3"
+quantrs2-core = "0.1.0-rc.2"
+quantrs2-circuit = "0.1.0-rc.2"
+quantrs2-sim = "0.1.0-rc.2"
 ```
 
 ### Creating a Bell State
@@ -244,7 +189,7 @@ Note: Simulation examples require additional dependencies including linear algeb
 QuantRS2 is designed for high performance quantum simulation:
 
 - Efficiently simulates up to 30+ qubits on standard hardware
-- Parallel execution with Rayon
+- Parallel execution via SciRS2 parallel_ops
 - Optional GPU acceleration with WGPU
 - Memory-efficient algorithms for large qubit counts (25+)
 - Multiple simulation backends:
@@ -252,6 +197,33 @@ QuantRS2 is designed for high performance quantum simulation:
   - Tensor network simulator for circuits with limited entanglement
   - Automatic selection based on circuit structure
 - Optimized contraction paths for tensor networks to minimize computational cost
+
+### Benchmark Results
+
+**Core Gate Operations** (measured on Apple Silicon):
+
+| Qubits | Hadamard | CNOT | Fidelity |
+|--------|----------|------|----------|
+| 4 | 57 ns | 100 ns | 158 ns |
+| 6 | 143 ns | 298 ns | 491 ns |
+| 8 | 339 ns | 847 ns | 989 ns |
+| 10 | 1.09 µs | 2.52 µs | 3.01 µs |
+| 12 | 3.88 µs | 9.34 µs | 13.9 µs |
+
+**Circuit Patterns**:
+- Bell State: 12.2 µs
+- GHZ 5-qubit: 13.1 µs
+- QFT 5-qubit: 14.3 µs
+
+**Specialized Simulator** (8 qubits, 20 gates):
+- Base simulator: 2434 ms
+- Specialized simulator: 0.6 ms (**4000x speedup**)
+
+Run benchmarks with:
+```bash
+cargo bench -p quantrs2-core
+cargo bench -p quantrs2-circuit
+```
 
 ## Roadmap
 
@@ -332,8 +304,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-beta.3", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.0-beta.3", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.0-rc.2", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.0-rc.2", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -342,7 +314,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-beta.3", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.0-rc.2", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -387,7 +359,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.0-beta.3", features = ["ibm"] }
+quantrs2-device = { version = "0.1.0-rc.2", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -413,7 +385,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.0-beta.3", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.0-rc.2", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.
