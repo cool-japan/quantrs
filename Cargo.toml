@@ -134,7 +134,7 @@ ordered-float = "5.1"
 # LIMITED USE: nalgebra for sparse matrix operations (PARTIALLY VIOLATES SciRS2 POLICY)
 # Location: sim/src/scirs2_integration.rs (sparse matrix operations only)
 # TODO: Migrate to scirs2-sparse when API stabilizes (planned for v0.2.0)
-nalgebra = "0.33.2"            # Temporary - sparse operations only
+nalgebra = "0.34.1"            # Temporary - sparse operations only
 # ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 # ndarray-rand = "0.15"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # ndarray-stats = "0.6"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
@@ -205,7 +205,7 @@ flate2 = "1.1"
 md5 = "0.8"
 
 # GPU computing support
-wgpu = { version = "26.0.1" }
+wgpu = { version = "28.0.0" }
 bytemuck = { version = "1.24.0", features = ["derive"] }
 ocl = "0.19.7"
 
@@ -243,7 +243,7 @@ nalgebra-sparse = "0.11"
 plotters = "0.3"
 
 # System information
-sysinfo = "0.36"
+sysinfo = "0.37"
 
 # Additional dependencies for workspace members
 libc = "0.2"
