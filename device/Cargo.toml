@@ -1,0 +1,88 @@
+[package]
+name = "quantrs2-device"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["quantum", "computing", "device", "hardware", "connectivity"]
+categories = ["science", "simulation", "hardware-support"]
+description = "Quantum device connectors for the QuantRS2 framework"
+
+[dependencies]
+scirs2-fft = { workspace = true }
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+thiserror.workspace = true
+petgraph.workspace = true
+fastrand.workspace = true
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+oxicode.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+num_cpus.workspace = true
+
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2-core.workspace = true
+scirs2-autograd.workspace = true
+scirs2-stats.workspace = true
+scirs2-metrics.workspace = true
+scirs2-graph = { workspace = true, optional = true }
+scirs2-linalg = { workspace = true, optional = true }
+scirs2-optimize = { workspace = true, optional = true }
+
+# For device connectivity
+reqwest = { workspace = true, features = ["json"], optional = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros", "sync", "time"], optional = true }
+futures = { workspace = true, optional = true }
+broadcast = "0.1"
+chrono = { workspace = true, optional = true }
+async-trait = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+url = { version = "2.5.8", features = ["serde"] }
+
+# For AWS authentication
+hmac = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+bytemuck = { workspace = true, features = ["derive"], optional = true }
+
+# For quantum security features
+aes-gcm = { version = "0.10.3", optional = true }
+x25519-dalek = { version = "2.0.1", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+criterion.workspace = true
+
+[features]
+default = ["scheduling", "scirs2", "security", "neutral_atom"]
+ibm = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
+azure = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
+aws = [
+    "dep:reqwest", 
+    "dep:tokio", 
+    "dep:chrono", 
+    "dep:async-trait",
+    "dep:hmac",
+    "dep:sha2",
+    "dep:hex",
+    "dep:bytemuck"
+]
+neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "dep:uuid", "dep:futures", "ibm"]
+scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
+scirs2 = ["dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
+security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["scheduling", "scirs2", "security", "neutral_atom"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

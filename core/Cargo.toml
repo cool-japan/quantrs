@@ -1,0 +1,74 @@
+[package]
+name = "quantrs2-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["quantum", "computing", "core", "types", "traits"]
+categories = ["science", "simulation"]
+description = "Core types and traits for the QuantRS2 quantum computing framework"
+
+[dependencies]
+# num-complex.workspace = true          # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+thiserror.workspace = true
+# ndarray.workspace = true              # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
+# SciRS2 foundation dependencies
+scirs2-core = { workspace = true, features = ["simd", "parallel", "cache", "profiling", "memory_management"] }
+scirs2-autograd.workspace = true
+scirs2-linalg = { workspace = true, features = ["tensor_contraction"] }
+scirs2-optimize.workspace = true
+scirs2-sparse.workspace = true
+scirs2-special.workspace = true
+smallvec.workspace = true
+rustc-hash.workspace = true
+optirs-core.workspace = true
+# rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true          # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rayon.workspace = true                # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+# ndarray-linalg.workspace = true       # REMOVED: Use scirs2_core (SciRS2 POLICY)
+serde.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+zstd.workspace = true
+oxicode.workspace = true
+serde_json.workspace = true
+num_cpus.workspace = true
+flate2.workspace = true
+sysinfo.workspace = true
+regex.workspace = true
+# Symbolic computation - Pure Rust (SciRS2 POLICY: No C/C++ dependencies)
+quantrs2-symengine-pure = { workspace = true, optional = true }
+# num-traits.workspace = true           # REMOVED: Use scirs2_core::numeric (SciRS2 POLICY)
+pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"], optional = true }
+scirs2-numpy = { workspace = true, optional = true }
+chrono.workspace = true
+numrs2 = { workspace = true, optional = true }
+
+[features]
+default = []
+gpu = []  # GPU feature for conditional compilation
+simd = [] # ["scirs2-core/simd"]
+cuda = []
+metal = []
+vulkan = []
+mps = []
+compression = []
+symbolic = ["dep:quantrs2-symengine-pure"]  # Enable symbolic computation (Pure Rust)
+python = ["dep:pyo3", "dep:scirs2-numpy"]  # Enable Python bindings with PyO3 and scirs2-numpy
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "simd_performance"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["simd", "gpu"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

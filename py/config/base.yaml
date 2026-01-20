@@ -1,0 +1,68 @@
+# Base Configuration for QuantRS2
+# This file contains default settings shared across all environments
+
+environment: development
+debug: false
+secret_key: dev-secret-key
+
+database:
+  host: localhost
+  port: 5432
+  database: quantrs2
+  username: quantrs2_user
+  password: null  # Will be loaded from secrets manager
+  max_connections: 10
+  ssl_mode: require
+  connection_timeout: 30
+
+quantum_backends:
+  simulation:
+    provider: simulation
+    api_token: null
+    project_id: null
+    region: us-east-1
+    max_jobs: 5
+    timeout_seconds: 300
+    retry_attempts: 3
+    enable_caching: true
+
+security:
+  encryption_key: null  # Will be loaded from secrets manager
+  jwt_secret: null      # Will be loaded from secrets manager
+  session_timeout: 3600
+  max_login_attempts: 5
+  enable_2fa: false
+  allowed_origins:
+    - localhost
+  rate_limit_requests: 100
+  rate_limit_window: 60
+
+performance:
+  max_circuit_qubits: 30
+  simulation_memory_limit: 8192
+  max_concurrent_jobs: 4
+  circuit_cache_size: 1000
+  result_cache_ttl: 3600
+  enable_gpu: false
+  gpu_memory_fraction: 0.8
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: null
+  max_file_size: 10485760
+  backup_count: 5
+  enable_structured_logging: true
+  log_to_console: true
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  metrics_endpoint: /metrics
+  enable_health_checks: true
+  health_check_port: 8080
+  alert_webhook_url: null
+  enable_tracing: false
+  tracing_endpoint: null
+
+custom: {}

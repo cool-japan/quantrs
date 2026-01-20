@@ -1,0 +1,215 @@
+# Security-Hardened Docker Ignore File
+# Prevents sensitive files and directories from being included in Docker builds
+
+# Security: Secrets and credentials
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.csr
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ssh
+.ssh/
+.aws/
+.kube/
+.docker/config.json
+
+# Security: Environment and configuration files
+.env
+.env.*
+!.env.example
+config/.env*
+!config/.env.example
+*.conf
+*.ini
+settings.json
+settings.yaml
+local_settings.py
+instance/
+
+# Security: Database files
+*.db
+*.sqlite
+*.sqlite3
+database.json
+dump.sql
+backup.sql
+
+# Security: Log files (may contain sensitive data)
+*.log
+logs/
+log/
+*.log.*
+*.out
+
+# Security: Temporary and cache files
+tmp/
+temp/
+cache/
+.cache/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Security: Version control
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+.svn/
+.hg/
+.bzr/
+
+# Security: IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+.vim/
+.emacs.d/
+*.code-workspace
+
+# Security: Development and testing
+tests/
+test/
+spec/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.hypothesis/
+pytest.ini
+tox.ini
+setup.cfg
+
+# Security: Documentation and examples
+docs/
+doc/
+documentation/
+examples/
+demo/
+samples/
+README.md
+CHANGELOG.md
+LICENSE
+CONTRIBUTING.md
+*.md
+!docker/README.md
+
+# Security: Build artifacts
+build/
+dist/
+*.egg-info/
+target/
+*.whl
+*.tar.gz
+*.zip
+
+# Security: OS-specific files
+*.orig
+.bash_history
+.zsh_history
+.python_history
+.node_repl_history
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Security: Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# Security: Container-specific
+Dockerfile*
+docker-compose*.yml
+.dockerignore*
+Vagrantfile
+.vagrant/
+
+# Security: CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Jenkinsfile
+azure-pipelines.yml
+
+# Security: Package manager files
+node_modules/
+vendor/
+.bundle/
+Gemfile.lock
+package-lock.json
+yarn.lock
+Pipfile.lock
+poetry.lock
+.cargo/
+.rustup/
+
+# Security: Language-specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.dylib
+*.dll
+*.class
+*.jar
+*.war
+*.ear
+
+# Security: Research and analysis
+notebooks/
+*.ipynb
+research/
+analysis/
+experiments/
+.jupyter/
+
+# Security: Monitoring and profiling
+.profile
+.bashrc
+.zshrc
+monitoring/
+metrics/
+profiling/
+
+# Security: Network and security configs
+*.pem
+*.crt
+*.key
+*.cert
+*.ca-bundle
+ssl/
+tls/
+certificates/
+
+# Security: Application-specific sensitive data
+uploads/
+downloads/
+media/
+static/assets/
+user-data/
+customer-data/
+
+# Allow only essential files for container operation
+# Whitelist approach - only include what's necessary
+!python/
+!requirements.txt
+!pyproject.toml
+!Cargo.toml
+!src/
+!LICENSE
+!README.md

@@ -1,0 +1,6 @@
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-Wl,-undefined,dynamic_lookup"]
+
+[env]
+CXXFLAGS = "-stdlib=libc++"
+LDFLAGS = "-lc++"

@@ -1,0 +1,5 @@
+[package.publish-lockfile]
+enable = true
+
+[package.verification]
+verify = false

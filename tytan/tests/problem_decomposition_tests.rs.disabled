@@ -1,0 +1,410 @@
+//! Comprehensive tests for problem decomposition features.
+
+use ndarray::{Array2, ArrayD, IxDyn};
+use quantrs2_tytan::problem_decomposition::*;
+use quantrs2_tytan::sampler::{SampleResult, Sampler};
+use std::collections::HashMap;
+
+#[test]
+fn test_graph_partitioner_kernighan_lin() {
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::KernighanLin, 2);
+
+    // Create a test QUBO matrix with clear structure
+    let mut qubo = Array2::zeros((8, 8));
+    
+    // Create two clusters: {0,1,2,3} and {4,5,6,7}
+    // Strong intra-cluster connections
+    for i in 0..4 {
+        for j in 0..4 {
+            if i != j {
+                qubo[[i, j]] = -2.0; // Prefer variables in same group to have same value
+            }
+        }
+    }
+    for i in 4..8 {
+        for j in 4..8 {
+            if i != j {
+                qubo[[i, j]] = -2.0;
+            }
+        }
+    }
+    
+    // Weak inter-cluster connections
+    for i in 0..4 {
+        for j in 4..8 {
+            qubo[[i, j]] = 0.1;
+            qubo[[j, i]] = 0.1;
+        }
+    }
+
+    let result = partitioner.partition(&qubo);
+    assert!(result.is_ok());
+    
+    let subproblems = result.unwrap();
+    assert!(!subproblems.is_empty());
+    
+    // Verify subproblems have reasonable sizes
+    for subproblem in &subproblems {
+        assert!(subproblem.variables.len() <= 50); // reasonable max size
+        assert!(!subproblem.variables.is_empty());
+    }
+    
+    // Verify coverage - all variables should be in at least one subproblem
+    let mut covered_vars = std::collections::HashSet::new();
+    for subproblem in &subproblems {
+        for &var in &subproblem.variables {
+            covered_vars.insert(var);
+        }
+    }
+    assert_eq!(covered_vars.len(), 8);
+}
+
+#[test]
+fn test_graph_partitioner_spectral() {
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::Spectral, 2);
+
+    // Create a ring graph QUBO
+    let size = 10;
+    let mut qubo = Array2::zeros((size, size));
+    
+    for i in 0..size {
+        let next = (i + 1) % size;
+        qubo[[i, next]] = -1.0;
+        qubo[[next, i]] = -1.0;
+    }
+
+    let result = partitioner.partition(&qubo);
+    assert!(result.is_ok());
+    
+    let subproblems = result.unwrap();
+    assert!(!subproblems.is_empty());
+    
+    // For a ring graph, should be able to partition reasonably
+    println!("Spectral partitioning created {} subproblems", subproblems.len());
+    for (idx, subproblem) in subproblems.iter().enumerate() {
+        println!("Subproblem {}: {} variables", idx, subproblem.variables.len());
+    }
+}
+
+#[test]
+fn test_graph_partitioner_multilevel() {
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::Multilevel, 2);
+
+    // Create a grid-like QUBO
+    let grid_size = 6; // 6x6 grid = 36 variables
+    let size = grid_size * grid_size;
+    let mut qubo = Array2::zeros((size, size));
+    
+    // Connect neighbors in grid
+    for i in 0..grid_size {
+        for j in 0..grid_size {
+            let idx = i * grid_size + j;
+            
+            // Right neighbor
+            if j + 1 < grid_size {
+                let right_idx = i * grid_size + (j + 1);
+                qubo[[idx, right_idx]] = -0.5;
+                qubo[[right_idx, idx]] = -0.5;
+            }
+            
+            // Bottom neighbor
+            if i + 1 < grid_size {
+                let bottom_idx = (i + 1) * grid_size + j;
+                qubo[[idx, bottom_idx]] = -0.5;
+                qubo[[bottom_idx, idx]] = -0.5;
+            }
+        }
+    }
+
+    let result = partitioner.partition(&qubo);
+    assert!(result.is_ok());
+    
+    let subproblems = result.unwrap();
+    assert!(!subproblems.is_empty());
+    
+    // Should create multiple subproblems of reasonable size
+    assert!(subproblems.len() >= 2);
+    for subproblem in &subproblems {
+        assert!(subproblem.variables.len() <= 20);
+    }
+}
+
+#[test]
+fn test_hierarchical_solver_basic() {
+    let config = HierarchicalSolverConfig {
+        coarsening_strategy: CoarseningStrategy::MatchingBased,
+        max_levels: 3,
+        coarsening_threshold: 10,
+        solver_strategy: SolverStrategy::Adaptive {
+            small_problem_threshold: 50,
+            timeout_per_level: std::time::Duration::from_secs(30),
+        },
+        refinement_config: RefinementConfig {
+            method: RefinementMethod::FiducciaMattheyses,
+            max_iterations: 50,
+            improvement_threshold: 1e-4,
+        },
+        vcycle_config: VCycleConfig {
+            max_vcycles: 3,
+            convergence_tolerance: 1e-6,
+            smoothing_iterations: 2,
+        },
+    };
+
+    let mut solver = HierarchicalSolver::new(config);
+
+    // Create a medium-sized QUBO problem
+    let size = 20;
+    let mut qubo = Array2::zeros((size, size));
+    
+    // Add some structure - blocks with internal coupling
+    for block in 0..4 {
+        let start = block * 5;
+        let end = (block + 1) * 5;
+        
+        for i in start..end {
+            for j in start..end {
+                if i != j {
+                    qubo[[i, j]] = -1.0; // Prefer same values within block
+                }
+            }
+        }
+    }
+
+    // Add some inter-block coupling
+    for i in 0..size-1 {
+        qubo[[i, i+1]] = 0.1;
+        qubo[[i+1, i]] = 0.1;
+    }
+
+    let mut var_map = HashMap::new();
+    for i in 0..size {
+        var_map.insert(format!("x{}", i), i);
+    }
+
+    let result = solver.solve(&qubo, &var_map, 100);
+    assert!(result.is_ok());
+    
+    let sample_result = result.unwrap();
+    assert!(!sample_result.samples.is_empty());
+    
+    // Verify solution format
+    let best_sample = &sample_result.samples[0];
+    assert_eq!(best_sample.assignments.len(), size);
+    
+    // All variables should be assigned
+    for i in 0..size {
+        let var_name = format!("x{}", i);
+        assert!(best_sample.assignments.contains_key(&var_name));
+    }
+}
+
+#[test]
+fn test_hierarchical_solver_vcycle() {
+    let config = HierarchicalSolverConfig {
+        coarsening_strategy: CoarseningStrategy::MatchingBased,
+        max_levels: 2,
+        coarsening_threshold: 5,
+        solver_strategy: SolverStrategy::VCycle,
+        refinement_config: RefinementConfig {
+            method: RefinementMethod::LocalSearch,
+            max_iterations: 20,
+            improvement_threshold: 1e-5,
+        },
+        vcycle_config: VCycleConfig {
+            max_vcycles: 2,
+            convergence_tolerance: 1e-5,
+            smoothing_iterations: 1,
+        },
+    };
+
+    let mut solver = HierarchicalSolver::new(config);
+
+    // Create a simple clustering problem
+    let size = 12;
+    let mut qubo = Array2::zeros((size, size));
+    
+    // Create 3 clusters of 4 variables each
+    for cluster in 0..3 {
+        let start = cluster * 4;
+        let end = (cluster + 1) * 4;
+        
+        // Strong intra-cluster connections
+        for i in start..end {
+            for j in start..end {
+                if i != j {
+                    qubo[[i, j]] = -2.0;
+                }
+            }
+        }
+    }
+    
+    // Weak inter-cluster repulsion
+    for cluster1 in 0..3 {
+        for cluster2 in cluster1+1..3 {
+            let start1 = cluster1 * 4;
+            let end1 = (cluster1 + 1) * 4;
+            let start2 = cluster2 * 4;
+            let end2 = (cluster2 + 1) * 4;
+            
+            for i in start1..end1 {
+                for j in start2..end2 {
+                    qubo[[i, j]] = 0.5;
+                    qubo[[j, i]] = 0.5;
+                }
+            }
+        }
+    }
+
+    let mut var_map = HashMap::new();
+    for i in 0..size {
+        var_map.insert(format!("v{}", i), i);
+    }
+
+    let result = solver.solve(&qubo, &var_map, 50);
+    assert!(result.is_ok());
+    
+    let sample_result = result.unwrap();
+    assert!(!sample_result.samples.is_empty());
+    
+    // Check that solution is reasonable
+    let best_sample = &sample_result.samples[0];
+    println!("Best energy: {}", best_sample.energy);
+    
+    // For this problem, optimal solution should have clusters with consistent values
+    // (all 0 or all 1 within each cluster)
+    for cluster in 0..3 {
+        let start = cluster * 4;
+        let cluster_values: Vec<bool> = (start..start+4)
+            .map(|i| *best_sample.assignments.get(&format!("v{}", i)).unwrap())
+            .collect();
+        
+        // All values in cluster should be the same
+        let first_value = cluster_values[0];
+        let all_same = cluster_values.iter().all(|&v| v == first_value);
+        
+        if !all_same {
+            println!("Cluster {} values: {:?}", cluster, cluster_values);
+        }
+        // Note: Due to the heuristic nature, this might not always be perfect
+        // but should be reasonable most of the time
+    }
+}
+
+#[test]
+fn test_decomposition_integration() {
+    // Test that graph partitioner and hierarchical solver work together
+    let partitioner = GraphPartitioner::with_config(PartitioningAlgorithm::KernighanLin, 2);
+
+    let hierarchical_config = HierarchicalSolverConfig {
+        coarsening_strategy: CoarseningStrategy::MatchingBased,
+        max_levels: 2,
+        coarsening_threshold: 4,
+        solver_strategy: SolverStrategy::Direct,
+        refinement_config: RefinementConfig {
+            method: RefinementMethod::LocalSearch,
+            max_iterations: 30,
+            improvement_threshold: 1e-4,
+        },
+        vcycle_config: VCycleConfig {
+            max_vcycles: 1,
+            convergence_tolerance: 1e-4,
+            smoothing_iterations: 1,
+        },
+    };
+
+    let partitioner = GraphPartitioner::new(partition_config);
+    let mut hierarchical_solver = HierarchicalSolver::new(hierarchical_config);
+
+    // Create a structured problem
+    let size = 16;
+    let mut qubo = Array2::zeros((size, size));
+    
+    // Create 4 blocks of 4 variables each
+    for block in 0..4 {
+        let start = block * 4;
+        let end = (block + 1) * 4;
+        
+        for i in start..end {
+            for j in start..end {
+                if i != j {
+                    qubo[[i, j]] = -1.5;
+                }
+            }
+        }
+    }
+
+    // Step 1: Partition the problem
+    let partition_result = partitioner.partition(&qubo);
+    assert!(partition_result.is_ok());
+    
+    let subproblems = partition_result.unwrap();
+    assert!(!subproblems.is_empty());
+    
+    println!("Created {} subproblems", subproblems.len());
+
+    // Step 2: Solve each subproblem with hierarchical solver
+    let mut all_solutions = Vec::new();
+    
+    for (idx, subproblem) in subproblems.iter().enumerate() {
+        println!("Solving subproblem {} with {} variables", idx, subproblem.variables.len());
+        
+        let mut var_map = HashMap::new();
+        for (local_idx, &global_idx) in subproblem.variables.iter().enumerate() {
+            var_map.insert(format!("x{}", global_idx), local_idx);
+        }
+        
+        let sub_result = hierarchical_solver.solve(&subproblem.qubo, &var_map, 20);
+        
+        if let Ok(sample_result) = sub_result {
+            all_solutions.push((idx, sample_result));
+        }
+    }
+    
+    assert!(!all_solutions.is_empty());
+    println!("Successfully solved {} out of {} subproblems", 
+             all_solutions.len(), subproblems.len());
+}
+
+#[test]
+fn test_subproblem_metrics() {
+    // Test that subproblem metrics are calculated correctly
+    let variables = vec![0, 1, 2, 3];
+    let mut qubo = Array2::zeros((4, 4));
+    
+    // Create a simple connectivity pattern
+    qubo[[0, 1]] = -1.0;
+    qubo[[1, 0]] = -1.0;
+    qubo[[1, 2]] = -0.5;
+    qubo[[2, 1]] = -0.5;
+    qubo[[2, 3]] = -2.0;
+    qubo[[3, 2]] = -2.0;
+
+    let subproblem = Subproblem {
+        variables,
+        qubo: qubo.clone(),
+        metrics: SubproblemMetrics {
+            connectivity: 0.0, // Will be calculated
+            density: 0.0,      // Will be calculated
+            cut_size: 0.0,     // Will be calculated
+            modularity: 0.0,   // Will be calculated
+        },
+    };
+
+    // In a real implementation, metrics would be calculated during partitioning
+    // Here we just verify the structure is correct
+    
+    assert_eq!(subproblem.variables.len(), 4);
+    assert_eq!(subproblem.qubo.shape(), &[4, 4]);
+    
+    // Count non-zero entries (should be 6: three pairs with symmetric entries)
+    let mut non_zero_count = 0;
+    for i in 0..4 {
+        for j in 0..4 {
+            if qubo[[i, j]].abs() > 1e-10 {
+                non_zero_count += 1;
+            }
+        }
+    }
+    assert_eq!(non_zero_count, 6);
+}

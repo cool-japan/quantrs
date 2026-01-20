@@ -1,0 +1,733 @@
+//! QUBO problem formulation for quantum annealing
+//!
+//! This module provides utilities for formulating optimization problems as
+//! Quadratic Unconstrained Binary Optimization (QUBO) problems.
+
+use std::collections::HashMap;
+use thiserror::Error;
+
+use crate::ising::{IsingError, QuboModel};
+
+/// Errors that can occur when formulating QUBO problems
+#[derive(Error, Debug)]
+pub enum QuboError {
+    /// Error in the underlying Ising model
+    #[error("Ising error: {0}")]
+    IsingError(#[from] IsingError),
+
+    /// Error when formulating a constraint
+    #[error("Constraint error: {0}")]
+    ConstraintError(String),
+
+    /// Error when a variable is already defined
+    #[error("Variable {0} is already defined")]
+    DuplicateVariable(String),
+
+    /// Error when a variable is not found
+    #[error("Variable {0} not found")]
+    VariableNotFound(String),
+}
+
+/// Result type for QUBO problem operations
+pub type QuboResult<T> = Result<T, QuboError>;
+
+/// A variable in a QUBO problem formulation
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Variable {
+    /// Name of the variable
+    pub name: String,
+    /// Index of the variable in the QUBO model
+    pub index: usize,
+}
+
+impl Variable {
+    /// Create a new variable with the given name and index
+    pub fn new(name: impl Into<String>, index: usize) -> Self {
+        Self {
+            name: name.into(),
+            index,
+        }
+    }
+}
+
+/// A builder for creating QUBO problems
+///
+/// This provides a more convenient interface for formulating optimization problems
+/// than directly working with the `QuboModel`.
+#[derive(Debug, Clone)]
+pub struct QuboBuilder {
+    /// Current number of variables
+    num_vars: usize,
+
+    /// Mapping from variable names to indices
+    var_map: HashMap<String, usize>,
+
+    /// The underlying QUBO model
+    model: QuboModel,
+
+    /// Penalty weight for constraint violations
+    constraint_weight: f64,
+}
+
+impl QuboBuilder {
+    /// Create a new empty QUBO builder
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            num_vars: 0,
+            var_map: HashMap::new(),
+            model: QuboModel::new(0),
+            constraint_weight: 10.0,
+        }
+    }
+
+    /// Set the penalty weight for constraint violations
+    pub fn set_constraint_weight(&mut self, weight: f64) -> QuboResult<()> {
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(QuboError::ConstraintError(format!(
+                "Constraint weight must be positive and finite, got {weight}"
+            )));
+        }
+
+        self.constraint_weight = weight;
+        Ok(())
+    }
+
+    /// Add a new binary variable to the problem
+    pub fn add_variable(&mut self, name: impl Into<String>) -> QuboResult<Variable> {
+        let name = name.into();
+
+        // Check if the variable already exists
+        if self.var_map.contains_key(&name) {
+            return Err(QuboError::DuplicateVariable(name));
+        }
+
+        // Add the variable
+        let index = self.num_vars;
+        self.var_map.insert(name.clone(), index);
+        self.num_vars += 1;
+
+        // Update the QUBO model
+        self.model = QuboModel::new(self.num_vars);
+
+        Ok(Variable::new(name, index))
+    }
+
+    /// Add multiple binary variables to the problem
+    pub fn add_variables(
+        &mut self,
+        names: impl IntoIterator<Item = impl Into<String>>,
+    ) -> QuboResult<Vec<Variable>> {
+        let mut variables = Vec::new();
+        for name in names {
+            variables.push(self.add_variable(name)?);
+        }
+        Ok(variables)
+    }
+
+    /// Get a variable by name
+    pub fn get_variable(&self, name: &str) -> QuboResult<Variable> {
+        match self.var_map.get(name) {
+            Some(&index) => Ok(Variable::new(name, index)),
+            None => Err(QuboError::VariableNotFound(name.to_string())),
+        }
+    }
+
+    /// Set the linear coefficient for a variable
+    pub fn set_linear_term(&mut self, var: &Variable, value: f64) -> QuboResult<()> {
+        // Ensure the variable exists in the model
+        if var.index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(var.name.clone()));
+        }
+
+        Ok(self.model.set_linear(var.index, value)?)
+    }
+
+    /// Set the quadratic coefficient for a pair of variables
+    pub fn set_quadratic_term(
+        &mut self,
+        var1: &Variable,
+        var2: &Variable,
+        value: f64,
+    ) -> QuboResult<()> {
+        // Ensure the variables exist in the model
+        if var1.index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(var1.name.clone()));
+        }
+        if var2.index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(var2.name.clone()));
+        }
+
+        // Check if the variables are the same
+        if var1.index == var2.index {
+            return Err(QuboError::ConstraintError(format!(
+                "Cannot set quadratic term for the same variable: {}",
+                var1.name
+            )));
+        }
+
+        Ok(self.model.set_quadratic(var1.index, var2.index, value)?)
+    }
+
+    /// Set the offset term in the QUBO model
+    pub fn set_offset(&mut self, offset: f64) -> QuboResult<()> {
+        if !offset.is_finite() {
+            return Err(QuboError::ConstraintError(format!(
+                "Offset must be finite, got {offset}"
+            )));
+        }
+
+        self.model.offset = offset;
+        Ok(())
+    }
+
+    /// Add a bias term to a variable (linear coefficient)
+    pub fn add_bias(&mut self, var_index: usize, bias: f64) -> QuboResult<()> {
+        if var_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {var_index}"
+            )));
+        }
+        let current = self.model.get_linear(var_index)?;
+        self.model.set_linear(var_index, current + bias)?;
+        Ok(())
+    }
+
+    /// Add a coupling term between two variables (quadratic coefficient)
+    pub fn add_coupling(
+        &mut self,
+        var1_index: usize,
+        var2_index: usize,
+        coupling: f64,
+    ) -> QuboResult<()> {
+        if var1_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {var1_index}"
+            )));
+        }
+        if var2_index >= self.num_vars {
+            return Err(QuboError::VariableNotFound(format!(
+                "Variable index {var2_index}"
+            )));
+        }
+        let current = self.model.get_quadratic(var1_index, var2_index)?;
+        self.model
+            .set_quadratic(var1_index, var2_index, current + coupling)?;
+        Ok(())
+    }
+
+    /// Add a linear objective term to minimize
+    pub fn minimize_linear(&mut self, var: &Variable, coeff: f64) -> QuboResult<()> {
+        self.set_linear_term(var, self.model.get_linear(var.index)? + coeff)
+    }
+
+    /// Add a quadratic objective term to minimize
+    pub fn minimize_quadratic(
+        &mut self,
+        var1: &Variable,
+        var2: &Variable,
+        coeff: f64,
+    ) -> QuboResult<()> {
+        let current = self.model.get_quadratic(var1.index, var2.index)?;
+        self.set_quadratic_term(var1, var2, current + coeff)
+    }
+
+    /// Add a constraint that two variables must be equal
+    ///
+    /// This adds a penalty term: weight * (x1 - x2)^2
+    pub fn constrain_equal(&mut self, var1: &Variable, var2: &Variable) -> QuboResult<()> {
+        // Penalty term: weight * (x1 - x2)^2 = weight * (x1 + x2 - 2*x1*x2)
+        let weight = self.constraint_weight;
+
+        // Add weight to var1's linear term
+        self.set_linear_term(var1, self.model.get_linear(var1.index)? + weight)?;
+
+        // Add weight to var2's linear term
+        self.set_linear_term(var2, self.model.get_linear(var2.index)? + weight)?;
+
+        // Add -2*weight to the quadratic term
+        let current = self.model.get_quadratic(var1.index, var2.index)?;
+        self.set_quadratic_term(var1, var2, 2.0f64.mul_add(-weight, current))
+    }
+
+    /// Add a constraint that two variables must be different
+    ///
+    /// This adds a penalty term: weight * (1 - (x1 - x2)^2)
+    pub fn constrain_different(&mut self, var1: &Variable, var2: &Variable) -> QuboResult<()> {
+        // Penalty term: weight * (1 - (x1 - x2)^2) = weight * (1 - x1 - x2 + 2*x1*x2)
+        let weight = self.constraint_weight;
+
+        // Add -weight to var1's linear term
+        self.set_linear_term(var1, self.model.get_linear(var1.index)? - weight)?;
+
+        // Add -weight to var2's linear term
+        self.set_linear_term(var2, self.model.get_linear(var2.index)? - weight)?;
+
+        // Add 2*weight to the quadratic term
+        let current = self.model.get_quadratic(var1.index, var2.index)?;
+        self.set_quadratic_term(var1, var2, 2.0f64.mul_add(weight, current))?;
+
+        // Add weight to the offset
+        self.model.offset += weight;
+
+        Ok(())
+    }
+
+    /// Add a constraint that exactly one of the variables must be 1
+    ///
+    /// This adds a penalty term: weight * (`sum(x_i)` - 1)^2
+    pub fn constrain_one_hot(&mut self, vars: &[Variable]) -> QuboResult<()> {
+        if vars.is_empty() {
+            return Err(QuboError::ConstraintError(
+                "Empty one-hot constraint".to_string(),
+            ));
+        }
+
+        // Penalty term: weight * (sum(x_i) - 1)^2
+        // = weight * (sum(x_i)^2 - 2*sum(x_i) + 1)
+        // = weight * (sum(x_i) + sum(x_i*x_j for i!=j) - 2*sum(x_i) + 1)
+        // = weight * (sum(x_i*x_j for i!=j) - sum(x_i) + 1)
+        let weight = self.constraint_weight;
+
+        // Add -weight to each variable's linear term
+        for var in vars {
+            self.set_linear_term(var, self.model.get_linear(var.index)? - weight)?;
+        }
+
+        // Add weight to each pair of variables' quadratic term
+        for i in 0..vars.len() {
+            for j in (i + 1)..vars.len() {
+                let current = self.model.get_quadratic(vars[i].index, vars[j].index)?;
+                self.set_quadratic_term(&vars[i], &vars[j], 2.0f64.mul_add(weight, current))?;
+            }
+        }
+
+        // Add weight to the offset
+        self.model.offset += weight;
+
+        Ok(())
+    }
+
+    /// Add a constraint that at most one of the variables can be 1
+    ///
+    /// This adds a penalty term: weight * max(0, `sum(x_i)` - 1)^2
+    pub fn constrain_at_most_one(&mut self, vars: &[Variable]) -> QuboResult<()> {
+        if vars.is_empty() {
+            return Err(QuboError::ConstraintError(
+                "Empty at-most-one constraint".to_string(),
+            ));
+        }
+
+        // Penalty term: weight * max(0, sum(x_i) - 1)^2
+        // For binary variables, this simplifies to:
+        // weight * sum(x_i*x_j for i!=j)
+        let weight = self.constraint_weight;
+
+        // Add weight to each pair of variables' quadratic term
+        for i in 0..vars.len() {
+            for j in (i + 1)..vars.len() {
+                let current = self.model.get_quadratic(vars[i].index, vars[j].index)?;
+                self.set_quadratic_term(&vars[i], &vars[j], 2.0f64.mul_add(weight, current))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Add a constraint that at least one of the variables must be 1
+    ///
+    /// This adds a penalty term: weight * (1 - `sum(x_i))^2`
+    pub fn constrain_at_least_one(&mut self, vars: &[Variable]) -> QuboResult<()> {
+        if vars.is_empty() {
+            return Err(QuboError::ConstraintError(
+                "Empty at-least-one constraint".to_string(),
+            ));
+        }
+
+        // Penalty term: weight * (1 - sum(x_i))^2
+        // = weight * (1 - 2*sum(x_i) + sum(x_i)^2)
+        // = weight * (1 - 2*sum(x_i) + sum(x_i) + sum(x_i*x_j for i!=j))
+        // = weight * (1 - sum(x_i) + sum(x_i*x_j for i!=j))
+        let weight = self.constraint_weight;
+
+        // Add -weight to each variable's linear term
+        for var in vars {
+            self.set_linear_term(
+                var,
+                2.0f64.mul_add(-weight, self.model.get_linear(var.index)?),
+            )?;
+        }
+
+        // Add weight to each pair of variables' quadratic term
+        for i in 0..vars.len() {
+            for j in (i + 1)..vars.len() {
+                let current = self.model.get_quadratic(vars[i].index, vars[j].index)?;
+                self.set_quadratic_term(&vars[i], &vars[j], 2.0f64.mul_add(weight, current))?;
+            }
+        }
+
+        // Add weight to the offset
+        self.model.offset += weight;
+
+        Ok(())
+    }
+
+    /// Add a constraint that the sum of variables equals a target value
+    ///
+    /// This adds a penalty term: weight * (`sum(x_i)` - target)^2
+    pub fn constrain_sum_equal(&mut self, vars: &[Variable], target: f64) -> QuboResult<()> {
+        if vars.is_empty() {
+            return Err(QuboError::ConstraintError(
+                "Empty sum constraint".to_string(),
+            ));
+        }
+
+        // Penalty term: weight * (sum(x_i) - target)^2
+        let weight = self.constraint_weight;
+
+        // Add linear terms: weight * (2*target - 2*sum(x_i))
+        for var in vars {
+            let current = self.model.get_linear(var.index)?;
+            self.set_linear_term(var, weight.mul_add(2.0f64.mul_add(-target, 1.0), current))?;
+        }
+
+        // Add quadratic terms between all pairs: weight * 2*x_i*x_j
+        for i in 0..vars.len() {
+            for j in (i + 1)..vars.len() {
+                let current = self.model.get_quadratic(vars[i].index, vars[j].index)?;
+                self.set_quadratic_term(&vars[i], &vars[j], 2.0f64.mul_add(weight, current))?;
+            }
+        }
+
+        // Add offset: weight * target^2
+        self.model.offset += weight * target * target;
+
+        Ok(())
+    }
+
+    /// Build the final QUBO model
+    #[must_use]
+    pub fn build(&self) -> QuboModel {
+        self.model.clone()
+    }
+
+    /// Get a map of variable names to indices
+    #[must_use]
+    pub fn variable_map(&self) -> HashMap<String, usize> {
+        self.var_map.clone()
+    }
+
+    /// Get the total number of variables
+    #[must_use]
+    pub const fn num_variables(&self) -> usize {
+        self.num_vars
+    }
+
+    /// Get a list of all variables
+    #[must_use]
+    pub fn variables(&self) -> Vec<Variable> {
+        self.var_map
+            .iter()
+            .map(|(name, &index)| Variable::new(name, index))
+            .collect()
+    }
+}
+
+/// Default implementation for `QuboBuilder`
+impl Default for QuboBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Trait for problems that can be formulated as QUBO
+pub trait QuboFormulation {
+    /// Formulate the problem as a QUBO
+    fn to_qubo(&self) -> QuboResult<(QuboModel, HashMap<String, usize>)>;
+
+    /// Interpret the solution to the QUBO in the context of the original problem
+    fn interpret_solution(&self, binary_vars: &[bool]) -> QuboResult<Vec<(String, bool)>>;
+}
+
+/// Implementation of `QuboFormulation` for `QuboModel`
+impl QuboFormulation for QuboModel {
+    fn to_qubo(&self) -> QuboResult<(QuboModel, HashMap<String, usize>)> {
+        // QuboModel is already a QUBO, so we just return a clone
+        let mut var_map = HashMap::new();
+        for i in 0..self.num_variables {
+            var_map.insert(format!("x_{i}"), i);
+        }
+        Ok((self.clone(), var_map))
+    }
+
+    fn interpret_solution(&self, binary_vars: &[bool]) -> QuboResult<Vec<(String, bool)>> {
+        if binary_vars.len() != self.num_variables {
+            return Err(QuboError::ConstraintError(format!(
+                "Solution length {} does not match number of variables {}",
+                binary_vars.len(),
+                self.num_variables
+            )));
+        }
+
+        let mut result = Vec::new();
+        for (i, &value) in binary_vars.iter().enumerate() {
+            result.push((format!("x_{i}"), value));
+        }
+        Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_qubo_builder_basic() {
+        let mut builder = QuboBuilder::new();
+
+        // Add variables
+        let x1 = builder
+            .add_variable("x1")
+            .expect("failed to add variable x1");
+        let x2 = builder
+            .add_variable("x2")
+            .expect("failed to add variable x2");
+        let x3 = builder
+            .add_variable("x3")
+            .expect("failed to add variable x3");
+
+        // Set coefficients
+        builder
+            .set_linear_term(&x1, 2.0)
+            .expect("failed to set linear term for x1");
+        builder
+            .set_linear_term(&x2, -1.0)
+            .expect("failed to set linear term for x2");
+        builder
+            .set_quadratic_term(&x1, &x2, -4.0)
+            .expect("failed to set quadratic term for x1-x2");
+        builder
+            .set_quadratic_term(&x2, &x3, 2.0)
+            .expect("failed to set quadratic term for x2-x3");
+        builder.set_offset(1.5).expect("failed to set offset");
+
+        // Build the QUBO model
+        let model = builder.build();
+
+        // Check linear terms
+        assert_eq!(
+            model.get_linear(0).expect("failed to get linear term 0"),
+            2.0
+        );
+        assert_eq!(
+            model.get_linear(1).expect("failed to get linear term 1"),
+            -1.0
+        );
+        assert_eq!(
+            model.get_linear(2).expect("failed to get linear term 2"),
+            0.0
+        );
+
+        // Check quadratic terms
+        assert_eq!(
+            model
+                .get_quadratic(0, 1)
+                .expect("failed to get quadratic term 0-1"),
+            -4.0
+        );
+        assert_eq!(
+            model
+                .get_quadratic(1, 2)
+                .expect("failed to get quadratic term 1-2"),
+            2.0
+        );
+
+        // Check offset
+        assert_eq!(model.offset, 1.5);
+    }
+
+    #[test]
+    fn test_qubo_builder_objective() {
+        let mut builder = QuboBuilder::new();
+
+        // Add variables
+        let x1 = builder
+            .add_variable("x1")
+            .expect("failed to add variable x1");
+        let x2 = builder
+            .add_variable("x2")
+            .expect("failed to add variable x2");
+
+        // Add objective terms
+        builder
+            .minimize_linear(&x1, 2.0)
+            .expect("failed to minimize linear x1");
+        builder
+            .minimize_linear(&x2, -1.0)
+            .expect("failed to minimize linear x2");
+        builder
+            .minimize_quadratic(&x1, &x2, -4.0)
+            .expect("failed to minimize quadratic x1-x2");
+
+        // Build the QUBO model
+        let model = builder.build();
+
+        // Check linear terms
+        assert_eq!(
+            model.get_linear(0).expect("failed to get linear term 0"),
+            2.0
+        );
+        assert_eq!(
+            model.get_linear(1).expect("failed to get linear term 1"),
+            -1.0
+        );
+
+        // Check quadratic terms
+        assert_eq!(
+            model
+                .get_quadratic(0, 1)
+                .expect("failed to get quadratic term 0-1"),
+            -4.0
+        );
+    }
+
+    #[test]
+    fn test_qubo_builder_constraints() {
+        let mut builder = QuboBuilder::new();
+
+        // Add variables
+        let x1 = builder
+            .add_variable("x1")
+            .expect("failed to add variable x1");
+        let x2 = builder
+            .add_variable("x2")
+            .expect("failed to add variable x2");
+        let x3 = builder
+            .add_variable("x3")
+            .expect("failed to add variable x3");
+
+        // Set constraint weight
+        builder
+            .set_constraint_weight(5.0)
+            .expect("failed to set constraint weight");
+
+        // Add equality constraint
+        builder
+            .constrain_equal(&x1, &x2)
+            .expect("failed to add equality constraint");
+
+        // Add inequality constraint
+        builder
+            .constrain_different(&x2, &x3)
+            .expect("failed to add inequality constraint");
+
+        // Build the QUBO model
+        let model = builder.build();
+
+        // Check the model
+        // x1 = x2 constraint adds: 5 * (x1 - x2)^2 = 5 * (x1 + x2 - 2*x1*x2)
+        // x2 != x3 constraint adds: 5 * (1 - (x2 - x3)^2) = 5 * (1 - x2 - x3 + 2*x2*x3)
+
+        // Check linear terms
+        assert_eq!(
+            model.get_linear(0).expect("failed to get linear term 0"),
+            5.0
+        ); // x1: +5 from equality
+        assert_eq!(
+            model.get_linear(1).expect("failed to get linear term 1"),
+            5.0 - 5.0
+        ); // x2: +5 from equality, -5 from inequality
+        assert_eq!(
+            model.get_linear(2).expect("failed to get linear term 2"),
+            -5.0
+        ); // x3: -5 from inequality
+
+        // Check quadratic terms
+        assert_eq!(
+            model
+                .get_quadratic(0, 1)
+                .expect("failed to get quadratic term 0-1"),
+            -10.0
+        ); // x1*x2: -2*5 from equality
+        assert_eq!(
+            model
+                .get_quadratic(1, 2)
+                .expect("failed to get quadratic term 1-2"),
+            10.0
+        ); // x2*x3: +2*5 from inequality
+
+        // Check offset
+        assert_eq!(model.offset, 5.0); // +5 from inequality
+    }
+
+    #[test]
+    fn test_qubo_builder_one_hot() {
+        let mut builder = QuboBuilder::new();
+
+        // Add variables
+        let x1 = builder
+            .add_variable("x1")
+            .expect("failed to add variable x1");
+        let x2 = builder
+            .add_variable("x2")
+            .expect("failed to add variable x2");
+        let x3 = builder
+            .add_variable("x3")
+            .expect("failed to add variable x3");
+
+        // Set constraint weight
+        builder
+            .set_constraint_weight(5.0)
+            .expect("failed to set constraint weight");
+
+        // Add one-hot constraint
+        builder
+            .constrain_one_hot(&[x1.clone(), x2.clone(), x3.clone()])
+            .expect("failed to add one-hot constraint");
+
+        // Build the QUBO model
+        let model = builder.build();
+
+        // Check the model
+        // One-hot constraint adds: 5 * (x1 + x2 + x3 - 1)^2
+        // = 5 * (x1 + x2 + x3 + x1*x2 + x1*x3 + x2*x3 - 2*(x1 + x2 + x3) + 1)
+        // = 5 * (x1*x2 + x1*x3 + x2*x3 - x1 - x2 - x3 + 1)
+
+        // Check linear terms
+        assert_eq!(
+            model.get_linear(0).expect("failed to get linear term 0"),
+            -5.0
+        ); // x1: -5 from one-hot
+        assert_eq!(
+            model.get_linear(1).expect("failed to get linear term 1"),
+            -5.0
+        ); // x2: -5 from one-hot
+        assert_eq!(
+            model.get_linear(2).expect("failed to get linear term 2"),
+            -5.0
+        ); // x3: -5 from one-hot
+
+        // Check quadratic terms
+        assert_eq!(
+            model
+                .get_quadratic(0, 1)
+                .expect("failed to get quadratic term 0-1"),
+            10.0
+        ); // x1*x2: +2*5 from one-hot
+        assert_eq!(
+            model
+                .get_quadratic(0, 2)
+                .expect("failed to get quadratic term 0-2"),
+            10.0
+        ); // x1*x3: +2*5 from one-hot
+        assert_eq!(
+            model
+                .get_quadratic(1, 2)
+                .expect("failed to get quadratic term 1-2"),
+            10.0
+        ); // x2*x3: +2*5 from one-hot
+
+        // Check offset
+        assert_eq!(model.offset, 5.0); // +5 from one-hot
+    }
+}

@@ -1,0 +1,318 @@
+[package]
+name = "quantrs2-examples"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["quantum", "computing", "examples", "tutorial", "demo"]
+categories = ["science", "examples"]
+description = "Examples for the QuantRS2 quantum computing framework"
+publish = false
+
+[dependencies]
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+quantrs2-anneal.workspace = true
+quantrs2-ml = { workspace = true, optional = true }
+quantrs2-device.workspace = true
+# Tytan dependency
+quantrs2-tytan = { workspace = true, optional = true }
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+fastrand.workspace = true
+petgraph.workspace = true
+thiserror.workspace = true
+
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2-core.workspace = true
+scirs2-autograd.workspace = true
+
+# Feature for simulation examples which require quantrs2-sim
+#
+# Examples are divided into categories:
+# 1. Quantum annealing examples (max_cut, graph_coloring, traveling_salesman)
+#    - These don't require any special features
+#    - Run with: cargo run --bin max_cut
+#
+# 2. Quantum simulation examples (bell_state, optimized_sim_small)
+#    - These require the "simulation" feature which enables quantrs2-sim dependency
+#    - Run with: cargo run --features simulation --bin bell_state
+#
+# 3. GPU-accelerated simulation examples
+#    - These require both the "simulation" and "gpu" features
+#    - Run with: cargo run --features "simulation,gpu" --bin gpu_simulation
+#
+[features]
+simulation = ["quantrs2-sim"]
+gpu = ["quantrs2-sim/gpu"]
+advanced_math = ["quantrs2-sim/advanced_math"]
+ml = ["quantrs2-ml"]
+# Tytan feature enables tytan dependency with dwave support
+tytan = ["quantrs2-tytan", "quantrs2-tytan/dwave"]
+ibm = ["quantrs2-device/ibm", "tokio"]
+aws = ["quantrs2-device/aws", "tokio"]
+default = []
+
+# Optional dependencies with features
+[dependencies.quantrs2-sim]
+workspace = true
+optional = true
+
+[dependencies.tokio]
+workspace = true
+optional = true
+
+# Quantum annealing examples
+[[bin]]
+name = "max_cut"
+path = "src/bin/max_cut.rs"
+required-features = []
+
+[[bin]]
+name = "graph_coloring"
+path = "src/bin/graph_coloring.rs"
+required-features = []
+
+[[bin]]
+name = "traveling_salesman"
+path = "src/bin/traveling_salesman.rs"
+required-features = []
+
+# Tytan examples
+[[bin]]
+name = "tytan_3rooks"
+path = "src/bin/tytan_3rooks.rs"
+required-features = ["tytan"]
+
+[[bin]]
+name = "tytan_maxcut_scirs"
+path = "src/bin/tytan_maxcut_scirs.rs"
+required-features = ["tytan"]
+
+# Simulation examples
+[[bin]]
+name = "bell_state"
+path = "src/bin/bell_state.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_small"
+path = "src/bin/optimized_sim_small.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "optimized_sim_demo"
+path = "src/bin/optimized_sim_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_teleportation"
+path = "src/bin/quantum_teleportation.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "extended_gates"
+path = "src/bin/extended_gates.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "noisy_simulator"
+path = "src/bin/noisy_simulator.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "extended_gates_with_noise"
+path = "src/bin/extended_gates_with_noise.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "error_correction"
+path = "src/bin/error_correction.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "phase_error_correction"
+path = "src/bin/phase_error_correction.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "five_qubit_code"
+path = "src/bin/five_qubit_code.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "error_correction_comparison"
+path = "src/bin/error_correction_comparison.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "tensor_network_sim"
+path = "src/bin/tensor_network_sim.rs"
+required-features = ["simulation", "advanced_math"]
+
+[[bin]]
+name = "tensor_network_optimization"
+path = "src/bin/tensor_network_optimization.rs"
+required-features = ["simulation", "advanced_math"]
+
+[[bin]]
+name = "grovers_algorithm"
+path = "src/bin/grovers_algorithm.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_fourier_transform"
+path = "src/bin/quantum_fourier_transform.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "quantum_phase_estimation"
+path = "src/bin/quantum_phase_estimation.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "shors_algorithm_simplified"
+path = "src/bin/shors_algorithm_simplified.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "ibm_quantum_example"
+path = "src/bin/ibm_quantum_example.rs"
+required-features = ["ibm"]
+
+[[bin]]
+name = "aws_example"
+path = "src/bin/aws_example.rs"
+required-features = ["aws"]
+
+
+[[bin]]
+name = "realistic_noise"
+path = "src/bin/realistic_noise.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "parametric_gates_demo"
+path = "src/bin/parametric_gates_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "grovers_algorithm_noisy"
+path = "src/bin/grovers_algorithm_noisy.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "gate_decomposition"
+path = "src/bin/gate_decomposition.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "scirs2_integration_demo"
+path = "src/bin/scirs2_integration_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "qaoa_demo"
+path = "src/bin/qaoa_demo.rs"
+required-features = []
+
+[[bin]]
+name = "circuit_optimizer_demo"
+path = "src/bin/circuit_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "stabilizer_demo"
+path = "src/bin/stabilizer_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "gpu_linalg_demo"
+path = "src/bin/gpu_linalg_demo.rs"
+required-features = ["simulation", "gpu"]
+
+[[bin]]
+name = "hhl_demo"
+path = "src/bin/hhl_demo.rs"
+required-features = []
+
+[[bin]]
+name = "quantum_pca_demo"
+path = "src/bin/quantum_pca_demo.rs"
+required-features = []
+
+[[bin]]
+name = "graph_optimizer_demo"
+path = "src/bin/graph_optimizer_demo.rs"
+required-features = []
+
+[[bin]]
+name = "qsvm_demo"
+path = "src/bin/qsvm_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "quantum_testing_demo"
+path = "src/bin/quantum_testing_demo.rs"
+required-features = []
+
+[[bin]]
+name = "sparse_clifford_demo"
+path = "src/bin/sparse_clifford_demo.rs"
+required-features = ["simulation"]
+
+[[bin]]
+name = "hardware_topology_demo"
+path = "src/bin/hardware_topology_demo.rs"
+required-features = []
+
+[[bin]]
+name = "qcnn_demo"
+path = "src/bin/qcnn_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "barren_plateau_demo"
+path = "src/bin/barren_plateau_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "qvae_demo"
+path = "src/bin/qvae_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "enhanced_qgan_demo"
+path = "src/bin/enhanced_qgan_demo.rs"
+required-features = ["ml"]
+
+[[bin]]
+name = "qubit_routing_demo"
+path = "src/bin/qubit_routing_demo.rs"
+required-features = []
+
+# UltraThink demonstrations
+[[bin]]
+name = "ultrathink_simple_demo"
+path = "src/bin/ultrathink_simple_demo.rs"
+required-features = []
+
+[lints.rust]
+# Examples are for demonstration - allow unused code patterns
+unused_must_use = "allow"
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+dead_code = "allow"
+deprecated = "allow"  # Allow deprecated methods from dependencies
+
+[lints.clippy]
+# Suppress clippy lints for examples (demo code, not production)
+enum_glob_use = "allow"
+pedantic = { level = "allow", priority = -1 }
+nursery = { level = "allow", priority = -1 }
+unwrap_used = "allow"
+all = { level = "allow", priority = -1 }

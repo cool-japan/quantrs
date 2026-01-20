@@ -1,0 +1,119 @@
+name: quantrs2
+base: core22
+version: '0.1.0-beta.3'
+summary: High-performance quantum computing framework with Python bindings
+description: |
+  QuantRS2-Py provides Python bindings for the QuantRS2 quantum computing framework,
+  allowing Python users to access the high-performance Rust implementation with a
+  user-friendly Python API.
+
+  Features:
+  - Complete quantum gate set with state vector simulation
+  - GPU acceleration support (CUDA)
+  - Quantum machine learning algorithms (QNN, VQE, QAOA)
+  - Error mitigation techniques
+  - Hardware backend integration (IBM, Google, AWS)
+  - Advanced visualization and debugging tools
+  - Cross-platform support (Linux, macOS, Windows)
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+apps:
+  quantrs2:
+    command: bin/python3 -m quantrs2
+    plugs:
+      - network
+      - home
+      - removable-media
+
+  python:
+    command: bin/python3
+    plugs:
+      - network
+      - home
+      - removable-media
+
+parts:
+  rust:
+    plugin: nil
+    build-packages:
+      - curl
+      - gcc
+      - g++
+      - make
+    override-build: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      export PATH="$HOME/.cargo/bin:$PATH"
+      rustup default stable
+
+  quantrs2:
+    after: [rust]
+    plugin: python
+    source: .
+    source-type: local
+    python-packages:
+      - maturin
+      - numpy
+      - scipy
+      - matplotlib
+    build-packages:
+      - cargo
+      - rustc
+      - pkg-config
+      - libssl-dev
+      - cmake
+      - build-essential
+    stage-packages:
+      - python3-numpy
+      - python3-scipy
+      - python3-matplotlib
+      - libopenblas0
+    override-build: |
+      export PATH="$HOME/.cargo/bin:$PATH"
+
+      # Install maturin
+      pip install maturin
+
+      # Build the Rust extension
+      cd $SNAPCRAFT_PART_SRC
+      maturin build --release --strip
+
+      # Install the wheel
+      pip install target/wheels/*.whl
+
+      # Copy everything to the install directory
+      snapcraftctl build
+
+  cuda-support:
+    plugin: nil
+    stage-packages:
+      - cuda-toolkit-11-8
+    build-packages:
+      - cuda-toolkit-11-8
+    override-build: |
+      # CUDA support is optional
+      # Install CUDA libraries for GPU acceleration
+      snapcraftctl build
+
+plugs:
+  network:
+    interface: network
+  home:
+    interface: home
+  removable-media:
+    interface: removable-media
+  opengl:
+    interface: opengl
+  x11:
+    interface: x11
+
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/blas:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/blas
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/lapack:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/lapack

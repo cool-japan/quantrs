@@ -1,0 +1,50 @@
+[package]
+name = "quantrs2-ml"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["quantum", "computing", "machine-learning", "ai", "data-science"]
+categories = ["science", "algorithms"]
+description = "Quantum Machine Learning module for QuantRS2"
+readme = "README.md"
+
+[dependencies]
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+quantrs2-sim.workspace = true
+quantrs2-anneal.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2-core.workspace = true
+scirs2-autograd.workspace = true
+scirs2-neural.workspace = true
+scirs2-optimize.workspace = true
+scirs2-stats.workspace = true
+optirs-core.workspace = true  # Re-enabled for v0.1.0 - using optirs-core
+# ndarray.workspace = true  # REMOVED: Use scirs2_autograd::ndarray (SciRS2 POLICY)
+# ndarray-rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# ndarray-stats.workspace = true  # REMOVED: Use scirs2_stats (SciRS2 POLICY)
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+fastrand.workspace = true
+num_cpus.workspace = true
+
+[features]
+default = []
+gpu = ["quantrs2-sim/gpu"]
+
+[package.metadata.docs.rs]
+all-features = false
+features = []
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

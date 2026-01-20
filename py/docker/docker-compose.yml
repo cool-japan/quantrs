@@ -1,0 +1,286 @@
+# QuantRS2 Docker Compose Configuration
+# Orchestrates multiple QuantRS2 services and environments
+
+version: '3.8'
+
+services:
+  # Base QuantRS2 service
+  quantrs2-base:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: quantrs2:latest
+    container_name: quantrs2-base
+    restart: unless-stopped
+    environment:
+      - QUANTRS_LOG_LEVEL=INFO
+    volumes:
+      - quantrs2-data:/app/data
+    networks:
+      - quantrs2-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import quantrs2; print('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Jupyter development environment
+  quantrs2-jupyter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.jupyter
+    image: quantrs2:jupyter
+    container_name: quantrs2-jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - QUANTRS_LOG_LEVEL=INFO
+    volumes:
+      - jupyter-notebooks:/home/quantrs/notebooks
+      - jupyter-data:/home/quantrs/.jupyter
+      - ../examples:/home/quantrs/examples:ro
+    networks:
+      - quantrs2-network
+    depends_on:
+      - quantrs2-base
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jupyter.rule=Host(`jupyter.quantrs2.local`)"
+      - "traefik.http.services.jupyter.loadbalancer.server.port=8888"
+
+  # GPU-enabled service (requires nvidia-docker)
+  quantrs2-gpu:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gpu
+    image: quantrs2:gpu
+    container_name: quantrs2-gpu
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - QUANTRS_GPU_ENABLED=1
+      - QUANTRS_LOG_LEVEL=INFO
+    volumes:
+      - gpu-data:/app/data
+    networks:
+      - quantrs2-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Development environment
+  quantrs2-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: quantrs2:dev
+    container_name: quantrs2-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # Development server
+      - "3000:3000"  # Frontend dev server
+      - "5000:5000"  # API server
+    environment:
+      - QUANTRS_ENV=development
+      - QUANTRS_LOG_LEVEL=DEBUG
+    volumes:
+      - ../:/app
+      - dev-cache:/home/dev/.cache
+      - dev-cargo:/home/dev/.cargo
+    networks:
+      - quantrs2-network
+    working_dir: /app
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+
+  # Performance testing service
+  quantrs2-benchmarks:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: quantrs2:latest
+    container_name: quantrs2-benchmarks
+    restart: "no"
+    environment:
+      - QUANTRS_LOG_LEVEL=INFO
+      - BENCHMARK_MODE=1
+    volumes:
+      - benchmark-results:/app/benchmark_results
+      - ../benchmarks:/app/benchmarks:ro
+    networks:
+      - quantrs2-network
+    command: python -m quantrs2.performance_regression_tests
+    depends_on:
+      - quantrs2-base
+
+  # Documentation server
+  quantrs2-docs:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: quantrs2:dev
+    container_name: quantrs2-docs
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - QUANTRS_LOG_LEVEL=INFO
+    volumes:
+      - ../docs:/app/docs:ro
+      - docs-build:/app/docs/_build
+    networks:
+      - quantrs2-network
+    working_dir: /app/docs
+    command: python -m http.server 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.docs.rule=Host(`docs.quantrs2.local`)"
+      - "traefik.http.services.docs.loadbalancer.server.port=8000"
+
+  # Reverse proxy (Traefik)
+  reverse-proxy:
+    image: traefik:v2.10
+    container_name: quantrs2-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080"  # Traefik dashboard
+    environment:
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_INSECURE=true
+      - TRAEFIK_PROVIDERS_DOCKER=true
+      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
+      - TRAEFIK_ENTRYPOINTS_HTTP_ADDRESS=:80
+      - TRAEFIK_ENTRYPOINTS_HTTPS_ADDRESS=:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/etc/traefik/certs
+    networks:
+      - quantrs2-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.quantrs2.local`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+  # Database for storing quantum experiments
+  quantrs2-db:
+    image: postgres:15-alpine
+    container_name: quantrs2-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=quantrs2
+      - POSTGRES_USER=quantrs2
+      - POSTGRES_PASSWORD=quantrs2_secret
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - quantrs2-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantrs2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and session storage
+  quantrs2-redis:
+    image: redis:7-alpine
+    container_name: quantrs2-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - quantrs2-network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Monitoring with Prometheus
+  quantrs2-prometheus:
+    image: prom/prometheus:latest
+    container_name: quantrs2-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - quantrs2-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  # Grafana for visualization
+  quantrs2-grafana:
+    image: grafana/grafana:latest
+    container_name: quantrs2-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - quantrs2-network
+    depends_on:
+      - quantrs2-prometheus
+
+# Named volumes for data persistence
+volumes:
+  quantrs2-data:
+    driver: local
+  jupyter-notebooks:
+    driver: local
+  jupyter-data:
+    driver: local
+  gpu-data:
+    driver: local
+  dev-cache:
+    driver: local
+  dev-cargo:
+    driver: local
+  benchmark-results:
+    driver: local
+  docs-build:
+    driver: local
+  traefik-certs:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# Networks
+networks:
+  quantrs2-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16

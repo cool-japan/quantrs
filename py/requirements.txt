@@ -1,0 +1,37 @@
+# QuantRS2 Core Requirements
+# Essential dependencies for running QuantRS2
+
+# Core Python scientific computing
+numpy>=1.20.0
+scipy>=1.7.0
+
+# Optional but recommended for full functionality
+matplotlib>=3.5.0
+plotly>=5.0.0
+seaborn>=0.11.0
+
+# Quantum computing libraries (optional)
+# qiskit>=0.39.0
+# cirq>=1.0.0
+# pennylane>=0.28.0
+
+# Data handling
+pandas>=1.3.0
+
+# Performance and profiling
+psutil>=5.8.0
+
+# Networking and web
+requests>=2.25.0
+
+# Development and testing (optional in production)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=22.0.0
+# isort>=5.10.0
+# flake8>=4.0.0
+# mypy>=0.950
+
+# Documentation (optional)
+# sphinx>=4.0.0
+# sphinx-rtd-theme>=1.0.0

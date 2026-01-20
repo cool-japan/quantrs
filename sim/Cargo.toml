@@ -1,0 +1,104 @@
+[package]
+name = "quantrs2-sim"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords = ["quantum", "computing", "simulator", "state-vector", "gates"]
+categories = ["science", "simulation"]
+description = "Quantum circuit simulators for the QuantRS2 framework"
+
+[dependencies]
+quantrs2-core.workspace = true
+quantrs2-circuit.workspace = true
+# num-complex.workspace = true  # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
+# ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
+# rayon.workspace = true  # REMOVED: Use scirs2_core::parallel_ops (SciRS2 POLICY)
+thiserror.workspace = true
+# SciRS2 dependencies (SCIRS2 POLICY)
+scirs2-core = { workspace = true, features = ["simd", "memory_management", "parallel", "linalg"] }
+scirs2-autograd.workspace = true
+scirs2-linalg.workspace = true
+scirs2-sparse.workspace = true
+scirs2-fft.workspace = true
+scirs2-optimize = { workspace = true, default-features = false, optional = true }
+optirs-core = { workspace = true, default-features = false, optional = true }
+pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
+
+# For GPU support (optional)
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, features = ["derive"], optional = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"], optional = true }
+futures = { workspace = true, optional = true }
+# rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_distr.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_chacha.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# rand_xoshiro.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
+# wide.workspace = true  # REMOVED: Unused dependency (SciRS2 POLICY CLEANUP)
+fastrand.workspace = true
+# POLICY EXCEPTION: nalgebra-sparse for integer sparse matrices
+# REASON: scirs2-sparse v0.1.0 requires Float trait; clifford_sparse.rs uses u8
+# MIGRATION: Will migrate when scirs2-sparse adds integer type support
+# See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md
+nalgebra-sparse.workspace = true  # POLICY EXCEPTION (see above)
+# TEMPORARY: nalgebra for scirs2_integration.rs SparseMatrix (VIOLATES SciRS2 POLICY)
+# TODO: Refactor SparseMatrix to use scirs2_linalg (different API)
+nalgebra = { workspace = true, optional = true }  # TEMPORARY - awaiting refactoring
+dashmap.workspace = true
+half.workspace = true
+# ndarray-linalg.workspace = true  # REMOVED: Use scirs2_core (SciRS2 POLICY)
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+num_cpus.workspace = true
+ndrustfft = { workspace = true, optional = true }
+sprs = { workspace = true, optional = true }
+# nalgebra = { workspace = true, optional = true }  # REMOVED: Use scirs2_linalg (SciRS2 POLICY)
+md5.workspace = true
+regex.workspace = true
+tempfile.workspace = true
+flate2.workspace = true
+uuid.workspace = true
+memmap2.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+criterion.workspace = true
+
+[features]
+default = ["optimize"]
+gpu = ["dep:wgpu", "dep:bytemuck", "dep:tokio", "dep:futures"]
+simd = []
+optimize = ["simd", "dep:optirs-core"] # Enable optimized implementations with OptiRS
+memory_efficient = [] # Enable memory-efficient algorithms for large state vectors
+advanced_math = ["dep:scirs2-optimize", "dep:ndrustfft", "dep:sprs", "dep:nalgebra"] # Enable advanced math (TEMPORARY nalgebra for SparseMatrix)
+mps = [] # Enable MPS simulator
+mpi = [] # Enable MPI support for distributed quantum simulation
+python = ["dep:pyo3"]  # Enable Python interop features
+cuquantum = ["gpu"] # Enable NVIDIA cuQuantum SDK (cuStateVec + cuTensorNet)
+
+[[bin]]
+name = "test_stabilizer"
+path = "src/bin/test_stabilizer.rs"
+
+[[bin]]
+name = "debug_holographic_matrix"
+path = "debug_holographic_matrix.rs"
+
+[[bench]]
+name = "qulacs_backend_bench"
+harness = false
+
+[[bench]]
+name = "stabilizer_bench"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = false
+features = ["optimize", "simd", "memory_efficient"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true

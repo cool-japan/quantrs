@@ -1,0 +1,132 @@
+//! Demonstration of optimized quantum circuit simulation with Quantrs (Simplified version)
+//!
+//! This example shows a smaller demo of the optimized simulator implementations.
+
+use quantrs2_circuit::builder::Circuit;
+use quantrs2_circuit::builder::Simulator;
+use quantrs2_core::qubit::QubitId;
+use quantrs2_sim::optimized_simulator::OptimizedSimulator;
+use quantrs2_sim::statevector::StateVectorSimulator;
+use std::time::Instant;
+
+fn main() {
+    println!("Quantrs Optimized Simulator (Small Demo)");
+    println!("=======================================\n");
+
+    // Demonstrate a Bell state with different simulators
+    demo_bell_state();
+
+    // Demonstrate a small circuit with 10 qubits
+    demo_small_circuit();
+}
+
+/// Demonstrate creation and simulation of a Bell state
+fn demo_bell_state() {
+    println!("=== Bell State Demo ===");
+
+    // Create a Bell state circuit
+    let mut circuit = Circuit::<2>::new();
+    circuit
+        .h(QubitId::new(0))
+        .expect("Failed to apply H gate to qubit 0 for Bell state")
+        .cnot(QubitId::new(0), QubitId::new(1))
+        .expect("Failed to apply CNOT from qubit 0 to qubit 1 for Bell state");
+
+    // Run with standard simulator
+    let standard_sim = StateVectorSimulator::new();
+    let start = Instant::now();
+    let result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run Bell state circuit with standard simulator");
+    let duration = start.elapsed();
+
+    println!("Standard simulator: {:.3} seconds", duration.as_secs_f64());
+    println!("State vector: {:?}", result.amplitudes());
+
+    // Run with optimized simulator
+    let optimized_sim = OptimizedSimulator::new();
+    let start = Instant::now();
+    let result = optimized_sim
+        .run(&circuit)
+        .expect("Failed to run Bell state circuit with optimized simulator");
+    let duration = start.elapsed();
+
+    println!("Optimized simulator: {:.3} seconds", duration.as_secs_f64());
+    println!("State vector: {:?}", result.amplitudes());
+
+    println!();
+}
+
+/// Demonstrate a circuit with 10 qubits
+fn demo_small_circuit() {
+    println!("=== 10-Qubit Circuit Demo ===");
+
+    // Create a quantum circuit with 10 qubits
+    let mut circuit = Circuit::<10>::new();
+
+    // Apply Hadamard to first 3 qubits only (to keep the output small)
+    for i in 0..3 {
+        circuit
+            .h(QubitId::new(i as u32))
+            .unwrap_or_else(|_| panic!("Failed to apply H gate to qubit {i}"));
+    }
+
+    // Apply CNOT gates between a few qubits
+    circuit
+        .cnot(QubitId::new(0), QubitId::new(3))
+        .expect("Failed to apply CNOT from qubit 0 to qubit 3");
+    circuit
+        .cnot(QubitId::new(1), QubitId::new(4))
+        .expect("Failed to apply CNOT from qubit 1 to qubit 4");
+    circuit
+        .cnot(QubitId::new(2), QubitId::new(5))
+        .expect("Failed to apply CNOT from qubit 2 to qubit 5");
+
+    // Run with standard simulator
+    let standard_sim = StateVectorSimulator::new();
+    let start = Instant::now();
+    let result = standard_sim
+        .run(&circuit)
+        .expect("Failed to run 10-qubit circuit with standard simulator");
+    let duration = start.elapsed();
+
+    println!("Standard simulator: {:.3} seconds", duration.as_secs_f64());
+    println!("State vector size: {}", result.amplitudes().len());
+
+    // Print a few of the non-zero amplitudes
+    let mut count = 0;
+    println!("Non-zero amplitudes:");
+    for i in 0..result.amplitudes().len() {
+        if result.amplitudes()[i].norm() > 1e-10 {
+            println!("  |{:010b}⟩: {}", i, result.amplitudes()[i]);
+            count += 1;
+            if count >= 8 {
+                break;
+            }
+        }
+    }
+
+    // Run with optimized simulator
+    let optimized_sim = OptimizedSimulator::new();
+    let start = Instant::now();
+    let result = optimized_sim
+        .run(&circuit)
+        .expect("Failed to run 10-qubit circuit with optimized simulator");
+    let duration = start.elapsed();
+
+    println!("Optimized simulator: {:.3} seconds", duration.as_secs_f64());
+    println!("State vector size: {}", result.amplitudes().len());
+
+    // Print a few of the non-zero amplitudes
+    let mut count = 0;
+    println!("Non-zero amplitudes:");
+    for i in 0..result.amplitudes().len() {
+        if result.amplitudes()[i].norm() > 1e-10 {
+            println!("  |{:010b}⟩: {}", i, result.amplitudes()[i]);
+            count += 1;
+            if count >= 8 {
+                break;
+            }
+        }
+    }
+}

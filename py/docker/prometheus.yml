@@ -1,0 +1,75 @@
+# Prometheus configuration for QuantRS2 monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # QuantRS2 base service monitoring
+  - job_name: 'quantrs2-base'
+    static_configs:
+      - targets: ['quantrs2-base:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # QuantRS2 Jupyter service
+  - job_name: 'quantrs2-jupyter'
+    static_configs:
+      - targets: ['quantrs2-jupyter:8888']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # QuantRS2 GPU service
+  - job_name: 'quantrs2-gpu'
+    static_configs:
+      - targets: ['quantrs2-gpu:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # PostgreSQL database monitoring
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['quantrs2-db:5432']
+    scrape_interval: 30s
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['quantrs2-redis:6379']
+    scrape_interval: 30s
+
+  # Docker container monitoring (if available)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['host.docker.internal:9323']
+    scrape_interval: 30s
+
+  # Node exporter for system metrics (if available)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+    scrape_interval: 30s
+
+# Alerting rules can be added here
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Remote write configuration (for external monitoring)
+# remote_write:
+#   - url: "https://your-monitoring-service.com/api/v1/write"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-password"

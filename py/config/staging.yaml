@@ -1,0 +1,73 @@
+# Staging Environment Configuration
+
+environment: staging
+debug: false
+secret_key: null  # Must be set via environment variable
+
+database:
+  host: staging-db.quantrs2.com
+  port: 5432
+  database: quantrs2_staging
+  username: quantrs2_staging
+  max_connections: 15
+  ssl_mode: require
+  connection_timeout: 30
+
+quantum_backends:
+  simulation:
+    provider: simulation
+    max_jobs: 3
+    timeout_seconds: 180
+    retry_attempts: 2
+    enable_caching: true
+  
+  ibm_quantum:
+    provider: ibm_quantum
+    api_token: null  # Set via secrets manager
+    project_id: staging-project
+    region: us-east-1
+    max_jobs: 2
+    timeout_seconds: 300
+
+security:
+  encryption_key: null  # Must be loaded from secrets
+  jwt_secret: null      # Must be loaded from secrets
+  session_timeout: 3600
+  max_login_attempts: 3
+  enable_2fa: true
+  allowed_origins:
+    - staging.quantrs2.com
+    - "*.quantrs2.com"
+  rate_limit_requests: 200
+  rate_limit_window: 60
+
+performance:
+  max_circuit_qubits: 25
+  simulation_memory_limit: 12288
+  max_concurrent_jobs: 6
+  circuit_cache_size: 500
+  result_cache_ttl: 3600
+  enable_gpu: true
+  gpu_memory_fraction: 0.6
+
+logging:
+  level: INFO
+  file_path: /var/log/quantrs2/staging.log
+  max_file_size: 52428800  # 50MB
+  backup_count: 10
+  enable_structured_logging: true
+  log_to_console: false
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  enable_health_checks: true
+  health_check_port: 8080
+  alert_webhook_url: https://hooks.slack.com/staging-alerts
+  enable_tracing: true
+  tracing_endpoint: http://jaeger-staging:14268/api/traces
+
+custom:
+  staging_mode: true
+  data_retention_days: 30
+  enable_analytics: true

@@ -1,0 +1,169 @@
+site_name: QuantRS2 - Quantum Computing Framework
+site_description: A comprehensive Python framework for quantum computing with advanced features for development, testing, and deployment
+site_author: QuantRS2 Team (Team KitaSan)
+site_url: https://github.com/cool-japan/quantrs
+
+repo_name: quantrs/quantrs2
+repo_url: https://github.com/cool-japan/quantrs
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: en
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            merge_init_into_class: true
+            show_signature_annotations: true
+  - awesome-pages
+  - git-revision-date-localized:
+      type: date
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:materialx.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: quantrs
+      repo: quantrs2
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cool-japan/quantrs
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/quantrs2/
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - First Circuit: getting-started/first-circuit.md
+    - Basic Examples: getting-started/basic-examples.md
+  - User Guide:
+    - Core Concepts: user-guide/core-concepts.md
+    - Circuit Construction: user-guide/circuit-construction.md
+    - Gates and Operations: user-guide/gates-operations.md
+    - Quantum Algorithms: user-guide/quantum-algorithms.md
+    - Measurement and Analysis: user-guide/measurement-analysis.md
+    - Visualization: user-guide/visualization.md
+    - Performance Optimization: user-guide/performance.md
+  - Advanced Features:
+    - Machine Learning: advanced/machine-learning.md
+    - Quantum Networking: advanced/quantum-networking.md
+    - Circuit Profiling: advanced/circuit-profiling.md
+    - Error Mitigation: advanced/error-mitigation.md
+    - Pulse Control: advanced/pulse-control.md
+    - Hardware Integration: advanced/hardware-integration.md
+  - Development Tools:
+    - Code Analysis: dev-tools/code-analysis.md
+    - Testing Framework: dev-tools/testing.md
+    - Circuit Builder GUI: dev-tools/circuit-builder.md
+    - IDE Integration: dev-tools/ide-integration.md
+    - Debugging Tools: dev-tools/debugging.md
+    - Algorithm Marketplace: dev-tools/marketplace.md
+  - Deployment:
+    - Cloud Orchestration: deployment/cloud.md
+    - Container Deployment: deployment/containers.md
+    - CI/CD Pipelines: deployment/cicd.md
+    - Package Management: deployment/packages.md
+    - Performance Monitoring: deployment/monitoring.md
+  - Tutorials:
+    - Beginner Tutorials: tutorials/beginner/
+    - Intermediate Tutorials: tutorials/intermediate/
+    - Advanced Tutorials: tutorials/advanced/
+    - Real-World Applications: tutorials/applications/
+  - Examples:
+    - Basic Examples: examples/basic/
+    - Algorithm Implementations: examples/algorithms/
+    - Machine Learning: examples/ml/
+    - Cryptography: examples/crypto/
+    - Finance Applications: examples/finance/
+    - Research Applications: examples/research/
+  - API Reference:
+    - Core Module: api/core.md
+    - Gates: api/gates.md
+    - Algorithms: api/algorithms.md
+    - Machine Learning: api/ml.md
+    - Visualization: api/visualization.md
+    - Testing Tools: api/testing.md
+    - Development Tools: api/dev-tools.md
+  - Community:
+    - Contributing: community/contributing.md
+    - Code of Conduct: community/code-of-conduct.md
+    - Support: community/support.md
+    - Changelog: community/changelog.md
+    - Roadmap: community/roadmap.md

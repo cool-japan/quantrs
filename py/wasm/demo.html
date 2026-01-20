@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantRS2 WebAssembly Demo - Browser-Based Quantum Computing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .code-block {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        #output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #output .success {
+            color: #4ec9b0;
+        }
+
+        #output .error {
+            color: #f48771;
+        }
+
+        #output .info {
+            color: #4fc1ff;
+        }
+
+        #output .warning {
+            color: #dcdcaa;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        #status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        #status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        #status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        #status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .quantum-state {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .state-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .state-label {
+            font-family: 'Courier New', monospace;
+            min-width: 80px;
+        }
+
+        .probability-bar {
+            flex: 1;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .probability-value {
+            min-width: 60px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚛️ QuantRS2 WebAssembly</h1>
+            <div class="subtitle">Browser-Based Quantum Circuit Simulation</div>
+            <div id="status" class="loading">Loading WASM module...</div>
+        </header>
+
+        <div class="content">
+            <div class="section">
+                <h2>Quick Start Examples</h2>
+                <div class="button-group">
+                    <button onclick="runBellState()">🔔 Bell State</button>
+                    <button onclick="runGHZ()">🌀 GHZ State (3 qubits)</button>
+                    <button onclick="runSuperposition()">✨ Superposition</button>
+                    <button onclick="runQFT()">🌊 Quantum Fourier Transform</button>
+                    <button onclick="runRandomCircuit()">🎲 Random Circuit</button>
+                    <button onclick="clearOutput()">🗑️ Clear Output</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Quantum State Visualization</h2>
+                <div id="stateVisualization" class="quantum-state">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Console Output</h2>
+                <div id="output"></div>
+            </div>
+
+            <div class="section">
+                <h2>Features</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h3>🚀 Fast</h3>
+                        <p>Compiled to WebAssembly for near-native performance in the browser</p>
+                    </div>
+                    <div class="card">
+                        <h3>🎓 Educational</h3>
+                        <p>Perfect for learning quantum computing with instant visual feedback</p>
+                    </div>
+                    <div class="card">
+                        <h3>🔧 No Installation</h3>
+                        <p>Runs entirely in your browser - no Python or Rust required</p>
+                    </div>
+                    <div class="card">
+                        <h3>🌐 Accessible</h3>
+                        <p>Works on any device with a modern web browser</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Code Examples</h2>
+                <div class="code-block">
+                    <strong>Create a Bell State:</strong><br>
+                    <pre>const circuit = quantrs2.create_bell_state();
+const result = circuit.run();
+const probs = result.probabilities();</pre>
+                </div>
+
+                <div class="code-block">
+                    <strong>Custom Circuit:</strong><br>
+                    <pre>const circuit = new quantrs2.WasmCircuit(3);
+circuit.h(0);              // Hadamard on qubit 0
+circuit.cnot(0, 1);        // CNOT: control=0, target=1
+circuit.rx(2, Math.PI/4);  // RX rotation on qubit 2
+const result = circuit.run();</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { WasmCircuit, create_bell_state, create_ghz_state, version } from './pkg/quantrs2_wasm.js';
+
+        let quantrs2 = null;
+
+        // Initialize WASM module
+        async function initWasm() {
+            try {
+                await init();
+                quantrs2 = { WasmCircuit, create_bell_state, create_ghz_state, version };
+
+                const statusEl = document.getElementById('status');
+                statusEl.className = 'ready';
+                statusEl.textContent = `✅ Ready (v${version()})`;
+
+                log(`QuantRS2 WASM initialized successfully!`, 'success');
+                log(`Version: ${version()}`, 'info');
+                log('Try the example buttons above to see quantum circuits in action!', 'info');
+
+                // Make available globally for onclick handlers
+                window.quantrs2 = quantrs2;
+                window.log = log;
+                window.visualizeState = visualizeState;
+
+            } catch (error) {
+                const statusEl = document.getElementById('status');
+                statusEl.className = 'error';
+                statusEl.textContent = '❌ Failed to load';
+                log(`Failed to initialize WASM: ${error}`, 'error');
+            }
+        }
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function visualizeState(probabilities, n_qubits) {
+            const container = document.getElementById('stateVisualization');
+            container.innerHTML = '';
+
+            const maxStates = Math.min(8, probabilities.length); // Show top 8 states
+            const sortedIndices = probabilities
+                .map((p, i) => ({ prob: p, index: i }))
+                .sort((a, b) => b.prob - a.prob)
+                .slice(0, maxStates);
+
+            for (const { prob, index } of sortedIndices) {
+                if (prob < 0.001) continue; // Skip very small probabilities
+
+                const stateLabel = index.toString(2).padStart(n_qubits, '0');
+
+                const barDiv = document.createElement('div');
+                barDiv.className = 'state-bar';
+
+                barDiv.innerHTML = `
+                    <div class="state-label">|${stateLabel}⟩</div>
+                    <div class="probability-bar">
+                        <div class="probability-fill" style="width: ${prob * 100}%"></div>
+                    </div>
+                    <div class="probability-value">${(prob * 100).toFixed(2)}%</div>
+                `;
+
+                container.appendChild(barDiv);
+            }
+        }
+
+        // Make functions globally available
+        window.runBellState = function() {
+            if (!quantrs2) return;
+
+            log('Creating Bell state circuit...', 'info');
+            const circuit = quantrs2.create_bell_state();
+            const result = circuit.run();
+            const probs = result.probabilities();
+
+            log('Bell state created successfully!', 'success');
+            log(`Probabilities: ${probs.map(p => p.toFixed(4)).join(', ')}`, 'info');
+            log(`Most probable state: |${result.most_probable_state()}⟩`, 'success');
+
+            visualizeState(probs, 2);
+        };
+
+        window.runGHZ = function() {
+            if (!quantrs2) return;
+
+            const n_qubits = 3;
+            log(`Creating ${n_qubits}-qubit GHZ state...`, 'info');
+
+            const circuit = quantrs2.create_ghz_state(n_qubits);
+            const result = circuit.run();
+            const probs = result.probabilities();
+
+            log('GHZ state created!', 'success');
+            log(`Most probable state: |${result.most_probable_state()}⟩`, 'success');
+
+            visualizeState(probs, n_qubits);
+        };
+
+        window.runSuperposition = function() {
+            if (!quantrs2) return;
+
+            log('Creating uniform superposition...', 'info');
+
+            const circuit = new quantrs2.WasmCircuit(3);
+            circuit.h(0);
+            circuit.h(1);
+            circuit.h(2);
+
+            const result = circuit.run();
+            const probs = result.probabilities();
+
+            log('Superposition created!', 'success');
+            log('All 8 basis states should have equal probability', 'info');
+
+            visualizeState(probs, 3);
+        };
+
+        window.runQFT = function() {
+            if (!quantrs2) return;
+
+            log('Running simplified Quantum Fourier Transform...', 'info');
+
+            const circuit = new quantrs2.WasmCircuit(3);
+
+            // Simplified 3-qubit QFT
+            circuit.h(0);
+            circuit.rz(0, Math.PI/2);
+            circuit.h(1);
+            circuit.rz(1, Math.PI/4);
+            circuit.h(2);
+
+            // SWAP gates
+            circuit.swap(0, 2);
+
+            const result = circuit.run();
+            const probs = result.probabilities();
+
+            log('QFT executed!', 'success');
+
+            visualizeState(probs, 3);
+        };
+
+        window.runRandomCircuit = function() {
+            if (!quantrs2) return;
+
+            const n_qubits = 3;
+            log(`Creating random ${n_qubits}-qubit circuit...`, 'info');
+
+            const circuit = new quantrs2.WasmCircuit(n_qubits);
+
+            // Apply random gates
+            for (let i = 0; i < 10; i++) {
+                const qubit = Math.floor(Math.random() * n_qubits);
+                const gate = Math.floor(Math.random() * 4);
+
+                switch (gate) {
+                    case 0:
+                        circuit.h(qubit);
+                        log(`Applied H to qubit ${qubit}`, 'info');
+                        break;
+                    case 1:
+                        circuit.x(qubit);
+                        log(`Applied X to qubit ${qubit}`, 'info');
+                        break;
+                    case 2:
+                        const angle = Math.random() * 2 * Math.PI;
+                        circuit.rx(qubit, angle);
+                        log(`Applied RX(${angle.toFixed(2)}) to qubit ${qubit}`, 'info');
+                        break;
+                    case 3:
+                        if (qubit < n_qubits - 1) {
+                            circuit.cnot(qubit, qubit + 1);
+                            log(`Applied CNOT from qubit ${qubit} to ${qubit + 1}`, 'info');
+                        }
+                        break;
+                }
+            }
+
+            const result = circuit.run();
+            const probs = result.probabilities();
+
+            log('Random circuit executed!', 'success');
+
+            visualizeState(probs, n_qubits);
+        };
+
+        window.clearOutput = function() {
+            document.getElementById('output').innerHTML = '';
+            log('Output cleared', 'info');
+        };
+
+        // Initialize on page load
+        initWasm();
+    </script>
+</body>
+</html>
