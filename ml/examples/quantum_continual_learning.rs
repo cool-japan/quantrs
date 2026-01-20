@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Continual Learning Example
 //!
 //! This example demonstrates various continual learning strategies for quantum neural networks,

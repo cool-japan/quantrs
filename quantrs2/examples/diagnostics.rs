@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! System diagnostics example for QuantRS2
 //!
 //! This example demonstrates how to use the diagnostics module to check

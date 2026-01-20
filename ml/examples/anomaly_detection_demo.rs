@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Anomaly Detection Example
 //!
 //! This example demonstrates how to use the quantum anomaly detection module

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Machine Learning `UltraThink` Showcase
 //!
 //! This comprehensive demonstration showcases the most advanced quantum machine learning

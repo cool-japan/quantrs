@@ -162,8 +162,8 @@ impl CircuitVisualization {
         // Draw qubit lines
         for q in 0..self.n_qubits {
             let row = q * 2;
-            for col in 0..self.depth * 5 {
-                grid[row][col] = '─';
+            for cell in grid[row].iter_mut().take(self.depth * 5) {
+                *cell = '─';
             }
         }
 
@@ -427,15 +427,16 @@ impl CircuitVisualization {
         );
 
         // Create the container with CSS variables for qubit count and depth
-        html.push_str(&format!(
-            "<div class=\"qc-container\" style=\"--n-qubits:{}; --depth:{}\">\n",
+        let _ = writeln!(
+            html,
+            "<div class=\"qc-container\" style=\"--n-qubits:{}; --depth:{}\">",
             self.n_qubits, self.depth
-        ));
+        );
 
         // Add qubit labels
         html.push_str("  <div class=\"qc-qubit-labels\">\n");
         for q in 0..self.n_qubits {
-            html.push_str(&format!("    <div class=\"qc-qubit-label\">q{q}:</div>\n"));
+            let _ = writeln!(html, "    <div class=\"qc-qubit-label\">q{q}:</div>");
         }
         html.push_str("  </div>\n");
 
@@ -445,11 +446,12 @@ impl CircuitVisualization {
         // Add qubit lines
         for q in 0..self.n_qubits {
             for col in 0..self.depth {
-                html.push_str(&format!(
-                    "    <div style=\"grid-row:{}; grid-column:{}\">\n",
+                let _ = writeln!(
+                    html,
+                    "    <div style=\"grid-row:{}; grid-column:{}\">",
                     q + 1,
                     col + 1
-                ));
+                );
 
                 // Check if there's a gate at this position
                 let mut gate_at_pos = false;
@@ -460,17 +462,19 @@ impl CircuitVisualization {
                         // Render appropriate gate
                         if op.qubits.len() == 1 {
                             // Single-qubit gate
-                            html.push_str(&format!(
-                                "      <div class=\"qc-gate\">{}</div>\n",
+                            let _ = writeln!(
+                                html,
+                                "      <div class=\"qc-gate\">{}</div>",
                                 op.gate_type.symbol()
-                            ));
+                            );
                             if let Some(params) = &op.params {
                                 // Add tooltip with parameters
-                                html.push_str(&format!(
-                                    "      <div title=\"{}\">{}</div>\n",
+                                let _ = writeln!(
+                                    html,
+                                    "      <div title=\"{}\">{}</div>",
                                     params,
                                     op.gate_type.symbol()
-                                ));
+                                );
                             }
                         } else if op.qubits.len() >= 2 {
                             // Multi-qubit gate
@@ -488,20 +492,21 @@ impl CircuitVisualization {
                                         html.push_str("      <div class=\"qc-control\"></div>\n");
                                     } else {
                                         // Target qubit
-                                        html.push_str(&format!(
-                                            "      <div class=\"qc-target\">{}</div>\n",
-                                            match op.gate_type {
-                                                GateType::CNOT => "X",
-                                                GateType::CY => "Y",
-                                                GateType::CZ => "Z",
-                                                GateType::CH => "H",
-                                                GateType::CS => "S",
-                                                GateType::CRX => "Rx",
-                                                GateType::CRY => "Ry",
-                                                GateType::CRZ => "Rz",
-                                                _ => unreachable!(),
-                                            }
-                                        ));
+                                        let target_symbol = match op.gate_type {
+                                            GateType::CNOT => "X",
+                                            GateType::CY => "Y",
+                                            GateType::CZ => "Z",
+                                            GateType::CH => "H",
+                                            GateType::CS => "S",
+                                            GateType::CRX => "Rx",
+                                            GateType::CRY => "Ry",
+                                            GateType::CRZ => "Rz",
+                                            _ => unreachable!(),
+                                        };
+                                        let _ = writeln!(
+                                            html,
+                                            "      <div class=\"qc-target\">{target_symbol}</div>"
+                                        );
                                     }
                                 }
                                 GateType::SWAP => {
@@ -522,10 +527,11 @@ impl CircuitVisualization {
                                     }
                                 }
                                 _ => {
-                                    html.push_str(&format!(
-                                        "      <div class=\"qc-gate\">{}</div>\n",
+                                    let _ = writeln!(
+                                        html,
+                                        "      <div class=\"qc-gate\">{}</div>",
                                         op.gate_type.symbol()
-                                    ));
+                                    );
                                 }
                             }
 
@@ -535,15 +541,13 @@ impl CircuitVisualization {
 
                             if op.qubits.len() == 2 && min_q < max_q && (q == min_q || q == max_q) {
                                 let top = if q == min_q { "50%" } else { "0" };
-                                let height = if q == min_q {
-                                    format!("{}px", (max_q - min_q) * 40 / 2)
-                                } else {
-                                    format!("{}px", (max_q - min_q) * 40 / 2)
-                                };
+                                // Height is the same regardless of which qubit we're on
+                                let height_px = (max_q - min_q) * 40 / 2;
 
-                                html.push_str(&format!(
-                                    "      <div class=\"qc-connection\" style=\"top:{top}; height:{height};\"></div>\n"
-                                ));
+                                let _ = writeln!(
+                                    html,
+                                    "      <div class=\"qc-connection\" style=\"top:{top}; height:{height_px}px;\"></div>"
+                                );
                             }
                         }
 
@@ -578,13 +582,14 @@ pub struct PyCircuitVisualizer {
 impl PyCircuitVisualizer {
     /// Create a new circuit visualizer for a circuit with the given number of qubits
     #[new]
-    pub const fn new(n_qubits: usize) -> PyResult<Self> {
-        Ok(Self {
+    pub const fn new(n_qubits: usize) -> Self {
+        Self {
             visualization: CircuitVisualization::new(n_qubits),
-        })
+        }
     }
 
     /// Add a gate to the circuit
+    #[allow(clippy::unnecessary_wraps)]
     pub fn add_gate(
         &mut self,
         gate_type: &str,
@@ -650,7 +655,7 @@ pub fn create_visualizer_from_operations(
     n_qubits: usize,
     operations: Vec<(String, Vec<usize>, Option<String>)>,
 ) -> PyResult<Py<PyCircuitVisualizer>> {
-    let mut visualizer = PyCircuitVisualizer::new(n_qubits)?;
+    let mut visualizer = PyCircuitVisualizer::new(n_qubits);
 
     for (gate_type, qubits, params) in operations {
         visualizer.add_gate(&gate_type, qubits, params)?;

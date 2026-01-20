@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Tests for the compile module.
 
 use quantrs2_tytan::*;
@@ -17,7 +18,7 @@ fn test_compile_simple_expression() {
 
     // Simple linear expression: x + 2*y
     let two = quantrs2_symengine_pure::Expression::from(2);
-    let expr = x.clone() + y.clone() * two;
+    let expr = x + y * two;
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
@@ -50,7 +51,7 @@ fn test_compile_quadratic_expression() {
     let y = symbols("y");
 
     // Quadratic expression: x*y + x^2 (which is just x for binary variables)
-    let expr = x.clone() * y.clone() + x.clone().pow(&quantrs2_symengine_pure::Expression::from(2));
+    let expr = x.clone() * y + x.pow(&quantrs2_symengine_pure::Expression::from(2));
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
@@ -87,7 +88,7 @@ fn test_compile_constraint_expression() {
     // Constraint: (x + y + z - 1)^2
     let one = quantrs2_symengine_pure::Expression::from(1);
     let two = quantrs2_symengine_pure::Expression::from(2);
-    let expr = (x.clone() + y.clone() + z.clone() - one).pow(&two);
+    let expr = (x + y + z - one).pow(&two);
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
@@ -132,7 +133,7 @@ fn test_compile_cubic_expression() {
     let z = symbols("z");
 
     // Cubic expression: x*y*z
-    let expr = x.clone() * y.clone() * z.clone();
+    let expr = x * y * z;
 
     // Compile to HOBO
     let (hobo, offset) = Compile::new(expr).get_hobo().unwrap();
@@ -155,8 +156,8 @@ fn test_compile_cubic_expression() {
 
     // This assumes the tensor is stored in a canonical form where indices are ordered
     let indices = [x_idx, y_idx, z_idx];
-    let mut sorted_indices = indices.clone();
-    sorted_indices.sort();
+    let mut sorted_indices = indices;
+    sorted_indices.sort_unstable();
 
     // Check that the tensor has a 1.0 at the expected position
     assert_eq!(tensor[scirs2_core::ndarray::IxDyn(&sorted_indices)], 1.0);

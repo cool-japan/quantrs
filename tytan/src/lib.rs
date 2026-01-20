@@ -89,9 +89,9 @@
 //! - **Multiple Samplers**: Choose from various solvers
 //! - **Auto Result Processing**: Automatically convert solutions to multi-dimensional arrays
 //!
-//! ## Recent Updates (v0.1.0-rc.2)
+//! ## Recent Updates (v0.1.0)
 //!
-//! - Refined SciRS2 v0.1.1 Stable Release integration for enhanced performance
+//! - Refined SciRS2 v0.1.2 Stable Release integration for enhanced performance
 //! - High-performance sparse matrix operations via SciRS2
 //! - Parallel optimization using `scirs2_core::parallel_ops`
 //! - SIMD-accelerated energy calculations

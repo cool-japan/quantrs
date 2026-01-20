@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::assertions_on_constants)]
 //! Comprehensive Feature Combination Tests for QuantRS2
 //!
 //! These tests verify that all feature flag combinations work correctly,

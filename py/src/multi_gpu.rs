@@ -26,6 +26,12 @@
 //! The current implementation provides the API surface and performance monitoring
 //! infrastructure, ready for GPU acceleration in future releases.
 
+// Allow unused_self for PyO3 method bindings, unnecessary_wraps for future error handling,
+// and missing_const_for_fn for GPU-related functions that need runtime checks
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::missing_const_for_fn)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};

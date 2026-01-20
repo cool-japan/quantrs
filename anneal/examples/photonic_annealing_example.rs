@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Photonic Annealing Systems
 //!
 //! This example shows how to:

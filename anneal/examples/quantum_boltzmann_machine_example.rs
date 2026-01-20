@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Quantum Restricted Boltzmann Machines
 //!
 //! This example shows how to:

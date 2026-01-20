@@ -1,3 +1,8 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 //! Tests for quantum simulators
 //!
 //! This module provides tests for the various simulator implementations

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! SciRS2 Integration Example for QuantRS2
 //!
 //! This example demonstrates proper usage of SciRS2 (Scientific Computing in Rust)

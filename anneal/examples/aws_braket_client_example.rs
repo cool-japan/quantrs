@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive example demonstrating the AWS Braket quantum annealing client
 //!
 //! This example shows how to use the AWS Braket client to:
@@ -76,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cost_tracker,
     )?;
 
-    println!("✓ AWS Braket client initialized for region: {}", region);
+    println!("✓ AWS Braket client initialized for region: {region}");
 
     // Example 2: Discover available devices
     println!("\n2. Discovering Available Devices");
@@ -117,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Err(e) => {
-            println!("⚠ No annealing QPUs available: {}", e);
+            println!("⚠ No annealing QPUs available: {e}");
         }
     }
 
@@ -135,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Err(e) => {
-            println!("⚠ No simulators available: {}", e);
+            println!("⚠ No simulators available: {e}");
         }
     }
 
@@ -237,7 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create multiple variants of a problem
     for i in 0..3 {
         let mut problem = IsingModel::new(3);
-        let coupling_strength = -1.0 - i as f64 * 0.2;
+        let coupling_strength = (i as f64).mul_add(-0.2, -1.0);
         problem.set_coupling(0, 1, coupling_strength)?;
         problem.set_coupling(1, 2, coupling_strength)?;
         problem.set_coupling(2, 0, coupling_strength)?;
@@ -252,7 +253,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "  Problem {}: 3-qubit triangle with coupling strength {:.1}",
             i + 1,
-            -1.0 - i as f64 * 0.2
+            (i as f64).mul_add(-0.2, -1.0)
         );
     }
 

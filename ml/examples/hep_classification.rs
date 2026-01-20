@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 use quantrs2_ml::hep::{CollisionEvent, HEPQuantumClassifier, ParticleFeatures, ParticleType};
 use quantrs2_ml::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};

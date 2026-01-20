@@ -437,4 +437,4 @@ For issues and questions:
 ---
 
 **Last Updated:** 2025-11-17
-**Version:** 0.1.0-rc.2
+**Version:** 0.1.0

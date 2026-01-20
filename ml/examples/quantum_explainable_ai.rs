@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Explainable AI Example
 //!
 //! This example demonstrates various explainability and interpretability methods

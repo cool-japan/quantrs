@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Large Language Model Example
 //!
 //! This example demonstrates quantum-enhanced large language models with advanced

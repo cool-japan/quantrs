@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::field_reassign_with_default)]
 //! Comprehensive tests for the Advanced Quantum Job Scheduling System
 //!
 //! This test suite validates the advanced scheduling features including:

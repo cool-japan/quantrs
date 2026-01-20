@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive tests for advanced error mitigation and calibration.
 
 use quantrs2_tytan::advanced_error_mitigation::*;

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive tests for Tensor Network Sampler module
 
 #[cfg(test)]

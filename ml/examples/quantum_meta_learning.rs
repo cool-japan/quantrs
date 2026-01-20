@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Meta-Learning Example
 //!
 //! This example demonstrates various quantum meta-learning algorithms including

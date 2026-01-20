@@ -89,10 +89,10 @@
 //! This crate provides a comprehensive toolkit for creating, manipulating,
 //! and analyzing quantum circuits with a fluent API and modern Rust patterns.
 //!
-//! ## Recent Updates (v0.1.0-rc.2)
+//! ## Recent Updates (v0.1.0)
 //!
 //! - Enhanced code quality with clippy warning fixes
-//! - **SciRS2 v0.1.1 Stable Release Integration** with unified patterns
+//! - **SciRS2 v0.1.2 Stable Release Integration** with unified patterns
 //! - Enhanced graph-based circuit optimization algorithms (60+ strategies)
 //! - Improved hardware-aware compilation with `SciRS2` graph algorithms
 //! - Comprehensive policy documentation for quantum circuit development

@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_wraps, clippy::pedantic)]
 //! Batch Processing Example
 //!
 //! This example demonstrates high-performance batch processing of quantum states

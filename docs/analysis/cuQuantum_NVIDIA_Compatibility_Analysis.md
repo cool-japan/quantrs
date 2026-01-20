@@ -5,7 +5,7 @@
 **Compatibility Score:** 99%+
 **Implementation:** ~10,500+ lines | 70+ tests
 
-## Recent Additions (RC.2)
+## Recent Additions
 - **TF32 Mode**: `TensorCoreConfig` with TF32 matrix multiplication
 - **FP16 Mixed Precision**: Half-precision kernels with automatic promotion
 - **CUDA Graph API**: `CudaGraph`, `CudaGraphExec`, `QuantumGraphScheduler`
@@ -304,7 +304,7 @@ let best_config = CuQuantumConfig::auto_select_device();
 - **TF32/FP16 Mixed Precision** - Tensor Core optimized operations ✅ NEW
 - **CUDA Graph API** - Capture, instantiate, replay for optimized execution ✅ NEW
 
-### Optional Enhancements (not in RC.2):
+### Optional Enhancements:
 - **MPI distributed** - Multi-node cluster support via NCCL (planned)
 
 ### Unique QuantRS2 Advantages:

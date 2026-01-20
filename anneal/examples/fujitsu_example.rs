@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Fujitsu Digital Annealer usage
 //!
 //! This example shows how to:
@@ -48,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Fujitsu Digital Annealer results:");
     println!("  Best energy: {:.4}", fujitsu_result.best_energy);
-    println!("  Time: {:.2?}", fujitsu_time);
+    println!("  Time: {fujitsu_time:.2?}");
     println!("  Info: {}", fujitsu_result.info);
 
     // Compare with local simulation
@@ -65,11 +66,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sim_time = start.elapsed();
 
     println!("  Best energy: {:.4}", sim_result.best_energy);
-    println!("  Time: {:.2?}", sim_time);
+    println!("  Time: {sim_time:.2?}");
 
     // Calculate speedup
     let speedup = sim_time.as_secs_f64() / fujitsu_time.as_secs_f64();
-    println!("\nFujitsu speedup: {:.1}x", speedup);
+    println!("\nFujitsu speedup: {speedup:.1}x");
 
     // Example 2: Use guidance mode
     println!(
@@ -94,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Guided optimization results:");
     println!("  Best energy: {:.4}", guided_result.best_energy);
-    println!("  Time: {:.2?}", guided_time);
+    println!("  Time: {guided_time:.2?}");
     println!(
         "  Improvement: {:.4}",
         sim_result.best_energy - guided_result.best_energy
@@ -122,8 +123,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let qubo_time = start.elapsed();
 
     println!("Portfolio optimization results:");
-    println!("  Solution: {:?}", qubo_solution);
-    println!("  Time: {:.2?}", qubo_time);
+    println!("  Solution: {qubo_solution:?}");
+    println!("  Time: {qubo_time:.2?}");
 
     // Calculate portfolio statistics
     let selected_count = qubo_solution.iter().filter(|&&x| x).count();
@@ -169,7 +170,7 @@ fn create_portfolio_optimization(
 
     // Decision variables: x[i] = 1 if asset i is selected
     let vars: Vec<_> = (0..n_assets)
-        .map(|i| builder.add_variable(format!("asset_{}", i)).unwrap())
+        .map(|i| builder.add_variable(format!("asset_{i}")).unwrap())
         .collect();
 
     // Objective: maximize returns - lambda * risks

@@ -6,6 +6,10 @@
 //! - Process tomography
 //! - Measurement error mitigation
 
+// Allow unused_self for PyO3 method bindings and unnecessary_wraps for future error handling
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+
 use crate::{PyCircuit, PySimulationResult};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -507,9 +511,9 @@ impl PyMeasurementSampler {
 
                     // Apply readout error
                     let mut chars: Vec<char> = bitstring.chars().collect();
-                    for i in 0..chars.len() {
+                    for c in &mut chars {
                         if rng.gen::<f64>() < error_rate {
-                            chars[i] = if chars[i] == '0' { '1' } else { '0' };
+                            *c = if *c == '0' { '1' } else { '0' };
                         }
                     }
                     bitstring = chars.into_iter().collect();

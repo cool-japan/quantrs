@@ -177,7 +177,7 @@ Special handling for Metal backend pending SciRS2 support:
 ```rust
 #[cfg(target_os = "macos")]
 pub fn create_metal_device() -> QuantRS2Result<Box<dyn GpuBackend>> {
-    // Use placeholder implementation until SciRS2 v0.1.0-rc.2
+    // Use placeholder implementation until SciRS2 v0.1.0
     if metal_backend_scirs2_ready::is_metal_available() {
         Ok(Box::new(MetalPlaceholderBackend::new()?))
     } else {

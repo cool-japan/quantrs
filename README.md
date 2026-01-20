@@ -15,7 +15,7 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.0-rc.2
+**Current Version**: v0.1.0
 
 ## Features
 
@@ -54,9 +54,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0-rc.2"
-quantrs2-circuit = "0.1.0-rc.2"
-quantrs2-sim = "0.1.0-rc.2"
+quantrs2-core = "0.1.0"
+quantrs2-circuit = "0.1.0"
+quantrs2-sim = "0.1.0"
 ```
 
 ### Creating a Bell State
@@ -304,8 +304,8 @@ To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-rc.2", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.0-rc.2", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.0", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.0", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -314,7 +314,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0-rc.2", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.0", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -359,7 +359,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.0-rc.2", features = ["ibm"] }
+quantrs2-device = { version = "0.1.0", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -385,7 +385,7 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.0-rc.2", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.0", features = ["dwave"] }
 ```
 
 This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive Benchmarking Framework Example
 //!
 //! This example demonstrates the benchmarking framework for comparing quantum ML models

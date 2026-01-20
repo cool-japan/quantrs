@@ -1,7 +1,7 @@
 # TensorFlow Quantum Compatibility Analysis (QuantRS2)
 
 **Last Updated:** 2026-01-08
-**Version:** 0.1.0-rc.2
+**Version:** 0.1.0
 **Code Lines:** 2,328 (refactored into 8 modules)
 **Tests:** 22 (all passing)
 **Public APIs:** 34 types/functions

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating energy landscape visualization
 //!
 //! This example shows how to:

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Adversarial Training Example
 //!
 //! This example demonstrates quantum adversarial attacks and defenses,

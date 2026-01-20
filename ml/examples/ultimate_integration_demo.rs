@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Ultimate QuantRS2-ML Integration Demo
 //!
 //! This example demonstrates the complete QuantRS2-ML ecosystem including all

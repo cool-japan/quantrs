@@ -5,7 +5,7 @@
 **Compatibility Score:** 99%+
 **Implementation:** ~8,500+ lines | 54+ tests
 
-## Recent Additions (RC.2)
+## Recent Additions
 - **Chemistry Gates**: TQFSimGate, TQGivensRotation, TQControlledRot, TQPhaseShift2
 - **Chemistry Layers**: ExcitationPreserving, ParticleConserving, UCCSD, SymmetryPreserving
 - **Tensor Network Backend**: MPS-based `TQTensorNetworkBackend` for large circuits

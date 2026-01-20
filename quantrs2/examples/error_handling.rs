@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Error handling and recovery example
 //!
 //! This example demonstrates comprehensive error handling patterns in QuantRS2.

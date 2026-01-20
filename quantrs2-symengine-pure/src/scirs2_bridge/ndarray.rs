@@ -11,7 +11,7 @@ use scirs2_core::Complex64;
 use crate::error::{SymEngineError, SymEngineResult};
 use crate::expr::Expression;
 
-/// Convert a symbolic matrix expression to a numeric Array2<Complex64>.
+/// Convert a symbolic matrix expression to a numeric `Array2<Complex64>`.
 ///
 /// # Arguments
 /// * `expr` - The matrix expression
@@ -29,7 +29,7 @@ pub fn to_array2(
     ))
 }
 
-/// Convert a numeric Array2<Complex64> to a symbolic matrix expression.
+/// Convert a numeric `Array2<Complex64>` to a symbolic matrix expression.
 pub fn from_array2(arr: &Array2<Complex64>) -> Expression {
     let (rows, cols) = arr.dim();
 
@@ -61,7 +61,7 @@ pub fn from_array2(arr: &Array2<Complex64>) -> Expression {
     Expression::new(matrix_str)
 }
 
-/// Convert a symbolic vector expression to a numeric Array1<Complex64>.
+/// Convert a symbolic vector expression to a numeric `Array1<Complex64>`.
 ///
 /// # Errors
 /// Returns an error if conversion fails.
@@ -75,7 +75,7 @@ pub fn to_array1(
     ))
 }
 
-/// Convert a numeric Array1<Complex64> to a symbolic column vector expression.
+/// Convert a numeric `Array1<Complex64>` to a symbolic column vector expression.
 pub fn from_array1(arr: &Array1<Complex64>) -> Expression {
     let n = arr.len();
 
@@ -101,7 +101,7 @@ pub fn from_array1(arr: &Array1<Complex64>) -> Expression {
     Expression::new(matrix_str)
 }
 
-/// Compute the gradient at given values as an Array1<f64>.
+/// Compute the gradient at given values as an `Array1<f64>`.
 ///
 /// This is useful for integration with SciRS2 optimization routines.
 pub fn gradient_array(
@@ -113,7 +113,7 @@ pub fn gradient_array(
     Ok(Array1::from_vec(grad_vec))
 }
 
-/// Compute the Hessian at given values as an Array2<f64>.
+/// Compute the Hessian at given values as an `Array2<f64>`.
 ///
 /// This is useful for integration with SciRS2 optimization routines.
 pub fn hessian_array(

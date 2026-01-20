@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comparison between different quantum simulators
 //!
 //! This example demonstrates the trade-offs between:
@@ -39,7 +40,7 @@ fn main() -> Result<()> {
         stab_sim.apply_gate(StabilizerGate::CNOT(i, i + 1))?;
     }
     let duration = start.elapsed();
-    println!("Stabilizer simulator: {:.2?}", duration);
+    println!("Stabilizer simulator: {duration:.2?}");
     println!("Memory usage: ~4 MB (stabilizer) vs IMPOSSIBLE (state-vector)");
     println!();
 
@@ -92,7 +93,7 @@ fn compare_bell_state() -> Result<()> {
     qulacs_gates::cnot(&mut qulacs, 0, 1)?;
     let sv_duration = start.elapsed();
 
-    println!("State-vector (Qulacs): {:.2?}", sv_duration);
+    println!("State-vector (Qulacs): {sv_duration:.2?}");
     println!(
         "  Amplitudes: |00⟩={:.4}, |11⟩={:.4}",
         qulacs.amplitudes()[0].norm(),
@@ -106,7 +107,7 @@ fn compare_bell_state() -> Result<()> {
     stabilizer.apply_gate(StabilizerGate::CNOT(0, 1))?;
     let stab_duration = start.elapsed();
 
-    println!("Stabilizer (Clifford): {:.2?}", stab_duration);
+    println!("Stabilizer (Clifford): {stab_duration:.2?}");
     let stabs = stabilizer.get_stabilizers();
     println!("  Stabilizers: {}, {}", stabs[0], stabs[1]);
 
@@ -126,7 +127,7 @@ fn compare_ghz_state(num_qubits: usize) -> Result<()> {
     let sv_duration = start.elapsed();
     let sv_memory = (1 << num_qubits) * 16; // 16 bytes per complex number
 
-    println!("State-vector (Qulacs): {:.2?}", sv_duration);
+    println!("State-vector (Qulacs): {sv_duration:.2?}");
     println!("  Memory: {} KB", sv_memory / 1024);
     println!("  Norm: {:.6}", qulacs.norm_squared());
 
@@ -140,11 +141,11 @@ fn compare_ghz_state(num_qubits: usize) -> Result<()> {
     let stab_duration = start.elapsed();
     let stab_memory = num_qubits * num_qubits * 2; // 2 bits per entry (X and Z)
 
-    println!("Stabilizer (Clifford): {:.2?}", stab_duration);
+    println!("Stabilizer (Clifford): {stab_duration:.2?}");
     println!("  Memory: ~{} bytes", stab_memory / 8);
 
     let speedup = sv_duration.as_nanos() as f64 / stab_duration.as_nanos() as f64;
-    println!("  → Stabilizer is {:.1}x faster", speedup);
+    println!("  → Stabilizer is {speedup:.1}x faster");
     println!(
         "  → Stabilizer uses {}x less memory",
         sv_memory / (stab_memory / 8)
@@ -173,7 +174,7 @@ fn compare_deep_circuit(num_qubits: usize, depth: usize) -> Result<()> {
     }
     let sv_duration = start.elapsed();
 
-    println!("State-vector (Qulacs): {:.2?}", sv_duration);
+    println!("State-vector (Qulacs): {sv_duration:.2?}");
 
     // Stabilizer version
     let start = Instant::now();
@@ -194,10 +195,10 @@ fn compare_deep_circuit(num_qubits: usize, depth: usize) -> Result<()> {
     }
     let stab_duration = start.elapsed();
 
-    println!("Stabilizer (Clifford): {:.2?}", stab_duration);
+    println!("Stabilizer (Clifford): {stab_duration:.2?}");
 
     let speedup = sv_duration.as_nanos() as f64 / stab_duration.as_nanos() as f64;
-    println!("  → Stabilizer is {:.1}x faster for deep circuits", speedup);
+    println!("  → Stabilizer is {speedup:.1}x faster for deep circuits");
 
     Ok(())
 }

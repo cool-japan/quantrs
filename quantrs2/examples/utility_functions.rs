@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Utility functions example for QuantRS2
 //!
 //! This example demonstrates the utility functions provided by QuantRS2

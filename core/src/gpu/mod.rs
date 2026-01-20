@@ -21,7 +21,7 @@ use std::sync::Arc;
 // #[allow(unused_imports)]
 // use scirs2_core::gpu::{GpuDevice, GpuKernel as SciRS2GpuKernel};
 
-// GPU Backend Status for v0.1.0-beta.3
+// GPU Backend Status for v0.1.0
 // ======================================
 // Current: Stable CPU fallback implementation with SciRS2 adapter layer
 // The GPU backend is fully functional using optimized CPU implementations

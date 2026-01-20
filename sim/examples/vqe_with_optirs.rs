@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! VQE Example with OptiRS Optimization
 //!
 //! This example demonstrates how to use the Variational Quantum Eigensolver (VQE)

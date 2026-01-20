@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum `AutoML` Framework Demonstration
 //!
 //! This example demonstrates the comprehensive quantum automated machine learning

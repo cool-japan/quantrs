@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating multi-objective optimization with quantum annealing
 //!
 //! This example shows how to:

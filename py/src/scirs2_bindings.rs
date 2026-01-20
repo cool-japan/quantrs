@@ -3,6 +3,13 @@
 //! This module provides Python bindings for `SciRS2` numerical operations,
 //! including linear algebra, optimization, and statistical functions.
 
+// Allow unused_self for PyO3 method bindings that require &self signature
+// Allow unnecessary_wraps for PyO3 Result return types that may need error handling in future
+// Allow type_complexity for PyO3 return types with complex nested generics
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::type_complexity)]
+
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyList, PyTuple};
@@ -344,7 +351,7 @@ impl PySciRS2Stats {
         let arr = data.as_array();
         let n_samples = arr.nrows();
         let n_features = arr.ncols();
-        let k = n_components.unwrap_or(n_features.min(n_samples));
+        let k = n_components.unwrap_or_else(|| n_features.min(n_samples));
 
         // Center the data
         let means: Vec<f64> = (0..n_features)

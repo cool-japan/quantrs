@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Hybrid AutoML Engine Demonstration
 //!
 //! This example demonstrates the Quantum-Classical Hybrid AutoML Decision Engine

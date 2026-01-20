@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 use quantrs2_ml::nlp::{
     EmbeddingStrategy, NLPTaskType, QuantumLanguageModel, TextPreprocessor, WordEmbedding,
 };

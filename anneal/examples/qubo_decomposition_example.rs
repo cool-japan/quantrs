@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating large-scale QUBO decomposition
 //!
 //! This example shows how to:

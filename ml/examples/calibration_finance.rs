@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Domain-Specific Calibration Example: Financial Risk Prediction
 //!
 //! This example demonstrates how to use calibration techniques in financial

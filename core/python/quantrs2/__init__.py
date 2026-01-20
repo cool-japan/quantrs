@@ -9,7 +9,7 @@ Modules:
 """
 
 __version__ = "0.1.0b2"
-__author__ = "QuantRS2 Contributors (Team KitaSan)"
+__author__ = "COOLJAPAN OU (Team KitaSan)"
 __license__ = "MIT OR Apache-2.0"
 
 # The core module is the compiled Rust extension

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! # Next-Generation Quantum ML `UltraThink` Showcase
 //!
 //! This showcase demonstrates the integration and capabilities of all cutting-edge quantum ML algorithms

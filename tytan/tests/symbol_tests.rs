@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Tests for the symbol module.
 
 use quantrs2_tytan::*;

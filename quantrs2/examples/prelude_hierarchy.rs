@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Prelude hierarchy demonstration
 //!
 //! This example shows how to use different prelude levels for various use cases.

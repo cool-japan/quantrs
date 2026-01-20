@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Circuit Optimization Demo
 //!
 //! This example demonstrates the quantum circuit optimization capabilities

@@ -3,6 +3,13 @@
 //! This module provides various optimization passes for quantum circuits,
 //! including gate cancellation, commutation, synthesis, and depth reduction.
 
+// Allow unused_self for PyO3 method bindings and unnecessary_wraps for future error handling
+// Allow match_same_arms for explicit gate type matching (improves readability in quantum code)
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::upper_case_acronyms)] // Gate names like CNOT, SWAP, CRX match quantum computing conventions
+#![allow(clippy::match_same_arms)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};

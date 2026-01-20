@@ -645,7 +645,7 @@ mod tests {
             .measure_node(0, MeasurementBasis::x())
             .expect("Node measurement should succeed");
         let computer = MBQCComputer::new(cluster);
-        let _corrections = vec![AdaptiveCorrection {
+        let _corrections = [AdaptiveCorrection {
             target_node: 2,
             condition_nodes: vec![0],
             correction_type: CorrectionType::PiCorrection,

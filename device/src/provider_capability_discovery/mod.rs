@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_discovery_strategy_variants() {
-        let strategies = vec![
+        let strategies = [
             DiscoveryStrategy::APIDiscovery,
             DiscoveryStrategy::RegistryDiscovery,
             DiscoveryStrategy::NetworkDiscovery,
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_issue_severity() {
-        let severities = vec![
+        let severities = [
             IssueSeverity::Low,
             IssueSeverity::Medium,
             IssueSeverity::High,
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_monitoring_target_type() {
-        let types = vec![
+        let types = [
             MonitoringTargetType::Provider,
             MonitoringTargetType::Endpoint,
             MonitoringTargetType::Service,
@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_trend_model_type() {
-        let model_types = vec![
+        let model_types = [
             TrendModelType::Linear,
             TrendModelType::Exponential,
             TrendModelType::Polynomial,
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_predictive_model_type() {
-        let model_types = vec![
+        let model_types = [
             PredictiveModelType::LinearRegression,
             PredictiveModelType::RandomForest,
             PredictiveModelType::NeuralNetwork,

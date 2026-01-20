@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating reverse annealing for quantum optimization
 //!
 //! This example shows how to:

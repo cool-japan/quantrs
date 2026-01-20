@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Coherent Ising Machine simulation
 //!
 //! This example shows how to:

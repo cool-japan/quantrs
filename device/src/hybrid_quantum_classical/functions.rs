@@ -71,7 +71,7 @@ mod tests {
     }
     #[test]
     fn test_hybrid_optimizer_types() {
-        let optimizers = vec![
+        let optimizers = [
             HybridOptimizer::Adam,
             HybridOptimizer::GradientDescent,
             HybridOptimizer::SPSA,

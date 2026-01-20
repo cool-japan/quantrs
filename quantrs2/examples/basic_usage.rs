@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Basic usage example of the QuantRS2 facade crate
 //!
 //! This example demonstrates how to use the basic features of QuantRS2

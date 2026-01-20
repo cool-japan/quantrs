@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Quantum Approximate Optimization Algorithm (QAOA)
 //!
 //! This example shows how to:

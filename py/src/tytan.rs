@@ -1,5 +1,8 @@
 //! Python bindings for Tytan quantum annealing and visualization
 
+// Allow type_complexity for PyO3 return types with complex nested generics
+#![allow(clippy::type_complexity)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;

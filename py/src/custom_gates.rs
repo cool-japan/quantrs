@@ -5,6 +5,16 @@
 //! - Python functions for parametric gates
 //! - Symbolic expressions for gate decompositions
 
+// Allow unused_self for PyO3 method bindings and unnecessary_wraps for future error handling
+// Allow type_complexity for complex gate definition types
+// Allow match_same_arms for explicit gate type matching
+// Allow significant_drop_tightening for MutexGuard scope clarity
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::significant_drop_tightening)]
+
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};

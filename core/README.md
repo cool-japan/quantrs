@@ -6,14 +6,14 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
-## Version 0.1.0-rc.2 🎉 PRODUCTION READY!
+## Version 0.1.0 🎉 PRODUCTION READY!
 
 **✅ Core Module - Policy Refinement Release**
 
 This release focuses on comprehensive documentation, refined SciRS2 integration patterns, and improved developer experience.
 
 ### Release Highlights ✅
-- **🔧 Complete SciRS2 v0.1.0-rc.2 Integration**: Enhanced scientific computing acceleration with unified patterns
+- **🔧 Complete SciRS2 v0.1.0 Integration**: Enhanced scientific computing acceleration with unified patterns
 - **⚡ Advanced SIMD Operations**: Hardware-optimized vectorized quantum operations via `scirs2_core::simd_ops`
 - **🔄 Unified Parallel Processing**: Automatic parallelization via `scirs2_core::parallel_ops`
 - **🎯 Intelligent Platform Detection**: Automatic CPU/GPU capability detection and optimization
@@ -339,7 +339,7 @@ fn batch_and_gpu_example() -> QuantRS2Result<()> {
 - Optimized kernels for common quantum operations
 - Automatic fallback to CPU processing
 - Metal GPU support for Apple Silicon (M1/M2/M3) with unified memory architecture
-- Forward-compatible implementation ready for SciRS2 v0.1.0-rc.2 Metal integration
+- Forward-compatible implementation ready for SciRS2 v0.1.0 Metal integration
 
 ### SciRS2 Integration
 - Advanced linear algebra operations using SciRS2's optimized BLAS/LAPACK bindings

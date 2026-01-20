@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! QAOA Example with OptiRS Optimization
 //!
 //! This example demonstrates how to use the Quantum Approximate Optimization Algorithm (QAOA)

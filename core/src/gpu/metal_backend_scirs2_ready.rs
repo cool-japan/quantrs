@@ -1,7 +1,7 @@
 //! Metal backend implementation ready for SciRS2 GPU migration
 //!
 //! This module implements Metal GPU acceleration in a way that's compatible
-//! with the expected SciRS2 GPU abstractions in v0.1.0-alpha.6.
+//! with the expected SciRS2 GPU abstractions in v0.1.0.
 //!
 //! NOTE: This is a forward-compatible implementation anticipating SciRS2 Metal support.
 

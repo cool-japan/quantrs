@@ -9,7 +9,7 @@ setup(
     description="Python bindings for the QuantRS2 quantum computing framework",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    author="QuantRS2 Contributors",
+    author="COOLJAPAN OU",
     author_email="noreply@example.com",
     url="https://github.com/cool-japan/quantrs",
     packages=find_namespace_packages(include=["quantrs2*", "_quantrs2*"], where="python"),

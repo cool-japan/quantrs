@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Simplified Ultimate QuantRS2-ML Integration Demo
 //!
 //! This is a simplified version of the ultimate integration demo that focuses

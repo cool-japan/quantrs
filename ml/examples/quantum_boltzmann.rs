@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Boltzmann Machine Example
 //!
 //! This example demonstrates quantum Boltzmann machines for unsupervised learning,

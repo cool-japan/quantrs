@@ -7,6 +7,7 @@ use crate::error::QuantRS2Result;
 use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
@@ -55,6 +56,8 @@ struct CacheEntry {
     created_at: Instant,
     access_count: u64,
     last_accessed: Instant,
+    /// Monotonic sequence number for LRU tracking (higher = more recently accessed)
+    access_sequence: u64,
 }
 
 /// High-performance quantum cache with LRU eviction
@@ -63,6 +66,8 @@ pub struct StableQuantumCache {
     max_size: usize,
     max_age: Duration,
     stats: Arc<RwLock<CacheStatistics>>,
+    /// Monotonic counter for access sequence tracking
+    access_counter: AtomicU64,
 }
 
 /// Cache performance statistics
@@ -84,17 +89,20 @@ impl StableQuantumCache {
             max_size,
             max_age: Duration::from_secs(max_age_seconds),
             stats: Arc::new(RwLock::new(CacheStatistics::default())),
+            access_counter: AtomicU64::new(0),
         }
     }
 
     /// Insert a result into the cache
     pub fn insert(&self, key: CacheKey, result: CachedResult) {
         let now = Instant::now();
+        let seq = self.access_counter.fetch_add(1, Ordering::Relaxed);
         let entry = CacheEntry {
             result,
             created_at: now,
             access_count: 0,
             last_accessed: now,
+            access_sequence: seq,
         };
 
         {
@@ -132,6 +140,7 @@ impl StableQuantumCache {
                 // Update access statistics
                 entry.access_count += 1;
                 entry.last_accessed = now;
+                entry.access_sequence = self.access_counter.fetch_add(1, Ordering::Relaxed);
 
                 let mut stats = self.stats.write().expect("Cache stats lock poisoned");
                 stats.hits += 1;
@@ -164,20 +173,14 @@ impl StableQuantumCache {
 
     /// Perform LRU eviction
     fn evict_lru(&self, entries: &mut HashMap<CacheKey, CacheEntry>) {
-        // Find the least recently used entry
-        let mut oldest_key: Option<CacheKey> = None;
-        let mut oldest_time = Instant::now();
-
-        for (key, entry) in entries.iter() {
-            if entry.last_accessed < oldest_time {
-                oldest_time = entry.last_accessed;
-                oldest_key = Some(key.clone());
-            }
-        }
-
-        // Remove the oldest entry
-        if let Some(key) = oldest_key {
-            entries.remove(&key);
+        // Find the least recently used entry using min_by_key on access_sequence
+        // The entry with the smallest access_sequence is the least recently accessed
+        if let Some(oldest_key) = entries
+            .iter()
+            .min_by_key(|(_, entry)| entry.access_sequence)
+            .map(|(key, _)| key.clone())
+        {
+            entries.remove(&oldest_key);
             let mut stats = self.stats.write().expect("Cache stats lock poisoned");
             stats.evictions += 1;
         }

@@ -10,7 +10,7 @@ use quantrs2_sim::prelude::*;
 fn bench_single_qubit_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("single_qubit_gates");
 
-    for num_qubits in [5, 10, 15, 20].iter() {
+    for num_qubits in &[5, 10, 15, 20] {
         let target = 0; // Always apply to qubit 0
 
         // Hadamard gate
@@ -69,7 +69,7 @@ fn bench_single_qubit_gates(c: &mut Criterion) {
 fn bench_rotation_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("rotation_gates");
 
-    for num_qubits in [5, 10, 15, 20].iter() {
+    for num_qubits in &[5, 10, 15, 20] {
         let target = 0;
         let angle = std::f64::consts::PI / 4.0;
 
@@ -126,7 +126,7 @@ fn bench_rotation_gates(c: &mut Criterion) {
 fn bench_two_qubit_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("two_qubit_gates");
 
-    for num_qubits in [5, 10, 15, 20].iter() {
+    for num_qubits in &[5, 10, 15, 20] {
         let control = 0;
         let target = 1;
 
@@ -165,7 +165,7 @@ fn bench_two_qubit_gates(c: &mut Criterion) {
 fn bench_three_qubit_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("three_qubit_gates");
 
-    for num_qubits in [5, 10, 15].iter() {
+    for num_qubits in &[5, 10, 15] {
         let control1 = 0;
         let control2 = 1;
         let target = 2;
@@ -214,7 +214,7 @@ fn bench_three_qubit_gates(c: &mut Criterion) {
 fn bench_state_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("state_operations");
 
-    for num_qubits in [5, 10, 15, 20].iter() {
+    for num_qubits in &[5, 10, 15, 20] {
         // State creation
         group.bench_with_input(
             BenchmarkId::new("creation", num_qubits),
@@ -259,7 +259,7 @@ fn bench_state_operations(c: &mut Criterion) {
 fn bench_measurement_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("measurement_operations");
 
-    for num_qubits in [5, 10, 15].iter() {
+    for num_qubits in &[5, 10, 15] {
         let target = 0;
 
         // Probability calculation
@@ -309,7 +309,7 @@ fn bench_measurement_operations(c: &mut Criterion) {
 fn bench_bell_state(c: &mut Criterion) {
     let mut group = c.benchmark_group("bell_state");
 
-    for num_qubits in [2, 5, 10, 15].iter() {
+    for num_qubits in &[2, 5, 10, 15] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_qubits),
             num_qubits,

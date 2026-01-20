@@ -7,7 +7,7 @@ name = "quantrs2-core-extension"
 version = "0.1.0b2"
 description = "Python bindings for QuantRS2-Core quantum computing framework"
 authors = [
-    {name = "QuantRS2 Contributors (Team KitaSan)", email = "info@kitasan.io"},
+    {name = "COOLJAPAN OU (Team KitaSan)", email = "contact@cooljapan.tech"},
 ]
 readme = "README.md"
 license = {text = "MIT OR Apache-2.0"}

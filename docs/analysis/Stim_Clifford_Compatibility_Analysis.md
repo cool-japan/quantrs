@@ -1,13 +1,13 @@
 # Stim Clifford Simulator Compatibility Analysis (QuantRS2)
 
 **Last Updated:** 2026-01-09
-**Version:** 0.1.0-rc.2
+**Version:** 0.1.0
 **Compatibility Score:** 99%+
 **Code Lines:** ~3,500+
 **Tests:** 30+ (all passing)
 **Public APIs:** 12 types + 60+ methods
 
-## Recent Additions (RC.2)
+## Recent Additions
 - **Imaginary Phase Tracking**: Full +1, +i, -1, -i phase support (Vec<u8>)
 - **E/ELSE_CORRELATED_ERROR**: Error instruction parsing and execution
 - **Detector/Observable Execution**: `StimExecutor` with full detection event tracking
@@ -297,7 +297,7 @@ let statevector = sim.get_statevector();
 - **Detector Error Model** - Full DEM generation and sampling
 - **compile_sampler()** - High-performance detector sampling
 
-### Recent Additions (RC.2):
+### Recent Additions:
 - Imaginary phase tracking (Vec<u8> for +1/i/-1/-i)
 - E/ELSE_CORRELATED_ERROR instruction parsing
 - Detector/Observable execution (`StimExecutor`)

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Advanced Error Mitigation for Quantum Machine Learning Demo
 //!
 //! This example demonstrates the comprehensive error mitigation framework

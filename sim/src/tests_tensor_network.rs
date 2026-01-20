@@ -144,8 +144,8 @@ fn test_bell_state_tensor_network() {
     ];
 
     // Check that both simulators produce the expected result
-    assert_state_vector_close(&standard_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(&tensor_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(standard_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(tensor_result.amplitudes(), &expected_amplitudes, 1e-10);
 }
 
 /// Test GHZ state with tensor network simulator
@@ -180,8 +180,8 @@ fn test_ghz_state_tensor_network() {
     expected_amplitudes[7] = Complex64::new(FRAC_1_SQRT_2, 0.0);
 
     // Check that both simulators produce the expected result
-    assert_state_vector_close(&standard_result.amplitudes(), &expected_amplitudes, 1e-10);
-    assert_state_vector_close(&tensor_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(standard_result.amplitudes(), &expected_amplitudes, 1e-10);
+    assert_state_vector_close(tensor_result.amplitudes(), &expected_amplitudes, 1e-10);
 }
 
 /// Test QFT circuit with tensor network simulator using QFT-specific optimization
@@ -205,8 +205,8 @@ fn test_qft_tensor_network() {
 
     // Check that both simulators produce equivalent results
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &tensor_result.amplitudes(),
+        standard_result.amplitudes(),
+        tensor_result.amplitudes(),
         1e-10,
     );
 }
@@ -232,8 +232,8 @@ fn test_qaoa_tensor_network() {
 
     // Check that both simulators produce equivalent results
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &tensor_result.amplitudes(),
+        standard_result.amplitudes(),
+        tensor_result.amplitudes(),
         1e-10,
     );
 }
@@ -379,20 +379,16 @@ fn test_contraction_strategies() {
 
     // All strategies should produce the same result
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &greedy_result.amplitudes(),
+        standard_result.amplitudes(),
+        greedy_result.amplitudes(),
         1e-10,
     );
 
-    assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &qft_result.amplitudes(),
-        1e-10,
-    );
+    assert_state_vector_close(standard_result.amplitudes(), qft_result.amplitudes(), 1e-10);
 
     assert_state_vector_close(
-        &standard_result.amplitudes(),
-        &qaoa_result.amplitudes(),
+        standard_result.amplitudes(),
+        qaoa_result.amplitudes(),
         1e-10,
     );
 }
@@ -430,13 +426,9 @@ fn test_contraction_performance() {
         .expect("Optimized QAOA should succeed");
 
     // Verify results match the standard simulator
-    assert_state_vector_close(&standard_qft.amplitudes(), &qft_result.amplitudes(), 1e-10);
+    assert_state_vector_close(standard_qft.amplitudes(), qft_result.amplitudes(), 1e-10);
 
-    assert_state_vector_close(
-        &standard_qaoa.amplitudes(),
-        &qaoa_result.amplitudes(),
-        1e-10,
-    );
+    assert_state_vector_close(standard_qaoa.amplitudes(), qaoa_result.amplitudes(), 1e-10);
 
     // In a real performance test, we would also run the mismatched combinations
     // to demonstrate the performance difference when using the wrong strategy

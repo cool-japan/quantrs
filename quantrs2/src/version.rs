@@ -39,10 +39,10 @@ pub const VERSION: &str = QUANTRS2_VERSION;
 pub const QUANTRS2_CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Minimum required SciRS2 version
-pub const SCIRS2_MIN_VERSION: &str = "0.1.0-rc.2";
+pub const SCIRS2_MIN_VERSION: &str = "0.1.0";
 
 /// Expected SciRS2 version (for optimal compatibility)
-pub const SCIRS2_VERSION: &str = "0.1.0-rc.2";
+pub const SCIRS2_VERSION: &str = "0.1.0";
 
 /// Build timestamp (UTC)
 pub const BUILD_TIMESTAMP: &str = env!("VERGEN_BUILD_TIMESTAMP");

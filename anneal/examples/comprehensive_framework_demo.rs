@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive QuantRS2-Anneal Framework Demonstration
 //!
 //! This example showcases the full capabilities of the QuantRS2-Anneal framework:
@@ -420,13 +421,13 @@ async fn demo_cloud_integration() -> Result<(), Box<dyn std::error::Error>> {
                             println!("  Expected: Auto-embedding, ~1000 samples");
                         }
                         Err(e) => {
-                            println!("  ⚠ No QPU available: {}", e);
+                            println!("  ⚠ No QPU available: {e}");
                             println!("  [Could fall back to hybrid solver]");
                         }
                     }
                 }
                 Err(e) => {
-                    println!("  ❌ Connection failed: {}", e);
+                    println!("  ❌ Connection failed: {e}");
                     println!("  Check API token and network connectivity");
                 }
             }
@@ -467,7 +468,7 @@ async fn demo_cloud_integration() -> Result<(), Box<dyn std::error::Error>> {
                 cost_tracker,
             ) {
                 Ok(client) => {
-                    println!("  ✓ Connected to AWS Braket ({})", region);
+                    println!("  ✓ Connected to AWS Braket ({region})");
                     println!("  Cost limit: $50.00");
                     println!("  Device preference: Simulators (free)");
 
@@ -487,12 +488,12 @@ async fn demo_cloud_integration() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                         Err(e) => {
-                            println!("  ⚠ Device query failed: {}", e);
+                            println!("  ⚠ Device query failed: {e}");
                         }
                     }
                 }
                 Err(e) => {
-                    println!("  ❌ Connection failed: {}", e);
+                    println!("  ❌ Connection failed: {e}");
                     println!("  Check AWS credentials and permissions");
                 }
             }

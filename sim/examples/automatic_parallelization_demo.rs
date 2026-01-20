@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Automatic Parallelization Demo
 //!
 //! This example demonstrates the automatic parallelization capabilities

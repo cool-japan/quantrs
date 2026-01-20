@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive example demonstrating the D-Wave Leap cloud service client
 //!
 //! This example shows how to use the enhanced D-Wave Leap client to:
@@ -98,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             solver.available
         );
         if let Some(avg_load) = solver.avg_load {
-            println!("    Queue time: {:.1}s", avg_load);
+            println!("    Queue time: {avg_load:.1}s");
         }
     }
 
@@ -116,11 +117,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(solver) => {
             println!("✓ Selected QPU solver: {} ({})", solver.name, solver.id);
             if let Some(load) = solver.avg_load {
-                println!("  Current queue time: {:.1}s", load);
+                println!("  Current queue time: {load:.1}s");
             }
         }
         Err(e) => {
-            println!("⚠ No QPU solvers available: {}", e);
+            println!("⚠ No QPU solvers available: {e}");
         }
     }
 
@@ -134,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("✓ Selected hybrid solver: {} ({})", solver.name, solver.id);
         }
         Err(e) => {
-            println!("⚠ No hybrid solvers available: {}", e);
+            println!("⚠ No hybrid solvers available: {e}");
         }
     }
 
@@ -229,9 +230,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create multiple small problems
     for i in 0..3 {
         let mut problem = IsingModel::new(3);
-        problem.set_coupling(0, 1, -1.0 - i as f64 * 0.1)?;
-        problem.set_coupling(1, 2, -1.0 - i as f64 * 0.1)?;
-        problem.set_coupling(2, 0, -1.0 - i as f64 * 0.1)?;
+        problem.set_coupling(0, 1, (i as f64).mul_add(-0.1, -1.0))?;
+        problem.set_coupling(1, 2, (i as f64).mul_add(-0.1, -1.0))?;
+        problem.set_coupling(2, 0, (i as f64).mul_add(-0.1, -1.0))?;
         batch_problems.push(problem);
     }
 
@@ -243,7 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "  Problem {}: 3-qubit triangle with coupling strength {:.1}",
             i + 1,
-            -1.0 - i as f64 * 0.1
+            (i as f64).mul_add(-0.1, -1.0)
         );
     }
 

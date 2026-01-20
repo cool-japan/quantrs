@@ -1009,7 +1009,7 @@ mod tests {
             .expect("Qubit measurement should succeed");
 
         // Should be false (0) since we started in |0⟩ state
-        assert_eq!(result, false);
+        assert!(!result);
 
         // After measurement, state should be collapsed
         let qubit = device

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Clustering Example
 //!
 //! This example demonstrates various quantum clustering algorithms available in the

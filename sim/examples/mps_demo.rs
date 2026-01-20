@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Demonstration of MPS (Matrix Product State) simulator
 //!
 //! This example shows how to use the MPS simulator for efficient
@@ -56,10 +57,10 @@ fn demo_bell_state() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let amp01 = bell_mps.get_amplitude(&[false, true])?;
     let amp10 = bell_mps.get_amplitude(&[true, false])?;
 
-    println!("   |00⟩ amplitude: {:.4}", amp00);
-    println!("   |01⟩ amplitude: {:.4}", amp01);
-    println!("   |10⟩ amplitude: {:.4}", amp10);
-    println!("   |11⟩ amplitude: {:.4}", amp11);
+    println!("   |00⟩ amplitude: {amp00:.4}");
+    println!("   |01⟩ amplitude: {amp01:.4}");
+    println!("   |10⟩ amplitude: {amp10:.4}");
+    println!("   |11⟩ amplitude: {amp11:.4}");
 
     // Sample from the state (note: this will collapse the state)
     println!("\n   Single measurement sample:");
@@ -74,10 +75,7 @@ fn demo_ghz_state() -> std::result::Result<(), Box<dyn std::error::Error>> {
     println!("2. GHZ State with Variable Size");
 
     for n in [3, 5, 10] {
-        println!(
-            "\n   Creating {}-qubit GHZ state: (|0...0⟩ + |1...1⟩)/√2",
-            n
-        );
+        println!("\n   Creating {n}-qubit GHZ state: (|0...0⟩ + |1...1⟩)/√2");
 
         // Create circuit
         let mut circuit = Circuit::<10>::new(); // Use max size
@@ -107,7 +105,7 @@ fn demo_ghz_state() -> std::result::Result<(), Box<dyn std::error::Error>> {
         // Check entanglement
         if n > 2 {
             let entropy = mps.entanglement_entropy(n / 2)?;
-            println!("   Entanglement entropy at middle cut: {:.4}", entropy);
+            println!("   Entanglement entropy at middle cut: {entropy:.4}");
         }
     }
 
@@ -143,13 +141,13 @@ fn demo_linear_circuit() -> std::result::Result<(), Box<dyn std::error::Error>> 
         // Would apply CZ(i, i+1)
     }
 
-    println!("   Circuit created with {} qubits", n);
+    println!("   Circuit created with {n} qubits");
     println!("   Maximum bond dimension: {}", config.max_bond_dim);
 
     // Sample measurement
     let outcome = mps.sample();
     let bitstring: String = outcome.iter().map(|&b| if b { '1' } else { '0' }).collect();
-    println!("   Sample measurement: |{}>", bitstring);
+    println!("   Sample measurement: |{bitstring}>");
 
     Ok(())
 }
@@ -176,7 +174,7 @@ fn demo_entanglement_entropy() -> std::result::Result<(), Box<dyn std::error::Er
     // Create Bell state and measure entropy
     let mut bell_mps = utils::create_bell_state_mps()?;
     let entropy = bell_mps.entanglement_entropy(0)?;
-    println!("   Bell state entropy: {:.4} (max for 2 qubits)", entropy);
+    println!("   Bell state entropy: {entropy:.4} (max for 2 qubits)");
 
     // Volume law entanglement (random circuit)
     println!("\n   c) Random circuit (volume law):");
@@ -215,7 +213,7 @@ fn demo_performance_comparison() -> std::result::Result<(), Box<dyn std::error::
     ];
 
     for (name, config) in configs {
-        println!("\n   Configuration: {}", name);
+        println!("\n   Configuration: {name}");
 
         // Create MPS
         let n = 16;
@@ -224,11 +222,11 @@ fn demo_performance_comparison() -> std::result::Result<(), Box<dyn std::error::
         // Memory estimate
         let memory_per_tensor = config.max_bond_dim * 2 * config.max_bond_dim * 16; // Complex64
         let total_memory = memory_per_tensor * n;
-        println!("   Estimated memory: {} bytes", total_memory);
+        println!("   Estimated memory: {total_memory} bytes");
 
         // Compare to state vector
         let sv_memory = (1 << n) * 16; // 2^n complex numbers
-        println!("   State vector memory: {} bytes", sv_memory);
+        println!("   State vector memory: {sv_memory} bytes");
         println!(
             "   Memory ratio: {:.2}%",
             (total_memory as f64 / sv_memory as f64) * 100.0

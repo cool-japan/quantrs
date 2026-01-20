@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! `SciRS2` Distributed Training Example
 //!
 //! This example demonstrates the `SciRS2` integration capabilities including

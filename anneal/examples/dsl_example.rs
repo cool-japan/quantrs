@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating the Domain-Specific Language (DSL) for Optimization
 //!
 //! This example shows how to:

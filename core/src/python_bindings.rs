@@ -1331,7 +1331,7 @@ fn core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calculate_theoretical_quantum_volume, m)?)?;
 
     // Module metadata
-    m.add("__version__", "0.1.0-alpha.5")?;
+    m.add("__version__", "0.1.0")?;
     m.add("__author__", "QuantRS2 Team")?;
     m.add(
         "__description__",

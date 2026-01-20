@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::assertions_on_constants)]
 //! Basic integration tests for the QuantRS2 facade crate
 
 use quantrs2::prelude::essentials::*;

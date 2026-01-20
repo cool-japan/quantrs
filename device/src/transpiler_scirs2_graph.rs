@@ -402,6 +402,7 @@ impl SciRS2GraphTranspiler {
 }
 
 #[cfg(test)]
+#[allow(clippy::pedantic, clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use quantrs2_circuit::prelude::*;

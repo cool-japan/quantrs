@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating the QAOA circuit bridge with the circuit module
 //!
 //! This example shows how to use the QAOA circuit bridge to:

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Transformer Example
 //!
 //! This example demonstrates the quantum transformer architecture with various

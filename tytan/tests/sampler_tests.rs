@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Tests for the sampler module.
 
 use quantrs2_tytan::sampler::{GASampler, SASampler, Sampler};
@@ -189,17 +190,16 @@ fn test_sampler_one_hot_constraint() {
     // Constraint: 10 * (x + y + z - 1)^2 with higher penalty weight
     let one = quantrs2_symengine_pure::Expression::from(1);
     let two = quantrs2_symengine_pure::Expression::from(2);
-    let expr = quantrs2_symengine_pure::Expression::from(10)
-        * (x.clone() + y.clone() + z.clone() - one).pow(&two);
+    let expr = quantrs2_symengine_pure::Expression::from(10) * (x + y + z - one).pow(&two);
 
-    println!("DEBUG: Original expression = {}", expr);
+    println!("DEBUG: Original expression = {expr}");
     let expanded = expr.expand();
-    println!("DEBUG: Expanded expression = {}", expanded);
+    println!("DEBUG: Expanded expression = {expanded}");
 
     // Compile to QUBO
     let (qubo, offset) = Compile::new(expr).get_qubo().unwrap();
     println!("DEBUG: QUBO matrix = {:?}", qubo.0);
-    println!("DEBUG: QUBO offset = {}", offset);
+    println!("DEBUG: QUBO offset = {offset}");
     println!("DEBUG: Variable map = {:?}", qubo.1);
 
     // Create sampler with fixed seed for reproducibility
@@ -274,7 +274,7 @@ fn test_sampler_one_hot_constraint() {
             }
 
             // At minimum, verify that the QUBO produces consistent results
-            assert!(results.len() > 0, "Sampler should produce results");
+            assert!(!results.is_empty(), "Sampler should produce results");
         }
     }
 }

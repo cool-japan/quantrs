@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Qulacs-inspired backend demonstration
 //!
 //! This example shows how to use the Qulacs-style high-performance backend
@@ -33,7 +34,7 @@ fn main() -> Result<()> {
     for i in 0..8 {
         let amp = ghz_state.amplitudes()[i];
         if amp.norm() > 1e-10 {
-            println!("  |{:03b}⟩: {:.6}", i, amp);
+            println!("  |{i:03b}⟩: {amp:.6}");
         }
     }
     println!("Norm: {:.10}\n", ghz_state.norm_squared());
@@ -48,7 +49,7 @@ fn main() -> Result<()> {
     for i in 0..4 {
         let amp = bell_state.amplitudes()[i];
         if amp.norm() > 1e-10 {
-            println!("  |{:02b}⟩: {:.6}", i, amp);
+            println!("  |{i:02b}⟩: {amp:.6}");
         }
     }
     println!("Norm: {:.10}\n", bell_state.norm_squared());
@@ -61,7 +62,7 @@ fn main() -> Result<()> {
     qulacs_gates::hadamard(&mut state2, 0)?;
 
     let inner = state1.inner_product(&state2)?;
-    println!("Inner product ⟨H|0⟩|H|0⟩⟩ = {:.6}", inner);
+    println!("Inner product ⟨H|0⟩|H|0⟩⟩ = {inner:.6}");
     println!("Expected: 1.0, Got: {:.10}\n", inner.norm());
 
     // Test Pauli gates
@@ -129,8 +130,8 @@ fn main() -> Result<()> {
 
     let prob0 = bell.probability_zero(0)?;
     let prob1 = bell.probability_one(0)?;
-    println!("  P(qubit 0 = |0⟩) = {:.6}", prob0);
-    println!("  P(qubit 0 = |1⟩) = {:.6}", prob1);
+    println!("  P(qubit 0 = |0⟩) = {prob0:.6}");
+    println!("  P(qubit 0 = |1⟩) = {prob1:.6}");
     println!("  Sum = {:.6}\n", prob0 + prob1);
 
     // Measurement with collapse
@@ -147,7 +148,7 @@ fn main() -> Result<()> {
     println!(
         "  After collapse: amplitude[{}] = {:.6}\n",
         if outcome { "1" } else { "0" },
-        measure_state.amplitudes()[if outcome { 1 } else { 0 }]
+        measure_state.amplitudes()[usize::from(outcome)]
     );
 
     // Sampling without collapse
@@ -185,7 +186,7 @@ fn main() -> Result<()> {
     qulacs_gates::cnot(&mut hist_state, 0, 1)?;
 
     let counts = hist_state.get_counts(1000)?;
-    for (bitstring, count) in counts.iter() {
+    for (bitstring, count) in &counts {
         let binary_str: String = bitstring
             .iter()
             .map(|&b| if b { '1' } else { '0' })
@@ -212,12 +213,12 @@ fn main() -> Result<()> {
     for sample in &qubit_samples {
         *sample_counts.entry(sample.clone()).or_insert(0) += 1;
     }
-    for (bitstring, count) in sample_counts.iter() {
+    for (bitstring, count) in &sample_counts {
         let binary_str: String = bitstring
             .iter()
             .map(|&b| if b { '1' } else { '0' })
             .collect();
-        println!("    |{}⟩: {} times", binary_str, count);
+        println!("    |{binary_str}⟩: {count} times");
     }
     println!();
 

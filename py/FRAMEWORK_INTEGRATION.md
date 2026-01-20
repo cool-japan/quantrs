@@ -1,6 +1,6 @@
 # Framework Integration Guide
 
-**QuantRS2-Py v0.1.0-rc.2**
+**QuantRS2-Py v0.1.0**
 
 This guide covers seamless integration between QuantRS2 and other quantum computing frameworks.
 
@@ -435,4 +435,4 @@ To add support for additional frameworks:
 ---
 
 **Last Updated**: 2025-11-17
-**QuantRS2 Version**: v0.1.0-rc.2
+**QuantRS2 Version**: v0.1.0

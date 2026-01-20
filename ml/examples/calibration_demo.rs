@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive Calibration Demo
 //!
 //! This example demonstrates all three calibration methods available in QuantRS2-ML:

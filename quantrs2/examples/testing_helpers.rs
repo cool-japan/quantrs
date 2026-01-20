@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Testing utilities demonstration
 //!
 //! This example shows how to use QuantRS2's testing helpers for quantum algorithm testing.

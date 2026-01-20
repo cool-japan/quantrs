@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Few-Shot Learning Example
 //!
 //! This example demonstrates how to use quantum few-shot learning algorithms

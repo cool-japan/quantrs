@@ -3,6 +3,9 @@
 //! This module provides comprehensive bindings for all gate operations from the core module,
 //! including standard gates, parameterized gates, multi-qubit gates, and custom gate creation.
 
+// Allow option_if_let_else for cleaner None handling in gate operations
+#![allow(clippy::option_if_let_else)]
+
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyComplex, PyDict, PyList, PyTuple};

@@ -5,7 +5,7 @@
 **Compatibility Score:** 99%+
 **Implementation:** ~14,000+ lines | 560+ tests (device) | 326+ tests (circuit)
 
-## Recent Additions (RC.2)
+## Recent Additions
 - **Runtime v2 API**: SamplerV2/EstimatorV2 primitives with PUBs
 - **Dynamic Circuits**: Full switch-case, classical arithmetic operations
 - **Pulse Calibrations**: Custom pulse schedule upload and management

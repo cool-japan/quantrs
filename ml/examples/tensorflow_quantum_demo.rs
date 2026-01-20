@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! TensorFlow Quantum Compatibility Example
 //!
 //! This example demonstrates the TensorFlow Quantum (TFQ) compatibility layer,

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Error Correction Annealing Example
 //!
 //! This example demonstrates the use of quantum error correction (QEC) in quantum annealing.

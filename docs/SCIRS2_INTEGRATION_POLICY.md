@@ -1,7 +1,7 @@
 # SciRS2 Integration Policy for QuantRS2
 
 > **Note**: This document is copied from the official SciRS2 CORE_USAGE_POLICY.md
-> to ensure all QuantRS2 contributors understand and follow the SciRS2 integration guidelines.
+> to ensure all COOLJAPAN OU understand and follow the SciRS2 integration guidelines.
 > **Last updated**: 2025-06-23
 
 This document outlines the mandatory policies for using scirs2-core modules in QuantRS2. All contributors MUST adhere to these guidelines to ensure proper integration with the SciRS2 ecosystem.

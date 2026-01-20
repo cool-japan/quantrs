@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::assertions_on_constants)]
 //! Feature flag integration tests for the QuantRS2 facade crate
 
 // Test that core is always available

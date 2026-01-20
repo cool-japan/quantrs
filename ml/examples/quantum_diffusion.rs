@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Diffusion Model Example
 //!
 //! This example demonstrates quantum diffusion models for generative modeling,

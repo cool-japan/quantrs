@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Memory estimation and capacity planning example
 //!
 //! This example demonstrates how to estimate memory requirements for quantum

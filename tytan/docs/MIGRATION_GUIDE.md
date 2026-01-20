@@ -422,7 +422,7 @@ Enable features for better performance:
 ```toml
 [dependencies]
 quantrs2-tytan = { 
-    version = "0.1.0-rc.2",
+    version = "0.1.0",
     features = ["gpu", "scirs", "parallel"]
 }
 ```

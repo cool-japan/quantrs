@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic)]
 //! Benchmarks for stabilizer (Clifford) simulator
 //!
 //! This benchmark suite demonstrates the efficiency of the stabilizer formalism
@@ -11,7 +12,7 @@ use quantrs2_sim::stabilizer::{StabilizerGate, StabilizerSimulator};
 fn bench_single_qubit_clifford_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("stabilizer_single_qubit");
 
-    for num_qubits in [10, 100, 1000, 10000].iter() {
+    for num_qubits in &[10, 100, 1000, 10000] {
         let target = 0;
 
         // Hadamard gate
@@ -96,7 +97,7 @@ fn bench_single_qubit_clifford_gates(c: &mut Criterion) {
 fn bench_two_qubit_clifford_gates(c: &mut Criterion) {
     let mut group = c.benchmark_group("stabilizer_two_qubit");
 
-    for num_qubits in [10, 100, 1000, 10000].iter() {
+    for num_qubits in &[10, 100, 1000, 10000] {
         let control = 0;
         let target = 1;
 
@@ -144,7 +145,7 @@ fn bench_two_qubit_clifford_gates(c: &mut Criterion) {
 fn bench_stabilizer_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("stabilizer_creation");
 
-    for num_qubits in [10, 100, 1000, 10000, 100000].iter() {
+    for num_qubits in &[10, 100, 1000, 10000, 100000] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_qubits),
             num_qubits,
@@ -163,7 +164,7 @@ fn bench_stabilizer_creation(c: &mut Criterion) {
 fn bench_stabilizer_measurement(c: &mut Criterion) {
     let mut group = c.benchmark_group("stabilizer_measurement");
 
-    for num_qubits in [10, 100, 1000, 10000].iter() {
+    for num_qubits in &[10, 100, 1000, 10000] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_qubits),
             num_qubits,
@@ -187,7 +188,7 @@ fn bench_stabilizer_measurement(c: &mut Criterion) {
 fn bench_ghz_state_preparation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ghz_state_preparation");
 
-    for num_qubits in [10, 100, 1000, 10000].iter() {
+    for num_qubits in &[10, 100, 1000, 10000] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_qubits),
             num_qubits,
@@ -216,7 +217,7 @@ fn bench_surface_code_preparation(c: &mut Criterion) {
     let mut group = c.benchmark_group("surface_code");
 
     // Surface code d=3, 5, 7, 9 (9, 25, 49, 81 qubits)
-    for distance in [3, 5, 7, 9].iter() {
+    for distance in &[3, 5, 7, 9] {
         let num_qubits = distance * distance;
 
         group.bench_with_input(
@@ -255,7 +256,7 @@ fn bench_deep_clifford_circuit(c: &mut Criterion) {
     // Fixed number of qubits, varying depth
     let num_qubits = 100;
 
-    for depth in [10, 100, 1000, 10000].iter() {
+    for depth in &[10, 100, 1000, 10000] {
         group.bench_with_input(BenchmarkId::new("depth", depth), depth, |b, &d| {
             b.iter(|| {
                 let mut sim = StabilizerSimulator::new(num_qubits);
@@ -292,7 +293,7 @@ fn bench_deep_clifford_circuit(c: &mut Criterion) {
 fn bench_random_clifford_circuit(c: &mut Criterion) {
     let mut group = c.benchmark_group("random_clifford");
 
-    for num_qubits in [10, 100, 1000].iter() {
+    for num_qubits in &[10, 100, 1000] {
         let depth = 100; // Fixed depth
 
         group.bench_with_input(
@@ -343,7 +344,7 @@ fn bench_massive_qubit_counts(c: &mut Criterion) {
     let mut group = c.benchmark_group("massive_qubits");
     group.sample_size(10); // Reduce sample size for very large circuits
 
-    for num_qubits in [10000, 100000, 1000000].iter() {
+    for num_qubits in &[10000, 100000, 1000000] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_qubits),
             num_qubits,

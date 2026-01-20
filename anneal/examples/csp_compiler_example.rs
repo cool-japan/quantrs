@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating CSP (Constraint Satisfaction Problem) compilation
 //!
 //! This example shows how to:

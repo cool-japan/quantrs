@@ -4,6 +4,10 @@
 //! making it easier to transition to `QuantRS2`.
 
 #![allow(non_snake_case)] // Python API convention: match Qiskit/Cirq naming (H, X, Y, Z, CNOT, LineQubit, GridQubit)
+#![allow(clippy::unused_self)] // PyO3 method bindings require &self signature
+#![allow(clippy::unnecessary_wraps)] // PyO3 Result return types for future error handling
+#![allow(clippy::option_if_let_else)] // Explicit if-let chains clearer than map_or_else
+#![allow(clippy::type_complexity)] // PyO3 return types with nested generics
 
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
@@ -339,18 +343,38 @@ impl PyQuantumCircuit {
     }
 
     /// Compose with another circuit
+    ///
+    /// Appends the gates from `other` circuit to this circuit.
+    /// If `qubits` is specified, the other circuit's qubits are mapped to those indices.
     fn compose(&mut self, other: &Self, qubits: Option<Vec<usize>>) -> PyResult<()> {
-        // Simplified composition - would need full implementation
         if other.num_qubits() > self.num_qubits() {
-            return Err(PyValueError::new_err("Other circuit has more qubits"));
+            return Err(PyValueError::new_err(format!(
+                "Other circuit has {} qubits, but this circuit only has {}",
+                other.num_qubits(),
+                self.num_qubits()
+            )));
         }
-        Ok(())
+
+        // For now, we compose directly without qubit mapping
+        // A full implementation would remap qubits according to the `qubits` parameter
+        if qubits.is_some() {
+            return Err(PyValueError::new_err(
+                "Qubit remapping in compose() is not yet implemented. Use compose(other, None) for direct composition."
+            ));
+        }
+
+        self.inner.compose(&other.inner)
     }
 
     /// Get circuit depth
-    const fn depth(&self) -> usize {
-        // Simplified - would need to track gate operations
-        0
+    fn depth(&self) -> usize {
+        self.inner.depth()
+    }
+
+    /// Get the number of gates in the circuit
+    #[getter]
+    fn num_gates(&self) -> usize {
+        self.inner.num_gates()
     }
 
     /// Draw the circuit

@@ -7,7 +7,7 @@ This document provides comprehensive instructions for installing SymEngine and r
 When building `quantrs2-symengine-sys`, you may encounter this error:
 
 ```
-error: failed to run custom build command for `quantrs2-symengine-sys v0.1.0-rc.2`
+error: failed to run custom build command for `quantrs2-symengine-sys v0.1.0`
 
 --- stderr
 wrapper.h:1:10: fatal error: 'symengine/cwrapper.h' file not found

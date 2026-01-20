@@ -7,7 +7,7 @@
 //! - Symmetry Verification
 
 use crate::measurement::PyMeasurementResult;
-use crate::PyCircuit;
+use crate::{CircuitOp, PyCircuit};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -294,18 +294,19 @@ impl PyZeroNoiseExtrapolation {
     }
 
     /// Apply circuit folding for noise scaling
+    ///
+    /// Circuit folding amplifies noise by inserting G G† pairs after each gate G.
+    /// For a scale factor λ = 2k + 1, each gate G becomes G (G† G)^k.
+    ///
+    /// Args:
+    ///     circuit: The circuit to fold
+    ///     scale_factor: The noise amplification factor (must be >= 1.0 and odd integer)
+    ///
+    /// Returns:
+    ///     A new circuit with folded gates
     #[allow(clippy::unused_self)]
-    fn fold_circuit(&self, _circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
-        // Note: This is a placeholder implementation
-        // The actual folding would need to be implemented once Circuit API supports it
-
-        if scale_factor < 1.0 {
-            return Err(PyValueError::new_err("Scale factor must be >= 1.0"));
-        }
-
-        // For now, create a new empty circuit as placeholder
-        // TODO: Implement actual folding once Circuit API supports boxed gates
-        Err(PyValueError::new_err("Circuit folding not yet implemented"))
+    fn fold_circuit(&self, circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
+        fold_circuit_global(circuit, scale_factor)
     }
 
     /// Perform ZNE given measurement results at different scale factors
@@ -361,6 +362,119 @@ impl PyZeroNoiseExtrapolation {
     }
 }
 
+/// Helper function to perform global circuit folding
+///
+/// For each gate G in the circuit, applies G (G† G)^k where k = (scale_factor - 1) / 2.
+fn fold_circuit_global(circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
+    if scale_factor < 1.0 {
+        return Err(PyValueError::new_err("Scale factor must be >= 1.0"));
+    }
+
+    // Check that scale_factor is close to an odd integer
+    let rounded = scale_factor.round();
+    if (scale_factor - rounded).abs() > 1e-6 {
+        return Err(PyValueError::new_err(
+            "Scale factor must be an integer for global folding",
+        ));
+    }
+
+    let scale_int = rounded as usize;
+    if scale_int % 2 == 0 {
+        return Err(PyValueError::new_err(
+            "Scale factor must be an odd integer (1, 3, 5, ...) for global folding",
+        ));
+    }
+
+    // Number of fold repetitions: (λ - 1) / 2
+    let num_folds = (scale_int - 1) / 2;
+
+    // Create a new circuit with the same number of qubits
+    let mut folded = PyCircuit::new(circuit.n_qubits)?;
+
+    // Get the operations from the original circuit
+    let ops = circuit.get_operations();
+
+    // For each gate, apply G (G† G)^k
+    for &op in ops {
+        // Apply the original gate
+        folded.apply_op(op)?;
+
+        // Apply (G† G) pairs
+        for _ in 0..num_folds {
+            folded.apply_op(op.inverse())?;
+            folded.apply_op(op)?;
+        }
+    }
+
+    Ok(folded)
+}
+
+/// Helper function to perform local circuit folding with gate weights
+///
+/// Applies folding selectively based on gate weights.
+/// Gates with higher weights are folded more.
+fn fold_circuit_local(
+    circuit: &PyCircuit,
+    scale_factor: f64,
+    gate_weights: Option<&[f64]>,
+) -> PyResult<PyCircuit> {
+    if scale_factor < 1.0 {
+        return Err(PyValueError::new_err("Scale factor must be >= 1.0"));
+    }
+
+    let ops = circuit.get_operations();
+    let num_gates = ops.len();
+
+    // Default weights: all equal
+    let default_weights: Vec<f64> = vec![1.0; num_gates];
+    let weights = gate_weights.unwrap_or(&default_weights);
+
+    if weights.len() != num_gates {
+        return Err(PyValueError::new_err(format!(
+            "Number of weights ({}) must match number of gates ({})",
+            weights.len(),
+            num_gates
+        )));
+    }
+
+    // Calculate total weight
+    let total_weight: f64 = weights.iter().sum();
+    if total_weight < 1e-10 {
+        return Err(PyValueError::new_err("Total weight must be positive"));
+    }
+
+    // Normalize weights
+    let normalized_weights: Vec<f64> = weights.iter().map(|w| w / total_weight).collect();
+
+    // Calculate number of folds for each gate to achieve target scale factor
+    // Total scale = 1 + 2 * Σ(w_i * k_i) where k_i is the number of folds for gate i
+    // We want: scale_factor = 1 + 2 * Σ(w_i * k_i)
+    // So: Σ(w_i * k_i) = (scale_factor - 1) / 2
+    let target_extra = (scale_factor - 1.0) / 2.0;
+
+    // Create a new circuit with the same number of qubits
+    let mut folded = PyCircuit::new(circuit.n_qubits)?;
+
+    // Apply gates with local folding
+    for (i, &op) in ops.iter().enumerate() {
+        // Apply the original gate
+        folded.apply_op(op)?;
+
+        // Calculate number of folds for this gate
+        // Proportional to weight * target_extra
+        let fold_amount = (normalized_weights[i] * target_extra * (num_gates as f64)).round();
+        let num_folds = fold_amount.max(0.0) as usize;
+
+        // Apply (G† G) pairs
+        for _ in 0..num_folds {
+            folded.apply_op(op.inverse())?;
+            folded.apply_op(op)?;
+        }
+    }
+
+    Ok(folded)
+}
+
 /// Circuit folding utilities
 #[pyclass(name = "CircuitFolding")]
 pub struct PyCircuitFolding;
@@ -372,31 +486,41 @@ impl PyCircuitFolding {
         Self
     }
 
+    /// Apply global circuit folding
+    ///
+    /// Each gate G in the circuit becomes G (G† G)^k where k = (scale_factor - 1) / 2.
+    ///
+    /// Args:
+    ///     circuit: The circuit to fold
+    ///     scale_factor: The noise amplification factor (must be an odd integer >= 1)
+    ///
+    /// Returns:
+    ///     A new circuit with folded gates
     #[staticmethod]
-    fn fold_global(_circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
-        // Placeholder implementation
-        if scale_factor < 1.0 {
-            return Err(PyValueError::new_err("Scale factor must be >= 1.0"));
-        }
-
-        // TODO: Implement actual folding
-        Err(PyValueError::new_err("Global folding not yet implemented"))
+    fn fold_global(circuit: &PyCircuit, scale_factor: f64) -> PyResult<PyCircuit> {
+        fold_circuit_global(circuit, scale_factor)
     }
 
+    /// Apply local circuit folding with optional gate weights
+    ///
+    /// Folds gates selectively based on their weights. Gates with higher weights
+    /// receive more folding, allowing for targeted noise amplification.
+    ///
+    /// Args:
+    ///     circuit: The circuit to fold
+    ///     scale_factor: The target noise amplification factor
+    ///     gate_weights: Optional weights for each gate (default: uniform weights)
+    ///
+    /// Returns:
+    ///     A new circuit with selectively folded gates
     #[staticmethod]
-    #[pyo3(signature = (_circuit, scale_factor, _gate_weights=None))]
+    #[pyo3(signature = (circuit, scale_factor, gate_weights=None))]
     fn fold_local(
-        _circuit: &PyCircuit,
+        circuit: &PyCircuit,
         scale_factor: f64,
-        _gate_weights: Option<Vec<f64>>,
+        gate_weights: Option<Vec<f64>>,
     ) -> PyResult<PyCircuit> {
-        // Placeholder implementation
-        if scale_factor < 1.0 {
-            return Err(PyValueError::new_err("Scale factor must be >= 1.0"));
-        }
-
-        // TODO: Implement actual folding
-        Err(PyValueError::new_err("Local folding not yet implemented"))
+        fold_circuit_local(circuit, scale_factor, gate_weights.as_deref())
     }
 }
 
@@ -588,3 +712,6 @@ pub fn register_mitigation_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_submodule(&submodule)?;
     Ok(())
 }
+
+// Note: Rust unit tests for circuit folding require Python runtime (PyO3).
+// See py/tests/test_mitigation.py for comprehensive Python-based tests.

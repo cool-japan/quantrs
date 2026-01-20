@@ -405,7 +405,7 @@ let normal = RandNormal::new(0.0, 1.0).unwrap();
 
 ## Version Compatibility
 
-QuantRS2 v0.1.0-rc.2 requires:
+QuantRS2 v0.1.0 requires:
 
 - **SciRS2**: v0.1.1 (stable)
 - **NumRS2**: v0.1.1 (stable)

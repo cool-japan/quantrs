@@ -1,3 +1,8 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default
+)]
 //! Comprehensive Tests for Ultrathink Mode Implementations
 //!
 //! This module contains extensive test coverage for all new implementations added

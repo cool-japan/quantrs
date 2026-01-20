@@ -34,7 +34,7 @@ println!("SciRS2: {}", version::SCIRS2_VERSION);
 ```
 
 **Current Requirements:**
-- **QuantRS2**: v0.1.0-rc.2
+- **QuantRS2**: v0.1.0
 - **SciRS2**: v0.1.1 (stable)
 - **OptiRS**: v0.1.0 (stable)
 - **NumRS2**: v0.1.1 (stable)
@@ -264,7 +264,7 @@ let result = qaoa.optimize_with(optimizer)?;
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.0-rc.2", features = ["full"] }
+quantrs2 = { version = "0.1.0", features = ["full"] }
 
 # SciRS2 will automatically use:
 # - SIMD (AVX2, AVX-512, NEON)
@@ -533,6 +533,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-**Version:** 0.1.0-rc.2
+**Version:** 0.1.0
 **Last Updated:** 2025-12-31
 **SciRS2 Version:** v0.1.1 (stable)

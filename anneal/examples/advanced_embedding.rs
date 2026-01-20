@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Advanced Graph Embedding Example
 //!
 //! This example demonstrates the use of advanced graph embedding algorithms

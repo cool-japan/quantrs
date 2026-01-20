@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_wraps, clippy::pedantic)]
 //! Demonstration of pulse-level control for quantum circuits
 //!
 //! This example shows how to use low-level pulse control for fine-grained

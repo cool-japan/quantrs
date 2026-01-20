@@ -2398,6 +2398,7 @@ impl AlertManager {
 // Default implementation already exists in the struct definition
 
 #[cfg(test)]
+#[allow(clippy::pedantic, clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 
@@ -2447,13 +2448,12 @@ mod tests {
         let config = CostOptimizationConfig::default();
         let _engine = CostOptimizationEngine::new(config);
 
-        // Should create without error
-        assert!(true);
+        // Test passes if engine creates without error (no panic)
     }
 
     #[test]
     fn test_optimization_objectives() {
-        let objectives = vec![
+        let objectives = [
             OptimizationObjective::MinimizeCost,
             OptimizationObjective::MaximizeQuality,
             OptimizationObjective::MinimizeTime,

@@ -1,7 +1,7 @@
 # Qulacs Compatibility Analysis (QuantRS2)
 
 **Last Updated:** 2026-01-08
-**Version:** 0.1.0-rc.2
+**Version:** 0.1.0
 **Code Lines:** 3,032
 **Tests:** 52 (all passing)
 

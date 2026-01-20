@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unreadable_literal)]
 //! Configuration example for QuantRS2
 //!
 //! This example demonstrates how to configure QuantRS2 for different use cases.

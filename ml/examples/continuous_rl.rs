@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Continuous Reinforcement Learning Example
 //!
 //! This example demonstrates quantum reinforcement learning algorithms

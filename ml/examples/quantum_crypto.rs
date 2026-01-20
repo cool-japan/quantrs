@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 use quantrs2_ml::crypto::{ProtocolType, QuantumKeyDistribution, QuantumSignature, QSDC};
 use quantrs2_ml::prelude::*;
 use std::time::Instant;

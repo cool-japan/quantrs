@@ -12,6 +12,10 @@
 **/*.rs.bak
 **/*.rs.backup
 **/*.rs.old
+**/*.bak
+**/*.old
+**/*.bak2
+**/*.orig
 
 
 # MSVC Windows builds of rustc generate these, which store debugging information
@@ -92,3 +96,8 @@ py/python/**/*.so
 sim/clippy_output.txt
 sim/clippy_output.txt
 .ipynb_checkpoints/Cargo-checkpoint.toml
+
+# CLAUDE
+**/CLAUDE.local.md
+**/.claude/
+**/CLAUDE.md

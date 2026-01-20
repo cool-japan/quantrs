@@ -2,6 +2,10 @@
 //!
 //! This module provides basic parametric gates for variational algorithms.
 
+// Allow unused_self for PyO3 method bindings and unnecessary_wraps for future error handling
+#![allow(clippy::unused_self)]
+#![allow(clippy::unnecessary_wraps)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;

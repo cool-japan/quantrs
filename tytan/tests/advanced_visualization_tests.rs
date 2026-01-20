@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive tests for advanced visualization and analysis.
 
 use quantrs2_tytan::advanced_visualization::*;

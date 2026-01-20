@@ -7,6 +7,9 @@
 //! - Grover's Search Algorithm
 //! - Quantum Phase Estimation (QPE)
 
+// Allow unnecessary_wraps for PyO3 Result return types
+#![allow(clippy::unnecessary_wraps)]
+
 use crate::{PyCircuit, PySimulationResult};
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -168,11 +171,6 @@ impl PyQFT {
                 // Hadamard
                 circuit.h(j)?;
             }
-
-            // Swap qubits
-            for i in 0..n_qubits / 2 {
-                circuit.swap(i, n_qubits - i - 1)?;
-            }
         } else {
             // Forward QFT
             for j in 0..n_qubits {
@@ -185,11 +183,11 @@ impl PyQFT {
                     circuit.crz(k, j, angle)?;
                 }
             }
+        }
 
-            // Swap qubits
-            for i in 0..n_qubits / 2 {
-                circuit.swap(i, n_qubits - i - 1)?;
-            }
+        // Swap qubits (common to both forward and inverse QFT)
+        for i in 0..n_qubits / 2 {
+            circuit.swap(i, n_qubits - i - 1)?;
         }
 
         Py::new(py, circuit)
@@ -214,10 +212,6 @@ impl PyQFT {
                 }
                 circuit.h(qubits[j])?;
             }
-
-            for i in 0..n / 2 {
-                circuit.swap(qubits[i], qubits[n - i - 1])?;
-            }
         } else {
             // Forward QFT on specified qubits
             for j in 0..n {
@@ -228,10 +222,11 @@ impl PyQFT {
                     circuit.crz(qubits[k], qubits[j], angle)?;
                 }
             }
+        }
 
-            for i in 0..n / 2 {
-                circuit.swap(qubits[i], qubits[n - i - 1])?;
-            }
+        // Swap qubits (common to both forward and inverse QFT)
+        for i in 0..n / 2 {
+            circuit.swap(qubits[i], qubits[n - i - 1])?;
         }
 
         Ok(())

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Tests and examples for advanced visualization functionality
 
 use quantrs2_tytan::analysis::visualization::*;

@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Non-Stoquastic Hamiltonian Support
 //!
 //! This example shows how to:

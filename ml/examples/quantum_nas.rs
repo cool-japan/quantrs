@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Neural Architecture Search Example
 //!
 //! This example demonstrates various quantum neural architecture search algorithms

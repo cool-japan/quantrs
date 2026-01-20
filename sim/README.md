@@ -6,9 +6,9 @@
 
 QuantRS2-Sim is the comprehensive simulation engine of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing state-of-the-art quantum simulation algorithms, error correction codes, and performance optimization techniques for simulating quantum systems up to 30+ qubits on standard hardware.
 
-## Version 0.1.0-rc.2
+## Version 0.1.0
 
-This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0-rc.2 for unprecedented performance:
+This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0 for unprecedented performance:
 - **Parallel Operations**: All simulators use `scirs2_core::parallel_ops` for automatic parallelization
 - **SIMD Acceleration**: Vectorized quantum operations via SciRS2 SIMD abstractions
 - **Advanced Linear Algebra**: Leveraging SciRS2's optimized BLAS/LAPACK bindings

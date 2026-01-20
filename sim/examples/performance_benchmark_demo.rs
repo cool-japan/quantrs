@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Performance Benchmark Demo
 //!
 //! This example demonstrates the comprehensive performance benchmarking

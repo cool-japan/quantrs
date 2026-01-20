@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! PyTorch-Style Quantum ML Integration Example
 //!
 //! This example demonstrates how to use the PyTorch-like API for quantum machine learning,

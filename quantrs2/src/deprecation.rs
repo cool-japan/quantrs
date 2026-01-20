@@ -252,14 +252,14 @@ impl DeprecationRegistry {
     }
 
     fn register_known_deprecations(&mut self) {
-        // Register known deprecations for v0.1.0-beta.3
+        // Register known deprecations for v0.1.0
         // Currently none - this is a placeholder for future deprecations
 
         // Example deprecation (commented out for reference):
         // self.items.insert(
         //     "old_api_name".to_string(),
         //     DeprecationInfo::new("old_api_name")
-        //         .since("0.1.0-beta.2")
+        //         .since("0.1.0")
         //         .removal("0.2.0")
         //         .reason("Replaced with more efficient implementation")
         //         .alternative("new_api_name")
@@ -271,7 +271,7 @@ impl DeprecationRegistry {
             "symengine_experimental".to_string(),
             DeprecationInfo::new("symengine_experimental")
                 .status(DeprecationStatus::PendingDeprecation)
-                .since("0.1.0-beta.3")
+                .since("0.1.0")
                 .removal("0.2.0")
                 .reason("SymEngine integration API is still experimental and may change")
                 .guide(

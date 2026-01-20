@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::field_reassign_with_default)]
 //! Comprehensive test suite for Variational Quantum Algorithm (VQA) support
 //!
 //! This module provides extensive test coverage for all VQA components including

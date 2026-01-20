@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! OptiRS vs Gradient Descent Benchmark
 //!
 //! This benchmark compares the performance of OptiRS optimizers (Adam, SGD, RMSprop, Adagrad)

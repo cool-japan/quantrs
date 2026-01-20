@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive tests for Quantum Neural Networks module
 
 #[cfg(test)]

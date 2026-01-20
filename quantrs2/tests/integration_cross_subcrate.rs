@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::assertions_on_constants)]
 //! Cross-Subcrate Integration Tests for QuantRS2
 //!
 //! These tests verify that different QuantRS2 subcrates work correctly together,

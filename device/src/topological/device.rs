@@ -614,7 +614,7 @@ mod tests {
         let device = create_fibonacci_device(50, 5).expect("Failed to create Fibonacci device");
         let diagnostics = device.get_diagnostics().await;
 
-        assert_eq!(diagnostics.is_connected, false);
+        assert!(!diagnostics.is_connected);
         assert!(diagnostics.topological_gap > 0.0);
         assert!(diagnostics.average_braiding_fidelity > 0.0);
     }

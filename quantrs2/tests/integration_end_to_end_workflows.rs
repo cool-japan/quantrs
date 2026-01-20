@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::assertions_on_constants)]
 //! End-to-End Workflow Integration Tests
 //!
 //! This test suite validates complete quantum computing workflows using the quantrs2 facade,

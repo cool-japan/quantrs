@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_wraps, clippy::pedantic)]
 //! Demonstration of cross-talk aware scheduling
 //!
 //! This example shows how to optimize circuit execution by considering

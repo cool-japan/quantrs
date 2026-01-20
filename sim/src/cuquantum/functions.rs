@@ -368,7 +368,7 @@ mod tests {
         let path = sim
             .find_contraction_order()
             .expect("Should find contraction order");
-        assert!(path.contractions.len() > 0 || path.total_cost() >= 0.0);
+        assert!(!path.contractions.is_empty() || path.total_cost() >= 0.0);
     }
     #[test]
     fn test_device_info_methods() {

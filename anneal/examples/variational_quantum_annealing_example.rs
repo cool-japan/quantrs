@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating Variational Quantum Annealing (VQA)
 //!
 //! This example shows how to:

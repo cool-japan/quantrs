@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Dimensionality Reduction Example
 //!
 //! This example demonstrates various quantum dimensionality reduction algorithms

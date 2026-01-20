@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating problem-specific annealing schedules
 //!
 //! This example shows how to:

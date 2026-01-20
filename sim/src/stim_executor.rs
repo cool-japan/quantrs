@@ -723,8 +723,8 @@ mod tests {
 
         assert_eq!(result.num_detectors, 1);
         // |00⟩ state: M0=0, M1=0, XOR=0, detector should NOT fire
-        assert_eq!(result.measurement_record[0], false);
-        assert_eq!(result.measurement_record[1], false);
+        assert!(!result.measurement_record[0]);
+        assert!(!result.measurement_record[1]);
         assert!(!result.detector_values[0]);
     }
 
@@ -744,8 +744,8 @@ mod tests {
 
         assert_eq!(result.num_detectors, 1);
         // |10⟩ state: M0=1, M1=0, XOR=1, detector SHOULD fire
-        assert_eq!(result.measurement_record[0], true);
-        assert_eq!(result.measurement_record[1], false);
+        assert!(result.measurement_record[0]);
+        assert!(!result.measurement_record[1]);
         assert!(result.detector_values[0]);
     }
 

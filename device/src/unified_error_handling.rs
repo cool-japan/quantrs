@@ -768,6 +768,6 @@ mod tests {
         handler.unify_error("test", error, None);
 
         let stats = handler.get_error_statistics();
-        assert!(stats.len() > 0);
+        assert!(!stats.is_empty());
     }
 }

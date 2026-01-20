@@ -1731,6 +1731,7 @@ impl Target {
 }
 
 #[cfg(test)]
+#[allow(clippy::pedantic, clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

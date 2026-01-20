@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive tests for AI-assisted quantum optimization.
 
 use quantrs2_tytan::ai_assisted_optimization::*;

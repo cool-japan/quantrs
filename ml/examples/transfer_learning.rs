@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Transfer Learning Example
 //!
 //! This example demonstrates how to use pre-trained quantum models

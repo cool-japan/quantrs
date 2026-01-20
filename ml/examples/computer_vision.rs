@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Quantum Computer Vision Example
 //!
 //! This example demonstrates quantum-enhanced computer vision pipelines for

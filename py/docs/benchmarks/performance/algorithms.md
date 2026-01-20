@@ -25,7 +25,7 @@ This benchmark evaluates the performance of key quantum algorithms implemented a
 - **Statistical:** 95% confidence intervals, outlier removal
 
 ### Framework Versions
-- **QuantRS2:** 0.1.0-rc.2
+- **QuantRS2:** 0.1.0
 - **Qiskit:** 0.45.1 + Qiskit Aer 0.13.1
 - **Cirq:** 1.3.0
 - **PennyLane:** 0.33.1 + default.qubit

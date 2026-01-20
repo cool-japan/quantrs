@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Scikit-learn Compatible Quantum ML Pipeline Example
 //!
 //! This example demonstrates the scikit-learn compatibility layer, showing how to use

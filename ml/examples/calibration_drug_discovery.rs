@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Domain-Specific Calibration Example: Drug Discovery
 //!
 //! This example demonstrates how to use calibration techniques in a real-world

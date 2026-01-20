@@ -1559,7 +1559,7 @@ mod tests {
             .expect("X-basis measurement should succeed");
 
         // For |+⟩ state, X measurement should be deterministic (eigenvalue +1 → outcome 0)
-        assert_eq!(outcome, false);
+        assert!(!outcome);
     }
 
     #[test]
@@ -1581,7 +1581,7 @@ mod tests {
             .expect("Y-basis measurement should succeed");
 
         // Should be deterministic for Y eigenstate
-        assert_eq!(outcome, false);
+        assert!(!outcome);
     }
 
     #[test]
@@ -1596,7 +1596,7 @@ mod tests {
 
         // Measure should give 0
         let outcome = sim.measure(0).expect("Measurement should succeed");
-        assert_eq!(outcome, false);
+        assert!(!outcome);
 
         // Stabilizer should be +Z
         let stabs = sim.get_stabilizers();
@@ -1615,7 +1615,7 @@ mod tests {
 
         // Measure should give 0
         let outcome = sim.measure(0).expect("Measurement should succeed");
-        assert_eq!(outcome, false);
+        assert!(!outcome);
     }
 
     #[test]
@@ -1627,12 +1627,10 @@ mod tests {
         sim.apply_gate(StabilizerGate::S(1)).unwrap();
 
         // Measure qubit 0 in X basis and qubit 1 in Y basis
-        let outcome_x = sim.tableau.measure_x(0).unwrap();
-        let outcome_y = sim.tableau.measure_y(1).unwrap();
+        let _outcome_x = sim.tableau.measure_x(0).unwrap();
+        let _outcome_y = sim.tableau.measure_y(1).unwrap();
 
-        // Both should succeed without errors
-        assert!(outcome_x == true || outcome_x == false);
-        assert!(outcome_y == true || outcome_y == false);
+        // Both measurements completed successfully (would have panicked otherwise)
     }
 
     #[test]

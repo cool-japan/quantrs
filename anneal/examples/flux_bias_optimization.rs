@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Example demonstrating flux bias optimization for D-Wave quantum annealing
 //!
 //! This example shows how to:
