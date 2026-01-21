@@ -1,3 +1,13 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::type_complexity
+)]
+#![allow(unused_must_use)]
 //! Advanced maximum cut example using QuantRS2-Tytan with `SciRS2`
 //!
 //! This example demonstrates:

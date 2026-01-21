@@ -112,7 +112,7 @@ mod tests {
     /// Test lattice types
     #[test]
     fn test_lattice_types() {
-        let lattice_types = vec![
+        let lattice_types = [
             LatticeType::Square,
             LatticeType::Triangular,
             LatticeType::Hexagonal,
@@ -121,10 +121,10 @@ mod tests {
 
         for lattice_type in lattice_types {
             match lattice_type {
-                LatticeType::Square => assert!(true),
-                LatticeType::Triangular => assert!(true),
-                LatticeType::Hexagonal => assert!(true),
-                LatticeType::Kagome => assert!(true),
+                LatticeType::Square
+                | LatticeType::Triangular
+                | LatticeType::Hexagonal
+                | LatticeType::Kagome => {}
             }
         }
     }
@@ -132,7 +132,7 @@ mod tests {
     /// Test color schemes
     #[test]
     fn test_color_schemes() {
-        let schemes = vec![
+        let schemes = [
             ColorScheme::ThreeColor,
             ColorScheme::FourColor,
             ColorScheme::HexagonalColor,
@@ -140,9 +140,7 @@ mod tests {
 
         for scheme in schemes {
             match scheme {
-                ColorScheme::ThreeColor => assert!(true),
-                ColorScheme::FourColor => assert!(true),
-                ColorScheme::HexagonalColor => assert!(true),
+                ColorScheme::ThreeColor | ColorScheme::FourColor | ColorScheme::HexagonalColor => {}
             }
         }
     }
@@ -150,7 +148,7 @@ mod tests {
     /// Test topological families
     #[test]
     fn test_topological_families() {
-        let families = vec![
+        let families = [
             TopologicalFamily::ToricCode,
             TopologicalFamily::PlanarCode,
             TopologicalFamily::HyperbolicCode,
@@ -159,10 +157,10 @@ mod tests {
 
         for family in families {
             match family {
-                TopologicalFamily::ToricCode => assert!(true),
-                TopologicalFamily::PlanarCode => assert!(true),
-                TopologicalFamily::HyperbolicCode => assert!(true),
-                TopologicalFamily::FractalCode => assert!(true),
+                TopologicalFamily::ToricCode
+                | TopologicalFamily::PlanarCode
+                | TopologicalFamily::HyperbolicCode
+                | TopologicalFamily::FractalCode => {}
             }
         }
     }
@@ -170,7 +168,7 @@ mod tests {
     /// Test syndrome extraction methods
     #[test]
     fn test_syndrome_extraction_methods() {
-        let methods = vec![
+        let methods = [
             SyndromeExtractionMethod::Standard,
             SyndromeExtractionMethod::FlagBased,
             SyndromeExtractionMethod::Repeated { num_repetitions: 3 },
@@ -180,13 +178,13 @@ mod tests {
 
         for method in methods {
             match method {
-                SyndromeExtractionMethod::Standard => assert!(true),
-                SyndromeExtractionMethod::FlagBased => assert!(true),
+                SyndromeExtractionMethod::Standard
+                | SyndromeExtractionMethod::FlagBased
+                | SyndromeExtractionMethod::Adaptive
+                | SyndromeExtractionMethod::Concurrent => {}
                 SyndromeExtractionMethod::Repeated { num_repetitions } => {
                     assert_eq!(num_repetitions, 3);
                 }
-                SyndromeExtractionMethod::Adaptive => assert!(true),
-                SyndromeExtractionMethod::Concurrent => assert!(true),
             }
         }
     }
@@ -194,7 +192,7 @@ mod tests {
     /// Test decoding algorithms
     #[test]
     fn test_decoding_algorithms() {
-        let algorithms = vec![
+        let algorithms = [
             DecodingAlgorithm::MWPM,
             DecodingAlgorithm::BeliefPropagation,
             DecodingAlgorithm::NeuralNetwork {
@@ -209,17 +207,17 @@ mod tests {
 
         for algorithm in algorithms {
             match algorithm {
-                DecodingAlgorithm::MWPM => assert!(true),
-                DecodingAlgorithm::BeliefPropagation => assert!(true),
+                DecodingAlgorithm::MWPM
+                | DecodingAlgorithm::BeliefPropagation
+                | DecodingAlgorithm::UnionFind
+                | DecodingAlgorithm::Trellis => {}
                 DecodingAlgorithm::NeuralNetwork { architecture } => {
                     assert_eq!(architecture, "CNN");
                 }
-                DecodingAlgorithm::UnionFind => assert!(true),
-                DecodingAlgorithm::Trellis => assert!(true),
                 DecodingAlgorithm::MachineLearning { model_type } => {
                     assert_eq!(model_type, MLModelType::RNN);
                 }
-                _ => assert!(true),
+                _ => {}
             }
         }
     }
@@ -227,7 +225,7 @@ mod tests {
     /// Test ML model types
     #[test]
     fn test_ml_model_types() {
-        let models = vec![
+        let models = [
             MLModelType::RNN,
             MLModelType::CNN,
             MLModelType::Transformer,
@@ -238,13 +236,13 @@ mod tests {
 
         for model in models {
             match model {
-                MLModelType::RNN => assert!(true),
-                MLModelType::CNN => assert!(true),
-                MLModelType::Transformer => assert!(true),
-                MLModelType::GNN => assert!(true),
-                MLModelType::VAE => assert!(true),
-                MLModelType::ConvolutionalNN => assert!(true),
-                _ => assert!(true),
+                MLModelType::RNN
+                | MLModelType::CNN
+                | MLModelType::Transformer
+                | MLModelType::GNN
+                | MLModelType::VAE
+                | MLModelType::ConvolutionalNN => {}
+                _ => {}
             }
         }
     }
@@ -252,7 +250,7 @@ mod tests {
     /// Test error mitigation methods
     #[test]
     fn test_error_mitigation_methods() {
-        let methods = vec![
+        let methods = [
             ErrorMitigationMethod::ZeroNoiseExtrapolation,
             ErrorMitigationMethod::ReadoutErrorCorrection,
             ErrorMitigationMethod::VirtualDistillation,
@@ -263,12 +261,12 @@ mod tests {
 
         for method in methods {
             match method {
-                ErrorMitigationMethod::ZeroNoiseExtrapolation => assert!(true),
-                ErrorMitigationMethod::ReadoutErrorCorrection => assert!(true),
-                ErrorMitigationMethod::VirtualDistillation => assert!(true),
-                ErrorMitigationMethod::SymmetryVerification => assert!(true),
-                ErrorMitigationMethod::PostSelection => assert!(true),
-                ErrorMitigationMethod::TwirlingProtocols => assert!(true),
+                ErrorMitigationMethod::ZeroNoiseExtrapolation
+                | ErrorMitigationMethod::ReadoutErrorCorrection
+                | ErrorMitigationMethod::VirtualDistillation
+                | ErrorMitigationMethod::SymmetryVerification
+                | ErrorMitigationMethod::PostSelection
+                | ErrorMitigationMethod::TwirlingProtocols => {}
             }
         }
     }

@@ -1,4 +1,11 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 //! Simple Penalty Optimization Example
 //!
 //! This example demonstrates penalty optimization for quantum annealing

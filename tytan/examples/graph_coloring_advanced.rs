@@ -1,3 +1,11 @@
+#![allow(
+    unused_must_use,
+    clippy::pedantic,
+    clippy::type_complexity,
+    clippy::unnecessary_wraps,
+    clippy::explicit_iter_loop,
+    clippy::needless_range_loop
+)]
 //! Advanced graph coloring example using QuantRS2-Tytan with `SciRS2`
 //!
 //! This example demonstrates:

@@ -502,6 +502,7 @@ pub struct CVDeviceDiagnostics {
     pub detection_efficiency: f64,
 }
 
+#[cfg(feature = "ibm")]
 #[async_trait::async_trait]
 impl QuantumDevice for CVQuantumDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -534,6 +535,42 @@ impl QuantumDevice for CVQuantumDevice {
     }
 
     async fn is_simulator(&self) -> DeviceResult<bool> {
+        Ok(true) // This implementation is a simulator
+    }
+}
+
+#[cfg(not(feature = "ibm"))]
+impl QuantumDevice for CVQuantumDevice {
+    fn is_available(&self) -> DeviceResult<bool> {
+        Ok(self.is_connected)
+    }
+
+    fn qubit_count(&self) -> DeviceResult<usize> {
+        // CV systems don't have discrete qubits, return equivalent capacity
+        Ok(self.num_modes)
+    }
+
+    fn properties(&self) -> DeviceResult<HashMap<String, String>> {
+        let mut props = HashMap::new();
+        props.insert("device_type".to_string(), "continuous_variable".to_string());
+        props.insert("system_type".to_string(), format!("{:?}", self.system_type));
+        props.insert("num_modes".to_string(), self.num_modes.to_string());
+        props.insert(
+            "max_squeezing_db".to_string(),
+            self.config.max_squeezing_db.to_string(),
+        );
+        props.insert(
+            "detection_efficiency".to_string(),
+            self.config.detection_efficiency.to_string(),
+        );
+        props.insert(
+            "optical_power_mw".to_string(),
+            self.config.optical_power_mw.to_string(),
+        );
+        Ok(props)
+    }
+
+    fn is_simulator(&self) -> DeviceResult<bool> {
         Ok(true) // This implementation is a simulator
     }
 }

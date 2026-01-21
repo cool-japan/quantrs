@@ -1,4 +1,10 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect
+)]
 //! Example demonstrating the Domain-Specific Language (DSL) for Optimization
 //!
 //! This example shows how to:

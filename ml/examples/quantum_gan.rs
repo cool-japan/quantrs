@@ -1,4 +1,11 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 use quantrs2_ml::gan::{DiscriminatorType, GANEvaluationMetrics, GeneratorType, QuantumGAN};
 use quantrs2_ml::prelude::*;
 use scirs2_core::ndarray::{Array1, Array2};

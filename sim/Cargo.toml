@@ -25,7 +25,7 @@ scirs2-sparse.workspace = true
 scirs2-fft.workspace = true
 scirs2-optimize = { workspace = true, default-features = false, optional = true }
 optirs-core = { workspace = true, default-features = false, optional = true }
-pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
+pyo3 = { workspace = true, features = ["extension-module"], optional = true }  # Optional: only needed for Python bindings
 
 # For GPU support (optional)
 wgpu = { workspace = true, optional = true }

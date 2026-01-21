@@ -1,3 +1,4 @@
+#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
 //! Demonstration of hardware benchmarking suite with `SciRS2` analysis
 //!
 //! This example shows how to use the comprehensive benchmarking suite

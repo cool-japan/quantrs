@@ -15,13 +15,15 @@
 
 QuantRS2 (`/kwɒntərz tu:/`) is a comprehensive Rust-based quantum computing framework that provides a modular, high-performance toolkit for quantum simulation, algorithm development, and hardware interaction.
 
-**Current Version**: v0.1.0
+**Current Version**: v0.1.1
 
 ## Features
 
+- **100% Pure Rust**: No C/C++/Fortran dependencies - builds seamlessly on all platforms without external library requirements
 - **Type-Safe Quantum Circuits**: Using Rust's const generics for compile-time verification of qubit counts and operations
 - **High Performance**: Leveraging SIMD, multi-threading, tensor networks, and optional GPU acceleration for efficient simulation
 - **SciRS2 Integration**: Deep integration with Scientific Rust (SciRS2) for enhanced numerical computing, memory management, and SIMD operations
+- **OxiBLAS Backend**: Pure Rust BLAS implementation replacing OpenBLAS dependencies
 - **Multiple Paradigms**: Support for both gate-based quantum computing and quantum annealing
 - **Hardware Connectivity**: Connect to real quantum devices from IBM, Azure Quantum, and other platforms
 - **Comprehensive Gate Set**: Includes all standard gates plus S/T-dagger, Square root of X, and controlled variants
@@ -47,6 +49,7 @@ QuantRS2 is organized as a workspace with several crates:
 - **[quantrs2-ml](ml/README.md)**: Quantum machine learning including QNNs, GANs, and specialized HEP classifiers
 - **[quantrs2-py](py/README.md)**: Python bindings with PyO3
 - **[quantrs2-tytan](tytan/README.md)**: High-level quantum annealing library
+- **quantrs2-symengine-pure**: Pure Rust symbolic computation engine (no C++ dependencies)
 
 ## Getting Started
 
@@ -54,9 +57,9 @@ First, add QuantRS2 to your project:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0"
-quantrs2-circuit = "0.1.0"
-quantrs2-sim = "0.1.0"
+quantrs2-core = "0.1.1"
+quantrs2-circuit = "0.1.1"
+quantrs2-sim = "0.1.1"
 ```
 
 ### Creating a Bell State
@@ -254,34 +257,16 @@ cargo clippy --all -- -D warnings
 
 #### Building on macOS (Apple Silicon)
 
-macOS users, especially on Apple Silicon, might encounter issues with OpenBLAS compilation during build. To resolve this, use these environment variables to force using the system BLAS (Accelerate framework):
+QuantRS2 v0.1.1 is **Pure Rust** and builds seamlessly on macOS (both Intel and Apple Silicon):
 
 ```bash
-OPENBLAS_SYSTEM=1 OPENBLAS64_SYSTEM=1 cargo build
+cargo build --release
 ```
 
-Or create a `.cargo/config.toml` file in the project root with:
-
-```toml
-[env]
-OPENBLAS_SYSTEM = "1"
-OPENBLAS64_SYSTEM = "1"
-```
-
-If you still encounter issues, try building components separately:
-
-```bash
-# First, build the core components
-cargo build -p quantrs2-core -p quantrs2-circuit
-
-# Then build simulator components
-cargo build -p quantrs2-sim
-
-# Or try building without default features
-cargo build -p quantrs2-sim --no-default-features
-```
-
-For more detailed macOS build troubleshooting, see [MACOS_BUILD.md](docs/build/MACOS_BUILD.md).
+No external C/C++ dependencies are required. The project uses:
+- **OxiBLAS**: Pure Rust BLAS implementation (no OpenBLAS/LAPACK)
+- **SciRS2**: Pure Rust scientific computing library
+- **quantrs2-symengine-pure**: Pure Rust symbolic computation
 
 ## Contributing
 
@@ -298,14 +283,14 @@ QuantRS2 provides several optional features:
 - **parallel**: Enables parallel execution using Rayon (enabled by default)
 - **gpu**: Enables GPU acceleration using WGPU
 - **ibm**: Enables IBM Quantum hardware integration
-- **dwave**: Enables D-Wave quantum annealing integration using SymEngine (requires additional dependencies)
+- **dwave**: Enables D-Wave quantum annealing integration with symbolic problem formulation (Pure Rust)
 
 To use these features, add them to your dependencies:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0", features = ["parallel", "gpu"] }
-quantrs2-device = { version = "0.1.0", features = ["ibm"] }
+quantrs2-sim = { version = "0.1.1", features = ["parallel", "gpu"] }
+quantrs2-device = { version = "0.1.1", features = ["ibm"] }
 ```
 
 ### GPU Acceleration
@@ -314,7 +299,7 @@ The `gpu` feature enables GPU-accelerated quantum simulation using WGPU:
 
 ```toml
 [dependencies]
-quantrs2-sim = { version = "0.1.0", features = ["gpu"] }
+quantrs2-sim = { version = "0.1.1", features = ["gpu"] }
 ```
 
 This requires a WGPU-compatible GPU (most modern GPUs). The GPU acceleration implementation uses compute shaders to parallelize quantum operations, providing significant speedup for large qubit counts.
@@ -359,7 +344,7 @@ The `ibm` feature enables connection to IBM Quantum hardware:
 
 ```toml
 [dependencies]
-quantrs2-device = { version = "0.1.0", features = ["ibm"] }
+quantrs2-device = { version = "0.1.1", features = ["ibm"] }
 ```
 
 To use IBM Quantum, you'll need an IBM Quantum account and API token. Use the token to authenticate:
@@ -385,10 +370,10 @@ The `dwave` feature enables symbolic problem formulation for quantum annealing:
 
 ```toml
 [dependencies]
-quantrs2-tytan = { version = "0.1.0", features = ["dwave"] }
+quantrs2-tytan = { version = "0.1.1", features = ["dwave"] }
 ```
 
-This requires the SymEngine library and its dependencies. See [TODO.md](docs/development/TODO.md) for detailed setup instructions.
+QuantRS2 uses a **Pure Rust** symbolic computation engine (`quantrs2-symengine-pure`), eliminating all C/C++ dependencies for symbolic math operations. No external library installation required.
 
 ## Testing
 
@@ -406,24 +391,21 @@ cargo test --features "parallel,scirs,plotters"
 
 ### Platform-Specific Notes
 
-#### macOS
+#### All Platforms (Pure Rust)
 
-On macOS, avoid using `--all-features` due to C++ linking issues with SymEngine:
+QuantRS2 v0.1.1 is **100% Pure Rust** and supports `--all-features` on all platforms:
 
 ```bash
-# ❌ Avoid this on macOS
+# ✅ Works on all platforms (macOS, Linux, Windows)
 cargo test --all-features
 
-# ✅ Use this instead
+# Or for specific feature sets
 cargo test --features "parallel,scirs,plotters"
 ```
 
-See the [macOS Build Guide](docs/MACOS_BUILD_GUIDE.md) for detailed platform-specific instructions and troubleshooting.
-
 #### Feature-Specific Testing
 
-- **GPU features**: Require compatible hardware
-- **`dwave` feature**: Requires SymEngine (may have C++ linking issues on some platforms)
+- **GPU features**: Require compatible hardware (WGPU-supported GPU)
 - **IBM Quantum**: Requires valid API credentials for integration tests
 
 ## License

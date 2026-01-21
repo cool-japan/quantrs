@@ -1,4 +1,11 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 //! Comprehensive Benchmarking Framework Example
 //!
 //! This example demonstrates the benchmarking framework for comparing quantum ML models

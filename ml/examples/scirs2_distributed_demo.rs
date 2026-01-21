@@ -1,4 +1,13 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::tuple_array_conversions,
+    clippy::needless_pass_by_ref_mut
+)]
 //! `SciRS2` Distributed Training Example
 //!
 //! This example demonstrates the `SciRS2` integration capabilities including

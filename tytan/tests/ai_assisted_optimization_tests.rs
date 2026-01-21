@@ -1,4 +1,5 @@
 #![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(unused_must_use)]
 //! Comprehensive tests for AI-assisted quantum optimization.
 
 use quantrs2_tytan::ai_assisted_optimization::*;
@@ -8,11 +9,10 @@ use std::time::Duration;
 
 #[test]
 fn test_ai_optimizer_creation() {
-    let mut config = AIOptimizerConfig::default();
-    let mut optimizer = AIAssistedOptimizer::new(config);
+    let config = AIOptimizerConfig::default();
+    let _optimizer = AIAssistedOptimizer::new(config);
 
-    // Test that optimizer is created successfully
-    assert!(true);
+    // Test that optimizer is created successfully (if it didn't panic, it succeeded)
 }
 
 #[test]

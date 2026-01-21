@@ -670,6 +670,7 @@ pub fn optimize_circuit_with_config<const N: usize>(
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

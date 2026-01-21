@@ -5,6 +5,10 @@
 //! - Probabilistic Error Cancellation (PEC)
 //! - Virtual Distillation
 //! - Symmetry Verification
+//!
+//! This module requires the `device` feature to be enabled.
+
+#![cfg(feature = "device")]
 
 use crate::measurement::PyMeasurementResult;
 use crate::{CircuitOp, PyCircuit};

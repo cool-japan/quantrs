@@ -1,3 +1,4 @@
+#![allow(unused_must_use, clippy::pedantic, clippy::unnecessary_wraps)]
 //! Comprehensive demonstration of QuantRS2-Tytan features.
 //!
 //! This example showcases the full capabilities of the quantum optimization framework.

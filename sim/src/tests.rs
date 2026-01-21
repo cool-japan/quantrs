@@ -1,7 +1,8 @@
 #![allow(
     clippy::pedantic,
     clippy::unnecessary_wraps,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    clippy::module_inception
 )]
 //! Tests for quantum simulators
 //!

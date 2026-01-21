@@ -1,3 +1,12 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::set_contains_or_insert
+)]
 //! Advanced SAT solver example using QuantRS2-Tytan
 //!
 //! This example demonstrates:

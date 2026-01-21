@@ -22,7 +22,7 @@ doc = false  # Exclude from rustdoc to avoid collision with main quantrs2 crate
 quantrs2-core.workspace = true
 quantrs2-circuit = { workspace = true, features = ["python"] }
 quantrs2-sim = { workspace = true, features = ["python"] }
-quantrs2-device.workspace = true
+quantrs2-device = { workspace = true, default-features = false, features = ["scheduling", "scirs2", "security"], optional = true }
 quantrs2-ml = { workspace = true, optional = true }
 quantrs2-anneal = { workspace = true, optional = true }
 quantrs2-tytan = { workspace = true, optional = true }
@@ -31,7 +31,7 @@ numrs2 = { workspace = true, optional = true }
 pandrs = { workspace = true, optional = true }
 pyo3 = { workspace = true, features = ["extension-module", "abi3-py38"] }
 # ndarray.workspace = true  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
-scirs2-numpy.workspace = true  # SciRS2-compatible numpy bindings
+scirs2-numpy = { workspace = true, default-features = false }  # SciRS2-compatible numpy bindings (no auto-initialize)
 # rand.workspace = true  # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 thiserror.workspace = true
 
@@ -45,6 +45,7 @@ gpu = ["quantrs2-sim/gpu"]
 ml = ["quantrs2-ml"]
 anneal = ["quantrs2-anneal"]
 tytan = ["quantrs2-tytan"]
+device = ["quantrs2-device"]
 # Enhanced numerical computing and data analysis features
 numrs = ["dep:numrs2"]
 pandrs = ["dep:pandrs"]

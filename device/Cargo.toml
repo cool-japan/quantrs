@@ -61,13 +61,13 @@ tokio-test = "0.4"
 criterion.workspace = true
 
 [features]
-default = ["scheduling", "scirs2", "security", "neutral_atom"]
+default = ["scheduling", "scirs2", "security"]
 ibm = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 azure = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 aws = [
-    "dep:reqwest", 
-    "dep:tokio", 
-    "dep:chrono", 
+    "dep:reqwest",
+    "dep:tokio",
+    "dep:chrono",
     "dep:async-trait",
     "dep:hmac",
     "dep:sha2",
@@ -75,9 +75,12 @@ aws = [
     "dep:bytemuck"
 ]
 neutral_atom = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait", "dep:uuid", "dep:futures", "ibm"]
+photonic = ["dep:reqwest", "dep:tokio", "dep:chrono", "dep:async-trait"]
 scheduling = ["dep:tokio", "dep:async-trait", "dep:uuid", "dep:futures"]
 scirs2 = ["dep:scirs2-graph", "dep:scirs2-linalg", "dep:scirs2-optimize"]
 security = ["dep:aes-gcm", "dep:x25519-dalek", "dep:sha2", "dep:chrono"]
+# All network-dependent features
+cloud-backends = ["ibm", "azure", "aws", "neutral_atom", "photonic"]
 
 [package.metadata.docs.rs]
 all-features = false

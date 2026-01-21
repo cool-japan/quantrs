@@ -1,4 +1,16 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::let_and_return,
+    clippy::needless_pass_by_ref_mut,
+    clippy::manual_clamp,
+    clippy::suboptimal_flops
+)]
+#![allow(unused_must_use)]
 //! Example demonstrating Coherent Ising Machine simulation
 //!
 //! This example shows how to:

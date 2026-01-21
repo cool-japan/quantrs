@@ -104,9 +104,13 @@ pub mod algorithm_marketplace;
 /// Public exports for commonly used types
 // Forward declaration - implemented below
 // pub mod prelude;
+#[cfg(feature = "aws")]
 pub mod aws;
+#[cfg(feature = "aws")]
 pub mod aws_device;
+#[cfg(feature = "azure")]
 pub mod azure;
+#[cfg(feature = "azure")]
 pub mod azure_device;
 pub mod backend_traits;
 pub mod benchmarking;
@@ -127,11 +131,17 @@ pub mod hardware_benchmarks_scirs2;
 pub mod hardware_parallelization;
 pub mod hybrid_quantum_classical;
 pub mod hybrid_scirs2_algorithms;
+#[cfg(feature = "ibm")]
 pub mod ibm;
+#[cfg(feature = "ibm")]
 pub mod ibm_calibration;
+#[cfg(feature = "ibm")]
 pub mod ibm_device;
+#[cfg(feature = "ibm")]
 pub mod ibm_dynamic;
+#[cfg(feature = "ibm")]
 pub mod ibm_runtime;
+#[cfg(feature = "ibm")]
 pub mod ibm_runtime_v2;
 pub mod integrated_device_manager;
 pub mod job_scheduling;
@@ -139,6 +149,7 @@ pub mod job_scheduling;
 pub mod mapping_scirs2;
 pub mod mid_circuit_measurements;
 pub mod ml_optimization;
+#[cfg(feature = "neutral_atom")]
 pub mod neutral_atom;
 pub mod noise_model;
 pub mod noise_modeling_scirs2;
@@ -148,6 +159,7 @@ pub mod optimization_old;
 pub mod parametric;
 pub mod performance_analytics_dashboard;
 pub mod performance_dashboard;
+#[cfg(feature = "photonic")]
 pub mod photonic;
 pub mod process_tomography;
 pub mod provider_capability_discovery;
@@ -720,6 +732,7 @@ pub mod prelude {
         QualityMetrics as HybridQualityMetrics, QuantumExecutionConfig, QuantumExecutionResult,
         RetryConfig, SelectionCriterion, StateEstimationMethod,
     };
+    #[cfg(feature = "ibm")]
     pub use crate::ibm::IBMCircuitConfig;
     pub use crate::integrated_device_manager::{
         DeviceInfo,
@@ -770,6 +783,7 @@ pub mod prelude {
         ParameterOptimizer, ParametricCircuit, ParametricCircuitBuilder, ParametricExecutor,
         ParametricGate, ParametricTemplates,
     };
+    #[cfg(feature = "photonic")]
     pub use crate::photonic::{
         create_photonic_device,
         gate_based::{

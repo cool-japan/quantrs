@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2"
-version = "0.1.0"
+version = "0.1.1"
 description = "High-performance quantum computing framework with ML, error mitigation, and annealing capabilities"
 authors = [
     {name = "COOLJAPAN OU (Team KitaSan) ", email = "contact@cooljapan.tech"}
@@ -74,7 +74,7 @@ python-source = "python"
 # Use simple binding mode
 binding = "pyo3"
 # Include these files in the package
-include = ["LICENSE*", "README.md"]
+include = ["LICENSE*", "README.md", "python/quantrs2/*.pyi", "python/quantrs2/py.typed"]
 # Make compatible with multiple Python versions
 abi3 = true
 abi3-py38 = true

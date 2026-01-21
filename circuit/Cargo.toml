@@ -16,7 +16,7 @@ quantrs2-core.workspace = true
 # ndarray.workspace = true              # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # nalgebra.workspace = true             # REMOVED: Refactored to use scirs2_core::ndarray (SciRS2 POLICY)
 thiserror.workspace = true
-pyo3 = { workspace = true, optional = true }  # Optional: only needed for Python bindings
+pyo3 = { workspace = true, features = ["extension-module"], optional = true }  # Optional: only needed for Python bindings
 # rand.workspace = true                 # REMOVED: Use scirs2_core::random (SciRS2 POLICY)
 serde.workspace = true
 # SciRS2 foundation dependencies

@@ -1,4 +1,11 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 //! Ultimate QuantRS2-ML Integration Demo
 //!
 //! This example demonstrates the complete QuantRS2-ML ecosystem including all

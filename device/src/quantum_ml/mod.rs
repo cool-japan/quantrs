@@ -191,7 +191,12 @@ impl QMLAccelerator {
     /// Connect to quantum hardware
     pub async fn connect(&mut self) -> DeviceResult<()> {
         let device = self.device.read().await;
-        if !device.is_available().await? {
+        #[cfg(feature = "ibm")]
+        let is_available = device.is_available().await?;
+        #[cfg(not(feature = "ibm"))]
+        let is_available = device.is_available()?;
+
+        if !is_available {
             return Err(DeviceError::DeviceNotInitialized(
                 "Quantum device not available".to_string(),
             ));
@@ -327,7 +332,10 @@ impl QMLAccelerator {
     /// Get QML accelerator diagnostics
     pub async fn get_diagnostics(&self) -> QMLDiagnostics {
         let device = self.device.read().await;
+        #[cfg(feature = "ibm")]
         let device_props = device.properties().await.unwrap_or_default();
+        #[cfg(not(feature = "ibm"))]
+        let device_props = device.properties().unwrap_or_default();
 
         QMLDiagnostics {
             is_connected: self.is_connected,

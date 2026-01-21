@@ -99,7 +99,7 @@ unwrap_used = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 authors = ["COOLJAPAN OU"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -110,17 +110,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.0" }
-quantrs2-circuit = { path = "circuit", version = "0.1.0" }
-quantrs2-sim = { path = "sim", version = "0.1.0" }
-quantrs2-anneal = { path = "anneal", version = "0.1.0" }
-quantrs2-device = { path = "device", version = "0.1.0" }
-quantrs2-ml = { path = "ml", version = "0.1.0" }
-quantrs2-tytan = { path = "tytan", version = "0.1.0" }
+quantrs2-core = { path = "core", version = "0.1.1" }
+quantrs2-circuit = { path = "circuit", version = "0.1.1" }
+quantrs2-sim = { path = "sim", version = "0.1.1" }
+quantrs2-anneal = { path = "anneal", version = "0.1.1" }
+quantrs2-device = { path = "device", version = "0.1.1", default-features = false }
+quantrs2-ml = { path = "ml", version = "0.1.1" }
+quantrs2-tytan = { path = "tytan", version = "0.1.1" }
 
 # Symbolic computation - Pure Rust only (SciRS2 POLICY: No C/C++ dependencies)
 # quantrs2-symengine and quantrs2-symengine-sys removed - use pure Rust implementation
-quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.0" }
+quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.1" }
 
 # Pure Rust symbolic math dependencies (MIT licensed)
 egg = "0.11"
@@ -210,14 +210,14 @@ bytemuck = { version = "1.24.0", features = ["derive"] }
 ocl = "0.19.7"
 
 # Async and networking
-reqwest = { version = "0.13.1", features = ["json"] }
+reqwest = { version = "0.13.1", default-features = false, features = ["json", "native-tls-vendored"] }
 tokio = { version = "1.49.0", features = ["full"] }
 futures = "0.3"
 async-trait = "0.1"
 
 # Python bindings and FFI
-pyo3 = { version = "0.27.2", features = ["extension-module"] }
-scirs2-numpy = "0.1.2"  # SciRS2-compatible numpy bindings with ndarray 0.17 support
+pyo3 = { version = "0.27.2", default-features = false, features = ["extension-module"] }
+scirs2-numpy = { version = "0.1.3", default-features = false }  # SciRS2-compatible numpy bindings
 
 # Utility libraries
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
@@ -284,3 +284,6 @@ lto = "thin"
 codegen-units = 1
 panic = "abort"
 opt-level = 3
+
+# Patch crates.io dependencies with git versions (currently none needed)
+# [patch.crates-io]

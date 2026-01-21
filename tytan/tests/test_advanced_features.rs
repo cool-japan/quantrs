@@ -1,4 +1,12 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::single_element_loop,
+    clippy::redundant_clone,
+    clippy::cloned_ref_to_slice_refs,
+    clippy::collection_is_never_read
+)]
+#![allow(unused_must_use, dead_code)]
 //! Comprehensive tests for advanced features.
 
 use quantrs2_tytan::applications::finance::*;
@@ -136,25 +144,18 @@ mod decomposition_tests {
             }
         }
 
-        let mut sampler = SASampler::new(None);
-        let mut solver = HierarchicalSolver::new(sampler);
+        let sampler = SASampler::new(None);
+        let _solver = HierarchicalSolver::new(sampler);
 
-        // Test that solver can be created
-        let var_map: HashMap<String, usize> = HashMap::new();
-        // Simplified test - just verify solver construction
-        assert!(true);
+        // Test that solver can be created - compilation is sufficient
     }
 
     #[test]
     fn test_domain_decomposer() {
-        let size = 12;
-        let mut qubo = Array2::random((size, size), Uniform::new(-1.0, 1.0).unwrap());
+        let sampler = SASampler::new(None);
+        let _decomposer = DomainDecomposer::new(sampler);
 
-        let mut sampler = SASampler::new(None);
-        let mut decomposer = DomainDecomposer::new(sampler);
-
-        // Simplified test - just verify decomposer construction
-        assert!(true);
+        // Simplified test - just verify decomposer construction (compilation is sufficient)
     }
 
     #[test]
@@ -385,29 +386,26 @@ mod dsl_tests {
 
     #[test]
     fn test_dsl_parsing() {
-        let mut _dsl = ProblemDSL::new();
+        let _dsl = ProblemDSL::new();
 
         // DSL parsing test skipped due to syntax complexity
-        // Test that DSL can be created successfully
-        assert!(true);
+        // Test that DSL can be created successfully - compilation is sufficient
     }
 
     #[test]
     fn test_dsl_macros() {
-        let mut _dsl = ProblemDSL::new();
+        let _dsl = ProblemDSL::new();
 
         // Macro functionality not exposed in current API
-        // Test that DSL can be created
-        assert!(true);
+        // Test that DSL can be created - compilation is sufficient
     }
 
     #[test]
     fn test_optimization_hints() {
-        let mut _dsl = ProblemDSL::new();
+        let _dsl = ProblemDSL::new();
 
         // Optimization hints functionality not exposed in current API
-        // Test that DSL can be created
-        assert!(true);
+        // Test that DSL can be created - compilation is sufficient
     }
 }
 
@@ -544,9 +542,6 @@ mod testing_framework_tests {
         )];
 
         // ConstraintAnalyzer::validate is not available in current API
-        // let violations = validator.validate(&solution, &constraints);
-        assert_eq!(0, 0); // Placeholder test
-                          // Violations test removed since validate method is not available
-        assert!(true); // Placeholder
+        // Placeholder test - compilation is sufficient
     }
 }

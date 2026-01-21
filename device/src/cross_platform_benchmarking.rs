@@ -34,13 +34,16 @@ use crate::ml_optimization::fallback_scirs2::{mean, minimize, pearsonr, std, var
 
 use scirs2_core::ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
+#[cfg(feature = "aws")]
+use crate::aws::AWSBraketClient;
+#[cfg(feature = "azure")]
+use crate::azure::AzureQuantumClient;
+#[cfg(feature = "ibm")]
+use crate::ibm::IBMQuantumClient;
 use crate::{
-    aws::AWSBraketClient,
-    azure::AzureQuantumClient,
     backend_traits::{query_backend_capabilities, BackendCapabilities},
     benchmarking::{BenchmarkConfig, DeviceExecutor, HardwareBenchmarkSuite},
     calibration::{CalibrationManager, DeviceCalibration},
-    ibm::IBMQuantumClient,
     CircuitResult, DeviceError, DeviceResult,
 };
 
@@ -785,9 +788,12 @@ impl Default for ParallelBenchmarkConfig {
 pub struct CrossPlatformBenchmarker {
     config: CrossPlatformBenchmarkConfig,
     calibration_manager: CalibrationManager,
-    // Platform clients
+    // Platform clients (conditionally compiled)
+    #[cfg(feature = "ibm")]
     ibm_client: Option<IBMQuantumClient>,
+    #[cfg(feature = "aws")]
     aws_client: Option<AWSBraketClient>,
+    #[cfg(feature = "azure")]
     azure_client: Option<AzureQuantumClient>,
 }
 
@@ -800,8 +806,11 @@ impl CrossPlatformBenchmarker {
         Self {
             config,
             calibration_manager,
+            #[cfg(feature = "ibm")]
             ibm_client: None,
+            #[cfg(feature = "aws")]
             aws_client: None,
+            #[cfg(feature = "azure")]
             azure_client: None,
         }
     }
@@ -924,24 +933,33 @@ impl CrossPlatformBenchmarker {
         // Initialize clients for each platform type
         for platform in &self.config.target_platforms {
             match platform {
+                #[cfg(feature = "ibm")]
                 QuantumPlatform::IBMQuantum(_) => {
                     if self.ibm_client.is_none() {
                         // Initialize IBM client (would need actual credentials)
                         // self.ibm_client = Some(IBMQuantumClient::new(credentials)?);
                     }
                 }
+                #[cfg(not(feature = "ibm"))]
+                QuantumPlatform::IBMQuantum(_) => {}
+                #[cfg(feature = "aws")]
                 QuantumPlatform::AWSBraket(_) => {
                     if self.aws_client.is_none() {
                         // Initialize AWS client (would need actual credentials)
                         // self.aws_client = Some(AWSBraketClient::new(credentials)?);
                     }
                 }
+                #[cfg(not(feature = "aws"))]
+                QuantumPlatform::AWSBraket(_) => {}
+                #[cfg(feature = "azure")]
                 QuantumPlatform::AzureQuantum(_) => {
                     if self.azure_client.is_none() {
                         // Initialize Azure client (would need actual credentials)
                         // self.azure_client = Some(AzureQuantumClient::new(credentials)?);
                     }
                 }
+                #[cfg(not(feature = "azure"))]
+                QuantumPlatform::AzureQuantum(_) => {}
                 _ => {
                     // Handle other platforms
                 }

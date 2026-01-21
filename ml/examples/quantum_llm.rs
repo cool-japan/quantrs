@@ -1,4 +1,14 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::match_like_matches_macro,
+    clippy::type_complexity
+)]
+#![allow(unused_must_use)]
 //! Quantum Large Language Model Example
 //!
 //! This example demonstrates quantum-enhanced large language models with advanced

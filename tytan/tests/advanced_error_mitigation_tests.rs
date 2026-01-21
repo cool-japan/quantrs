@@ -9,16 +9,15 @@ use std::time::{Duration, SystemTime};
 
 #[test]
 fn test_error_mitigation_manager_creation() {
-    let mut config = ErrorMitigationConfig::default();
-    let mut manager = AdvancedErrorMitigationManager::new(config);
+    let config = ErrorMitigationConfig::default();
+    let _manager = AdvancedErrorMitigationManager::new(config);
 
-    // Test that manager is created successfully
-    assert!(true);
+    // Test that manager is created successfully - compilation is sufficient
 }
 
 #[test]
 fn test_default_error_mitigation_config() {
-    let mut config = ErrorMitigationConfig::default();
+    let config = ErrorMitigationConfig::default();
 
     // Verify default configuration values
     assert!(config.real_time_monitoring);
@@ -61,7 +60,7 @@ fn test_noise_characterization_config() {
 
 #[test]
 fn test_noise_model_creation() {
-    let mut noise_model = NoiseModel::default();
+    let noise_model = NoiseModel::default();
 
     // Verify default noise model structure
     assert!(noise_model.single_qubit_errors.is_empty());
@@ -231,7 +230,7 @@ fn test_mitigation_protocol_types() {
 
 #[test]
 fn test_extrapolation_methods() {
-    let methods = vec![
+    let methods = [
         ExtrapolationMethod::Linear,
         ExtrapolationMethod::Polynomial { degree: 3 },
         ExtrapolationMethod::Exponential,
@@ -242,11 +241,11 @@ fn test_extrapolation_methods() {
     // Test each extrapolation method
     for method in methods {
         match method {
-            ExtrapolationMethod::Linear => assert!(true),
+            ExtrapolationMethod::Linear
+            | ExtrapolationMethod::Exponential
+            | ExtrapolationMethod::Richardson
+            | ExtrapolationMethod::AdaptivePolynomial => {}
             ExtrapolationMethod::Polynomial { degree } => assert_eq!(degree, 3),
-            ExtrapolationMethod::Exponential => assert!(true),
-            ExtrapolationMethod::Richardson => assert!(true),
-            ExtrapolationMethod::AdaptivePolynomial => assert!(true),
         }
     }
 }
@@ -370,8 +369,8 @@ fn test_qec_integration_config() {
 
 #[test]
 fn test_noise_characterizer_creation() {
-    let mut config = ErrorMitigationConfig::default();
-    let mut characterizer = NoiseCharacterizer::new(&config);
+    let config = ErrorMitigationConfig::default();
+    let characterizer = NoiseCharacterizer::new(&config);
 
     // Test that characterizer is created successfully
     assert!(characterizer.history().is_empty());
@@ -563,7 +562,7 @@ fn test_device_parameters() {
 
 #[test]
 fn test_error_mitigation_manager_start_monitoring() {
-    let mut config = ErrorMitigationConfig::default();
+    let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
 
     // Test starting monitoring
@@ -598,7 +597,7 @@ fn test_error_mitigation_manager_with_disabled_features() {
 
 #[test]
 fn test_error_mitigation_manager_apply_mitigation() {
-    let mut config = ErrorMitigationConfig::default();
+    let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
 
     // Create a test quantum circuit
@@ -654,7 +653,7 @@ fn test_syndrome_prediction() {
 
 #[test]
 fn test_noise_source_types() {
-    let noise_sources = vec![
+    let noise_sources = [
         NoiseSourceType::WhiteNoise,
         NoiseSourceType::OneOverFNoise,
         NoiseSourceType::RTS,
@@ -669,21 +668,21 @@ fn test_noise_source_types() {
     assert_eq!(noise_sources.len(), 8);
     for noise_type in noise_sources {
         match noise_type {
-            NoiseSourceType::WhiteNoise => assert!(true),
-            NoiseSourceType::OneOverFNoise => assert!(true),
-            NoiseSourceType::RTS => assert!(true),
-            NoiseSourceType::PeriodicDrift => assert!(true),
-            NoiseSourceType::ThermalFluctuations => assert!(true),
-            NoiseSourceType::ChargeNoise => assert!(true),
-            NoiseSourceType::FluxNoise => assert!(true),
-            NoiseSourceType::InstrumentNoise => assert!(true),
+            NoiseSourceType::WhiteNoise
+            | NoiseSourceType::OneOverFNoise
+            | NoiseSourceType::RTS
+            | NoiseSourceType::PeriodicDrift
+            | NoiseSourceType::ThermalFluctuations
+            | NoiseSourceType::ChargeNoise
+            | NoiseSourceType::FluxNoise
+            | NoiseSourceType::InstrumentNoise => {}
         }
     }
 }
 
 #[test]
 fn test_processing_window_types() {
-    let windows = vec![
+    let windows = [
         ProcessingWindow::Hanning,
         ProcessingWindow::Blackman,
         ProcessingWindow::Kaiser { beta: 2.5 },
@@ -695,18 +694,18 @@ fn test_processing_window_types() {
     assert_eq!(windows.len(), 5);
     for window in windows {
         match window {
-            ProcessingWindow::Hanning => assert!(true),
-            ProcessingWindow::Blackman => assert!(true),
+            ProcessingWindow::Hanning
+            | ProcessingWindow::Blackman
+            | ProcessingWindow::Rectangular => {}
             ProcessingWindow::Kaiser { beta } => assert_eq!(beta, 2.5),
             ProcessingWindow::Gaussian { sigma } => assert_eq!(sigma, 1.0),
-            ProcessingWindow::Rectangular => assert!(true),
         }
     }
 }
 
 #[test]
 fn test_tomography_protocols() {
-    let protocols = vec![
+    let protocols = [
         TomographyProtocol::StandardProcessTomography,
         TomographyProtocol::CompressedSensing,
         TomographyProtocol::BayesianInference,
@@ -718,11 +717,11 @@ fn test_tomography_protocols() {
     assert_eq!(protocols.len(), 5);
     for protocol in protocols {
         match protocol {
-            TomographyProtocol::StandardProcessTomography => assert!(true),
-            TomographyProtocol::CompressedSensing => assert!(true),
-            TomographyProtocol::BayesianInference => assert!(true),
-            TomographyProtocol::MaximumLikelihood => assert!(true),
-            TomographyProtocol::LinearInversion => assert!(true),
+            TomographyProtocol::StandardProcessTomography
+            | TomographyProtocol::CompressedSensing
+            | TomographyProtocol::BayesianInference
+            | TomographyProtocol::MaximumLikelihood
+            | TomographyProtocol::LinearInversion => {}
         }
     }
 }
@@ -757,7 +756,7 @@ fn test_create_lightweight_error_mitigation_manager() {
 #[test]
 fn test_error_types() {
     // Test various error types
-    let errors = vec![
+    let errors = [
         MitigationError::NoiseCharacterizationFailed("Test error".to_string()),
         MitigationError::ProtocolApplicationFailed("Test error".to_string()),
         MitigationError::CalibrationFailed("Test error".to_string()),
@@ -772,21 +771,21 @@ fn test_error_types() {
     assert_eq!(errors.len(), 8);
     for error in errors {
         match error {
-            MitigationError::NoiseCharacterizationFailed(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::ProtocolApplicationFailed(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::CalibrationFailed(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::PredictionFailed(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::QECError(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::InvalidParameters(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::InsufficientData(msg) => assert_eq!(msg, "Test error"),
-            MitigationError::ComputationTimeout(msg) => assert_eq!(msg, "Test error"),
+            MitigationError::NoiseCharacterizationFailed(msg)
+            | MitigationError::ProtocolApplicationFailed(msg)
+            | MitigationError::CalibrationFailed(msg)
+            | MitigationError::PredictionFailed(msg)
+            | MitigationError::QECError(msg)
+            | MitigationError::InvalidParameters(msg)
+            | MitigationError::InsufficientData(msg)
+            | MitigationError::ComputationTimeout(msg) => assert_eq!(msg, "Test error"),
         }
     }
 }
 
 #[test]
 fn test_calibration_status_types() {
-    let statuses = vec![
+    let statuses = [
         CalibrationOverallStatus::Excellent,
         CalibrationOverallStatus::Good,
         CalibrationOverallStatus::Degraded,
@@ -798,18 +797,18 @@ fn test_calibration_status_types() {
     assert_eq!(statuses.len(), 5);
     for status in statuses {
         match status {
-            CalibrationOverallStatus::Excellent => assert!(true),
-            CalibrationOverallStatus::Good => assert!(true),
-            CalibrationOverallStatus::Degraded => assert!(true),
-            CalibrationOverallStatus::Poor => assert!(true),
-            CalibrationOverallStatus::CalibrationRequired => assert!(true),
+            CalibrationOverallStatus::Excellent
+            | CalibrationOverallStatus::Good
+            | CalibrationOverallStatus::Degraded
+            | CalibrationOverallStatus::Poor
+            | CalibrationOverallStatus::CalibrationRequired => {}
         }
     }
 }
 
 #[test]
 fn test_parameter_status_types() {
-    let statuses = vec![
+    let statuses = [
         ParameterStatus::InTolerance,
         ParameterStatus::NearLimit,
         ParameterStatus::OutOfTolerance,
@@ -821,18 +820,18 @@ fn test_parameter_status_types() {
     assert_eq!(statuses.len(), 5);
     for status in statuses {
         match status {
-            ParameterStatus::InTolerance => assert!(true),
-            ParameterStatus::NearLimit => assert!(true),
-            ParameterStatus::OutOfTolerance => assert!(true),
-            ParameterStatus::Drifting => assert!(true),
-            ParameterStatus::Unstable => assert!(true),
+            ParameterStatus::InTolerance
+            | ParameterStatus::NearLimit
+            | ParameterStatus::OutOfTolerance
+            | ParameterStatus::Drifting
+            | ParameterStatus::Unstable => {}
         }
     }
 }
 
 #[test]
 fn test_comprehensive_noise_characterization_workflow() {
-    let mut config = ErrorMitigationConfig::default();
+    let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
 
     // Create a test quantum device
@@ -894,7 +893,7 @@ fn test_comprehensive_noise_characterization_workflow() {
 
 #[test]
 fn test_integrated_error_mitigation_workflow() {
-    let mut config = ErrorMitigationConfig::default();
+    let config = ErrorMitigationConfig::default();
     let mut manager = AdvancedErrorMitigationManager::new(config);
 
     // Create test circuit

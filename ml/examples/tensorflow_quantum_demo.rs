@@ -1,4 +1,15 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::let_and_return,
+    clippy::needless_pass_by_ref_mut,
+    clippy::manual_clamp,
+    clippy::upper_case_acronyms
+)]
 //! TensorFlow Quantum Compatibility Example
 //!
 //! This example demonstrates the TensorFlow Quantum (TFQ) compatibility layer,

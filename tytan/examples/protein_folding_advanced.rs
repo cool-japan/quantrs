@@ -1,3 +1,11 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 //! Advanced Protein Folding example using QuantRS2-Tytan
 //!
 //! This example demonstrates:

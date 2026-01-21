@@ -1,4 +1,16 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::field_reassign_with_default,
+    clippy::unwrap_or_default,
+    clippy::format_in_format_args,
+    clippy::or_fun_call
+)]
+#![allow(unused_must_use)]
 //! Comprehensive QuantRS2-Anneal Framework Demonstration
 //!
 //! This example showcases the full capabilities of the QuantRS2-Anneal framework:

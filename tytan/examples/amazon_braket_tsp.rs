@@ -1,3 +1,11 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments
+)]
 //! Amazon Braket Example: Traveling Salesman Problem
 //!
 //! This example demonstrates how to use the Amazon Braket sampler

@@ -9,16 +9,15 @@ use std::time::{Duration, SystemTime};
 
 #[test]
 fn test_visualization_manager_creation() {
-    let mut config = VisualizationConfig::default();
-    let mut manager = AdvancedVisualizationManager::new(config);
+    let config = VisualizationConfig::default();
+    let _manager = AdvancedVisualizationManager::new(config);
 
-    // Test that manager is created successfully
-    assert!(true);
+    // Test that manager is created successfully - compilation is sufficient
 }
 
 #[test]
 fn test_default_visualization_config() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
 
     // Verify default configuration values
     assert!(config.interactive_mode);
@@ -35,9 +34,9 @@ fn test_default_visualization_config() {
 
 #[test]
 fn test_color_schemes() {
-    let mut default_scheme = ColorScheme::default();
-    let mut high_contrast_scheme = ColorScheme::high_contrast();
-    let mut colorblind_friendly_scheme = ColorScheme::colorblind_friendly();
+    let default_scheme = ColorScheme::default();
+    let high_contrast_scheme = ColorScheme::high_contrast();
+    let colorblind_friendly_scheme = ColorScheme::colorblind_friendly();
 
     // Test default color scheme
     assert_eq!(default_scheme.primary, "#1f77b4");
@@ -58,7 +57,7 @@ fn test_color_schemes() {
 
 #[test]
 fn test_export_formats() {
-    let formats = vec![
+    let formats = [
         ExportFormat::PNG,
         ExportFormat::SVG,
         ExportFormat::PDF,
@@ -72,22 +71,23 @@ fn test_export_formats() {
     // Test that all export formats can be created
     assert_eq!(formats.len(), 8);
     for format in formats {
+        // Verify all variants are matched exhaustively
         match format {
-            ExportFormat::PNG => assert!(true),
-            ExportFormat::SVG => assert!(true),
-            ExportFormat::PDF => assert!(true),
-            ExportFormat::HTML => assert!(true),
-            ExportFormat::JSON => assert!(true),
-            ExportFormat::CSV => assert!(true),
-            ExportFormat::WebGL => assert!(true),
-            ExportFormat::ThreeJS => assert!(true),
+            ExportFormat::PNG
+            | ExportFormat::SVG
+            | ExportFormat::PDF
+            | ExportFormat::HTML
+            | ExportFormat::JSON
+            | ExportFormat::CSV
+            | ExportFormat::WebGL
+            | ExportFormat::ThreeJS => {}
         }
     }
 }
 
 #[test]
 fn test_rendering_quality_levels() {
-    let qualities = vec![
+    let qualities = [
         RenderingQuality::Low,
         RenderingQuality::Medium,
         RenderingQuality::High,
@@ -98,10 +98,10 @@ fn test_rendering_quality_levels() {
     assert_eq!(qualities.len(), 4);
     for quality in qualities {
         match quality {
-            RenderingQuality::Low => assert!(true),
-            RenderingQuality::Medium => assert!(true),
-            RenderingQuality::High => assert!(true),
-            RenderingQuality::Ultra => assert!(true),
+            RenderingQuality::Low
+            | RenderingQuality::Medium
+            | RenderingQuality::High
+            | RenderingQuality::Ultra => {}
         }
     }
 }
@@ -206,7 +206,7 @@ fn test_critical_point() {
 
 #[test]
 fn test_critical_point_types() {
-    let types = vec![
+    let types = [
         CriticalPointType::GlobalMinimum,
         CriticalPointType::LocalMinimum,
         CriticalPointType::LocalMaximum,
@@ -219,19 +219,19 @@ fn test_critical_point_types() {
     assert_eq!(types.len(), 6);
     for point_type in types {
         match point_type {
-            CriticalPointType::GlobalMinimum => assert!(true),
-            CriticalPointType::LocalMinimum => assert!(true),
-            CriticalPointType::LocalMaximum => assert!(true),
+            CriticalPointType::GlobalMinimum
+            | CriticalPointType::LocalMinimum
+            | CriticalPointType::LocalMaximum
+            | CriticalPointType::Plateau
+            | CriticalPointType::Unknown => {}
             CriticalPointType::SaddlePoint { index } => assert_eq!(index, 2),
-            CriticalPointType::Plateau => assert!(true),
-            CriticalPointType::Unknown => assert!(true),
         }
     }
 }
 
 #[test]
 fn test_stability_types() {
-    let types = vec![
+    let types = [
         StabilityType::Stable,
         StabilityType::Unstable,
         StabilityType::MarginallStable,
@@ -243,11 +243,11 @@ fn test_stability_types() {
     assert_eq!(types.len(), 5);
     for stability_type in types {
         match stability_type {
-            StabilityType::Stable => assert!(true),
-            StabilityType::Unstable => assert!(true),
-            StabilityType::MarginallStable => assert!(true),
-            StabilityType::SaddleStable => assert!(true),
-            StabilityType::Unknown => assert!(true),
+            StabilityType::Stable
+            | StabilityType::Unstable
+            | StabilityType::MarginallStable
+            | StabilityType::SaddleStable
+            | StabilityType::Unknown => {}
         }
     }
 }
@@ -281,7 +281,7 @@ fn test_solution_path() {
 
 #[test]
 fn test_interpolation_methods() {
-    let methods = vec![
+    let methods = [
         InterpolationMethod::Linear,
         InterpolationMethod::Cubic,
         InterpolationMethod::Spline,
@@ -296,14 +296,14 @@ fn test_interpolation_methods() {
     assert_eq!(methods.len(), 6);
     for method in methods {
         match method {
-            InterpolationMethod::Linear => assert!(true),
-            InterpolationMethod::Cubic => assert!(true),
-            InterpolationMethod::Spline => assert!(true),
+            InterpolationMethod::Linear
+            | InterpolationMethod::Cubic
+            | InterpolationMethod::Spline
+            | InterpolationMethod::Kriging => {}
             InterpolationMethod::RadialBasisFunction { kernel } => match kernel {
                 RBFKernel::Gaussian { bandwidth } => assert_eq!(bandwidth, 1.0),
                 _ => panic!("Unexpected RBF kernel"),
             },
-            InterpolationMethod::Kriging => assert!(true),
             InterpolationMethod::InverseDistanceWeighting { power } => assert_eq!(power, 2.0),
         }
     }
@@ -311,7 +311,7 @@ fn test_interpolation_methods() {
 
 #[test]
 fn test_rbf_kernels() {
-    let kernels = vec![
+    let kernels = [
         RBFKernel::Gaussian { bandwidth: 1.0 },
         RBFKernel::Multiquadric { c: 1.0 },
         RBFKernel::InverseMultiquadric { c: 1.0 },
@@ -323,16 +323,17 @@ fn test_rbf_kernels() {
     for kernel in kernels {
         match kernel {
             RBFKernel::Gaussian { bandwidth } => assert_eq!(bandwidth, 1.0),
-            RBFKernel::Multiquadric { c } => assert_eq!(c, 1.0),
-            RBFKernel::InverseMultiquadric { c } => assert_eq!(c, 1.0),
-            RBFKernel::ThinPlateSpline => assert!(true),
+            RBFKernel::Multiquadric { c } | RBFKernel::InverseMultiquadric { c } => {
+                assert_eq!(c, 1.0);
+            }
+            RBFKernel::ThinPlateSpline => {}
         }
     }
 }
 
 #[test]
 fn test_smoothing_methods() {
-    let methods = vec![
+    let methods = [
         SmoothingMethod::Gaussian,
         SmoothingMethod::Bilateral,
         SmoothingMethod::MedianFilter,
@@ -347,9 +348,10 @@ fn test_smoothing_methods() {
     assert_eq!(methods.len(), 5);
     for method in methods {
         match method {
-            SmoothingMethod::Gaussian => assert!(true),
-            SmoothingMethod::Bilateral => assert!(true),
-            SmoothingMethod::MedianFilter => assert!(true),
+            SmoothingMethod::Gaussian
+            | SmoothingMethod::Bilateral
+            | SmoothingMethod::MedianFilter
+            | SmoothingMethod::None => {}
             SmoothingMethod::SavitzkyGolay {
                 window_size,
                 polynomial_order,
@@ -357,7 +359,6 @@ fn test_smoothing_methods() {
                 assert_eq!(window_size, 5);
                 assert_eq!(polynomial_order, 2);
             }
-            SmoothingMethod::None => assert!(true),
         }
     }
 }
@@ -425,7 +426,7 @@ fn test_convergence_session() {
 
 #[test]
 fn test_convergence_status_types() {
-    let statuses = vec![
+    let statuses = [
         ConvergenceStatus::Converging,
         ConvergenceStatus::Converged,
         ConvergenceStatus::Stagnated,
@@ -438,12 +439,12 @@ fn test_convergence_status_types() {
     assert_eq!(statuses.len(), 6);
     for status in statuses {
         match status {
-            ConvergenceStatus::Converging => assert!(true),
-            ConvergenceStatus::Converged => assert!(true),
-            ConvergenceStatus::Stagnated => assert!(true),
-            ConvergenceStatus::Diverging => assert!(true),
-            ConvergenceStatus::Oscillating => assert!(true),
-            ConvergenceStatus::Unknown => assert!(true),
+            ConvergenceStatus::Converging
+            | ConvergenceStatus::Converged
+            | ConvergenceStatus::Stagnated
+            | ConvergenceStatus::Diverging
+            | ConvergenceStatus::Oscillating
+            | ConvergenceStatus::Unknown => {}
         }
     }
 }
@@ -453,7 +454,7 @@ fn test_quantum_state_data_types() {
     use scirs2_core::Complex64;
 
     // Test pure state
-    let mut pure_state = QuantumStateData::PureState(Array1::from(vec![
+    let pure_state = QuantumStateData::PureState(Array1::from(vec![
         Complex64::new(1.0, 0.0),
         Complex64::new(0.0, 0.0),
     ]));
@@ -467,7 +468,7 @@ fn test_quantum_state_data_types() {
     }
 
     // Test mixed state
-    let mut mixed_state = QuantumStateData::MixedState(Array2::eye(2));
+    let mixed_state = QuantumStateData::MixedState(Array2::eye(2));
 
     match mixed_state {
         QuantumStateData::MixedState(density_matrix) => {
@@ -477,7 +478,7 @@ fn test_quantum_state_data_types() {
     }
 
     // Test stabilizer state
-    let mut stabilizer_state = QuantumStateData::StabilizerState(StabilizerRepresentation {
+    let stabilizer_state = QuantumStateData::StabilizerState(StabilizerRepresentation {
         generators: vec![],
         phases: vec![],
     });
@@ -493,7 +494,7 @@ fn test_quantum_state_data_types() {
 
 #[test]
 fn test_state_visualization_types() {
-    let viz_types = vec![
+    let viz_types = [
         StateVisualizationType::BlochSphere,
         StateVisualizationType::QSphere,
         StateVisualizationType::QuantumCircuit,
@@ -508,21 +509,21 @@ fn test_state_visualization_types() {
     assert_eq!(viz_types.len(), 8);
     for viz_type in viz_types {
         match viz_type {
-            StateVisualizationType::BlochSphere => assert!(true),
-            StateVisualizationType::QSphere => assert!(true),
-            StateVisualizationType::QuantumCircuit => assert!(true),
-            StateVisualizationType::DensityMatrix => assert!(true),
-            StateVisualizationType::Wigner => assert!(true),
-            StateVisualizationType::Hinton => assert!(true),
-            StateVisualizationType::City => assert!(true),
-            StateVisualizationType::Paulivec => assert!(true),
+            StateVisualizationType::BlochSphere
+            | StateVisualizationType::QSphere
+            | StateVisualizationType::QuantumCircuit
+            | StateVisualizationType::DensityMatrix
+            | StateVisualizationType::Wigner
+            | StateVisualizationType::Hinton
+            | StateVisualizationType::City
+            | StateVisualizationType::Paulivec => {}
         }
     }
 }
 
 #[test]
 fn test_widget_types() {
-    let widget_types = vec![
+    let widget_types = [
         WidgetType::LineChart,
         WidgetType::BarChart,
         WidgetType::Scatter3D,
@@ -537,13 +538,13 @@ fn test_widget_types() {
     assert_eq!(widget_types.len(), 8);
     for widget_type in widget_types {
         match widget_type {
-            WidgetType::LineChart => assert!(true),
-            WidgetType::BarChart => assert!(true),
-            WidgetType::Scatter3D => assert!(true),
-            WidgetType::Heatmap => assert!(true),
-            WidgetType::Gauge => assert!(true),
-            WidgetType::Table => assert!(true),
-            WidgetType::Text => assert!(true),
+            WidgetType::LineChart
+            | WidgetType::BarChart
+            | WidgetType::Scatter3D
+            | WidgetType::Heatmap
+            | WidgetType::Gauge
+            | WidgetType::Table
+            | WidgetType::Text => {}
             WidgetType::Custom(name) => assert_eq!(name, "CustomWidget"),
         }
     }
@@ -647,7 +648,7 @@ fn test_comparison_result() {
 
 #[test]
 fn test_interactive_features() {
-    let features = vec![
+    let features = [
         InteractiveFeature::Rotation,
         InteractiveFeature::Zooming,
         InteractiveFeature::Selection,
@@ -660,19 +661,19 @@ fn test_interactive_features() {
     assert_eq!(features.len(), 6);
     for feature in features {
         match feature {
-            InteractiveFeature::Rotation => assert!(true),
-            InteractiveFeature::Zooming => assert!(true),
-            InteractiveFeature::Selection => assert!(true),
-            InteractiveFeature::Animation => assert!(true),
-            InteractiveFeature::Measurement => assert!(true),
-            InteractiveFeature::StateModification => assert!(true),
+            InteractiveFeature::Rotation
+            | InteractiveFeature::Zooming
+            | InteractiveFeature::Selection
+            | InteractiveFeature::Animation
+            | InteractiveFeature::Measurement
+            | InteractiveFeature::StateModification => {}
         }
     }
 }
 
 #[test]
 fn test_visualization_types() {
-    let viz_types = vec![
+    let viz_types = [
         VisualizationType::EnergyLandscape3D,
         VisualizationType::ConvergenceTracking,
         VisualizationType::QuantumState,
@@ -684,18 +685,18 @@ fn test_visualization_types() {
     assert_eq!(viz_types.len(), 5);
     for viz_type in viz_types {
         match viz_type {
-            VisualizationType::EnergyLandscape3D => assert!(true),
-            VisualizationType::ConvergenceTracking => assert!(true),
-            VisualizationType::QuantumState => assert!(true),
-            VisualizationType::PerformanceDashboard => assert!(true),
-            VisualizationType::ComparativeAnalysis => assert!(true),
+            VisualizationType::EnergyLandscape3D
+            | VisualizationType::ConvergenceTracking
+            | VisualizationType::QuantumState
+            | VisualizationType::PerformanceDashboard
+            | VisualizationType::ComparativeAnalysis => {}
         }
     }
 }
 
 #[test]
 fn test_interaction_types() {
-    let interaction_types = vec![
+    let interaction_types = [
         InteractionType::Click,
         InteractionType::Drag,
         InteractionType::Zoom,
@@ -716,16 +717,14 @@ fn test_interaction_types() {
             | InteractionType::Rotate
             | InteractionType::Pan
             | InteractionType::Select
-            | InteractionType::Hover => {
-                // All variants are valid
-            }
+            | InteractionType::Hover => {}
         }
     }
 }
 
 #[test]
 fn test_energy_landscape_visualization() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create test energy samples
@@ -786,7 +785,7 @@ fn test_energy_landscape_visualization() {
 
 #[test]
 fn test_convergence_tracking() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create problem configuration
@@ -836,7 +835,7 @@ fn test_convergence_tracking() {
 fn test_quantum_state_visualization() {
     use scirs2_core::Complex64;
 
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create a test quantum state (Bell state |00⟩ + |11⟩)
@@ -884,7 +883,7 @@ fn test_quantum_state_visualization() {
 
 #[test]
 fn test_performance_dashboard() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create performance dashboard
@@ -906,7 +905,7 @@ fn test_performance_dashboard() {
 
 #[test]
 fn test_comparative_analysis() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create test datasets
@@ -987,7 +986,7 @@ fn test_comparative_analysis() {
 
 #[test]
 fn test_export_functionality() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Test different export formats
@@ -1045,7 +1044,7 @@ fn test_advanced_visualization_manager() {
 
 #[test]
 fn test_configuration_update() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Create new configuration with different settings
@@ -1071,8 +1070,8 @@ fn test_configuration_update() {
 
 #[test]
 fn test_error_handling() {
-    let mut config = VisualizationConfig::default();
-    let mut manager = AdvancedVisualizationManager::new(config);
+    let config = VisualizationConfig::default();
+    let manager = AdvancedVisualizationManager::new(config);
 
     // Test getting status for non-existent visualization
     let status = manager.get_visualization_status("non_existent_viz");
@@ -1083,7 +1082,7 @@ fn test_error_handling() {
 
 #[test]
 fn test_comprehensive_visualization_workflow() {
-    let mut config = VisualizationConfig::default();
+    let config = VisualizationConfig::default();
     let mut manager = AdvancedVisualizationManager::new(config);
 
     // Step 1: Create energy landscape visualization
@@ -1136,8 +1135,7 @@ fn test_comprehensive_visualization_workflow() {
     for i in 0..10 {
         let energy = 0.2f64.mul_add(-f64::from(i), -1.0);
         let gradient_norm = 0.1 * (0.8_f64).powi(i);
-        let mut parameters =
-            Array1::from(vec![0.1 * f64::from(i), 0.1f64.mul_add(-f64::from(i), 0.9)]);
+        let parameters = Array1::from(vec![0.1 * f64::from(i), 0.1f64.mul_add(-f64::from(i), 0.9)]);
 
         let update_result =
             manager.update_convergence(&convergence_id, energy, gradient_norm, parameters);

@@ -1,3 +1,19 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::let_and_return,
+    clippy::needless_pass_by_ref_mut,
+    clippy::manual_clamp,
+    clippy::unnecessary_cast,
+    clippy::redundant_clone,
+    clippy::print_literal,
+    clippy::write_literal
+)]
+#![allow(unused_must_use)]
 //! Advanced Portfolio Optimization example using QuantRS2-Tytan with SciRS2
 //!
 //! This example demonstrates:

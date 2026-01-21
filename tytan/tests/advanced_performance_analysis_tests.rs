@@ -52,7 +52,7 @@ mod tests {
     /// Test metrics levels
     #[test]
     fn test_metrics_levels() {
-        let levels = vec![
+        let levels = [
             MetricsLevel::Basic,
             MetricsLevel::Detailed,
             MetricsLevel::Comprehensive,
@@ -63,9 +63,7 @@ mod tests {
 
         for level in levels {
             match level {
-                MetricsLevel::Basic => assert!(true),
-                MetricsLevel::Detailed => assert!(true),
-                MetricsLevel::Comprehensive => assert!(true),
+                MetricsLevel::Basic | MetricsLevel::Detailed | MetricsLevel::Comprehensive => {}
                 MetricsLevel::Custom { metrics } => {
                     assert_eq!(metrics.len(), 2);
                     assert_eq!(metrics[0], "cpu_usage");
@@ -78,7 +76,7 @@ mod tests {
     /// Test analysis depth levels
     #[test]
     fn test_analysis_depth_levels() {
-        let depths = vec![
+        let depths = [
             AnalysisDepth::Surface,
             AnalysisDepth::Deep,
             AnalysisDepth::Exhaustive,
@@ -87,10 +85,10 @@ mod tests {
 
         for depth in depths {
             match depth {
-                AnalysisDepth::Surface => assert!(true),
-                AnalysisDepth::Deep => assert!(true),
-                AnalysisDepth::Exhaustive => assert!(true),
-                AnalysisDepth::Adaptive => assert!(true),
+                AnalysisDepth::Surface
+                | AnalysisDepth::Deep
+                | AnalysisDepth::Exhaustive
+                | AnalysisDepth::Adaptive => {}
             }
         }
     }
@@ -124,7 +122,7 @@ mod tests {
     /// Test outlier detection methods
     #[test]
     fn test_outlier_detection_methods() {
-        let methods = vec![
+        let methods = [
             OutlierDetectionMethod::ZScore { threshold: 2.5 },
             OutlierDetectionMethod::IQR { multiplier: 1.5 },
             OutlierDetectionMethod::IsolationForest,
@@ -140,15 +138,9 @@ mod tests {
                 OutlierDetectionMethod::IQR { multiplier } => {
                     assert_eq!(multiplier, 1.5);
                 }
-                OutlierDetectionMethod::IsolationForest => {
-                    assert!(true);
-                }
-                OutlierDetectionMethod::LocalOutlierFactor => {
-                    assert!(true);
-                }
-                OutlierDetectionMethod::StatisticalTests => {
-                    assert!(true);
-                }
+                OutlierDetectionMethod::IsolationForest
+                | OutlierDetectionMethod::LocalOutlierFactor
+                | OutlierDetectionMethod::StatisticalTests => {}
             }
         }
     }
@@ -182,7 +174,7 @@ mod tests {
     /// Test export formats
     #[test]
     fn test_export_formats() {
-        let formats = vec![
+        let formats = [
             ExportFormat::PNG,
             ExportFormat::SVG,
             ExportFormat::PDF,
@@ -193,12 +185,12 @@ mod tests {
 
         for format in formats {
             match format {
-                ExportFormat::PNG => assert!(true),
-                ExportFormat::SVG => assert!(true),
-                ExportFormat::PDF => assert!(true),
-                ExportFormat::HTML => assert!(true),
-                ExportFormat::JSON => assert!(true),
-                ExportFormat::CSV => assert!(true),
+                ExportFormat::PNG
+                | ExportFormat::SVG
+                | ExportFormat::PDF
+                | ExportFormat::HTML
+                | ExportFormat::JSON
+                | ExportFormat::CSV => {}
             }
         }
     }
@@ -447,7 +439,7 @@ mod tests {
     /// Test bottleneck types
     #[test]
     fn test_bottleneck_types() {
-        let types = vec![
+        let types = [
             BottleneckType::CPU,
             BottleneckType::Memory,
             BottleneckType::IO,
@@ -461,12 +453,12 @@ mod tests {
 
         for bottleneck_type in types {
             match bottleneck_type {
-                BottleneckType::CPU => assert!(true),
-                BottleneckType::Memory => assert!(true),
-                BottleneckType::IO => assert!(true),
-                BottleneckType::Network => assert!(true),
-                BottleneckType::Algorithm => assert!(true),
-                BottleneckType::Synchronization => assert!(true),
+                BottleneckType::CPU
+                | BottleneckType::Memory
+                | BottleneckType::IO
+                | BottleneckType::Network
+                | BottleneckType::Algorithm
+                | BottleneckType::Synchronization => {}
                 BottleneckType::Custom { description } => {
                     assert_eq!(description, "Custom bottleneck");
                 }

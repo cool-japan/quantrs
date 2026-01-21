@@ -148,7 +148,7 @@ mod tests {
     /// Test compression methods
     #[test]
     fn test_compression_methods() {
-        let methods = vec![
+        let methods = [
             CompressionMethod::SVD,
             CompressionMethod::QR,
             CompressionMethod::RandomizedSVD,
@@ -159,12 +159,12 @@ mod tests {
 
         for method in methods {
             match method {
-                CompressionMethod::SVD => assert!(true),
-                CompressionMethod::QR => assert!(true),
-                CompressionMethod::RandomizedSVD => assert!(true),
-                CompressionMethod::TensorTrain => assert!(true),
-                CompressionMethod::Tucker => assert!(true),
-                CompressionMethod::CP => assert!(true),
+                CompressionMethod::SVD
+                | CompressionMethod::QR
+                | CompressionMethod::RandomizedSVD
+                | CompressionMethod::TensorTrain
+                | CompressionMethod::Tucker
+                | CompressionMethod::CP => {}
             }
         }
     }
@@ -172,7 +172,7 @@ mod tests {
     /// Test optimization algorithms
     #[test]
     fn test_optimization_algorithms() {
-        let algorithms = vec![
+        let algorithms = [
             OptimizationAlgorithm::DMRG,
             OptimizationAlgorithm::TEBD,
             OptimizationAlgorithm::VMPS,
@@ -185,14 +185,14 @@ mod tests {
 
         for algorithm in algorithms {
             match algorithm {
-                OptimizationAlgorithm::DMRG => assert!(true),
-                OptimizationAlgorithm::TEBD => assert!(true),
-                OptimizationAlgorithm::VMPS => assert!(true),
-                OptimizationAlgorithm::ALS => assert!(true),
-                OptimizationAlgorithm::GradientDescent => assert!(true),
-                OptimizationAlgorithm::ConjugateGradient => assert!(true),
-                OptimizationAlgorithm::LBFGS => assert!(true),
-                OptimizationAlgorithm::TrustRegion => assert!(true),
+                OptimizationAlgorithm::DMRG
+                | OptimizationAlgorithm::TEBD
+                | OptimizationAlgorithm::VMPS
+                | OptimizationAlgorithm::ALS
+                | OptimizationAlgorithm::GradientDescent
+                | OptimizationAlgorithm::ConjugateGradient
+                | OptimizationAlgorithm::LBFGS
+                | OptimizationAlgorithm::TrustRegion => {}
             }
         }
     }
@@ -200,7 +200,7 @@ mod tests {
     /// Test load balancing strategies
     #[test]
     fn test_load_balancing_strategies() {
-        let strategies = vec![
+        let strategies = [
             LoadBalancingStrategy::Static,
             LoadBalancingStrategy::Dynamic,
             LoadBalancingStrategy::WorkStealing,
@@ -209,10 +209,10 @@ mod tests {
 
         for strategy in strategies {
             match strategy {
-                LoadBalancingStrategy::Static => assert!(true),
-                LoadBalancingStrategy::Dynamic => assert!(true),
-                LoadBalancingStrategy::WorkStealing => assert!(true),
-                LoadBalancingStrategy::Adaptive => assert!(true),
+                LoadBalancingStrategy::Static
+                | LoadBalancingStrategy::Dynamic
+                | LoadBalancingStrategy::WorkStealing
+                | LoadBalancingStrategy::Adaptive => {}
             }
         }
     }
@@ -220,7 +220,7 @@ mod tests {
     /// Test cache optimization
     #[test]
     fn test_cache_optimization() {
-        let optimizations = vec![
+        let optimizations = [
             CacheOptimization::None,
             CacheOptimization::Spatial,
             CacheOptimization::Temporal,
@@ -229,10 +229,10 @@ mod tests {
 
         for optimization in optimizations {
             match optimization {
-                CacheOptimization::None => assert!(true),
-                CacheOptimization::Spatial => assert!(true),
-                CacheOptimization::Temporal => assert!(true),
-                CacheOptimization::Combined => assert!(true),
+                CacheOptimization::None
+                | CacheOptimization::Spatial
+                | CacheOptimization::Temporal
+                | CacheOptimization::Combined => {}
             }
         }
     }
@@ -240,7 +240,7 @@ mod tests {
     /// Test index types
     #[test]
     fn test_index_types() {
-        let index_types = vec![
+        let index_types = [
             IndexType::Physical,
             IndexType::Virtual,
             IndexType::Auxiliary,
@@ -249,10 +249,10 @@ mod tests {
 
         for index_type in index_types {
             match index_type {
-                IndexType::Physical => assert!(true),
-                IndexType::Virtual => assert!(true),
-                IndexType::Auxiliary => assert!(true),
-                IndexType::Time => assert!(true),
+                IndexType::Physical
+                | IndexType::Virtual
+                | IndexType::Auxiliary
+                | IndexType::Time => {}
             }
         }
     }
@@ -260,7 +260,7 @@ mod tests {
     /// Test quality metrics
     #[test]
     fn test_quality_metrics() {
-        let metrics = vec![
+        let metrics = [
             QualityMetric::RelativeError,
             QualityMetric::SpectralNormError,
             QualityMetric::FrobeniusNormError,
@@ -270,11 +270,11 @@ mod tests {
 
         for metric in metrics {
             match metric {
-                QualityMetric::RelativeError => assert!(true),
-                QualityMetric::SpectralNormError => assert!(true),
-                QualityMetric::FrobeniusNormError => assert!(true),
-                QualityMetric::InformationLoss => assert!(true),
-                QualityMetric::EntanglementPreservation => assert!(true),
+                QualityMetric::RelativeError
+                | QualityMetric::SpectralNormError
+                | QualityMetric::FrobeniusNormError
+                | QualityMetric::InformationLoss
+                | QualityMetric::EntanglementPreservation => {}
             }
         }
     }

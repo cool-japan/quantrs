@@ -1,4 +1,12 @@
-#![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::upper_case_acronyms
+)]
 //! Scikit-learn Compatible Quantum ML Pipeline Example
 //!
 //! This example demonstrates the scikit-learn compatibility layer, showing how to use

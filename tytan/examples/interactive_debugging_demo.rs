@@ -1,3 +1,9 @@
+#![allow(
+    unused_must_use,
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::match_same_arms
+)]
 //! Interactive debugging demonstration.
 
 use quantrs2_tytan::sampler::{SASampler, Sampler};

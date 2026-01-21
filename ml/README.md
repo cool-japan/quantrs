@@ -5,7 +5,7 @@
 
 QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing cutting-edge quantum algorithms, hybrid architectures, and industry-specific applications for next-generation artificial intelligence and data science.
 
-## Version 0.1.0
+## Version 0.1.1
 
 This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.0 with refined integration patterns for enhanced performance:
 - Automatic differentiation leveraging SciRS2's linear algebra operations
@@ -56,7 +56,7 @@ The `quantrs2-ml` crate is included in the main QuantRS2 workspace. To use it in
 
 ```toml
 [dependencies]
-quantrs2-ml = "0.1.0"
+quantrs2-ml = "0.1.1"
 ```
 
 ## Usage Examples

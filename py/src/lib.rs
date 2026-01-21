@@ -58,10 +58,12 @@ mod measurement;
 // Include the quantum algorithms module
 mod algorithms;
 
-// Include the pulse control module
+// Include the pulse control module (requires device feature)
+#[cfg(feature = "device")]
 mod pulse;
 
-// Include the error mitigation module
+// Include the error mitigation module (requires device feature)
+#[cfg(feature = "device")]
 mod mitigation;
 
 // Include the ML transfer learning module
@@ -1883,10 +1885,12 @@ fn quantrs2(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register the algorithms module
     algorithms::register_algorithms_module(m)?;
 
-    // Register the pulse module
+    // Register the pulse module (requires device feature)
+    #[cfg(feature = "device")]
     pulse::register_pulse_module(m)?;
 
-    // Register the mitigation module
+    // Register the mitigation module (requires device feature)
+    #[cfg(feature = "device")]
     mitigation::register_mitigation_module(m)?;
 
     // Register the ML transfer learning module

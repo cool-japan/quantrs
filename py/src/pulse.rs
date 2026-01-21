@@ -1,7 +1,10 @@
 //! Python bindings for pulse-level control
 //!
 //! This module provides Python access to low-level pulse control for quantum operations.
+//!
+//! This module requires the `device` feature to be enabled.
 
+#![cfg(feature = "device")]
 // Allow option_if_let_else for cleaner None handling in pulse operations
 #![allow(clippy::option_if_let_else)]
 

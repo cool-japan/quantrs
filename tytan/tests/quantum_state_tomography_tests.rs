@@ -11,7 +11,7 @@ mod tests {
     /// Test tomography types
     #[test]
     fn test_tomography_types() {
-        let types = vec![
+        let types = [
             TomographyType::QuantumState,
             TomographyType::QuantumProcess,
             TomographyType::ShadowTomography { num_shadows: 100 },
@@ -22,16 +22,16 @@ mod tests {
 
         for tomo_type in types {
             match tomo_type {
-                TomographyType::QuantumState => assert!(true),
-                TomographyType::QuantumProcess => assert!(true),
+                TomographyType::QuantumState
+                | TomographyType::QuantumProcess
+                | TomographyType::AdaptiveTomography
+                | TomographyType::EntanglementCharacterization => {}
                 TomographyType::ShadowTomography { num_shadows } => {
                     assert_eq!(num_shadows, 100);
                 }
                 TomographyType::CompressedSensing { sparsity_level } => {
                     assert_eq!(sparsity_level, 10);
                 }
-                TomographyType::AdaptiveTomography => assert!(true),
-                TomographyType::EntanglementCharacterization => assert!(true),
             }
         }
     }
@@ -57,7 +57,7 @@ mod tests {
     /// Test basis types
     #[test]
     fn test_basis_types() {
-        let basis_types = vec![
+        let basis_types = [
             BasisType::Computational,
             BasisType::Pauli,
             BasisType::MUB,
@@ -69,13 +69,13 @@ mod tests {
 
         for basis_type in basis_types {
             match basis_type {
-                BasisType::Computational => assert!(true),
-                BasisType::Pauli => assert!(true),
-                BasisType::MUB => assert!(true),
-                BasisType::SIC => assert!(true),
-                BasisType::Stabilizer => assert!(true),
-                BasisType::RandomPauli => assert!(true),
-                BasisType::Adaptive => assert!(true),
+                BasisType::Computational
+                | BasisType::Pauli
+                | BasisType::MUB
+                | BasisType::SIC
+                | BasisType::Stabilizer
+                | BasisType::RandomPauli
+                | BasisType::Adaptive => {}
             }
         }
     }
@@ -83,7 +83,7 @@ mod tests {
     /// Test Pauli operators
     #[test]
     fn test_pauli_operators() {
-        let pauli_ops = vec![
+        let pauli_ops = [
             PauliOperator::I,
             PauliOperator::X,
             PauliOperator::Y,
@@ -92,10 +92,7 @@ mod tests {
 
         for op in pauli_ops {
             match op {
-                PauliOperator::I => assert!(true),
-                PauliOperator::X => assert!(true),
-                PauliOperator::Y => assert!(true),
-                PauliOperator::Z => assert!(true),
+                PauliOperator::I | PauliOperator::X | PauliOperator::Y | PauliOperator::Z => {}
             }
         }
     }
@@ -103,7 +100,7 @@ mod tests {
     /// Test reconstruction method types
     #[test]
     fn test_reconstruction_method_types() {
-        let methods = vec![
+        let methods = [
             ReconstructionMethodType::MaximumLikelihood,
             ReconstructionMethodType::LeastSquares,
             ReconstructionMethodType::CompressedSensing,
@@ -115,13 +112,13 @@ mod tests {
 
         for method in methods {
             match method {
-                ReconstructionMethodType::MaximumLikelihood => assert!(true),
-                ReconstructionMethodType::LeastSquares => assert!(true),
-                ReconstructionMethodType::CompressedSensing => assert!(true),
-                ReconstructionMethodType::BayesianInference => assert!(true),
-                ReconstructionMethodType::NeuralNetwork => assert!(true),
-                ReconstructionMethodType::Variational => assert!(true),
-                ReconstructionMethodType::MatrixCompletion => assert!(true),
+                ReconstructionMethodType::MaximumLikelihood
+                | ReconstructionMethodType::LeastSquares
+                | ReconstructionMethodType::CompressedSensing
+                | ReconstructionMethodType::BayesianInference
+                | ReconstructionMethodType::NeuralNetwork
+                | ReconstructionMethodType::Variational
+                | ReconstructionMethodType::MatrixCompletion => {}
             }
         }
     }

@@ -18,6 +18,7 @@ pub use simulator::*;
 pub use types::*;
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use crate::circuit_interfaces::{InterfaceGate, InterfaceGateType};

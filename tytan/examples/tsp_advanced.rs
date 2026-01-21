@@ -1,3 +1,13 @@
+#![allow(
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop,
+    clippy::useless_vec,
+    clippy::needless_collect,
+    clippy::too_many_arguments,
+    clippy::collection_is_never_read
+)]
+#![allow(dead_code)]
 //! Advanced Traveling Salesman Problem (TSP) example using QuantRS2-Tytan
 //!
 //! This example demonstrates:

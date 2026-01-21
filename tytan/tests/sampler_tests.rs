@@ -1,4 +1,5 @@
 #![allow(clippy::pedantic, clippy::unnecessary_wraps)]
+#![allow(unused_must_use)]
 //! Tests for the sampler module.
 
 use quantrs2_tytan::sampler::{GASampler, SASampler, Sampler};
@@ -231,7 +232,7 @@ fn test_sampler_one_hot_constraint() {
             "Perfect solution found: sum={}, energy={}, total_energy={}",
             sum, best.energy, total_energy
         );
-        assert!(true, "Found valid one-hot solution");
+        // Success: Found valid one-hot solution
     } else {
         // Suboptimal solution - but let's check if the QUBO is working correctly
         println!(
@@ -257,10 +258,7 @@ fn test_sampler_one_hot_constraint() {
         // If the improved sampler finds a solution with sum=1, that validates our QUBO compilation
         if improved_sum == 1 {
             println!("Improved sampler found valid one-hot solution!");
-            assert!(
-                true,
-                "QUBO compilation works - improved sampler found valid solution"
-            );
+            // Success: QUBO compilation works - improved sampler found valid solution
         } else {
             // Even with more iterations, check that the energy ordering makes sense
             // A solution with sum closer to 1 should have lower energy

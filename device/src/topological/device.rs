@@ -331,6 +331,7 @@ pub struct TopologicalDeviceDiagnostics {
     pub error_rate: f64,
 }
 
+#[cfg(feature = "ibm")]
 #[async_trait::async_trait]
 impl QuantumDevice for EnhancedTopologicalDevice {
     async fn is_available(&self) -> DeviceResult<bool> {
@@ -376,6 +377,52 @@ impl QuantumDevice for EnhancedTopologicalDevice {
     }
 }
 
+#[cfg(not(feature = "ibm"))]
+impl QuantumDevice for EnhancedTopologicalDevice {
+    fn is_available(&self) -> DeviceResult<bool> {
+        Ok(self.is_connected && self.config.topological_gap > 0.1)
+    }
+
+    fn qubit_count(&self) -> DeviceResult<usize> {
+        Ok(self.core_device.capabilities.max_qubits)
+    }
+
+    fn properties(&self) -> DeviceResult<HashMap<String, String>> {
+        let mut props = HashMap::new();
+        props.insert("device_type".to_string(), "topological".to_string());
+        props.insert(
+            "anyon_type".to_string(),
+            format!("{:?}", self.core_device.system_type),
+        );
+        props.insert(
+            "max_anyons".to_string(),
+            self.core_device.capabilities.max_anyons.to_string(),
+        );
+        props.insert(
+            "max_qubits".to_string(),
+            self.core_device.capabilities.max_qubits.to_string(),
+        );
+        props.insert(
+            "braiding_fidelity".to_string(),
+            self.config.braiding_fidelity.to_string(),
+        );
+        props.insert(
+            "topological_gap".to_string(),
+            self.config.topological_gap.to_string(),
+        );
+        props.insert(
+            "coherence_length".to_string(),
+            self.config.coherence_length.to_string(),
+        );
+        Ok(props)
+    }
+
+    fn is_simulator(&self) -> DeviceResult<bool> {
+        Ok(true) // This implementation is a simulator
+    }
+}
+
+#[cfg(feature = "ibm")]
 #[async_trait::async_trait]
 impl CircuitExecutor for EnhancedTopologicalDevice {
     async fn execute_circuit<const N: usize>(
@@ -435,6 +482,70 @@ impl CircuitExecutor for EnhancedTopologicalDevice {
     }
 
     async fn estimated_queue_time<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+    ) -> DeviceResult<Duration> {
+        // Topological quantum computers have very long coherence times
+        Ok(Duration::from_secs(10))
+    }
+}
+
+#[cfg(not(feature = "ibm"))]
+impl CircuitExecutor for EnhancedTopologicalDevice {
+    fn execute_circuit<const N: usize>(
+        &self,
+        _circuit: &Circuit<N>,
+        shots: usize,
+    ) -> DeviceResult<CircuitResult> {
+        if !self.is_connected {
+            return Err(DeviceError::DeviceNotInitialized(
+                "Topological device not connected".to_string(),
+            ));
+        }
+
+        // Simplified circuit execution
+        // In practice, this would translate circuit gates to braiding operations
+        let mut counts = HashMap::new();
+
+        // Simulate perfect braiding for now
+        let all_zeros = "0".repeat(N);
+        counts.insert(all_zeros, shots);
+
+        let mut metadata = HashMap::new();
+        metadata.insert("device_type".to_string(), "topological".to_string());
+        metadata.insert(
+            "braiding_fidelity".to_string(),
+            self.config.braiding_fidelity.to_string(),
+        );
+        metadata.insert("execution_time_ms".to_string(), "100".to_string());
+
+        Ok(CircuitResult {
+            counts,
+            shots,
+            metadata,
+        })
+    }
+
+    fn execute_circuits<const N: usize>(
+        &self,
+        circuits: Vec<&Circuit<N>>,
+        shots: usize,
+    ) -> DeviceResult<Vec<CircuitResult>> {
+        let mut results = Vec::new();
+
+        for circuit in circuits {
+            let result = self.execute_circuit(circuit, shots)?;
+            results.push(result);
+        }
+
+        Ok(results)
+    }
+
+    fn can_execute_circuit<const N: usize>(&self, _circuit: &Circuit<N>) -> DeviceResult<bool> {
+        Ok(N <= self.core_device.capabilities.max_qubits)
+    }
+
+    fn estimated_queue_time<const N: usize>(
         &self,
         _circuit: &Circuit<N>,
     ) -> DeviceResult<Duration> {

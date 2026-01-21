@@ -1558,6 +1558,7 @@ pub fn benchmark_quantum_chemistry_dmrg() -> Result<QuantumChemistryBenchmarkRes
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 

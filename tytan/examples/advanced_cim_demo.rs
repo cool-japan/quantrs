@@ -1,3 +1,4 @@
+#![allow(unused_must_use, clippy::pedantic, clippy::unnecessary_wraps)]
 //! Advanced CIM demonstration with quantum noise and adaptive pumping.
 
 use quantrs2_tytan::coherent_ising_machine::{

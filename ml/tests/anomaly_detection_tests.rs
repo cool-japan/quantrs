@@ -1,3 +1,10 @@
+#![allow(
+    unused_must_use,
+    clippy::pedantic,
+    clippy::unnecessary_wraps,
+    clippy::field_reassign_with_default,
+    clippy::match_same_arms
+)]
 //! Unit tests for quantum anomaly detection module
 
 use quantrs2_ml::anomaly_detection::*;

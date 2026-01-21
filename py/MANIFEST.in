@@ -2,4 +2,6 @@ include LICENSE*
 include README.md
 include MANIFEST.in
 recursive-include python/quantrs2 *.py
+recursive-include python/quantrs2 *.pyi
+recursive-include python/quantrs2 py.typed
 recursive-include python/_quantrs2 *.py

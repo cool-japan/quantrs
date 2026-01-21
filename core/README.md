@@ -6,7 +6,7 @@
 
 QuantRS2-Core is the foundational library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing a comprehensive suite of quantum computing primitives, algorithms, and optimizations that power the entire ecosystem.
 
-## Version 0.1.0 🎉 PRODUCTION READY!
+## Version 0.1.1 🎉 PRODUCTION READY!
 
 **✅ Core Module - Policy Refinement Release**
 

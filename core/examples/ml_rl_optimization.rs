@@ -1,4 +1,5 @@
-#![allow(clippy::unnecessary_wraps, clippy::pedantic)]
+#![allow(clippy::unnecessary_wraps, clippy::pedantic, clippy::useless_vec)]
+#![allow(unused_must_use)]
 //! Machine Learning and Reinforcement Learning for Quantum Optimization
 //!
 //! This example demonstrates advanced quantum circuit optimization using:
