@@ -1,7 +1,7 @@
 # QuantRS2 Framework Integration Guide
 
-**Version**: 0.1.0
-**Date**: 2025-11-18
+**Version**: 0.1.2
+**Date**: 2026-01-23
 **Status**: Production Ready
 
 ## 📋 Table of Contents
@@ -671,6 +671,6 @@ QuantRS2 provides the most comprehensive quantum framework integration available
 
 ---
 
-**Last Updated**: 2025-11-18
-**Version**: 0.1.0
+**Last Updated**: 2026-01-23
+**Version**: 0.1.2
 **Status**: Production Ready ✅

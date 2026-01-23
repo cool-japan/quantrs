@@ -3,9 +3,9 @@
 //! This crate provides Python bindings using `PyO3`,
 //! allowing `QuantRS2` to be used from Python.
 //!
-//! ## Recent Updates (v0.1.0)
+//! ## Recent Updates (v0.1.2)
 //!
-//! - Refined `SciRS2` v0.1.0 integration with unified patterns
+//! - Refined `SciRS2` v0.1.2 integration with unified patterns
 //! - Enhanced cross-platform support (macOS, Linux, Windows)
 //! - Improved GPU acceleration with CUDA support
 //! - Advanced quantum ML capabilities with autograd support

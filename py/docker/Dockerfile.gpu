@@ -92,7 +92,7 @@ CMD ["python3", "-c", "import quantrs2; print('QuantRS2 GPU container ready!')"]
 
 # Labels
 LABEL maintainer="QuantRS2 Team" \
-      version="0.1.0-gpu" \
+      version="0.1.2-gpu" \
       description="QuantRS2 with GPU acceleration support" \
       org.opencontainers.image.title="QuantRS2 GPU" \
       org.opencontainers.image.description="GPU-accelerated quantum computing framework"

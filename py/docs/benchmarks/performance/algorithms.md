@@ -25,7 +25,7 @@ This benchmark evaluates the performance of key quantum algorithms implemented a
 - **Statistical:** 95% confidence intervals, outlier removal
 
 ### Framework Versions
-- **QuantRS2:** 0.1.0
+- **QuantRS2:** 0.1.2
 - **Qiskit:** 0.45.1 + Qiskit Aer 0.13.1
 - **Cirq:** 1.3.0
 - **PennyLane:** 0.33.1 + default.qubit
@@ -429,17 +429,17 @@ model = quantrs2.QML.VQC(
 
 ### Planned Optimizations
 
-**Short Term (Q1 2025):**
+**Short Term (Q1 2026):**
 - GPU acceleration for >20 qubits
 - Distributed computing support
 - Enhanced error mitigation
 
-**Medium Term (Q2-Q3 2025):**
+**Medium Term (Q2-Q3 2026):**
 - Quantum hardware integration
 - Real-time optimization
 - Machine learning acceleration
 
-**Long Term (Q4 2025+):**
+**Long Term (Q4 2026+):**
 - Fault-tolerant algorithms
 - Hybrid classical-quantum
 - Advanced compilation techniques
@@ -448,10 +448,10 @@ model = quantrs2.QML.VQC(
 
 | Optimization | Expected Speedup | Qubit Range | Implementation |
 |--------------|------------------|-------------|----------------|
-| GPU Backend | 5-10x | 15-25 qubits | Q1 2025 |
-| Distributed | 3-8x | 20+ qubits | Q2 2025 |
-| ML Compilation | 2-4x | All ranges | Q3 2025 |
-| Quantum Hardware | 10-100x | Hardware limited | Q4 2025 |
+| GPU Backend | 5-10x | 15-25 qubits | Q1 2026 |
+| Distributed | 3-8x | 20+ qubits | Q2 2026 |
+| ML Compilation | 2-4x | All ranges | Q3 2026 |
+| Quantum Hardware | 10-100x | Hardware limited | Q4 2026 |
 
 ## 🏆 Conclusion
 

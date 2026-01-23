@@ -618,7 +618,7 @@ fn demonstrate_post_quantum_crypto() {
     println!("═══════════════════════════════════════════════════════════════");
     println!();
 
-    println!("Selected Algorithms (2022-2024):");
+    println!("Selected Algorithms:");
     println!();
     println!("  Public Key Encryption / KEMs:");
     println!("    • CRYSTALS-Kyber (primary)");
@@ -639,7 +639,7 @@ fn demonstrate_post_quantum_crypto() {
     println!("    Classical + PQC together");
     println!("    Example: TLS with both RSA and Kyber");
     println!();
-    println!("  Phase 2 (2025-2030): Gradual transition");
+    println!("  Phase 2 (2026-2030): Gradual transition");
     println!("    Deploy PQC in critical infrastructure");
     println!("    Maintain backward compatibility");
     println!();

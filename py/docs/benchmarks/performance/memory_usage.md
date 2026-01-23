@@ -26,7 +26,7 @@ Measurements: Peak RSS, heap growth, GC cycles
 ```
 
 ### Framework Versions
-- QuantRS2: 0.1.0
+- QuantRS2: 0.1.2
 - Qiskit: 0.45.1 + Qiskit Aer 0.13.1
 - Cirq: 1.3.0
 - PennyLane: 0.33.1
@@ -363,17 +363,17 @@ print(f"Leak potential: {report.leak_score}")
 
 ### Planned Improvements
 
-**Short Term (Q1 2025):**
+**Short Term (Q1 2026):**
 - GPU memory management for hybrid CPU-GPU execution
 - Advanced compression for sparse quantum states
 - Memory-mapped file support for very large circuits
 
-**Medium Term (Q2-Q3 2025):**
+**Medium Term (Q2-Q3 2026):**
 - Distributed memory management across multiple nodes
 - Smart memory prefetching for predictable workloads
 - Advanced garbage collection tuning
 
-**Long Term (Q4 2025+):**
+**Long Term (Q4 2026+):**
 - Quantum-specific memory allocators
 - Hardware-aware memory optimization
 - Real-time memory optimization based on usage patterns

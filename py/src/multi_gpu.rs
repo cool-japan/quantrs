@@ -19,7 +19,7 @@
 //! - Parallel operations: `scirs2_core::parallel_ops`
 //! - GPU operations: `quantrs2_core::gpu` abstractions
 //!
-//! ## Note on GPU API (v0.1.0-v0.1.0)
+//! ## Note on GPU API (v0.1.2)
 //!
 //! This module currently uses CPU fallback implementations with stub GPU detection.
 //! Full multi-GPU support will be implemented when the SciRS2 GPU API stabilizes.
@@ -161,7 +161,7 @@ impl MultiGpuManager {
     /// Create a new multi-GPU manager
     #[allow(clippy::unnecessary_wraps)] // API design: may return errors in future
     pub fn new() -> Result<Self, MultiGpuError> {
-        // v0.1.0: Stub implementation - always use mock device
+        // v0.1.2: Stub implementation - always use mock device
         // Future: Use real GPU detection when SciRS2 GPU API is stable
         Ok(Self {
             devices: vec![GpuDeviceInfo::mock(0)],
@@ -173,12 +173,12 @@ impl MultiGpuManager {
 
     /// Detect all available CUDA-capable GPUs
     ///
-    /// v0.1.0 Note: This is a stub implementation with CPU fallback.
+    /// v0.1.2 Note: This is a stub implementation with CPU fallback.
     /// Real GPU detection will be implemented when SciRS2 GPU API stabilizes.
     const fn detect_gpus() -> Vec<GpuDeviceInfo> {
-        // v0.1.0: Stub implementation with CPU fallback
+        // v0.1.2: Stub implementation with CPU fallback
         // Full multi-GPU detection will use scirs2_core::gpu when API is stable
-        // Always return empty vec for CPU fallback in v0.1.0
+        // Always return empty vec for CPU fallback in v0.1.2
         vec![]
     }
 
@@ -367,10 +367,10 @@ impl MultiGpuManager {
 
     /// Execute on a single GPU
     ///
-    /// v0.1.0 Note: Stub implementation with CPU fallback.
+    /// v0.1.2 Note: Stub implementation with CPU fallback.
     /// Will use SciRS2 GPU API for actual GPU execution when stable.
     fn execute_single_gpu(state: &Array1<Complex64>, _gpu_id: i32) -> Array1<Complex64> {
-        // v0.1.0: CPU fallback implementation
+        // v0.1.2: CPU fallback implementation
         // Future: Use scirs2_core::gpu for actual GPU execution
         state.clone()
     }
@@ -650,7 +650,7 @@ pub fn register_multi_gpu_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
 ///     int: Number of available GPUs
 #[pyfunction]
 const fn get_gpu_count() -> usize {
-    // v0.1.0: Stub implementation - returns 0 (CPU fallback)
+    // v0.1.2: Stub implementation - returns 0 (CPU fallback)
     // Future: Will use scirs2_core::gpu::get_device_count() when API is stable
     0
 }

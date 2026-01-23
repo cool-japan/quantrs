@@ -8,7 +8,7 @@ Modules:
     core: Core quantum computing primitives, gates, and algorithms
 """
 
-__version__ = "0.1.0b2"
+__version__ = "0.1.2"
 __author__ = "COOLJAPAN OU (Team KitaSan)"
 __license__ = "MIT OR Apache-2.0"
 

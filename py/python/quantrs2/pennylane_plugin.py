@@ -57,7 +57,7 @@ class QuantRS2Device(Device):
     name = "quantrs2.simulator"
     short_name = "quantrs2"
     pennylane_requires = ">=0.28.0"
-    version = "0.1.0"
+    version = "0.1.2"
     author = "QuantRS2 Team"
     
     operations = {

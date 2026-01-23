@@ -146,8 +146,8 @@ impl<const N: usize> QuantumVerifier<N> {
             formal_proof: None,
             metadata: VerificationMetadata {
                 timestamp: SystemTime::now(),
-                verifier_version: "0.1.0".to_string(),
-                scirs2_version: "0.1.0".to_string(),
+                verifier_version: "0.1.2".to_string(),
+                scirs2_version: "0.1.2".to_string(),
                 config: self.config.clone(),
                 hardware_info: HashMap::new(),
             },

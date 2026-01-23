@@ -19,9 +19,9 @@
 //!
 //! # References
 //!
-//! - "Quantum Boltzmann Machine" (Amin et al., 2018)
-//! - "Training Quantum Boltzmann Machines" (Kieferová & Wiebe, 2017)
-//! - "Quantum-Enhanced Machine Learning" (2024)
+//! - "Quantum Boltzmann Machine" (Amin et al.)
+//! - "Training Quantum Boltzmann Machines" (Kieferová & Wiebe)
+//! - "Quantum-Enhanced Machine Learning"
 
 use crate::error::{QuantRS2Error, QuantRS2Result};
 use scirs2_core::ndarray::{Array1, Array2};

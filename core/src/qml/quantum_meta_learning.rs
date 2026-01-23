@@ -25,9 +25,9 @@
 //!
 //! # References
 //!
-//! - "Meta-Learning for Quantum Neural Networks" (2023)
-//! - "Few-Shot Learning with Quantum Classifiers" (2024)
-//! - "Quantum Model-Agnostic Meta-Learning" (2024)
+//! - "Meta-Learning for Quantum Neural Networks"
+//! - "Few-Shot Learning with Quantum Classifiers"
+//! - "Quantum Model-Agnostic Meta-Learning"
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

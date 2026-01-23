@@ -231,10 +231,12 @@ class QuantumProperties:
 
 class QuantumCircuitStateMachine(RuleBasedStateMachine):
     """Stateful testing for quantum circuits."""
-    
+
+    # Bundle must be a class variable for @rule decorators to reference it
+    circuits = Bundle('circuits')
+
     def __init__(self):
         super().__init__()
-        self.circuits = Bundle('circuits')
         self.max_qubits = 8
     
     @initialize()
@@ -267,20 +269,20 @@ class QuantumCircuitStateMachine(RuleBasedStateMachine):
         circuit.h(qubit)
         note(f"Added H gate on qubit {qubit}")
     
-    @rule(circuit=circuits, control=st.integers(min_value=0, max_value=7), 
-          target=st.integers(min_value=0, max_value=7))
-    def add_cnot(self, circuit, control, target):
+    @rule(circuit=circuits, control=st.integers(min_value=0, max_value=7),
+          target_qubit=st.integers(min_value=0, max_value=7))
+    def add_cnot(self, circuit, control, target_qubit):
         """Add CNOT gate to circuit."""
         if circuit is None:
             return
-        
+
         assume(circuit.n_qubits >= 2)
         assume(control < circuit.n_qubits)
-        assume(target < circuit.n_qubits)
-        assume(control != target)
-        
-        circuit.cnot(control, target)
-        note(f"Added CNOT gate: control={control}, target={target}")
+        assume(target_qubit < circuit.n_qubits)
+        assume(control != target_qubit)
+
+        circuit.cnot(control, target_qubit)
+        note(f"Added CNOT gate: control={control}, target={target_qubit}")
     
     @rule(circuit=circuits, qubit=st.integers(min_value=0, max_value=7), 
           angle=rotation_angles())

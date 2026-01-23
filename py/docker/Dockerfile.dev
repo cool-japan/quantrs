@@ -122,7 +122,7 @@ CMD ["/bin/bash"]
 
 # Labels
 LABEL maintainer="QuantRS2 Team" \
-      version="0.1.0-dev" \
+      version="0.1.2-dev" \
       description="QuantRS2 development environment with all tools" \
       org.opencontainers.image.title="QuantRS2 Development" \
       org.opencontainers.image.description="Complete development environment for QuantRS2"

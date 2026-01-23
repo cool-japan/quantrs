@@ -1179,7 +1179,7 @@ impl QuantumAdvantageDemonstrator {
             performance_improvement: 1.5, // 50% improvement per year
             cost_reduction: 0.8,          // 20% cost reduction per year
             reliability_improvement: 1.2, // 20% reliability improvement per year
-            scalability: vec![(2024, 100.0), (2025, 200.0), (2030, 1000.0)],
+            scalability: vec![(2026, 100.0), (2027, 200.0), (2030, 1000.0)],
         };
 
         // Classical technology projections
@@ -1187,7 +1187,7 @@ impl QuantumAdvantageDemonstrator {
             performance_improvement: 1.1, // 10% improvement per year (Moore's law slowing)
             cost_reduction: 0.95,         // 5% cost reduction per year
             reliability_improvement: 1.05, // 5% reliability improvement per year
-            scalability: vec![(2024, 1000.0), (2025, 1100.0), (2030, 1500.0)],
+            scalability: vec![(2026, 1000.0), (2027, 1100.0), (2030, 1500.0)],
         };
 
         // Timeline projections
@@ -1225,8 +1225,8 @@ impl QuantumAdvantageDemonstrator {
                 reskilling_needed: 1_000_000,
             },
             investment_projections: vec![
-                (2024, 10_000_000_000.0),
-                (2025, 20_000_000_000.0),
+                (2026, 10_000_000_000.0),
+                (2027, 20_000_000_000.0),
                 (2030, 100_000_000_000.0),
             ],
         };

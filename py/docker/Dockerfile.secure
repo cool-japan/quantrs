@@ -142,7 +142,7 @@ CMD ["python", "-c", "import quantrs2; print('QuantRS2 secure container ready');
 
 # Security: Comprehensive labels for container scanning and monitoring
 LABEL maintainer="QuantRS2 Security Team <security@quantrs2.com>" \
-      version="0.1.0-secure" \
+      version="0.1.2-secure" \
       description="Security-hardened QuantRS2 Quantum Computing Framework" \
       org.opencontainers.image.source="https://github.com/cool-japan/quantrs" \
       org.opencontainers.image.documentation="https://quantrs2.readthedocs.io/security" \

@@ -19,9 +19,9 @@
 //!
 //! # References
 //!
-//! - "Quantum Contrastive Learning for Noisy Datasets" (2023)
-//! - "Self-Supervised Quantum Machine Learning" (2024)
-//! - "Contrastive Learning with Quantum Neural Networks" (2024)
+//! - "Quantum Contrastive Learning for Noisy Datasets"
+//! - "Self-Supervised Quantum Machine Learning"
+//! - "Contrastive Learning with Quantum Neural Networks"
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

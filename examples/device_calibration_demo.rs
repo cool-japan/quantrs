@@ -194,7 +194,7 @@ fn demo_calibration_creation() -> Result<(), Box<dyn std::error::Error>> {
     builder = builder
         .add_metadata("calibration_method".to_string(), "Randomized benchmarking".to_string())
         .add_metadata("lab_temperature".to_string(), "293 K".to_string())
-        .add_metadata("software_version".to_string(), "QuantRS2 v0.1.0".to_string());
+        .add_metadata("software_version".to_string(), "QuantRS2 v0.1.2".to_string());
 
     // Build calibration
     let calibration = builder.build()?;

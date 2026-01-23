@@ -1,8 +1,8 @@
 # SCIRS2 Policy Compliance Report
 
 **Package**: quantrs2-py
-**Version**: 0.1.0
-**Date**: 2025-11-18
+**Version**: 0.1.2
+**Date**: 2026-01-23
 **Status**: ✅ **FULLY COMPLIANT**
 
 ---
@@ -274,5 +274,5 @@ The `quantrs2-py` crate demonstrates **exemplary SCIRS2 policy compliance** with
 ---
 
 **Compliance Verified By**: Automated Analysis + Manual Review
-**Verification Date**: 2025-11-18
-**Next Review**: Before v0.1.0 stable release
+**Verification Date**: 2026-01-23
+**Next Review**: Before v0.2.0 release

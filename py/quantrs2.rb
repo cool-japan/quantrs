@@ -7,7 +7,7 @@ class Quantrs2 < Formula
 
   desc "High-performance quantum computing framework with Python bindings"
   homepage "https://github.com/cool-japan/quantrs"
-  url "https://github.com/cool-japan/quantrs/archive/refs/tags/v0.1.0-beta.3.tar.gz"
+  url "https://github.com/cool-japan/quantrs/archive/refs/tags/v0.1.2.tar.gz"
   sha256 "" # TODO: Add SHA256 checksum after release
   license "MIT OR Apache-2.0"
   head "https://github.com/cool-japan/quantrs.git", branch: "master"

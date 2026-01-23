@@ -176,7 +176,7 @@ impl ModelZoo {
                 dataset: "MNIST".to_string(),
                 accuracy: Some(0.92),
                 size_bytes: 1024,
-                created_date: "2024-01-15".to_string(),
+                created_date: "2026-01-15".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 8,
@@ -201,7 +201,7 @@ impl ModelZoo {
                 dataset: "Iris".to_string(),
                 accuracy: Some(0.97),
                 size_bytes: 512,
-                created_date: "2024-01-20".to_string(),
+                created_date: "2026-01-20".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 4,
@@ -226,7 +226,7 @@ impl ModelZoo {
                 dataset: "H2 PES".to_string(),
                 accuracy: Some(0.999), // Chemical accuracy
                 size_bytes: 256,
-                created_date: "2024-01-25".to_string(),
+                created_date: "2026-01-25".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 4,
@@ -251,7 +251,7 @@ impl ModelZoo {
                 dataset: "S&P 500".to_string(),
                 accuracy: None,
                 size_bytes: 2048,
-                created_date: "2024-02-01".to_string(),
+                created_date: "2026-02-01".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 10,
@@ -277,7 +277,7 @@ impl ModelZoo {
                 dataset: "Credit Card Fraud".to_string(),
                 accuracy: Some(0.94),
                 size_bytes: 1536,
-                created_date: "2024-02-05".to_string(),
+                created_date: "2026-02-05".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 6,
@@ -302,7 +302,7 @@ impl ModelZoo {
                 dataset: "Stock Prices".to_string(),
                 accuracy: Some(0.89),
                 size_bytes: 2560,
-                created_date: "2024-02-10".to_string(),
+                created_date: "2026-02-10".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 8,
@@ -498,7 +498,7 @@ impl MNISTQuantumNN {
             dataset: "MNIST".to_string(),
             accuracy: Some(0.92),
             size_bytes: 1024,
-            created_date: "2024-01-15".to_string(),
+            created_date: "2026-01-15".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 8,
@@ -589,7 +589,7 @@ impl IrisQuantumSVM {
             dataset: "Iris".to_string(),
             accuracy: Some(0.97),
             size_bytes: 512,
-            created_date: "2024-01-20".to_string(),
+            created_date: "2026-01-20".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 4,
@@ -677,7 +677,7 @@ impl H2VQE {
             dataset: "H2 PES".to_string(),
             accuracy: Some(0.999),
             size_bytes: 256,
-            created_date: "2024-01-25".to_string(),
+            created_date: "2026-01-25".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 4,
@@ -768,7 +768,7 @@ impl PortfolioQAOA {
             dataset: "S&P 500".to_string(),
             accuracy: None,
             size_bytes: 2048,
-            created_date: "2024-02-01".to_string(),
+            created_date: "2026-02-01".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 10,
@@ -846,7 +846,7 @@ impl QuantumAnomalyDetector {
             dataset: "Credit Card Fraud".to_string(),
             accuracy: Some(0.94),
             size_bytes: 1536,
-            created_date: "2024-02-05".to_string(),
+            created_date: "2026-02-05".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 6,
@@ -921,7 +921,7 @@ impl QuantumTimeSeriesForecaster {
             dataset: "Stock Prices".to_string(),
             accuracy: Some(0.89),
             size_bytes: 2560,
-            created_date: "2024-02-10".to_string(),
+            created_date: "2026-02-10".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 8,

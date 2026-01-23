@@ -693,7 +693,7 @@ pub mod utils {
         Ok(ModelInfo {
             opset_version: 11,
             producer_name: "QuantRS2-ML".to_string(),
-            producer_version: "0.1.0".to_string(),
+            producer_version: "0.1.2".to_string(),
             graph_name: "model".to_string(),
             num_nodes: 0,
             num_initializers: 0,
@@ -738,7 +738,7 @@ pub mod utils {
         let mut metadata = HashMap::new();
         metadata.insert("framework".to_string(), "QuantRS2-ML".to_string());
         metadata.insert("domain".to_string(), "quantrs2.ml".to_string());
-        metadata.insert("version".to_string(), "0.1.0".to_string());
+        metadata.insert("version".to_string(), "0.1.2".to_string());
         metadata.insert("quantum_support".to_string(), "true".to_string());
         metadata
     }

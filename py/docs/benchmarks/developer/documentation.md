@@ -348,7 +348,7 @@ circuit.cx(0, 5)  # Error!
 **Documentation consumption patterns:**
 
 ```
-Monthly Page Views (Q4 2024):
+Monthly Page Views (Q4 2026):
 
 QuantRS2:   ████████████████████ 2.3M views
 Qiskit:     ████████████████████████ 3.1M views
@@ -388,17 +388,17 @@ Cirq:       Avg 3.9 min/session, 43% task completion
 
 ### Planned Enhancements
 
-**Short Term (Q1 2025)**
+**Short Term (Q1 2026)**
 - AI-powered documentation assistant
 - Video tutorial series expansion
 - Advanced search with code semantics
 
-**Medium Term (Q2-Q3 2025)**
+**Medium Term (Q2-Q3 2026)**
 - Augmented reality circuit visualization
 - Personalized learning pathways
 - Real-time collaboration features
 
-**Long Term (Q4 2025+)**
+**Long Term (Q4 2026+)**
 - Natural language query interface
 - Automatic documentation generation
 - Adaptive content based on user proficiency

@@ -191,7 +191,7 @@ fn main() -> Result<()> {
             dataset: "Financial Returns".to_string(),
             accuracy: Some(model_comparison.pytorch_accuracy),
             size_bytes: 2048,
-            created_date: "2024-06-17".to_string(),
+            created_date: "2026-01-17".to_string(),
             version: "1.0".to_string(),
             requirements: ModelRequirements {
                 min_qubits: 10,
@@ -744,7 +744,7 @@ impl PyTorchQuantumModel {
                 dataset: "Training".to_string(),
                 accuracy: Some(0.85),
                 size_bytes: 1024,
-                created_date: "2024-06-17".to_string(),
+                created_date: "2026-01-17".to_string(),
                 version: "1.0".to_string(),
                 requirements: ModelRequirements {
                     min_qubits: 8,

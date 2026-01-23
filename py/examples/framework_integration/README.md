@@ -255,6 +255,6 @@ MIT/Apache-2.0 (same as QuantRS2)
 
 ---
 
-**Version**: 0.1.0
-**Last Updated**: 2025-11-18
+**Version**: 0.1.2
+**Last Updated**: 2026-01-23
 **Status**: Production Ready ✅

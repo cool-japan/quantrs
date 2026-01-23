@@ -5,7 +5,7 @@ This module provides Python access to the QuantRS2 quantum computing framework.
 """
 
 # Version information
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 # Try to import the actual native module first
 try:
@@ -1467,7 +1467,7 @@ except ImportError:
 # Convenience aliases
 Circuit = PyCircuit
 SimulationResult = PySimulationResult
-# Framework converters (v0.1.0-beta.3)
+# Framework converters (v0.1.2)
 try:
     from .qiskit_converter import QiskitConverter, convert_from_qiskit, convert_to_qiskit
 except ImportError:
@@ -1488,13 +1488,13 @@ try:
 except ImportError:
     pass
 
-# Performance benchmarking (v0.1.0-beta.3)
+# Performance benchmarking (v0.1.2)
 try:
     from .benchmarking import PerformanceBenchmark, BenchmarkType
 except ImportError:
     pass
 
-# Try to import auto-updater module (v0.1.0-beta.3)
+# Try to import auto-updater module (v0.1.2)
 try:
     from . import auto_updater
 except ImportError:
@@ -1519,7 +1519,7 @@ try:
 except ImportError:
     pass
 
-# Try to import telemetry module (v0.1.0-beta.3)
+# Try to import telemetry module (v0.1.2)
 try:
     from . import telemetry
 except ImportError:
@@ -1545,7 +1545,7 @@ try:
 except ImportError:
     pass
 
-# Try to import developer utilities module (v0.1.0-beta.3)
+# Try to import developer utilities module (v0.1.2)
 try:
     from . import dev_utils
 except ImportError:
@@ -1577,7 +1577,7 @@ try:
 except ImportError:
     pass
 
-# Try to import health check module (v0.1.0-beta.3)
+# Try to import health check module (v0.1.2)
 try:
     from . import health_check
 except ImportError:

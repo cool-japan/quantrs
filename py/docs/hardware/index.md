@@ -325,4 +325,4 @@ Once comfortable, explore advanced features like error mitigation, circuit optim
 
 **Ready to run on quantum hardware?** Choose your provider from the guides above and start executing quantum circuits on real quantum computers in minutes!
 
-*Last updated: December 2024 | Next review: January 2025*
+*Last updated: January 2026 | Next review: April 2026*

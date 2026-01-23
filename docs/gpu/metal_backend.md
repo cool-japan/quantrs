@@ -2,7 +2,7 @@
 
 ## Overview
 
-The QuantRS2-Core module includes a forward-compatible Metal GPU backend implementation designed to integrate seamlessly with the expected SciRS2 GPU abstractions in v0.1.0. This implementation provides GPU acceleration for quantum simulations on macOS systems with Apple Silicon (M1/M2/M3) processors.
+The QuantRS2-Core module includes a forward-compatible Metal GPU backend implementation designed to integrate seamlessly with the expected SciRS2 GPU abstractions in v0.1.2. This implementation provides GPU acceleration for quantum simulations on macOS systems with Apple Silicon (M1/M2/M3) processors.
 
 ## Architecture
 

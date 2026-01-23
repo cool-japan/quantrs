@@ -255,22 +255,22 @@ fn test_legacy_api_compatibility() {
 
 ## Migration Timeline
 
-### Q1 2024
+### Q1 2026
 - [x] Implement adapter layer
 - [x] Create Metal placeholder implementation
 - [x] Send letter to SciRS2 team for Metal support
 
-### Q2 2024
+### Q2 2026
 - [ ] Migrate core quantum kernels to SciRS2
 - [ ] Implement performance benchmarks
 - [ ] Update documentation
 
-### Q3 2024
+### Q3 2026
 - [ ] Complete backend unification
 - [ ] Deprecate old GPU APIs
 - [ ] Release beta with full SciRS2 GPU support
 
-### Q4 2024
+### Q4 2026
 - [ ] Remove legacy GPU code
 - [ ] Optimize for specific GPU architectures
 - [ ] Release stable version

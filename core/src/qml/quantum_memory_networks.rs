@@ -18,9 +18,9 @@
 //!
 //! # References
 //!
-//! - "Quantum Neural Turing Machines" (2023)
-//! - "Memory-Augmented Quantum Neural Networks" (2024)
-//! - "Differentiable Quantum Memory Systems" (2024)
+//! - "Quantum Neural Turing Machines"
+//! - "Memory-Augmented Quantum Neural Networks"
+//! - "Differentiable Quantum Memory Systems"
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

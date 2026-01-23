@@ -75,7 +75,7 @@ CMD ["python", "-c", "import quantrs2; print('QuantRS2 Docker container is ready
 
 # Labels for metadata
 LABEL maintainer="QuantRS2 Team" \
-      version="0.1.0" \
+      version="0.1.2" \
       description="QuantRS2 Quantum Computing Framework" \
       org.opencontainers.image.source="https://github.com/cool-japan/quantrs" \
       org.opencontainers.image.documentation="https://quantrs2.readthedocs.io" \

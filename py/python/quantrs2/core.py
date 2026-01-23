@@ -7,7 +7,7 @@ NumRS2 integration, and advanced quantum operations.
 """
 
 # Version information
-__version__ = "0.1.0-alpha.5"
+__version__ = "0.1.2"
 __author__ = "QuantRS2 Team"
 __description__ = "Core quantum computing framework with real-time monitoring and hardware compilation"
 

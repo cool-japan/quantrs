@@ -436,5 +436,5 @@ For issues and questions:
 
 ---
 
-**Last Updated:** 2025-11-17
-**Version:** 0.1.0
+**Last Updated:** 2026-01-23
+**Version:** 0.1.2

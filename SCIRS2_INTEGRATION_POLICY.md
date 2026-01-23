@@ -586,7 +586,7 @@ let rng: ThreadRng = thread_rng();  // Or seeded_rng(42) when needed
 ## Future Considerations
 
 ### SciRS2 Version Management
-- Track SciRS2 release cycle (currently on 0.1.0)
+- Track SciRS2 release cycle (currently on 0.1.２)
 - Test QuantRS2 against SciRS2 beta releases
 - Coordinate breaking change migrations
 
@@ -620,7 +620,7 @@ This policy ensures QuantRS2 properly leverages SciRS2's scientific computing fo
 ---
 
 **Document Version**: 2.0 - SciRS2 Dependency Abstraction Policy Enforcement
-**Last Updated**: 2025-12-31
+**Last Updated**: 2026-01-23
 **Based on**: Official SciRS2 Policy v3.0.0 (~/work/scirs/SCIRS2_POLICY.md)
 **SciRS2 Version**: v0.1.2 (Stable Release)
 **NumRS2 Version**: v0.1.2 (Stable Release)

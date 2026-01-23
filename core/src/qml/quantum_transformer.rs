@@ -16,9 +16,9 @@
 //!
 //! # References
 //!
-//! - "Quantum Attention Networks" (2023)
-//! - "Self-Attention in Quantum Computing" (2024)
-//! - "Quantum Transformers for Natural Language Processing" (2024)
+//! - "Quantum Attention Networks"
+//! - "Self-Attention in Quantum Computing"
+//! - "Quantum Transformers for Natural Language Processing"
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

@@ -5,7 +5,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name="quantrs2",
-    version="0.1.0b2",
+    version="0.1.2",
     description="Python bindings for the QuantRS2 quantum computing framework",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -41,7 +41,7 @@ setup(
         ],
     },
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

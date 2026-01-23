@@ -56,7 +56,7 @@ CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-r
 
 # Labels
 LABEL maintainer="QuantRS2 Team" \
-      version="0.1.0-jupyter" \
+      version="0.1.2-jupyter" \
       description="QuantRS2 with Jupyter Lab for interactive quantum computing" \
       org.opencontainers.image.title="QuantRS2 Jupyter" \
       org.opencontainers.image.description="Interactive quantum computing environment"

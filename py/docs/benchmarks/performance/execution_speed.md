@@ -27,7 +27,7 @@ Warmup: 10 iterations before measurement
 ```
 
 ### Framework Versions
-- QuantRS2: 0.1.0
+- QuantRS2: 0.1.2
 - Qiskit: 0.45.1
 - Cirq: 1.3.0
 - PennyLane: 0.33.1
@@ -302,17 +302,17 @@ vqe_results = benchmark_custom_circuit(my_vqe_circuit)
 
 ### Planned Optimizations
 
-**Short Term (Q1 2025)**
+**Short Term (Q1 2026)**
 - GPU acceleration for large circuits
 - Parallel circuit execution
 - Advanced gate fusion algorithms
 
-**Medium Term (Q2-Q3 2025)**
+**Medium Term (Q2-Q3 2026)**
 - Quantum hardware integration optimizations
 - Distributed simulation support
 - Machine learning-based circuit optimization
 
-**Long Term (Q4 2025+)**
+**Long Term (Q4 2026+)**
 - Quantum error correction integration
 - Fault-tolerant algorithm support
 - Hardware-specific optimization passes

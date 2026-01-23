@@ -74,7 +74,7 @@ print(f"Bell state probabilities: {result.state_probabilities()}")
 
 Expected output:
 ```
-QuantRS2 version: 0.1.0a3
+QuantRS2 version: 0.1.2
 Installation successful!
 Bell state probabilities: {'00': 0.5, '11': 0.5}
 ```

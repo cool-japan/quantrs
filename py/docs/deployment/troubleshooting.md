@@ -1123,7 +1123,7 @@ df -h /opt/quantrs2
 2. **Point-in-Time Recovery:**
    ```bash
    # Find backup from specific time
-   backup_date="2024-01-15"
+   backup_date="2026-01-15"
    backup_file=$(ls /opt/quantrs2/backups/database/quantrs2_${backup_date}*.dump.gpg)
    
    # Restore specific backup

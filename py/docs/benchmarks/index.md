@@ -171,6 +171,6 @@ Explore our interactive benchmark dashboard at [benchmarks.quantrs.dev](https://
 
 ---
 
-*Benchmarks last updated: December 2024 | Next update: January 2025*
+*Benchmarks last updated: January 2026 | Next update: April 2026*
 
 **Questions about our benchmarks?** Join our [Discord community](https://discord.gg/quantrs) or [open an issue](https://github.com/quantrs/quantrs2/issues).

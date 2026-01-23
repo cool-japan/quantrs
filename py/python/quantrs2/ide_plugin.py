@@ -931,7 +931,7 @@ class VSCodePlugin:
             "name": "quantrs2-quantum-development",
             "displayName": "QuantRS2 Quantum Development",
             "description": "Comprehensive quantum programming support for QuantRS2",
-            "version": "0.1.0",
+            "version": "0.1.2",
             "publisher": "quantrs2",
             "engines": {"vscode": "^1.60.0"},
             "categories": ["Programming Languages", "Debuggers", "Other"],

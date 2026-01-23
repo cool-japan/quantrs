@@ -743,4 +743,4 @@ print(f"Training successful: {training_result.success}")
 
 **Ready to run on Google Quantum AI?** [Set up your Google Cloud account](https://cloud.google.com/quantum) and start executing quantum circuits on Google's cutting-edge quantum processors!
 
-*Last updated: December 2024 | Google Quantum AI integration version: 1.1.0*
+*Last updated: January 2026 | Google Quantum AI integration version: 1.1.0*

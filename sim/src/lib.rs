@@ -86,7 +86,7 @@
 //! versions leveraging SIMD, memory-efficient algorithms, and parallel processing
 //! to enable simulation of larger qubit counts (30+).
 //!
-//! ## Recent Updates (v0.1.0)
+//! ## Recent Updates (v0.1.2)
 //!
 //! - Refined `SciRS2 v0.1.2 Stable Release integration for enhanced performance
 //! - All simulators use `scirs2_core::parallel_ops` for automatic parallelization

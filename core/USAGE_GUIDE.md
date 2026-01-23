@@ -23,7 +23,7 @@ Add QuantRS2-Core to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.0"
+quantrs2-core = "0.1.2"
 scirs2-core = "0.1.1"
 ```
 

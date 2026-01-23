@@ -133,11 +133,11 @@ To avoid version conflicts, SciRS2 dependencies are all optional and versioned. 
 
 ```toml
 # SciRS2 dependencies for performance optimization
-scirs2-core = { version = "0.1.0", optional = true }
-scirs2-linalg = { version = "0.1.0", optional = true }
-scirs2-optimize = { version = "0.1.0", optional = true }
+scirs2-core = { version = "0.1.2", optional = true }
+scirs2-linalg = { version = "0.1.2", optional = true }
+scirs2-optimize = { version = "0.1.2", optional = true }
 # Excluded due to dependency conflicts with symengine
-# scirs2-cluster = { version = "0.1.0", optional = true }
+# scirs2-cluster = { version = "0.1.2", optional = true }
 ```
 
 ### Dependency Conflict Resolution

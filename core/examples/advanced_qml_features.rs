@@ -11,7 +11,7 @@
 //!
 //! # Scientific Background
 //!
-//! These implementations represent state-of-the-art quantum ML research from 2023-2024:
+//! These implementations represent state-of-the-art quantum ML research:
 //!
 //! - **Quantum Transformers** leverage quantum attention mechanisms for enhanced
 //!   sequence modeling beyond classical transformers
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════════════════╗");
     println!("║     Advanced Quantum Machine Learning Features - QuantRS2-Core          ║");
     println!("║                                                                          ║");
-    println!("║  Demonstrating cutting-edge quantum ML algorithms (2023-2024)           ║");
+    println!("║  Demonstrating cutting-edge quantum ML algorithms                        ║");
     println!("╚══════════════════════════════════════════════════════════════════════════╝\n");
 
     // Part 1: Quantum Transformers with Attention
@@ -492,7 +492,7 @@ fn print_summary() {
     println!();
     println!("🔬 Research Impact:");
     println!("   These implementations represent state-of-the-art quantum ML");
-    println!("   research from 2023-2024, providing researchers and developers");
+    println!("   research, providing researchers and developers");
     println!("   with production-ready quantum learning algorithms.");
     println!();
     println!("📚 For detailed documentation and theory:");

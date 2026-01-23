@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "quantrs2-core-extension"
-version = "0.1.0b2"
+version = "0.1.2"
 description = "Python bindings for QuantRS2-Core quantum computing framework"
 authors = [
     {name = "COOLJAPAN OU (Team KitaSan)", email = "contact@cooljapan.tech"},

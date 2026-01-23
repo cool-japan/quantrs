@@ -623,4 +623,4 @@ print(f"Optimal parameters: {optimal_params.x}")
 
 **Ready to run on IBM Quantum?** [Get your IBM Quantum account](https://quantum-computing.ibm.com/) and start executing quantum circuits on IBM's quantum processors!
 
-*Last updated: December 2024 | IBM Quantum integration version: 1.0.2*
+*Last updated: January 2026 | IBM Quantum integration version: 1.0.2*

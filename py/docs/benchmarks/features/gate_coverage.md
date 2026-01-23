@@ -370,17 +370,17 @@ Cirq:       ██████████           54%
 
 ### Planned Gate Extensions
 
-**Short Term (Q1 2025)**
+**Short Term (Q1 2026)**
 - Continuous variable gates for photonic systems
 - Error correction gate primitives
 - Advanced variational ansätze
 
-**Medium Term (Q2-Q3 2025)**
+**Medium Term (Q2-Q3 2026)**
 - Fault-tolerant gate sets
 - Topological quantum gates
 - Machine learning optimized gates
 
-**Long Term (Q4 2025+)**
+**Long Term (Q4 2026+)**
 - Quantum neural network primitives
 - Hybrid classical-quantum gates
 - Adaptive gate compilation

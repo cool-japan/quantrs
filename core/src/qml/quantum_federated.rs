@@ -21,9 +21,9 @@
 //!
 //! # References
 //!
-//! - "Federated Learning with Quantum Computing" (2023)
-//! - "Privacy-Preserving Quantum Machine Learning" (2024)
-//! - "Distributed Quantum Neural Networks" (2024)
+//! - "Federated Learning with Quantum Computing"
+//! - "Privacy-Preserving Quantum Machine Learning"
+//! - "Distributed Quantum Neural Networks"
 
 use crate::{
     error::{QuantRS2Error, QuantRS2Result},

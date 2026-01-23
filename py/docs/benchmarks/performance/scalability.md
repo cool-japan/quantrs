@@ -305,16 +305,15 @@ final_result = quantrs2.compose_results(sub_results)
 
 | Year | CPU Cores | RAM | QuantRS2 Max Qubits | Competing Frameworks |
 |------|-----------|-----|---------------------|---------------------|
-| **2024** | 16 | 32GB | 28 | 20-24 |
-| **2025** | 32 | 64GB | 32 | 24-28 |
 | **2026** | 64 | 128GB | 36 | 28-32 |
 | **2027** | 128 | 256GB | 40 | 32-36 |
+| **2028** | 256 | 512GB | 44 | 36-40 |
 
 ### Algorithmic Improvements
 
 **Planned scalability enhancements:**
 
-| Optimization | Current Benefit | Q1 2025 Target | Q4 2025 Target |
+| Optimization | Current Benefit | Q1 2026 Target | Q4 2026 Target |
 |--------------|-----------------|----------------|----------------|
 | **GPU Acceleration** | N/A | 5x speedup | 10x speedup |
 | **Distributed Computing** | N/A | 4x scaling | 16x scaling |

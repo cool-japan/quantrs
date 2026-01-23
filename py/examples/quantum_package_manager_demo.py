@@ -902,7 +902,7 @@ Downloading packages...
   quantum-algorithms-1.0.0.tar.gz (2.1 MB)
 Installing packages...
   ✓ numpy (1.21.5)
-  ✓ quantrs2 (0.1.0)  
+  ✓ quantrs2 (0.1.2)  
   ✓ quantum-algorithms (1.0.0)
 ✓ Successfully installed 3 packages
 """
@@ -912,11 +912,11 @@ Installing packages...
             'description': 'List all installed packages',
             'example_output': """
 Installed packages (8):
-  numpy (1.21.5) - utility - 15.2MB - 2024-01-15
-  quantrs2 (0.1.0) - framework - 8.7MB - 2024-01-15
-  quantum-algorithms (1.0.0) - algorithm - 2.1MB - 2024-01-15
-  quantum-circuits (2.1.0) - circuit_library - 1.8MB - 2024-01-10
-  scipy (1.9.3) - utility - 28.4MB - 2024-01-08
+  numpy (1.21.5) - utility - 15.2MB - 2026-01-15
+  quantrs2 (0.1.2) - framework - 8.7MB - 2026-01-15
+  quantum-algorithms (1.0.0) - algorithm - 2.1MB - 2026-01-15
+  quantum-circuits (2.1.0) - circuit_library - 1.8MB - 2026-01-10
+  scipy (1.9.3) - utility - 28.4MB - 2026-01-08
 """
         },
         {
@@ -935,7 +935,7 @@ Hardware: qiskit, cirq, quantrs
 Dependencies:
   - numpy >=1.20.0 (required)
   - quantrs2 >=0.1.0 (required)
-Installed: 2024-01-15 14:30:22 (2.1MB)
+Installed: 2026-01-15 14:30:22 (2.1MB)
 """
         },
         {
@@ -967,9 +967,9 @@ Package Manager Statistics:
     framework: 1
     utility: 4
   Recent activity:
-    ✓ install quantum-algorithms (2024-01-15)
-    ✓ install quantum-circuits (2024-01-10)
-    ✓ uninstall old-package (2024-01-08)
+    ✓ install quantum-algorithms (2026-01-15)
+    ✓ install quantum-circuits (2026-01-10)
+    ✓ uninstall old-package (2026-01-08)
 """
         }
     ]
