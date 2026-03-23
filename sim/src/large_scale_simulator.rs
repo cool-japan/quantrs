@@ -16,7 +16,7 @@ use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator}; // S
                                                                             // use scirs2_core::memory::BufferPool as SciRS2BufferPool;
                                                                             // use scirs2_optimize::compression::{CompressionEngine, HuffmanEncoder, LZ4Encoder};
                                                                             // use scirs2_linalg::{Matrix, Vector, SVD, sparse::CSRMatrix};
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+                                                                            // flate2 replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
 use memmap2::{MmapMut, MmapOptions};
 use scirs2_core::ndarray::{Array1, Array2, Array3, ArrayView1, ArrayView2};
 use scirs2_core::Complex64;
@@ -160,6 +160,91 @@ impl SimpleSparseMatrix {
     pub fn nnz(&self) -> usize {
         self.values.len()
     }
+
+    /// Get amplitude at a specific row (basis state index)
+    #[must_use]
+    pub fn get_amplitude(&self, row: usize) -> Complex64 {
+        if row >= self.rows || row + 1 >= self.row_ptr.len() {
+            return Complex64::new(0.0, 0.0);
+        }
+        let start = self.row_ptr[row];
+        let end = self.row_ptr[row + 1];
+        if start < end && start < self.values.len() {
+            self.values[start]
+        } else {
+            Complex64::new(0.0, 0.0)
+        }
+    }
+
+    /// Build from a HashMap of non-zero amplitudes (sparse direct construction)
+    #[must_use]
+    pub fn from_sparse_map(
+        amplitudes: &HashMap<usize, Complex64>,
+        dimension: usize,
+        threshold: f64,
+    ) -> Self {
+        let rows = dimension;
+        let cols = 1;
+        let mut values = Vec::new();
+        let mut col_indices = Vec::new();
+        let mut row_ptr = vec![0usize; rows + 1];
+
+        // First pass: count non-zero entries per row
+        for (&idx, &val) in amplitudes {
+            if idx < rows && val.norm() > threshold {
+                row_ptr[idx + 1] = 1;
+            }
+        }
+
+        // Prefix sum to get actual row pointers
+        for i in 1..=rows {
+            row_ptr[i] += row_ptr[i - 1];
+        }
+
+        let nnz = row_ptr[rows];
+        values.resize(nnz, Complex64::new(0.0, 0.0));
+        col_indices.resize(nnz, 0usize);
+
+        // Second pass: fill values
+        let mut fill_pos = vec![0usize; rows];
+        fill_pos[..rows].copy_from_slice(&row_ptr[..rows]);
+
+        for (&idx, &val) in amplitudes {
+            if idx < rows && val.norm() > threshold {
+                let pos = fill_pos[idx];
+                values[pos] = val;
+                col_indices[pos] = 0;
+                fill_pos[idx] += 1;
+            }
+        }
+
+        Self {
+            values,
+            col_indices,
+            row_ptr,
+            rows,
+            cols,
+        }
+    }
+
+    /// Convert to a HashMap of non-zero amplitudes
+    #[must_use]
+    pub fn to_sparse_map(&self) -> HashMap<usize, Complex64> {
+        let mut map = HashMap::new();
+        for row in 0..self.rows {
+            if row + 1 < self.row_ptr.len() {
+                let start = self.row_ptr[row];
+                let end = self.row_ptr[row + 1];
+                if start < end && start < self.values.len() {
+                    let val = self.values[start];
+                    if val.norm() > 0.0 {
+                        map.insert(row, val);
+                    }
+                }
+            }
+        }
+        map
+    }
 }
 
 /// Sparse quantum state representation using simple sparse matrices
@@ -237,32 +322,202 @@ impl SparseQuantumState {
         Ok(self.sparse_amplitudes.to_dense())
     }
 
-    /// Apply sparse gate operation
+    /// Apply sparse gate operation using true sparse arithmetic.
+    ///
+    /// For single-qubit gates we iterate only over non-zero amplitude pairs
+    /// (basis states that differ only in the target qubit bit), computing the
+    /// two output amplitudes from the 2×2 gate matrix without ever constructing
+    /// the full dense state vector.
+    ///
+    /// For two-qubit gates we enumerate all four combinations of the two qubit
+    /// bits across non-zero amplitudes and compute the four output amplitudes.
+    ///
+    /// Amplitudes whose norm falls below 1e-12 are pruned to maintain sparsity.
     pub fn apply_sparse_gate(&mut self, gate: &dyn GateOp) -> QuantRS2Result<()> {
-        // For now, convert to dense, apply gate, convert back
-        // TODO: Implement true sparse gate operations
-        let mut dense = self.to_dense()?;
-
-        // Apply gate to dense representation (simplified)
-        match gate.name() {
-            "X" => {
-                if let Some(target) = gate.qubits().first() {
-                    let target_idx = target.id() as usize;
-                    self.apply_pauli_x_sparse(target_idx)?;
-                }
+        let qubits = gate.qubits();
+        match qubits.len() {
+            1 => {
+                let target = qubits[0].id() as usize;
+                let matrix = gate.matrix()?;
+                self.apply_single_qubit_sparse(&matrix, target)?;
             }
-            "H" => {
-                if let Some(target) = gate.qubits().first() {
-                    let target_idx = target.id() as usize;
-                    self.apply_hadamard_sparse(target_idx)?;
-                }
+            2 => {
+                let q0 = qubits[0].id() as usize;
+                let q1 = qubits[1].id() as usize;
+                let matrix = gate.matrix()?;
+                self.apply_two_qubit_sparse(&matrix, q0, q1)?;
             }
             _ => {
-                // Fallback to dense operation
+                // Fallback to dense operation for 3+ qubit gates
                 let matrix = gate.matrix()?;
-                self.apply_dense_gate(&matrix, &gate.qubits())?;
+                self.apply_dense_gate(&matrix, &qubits)?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Apply a single-qubit gate in true sparse representation.
+    ///
+    /// For each pair of basis states (i0, i1) that differ only in `target` bit:
+    ///   new[i0] = m[0]*amp[i0] + m[1]*amp[i1]
+    ///   new[i1] = m[2]*amp[i0] + m[3]*amp[i1]
+    ///
+    /// We only process pairs where at least one amplitude is non-zero.
+    fn apply_single_qubit_sparse(
+        &mut self,
+        matrix: &[Complex64],
+        target: usize,
+    ) -> QuantRS2Result<()> {
+        if matrix.len() < 4 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Single-qubit gate matrix must have 4 elements".to_string(),
+            ));
+        }
+        if target >= self.num_qubits {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Target qubit {} out of range (num_qubits={})",
+                target, self.num_qubits
+            )));
+        }
+
+        const THRESHOLD: f64 = 1e-12;
+
+        // Collect current non-zero amplitudes into a HashMap for O(1) lookup
+        let current: HashMap<usize, Complex64> = self.sparse_amplitudes.to_sparse_map();
+
+        let target_mask = 1usize << target;
+        // We need to process each (i0, i1) pair exactly once.
+        // i0 has target bit = 0, i1 = i0 | target_mask
+        let mut visited: HashSet<usize> = HashSet::new();
+        let mut new_amplitudes: HashMap<usize, Complex64> = HashMap::new();
+
+        for &idx in current.keys() {
+            // Normalise to the i0 version (target bit = 0)
+            let i0 = idx & !target_mask;
+            if visited.contains(&i0) {
+                continue;
+            }
+            visited.insert(i0);
+            let i1 = i0 | target_mask;
+
+            let a0 = current
+                .get(&i0)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+            let a1 = current
+                .get(&i1)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+
+            let new0 = matrix[0] * a0 + matrix[1] * a1;
+            let new1 = matrix[2] * a0 + matrix[3] * a1;
+
+            if new0.norm() > THRESHOLD {
+                new_amplitudes.insert(i0, new0);
+            }
+            if new1.norm() > THRESHOLD {
+                new_amplitudes.insert(i1, new1);
+            }
+        }
+
+        // Rebuild sparse representation from new amplitudes
+        self.nonzero_indices.clear();
+        for (pos, (&idx, _)) in new_amplitudes.iter().enumerate() {
+            self.nonzero_indices.insert(idx, pos);
+        }
+        self.sparse_amplitudes =
+            SimpleSparseMatrix::from_sparse_map(&new_amplitudes, self.dimension, THRESHOLD);
+        self.sparsity_ratio = new_amplitudes.len() as f64 / self.dimension as f64;
+
+        Ok(())
+    }
+
+    /// Apply a two-qubit gate in true sparse representation.
+    ///
+    /// For each group of four basis states sharing all bits except q0/q1, we
+    /// read the four amplitudes (|00⟩, |01⟩, |10⟩, |11⟩), apply the 4×4
+    /// matrix, and write back only outputs above threshold.
+    fn apply_two_qubit_sparse(
+        &mut self,
+        matrix: &[Complex64],
+        q0: usize,
+        q1: usize,
+    ) -> QuantRS2Result<()> {
+        if matrix.len() < 16 {
+            return Err(QuantRS2Error::InvalidInput(
+                "Two-qubit gate matrix must have 16 elements".to_string(),
+            ));
+        }
+        if q0 >= self.num_qubits || q1 >= self.num_qubits {
+            return Err(QuantRS2Error::InvalidInput(format!(
+                "Qubit indices {},{} out of range (num_qubits={})",
+                q0, q1, self.num_qubits
+            )));
+        }
+
+        const THRESHOLD: f64 = 1e-12;
+
+        let current: HashMap<usize, Complex64> = self.sparse_amplitudes.to_sparse_map();
+        let mask0 = 1usize << q0;
+        let mask1 = 1usize << q1;
+        let both_mask = mask0 | mask1;
+
+        // Base index has both q0 and q1 bits = 0
+        let mut visited: HashSet<usize> = HashSet::new();
+        let mut new_amplitudes: HashMap<usize, Complex64> = HashMap::new();
+
+        for &idx in current.keys() {
+            let base = idx & !both_mask;
+            if visited.contains(&base) {
+                continue;
+            }
+            visited.insert(base);
+
+            // Four basis states: |b_q0=0, b_q1=0⟩, |01⟩, |10⟩, |11⟩
+            let i00 = base;
+            let i01 = base | mask1;
+            let i10 = base | mask0;
+            let i11 = base | both_mask;
+
+            let a00 = current
+                .get(&i00)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+            let a01 = current
+                .get(&i01)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+            let a10 = current
+                .get(&i10)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+            let a11 = current
+                .get(&i11)
+                .copied()
+                .unwrap_or(Complex64::new(0.0, 0.0));
+
+            let inputs = [a00, a01, a10, a11];
+            let indices = [i00, i01, i10, i11];
+
+            for (row, &out_idx) in indices.iter().enumerate() {
+                let mut new_val = Complex64::new(0.0, 0.0);
+                for (col, &inp) in inputs.iter().enumerate() {
+                    new_val += matrix[row * 4 + col] * inp;
+                }
+                if new_val.norm() > THRESHOLD {
+                    new_amplitudes.insert(out_idx, new_val);
+                }
+            }
+        }
+
+        self.nonzero_indices.clear();
+        for (pos, (&idx, _)) in new_amplitudes.iter().enumerate() {
+            self.nonzero_indices.insert(idx, pos);
+        }
+        self.sparse_amplitudes =
+            SimpleSparseMatrix::from_sparse_map(&new_amplitudes, self.dimension, THRESHOLD);
+        self.sparsity_ratio = new_amplitudes.len() as f64 / self.dimension as f64;
 
         Ok(())
     }
@@ -406,29 +661,15 @@ impl SimpleCompressionEngine {
         Self { buffer: Vec::new() }
     }
 
-    /// Simple LZ-style compression
+    /// Simple LZ-style compression (using oxiarc-deflate zlib)
     pub fn compress_lz4(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        // Simplified compression - just use zlib/deflate
-        use std::io::Write;
-        let mut encoder =
-            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-        encoder
-            .write_all(data)
-            .map_err(|e| format!("Compression failed: {e}"))?;
-        encoder
-            .finish()
-            .map_err(|e| format!("Compression finish failed: {e}"))
+        oxiarc_deflate::zlib::zlib_compress(data, 6).map_err(|e| format!("Compression failed: {e}"))
     }
 
-    /// Simple decompression
+    /// Simple decompression (using oxiarc-deflate zlib)
     pub fn decompress_lz4(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        use std::io::Read;
-        let mut decoder = flate2::read::ZlibDecoder::new(data);
-        let mut decompressed = Vec::new();
-        decoder
-            .read_to_end(&mut decompressed)
-            .map_err(|e| format!("Decompression failed: {e}"))?;
-        Ok(decompressed)
+        oxiarc_deflate::zlib::zlib_decompress(data)
+            .map_err(|e| format!("Decompression failed: {e}"))
     }
 
     /// Huffman compression placeholder

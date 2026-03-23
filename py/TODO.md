@@ -1,5 +1,8 @@
 # quantrs2-py Roadmap
 
+## v0.1.3 (2026-03-23)
+- 108 public API items; aligned with QuantRS2 v0.1.3 workspace
+
 ## Future Enhancements
 
 - [ ] Quantum hardware integration: Direct integration with more providers

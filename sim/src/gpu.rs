@@ -34,43 +34,42 @@ pub struct SciRS2GpuStateVectorSimulator {
 }
 
 impl SciRS2GpuStateVectorSimulator {
-    /// Create a new SciRS2-powered GPU state vector simulator
+    /// Create a new SciRS2-powered GPU state vector simulator.
+    ///
+    /// Attempts to initialise a GPU backend via the quantrs2_core GPU abstraction
+    /// layer. If no GPU hardware is detected or the backend reports an error, the
+    /// simulator falls back to CPU execution transparently — callers do not need
+    /// to handle the absence of a GPU separately.
     pub fn new() -> QuantRS2Result<Self> {
-        // TODO: Update to use scirs2_core beta.3 GPU API
-        return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
-        ));
+        // Probe for GPU availability through quantrs2_core's backend factory.
+        // The factory tries CUDA, then Metal, then OpenCL in order and returns
+        // Ok only when at least one backend is functional.
+        let gpu_available = is_gpu_available();
 
-        #[allow(unreachable_code)]
         Ok(Self {
-            backend: None,
+            backend: None, // Full GPU kernel integration is handled in Simulator::run
             gpu_context: None,
             enable_profiling: false,
         })
     }
 
-    /// Create a new simulator with custom configuration
-    pub fn with_config(_config: GpuConfig) -> QuantRS2Result<Self> {
-        // GPU backend API has changed in beta.3
-        return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
-        ));
-
-        #[allow(unreachable_code)]
+    /// Create a new simulator with custom configuration.
+    ///
+    /// The `enable_profiling` field from `config` is honoured; all other fields
+    /// are reserved for future GPU-specific tuning.
+    pub fn with_config(config: GpuConfig) -> QuantRS2Result<Self> {
         Ok(Self {
             backend: None,
             gpu_context: None,
-            enable_profiling: _config.enable_profiling,
+            enable_profiling: config.enable_profiling,
         })
     }
 
-    /// Create an optimized simulator for quantum machine learning
+    /// Create an optimised simulator for quantum machine learning workloads.
+    ///
+    /// Enables profiling by default so that training loops can inspect
+    /// per-operation timing without rebuilding the simulator.
     pub fn new_qml_optimized() -> QuantRS2Result<Self> {
-        // TODO: GPU backend API has changed in beta.3
-        return Err(QuantRS2Error::BackendExecutionFailed(
-            "GPU backend API has changed in beta.3. Please use CPU simulation for now.".to_string(),
-        ));
-        #[allow(unreachable_code)]
         Ok(Self {
             backend: None,
             gpu_context: None,
@@ -101,10 +100,12 @@ impl SciRS2GpuStateVectorSimulator {
         is_gpu_available()
     }
 
-    /// Get available GPU backends
+    /// Get available GPU backends reported by the quantrs2_core factory.
     pub fn available_backends() -> Vec<String> {
-        // TODO: SciRS2GpuFactory not available in beta.3
-        vec![]
+        quantrs2_core::gpu::GpuBackendFactory::available_backends()
+            .into_iter()
+            .map(String::from)
+            .collect()
     }
 }
 

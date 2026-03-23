@@ -531,14 +531,29 @@ impl DeviceCompiler {
                 builder.z(mapped_qubits[0])?;
             }
             "RX" => {
-                builder.rx(mapped_qubits[0], 0.0)?;
-            } // TODO: extract parameter from gate
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<single::RotationX>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                builder.rx(mapped_qubits[0], theta)?;
+            }
             "RY" => {
-                builder.ry(mapped_qubits[0], 0.0)?;
-            } // TODO: extract parameter from gate
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<single::RotationY>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                builder.ry(mapped_qubits[0], theta)?;
+            }
             "RZ" => {
-                builder.rz(mapped_qubits[0], 0.0)?;
-            } // TODO: extract parameter from gate
+                let theta = gate
+                    .as_any()
+                    .downcast_ref::<single::RotationZ>()
+                    .map(|g| g.theta)
+                    .unwrap_or(0.0);
+                builder.rz(mapped_qubits[0], theta)?;
+            }
             "CNOT" => {
                 builder.cnot(mapped_qubits[0], mapped_qubits[1])?;
             }
@@ -668,7 +683,32 @@ impl DeviceCompiler {
         compilation_time: f64,
     ) -> Result<CompilationMetrics> {
         let gate_count = circuit.num_gates();
-        let depth = circuit.num_gates(); // TODO: Implement proper depth calculation
+        // Compute circuit depth as the length of the critical path through the gate dependency DAG.
+        // For each qubit, track the depth of the last gate applied; a gate's layer is
+        // max(last_layer[q] for q in gate.qubits()) + 1.  The circuit depth is the maximum
+        // layer index reached across all gates.
+        let depth = {
+            let gates = circuit.gates();
+            // Map from qubit index to the depth at which the most recent gate on that qubit sits.
+            let mut qubit_depth: HashMap<usize, usize> = HashMap::new();
+            let mut max_depth: usize = 0;
+            for gate in gates {
+                let qubits_usize: Vec<usize> = gate.qubits().iter().map(|&q| q.into()).collect();
+                let gate_layer = qubits_usize
+                    .iter()
+                    .map(|q| qubit_depth.get(q).copied().unwrap_or(0))
+                    .max()
+                    .unwrap_or(0)
+                    + 1;
+                for q in &qubits_usize {
+                    qubit_depth.insert(*q, gate_layer);
+                }
+                if gate_layer > max_depth {
+                    max_depth = gate_layer;
+                }
+            }
+            max_depth
+        };
         let two_qubit_gate_count = circuit
             .gates()
             .iter()

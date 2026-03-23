@@ -83,8 +83,11 @@ pub fn decompose_single_qubit_zyz(
         // Pi rotation
         (-b.arg() + c.arg() + PI, 0.0)
     } else {
-        let theta1 = c.arg() - b.arg();
-        let theta2 = a.arg() + b.arg();
+        // From Rz(θ₂)·Ry(φ)·Rz(θ₁) decomposition of SU(2) matrix [[a,b],[c,d]]:
+        //   arg(a) = -(θ₁+θ₂)/2  and  arg(c) = (θ₂-θ₁)/2
+        // Solving: θ₁ = -arg(a) - arg(c),  θ₂ = arg(c) - arg(a)
+        let theta1 = -a.arg() - c.arg();
+        let theta2 = c.arg() - a.arg();
         (theta1, theta2)
     };
 
@@ -356,7 +359,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore] // TODO: Fix ZYZ decomposition algorithm
     fn test_single_qubit_decomposition() {
         // Test Hadamard gate
         let h = Array2::from_shape_vec(

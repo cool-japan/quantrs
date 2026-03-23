@@ -255,12 +255,22 @@ impl<'a> AutoArray<'a> {
     ///
     /// The calculated value of the n-bit variable
     #[cfg(feature = "dwave")]
-    pub const fn get_nbit_value(&self, expr: &SymEngineExpression) -> AutoArrayResult<f64> {
-        // TODO: Implement n-bit value calculation
-        // This will require evaluating the symbolic expression with
-        // the sample values substituted in.
+    pub fn get_nbit_value(&self, expr: &SymEngineExpression) -> AutoArrayResult<f64> {
+        // Convert binary assignments to f64 for symbolic evaluation.
+        // Each bit variable maps to 0.0 or 1.0.
+        let float_vals: HashMap<String, f64> = self
+            .result
+            .assignments
+            .iter()
+            .map(|(name, &bit)| (name.clone(), if bit { 1.0 } else { 0.0 }))
+            .collect();
 
-        // For now, return a placeholder
-        Ok(0.0)
+        // Evaluate the symbolic expression with the substituted bit values.
+        // The expression is expected to be of the form:
+        //   bit0 * 2^0 + bit1 * 2^1 + ... + bitN * 2^N
+        // which directly computes the integer value of the n-bit variable.
+        expr.eval(&float_vals).map_err(|e| {
+            AutoArrayError::ParseError(format!("Failed to evaluate n-bit expression: {e}"))
+        })
     }
 }

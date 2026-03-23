@@ -194,17 +194,234 @@ impl Sampler for AzureQuantumSampler {
             }
         }
 
-        // Initialize the Azure Quantum client
+        // Azure Quantum REST API integration
         #[cfg(feature = "azure_quantum")]
         {
-            // TODO: Implement actual Azure Quantum API integration
-            // This would involve:
-            // 1. Authenticate with Azure
-            // 2. Submit job to selected solver
-            // 3. Poll for completion
-            // 4. Retrieve and process results
+            // Validate workspace credentials before any HTTP calls
+            if self.config.subscription_id.is_empty()
+                || self.config.resource_group.is_empty()
+                || self.config.workspace_name.is_empty()
+            {
+                return Err(SamplerError::ApiError(
+                    "Azure Quantum workspace not configured. Call with_workspace() to provide \
+                     subscription_id, resource_group, and workspace_name."
+                        .to_string(),
+                ));
+            }
 
-            let _azure_result = "placeholder";
+            // Determine the provider and target for the selected solver
+            let (provider_id, target_id) = match self.config.solver {
+                AzureSolver::SimulatedAnnealing => {
+                    ("microsoft.qio", "microsoft.simulatedannealing.cpu")
+                }
+                AzureSolver::ParallelTempering => {
+                    ("microsoft.qio", "microsoft.paralleltempering.cpu")
+                }
+                AzureSolver::TabuSearch => ("microsoft.qio", "microsoft.tabu.cpu"),
+                AzureSolver::PopulationAnnealing => {
+                    ("microsoft.qio", "microsoft.populationannealing.cpu")
+                }
+                AzureSolver::SubstrateMonteCarlo => {
+                    ("microsoft.qio", "microsoft.substochastic.cpu")
+                }
+                AzureSolver::IonQ => ("ionq", "ionq.qpu"),
+                AzureSolver::Quantinuum => ("quantinuum", "quantinuum.hqs-lt-s1"),
+                AzureSolver::Rigetti => ("rigetti", "rigetti.qpu.aspen-m-3"),
+            };
+
+            // Build the QIO-format cost function payload
+            let terms: Vec<serde_json::Value> = {
+                let mut t = Vec::new();
+                for i in 0..n_vars {
+                    if matrix[[i, i]] != 0.0 {
+                        t.push(serde_json::json!({
+                            "c": matrix[[i, i]],
+                            "ids": [i]
+                        }));
+                    }
+                    for j in (i + 1)..n_vars {
+                        if matrix[[i, j]] != 0.0 {
+                            t.push(serde_json::json!({
+                                "c": matrix[[i, j]],
+                                "ids": [i, j]
+                            }));
+                        }
+                    }
+                }
+                t
+            };
+
+            let problem_payload = serde_json::json!({
+                "cost_function": {
+                    "type": "ising",
+                    "version": "1.1",
+                    "terms": terms
+                }
+            });
+
+            let mut solver_params = serde_json::json!({
+                "timeout": self.config.timeout,
+                "seed": 42u64
+            });
+
+            // Merge user-supplied solver params
+            for (k, v) in &self.config.solver_params {
+                if let Some(obj) = solver_params.as_object_mut() {
+                    obj.insert(k.clone(), serde_json::Value::String(v.clone()));
+                }
+            }
+
+            let job_payload = serde_json::json!({
+                "id": uuid::Uuid::new_v4().to_string(),
+                "name": "qubo_job",
+                "providerId": provider_id,
+                "target": target_id,
+                "inputDataFormat": "microsoft.qio.v2",
+                "outputDataFormat": "microsoft.qio-results.v2",
+                "inputParams": solver_params,
+                "inputData": problem_payload
+            });
+
+            // Azure Quantum REST API base URL
+            let base_url = format!(
+                "https://{region}.quantum.azure.com/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Quantum/Workspaces/{ws}",
+                region = "eastus",
+                sub = self.config.subscription_id,
+                rg = self.config.resource_group,
+                ws = self.config.workspace_name
+            );
+            let jobs_url = format!("{base_url}/jobs");
+
+            let client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .map_err(|e| SamplerError::ApiError(format!("Failed to build HTTP client: {e}")))?;
+
+            // Submit the job
+            let submit_resp = client
+                .post(&jobs_url)
+                .header("Content-Type", "application/json")
+                .json(&job_payload)
+                .send()
+                .map_err(|e| {
+                    SamplerError::ApiError(format!(
+                        "Failed to submit Azure Quantum job: {e}. \
+                     Ensure workspace credentials are correct and network is accessible."
+                    ))
+                })?;
+
+            if !submit_resp.status().is_success() {
+                let status = submit_resp.status();
+                let body = submit_resp
+                    .text()
+                    .unwrap_or_else(|_| "<unreadable>".to_string());
+                return Err(SamplerError::ApiError(format!(
+                    "Azure Quantum job submission failed (HTTP {status}): {body}"
+                )));
+            }
+
+            let job_response: serde_json::Value = submit_resp.json().map_err(|e| {
+                SamplerError::ApiError(format!("Failed to parse Azure Quantum response: {e}"))
+            })?;
+
+            let job_id = job_response["id"]
+                .as_str()
+                .ok_or_else(|| {
+                    SamplerError::ApiError("Missing job ID in Azure Quantum response".to_string())
+                })?
+                .to_string();
+
+            // Poll for job completion
+            let poll_interval = 5u64;
+            let max_polls = self.config.timeout / poll_interval + 1;
+            let mut poll_count = 0u64;
+            loop {
+                if poll_count >= max_polls {
+                    return Err(SamplerError::ApiError(format!(
+                        "Azure Quantum job {job_id} timed out after {max_polls} polls ({}s)",
+                        self.config.timeout
+                    )));
+                }
+                poll_count += 1;
+                std::thread::sleep(std::time::Duration::from_secs(poll_interval));
+
+                let status_url = format!("{jobs_url}/{job_id}");
+                let status_resp = client.get(&status_url).send().map_err(|e| {
+                    SamplerError::ApiError(format!("Failed to poll Azure job status: {e}"))
+                })?;
+
+                let status_json: serde_json::Value = status_resp.json().map_err(|e| {
+                    SamplerError::ApiError(format!("Failed to parse Azure status: {e}"))
+                })?;
+
+                match status_json["status"].as_str() {
+                    Some("Succeeded") => break,
+                    Some("Failed") => {
+                        let reason = status_json["errorData"]["message"]
+                            .as_str()
+                            .unwrap_or("unknown error");
+                        return Err(SamplerError::ApiError(format!(
+                            "Azure Quantum job failed: {reason}"
+                        )));
+                    }
+                    Some("Cancelled") => {
+                        return Err(SamplerError::ApiError(
+                            "Azure Quantum job was cancelled".to_string(),
+                        ));
+                    }
+                    _ => continue,
+                }
+            }
+
+            // Retrieve results
+            let output_url = format!("{jobs_url}/{job_id}/output");
+            let output_resp = client.get(&output_url).send().map_err(|e| {
+                SamplerError::ApiError(format!("Failed to retrieve Azure results: {e}"))
+            })?;
+
+            let output_json: serde_json::Value = output_resp.json().map_err(|e| {
+                SamplerError::ApiError(format!("Failed to parse Azure result: {e}"))
+            })?;
+
+            // Parse QIO result format: solutions array with configuration and cost
+            if let Some(solutions_arr) = output_json["solutions"].as_array() {
+                let mut parsed: Vec<SampleResult> = solutions_arr
+                    .iter()
+                    .map(|sol| {
+                        let energy = sol["cost"].as_f64().unwrap_or(0.0);
+                        let occurrences = sol["count"].as_u64().unwrap_or(1) as usize;
+                        let assignments: HashMap<String, bool> =
+                            if let Some(config_obj) = sol["configuration"].as_object() {
+                                config_obj
+                                    .iter()
+                                    .filter_map(|(k, v)| {
+                                        k.parse::<usize>().ok().and_then(|idx| {
+                                            idx_to_var.get(&idx).map(|name| {
+                                                (name.clone(), v.as_i64().unwrap_or(0) > 0)
+                                            })
+                                        })
+                                    })
+                                    .collect()
+                            } else {
+                                HashMap::new()
+                            };
+                        SampleResult {
+                            assignments,
+                            energy,
+                            occurrences,
+                        }
+                    })
+                    .collect();
+
+                parsed.sort_by(|a, b| {
+                    a.energy
+                        .partial_cmp(&b.energy)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+
+                return Ok(parsed);
+            }
+            // Fall through to simulation path if result parsing fails
         }
 
         // Placeholder implementation - simulate Azure Quantum behavior

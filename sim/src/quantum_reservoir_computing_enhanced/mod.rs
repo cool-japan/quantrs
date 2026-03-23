@@ -29,7 +29,7 @@ mod config;
 mod reservoir;
 mod state;
 mod time_series;
-mod types;
+pub mod types;
 
 // Re-export all public types
 pub use analysis::*;

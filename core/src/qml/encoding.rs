@@ -124,23 +124,64 @@ impl DataEncoder {
             ));
         }
 
-        let _normalized: Vec<f64> = data.iter().map(|x| x / norm).collect();
+        let normalized: Vec<f64> = data.iter().map(|x| x / norm).collect();
 
-        // For amplitude encoding, we need to prepare a state with given amplitudes
-        // This is complex and typically requires decomposition into gates
-        // For now, return a placeholder
-
+        // Amplitude encoding via recursive Mottonen-style state preparation.
+        //
+        // Algorithm: build a binary-tree of uniformly-controlled RY rotations.
+        // For a 2^n amplitude vector, the decomposition has depth n and requires
+        // 2^n - 1 RY gates interleaved with CNOT entanglers.
+        //
+        // We compute the "multiplexor angles" recursively:
+        //   θ_k = 2·arctan2(‖right_k‖, ‖left_k‖)
+        // where left_k / right_k are the two child sub-vectors at each node.
+        // Then we apply a uniformly-controlled rotation layer for each level of
+        // the binary tree, controlled on the higher-order qubits.
         let mut gates: Vec<Box<dyn GateOp>> = vec![];
 
-        // Start with uniform superposition
-        for i in 0..self.num_qubits {
-            gates.push(Box::new(Hadamard {
-                target: QubitId(i as u32),
-            }));
+        // Compute recursive angles for the full binary tree
+        let angles = compute_amplitude_angles(&normalized);
+
+        // Level 0: single RY on qubit 0 (no control)
+        if let Some(&angle) = angles.first() {
+            gates.push(Box::new(ParametricRotationY::new(QubitId(0), angle)));
         }
 
-        // Would need to implement state preparation algorithm here
-        // This is a non-trivial operation requiring careful decomposition
+        // Level l (l = 1..num_qubits): uniformly-controlled RY on qubit l
+        // controlled by qubits 0..l using a Gray-code decomposition.
+        for level in 1..self.num_qubits {
+            let num_angles_at_level = 1usize << level;
+            let level_start = num_angles_at_level - 1; // index into `angles` slice
+            let level_end = level_start + num_angles_at_level;
+            let level_angles = if level_end <= angles.len() {
+                &angles[level_start..level_end]
+            } else {
+                continue;
+            };
+
+            // Gray-code-based uniformly-controlled rotation decomposition:
+            // Transforms level_angles into a sequence of plain RY + CNOT pairs.
+            let ucry_angles = ucry_decompose(level_angles);
+            let target = QubitId(level as u32);
+
+            for (k, &theta) in ucry_angles.iter().enumerate() {
+                gates.push(Box::new(ParametricRotationY::new(target, theta)));
+                if k < ucry_angles.len().saturating_sub(1) {
+                    // Control qubit follows Gray-code ordering
+                    let gray_k = k ^ (k >> 1);
+                    let gray_k1 = (k + 1) ^ ((k + 1) >> 1);
+                    let diff_bit = gray_k ^ gray_k1;
+                    // find position of differing bit
+                    let ctrl_qubit = diff_bit.trailing_zeros();
+                    if (ctrl_qubit as usize) < level {
+                        gates.push(Box::new(CNOT {
+                            control: QubitId(ctrl_qubit),
+                            target,
+                        }));
+                    }
+                }
+            }
+        }
 
         Ok(gates)
     }
@@ -190,16 +231,17 @@ impl DataEncoder {
             for j in i + 1..self.num_qubits {
                 if idx < data.len() {
                     let angle = data[idx] * PI;
-                    // Would implement RZZ gate here
-                    // For now, use two RZ gates as placeholder
-                    gates.push(Box::new(ParametricRotationZ::new(
-                        QubitId(i as u32),
-                        angle / 2.0,
-                    )));
-                    gates.push(Box::new(ParametricRotationZ::new(
-                        QubitId(j as u32),
-                        angle / 2.0,
-                    )));
+                    // ZZ interaction: RZZ(θ) = CNOT · (I ⊗ RZ(θ)) · CNOT
+                    // This implements e^{-i θ/2 Z⊗Z} up to a global phase.
+                    gates.push(Box::new(CNOT {
+                        control: QubitId(i as u32),
+                        target: QubitId(j as u32),
+                    }));
+                    gates.push(Box::new(ParametricRotationZ::new(QubitId(j as u32), angle)));
+                    gates.push(Box::new(CNOT {
+                        control: QubitId(i as u32),
+                        target: QubitId(j as u32),
+                    }));
                     idx += 1;
                 }
             }
@@ -423,6 +465,86 @@ impl DataReuploader {
 
         Ok(layers)
     }
+}
+
+// ---------------------------------------------------------------------------
+// Helper functions for amplitude encoding
+// ---------------------------------------------------------------------------
+
+/// Compute the recursive multiplexor angles for Mottonen-style amplitude encoding.
+///
+/// Given a unit-norm amplitude vector `amplitudes` of length 2^n, returns a flat
+/// list of angles organised level by level (root first).  The number of angles
+/// per level l is 2^l, and angles are defined by
+///
+///   θ = 2 · atan2(‖right‖₂, ‖left‖₂)
+///
+/// where `left` and `right` are the left and right halves of the current
+/// sub-vector at each tree node.
+fn compute_amplitude_angles(amplitudes: &[f64]) -> Vec<f64> {
+    let n = amplitudes.len();
+    if n == 0 {
+        return vec![];
+    }
+
+    let mut angles: Vec<f64> = Vec::new();
+    // Work with a mutable copy; the recursive tree processes each level
+    let mut current_level: Vec<f64> = amplitudes.to_vec();
+
+    while current_level.len() > 1 {
+        let mut next_level: Vec<f64> = Vec::with_capacity(current_level.len() / 2);
+        let mut level_angles: Vec<f64> = Vec::with_capacity(current_level.len() / 2);
+
+        let chunks = current_level.chunks(2);
+        for chunk in chunks {
+            let left = chunk[0];
+            let right = if chunk.len() > 1 { chunk[1] } else { 0.0 };
+            let norm = (left * left + right * right).sqrt();
+            next_level.push(norm);
+            let angle = 2.0 * right.atan2(left);
+            level_angles.push(angle);
+        }
+
+        angles.extend(level_angles);
+        current_level = next_level;
+    }
+
+    // We built the angles bottom-up; reverse so that the root level comes first.
+    angles.reverse();
+    angles
+}
+
+/// Decompose a uniformly-controlled rotation with `angles` into a sequence of
+/// plain rotation angles using the Walsh–Hadamard (Gray-code) transform.
+///
+/// This converts the 2^k uniformly-controlled angles into 2^k plain RY rotation
+/// angles that, when interleaved with CNOT gates in Gray-code order, implement
+/// the uniformly-controlled operation.
+fn ucry_decompose(angles: &[f64]) -> Vec<f64> {
+    let n = angles.len();
+    if n == 0 {
+        return vec![];
+    }
+
+    // Apply the Walsh–Hadamard-like transform for UCRy decomposition
+    let mut result = angles.to_vec();
+    let mut step = 1usize;
+
+    while step < n {
+        let mut k = 0usize;
+        while k < n {
+            for j in 0..step {
+                let a = result[k + j];
+                let b = result[k + j + step];
+                result[k + j] = (a + b) / 2.0;
+                result[k + j + step] = (a - b) / 2.0;
+            }
+            k += 2 * step;
+        }
+        step *= 2;
+    }
+
+    result
 }
 
 #[cfg(test)]

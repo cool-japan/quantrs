@@ -179,6 +179,7 @@ pub mod scirs2_calibration_enhanced;
 pub mod scirs2_hardware_benchmarks_enhanced;
 pub mod scirs2_noise_characterization_enhanced;
 pub mod security;
+pub mod simulator_comparison;
 pub mod telemetry;
 pub mod topological;
 pub mod topology;

@@ -367,8 +367,13 @@ impl SabreRouter {
             for &p2 in self.coupling_map.neighbors(p1) {
                 if p1 < p2 {
                     // Avoid duplicate pairs
-                    let score =
-                        self.calculate_swap_score((p1, p2), &front_layer, &extended_set, mapping);
+                    let score = self.calculate_swap_score(
+                        dag,
+                        (p1, p2),
+                        &front_layer,
+                        &extended_set,
+                        mapping,
+                    );
                     swap_scores.insert((p1, p2), score);
                 }
             }
@@ -458,6 +463,7 @@ impl SabreRouter {
     /// Calculate score for a SWAP operation
     fn calculate_swap_score(
         &self,
+        dag: &CircuitDag,
         swap: (usize, usize),
         front_layer: &HashSet<usize>,
         extended_set: &HashSet<usize>,
@@ -486,12 +492,38 @@ impl SabreRouter {
             return -1.0; // Invalid SWAP
         }
 
-        // Count newly executable gates in front layer
+        // Count newly executable gates in front layer with the updated mapping.
+        // We also consider extended-set gates with a reduced weight to encourage
+        // SWAPs that unlock future gates, not just immediate ones.
+        let front_newly_executable = front_layer
+            .iter()
+            .filter(|&&gate_id| {
+                let node = &dag.nodes()[gate_id];
+                self.is_gate_executable(node, &temp_mapping)
+            })
+            .count() as f64;
 
-        // TODO: Implement proper gate execution checking with temp_mapping
-        // This is a simplified version
+        let extended_newly_executable = extended_set
+            .iter()
+            .filter(|&&gate_id| {
+                if front_layer.contains(&gate_id) {
+                    return false; // Already counted
+                }
+                let node = &dag.nodes()[gate_id];
+                self.is_gate_executable(node, &temp_mapping)
+            })
+            .count() as f64;
 
-        0.0
+        // Score = front-layer executable gates + decay-weighted extended-set gains.
+        // Subtract 1.0 per inserted SWAP (normalised by |front_layer|) to penalise overhead.
+        let front_size = front_layer.len().max(1) as f64;
+        let raw_score = (front_newly_executable / front_size)
+            + self.config.extended_set_weight * (extended_newly_executable / front_size);
+
+        // Apply decay penalty based on how far p1 and p2 are from the front-layer qubits
+        // (discourages SWAPs on idle qubits).
+        let decay = 1.0 - self.config.decay_factor;
+        raw_score * decay
     }
 
     /// Calculate circuit depth

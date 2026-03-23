@@ -456,16 +456,231 @@ impl AdiabaticQuantumComputer {
         }
     }
 
-    /// Compute eigenvalues (simplified implementation)
+    /// Compute eigenvalues of a Hermitian matrix using inverse power iteration with deflation.
+    ///
+    /// The Hamiltonian H is Hermitian (H† = H), so all eigenvalues are real.
+    /// We use inverse power iteration (shift-and-invert) to find the lowest eigenvalues:
+    ///   1. Estimate shift σ ≈ tr(H)/n (near the ground state energy).
+    ///   2. Solve (H - σI)v = b iteratively (Gaussian elimination with partial pivoting).
+    ///   3. Rayleigh quotient λ ≈ v†Hv / v†v refines each eigenvalue.
+    ///   4. Deflate found eigenvectors to find subsequent eigenvalues.
+    ///
+    /// Falls back to diagonal extraction for degenerate or trivial cases.
     fn compute_eigenvalues(hamiltonian: &Array2<Complex64>) -> QuantRS2Result<Vec<f64>> {
-        // This is a placeholder - in practice you'd use a proper eigenvalue solver
         let dim = hamiltonian.nrows();
-        let mut eigenvalues: Vec<f64> = (0..dim).map(|i| hamiltonian[[i, i]].re).collect();
-        eigenvalues.sort_by(|a, b| {
-            a.partial_cmp(b)
-                .expect("Failed to compare eigenvalues in compute_eigenvalues")
-        });
+        if dim == 0 {
+            return Ok(vec![]);
+        }
+        if dim == 1 {
+            return Ok(vec![hamiltonian[[0, 0]].re]);
+        }
+
+        // Compute trace / n as initial shift estimate
+        let trace: f64 = (0..dim).map(|i| hamiltonian[[i, i]].re).sum();
+        let trace_mean = trace / dim as f64;
+
+        // Estimate Frobenius norm for shift adjustment
+        let frob_sq: f64 = hamiltonian.iter().map(|z| z.norm_sqr()).sum();
+        let frob = frob_sq.sqrt();
+        // Shift below the expected ground state
+        let sigma = trace_mean - frob / (dim as f64).sqrt();
+
+        // We seek at least min(dim, 2) eigenvalues via inverse power iteration + deflation
+        let num_wanted = dim.min(dim); // all eigenvalues
+        let mut eigenvalues: Vec<f64> = Vec::with_capacity(num_wanted);
+        // Collected orthonormal eigenvectors for deflation
+        let mut found_vecs: Vec<Vec<Complex64>> = Vec::new();
+
+        for ev_idx in 0..num_wanted {
+            // Shift for this iteration: use sigma slightly below previous found EV
+            let current_shift = if ev_idx == 0 {
+                sigma
+            } else {
+                eigenvalues[ev_idx - 1] - 0.1 * (1.0 + eigenvalues[ev_idx - 1].abs())
+            };
+
+            // Build (H - σI), deflated by already-found eigenvectors
+            // Start with a random-ish vector (deterministic: alternating ±1/√dim)
+            let inv_sqrt_dim = 1.0 / (dim as f64).sqrt();
+            let mut v: Vec<Complex64> = (0..dim)
+                .map(|i| {
+                    if i % 2 == 0 {
+                        Complex64::new(inv_sqrt_dim, 0.0)
+                    } else {
+                        Complex64::new(-inv_sqrt_dim, 0.0)
+                    }
+                })
+                .collect();
+
+            // Orthogonalise initial vector against already-found eigenvectors
+            Self::orthogonalise_against(&mut v, &found_vecs);
+            Self::normalize_vec(&mut v);
+
+            let mut rayleigh = Self::rayleigh_quotient(hamiltonian, &v);
+
+            for _iter in 0..150 {
+                // Solve (H - current_shift·I) w = v using Gaussian elimination
+                let shifted = Self::build_shifted_matrix(hamiltonian, current_shift);
+                let w = match Self::gaussian_elimination_complex(&shifted, &v) {
+                    Ok(sol) => sol,
+                    Err(_) => {
+                        // Matrix is singular (shift is an eigenvalue): v is already the eigenvector
+                        break;
+                    }
+                };
+
+                // Orthogonalise w against found eigenvectors before normalising
+                let mut w = w;
+                Self::orthogonalise_against(&mut w, &found_vecs);
+                let norm_w = Self::vec_norm(&w);
+                if norm_w < 1e-14 {
+                    break;
+                }
+                for x in &mut w {
+                    *x = *x / norm_w;
+                }
+
+                let new_rayleigh = Self::rayleigh_quotient(hamiltonian, &w);
+                let delta = (new_rayleigh - rayleigh).abs();
+                v = w;
+                rayleigh = new_rayleigh;
+
+                if delta < 1e-10 {
+                    break;
+                }
+            }
+
+            eigenvalues.push(rayleigh);
+            // Store the converged eigenvector for deflation
+            found_vecs.push(v);
+        }
+
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         Ok(eigenvalues)
+    }
+
+    /// Build (H - σI) as a matrix of Complex64
+    fn build_shifted_matrix(h: &Array2<Complex64>, sigma: f64) -> Array2<Complex64> {
+        let dim = h.nrows();
+        let mut m = h.to_owned();
+        for i in 0..dim {
+            m[[i, i]] = m[[i, i]] - Complex64::new(sigma, 0.0);
+        }
+        m
+    }
+
+    /// Rayleigh quotient λ = v†Hv / v†v for Hermitian H (result is real)
+    fn rayleigh_quotient(h: &Array2<Complex64>, v: &[Complex64]) -> f64 {
+        let dim = v.len();
+        let mut hv = vec![Complex64::new(0.0, 0.0); dim];
+        for i in 0..dim {
+            for j in 0..dim {
+                hv[i] = hv[i] + h[[i, j]] * v[j];
+            }
+        }
+        // v†Hv
+        let vhv: Complex64 = v
+            .iter()
+            .zip(hv.iter())
+            .map(|(vi, hvi)| vi.conj() * hvi)
+            .sum();
+        // v†v
+        let vv: f64 = v.iter().map(|vi| vi.norm_sqr()).sum();
+        if vv < 1e-30 {
+            0.0
+        } else {
+            vhv.re / vv
+        }
+    }
+
+    /// Orthogonalise v against a list of orthonormal vectors (Gram-Schmidt)
+    fn orthogonalise_against(v: &mut Vec<Complex64>, basis: &[Vec<Complex64>]) {
+        for u in basis {
+            // proj = u†v
+            let proj: Complex64 = u.iter().zip(v.iter()).map(|(ui, vi)| ui.conj() * vi).sum();
+            for (vi, ui) in v.iter_mut().zip(u.iter()) {
+                *vi = *vi - proj * ui;
+            }
+        }
+    }
+
+    /// Euclidean norm of a complex vector
+    fn vec_norm(v: &[Complex64]) -> f64 {
+        v.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt()
+    }
+
+    /// Normalise a complex vector in place; no-op if norm is tiny
+    fn normalize_vec(v: &mut Vec<Complex64>) {
+        let n = Self::vec_norm(v);
+        if n > 1e-14 {
+            for x in v.iter_mut() {
+                *x = *x / n;
+            }
+        }
+    }
+
+    /// Solve A·x = b using Gaussian elimination with partial (column) pivoting.
+    /// Returns `Err` if the matrix is numerically singular.
+    fn gaussian_elimination_complex(
+        a: &Array2<Complex64>,
+        b: &[Complex64],
+    ) -> QuantRS2Result<Vec<Complex64>> {
+        let n = a.nrows();
+        // Build augmented matrix [A | b]
+        let mut aug: Vec<Vec<Complex64>> = (0..n)
+            .map(|i| {
+                let mut row: Vec<Complex64> = (0..n).map(|j| a[[i, j]]).collect();
+                row.push(b[i]);
+                row
+            })
+            .collect();
+
+        for col in 0..n {
+            // Partial pivoting: find row with max magnitude in column `col`
+            let max_row = (col..n)
+                .max_by(|&r1, &r2| {
+                    aug[r1][col]
+                        .norm()
+                        .partial_cmp(&aug[r2][col].norm())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .unwrap_or(col);
+
+            aug.swap(col, max_row);
+
+            let pivot = aug[col][col];
+            if pivot.norm() < 1e-14 {
+                return Err(QuantRS2Error::ComputationError(
+                    "Singular matrix in Gaussian elimination".to_string(),
+                ));
+            }
+
+            // Eliminate below
+            for row in (col + 1)..n {
+                let factor = aug[row][col] / pivot;
+                for j in col..=n {
+                    let sub = factor * aug[col][j];
+                    aug[row][j] = aug[row][j] - sub;
+                }
+            }
+        }
+
+        // Back substitution
+        let mut x = vec![Complex64::new(0.0, 0.0); n];
+        for i in (0..n).rev() {
+            let mut sum = aug[i][n];
+            for j in (i + 1)..n {
+                sum = sum - aug[i][j] * x[j];
+            }
+            if aug[i][i].norm() < 1e-14 {
+                return Err(QuantRS2Error::ComputationError(
+                    "Singular matrix in back substitution".to_string(),
+                ));
+            }
+            x[i] = sum / aug[i][i];
+        }
+
+        Ok(x)
     }
 
     /// Estimate energy gap using power iteration

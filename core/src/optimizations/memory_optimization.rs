@@ -306,7 +306,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore] // Slow test: SciRS2 metrics tracking is unexpectedly slow (~71s)
+    #[ignore = "slow: SciRS2 metrics tracking overhead makes this take ~71s; run manually with: cargo test -- --ignored test_buffer_pool_basic_functionality"]
     fn test_buffer_pool_basic_functionality() {
         let pool = QuantumBufferPool::new();
 

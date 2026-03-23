@@ -161,12 +161,56 @@ impl QMLLayer for RotationLayer {
 
     fn compute_gradients(
         &self,
-        _state: &Array1<Complex64>,
-        _loss_gradient: &Array1<Complex64>,
+        state: &Array1<Complex64>,
+        loss_gradient: &Array1<Complex64>,
     ) -> QuantRS2Result<Vec<f64>> {
-        // Use parameter shift rule for each parameter
-        // This is a placeholder implementation
-        let gradients = vec![0.0; self.parameters.len()];
+        // Parameter shift rule: ∂⟨O⟩/∂θ_i = ½[⟨O⟩(θ_i + π/2) - ⟨O⟩(θ_i - π/2)]
+        //
+        // For a rotation gate R_P(θ)|ψ⟩ with Pauli P, the generator is P/2.
+        // The gradient of the expectation value equals the difference of
+        // two expectation values evaluated at θ ± π/2.
+        //
+        // Here we approximate the expectation value shift using the inner product
+        // of the current state with the loss_gradient direction, modulated by the
+        // derivative of the rotation: d/dθ [cos θ + i·sin θ·P] = -sin θ + i·cos θ·P.
+        // We use cos(θ + π/2) = -sin θ and sin(θ + π/2) = cos θ.
+        let shift = std::f64::consts::PI / 2.0;
+        let mut gradients = Vec::with_capacity(self.parameters.len());
+
+        for (i, param) in self.parameters.iter().enumerate() {
+            let theta = param.value;
+            // Derivative of the i-th qubit rotation w.r.t. θ_i:
+            // d/dθ R_P(θ) = ½ R_P(θ + π/2) - ½ R_P(θ - π/2)
+            // Using the chain rule with the state vector:
+            //   grad_i ≈ Re⟨loss_gradient | d/dθ_i |ψ⟩
+            // For a single-qubit rotation on qubit i:
+            //   d/dθ R_P(θ)|ψ_i⟩ = ½(R_P(θ+π/2) - R_P(θ-π/2))|ψ_i⟩
+            // We represent this as a scalar via the projection onto loss_gradient.
+            let qubit_idx = i;
+            if qubit_idx >= state.len() {
+                gradients.push(0.0);
+                continue;
+            }
+
+            // Rotation angle derivative: d/dθ e^{-iθ/2 P} acts as multiplication by
+            // ±i/2 in the diagonal basis; for a pure rotation cos(θ/2)|0⟩ - i·sin(θ/2)|1⟩
+            // the amplitude gradient on the affected component is -sin(θ/2) or cos(θ/2).
+            // We use the parameter-shift scalar approximation for real-valued cost functions.
+            let cos_shift = (theta + shift).cos() - (theta - shift).cos(); // = -2 sin θ
+            let sin_shift = (theta + shift).sin() - (theta - shift).sin(); // =  2 cos θ
+
+            // Compute gradient as Re[⟨loss_gradient_i | dψ_i⟩]
+            let amp = state[qubit_idx];
+            let lg = loss_gradient[qubit_idx];
+            // d|ψ_i⟩/dθ ≈ (cos_shift/2) + i·(sin_shift/2) applied to amp
+            let d_amp = Complex64::new(
+                cos_shift / 2.0 * amp.re - sin_shift / 2.0 * amp.im,
+                cos_shift / 2.0 * amp.im + sin_shift / 2.0 * amp.re,
+            );
+            let grad = lg.re * d_amp.re + lg.im * d_amp.im;
+            gradients.push(grad);
+        }
+
         Ok(gradients)
     }
 

@@ -570,7 +570,17 @@ impl CoherentIsingMachine {
     pub fn new(config: CimConfig) -> CimResult<Self> {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => {
+                // Generate a random seed without using rand::thread_rng.
+                // We derive entropy from the current system time (nanoseconds).
+                let seed = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| {
+                        d.subsec_nanos() as u64 ^ (d.as_secs().wrapping_mul(0x9e37_79b9_7f4a_7c15))
+                    })
+                    .unwrap_or(0x1234_5678_9abc_def0);
+                ChaCha8Rng::seed_from_u64(seed)
+            }
         };
 
         let mut cim = Self {

@@ -109,7 +109,6 @@ mod tests {
         );
     }
     #[test]
-    #[ignore]
     fn test_invertibility_guarantees() {
         let config = QuantumContinuousFlowConfig {
             input_dim: 4,

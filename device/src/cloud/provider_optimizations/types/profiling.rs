@@ -270,11 +270,297 @@ impl WorkloadProfiler {
             recommendation_engine: RecommendationEngine::new(),
         })
     }
-    pub async fn profile_workload(
-        &self,
-        _workload: &WorkloadSpec,
-    ) -> DeviceResult<WorkloadProfile> {
-        todo!("Implement workload profiling")
+    /// Profile a workload by measuring its key structural and resource
+    /// characteristics.
+    ///
+    /// The profiler derives:
+    /// - **Circuit depth / gate count / qubit utilisation** directly from
+    ///   `WorkloadSpec::circuit_characteristics`.
+    /// - **Cost patterns** using a simple fixed-cost + per-gate variable cost
+    ///   model (provider-agnostic estimates).
+    /// - **Temporal patterns** seeded with neutral/stable defaults until real
+    ///   historical data is available through the learning pipeline.
+    /// - A **profile_id** that encodes the workload signature so downstream
+    ///   caches can detect identical profiles.
+    pub async fn profile_workload(&self, workload: &WorkloadSpec) -> DeviceResult<WorkloadProfile> {
+        use std::time::{Duration, SystemTime};
+
+        let cc = &workload.circuit_characteristics;
+        let er = &workload.execution_requirements;
+
+        // ----------------------------------------------------------------
+        // Workload characteristics
+        // ----------------------------------------------------------------
+        let qubit_utilisation = cc.qubit_count as f64 / 128_f64; // normalise against 128-qubit reference
+
+        let workload_characteristics = WorkloadCharacteristics {
+            computational_complexity: ComputationalComplexity {
+                time_complexity: ComplexityClass::Quadratic,
+                space_complexity: ComplexityClass::Exponential,
+                quantum_complexity: QuantumComplexityClass::BQP,
+                parallel_complexity: ParallelComplexityClass::P,
+            },
+            data_characteristics: DataCharacteristics {
+                data_size: DataSize {
+                    input_size: cc.qubit_count,
+                    intermediate_size: cc.qubit_count * cc.circuit_depth,
+                    output_size: cc.qubit_count,
+                    memory_footprint: (1_usize << cc.qubit_count.min(30)) * 16, // bytes
+                },
+                data_structure: DataStructure::Vector,
+                data_access_patterns: DataAccessPatterns {
+                    access_pattern: AccessPattern::Sequential,
+                    locality: LocalityPattern::Spatial,
+                    caching_behavior: CachingBehavior::Medium,
+                },
+                data_dependencies: DataDependencies {
+                    dependency_graph: DependencyGraph {
+                        nodes: Vec::new(),
+                        edges: Vec::new(),
+                        cycles: Vec::new(),
+                    },
+                    critical_path: Vec::new(),
+                    parallelization_potential: 0.60,
+                },
+            },
+            algorithmic_properties: AlgorithmicProperties {
+                algorithm_family: AlgorithmFamily::Simulation,
+                optimization_landscape: OptimizationLandscape {
+                    landscape_type: LandscapeType::Multimodal,
+                    local_minima_density: 0.30,
+                    barrier_heights: vec![0.1, 0.3, 0.5],
+                    global_structure: GlobalStructure::Archipelago,
+                },
+                convergence_properties: ConvergenceProperties {
+                    convergence_rate: ConvergenceRate::Linear,
+                    convergence_criteria: vec![ConvergenceCriterion::AbsoluteTolerance],
+                    stability: StabilityProperties {
+                        numerical_stability: 0.95,
+                        noise_tolerance: cc.noise_tolerance,
+                        parameter_sensitivity: 0.40,
+                        robustness_score: 0.75,
+                    },
+                },
+                noise_sensitivity: NoiseSensitivity {
+                    gate_error_sensitivity: 1.0 - cc.noise_tolerance,
+                    decoherence_sensitivity: 0.70,
+                    measurement_error_sensitivity: 0.50,
+                    classical_noise_sensitivity: 0.10,
+                },
+            },
+            scalability_characteristics: ScalabilityCharacteristics {
+                problem_size_scaling: ScalingBehavior::Exponential,
+                resource_scaling: ResourceScalingCharacteristics {
+                    memory_scaling: ScalingBehavior::Exponential,
+                    compute_scaling: ScalingBehavior::Quadratic,
+                    quantum_resource_scaling: ScalingBehavior::Linear,
+                    communication_scaling: ScalingBehavior::Linear,
+                },
+                parallel_scaling: ParallelScalingCharacteristics {
+                    maximum_parallelism: cc.qubit_count,
+                    parallel_efficiency: 0.70,
+                    load_balance_quality: 0.80,
+                    synchronization_overhead: 0.15,
+                },
+                distributed_scaling: DistributedScalingCharacteristics {
+                    network_communication: NetworkCommunicationPattern::Sparse,
+                    data_locality: DataLocalityPattern::HighLocality,
+                    fault_tolerance: FaultTolerancePattern::ErrorCorrection,
+                },
+            },
+        };
+
+        // ----------------------------------------------------------------
+        // Resource patterns
+        // ----------------------------------------------------------------
+        let neutral_utilisation = UtilizationPattern {
+            average_utilization: qubit_utilisation,
+            peak_utilization: (qubit_utilisation * 1.30).min(1.0),
+            utilization_variance: 0.10,
+            temporal_pattern: TemporalUtilizationPattern::Constant,
+        };
+
+        let resource_patterns = ResourcePatterns {
+            cpu_utilization_pattern: UtilizationPattern {
+                average_utilization: 0.05,
+                peak_utilization: 0.20,
+                utilization_variance: 0.05,
+                temporal_pattern: TemporalUtilizationPattern::Bursty,
+            },
+            memory_utilization_pattern: UtilizationPattern {
+                average_utilization: 0.10,
+                peak_utilization: 0.30,
+                utilization_variance: 0.05,
+                temporal_pattern: TemporalUtilizationPattern::Increasing,
+            },
+            network_utilization_pattern: UtilizationPattern {
+                average_utilization: 0.02,
+                peak_utilization: 0.10,
+                utilization_variance: 0.02,
+                temporal_pattern: TemporalUtilizationPattern::Bursty,
+            },
+            quantum_resource_pattern: QuantumResourcePattern {
+                qubit_utilization: qubit_utilisation,
+                gate_distribution: cc
+                    .gate_types
+                    .iter()
+                    .map(|(k, v)| (k.clone(), *v as f64 / cc.gate_count.max(1) as f64))
+                    .collect(),
+                entanglement_pattern: EntanglementPattern::Clustered,
+                measurement_pattern: MeasurementPattern::Final,
+            },
+        };
+
+        // ----------------------------------------------------------------
+        // Performance patterns
+        // ----------------------------------------------------------------
+        let shots_per_ms = 1.0; // 1 000 shots / s default estimate
+        let avg_exec_ms = er.shots as f64 / shots_per_ms;
+
+        let stable_throughput = ThroughputPattern {
+            average_throughput: shots_per_ms,
+            peak_throughput: shots_per_ms * 2.0,
+            throughput_stability: 0.85,
+            bottleneck_analysis: BottleneckAnalysis {
+                primary_bottleneck: BottleneckType::Quantum,
+                bottleneck_severity: 0.55,
+                bottleneck_variability: 0.20,
+                mitigation_strategies: vec![
+                    "Increase shot batching".to_string(),
+                    "Use faster hardware backend".to_string(),
+                ],
+            },
+        };
+
+        let performance_patterns = PerformancePatterns {
+            execution_time_pattern: ExecutionTimePattern {
+                average_time: Duration::from_millis(avg_exec_ms as u64),
+                time_variance: Duration::from_millis((avg_exec_ms * 0.20) as u64),
+                time_distribution: TimeDistribution::LogNormal,
+                scaling_behavior: ScalingBehavior::Linear,
+            },
+            throughput_pattern: stable_throughput,
+            quality_pattern: QualityPattern {
+                fidelity_distribution: QualityDistribution {
+                    mean_fidelity: 1.0 - cc.noise_tolerance,
+                    fidelity_variance: 0.02,
+                    distribution_type: DistributionType::Gaussian,
+                    outlier_frequency: 0.05,
+                },
+                error_correlation: ErrorCorrelation {
+                    temporal_correlation: 0.20,
+                    spatial_correlation: 0.30,
+                    systematic_errors: 0.15,
+                    random_errors: 0.85,
+                },
+                quality_degradation: QualityDegradation {
+                    degradation_rate: 0.001,
+                    degradation_factors: vec![DegradationFactor::GateErrors],
+                    mitigation_effectiveness: 0.70,
+                },
+            },
+            reliability_pattern: ReliabilityPattern {
+                success_rate: 0.95,
+                failure_modes: Vec::new(),
+                recovery_patterns: RecoveryPatterns {
+                    automatic_recovery_rate: 0.80,
+                    manual_intervention_rate: 0.10,
+                    recovery_time_distribution: TimeDistribution::Exponential,
+                    recovery_strategies: vec![RecoveryStrategy::Restart],
+                },
+                maintenance_requirements: MaintenanceRequirements {
+                    preventive_maintenance_frequency: Duration::from_secs(86400),
+                    corrective_maintenance_frequency: Duration::from_secs(3600),
+                    maintenance_duration: Duration::from_secs(300),
+                    maintenance_cost: 50.0,
+                },
+            },
+        };
+
+        // ----------------------------------------------------------------
+        // Cost patterns (provider-agnostic estimate)
+        // ----------------------------------------------------------------
+        let fixed_cost = 0.30; // per-task base fee (USD)
+        let variable_cost = er.shots as f64 * 0.00035; // per-shot mid-range estimate
+        let total_estimated_cost = fixed_cost + variable_cost;
+
+        let cost_patterns = CostPatterns {
+            cost_structure: WorkloadCostStructure {
+                fixed_costs: fixed_cost,
+                variable_costs: variable_cost,
+                marginal_costs: 0.00035,
+                cost_drivers: vec![CostDriver {
+                    driver_name: "Shot count".to_string(),
+                    cost_impact: variable_cost / total_estimated_cost,
+                    variability: 0.05,
+                    optimization_potential: 0.20,
+                }],
+            },
+            cost_variability: CostVariability {
+                cost_variance: total_estimated_cost * 0.15,
+                cost_predictability: 0.85,
+                cost_volatility: 0.10,
+                external_factors: Vec::new(),
+            },
+            cost_optimization_potential: CostOptimizationPotential {
+                total_savings_potential: total_estimated_cost * 0.25,
+                optimization_opportunities: vec![CostOptimizationOpportunity {
+                    opportunity_type: CostOptimizationType::VolumeDiscount,
+                    potential_savings: total_estimated_cost * 0.10,
+                    implementation_effort: 0.20,
+                    description: "Batch similar circuits to reduce per-task overhead.".to_string(),
+                }],
+                implementation_barriers: Vec::new(),
+            },
+        };
+
+        // ----------------------------------------------------------------
+        // Temporal patterns (seed with neutral/stable defaults)
+        // ----------------------------------------------------------------
+        let temporal_patterns = TemporalPatterns {
+            seasonality: SeasonalityAnalysis {
+                seasonal_components: Vec::new(),
+                seasonal_strength: 0.0,
+                dominant_frequencies: Vec::new(),
+            },
+            trend_analysis: TrendAnalysis {
+                metric_name: "execution_time".to_string(),
+                trend_direction: TrendDirection::Stable,
+                trend_strength: 0.0,
+                prediction_accuracy: 0.70,
+                data_points: Vec::new(),
+            },
+            cyclical_patterns: CyclicalPatterns {
+                cycle_length: Duration::from_secs(86400),
+                cycle_amplitude: 0.0,
+                cycle_regularity: 0.0,
+                cycle_predictability: 0.5,
+            },
+            anomaly_patterns: AnomalyPatterns {
+                anomaly_frequency: 0.02,
+                anomaly_types: Vec::new(),
+                anomaly_impact: 0.05,
+                detection_accuracy: 0.80,
+            },
+        };
+
+        // ----------------------------------------------------------------
+        // Assemble profile
+        // ----------------------------------------------------------------
+        let profile_id = format!(
+            "profile_{}_{}_{}_{}",
+            workload.workload_id, cc.qubit_count, cc.gate_count, er.shots
+        );
+
+        Ok(WorkloadProfile {
+            profile_id,
+            workload_type: workload.workload_type.clone(),
+            characteristics: workload_characteristics,
+            resource_patterns,
+            performance_patterns,
+            cost_patterns,
+            temporal_patterns,
+        })
     }
 }
 

@@ -6,6 +6,7 @@
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::Complex64;
 use std::time::{Duration, Instant};
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
@@ -567,7 +568,7 @@ impl QuantumZenoAnnealer {
 
         Ok(QuantumState {
             amplitudes: vec![
-                crate::qaoa::complex::Complex64 {
+                Complex64 {
                     re: amplitude,
                     im: 0.0
                 };
@@ -634,7 +635,7 @@ impl QuantumZenoAnnealer {
         for i in 0..evolved_state.amplitudes.len() {
             let phase = self.calculate_phase_for_state(i, time_step, problem)?;
             let phase_complex = complex_phase(phase);
-            evolved_state.amplitudes[i] = crate::qaoa::complex::Complex64 {
+            evolved_state.amplitudes[i] = Complex64 {
                 re: evolved_state.amplitudes[i].re.mul_add(
                     phase_complex.re,
                     -(evolved_state.amplitudes[i].im * phase_complex.im),
@@ -710,7 +711,7 @@ impl QuantumZenoAnnealer {
         // Calculate measurement probabilities
         let mut outcome_probabilities = Vec::new();
         for amplitude in &state.amplitudes {
-            outcome_probabilities.push(amplitude.norm_squared());
+            outcome_probabilities.push(amplitude.norm_sqr());
         }
 
         // Sample measurement outcome
@@ -728,9 +729,8 @@ impl QuantumZenoAnnealer {
 
         // Collapse state to measured outcome
         let mut post_measurement_amplitudes =
-            vec![crate::qaoa::complex::Complex64::new(0.0, 0.0); state.amplitudes.len()];
-        post_measurement_amplitudes[measured_outcome] =
-            crate::qaoa::complex::Complex64::new(1.0, 0.0);
+            vec![Complex64::new(0.0, 0.0); state.amplitudes.len()];
+        post_measurement_amplitudes[measured_outcome] = Complex64::new(1.0, 0.0);
 
         let post_measurement_state = QuantumState {
             amplitudes: post_measurement_amplitudes,
@@ -755,9 +755,9 @@ impl QuantumZenoAnnealer {
         let mut total_energy = 0.0;
 
         for (i, &amplitude) in state.amplitudes.iter().enumerate() {
-            if amplitude.abs() > 1e-10 {
+            if amplitude.norm() > 1e-10 {
                 let state_energy = self.calculate_phase_for_state(i, 1.0, problem)?;
-                total_energy += amplitude.norm_squared() * (-state_energy); // Convert phase back to energy
+                total_energy += amplitude.norm_sqr() * (-state_energy); // Convert phase back to energy
             }
         }
 
@@ -772,8 +772,8 @@ impl QuantumZenoAnnealer {
             .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| {
-                a.norm_squared()
-                    .partial_cmp(&b.norm_squared())
+                a.norm_sqr()
+                    .partial_cmp(&b.norm_sqr())
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map_or(0, |(i, _)| i);
@@ -834,10 +834,7 @@ impl QuantumZenoAnnealer {
 
 /// Helper function for complex phase calculation
 fn complex_phase(phase: f64) -> Complex {
-    Complex {
-        re: phase.cos(),
-        im: phase.sin(),
-    }
+    Complex::new(phase.cos(), phase.sin())
 }
 
 /// Create default quantum Zeno annealer
@@ -932,7 +929,7 @@ mod tests {
         assert_eq!(state.amplitudes.len(), 8); // 2^3
 
         // Check normalization
-        let norm_squared: f64 = state.amplitudes.iter().map(|a| a.norm_squared()).sum();
+        let norm_squared: f64 = state.amplitudes.iter().map(|a| a.norm_sqr()).sum();
         assert!((norm_squared - 1.0).abs() < 1e-10);
     }
 
@@ -943,10 +940,10 @@ mod tests {
         // State with highest probability on |10⟩ (index 2)
         let state = QuantumState {
             amplitudes: vec![
-                crate::qaoa::complex::Complex64::new(0.1, 0.0),
-                crate::qaoa::complex::Complex64::new(0.2, 0.0),
-                crate::qaoa::complex::Complex64::new(0.9, 0.0),
-                crate::qaoa::complex::Complex64::new(0.3, 0.0),
+                Complex64::new(0.1, 0.0),
+                Complex64::new(0.2, 0.0),
+                Complex64::new(0.9, 0.0),
+                Complex64::new(0.3, 0.0),
             ],
             num_qubits: 2,
         };

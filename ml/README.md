@@ -5,13 +5,23 @@
 
 QuantRS2-ML is the comprehensive quantum machine learning library of the [QuantRS2](https://github.com/cool-japan/quantrs) quantum computing framework, providing cutting-edge quantum algorithms, hybrid architectures, and industry-specific applications for next-generation artificial intelligence and data science.
 
-## Version 0.1.2
+## Version 0.1.3
 
-This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.2 with refined integration patterns for enhanced performance:
+Released: 2026-03-23
+
+This release incorporates [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3 with refined integration patterns for enhanced performance:
 - Automatic differentiation leveraging SciRS2's linear algebra operations
 - Parallel training with `scirs2_core::parallel_ops`
 - SIMD-accelerated quantum kernel computations
 - Memory-efficient handling of large quantum datasets
+
+### What's New in v0.1.3
+- **QNN Tutorials**: Comprehensive quantum neural network tutorials with step-by-step examples
+- **SMO-based QSVM**: Sequential Minimal Optimization for quantum support vector machines with Cholesky fallback for robust kernel computation
+- **Simulator Backends**: Expanded simulator backends with Pauli expectation value support
+- **2,195 public items**: 0 stubs — full production-ready implementation
+
+*Previous: 0 stubs, 2,195 public items*
 
 ## Comprehensive Features
 
@@ -56,7 +66,7 @@ The `quantrs2-ml` crate is included in the main QuantRS2 workspace. To use it in
 
 ```toml
 [dependencies]
-quantrs2-ml = "0.1.2"
+quantrs2-ml = "0.1.3"
 ```
 
 ## Usage Examples
@@ -166,7 +176,7 @@ The `quantrs2-ml` crate supports GPU acceleration for quantum machine learning t
 
 ```toml
 [dependencies]
-quantrs2-ml = { version = "0.1.2", features = ["gpu"] }
+quantrs2-ml = { version = "0.1.3", features = ["gpu"] }
 ```
 
 ## License

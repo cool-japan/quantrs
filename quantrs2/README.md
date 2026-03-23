@@ -6,6 +6,8 @@
 
 **Unified facade for QuantRS2: simplified quantum computing in Rust**
 
+**Version 0.1.3** — Released: 2026-03-23 — 58 public items
+
 The `quantrs2` facade crate provides a unified entry point to the entire QuantRS2 quantum computing framework. It offers hierarchical preludes, comprehensive system management, and developer utilities—all with zero runtime overhead.
 
 ## ✨ Key Features
@@ -23,10 +25,10 @@ Add to your `Cargo.toml`:
 ```toml
 [dependencies]
 # Choose your level of functionality
-quantrs2 = { version = "0.1.2", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.1.3", features = ["circuit", "sim"] }
 
 # Or enable everything
-quantrs2 = { version = "0.1.2", features = ["full"] }
+quantrs2 = { version = "0.1.3", features = ["full"] }
 ```
 
 ### Example: Bell State with Hierarchical Prelude
@@ -328,27 +330,27 @@ Some features automatically enable others:
 
 ### Minimal quantum programming:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["circuit"] }
+quantrs2 = { version = "0.1.3", features = ["circuit"] }
 ```
 
 ### Circuit simulation:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["sim"] }
+quantrs2 = { version = "0.1.3", features = ["sim"] }
 ```
 
 ### Quantum machine learning:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["ml"] }
+quantrs2 = { version = "0.1.3", features = ["ml"] }
 ```
 
 ### Hardware interaction:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["device", "sim"] }
+quantrs2 = { version = "0.1.3", features = ["device", "sim"] }
 ```
 
 ### Everything:
 ```toml
-quantrs2 = { version = "0.1.2", features = ["full"] }
+quantrs2 = { version = "0.1.3", features = ["full"] }
 ```
 
 ## Alternative: Individual Crates
@@ -357,9 +359,9 @@ If you prefer to use individual crates instead of the facade:
 
 ```toml
 [dependencies]
-quantrs2-core = "0.1.2"
-quantrs2-circuit = "0.1.2"
-quantrs2-sim = "0.1.2"
+quantrs2-core = "0.1.3"
+quantrs2-circuit = "0.1.3"
+quantrs2-sim = "0.1.3"
 # etc.
 ```
 
@@ -371,7 +373,7 @@ quantrs2-sim = "0.1.2"
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["circuit", "sim"] }
+quantrs2 = { version = "0.1.3", features = ["circuit", "sim"] }
 ```
 
 ```rust
@@ -404,7 +406,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["ml"] }
+quantrs2 = { version = "0.1.3", features = ["ml"] }
 ```
 
 ```rust
@@ -442,7 +444,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["tytan"] }
+quantrs2 = { version = "0.1.3", features = ["tytan"] }
 ```
 
 ```rust
@@ -475,7 +477,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["device", "circuit"] }
+quantrs2 = { version = "0.1.3", features = ["device", "circuit"] }
 ```
 
 ```rust
@@ -513,7 +515,7 @@ fn main() -> QuantRS2Result<()> {
 
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["full"] }
+quantrs2 = { version = "0.1.3", features = ["full"] }
 ```
 
 ```rust
@@ -573,9 +575,9 @@ quantrs2 = { features = ["tytan"] }           # ~12s
 quantrs2 = { features = ["full"] }            # ~45s
 
 # Individual crates (for comparison)
-quantrs2-circuit = "0.1.2"             # ~5s
-quantrs2-sim = "0.1.2"                 # ~8s
-quantrs2-ml = "0.1.2"                  # ~18s
+quantrs2-circuit = "0.1.3"             # ~5s
+quantrs2-sim = "0.1.3"                 # ~8s
+quantrs2-ml = "0.1.3"                  # ~18s
 ```
 
 ### Example: Dependency Management Comparison
@@ -583,16 +585,16 @@ quantrs2-ml = "0.1.2"                  # ~18s
 **Using Facade (Recommended for Applications):**
 ```toml
 [dependencies]
-quantrs2 = { version = "0.1.2", features = ["ml"] }
+quantrs2 = { version = "0.1.3", features = ["ml"] }
 ```
 
 **Using Individual Crates (Recommended for Libraries):**
 ```toml
 [dependencies]
-quantrs2-core = "0.1.2"
-quantrs2-circuit = "0.1.2"
-quantrs2-sim = "0.1.2"
-quantrs2-ml = "0.1.2"
+quantrs2-core = "0.1.3"
+quantrs2-circuit = "0.1.3"
+quantrs2-sim = "0.1.3"
+quantrs2-ml = "0.1.3"
 # Must manually ensure version compatibility!
 ```
 

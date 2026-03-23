@@ -225,7 +225,7 @@ pub enum EntanglementPattern {
     Random,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkloadType {
     Simulation,
     Optimization,

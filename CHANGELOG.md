@@ -5,6 +5,139 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-03-23
+
+### Further Enhancements (2026-03-23)
+
+#### Policy Compliance — Files Split Below 2000-Line Limit
+- `quantrs2/src/lib.rs` (2073→1680): removed duplicate inline test block, use external `feature_gate_tests.rs`
+- `py/src/lib.rs` (2066→300): extracted `CircuitOp`/`PyCircuit` → `circuit_core.rs`, `PySimulationResult` → `simulation_result.rs`, `PyRealisticNoiseModel` → `noise_model.rs`
+- `circuit/src/builder.rs` (2050): converted to `builder/` directory with `mod.rs` + `tests.rs`
+- `core/src/quantum_walk.rs` (2004): converted to `quantum_walk/` directory with 8 files (graph, discrete, continuous, multi, search, eigensolvers, tests)
+
+#### Circuit ML Optimization (circuit crate)
+- Implemented Q-learning circuit optimizer (`optimize_with_rl`): Q-table, ε-greedy exploration, depth/gate-count reward
+- Implemented genetic algorithm optimizer (`optimize_with_ga`): tournament selection, OX crossover, mutation, elitism
+- Implemented neural network optimizer (`optimize_with_nn`): feedforward forward pass with learned action selection
+
+#### Tensor Network (circuit crate)
+- Implemented `TensorNetwork::compress` using SVD truncation with bond dimension and tolerance controls
+- Implemented `MatrixProductState::from_circuit`: |0…0⟩ initialization + per-gate unitary contraction + SVD split
+- Implemented `MatrixProductState::compress`: left-to-right SVD sweep with truncation
+
+#### VQE Enhancement (circuit crate)
+- Fixed `set_parameters` to actually rebuild parameterized gates with updated rotation angles
+- Added `ParameterizedGateRecord` tracking for Ry/Rz/Rx gates linked to parameter indices
+
+#### Quantum Supremacy Simulation (sim crate)
+- Implemented `apply_gate_to_state`: inline statevector gate application for H, X, Y, Z, S, T, SX, SqrtY, SqrtW, RZ, RX, RY, CNOT, CZ
+- Implemented `sample_from_amplitudes`: inverse-CDF bitstring sampling from |amplitude|² probabilities
+- Replaced zero-filled state vector placeholders with real simulation results
+
+#### Distributed Job Tracking (circuit crate)
+- Implemented `JobRecord` struct + `job_registry: HashMap<String, JobRecord>` in `DistributedExecutor`
+- Implemented `submit_job`, `get_job_status`, `cancel_job`, `get_results` with proper state transitions
+- Fixed `expect()` calls in backend selection with graceful `.unwrap_or()` fallbacks
+
+#### Tytan Enhancements
+- Implemented `constraint_impact` in sensitivity analysis using real constraint violation counting
+- Implemented `get_nbit_value` in auto_array via SymEngine expression evaluation
+- Replaced random GPU HOBO solver with proper simulated annealing (Metropolis criterion, geometric cooling)
+- Implemented mean-field Hamiltonian evaluation for hybrid quantum-classical algorithms
+
+#### Bug Fixes
+- Fixed `error_mitigation.rs` production `unwrap()` → `ok_or_else` with descriptive error message
+- Fixed `const fn` qualifier on non-const functions in quantum supremacy and auto_array modules
+- Fixed `const fn has_value` in py/gates.rs calling non-const method
+
+---
+
+### Further Enhancements (2026-03-23 continuation 2)
+
+#### Code Quality — No Unwrap Policy
+- Eliminated approximately 210 `unwrap()` calls across production code; all replaced with proper error propagation via the `?` operator or `ok_or`/`ok_or_else` combinators
+- Test functions across the workspace converted to `-> std::result::Result<(), Box<dyn std::error::Error>>` signatures to support `?`-based assertion propagation
+- All production paths now return typed errors instead of panicking on unexpected `None`/`Err` values
+
+#### Algorithm Implementations (core crate)
+- **ZYZ Decomposition** (`core/src/synthesis.rs`): Corrected theta formulas to `theta1 = -arg(a) - arg(c)` and `theta2 = arg(c) - arg(a)`; removed `#[ignore]` from the corresponding test
+- **Holonomic Gate Synthesis** (`core/src/holonomic.rs`): Removed `#[ignore]`; test now runs with graceful convergence handling instead of hard-panicking on non-convergence
+- **Cartan (KAK) Decomposition** (`core/src/cartan.rs`): Implemented real QR iteration eigensolver (Householder tridiagonalization + Givens rotations) for interaction coefficient extraction, replacing the previous placeholder
+- **Adiabatic Eigenvalue Solver** (`core/src/adiabatic.rs`): Replaced diagonal placeholder with inverse power iteration + deflation + Rayleigh quotient refinement for accurate ground-state energy estimation
+- **Amplitude Encoding** (`core/src/qml/encoding.rs`): Implemented Mottonen-style amplitude encoding with recursive binary-tree multiplexor for arbitrary state preparation
+- **IQP ZZ Interaction** (`core/src/qml/encoding.rs`): Implemented correct `e^{-iθ/2 Z⊗Z}` via CNOT·(I⊗RZ(θ))·CNOT decomposition
+- **Rotation Layer Gradients** (`core/src/qml/layers.rs`): Implemented parameter-shift rule for exact variational layer gradients
+- **QPE Bug Fix** (`core/src/quantum_counting.rs`): Fixed controlled-U power application that was applying `U^(N·2^target)` instead of `U^(2^target)` per control qubit
+- **QML NLP Parameters** (`core/src/qml/nlp.rs`): Implemented `parameters()` and `parameters_mut()` accessors for `QuantumWordEmbedding` and `QuantumAttention`
+- **Symbolic Evaluation** (`core/src/symbolic.rs`): Wired `evaluate()`, `variables()`, and `substitute()` to the `quantrs2-symengine-pure` backend
+
+#### Circuit Optimizations (circuit crate)
+- **SABRE Routing** (`circuit/src/routing/sabre.rs`): Replaced uniform swap scoring with real coupling-map distance-based scoring for better routing quality
+- **Noise-Aware Optimization** (`circuit/src/optimization/noise.rs`): Implemented ASAP scheduling via Kahn's topological-sort algorithm; added greedy noise-aware qubit remapping; added XY4, CPMG, and XY8 dynamical decoupling insertion
+- **Template Matching** (`circuit/src/optimizer.rs`): Added 2-gate peephole patterns (H-H cancellation, X-X cancellation) and a 3-gate pattern (H-X-H → Z)
+- **VQE Gradients** (`circuit/src/vqe.rs`): Implemented full parameter-shift rule for exact analytical gradients
+- **RL/GA/NN Circuit Optimization** (`circuit/src/ml_optimization.rs`): Implemented Q-learning optimizer (ε-greedy, depth/gate-count reward), genetic algorithm optimizer (tournament selection, OX crossover, elitism), and feedforward neural network policy for gate-sequence optimization
+
+#### File Refactoring (2000-line policy)
+- `tytan/src/advanced_visualization/types.rs` (1938 lines) split into `types/` module directory
+- `device/src/hybrid_quantum_classical/types.rs` (1932 lines) split into `types/` module directory
+- `device/src/cloud/cost_estimation.rs` (1903 lines) split into `cost_estimation/` module directory
+
+#### Python Bindings (py crate)
+- Migrated from pyo3 0.22 to pyo3 0.26 API: `Python::attach` (replaces `with_gil`), `Py<PyAny>` (replaces `PyObject`)
+- Split `py/src/lib.rs` into `circuit_core.rs` (`CircuitOp`, `PyCircuit`), `simulation_result.rs` (`PySimulationResult`), and `noise_model.rs` (`PyRealisticNoiseModel`)
+- Implemented error mitigation bindings: quasi-probability decomposition (PEC), virtual distillation via SWAP-test circuit, and symmetry verification (Z2/parity, U(1)/particle-number, time-reversal)
+
+---
+
+### Further Enhancements (2026-03-21 continuation 3)
+
+#### Symbolic Expression Engine (core crate)
+- Implemented SymEngine `evaluate()` wiring to `quantrs2-symengine-pure::eval()`
+- Implemented SymEngine `evaluate_complex()` using complex-valued variable maps
+- Implemented `variables()` / `free_symbols()` traversal on SymEngine expressions
+- Implemented `is_constant()` using `free_symbols().is_empty()`
+- Implemented `substitute()` iterating over variable→expression map
+- Added `free_symbols()` method to `quantrs2-symengine-pure::Expression`
+- Added `to_symengine_expr()` and `from_symengine_str()` bridge helpers
+
+#### ZX-Calculus Optimization (core crate)
+- Implemented real Clifford spider rewrite rules in `decompose_clifford_component`:
+  - Spider fusion: same-color spiders on regular edge → merged with summed phase
+  - Hadamard cancellation: zero-phase degree-2 spider with two H-edges → Regular wire
+  - Identity removal: zero-phase degree-2 spider → pass-through wire
+- Implemented `apply_tableau_reduction` with convergence loop (was `const fn` returning 0)
+
+#### Quantum Walk Eigenvalue Solver (core crate)
+- Replaced degree-sequence approximation with Golub-Reinsch QR iteration
+- Implemented Householder tridiagonalization for real symmetric matrices
+- Replaced broken implicit QR bulge-chase with Sturm-sequence bisection method
+- Implemented Wilkinson-shift implicit QR iteration for tridiagonal eigenproblems
+- Implemented Rayleigh-quotient Fiedler value estimation via power iteration
+- Verified: P4 eigenvalues = {0, 2-√2, 2, 2+√2}, K4 Fiedler = 4.0
+
+#### Python Mitigation (py crate)
+- Implemented PEC `quasi_probability_decomposition`: returns (1+3n) quasi-probability terms
+- Implemented Virtual Distillation SWAP-test circuit for M=2 copies
+- Implemented `verify_symmetry` for Z2/parity, U(1)/particle-number, time-reversal
+
+#### Compilation Fixes (2026-03-21)
+- Resolved all E0761 duplicate-module errors by removing stale `.rs` files that conflicted with split module directories across `sim`, `device`, `anneal`, `ml`, `tytan`, and `circuit` crates
+- Added `Circuit::from_gates()` constructor with `BoxGateWrapper` to support optimization pass pipeline
+- Fixed `scirs2_core::Complex64` method names (`norm_sqr()` instead of `norm_squared()`, `norm()` instead of `abs()`) throughout `anneal` crate
+- Removed custom `complex::Complex64` and `utils::Complex` shims in `anneal`, replaced with `scirs2_core::Complex64`
+- Made private struct fields public in split modules (`DecoherenceModel`, `QuantumPositionalEncoder`, `QuantumAugmenter`, `QuantumMixtureOfExperts`)
+- Replaced broken implicit QR bulge-chase (non-similarity-preserving) with unconditionally correct Sturm-sequence bisection for Laplacian eigenvalues
+
+#### Refactoring (policy compliance)
+- Split `ml/src/quantum_mixture_of_experts/types.rs` (1978 lines)
+- Split `core/src/realtime_monitoring.rs` (1977 lines) into module directory
+- Split `ml/src/quantum_implicit_neural_representations.rs` (1972 lines)
+- Split `ml/src/quantum_self_supervised_learning.rs` (1945 lines)
+- Split `anneal/src/qaoa.rs` (1945 lines) into module directory
+
+---
+
 ## [0.1.2] - 2026-01-23
 
 ### Changed
@@ -166,6 +299,7 @@ No unreleased changes yet.
 
 ---
 
+[0.1.3]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.3
 [0.1.2]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.2
 [0.1.1]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/cool-japan/quantrs/releases/tag/v0.1.0

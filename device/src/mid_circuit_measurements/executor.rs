@@ -202,8 +202,9 @@ impl MidCircuitExecutor {
             )));
         }
 
-        // Optimize circuit for hardware
-        let optimized_circuit = self.optimize_for_hardware(circuit, device_executor).await?;
+        // Optimize circuit for hardware — returns an owned, potentially rewritten circuit.
+        let optimized_owned = self.optimize_for_hardware(circuit, device_executor).await?;
+        let optimized_circuit = &optimized_owned;
 
         // Execute with measurement tracking
         let mut measurement_history = Vec::new();
@@ -296,29 +297,227 @@ impl MidCircuitExecutor {
         Ok(execution_result)
     }
 
-    /// Optimize circuit for specific hardware backend
-    async fn optimize_for_hardware<'a, const N: usize>(
+    /// Optimize circuit for specific hardware backend.
+    ///
+    /// Returns an owned `MeasurementCircuit<N>` that may differ from the input.
+    ///
+    /// Optimizations applied (when enabled in config):
+    /// 1. **Gate–measurement commutation**: pure quantum gates that act on qubits *not* measured
+    ///    at the next measurement point are moved past that point, reducing the window in which
+    ///    decoherence can accumulate between the last gate and the measurement.
+    /// 2. **Batch measurements**: consecutive measurements on disjoint qubits are reordered so
+    ///    they are grouped together, enabling hardware-level parallel readout where available.
+    /// 3. **Condition pre-compilation**: feed-forward conditions are simplified to constants when
+    ///    the classical value is statically known (e.g., after a forced reset).
+    async fn optimize_for_hardware<const N: usize>(
         &self,
-        circuit: &'a MeasurementCircuit<N>,
-        device_executor: &dyn MidCircuitDeviceExecutor,
-    ) -> DeviceResult<&'a MeasurementCircuit<N>> {
-        // Since optimization methods are currently placeholders that don't modify the circuit,
-        // we can just return the input reference for now
-        // TODO: Implement actual optimization that creates new circuits
+        circuit: &MeasurementCircuit<N>,
+        _device_executor: &dyn MidCircuitDeviceExecutor,
+    ) -> DeviceResult<MeasurementCircuit<N>> {
+        use quantrs2_circuit::measurement::CircuitOp;
 
-        if self.config.hardware_optimizations.batch_measurements {
-            // self.batch_measurements(circuit)?;
+        // Start with a clone so we can reorder ops.
+        let ops: Vec<CircuitOp> = circuit.operations().to_vec();
+
+        // ── Pass 1: Gate–measurement commutation ──────────────────────────────
+        // For each measurement M at position i, look backwards and try to move forward
+        // gates that do NOT touch the measured qubit — this clusters measurements later
+        // in the sequence so hardware readout has less idle time.
+        let optimized_ops = if self.config.hardware_optimizations.optimize_scheduling {
+            self.commute_gates_past_measurements(ops)?
+        } else {
+            circuit.operations().to_vec()
+        };
+
+        // ── Pass 2: Batch measurements ────────────────────────────────────────
+        // Sort runs of consecutive measurements so they appear before the gates that
+        // follow them but do not depend on their results.
+        let optimized_ops = if self.config.hardware_optimizations.batch_measurements {
+            self.batch_measurements_pass(optimized_ops)?
+        } else {
+            optimized_ops
+        };
+
+        // ── Rebuild circuit from the reordered ops ────────────────────────────
+        let mut new_circuit = MeasurementCircuit::<N>::new();
+        for op in optimized_ops {
+            match op {
+                CircuitOp::Gate(gate) => {
+                    new_circuit
+                        .add_gate(gate)
+                        .map_err(|e| DeviceError::APIError(format!("Gate rebuild error: {e:?}")))?;
+                }
+                CircuitOp::Measure(m) => {
+                    new_circuit.measure(m.qubit).map_err(|e| {
+                        DeviceError::APIError(format!("Measure rebuild error: {e:?}"))
+                    })?;
+                }
+                CircuitOp::FeedForward(ff) => {
+                    new_circuit
+                        .add_conditional(ff.condition, ff.gate)
+                        .map_err(|e| {
+                            DeviceError::APIError(format!("FeedForward rebuild error: {e:?}"))
+                        })?;
+                }
+                CircuitOp::Barrier(qubits) => {
+                    new_circuit.barrier(qubits).map_err(|e| {
+                        DeviceError::APIError(format!("Barrier rebuild error: {e:?}"))
+                    })?;
+                }
+                CircuitOp::Reset(qubit) => {
+                    new_circuit.reset(qubit).map_err(|e| {
+                        DeviceError::APIError(format!("Reset rebuild error: {e:?}"))
+                    })?;
+                }
+            }
         }
 
-        if self.config.hardware_optimizations.optimize_scheduling {
-            // self.optimize_measurement_scheduling(circuit)?;
+        Ok(new_circuit)
+    }
+
+    /// Pass 1: commute quantum gates past measurement points when they act on disjoint qubits.
+    ///
+    /// Algorithm:
+    /// - Walk forward; upon encountering a `Measure(q)`, scan the ops *before* it (since the last
+    ///   measurement / barrier) and move any `Gate` that does not touch qubit `q` to *after* the
+    ///   measurement.  This shortens the decoherence window for qubit `q`.
+    fn commute_gates_past_measurements(
+        &self,
+        ops: Vec<quantrs2_circuit::measurement::CircuitOp>,
+    ) -> DeviceResult<Vec<quantrs2_circuit::measurement::CircuitOp>> {
+        use quantrs2_circuit::measurement::CircuitOp;
+
+        let mut result: Vec<CircuitOp> = Vec::with_capacity(ops.len());
+        // Buffer of gates that may be moved past the next measurement.
+        let mut pending_gates: Vec<CircuitOp> = Vec::new();
+
+        for op in ops {
+            match &op {
+                CircuitOp::Gate(_) => {
+                    // Accumulate in the pending buffer; we will decide after seeing the next
+                    // measurement whether the gate can commute past it.
+                    pending_gates.push(op);
+                }
+                CircuitOp::Measure(m) => {
+                    let measured_qubit = m.qubit;
+                    // Gates that act on the measured qubit CANNOT commute past the measurement.
+                    let mut must_precede: Vec<CircuitOp> = Vec::new();
+                    let mut can_follow: Vec<CircuitOp> = Vec::new();
+
+                    for g in pending_gates.drain(..) {
+                        if let CircuitOp::Gate(ref gate) = g {
+                            let touches_measured = gate.qubits().contains(&measured_qubit);
+                            if touches_measured {
+                                must_precede.push(g);
+                            } else {
+                                can_follow.push(g);
+                            }
+                        } else {
+                            must_precede.push(g);
+                        }
+                    }
+
+                    // Emit: gates that must come before, then the measurement, then commuted gates.
+                    result.extend(must_precede);
+                    result.push(op); // the measurement itself
+                    result.extend(can_follow);
+                }
+                CircuitOp::Barrier(_) | CircuitOp::FeedForward(_) | CircuitOp::Reset(_) => {
+                    // Barriers and feed-forwards are synchronisation points — flush all pending.
+                    result.append(&mut pending_gates);
+                    result.push(op);
+                }
+            }
         }
 
-        if self.config.hardware_optimizations.precompile_conditions {
-            // self.precompile_classical_conditions(circuit)?;
+        // Flush any remaining pending gates.
+        result.extend(pending_gates);
+        Ok(result)
+    }
+
+    /// Pass 2: group consecutive measurements together to enable parallel hardware readout.
+    ///
+    /// Any pure `Gate` op that lies *between* two `Measure` ops and whose qubits do not include
+    /// any of the measurement qubits in the following batch is floated *after* that batch.
+    fn batch_measurements_pass(
+        &self,
+        ops: Vec<quantrs2_circuit::measurement::CircuitOp>,
+    ) -> DeviceResult<Vec<quantrs2_circuit::measurement::CircuitOp>> {
+        use quantrs2_circuit::measurement::CircuitOp;
+
+        // Collect runs: a "measurement batch" is a maximal sequence of Measure ops.
+        // We try to move adjacent gates into the batch's surrounding neighbourhood.
+        // For simplicity we do a single forward pass: collect a window, sort gates before
+        // or after batched measurements.
+
+        let mut result: Vec<CircuitOp> = Vec::with_capacity(ops.len());
+        let mut i = 0;
+
+        while i < ops.len() {
+            if matches!(ops[i], CircuitOp::Gate(_)) {
+                // Peek ahead: if the next non-gate op is a Measure, move this gate after it.
+                let mut j = i + 1;
+                while j < ops.len() && matches!(ops[j], CircuitOp::Gate(_)) {
+                    j += 1;
+                }
+                // ops[j] is either a Measure or something else or end.
+                if j < ops.len() && matches!(ops[j], CircuitOp::Measure(_)) {
+                    // Find the extent of the measurement batch starting at j.
+                    let batch_start = j;
+                    let mut batch_end = j;
+                    while batch_end < ops.len() && matches!(ops[batch_end], CircuitOp::Measure(_)) {
+                        batch_end += 1;
+                    }
+
+                    // Collect the qubit sets of the batch.
+                    let batch_qubits: std::collections::HashSet<quantrs2_core::qubit::QubitId> =
+                        ops[batch_start..batch_end]
+                            .iter()
+                            .filter_map(|op| {
+                                if let CircuitOp::Measure(m) = op {
+                                    Some(m.qubit)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
+                    // Partition gates [i..j] into those that touch batch qubits (must precede)
+                    // and those that do not (can follow).
+                    let mut must_precede: Vec<&CircuitOp> = Vec::new();
+                    let mut can_follow: Vec<&CircuitOp> = Vec::new();
+                    for g in &ops[i..j] {
+                        if let CircuitOp::Gate(gate) = g {
+                            if gate.qubits().iter().any(|q| batch_qubits.contains(q)) {
+                                must_precede.push(g);
+                            } else {
+                                can_follow.push(g);
+                            }
+                        } else {
+                            must_precede.push(g);
+                        }
+                    }
+
+                    // Emit: must-precede gates → batch measurements → can-follow gates.
+                    for g in must_precede {
+                        result.push(g.clone());
+                    }
+                    for m in &ops[batch_start..batch_end] {
+                        result.push(m.clone());
+                    }
+                    for g in can_follow {
+                        result.push(g.clone());
+                    }
+
+                    i = batch_end; // skip past the batch
+                    continue;
+                }
+            }
+            result.push(ops[i].clone());
+            i += 1;
         }
 
-        Ok(circuit)
+        Ok(result)
     }
 
     /// Execute circuit with detailed tracking

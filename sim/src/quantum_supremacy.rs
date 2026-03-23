@@ -4,8 +4,7 @@
 //! quantum supremacy claims, including cross-entropy benchmarking, Porter-Thomas
 //! distribution analysis, and linear cross-entropy benchmarking (Linear XEB).
 
-use scirs2_core::ndarray::{Array1, Array2, ArrayView1};
-use scirs2_core::parallel_ops::{IndexedParallelIterator, ParallelIterator};
+use scirs2_core::ndarray::Array1;
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
@@ -16,8 +15,6 @@ use std::f64::consts::PI;
 
 use crate::error::{Result, SimulatorError};
 use crate::scirs2_integration::SciRS2Backend;
-use crate::shot_sampling::{QuantumSampler, SamplingConfig};
-use crate::statevector::StateVectorSimulator;
 
 /// Cross-entropy benchmarking result
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,8 +178,8 @@ impl QuantumSupremacyVerifier {
         // Compute ideal amplitudes (classical simulation)
         let ideal_amplitudes = self.compute_ideal_amplitudes(&circuits)?;
 
-        // Simulate quantum sampling
-        let quantum_samples = self.simulate_quantum_sampling(&circuits)?;
+        // Simulate quantum sampling using ideal state amplitudes as the probability distribution
+        let quantum_samples = self.simulate_quantum_sampling(&ideal_amplitudes)?;
 
         // Perform cross-entropy benchmarking
         let linear_xeb = self.compute_linear_xeb(&ideal_amplitudes, &quantum_samples)?;
@@ -385,7 +382,7 @@ impl QuantumSupremacyVerifier {
         (0..self.num_qubits).collect()
     }
 
-    /// Compute ideal amplitudes using classical simulation
+    /// Compute ideal amplitudes using classical state-vector simulation
     fn compute_ideal_amplitudes(
         &self,
         circuits: &[RandomCircuit],
@@ -393,61 +390,401 @@ impl QuantumSupremacyVerifier {
         let mut amplitudes = Vec::with_capacity(circuits.len());
 
         for circuit in circuits {
-            let mut simulator = StateVectorSimulator::new();
+            let dim = 1usize << self.num_qubits;
+            // Initialise to |0...0⟩
+            let mut state = vec![Complex64::new(0.0, 0.0); dim];
+            state[0] = Complex64::new(1.0, 0.0);
 
             // Apply circuit layers
             for layer in &circuit.layers {
                 for gate in &layer.gates {
-                    self.apply_gate_to_simulator(&mut simulator, gate)?;
+                    self.apply_gate_to_state(&mut state, gate)?;
                 }
             }
 
-            // Get final state (placeholder - would need proper simulator integration)
-            let dim = 1 << self.num_qubits;
-            let state = Array1::zeros(dim);
-            amplitudes.push(state);
+            let final_state = Array1::from_vec(state);
+            amplitudes.push(final_state);
         }
 
         Ok(amplitudes)
     }
 
-    /// Apply gate to simulator
-    const fn apply_gate_to_simulator(
-        &self,
-        _simulator: &mut StateVectorSimulator,
-        _gate: &QuantumGate,
-    ) -> Result<()> {
-        // This would need proper integration with the state vector simulator
-        // For now, placeholder implementation
+    /// Apply a single gate to a raw state-vector slice.
+    ///
+    /// All gate matrices are given in the standard computational-basis order.
+    fn apply_gate_to_state(&self, state: &mut Vec<Complex64>, gate: &QuantumGate) -> Result<()> {
+        let n = self.num_qubits;
+        let dim = state.len();
+
+        /// Apply a 2×2 single-qubit gate matrix `m` (row-major, len 4) to `state`
+        /// at `target_bit` (0 = least-significant qubit).
+        fn apply_1q(state: &mut [Complex64], m: &[Complex64; 4], target_bit: usize, dim: usize) {
+            for i in 0..dim {
+                if (i >> target_bit) & 1 == 0 {
+                    let j = i | (1 << target_bit);
+                    let a = state[i];
+                    let b = state[j];
+                    state[i] = m[0] * a + m[1] * b;
+                    state[j] = m[2] * a + m[3] * b;
+                }
+            }
+        }
+
+        /// Apply a 4×4 two-qubit gate matrix `m` (row-major, len 16) to `state`
+        /// for (`ctrl_bit`, `tgt_bit`).  The matrix is ordered |00⟩,|01⟩,|10⟩,|11⟩
+        /// where the first index is `ctrl_bit` and the second is `tgt_bit`.
+        fn apply_2q(
+            state: &mut [Complex64],
+            m: &[Complex64; 16],
+            ctrl_bit: usize,
+            tgt_bit: usize,
+            dim: usize,
+        ) {
+            for i in 0..dim {
+                // Only process the "00" representative of each 4-element group
+                if (i >> ctrl_bit) & 1 == 0 && (i >> tgt_bit) & 1 == 0 {
+                    let i00 = i;
+                    let i01 = i | (1 << tgt_bit);
+                    let i10 = i | (1 << ctrl_bit);
+                    let i11 = i | (1 << ctrl_bit) | (1 << tgt_bit);
+                    let s00 = state[i00];
+                    let s01 = state[i01];
+                    let s10 = state[i10];
+                    let s11 = state[i11];
+                    state[i00] = m[0] * s00 + m[1] * s01 + m[2] * s10 + m[3] * s11;
+                    state[i01] = m[4] * s00 + m[5] * s01 + m[6] * s10 + m[7] * s11;
+                    state[i10] = m[8] * s00 + m[9] * s01 + m[10] * s10 + m[11] * s11;
+                    state[i11] = m[12] * s00 + m[13] * s01 + m[14] * s10 + m[15] * s11;
+                }
+            }
+        }
+
+        match gate.gate_type.as_str() {
+            // ─── single-qubit gates ───────────────────────────────────────
+            "H" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("H gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let f = std::f64::consts::FRAC_1_SQRT_2;
+                let c = Complex64::new(f, 0.0);
+                let m = [c, c, c, -c];
+                apply_1q(state, &m, q, dim);
+            }
+            "X" | "PauliX" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("X gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let m = [
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "Y" | "PauliY" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("Y gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let m = [
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, -1.0),
+                    Complex64::new(0.0, 1.0),
+                    Complex64::new(0.0, 0.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "Z" | "PauliZ" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("Z gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let m = [
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(-1.0, 0.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "S" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("S gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let m = [
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 1.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "T" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("T gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let f = std::f64::consts::FRAC_1_SQRT_2;
+                let m = [
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(f, f),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "SX" | "SqrtX" => {
+                // √X = ½ [[1+i, 1-i], [1-i, 1+i]]
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("SX gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let pp = Complex64::new(0.5, 0.5);
+                let pm = Complex64::new(0.5, -0.5);
+                let m = [pp, pm, pm, pp];
+                apply_1q(state, &m, q, dim);
+            }
+            "SqrtY" => {
+                // √Y = ½ [[1+i, -1-i], [1+i,  1+i]]
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("SqrtY gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let pp = Complex64::new(0.5, 0.5);
+                let nm = Complex64::new(-0.5, -0.5);
+                let m = [pp, nm, pp, pp];
+                apply_1q(state, &m, q, dim);
+            }
+            "SqrtW" => {
+                // √W where W = (X+Y)/√2; matrix = [[cos(π/4), -i·sin(π/4)·e^(-iπ/4)], [i·sin(π/4)·e^(iπ/4), cos(π/4)]]
+                // A common definition for √W used in Sycamore benchmarking:
+                // √W = [[1, -√(i)/√2], [√(-i)/√2, 1]] / √2, simplified to a unitary below.
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("SqrtW gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                // Use: W = (X+Y)/√2, so W matrix = 1/√2 * [[0,1-i],[1+i,0]]
+                // √W unitary (one principal square root):
+                let f = 0.5_f64;
+                let m = [
+                    Complex64::new(f, f),
+                    Complex64::new(f, -f),
+                    Complex64::new(f, f),
+                    Complex64::new(-f, f),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "RZ" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("RZ gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let angle = gate.parameters.first().copied().unwrap_or(0.0);
+                // RZ(θ) = [[e^(-iθ/2), 0], [0, e^(iθ/2)]]
+                let half = angle / 2.0;
+                let m = [
+                    Complex64::new((-half).cos(), (-half).sin()),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                    Complex64::new(half.cos(), half.sin()),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "RX" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("RX gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let angle = gate.parameters.first().copied().unwrap_or(0.0);
+                let half = angle / 2.0;
+                let c = half.cos();
+                let s = half.sin();
+                let m = [
+                    Complex64::new(c, 0.0),
+                    Complex64::new(0.0, -s),
+                    Complex64::new(0.0, -s),
+                    Complex64::new(c, 0.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            "RY" => {
+                let q = *gate.qubits.first().ok_or_else(|| {
+                    SimulatorError::InvalidInput("RY gate requires a qubit argument".to_string())
+                })?;
+                if q >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index {q} out of range ({n} qubits)"
+                    )));
+                }
+                let angle = gate.parameters.first().copied().unwrap_or(0.0);
+                let half = angle / 2.0;
+                let c = half.cos();
+                let s = half.sin();
+                let m = [
+                    Complex64::new(c, 0.0),
+                    Complex64::new(-s, 0.0),
+                    Complex64::new(s, 0.0),
+                    Complex64::new(c, 0.0),
+                ];
+                apply_1q(state, &m, q, dim);
+            }
+            // ─── two-qubit gates ──────────────────────────────────────────
+            "CNOT" | "CX" => {
+                if gate.qubits.len() < 2 {
+                    return Err(SimulatorError::InvalidInput(
+                        "CNOT gate requires 2 qubit arguments".to_string(),
+                    ));
+                }
+                let ctrl = gate.qubits[0];
+                let tgt = gate.qubits[1];
+                if ctrl >= n || tgt >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index out of range ({n} qubits)"
+                    )));
+                }
+                // CNOT matrix |ctrl,tgt⟩: [[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]
+                let o = Complex64::new(0.0, 0.0);
+                let l = Complex64::new(1.0, 0.0);
+                let m: [Complex64; 16] = [l, o, o, o, o, l, o, o, o, o, o, l, o, o, l, o];
+                apply_2q(state, &m, ctrl, tgt, dim);
+            }
+            "CZ" => {
+                if gate.qubits.len() < 2 {
+                    return Err(SimulatorError::InvalidInput(
+                        "CZ gate requires 2 qubit arguments".to_string(),
+                    ));
+                }
+                let ctrl = gate.qubits[0];
+                let tgt = gate.qubits[1];
+                if ctrl >= n || tgt >= n {
+                    return Err(SimulatorError::InvalidInput(format!(
+                        "Qubit index out of range ({n} qubits)"
+                    )));
+                }
+                // CZ: flip phase of |11⟩ component
+                let mask = (1 << ctrl) | (1 << tgt);
+                for i in 0..dim {
+                    if (i & mask) == mask {
+                        state[i] = -state[i];
+                    }
+                }
+            }
+            // Unknown / custom gates: skip silently (no-op) to allow custom gate sets
+            _ => {}
+        }
+
         Ok(())
     }
 
-    /// Simulate quantum sampling
+    /// Simulate quantum sampling using precomputed ideal state amplitudes.
+    ///
+    /// For each circuit's amplitude vector we build a cumulative-probability
+    /// table and draw `samples_per_circuit` bitstrings from it, faithfully
+    /// mirroring the quantum probability distribution obtained by the classical
+    /// state-vector simulation.
     fn simulate_quantum_sampling(
         &mut self,
-        circuits: &[RandomCircuit],
+        ideal_amplitudes: &[Array1<Complex64>],
     ) -> Result<Vec<Vec<Vec<u8>>>> {
-        let mut all_samples = Vec::with_capacity(circuits.len());
+        let mut all_samples = Vec::with_capacity(ideal_amplitudes.len());
 
-        for circuit in circuits {
-            let samples = self.sample_from_circuit(circuit)?;
+        for amplitudes in ideal_amplitudes {
+            let samples = self.sample_from_amplitudes(amplitudes)?;
             all_samples.push(samples);
         }
 
         Ok(all_samples)
     }
 
-    /// Sample from a single circuit
-    fn sample_from_circuit(&mut self, _circuit: &RandomCircuit) -> Result<Vec<Vec<u8>>> {
-        // For now, generate random samples (should use actual quantum sampling)
-        let mut samples = Vec::with_capacity(self.params.samples_per_circuit);
+    /// Draw `samples_per_circuit` bitstrings from a state-amplitude vector
+    /// using inverse-CDF (alias-free) sampling.
+    fn sample_from_amplitudes(&mut self, amplitudes: &Array1<Complex64>) -> Result<Vec<Vec<u8>>> {
+        let dim = amplitudes.len();
+        let n = self.num_qubits;
 
+        // Build probability distribution from |amplitude|²
+        let mut probs: Vec<f64> = amplitudes.iter().map(|a| a.norm_sqr()).collect();
+
+        // Normalise to guard against accumulated floating-point drift
+        let total: f64 = probs.iter().sum();
+        if total <= 0.0 {
+            return Err(SimulatorError::InvalidInput(
+                "State vector has zero norm — cannot sample".to_string(),
+            ));
+        }
+        for p in &mut probs {
+            *p /= total;
+        }
+
+        // Build cumulative distribution (CDF)
+        let mut cdf = Vec::with_capacity(dim);
+        let mut running = 0.0_f64;
+        for p in &probs {
+            running += p;
+            cdf.push(running);
+        }
+
+        // Sample `samples_per_circuit` bitstrings via binary search on CDF
+        let mut samples = Vec::with_capacity(self.params.samples_per_circuit);
         for _ in 0..self.params.samples_per_circuit {
-            let mut sample = Vec::with_capacity(self.num_qubits);
-            for _ in 0..self.num_qubits {
-                sample.push(u8::from(self.rng.gen::<bool>()));
+            let u: f64 = self.rng.gen();
+            // Binary-search for the first CDF entry >= u
+            let outcome = cdf.partition_point(|&c| c < u).min(dim - 1);
+
+            // Convert outcome index to a per-qubit bitstring (MSB first)
+            let mut bitstring = Vec::with_capacity(n);
+            for q in (0..n).rev() {
+                bitstring.push(((outcome >> q) & 1) as u8);
             }
-            samples.push(sample);
+            samples.push(bitstring);
         }
 
         Ok(samples)

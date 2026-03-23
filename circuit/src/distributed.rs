@@ -12,6 +12,17 @@ use scirs2_core::Complex64;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+/// Internal record tracking a submitted job's lifecycle.
+#[derive(Debug, Clone)]
+struct JobRecord {
+    /// Current execution status
+    status: ExecutionStatus,
+    /// Identifiers of the backends that were selected for this job
+    backends: Vec<String>,
+    /// Monotonic instant at which the job was submitted
+    submitted_at: std::time::Instant,
+}
+
 /// A distributed quantum circuit execution engine
 ///
 /// This manages execution of quantum circuits across multiple backends,
@@ -28,6 +39,8 @@ pub struct DistributedExecutor {
     pub scheduler: ExecutionScheduler,
     /// Resource management
     pub resource_manager: ResourceManager,
+    /// In-memory job registry mapping job ID → job record
+    job_registry: HashMap<String, JobRecord>,
 }
 
 /// A quantum execution backend (device, simulator, or cloud service)
@@ -788,6 +801,7 @@ impl DistributedExecutor {
                     retention_period: 3600.0 * 24.0 * 30.0, // 30 days
                 },
             },
+            job_registry: HashMap::new(),
         }
     }
 
@@ -845,14 +859,20 @@ impl DistributedExecutor {
             ));
         }
 
-        // This is a placeholder for job submission
-        // In a real implementation, this would:
-        // 1. Queue the job according to scheduling policy
-        // 2. Allocate resources
-        // 3. Distribute execution across selected backends
-        // 4. Set up monitoring and fault tolerance
+        let job_id = job.id.clone();
+        let submitted_at = job.submitted_at;
 
-        Ok(job.id)
+        // Register the job as queued and track the selected backends
+        self.job_registry.insert(
+            job_id.clone(),
+            JobRecord {
+                status: ExecutionStatus::Queued,
+                backends: selected_backends,
+                submitted_at,
+            },
+        );
+
+        Ok(job_id)
     }
 
     /// Select appropriate backends for a job
@@ -875,22 +895,23 @@ impl DistributedExecutor {
                 suitable_backends.truncate(self.fault_tolerance.redundancy_level.max(1));
             }
             LoadBalancingStrategy::LeastQueueTime => {
-                // Sort by queue time
+                // Sort by queue time; entries without a matching backend retain
+                // their relative order (treated as having zero wait time).
                 suitable_backends.sort_by(|a, b| {
-                    let backend_a = self
+                    let wait_a = self
                         .backends
                         .iter()
                         .find(|backend| backend.id == *a)
-                        .expect("Backend ID in suitable_backends must exist in backends list");
-                    let backend_b = self
+                        .map(|backend| backend.queue_info.estimated_wait_time)
+                        .unwrap_or(0.0);
+                    let wait_b = self
                         .backends
                         .iter()
                         .find(|backend| backend.id == *b)
-                        .expect("Backend ID in suitable_backends must exist in backends list");
-                    backend_a
-                        .queue_info
-                        .estimated_wait_time
-                        .partial_cmp(&backend_b.queue_info.estimated_wait_time)
+                        .map(|backend| backend.queue_info.estimated_wait_time)
+                        .unwrap_or(0.0);
+                    wait_a
+                        .partial_cmp(&wait_b)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 suitable_backends.truncate(self.fault_tolerance.redundancy_level.max(1));
@@ -940,37 +961,69 @@ impl DistributedExecutor {
         true
     }
 
-    /// Get execution status for a job
-    pub const fn get_job_status(&self, job_id: &str) -> QuantRS2Result<ExecutionStatus> {
-        // This is a placeholder - real implementation would track job status
-        Ok(ExecutionStatus::Queued)
+    /// Get the current execution status for a previously submitted job.
+    ///
+    /// Returns `QuantRS2Error::InvalidInput` if no job with the given ID exists.
+    pub fn get_job_status(&self, job_id: &str) -> QuantRS2Result<ExecutionStatus> {
+        self.job_registry
+            .get(job_id)
+            .map(|record| record.status.clone())
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown job ID: '{job_id}'")))
     }
 
-    /// Cancel a job
-    pub const fn cancel_job(&mut self, job_id: &str) -> QuantRS2Result<()> {
-        // This is a placeholder - real implementation would cancel the job
-        // across all backends and clean up resources
+    /// Cancel a queued or running job.
+    ///
+    /// If the job is already completed, failed, or cancelled the call succeeds
+    /// but the status is not changed.  Returns `QuantRS2Error::InvalidInput`
+    /// if no job with the given ID exists.
+    pub fn cancel_job(&mut self, job_id: &str) -> QuantRS2Result<()> {
+        let record = self
+            .job_registry
+            .get_mut(job_id)
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown job ID: '{job_id}'")))?;
+
+        match record.status {
+            ExecutionStatus::Queued | ExecutionStatus::Running => {
+                record.status = ExecutionStatus::Cancelled;
+            }
+            // Already in a terminal state — nothing to do
+            ExecutionStatus::Completed
+            | ExecutionStatus::Failed(_)
+            | ExecutionStatus::Cancelled
+            | ExecutionStatus::TimedOut => {}
+        }
+
         Ok(())
     }
 
-    /// Get results for a completed job
+    /// Retrieve the result record for a job.
+    ///
+    /// Returns `QuantRS2Error::InvalidInput` if no job with the given ID exists.
+    /// For jobs that are still queued or running the returned `status` field
+    /// will reflect that; callers should check the status before consuming the
+    /// result fields.
     pub fn get_results(&self, job_id: &str) -> QuantRS2Result<DistributedResult> {
-        // This is a placeholder - real implementation would aggregate
-        // results from all backends and apply error correction
+        let record = self
+            .job_registry
+            .get(job_id)
+            .ok_or_else(|| QuantRS2Error::InvalidInput(format!("Unknown job ID: '{job_id}'")))?;
+
+        let elapsed = record.submitted_at.elapsed();
+
         Ok(DistributedResult {
             job_id: job_id.to_string(),
-            status: ExecutionStatus::Completed,
+            status: record.status.clone(),
             backend_results: HashMap::new(),
             final_result: None,
             metadata: ExecutionMetadata {
-                total_time: Duration::from_secs(1),
+                total_time: elapsed,
                 queue_time: Duration::from_secs(0),
-                backends_used: vec!["backend_1".to_string()],
+                backends_used: record.backends.clone(),
                 resource_usage: ResourceUsage {
-                    cpu_hours: 0.1,
-                    memory_hours: 0.1,
-                    qubit_hours: 0.1,
-                    network_usage: 0.01,
+                    cpu_hours: elapsed.as_secs_f64() / 3600.0,
+                    memory_hours: elapsed.as_secs_f64() / 3600.0,
+                    qubit_hours: elapsed.as_secs_f64() / 3600.0,
+                    network_usage: 0.0,
                 },
                 cost_info: None,
             },

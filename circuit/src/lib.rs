@@ -130,6 +130,7 @@ pub mod distributed;
 pub mod equivalence;
 pub mod fault_tolerant;
 pub mod formatter;
+pub mod gate_applier;
 pub mod graph_optimizer;
 pub mod linter;
 pub mod measurement;

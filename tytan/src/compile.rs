@@ -349,6 +349,65 @@ impl CompiledModel {
 
         qubo
     }
+
+    /// Count the number of constraint violations for a given variable assignment.
+    ///
+    /// Returns the count of constraints that the assignment violates.
+    /// `assignments` maps variable names to their binary values (true = 1, false = 0).
+    pub fn count_constraint_violations(&self, assignments: &HashMap<String, bool>) -> usize {
+        let float_vals: HashMap<String, f64> = assignments
+            .iter()
+            .map(|(k, &v)| (k.clone(), if v { 1.0 } else { 0.0 }))
+            .collect();
+
+        let mut violations = 0usize;
+
+        for constraint in &self.constraints {
+            let violated = match constraint {
+                Constraint::Equality { expr, value, .. } => match expr.eval(&float_vals) {
+                    Ok(result) => (result - value).abs() > 1e-6,
+                    Err(_) => false,
+                },
+                Constraint::LessEqual { expr, value, .. } => match expr.eval(&float_vals) {
+                    Ok(result) => result > value + 1e-6,
+                    Err(_) => false,
+                },
+                Constraint::AtMostOne { variables, .. } => {
+                    let count: f64 = variables
+                        .iter()
+                        .filter_map(|v| v.eval(&float_vals).ok())
+                        .filter(|&val| val > 0.5)
+                        .count() as f64;
+                    count > 1.0 + 1e-6
+                }
+                Constraint::ImpliesAny {
+                    conditions, result, ..
+                } => {
+                    let any_condition_true = conditions
+                        .iter()
+                        .any(|c| c.eval(&float_vals).map(|val| val > 0.5).unwrap_or(false));
+                    if any_condition_true {
+                        match result.eval(&float_vals) {
+                            Ok(val) => val < 0.5,
+                            Err(_) => false,
+                        }
+                    } else {
+                        false
+                    }
+                }
+            };
+            if violated {
+                violations += 1;
+            }
+        }
+
+        violations
+    }
+
+    /// Return the total number of constraints in this model.
+    pub fn num_constraints(&self) -> usize {
+        self.constraints.len()
+    }
 }
 
 /// High-level model for constraint optimization problems (non-dwave version)
@@ -753,17 +812,18 @@ impl Compile {
         // Expand the expression to simplify
         let expr = self.expr.expand();
 
-        // Check the degree of each term
-        let max_degree = calc_highest_degree(&expr)?;
-        if max_degree > 2 {
-            return Err(CompileError::DegreeTooHigh(max_degree, 2));
-        }
-
         // Replace all second-degree terms (x^2 and x*x) with x, since x^2 = x for binary variables
+        // Do this BEFORE degree checking so that x^2 terms correctly appear as degree-1 after reduction
         let expr = replace_squared_terms(&expr)?;
 
         // Extract the coefficients and variables
         let (coeffs, offset) = extract_coefficients(&expr)?;
+
+        // Check the actual degree using the extracted coefficient map (reliable, symbolic-expression-agnostic)
+        let max_degree = coeffs.keys().map(|vars| vars.len()).max().unwrap_or(0);
+        if max_degree > 2 {
+            return Err(CompileError::DegreeTooHigh(max_degree, 2));
+        }
 
         // Convert to a QUBO matrix
         let (matrix, var_map) = build_qubo_matrix(&coeffs)?;
@@ -1254,7 +1314,11 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
         let mut vars = Vec::new();
 
         // SAFETY: is_mul() check guarantees as_mul() will succeed
-        for factor in term.as_mul().expect("is_mul() was true") {
+        let factors = term.as_mul().expect("is_mul() was true");
+        // Use a stack to iteratively flatten nested products (handles symengine's
+        // internal representation where x*y*z may appear as (* (* x y) z))
+        let mut factor_stack: Vec<_> = factors.into_iter().collect();
+        while let Some(factor) = factor_stack.pop() {
             if factor.is_number() {
                 // Numerical factor is a coefficient
                 let value = match factor.to_f64() {
@@ -1271,8 +1335,31 @@ fn extract_term_coefficients(term: &Expr) -> CompileResult<(HashMap<Vec<String>,
                 // SAFETY: is_symbol() check guarantees as_symbol() will succeed
                 let var_name = factor.as_symbol().expect("is_symbol() was true");
                 vars.push(var_name.to_string());
+            } else if factor.is_mul() {
+                // Nested product — flatten by pushing sub-factors back onto the stack
+                let sub_factors = factor.as_mul().expect("is_mul() was true");
+                factor_stack.extend(sub_factors);
+            } else if factor.is_pow() {
+                // Power term like x^2 — for binary vars x^k = x, treat as x
+                let (base, exp) = factor.as_pow().expect("is_pow() was true");
+                if base.is_symbol() && exp.is_number() {
+                    let exp_val = exp.to_f64().unwrap_or(0.0);
+                    if exp_val.is_sign_positive() && exp_val.fract() == 0.0 && exp_val >= 1.0 {
+                        // Binary variable: x^k = x for k >= 1
+                        let var_name = base.as_symbol().expect("is_symbol() was true");
+                        vars.push(var_name.to_string());
+                    } else {
+                        return Err(CompileError::InvalidExpression(format!(
+                            "Unsupported power in product: {factor}"
+                        )));
+                    }
+                } else {
+                    return Err(CompileError::InvalidExpression(format!(
+                        "Unsupported power term in product: {factor}"
+                    )));
+                }
             } else {
-                // More complex factors not supported in this example
+                // More complex factors not supported
                 return Err(CompileError::InvalidExpression(format!(
                     "Unsupported term in product: {factor}"
                 )));

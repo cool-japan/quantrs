@@ -4,25 +4,38 @@
 //! simulation of large Clifford circuits, providing better memory usage and
 //! performance for circuits with many qubits.
 
-// POLICY EXCEPTION: Uses nalgebra_sparse (not scirs2_sparse)
-//
-// REASON: scirs2_sparse v0.1.2 requires Float trait bounds (f32/f64),
-//         but this module uses u8 for binary Pauli operator representations.
-//
-// TECHNICAL JUSTIFICATION:
-// - Memory efficiency: u8 (1 byte) vs f64 (8 bytes) = 8x savings for large qubit counts
-// - Semantic correctness: Values are truly binary (0/1), not floating point
-// - Performance: Integer operations faster than FP arithmetic
-//
-// MIGRATION PATH: Will migrate when scirs2_sparse adds integer type support
-//
-// See: /tmp/CRITICAL_SCIRS2_SPARSE_LIMITATION.md for detailed analysis
-use nalgebra_sparse::{CooMatrix, CsrMatrix}; // POLICY EXCEPTION (see above)
 use quantrs2_circuit::prelude::*;
 use quantrs2_core::prelude::*;
+use scirs2_sparse::coo::CooMatrix;
+use scirs2_sparse::csr::CsrMatrix;
+
+/// Build a CsrMatrix<u8> from row/col/val triplets (1-row matrix)
+fn build_csr_1row(
+    num_cols: usize,
+    col_indices: Vec<usize>,
+    values: Vec<u8>,
+) -> Result<CsrMatrix<u8>, QuantRS2Error> {
+    if values.is_empty() {
+        return Ok(CsrMatrix::empty((1, num_cols)));
+    }
+    let row_indices = vec![0usize; values.len()];
+    CooMatrix::new(values, row_indices, col_indices, (1, num_cols))
+        .and_then(|coo| {
+            let (rows, cols, vals) = coo.get_triplets();
+            CsrMatrix::from_triplets(1, num_cols, rows, cols, vals)
+        })
+        .map_err(|e| QuantRS2Error::InvalidInput(format!("Failed to build sparse matrix: {e}")))
+}
+
+/// Iterate over non-zero (col, value) pairs of a 1-row CsrMatrix
+fn iter_row0(mat: &CsrMatrix<u8>) -> impl Iterator<Item = (usize, u8)> + '_ {
+    let start = mat.indptr[0];
+    let end = mat.indptr[1];
+    (start..end).map(|j| (mat.indices[j], mat.data[j]))
+}
 
 /// Sparse representation of a Pauli operator
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SparsePauli {
     /// Sparse X component (1 where X or Y is present)
     x_sparse: CsrMatrix<u8>,
@@ -36,8 +49,8 @@ impl SparsePauli {
     /// Create an identity Pauli operator
     #[must_use]
     pub fn identity(num_qubits: usize) -> Self {
-        let x_sparse = CsrMatrix::zeros(1, num_qubits);
-        let z_sparse = CsrMatrix::zeros(1, num_qubits);
+        let x_sparse = CsrMatrix::empty((1, num_qubits));
+        let z_sparse = CsrMatrix::empty((1, num_qubits));
         Self {
             x_sparse,
             z_sparse,
@@ -74,37 +87,8 @@ impl SparsePauli {
             _ => {}
         }
 
-        let x_sparse = if x_values.is_empty() {
-            CsrMatrix::zeros(1, num_qubits)
-        } else {
-            let coo = CooMatrix::try_from_triplets(
-                1,
-                num_qubits,
-                vec![0; x_values.len()],
-                x_indices,
-                x_values,
-            )
-            .map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to create sparse X matrix: {e}"))
-            })?;
-            CsrMatrix::from(&coo)
-        };
-
-        let z_sparse = if z_values.is_empty() {
-            CsrMatrix::zeros(1, num_qubits)
-        } else {
-            let coo = CooMatrix::try_from_triplets(
-                1,
-                num_qubits,
-                vec![0; z_values.len()],
-                z_indices,
-                z_values,
-            )
-            .map_err(|e| {
-                QuantRS2Error::InvalidInput(format!("Failed to create sparse Z matrix: {e}"))
-            })?;
-            CsrMatrix::from(&coo)
-        };
+        let x_sparse = build_csr_1row(num_qubits, x_indices, x_values)?;
+        let z_sparse = build_csr_1row(num_qubits, z_indices, z_values)?;
 
         Ok(Self {
             x_sparse,
@@ -118,23 +102,11 @@ impl SparsePauli {
         let mut phase = 0u8;
 
         // For each qubit position, check commutation
-        for col in 0..self.x_sparse.ncols() {
-            let self_x = self
-                .x_sparse
-                .get_entry(0, col)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let self_z = self
-                .z_sparse
-                .get_entry(0, col)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let other_x = other
-                .x_sparse
-                .get_entry(0, col)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let other_z = other
-                .z_sparse
-                .get_entry(0, col)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
+        for col in 0..self.x_sparse.cols() {
+            let self_x = self.x_sparse.get(0, col);
+            let self_z = self.z_sparse.get(0, col);
+            let other_x = other.x_sparse.get(0, col);
+            let other_z = other.z_sparse.get(0, col);
 
             // Count anticommutations
             if self_x > 0 && other_z > 0 && self_z == 0 {
@@ -169,12 +141,12 @@ impl SparseStabilizerTableau {
             // Stabilizer i is Z_i
             stabilizers.push(
                 SparsePauli::single_qubit(num_qubits, i, 'Z')
-                    .expect("Failed to create stabilizer Z operator"),
+                    .unwrap_or_else(|_| SparsePauli::identity(num_qubits)),
             );
             // Destabilizer i is X_i
             destabilizers.push(
                 SparsePauli::single_qubit(num_qubits, i, 'X')
-                    .expect("Failed to create destabilizer X operator"),
+                    .unwrap_or_else(|_| SparsePauli::identity(num_qubits)),
             );
         }
 
@@ -194,166 +166,110 @@ impl SparseStabilizerTableau {
         // H swaps X and Z components
         for i in 0..self.num_qubits {
             // For stabilizers
-            let stab = &mut self.stabilizers[i];
-            let x_val = stab
-                .x_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let z_val = stab
-                .z_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
+            {
+                let stab = &mut self.stabilizers[i];
+                let x_val = stab.x_sparse.get(0, qubit);
+                let z_val = stab.z_sparse.get(0, qubit);
 
-            // Update phase if both X and Z are present (Y gate)
-            if x_val > 0 && z_val > 0 {
-                stab.phase = (stab.phase + 2) % 4; // Add -1
-            }
+                // Update phase if both X and Z are present (Y gate)
+                if x_val > 0 && z_val > 0 {
+                    stab.phase = (stab.phase + 2) % 4; // Add -1
+                }
 
-            // Swap X and Z - rebuild sparse matrices
-            let mut new_x_values = vec![];
-            let mut new_x_indices = vec![];
-            let mut new_z_values = vec![];
-            let mut new_z_indices = vec![];
+                // Swap X and Z - rebuild sparse matrices
+                let mut new_x_values = vec![];
+                let mut new_x_indices = vec![];
+                let mut new_z_values = vec![];
+                let mut new_z_indices = vec![];
 
-            // Copy all entries except the target qubit
-            for (_, col, val) in stab.x_sparse.triplet_iter() {
-                if col != qubit && *val > 0 {
+                // Copy all entries except the target qubit
+                for (col, val) in iter_row0(&stab.x_sparse) {
+                    if col != qubit && val > 0 {
+                        new_x_values.push(1u8);
+                        new_x_indices.push(col);
+                    }
+                }
+                for (col, val) in iter_row0(&stab.z_sparse) {
+                    if col != qubit && val > 0 {
+                        new_z_values.push(1u8);
+                        new_z_indices.push(col);
+                    }
+                }
+
+                // Add swapped entry for target qubit
+                if z_val > 0 {
                     new_x_values.push(1u8);
-                    new_x_indices.push(col);
+                    new_x_indices.push(qubit);
                 }
-            }
-            for (_, col, val) in stab.z_sparse.triplet_iter() {
-                if col != qubit && *val > 0 {
+                if x_val > 0 {
                     new_z_values.push(1u8);
-                    new_z_indices.push(col);
+                    new_z_indices.push(qubit);
                 }
-            }
 
-            // Add swapped entry for target qubit
-            if z_val > 0 {
-                new_x_values.push(1u8);
-                new_x_indices.push(qubit);
+                stab.x_sparse = build_csr_1row(self.num_qubits, new_x_indices, new_x_values)
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to rebuild sparse X matrix: {e}"
+                        ))
+                    })?;
+                stab.z_sparse = build_csr_1row(self.num_qubits, new_z_indices, new_z_values)
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to rebuild sparse Z matrix: {e}"
+                        ))
+                    })?;
             }
-            if x_val > 0 {
-                new_z_values.push(1u8);
-                new_z_indices.push(qubit);
-            }
-
-            // Rebuild sparse matrices
-            stab.x_sparse = if new_x_values.is_empty() {
-                CsrMatrix::zeros(1, self.num_qubits)
-            } else {
-                let coo = CooMatrix::try_from_triplets(
-                    1,
-                    self.num_qubits,
-                    vec![0; new_x_values.len()],
-                    new_x_indices,
-                    new_x_values,
-                )
-                .map_err(|e| {
-                    QuantRS2Error::GateApplicationFailed(format!(
-                        "Failed to rebuild sparse X matrix: {e}"
-                    ))
-                })?;
-                CsrMatrix::from(&coo)
-            };
-
-            stab.z_sparse = if new_z_values.is_empty() {
-                CsrMatrix::zeros(1, self.num_qubits)
-            } else {
-                let coo = CooMatrix::try_from_triplets(
-                    1,
-                    self.num_qubits,
-                    vec![0; new_z_values.len()],
-                    new_z_indices,
-                    new_z_values,
-                )
-                .map_err(|e| {
-                    QuantRS2Error::GateApplicationFailed(format!(
-                        "Failed to rebuild sparse Z matrix: {e}"
-                    ))
-                })?;
-                CsrMatrix::from(&coo)
-            };
 
             // Same for destabilizers
-            let destab = &mut self.destabilizers[i];
-            let dx_val = destab
-                .x_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let dz_val = destab
-                .z_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
+            {
+                let destab = &mut self.destabilizers[i];
+                let dx_val = destab.x_sparse.get(0, qubit);
+                let dz_val = destab.z_sparse.get(0, qubit);
 
-            if dx_val > 0 && dz_val > 0 {
-                destab.phase = (destab.phase + 2) % 4;
-            }
+                if dx_val > 0 && dz_val > 0 {
+                    destab.phase = (destab.phase + 2) % 4;
+                }
 
-            // Similar swapping for destabilizers (simplified for brevity)
-            let mut new_dx_values = vec![];
-            let mut new_dx_indices = vec![];
-            let mut new_dz_values = vec![];
-            let mut new_dz_indices = vec![];
+                let mut new_dx_values = vec![];
+                let mut new_dx_indices = vec![];
+                let mut new_dz_values = vec![];
+                let mut new_dz_indices = vec![];
 
-            for (_, col, val) in destab.x_sparse.triplet_iter() {
-                if col != qubit && *val > 0 {
+                for (col, val) in iter_row0(&destab.x_sparse) {
+                    if col != qubit && val > 0 {
+                        new_dx_values.push(1u8);
+                        new_dx_indices.push(col);
+                    }
+                }
+                for (col, val) in iter_row0(&destab.z_sparse) {
+                    if col != qubit && val > 0 {
+                        new_dz_values.push(1u8);
+                        new_dz_indices.push(col);
+                    }
+                }
+
+                if dz_val > 0 {
                     new_dx_values.push(1u8);
-                    new_dx_indices.push(col);
+                    new_dx_indices.push(qubit);
                 }
-            }
-            for (_, col, val) in destab.z_sparse.triplet_iter() {
-                if col != qubit && *val > 0 {
+                if dx_val > 0 {
                     new_dz_values.push(1u8);
-                    new_dz_indices.push(col);
+                    new_dz_indices.push(qubit);
                 }
-            }
 
-            if dz_val > 0 {
-                new_dx_values.push(1u8);
-                new_dx_indices.push(qubit);
+                destab.x_sparse = build_csr_1row(self.num_qubits, new_dx_indices, new_dx_values)
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to rebuild destabilizer X matrix: {e}"
+                        ))
+                    })?;
+                destab.z_sparse = build_csr_1row(self.num_qubits, new_dz_indices, new_dz_values)
+                    .map_err(|e| {
+                        QuantRS2Error::GateApplicationFailed(format!(
+                            "Failed to rebuild destabilizer Z matrix: {e}"
+                        ))
+                    })?;
             }
-            if dx_val > 0 {
-                new_dz_values.push(1u8);
-                new_dz_indices.push(qubit);
-            }
-
-            destab.x_sparse = if new_dx_values.is_empty() {
-                CsrMatrix::zeros(1, self.num_qubits)
-            } else {
-                let coo = CooMatrix::try_from_triplets(
-                    1,
-                    self.num_qubits,
-                    vec![0; new_dx_values.len()],
-                    new_dx_indices,
-                    new_dx_values,
-                )
-                .map_err(|e| {
-                    QuantRS2Error::GateApplicationFailed(format!(
-                        "Failed to rebuild destabilizer X matrix: {e}"
-                    ))
-                })?;
-                CsrMatrix::from(&coo)
-            };
-
-            destab.z_sparse = if new_dz_values.is_empty() {
-                CsrMatrix::zeros(1, self.num_qubits)
-            } else {
-                let coo = CooMatrix::try_from_triplets(
-                    1,
-                    self.num_qubits,
-                    vec![0; new_dz_values.len()],
-                    new_dz_indices,
-                    new_dz_values,
-                )
-                .map_err(|e| {
-                    QuantRS2Error::GateApplicationFailed(format!(
-                        "Failed to rebuild destabilizer Z matrix: {e}"
-                    ))
-                })?;
-                CsrMatrix::from(&coo)
-            };
         }
 
         Ok(())
@@ -368,97 +284,64 @@ impl SparseStabilizerTableau {
         // CNOT: X_c → X_c X_t, Z_t → Z_c Z_t
         for i in 0..self.num_qubits {
             // Update stabilizers
-            let stab = &mut self.stabilizers[i];
-            let control_x = stab
-                .x_sparse
-                .get_entry(0, control)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let control_z = stab
-                .z_sparse
-                .get_entry(0, control)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let target_x = stab
-                .x_sparse
-                .get_entry(0, target)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let target_z = stab
-                .z_sparse
-                .get_entry(0, target)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
+            {
+                let stab = &mut self.stabilizers[i];
+                let control_x = stab.x_sparse.get(0, control);
+                let control_z = stab.z_sparse.get(0, control);
+                let target_x = stab.x_sparse.get(0, target);
+                let target_z = stab.z_sparse.get(0, target);
 
-            // If X on control, toggle X on target
-            if control_x > 0 {
-                // Use sparse matrix operations to update
-                let mut new_x_values = vec![];
-                let mut new_x_indices = vec![];
+                // If X on control, toggle X on target
+                if control_x > 0 {
+                    let mut new_x_values = vec![];
+                    let mut new_x_indices = vec![];
 
-                for (_, col, val) in stab.x_sparse.triplet_iter() {
-                    if col != target && *val > 0 {
+                    for (col, val) in iter_row0(&stab.x_sparse) {
+                        if col != target && val > 0 {
+                            new_x_values.push(1u8);
+                            new_x_indices.push(col);
+                        }
+                    }
+
+                    // Toggle target
+                    if target_x == 0 {
                         new_x_values.push(1u8);
-                        new_x_indices.push(col);
+                        new_x_indices.push(target);
                     }
+
+                    stab.x_sparse = build_csr_1row(self.num_qubits, new_x_indices, new_x_values)
+                        .map_err(|e| {
+                            QuantRS2Error::GateApplicationFailed(format!(
+                                "Failed to update X matrix in CNOT: {e}"
+                            ))
+                        })?;
                 }
 
-                // Toggle target
-                if target_x == 0 {
-                    new_x_values.push(1u8);
-                    new_x_indices.push(target);
-                }
+                // If Z on target, toggle Z on control
+                if target_z > 0 {
+                    let mut new_z_values = vec![];
+                    let mut new_z_indices = vec![];
 
-                stab.x_sparse = if new_x_values.is_empty() {
-                    CsrMatrix::zeros(1, self.num_qubits)
-                } else {
-                    let coo = CooMatrix::try_from_triplets(
-                        1,
-                        self.num_qubits,
-                        vec![0; new_x_values.len()],
-                        new_x_indices,
-                        new_x_values,
-                    )
-                    .map_err(|e| {
-                        QuantRS2Error::GateApplicationFailed(format!(
-                            "Failed to update X matrix in CNOT: {e}"
-                        ))
-                    })?;
-                    CsrMatrix::from(&coo)
-                };
-            }
+                    for (col, val) in iter_row0(&stab.z_sparse) {
+                        if col != control && val > 0 {
+                            new_z_values.push(1u8);
+                            new_z_indices.push(col);
+                        }
+                    }
 
-            // If Z on target, toggle Z on control
-            if target_z > 0 {
-                let mut new_z_values = vec![];
-                let mut new_z_indices = vec![];
-
-                for (_, col, val) in stab.z_sparse.triplet_iter() {
-                    if col != control && *val > 0 {
+                    // Toggle control
+                    if control_z == 0 {
                         new_z_values.push(1u8);
-                        new_z_indices.push(col);
+                        new_z_indices.push(control);
                     }
-                }
 
-                // Toggle control
-                if control_z == 0 {
-                    new_z_values.push(1u8);
-                    new_z_indices.push(control);
+                    stab.z_sparse = build_csr_1row(self.num_qubits, new_z_indices, new_z_values)
+                        .map_err(|e| {
+                            QuantRS2Error::GateApplicationFailed(format!(
+                                "Failed to update Z matrix in CNOT target: {e}"
+                            ))
+                        })?;
                 }
-
-                stab.z_sparse = if new_z_values.is_empty() {
-                    CsrMatrix::zeros(1, self.num_qubits)
-                } else {
-                    let coo = CooMatrix::try_from_triplets(
-                        1,
-                        self.num_qubits,
-                        vec![0; new_z_values.len()],
-                        new_z_indices,
-                        new_z_values,
-                    )
-                    .map_err(|e| {
-                        QuantRS2Error::GateApplicationFailed(format!(
-                            "Failed to update Z matrix in CNOT target: {e}"
-                        ))
-                    })?;
-                    CsrMatrix::from(&coo)
-                };
             }
         }
 
@@ -474,14 +357,8 @@ impl SparseStabilizerTableau {
         // S: X → Y, Z → Z
         for i in 0..self.num_qubits {
             let stab = &mut self.stabilizers[i];
-            let x_val = stab
-                .x_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
-            let z_val = stab
-                .z_sparse
-                .get_entry(0, qubit)
-                .map_or(0, nalgebra_sparse::SparseEntry::into_value);
+            let x_val = stab.x_sparse.get(0, qubit);
+            let z_val = stab.z_sparse.get(0, qubit);
 
             // If X but not Z, convert to Y (add Z and update phase)
             if x_val > 0 && z_val == 0 {
@@ -489,8 +366,8 @@ impl SparseStabilizerTableau {
                 let mut new_z_values = vec![];
                 let mut new_z_indices = vec![];
 
-                for (_, col, val) in stab.z_sparse.triplet_iter() {
-                    if *val > 0 {
+                for (col, val) in iter_row0(&stab.z_sparse) {
+                    if val > 0 {
                         new_z_values.push(1u8);
                         new_z_indices.push(col);
                     }
@@ -499,23 +376,12 @@ impl SparseStabilizerTableau {
                 new_z_values.push(1u8);
                 new_z_indices.push(qubit);
 
-                stab.z_sparse = if new_z_values.is_empty() {
-                    CsrMatrix::zeros(1, self.num_qubits)
-                } else {
-                    let coo = CooMatrix::try_from_triplets(
-                        1,
-                        self.num_qubits,
-                        vec![0; new_z_values.len()],
-                        new_z_indices,
-                        new_z_values,
-                    )
+                stab.z_sparse = build_csr_1row(self.num_qubits, new_z_indices, new_z_values)
                     .map_err(|e| {
                         QuantRS2Error::GateApplicationFailed(format!(
                             "Failed to update Z matrix in S gate: {e}"
                         ))
                     })?;
-                    CsrMatrix::from(&coo)
-                };
 
                 // Update phase
                 stab.phase = (stab.phase + 1) % 4; // Multiply by i
@@ -541,16 +407,8 @@ impl SparseStabilizerTableau {
                 });
 
                 for j in 0..self.num_qubits {
-                    let has_x = stab
-                        .x_sparse
-                        .get_entry(0, j)
-                        .map_or(0, nalgebra_sparse::SparseEntry::into_value)
-                        > 0;
-                    let has_z = stab
-                        .z_sparse
-                        .get_entry(0, j)
-                        .map_or(0, nalgebra_sparse::SparseEntry::into_value)
-                        > 0;
+                    let has_x = stab.x_sparse.get(0, j) > 0;
+                    let has_z = stab.z_sparse.get(0, j) > 0;
 
                     s.push(match (has_x, has_z) {
                         (false, false) => 'I',

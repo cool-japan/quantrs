@@ -635,7 +635,135 @@ impl PyExtrapolationFitting {
     }
 }
 
-/// Probabilistic Error Cancellation (placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers shared by PEC / VD / SV implementations
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Reconstruct a `PyCircuit` that is an exact copy of `src` by replaying its
+/// stored operation list.  This is necessary because `PyCircuit` is a
+/// `#[pyclass]` and therefore does not implement `Clone`.
+fn rebuild_circuit(src: &PyCircuit) -> PyResult<PyCircuit> {
+    let mut dst = PyCircuit::new(src.n_qubits)?;
+    for &op in src.get_operations() {
+        dst.apply_op(op)?;
+    }
+    Ok(dst)
+}
+
+/// Count how many times a given Pauli gate type appears in the circuit
+/// operations list.  `gate_name` is one of `"X"`, `"Y"`, `"Z"`.
+fn count_pauli_gates(circuit: &PyCircuit, gate_name: &str) -> usize {
+    circuit
+        .get_operations()
+        .iter()
+        .filter(|op| match (gate_name, op) {
+            ("X", CircuitOp::PauliX(_)) => true,
+            ("Y", CircuitOp::PauliY(_)) => true,
+            ("Z", CircuitOp::PauliZ(_)) => true,
+            _ => false,
+        })
+        .count()
+}
+
+/// Check whether all rotation angles in the circuit are multiples of π
+/// (sufficient condition for time-reversal / Clifford structure).
+fn all_rotations_are_clifford(circuit: &PyCircuit) -> bool {
+    use std::f64::consts::PI;
+    circuit.get_operations().iter().all(|op| {
+        let check_angle = |theta: f64| -> bool {
+            let frac = (theta / PI).fract().abs();
+            frac < 1e-9 || frac > 1.0 - 1e-9
+        };
+        match *op {
+            CircuitOp::Rx(_, theta)
+            | CircuitOp::Ry(_, theta)
+            | CircuitOp::Rz(_, theta)
+            | CircuitOp::P(_, theta) => check_angle(theta),
+            CircuitOp::CRX(_, _, theta)
+            | CircuitOp::CRY(_, _, theta)
+            | CircuitOp::CRZ(_, _, theta) => check_angle(theta),
+            CircuitOp::RXX(_, _, theta)
+            | CircuitOp::RYY(_, _, theta)
+            | CircuitOp::RZZ(_, _, theta)
+            | CircuitOp::RZX(_, _, theta) => check_angle(theta),
+            CircuitOp::U(_, theta, phi, lambda) => {
+                check_angle(theta) && check_angle(phi) && check_angle(lambda)
+            }
+            _ => true, // non-rotation gate — does not affect Clifford status
+        }
+    })
+}
+
+/// Shift all qubit indices in `op` by `offset`, producing a new `CircuitOp`.
+///
+/// Returns `PyValueError` if any resulting index overflows `u32`.
+fn shift_op_qubits(op: CircuitOp, offset: usize) -> PyResult<CircuitOp> {
+    use quantrs2_core::qubit::QubitId;
+
+    let shift = |q: QubitId| -> PyResult<QubitId> {
+        let new_idx = q.0 as usize + offset;
+        let id = u32::try_from(new_idx).map_err(|_| {
+            PyValueError::new_err(format!(
+                "Qubit index {new_idx} exceeds u32 range during shift"
+            ))
+        })?;
+        Ok(QubitId::new(id))
+    };
+
+    let shifted = match op {
+        CircuitOp::Hadamard(q) => CircuitOp::Hadamard(shift(q)?),
+        CircuitOp::PauliX(q) => CircuitOp::PauliX(shift(q)?),
+        CircuitOp::PauliY(q) => CircuitOp::PauliY(shift(q)?),
+        CircuitOp::PauliZ(q) => CircuitOp::PauliZ(shift(q)?),
+        CircuitOp::S(q) => CircuitOp::S(shift(q)?),
+        CircuitOp::SDagger(q) => CircuitOp::SDagger(shift(q)?),
+        CircuitOp::T(q) => CircuitOp::T(shift(q)?),
+        CircuitOp::TDagger(q) => CircuitOp::TDagger(shift(q)?),
+        CircuitOp::SX(q) => CircuitOp::SX(shift(q)?),
+        CircuitOp::SXDagger(q) => CircuitOp::SXDagger(shift(q)?),
+        CircuitOp::Id(q) => CircuitOp::Id(shift(q)?),
+        CircuitOp::Rx(q, t) => CircuitOp::Rx(shift(q)?, t),
+        CircuitOp::Ry(q, t) => CircuitOp::Ry(shift(q)?, t),
+        CircuitOp::Rz(q, t) => CircuitOp::Rz(shift(q)?, t),
+        CircuitOp::P(q, t) => CircuitOp::P(shift(q)?, t),
+        CircuitOp::U(q, a, b, c) => CircuitOp::U(shift(q)?, a, b, c),
+        CircuitOp::Cnot(c, t) => CircuitOp::Cnot(shift(c)?, shift(t)?),
+        CircuitOp::Swap(a, b) => CircuitOp::Swap(shift(a)?, shift(b)?),
+        CircuitOp::CY(c, t) => CircuitOp::CY(shift(c)?, shift(t)?),
+        CircuitOp::CZ(c, t) => CircuitOp::CZ(shift(c)?, shift(t)?),
+        CircuitOp::CH(c, t) => CircuitOp::CH(shift(c)?, shift(t)?),
+        CircuitOp::CS(c, t) => CircuitOp::CS(shift(c)?, shift(t)?),
+        CircuitOp::ISwap(a, b) => CircuitOp::ISwap(shift(a)?, shift(b)?),
+        CircuitOp::ECR(c, t) => CircuitOp::ECR(shift(c)?, shift(t)?),
+        CircuitOp::DCX(a, b) => CircuitOp::DCX(shift(a)?, shift(b)?),
+        CircuitOp::CRX(c, t, h) => CircuitOp::CRX(shift(c)?, shift(t)?, h),
+        CircuitOp::CRY(c, t, h) => CircuitOp::CRY(shift(c)?, shift(t)?, h),
+        CircuitOp::CRZ(c, t, h) => CircuitOp::CRZ(shift(c)?, shift(t)?, h),
+        CircuitOp::RXX(a, b, h) => CircuitOp::RXX(shift(a)?, shift(b)?, h),
+        CircuitOp::RYY(a, b, h) => CircuitOp::RYY(shift(a)?, shift(b)?, h),
+        CircuitOp::RZZ(a, b, h) => CircuitOp::RZZ(shift(a)?, shift(b)?, h),
+        CircuitOp::RZX(c, t, h) => CircuitOp::RZX(shift(c)?, shift(t)?, h),
+        CircuitOp::Toffoli(c1, c2, t) => CircuitOp::Toffoli(shift(c1)?, shift(c2)?, shift(t)?),
+        CircuitOp::Fredkin(c, t1, t2) => CircuitOp::Fredkin(shift(c)?, shift(t1)?, shift(t2)?),
+    };
+    Ok(shifted)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Probabilistic Error Cancellation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Probabilistic Error Cancellation (PEC).
+///
+/// PEC represents the ideal (noise-free) expectation value as a linear
+/// combination of noisy expectation values.  For a depolarising channel
+/// with single-qubit error rate ε the quasi-probability representation is:
+///
+///   E^{-1}(ρ) = (1 + 4ε/3) G(ρ) – (ε/3)(X G X + Y G Y + Z G Z)
+///
+/// The *sampling overhead* is γ = (1 + 2ε/3)^n where n is the number of
+/// noisy gates.  This implementation builds one circuit per term of the
+/// expansion and attaches the corresponding quasi-probability coefficient.
 #[pyclass(name = "ProbabilisticErrorCancellation")]
 pub struct PyProbabilisticErrorCancellation;
 
@@ -647,17 +775,99 @@ impl PyProbabilisticErrorCancellation {
         Self
     }
 
-    #[allow(clippy::unused_self)]
+    /// Decompose `circuit` into a quasi-probabilistic mixture that cancels
+    /// single-qubit depolarising noise of strength `noise_strength`.
+    ///
+    /// Returns a list of `(coefficient, circuit_variant)` tuples.
+    /// The mitigated expectation value is obtained by taking the weighted
+    /// average of expectation values measured from each variant.
+    ///
+    /// Sampling overhead: γ = (1 + 2·noise_strength/3)^n_qubits.
+    #[pyo3(signature = (circuit, noise_strength = 0.01))]
     fn quasi_probability_decomposition(
         &self,
-        _circuit: &PyCircuit,
+        circuit: &PyCircuit,
+        noise_strength: f64,
     ) -> PyResult<Vec<(f64, PyCircuit)>> {
-        // Placeholder implementation
-        Err(PyValueError::new_err("PEC not yet implemented"))
+        if noise_strength < 0.0 || noise_strength > 1.0 {
+            return Err(PyValueError::new_err("noise_strength must be in [0, 1]"));
+        }
+
+        // For ε = 0 there is nothing to cancel; return the original circuit.
+        if noise_strength < 1e-15 {
+            let original = rebuild_circuit(circuit)?;
+            return Ok(vec![(1.0, original)]);
+        }
+
+        let n = circuit.n_qubits;
+
+        // Positive quasi-probability term coefficient.
+        let positive_coeff = 1.0 + 4.0 * noise_strength / 3.0;
+        // Negative quasi-probability term coefficient (one per Pauli, per qubit).
+        let negative_coeff = -noise_strength / 3.0;
+
+        let mut decomposition: Vec<(f64, PyCircuit)> = Vec::with_capacity(1 + 3 * n);
+
+        // Term 0: the original circuit with boosted coefficient
+        let original = rebuild_circuit(circuit)?;
+        decomposition.push((positive_coeff, original));
+
+        // Terms 1..3n: error-inverted variants
+        // For each qubit, insert X, Y and Z error operators at the end of
+        // the circuit (circuit-level quasi-probability approximation).
+        for qubit in 0..n {
+            let qid = quantrs2_core::qubit::QubitId::new(qubit as u32);
+
+            // X-error variant
+            let mut x_circuit = rebuild_circuit(circuit)?;
+            x_circuit.apply_op(CircuitOp::PauliX(qid))?;
+            decomposition.push((negative_coeff, x_circuit));
+
+            // Y-error variant
+            let mut y_circuit = rebuild_circuit(circuit)?;
+            y_circuit.apply_op(CircuitOp::PauliY(qid))?;
+            decomposition.push((negative_coeff, y_circuit));
+
+            // Z-error variant
+            let mut z_circuit = rebuild_circuit(circuit)?;
+            z_circuit.apply_op(CircuitOp::PauliZ(qid))?;
+            decomposition.push((negative_coeff, z_circuit));
+        }
+
+        Ok(decomposition)
+    }
+
+    /// Compute the one-norm sampling overhead γ = (1 + 2ε/3)^n for `n` qubits
+    /// and depolarising rate `noise_strength`.
+    ///
+    /// This equals the factor by which the number of samples must increase to
+    /// achieve the same statistical accuracy as a noiseless device.
+    #[staticmethod]
+    fn sampling_overhead(n_qubits: usize, noise_strength: f64) -> f64 {
+        (1.0 + 2.0 * noise_strength / 3.0).powi(n_qubits as i32)
     }
 }
 
-/// Virtual Distillation (placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
+// Virtual Distillation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Virtual Distillation.
+///
+/// Given M noisy copies of the state ρ the ideal expectation value of an
+/// observable O can be estimated as
+///
+///   <O>_ideal ≈ Tr[O ρ^M] / Tr[ρ^M]
+///
+/// For M = 2 this is implemented via a SWAP test between two circuit
+/// registers: a Hadamard ancilla controls pairwise CSWAP (Fredkin)
+/// operations between the two copies, followed by a second Hadamard.
+/// The ancilla outcome encodes Tr[ρ²] and the purified observable.
+///
+/// Qubit layout of the returned circuit:
+///   qubits 0 .. n-1   → first copy
+///   qubits n .. 2n-1  → second copy
+///   qubit  2n         → ancilla
 #[pyclass(name = "VirtualDistillation")]
 pub struct PyVirtualDistillation;
 
@@ -669,16 +879,82 @@ impl PyVirtualDistillation {
         Self
     }
 
-    #[allow(clippy::unused_self)]
-    fn distill(&self, _circuits: Vec<PyRef<PyCircuit>>) -> PyResult<PyCircuit> {
-        // Placeholder implementation
-        Err(PyValueError::new_err(
-            "Virtual distillation not yet implemented",
-        ))
+    /// Build a virtual-distillation circuit from `circuits`.
+    ///
+    /// * length 1 → passthrough (returns a copy of the single circuit).
+    /// * length 2 → M = 2 SWAP-test circuit with `2n + 1` qubits.
+    /// * length > 2 → returns `PyValueError` (not yet supported).
+    fn distill(&self, circuits: Vec<PyRef<PyCircuit>>) -> PyResult<PyCircuit> {
+        match circuits.len() {
+            0 => Err(PyValueError::new_err("circuits list must not be empty")),
+            1 => rebuild_circuit(&circuits[0]),
+            2 => {
+                let n = circuits[0].n_qubits;
+                if circuits[1].n_qubits != n {
+                    return Err(PyValueError::new_err(
+                        "Both circuits must have the same number of qubits",
+                    ));
+                }
+
+                // Total qubits: two n-qubit registers + 1 ancilla.
+                // PyCircuit::new requires >= 2; 2*1+1 = 3 satisfies this.
+                let total = 2 * n + 1;
+                let ancilla = (total - 1) as u32; // index 2n
+
+                let mut combined = PyCircuit::new(total)?;
+
+                // Apply first-copy gates on qubits 0..n
+                for &op in circuits[0].get_operations() {
+                    let shifted = shift_op_qubits(op, 0)?;
+                    combined.apply_op(shifted)?;
+                }
+
+                // Apply second-copy gates on qubits n..2n
+                for &op in circuits[1].get_operations() {
+                    let shifted = shift_op_qubits(op, n)?;
+                    combined.apply_op(shifted)?;
+                }
+
+                // SWAP test: H_ancilla then CSWAP_i(ancilla, i, n+i) then H_ancilla
+                let ancilla_id = quantrs2_core::qubit::QubitId::new(ancilla);
+                combined.apply_op(CircuitOp::Hadamard(ancilla_id))?;
+
+                for i in 0..n {
+                    combined.apply_op(CircuitOp::Fredkin(
+                        ancilla_id,
+                        quantrs2_core::qubit::QubitId::new(i as u32),
+                        quantrs2_core::qubit::QubitId::new((n + i) as u32),
+                    ))?;
+                }
+
+                combined.apply_op(CircuitOp::Hadamard(ancilla_id))?;
+
+                Ok(combined)
+            }
+            m => Err(PyValueError::new_err(format!(
+                "Virtual distillation for M={m} copies is not yet supported (only M in {{1,2}})"
+            ))),
+        }
     }
 }
 
-/// Symmetry Verification (placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
+// Symmetry Verification
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Symmetry Verification.
+///
+/// Checks whether a circuit preserves a stated physical symmetry by
+/// analysing the gate sequence.  The analysis is purely syntactic
+/// (gate counting / angle inspection) and therefore conservative.
+///
+/// Supported symmetry labels:
+///
+/// | Label | Meaning |
+/// |-------|---------|
+/// | `"parity"` / `"z2"` / `"Z2"` | Total X-gate count is even |
+/// | `"particle_number"` / `"U1"` / `"u1"` | No bare X gates |
+/// | `"time_reversal"` | All rotation angles are multiples of π |
 #[pyclass(name = "SymmetryVerification")]
 pub struct PySymmetryVerification;
 
@@ -690,12 +966,51 @@ impl PySymmetryVerification {
         Self
     }
 
-    #[allow(clippy::unused_self)]
-    fn verify_symmetry(&self, _circuit: &PyCircuit, _symmetry: &str) -> PyResult<bool> {
-        // Placeholder implementation
-        Err(PyValueError::new_err(
-            "Symmetry verification not yet implemented",
-        ))
+    /// Verify that `circuit` preserves the symmetry named by `symmetry`.
+    ///
+    /// Returns `true` if the symmetry check passes, `false` if it is
+    /// violated, or a `ValueError` if the symmetry label is unknown.
+    fn verify_symmetry(&self, circuit: &PyCircuit, symmetry: &str) -> PyResult<bool> {
+        match symmetry {
+            // Z2 parity: total single-qubit X count must be even.
+            "parity" | "z2" | "Z2" => {
+                let x_count = count_pauli_gates(circuit, "X");
+                Ok(x_count % 2 == 0)
+            }
+
+            // U(1) particle-number symmetry: no bare X gates allowed.
+            // Two-qubit gates (CNOT, SWAP, etc.) conserve number and are fine.
+            "particle_number" | "U1" | "u1" => {
+                let x_count = count_pauli_gates(circuit, "X");
+                Ok(x_count == 0)
+            }
+
+            // Time-reversal symmetry: circuit equals its own complex conjugate.
+            // Sufficient syntactic condition: every rotation angle is a
+            // multiple of π (only real-matrix Clifford gates present).
+            "time_reversal" => Ok(all_rotations_are_clifford(circuit)),
+
+            unknown => Err(PyValueError::new_err(format!(
+                "Unknown symmetry type: '{unknown}'. \
+                 Supported: 'parity'/'z2'/'Z2', \
+                 'particle_number'/'U1'/'u1', \
+                 'time_reversal'"
+            ))),
+        }
+    }
+
+    /// List all supported symmetry labels.
+    #[staticmethod]
+    fn supported_symmetries() -> Vec<&'static str> {
+        vec![
+            "parity",
+            "z2",
+            "Z2",
+            "particle_number",
+            "U1",
+            "u1",
+            "time_reversal",
+        ]
     }
 }
 
@@ -717,5 +1032,339 @@ pub fn register_mitigation_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-// Note: Rust unit tests for circuit folding require Python runtime (PyO3).
-// See py/tests/test_mitigation.py for comprehensive Python-based tests.
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// These tests exercise only pure-Rust logic and do not require a Python
+// interpreter.  They can be run with:
+//   cargo test -p quantrs2-py --features device -- mitigation
+//
+// Note: tests that call `PyCircuit::new` / `apply_op` still compile because
+// those methods are pub(crate) Rust functions that do not touch PyO3 machinery.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── helper ────────────────────────────────────────────────────────────────
+
+    /// 2-qubit Bell-state preparation: H(0) CNOT(0,1).
+    fn bell_circuit() -> PyCircuit {
+        let mut c = PyCircuit::new(2).expect("create circuit");
+        c.apply_op(CircuitOp::Hadamard(quantrs2_core::qubit::QubitId::new(0)))
+            .expect("H");
+        c.apply_op(CircuitOp::Cnot(
+            quantrs2_core::qubit::QubitId::new(0),
+            quantrs2_core::qubit::QubitId::new(1),
+        ))
+        .expect("CNOT");
+        c
+    }
+
+    // ── rebuild_circuit ───────────────────────────────────────────────────────
+
+    #[test]
+    fn rebuild_preserves_n_qubits_and_gate_count() {
+        let c = bell_circuit();
+        let r = rebuild_circuit(&c).expect("rebuild");
+        assert_eq!(r.n_qubits, c.n_qubits);
+        assert_eq!(r.get_operations().len(), c.get_operations().len());
+    }
+
+    #[test]
+    fn rebuild_three_qubit_circuit() {
+        let mut c = PyCircuit::new(3).expect("create");
+        c.apply_op(CircuitOp::Hadamard(quantrs2_core::qubit::QubitId::new(0)))
+            .expect("H");
+        c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(1)))
+            .expect("X");
+        c.apply_op(CircuitOp::Cnot(
+            quantrs2_core::qubit::QubitId::new(0),
+            quantrs2_core::qubit::QubitId::new(2),
+        ))
+        .expect("CNOT");
+        let r = rebuild_circuit(&c).expect("rebuild");
+        assert_eq!(r.get_operations().len(), 3);
+    }
+
+    // ── shift_op_qubits ───────────────────────────────────────────────────────
+
+    #[test]
+    fn shift_identity_offset_zero() {
+        let op = CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(1));
+        let shifted = shift_op_qubits(op, 0).expect("shift");
+        match shifted {
+            CircuitOp::PauliX(q) => assert_eq!(q.0, 1),
+            _ => panic!("unexpected gate type"),
+        }
+    }
+
+    #[test]
+    fn shift_single_qubit_increases_index() {
+        let op = CircuitOp::Hadamard(quantrs2_core::qubit::QubitId::new(0));
+        let shifted = shift_op_qubits(op, 3).expect("shift");
+        match shifted {
+            CircuitOp::Hadamard(q) => assert_eq!(q.0, 3),
+            _ => panic!("unexpected gate type"),
+        }
+    }
+
+    #[test]
+    fn shift_two_qubit_both_indices_moved() {
+        let op = CircuitOp::Cnot(
+            quantrs2_core::qubit::QubitId::new(0),
+            quantrs2_core::qubit::QubitId::new(1),
+        );
+        let shifted = shift_op_qubits(op, 2).expect("shift");
+        match shifted {
+            CircuitOp::Cnot(c, t) => {
+                assert_eq!(c.0, 2);
+                assert_eq!(t.0, 3);
+            }
+            _ => panic!("unexpected gate type"),
+        }
+    }
+
+    #[test]
+    fn shift_three_qubit_fredkin() {
+        let op = CircuitOp::Fredkin(
+            quantrs2_core::qubit::QubitId::new(0),
+            quantrs2_core::qubit::QubitId::new(1),
+            quantrs2_core::qubit::QubitId::new(2),
+        );
+        let shifted = shift_op_qubits(op, 5).expect("shift");
+        match shifted {
+            CircuitOp::Fredkin(c, t1, t2) => {
+                assert_eq!(c.0, 5);
+                assert_eq!(t1.0, 6);
+                assert_eq!(t2.0, 7);
+            }
+            _ => panic!("unexpected gate type"),
+        }
+    }
+
+    // ── PEC ───────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn pec_zero_noise_returns_single_term_with_unit_coefficient() {
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        let decomp = pec
+            .quasi_probability_decomposition(&circuit, 0.0)
+            .expect("decompose");
+        assert_eq!(decomp.len(), 1);
+        assert!((decomp[0].0 - 1.0).abs() < 1e-12, "coefficient should be 1");
+    }
+
+    #[test]
+    fn pec_nonzero_noise_term_count_is_one_plus_three_n() {
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        let decomp = pec
+            .quasi_probability_decomposition(&circuit, 0.01)
+            .expect("decompose");
+        // 2 qubits: 1 original + 3 * 2 = 7 terms
+        assert_eq!(decomp.len(), 1 + 3 * circuit.n_qubits);
+    }
+
+    #[test]
+    fn pec_first_coefficient_is_positive_rest_are_negative() {
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        let decomp = pec
+            .quasi_probability_decomposition(&circuit, 0.05)
+            .expect("decompose");
+        assert!(decomp[0].0 > 0.0, "first coeff should be positive");
+        for (coeff, _) in &decomp[1..] {
+            assert!(*coeff < 0.0, "expected negative coeff, got {coeff}");
+        }
+    }
+
+    #[test]
+    fn pec_positive_coefficient_is_one_plus_four_thirds_epsilon() {
+        let eps = 0.03;
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        let decomp = pec
+            .quasi_probability_decomposition(&circuit, eps)
+            .expect("decompose");
+        let expected = 1.0 + 4.0 * eps / 3.0;
+        assert!(
+            (decomp[0].0 - expected).abs() < 1e-12,
+            "expected {expected}, got {}",
+            decomp[0].0
+        );
+    }
+
+    #[test]
+    fn pec_negative_coefficient_magnitude_is_epsilon_over_three() {
+        let eps = 0.06;
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        let decomp = pec
+            .quasi_probability_decomposition(&circuit, eps)
+            .expect("decompose");
+        let expected_neg = -eps / 3.0;
+        for (coeff, _) in &decomp[1..] {
+            assert!(
+                (coeff - expected_neg).abs() < 1e-12,
+                "expected {expected_neg}, got {coeff}"
+            );
+        }
+    }
+
+    #[test]
+    fn pec_rejects_negative_noise_strength() {
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        assert!(pec.quasi_probability_decomposition(&circuit, -0.1).is_err());
+    }
+
+    #[test]
+    fn pec_rejects_noise_strength_above_one() {
+        let circuit = bell_circuit();
+        let pec = PyProbabilisticErrorCancellation::new();
+        assert!(pec.quasi_probability_decomposition(&circuit, 1.5).is_err());
+    }
+
+    #[test]
+    fn pec_sampling_overhead_unity_at_zero_noise() {
+        let overhead = PyProbabilisticErrorCancellation::sampling_overhead(4, 0.0);
+        assert!((overhead - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn pec_sampling_overhead_grows_with_noise_and_qubit_count() {
+        let lo = PyProbabilisticErrorCancellation::sampling_overhead(3, 0.01);
+        let hi = PyProbabilisticErrorCancellation::sampling_overhead(3, 0.1);
+        assert!(hi > lo);
+
+        let few = PyProbabilisticErrorCancellation::sampling_overhead(2, 0.05);
+        let many = PyProbabilisticErrorCancellation::sampling_overhead(10, 0.05);
+        assert!(many > few);
+    }
+
+    // ── Virtual Distillation (non-PyO3 helpers) ───────────────────────────────
+
+    #[test]
+    fn vd_passthrough_for_single_circuit_via_rebuild() {
+        let circuit = bell_circuit();
+        let rebuilt = rebuild_circuit(&circuit).expect("rebuild");
+        assert_eq!(rebuilt.n_qubits, circuit.n_qubits);
+        assert_eq!(
+            rebuilt.get_operations().len(),
+            circuit.get_operations().len()
+        );
+    }
+
+    // ── Symmetry Verification ─────────────────────────────────────────────────
+
+    #[test]
+    fn sv_parity_even_x_count_preserved() {
+        let mut c = PyCircuit::new(2).expect("create");
+        c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(0)))
+            .expect("X0");
+        c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(1)))
+            .expect("X1");
+        assert!(PySymmetryVerification::new()
+            .verify_symmetry(&c, "parity")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_parity_odd_x_count_violated() {
+        let mut c = PyCircuit::new(2).expect("create");
+        c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(0)))
+            .expect("X");
+        assert!(!PySymmetryVerification::new()
+            .verify_symmetry(&c, "parity")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_particle_number_no_x_gates_preserved() {
+        let circuit = bell_circuit(); // H + CNOT: no X
+        assert!(PySymmetryVerification::new()
+            .verify_symmetry(&circuit, "particle_number")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_particle_number_with_x_gate_violated() {
+        let mut c = PyCircuit::new(2).expect("create");
+        c.apply_op(CircuitOp::PauliX(quantrs2_core::qubit::QubitId::new(0)))
+            .expect("X");
+        assert!(!PySymmetryVerification::new()
+            .verify_symmetry(&c, "particle_number")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_time_reversal_clifford_circuit_preserved() {
+        let circuit = bell_circuit(); // H and CNOT have no continuous rotation
+        assert!(PySymmetryVerification::new()
+            .verify_symmetry(&circuit, "time_reversal")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_time_reversal_non_clifford_angle_violated() {
+        let mut c = PyCircuit::new(2).expect("create");
+        // Rx(π/4) is not a multiple of π
+        c.apply_op(CircuitOp::Rx(
+            quantrs2_core::qubit::QubitId::new(0),
+            std::f64::consts::FRAC_PI_4,
+        ))
+        .expect("Rx");
+        assert!(!PySymmetryVerification::new()
+            .verify_symmetry(&c, "time_reversal")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_time_reversal_pi_rotation_preserved() {
+        let mut c = PyCircuit::new(2).expect("create");
+        // Rx(π) is a multiple of π — allowed
+        c.apply_op(CircuitOp::Rx(
+            quantrs2_core::qubit::QubitId::new(0),
+            std::f64::consts::PI,
+        ))
+        .expect("Rx(pi)");
+        assert!(PySymmetryVerification::new()
+            .verify_symmetry(&c, "time_reversal")
+            .expect("verify"));
+    }
+
+    #[test]
+    fn sv_unknown_symmetry_returns_error() {
+        let circuit = bell_circuit();
+        assert!(PySymmetryVerification::new()
+            .verify_symmetry(&circuit, "su2")
+            .is_err());
+    }
+
+    #[test]
+    fn sv_z2_aliases_agree_with_parity() {
+        let circuit = bell_circuit();
+        let sv = PySymmetryVerification::new();
+        let via_parity = sv.verify_symmetry(&circuit, "parity").expect("parity");
+        assert_eq!(via_parity, sv.verify_symmetry(&circuit, "z2").expect("z2"));
+        assert_eq!(via_parity, sv.verify_symmetry(&circuit, "Z2").expect("Z2"));
+    }
+
+    #[test]
+    fn sv_u1_aliases_agree_with_particle_number() {
+        let circuit = bell_circuit();
+        let sv = PySymmetryVerification::new();
+        let via_pn = sv.verify_symmetry(&circuit, "particle_number").expect("pn");
+        assert_eq!(via_pn, sv.verify_symmetry(&circuit, "U1").expect("U1"));
+        assert_eq!(via_pn, sv.verify_symmetry(&circuit, "u1").expect("u1"));
+    }
+
+    #[test]
+    fn sv_supported_symmetries_lists_all_seven_labels() {
+        let labels = PySymmetryVerification::supported_symmetries();
+        assert_eq!(labels.len(), 7);
+    }
+}

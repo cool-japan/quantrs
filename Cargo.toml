@@ -99,7 +99,7 @@ unwrap_used = "allow"
 ptr_eq = "allow"
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 authors = ["COOLJAPAN OU"]
 edition = "2021"
 rust-version = "1.86.0"
@@ -110,17 +110,17 @@ categories = ["science", "simulation"]
 
 [workspace.dependencies]
 # Core quantum computing dependencies
-quantrs2-core = { path = "core", version = "0.1.2" }
-quantrs2-circuit = { path = "circuit", version = "0.1.2" }
-quantrs2-sim = { path = "sim", version = "0.1.2" }
-quantrs2-anneal = { path = "anneal", version = "0.1.2" }
-quantrs2-device = { path = "device", version = "0.1.2", default-features = false }
-quantrs2-ml = { path = "ml", version = "0.1.2" }
-quantrs2-tytan = { path = "tytan", version = "0.1.2" }
+quantrs2-core = { path = "core", version = "0.1.3" }
+quantrs2-circuit = { path = "circuit", version = "0.1.3" }
+quantrs2-sim = { path = "sim", version = "0.1.3" }
+quantrs2-anneal = { path = "anneal", version = "0.1.3" }
+quantrs2-device = { path = "device", version = "0.1.3", default-features = false }
+quantrs2-ml = { path = "ml", version = "0.1.3" }
+quantrs2-tytan = { path = "tytan", version = "0.1.3" }
 
 # Symbolic computation - Pure Rust only (SciRS2 POLICY: No C/C++ dependencies)
 # quantrs2-symengine and quantrs2-symengine-sys removed - use pure Rust implementation
-quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.2" }
+quantrs2-symengine-pure = { path = "quantrs2-symengine-pure", version = "0.1.3" }
 
 # Pure Rust symbolic math dependencies (MIT licensed)
 egg = "0.11"
@@ -131,10 +131,7 @@ ordered-float = "5.1"
 # Common math and linear algebra dependencies
 # num-complex = "0.4.6"         # REMOVED: Use scirs2_core::complex (SciRS2 POLICY)
 # ndarray = { version = "0.16.1", features = ["rayon", "serde"] }  # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
-# LIMITED USE: nalgebra for sparse matrix operations (PARTIALLY VIOLATES SciRS2 POLICY)
-# Location: sim/src/scirs2_integration.rs (sparse matrix operations only)
-# TODO: Migrate to scirs2-sparse when API stabilizes (planned for v0.2.0)
-nalgebra = "0.33.2"            # Temporary - sparse operations only
+nalgebra = "0.33.2"            # Used in sim/src/scirs2_integration/types.rs CG solver (advanced_math feature)
 # ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }  # REMOVED: Use scirs2_core (SciRS2 POLICY)
 # ndarray-rand = "0.15"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
 # ndarray-stats = "0.6"          # REMOVED: Use scirs2_core::ndarray (SciRS2 POLICY)
@@ -200,8 +197,10 @@ thiserror = "2.0.18"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 oxicode = { version = "0.1.1", features = ["std", "derive", "serde"] }
-zstd = "0.13"
-flate2 = "1.1"
+oxiarc-deflate = "0.2.6"   # Pure Rust DEFLATE/zlib (COOLJAPAN Policy: replaces flate2)
+oxiarc-lz4 = "0.2.6"      # Pure Rust LZ4 (COOLJAPAN Policy: replaces lz4 crate)
+# zstd = "0.13"  # REMOVED: Not used in code (COOLJAPAN Pure Rust Policy)
+# flate2 = "1.1"  # REMOVED: Replaced by oxiarc-deflate (COOLJAPAN Pure Rust Policy)
 md5 = "0.8"
 
 # GPU computing support
@@ -210,7 +209,7 @@ bytemuck = { version = "1.24.0", features = ["derive"] }
 ocl = "0.19.7"
 
 # Async and networking
-reqwest = { version = "0.13.1", default-features = false, features = ["json", "native-tls-vendored"] }
+reqwest = { version = "0.13.1", default-features = false, features = ["json", "blocking", "rustls"] }
 tokio = { version = "1.49.0", features = ["full"] }
 futures = "0.3"
 async-trait = "0.1"
@@ -235,9 +234,9 @@ hex = "0.4.3"
 
 
 # Advanced math libraries
-ndrustfft = "0.6"
-sprs = "0.11"  
-nalgebra-sparse = "0.11"
+# ndrustfft = "0.6"  # REMOVED: Replaced by scirs2-fft (COOLJAPAN Pure Rust Policy)
+sprs = "0.11"
+# nalgebra-sparse removed: replaced by scirs2-sparse (COOLJAPAN Pure Rust Policy)
 
 # Visualization and plotting
 plotters = "0.3"

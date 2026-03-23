@@ -6,13 +6,20 @@
 
 QuantRS2-Tytan is a comprehensive, high-performance quantum annealing library for the QuantRS2 framework. Inspired by the Python [Tytan](https://github.com/tytansdk/tytan) library, it provides powerful tools for formulating and solving quantum optimization problems with state-of-the-art performance.
 
-## Version 0.1.2
+## Version 0.1.3
 
-This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.2:
+Released: 2026-03-23
+
+This release features refined integration with [SciRS2](https://github.com/cool-japan/scirs2) v0.1.3:
 - High-performance sparse matrix operations via SciRS2
 - Parallel optimization using `scirs2_core::parallel_ops`
 - SIMD-accelerated energy calculations
 - Memory-efficient large problem handling
+
+### What's New in v0.1.3
+- **1,874 public items**: 0 stubs — all large files refactored into module directories, 0 `todo!/unimplemented!` stubs remaining
+- Complete large-file refactoring: all modules split and reorganized for maintainability
+- Full TODO/FIXME resolution across the codebase
 
 ## Key Features
 
@@ -65,10 +72,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quantrs2-tytan = "0.1.2"
+quantrs2-tytan = "0.1.3"
 
 # Optional features
-# quantrs2-tytan = { version = "0.1.2", features = ["gpu", "dwave", "scirs"] }
+# quantrs2-tytan = { version = "0.1.3", features = ["gpu", "dwave", "scirs"] }
 ```
 
 ### Basic Example

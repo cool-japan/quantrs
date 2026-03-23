@@ -166,6 +166,8 @@ impl QuantumHyperparameterOptimizer {
         let mut best_score = f64::NEG_INFINITY;
 
         for trial_id in 0..num_trials {
+            let trial_start = std::time::Instant::now();
+
             // Generate random configuration
             let config = self.generate_random_configuration();
 
@@ -175,13 +177,15 @@ impl QuantumHyperparameterOptimizer {
             // Evaluate pipeline
             let score = self.evaluate_configuration(&pipeline, X, y)?;
 
+            let elapsed = trial_start.elapsed().as_secs_f64();
+
             // Record trial
             let trial = OptimizationTrial {
                 trial_id,
                 configuration: config.clone(),
                 performance: score,
                 resource_usage: ResourceUsage::default(),
-                duration: 0.0, // TODO: measure actual time
+                duration: elapsed,
             };
             self.optimization_history.trials.push(trial);
 

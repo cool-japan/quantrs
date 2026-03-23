@@ -335,11 +335,54 @@ impl Hamiltonian {
         Self { terms }
     }
 
-    /// Evaluate classically (placeholder)
-    fn evaluate_classical(&self, _params: &[f64]) -> Result<f64, String> {
-        // This would evaluate the Hamiltonian expectation value
-        // For now, return a simple function of parameters
-        Ok(_params.iter().map(|p| p.sin()).sum())
+    /// Evaluate the Hamiltonian expectation value classically via a mean-field ansatz.
+    ///
+    /// Each qubit i is modelled by a single variational angle θ_i where
+    ///   <Z_i> = cos(θ_i)
+    ///
+    /// The expectation value is then:
+    ///   <H> = Σ_i  h_i  * cos(θ_i)
+    ///        + Σ_{i<j} J_ij * cos(θ_i) * cos(θ_j)
+    ///
+    /// Higher-order or non-diagonal Pauli terms (X, Y) are ignored in this
+    /// mean-field treatment, which is appropriate for Ising/QUBO Hamiltonians.
+    fn evaluate_classical(&self, params: &[f64]) -> Result<f64, String> {
+        let n_qubits = self
+            .terms
+            .first()
+            .map(|t| t.pauli_string.len())
+            .unwrap_or(0);
+
+        // Build per-qubit <Z_i> = cos(θ_i) from the parameter vector.
+        // If fewer params than qubits, pad with zeros (cos(0) = 1).
+        let z_expect: Vec<f64> = (0..n_qubits)
+            .map(|i| {
+                if i < params.len() {
+                    params[i].cos()
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+
+        let mut energy = 0.0_f64;
+
+        for term in &self.terms {
+            // Determine which qubits carry a Z operator.
+            let z_qubits: Vec<usize> = term
+                .pauli_string
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &op)| if op == 'Z' { Some(i) } else { None })
+                .collect();
+
+            // Under mean-field: <Z_{i1} Z_{i2} … Z_{ik}> = ∏_j <Z_{ij}>
+            let contrib: f64 = z_qubits.iter().map(|&i| z_expect[i]).product();
+
+            energy += term.coefficient * contrib;
+        }
+
+        Ok(energy)
     }
 }
 

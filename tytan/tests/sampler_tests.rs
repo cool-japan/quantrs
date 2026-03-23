@@ -180,8 +180,8 @@ fn test_optimize_qubo() {
 }
 
 #[test]
-#[ignore]
 #[cfg(feature = "dwave")]
+#[ignore = "slow: runs up to 10000 SA samples taking >2min; run manually with: cargo test --features dwave -- --ignored test_sampler_one_hot_constraint"]
 fn test_sampler_one_hot_constraint() {
     // Test a one-hot constraint problem (exactly one variable is 1)
     let x = symbols("x");

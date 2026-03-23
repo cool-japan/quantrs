@@ -5,36 +5,12 @@ use std::f64::consts::PI;
 
 /// Helper function for complex phase calculation
 #[must_use]
-pub fn complex_phase(phase: f64) -> Complex {
-    Complex {
-        re: phase.cos(),
-        im: phase.sin(),
-    }
+pub fn complex_phase(phase: f64) -> Complex64 {
+    Complex64::new(phase.cos(), phase.sin())
 }
 
-/// Simple complex number representation
-#[derive(Debug, Clone)]
-pub struct Complex {
-    pub re: f64,
-    pub im: f64,
-}
-
-impl Complex {
-    #[must_use]
-    pub const fn new(re: f64, im: f64) -> Self {
-        Self { re, im }
-    }
-
-    #[must_use]
-    pub fn abs(&self) -> f64 {
-        self.re.hypot(self.im)
-    }
-
-    #[must_use]
-    pub fn norm_squared(&self) -> f64 {
-        self.re.mul_add(self.re, self.im * self.im)
-    }
-}
+/// Type alias kept for any code that imports `super::utils::Complex`
+pub type Complex = Complex64;
 
 /// Validate parameter ranges for quantum algorithms
 #[must_use]

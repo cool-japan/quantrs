@@ -524,7 +524,7 @@ impl GateParameter {
 
     /// Check if parameter has a value
     #[getter]
-    const fn has_value(&self) -> bool {
+    fn has_value(&self) -> bool {
         self.param.has_value()
     }
 

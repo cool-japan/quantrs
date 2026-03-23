@@ -192,6 +192,235 @@ impl Default for CloudMLConfig {
     }
 }
 
-// TODO: Add the main implementation structs and functions that were in the original file
-// This would include the QuantumCloudManager struct and its implementation
-// For now, this refactoring focuses on organizing the massive configuration types
+/// Unique identifier for a cloud-submitted quantum job.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CloudJobId(pub String);
+
+impl std::fmt::Display for CloudJobId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// A job submitted to the quantum cloud.
+///
+/// Wraps a QASM3 source string so the `QuantumCloudManager` is not generic
+/// over the circuit qubit count (which would make it impossible to store
+/// heterogeneous jobs in the same map).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudJob {
+    /// Human-readable name / label.
+    pub name: String,
+    /// QASM3 source that encodes the quantum program.
+    pub qasm_source: String,
+    /// Preferred execution provider.  `None` means "choose automatically".
+    pub preferred_provider: Option<CloudProvider>,
+    /// Number of shots requested.
+    pub shots: usize,
+    /// Maximum time-to-result the caller is willing to wait.
+    pub timeout: std::time::Duration,
+    /// Extra metadata (key–value pairs) forwarded to the provider.
+    pub metadata: std::collections::HashMap<String, String>,
+}
+
+/// Status of a cloud job.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CloudJobStatus {
+    /// Accepted by the manager, not yet dispatched to a provider.
+    Queued,
+    /// Sent to the provider and awaiting execution.
+    Submitted { provider: CloudProvider },
+    /// Currently running on quantum hardware.
+    Running { provider: CloudProvider },
+    /// Execution finished; results are available.
+    Completed { provider: CloudProvider },
+    /// Execution failed.
+    Failed { reason: String },
+    /// Cancelled by the caller.
+    Cancelled,
+}
+
+/// Summary of estimated execution costs across providers.
+#[derive(Debug, Clone)]
+pub struct CloudCostEstimate {
+    /// Cheapest provider according to the cost model.
+    pub recommended_provider: CloudProvider,
+    /// Estimated cost in USD.
+    pub estimated_usd: f64,
+    /// Per-provider breakdown (`provider` → estimated USD).
+    pub provider_breakdown: std::collections::HashMap<CloudProvider, f64>,
+    /// Confidence level of the estimate (0.0 – 1.0).
+    pub confidence: f64,
+}
+
+/// Internal job record maintained by `QuantumCloudManager`.
+#[derive(Debug, Clone)]
+struct JobRecord {
+    job: CloudJob,
+    status: CloudJobStatus,
+    submitted_at: std::time::SystemTime,
+    completed_at: Option<std::time::SystemTime>,
+}
+
+/// Main cloud resource manager.
+///
+/// Provides a provider-agnostic entry point for submitting quantum jobs,
+/// querying their status, listing available providers, and estimating costs.
+///
+/// # Thread safety
+///
+/// Internally uses `std::sync::RwLock` so the manager can be shared across
+/// threads without `async` overhead at the call site.
+pub struct QuantumCloudManager {
+    config: QuantumCloudConfig,
+    /// Active and historical job records keyed by `CloudJobId`.
+    jobs: std::sync::RwLock<std::collections::HashMap<CloudJobId, JobRecord>>,
+}
+
+impl QuantumCloudManager {
+    /// Create a new cloud manager with the given configuration.
+    pub fn new(config: QuantumCloudConfig) -> DeviceResult<Self> {
+        Ok(Self {
+            config,
+            jobs: std::sync::RwLock::new(std::collections::HashMap::new()),
+        })
+    }
+
+    /// Submit a quantum job and return its assigned identifier.
+    ///
+    /// The manager validates the job, selects the best provider according to
+    /// the configured selection strategy, and records the submission.
+    pub fn submit_job(&self, job: CloudJob) -> DeviceResult<CloudJobId> {
+        if job.qasm_source.trim().is_empty() {
+            return Err(DeviceError::InvalidInput(
+                "CloudJob.qasm_source must not be empty".to_string(),
+            ));
+        }
+        let provider = self.select_provider(&job)?;
+        let id = CloudJobId(Uuid::new_v4().to_string());
+        let record = JobRecord {
+            status: CloudJobStatus::Submitted {
+                provider: provider.clone(),
+            },
+            job,
+            submitted_at: std::time::SystemTime::now(),
+            completed_at: None,
+        };
+        self.jobs
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("jobs write lock: {e}")))?
+            .insert(id.clone(), record);
+        Ok(id)
+    }
+
+    /// Query the current status of a previously submitted job.
+    pub fn get_job_status(&self, id: &CloudJobId) -> DeviceResult<CloudJobStatus> {
+        let jobs = self
+            .jobs
+            .read()
+            .map_err(|e| DeviceError::LockError(format!("jobs read lock: {e}")))?;
+        jobs.get(id)
+            .map(|r| r.status.clone())
+            .ok_or_else(|| DeviceError::DeviceNotFound(format!("job '{}' not found", id)))
+    }
+
+    /// Cancel a queued or submitted job.
+    pub fn cancel_job(&self, id: &CloudJobId) -> DeviceResult<()> {
+        let mut jobs = self
+            .jobs
+            .write()
+            .map_err(|e| DeviceError::LockError(format!("jobs write lock: {e}")))?;
+        let record = jobs
+            .get_mut(id)
+            .ok_or_else(|| DeviceError::DeviceNotFound(format!("job '{}' not found", id)))?;
+        match &record.status {
+            CloudJobStatus::Queued | CloudJobStatus::Submitted { .. } => {
+                record.status = CloudJobStatus::Cancelled;
+                record.completed_at = Some(std::time::SystemTime::now());
+                Ok(())
+            }
+            other => Err(DeviceError::InvalidInput(format!(
+                "cannot cancel job '{}' in state {:?}",
+                id, other
+            ))),
+        }
+    }
+
+    /// List all configured and enabled cloud providers.
+    pub fn list_providers(&self) -> Vec<CloudProvider> {
+        self.config.provider_config.enabled_providers.clone()
+    }
+
+    /// Estimate the cost of executing `job` across all enabled providers.
+    ///
+    /// The estimate is based on shot count and a simple per-shot pricing
+    /// model.  Real providers typically expose more nuanced pricing APIs;
+    /// this implementation serves as a deterministic baseline.
+    pub fn estimate_cost(&self, job: &CloudJob) -> DeviceResult<CloudCostEstimate> {
+        let providers = self.list_providers();
+        if providers.is_empty() {
+            return Err(DeviceError::UnsupportedOperation(
+                "no cloud providers configured".to_string(),
+            ));
+        }
+
+        // Simple per-shot cost model (USD per shot).
+        // Values are illustrative defaults; a production manager would
+        // read these from the per-provider configuration.
+        let cost_per_shot = |p: &CloudProvider| -> f64 {
+            match p {
+                CloudProvider::IBM => 0.000_05,
+                CloudProvider::AWS => 0.000_075,
+                CloudProvider::Azure => 0.000_065,
+                CloudProvider::Google => 0.000_08,
+                CloudProvider::IonQ => 0.000_01,
+                CloudProvider::Rigetti => 0.000_04,
+                CloudProvider::Xanadu => 0.000_03,
+                CloudProvider::DWave => 0.000_02,
+                CloudProvider::Custom(_) => 0.000_05,
+            }
+        };
+
+        let shots = job.shots.max(1) as f64;
+        let mut breakdown = std::collections::HashMap::new();
+        let mut cheapest_provider = providers[0].clone();
+        let mut cheapest_cost = f64::MAX;
+
+        for provider in &providers {
+            let cost = cost_per_shot(provider) * shots;
+            if cost < cheapest_cost {
+                cheapest_cost = cost;
+                cheapest_provider = provider.clone();
+            }
+            breakdown.insert(provider.clone(), cost);
+        }
+
+        Ok(CloudCostEstimate {
+            recommended_provider: cheapest_provider,
+            estimated_usd: cheapest_cost,
+            provider_breakdown: breakdown,
+            confidence: 0.8,
+        })
+    }
+
+    // ------------------------------------------------------------------
+    // Private helpers
+    // ------------------------------------------------------------------
+
+    fn select_provider(&self, job: &CloudJob) -> DeviceResult<CloudProvider> {
+        // If the caller expressed a preference and the provider is enabled, honour it.
+        if let Some(preferred) = &job.preferred_provider {
+            if self
+                .config
+                .provider_config
+                .enabled_providers
+                .contains(preferred)
+            {
+                return Ok(preferred.clone());
+            }
+        }
+        // Otherwise pick the cheapest enabled provider.
+        let estimate = self.estimate_cost(job)?;
+        Ok(estimate.recommended_provider)
+    }
+}

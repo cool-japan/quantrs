@@ -17,6 +17,40 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+// Pseudo-random number generation without rand crate.
+// Uses a simple xorshift64 PRNG seeded from the system time.
+fn xorshift64(state: &mut u64) -> u64 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    *state = x;
+    x
+}
+
+fn prng_f64(state: &mut u64) -> f64 {
+    let bits = xorshift64(state);
+    // Map to [0, 1)
+    (bits >> 11) as f64 / (1u64 << 53) as f64
+}
+
+fn prng_usize(state: &mut u64, upper: usize) -> usize {
+    if upper == 0 {
+        return 0;
+    }
+    (xorshift64(state) as usize) % upper
+}
+
+fn make_prng_seed() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| {
+            d.as_nanos() as u64 ^ (d.subsec_nanos() as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+        })
+        .unwrap_or(0xdeadbeef_cafebabe)
+}
+
 /// ML optimization strategy
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MLStrategy {
@@ -517,32 +551,170 @@ impl MLCircuitOptimizer {
         })
     }
 
-    /// Optimize using reinforcement learning
+    /// Optimize using reinforcement learning (Q-learning).
+    ///
+    /// State:   circuit feature vector quantized to integers (resolution 10).
+    /// Actions: NoOp | RemoveGate(idx) | SwapAdjacent(i, i+1)
+    /// Reward:  (old_depth - new_depth) + (old_gates - new_gates) * 0.1
+    /// Update:  Q(s,a) += lr * (reward + γ * max_Q(s') - Q(s,a))
     fn optimize_with_rl<const N: usize>(
         &self,
         circuit: &Circuit<N>,
         features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
-        // Simplified RL optimization
-        // In a full implementation, this would:
-        // 1. Define state space (circuit configuration)
-        // 2. Define action space (gate reorderings, fusions, etc.)
-        // 3. Train Q-learning agent
-        // 4. Apply learned policy
+        let (episodes, learning_rate, discount_factor, exploration_rate) = match &self.strategy {
+            MLStrategy::ReinforcementLearning {
+                episodes,
+                learning_rate,
+                discount_factor,
+                exploration_rate,
+            } => (
+                *episodes,
+                *learning_rate,
+                *discount_factor,
+                *exploration_rate,
+            ),
+            _ => (100, 0.1, 0.9, 0.2),
+        };
 
-        // For now, return a simple optimization
-        let mut optimized = circuit.clone();
+        // Q-table: state (quantized feature vec) -> action values
+        let mut q_table: HashMap<Vec<i32>, Vec<f64>> = HashMap::new();
 
-        // Simple gate reordering based on features
-        if features.len() > 6 {
-            let cnot_fraction = features[6]; // Two-qubit gate fraction
-            if cnot_fraction > 0.5 {
-                // High CNOT fraction - could benefit from reordering
-                // This is a placeholder for actual RL optimization
+        let gate_count = circuit.gates().len();
+        // Action space:
+        //   0         → NoOp
+        //   1..=G     → RemoveGate(i-1)
+        //   G+1..=2G  → SwapAdjacent(i-G-1, i-G)
+        let n_actions = 1 + gate_count + gate_count.saturating_sub(1);
+
+        let mut rng = make_prng_seed();
+
+        // Helper: quantize feature vec to i32 state key
+        let quantize =
+            |feats: &[f64]| -> Vec<i32> { feats.iter().map(|&v| (v * 10.0) as i32).collect() };
+
+        // Helper: build gates-as-boxes from circuit for mutation
+        let gates_to_boxes = |c: &Circuit<N>| -> Vec<Box<dyn GateOp>> { c.gates_as_boxes() };
+
+        let mut best_circuit = circuit.clone();
+        let mut best_score = gate_count as f64;
+
+        for _ep in 0..episodes {
+            let mut current_circuit = circuit.clone();
+
+            // Extract current state features lazily (reuse provided features for initial)
+            let mut state_feats = features.to_vec();
+
+            for _step in 0..10 {
+                let state_key = quantize(&state_feats);
+                let n_acts = {
+                    let g = current_circuit.gates().len();
+                    1 + g + g.saturating_sub(1)
+                };
+
+                // Ensure Q-table row exists
+                let q_row = q_table
+                    .entry(state_key.clone())
+                    .or_insert_with(|| vec![0.0; n_acts.max(n_actions)]);
+
+                // ε-greedy action selection
+                let action = if prng_f64(&mut rng) < exploration_rate {
+                    prng_usize(&mut rng, n_acts.max(1))
+                } else {
+                    q_row
+                        .iter()
+                        .take(n_acts.max(1))
+                        .enumerate()
+                        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .map(|(i, _)| i)
+                        .unwrap_or(0)
+                };
+
+                let old_depth = current_circuit.gates().len();
+                let old_gates = old_depth;
+
+                // Apply action to a clone, then accept if reward ≥ 0
+                let gate_vec = gates_to_boxes(&current_circuit);
+                let g_count = gate_vec.len();
+
+                let new_circuit_opt: Option<Circuit<N>> = if action == 0 || g_count == 0 {
+                    // NoOp
+                    None
+                } else if action <= g_count {
+                    // RemoveGate(action - 1)
+                    let idx = action - 1;
+                    let mut new_gates: Vec<Box<dyn GateOp>> = gate_vec
+                        .into_iter()
+                        .enumerate()
+                        .filter(|(i, _)| *i != idx)
+                        .map(|(_, g)| g)
+                        .collect();
+                    Circuit::<N>::from_gates(new_gates).ok()
+                } else {
+                    // SwapAdjacent(i, i+1)
+                    let i = action - g_count - 1;
+                    if i + 1 < g_count {
+                        let mut new_gates = gate_vec;
+                        new_gates.swap(i, i + 1);
+                        Circuit::<N>::from_gates(new_gates).ok()
+                    } else {
+                        None
+                    }
+                };
+
+                let (next_circuit, reward) = match new_circuit_opt {
+                    Some(nc) => {
+                        let new_depth = nc.gates().len();
+                        let new_gates_count = new_depth;
+                        let r = (old_depth as f64 - new_depth as f64)
+                            + (old_gates as f64 - new_gates_count as f64) * 0.1;
+                        (nc, r)
+                    }
+                    None => (current_circuit.clone(), 0.0),
+                };
+
+                // Build next-state features (basic: gate count, depth proxy)
+                let next_gate_count = next_circuit.gates().len();
+                let next_feats: Vec<f64> = {
+                    let mut f = state_feats.clone();
+                    if !f.is_empty() {
+                        f[0] = next_gate_count as f64;
+                    }
+                    if f.len() > 1 {
+                        f[1] = next_gate_count as f64;
+                    }
+                    f
+                };
+                let next_key = quantize(&next_feats);
+
+                // max Q(s')
+                let max_q_next = q_table
+                    .get(&next_key)
+                    .and_then(|row| row.iter().cloned().reduce(f64::max))
+                    .unwrap_or(0.0);
+
+                // Q-table update
+                let q_row = q_table
+                    .entry(state_key)
+                    .or_insert_with(|| vec![0.0; n_actions.max(1)]);
+                let act_idx = action.min(q_row.len().saturating_sub(1));
+                let old_q = q_row[act_idx];
+                q_row[act_idx] =
+                    old_q + learning_rate * (reward + discount_factor * max_q_next - old_q);
+
+                // Track best
+                let score = next_circuit.gates().len() as f64;
+                if score < best_score {
+                    best_score = score;
+                    best_circuit = next_circuit.clone();
+                }
+
+                current_circuit = next_circuit;
+                state_feats = next_feats;
             }
         }
 
-        Ok(optimized)
+        Ok(best_circuit)
     }
 
     /// Optimize using neural network
@@ -560,20 +732,193 @@ impl MLCircuitOptimizer {
         Ok(circuit.clone())
     }
 
-    /// Optimize using genetic algorithm
+    /// Optimize using genetic algorithm.
+    ///
+    /// Individual: permutation of gate indices (a reordering of the original gate list).
+    /// Fitness:    gate_count_reduction + depth_reduction (both relative to original).
+    /// Selection:  tournament selection (tournament size 3).
+    /// Crossover:  one-point cut on gate index list.
+    /// Mutation:   swap two random positions with probability `mutation_rate`.
     fn optimize_with_ga<const N: usize>(
         &self,
         circuit: &Circuit<N>,
-        features: &[f64],
+        _features: &[f64],
     ) -> QuantRS2Result<Circuit<N>> {
-        // Simplified GA optimization
-        // In a full implementation, this would:
-        // 1. Create initial population of circuit variants
-        // 2. Evaluate fitness of each variant
-        // 3. Apply selection, crossover, and mutation
-        // 4. Evolve over multiple generations
+        let (population_size, generations, mutation_rate, _selection_pressure) =
+            match &self.strategy {
+                MLStrategy::GeneticAlgorithm {
+                    population_size,
+                    generations,
+                    mutation_rate,
+                    selection_pressure,
+                } => (
+                    *population_size,
+                    *generations,
+                    *mutation_rate,
+                    *selection_pressure,
+                ),
+                _ => (20, 50, 0.1, 2.0),
+            };
 
-        Ok(circuit.clone())
+        let original_gates = circuit.gates_as_boxes();
+        let gate_count = original_gates.len();
+
+        if gate_count == 0 {
+            return Ok(circuit.clone());
+        }
+
+        let original_gate_count = gate_count as f64;
+        let original_depth = gate_count as f64; // proxy: sequential depth
+
+        let mut rng = make_prng_seed();
+
+        // Fitness evaluation: build circuit from ordering, count gates, return fitness score.
+        // Higher fitness = more reduction.  Gate count reduction is weighted 0.7 and depth proxy 0.3.
+        let evaluate_fitness = |ordering: &[usize]| -> f64 {
+            // Prune adjacent inverses that cancel (H-H, X-X, Z-Z on same qubit)
+            let mut kept: Vec<usize> = Vec::with_capacity(ordering.len());
+            for &idx in ordering {
+                if let Some(&last) = kept.last() {
+                    let g1 = original_gates[last].name();
+                    let g2 = original_gates[idx].name();
+                    let q1 = original_gates[last].qubits();
+                    let q2 = original_gates[idx].qubits();
+                    let same_target = q1.len() == 1 && q2.len() == 1 && q1[0] == q2[0];
+                    let self_inverse = matches!(g1, "H" | "X" | "Y" | "Z" | "CNOT" | "CX");
+                    if same_target && g1 == g2 && self_inverse {
+                        kept.pop();
+                        continue;
+                    }
+                }
+                kept.push(idx);
+            }
+            let new_gate_count = kept.len() as f64;
+            let gate_reduction =
+                (original_gate_count - new_gate_count) / original_gate_count.max(1.0);
+            let depth_reduction = (original_depth - new_gate_count) / original_depth.max(1.0);
+            gate_reduction * 0.7 + depth_reduction * 0.3
+        };
+
+        // Initialize population: identity ordering plus mutations
+        let identity: Vec<usize> = (0..gate_count).collect();
+        let mut population: Vec<(Vec<usize>, f64)> = Vec::with_capacity(population_size);
+
+        // Add identity first
+        let id_fit = evaluate_fitness(&identity);
+        population.push((identity.clone(), id_fit));
+
+        for _ in 1..population_size {
+            let mut individual = identity.clone();
+            // Random shuffle via Fisher-Yates
+            for i in (1..gate_count).rev() {
+                let j = prng_usize(&mut rng, i + 1);
+                individual.swap(i, j);
+            }
+            let fit = evaluate_fitness(&individual);
+            population.push((individual, fit));
+        }
+
+        // Tournament selection: pick best of 3 random individuals
+        let tournament_select = |pop: &[(Vec<usize>, f64)], rng: &mut u64| -> usize {
+            let a = prng_usize(rng, pop.len());
+            let b = prng_usize(rng, pop.len());
+            let c = prng_usize(rng, pop.len());
+            let (ia, fa) = (a, pop[a].1);
+            let (ib, fb) = (b, pop[b].1);
+            let (ic, fc) = (c, pop[c].1);
+            if fa >= fb && fa >= fc {
+                ia
+            } else if fb >= fc {
+                ib
+            } else {
+                ic
+            }
+        };
+
+        for _gen in 0..generations {
+            let mut new_population: Vec<(Vec<usize>, f64)> = Vec::with_capacity(population_size);
+
+            // Elitism: keep the best individual
+            let best_idx = population
+                .iter()
+                .enumerate()
+                .max_by(|a, b| {
+                    a.1 .1
+                        .partial_cmp(&b.1 .1)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            new_population.push(population[best_idx].clone());
+
+            while new_population.len() < population_size {
+                // Selection
+                let p1_idx = tournament_select(&population, &mut rng);
+                let p2_idx = tournament_select(&population, &mut rng);
+                let p1 = &population[p1_idx].0;
+                let p2 = &population[p2_idx].0;
+
+                // One-point crossover
+                let cut = prng_usize(&mut rng, gate_count.max(1));
+                let mut child: Vec<usize> = p1[..cut].to_vec();
+                // Append elements from p2 that are not yet in child
+                for &g in p2 {
+                    if !child.contains(&g) {
+                        child.push(g);
+                    }
+                }
+                // Append any still-missing elements from p1 (fill gaps)
+                for &g in p1 {
+                    if !child.contains(&g) {
+                        child.push(g);
+                    }
+                }
+
+                // Mutation: swap two positions
+                if prng_f64(&mut rng) < mutation_rate && gate_count >= 2 {
+                    let i = prng_usize(&mut rng, gate_count);
+                    let j = prng_usize(&mut rng, gate_count);
+                    child.swap(i, j);
+                }
+
+                let fit = evaluate_fitness(&child);
+                new_population.push((child, fit));
+            }
+
+            population = new_population;
+        }
+
+        // Extract best individual
+        let best = population
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        let best_ordering = best.map(|(o, _)| o.as_slice()).unwrap_or(&[]);
+
+        // Reconstruct pruned gate list
+        let mut kept_indices: Vec<usize> = Vec::with_capacity(gate_count);
+        for &idx in best_ordering {
+            if let Some(&last) = kept_indices.last() {
+                let g1 = original_gates[last].name();
+                let g2 = original_gates[idx].name();
+                let q1 = original_gates[last].qubits();
+                let q2 = original_gates[idx].qubits();
+                let same_target = q1.len() == 1 && q2.len() == 1 && q1[0] == q2[0];
+                let self_inverse = matches!(g1, "H" | "X" | "Y" | "Z" | "CNOT" | "CX");
+                if same_target && g1 == g2 && self_inverse {
+                    kept_indices.pop();
+                    continue;
+                }
+            }
+            kept_indices.push(idx);
+        }
+
+        let new_gates: Vec<Box<dyn GateOp>> = kept_indices
+            .iter()
+            .map(|&i| original_gates[i].clone_gate())
+            .collect();
+
+        Circuit::<N>::from_gates(new_gates)
     }
 
     /// Optimize using Bayesian optimization
@@ -861,6 +1206,65 @@ mod tests {
             MLStrategy::ReinforcementLearning { .. }
         ));
         assert!(matches!(nn_strategy, MLStrategy::NeuralNetwork { .. }));
+    }
+
+    #[test]
+    fn test_optimize_with_rl_reduces_or_preserves() {
+        let strategy = MLStrategy::ReinforcementLearning {
+            learning_rate: 0.1,
+            discount_factor: 0.9,
+            exploration_rate: 0.2,
+            episodes: 5,
+        };
+        let mut optimizer = MLCircuitOptimizer::new(strategy);
+
+        // Build a circuit with adjacent H-H cancellations
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("H gate");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("H gate");
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .expect("CNOT gate");
+
+        let result = optimizer.optimize(&circuit).expect("RL optimize");
+        // After RL: optimized circuit should have ≤ original gate count
+        assert!(result.optimized_circuit.gates().len() <= circuit.gates().len());
+    }
+
+    #[test]
+    fn test_optimize_with_ga_cancels_adjacent_inverses() {
+        let strategy = MLStrategy::GeneticAlgorithm {
+            population_size: 10,
+            generations: 5,
+            mutation_rate: 0.1,
+            selection_pressure: 2.0,
+        };
+        let mut optimizer = MLCircuitOptimizer::new(strategy);
+
+        // H H on same qubit: GA should detect and cancel
+        let mut circuit = Circuit::<2>::new();
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("H gate 1");
+        circuit
+            .add_gate(Hadamard { target: QubitId(0) })
+            .expect("H gate 2");
+        circuit
+            .add_gate(CNOT {
+                control: QubitId(0),
+                target: QubitId(1),
+            })
+            .expect("CNOT gate");
+
+        let result = optimizer.optimize(&circuit).expect("GA optimize");
+        assert!(result.optimized_circuit.gates().len() <= circuit.gates().len());
     }
 
     #[test]

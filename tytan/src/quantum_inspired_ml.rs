@@ -818,7 +818,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    #[ignore = "SA sampler reliably finds local-minimum all-zero assignment (energy=0) \
+                rather than the correct one-hot solution; the QUBO penalty structure \
+                requires a better solver or higher iteration count to be reliable"]
     fn test_quantum_clustering() {
         let data = array![[0.0, 0.0], [0.1, 0.1], [5.0, 5.0], [5.1, 5.1],];
 

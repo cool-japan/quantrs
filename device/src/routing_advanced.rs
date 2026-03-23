@@ -800,7 +800,7 @@ impl AdvancedQubitRouter {
 
                     if !self.are_connected(phys1, phys2) {
                         let dist = self.get_distance(phys1, phys2);
-                        min_swaps_needed += (dist - 1).max(0);
+                        min_swaps_needed += dist.saturating_sub(1);
                     }
                 }
             }

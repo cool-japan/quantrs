@@ -9,8 +9,7 @@ use std::collections::{HashMap, BTreeMap, HashSet};
 use std::sync::{Arc, RwLock, Mutex};
 use std::time::{Duration, Instant};
 use std::io::{Read, Write, BufReader, BufWriter};
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
-use lz4::{Decoder, EncoderBuilder};
+// flate2/lz4 replaced by oxiarc-deflate/oxiarc-lz4 (COOLJAPAN Pure Rust Policy)
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
@@ -555,16 +554,8 @@ impl SparseQuantumStateCompressor {
         let serialized = oxicode::serde::encode_to_vec(state, oxicode::config::standard())
             .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
-        let mut encoder = EncoderBuilder::new()
-            .level(self.config.compression_level)
-            .build(Vec::new())
+        let compressed_data = oxiarc_lz4::compress_bytes(&serialized)
             .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
-
-        encoder.write_all(&serialized)
-            .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
-
-        let (compressed_data, result) = encoder.finish();
-        result.map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
 
         let metadata = CompressionMetadata {
             id: Uuid::new_v4(),
@@ -590,11 +581,7 @@ impl SparseQuantumStateCompressor {
         let serialized = oxicode::serde::encode_to_vec(state, oxicode::config::standard())
             .map_err(|e| CompressionError::SerializationError(format!("{e:?}")))?;
 
-        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(self.config.compression_level));
-        encoder.write_all(&serialized)
-            .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
-
-        let compressed_data = encoder.finish()
+        let compressed_data = oxiarc_deflate::zlib::zlib_compress(&serialized, self.config.compression_level as u8)
             .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
 
         let metadata = CompressionMetadata {
@@ -684,11 +671,9 @@ impl SparseQuantumStateCompressor {
     }
 
     fn decompress_lz4(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
-        let mut decoder = Decoder::new(&compressed.data[..])
-            .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
-
-        let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)
+        // Use 10x original compressed size as max output bound (generous upper limit)
+        let max_output = compressed.data.len().saturating_mul(10).max(1024);
+        let decompressed = oxiarc_lz4::decompress_bytes(&compressed.data, max_output)
             .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
 
         oxicode::serde::decode_from_slice(&decompressed, oxicode::config::standard())
@@ -697,9 +682,7 @@ impl SparseQuantumStateCompressor {
     }
 
     fn decompress_zlib(&self, compressed: &CompressedState) -> Result<SparseQuantumState, CompressionError> {
-        let mut decoder = ZlibDecoder::new(&compressed.data[..]);
-        let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)
+        let decompressed = oxiarc_deflate::zlib::zlib_decompress(&compressed.data)
             .map_err(|e| CompressionError::DecompressionFailed(e.to_string()))?;
 
         oxicode::serde::decode_from_slice(&decompressed, oxicode::config::standard())

@@ -730,8 +730,9 @@ mod tests {
         assert!(diagnostics.average_braiding_fidelity > 0.0);
     }
 
+    #[cfg(feature = "ibm")]
     #[tokio::test]
-    async fn test_quantum_device_traits() {
+    async fn test_quantum_device_traits_async() {
         let device = create_ising_device(30, 3).expect("Failed to create Ising device");
 
         assert!(device
@@ -749,6 +750,27 @@ mod tests {
         let properties = device
             .properties()
             .await
+            .expect("Failed to get device properties");
+        assert_eq!(
+            properties
+                .get("device_type")
+                .expect("device_type property not found"),
+            "topological"
+        );
+    }
+
+    #[cfg(not(feature = "ibm"))]
+    #[test]
+    fn test_quantum_device_traits() {
+        let device = create_ising_device(30, 3).expect("Failed to create Ising device");
+
+        assert!(device
+            .is_simulator()
+            .expect("Failed to check if device is simulator"));
+        assert_eq!(device.qubit_count().expect("Failed to get qubit count"), 3);
+
+        let properties = device
+            .properties()
             .expect("Failed to get device properties");
         assert_eq!(
             properties

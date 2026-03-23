@@ -73,6 +73,10 @@ pub struct QuantumWordEmbedding {
     config: QNLPConfig,
     /// Embedding parameters for each word in vocabulary
     embeddings: Vec<Vec<Parameter>>,
+    /// Flattened view of all embedding parameters (row-major: word_id * num_qubits + qubit)
+    /// This cache is the single source of truth exposed via the QMLLayer trait.
+    /// It is kept in sync with `embeddings` via `rebuild_flat_cache` and `sync_from_flat`.
+    flat_params: Vec<Parameter>,
     /// Number of qubits
     num_qubits: usize,
 }
@@ -82,18 +86,21 @@ impl QuantumWordEmbedding {
     pub fn new(config: QNLPConfig) -> Self {
         let num_qubits = config.text_qubits;
         let mut embeddings = Vec::new();
+        let mut flat_params: Vec<Parameter> = Vec::new();
 
         // Initialize embeddings for each word in vocabulary
         for word_id in 0..config.vocab_size {
             let mut word_embedding = Vec::new();
             for qubit in 0..num_qubits {
-                // Initialize with random values
-                let value = ((word_id * qubit) as f64 * 0.1).sin() * 0.5;
-                word_embedding.push(Parameter {
+                // Initialize with deterministic pseudo-random values
+                let value = ((word_id * qubit.max(1)) as f64 * 0.1).sin() * 0.5;
+                let param = Parameter {
                     name: format!("embed_{word_id}_{qubit}"),
                     value,
                     bounds: None,
-                });
+                };
+                flat_params.push(param.clone());
+                word_embedding.push(param);
             }
             embeddings.push(word_embedding);
         }
@@ -101,13 +108,37 @@ impl QuantumWordEmbedding {
         Self {
             config,
             embeddings,
+            flat_params,
             num_qubits,
+        }
+    }
+
+    /// Rebuild the flat parameter cache from the nested embeddings.
+    fn rebuild_flat_cache(&mut self) {
+        self.flat_params.clear();
+        for word_emb in &self.embeddings {
+            self.flat_params.extend(word_emb.iter().cloned());
+        }
+    }
+
+    /// Sync the nested embeddings from the flat parameter cache after an
+    /// external mutation through `parameters_mut()`.
+    fn sync_from_flat(&mut self) {
+        let nq = self.num_qubits;
+        for (word_id, word_emb) in self.embeddings.iter_mut().enumerate() {
+            for (qubit, param) in word_emb.iter_mut().enumerate() {
+                let flat_idx = word_id * nq + qubit;
+                if let Some(flat_param) = self.flat_params.get(flat_idx) {
+                    param.value = flat_param.value;
+                }
+            }
         }
     }
 
     /// Encode a sequence of word IDs into quantum gates
     pub fn encode_sequence(&self, word_ids: &[usize]) -> QuantRS2Result<Vec<Box<dyn GateOp>>> {
         let mut gates: Vec<Box<dyn GateOp>> = Vec::new();
+        let nq = self.num_qubits;
 
         for (position, &word_id) in word_ids.iter().enumerate() {
             if word_id >= self.config.vocab_size {
@@ -121,23 +152,30 @@ impl QuantumWordEmbedding {
                 break; // Truncate sequence if too long
             }
 
-            // Encode word at this position
-            let word_embedding = &self.embeddings[word_id];
-            for (qubit_idx, param) in word_embedding.iter().enumerate() {
+            // Read embedding values from the flat_params cache (canonical store)
+            let flat_base = word_id * nq;
+            for qubit_idx in 0..nq {
+                let flat_idx = flat_base + qubit_idx;
+                let value = self
+                    .flat_params
+                    .get(flat_idx)
+                    .map(|p| p.value)
+                    .unwrap_or(0.0);
+
                 let qubit = QubitId(qubit_idx as u32);
 
                 // Use rotation gates to encode the embedding values
                 gates.push(Box::new(ParametricRotationY {
                     target: qubit,
-                    theta: crate::parametric::Parameter::Constant(param.value * PI), // Scale to appropriate range
+                    theta: crate::parametric::Parameter::Constant(value * PI),
                 }));
 
-                // Add positional encoding
+                // Add positional encoding (sinusoidal, scaled to small contribution)
                 let positional_angle =
                     (position as f64) / (self.config.max_sequence_length as f64) * PI;
                 gates.push(Box::new(ParametricRotationZ {
                     target: qubit,
-                    theta: crate::parametric::Parameter::Constant(positional_angle * 0.1), // Smaller contribution
+                    theta: crate::parametric::Parameter::Constant(positional_angle * 0.1),
                 }));
             }
         }
@@ -152,13 +190,19 @@ impl QMLLayer for QuantumWordEmbedding {
     }
 
     fn parameters(&self) -> &[Parameter] {
-        // Flatten all embeddings into a single parameter vector
-        // This is a simplified approach - in practice might want more efficient storage
-        unimplemented!("Use flatten_parameters() method instead")
+        // Return the pre-built flat cache.  The cache is row-major over
+        // (word_id, qubit) and built on construction; it is also updated
+        // whenever set_parameters() is called via parameters_mut().
+        &self.flat_params
     }
 
     fn parameters_mut(&mut self) -> &mut [Parameter] {
-        unimplemented!("Use flatten_parameters_mut() method instead")
+        // Callers mutate the flat cache.  The nested `embeddings` field is
+        // a convenience copy that is kept in sync by sync_from_flat(), which
+        // is called by the default set_parameters() implementation via this
+        // method.  If callers mutate flat_params directly (e.g. in a training
+        // loop) they should call sync_from_flat() before using encode_sequence.
+        &mut self.flat_params
     }
 
     fn gates(&self) -> Vec<Box<dyn GateOp>> {
@@ -195,12 +239,15 @@ pub struct QuantumAttention {
     value_params: Vec<Parameter>,
     /// Output projection parameters
     output_params: Vec<Parameter>,
+    /// Flattened view: [query... | key... | value... | output...]
+    /// Used by the QMLLayer trait (parameters / parameters_mut).
+    flat_params: Vec<Parameter>,
 }
 
 impl QuantumAttention {
     /// Create a new quantum attention layer
     pub fn new(num_qubits: usize, num_heads: usize) -> Self {
-        let params_per_head = num_qubits / num_heads;
+        let params_per_head = num_qubits / num_heads.max(1);
 
         let mut query_params = Vec::new();
         let mut key_params = Vec::new();
@@ -240,6 +287,13 @@ impl QuantumAttention {
             }
         }
 
+        // Build the flat cache: query | key | value | output
+        let mut flat_params: Vec<Parameter> = Vec::new();
+        flat_params.extend(query_params.iter().cloned());
+        flat_params.extend(key_params.iter().cloned());
+        flat_params.extend(value_params.iter().cloned());
+        flat_params.extend(output_params.iter().cloned());
+
         Self {
             num_qubits,
             num_heads,
@@ -247,6 +301,44 @@ impl QuantumAttention {
             key_params,
             value_params,
             output_params,
+            flat_params,
+        }
+    }
+
+    /// Rebuild the flat cache from the four per-group parameter vectors.
+    pub fn rebuild_flat_cache(&mut self) {
+        self.flat_params.clear();
+        self.flat_params.extend(self.query_params.iter().cloned());
+        self.flat_params.extend(self.key_params.iter().cloned());
+        self.flat_params.extend(self.value_params.iter().cloned());
+        self.flat_params.extend(self.output_params.iter().cloned());
+    }
+
+    /// Sync the four per-group parameter vectors from the flat cache.
+    pub fn sync_from_flat(&mut self) {
+        let qlen = self.query_params.len();
+        let klen = self.key_params.len();
+        let vlen = self.value_params.len();
+
+        for (i, p) in self.query_params.iter_mut().enumerate() {
+            if let Some(fp) = self.flat_params.get(i) {
+                p.value = fp.value;
+            }
+        }
+        for (i, p) in self.key_params.iter_mut().enumerate() {
+            if let Some(fp) = self.flat_params.get(qlen + i) {
+                p.value = fp.value;
+            }
+        }
+        for (i, p) in self.value_params.iter_mut().enumerate() {
+            if let Some(fp) = self.flat_params.get(qlen + klen + i) {
+                p.value = fp.value;
+            }
+        }
+        for (i, p) in self.output_params.iter_mut().enumerate() {
+            if let Some(fp) = self.flat_params.get(qlen + klen + vlen + i) {
+                p.value = fp.value;
+            }
         }
     }
 
@@ -330,12 +422,17 @@ impl QMLLayer for QuantumAttention {
     }
 
     fn parameters(&self) -> &[Parameter] {
-        // This would need a flattened view of all parameters
-        unimplemented!("Use all_parameters() method instead")
+        // Return the pre-built flat cache [query | key | value | output].
+        // The cache is constructed in `new()` and can be refreshed with
+        // `rebuild_flat_cache()` if the per-group Vecs are mutated directly.
+        &self.flat_params
     }
 
     fn parameters_mut(&mut self) -> &mut [Parameter] {
-        unimplemented!("Use all_parameters_mut() method instead")
+        // Callers may mutate via this slice; call sync_from_flat() afterwards
+        // to propagate changes back to the per-group parameter Vecs used in
+        // attention_gates().
+        &mut self.flat_params
     }
 
     fn gates(&self) -> Vec<Box<dyn GateOp>> {
@@ -831,7 +928,7 @@ pub mod advanced {
 
             // Sort by frequency and take top words
             let mut word_freq: Vec<_> = word_counts.into_iter().collect();
-            word_freq.sort_by(|a, b| b.1.cmp(&a.1));
+            word_freq.sort_by_key(|b| std::cmp::Reverse(b.1));
 
             // Add special tokens first
             for (token, id) in &self.special_tokens {
@@ -1108,7 +1205,7 @@ pub mod advanced {
             }
 
             // Remove overlapping entities (keep longer ones)
-            entities.sort_by(|a, b| (b.1 - b.0).cmp(&(a.1 - a.0)));
+            entities.sort_by_key(|b| std::cmp::Reverse(b.1 - b.0));
             let mut final_entities = Vec::new();
             let mut used_positions = vec![false; text_tokens.len()];
 

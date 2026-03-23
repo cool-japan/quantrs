@@ -851,15 +851,7 @@ impl GateSequenceCompressor {
     fn compress_zlib(&self, data: &[u8]) -> QuantRS2Result<Vec<u8>> {
         #[cfg(feature = "compression")]
         {
-            use std::io::Write;
-            let mut encoder =
-                flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-            encoder.write_all(data).map_err(|e| {
-                QuantRS2Error::RuntimeError(format!("Zlib compression failed: {e}"))
-            })?;
-
-            encoder
-                .finish()
+            oxiarc_deflate::zlib::zlib_compress(data, 6)
                 .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib compression failed: {e}")))
         }
 
@@ -1060,16 +1052,8 @@ impl GateSequenceCompressor {
     fn decompress_zlib(&self, compressed_data: &[u8]) -> QuantRS2Result<Vec<u8>> {
         #[cfg(feature = "compression")]
         {
-            use std::io::Read;
-
-            let mut decoder = flate2::read::ZlibDecoder::new(compressed_data);
-            let mut decompressed = Vec::new();
-
-            decoder.read_to_end(&mut decompressed).map_err(|e| {
-                QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {e}"))
-            })?;
-
-            Ok(decompressed)
+            oxiarc_deflate::zlib::zlib_decompress(compressed_data)
+                .map_err(|e| QuantRS2Error::RuntimeError(format!("Zlib decompression failed: {e}")))
         }
 
         #[cfg(not(feature = "compression"))]

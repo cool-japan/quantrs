@@ -151,12 +151,17 @@ impl MultiQubitKAKDecomposer {
             }
         }
 
+        // Calculate actual circuit depth using critical path through DAG.
+        // For each gate in topological order:
+        //   depth[gate] = 1 + max(depth[prev_gate]) over all preceding gates sharing a qubit.
+        let depth = Self::calculate_circuit_depth(&gates);
+
         let result = MultiQubitKAK {
             gates,
             tree,
             cnot_count,
             single_qubit_count,
-            depth: 0, // TODO: Calculate actual depth
+            depth,
         };
 
         // Cache result
@@ -562,6 +567,42 @@ impl MultiQubitKAKDecomposer {
     }
 
     /// Check cache for existing decomposition
+    /// Calculate circuit depth as the length of the critical path through the DAG.
+    ///
+    /// For each gate in topological order (gates are already ordered):
+    ///   `depth[i] = 1 + max(depth[j])` for all j < i that share at least one qubit with gate i.
+    ///
+    /// Uses a BFS/forward-pass approach since gates are given in topological order.
+    fn calculate_circuit_depth(gates: &[Box<dyn GateOp>]) -> usize {
+        if gates.is_empty() {
+            return 0;
+        }
+
+        // depth_at[i] = the depth level at which gate i completes (1-based)
+        let mut depth_at: Vec<usize> = vec![0; gates.len()];
+        // last_qubit_depth maps qubit id -> (gate_index, depth) of the last gate on that qubit
+        let mut last_qubit_finish: FxHashMap<u32, usize> = FxHashMap::default();
+
+        for (i, gate) in gates.iter().enumerate() {
+            let qubits = gate.qubits();
+            // Find the maximum finish depth among all preceding gates on shared qubits
+            let predecessor_max_depth = qubits
+                .iter()
+                .filter_map(|q| last_qubit_finish.get(&q.0).copied())
+                .max()
+                .unwrap_or(0);
+
+            depth_at[i] = predecessor_max_depth + 1;
+
+            // Update last finish depth for each qubit this gate touches
+            for q in &qubits {
+                last_qubit_finish.insert(q.0, depth_at[i]);
+            }
+        }
+
+        depth_at.into_iter().max().unwrap_or(0)
+    }
+
     const fn check_cache(&self, _unitary: &Array2<Complex<f64>>) -> Option<&MultiQubitKAK> {
         // Simple hash based on first few elements
         // Real implementation would use better hashing

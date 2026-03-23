@@ -735,18 +735,32 @@ impl AdvancedEquivalenceChecker {
             return (false, 0.0, f64::INFINITY);
         }
 
-        // Weighted aggregation based on confidence
-        let total_weight: f64 = results.iter().map(|r| r.confidence).sum();
-        let weighted_equivalent: f64 = results
-            .iter()
-            .map(|r| if r.equivalent { r.confidence } else { 0.0 })
-            .sum();
-
-        let equivalent = weighted_equivalent / total_weight > 0.5;
-        let confidence = weighted_equivalent / total_weight;
+        // Circuits are equivalent only if EVERY comparison method agrees.
+        // A single dissenting result (equivalent=false) is enough to declare
+        // non-equivalence, regardless of how confident the other methods are
+        // in saying they *are* equivalent.  This prevents unreliable methods
+        // (e.g. SVD singular-value comparison, which cannot distinguish
+        // circuits with the same singular-value spectrum) from overriding
+        // correct matrix-based comparisons.
+        let all_equivalent = results.iter().all(|r| r.equivalent);
         let max_error = results.iter().map(|r| r.error_measure).fold(0.0, f64::max);
 
-        (equivalent, confidence, max_error)
+        // Confidence: for equivalent circuits take the minimum method confidence;
+        // for non-equivalent circuits take the complement of the minimum error.
+        let confidence = if all_equivalent {
+            results.iter().map(|r| r.confidence).fold(1.0_f64, f64::min)
+        } else {
+            // Confidence in non-equivalence: comes from the method with the
+            // largest error measure (most certain about difference).
+            let max_conf_of_disagreeing = results
+                .iter()
+                .filter(|r| !r.equivalent)
+                .map(|r| r.confidence)
+                .fold(0.0_f64, f64::max);
+            max_conf_of_disagreeing
+        };
+
+        (all_equivalent, confidence, max_error)
     }
 
     /// Detect circuit symmetries
@@ -856,15 +870,47 @@ impl AdvancedEquivalenceChecker {
     }
 
     fn apply_canonical_ordering(&self, circuit: &mut [crate::equivalence_checker::QuantumGate]) {
-        circuit.sort_by_key(|gate| {
-            (
-                self.gate_priority(gate),
-                gate.target_qubits().to_vec(),
-                gate.control_qubits()
-                    .map(|c| c.to_vec())
-                    .unwrap_or_default(),
-            )
-        });
+        // Bubble-sort respecting commutativity: only swap adjacent gates that
+        // are proven to commute (act on disjoint qubits).  When two gates
+        // commute, put the one with the lower minimum qubit index first so
+        // that the representation is canonical regardless of the original
+        // insertion order.  This preserves circuit semantics for
+        // non-commuting gates while creating a unique normal form for all
+        // parallel (disjoint-qubit) pairs.
+        let n = circuit.len();
+        if n < 2 {
+            return;
+        }
+        let mut swapped = true;
+        while swapped {
+            swapped = false;
+            for i in 0..n - 1 {
+                if self.gates_commute(&circuit[i], &circuit[i + 1]) {
+                    let min_qubit_i = circuit[i]
+                        .target_qubits()
+                        .iter()
+                        .chain(circuit[i].control_qubits().unwrap_or(&[]).iter())
+                        .copied()
+                        .min()
+                        .unwrap_or(usize::MAX);
+                    let min_qubit_next = circuit[i + 1]
+                        .target_qubits()
+                        .iter()
+                        .chain(circuit[i + 1].control_qubits().unwrap_or(&[]).iter())
+                        .copied()
+                        .min()
+                        .unwrap_or(usize::MAX);
+                    // Secondary key: gate-type priority for equal qubit indices
+                    let priority_i = self.gate_priority(&circuit[i]);
+                    let priority_next = self.gate_priority(&circuit[i + 1]);
+                    let should_swap = (min_qubit_i, priority_i) > (min_qubit_next, priority_next);
+                    if should_swap {
+                        circuit.swap(i, i + 1);
+                        swapped = true;
+                    }
+                }
+            }
+        }
     }
 
     // Helper methods
@@ -1058,7 +1104,6 @@ mod tests {
     use crate::equivalence_checker::QuantumGate;
 
     #[test]
-    #[ignore = "Skipped: Stub implementations don't properly distinguish non-commuting gates"]
     fn test_advanced_equivalence_basic() {
         let mut checker = AdvancedEquivalenceChecker::new();
 
@@ -1128,7 +1173,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Skipped: Stub implementations don't properly distinguish non-commuting gates"]
     fn test_commutation_ordering() {
         let mut checker = AdvancedEquivalenceChecker::new();
 
