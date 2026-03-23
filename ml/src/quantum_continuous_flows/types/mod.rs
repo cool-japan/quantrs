@@ -1,0 +1,48 @@
+//! Auto-generated module structure
+
+pub mod quantumcontinuousflow_analyze_flow_convergence_group;
+pub mod quantumcontinuousflow_apply_flow_layer_group;
+pub mod quantumcontinuousflow_apply_inverse_flow_layer_group;
+pub mod quantumcontinuousflow_apply_quantum_coupling_network_group;
+pub mod quantumcontinuousflow_apply_quantum_flow_gate_group;
+pub mod quantumcontinuousflow_apply_quantum_network_group;
+pub mod quantumcontinuousflow_compute_base_log_probability_group;
+pub mod quantumcontinuousflow_compute_expectation_value_group;
+pub mod quantumcontinuousflow_compute_quantum_enhancement_group;
+pub mod quantumcontinuousflow_compute_quantum_ode_jacobian_group;
+pub mod quantumcontinuousflow_create_entanglement_pattern_group;
+pub mod quantumcontinuousflow_create_pauli_z_observable_group;
+pub mod quantumcontinuousflow_crud;
+pub mod quantumcontinuousflow_integrate_quantum_ode_group;
+pub mod quantumcontinuousflow_quantum_metrics_group;
+pub mod quantumcontinuousflow_sample_base_distribution_group;
+pub mod quantumcontinuousflow_train_epoch_group;
+pub mod quantumcontinuousflow_type;
+pub mod quantumcontinuousflow_update_flow_parameters_group;
+pub mod quantumcontinuousflow_update_quantum_flow_metrics_group;
+pub mod quantumcontinuousflow_validation;
+pub mod types;
+
+// Re-export all types
+pub use quantumcontinuousflow_analyze_flow_convergence_group::*;
+pub use quantumcontinuousflow_apply_flow_layer_group::*;
+pub use quantumcontinuousflow_apply_inverse_flow_layer_group::*;
+pub use quantumcontinuousflow_apply_quantum_coupling_network_group::*;
+pub use quantumcontinuousflow_apply_quantum_flow_gate_group::*;
+pub use quantumcontinuousflow_apply_quantum_network_group::*;
+pub use quantumcontinuousflow_compute_base_log_probability_group::*;
+pub use quantumcontinuousflow_compute_expectation_value_group::*;
+pub use quantumcontinuousflow_compute_quantum_enhancement_group::*;
+pub use quantumcontinuousflow_compute_quantum_ode_jacobian_group::*;
+pub use quantumcontinuousflow_create_entanglement_pattern_group::*;
+pub use quantumcontinuousflow_create_pauli_z_observable_group::*;
+pub use quantumcontinuousflow_crud::*;
+pub use quantumcontinuousflow_integrate_quantum_ode_group::*;
+pub use quantumcontinuousflow_quantum_metrics_group::*;
+pub use quantumcontinuousflow_sample_base_distribution_group::*;
+pub use quantumcontinuousflow_train_epoch_group::*;
+pub use quantumcontinuousflow_type::*;
+pub use quantumcontinuousflow_update_flow_parameters_group::*;
+pub use quantumcontinuousflow_update_quantum_flow_metrics_group::*;
+pub use quantumcontinuousflow_validation::*;
+pub use types::*;
