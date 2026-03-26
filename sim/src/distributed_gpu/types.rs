@@ -315,7 +315,7 @@ impl DistributedGpuStateVector {
     fn detect_available_gpus() -> Result<usize> {
         Ok(1)
     }
-    fn select_partition_scheme(
+    pub(crate) fn select_partition_scheme(
         num_qubits: usize,
         num_devices: usize,
         config: &DistributedGpuConfig,
@@ -613,7 +613,7 @@ impl DistributedGpuStateVector {
         self.stats.sync_events += 1;
         Ok(())
     }
-    fn requires_inter_gpu_communication(&self, control: usize, target: usize) -> bool {
+    pub(crate) fn requires_inter_gpu_communication(&self, control: usize, target: usize) -> bool {
         match self.partition_scheme {
             PartitionScheme::Block => {
                 let control_mask = 1_usize << control;
@@ -649,7 +649,7 @@ impl DistributedGpuStateVector {
         }
         Ok(probability)
     }
-    fn synchronize_all_reduce(&mut self) -> Result<()> {
+    pub(crate) fn synchronize_all_reduce(&mut self) -> Result<()> {
         match self.config.sync_strategy {
             SyncStrategy::AllReduce => self.all_reduce_sync(),
             SyncStrategy::RingReduce => self.ring_reduce_sync(),
@@ -779,7 +779,7 @@ impl DistributedGpuStateVector {
         Ok(())
     }
     /// Check if two partitions require synchronization
-    fn partitions_require_sync(&self, partition_a: usize, partition_b: usize) -> bool {
+    pub(crate) fn partitions_require_sync(&self, partition_a: usize, partition_b: usize) -> bool {
         let part_a = &self.state_partitions[partition_a];
         let part_b = &self.state_partitions[partition_b];
         let a_end = part_a.start_index + part_a.size;
@@ -789,7 +789,11 @@ impl DistributedGpuStateVector {
             || (part_b.start_index.abs_diff(a_end) <= 1)
     }
     /// Exchange boundary states between two partitions
-    fn exchange_boundary_states(&mut self, partition_a: usize, partition_b: usize) -> Result<()> {
+    pub(crate) fn exchange_boundary_states(
+        &mut self,
+        partition_a: usize,
+        partition_b: usize,
+    ) -> Result<()> {
         let boundary_size = 64;
         if partition_a >= self.state_partitions.len() || partition_b >= self.state_partitions.len()
         {
@@ -797,7 +801,7 @@ impl DistributedGpuStateVector {
         }
         let a_boundary_size = boundary_size.min(self.state_partitions[partition_a].size);
         let b_boundary_size = boundary_size.min(self.state_partitions[partition_b].size);
-        if a_boundary_size > 0 && b_boundary_size > 0 {}
+        let _ = (a_boundary_size, b_boundary_size);
         Ok(())
     }
     fn apply_single_qubit_gate_partition_static(

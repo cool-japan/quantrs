@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_bf16_conversion() {
-        let value = 3.14159f32;
+        let value = std::f32::consts::PI;
         let bf16 = fp16_utils::f32_to_bf16(value);
         let back = fp16_utils::bf16_to_f32(bf16);
         // BF16 has lower precision, so use larger tolerance
@@ -728,7 +728,7 @@ mod tests {
 
     #[test]
     fn test_tf32_truncation() {
-        let value = 1.23456789f32;
+        let value = 1.234_568_f32;
         let tf32 = fp16_utils::f32_to_tf32(value);
         // TF32 keeps 10 mantissa bits, so precision is ~1e-3 relative
         assert!((value - tf32).abs() < 0.001);
@@ -769,8 +769,10 @@ mod tests {
         assert_eq!(precision_no_tc, QuantumPrecision::Single);
 
         // Test with tensor cores enabled (set generation to Ampere)
-        let mut config_with_tc = TensorCoreConfig::default();
-        config_with_tc.generation = TensorCoreGeneration::Ampere;
+        let config_with_tc = TensorCoreConfig {
+            generation: TensorCoreGeneration::Ampere,
+            ..TensorCoreConfig::default()
+        };
         assert!(config_with_tc.tensor_cores_available());
 
         // tolerance 1e-3: between 1e-4 and 1e-2, with tensor cores -> TF32
@@ -788,8 +790,10 @@ mod tests {
 
     #[test]
     fn test_matmul_tf32_dimensions() {
-        let mut config = TensorCoreConfig::default();
-        config.generation = TensorCoreGeneration::Ampere;
+        let config = TensorCoreConfig {
+            generation: TensorCoreGeneration::Ampere,
+            ..TensorCoreConfig::default()
+        };
         let kernels = TensorCoreKernels::new(config);
 
         let a = vec![1.0f32; 4 * 4];
@@ -807,8 +811,10 @@ mod tests {
 
     #[test]
     fn test_estimated_tflops() {
-        let mut config = TensorCoreConfig::default();
-        config.generation = TensorCoreGeneration::Ampere;
+        let config = TensorCoreConfig {
+            generation: TensorCoreGeneration::Ampere,
+            ..TensorCoreConfig::default()
+        };
         let kernels = TensorCoreKernels::new(config);
 
         let tflops_tf32 = kernels.estimated_tflops(QuantumPrecision::TF32);

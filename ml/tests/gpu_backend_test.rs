@@ -13,17 +13,16 @@ mod tests {
         #[cfg(all(feature = "gpu", not(target_os = "macos")))]
         {
             // On non-macOS with GPU support, it should either succeed or fail with GPU not available
-            if result.is_ok() {
-                let backend = result.unwrap();
-                assert_eq!(backend.name(), "gpu_full");
-                assert!(backend.capabilities().gpu_acceleration);
-                assert_eq!(backend.max_qubits(), 20);
-            } else {
-                // GPU not available on this system
-                assert!(result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("GPU not available"));
+            match result {
+                Ok(backend) => {
+                    assert_eq!(backend.name(), "gpu_full");
+                    assert!(backend.capabilities().gpu_acceleration);
+                    assert_eq!(backend.max_qubits(), 20);
+                }
+                Err(err) => {
+                    // GPU not available on this system
+                    assert!(err.to_string().contains("GPU not available"));
+                }
             }
         }
 
@@ -76,14 +75,16 @@ mod tests {
             // Try to execute (will fail if no actual GPU available)
             let result = backend.execute_circuit(&dynamic_circuit, &[], None);
 
-            if result.is_ok() {
-                // If we have a real GPU, check the result
-                let sim_result = result.unwrap();
-                assert!(sim_result.metadata.contains_key("gpu_time_ms"));
-                assert!(sim_result.metadata.contains_key("num_qubits"));
-            } else {
-                // No GPU available, but method should be callable
-                assert!(result.unwrap_err().to_string().contains("GPU"));
+            match result {
+                Ok(sim_result) => {
+                    // If we have a real GPU, check the result
+                    assert!(sim_result.metadata.contains_key("gpu_time_ms"));
+                    assert!(sim_result.metadata.contains_key("num_qubits"));
+                }
+                Err(err) => {
+                    // No GPU available, but method should be callable
+                    assert!(err.to_string().contains("GPU"));
+                }
             }
         }
     }

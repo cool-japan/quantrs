@@ -167,7 +167,7 @@ mod tests {
         assert!(memory_4gpu > 0);
         let memory_per_gpu = 8_000_000_000;
         let optimal = DistributedGpuUtils::optimal_gpu_count(25, 8, memory_per_gpu);
-        assert!(optimal >= 1 && optimal <= 8);
+        assert!((1..=8).contains(&optimal));
     }
     #[test]
     fn test_benchmark_partitioning_strategies() {
