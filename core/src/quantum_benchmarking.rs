@@ -215,7 +215,7 @@ impl QuantumBenchmarkSuite {
 
         // Apply depolarizing noise (simplified model)
         for amplitude in state.iter_mut() {
-            if rng.gen::<f64>() < depolarizing_prob {
+            if rng.random::<f64>() < depolarizing_prob {
                 // Randomly flip phase or amplitude
                 *amplitude *= Complex64::new(0.9, 0.0);
             }
@@ -241,7 +241,7 @@ impl QuantumBenchmarkSuite {
             let max_value = 1 << max_qubits;
             for _ in 0..num_shots {
                 // Use simple modulo to generate random values
-                let random_val = (rng.gen::<u64>() as usize) % max_value;
+                let random_val = (rng.random::<u64>() as usize) % max_value;
                 results.push(random_val);
             }
             results

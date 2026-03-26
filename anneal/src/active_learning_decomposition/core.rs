@@ -222,7 +222,7 @@ impl ActiveLearningDecomposer {
         let explore_threshold = self.config.exploration_rate;
         let uncertainty_threshold = 0.5; // High uncertainty threshold
 
-        Ok(uncertainty > uncertainty_threshold || thread_rng().gen::<f64>() < explore_threshold)
+        Ok(uncertainty > uncertainty_threshold || thread_rng().random::<f64>() < explore_threshold)
     }
 
     /// Explore strategy selection
@@ -341,8 +341,8 @@ impl ActiveLearningDecomposer {
         let mut rng = thread_rng();
 
         // Select a random strategy with some probability
-        if rng.gen::<f64>() < 0.3 {
-            let random_idx = rng.gen_range(0..strategies.len());
+        if rng.random::<f64>() < 0.3 {
+            let random_idx = rng.random_range(0..strategies.len());
             Ok(strategies[random_idx].clone())
         } else {
             Ok(base_strategy.clone())

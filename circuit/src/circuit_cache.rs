@@ -547,7 +547,7 @@ impl<T: Clone + Send + Sync + 'static> CircuitCache<T> {
                 if keys.is_empty() {
                     None
                 } else {
-                    let idx = rng.gen_range(0..keys.len());
+                    let idx = rng.random_range(0..keys.len());
                     Some(keys[idx])
                 }
             };

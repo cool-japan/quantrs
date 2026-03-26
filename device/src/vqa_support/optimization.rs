@@ -350,7 +350,7 @@ impl OptimizationStrategy {
         let mut rng = thread_rng();
 
         let params = Array1::from_shape_fn(num_params, |_| {
-            rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI)
+            rng.random_range(-std::f64::consts::PI..std::f64::consts::PI)
         });
 
         Ok(params)
@@ -367,7 +367,7 @@ impl OptimizationStrategy {
 
         let params = Array1::from_shape_fn(num_params, |i| {
             let segment = indices[i] as f64 / num_params as f64;
-            let offset = rng.gen::<f64>() / num_params as f64;
+            let offset = rng.random::<f64>() / num_params as f64;
             let uniform_sample = segment + offset;
 
             // Scale to parameter range
@@ -385,7 +385,7 @@ impl OptimizationStrategy {
 
         let params = Array1::from_shape_fn(num_params, |i| {
             let sobol_val = (i as f64 + 0.5) / num_params as f64;
-            let jittered = rng.gen::<f64>().mul_add(0.1, sobol_val) - 0.05;
+            let jittered = rng.random::<f64>().mul_add(0.1_f64, sobol_val) - 0.05;
             (2.0 * std::f64::consts::PI).mul_add(jittered.clamp(0.0, 1.0), -std::f64::consts::PI)
         });
 
@@ -412,7 +412,7 @@ impl OptimizationStrategy {
         let mut rng = thread_rng();
 
         let params = Array1::from_shape_fn(num_params, |_| {
-            rng.gen_range(-std::f64::consts::PI..std::f64::consts::PI)
+            rng.random_range(-std::f64::consts::PI..std::f64::consts::PI)
         });
 
         Ok(params)
@@ -663,7 +663,7 @@ impl OptimizationStrategy {
                 let mut rng = thread_rng();
 
                 for param in params.iter_mut() {
-                    *param += rng.gen_range(-0.1..0.1);
+                    *param += rng.random_range(-0.1..0.1);
                 }
 
                 // Project back to feasible region
@@ -790,8 +790,9 @@ impl OptimizationStrategy {
 
             // Initialize population randomly within bounds
             for _ in 0..population_size {
-                let individual =
-                    Array1::from_shape_fn(num_params, |i| rng.gen_range(bounds[i].0..bounds[i].1));
+                let individual = Array1::from_shape_fn(num_params, |i| {
+                    rng.random_range(bounds[i].0..bounds[i].1)
+                });
                 let fit = problem.evaluate_objective(&individual)?;
                 population.push(individual);
                 fitness.push(fit);
@@ -828,9 +829,9 @@ impl OptimizationStrategy {
 
                     // Crossover
                     let mut trial = population[i].clone();
-                    let crossover_point = rng.gen_range(0..num_params);
+                    let crossover_point = rng.random_range(0..num_params);
                     for j in 0..num_params {
-                        if rng.gen::<f64>() < crossover_prob || j == crossover_point {
+                        if rng.random::<f64>() < crossover_prob || j == crossover_point {
                             trial[j] = mutant[j];
                         }
                     }

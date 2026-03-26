@@ -123,7 +123,7 @@ fn create_synthetic_data(n_samples: usize, n_features: usize, noise_level: f64) 
 
     for i in 0..n_samples {
         for j in 0..n_features {
-            data[[i, j]] = rng.gen::<f64>() * noise_level;
+            data[[i, j]] = rng.random::<f64>() * noise_level;
         }
     }
 

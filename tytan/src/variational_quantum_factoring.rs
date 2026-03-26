@@ -223,14 +223,14 @@ impl VQF {
 
             // Extract p
             for (i, &param) in params.iter().enumerate().take(self.n_qubits_p) {
-                if rng.gen_bool(0.4f64.mul_add(param.sin(), 0.5)) {
+                if rng.random_bool(0.4f64.mul_add(param.sin(), 0.5)) {
                     p |= 1u64 << i;
                 }
             }
 
             // Extract q
             for j in 0..self.n_qubits_q {
-                if rng.gen_bool(0.4f64.mul_add(params[self.n_qubits_p + j].sin(), 0.5)) {
+                if rng.random_bool(0.4f64.mul_add(params[self.n_qubits_p + j].sin(), 0.5)) {
                     q |= 1u64 << j;
                 }
             }
@@ -527,7 +527,7 @@ impl ShorsAlgorithm {
         // Try random bases
         for attempt in 0..10 {
             // Choose random a coprime to n
-            let a = rng.gen_range(2..self.n);
+            let a = rng.random_range(2..self.n);
             if gcd(a, self.n) != 1 {
                 let factor = gcd(a, self.n);
                 return Ok(ShorsResult {

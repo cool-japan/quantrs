@@ -109,7 +109,7 @@ impl QuantumFederatedClient {
     /// Create new federated client
     pub fn new(id: usize, num_qubits: usize, depth: usize, dataset_size: usize) -> Self {
         let mut rng = thread_rng();
-        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.gen_range(-PI..PI));
+        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.random_range(-PI..PI));
 
         Self {
             id,
@@ -388,13 +388,13 @@ impl QuantumFederatedServer {
         // Initialize global model
         let global_params =
             Array2::from_shape_fn((config.circuit_depth, config.num_qubits * 3), |_| {
-                rng.gen_range(-PI..PI)
+                rng.random_range(-PI..PI)
             });
 
         // Create clients
         let mut clients = Vec::with_capacity(config.num_clients);
         for i in 0..config.num_clients {
-            let dataset_size = rng.gen_range(50..200);
+            let dataset_size = rng.random_range(50..200);
             clients.push(QuantumFederatedClient::new(
                 i,
                 config.num_qubits,
@@ -463,7 +463,7 @@ impl QuantumFederatedServer {
 
         // Shuffle and select
         for i in (1..clients.len()).rev() {
-            let j = rng.gen_range(0..=i);
+            let j = rng.random_range(0..=i);
             clients.swap(i, j);
         }
 
@@ -633,7 +633,7 @@ impl QuantumFederatedServer {
         // Add Gaussian noise to parameters
         for i in 0..self.global_params.shape()[0] {
             for j in 0..self.global_params.shape()[1] {
-                let noise = rng.gen_range(-1.0..1.0) * noise_scale;
+                let noise = rng.random_range(-1.0..1.0) * noise_scale;
                 self.global_params[[i, j]] += noise;
             }
         }

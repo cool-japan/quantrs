@@ -118,7 +118,7 @@ impl QuantumReservoir {
 
         // Initialize input encoding parameters
         let input_params = Array2::from_shape_fn((config.num_qubits, config.num_qubits), |_| {
-            rng.gen_range(-PI..PI) * config.input_scaling
+            rng.random_range(-PI..PI) * config.input_scaling
         });
 
         // Generate fixed random reservoir circuit
@@ -151,7 +151,7 @@ impl QuantumReservoir {
 
             // Add single-qubit rotations
             for q in 0..num_qubits {
-                let gate_type = match rng.gen_range(0..3) {
+                let gate_type = match rng.random_range(0..3) {
                     0 => GateType::RotationX,
                     1 => GateType::RotationY,
                     _ => GateType::RotationZ,
@@ -160,14 +160,14 @@ impl QuantumReservoir {
                 layer.push(ReservoirGate {
                     gate_type,
                     qubits: vec![q],
-                    params: vec![rng.gen_range(-PI..PI)],
+                    params: vec![rng.random_range(-PI..PI)],
                 });
             }
 
             // Add entangling gates
             if use_entanglement {
                 for q in 0..num_qubits - 1 {
-                    let gate_type = match rng.gen_range(0..3) {
+                    let gate_type = match rng.random_range(0..3) {
                         0 => GateType::CNOT,
                         1 => GateType::CZ,
                         _ => GateType::SWAP,
@@ -510,7 +510,7 @@ impl QuantumReadout {
         let scale = (2.0 / input_dim as f64).sqrt();
 
         let weights =
-            Array2::from_shape_fn((output_dim, input_dim), |_| rng.gen_range(-scale..scale));
+            Array2::from_shape_fn((output_dim, input_dim), |_| rng.random_range(-scale..scale));
 
         let bias = Array1::zeros(output_dim);
 

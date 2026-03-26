@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("\n===== Database size: {db_size} (using {n_qubits} qubits) =====");
 
         // Pick a random item to search for (the marked element)
-        let marked_item = thread_rng().gen_range(0..db_size);
+        let marked_item = thread_rng().random_range(0..db_size);
         println!("Searching for marked item: {marked_item} (binary: {marked_item:0n_qubits$b})");
 
         // Run without noise first for comparison

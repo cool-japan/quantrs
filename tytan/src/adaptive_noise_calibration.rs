@@ -259,7 +259,7 @@ impl NoisePredictor {
             // Xavier initialization
             let scale = (2.0 / (prev_size + hidden_size) as f64).sqrt();
             let w = Array2::from_shape_fn((prev_size, hidden_size), |_| {
-                (rng.gen::<f64>() * 2.0).mul_add(scale, -scale)
+                (rng.random::<f64>() * 2.0).mul_add(scale, -scale)
             });
             let b = Array1::zeros(hidden_size);
             weights.push(w);
@@ -270,7 +270,7 @@ impl NoisePredictor {
         // Output layer
         let scale = (2.0 / (prev_size + output_size) as f64).sqrt();
         let w = Array2::from_shape_fn((prev_size, output_size), |_| {
-            (rng.gen::<f64>() * 2.0).mul_add(scale, -scale)
+            (rng.random::<f64>() * 2.0).mul_add(scale, -scale)
         });
         let b = Array1::zeros(output_size);
         weights.push(w);
@@ -416,19 +416,19 @@ impl NoiseCalibrationManager {
         for i in 0..num_qubits {
             qubit_parameters.push(QubitNoiseParameters {
                 qubit_id: i,
-                t1: rng.gen::<f64>().mul_add(10.0, 20.0), // 20-30 μs
-                t2: rng.gen::<f64>().mul_add(5.0, 10.0),  // 10-15 μs
-                readout_fidelity: rng.gen::<f64>().mul_add(0.04, 0.95), // 95-99%
-                gate_fidelity: rng.gen::<f64>().mul_add(0.02, 0.97), // 97-99%
+                t1: rng.random::<f64>().mul_add(10.0, 20.0), // 20-30 μs
+                t2: rng.random::<f64>().mul_add(5.0, 10.0),  // 10-15 μs
+                readout_fidelity: rng.random::<f64>().mul_add(0.04, 0.95), // 95-99%
+                gate_fidelity: rng.random::<f64>().mul_add(0.02, 0.97), // 97-99%
             });
         }
 
         let model = NoiseModel {
             noise_type: NoiseType::Thermal,
-            strength: rng.gen::<f64>().mul_add(0.05, 0.01), // 1-6%
-            correlation_time: rng.gen::<f64>().mul_add(4.0, 1.0), // 1-5 time units
-            correlation_length: rng.gen::<f64>().mul_add(2.0, 1.0), // 1-3 qubits
-            temperature: 0.015,                             // ~15 mK
+            strength: rng.random::<f64>().mul_add(0.05, 0.01), // 1-6%
+            correlation_time: rng.random::<f64>().mul_add(4.0, 1.0), // 1-5 time units
+            correlation_length: rng.random::<f64>().mul_add(2.0, 1.0), // 1-3 qubits
+            temperature: 0.015,                                // ~15 mK
             qubit_parameters,
         };
 

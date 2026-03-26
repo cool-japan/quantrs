@@ -675,7 +675,7 @@ impl NeuralAnnealingScheduler {
         let mut rng = ChaCha8Rng::from_rng(&mut thread_rng());
         let std_dev = (2.0 / input_dim as f64).sqrt();
         Array2::from_shape_fn((output_dim, input_dim), |_| {
-            rng.gen::<f64>().mul_add(std_dev, -(std_dev / 2.0))
+            rng.random::<f64>().mul_add(std_dev, -(std_dev / 2.0))
         })
     }
     /// Create feature extractors

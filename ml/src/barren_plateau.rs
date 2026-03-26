@@ -67,7 +67,7 @@ impl BarrenPlateauDetector {
         for _ in 0..self.num_samples {
             // Generate random parameters
             let params: Vec<f64> = (0..num_params)
-                .map(|_| rng.gen::<f64>() * 2.0 * PI)
+                .map(|_| rng.random::<f64>() * 2.0 * PI)
                 .collect();
 
             // Compute gradients for this configuration
@@ -157,7 +157,7 @@ impl BarrenPlateauDetector {
 
         // For demo purposes, return a small random value
         let mut rng = scirs2_core::random::ChaCha8Rng::seed_from_u64(self.seed);
-        Ok(rng.gen::<f64>() * 0.1)
+        Ok(rng.random::<f64>() * 0.1)
     }
 
     /// Suggest mitigation strategies based on analysis
@@ -292,7 +292,7 @@ impl BarrenPlateauMitigation {
 
         // Initialize with small random values
         (0..num_params)
-            .map(|_| (rng.gen::<f64>() - 0.5) * 0.1)
+            .map(|_| (rng.random::<f64>() - 0.5) * 0.1)
             .collect()
     }
 

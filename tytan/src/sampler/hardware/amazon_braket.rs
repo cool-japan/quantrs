@@ -4,7 +4,7 @@
 //! for solving optimization problems using various quantum devices and simulators.
 
 use scirs2_core::ndarray::{Array, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -400,7 +400,7 @@ impl Sampler for AmazonBraketSampler {
         for _ in 0..unique_solutions {
             let assignments: HashMap<String, bool> = idx_to_var
                 .values()
-                .map(|name| (name.clone(), rng.gen::<bool>()))
+                .map(|name| (name.clone(), rng.random::<bool>()))
                 .collect();
 
             // Calculate energy
@@ -422,11 +422,11 @@ impl Sampler for AmazonBraketSampler {
             let occurrences = match &self.config.device {
                 BraketDevice::DWaveAdvantage | BraketDevice::DWave2000Q => {
                     // Annealers return occurrence counts
-                    rng.gen_range(1..=(shots / unique_solutions + 20))
+                    rng.random_range(1..=(shots / unique_solutions + 20))
                 }
                 _ => {
                     // Other devices return shot counts
-                    rng.gen_range(1..=(shots / unique_solutions + 5))
+                    rng.random_range(1..=(shots / unique_solutions + 5))
                 }
             };
 

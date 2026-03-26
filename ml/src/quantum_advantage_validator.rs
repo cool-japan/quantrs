@@ -663,7 +663,7 @@ impl QuantumAdvantageValidator {
 
         for _ in 0..self.config.bootstrap_samples {
             let sample: Vec<f64> = (0..data.len())
-                .map(|_| data[rng.gen_range(0..data.len())])
+                .map(|_| data[rng.random_range(0..data.len())])
                 .collect();
             bootstrap_means.push(Self::mean(&sample));
         }

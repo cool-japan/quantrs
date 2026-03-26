@@ -35,7 +35,8 @@ fn main() -> quantrs2_ml::Result<()> {
 
     for i in 0..n_samples {
         for j in 0..n_features {
-            normal_data[[i, j]] = thread_rng().gen::<f64>().mul_add(2.0, -1.0); // Normal range [-1, 1]
+            normal_data[[i, j]] = thread_rng().random::<f64>().mul_add(2.0, -1.0);
+            // Normal range [-1, 1]
         }
     }
 
@@ -57,14 +58,14 @@ fn main() -> quantrs2_ml::Result<()> {
     // Normal samples (first 80)
     for i in 0..80 {
         for j in 0..n_features {
-            test_data[[i, j]] = thread_rng().gen::<f64>().mul_add(2.0, -1.0);
+            test_data[[i, j]] = thread_rng().random::<f64>().mul_add(2.0, -1.0);
         }
     }
 
     // Anomalous samples (last 20) - outliers with larger values
     for i in 80..n_test {
         for j in 0..n_features {
-            test_data[[i, j]] = thread_rng().gen::<f64>().mul_add(6.0, 5.0); // Anomalous range [5, 11]
+            test_data[[i, j]] = thread_rng().random::<f64>().mul_add(6.0, 5.0); // Anomalous range [5, 11]
         }
     }
 

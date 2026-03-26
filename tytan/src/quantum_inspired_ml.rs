@@ -395,7 +395,7 @@ impl QuantumBoltzmannMachine {
             weights: {
                 let mut weights = Array2::zeros((n_visible, n_hidden));
                 for element in &mut weights {
-                    *element = rng.gen_range(-0.01..0.01);
+                    *element = rng.random_range(-0.01..0.01);
                 }
                 weights
             },
@@ -562,7 +562,7 @@ impl QuantumBoltzmannMachine {
         let mut hidden = {
             let mut hidden = Array2::zeros((n_samples, self.n_hidden));
             for element in &mut hidden {
-                *element = if rng.gen::<bool>() { 1.0 } else { 0.0 };
+                *element = if rng.random::<bool>() { 1.0 } else { 0.0 };
             }
             hidden
         };

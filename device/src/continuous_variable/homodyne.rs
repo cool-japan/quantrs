@@ -207,16 +207,16 @@ impl HomodyneDetector {
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         // Measure visibility with known coherent state
-        self.calibration.visibility = 0.02f64.mul_add(-thread_rng().gen::<f64>(), 0.99);
+        self.calibration.visibility = 0.02f64.mul_add(-thread_rng().random::<f64>(), 0.99);
 
         // Measure DC offsets
-        self.calibration.dc_offset = 0.001 * (thread_rng().gen::<f64>() - 0.5);
+        self.calibration.dc_offset = 0.001 * (thread_rng().random::<f64>() - 0.5);
 
         // Measure gain imbalance
-        self.calibration.gain_imbalance = 0.01 * (thread_rng().gen::<f64>() - 0.5);
+        self.calibration.gain_imbalance = 0.01 * (thread_rng().random::<f64>() - 0.5);
 
         // Measure phase offset
-        self.calibration.phase_offset = 0.05 * (thread_rng().gen::<f64>() - 0.5);
+        self.calibration.phase_offset = 0.05 * (thread_rng().random::<f64>() - 0.5);
 
         println!(
             "Calibration complete: visibility = {:.3}",
@@ -310,7 +310,7 @@ impl HomodyneDetector {
         let distribution = Normal::new(theoretical_mean, total_noise_variance.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
-        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().random::<u64>());
         let measured_value = distribution.sample(&mut rng);
 
         // Calculate detector currents

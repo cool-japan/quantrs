@@ -7,6 +7,7 @@ use crate::ising::{IsingError, IsingModel};
 use crate::qubo::{QuboError, QuboFormulation};
 use crate::simulator::{AnnealingParams, AnnealingSolution};
 use scirs2_core::random::{ChaCha8Rng, Rng, SeedableRng};
+use scirs2_core::RngExt;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -784,7 +785,7 @@ impl OptimizationEngine {
             let mut candidate_params = current_params.clone();
             let mut rng = ChaCha8Rng::seed_from_u64(iteration as u64);
             for (key, value) in &mut candidate_params {
-                let perturbation = rng.gen_range(-0.1..0.1) * *value;
+                let perturbation = rng.random_range(-0.1..0.1) * *value;
                 *value = (*value + perturbation).max(0.01);
             }
             let candidate_value = objective_function(&candidate_params);

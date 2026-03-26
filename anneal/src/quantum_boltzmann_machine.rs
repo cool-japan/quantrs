@@ -297,7 +297,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
         let rng = match training_config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut rbm = Self {
@@ -320,13 +320,13 @@ impl QuantumRestrictedBoltzmannMachine {
         // Initialize visible biases
         let (v_min, v_max) = self.visible_config.bias_init_range;
         for bias in &mut self.visible_biases {
-            *bias = self.rng.gen_range(v_min..v_max);
+            *bias = self.rng.random_range(v_min..v_max);
         }
 
         // Initialize hidden biases
         let (h_min, h_max) = self.hidden_config.bias_init_range;
         for bias in &mut self.hidden_biases {
-            *bias = self.rng.gen_range(h_min..h_max);
+            *bias = self.rng.random_range(h_min..h_max);
         }
 
         // Initialize weights using Xavier initialization
@@ -336,7 +336,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
         for i in 0..self.visible_config.num_units {
             for j in 0..self.hidden_config.num_units {
-                self.weights[i][j] = self.rng.gen_range(-xavier_std..xavier_std);
+                self.weights[i][j] = self.rng.random_range(-xavier_std..xavier_std);
             }
         }
 
@@ -572,7 +572,7 @@ impl QuantumRestrictedBoltzmannMachine {
         // Update weights (simplified - normally computed from CD phases)
         for i in 0..self.visible_config.num_units {
             for j in 0..self.hidden_config.num_units {
-                let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
+                let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
                 weight_momentum[i][j] = momentum.mul_add(weight_momentum[i][j], lr * gradient);
                 self.weights[i][j] += decay.mul_add(-self.weights[i][j], weight_momentum[i][j]);
             }
@@ -580,14 +580,14 @@ impl QuantumRestrictedBoltzmannMachine {
 
         // Update visible biases
         for i in 0..self.visible_config.num_units {
-            let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
+            let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
             visible_bias_momentum[i] = momentum.mul_add(visible_bias_momentum[i], lr * gradient);
             self.visible_biases[i] += visible_bias_momentum[i];
         }
 
         // Update hidden biases
         for j in 0..self.hidden_config.num_units {
-            let gradient = self.rng.gen_range(-0.001..0.001); // Placeholder
+            let gradient = self.rng.random_range(-0.001..0.001); // Placeholder
             hidden_bias_momentum[j] = momentum.mul_add(hidden_bias_momentum[j], lr * gradient);
             self.hidden_biases[j] += hidden_bias_momentum[j];
         }
@@ -601,7 +601,7 @@ impl QuantumRestrictedBoltzmannMachine {
 
         for _ in 0..num_chains {
             let chain: Vec<f64> = (0..self.visible_config.num_units)
-                .map(|_| if self.rng.gen_bool(0.5) { 1.0 } else { 0.0 })
+                .map(|_| if self.rng.random_bool(0.5) { 1.0 } else { 0.0 })
                 .collect();
             chains.push(chain);
         }
@@ -674,7 +674,7 @@ impl QuantumRestrictedBoltzmannMachine {
     fn sample_binary_units(&mut self, probabilities: &[f64]) -> QbmResult<Vec<f64>> {
         Ok(probabilities
             .iter()
-            .map(|&p| if self.rng.gen_bool(p) { 1.0 } else { 0.0 })
+            .map(|&p| if self.rng.random_bool(p) { 1.0 } else { 0.0 })
             .collect())
     }
 
@@ -809,7 +809,7 @@ impl QuantumRestrictedBoltzmannMachine {
         for _ in 0..num_samples {
             // Start with random visible state
             let mut visible: Vec<f64> = (0..self.visible_config.num_units)
-                .map(|_| if self.rng.gen_bool(0.5) { 1.0 } else { 0.0 })
+                .map(|_| if self.rng.random_bool(0.5) { 1.0 } else { 0.0 })
                 .collect();
 
             // Run Gibbs sampling for burn-in

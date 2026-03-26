@@ -802,19 +802,19 @@ impl QuantumNeuralNetwork {
             ParameterInitializationScheme::RandomUniform { min, max } => {
                 let mut rng = thread_rng();
                 for param in &mut self.parameters.quantum_params {
-                    *param = rng.gen_range(*min..*max);
+                    *param = rng.random_range(*min..*max);
                 }
             }
             ParameterInitializationScheme::RandomNormal { mean, std } => {
                 let mut rng = thread_rng();
                 for param in &mut self.parameters.quantum_params {
-                    *param = rng.gen::<f64>() * std + mean;
+                    *param = rng.random::<f64>() * std + mean;
                 }
             }
             _ => {
                 let mut rng = thread_rng();
                 for param in &mut self.parameters.quantum_params {
-                    *param = rng.gen_range(-PI..PI);
+                    *param = rng.random_range(-PI..PI);
                 }
             }
         }

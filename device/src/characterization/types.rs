@@ -124,22 +124,22 @@ impl RandomizedBenchmarking {
         let mut rng = thread_rng();
         let mut sequence = Vec::new();
         for _ in 0..length {
-            let gate_idx = rng.gen_range(0..self.clifford_group.len());
+            let gate_idx = rng.random_range(0..self.clifford_group.len());
             match self.clifford_group[gate_idx].as_str() {
                 "H" => {
-                    let qubit = self.qubits[rng.gen_range(0..self.qubits.len())];
+                    let qubit = self.qubits[rng.random_range(0..self.qubits.len())];
                     sequence.push(Box::new(Hadamard { target: qubit }) as Box<dyn GateOp>);
                 }
                 "X" => {
-                    let qubit = self.qubits[rng.gen_range(0..self.qubits.len())];
+                    let qubit = self.qubits[rng.random_range(0..self.qubits.len())];
                     sequence.push(Box::new(PauliX { target: qubit }) as Box<dyn GateOp>);
                 }
                 "Y" => {
-                    let qubit = self.qubits[rng.gen_range(0..self.qubits.len())];
+                    let qubit = self.qubits[rng.random_range(0..self.qubits.len())];
                     sequence.push(Box::new(PauliY { target: qubit }) as Box<dyn GateOp>);
                 }
                 "Z" => {
-                    let qubit = self.qubits[rng.gen_range(0..self.qubits.len())];
+                    let qubit = self.qubits[rng.random_range(0..self.qubits.len())];
                     sequence.push(Box::new(PauliZ { target: qubit }) as Box<dyn GateOp>);
                 }
                 _ => {}

@@ -651,12 +651,12 @@ impl CrossPlatformBenchmarker {
         for i in 0..num_circuits {
             let mut circuit = Circuit::<16>::new();
             let gate_count =
-                rng.gen_range(complexity.gate_count_range.0..=complexity.gate_count_range.1);
+                rng.random_range(complexity.gate_count_range.0..=complexity.gate_count_range.1);
             let two_qubit_gates = (gate_count as f64 * complexity.two_qubit_gate_ratio) as usize;
             let single_qubit_gates = gate_count - two_qubit_gates;
             for _ in 0..single_qubit_gates {
-                let qubit = rng.gen_range(0..complexity.qubit_count) as u32;
-                match rng.gen_range(0..4) {
+                let qubit = rng.random_range(0..complexity.qubit_count) as u32;
+                match rng.random_range(0..4) {
                     0 => {
                         circuit.h(QubitId(qubit))?;
                     }
@@ -673,10 +673,10 @@ impl CrossPlatformBenchmarker {
                 }
             }
             for _ in 0..two_qubit_gates {
-                let qubit1 = rng.gen_range(0..complexity.qubit_count) as u32;
-                let mut qubit2 = rng.gen_range(0..complexity.qubit_count) as u32;
+                let qubit1 = rng.random_range(0..complexity.qubit_count) as u32;
+                let mut qubit2 = rng.random_range(0..complexity.qubit_count) as u32;
                 while qubit2 == qubit1 {
-                    qubit2 = rng.gen_range(0..complexity.qubit_count) as u32;
+                    qubit2 = rng.random_range(0..complexity.qubit_count) as u32;
                 }
                 let _ = circuit.cnot(QubitId(qubit1), QubitId(qubit2));
             }
@@ -699,8 +699,8 @@ impl CrossPlatformBenchmarker {
         let start_time = Instant::now();
         let queue_start = Instant::now();
         let shots = 1000;
-        let execution_time = Duration::from_millis(thread_rng().gen_range(100..2000));
-        let queue_time = Duration::from_millis(thread_rng().gen_range(10..5000));
+        let execution_time = Duration::from_millis(thread_rng().random_range(100..2000));
+        let queue_time = Duration::from_millis(thread_rng().random_range(10..5000));
         let mut measurement_counts = HashMap::new();
         let num_qubits = circuit
             .gates()
@@ -713,7 +713,7 @@ impl CrossPlatformBenchmarker {
         let num_outcomes = 2_usize.pow(num_qubits.min(8) as u32);
         for i in 0..num_outcomes.min(8) {
             let outcome = format!("{:0width$b}", i, width = num_qubits.min(8));
-            let count = thread_rng().gen_range(0..shots / num_outcomes * 2);
+            let count = thread_rng().random_range(0..shots / num_outcomes * 2);
             if count > 0 {
                 measurement_counts.insert(outcome, count);
             }
@@ -744,7 +744,7 @@ impl CrossPlatformBenchmarker {
         _measurement_counts: &HashMap<String, usize>,
         _circuit: &Circuit<16>,
     ) -> DeviceResult<f64> {
-        Ok(thread_rng().gen_range(0.8..0.99))
+        Ok(thread_rng().random_range(0.8..0.99))
     }
     fn calculate_execution_cost(
         &self,

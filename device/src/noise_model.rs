@@ -5,6 +5,7 @@
 
 use scirs2_core::random::Rng;
 use scirs2_core::Complex64;
+use scirs2_core::RngExt;
 use std::collections::HashMap;
 
 use quantrs2_core::{
@@ -291,20 +292,20 @@ impl CalibrationNoiseModel {
         if let Some(params) = gate_params {
             // Apply coherent error (over/under rotation)
             if params.coherent_error > 0.0 {
-                let error_angle = rng.gen_range(-params.coherent_error..params.coherent_error);
+                let error_angle = rng.random_range(-params.coherent_error..params.coherent_error);
                 self.apply_rotation_error(state, qubit, error_angle)?;
             }
 
             // Apply amplitude noise
             if params.amplitude_noise > 0.0 {
                 let amplitude_error =
-                    1.0 + rng.gen_range(-params.amplitude_noise..params.amplitude_noise);
+                    1.0 + rng.random_range(-params.amplitude_noise..params.amplitude_noise);
                 self.apply_amplitude_scaling(state, qubit, amplitude_error)?;
             }
 
             // Apply phase noise
             if params.phase_noise > 0.0 {
-                let phase_error = rng.gen_range(-params.phase_noise..params.phase_noise);
+                let phase_error = rng.random_range(-params.phase_noise..params.phase_noise);
                 self.apply_phase_error(state, qubit, phase_error)?;
             }
         }
@@ -315,13 +316,13 @@ impl CalibrationNoiseModel {
 
             // T1 decay
             let decay_prob = 1.0 - (-actual_duration * qubit_params.gamma_1).exp();
-            if rng.gen::<f64>() < decay_prob {
+            if rng.random::<f64>() < decay_prob {
                 self.apply_amplitude_damping(state, qubit, decay_prob)?;
             }
 
             // T2 dephasing
             let dephase_prob = 1.0 - (-actual_duration * qubit_params.gamma_phi).exp();
-            if rng.gen::<f64>() < dephase_prob {
+            if rng.random::<f64>() < dephase_prob {
                 self.apply_phase_damping(state, qubit, dephase_prob)?;
             }
         }
@@ -345,7 +346,8 @@ impl CalibrationNoiseModel {
 
             // Coherent errors
             if gate_params.coherent_error > 0.0 {
-                let error = rng.gen_range(-gate_params.coherent_error..gate_params.coherent_error);
+                let error =
+                    rng.random_range(-gate_params.coherent_error..gate_params.coherent_error);
                 self.apply_two_qubit_rotation_error(state, control, target, error)?;
             }
 
@@ -357,7 +359,7 @@ impl CalibrationNoiseModel {
 
             // Spectator crosstalk
             for (&spectator, &coupling) in &params.spectator_crosstalk {
-                if rng.gen::<f64>() < coupling {
+                if rng.random::<f64>() < coupling {
                     self.apply_crosstalk_error(state, spectator, coupling * 0.1)?;
                 }
             }
@@ -373,7 +375,7 @@ impl CalibrationNoiseModel {
     /// Apply readout noise
     pub fn apply_readout_noise(&self, measurement: u8, qubit: QubitId, rng: &mut impl Rng) -> u8 {
         if let Some(params) = self.readout_noise.get(&qubit) {
-            let prob = rng.gen::<f64>();
+            let prob = rng.random::<f64>();
 
             if measurement == 0 {
                 if prob > params.assignment_matrix[0][0] {

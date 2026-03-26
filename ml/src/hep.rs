@@ -394,12 +394,12 @@ impl HEPQuantumClassifier {
         // This is a dummy implementation
         // In a real system, this would use the QNN to make predictions
 
-        let label_idx = if thread_rng().gen::<f64>() > 0.5 {
+        let label_idx = if thread_rng().random::<f64>() > 0.5 {
             0
         } else {
             1
         };
-        let confidence = 0.7 + 0.3 * thread_rng().gen::<f64>();
+        let confidence = 0.7 + 0.3 * thread_rng().random::<f64>();
 
         if label_idx < self.class_labels.len() {
             Ok((self.class_labels[label_idx].clone(), confidence))
@@ -418,7 +418,7 @@ impl HEPQuantumClassifier {
         let mut importance = Array1::zeros(self.feature_dimension);
 
         for i in 0..self.feature_dimension {
-            importance[i] = thread_rng().gen::<f64>();
+            importance[i] = thread_rng().random::<f64>();
         }
 
         // Normalize
@@ -486,8 +486,8 @@ impl HiggsDetector {
     pub fn score_particle(&self, particle: &ParticleFeatures) -> Result<f64> {
         // Dummy implementation
         match particle.particle_type {
-            ParticleType::Higgs => Ok(0.85 + 0.15 * thread_rng().gen::<f64>()),
-            _ => Ok(0.2 * thread_rng().gen::<f64>()),
+            ParticleType::Higgs => Ok(0.85 + 0.15 * thread_rng().random::<f64>()),
+            _ => Ok(0.2 * thread_rng().random::<f64>()),
         }
     }
 }

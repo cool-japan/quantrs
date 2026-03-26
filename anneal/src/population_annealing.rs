@@ -210,7 +210,7 @@ impl PopulationAnnealingSimulator {
         // Initialize RNG
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         // Initialize MPI interface if configured
@@ -350,7 +350,7 @@ impl PopulationAnnealingSimulator {
         for _ in 0..self.config.population_size {
             // Generate random configuration
             let configuration: Vec<i8> = (0..model.num_qubits)
-                .map(|_| if self.rng.gen_bool(0.5) { 1 } else { -1 })
+                .map(|_| if self.rng.random_bool(0.5) { 1 } else { -1 })
                 .collect();
 
             // Calculate energy
@@ -391,7 +391,7 @@ impl PopulationAnnealingSimulator {
         for member in population.iter_mut() {
             for _ in 0..self.config.sweeps_per_step {
                 // Choose random spin to flip
-                let spin_idx = self.rng.gen_range(0..model.num_qubits);
+                let spin_idx = self.rng.random_range(0..model.num_qubits);
 
                 // Calculate energy change
                 let old_spin = member.configuration[spin_idx];
@@ -403,7 +403,7 @@ impl PopulationAnnealingSimulator {
                 // Metropolis acceptance
                 let accept = delta_e <= 0.0 || {
                     let prob = (-delta_e / temperature).exp();
-                    self.rng.gen::<f64>() < prob
+                    self.rng.random::<f64>() < prob
                 };
 
                 if accept {
@@ -503,7 +503,7 @@ impl PopulationAnnealingSimulator {
         // Resample
         let mut new_population = Vec::with_capacity(population.len());
         for _ in 0..population.len() {
-            let r = self.rng.gen::<f64>();
+            let r = self.rng.random::<f64>();
             let idx = cumulative_weights
                 .iter()
                 .position(|&w| r <= w)

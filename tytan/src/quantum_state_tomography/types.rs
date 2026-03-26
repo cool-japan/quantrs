@@ -438,13 +438,13 @@ impl QuantumStateTomography {
             let mut operators = Vec::new();
             let mut angles = Vec::new();
             for _ in 0..self.num_qubits {
-                let pauli_choice: usize = rng.gen_range(0..3);
+                let pauli_choice: usize = rng.random_range(0..3);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::X,
                     1 => PauliOperator::Y,
                     _ => PauliOperator::Z,
                 });
-                angles.push(rng.gen_range(0.0..2.0 * PI));
+                angles.push(rng.random_range(0.0..2.0 * PI));
             }
             measurements.push(MeasurementBasis {
                 name: format!("shadow_{shadow_idx}"),
@@ -465,7 +465,7 @@ impl QuantumStateTomography {
         for measurement_idx in 0..num_measurements {
             let mut operators = Vec::new();
             for _ in 0..self.num_qubits {
-                let pauli_choice: usize = rng.gen_range(0..4);
+                let pauli_choice: usize = rng.random_range(0..4);
                 operators.push(match pauli_choice {
                     0 => PauliOperator::I,
                     1 => PauliOperator::X,
@@ -508,7 +508,7 @@ impl QuantumStateTomography {
             for _ in 0..self.config.shots_per_setting {
                 let mut outcome = Vec::new();
                 for _qubit in 0..self.num_qubits {
-                    outcome.push(u8::from(rng.gen::<f64>() >= 0.5));
+                    outcome.push(u8::from(rng.random::<f64>() >= 0.5));
                 }
                 outcomes.push(outcome);
             }

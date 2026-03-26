@@ -60,31 +60,31 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
     let mut rng = StdRng::seed_from_u64(42); // Use fixed seed for reproducibility
 
     for _ in 0..num_gates {
-        let gate_type = rng.gen_range(0..5);
+        let gate_type = rng.random_range(0..5);
 
         match gate_type {
             0 => {
                 // Hadamard gate
-                let target = rng.gen_range(0..N);
+                let target = rng.random_range(0..N);
                 circuit.h(target).expect("Failed to apply Hadamard gate");
             }
             1 => {
                 // Pauli-X gate
-                let target = rng.gen_range(0..N);
+                let target = rng.random_range(0..N);
                 circuit.x(target).expect("Failed to apply Pauli-X gate");
             }
             2 => {
                 // Rotation-Z gate
-                let target = rng.gen_range(0..N);
-                let angle = rng.gen_range(0.0..2.0 * PI);
+                let target = rng.random_range(0..N);
+                let angle = rng.random_range(0.0..2.0 * PI);
                 circuit.rz(target, angle).expect("Failed to apply RZ gate");
             }
             3 => {
                 // CNOT gate
-                let control = rng.gen_range(0..N);
-                let mut target = rng.gen_range(0..N);
+                let control = rng.random_range(0..N);
+                let mut target = rng.random_range(0..N);
                 while target == control {
-                    target = rng.gen_range(0..N);
+                    target = rng.random_range(0..N);
                 }
                 circuit
                     .cnot(control, target)
@@ -92,10 +92,10 @@ fn create_random_circuit<const N: usize>(num_gates: usize) -> Circuit<N> {
             }
             4 => {
                 // CZ gate
-                let control = rng.gen_range(0..N);
-                let mut target = rng.gen_range(0..N);
+                let control = rng.random_range(0..N);
+                let mut target = rng.random_range(0..N);
                 while target == control {
-                    target = rng.gen_range(0..N);
+                    target = rng.random_range(0..N);
                 }
                 circuit
                     .cz(control, target)

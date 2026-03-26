@@ -505,7 +505,7 @@ impl QuantumEnsemble {
         let n_features = data.ncols();
         let mut sampled = Array2::zeros((sample_size, n_features));
         for i in 0..sample_size {
-            let idx = rng.gen_range(0..n_samples);
+            let idx = rng.random_range(0..n_samples);
             sampled.row_mut(i).assign(&data.row(idx));
         }
         sampled

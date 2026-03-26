@@ -204,7 +204,7 @@ impl SiliconQuantumDot {
         // Sample outcome
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let random_value: f64 = rng.gen();
+        let random_value: f64 = rng.random();
         let mut cumulative = 0.0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
@@ -472,7 +472,7 @@ impl SiliconQuantumDotSystem {
                 // Add random phase noise
                 use scirs2_core::random::prelude::*;
                 let mut rng = thread_rng();
-                let phase_noise = rng.gen_range(-dephasing_prob..dephasing_prob);
+                let phase_noise = rng.random_range(-dephasing_prob..dephasing_prob);
 
                 let noise_factor = Complex64::new(0.0, phase_noise).exp();
                 dot.state[1] *= noise_factor;

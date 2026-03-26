@@ -9,7 +9,7 @@ use crate::error::{QuantRS2Error, QuantRS2Result};
 use optirs_core::error::OptimError;
 use optirs_core::optimizers::{Adam, Optimizer, LBFGS};
 use scirs2_core::ndarray::{Array1, ArrayView1, Ix1};
-use scirs2_core::random::{rngs::StdRng, seq::SliceRandom, thread_rng, Rng, SeedableRng};
+use scirs2_core::random::{rngs::StdRng, seq::SliceRandom, thread_rng, Rng, RngExt, SeedableRng};
 use std::cmp::Ordering;
 
 const DEFAULT_GRADIENT_STEP: f64 = 1e-5;
@@ -579,7 +579,7 @@ where
         StdRng::seed_from_u64(seed)
     } else {
         let mut seed_rng = thread_rng();
-        let seed: u64 = seed_rng.gen();
+        let seed: u64 = seed_rng.random();
         StdRng::seed_from_u64(seed)
     };
 
@@ -595,7 +595,7 @@ where
                 )));
             }
             let span = upper - lower;
-            candidate[idx] = rng.gen::<f64>().mul_add(span, lower);
+            candidate[idx] = rng.random::<f64>().mul_add(span, lower);
         }
         let score = safe_fun_eval(&fun, &candidate);
         population.push(candidate);
@@ -621,10 +621,10 @@ where
             let (r1, r2, r3) = (indices[0], indices[1], indices[2]);
 
             let mut trial = population[r1].clone();
-            let j_rand = rng.gen_range(0..dim);
+            let j_rand = rng.random_range(0..dim);
 
             for j in 0..dim {
-                if rng.gen::<f64>() < 0.7 || j == j_rand {
+                if rng.random::<f64>() < 0.7 || j == j_rand {
                     trial[j] =
                         0.8f64.mul_add(population[r2][j] - population[r3][j], population[r1][j]);
                 }

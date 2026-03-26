@@ -29,7 +29,7 @@ use scirs2_core::ndarray::Array2;
 use quantrs2_tytan::compile::expr::{constant, Expr};
 
 use scirs2_core::random::rngs::StdRng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{Rng, RngExt, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -123,7 +123,7 @@ fn generate_random_ksat(num_vars: usize, num_clauses: usize, k: usize, seed: u64
         let mut used_vars = HashSet::new();
 
         while literals.len() < k {
-            let var = rng.gen_range(0..num_vars);
+            let var = rng.random_range(0..num_vars);
             if !used_vars.contains(&var) {
                 used_vars.insert(var);
                 let negated = rng.random_bool(0.5);

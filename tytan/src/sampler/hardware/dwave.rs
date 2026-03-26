@@ -1,7 +1,7 @@
 //! D-Wave Quantum Annealer Sampler Implementation
 
 use scirs2_core::ndarray::{Array, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -255,7 +255,7 @@ impl Sampler for DWaveSampler {
                 .map(|_| {
                     let assignments: HashMap<String, bool> = idx_to_var
                         .values()
-                        .map(|name| (name.clone(), rng.gen::<bool>()))
+                        .map(|name| (name.clone(), rng.random::<bool>()))
                         .collect();
 
                     let mut energy = 0.0f64;

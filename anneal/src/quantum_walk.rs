@@ -248,7 +248,7 @@ impl QuantumWalkOptimizer {
     pub fn new(config: QuantumWalkConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         Self { config, rng }
@@ -635,8 +635,8 @@ impl QuantumWalkOptimizer {
     /// Apply decoherence/noise
     fn apply_decoherence(&mut self, state: &mut QuantumState, strength: f64) {
         for amplitude in &mut state.amplitudes {
-            let noise_real = (self.rng.gen::<f64>() - 0.5) * strength;
-            let noise_imag = (self.rng.gen::<f64>() - 0.5) * strength;
+            let noise_real = (self.rng.random::<f64>() - 0.5) * strength;
+            let noise_imag = (self.rng.random::<f64>() - 0.5) * strength;
             *amplitude += Complex64::new(noise_real, noise_imag);
         }
 
@@ -707,7 +707,7 @@ impl QuantumWalkOptimizer {
 
     /// Sample a computational basis state from the quantum state
     fn sample_state(&mut self, state: &QuantumState) -> usize {
-        let random_value = self.rng.gen::<f64>();
+        let random_value = self.rng.random::<f64>();
         let mut cumulative_prob = 0.0;
 
         for (state_idx, amplitude) in state.amplitudes.iter().enumerate() {

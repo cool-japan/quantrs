@@ -29,7 +29,7 @@ impl MLDecoder {
         for _ in 0..hidden_size {
             let mut row = Vec::new();
             for _ in 0..input_size {
-                row.push((rng.gen::<f64>() - 0.5) * 0.1);
+                row.push((rng.random::<f64>() - 0.5) * 0.1);
             }
             w1.push(row);
         }
@@ -40,7 +40,7 @@ impl MLDecoder {
         for _ in 0..output_size {
             let mut row = Vec::new();
             for _ in 0..hidden_size {
-                row.push((rng.gen::<f64>() - 0.5) * 0.1);
+                row.push((rng.random::<f64>() - 0.5) * 0.1);
             }
             w2.push(row);
         }

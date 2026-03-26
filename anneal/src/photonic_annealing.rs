@@ -561,7 +561,7 @@ impl PhotonicAnnealer {
 
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         // Initialize state based on configuration
@@ -805,7 +805,9 @@ impl PhotonicAnnealer {
             let variance = self.state.covariance_diag[idx];
 
             // Sample from Gaussian
-            let value = variance.sqrt().mul_add(self.rng.gen_range(-3.0..3.0), mean);
+            let value = variance
+                .sqrt()
+                .mul_add(self.rng.random_range(-3.0..3.0), mean);
             values.push(value);
 
             solution[i] = if value > 0.0 { 1 } else { -1 };

@@ -246,7 +246,7 @@ impl QuantumAdiabaticPathOptimizer {
 
         for _ in 0..num_samples {
             let state: Vec<f64> = (0..n)
-                .map(|_| if rng.gen_bool(0.5) { 1.0 } else { 0.0 })
+                .map(|_| if rng.random_bool(0.5) { 1.0 } else { 0.0 })
                 .collect();
             let energy = self.compute_state_energy(qubo, &state);
             energies.push(energy);
@@ -361,7 +361,7 @@ impl QuantumAdiabaticPathOptimizer {
         for sample_idx in 0..self.config.num_samples {
             // Start in equal superposition (simulated by random state)
             let mut state: Vec<f64> = (0..n)
-                .map(|_| if rng.gen_bool(0.5) { 1.0 } else { 0.0 })
+                .map(|_| if rng.random_bool(0.5) { 1.0 } else { 0.0 })
                 .collect();
 
             // Evolve along the adiabatic path
@@ -378,14 +378,14 @@ impl QuantumAdiabaticPathOptimizer {
                 };
 
                 // Simulate quantum tunneling and transitions
-                if rng.gen_bool(diabatic_prob) {
+                if rng.random_bool(diabatic_prob) {
                     // Diabatic transition: flip a random bit
-                    let flip_idx = rng.gen_range(0..n);
+                    let flip_idx = rng.random_range(0..n);
                     state[flip_idx] = 1.0 - state[flip_idx];
                 }
 
                 // Local optimization (simulated quantum annealing)
-                if rng.gen_bool(0.1) {
+                if rng.random_bool(0.1) {
                     state = self.local_optimization(qubo, &state, s);
                 }
             }
@@ -420,7 +420,7 @@ impl QuantumAdiabaticPathOptimizer {
         let temp = self.config.temperature.max(0.1) * (1.0 - s);
 
         for _ in 0..n {
-            let flip_idx = rng.gen_range(0..n);
+            let flip_idx = rng.random_range(0..n);
             let mut new_state = best_state.clone();
             new_state[flip_idx] = 1.0 - new_state[flip_idx];
 
@@ -428,7 +428,7 @@ impl QuantumAdiabaticPathOptimizer {
             let delta = new_energy - best_energy;
 
             // Metropolis criterion
-            if delta < 0.0 || rng.gen_bool((-delta / temp).exp()) {
+            if delta < 0.0 || rng.random_bool((-delta / temp).exp()) {
                 best_state = new_state;
                 best_energy = new_energy;
             }

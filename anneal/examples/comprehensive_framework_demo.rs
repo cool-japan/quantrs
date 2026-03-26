@@ -205,8 +205,8 @@ fn demo_classical_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 
     for i in 0..20 {
         for j in (i + 1)..20 {
-            if rng.gen::<f64>() < 0.3 {
-                let strength = rng.gen_range(-2.0..2.0);
+            if rng.random::<f64>() < 0.3 {
+                let strength = rng.random_range(-2.0..2.0);
                 model.set_coupling(i, j, strength)?;
             }
         }
@@ -267,11 +267,11 @@ fn demo_advanced_algorithms() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create sparse connectivity (each node connected to ~5 others)
     for i in 0..100 {
-        let num_connections = rng.gen_range(3..8);
+        let num_connections = rng.random_range(3..8);
         for _ in 0..num_connections {
-            let j = rng.gen_range(0..100);
+            let j = rng.random_range(0..100);
             if i != j {
-                let strength = rng.gen_range(-1.0..1.0);
+                let strength = rng.random_range(-1.0..1.0);
                 large_model.set_coupling(i, j, strength)?;
             }
         }
@@ -671,8 +671,8 @@ fn demo_performance_analysis() -> Result<(), Box<dyn std::error::Error>> {
 
         for i in 0..size {
             for j in (i + 1)..size {
-                if rng.gen::<f64>() < 0.3 {
-                    model.set_coupling(i, j, rng.gen_range(-1.0..1.0))?;
+                if rng.random::<f64>() < 0.3 {
+                    model.set_coupling(i, j, rng.random_range(-1.0..1.0))?;
                 }
             }
         }
@@ -747,7 +747,7 @@ fn demo_advanced_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
     // Objective terms
     for i in 0..5 {
-        let _ = qubo.add_bias(i, thread_rng().gen::<f64>() - 0.5);
+        let _ = qubo.add_bias(i, thread_rng().random::<f64>() - 0.5);
     }
 
     // Hard constraint: exactly 2 variables should be 1 (simplified implementation)
@@ -837,7 +837,7 @@ fn demo_visualization_analysis() -> Result<(), Box<dyn std::error::Error>> {
         // Simulate exponential convergence with noise
         let target = energies[0].2; // Ground state energy
         let decay = 0.95;
-        current_energy = (thread_rng().gen::<f64>() - 0.5)
+        current_energy = (thread_rng().random::<f64>() - 0.5)
             .mul_add(0.1, (current_energy - target).mul_add(decay, target));
         trace.push((step, current_energy));
     }

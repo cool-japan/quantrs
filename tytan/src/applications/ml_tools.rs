@@ -499,7 +499,7 @@ impl QuantumFeatureSelector {
         let n_features = self.features.feature_names.len();
         let mut rng = thread_rng();
 
-        Ok(Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()))
+        Ok(Array1::from_shape_fn(n_features, |_| rng.random::<f64>()))
     }
 
     /// Add feature interaction terms
@@ -1040,7 +1040,7 @@ impl HyperparameterOptimizer {
 
         // Random performance for demonstration
         let mut rng = thread_rng();
-        Ok(rng.gen::<f64>())
+        Ok(rng.random::<f64>())
     }
 
     /// Add tunneling terms
@@ -1227,8 +1227,8 @@ mod tests {
         let n_features = 10;
 
         let mut rng = thread_rng();
-        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.gen::<f64>());
-        let target = Array1::from_shape_fn(n_samples, |_| rng.gen::<f64>());
+        let data = Array2::from_shape_fn((n_samples, n_features), |_| rng.random::<f64>());
+        let target = Array1::from_shape_fn(n_samples, |_| rng.random::<f64>());
 
         let feature_names: Vec<_> = (0..n_features).map(|i| format!("feature_{i}")).collect();
 
@@ -1239,12 +1239,12 @@ mod tests {
                 .mean_axis(scirs2_core::ndarray::Axis(0))
                 .expect("test data should have valid axis for mean"),
             stds: data.std_axis(scirs2_core::ndarray::Axis(0), 0.0),
-            target_correlations: Array1::from_shape_fn(n_features, |_| rng.gen::<f64>()),
+            target_correlations: Array1::from_shape_fn(n_features, |_| rng.random::<f64>()),
             feature_correlations: Array2::from_shape_fn((n_features, n_features), |(i, j)| {
                 if i == j {
                     1.0
                 } else {
-                    rng.gen::<f64>() * 0.5
+                    rng.random::<f64>() * 0.5
                 }
             }),
             missing_counts: Array1::zeros(n_features),

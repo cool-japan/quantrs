@@ -502,7 +502,7 @@ impl ClusterState {
 
         // Randomly choose outcome
         use scirs2_core::random::prelude::*;
-        let outcome = if thread_rng().gen::<f64>() < prob_0 / (prob_0 + prob_1) {
+        let outcome = if thread_rng().random::<f64>() < prob_0 / (prob_0 + prob_1) {
             false
         } else {
             true

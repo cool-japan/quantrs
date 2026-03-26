@@ -511,7 +511,7 @@ impl QuantumState {
     pub fn initialize_random(&mut self, rng: &mut ChaCha8Rng) {
         for time_slice in &mut self.configurations {
             for spin in time_slice {
-                *spin = if rng.gen_bool(0.5) { 1 } else { -1 };
+                *spin = if rng.random_bool(0.5) { 1 } else { -1 };
             }
         }
     }
@@ -538,7 +538,7 @@ impl NonStoquasticSimulator {
     ) -> NonStoquasticResult<Self> {
         let rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let current_state = QuantumState::new(hamiltonian.num_qubits, config.num_time_slices);
@@ -811,8 +811,8 @@ impl NonStoquasticSimulator {
     /// Propose and accept/reject a Monte Carlo move
     fn propose_and_accept_move(&mut self) -> NonStoquasticResult<bool> {
         // Choose random time slice and spin
-        let time_slice = self.rng.gen_range(0..self.config.num_time_slices);
-        let spin_site = self.rng.gen_range(0..self.hamiltonian.num_qubits);
+        let time_slice = self.rng.random_range(0..self.config.num_time_slices);
+        let spin_site = self.rng.random_range(0..self.hamiltonian.num_qubits);
 
         // Calculate energy change
         let energy_before = self.calculate_local_energy(time_slice, spin_site)?;
@@ -826,7 +826,7 @@ impl NonStoquasticSimulator {
         // Metropolis acceptance criterion
         let accept_prob = (-energy_diff.re / self.config.temperature).exp().min(1.0);
 
-        if self.rng.gen::<f64>() < accept_prob {
+        if self.rng.random::<f64>() < accept_prob {
             // Accept move
             Ok(true)
         } else {
@@ -974,7 +974,7 @@ impl NonStoquasticSimulator {
         let n = population.len();
         let step = 1.0 / n as f64;
         let mut cumsum = 0.0;
-        let offset = self.rng.gen::<f64>() * step;
+        let offset = self.rng.random::<f64>() * step;
 
         let mut i = 0;
         for j in 0..n {

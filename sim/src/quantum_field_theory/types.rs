@@ -729,7 +729,7 @@ impl QuantumFieldTheorySimulator {
                 .evaluate_action(&proposed_config)?;
             let delta_action = proposed_action - current_action;
             let accept_prob = (-delta_action).exp().min(1.0);
-            let rand_val: f64 = thread_rng().gen();
+            let rand_val: f64 = thread_rng().random();
             pi_sampler.mc_state.proposed_moves += 1;
             if rand_val < accept_prob {
                 pi_sampler.current_config = proposed_config;
@@ -758,12 +758,12 @@ impl QuantumFieldTheorySimulator {
         let sites_to_update = (total_sites as f64 * update_fraction) as usize;
         let mut rng = thread_rng();
         for _ in 0..sites_to_update {
-            let i = rng.gen_range(0..proposed.shape()[0]);
-            let j = rng.gen_range(0..proposed.shape()[1]);
-            let k = rng.gen_range(0..proposed.shape()[2]);
-            let l = rng.gen_range(0..proposed.shape()[3]);
-            let delta_real: f64 = rng.gen::<f64>() - 0.5;
-            let delta_imag: f64 = rng.gen::<f64>() - 0.5;
+            let i = rng.random_range(0..proposed.shape()[0]);
+            let j = rng.random_range(0..proposed.shape()[1]);
+            let k = rng.random_range(0..proposed.shape()[2]);
+            let l = rng.random_range(0..proposed.shape()[3]);
+            let delta_real: f64 = rng.random::<f64>() - 0.5;
+            let delta_imag: f64 = rng.random::<f64>() - 0.5;
             let delta = Complex64::new(delta_real * 0.1, delta_imag * 0.1);
             proposed[[i, j, k, l]] += delta;
         }

@@ -312,7 +312,7 @@ impl ComprehensiveBenchmarkSuite {
             let mut rng = thread_rng();
             let max_value = 1 << max_qubits;
             (0..num_shots)
-                .map(|_| (rng.gen::<u64>() as usize) % max_value)
+                .map(|_| (rng.random::<u64>() as usize) % max_value)
                 .collect()
         };
 

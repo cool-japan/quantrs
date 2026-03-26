@@ -25,8 +25,8 @@ impl QuantumContinuousFlow {
                 let mut rng = thread_rng();
                 let mut z = Array1::zeros(mean.len());
                 for i in 0..z.len() {
-                    let u1 = rng.gen::<f64>();
-                    let u2 = rng.gen::<f64>();
+                    let u1 = rng.random::<f64>();
+                    let u2 = rng.random::<f64>();
                     z[i] = (-2.0 * u1.ln()).sqrt() * (2.0 * PI * u2).cos();
                 }
                 let cholesky = self.compute_cholesky_decomposition(covariance)?;

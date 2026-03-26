@@ -37,7 +37,7 @@ pub fn parallel_sample_qubo(matrix: &Array2<f64>, num_samples: usize) -> Vec<(Ve
     let mut rng = thread_rng();
 
     for _ in 0..num_samples {
-        let solution: Vec<bool> = (0..n).map(|_| rng.gen()).collect();
+        let solution: Vec<bool> = (0..n).map(|_| rng.random()).collect();
         let energy = evaluate_qubo(&solution, matrix);
         results.push((solution, energy));
     }

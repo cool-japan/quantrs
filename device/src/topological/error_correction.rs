@@ -194,7 +194,7 @@ impl TopologicalErrorCorrector {
 
                 for (idx, stabilizer) in all_stabilizers.iter().enumerate() {
                     // Simulate syndrome measurement
-                    let outcome = if thread_rng().gen::<f64>() < 0.05 {
+                    let outcome = if thread_rng().random::<f64>() < 0.05 {
                         -1 // Error detected
                     } else {
                         1 // No error
@@ -211,7 +211,7 @@ impl TopologicalErrorCorrector {
             None => {
                 // For other code types, create mock measurements
                 for i in 0..10 {
-                    let outcome = if thread_rng().gen::<f64>() < 0.05 {
+                    let outcome = if thread_rng().random::<f64>() < 0.05 {
                         -1
                     } else {
                         1

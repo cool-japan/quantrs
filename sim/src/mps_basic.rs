@@ -256,7 +256,7 @@ impl BasicMPS {
             let total = norm0_sq + norm1_sq;
             let prob0 = norm0_sq / total;
 
-            if rng.gen::<f64>() < prob0 {
+            if rng.random::<f64>() < prob0 {
                 result[i] = false;
                 accumulated = branch0;
             } else {

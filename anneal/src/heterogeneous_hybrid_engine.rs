@@ -1147,7 +1147,7 @@ impl HeterogeneousHybridEngine {
         let solution = self.generate_simulated_solution(task, resource)?;
         let energy = self.calculate_energy(&task.problem, &solution)?;
         let quality =
-            resource.performance.quality_score * thread_rng().gen::<f64>().mul_add(0.4, 0.8);
+            resource.performance.quality_score * thread_rng().random::<f64>().mul_add(0.4, 0.8);
         let cost = resource
             .cost
             .variable_cost
@@ -1175,7 +1175,7 @@ impl HeterogeneousHybridEngine {
 
         // Add some randomness based on resource type
         for i in 0..num_vars {
-            if thread_rng().gen::<f64>() < 0.5 {
+            if thread_rng().random::<f64>() < 0.5 {
                 solution[i] = -1;
             }
         }

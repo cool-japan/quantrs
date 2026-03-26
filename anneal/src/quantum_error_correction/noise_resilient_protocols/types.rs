@@ -869,14 +869,14 @@ impl NoiseResilientAnnealingProtocol {
         rng: &mut ChaCha8Rng,
     ) -> QECResult<AnnealingResult> {
         let n = problem.num_qubits;
-        let mut state = vec![if rng.gen::<f64>() < 0.5 { -1 } else { 1 }; n];
+        let mut state = vec![if rng.random::<f64>() < 0.5 { -1 } else { 1 }; n];
         for _ in 0..params.num_repetitions {
             for i in 0..n {
-                if rng.gen::<f64>() < self.estimate_decoherence_probability(i) {
+                if rng.random::<f64>() < self.estimate_decoherence_probability(i) {
                     state[i] *= -1;
                 }
-                if rng.gen::<f64>() < self.estimate_thermal_noise_probability() {
-                    state[i] = if rng.gen::<f64>() < 0.5 { -1 } else { 1 };
+                if rng.random::<f64>() < self.estimate_thermal_noise_probability() {
+                    state[i] = if rng.random::<f64>() < 0.5 { -1 } else { 1 };
                 }
             }
         }

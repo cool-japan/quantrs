@@ -676,7 +676,7 @@ impl StabilizerTableau {
                 self.z_matrix[[p, j]] = j == qubit;
             }
             let mut rng = thread_rng();
-            let outcome = rng.gen_bool(0.5);
+            let outcome = rng.random_bool(0.5);
             self.phase[p] = if outcome {
                 phase::MINUS_ONE
             } else {

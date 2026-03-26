@@ -81,7 +81,7 @@ impl QuantumIsolationForest {
 
         // Shuffle indices
         for i in 0..indices.len() {
-            let j = thread_rng().gen_range(0..indices.len());
+            let j = thread_rng().random_range(0..indices.len());
             indices.swap(i, j);
         }
 
@@ -255,13 +255,13 @@ impl QuantumIsolationTree {
         }
 
         // Random feature selection
-        let split_feature = thread_rng().gen_range(0..n_features);
+        let split_feature = thread_rng().random_range(0..n_features);
         let feature_values = data.column(split_feature);
 
         // Compute split value
         let min_val = feature_values.fold(f64::INFINITY, |a, &b| a.min(b));
         let max_val = feature_values.fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-        let split_value = min_val + thread_rng().gen::<f64>() * (max_val - min_val);
+        let split_value = min_val + thread_rng().random::<f64>() * (max_val - min_val);
 
         // Split data
         let (left_data, right_data) = self.split_data(data, split_feature, split_value)?;

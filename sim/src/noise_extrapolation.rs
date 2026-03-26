@@ -863,7 +863,7 @@ impl ProbabilisticErrorCancellation {
 
         for _ in 0..self.num_samples {
             // Sign for quasi-probability (can be negative)
-            let sign: i32 = if rng.gen::<f64>() < 0.5 { 1 } else { -1 };
+            let sign: i32 = if rng.random::<f64>() < 0.5 { 1 } else { -1 };
 
             // Execute the circuit with the given sign
             let value = executor(observable, sign)?;

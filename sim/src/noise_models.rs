@@ -86,7 +86,7 @@ pub trait NoiseChannel: Send + Sync {
 
         // Sample which Kraus operator to apply
         let mut cumulative = 0.0;
-        let sample: f64 = rng.gen();
+        let sample: f64 = rng.random();
 
         for k in &kraus_ops {
             let result = k.dot(state);

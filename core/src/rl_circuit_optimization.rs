@@ -193,9 +193,9 @@ impl QLearningOptimizer {
         let mut rng = thread_rng();
 
         // Epsilon-greedy: explore vs exploit
-        if rng.gen::<f64>() < self.epsilon {
+        if rng.random::<f64>() < self.epsilon {
             // Explore: random action
-            available_actions[rng.gen_range(0..available_actions.len())]
+            available_actions[rng.random_range(0..available_actions.len())]
         } else {
             // Exploit: best known action
             self.get_best_action(state, available_actions)

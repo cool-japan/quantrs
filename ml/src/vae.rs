@@ -290,7 +290,7 @@ impl ClassicalAutoencoder {
         let encoder_weights = (0..latent_dim)
             .map(|_| {
                 (0..input_dim)
-                    .map(|_| rng.gen::<f64>() * 0.1 - 0.05)
+                    .map(|_| rng.random::<f64>() * 0.1 - 0.05)
                     .collect()
             })
             .collect();
@@ -298,7 +298,7 @@ impl ClassicalAutoencoder {
         let decoder_weights = (0..input_dim)
             .map(|_| {
                 (0..latent_dim)
-                    .map(|_| rng.gen::<f64>() * 0.1 - 0.05)
+                    .map(|_| rng.random::<f64>() * 0.1 - 0.05)
                     .collect()
             })
             .collect();

@@ -581,11 +581,11 @@ fn generate_random_qubo(size: usize) -> (Array2<f64>, HashMap<String, usize>) {
     // Generate random coefficients
     for i in 0..size {
         // Linear terms
-        qubo[[i, i]] = rng.gen_range(-1.0..1.0);
+        qubo[[i, i]] = rng.random_range(-1.0..1.0);
 
         // Quadratic terms
         for j in i + 1..size {
-            let value = rng.gen_range(-2.0..2.0);
+            let value = rng.random_range(-2.0..2.0);
             qubo[[i, j]] = value;
             qubo[[j, i]] = value;
         }

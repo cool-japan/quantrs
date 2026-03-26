@@ -296,7 +296,7 @@ impl SolutionIntegrator {
             ConflictResolution::Random => {
                 use scirs2_core::random::prelude::*;
                 let mut rng = thread_rng();
-                let index = rng.gen_range(0..values.len());
+                let index = rng.random_range(0..values.len());
                 Ok(values[index])
             }
             ConflictResolution::HighestQuality => {

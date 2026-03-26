@@ -7,6 +7,7 @@ use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
 use scirs2_core::Complex64;
+use scirs2_core::RngExt;
 use std::time::{Duration, Instant};
 
 use super::error::{AdvancedQuantumError, AdvancedQuantumResult};
@@ -357,7 +358,7 @@ impl QuantumZenoAnnealer {
                 1 => -1.0,
                 _ => 0.3,
             };
-            let noise = rng.gen_range(-0.2..0.2);
+            let noise = rng.random_range(-0.2..0.2);
             ising
                 .set_bias(i, cluster_bias + noise)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -368,7 +369,7 @@ impl QuantumZenoAnnealer {
             let cluster_end = (cluster_start + cluster_size).min(num_qubits);
             for i in cluster_start..cluster_end {
                 for j in (i + 1)..cluster_end {
-                    let coupling = rng.gen_range(-1.2..1.2);
+                    let coupling = rng.random_range(-1.2..1.2);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -379,8 +380,8 @@ impl QuantumZenoAnnealer {
         // Add weaker inter-cluster couplings
         for i in 0..num_qubits {
             for j in (i + cluster_size)..num_qubits {
-                if i / cluster_size != j / cluster_size && rng.gen_bool(0.3) {
-                    let coupling = rng.gen_range(-0.3..0.3);
+                if i / cluster_size != j / cluster_size && rng.random_bool(0.3) {
+                    let coupling = rng.random_range(-0.3..0.3);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -401,7 +402,7 @@ impl QuantumZenoAnnealer {
 
         // Add uniform random biases
         for i in 0..num_qubits {
-            let bias = rng.gen_range(-0.7..0.7);
+            let bias = rng.random_range(-0.7..0.7);
             ising
                 .set_bias(i, bias)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -411,8 +412,8 @@ impl QuantumZenoAnnealer {
         let coupling_probability = 0.2;
         for i in 0..num_qubits {
             for j in (i + 1)..num_qubits {
-                if rng.gen::<f64>() < coupling_probability {
-                    let coupling = rng.gen_range(-0.5..0.5);
+                if rng.random::<f64>() < coupling_probability {
+                    let coupling = rng.random_range(-0.5..0.5);
                     ising
                         .set_coupling(i, j, coupling)
                         .map_err(AdvancedQuantumError::IsingError)?;
@@ -434,7 +435,7 @@ impl QuantumZenoAnnealer {
         // Add moderate biases with some structure
         for i in 0..num_qubits {
             let structural_bias = if i % 2 == 0 { 0.6 } else { -0.4 };
-            let noise = rng.gen_range(-0.3..0.3);
+            let noise = rng.random_range(-0.3..0.3);
             ising
                 .set_bias(i, structural_bias + noise)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -443,7 +444,7 @@ impl QuantumZenoAnnealer {
         // Add structured couplings
         for i in 0..(num_qubits - 1) {
             // Chain-like structure
-            let coupling = rng.gen_range(-0.8..0.8);
+            let coupling = rng.random_range(-0.8..0.8);
             ising
                 .set_coupling(i, i + 1, coupling)
                 .map_err(AdvancedQuantumError::IsingError)?;
@@ -451,10 +452,10 @@ impl QuantumZenoAnnealer {
 
         // Add some long-range couplings
         for _ in 0..(num_qubits / 3) {
-            let i = rng.gen_range(0..num_qubits);
-            let j = rng.gen_range(0..num_qubits);
+            let i = rng.random_range(0..num_qubits);
+            let j = rng.random_range(0..num_qubits);
             if i != j && (i as i32 - j as i32).abs() > 2 {
-                let coupling = rng.gen_range(-0.4..0.4);
+                let coupling = rng.random_range(-0.4..0.4);
                 ising
                     .set_coupling(i, j, coupling)
                     .map_err(AdvancedQuantumError::IsingError)?;
@@ -706,7 +707,7 @@ impl QuantumZenoAnnealer {
         measurement_time: f64,
     ) -> AdvancedQuantumResult<ZenoMeasurement> {
         // Simple Z-basis measurement (in practice would be more sophisticated)
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
 
         // Calculate measurement probabilities
         let mut outcome_probabilities = Vec::new();
@@ -715,7 +716,7 @@ impl QuantumZenoAnnealer {
         }
 
         // Sample measurement outcome
-        let random_val: f64 = rng.gen();
+        let random_val: f64 = rng.random();
         let mut cumulative_prob = 0.0;
         let mut measured_outcome = 0;
 

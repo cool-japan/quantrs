@@ -548,7 +548,7 @@ impl StatisticalAnalyzer {
         let mut bootstrap_means = Vec::new();
         for _ in 0..self.bootstrap_samples {
             let sample: Vec<f64> = (0..data.len())
-                .map(|_| data[rng.gen_range(0..data.len())])
+                .map(|_| data[rng.random_range(0..data.len())])
                 .collect();
             let sample_array = Array1::from_vec(sample);
             if let Ok(sample_mean) = mean(&sample_array.view()) {

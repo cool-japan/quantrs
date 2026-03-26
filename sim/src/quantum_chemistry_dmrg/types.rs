@@ -595,8 +595,8 @@ impl QuantumChemistryDMRGSimulator {
             let mut tensor = Array3::zeros((left_dim, physical_dim, right_dim));
             for ((i, j, k), value) in tensor.indexed_iter_mut() {
                 *value = Complex64::new(
-                    thread_rng().gen_range(-0.1..0.1),
-                    thread_rng().gen_range(-0.1..0.1),
+                    thread_rng().random_range(-0.1..0.1),
+                    thread_rng().random_range(-0.1..0.1),
                 );
             }
             site_tensors.push(tensor);
@@ -662,7 +662,7 @@ impl QuantumChemistryDMRGSimulator {
         } else {
             -1.0
         };
-        let optimization_factor = 0.1f64.mul_add(thread_rng().gen::<f64>(), 0.9);
+        let optimization_factor = 0.1f64.mul_add(thread_rng().random::<f64>(), 0.9);
         if let Some(tensor) = state.site_tensors.get_mut(site) {
             for element in tensor.iter_mut() {
                 *element *= Complex64::from(optimization_factor);

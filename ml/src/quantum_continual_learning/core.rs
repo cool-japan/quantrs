@@ -114,7 +114,7 @@ impl QuantumContinualLearner {
 
         for (task_id, _) in self.task_sequence.get_all_tasks() {
             // Placeholder forgetting calculation
-            let forgetting_score = thread_rng().gen::<f64>() * 0.2; // 0-20% forgetting
+            let forgetting_score = thread_rng().random::<f64>() * 0.2; // 0-20% forgetting
             forgetting_scores.insert(task_id, forgetting_score);
         }
 

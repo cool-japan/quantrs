@@ -504,11 +504,15 @@ impl VariationalQuantumOptimizer {
         let mut rng = if let Some(seed) = self.config.seed {
             StdRng::seed_from_u64(seed)
         } else {
-            StdRng::from_seed(thread_rng().gen())
+            StdRng::from_seed(thread_rng().random())
         };
 
         let current_params = circuit.get_parameters();
-        let perturbation = if rng.gen::<bool>() { epsilon } else { -epsilon };
+        let perturbation = if rng.random::<bool>() {
+            epsilon
+        } else {
+            -epsilon
+        };
 
         // Positive perturbation
         let mut circuit_plus = circuit.clone();
@@ -1026,7 +1030,7 @@ impl HyperparameterOptimizer {
     ) -> QuantRS2Result<HyperparameterResult> {
         use scirs2_core::random::prelude::*;
 
-        let mut rng = StdRng::from_seed(thread_rng().gen());
+        let mut rng = StdRng::from_seed(thread_rng().random());
         let mut best_hyperparams = FxHashMap::default();
         let mut best_loss = f64::INFINITY;
         let mut all_trials = Vec::new();
@@ -1035,7 +1039,7 @@ impl HyperparameterOptimizer {
             // Sample hyperparameters
             let mut hyperparams = FxHashMap::default();
             for (name, &(min_val, max_val)) in &self.search_space {
-                let value = rng.gen_range(min_val..max_val);
+                let value = rng.random_range(min_val..max_val);
                 hyperparams.insert(name.clone(), value);
             }
 

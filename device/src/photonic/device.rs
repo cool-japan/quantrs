@@ -623,37 +623,37 @@ impl PhotonicQuantumDeviceImpl {
             // Limit for demonstration
             // Random quadrature values
             quadratures.push((
-                thread_rng().gen::<f64>() - 0.5,
-                thread_rng().gen::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
             ));
 
             // Random photon numbers (small numbers typical for CV systems)
-            photon_numbers.push((thread_rng().gen::<f64>() * 5.0) as usize);
+            photon_numbers.push((thread_rng().random::<f64>() * 5.0) as usize);
 
             // Homodyne detection results
-            homodyne_results.push(thread_rng().gen::<f64>() - 0.5);
+            homodyne_results.push(thread_rng().random::<f64>() - 0.5);
 
             // Heterodyne detection results
             heterodyne_results.push((
-                thread_rng().gen::<f64>() - 0.5,
-                thread_rng().gen::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
             ));
         }
 
         // Calculate correlations
         correlations.insert(
             "g2".to_string(),
-            thread_rng().gen::<f64>().mul_add(0.1, 1.0),
+            thread_rng().random::<f64>().mul_add(0.1, 1.0),
         );
         correlations.insert(
             "visibility".to_string(),
-            thread_rng().gen::<f64>().mul_add(0.09, 0.9),
+            thread_rng().random::<f64>().mul_add(0.09, 0.9),
         );
 
         // Estimate fidelities
         fidelities.insert(
             "overall".to_string(),
-            thread_rng().gen::<f64>().mul_add(0.04, 0.95),
+            thread_rng().random::<f64>().mul_add(0.04, 0.95),
         );
         fidelities.insert(
             "gate_fidelity".to_string(),

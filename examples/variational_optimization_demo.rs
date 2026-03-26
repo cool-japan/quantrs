@@ -278,7 +278,7 @@ fn demo_spsa_optimization() -> Result<(), Box<dyn std::error::Error>> {
 
         // True cost with added noise
         let true_cost = (x - PI/4.0).powi(2) + (y - PI/3.0).powi(2);
-        let noise = rng.gen_range(-0.1..0.1);
+        let noise = rng.random_range(-0.1..0.1);
 
         Ok(true_cost + noise)
     };

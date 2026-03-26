@@ -411,7 +411,7 @@ impl MPS {
             let total = prob0.norm_sqr() + prob1.norm_sqr();
             let threshold = prob0.norm_sqr() / total;
 
-            if rng.gen::<f64>() < threshold {
+            if rng.random::<f64>() < threshold {
                 result[i] = false;
                 accumulated_matrix = temp0;
             } else {

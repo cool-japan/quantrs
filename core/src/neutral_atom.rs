@@ -221,7 +221,7 @@ impl OpticalTweezer {
         // Simulate probabilistic loading
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let success = rng.gen::<f64>() < atom.loading_probability;
+        let success = rng.random::<f64>() < atom.loading_probability;
 
         if success {
             atom.position = self.position;
@@ -543,7 +543,7 @@ impl NeutralAtomQC {
         let mut rng = thread_rng();
 
         // Add small random phase error
-        let phase_error = rng.gen_range(-0.01..0.01);
+        let phase_error = rng.random_range(-0.01..0.01);
         self.global_phase += phase_error;
 
         Ok(())
@@ -556,7 +556,7 @@ impl NeutralAtomQC {
         let mut rng = thread_rng();
 
         // Rydberg gate errors are typically higher
-        let phase_error = rng.gen_range(-0.05..0.05);
+        let phase_error = rng.random_range(-0.05..0.05);
         self.global_phase += phase_error;
 
         Ok(())
@@ -587,7 +587,7 @@ impl NeutralAtomQC {
         // Sample measurement result
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let result: usize = usize::from(rng.gen::<f64>() >= prob_0 / (prob_0 + prob_1));
+        let result: usize = usize::from(rng.random::<f64>() >= prob_0 / (prob_0 + prob_1));
 
         // Collapse state
         let mut new_state = Array1::zeros(1 << self.num_qubits);

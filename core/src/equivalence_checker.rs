@@ -172,7 +172,7 @@ impl EquivalenceChecker {
         for _ in 0..self.config.num_test_vectors {
             // Generate random state vector
             let mut state: Vec<Complex64> = (0..(1 << num_qubits))
-                .map(|_| Complex64::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5))
+                .map(|_| Complex64::new(rng.random::<f64>() - 0.5, rng.random::<f64>() - 0.5))
                 .collect();
 
             // Normalize the state

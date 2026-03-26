@@ -736,7 +736,7 @@ impl TensorNetworkSampler {
             let physical_dim = 2;
             let shape = vec![left_dim, physical_dim, right_dim];
             let mut rng = thread_rng();
-            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+            let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
             let tensor = Tensor {
                 id: i,
                 data,
@@ -794,7 +794,7 @@ impl TensorNetworkSampler {
                 let right_dim = if j == cols - 1 { 1 } else { bond_dimension };
                 let shape = vec![up_dim, down_dim, left_dim, right_dim, physical_dim];
                 let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
                 let tensor = Tensor {
                     id: tensor_id,
                     data,
@@ -861,7 +861,7 @@ impl TensorNetworkSampler {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2, 2];
                 let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
                 let tensor = Tensor {
                     id: tensor_id,
                     data,
@@ -907,7 +907,7 @@ impl TensorNetworkSampler {
                 let tensor_id = tensors.len();
                 let shape = vec![2, 2, 2];
                 let mut rng = thread_rng();
-                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.gen_range(-0.1..0.1));
+                let data = ArrayD::from_shape_fn(shape.clone(), |_| rng.random_range(-0.1..0.1));
                 let tensor = Tensor {
                     id: tensor_id,
                     data,
@@ -1006,9 +1006,9 @@ impl TensorNetworkSampler {
         let mut rng = thread_rng();
         let perturbation_strength = 0.01;
         for value in &mut self.tensor_network.tensors[site].data {
-            *value += rng.gen_range(-perturbation_strength..perturbation_strength);
+            *value += rng.random_range(-perturbation_strength..perturbation_strength);
         }
-        Ok(rng.gen_range(-1.0..0.0))
+        Ok(rng.random_range(-1.0..0.0))
     }
     /// Sweep optimization for PEPS
     fn sweep_peps(&mut self) -> Result<f64, TensorNetworkError> {
@@ -1026,7 +1026,7 @@ impl TensorNetworkSampler {
             return Ok(0.0);
         }
         let mut rng = thread_rng();
-        Ok(rng.gen_range(-1.0..0.0))
+        Ok(rng.random_range(-1.0..0.0))
     }
     /// Sweep optimization for MERA
     fn sweep_mera(&mut self) -> Result<f64, TensorNetworkError> {
@@ -1044,7 +1044,7 @@ impl TensorNetworkSampler {
             return Ok(0.0);
         }
         let mut rng = thread_rng();
-        Ok(rng.gen_range(-1.0..0.0))
+        Ok(rng.random_range(-1.0..0.0))
     }
     /// Compress tensor network
     fn compress_network(&mut self) -> Result<(), TensorNetworkError> {
@@ -1124,7 +1124,7 @@ impl TensorNetworkSampler {
         let num_sites = self.tensor_network.tensors.len();
         let mut sample = Vec::new();
         for _i in 0..num_sites {
-            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
+            let local_sample = i32::from(rng.random::<f64>() >= 0.5);
             sample.push(local_sample);
         }
         let energy = self.calculate_sample_energy(&sample)?;
@@ -1143,7 +1143,7 @@ impl TensorNetworkSampler {
         let num_tensors = self.tensor_network.tensors.len();
         let mut sample = Vec::new();
         for _ in 0..num_tensors {
-            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
+            let local_sample = i32::from(rng.random::<f64>() >= 0.5);
             sample.push(local_sample);
         }
         let energy = self.calculate_sample_energy(&sample)?;
@@ -1162,7 +1162,7 @@ impl TensorNetworkSampler {
         let num_sites = 16;
         let mut sample = Vec::new();
         for _ in 0..num_sites {
-            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
+            let local_sample = i32::from(rng.random::<f64>() >= 0.5);
             sample.push(local_sample);
         }
         let energy = self.calculate_sample_energy(&sample)?;
@@ -1181,7 +1181,7 @@ impl TensorNetworkSampler {
         let num_sites = 10;
         let mut sample = Vec::new();
         for _ in 0..num_sites {
-            let local_sample = i32::from(rng.gen::<f64>() >= 0.5);
+            let local_sample = i32::from(rng.random::<f64>() >= 0.5);
             sample.push(local_sample);
         }
         let energy = self.calculate_sample_energy(&sample)?;

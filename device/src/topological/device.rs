@@ -282,7 +282,7 @@ impl EnhancedTopologicalDevice {
         let result = self.core_device.measure_qubit(qubit_id)?;
 
         // Apply measurement fidelity
-        let actual_fidelity = thread_rng().gen::<f64>();
+        let actual_fidelity = thread_rng().random::<f64>();
         if actual_fidelity < self.config.measurement_fidelity {
             Ok(result)
         } else {

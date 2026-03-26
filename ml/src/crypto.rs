@@ -121,7 +121,7 @@ impl QuantumKeyDistribution {
         // Generate random bits for Alice
         let alice_bits = (0..self.num_qubits)
             .map(|_| {
-                if thread_rng().gen::<f64>() > 0.5 {
+                if thread_rng().random::<f64>() > 0.5 {
                     1u8
                 } else {
                     0u8
@@ -132,7 +132,7 @@ impl QuantumKeyDistribution {
         // Generate random bases for Alice and Bob
         let alice_bases = (0..self.num_qubits)
             .map(|_| {
-                if thread_rng().gen::<f64>() > 0.5 {
+                if thread_rng().random::<f64>() > 0.5 {
                     1usize
                 } else {
                     0usize
@@ -142,7 +142,7 @@ impl QuantumKeyDistribution {
 
         let bob_bases = (0..self.num_qubits)
             .map(|_| {
-                if thread_rng().gen::<f64>() > 0.5 {
+                if thread_rng().random::<f64>() > 0.5 {
                     1usize
                 } else {
                     0usize
@@ -162,7 +162,7 @@ impl QuantumKeyDistribution {
         let mut key_bits = Vec::new();
         for &i in &matching_bases {
             // Apply error rate
-            if thread_rng().gen::<f64>() > self.error_rate {
+            if thread_rng().random::<f64>() > self.error_rate {
                 key_bits.push(alice_bits[i]);
             } else {
                 // Flip the bit to simulate an error
@@ -199,7 +199,7 @@ impl QuantumKeyDistribution {
 
         // Generate random key bytes
         let key_bytes = (0..key_length / 8 + 1)
-            .map(|_| thread_rng().gen::<u8>())
+            .map(|_| thread_rng().random::<u8>())
             .collect::<Vec<_>>();
 
         // Store keys
@@ -217,7 +217,7 @@ impl QuantumKeyDistribution {
 
         // Generate random key bytes
         let key_bytes = (0..key_length / 8 + 1)
-            .map(|_| thread_rng().gen::<u8>())
+            .map(|_| thread_rng().random::<u8>())
             .collect::<Vec<_>>();
 
         // Store keys
@@ -270,11 +270,11 @@ impl QuantumSignature {
 
         // Generate random keys
         let public_key = (0..security_bits / 8 + 1)
-            .map(|_| thread_rng().gen::<u8>())
+            .map(|_| thread_rng().random::<u8>())
             .collect::<Vec<_>>();
 
         let private_key = (0..security_bits / 8 + 1)
-            .map(|_| thread_rng().gen::<u8>())
+            .map(|_| thread_rng().random::<u8>())
             .collect::<Vec<_>>();
 
         Ok(QuantumSignature {
@@ -349,7 +349,7 @@ impl QuantumAuthentication {
     pub fn add_party(&mut self, party_name: &str) -> Result<()> {
         // Generate a random key
         let key = (0..self.security_bits / 8 + 1)
-            .map(|_| thread_rng().gen::<u8>())
+            .map(|_| thread_rng().random::<u8>())
             .collect::<Vec<_>>();
 
         self.keys.insert(party_name.to_string(), key);
@@ -428,7 +428,7 @@ impl QSDC {
         // Apply the error rate to simulate channel noise
         for byte in &mut received {
             for bit_pos in 0..8 {
-                if thread_rng().gen::<f64>() < self.error_rate {
+                if thread_rng().random::<f64>() < self.error_rate {
                     // Flip the bit
                     *byte ^= 1 << bit_pos;
                 }

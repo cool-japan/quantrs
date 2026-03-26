@@ -434,8 +434,8 @@ impl AdaptiveOptimizer {
             let mut rng = thread_rng();
 
             for value in self.population[i].parameters.values_mut() {
-                if rng.gen::<f64>() < 0.3 {
-                    let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+                if rng.random::<f64>() < 0.3 {
+                    let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                     *value += perturbation;
                 }
             }
@@ -457,9 +457,9 @@ impl AdaptiveOptimizer {
         let mut rng = thread_rng();
 
         for (param_name, param_value) in params.iter_mut() {
-            if rng.gen::<f64>() < self.config.exploration_rate {
+            if rng.random::<f64>() < self.config.exploration_rate {
                 // Explore: random perturbation
-                let perturbation = rng.gen_range(-0.1..0.1) * param_value.abs();
+                let perturbation = rng.random_range(-0.1..0.1) * param_value.abs();
                 *param_value += perturbation;
             } else {
                 // Exploit: move toward historical best
@@ -494,7 +494,7 @@ impl AdaptiveOptimizer {
 
             // Add random perturbations
             for value in params.values_mut() {
-                let perturbation = rng.gen_range(-0.2..0.2) * value.abs();
+                let perturbation = rng.random_range(-0.2..0.2) * value.abs();
                 *value += perturbation;
             }
 
@@ -620,8 +620,8 @@ impl AdaptiveOptimizer {
         let mut rng = thread_rng();
 
         for value in individual.parameters.values_mut() {
-            if rng.gen::<f64>() < 0.3 {
-                let perturbation = rng.gen_range(-0.3..0.3) * value.abs();
+            if rng.random::<f64>() < 0.3 {
+                let perturbation = rng.random_range(-0.3..0.3) * value.abs();
                 *value += perturbation;
             }
         }

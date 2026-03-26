@@ -639,7 +639,7 @@ pub fn calibration_error_confidence_interval(
 
         // Resample with replacement
         for i in 0..n_samples {
-            let idx = rng.gen_range(0..n_samples);
+            let idx = rng.random_range(0..n_samples);
             boot_probs[i] = probabilities[idx];
             boot_labels[i] = labels[idx];
         }

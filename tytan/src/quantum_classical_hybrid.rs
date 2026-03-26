@@ -361,7 +361,7 @@ impl HybridOptimizer {
             return Ok((solution.clone(), current_energy));
         }
 
-        let var_name = &var_names[self.rng.gen_range(0..var_names.len())];
+        let var_name = &var_names[self.rng.random_range(0..var_names.len())];
         let current_value = solution[var_name];
 
         let mut neighbor = solution.clone();
@@ -615,7 +615,7 @@ impl HybridOptimizer {
             for _ in 0..num_samples {
                 let mut sample = HashMap::new();
                 for i in 0..qubo_matrix.nrows() {
-                    sample.insert(format!("x{i}"), self.rng.gen::<bool>());
+                    sample.insert(format!("x{i}"), self.rng.random::<bool>());
                 }
                 samples.push(sample);
             }

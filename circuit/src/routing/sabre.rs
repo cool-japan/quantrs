@@ -393,7 +393,7 @@ impl SabreRouter {
             let top_candidates = sorted_swaps.len().min(5);
 
             if top_candidates > 0 {
-                let idx = rng.gen_range(0..top_candidates);
+                let idx = rng.random_range(0..top_candidates);
                 Ok(vec![sorted_swaps[idx].0])
             } else {
                 Ok(Vec::new())

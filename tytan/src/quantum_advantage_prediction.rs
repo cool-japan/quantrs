@@ -312,7 +312,7 @@ impl PredictionModel {
         for &hidden_size in hidden_sizes {
             let scale = (2.0 / (prev_size + hidden_size) as f64).sqrt();
             let w = Array2::from_shape_fn((prev_size, hidden_size), |_| {
-                (rng.gen::<f64>() * 2.0).mul_add(scale, -scale)
+                (rng.random::<f64>() * 2.0).mul_add(scale, -scale)
             });
             let b = Array1::zeros(hidden_size);
             weights.push(w);
@@ -322,7 +322,7 @@ impl PredictionModel {
 
         let scale = (2.0 / (prev_size + output_size) as f64).sqrt();
         let w = Array2::from_shape_fn((prev_size, output_size), |_| {
-            (rng.gen::<f64>() * 2.0).mul_add(scale, -scale)
+            (rng.random::<f64>() * 2.0).mul_add(scale, -scale)
         });
         let b = Array1::zeros(output_size);
         weights.push(w);

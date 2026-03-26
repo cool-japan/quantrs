@@ -7,7 +7,7 @@
 use scirs2_core::ndarray::{Array1, Array2};
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{RngExt, SeedableRng};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -334,7 +334,7 @@ impl QuantumSampler {
     ) -> Result<f64> {
         // Simplified implementation - return random ±1
         // In practice, would need to transform state to measurement basis
-        if self.rng.gen::<f64>() < 0.5 {
+        if self.rng.random::<f64>() < 0.5 {
             Ok(1.0)
         } else {
             Ok(-1.0)
@@ -343,7 +343,7 @@ impl QuantumSampler {
 
     /// Sample from discrete probability distribution
     fn sample_from_distribution(&mut self, probabilities: &[f64]) -> Result<usize> {
-        let random_value = self.rng.gen::<f64>();
+        let random_value = self.rng.random::<f64>();
         let mut cumulative = 0.0;
 
         for (i, &prob) in probabilities.iter().enumerate() {
@@ -404,7 +404,7 @@ impl QuantumSampler {
         let mut counts = vec![0usize; k];
 
         for _ in 0..n_samples {
-            let u: f64 = self.rng.gen();
+            let u: f64 = self.rng.random();
             // Binary search on the CDF for O(log k) per sample
             let idx = cdf.partition_point(|&c| c < u).min(k - 1);
             counts[idx] += 1;

@@ -7,7 +7,7 @@
 use scirs2_core::ndarray::Array1;
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
-use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::random::{RngExt, SeedableRng};
 use scirs2_core::Complex64;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -263,7 +263,7 @@ impl QuantumSupremacyVerifier {
 
         // Single-qubit gates
         for qubit in 0..self.num_qubits {
-            let gate_type = match self.rng.gen_range(0..3) {
+            let gate_type = match self.rng.random_range(0..3) {
                 0 => "SqrtX",
                 1 => "SqrtY",
                 _ => "SqrtW",
@@ -308,7 +308,7 @@ impl QuantumSupremacyVerifier {
 
         // Random single-qubit gates
         for qubit in 0..self.num_qubits {
-            let gate_type = match self.rng.gen_range(0..3) {
+            let gate_type = match self.rng.random_range(0..3) {
                 0 => "H",
                 1 => "T",
                 _ => "S",
@@ -322,10 +322,10 @@ impl QuantumSupremacyVerifier {
         }
 
         // Random CNOT gates
-        let num_cnots = self.rng.gen_range(1..=self.num_qubits / 2);
+        let num_cnots = self.rng.random_range(1..=self.num_qubits / 2);
         for _ in 0..num_cnots {
-            let control = self.rng.gen_range(0..self.num_qubits);
-            let target = self.rng.gen_range(0..self.num_qubits);
+            let control = self.rng.random_range(0..self.num_qubits);
+            let target = self.rng.random_range(0..self.num_qubits);
 
             if control != target {
                 gates.push(QuantumGate {
@@ -346,7 +346,7 @@ impl QuantumSupremacyVerifier {
         // RZ and SX gates
         for qubit in 0..self.num_qubits {
             // Random RZ rotation
-            let angle = self.rng.gen::<f64>() * 2.0 * PI;
+            let angle = self.rng.random::<f64>() * 2.0 * PI;
             gates.push(QuantumGate {
                 gate_type: "RZ".to_string(),
                 qubits: vec![qubit],
@@ -354,7 +354,7 @@ impl QuantumSupremacyVerifier {
             });
 
             // SX gate with probability 0.5
-            if self.rng.gen::<bool>() {
+            if self.rng.random::<bool>() {
                 gates.push(QuantumGate {
                     gate_type: "SX".to_string(),
                     qubits: vec![qubit],
@@ -775,7 +775,7 @@ impl QuantumSupremacyVerifier {
         // Sample `samples_per_circuit` bitstrings via binary search on CDF
         let mut samples = Vec::with_capacity(self.params.samples_per_circuit);
         for _ in 0..self.params.samples_per_circuit {
-            let u: f64 = self.rng.gen();
+            let u: f64 = self.rng.random();
             // Binary-search for the first CDF entry >= u
             let outcome = cdf.partition_point(|&c| c < u).min(dim - 1);
 

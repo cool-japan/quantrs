@@ -109,8 +109,8 @@ impl QuantumCreditRiskModel {
     fn new(n_features: usize, quantum_noise: f64) -> Self {
         let mut rng = thread_rng();
         let weights =
-            Array2::from_shape_fn((n_features, 1), |_| rng.gen::<f64>().mul_add(2.0, -1.0));
-        let bias = rng.gen::<f64>() * 0.5;
+            Array2::from_shape_fn((n_features, 1), |_| rng.random::<f64>().mul_add(2.0, -1.0));
+        let bias = rng.random::<f64>() * 0.5;
 
         Self {
             weights,
@@ -131,7 +131,7 @@ impl QuantumCreditRiskModel {
 
         // Add quantum noise
         let noise = rng
-            .gen::<f64>()
+            .random::<f64>()
             .mul_add(self.quantum_noise, -(self.quantum_noise / 2.0));
         logit += noise;
 
@@ -160,15 +160,15 @@ fn generate_credit_dataset(n_samples: usize, n_features: usize) -> Vec<CreditApp
         // Features: credit_score, income, debt_to_income, employment_length, etc.
         let features = Array1::from_shape_fn(n_features, |j| {
             match j {
-                0 => rng.gen::<f64>().mul_add(500.0, 350.0), // Credit score 350-850
-                1 => rng.gen::<f64>() * 150_000.0,           // Annual income
-                2 => rng.gen::<f64>() * 0.6,                 // Debt-to-income ratio
-                _ => rng.gen::<f64>().mul_add(10.0, -5.0),   // Other features
+                0 => rng.random::<f64>().mul_add(500.0, 350.0), // Credit score 350-850
+                1 => rng.random::<f64>() * 150_000.0,           // Annual income
+                2 => rng.random::<f64>() * 0.6,                 // Debt-to-income ratio
+                _ => rng.random::<f64>().mul_add(10.0, -5.0),   // Other features
             }
         });
 
         // Loan amount
-        let loan_amount = rng.gen::<f64>().mul_add(500_000.0, 10000.0);
+        let loan_amount = rng.random::<f64>().mul_add(500_000.0, 10000.0);
 
         // True default probability (based on features)
         let credit_score = features[0];
@@ -178,7 +178,7 @@ fn generate_credit_dataset(n_samples: usize, n_features: usize) -> Vec<CreditApp
         let default_score =
             (income / 100_000.0).mul_add(-0.5, (850.0 - credit_score) / 500.0 + dti * 2.0); // Higher income = lower risk
 
-        let noise = rng.gen::<f64>().mul_add(0.3, -0.15);
+        let noise = rng.random::<f64>().mul_add(0.3, -0.15);
         let true_default = (default_score + noise) > 0.5;
 
         applications.push(CreditApplication {

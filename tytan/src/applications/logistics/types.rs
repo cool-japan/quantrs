@@ -1181,7 +1181,7 @@ impl BinaryVehicleRoutingProblem {
         let mut rng = thread_rng();
         let n_vars = self.num_variables();
         (0..n_vars)
-            .map(|_| i8::from(rng.gen::<f64>() > 0.8))
+            .map(|_| i8::from(rng.random::<f64>() > 0.8))
             .collect()
     }
     /// Convert binary solution to routes

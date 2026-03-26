@@ -1,10 +1,12 @@
-use quantrs2_circuit::prelude::*;
+use quantrs2_circuit::prelude::{self as circuit_prelude, *};
 use quantrs2_core::parametric::{
     ParametricGate, ParametricRotationX, ParametricRotationY, ParametricU,
 };
 use quantrs2_core::prelude::*;
-use quantrs2_sim::prelude::Simulator;
 use quantrs2_sim::prelude::*;
+use quantrs2_sim::Simulator;
+// Disambiguate Simulator trait (exported by both circuit and sim preludes)
+use circuit_prelude::Simulator as _;
 use scirs2_core::Complex64;
 
 use std::f64::consts::PI;

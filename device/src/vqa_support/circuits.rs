@@ -377,7 +377,7 @@ impl ParametricCircuit {
 
         self.bounds
             .iter()
-            .map(|(min, max)| rng.gen_range(*min..*max))
+            .map(|(min, max)| rng.random_range(*min..*max))
             .collect()
     }
 

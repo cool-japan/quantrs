@@ -261,52 +261,54 @@ impl StateActionProcessor {
     pub fn sample_random_action(
         state: &EmbeddingState,
     ) -> RLEmbeddingResult<DiscreteEmbeddingAction> {
-        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().gen());
+        let mut rng = ChaCha8Rng::seed_from_u64(thread_rng().random());
 
         // Randomly select action type
-        match rng.gen_range(0..8) {
+        match rng.random_range(0..8) {
             0 => {
-                let logical_qubit = rng.gen_range(0..state.problem_features.num_vertices);
-                let physical_qubit = rng.gen_range(0..state.hardware_features.num_physical_qubits);
+                let logical_qubit = rng.random_range(0..state.problem_features.num_vertices);
+                let physical_qubit =
+                    rng.random_range(0..state.hardware_features.num_physical_qubits);
                 Ok(DiscreteEmbeddingAction::AddToChain {
                     logical_qubit,
                     physical_qubit,
                 })
             }
             1 => {
-                let logical_qubit = rng.gen_range(0..state.problem_features.num_vertices);
-                let physical_qubit = rng.gen_range(0..state.hardware_features.num_physical_qubits);
+                let logical_qubit = rng.random_range(0..state.problem_features.num_vertices);
+                let physical_qubit =
+                    rng.random_range(0..state.hardware_features.num_physical_qubits);
                 Ok(DiscreteEmbeddingAction::RemoveFromChain {
                     logical_qubit,
                     physical_qubit,
                 })
             }
             2 => {
-                let chain1 = rng.gen_range(0..state.problem_features.num_vertices);
-                let chain2 = rng.gen_range(0..state.problem_features.num_vertices);
+                let chain1 = rng.random_range(0..state.problem_features.num_vertices);
+                let chain2 = rng.random_range(0..state.problem_features.num_vertices);
                 Ok(DiscreteEmbeddingAction::SwapChains { chain1, chain2 })
             }
             3 => {
-                let logical_qubit = rng.gen_range(0..state.problem_features.num_vertices);
+                let logical_qubit = rng.random_range(0..state.problem_features.num_vertices);
                 let new_location =
-                    vec![rng.gen_range(0..state.hardware_features.num_physical_qubits)];
+                    vec![rng.random_range(0..state.hardware_features.num_physical_qubits)];
                 Ok(DiscreteEmbeddingAction::RelocateChain {
                     logical_qubit,
                     new_location,
                 })
             }
             4 => {
-                let chain1 = rng.gen_range(0..state.problem_features.num_vertices);
-                let chain2 = rng.gen_range(0..state.problem_features.num_vertices);
+                let chain1 = rng.random_range(0..state.problem_features.num_vertices);
+                let chain2 = rng.random_range(0..state.problem_features.num_vertices);
                 Ok(DiscreteEmbeddingAction::MergeChains { chain1, chain2 })
             }
             5 => {
-                let chain = rng.gen_range(0..state.problem_features.num_vertices);
-                let split_point = rng.gen_range(1..5); // Reasonable split point
+                let chain = rng.random_range(0..state.problem_features.num_vertices);
+                let split_point = rng.random_range(1..5); // Reasonable split point
                 Ok(DiscreteEmbeddingAction::SplitChain { chain, split_point })
             }
             6 => {
-                let chain = rng.gen_range(0..state.problem_features.num_vertices);
+                let chain = rng.random_range(0..state.problem_features.num_vertices);
                 Ok(DiscreteEmbeddingAction::OptimizeOrdering { chain })
             }
             _ => Ok(DiscreteEmbeddingAction::NoOp),

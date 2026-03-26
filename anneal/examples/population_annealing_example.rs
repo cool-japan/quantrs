@@ -328,8 +328,8 @@ fn create_random_spin_glass(
 
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < density {
-                let coupling = if thread_rng().gen::<bool>() {
+            if thread_rng().random::<f64>() < density {
+                let coupling = if thread_rng().random::<bool>() {
                     1.0
                 } else {
                     -1.0
@@ -349,7 +349,7 @@ fn create_maxcut_problem(n: usize) -> Result<IsingModel, Box<dyn std::error::Err
     // Create a random graph with negative couplings
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < 0.4 {
+            if thread_rng().random::<f64>() < 0.4 {
                 model.set_coupling(i, j, -1.0)?;
             }
         }
@@ -364,15 +364,15 @@ fn create_complex_landscape(n: usize) -> Result<IsingModel, Box<dyn std::error::
 
     // Add random fields
     for i in 0..n {
-        let field = (thread_rng().gen::<f64>() - 0.5) * 2.0;
+        let field = (thread_rng().random::<f64>() - 0.5) * 2.0;
         model.set_bias(i, field)?;
     }
 
     // Add competing interactions
     for i in 0..n {
         for j in (i + 1)..n {
-            if thread_rng().gen::<f64>() < 0.6 {
-                let coupling = (thread_rng().gen::<f64>() - 0.5) * 4.0;
+            if thread_rng().random::<f64>() < 0.6 {
+                let coupling = (thread_rng().random::<f64>() - 0.5) * 4.0;
                 model.set_coupling(i, j, coupling)?;
             }
         }
@@ -381,8 +381,8 @@ fn create_complex_landscape(n: usize) -> Result<IsingModel, Box<dyn std::error::
     // Add long-range interactions
     for i in 0..n {
         for j in (i + 3)..n {
-            if thread_rng().gen::<f64>() < 0.2 {
-                let coupling = (thread_rng().gen::<f64>() - 0.5) * 1.0;
+            if thread_rng().random::<f64>() < 0.2 {
+                let coupling = (thread_rng().random::<f64>() - 0.5) * 1.0;
                 model.set_coupling(i, j, coupling)?;
             }
         }

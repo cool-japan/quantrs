@@ -4,7 +4,7 @@
 //! solving QUBO and HOBO problems, using SciRS2 when available.
 
 use scirs2_core::ndarray::{Array, ArrayD, Dimension, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -238,7 +238,7 @@ pub fn gpu_solve_qubo(
         // Create random binary states
         let mut rng = thread_rng();
         let binary_states: Vec<u8> = (0..shots * n_vars)
-            .map(|_| if rng.gen::<bool>() { 1u8 } else { 0u8 })
+            .map(|_| if rng.random::<bool>() { 1u8 } else { 0u8 })
             .collect();
 
         // Create OCL buffers
@@ -359,7 +359,7 @@ pub fn gpu_solve_hobo(
         .map(|(var, &idx)| (idx, var.clone()))
         .collect();
 
-    use scirs2_core::random::{rngs::StdRng, SeedableRng};
+    use scirs2_core::random::{rngs::StdRng, RngExt, SeedableRng};
 
     // Helper: evaluate HOBO energy for a given binary assignment.
     // For a general order-d tensor T, the energy is:
@@ -391,7 +391,7 @@ pub fn gpu_solve_hobo(
         let mut rng = StdRng::seed_from_u64(shot_idx as u64 + 1);
 
         // Random binary initial state.
-        let mut x: Vec<u8> = (0..n_vars).map(|_| rng.gen_range(0..2u8)).collect();
+        let mut x: Vec<u8> = (0..n_vars).map(|_| rng.random_range(0..2u8)).collect();
         let mut energy = evaluate_hobo_energy(tensor, &x);
 
         let initial_temperature = 1.0_f64;
@@ -406,7 +406,7 @@ pub fn gpu_solve_hobo(
                 let delta = new_energy - energy;
                 // Accept if improving, or probabilistically if worsening.
                 let accept = delta < 0.0
-                    || (temperature > 1e-12 && rng.gen::<f64>() < (-delta / temperature).exp());
+                    || (temperature > 1e-12 && rng.random::<f64>() < (-delta / temperature).exp());
                 if accept {
                     energy = new_energy;
                 } else {

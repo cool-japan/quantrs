@@ -143,7 +143,7 @@ impl MixedPrecisionSimulator {
         }
 
         // Simulate random measurement
-        let result = thread_rng().gen::<f64>() < prob_one;
+        let result = thread_rng().random::<f64>() < prob_one;
 
         // Collapse the state vector
         self.collapse_state(qubit, result)?;

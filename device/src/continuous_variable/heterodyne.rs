@@ -272,22 +272,22 @@ impl HeterodyneDetector {
         // Measure DC offsets
         self.calibration.dc_offsets = (
             0.0005f64.mul_add(
-                thread_rng().gen::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
                 self.config.iq_demod_config.dc_offset_i,
             ),
             0.0005f64.mul_add(
-                thread_rng().gen::<f64>() - 0.5,
+                thread_rng().random::<f64>() - 0.5,
                 self.config.iq_demod_config.dc_offset_q,
             ),
         );
 
         // Measure relative phase between LOs
-        self.calibration.relative_phase_offset = 0.02 * (thread_rng().gen::<f64>() - 0.5);
+        self.calibration.relative_phase_offset = 0.02 * (thread_rng().random::<f64>() - 0.5);
 
         // Measure amplitude factors
         self.calibration.amplitude_factors = (
-            0.01f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0),
-            0.01f64.mul_add(thread_rng().gen::<f64>() - 0.5, 1.0),
+            0.01f64.mul_add(thread_rng().random::<f64>() - 0.5, 1.0),
+            0.01f64.mul_add(thread_rng().random::<f64>() - 0.5, 1.0),
         );
 
         println!("Calibration complete");
@@ -365,7 +365,7 @@ impl HeterodyneDetector {
         let dist_p = Normal::new(mean_p, noise_var_p.sqrt())
             .map_err(|e| DeviceError::InvalidInput(format!("Distribution error: {e}")))?;
 
-        let mut rng = StdRng::seed_from_u64(thread_rng().gen::<u64>());
+        let mut rng = StdRng::seed_from_u64(thread_rng().random::<u64>());
         let raw_i = dist_x.sample(&mut rng);
         let raw_q = dist_p.sample(&mut rng);
 

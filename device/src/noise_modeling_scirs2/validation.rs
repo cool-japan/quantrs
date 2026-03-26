@@ -225,7 +225,7 @@ impl ModelValidator {
         let mut bootstrap_sample = Array2::zeros((n_samples, n_features));
 
         for i in 0..n_samples {
-            let random_idx = thread_rng().gen::<usize>() % n_samples;
+            let random_idx = thread_rng().random::<usize>() % n_samples;
             bootstrap_sample.row_mut(i).assign(&data.row(random_idx));
         }
 

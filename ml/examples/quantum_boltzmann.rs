@@ -266,7 +266,7 @@ fn pattern_completion_demo() -> Result<()> {
 /// Generate binary patterns
 fn generate_binary_patterns(n_samples: usize, n_features: usize) -> Array2<f64> {
     Array2::from_shape_fn((n_samples, n_features), |(_, _)| {
-        if thread_rng().gen::<f64>() > 0.5 {
+        if thread_rng().random::<f64>() > 0.5 {
             1.0
         } else {
             0.0
@@ -280,7 +280,7 @@ fn generate_correlated_data(n_samples: usize, n_features: usize) -> Array2<f64> 
 
     for i in 0..n_samples {
         // Generate correlated features
-        let base = if thread_rng().gen::<f64>() > 0.5 {
+        let base = if thread_rng().random::<f64>() > 0.5 {
             1.0
         } else {
             0.0
@@ -291,7 +291,7 @@ fn generate_correlated_data(n_samples: usize, n_features: usize) -> Array2<f64> 
                 data[[i, j]] = base;
             } else {
                 // Correlate with previous feature
-                data[[i, j]] = if thread_rng().gen::<f64>() > 0.2 {
+                data[[i, j]] = if thread_rng().random::<f64>() > 0.2 {
                     base
                 } else {
                     1.0 - base
@@ -326,7 +326,7 @@ fn generate_hierarchical_data(n_samples: usize, n_features: usize) -> Array2<f64
             }
             _ => {
                 // Pattern C: random with structure
-                let shift = (thread_rng().gen::<f64>() * 4.0) as usize;
+                let shift = (thread_rng().random::<f64>() * 4.0) as usize;
                 for j in 0..n_features {
                     data[[i, j]] = if (j + shift) % 3 == 0 { 1.0 } else { 0.0 };
                 }
@@ -335,7 +335,7 @@ fn generate_hierarchical_data(n_samples: usize, n_features: usize) -> Array2<f64
 
         // Add noise
         for j in 0..n_features {
-            if thread_rng().gen::<f64>() < 0.1 {
+            if thread_rng().random::<f64>() < 0.1 {
                 data[[i, j]] = 1.0 - data[[i, j]];
             }
         }

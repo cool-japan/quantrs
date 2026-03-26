@@ -9,6 +9,7 @@
 use scirs2_core::random::prelude::*;
 use scirs2_core::random::ChaCha8Rng;
 use scirs2_core::random::{Rng, SeedableRng};
+use scirs2_core::RngExt;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -604,8 +605,8 @@ impl CoherentIsingMachine {
             let osc = OpticalParametricOscillator {
                 index: i,
                 amplitude: Complex::new(
-                    self.rng.gen_range(-0.1..0.1),
-                    self.rng.gen_range(-0.1..0.1),
+                    self.rng.random_range(-0.1..0.1),
+                    self.rng.random_range(-0.1..0.1),
                 ),
                 gain: 1.0,
                 loss: 0.1,
@@ -700,13 +701,13 @@ impl CoherentIsingMachine {
                 let mut added_edges = std::collections::HashSet::new();
 
                 while added_edges.len() < num_edges {
-                    let i = self.rng.gen_range(0..self.config.num_oscillators);
-                    let j = self.rng.gen_range(0..self.config.num_oscillators);
+                    let i = self.rng.random_range(0..self.config.num_oscillators);
+                    let j = self.rng.random_range(0..self.config.num_oscillators);
 
                     if i != j {
                         let edge = if i < j { (i, j) } else { (j, i) };
                         if added_edges.insert(edge) {
-                            let strength = self.rng.gen_range(0.05..0.25);
+                            let strength = self.rng.random_range(0.05..0.25);
                             self.add_bidirectional_coupling(edge.0, edge.1, strength);
                         }
                     }
@@ -723,8 +724,8 @@ impl CoherentIsingMachine {
                         let j = (i + k) % self.config.num_oscillators;
 
                         // Rewire with probability
-                        if self.rng.gen_bool(rewiring_probability) {
-                            let new_target = self.rng.gen_range(0..self.config.num_oscillators);
+                        if self.rng.random_bool(rewiring_probability) {
+                            let new_target = self.rng.random_range(0..self.config.num_oscillators);
                             if new_target != i {
                                 self.add_bidirectional_coupling(i, new_target, 0.1);
                             }
@@ -976,18 +977,18 @@ impl CoherentIsingMachine {
 
         for osc in &mut self.oscillators {
             // Quantum noise (white noise)
-            let quantum_noise_re = self.rng.gen_range(-1.0..1.0) * noise_config.quantum_noise;
-            let quantum_noise_im = self.rng.gen_range(-1.0..1.0) * noise_config.quantum_noise;
+            let quantum_noise_re = self.rng.random_range(-1.0..1.0) * noise_config.quantum_noise;
+            let quantum_noise_im = self.rng.random_range(-1.0..1.0) * noise_config.quantum_noise;
 
             // Phase noise
-            let phase_noise = self.rng.gen_range(-1.0..1.0) * noise_config.phase_noise;
+            let phase_noise = self.rng.random_range(-1.0..1.0) * noise_config.phase_noise;
             let current_phase = osc.amplitude.phase();
             let new_phase = current_phase + phase_noise;
 
             // Amplitude noise
             let amplitude_noise = self
                 .rng
-                .gen_range(-1.0_f64..1.0)
+                .random_range(-1.0_f64..1.0)
                 .mul_add(noise_config.amplitude_noise, 1.0);
             let current_magnitude = osc.amplitude.magnitude();
             let new_magnitude = current_magnitude * amplitude_noise;

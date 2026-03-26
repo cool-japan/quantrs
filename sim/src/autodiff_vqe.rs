@@ -446,7 +446,7 @@ impl ParametricCircuit {
         // Generate random perturbation vector
         let mut perturbation = vec![0.0; self.num_parameters];
         for p in &mut perturbation {
-            *p = if rng.gen::<bool>() { 1.0 } else { -1.0 };
+            *p = if rng.random::<bool>() { 1.0 } else { -1.0 };
         }
 
         // Two evaluations with opposite perturbations

@@ -956,7 +956,7 @@ impl AdvancedQubitRouter {
         let mut best_cost = f64::INFINITY;
 
         for (strategy, weight) in strategies {
-            let mut temp_router = Self::new(self.topology.clone(), strategy, thread_rng().gen());
+            let mut temp_router = Self::new(self.topology.clone(), strategy, thread_rng().random());
 
             if let Ok(result) = match strategy {
                 AdvancedRoutingStrategy::SABRE { heuristic_weight } => temp_router.route_sabre(

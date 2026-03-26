@@ -177,7 +177,7 @@ fn demonstrate_random_generation() -> Result<(), Box<dyn std::error::Error>> {
 
     // Uniform random for measurement sampling
     println!("   Measurement Sampling (Uniform Distribution):");
-    let measurements: Vec<f64> = (0..5).map(|_| rng.gen::<f64>()).collect();
+    let measurements: Vec<f64> = (0..5).map(|_| rng.random::<f64>()).collect();
     for (i, m) in measurements.iter().enumerate() {
         println!("   Measurement {}: {:.6}", i + 1, m);
     }
@@ -211,7 +211,7 @@ fn demonstrate_random_generation() -> Result<(), Box<dyn std::error::Error>> {
     use scirs2_core::random::rngs::StdRng;
     use scirs2_core::random::SeedableRng;
     let mut seeded_rng = StdRng::seed_from_u64(42);
-    let reproducible: Vec<f64> = (0..3).map(|_| seeded_rng.gen::<f64>()).collect();
+    let reproducible: Vec<f64> = (0..3).map(|_| seeded_rng.random::<f64>()).collect();
     for (i, r) in reproducible.iter().enumerate() {
         println!("   Value {}: {:.6}", i + 1, r);
     }
@@ -312,7 +312,7 @@ fn demonstrate_quantum_computation() {
 
     let mut counts = [0; 4];
     for _ in 0..1000 {
-        let r: f64 = rng.gen();
+        let r: f64 = rng.random();
         let mut cumulative = 0.0;
         for (i, &prob) in probabilities.iter().enumerate() {
             cumulative += prob;
@@ -398,8 +398,8 @@ mod tests {
         let mut rng1 = StdRng::seed_from_u64(42);
         let mut rng2 = StdRng::seed_from_u64(42);
 
-        let v1: f64 = rng1.gen();
-        let v2: f64 = rng2.gen();
+        let v1: f64 = rng1.random();
+        let v2: f64 = rng2.random();
 
         assert_eq!(v1, v2, "Seeded RNGs should produce identical results");
     }

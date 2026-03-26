@@ -77,10 +77,10 @@ fn variational_quantum_classifier_example() -> Result<(), Box<dyn std::error::Er
 
     // Generate training samples
     for _ in 0..50 {
-        let x1 = rng.gen_range(-2.0..2.0);
-        let x2 = rng.gen_range(-2.0..2.0);
-        let x3 = rng.gen_range(-2.0..2.0);
-        let x4 = rng.gen_range(-2.0..2.0);
+        let x1 = rng.random_range(-2.0..2.0);
+        let x2 = rng.random_range(-2.0..2.0);
+        let x3 = rng.random_range(-2.0..2.0);
+        let x4 = rng.random_range(-2.0..2.0);
 
         // Simple classification rule: sum > 0 -> class 1, else class 0
         let label = usize::from(x1 + x2 + x3 + x4 > 0.0);
@@ -148,9 +148,9 @@ fn quantum_neural_network_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut training_data = Vec::new();
 
     for _ in 0..30 {
-        let x1: f64 = rng.gen_range(-1.0..1.0);
-        let x2: f64 = rng.gen_range(-1.0..1.0);
-        let x3: f64 = rng.gen_range(-1.0..1.0);
+        let x1: f64 = rng.random_range(-1.0..1.0);
+        let x2: f64 = rng.random_range(-1.0..1.0);
+        let x3: f64 = rng.random_range(-1.0..1.0);
 
         // Target function: y = sin(x1) + cos(x2) + x3^2
         let y1 = x3.mul_add(x3, x1.sin() + x2.cos());
@@ -291,8 +291,8 @@ fn quantum_kernel_methods_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut training_data = Vec::new();
 
     for _ in 0..60 {
-        let x1 = rng.gen_range(-2.0..2.0);
-        let x2 = rng.gen_range(-2.0..2.0);
+        let x1 = rng.random_range(-2.0..2.0);
+        let x2 = rng.random_range(-2.0..2.0);
 
         // Nonlinear classification boundary: circle
         let label = if x1 * x1 + x2 * x2 < 1.0 { 1.0 } else { -1.0 };
@@ -371,8 +371,8 @@ fn quantum_gan_example() -> Result<(), Box<dyn std::error::Error>> {
     let mut real_data = Vec::new();
 
     for _ in 0..100 {
-        let x = rng.gen_range(-1.0..1.0);
-        let y = rng.gen_range(-1.0..1.0);
+        let x = rng.random_range(-1.0..1.0);
+        let y = rng.random_range(-1.0..1.0);
         // Transform to create a specific distribution
         let transformed_x = x * 0.8 + y * 0.2;
         let transformed_y = y * 0.8 - x * 0.2;
@@ -476,10 +476,10 @@ fn quantum_reinforcement_learning_example() -> Result<(), Box<dyn std::error::Er
     let num_episodes = 10;
     for episode in 0..num_episodes {
         let mut state = vec![
-            rng.gen_range(-0.5..0.5), // position
-            rng.gen_range(-0.1..0.1), // velocity
-            rng.gen_range(-0.2..0.2), // angle
-            rng.gen_range(-0.1..0.1), // angular velocity
+            rng.random_range(-0.5..0.5), // position
+            rng.random_range(-0.1..0.1), // velocity
+            rng.random_range(-0.2..0.2), // angle
+            rng.random_range(-0.1..0.1), // angular velocity
         ];
 
         let mut episode_reward = 0.0;
@@ -567,8 +567,8 @@ fn quantum_autoencoder_example() -> Result<(), Box<dyn std::error::Error>> {
 
     for _ in 0..80 {
         // Generate 2D latent variables
-        let z1: f64 = rng.gen_range(-1.0..1.0);
-        let z2: f64 = rng.gen_range(-1.0..1.0);
+        let z1: f64 = rng.random_range(-1.0..1.0);
+        let z2: f64 = rng.random_range(-1.0..1.0);
 
         // Map to 8D space with nonlinear transformation
         let data = vec![
@@ -672,9 +672,9 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
     let mut dataset = Vec::new();
 
     for _ in 0..100 {
-        let x1: f64 = rng.gen_range(-1.0..1.0);
-        let x2: f64 = rng.gen_range(-1.0..1.0);
-        let x3: f64 = rng.gen_range(-1.0..1.0);
+        let x1: f64 = rng.random_range(-1.0..1.0);
+        let x2: f64 = rng.random_range(-1.0..1.0);
+        let x3: f64 = rng.random_range(-1.0..1.0);
 
         // Complex nonlinear decision boundary
         let label = usize::from(x1.mul_add(x1, x2 * x2) - x3.sin() > 0.0);
@@ -722,7 +722,7 @@ fn quantum_classical_comparison_example() -> Result<(), Box<dyn std::error::Erro
     // Classical "Neural Network" (simplified)
     println!("    Training Classical NN (simplified)...");
     let start = Instant::now();
-    let mut classical_weights = vec![rng.gen_range(-1.0..1.0); 12]; // 3*4 weights
+    let mut classical_weights = vec![rng.random_range(-1.0..1.0); 12]; // 3*4 weights
 
     // Simple gradient descent
     for _ in 0..100 {
@@ -827,10 +827,10 @@ fn simulate_cartpole_step(
 
     // Add small amount of noise
     vec![
-        new_pos + rng.gen_range(-0.01..0.01),
-        new_vel + rng.gen_range(-0.01..0.01),
-        new_angle + rng.gen_range(-0.005..0.005),
-        new_ang_vel + rng.gen_range(-0.01..0.01),
+        new_pos + rng.random_range(-0.01..0.01),
+        new_vel + rng.random_range(-0.01..0.01),
+        new_angle + rng.random_range(-0.005..0.005),
+        new_ang_vel + rng.random_range(-0.01..0.01),
     ]
 }
 

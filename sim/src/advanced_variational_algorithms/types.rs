@@ -717,7 +717,7 @@ impl AdvancedVQATrainer {
         let learning_rate = self.state.learning_rate;
         let mut updates = Vec::new();
         for i in 0..self.state.parameters.len() {
-            let perturbation = if thread_rng().gen::<f64>() > 0.5 {
+            let perturbation = if thread_rng().random::<f64>() > 0.5 {
                 1.0
             } else {
                 -1.0
@@ -873,7 +873,7 @@ impl AdvancedVQATrainer {
             .state
             .parameters
             .iter()
-            .map(|p| p + (thread_rng().gen::<f64>() - 0.5) * 0.1)
+            .map(|p| p + (thread_rng().random::<f64>() - 0.5) * 0.1)
             .collect::<Vec<_>>();
         let updates = next_parameters
             .iter()
@@ -905,7 +905,7 @@ impl AdvancedVQATrainer {
         for _ in 0..population_size {
             let mut candidate = self.state.parameters.clone();
             for param in &mut candidate {
-                *param += sigma * (thread_rng().gen::<f64>() - 0.5) * 2.0;
+                *param += sigma * (thread_rng().random::<f64>() - 0.5) * 2.0;
             }
             population.push(candidate);
         }
@@ -947,17 +947,18 @@ impl AdvancedVQATrainer {
         let cognitive = 2.0;
         let social = 2.0;
         for i in 0..self.state.parameters.len() {
-            let quantum_factor = (2.0 * std::f64::consts::PI * thread_rng().gen::<f64>())
+            let quantum_factor = (2.0 * std::f64::consts::PI * thread_rng().random::<f64>())
                 .cos()
                 .abs();
-            self.state.optimizer_state.momentum[i] = (social * thread_rng().gen::<f64>()).mul_add(
-                self.state.best_parameters[i] - self.state.parameters[i],
-                inertia * self.state.optimizer_state.momentum[i]
-                    + cognitive
-                        * thread_rng().gen::<f64>()
-                        * (self.state.best_parameters[i] - self.state.parameters[i])
-                        * quantum_factor,
-            );
+            self.state.optimizer_state.momentum[i] = (social * thread_rng().random::<f64>())
+                .mul_add(
+                    self.state.best_parameters[i] - self.state.parameters[i],
+                    inertia * self.state.optimizer_state.momentum[i]
+                        + cognitive
+                            * thread_rng().random::<f64>()
+                            * (self.state.best_parameters[i] - self.state.parameters[i])
+                            * quantum_factor,
+                );
         }
         let mut updates = Vec::new();
         for i in 0..self.state.parameters.len() {
@@ -1015,9 +1016,9 @@ impl AdvancedVQATrainer {
         let mut parameters = Vec::with_capacity(num_parameters);
         for _ in 0..num_parameters {
             let param = if let Some((min, max)) = config.parameter_bounds {
-                (max - min).mul_add(thread_rng().gen::<f64>(), min)
+                (max - min).mul_add(thread_rng().random::<f64>(), min)
             } else {
-                (thread_rng().gen::<f64>() - 0.5) * 2.0 * std::f64::consts::PI
+                (thread_rng().random::<f64>() - 0.5) * 2.0 * std::f64::consts::PI
             };
             parameters.push(param);
         }

@@ -233,7 +233,7 @@ impl MultiObjectiveOptimizer {
             let mut assignments = HashMap::new();
 
             for i in 0..num_variables {
-                assignments.insert(format!("x{i}"), self.rng.gen::<bool>());
+                assignments.insert(format!("x{i}"), self.rng.random::<bool>());
             }
 
             let objective_values = self.evaluate_objectives(&assignments);
@@ -361,8 +361,8 @@ impl MultiObjectiveOptimizer {
 
     /// Perform binary tournament selection
     fn tournament_selection(&mut self) -> usize {
-        let i = self.rng.gen_range(0..self.population.len());
-        let j = self.rng.gen_range(0..self.population.len());
+        let i = self.rng.random_range(0..self.population.len());
+        let j = self.rng.random_range(0..self.population.len());
 
         if self.population[i].rank < self.population[j].rank {
             i
@@ -381,7 +381,7 @@ impl MultiObjectiveOptimizer {
         parent1: &MultiObjectiveSolution,
         parent2: &MultiObjectiveSolution,
     ) -> (MultiObjectiveSolution, MultiObjectiveSolution) {
-        if self.rng.gen::<f64>() > self.config.crossover_prob {
+        if self.rng.random::<f64>() > self.config.crossover_prob {
             return (parent1.clone(), parent2.clone());
         }
 
@@ -390,7 +390,7 @@ impl MultiObjectiveOptimizer {
 
         // Uniform crossover
         for key in parent1.assignments.keys() {
-            if self.rng.gen::<bool>() {
+            if self.rng.random::<bool>() {
                 if let Some(&val) = parent2.assignments.get(key) {
                     child1_assignments.insert(key.clone(), val);
                 }
@@ -420,7 +420,7 @@ impl MultiObjectiveOptimizer {
     /// Perform mutation
     fn mutate(&mut self, solution: &mut MultiObjectiveSolution) {
         for value in solution.assignments.values_mut() {
-            if self.rng.gen::<f64>() < self.config.mutation_prob {
+            if self.rng.random::<f64>() < self.config.mutation_prob {
                 *value = !*value;
             }
         }

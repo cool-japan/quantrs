@@ -65,8 +65,8 @@ impl QuantumMolecularPredictor {
     fn new(n_features: usize, shot_noise_level: f64) -> Self {
         let mut rng = thread_rng();
         let weights =
-            Array2::from_shape_fn((n_features, 1), |_| rng.gen::<f64>().mul_add(2.0, -1.0));
-        let bias = rng.gen::<f64>() * 0.5;
+            Array2::from_shape_fn((n_features, 1), |_| rng.random::<f64>().mul_add(2.0, -1.0));
+        let bias = rng.random::<f64>() * 0.5;
 
         Self {
             weights,
@@ -82,12 +82,12 @@ impl QuantumMolecularPredictor {
         // Compute logit (simplified neural network)
         let mut logit = self.bias;
         for i in 0..descriptors.len() {
-            logit += descriptors[i] * self.weights[[i, 0]];
+            logit = descriptors[i].mul_add(self.weights[[i, 0]], logit);
         }
 
         // Add quantum shot noise
         let noise = rng
-            .gen::<f64>()
+            .random::<f64>()
             .mul_add(self.shot_noise_level, -(self.shot_noise_level / 2.0));
         logit += noise;
 
@@ -111,11 +111,11 @@ fn generate_drug_dataset(n_samples: usize, n_features: usize) -> Vec<Molecule> {
     for i in 0..n_samples {
         // Generate molecular descriptors (e.g., molecular weight, logP, TPSA, etc.)
         let descriptors =
-            Array1::from_shape_fn(n_features, |_| rng.gen::<f64>().mul_add(10.0, -5.0));
+            Array1::from_shape_fn(n_features, |_| rng.random::<f64>().mul_add(10.0, -5.0));
 
         // True binding affinity (based on descriptors with some noise)
         let signal = descriptors.iter().sum::<f64>() / n_features as f64;
-        let noise = rng.gen::<f64>().mul_add(2.0, -1.0);
+        let noise = rng.random::<f64>().mul_add(2.0, -1.0);
         let true_binding = (signal + noise) > 0.0;
 
         molecules.push(Molecule {

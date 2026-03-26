@@ -176,10 +176,10 @@ impl VariationalQuantumClassifier {
         let ansatz = QuantumCircuit::hardware_efficient_ansatz(num_qubits, ansatz_layers);
         let mut rng = match config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
         let parameters: Vec<f64> = (0..ansatz.num_parameters)
-            .map(|_| rng.gen_range(-PI..PI))
+            .map(|_| rng.random_range(-PI..PI))
             .collect();
         Ok(Self {
             feature_map,
@@ -412,7 +412,7 @@ impl QuantumGAN {
         println!("Training Quantum GAN for {} epochs", self.config.epochs);
         let mut rng = match self.config.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
         for epoch in 0..self.config.epochs {
             let start = Instant::now();
@@ -436,7 +436,7 @@ impl QuantumGAN {
         let batch_size = self.config.batch_size.min(real_data.len());
         let mut d_training_data = Vec::new();
         for _ in 0..batch_size / 2 {
-            let idx = rng.gen_range(0..real_data.len());
+            let idx = rng.random_range(0..real_data.len());
             d_training_data.push((real_data[idx].clone(), vec![1.0]));
         }
         for _ in 0..batch_size / 2 {
@@ -452,7 +452,7 @@ impl QuantumGAN {
         let mut g_training_data = Vec::new();
         for _ in 0..batch_size {
             let latent: Vec<f64> = (0..self.config.latent_dim)
-                .map(|_| rng.gen_range(-1.0..1.0))
+                .map(|_| rng.random_range(-1.0..1.0))
                 .collect();
             g_training_data.push((latent, vec![1.0]));
         }
@@ -462,7 +462,7 @@ impl QuantumGAN {
     /// Generate a sample from random noise
     pub fn generate_sample(&self, rng: &mut ChaCha8Rng) -> QmlResult<Vec<f64>> {
         let latent: Vec<f64> = (0..self.config.latent_dim)
-            .map(|_| rng.gen_range(-1.0..1.0))
+            .map(|_| rng.random_range(-1.0..1.0))
             .collect();
         self.generator.forward(&latent)
     }
@@ -530,7 +530,7 @@ impl QuantumNeuralLayer {
         let circuit = QuantumCircuit::hardware_efficient_ansatz(num_qubits, 2);
         let mut rng = ChaCha8Rng::seed_from_u64(42);
         let parameters: Vec<f64> = (0..circuit.num_parameters)
-            .map(|_| rng.gen_range(-1.0..1.0))
+            .map(|_| rng.random_range(-1.0..1.0))
             .collect();
         Ok(Self {
             input_size,
@@ -877,8 +877,8 @@ impl QuantumRLAgent {
     }
     /// Select action using current policy
     pub fn select_action(&self, state: &[f64], rng: &mut ChaCha8Rng) -> QmlResult<usize> {
-        if rng.gen::<f64>() < self.config.epsilon {
-            Ok(rng.gen_range(0..self.config.action_dim))
+        if rng.random::<f64>() < self.config.epsilon {
+            Ok(rng.random_range(0..self.config.action_dim))
         } else {
             let action_values = self.policy_network.forward(state)?;
             let best_action = action_values

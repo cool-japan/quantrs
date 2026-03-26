@@ -96,7 +96,7 @@ impl GroverAmplifiedSolver {
         let mut population = Vec::new();
 
         for _ in 0..self.config.population_size {
-            let state: Vec<bool> = (0..n_vars).map(|_| rng.gen_bool(0.5)).collect();
+            let state: Vec<bool> = (0..n_vars).map(|_| rng.random_bool(0.5)).collect();
             let energy = self.compute_energy(&state, qubo);
 
             population.push(AmplitudeState {
@@ -212,7 +212,7 @@ impl GroverAmplifiedSolver {
 
         while new_population.len() < self.config.population_size {
             // Sample parent based on amplitude
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let parent_idx = cumulative
                 .iter()
                 .position(|&c| r <= c)
@@ -224,7 +224,7 @@ impl GroverAmplifiedSolver {
             // Mutate with probability based on amplitude
             let mutation_prob = 0.1 * (1.0 - population[parent_idx].amplitude);
             for bit in &mut offspring {
-                if rng.gen_bool(mutation_prob) {
+                if rng.random_bool(mutation_prob) {
                     *bit = !*bit;
                 }
             }

@@ -427,7 +427,7 @@ impl AdiabaticQuantumComputer {
         let mut rng = thread_rng();
         let probs = self.measurement_probabilities();
 
-        let random_value: f64 = rng.gen();
+        let random_value: f64 = rng.random();
         let mut cumulative = 0.0;
 
         for (state, prob) in probs.iter().enumerate() {
@@ -878,8 +878,8 @@ impl ProblemGenerator {
 
         for i in 0..num_vars {
             for j in i..num_vars {
-                if rng.gen::<f64>() < density {
-                    let value = rng.gen_range(-1.0..=1.0);
+                if rng.random::<f64>() < density {
+                    let value = rng.random_range(-1.0..=1.0);
                     q_matrix[[i, j]] = value;
                     if i != j {
                         q_matrix[[j, i]] = value; // Symmetric
@@ -902,7 +902,7 @@ impl ProblemGenerator {
         // Generate random edges with positive coupling (ferromagnetic)
         for i in 0..num_vertices {
             for j in i + 1..num_vertices {
-                if rng.gen::<f64>() < edge_probability {
+                if rng.random::<f64>() < edge_probability {
                     let coupling = 1.0; // Unit weight edges
                     j_couplings[[i, j]] = coupling;
                     j_couplings[[j, i]] = coupling;

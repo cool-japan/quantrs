@@ -33,6 +33,8 @@ use crate::{
 
 use pyo3::prelude::*;
 use pyo3::types::PyString;
+
+type PyObject = Py<PyAny>;
 use scirs2_core::ndarray::Array2;
 use scirs2_core::Complex64;
 use scirs2_numpy::{PyArray2, PyReadonlyArray2};
@@ -788,8 +790,8 @@ impl PyMetricMeasurement {
     }
 
     #[getter]
-    fn value(&self) -> PyObject {
-        Python::with_gil(|py| convert_metric_value_to_python(&self.inner.value, py))
+    fn value(&self, py: Python<'_>) -> PyObject {
+        convert_metric_value_to_python(&self.inner.value, py)
     }
 
     #[getter]
@@ -1090,7 +1092,7 @@ fn convert_metric_type_to_string(mt: &MetricType) -> String {
     }
 }
 
-fn convert_metric_value_to_python(value: &MetricValue, py: Python) -> PyObject {
+fn convert_metric_value_to_python(value: &MetricValue, py: Python<'_>) -> PyObject {
     // Simplified conversion for compilation - can be enhanced later
     let repr = match value {
         MetricValue::Float(f) => f.to_string(),
@@ -1101,7 +1103,7 @@ fn convert_metric_value_to_python(value: &MetricValue, py: Python) -> PyObject {
         MetricValue::Array(arr) => format!("{arr:?}"),
         MetricValue::Complex(c) => format!("({}, {})", c.re, c.im),
     };
-    PyString::new(py, &repr).into()
+    PyString::new(py, &repr).into_any().unbind()
 }
 
 /// Module-level functions for quantum computing operations

@@ -268,14 +268,14 @@ impl ParameterTuner {
             .iter()
             .map(|b| {
                 let value = match b.scale {
-                    ParameterScale::Linear => rng.gen_range(b.min..b.max),
+                    ParameterScale::Linear => rng.random_range(b.min..b.max),
                     ParameterScale::Logarithmic => {
                         let log_min = b.min.ln();
                         let log_max = b.max.ln();
-                        rng.gen_range(log_min..log_max).exp()
+                        rng.random_range(log_min..log_max).exp()
                     }
                     ParameterScale::Sigmoid => {
-                        let u: f64 = rng.gen();
+                        let u: f64 = rng.random();
                         b.min + (b.max - b.min) / (1.0 + (-4.0 * (u - 0.5)).exp())
                     }
                 };

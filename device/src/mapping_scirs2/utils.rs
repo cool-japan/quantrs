@@ -196,17 +196,17 @@ pub fn generate_random_circuit<const N: usize>(
     let mut rng = thread_rng();
 
     for _ in 0..gate_count {
-        if rng.gen::<f64>() < two_qubit_ratio {
+        if rng.random::<f64>() < two_qubit_ratio {
             // Two-qubit gate
-            let q1 = rng.gen_range(0..N);
-            let mut q2 = rng.gen_range(0..N);
+            let q1 = rng.random_range(0..N);
+            let mut q2 = rng.random_range(0..N);
             while q2 == q1 {
-                q2 = rng.gen_range(0..N);
+                q2 = rng.random_range(0..N);
             }
             let _ = circuit.cnot(QubitId(q1 as u32), QubitId(q2 as u32));
         } else {
             // Single-qubit gate
-            let q = rng.gen_range(0..N);
+            let q = rng.random_range(0..N);
             let _ = circuit.x(QubitId(q as u32));
         }
     }

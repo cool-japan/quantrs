@@ -112,7 +112,7 @@ fn measure_single_state(
     config: &MeasurementConfig,
 ) -> (Vec<u8>, Vec<f64>) {
     let mut rng = config.seed.map_or_else(
-        || StdRng::from_seed(thread_rng().gen()),
+        || StdRng::from_seed(thread_rng().random()),
         StdRng::seed_from_u64,
     );
 
@@ -213,7 +213,7 @@ fn compute_measurement_statistics(
     qubits_to_measure: &[QubitId],
     shots: usize,
 ) -> MeasurementStatistics {
-    let mut rng = StdRng::from_seed(thread_rng().gen());
+    let mut rng = StdRng::from_seed(thread_rng().random());
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // Perform measurements

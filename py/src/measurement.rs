@@ -477,7 +477,7 @@ impl PyMeasurementSampler {
 
         // Sample measurements
         for _ in 0..shots {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let mut cumsum = 0.0;
 
             for (idx, &prob) in probs.iter().enumerate() {
@@ -520,7 +520,7 @@ impl PyMeasurementSampler {
 
         // Sample measurements
         for _ in 0..shots {
-            let r: f64 = rng.gen();
+            let r: f64 = rng.random();
             let mut cumsum = 0.0;
 
             for (idx, &prob) in probs.iter().enumerate() {
@@ -531,7 +531,7 @@ impl PyMeasurementSampler {
                     // Apply readout error
                     let mut chars: Vec<char> = bitstring.chars().collect();
                     for c in &mut chars {
-                        if rng.gen::<f64>() < error_rate {
+                        if rng.random::<f64>() < error_rate {
                             *c = if *c == '0' { '1' } else { '0' };
                         }
                     }

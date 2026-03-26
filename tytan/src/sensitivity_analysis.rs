@@ -820,8 +820,8 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let name = self.get_parameter_name(&param);
                 let (min_val, max_val) = self.get_parameter_range(&param);
 
-                params_a.insert(name.clone(), rng.gen_range(min_val..max_val));
-                params_b.insert(name, rng.gen_range(min_val..max_val));
+                params_a.insert(name.clone(), rng.random_range(min_val..max_val));
+                params_b.insert(name, rng.random_range(min_val..max_val));
             }
 
             sample_a.push(params_a);
@@ -924,7 +924,7 @@ impl<S: Sampler> SensitivityAnalyzer<S> {
                 let (min_val, max_val) = self.get_parameter_range(param);
 
                 let level = permutations[j][i];
-                let value = ((level as f64 + rng.gen::<f64>()) / num_samples as f64)
+                let value = ((level as f64 + rng.random::<f64>()) / num_samples as f64)
                     .mul_add(max_val - min_val, min_val);
 
                 sample.insert(name, value);

@@ -330,7 +330,7 @@ impl MLModelTrainer {
 
         for _ in 0..n_folds {
             // Simplified CV implementation
-            scores.push(0.85 + (thread_rng().gen::<f64>() - 0.5) * 0.1);
+            scores.push(0.85 + (thread_rng().random::<f64>() - 0.5) * 0.1);
         }
 
         Ok(scores)
@@ -393,7 +393,7 @@ impl AnomalyDetector {
     pub fn detect_anomalies(&self, data: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let n_samples = data.nrows();
         let anomaly_scores = Array1::from_vec(
-            (0..n_samples).map(|_| thread_rng().gen::<f64>()).collect()
+            (0..n_samples).map(|_| thread_rng().random::<f64>()).collect()
         );
 
         let anomalies: Vec<usize> = anomaly_scores

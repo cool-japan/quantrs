@@ -309,7 +309,8 @@ impl AnomalyDetector {
     }
     fn detect_anomalies(&mut self, features: &Array2<f64>) -> DeviceResult<AnomalyDetectionResult> {
         let n_samples = features.nrows();
-        let anomaly_scores = Array1::from_iter((0..n_samples).map(|_| thread_rng().gen::<f64>()));
+        let anomaly_scores =
+            Array1::from_iter((0..n_samples).map(|_| thread_rng().random::<f64>()));
         let threshold = 0.8;
         let anomalies: Vec<AnomalyInfo> = anomaly_scores
             .iter()
@@ -1051,7 +1052,7 @@ impl AdvancedHardwareBenchmarkSuite {
         let mut targets = Array1::zeros(n_samples);
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
-            let noise = (thread_rng().gen::<f64>() - 0.5) * 0.1;
+            let noise = (thread_rng().random::<f64>() - 0.5) * 0.1;
             targets[i] = feature_sum + noise;
         }
         Ok(targets)
@@ -1147,7 +1148,7 @@ impl AdvancedHardwareBenchmarkSuite {
         let cv_folds = self.config.ml_config.training_config.cv_folds;
         let mut scores = Vec::new();
         for _ in 0..cv_folds {
-            let score = (thread_rng().gen::<f64>() - 0.5).mul_add(0.1, 0.80);
+            let score = (thread_rng().random::<f64>() - 0.5).mul_add(0.1, 0.80);
             scores.push(score);
         }
         Ok(scores)
@@ -1158,7 +1159,7 @@ impl AdvancedHardwareBenchmarkSuite {
         let mut predictions = Array1::zeros(n_samples);
         for i in 0..n_samples {
             let feature_sum: f64 = features.row(i).sum();
-            predictions[i] = (thread_rng().gen::<f64>() - 0.5).mul_add(0.1, feature_sum);
+            predictions[i] = (thread_rng().random::<f64>() - 0.5).mul_add(0.1, feature_sum);
         }
         Ok(predictions)
     }
@@ -1251,11 +1252,12 @@ impl AdvancedHardwareBenchmarkSuite {
         features: &Array2<f64>,
     ) -> DeviceResult<PredictionResult> {
         let horizon = self.config.prediction_config.prediction_horizon;
-        let predictions = Array1::from_iter((0..horizon).map(|_| thread_rng().gen::<f64>()));
+        let predictions = Array1::from_iter((0..horizon).map(|_| thread_rng().random::<f64>()));
         let prediction_intervals = Array2::zeros((horizon, 2));
         let confidence_intervals = Array2::zeros((horizon, 2));
         let timestamps = (0..horizon).map(|_| SystemTime::now()).collect();
-        let uncertainty = Array1::from_iter((0..horizon).map(|_| thread_rng().gen::<f64>() * 0.1));
+        let uncertainty =
+            Array1::from_iter((0..horizon).map(|_| thread_rng().random::<f64>() * 0.1));
         let trend_analysis = TrendAnalysis {
             trend_direction: TrendDirection::Stable,
             trend_strength: 0.3,

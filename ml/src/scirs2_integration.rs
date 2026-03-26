@@ -698,7 +698,9 @@ impl SciRS2Array {
         use scirs2_core::random::prelude::*;
         let total_size = shape.iter().product();
         let mut rng = thread_rng();
-        let data: Vec<f64> = (0..total_size).map(|_| rng.gen_range(-1.0..1.0)).collect();
+        let data: Vec<f64> = (0..total_size)
+            .map(|_| rng.random_range(-1.0..1.0))
+            .collect();
         let array = ArrayD::from_shape_vec(IxDyn(&shape), data)
             .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;
         Ok(Self::new(array, false))
@@ -716,7 +718,7 @@ impl SciRS2Array {
         let total_size = shape.iter().product();
         let mut rng = thread_rng();
         let data: Vec<f64> = (0..total_size)
-            .map(|_| rng.gen_range(low..high) as f64)
+            .map(|_| rng.random_range(low..high) as f64)
             .collect();
         let array = ArrayD::from_shape_vec(IxDyn(&shape), data)
             .map_err(|e| MLError::ComputationError(format!("Shape error: {}", e)))?;

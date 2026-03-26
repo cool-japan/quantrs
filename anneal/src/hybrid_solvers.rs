@@ -104,7 +104,7 @@ impl HybridQuantumClassicalSolver {
 
         // Initialize with random solution
         for i in 0..model.num_qubits {
-            result.best_solution[i] = if thread_rng().gen::<bool>() { 1 } else { -1 };
+            result.best_solution[i] = if thread_rng().random::<bool>() { 1 } else { -1 };
         }
         result.best_energy = model.energy(&result.best_solution)?;
 
@@ -307,7 +307,7 @@ impl HybridQuantumClassicalSolver {
                 combined[i] = if combined[i] >= 0 { 1 } else { -1 };
             } else {
                 // No vote, random assignment
-                combined[i] = if thread_rng().gen::<bool>() { 1 } else { -1 };
+                combined[i] = if thread_rng().random::<bool>() { 1 } else { -1 };
             }
         }
 
@@ -464,7 +464,7 @@ impl VariationalHybridSolver {
         for i in 0..n {
             let param_idx = i % parameters.len();
             let prob = parameters[param_idx];
-            solution[i] = if thread_rng().gen::<f64>() < prob {
+            solution[i] = if thread_rng().random::<f64>() < prob {
                 1
             } else {
                 -1

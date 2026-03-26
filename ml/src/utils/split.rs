@@ -29,7 +29,7 @@ pub fn train_test_split(
     if shuffle {
         let mut rng = thread_rng();
         for i in (1..indices.len()).rev() {
-            let j = rng.gen_range(0..=i);
+            let j = rng.random_range(0..=i);
             indices.swap(i, j);
         }
     }
@@ -71,7 +71,7 @@ pub fn train_test_split_regression(
     if shuffle {
         let mut rng = thread_rng();
         for i in (1..indices.len()).rev() {
-            let j = rng.gen_range(0..=i);
+            let j = rng.random_range(0..=i);
             indices.swap(i, j);
         }
     }
@@ -114,7 +114,7 @@ impl KFold {
         if shuffle {
             let mut rng = thread_rng();
             for i in (1..indices.len()).rev() {
-                let j = rng.gen_range(0..=i);
+                let j = rng.random_range(0..=i);
                 indices.swap(i, j);
             }
         }
@@ -217,7 +217,7 @@ impl StratifiedKFold {
             let mut rng = thread_rng();
             for indices in class_indices.values_mut() {
                 for i in (1..indices.len()).rev() {
-                    let j = rng.gen_range(0..=i);
+                    let j = rng.random_range(0..=i);
                     indices.swap(i, j);
                 }
             }

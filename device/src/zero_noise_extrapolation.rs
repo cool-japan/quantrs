@@ -742,7 +742,7 @@ impl ExtrapolationFitter {
             let mut resampled_y = Vec::new();
 
             for _ in 0..n {
-                let idx = rng.gen_range(0..n);
+                let idx = rng.random_range(0..n);
                 resampled_x.push(scale_factors[idx]);
                 resampled_y.push(values[idx]);
             }

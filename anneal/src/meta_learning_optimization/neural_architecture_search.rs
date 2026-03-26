@@ -169,8 +169,9 @@ impl NeuralArchitectureSearch {
         let mut rng = thread_rng();
 
         // Determine architecture size based on problem features
-        let num_layers = rng
-            .gen_range(self.search_space.num_layers_range.0..=self.search_space.num_layers_range.1);
+        let num_layers = rng.random_range(
+            self.search_space.num_layers_range.0..=self.search_space.num_layers_range.1,
+        );
         let input_dim = problem_features.size.min(512);
 
         let mut layers = Vec::new();
@@ -295,7 +296,7 @@ impl NeuralArchitectureSearch {
         let mut child_layers = Vec::new();
 
         for i in 0..min_layers {
-            let layer = if rng.gen_bool(0.5) {
+            let layer = if rng.random_bool(0.5) {
                 parent1.architecture.layers[i].clone()
             } else {
                 parent2.architecture.layers[i].clone()
@@ -327,10 +328,10 @@ impl NeuralArchitectureSearch {
         let mut rng = thread_rng();
 
         // Mutate with probability
-        if rng.gen_bool(0.3) {
+        if rng.random_bool(0.3) {
             // Mutate a random layer
             if !candidate.architecture.layers.is_empty() {
-                let layer_idx = rng.gen_range(0..candidate.architecture.layers.len());
+                let layer_idx = rng.random_range(0..candidate.architecture.layers.len());
                 let layer = &mut candidate.architecture.layers[layer_idx];
 
                 // Mutate activation function

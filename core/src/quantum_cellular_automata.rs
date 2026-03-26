@@ -265,8 +265,8 @@ impl QuantumCellularAutomaton1D {
         use scirs2_core::random::prelude::*;
 
         for i in 0..self.num_sites {
-            let theta = rng.gen_range(0.0..std::f64::consts::PI);
-            let phi = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
+            let theta = rng.random_range(0.0..std::f64::consts::PI);
+            let phi = rng.random_range(0.0..2.0 * std::f64::consts::PI);
 
             let amp0 = Complex64::new(theta.cos(), 0.0);
             let amp1 = Complex64::new(theta.sin() * phi.cos(), theta.sin() * phi.sin());

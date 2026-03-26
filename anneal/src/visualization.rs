@@ -120,7 +120,7 @@ impl LandscapeAnalyzer {
 
         let mut rng = match self.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut points = Vec::new();
@@ -128,7 +128,7 @@ impl LandscapeAnalyzer {
 
         for _ in 0..num_samples {
             let config: Vec<i8> = (0..model.num_qubits)
-                .map(|_| if rng.gen_bool(0.5) { 1 } else { -1 })
+                .map(|_| if rng.random_bool(0.5) { 1 } else { -1 })
                 .collect();
 
             let energy = model.energy(&config)?;
@@ -240,7 +240,7 @@ impl LandscapeAnalyzer {
         let mut points = Vec::new();
 
         let mut current_config: Vec<i8> = (0..model.num_qubits)
-            .map(|_| if rng.gen_bool(0.5) { 1 } else { -1 })
+            .map(|_| if rng.random_bool(0.5) { 1 } else { -1 })
             .collect();
 
         for step in 0..100 {
@@ -260,7 +260,7 @@ impl LandscapeAnalyzer {
 
             // Simple random walk for demonstration
             if step % 10 == 0 {
-                let flip_idx = rng.gen_range(0..model.num_qubits);
+                let flip_idx = rng.random_range(0..model.num_qubits);
                 current_config[flip_idx] *= -1;
             }
         }

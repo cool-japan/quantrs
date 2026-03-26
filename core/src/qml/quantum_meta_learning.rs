@@ -120,7 +120,7 @@ impl QuantumTask {
         for class in 0..n_way {
             // Generate class prototype
             let mut prototype = Array1::from_shape_fn(dim, |_| {
-                Complex64::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0))
+                Complex64::new(rng.random_range(-1.0..1.0), rng.random_range(-1.0..1.0))
             });
             let norm: f64 = prototype.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
             for i in 0..dim {
@@ -133,7 +133,7 @@ impl QuantumTask {
                 // Add small noise
                 for i in 0..dim {
                     state[i] = state[i]
-                        + Complex64::new(rng.gen_range(-0.1..0.1), rng.gen_range(-0.1..0.1));
+                        + Complex64::new(rng.random_range(-0.1..0.1), rng.random_range(-0.1..0.1));
                 }
                 let norm: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
                 for i in 0..dim {
@@ -149,7 +149,7 @@ impl QuantumTask {
                 // Add small noise
                 for i in 0..dim {
                     state[i] = state[i]
-                        + Complex64::new(rng.gen_range(-0.1..0.1), rng.gen_range(-0.1..0.1));
+                        + Complex64::new(rng.random_range(-0.1..0.1), rng.random_range(-0.1..0.1));
                 }
                 let norm: f64 = state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
                 for i in 0..dim {
@@ -189,11 +189,12 @@ impl QuantumMetaCircuit {
     pub fn new(num_qubits: usize, depth: usize, num_classes: usize) -> Self {
         let mut rng = thread_rng();
 
-        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.gen_range(-PI..PI));
+        let params = Array2::from_shape_fn((depth, num_qubits * 3), |_| rng.random_range(-PI..PI));
 
         let scale = (2.0 / num_qubits as f64).sqrt();
-        let readout_weights =
-            Array2::from_shape_fn((num_classes, num_qubits), |_| rng.gen_range(-scale..scale));
+        let readout_weights = Array2::from_shape_fn((num_classes, num_qubits), |_| {
+            rng.random_range(-scale..scale)
+        });
 
         Self {
             num_qubits,

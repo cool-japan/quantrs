@@ -417,13 +417,13 @@ impl PropertyBasedTester {
         generator: &TestCaseGenerator,
     ) -> ApplicationResult<PropertyTestCase> {
         let mut rng = thread_rng();
-        let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
+        let size = rng.random_range(generator.size_bounds.0..=generator.size_bounds.1);
 
         let density = generator.parameters.get("density").unwrap_or(&0.3);
         let bias_range = generator.parameters.get("bias_range").unwrap_or(&1.0);
 
         Ok(PropertyTestCase {
-            id: format!("random_case_{}", thread_rng().gen::<u32>()),
+            id: format!("random_case_{}", thread_rng().random::<u32>()),
             problem_spec: ProblemSpecification {
                 problem_type: ProblemType::RandomIsing,
                 size_range: (size, size),
@@ -437,7 +437,7 @@ impl PropertyBasedTester {
                     constraint_types: Vec::new(),
                     strength_range: (0.1, *bias_range),
                 },
-                seed: Some(rng.gen()),
+                seed: Some(rng.random()),
             },
             input_parameters: {
                 let mut params = HashMap::new();
@@ -463,7 +463,7 @@ impl PropertyBasedTester {
         ];
 
         let mut rng = thread_rng();
-        let size = boundary_sizes[rng.gen_range(0..boundary_sizes.len())];
+        let size = boundary_sizes[rng.random_range(0..boundary_sizes.len())];
 
         Ok(PropertyTestCase {
             id: format!("boundary_case_{size}"),
@@ -502,7 +502,7 @@ impl PropertyBasedTester {
     ) -> ApplicationResult<PropertyTestCase> {
         let num_classes = *generator.parameters.get("num_classes").unwrap_or(&5.0) as usize;
         let mut rng = thread_rng();
-        let class_id = rng.gen_range(0..num_classes);
+        let class_id = rng.random_range(0..num_classes);
 
         // Define equivalence classes based on problem characteristics
         let (problem_type, density) = match class_id {
@@ -514,7 +514,7 @@ impl PropertyBasedTester {
         };
 
         let mut rng = thread_rng();
-        let size = rng.gen_range(generator.size_bounds.0..=generator.size_bounds.1);
+        let size = rng.random_range(generator.size_bounds.0..=generator.size_bounds.1);
 
         Ok(PropertyTestCase {
             id: format!("equiv_case_{class_id}_{size}"),
@@ -630,7 +630,7 @@ impl PropertyBasedTester {
         };
 
         // Simulate execution with some variability
-        let quality = thread_rng().gen::<f64>().mul_add(0.2, 0.8);
+        let quality = thread_rng().random::<f64>().mul_add(0.2, 0.8);
         let execution_time = Duration::from_millis((size as u64 * 10).min(1000));
 
         Ok(TestExecutionResult {

@@ -166,7 +166,8 @@ fn test_convergence_analysis() {
         let mut iter_samples = Vec::new();
 
         for j in 0..20 {
-            let energy = 0.1f64.mul_add(-f64::from(j), -f64::from(i)) + thread_rng().gen::<f64>();
+            let energy =
+                0.1f64.mul_add(-f64::from(j), -f64::from(i)) + thread_rng().random::<f64>();
 
             iter_samples.push(SampleResult {
                 assignments: HashMap::new(),

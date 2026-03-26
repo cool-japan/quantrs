@@ -732,7 +732,7 @@ impl QuantumCircuitOptimizer {
             let mut neighbor_params = current_params.clone();
             for i in 0..neighbor_params.len() {
                 let range = bounds[i].1 - bounds[i].0;
-                let step = rng.gen_range(-0.1..0.1) * range * temperature / initial_temperature;
+                let step = rng.random_range(-0.1..0.1) * range * temperature / initial_temperature;
                 neighbor_params[i] = (neighbor_params[i] + step)
                     .max(bounds[i].0)
                     .min(bounds[i].1);
@@ -743,7 +743,7 @@ impl QuantumCircuitOptimizer {
 
             // Accept or reject based on Metropolis criterion
             let delta = neighbor_value - current_value;
-            if delta < 0.0 || rng.gen::<f64>() < (-delta / temperature).exp() {
+            if delta < 0.0 || rng.random::<f64>() < (-delta / temperature).exp() {
                 current_params = neighbor_params;
                 current_value = neighbor_value;
 

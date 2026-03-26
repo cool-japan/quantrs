@@ -343,7 +343,7 @@ impl SASampler {
                     // Initialize random state
                     let mut state = vec![false; n_vars];
                     for bit in &mut state {
-                        *bit = thread_rng.gen_bool(0.5);
+                        *bit = thread_rng.random_bool(0.5);
                     }
 
                     // Evaluate initial energy
@@ -360,7 +360,7 @@ impl SASampler {
                         // Perform n_vars updates per sweep
                         for _ in 0..n_vars {
                             // Select random bit to flip
-                            let idx = thread_rng.gen_range(0..n_vars);
+                            let idx = thread_rng.random_range(0..n_vars);
 
                             // Flip the bit
                             state[idx] = !state[idx];
@@ -371,7 +371,7 @@ impl SASampler {
 
                             // Metropolis acceptance criterion
                             let accept = delta_e <= 0.0
-                                || thread_rng.gen_range(0.0..1.0) < (-delta_e / temp).exp();
+                                || thread_rng.random_range(0.0..1.0) < (-delta_e / temp).exp();
 
                             if accept {
                                 energy = new_energy;
@@ -397,7 +397,7 @@ impl SASampler {
                 // Initialize random state
                 let mut state = vec![false; n_vars];
                 for bit in &mut state {
-                    *bit = rng.gen_bool(0.5);
+                    *bit = rng.random_bool(0.5);
                 }
 
                 // Evaluate initial energy
@@ -414,7 +414,7 @@ impl SASampler {
                     // Perform n_vars updates per sweep
                     for _ in 0..n_vars {
                         // Select random bit to flip
-                        let mut idx = rng.gen_range(0..n_vars);
+                        let mut idx = rng.random_range(0..n_vars);
 
                         // Flip the bit
                         state[idx] = !state[idx];
@@ -424,8 +424,8 @@ impl SASampler {
                         let delta_e = new_energy - energy;
 
                         // Metropolis acceptance criterion
-                        let accept =
-                            delta_e <= 0.0 || rng.gen_range(0.0..1.0) < f64::exp(-delta_e / temp);
+                        let accept = delta_e <= 0.0
+                            || rng.random_range(0.0..1.0) < f64::exp(-delta_e / temp);
 
                         if accept {
                             energy = new_energy;

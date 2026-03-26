@@ -157,7 +157,7 @@ impl VQE {
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
 
-        (0..num_params).map(|_| rng.gen_range(-PI..PI)).collect()
+        (0..num_params).map(|_| rng.random_range(-PI..PI)).collect()
     }
 
     /// Evaluate energy for given parameters
@@ -245,7 +245,7 @@ impl VQE {
 
         // Generate random perturbation
         let delta: Vec<f64> = (0..params.len())
-            .map(|_| if rng.gen_bool(0.5) { 1.0 } else { -1.0 })
+            .map(|_| if rng.random_bool(0.5) { 1.0 } else { -1.0 })
             .collect();
 
         // Evaluate at perturbed points
@@ -550,7 +550,7 @@ impl QAOA {
         let n_qubits = 10; // Would get from hamiltonian
 
         let samples = (0..num_samples)
-            .map(|_| (0..n_qubits).map(|_| rng.gen_bool(0.5)).collect())
+            .map(|_| (0..n_qubits).map(|_| rng.random_bool(0.5)).collect())
             .collect();
 
         Ok(samples)
@@ -828,7 +828,7 @@ impl IterativeRefinement {
                 let mut neighbor = state.clone();
                 use scirs2_core::random::prelude::*;
                 let mut rng = thread_rng();
-                let flip_idx = rng.gen_range(0..state.len());
+                let flip_idx = rng.random_range(0..state.len());
                 neighbor[flip_idx] = !neighbor[flip_idx];
 
                 // Evaluate energy

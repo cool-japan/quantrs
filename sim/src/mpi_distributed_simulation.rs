@@ -854,7 +854,7 @@ impl MPIQuantumSimulator {
         if self.communicator.rank == 0 {
             // Sample from distribution
             let mut rng = scirs2_core::random::thread_rng();
-            let random: f64 = scirs2_core::random::Rng::gen(&mut rng);
+            let random: f64 = rng.random();
 
             let mut cumulative = 0.0;
             let mut result_idx = 0;

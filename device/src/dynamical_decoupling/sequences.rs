@@ -850,7 +850,7 @@ impl MultiQubitDDCoordinator {
         // Apply random phase shifts to reduce coherent crosstalk
         use std::f64::consts::PI;
         for phase in &mut coordinated.pulse_phases {
-            let random_phase = thread_rng().gen::<f64>() * 2.0 * PI;
+            let random_phase = thread_rng().random::<f64>() * 2.0 * PI;
             *phase += random_phase;
         }
 

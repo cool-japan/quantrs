@@ -512,29 +512,29 @@ impl QuantumAdvantageDemonstrator {
             }
             ProblemDomain::GraphProblems => {
                 let adjacency_matrix = Array2::from_shape_fn((size, size), |(i, j)| {
-                    if i != j && thread_rng().gen::<f64>() < 0.3 {
-                        thread_rng().gen::<f64>()
+                    if i != j && thread_rng().random::<f64>() < 0.3 {
+                        thread_rng().random::<f64>()
                     } else {
                         0.0
                     }
                 });
                 ProblemData::Graph {
                     adjacency_matrix,
-                    vertex_weights: (0..size).map(|_| thread_rng().gen::<f64>()).collect(),
+                    vertex_weights: (0..size).map(|_| thread_rng().random::<f64>()).collect(),
                     edge_weights: HashMap::new(),
                 }
             }
             ProblemDomain::Optimization => ProblemData::Optimization {
-                objective_function: (0..size).map(|_| thread_rng().gen::<f64>()).collect(),
+                objective_function: (0..size).map(|_| thread_rng().random::<f64>()).collect(),
                 constraints: vec![vec![1.0; size]],
                 bounds: vec![(0.0, 1.0); size],
             },
             ProblemDomain::QuantumSimulation => {
                 let hamiltonian = Array2::from_shape_fn((1 << size, 1 << size), |(i, j)| {
                     if i == j {
-                        Complex64::new(thread_rng().gen::<f64>(), 0.0)
+                        Complex64::new(thread_rng().random::<f64>(), 0.0)
                     } else if (i ^ j).is_power_of_two() {
-                        Complex64::new(thread_rng().gen::<f64>() * 0.1, 0.0)
+                        Complex64::new(thread_rng().random::<f64>() * 0.1, 0.0)
                     } else {
                         Complex64::new(0.0, 0.0)
                     }
@@ -574,20 +574,20 @@ impl QuantumAdvantageDemonstrator {
             for qubit in 0..num_qubits {
                 let gate_type = match layer % 3 {
                     0 => InterfaceGateType::RX(
-                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                        thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI,
                     ),
                     1 => InterfaceGateType::RY(
-                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                        thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI,
                     ),
                     _ => InterfaceGateType::RZ(
-                        thread_rng().gen::<f64>() * 2.0 * std::f64::consts::PI,
+                        thread_rng().random::<f64>() * 2.0 * std::f64::consts::PI,
                     ),
                 };
                 circuit.add_gate(InterfaceGate::new(gate_type, vec![qubit]));
             }
             if layer % 2 == 1 {
                 for qubit in 0..num_qubits - 1 {
-                    if thread_rng().gen::<f64>() < 0.5 {
+                    if thread_rng().random::<f64>() < 0.5 {
                         circuit.add_gate(InterfaceGate::new(
                             InterfaceGateType::CNOT,
                             vec![qubit, qubit + 1],

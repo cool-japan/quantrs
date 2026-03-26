@@ -107,16 +107,16 @@ impl QuantumAttention {
         let scale = (2.0 / (num_qubits as f64)).sqrt();
 
         let query_params =
-            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.gen_range(-scale..scale));
+            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.random_range(-scale..scale));
 
         let key_params =
-            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.gen_range(-scale..scale));
+            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.random_range(-scale..scale));
 
         let value_params =
-            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.gen_range(-scale..scale));
+            Array2::from_shape_fn((total_dim, num_qubits), |_| rng.random_range(-scale..scale));
 
         let output_params =
-            Array2::from_shape_fn((num_qubits, total_dim), |_| rng.gen_range(-scale..scale));
+            Array2::from_shape_fn((num_qubits, total_dim), |_| rng.random_range(-scale..scale));
 
         Ok(Self {
             num_qubits,
@@ -349,9 +349,13 @@ impl QuantumFeedForward {
         let scale1 = (2.0 / input_dim as f64).sqrt();
         let scale2 = (2.0 / hidden_dim as f64).sqrt();
 
-        let w1 = Array2::from_shape_fn((hidden_dim, input_dim), |_| rng.gen_range(-scale1..scale1));
+        let w1 = Array2::from_shape_fn((hidden_dim, input_dim), |_| {
+            rng.random_range(-scale1..scale1)
+        });
 
-        let w2 = Array2::from_shape_fn((input_dim, hidden_dim), |_| rng.gen_range(-scale2..scale2));
+        let w2 = Array2::from_shape_fn((input_dim, hidden_dim), |_| {
+            rng.random_range(-scale2..scale2)
+        });
 
         Self {
             input_dim,

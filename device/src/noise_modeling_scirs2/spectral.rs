@@ -106,7 +106,7 @@ impl SpectralAnalyzer {
         // Generate a realistic 1/f-like spectrum for demonstration
         for i in 1..n_freqs {
             let freq = (i as f64) * self.sampling_frequency / (self.window_size as f64);
-            psd[i] = 0.1_f64.mul_add(thread_rng().gen::<f64>(), 1.0 / freq.sqrt());
+            psd[i] = 0.1_f64.mul_add(thread_rng().random::<f64>(), 1.0 / freq.sqrt());
         }
 
         Ok(psd)

@@ -419,7 +419,7 @@ impl QuantumOperation for Reset {
 /// Sample from measurement outcomes according to their probabilities
 pub fn sample_outcome(probabilities: &[f64]) -> QuantRS2Result<usize> {
     let mut rng = thread_rng();
-    let r: f64 = rng.gen();
+    let r: f64 = rng.random();
 
     let mut cumsum = 0.0;
     for (i, &prob) in probabilities.iter().enumerate() {

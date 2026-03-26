@@ -657,8 +657,8 @@ impl QuantumErrorCorrection {
         let hidden_size = input_size * 2;
         let output_size = self.num_physical_qubits;
         let mut rng = thread_rng();
-        let w1 = Array2::from_shape_fn((hidden_size, input_size), |_| rng.gen_range(-1.0..1.0));
-        let w2 = Array2::from_shape_fn((output_size, hidden_size), |_| rng.gen_range(-1.0..1.0));
+        let w1 = Array2::from_shape_fn((hidden_size, input_size), |_| rng.random_range(-1.0..1.0));
+        let w2 = Array2::from_shape_fn((output_size, hidden_size), |_| rng.random_range(-1.0..1.0));
         let syndrome_float = syndrome.mapv(|x| x as f64);
         let hidden = w1
             .dot(&syndrome_float)

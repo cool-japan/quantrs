@@ -145,8 +145,8 @@ fn adiabatic_walk_example() -> Result<(), Box<dyn std::error::Error>> {
     // Create a frustrated system
     for i in 0..5 {
         for j in (i + 1)..5 {
-            if thread_rng().gen::<f64>() < 0.4 {
-                let coupling = if thread_rng().gen::<bool>() {
+            if thread_rng().random::<f64>() < 0.4 {
+                let coupling = if thread_rng().random::<bool>() {
                     1.0
                 } else {
                     -1.0
@@ -307,8 +307,8 @@ fn performance_comparison_example() -> Result<(), Box<dyn std::error::Error>> {
     // Random spin glass
     for i in 0..8 {
         for j in (i + 1)..8 {
-            if thread_rng().gen::<f64>() < 0.3 {
-                let coupling = (thread_rng().gen::<f64>() - 0.5) * 2.0;
+            if thread_rng().random::<f64>() < 0.3 {
+                let coupling = (thread_rng().random::<f64>() - 0.5) * 2.0;
                 model.set_coupling(i, j, coupling)?;
             }
         }

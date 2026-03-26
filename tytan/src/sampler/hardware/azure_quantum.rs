@@ -4,7 +4,7 @@
 //! for solving optimization problems using various quantum and quantum-inspired solvers.
 
 use scirs2_core::ndarray::{Array, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -444,7 +444,7 @@ impl Sampler for AzureQuantumSampler {
         for _ in 0..unique_solutions {
             let assignments: HashMap<String, bool> = idx_to_var
                 .values()
-                .map(|name| (name.clone(), rng.gen::<bool>()))
+                .map(|name| (name.clone(), rng.random::<bool>()))
                 .collect();
 
             // Calculate energy
@@ -466,7 +466,7 @@ impl Sampler for AzureQuantumSampler {
             let occurrences = match self.config.solver {
                 AzureSolver::IonQ | AzureSolver::Quantinuum | AzureSolver::Rigetti => {
                     // Quantum solvers return actual shot counts
-                    rng.gen_range(1..=(shots / unique_solutions + 10))
+                    rng.random_range(1..=(shots / unique_solutions + 10))
                 }
                 _ => {
                     // Classical solvers return occurrence frequencies

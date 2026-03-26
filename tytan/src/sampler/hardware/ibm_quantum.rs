@@ -4,7 +4,7 @@
 //! for solving optimization problems using quantum annealing approaches.
 
 use scirs2_core::ndarray::{Array, Ix2};
-use scirs2_core::random::{thread_rng, Rng};
+use scirs2_core::random::{thread_rng, Rng, RngExt};
 use std::collections::HashMap;
 
 use quantrs2_anneal::QuboModel;
@@ -371,7 +371,7 @@ impl Sampler for IBMQuantumSampler {
         for _ in 0..unique_solutions {
             let assignments: HashMap<String, bool> = idx_to_var
                 .values()
-                .map(|name| (name.clone(), rng.gen::<bool>()))
+                .map(|name| (name.clone(), rng.random::<bool>()))
                 .collect();
 
             // Calculate energy
@@ -390,7 +390,7 @@ impl Sampler for IBMQuantumSampler {
             }
 
             // Simulate measurement counts
-            let occurrences = rng.gen_range(1..=(effective_shots / unique_solutions + 10));
+            let occurrences = rng.random_range(1..=(effective_shots / unique_solutions + 10));
 
             results.push(SampleResult {
                 assignments,

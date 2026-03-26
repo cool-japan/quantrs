@@ -657,7 +657,7 @@ impl TrappedIonSystem {
         // Sample measurement outcome
         use scirs2_core::random::prelude::*;
         let mut rng = thread_rng();
-        let random_value: f64 = rng.gen();
+        let random_value: f64 = rng.random();
 
         let result = random_value < prob_excited;
 

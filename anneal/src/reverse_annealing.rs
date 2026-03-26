@@ -8,7 +8,7 @@
 use crate::ising::{IsingError, IsingModel, IsingResult};
 use crate::simulator::{AnnealingError, AnnealingResult, AnnealingSolution};
 use scirs2_core::random::ChaCha8Rng;
-use scirs2_core::random::{thread_rng, Rng, SeedableRng};
+use scirs2_core::random::{thread_rng, Rng, RngExt, SeedableRng};
 use std::time::{Duration, Instant};
 
 /// Reverse annealing schedule configuration
@@ -162,7 +162,7 @@ impl ReverseAnnealingSimulator {
     pub fn new(params: ReverseAnnealingParams) -> AnnealingResult<Self> {
         let rng = match params.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         Ok(Self { params, rng })
@@ -233,8 +233,8 @@ impl ReverseAnnealingSimulator {
         if self.params.reinitialize_fraction > 0.0 {
             let num_to_reinit = (state.len() as f64 * self.params.reinitialize_fraction) as usize;
             for _ in 0..num_to_reinit {
-                let idx = self.rng.gen_range(0..state.len());
-                state[idx] = if self.rng.gen_bool(0.5) { 1 } else { -1 };
+                let idx = self.rng.random_range(0..state.len());
+                state[idx] = if self.rng.random_bool(0.5) { 1 } else { -1 };
             }
         }
 
@@ -257,7 +257,7 @@ impl ReverseAnnealingSimulator {
         let mut can_update = vec![false; state.len()];
 
         for _ in 0..num_centers {
-            let center = self.rng.gen_range(0..state.len());
+            let center = self.rng.random_range(0..state.len());
             for i in 0..state.len() {
                 if (i as i32 - center as i32).abs() <= radius as i32 {
                     can_update[i] = true;
@@ -291,7 +291,7 @@ impl ReverseAnnealingSimulator {
 
             // Perform Monte Carlo updates
             for _ in 0..model.num_qubits {
-                let i = self.rng.gen_range(0..model.num_qubits);
+                let i = self.rng.random_range(0..model.num_qubits);
 
                 // Calculate local field
                 let mut h_local = 0.0;
@@ -320,7 +320,7 @@ impl ReverseAnnealingSimulator {
                 let effective_temp = quantum_term.mul_add(0.5, 0.1); // Simplified
                 let accept_prob = (-delta_e / effective_temp).exp().min(1.0);
 
-                if self.rng.gen_bool(accept_prob) {
+                if self.rng.random_bool(accept_prob) {
                     state[i] *= -1;
                 }
             }

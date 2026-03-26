@@ -476,21 +476,21 @@ impl PhotonicProtocolEngine {
         // Simulate photon transmission and measurement
         for _ in 0..key_length * 2 {
             // Send 2x for basis reconciliation
-            let bit = thread_rng().gen::<bool>();
-            let basis = thread_rng().gen::<bool>(); // 0: rectilinear, 1: diagonal
+            let bit = thread_rng().random::<bool>();
+            let basis = thread_rng().random::<bool>(); // 0: rectilinear, 1: diagonal
 
             // Simulate channel loss and errors
             let channel_loss = 0.05; // 5% loss
             let error_rate = 0.01; // 1% error rate
 
-            if thread_rng().gen::<f64>() > channel_loss {
-                let received_bit = if thread_rng().gen::<f64>() < error_rate {
+            if thread_rng().random::<f64>() > channel_loss {
+                let received_bit = if thread_rng().random::<f64>() < error_rate {
                     !bit // Flip bit due to error
                 } else {
                     bit
                 };
 
-                if thread_rng().gen::<bool>() {
+                if thread_rng().random::<bool>() {
                     // Bob chooses same basis 50% of time
                     raw_key.push(received_bit as u8);
                     if received_bit != bit {
@@ -558,10 +558,10 @@ impl PhotonicProtocolEngine {
                 }
                 CVModulation::Discrete { constellation_size } => {
                     // Generate discrete constellation point
-                    let point = (thread_rng().gen::<f64>() * constellation_size as f64) as usize;
+                    let point = (thread_rng().random::<f64>() * constellation_size as f64) as usize;
                     (point as f64 - constellation_size as f64 / 2.0) * 0.5
                 }
-                _ => thread_rng().gen::<f64>() - 0.5,
+                _ => thread_rng().random::<f64>() - 0.5,
             };
 
             // Quantize to bits (simplified)
@@ -728,8 +728,8 @@ impl PhotonicProtocolEngine {
     /// Generate Gaussian random number (simplified)
     fn generate_gaussian_random(&self, mean: f64, variance: f64) -> f64 {
         // Simple Box-Muller transform
-        let u1 = thread_rng().gen::<f64>();
-        let u2 = thread_rng().gen::<f64>();
+        let u1 = thread_rng().random::<f64>();
+        let u2 = thread_rng().random::<f64>();
         let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
         variance.sqrt().mul_add(z, mean)
     }

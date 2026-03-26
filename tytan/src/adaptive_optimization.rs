@@ -381,7 +381,7 @@ impl AdaptiveOptimizer {
             SelectionStrategy::ThompsonSampling => self.thompson_sampling_select(features),
             SelectionStrategy::UCB { c } => self.ucb_select(features, *c),
             SelectionStrategy::EpsilonGreedy { epsilon } => {
-                if thread_rng().gen::<f64>() < *epsilon {
+                if thread_rng().random::<f64>() < *epsilon {
                     self.random_select()
                 } else {
                     self.greedy_select(features)
@@ -617,7 +617,7 @@ impl AdaptiveOptimizer {
         &self,
         _features: &ProblemFeatures,
     ) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = thread_rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))
@@ -641,7 +641,7 @@ impl AdaptiveOptimizer {
     }
 
     fn random_select(&self) -> Result<(String, HashMap<String, f64>), String> {
-        let idx = thread_rng().gen_range(0..self.samplers.len());
+        let idx = thread_rng().random_range(0..self.samplers.len());
         let algorithm = self.samplers[idx].0.clone();
         let params = self.get_default_params(&algorithm);
         Ok((algorithm, params))

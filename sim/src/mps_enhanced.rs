@@ -748,7 +748,7 @@ impl EnhancedMPS {
             let prob1 = norm1[[0, 0]].norm_sqr();
             let total = prob0 + prob1;
             let threshold = prob0 / total;
-            if self.rng.gen::<f64>() < threshold {
+            if self.rng.random::<f64>() < threshold {
                 result[i] = false;
                 accumulated = branch0;
             } else {
@@ -853,7 +853,7 @@ impl EnhancedMPS {
         let prob0 = prob0_matrix[[0, 0]].norm_sqr();
         let prob1 = prob1_matrix[[0, 0]].norm_sqr();
         let total_prob = prob0 + prob1;
-        let outcome = self.rng.gen::<f64>() < prob0 / total_prob;
+        let outcome = self.rng.random::<f64>() < prob0 / total_prob;
         if outcome {
             let new_data = tensor.data.slice(s![.., 0, ..]).to_owned().into_shape((
                 tensor.left_dim,

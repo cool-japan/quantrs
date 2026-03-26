@@ -508,7 +508,7 @@ impl DetectorErrorModel {
         let mut observable_flips = vec![false; self.num_observables];
 
         for error in &self.errors {
-            if rng.gen_bool(error.probability.min(1.0)) {
+            if rng.random_bool(error.probability.min(1.0)) {
                 // This error occurred - flip affected detectors/observables
                 for &det in &error.detector_targets {
                     if det < detector_flips.len() {

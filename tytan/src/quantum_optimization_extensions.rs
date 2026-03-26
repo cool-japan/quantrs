@@ -193,7 +193,7 @@ impl AdaptQAOA {
     ) -> Result<f64, String> {
         // Simplified gradient computation
         // In practice, would evaluate expectation values
-        let random_gradient = thread_rng().gen_range(-1.0..1.0);
+        let random_gradient = thread_rng().random_range(-1.0..1.0);
         Ok(random_gradient * operator.coefficient)
     }
 
@@ -207,7 +207,7 @@ impl AdaptQAOA {
         let mut rng = thread_rng();
 
         for param in circuit.parameters_mut() {
-            *param += rng.gen_range(-0.1..0.1);
+            *param += rng.random_range(-0.1..0.1);
         }
 
         Ok(())

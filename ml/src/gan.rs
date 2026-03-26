@@ -252,7 +252,7 @@ impl Generator for QuantumGenerator {
         let mut latent_vectors = Array2::zeros((num_samples, self.latent_dim));
         for i in 0..num_samples {
             for j in 0..self.latent_dim {
-                latent_vectors[[i, j]] = thread_rng().gen::<f64>() * 2.0 - 1.0;
+                latent_vectors[[i, j]] = thread_rng().random::<f64>() * 2.0 - 1.0;
             }
         }
 
@@ -536,7 +536,7 @@ fn calculate_js_divergence(data1: &Array2<f64>, data2: &Array2<f64>) -> Result<f
     // 3. Calculate JS divergence as the average of these KL divergences
 
     // For now, just return a random value between 0 and 1
-    let divergence = thread_rng().gen::<f64>() * 0.5;
+    let divergence = thread_rng().random::<f64>() * 0.5;
 
     Ok(divergence)
 }

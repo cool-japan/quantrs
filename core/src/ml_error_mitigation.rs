@@ -81,11 +81,11 @@ impl NeuralErrorPredictor {
         let xavier_hidden = (6.0 / (hidden_size + 1) as f64).sqrt();
 
         let input_weights = Array2::from_shape_fn((hidden_size, input_size), |_| {
-            rng.gen_range(-xavier_input..xavier_input)
+            rng.random_range(-xavier_input..xavier_input)
         });
 
         let hidden_weights = Array2::from_shape_fn((1, hidden_size), |_| {
-            rng.gen_range(-xavier_hidden..xavier_hidden)
+            rng.random_range(-xavier_hidden..xavier_hidden)
         });
 
         let input_bias = Array1::zeros(hidden_size);

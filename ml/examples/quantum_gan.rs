@@ -126,7 +126,7 @@ fn generate_sine_wave_data(num_samples: usize, data_dim: usize) -> Array2<f64> {
 
         for j in 0..data_dim {
             let freq = (j as f64 + 1.0) * 0.5;
-            data[[i, j]] = 0.1f64.mul_add(thread_rng().gen::<f64>(), (x * freq).sin());
+            data[[i, j]] = 0.1f64.mul_add(thread_rng().random::<f64>(), (x * freq).sin());
         }
     }
 

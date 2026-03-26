@@ -348,7 +348,7 @@ impl EmbeddingNetwork {
 
         let mut rng = match seed {
             Some(s) => ChaCha8Rng::seed_from_u64(s),
-            None => ChaCha8Rng::seed_from_u64(thread_rng().gen()),
+            None => ChaCha8Rng::seed_from_u64(thread_rng().random()),
         };
 
         let mut layers = Vec::new();
@@ -363,7 +363,7 @@ impl EmbeddingNetwork {
 
             for row in &mut weights {
                 for weight in row {
-                    *weight = rng.gen_range(-scale..scale);
+                    *weight = rng.random_range(-scale..scale);
                 }
             }
 

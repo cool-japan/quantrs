@@ -126,15 +126,15 @@ fn generate_synthetic_data(num_samples: usize) -> (Vec<ParticleFeatures>, Vec<us
         // Generate synthetic four-momentum
         // Higgs particles have higher energy
         let energy_base = if is_higgs { 125.0 } else { 50.0 };
-        let energy = thread_rng().gen::<f64>().mul_add(10.0, energy_base);
-        let px = (thread_rng().gen::<f64>() - 0.5) * 20.0;
-        let py = (thread_rng().gen::<f64>() - 0.5) * 20.0;
-        let pz = (thread_rng().gen::<f64>() - 0.5) * 50.0;
+        let energy = thread_rng().random::<f64>().mul_add(10.0, energy_base);
+        let px = (thread_rng().random::<f64>() - 0.5) * 20.0;
+        let py = (thread_rng().random::<f64>() - 0.5) * 20.0;
+        let pz = (thread_rng().random::<f64>() - 0.5) * 50.0;
 
         // Create additional features
         let mut additional_features = Vec::with_capacity(3);
         for _ in 0..3 {
-            additional_features.push(thread_rng().gen::<f64>());
+            additional_features.push(thread_rng().random::<f64>());
         }
 
         // Create particle features
